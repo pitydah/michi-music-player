@@ -27,14 +27,15 @@ from michi.application.enrichment_ports import (
     KnowledgeRepositoryPort,
 )
 from michi.domain.enrichment import (
+    AlbumIdentityEvidence,
     AlbumIdentityResolution,
     AlbumKnowledgeProfile,
+    ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
     DeliveryVerdict,
     EnrichmentEntityKind,
     EnrichmentRequest,
     EnrichmentRequestLedger,
-    IdentityEvidence,
     IdentityResolution,
     IdentityResolutionStatus,
     resolve_album_identity,
@@ -83,20 +84,22 @@ class EnrichmentService:
 
     def request_artist_enrichment(
         self,
-        local_artist_key: str,
-        evidence: IdentityEvidence,
+        evidence: ArtistIdentityEvidence,
         generation: int = 0,
     ) -> EnrichmentRequestOutcome:
         """Resolve the artist identity (homonym + conflict gates) and
         register the pending async request. AMBIGUOUS / IDENTITY_CONFLICT /
-        NO_MATCH produce NO request — no profile is ever attached."""
+        NO_MATCH produce NO request — no profile is ever attached.
+
+        R1: the local entity key rides inside the entity-specific
+        evidence (never a shared/generic evidence bag)."""
         candidates = self._resolver.find_artist_candidates(evidence)
         resolution = resolve_artist_identity(candidates, evidence)
         if resolution.status is not IdentityResolutionStatus.RESOLVED:
             return EnrichmentRequestOutcome(resolution=resolution, request=None)
         request = self._register(
             EnrichmentEntityKind.ARTIST,
-            local_artist_key,
+            evidence.local_artist_key,
             resolution.external_entity_id,
             generation,
         )
@@ -132,13 +135,17 @@ class EnrichmentService:
 
     def request_album_enrichment(
         self,
-        local_album_key: str,
-        evidence: IdentityEvidence,
+        evidence: AlbumIdentityEvidence,
         generation: int = 0,
     ) -> EnrichmentRequestOutcome:
         """Resolve the album identity (release GROUP gate) and register the
         pending request. The specific release edition id stays "" unless
-        edition-identifying evidence exists."""
+        edition-identifying evidence exists.
+
+        R1: album resolution uses the entity-specific
+        ``AlbumIdentityEvidence`` — title is a required gate, year never
+        resolves alone, and the resolved artist identity (when available)
+        constrains artist-credit compatibility."""
         group_candidates = self._resolver.find_release_group_candidates(evidence)
         edition_candidates = self._resolver.find_release_edition_candidates(evidence)
         resolution = resolve_album_identity(
@@ -150,7 +157,7 @@ class EnrichmentService:
             return EnrichmentRequestOutcome(resolution=resolution, request=None)
         request = self._register(
             EnrichmentEntityKind.ALBUM,
-            local_album_key,
+            evidence.local_album_key,
             resolution.release_group_id,
             generation,
         )
