@@ -17,7 +17,7 @@ ScrollBar {
         opacity: root.active || root.hovered ? (root.hovered ? 0.95 : 0.72) : 0
         Behavior on opacity {
             enabled: !MichiAccessibility.reducedMotion
-            NumberAnimation { duration: MichiMotion.standard }
+            NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
         }
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion

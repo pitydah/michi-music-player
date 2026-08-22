@@ -7,6 +7,7 @@ CheckBox {
     id: root
     spacing: MichiSpacing.sm
     focusPolicy: Qt.StrongFocus
+    hoverEnabled: true
     Accessible.role: Accessible.CheckBox
     Accessible.name: text
     indicator: Rectangle {
@@ -14,9 +15,12 @@ CheckBox {
         x: root.leftPadding
         y: parent.height / 2 - height / 2
         radius: MichiRadius.xs
-        color: root.checked ? MichiPalette.auroraBlue : "transparent"
+        color: root.checked ? MichiPalette.auroraBlue
+            : root.hovered ? MichiPalette.smoke : "transparent"
         border.width: 1
-        border.color: root.checked ? MichiPalette.auroraBlue : MichiSemanticColors.borderStrong
+        border.color: root.checked ? MichiPalette.auroraBlue
+            : root.hovered ? MichiPalette.textSecondary : MichiSemanticColors.borderStrong
+        HoverHandler { cursorShape: Qt.PointingHandCursor }
         MichiText {
             anchors.centerIn: parent
             text: "✓"

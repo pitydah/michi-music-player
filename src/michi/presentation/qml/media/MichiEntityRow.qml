@@ -95,11 +95,11 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.leftMargin: MichiSpacing.xl
+        anchors.leftMargin: MichiSpacing.sm
         anchors.rightMargin: MichiSpacing.sm
         height: 1
         color: MichiSemanticColors.borderSubtle
-        opacity: hover.hovered ? 0 : 0.6
+        opacity: hover.hovered ? 0 : 0.72
     }
 
     HoverHandler {
@@ -119,5 +119,10 @@ Rectangle {
     Behavior on color {
         enabled: !MichiAccessibility.reducedMotion
         ColorAnimation { duration: MichiMotion.micro }
+    }
+    // Smooth the 0↔1 border toggle instead of popping it
+    Behavior on border.width {
+        enabled: !MichiAccessibility.reducedMotion
+        NumberAnimation { duration: MichiMotion.micro }
     }
 }

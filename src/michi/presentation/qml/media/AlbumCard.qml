@@ -74,15 +74,15 @@ Item {
                     opacity: hover.hovered ? 1 : 0
                     Behavior on opacity {
                         enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.micro }
+                        NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
                     }
                 }
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 46
-                    height: 46
-                    radius: 23
+                    width: MichiMetrics.controlLarge
+                    height: MichiMetrics.controlLarge
+                    radius: MichiMetrics.controlLarge / 2
                     visible: hover.hovered || root.activeFocus
                     color: MichiSemanticColors.scrimStrong
                     border.width: 1
@@ -92,13 +92,13 @@ Item {
 
                     Behavior on opacity {
                         enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.micro }
+                        NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
                     }
 
                     MichiIcon {
                         anchors.centerIn: parent
-                        width: 20
-                        height: 20
+                        width: MichiMetrics.iconMedium
+                        height: width
                         name: "play"
                         iconColor: MichiPalette.auroraCyan
                     }

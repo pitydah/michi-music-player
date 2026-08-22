@@ -90,8 +90,10 @@ Button {
             ColorAnimation { duration: MichiMotion.micro }
         }
         Behavior on y {
-            enabled: !MichiAccessibility.reducedMotion
-            NumberAnimation { duration: MichiMotion.instant }
+            // press snaps down instantly; release eases back (Behavior
+            // disabled while pressed so the 1px shift stays immediate)
+            enabled: !MichiAccessibility.reducedMotion && !root.pressed
+            NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
         }
         Behavior on scale {
             enabled: !MichiAccessibility.reducedMotion

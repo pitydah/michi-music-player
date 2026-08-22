@@ -18,7 +18,12 @@ Item {
         anchors.bottomMargin: MichiSpacing.xl
         width: Math.min(480, label.implicitWidth + MichiSpacing.xl * 2)
         height: 52
-        visible: root.message.length > 0
+        opacity: root.message.length > 0 ? 1 : 0
+        visible: opacity > 0.01
+        Behavior on opacity {
+            enabled: !MichiAccessibility.reducedMotion
+            NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
+        }
         MichiText {
             id: label
             anchors.centerIn: parent
