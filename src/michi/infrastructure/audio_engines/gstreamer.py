@@ -417,7 +417,17 @@ class GStreamerAudioPort(AudioPort):
             paused_accepted = self._request_state(self._bindings.STATE.PAUSED)
         except Exception as arm_exc:  # noqa: BLE001 — ARM transaction boundary
             self._rollback_failed_arm(arm_exc, timer_before)
-            raise arm_exc
+            # M11.3C-R6.1: el PHASE A (teardown del source viejo) ya cruzó
+            # su commit point destructivo → la fuente previa NO está
+            # garantizada. La disposición debe ser explícita para que
+            # PlaybackService no restaure aceptación falsa.
+            from michi.application.ports import AudioLoadError
+
+            raise AudioLoadError(
+                Path(file_path),
+                str(arm_exc),
+                previous_source_preserved=False,
+            ) from arm_exc
         if not paused_accepted:
             reason = "GStreamer failed to enter PAUSED during preroll"
             candidate = self._pending_path
@@ -639,16 +649,21 @@ class GStreamerAudioPort(AudioPort):
                 )
             except Exception:  # noqa: BLE001 — best-effort rollback
                 null_ok = False
-        # 5. detach del bus watch best-effort (si se instaló); si falla, el
-        #    bookkeeping queda retenido y close() podrá reintentar
+        # 5. detach del bus watch best-effort; si falla, el bookkeeping del
+        #    watch queda retenido (observable) para reintentar más tarde
+        detach_ok = True
         try:  # noqa: SIM105 — no se usa suppress: la limpieza pendiente debe
             # seguir siendo observable en el bookkeeping del bus
             self._detach_pipeline_sources()
         except Exception:  # noqa: BLE001 — best-effort rollback
-            pass
-        # 6. ownership truthful: liberar el pipeline solo si el NULL
-        #    realmente completó; si no, retener para diagnóstico/close
-        if null_ok:
+            detach_ok = False
+        # 6. ownership truthful (M11.3C-R6.1): el pipeline es el ANCLA de
+        #    limpieza retryable — se libera SOLO cuando el NULL Y el detach
+        #    del watch completaron. NULL OK + detach FAIL → el pipeline se
+        #    retiene (aunque su transporte ya esté NULL) para que close() o
+        #    un próximo load() puedan reintentar la remoción del watch.
+        #    Invariante: _pipeline is None IMPLICA _bus_source is None.
+        if null_ok and detach_ok:
             self._pipeline = None
 
     def _teardown_pipeline_terminal(self) -> Exception | None:
