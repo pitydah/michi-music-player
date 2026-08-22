@@ -13,7 +13,6 @@ Coverage:
 """
 
 import sqlite3
-from pathlib import Path
 
 import pytest
 from enrichment_fakes import (
@@ -35,7 +34,6 @@ from michi.domain.enrichment import (
     ArtistIdentityHints,
     DeliveryVerdict,
     IdentityStatus,
-    KnowledgeProvenance,
     MatchMethod,
 )
 from michi.infrastructure.enrichment_repository import (
@@ -109,8 +107,8 @@ class TestIdentityPersistence:
         conn = sqlite3.connect(str(db_path))
         try:
             conn.execute(
-                "INSERT INTO artist_identity VALUES(?, ?, ?, ?, ?, ?)",
-                ("bad-key", "mb-x", "NOT_A_STATUS", "NOT_A_METHOD", 0, "when"),
+                "INSERT INTO artist_identity VALUES(?, ?, ?, ?, ?)",
+                ("bad-key", "mb-x", "NOT_A_STATUS", "NOT_A_METHOD", "when"),
             )
             conn.commit()
         finally:
@@ -120,87 +118,17 @@ class TestIdentityPersistence:
 
 
 class TestSchemaMigration:
-    def _create_v1_database(self, db_path: Path) -> None:
-        conn = sqlite3.connect(str(db_path))
-        try:
-            conn.execute(
-                "CREATE TABLE artist_knowledge ("
-                "local_artist_key TEXT PRIMARY KEY,"
-                "profile TEXT NOT NULL)"
-            )
-            conn.execute(
-                "CREATE TABLE album_knowledge ("
-                "local_album_key TEXT PRIMARY KEY,"
-                "profile TEXT NOT NULL)"
-            )
-            conn.execute(
-                "CREATE TABLE enrichment_meta ("
-                "key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-            )
-            conn.execute(
-                "INSERT INTO enrichment_meta VALUES('enrichment_schema_version', '1')"
-            )
-            conn.commit()
-        finally:
-            conn.close()
+    """R2: the realistic migration chain (literal V1/V2 fixtures, real
+    data transformation) is covered by tests/test_m6_9a_r2_migrations.py.
+    Here: schema version + fail-closed behavior only."""
 
-    def test_migration_preserves_knowledge_and_adds_identity(self, tmp_path):
-        db_path = tmp_path / "enrichment.db"
-        self._create_v1_database(db_path)
-        # A v1 knowledge profile must survive the migration.
-        profile_payload = '{"artist_knowledge": {"local_artist_key": "the cure"}}'
-        conn = sqlite3.connect(str(db_path))
-        try:
-            conn.execute(
-                "INSERT INTO artist_knowledge VALUES('the cure', ?)",
-                (profile_payload,),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-        repo = SqliteEnrichmentRepository(db_path)
-        assert repo.version() == CURRENT_ENRICHMENT_SCHEMA == 2
-        # Identity tables now usable.
-        repo.save_artist_identity(
-            ArtistExternalIdentity(local_artist_key="k", external_artist_id="mb-1")
-        )
-        assert repo.load_artist_identity("k") is not None
-        # The malformed v1 knowledge row still exists (malformed rows are
-        # never deleted by migration — they are skipped on read).
-        assert repo.load_artist_profiles() == ()
-
-    def test_migration_preserves_valid_knowledge(self, tmp_path):
-        from michi.domain.enrichment import (
-            ArtistKnowledgeProfile,
-            encode_artist_profile,
-        )
-
-        db_path = tmp_path / "enrichment.db"
-        self._create_v1_database(db_path)
-        profile = ArtistKnowledgeProfile(
-            local_artist_key="the cure",
-            external_artist_id="mb-xyz",
-            provenance=KnowledgeProvenance(provider="v1"),
-        )
-        conn = sqlite3.connect(str(db_path))
-        try:
-            conn.execute(
-                "INSERT INTO artist_knowledge VALUES(?, ?)",
-                ("the cure", encode_artist_profile(profile)),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-        repo = SqliteEnrichmentRepository(db_path)
-        loaded = repo.load_artist_profile("the cure")
-        assert loaded is not None
-        assert loaded.external_artist_id == "mb-xyz"
+    def test_fresh_database_is_current_schema(self, tmp_path):
+        repo = SqliteEnrichmentRepository(tmp_path / "enrichment.db")
+        assert repo.version() == CURRENT_ENRICHMENT_SCHEMA == 3
 
     def test_newer_schema_fails_closed(self, tmp_path):
         db_path = tmp_path / "enrichment.db"
-        self._create_v1_database(db_path)
+        SqliteEnrichmentRepository(db_path)
         conn = sqlite3.connect(str(db_path))
         try:
             conn.execute(

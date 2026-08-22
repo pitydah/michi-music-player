@@ -659,9 +659,13 @@ class EnrichmentAssetRecord:
     """Provenance + metadata record for ONE downloaded external asset.
 
     The asset store fills ``checksum`` / ``width`` / ``height`` /
-    ``local_path`` during validation+storage; the caller supplies
+    ``managed_object`` during validation+storage; the caller supplies
     provenance fields. Never a path derived from remote titles: the
-    caller-supplied ``asset_id`` is strictly validated (digest-safe)."""
+    caller-supplied ``asset_id`` is strictly validated (digest-safe).
+
+    R2: ``managed_object`` is a RELATIVE, content-addressed storage key
+    (e.g. "objects/<sha256>.png") — NEVER an absolute runtime path.
+    Absolute paths would break backup/restore/data-root migration."""
 
     asset_id: str
     entity_kind: EnrichmentEntityKind
@@ -676,7 +680,7 @@ class EnrichmentAssetRecord:
     attribution: str = ""
     width: int = 0
     height: int = 0
-    local_path: str = ""
+    managed_object: str = ""
 
 
 # ---------------------------------------------------------------------------
