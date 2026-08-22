@@ -8,6 +8,7 @@ Slider {
     property string accessibleName: "Slider"
     implicitHeight: MichiMetrics.controlSmall
     focusPolicy: Qt.StrongFocus
+    hoverEnabled: true
     Accessible.role: Accessible.Slider
     Accessible.name: accessibleName
 
@@ -36,11 +37,12 @@ Slider {
         color: root.enabled ? MichiPalette.textPrimary : MichiPalette.textDisabled
         border.width: 2
         border.color: root.pressed || root.visualFocus
-            ? MichiPalette.auroraBlue : MichiSemanticColors.borderStrong
-        scale: root.pressed ? 1.08 : 1
+            ? MichiPalette.auroraBlue
+            : root.hovered ? MichiPalette.auroraCyan : MichiSemanticColors.borderStrong
+        scale: root.pressed ? 1.08 : root.hovered ? 1.04 : 1
         Behavior on scale {
             enabled: !MichiAccessibility.reducedMotion
-            NumberAnimation { duration: MichiMotion.micro }
+            NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
         }
         MichiFocusRing { visualFocus: root.visualFocus }
     }

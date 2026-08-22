@@ -78,6 +78,9 @@ Item {
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
             albumZoom: root.albumZoom
+            onScanRequested: libraryToolbar.performScan()
+            onSortModeRequested: mode => root.albumSortMode = mode
+            onSortDirectionRequested: descending => root.albumSortDescending = descending
             Layout.fillWidth: true
             Layout.fillHeight: true
         }

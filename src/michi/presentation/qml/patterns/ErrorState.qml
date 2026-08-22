@@ -6,11 +6,12 @@ import "../theme"
 
 MichiGlassSurface {
     id: root
-    property string title: "Something went wrong"
+    property string title: qsTr("Something went wrong")
     property string message: ""
-    property string actionText: "Try again"
+    property string actionText: qsTr("Try again")
     signal actionRequested()
     elevation: "elevated"
+    tileSeed: 13
     accented: true
     accentColor: MichiPalette.error
     implicitHeight: contentColumn.implicitHeight + MichiSpacing.xl * 2

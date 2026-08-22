@@ -23,7 +23,7 @@ Item {
             Layout.fillWidth: true
             spacing: MichiSpacing.sm
             MichiText {
-                text: "ARTISTS"
+                text: qsTr("ARTISTS")
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
@@ -36,7 +36,7 @@ Item {
             Item { Layout.fillWidth: true }
             MichiText {
                 visible: library.artists.length > 0
-                text: "Select an artist to explore albums and tracks"
+                text: qsTr("Select an artist to explore albums and tracks")
                 role: "caption"
                 color: MichiPalette.textMuted
             }
@@ -72,8 +72,8 @@ Item {
             focus: true
             cacheBuffer: cellHeight * 2
             Accessible.role: Accessible.List
-            Accessible.name: "Artists gallery"
-            Accessible.description: "Use arrow keys to browse and Enter to open an artist"
+            Accessible.name: qsTr("Artists gallery")
+            Accessible.description: qsTr("Use arrow keys to browse and Enter to open an artist")
 
             Keys.onReturnPressed: {
                 if (currentIndex >= 0 && currentIndex < library.artists.length)

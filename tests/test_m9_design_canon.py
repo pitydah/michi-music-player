@@ -33,7 +33,6 @@ def test_design_system_has_canonical_layers() -> None:
         "controls/MichiButton.qml",
         "controls/MichiSearchField.qml",
         "controls/MichiSegmentedControl.qml",
-        "patterns/AsyncStateView.qml",
         "patterns/SearchOverlay.qml",
         "media/Artwork.qml",
         "media/MichiPlayingIndicator.qml",
@@ -56,16 +55,18 @@ def test_material_texture_is_lightweight_packaged_and_quality_aware() -> None:
     glass = _text("primitives/MichiGlassSurface.qml")
     surface = _text("primitives/MichiSurface.qml")
     package = Path("pyproject.toml").read_text()
-    assert (QML / "assets" / "michi-grain.svg").is_file()
-    assert 'source: "../assets/michi-grain.svg"' in texture
-    assert "asynchronous: true" in texture
-    assert "cache: true" in texture
+    # M9-R2.3: procedural deterministic grain (Canvas tile) replaced the
+    # 64px SVG — no asset, no sub-pixel aliasing, per-surface seed.
+    assert "function makeRandom(seed)" in texture
+    assert "toDataURL" in texture
+    assert "width: 128" in texture
+    assert "property int tileSeed: 0" in texture
     assert 'MichiThemeState.glassQuality === "low" ? 0' in texture
     assert "property bool shadowed" in glass
     assert "MichiElevation.shadowFarSpread" in glass
     assert "MichiMaterialTexture" in glass
     assert "MichiMaterialTexture" in surface
-    assert '"presentation/qml/assets/*.svg"' in package
+    assert "presentation/qml/theme/*.qml" in package
 
 
 def test_artwork_access_is_centralized() -> None:
@@ -167,7 +168,7 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "Behavior on scale" in button
     assert "MichiStatusChip" in toolbar
     assert 'import "../controls"' in content
-    assert 'text: "ADD TRACK TO"' in content
+    assert 'text: qsTr("ADD TRACK TO")' in content
     assert "MichiIconButton" in content
     assert "property bool revealed" in queue
     assert "Gradient.Horizontal" in now_playing
@@ -247,7 +248,7 @@ def test_library_navigation_and_path_selection_follow_the_canon() -> None:
     assert "width: Math.min(720" in path_view
     assert "anchors.leftMargin: MichiSpacing.xl" not in path_view
     assert "anchors.bottom: parent.bottom" in path_view
-    assert 'text: "Open album"' in path_view
+    assert 'text: qsTr("Open album")' in path_view
 
 
 def test_album_artwork_zoom_is_real_and_persistent() -> None:

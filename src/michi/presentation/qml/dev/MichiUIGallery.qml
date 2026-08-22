@@ -175,7 +175,7 @@ MichiSurface {
                             delegate: Rectangle {
                                 width: 156
                                 height: 56
-                                radius: MichiMetrics.radiusSmall
+                                radius: MichiRadius.sm
                                 color: MichiPalette.obsidianRaised
                                 border.color: MichiPalette.smoke
                                 border.width: 1

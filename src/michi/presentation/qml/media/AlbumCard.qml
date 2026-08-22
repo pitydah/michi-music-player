@@ -31,28 +31,27 @@ Item {
         return details.join(" · ")
     }
 
-    MichiGlassSurface {
+    Rectangle {
         anchors.fill: parent
-        elevation: "subtle"
-        contentPadding: MichiSpacing.sm
-        accented: root.selected || hover.hovered
-        accentColor: root.selected ? MichiPalette.auroraCyan : MichiPalette.auroraBlue
-        shadowed: root.selected || hover.hovered
-        textured: false
+        radius: MichiRadius.lg
+        color: tap.pressed
+            ? MichiSemanticColors.surfacePressed
+            : hover.hovered
+                ? MichiSemanticColors.surfaceHover
+                : root.selected
+        border.width: 1
+        border.color: root.selected
+            ? MichiSemanticColors.auroraCyanBorderSubtle
+            : hover.hovered ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
 
-        Rectangle {
-            anchors.fill: parent
-            color: tap.pressed ? MichiSemanticColors.surfacePressed
-                : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-            radius: root.selected ? MichiRadius.lg : MichiRadius.md
-            Behavior on color {
-                enabled: !MichiAccessibility.reducedMotion
-                ColorAnimation { duration: MichiMotion.micro }
-            }
+        Behavior on color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
         }
 
         ColumnLayout {
             anchors.fill: parent
+            anchors.margins: MichiSpacing.sm
             spacing: MichiSpacing.sm
 
             Item {
@@ -75,23 +74,30 @@ Item {
                     opacity: hover.hovered ? 1 : 0
                     Behavior on opacity {
                         enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.micro }
+                        NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
                     }
                 }
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 42
-                    height: 38
-                    radius: MichiRadius.md
+                    width: MichiMetrics.controlLarge
+                    height: MichiMetrics.controlLarge
+                    radius: MichiMetrics.controlLarge / 2
                     visible: hover.hovered || root.activeFocus
-                    color: MichiSemanticColors.controlSurfaceStrong
+                    color: MichiSemanticColors.scrimStrong
                     border.width: 1
                     border.color: MichiSemanticColors.auroraCyanBorder
                     scale: tap.pressed ? 0.94 : 1
+                    opacity: hover.hovered || root.activeFocus ? 1 : 0
+
+                    Behavior on opacity {
+                        enabled: !MichiAccessibility.reducedMotion
+                        NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+                    }
+
                     MichiIcon {
                         anchors.centerIn: parent
-                        width: MichiMetrics.iconLarge
+                        width: MichiMetrics.iconMedium
                         height: width
                         name: "play"
                         iconColor: MichiPalette.auroraCyan
@@ -129,8 +135,8 @@ Item {
                 }
                 MichiText {
                     Layout.fillWidth: true
-                    visible: root.album && root.album.technicalSummary.length > 0
-                    text: root.album ? root.album.technicalSummary : ""
+                    visible: root.album && root.album.technicalSummary ? (root.album.technicalSummary.length > 0) : false
+                    text: root.album && root.album.technicalSummary ? root.album.technicalSummary : ""
                     role: "technical"
                     technical: true
                     color: root.selected ? MichiPalette.auroraCyan : MichiPalette.textMuted

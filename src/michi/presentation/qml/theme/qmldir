@@ -10,3 +10,4 @@ singleton MichiBreakpoints 1.0 MichiBreakpoints.qml
 singleton MichiAccessibility 1.0 MichiAccessibility.qml
 singleton MichiThemeState 1.0 MichiThemeState.qml
 singleton MichiTheme 1.0 MichiTheme.qml
+singleton MichiFormat 1.0 MichiFormat.qml

@@ -31,8 +31,8 @@ PathView {
     activeFocusOnTab: true
     focus: true
     Accessible.role: Accessible.List
-    Accessible.name: "Albums in PathView"
-    Accessible.description: "Use Left and Right to browse and Enter to open"
+    Accessible.name: qsTr("Albums in PathView")
+    Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
 
     Keys.onLeftPressed: decrementCurrentIndex()
     Keys.onRightPressed: incrementCurrentIndex()
@@ -114,6 +114,7 @@ PathView {
         z: PathView.isCurrentItem ? 100 : Math.round(PathView.itemDepth || 0)
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
+        Accessible.selected: PathView.isCurrentItem
         Accessible.description: PathView.isCurrentItem
             ? "Selected album. Enter to open" : "Select album"
 
@@ -123,9 +124,13 @@ PathView {
             radius: MichiRadius.lg
             color: "transparent"
             border.width: PathView.isCurrentItem ? 2 : 1
-            border.color: PathView.isCurrentItem
-                ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
-            opacity: PathView.isCurrentItem || hover.hovered ? 1 : 0.55
+            // Single accent in the focal area: cyan matches the selection
+            // card and its track-count label below (was auroraBlue, which
+            // fought the cyan card).
+            border.color: tap.pressed ? MichiPalette.auroraCyan
+                : PathView.isCurrentItem
+                    ? MichiPalette.auroraCyan : MichiSemanticColors.borderSubtle
+            opacity: PathView.isCurrentItem || hover.hovered || tap.pressed ? 1 : 0.55
         }
 
         Artwork {
@@ -137,6 +142,19 @@ PathView {
             sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
             fallbackText: modelData.title
             requestedSize: Math.round(width * Screen.devicePixelRatio)
+        }
+
+        // Ground reflection / floor shadow under cover
+        Rectangle {
+            anchors.top: artwork.bottom
+            anchors.horizontalCenter: artwork.horizontalCenter
+            anchors.topMargin: 4
+            width: albumsPath.coverSize * 0.88
+            height: 10
+            radius: 5
+            color: MichiSemanticColors.glassShadowFar
+            opacity: PathView.isCurrentItem ? 0.75 : 0.35
+            z: -1
         }
 
         MichiText {
@@ -155,11 +173,16 @@ PathView {
         }
 
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: albumsPath.currentIndex = pathAlbum.index
-            onDoubleClicked: library.select_album(modelData.key)
+        // TapHandler (not MouseArea): it claims only the tap, leaving the
+        // PathView drag/flick intact when the gesture starts on a cover.
+        // Click selects + keeps keyboard focus; double-click opens.
+        TapHandler {
+            id: tap
+            onTapped: {
+                albumsPath.currentIndex = pathAlbum.index
+                pathAlbum.forceActiveFocus()
+            }
+            onDoubleTapped: library.select_album(modelData.key)
         }
 
         Behavior on scale {
@@ -212,7 +235,7 @@ PathView {
             MichiText {
                 text: albumsPath.currentAlbum
                     ? albumsPath.currentAlbum.trackCount
-                        + (albumsPath.currentAlbum.trackCount === 1 ? " TRACK" : " TRACKS")
+                        + (albumsPath.currentAlbum.trackCount === 1 ? " track" : " tracks")
                     : ""
                 role: "technical"
                 technical: true
@@ -224,38 +247,42 @@ PathView {
                 color: MichiSemanticColors.borderSubtle
             }
             MichiIconButton {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
+                Layout.preferredWidth: MichiMetrics.controlMedium
+                Layout.preferredHeight: MichiMetrics.controlMedium
                 iconName: "chevron-left"
-                accessibleName: "Previous album"
+                accessibleName: qsTr("Previous album")
                 enabled: albumsPath.count > 1
                 onClicked: albumsPath.decrementCurrentIndex()
             }
             MichiIconButton {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
+                Layout.preferredWidth: MichiMetrics.controlMedium
+                Layout.preferredHeight: MichiMetrics.controlMedium
                 iconName: "chevron-right"
-                accessibleName: "Next album"
+                accessibleName: qsTr("Next album")
                 enabled: albumsPath.count > 1
                 onClicked: albumsPath.incrementCurrentIndex()
             }
             MichiButton {
-                text: "Open album"
+                text: qsTr("Play")
+                iconName: "play"
+                variant: "primary"
+                accessibleName: qsTr("Play selected album")
+                onClicked: {
+                    if (albumsPath.currentAlbum) {
+                        library.select_album(albumsPath.currentAlbum.key)
+                        library.play_all()
+                    }
+                }
+            }
+            MichiButton {
+                text: qsTr("Open album")
                 iconName: "album"
                 variant: "secondary"
-                accessibleName: "Open selected album"
+                accessibleName: qsTr("Open selected album")
                 onClicked: {
                     if (albumsPath.currentAlbum)
                         library.select_album(albumsPath.currentAlbum.key)
                 }
-            }
-        }
-
-        Behavior on y {
-            enabled: !MichiAccessibility.reducedMotion
-            NumberAnimation {
-                duration: MichiMotion.standard
-                easing.type: MichiMotion.outCubic
             }
         }
     }

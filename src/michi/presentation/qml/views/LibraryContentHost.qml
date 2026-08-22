@@ -19,6 +19,9 @@ ColumnLayout {
     property string albumTimelineGrouping: "decade"
     property real albumZoom: 1.0
     property var _content: null   // the current tab view
+    signal scanRequested()
+    signal sortModeRequested(string mode)
+    signal sortDirectionRequested(bool descending)
 
     // M6.7: explicit per-tab management. The object tree must NOT keep the
     // previous tab alive after a switch (the findChild unload contract in
@@ -59,9 +62,13 @@ ColumnLayout {
 
     ErrorState {
         visible: library.hasDiagnostic
-        title: "Library unavailable"
-        message: library.diagnosticMessage
-        actionText: ""
+            || (library.scanStatus === "FAILED" && library.fileCount === 0)
+        title: library.hasDiagnostic ? "Library unavailable" : "Scan failed"
+        message: library.hasDiagnostic
+            ? library.diagnosticMessage
+            : "The library could not be scanned. Check your music folder and try again."
+        actionText: qsTr("Retry scan")
+        onActionRequested: root.scanRequested()
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? implicitHeight : 0
     }
@@ -79,7 +86,7 @@ ColumnLayout {
             anchors.fill: parent
             spacing: MichiSpacing.sm
             MichiText {
-                text: "ADD TRACK TO"
+                text: qsTr("ADD TRACK TO")
                 role: "technical"
                 technical: true
                 color: MichiPalette.auroraPurple
@@ -96,6 +103,7 @@ ColumnLayout {
                         // Playlists by canonical id (PLAINTLIST-HIERARCHY-02).
                         playlists.add_track_to_playlist(modelData.playlistId, addTargetPath)
                         addTargetPath = ""
+                        window.showToast(qsTr("Added to %1", "", modelData.name))
                     }
                 }
             }
@@ -103,7 +111,7 @@ ColumnLayout {
             Item { Layout.fillWidth: true }
             MichiIconButton {
                 iconName: "close"
-                accessibleName: "Cancel playlist selection"
+                accessibleName: qsTr("Cancel playlist selection")
                 onClicked: addTargetPath = ""
             }
         }
@@ -121,16 +129,23 @@ ColumnLayout {
         Layout.fillHeight: true
         visible: library.fileCount === 0
             && (library.scanStatus === "" || library.scanStatus === "IDLE")
-        title: "No music yet"
-        message: "Choose a music directory above and scan it to build your local library."
+        title: qsTr("No music yet")
+        message: qsTr("Scan a music folder to build your local library. Everything stays on your device.")
+        actionText: qsTr("Choose Music Folder")
+        iconName: "folder"
+        onActionRequested: root.scanRequested()
     }
 
     LoadingState {
         Layout.fillWidth: true
         Layout.fillHeight: true
+        // FAILED/CANCELLED must NOT spin forever: the ErrorState (above)
+        // covers FAILED with a retry, and CANCELLED returns to the
+        // EmptyState prompt.
         visible: library.fileCount === 0
             && library.scanStatus !== "" && library.scanStatus !== "IDLE"
-        message: "Building your library…"
+            && library.scanStatus !== "FAILED" && library.scanStatus !== "CANCELLED"
+        message: qsTr("Building your library…")
     }
 
     Component {
@@ -154,6 +169,8 @@ ColumnLayout {
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
             albumZoom: root.albumZoom
+            onSortModeRequested: mode => root.sortModeRequested(mode)
+            onSortDirectionRequested: descending => root.sortDirectionRequested(descending)
         }
     }
 

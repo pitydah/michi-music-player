@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../media"
@@ -14,56 +15,70 @@ ColumnLayout {
     spacing: MichiThemeState.contentGap
     visible: library.selectedArtistKey !== ""
 
-    RowLayout {
+    // Elevated glass hero matching AlbumDetailView's weight (was a bare
+    // RowLayout that read as unfinished next to the album hero).
+    MichiGlassSurface {
         Layout.fillWidth: true
-        spacing: MichiSpacing.lg
+        Layout.preferredHeight: artistHeroContent.implicitHeight + MichiSpacing.xl * 2
+        elevation: "elevated"
+        tileSeed: 6
+        contentPadding: MichiSpacing.xl
+        accented: true
+        accentColor: MichiPalette.auroraBlue
+        textured: true
 
-        Rectangle {
-            Layout.preferredWidth: 92
-            Layout.preferredHeight: 92
-            radius: 46
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: MichiPalette.auroraBlue }
-                GradientStop { position: 0.5; color: MichiPalette.auroraCyan }
-                GradientStop { position: 1; color: MichiPalette.auroraPurple }
-            }
-            Artwork {
-                anchors.fill: parent
-                anchors.margins: 3
-                radius: width / 2
-                requestedSize: 192
-                sourcePath: library.artistAlbums.length > 0
-                    ? library.artistAlbums[0].artworkPath : ""
-                fallbackText: library.artistName
-            }
-        }
+        RowLayout {
+            id: artistHeroContent
+            anchors.fill: parent
+            spacing: MichiSpacing.lg
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: MichiSpacing.sm
-            MichiButton {
-                text: "Back"
-                variant: "ghost"
-                Layout.alignment: Qt.AlignLeft
-                onClicked: library.clear_artist_selection()
+            Rectangle {
+                Layout.preferredWidth: 92
+                Layout.preferredHeight: 92
+                radius: 46
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: MichiPalette.auroraBlue }
+                    GradientStop { position: 0.5; color: MichiPalette.auroraCyan }
+                    GradientStop { position: 1; color: MichiPalette.auroraPurple }
+                }
+                Artwork {
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    radius: width / 2
+                    requestedSize: 192
+                    sourcePath: library.artistAlbums.length > 0
+                        ? library.artistAlbums[0].artworkPath : ""
+                    fallbackText: library.artistName
+                }
             }
-            MichiText {
+
+            ColumnLayout {
                 Layout.fillWidth: true
-                text: library.artistName
-                role: "display"
-                elide: Text.ElideRight
-            }
-            MichiText {
-                text: library.artistAlbumCount + " albums · "
-                    + library.artistTrackCount + " tracks"
-                role: "secondary"
+                spacing: MichiSpacing.sm
+                MichiButton {
+                    text: qsTr("Back")
+                    variant: "ghost"
+                    Layout.alignment: Qt.AlignLeft
+                    onClicked: library.clear_artist_selection()
+                }
+                MichiText {
+                    Layout.fillWidth: true
+                    text: library.artistName
+                    role: "display"
+                    elide: Text.ElideRight
+                }
+                MichiText {
+                    text: library.artistAlbumCount + " albums · "
+                        + library.artistTrackCount + " tracks"
+                    role: "secondary"
+                }
             }
         }
     }
 
     MichiText {
-        text: "Albums"
+        text: qsTr("Albums")
         role: "section"
         visible: library.artistAlbums.length > 0
     }
@@ -86,7 +101,7 @@ ColumnLayout {
         }
     }
 
-    MichiText { text: "Tracks"; role: "section" }
+    MichiText { text: qsTr("Tracks"); role: "section" }
 
     ListView {
         id: artistTracksList
@@ -98,6 +113,8 @@ ColumnLayout {
         boundsBehavior: Flickable.StopAtBounds
         keyNavigationEnabled: true
         headerPositioning: ListView.InlineHeader
+
+        ScrollBar.vertical: MichiScrollBar { }
 
         header: TrackTableHeader {
             width: artistTracksList.width

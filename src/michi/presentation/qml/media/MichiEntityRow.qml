@@ -60,22 +60,26 @@ Rectangle {
             name: root.iconName
             Layout.preferredWidth: MichiMetrics.iconSmall
             Layout.preferredHeight: MichiMetrics.iconSmall
-            iconColor: root.selected ? MichiPalette.auroraBlue : MichiPalette.textMuted
+            iconColor: root.selected ? MichiPalette.auroraCyan : MichiPalette.textMuted
         }
 
         MichiText {
-            Layout.fillWidth: true
+            Layout.preferredWidth: Math.min(320, root.width * 0.35)
             text: root.title
             role: "body"
+            font.weight: root.selected ? Font.DemiBold : Font.Normal
             elide: Text.ElideRight
         }
 
         MichiText {
-            Layout.preferredWidth: Math.min(240, root.width * .34)
+            visible: root.subtitle.length > 0
+            Layout.preferredWidth: Math.min(240, root.width * 0.25)
             text: root.subtitle
             role: "secondary"
             elide: Text.ElideRight
         }
+
+        Item { Layout.fillWidth: true }
 
         MichiText {
             visible: root.technical.length > 0
@@ -84,6 +88,18 @@ Rectangle {
             technical: true
             color: MichiThemeState.precisionMode ? MichiPalette.auroraCyan : MichiPalette.textMuted
         }
+    }
+
+    Rectangle {
+        visible: !root.selected
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: MichiSpacing.sm
+        anchors.rightMargin: MichiSpacing.sm
+        height: 1
+        color: MichiSemanticColors.borderSubtle
+        opacity: hover.hovered ? 0 : 0.72
     }
 
     HoverHandler {
@@ -103,5 +119,10 @@ Rectangle {
     Behavior on color {
         enabled: !MichiAccessibility.reducedMotion
         ColorAnimation { duration: MichiMotion.micro }
+    }
+    // Smooth the 0↔1 border toggle instead of popping it
+    Behavior on border.width {
+        enabled: !MichiAccessibility.reducedMotion
+        NumberAnimation { duration: MichiMotion.micro }
     }
 }

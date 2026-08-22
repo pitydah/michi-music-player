@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../primitives"
 import "../theme"
@@ -19,6 +20,7 @@ ListView {
     boundsBehavior: Flickable.StopAtBounds
     spacing: MichiSpacing.xs
     cacheBuffer: height
+    reuseItems: true
     keyNavigationEnabled: true
     keyNavigationWraps: false
     activeFocusOnTab: true
@@ -28,8 +30,8 @@ ListView {
     section.labelPositioning: ViewSection.CurrentLabelAtStart
         | ViewSection.InlineLabels
     Accessible.role: Accessible.List
-    Accessible.name: "Album timeline"
-    Accessible.description: "Albums grouped chronologically"
+    Accessible.name: qsTr("Album timeline")
+    Accessible.description: qsTr("Albums grouped chronologically")
 
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)
@@ -40,32 +42,36 @@ ListView {
             library.select_album(albumModel[currentIndex].key)
     }
 
-    ScrollBar.vertical: ScrollBar {
-        policy: ScrollBar.AsNeeded
-        width: MichiSpacing.sm
-    }
+    ScrollBar.vertical: MichiScrollBar { }
 
-    section.delegate: Rectangle {
+    section.delegate: Item {
         required property string section
         width: albumTimeline.width
-        height: 44
+        height: 48
         z: 4
-        color: MichiSemanticColors.controlSurfaceStrong
-        border.width: 1
-        border.color: MichiSemanticColors.borderSubtle
-        radius: MichiRadius.md
+
+        // Opaque base so the floating inline label covers rows scrolling
+        // underneath instead of letting them show through.
+        Rectangle {
+            anchors.fill: parent
+            color: MichiPalette.obsidian
+        }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: MichiSpacing.lg
+            anchors.leftMargin: 20
             anchors.rightMargin: MichiSpacing.lg
             spacing: MichiSpacing.md
+
             Rectangle {
-                Layout.preferredWidth: MichiSpacing.sm
-                Layout.preferredHeight: MichiSpacing.sm
-                radius: width / 2
-                color: MichiPalette.auroraBlue
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+                radius: 7
+                color: MichiPalette.auroraCyan
+                border.width: 2
+                border.color: MichiPalette.obsidian
             }
+
             MichiText {
                 text: {
                     if (albumTimeline.groupByDecade) {
@@ -77,9 +83,16 @@ ListView {
                     }
                 }
                 role: "section"
-                font.weight: Font.Bold
+                font.weight: Font.DemiBold
+                color: MichiPalette.textPrimary
             }
-            Item { Layout.fillWidth: true }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: MichiSemanticColors.borderSubtle
+            }
+
             MichiText {
                 text: albumTimeline.groupByDecade ? "DECADE" : "YEAR"
                 role: "technical"
@@ -101,6 +114,7 @@ ListView {
         activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
+        Accessible.selected: timelineRow.selected
 
         Rectangle {
             anchors.fill: parent
@@ -111,6 +125,10 @@ ListView {
             border.color: timelineRow.selected
                 ? MichiSemanticColors.auroraBorderSubtle
                 : MichiSemanticColors.borderSubtle
+            Behavior on color {
+                enabled: !MichiAccessibility.reducedMotion
+                ColorAnimation { duration: MichiMotion.micro }
+            }
             MichiFocusRing {
                 visualFocus: timelineRow.activeFocus
                     && MichiAccessibility.keyboardMode
@@ -122,7 +140,7 @@ ListView {
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             anchors.left: parent.left
-            anchors.leftMargin: 27
+            anchors.leftMargin: 28
             width: 1
             color: MichiSemanticColors.borderStrong
         }
@@ -148,9 +166,10 @@ ListView {
                 sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
                 fallbackText: modelData.title
                 requestedSize: Math.round(width * Screen.devicePixelRatio)
+                radius: MichiRadius.sm
             }
             ColumnLayout {
-                Layout.fillWidth: true
+                Layout.preferredWidth: Math.min(380, timelineRow.width * 0.35)
                 spacing: MichiSpacing.xxs
                 MichiText {
                     Layout.fillWidth: true
@@ -167,11 +186,28 @@ ListView {
                 }
             }
             MichiText {
-                text: modelData.year > 0 ? String(modelData.year) : "Unknown"
+                text: modelData.year > 0 ? String(modelData.year) : "—"
                 role: "technical"
                 technical: true
+                // One accent per surface: cyan is reserved for the active
+                // state (selected dot/row), not for every row's year.
                 color: modelData.year > 0
-                    ? MichiPalette.auroraCyan : MichiPalette.textMuted
+                    ? MichiPalette.textSecondary : MichiPalette.textMuted
+            }
+            MichiText {
+                visible: modelData.trackCount > 0
+                text: modelData.trackCount + (modelData.trackCount === 1 ? " track" : " tracks")
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
+            }
+            Item { Layout.fillWidth: true }
+            MichiText {
+                visible: modelData.technicalSummary ? (modelData.technicalSummary.length > 0) : false
+                text: modelData.technicalSummary || ""
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
             }
         }
 

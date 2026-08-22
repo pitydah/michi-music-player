@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import "../controls" as Controls
 import "../patterns"
+import "../primitives"
 import "../theme"
-import "../ui"
 
 Item {
     Flickable {
@@ -19,12 +19,12 @@ Item {
 
             PageHeader {
                 Layout.fillWidth: true
-                title: "Settings"
+                title: qsTr("Settings")
                 subtitle: "Configure appearance, playback and your local library."
             }
 
             // ── Playback ────────────────────────────────────
-            MichiPanel {
+            MichiGlassSurface {
                 id: appearancePanel
                 objectName: "appearanceSettingsPanel"
                 Layout.fillWidth: true
@@ -39,7 +39,7 @@ Item {
                     spacing: MichiTheme.space12
 
                     Text {
-                        text: "Appearance and accessibility"
+                        text: qsTr("Appearance and accessibility")
                         font.pixelSize: MichiTheme.fontSizeTitle
                         font.weight: MichiTheme.fontWeightBold
                         color: MichiTheme.textPrimary
@@ -48,7 +48,7 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         Text {
-                            text: "Glass quality"
+                            text: qsTr("Glass quality")
                             font.pixelSize: MichiTheme.fontSizeBody
                             color: MichiTheme.textSecondary
                             Layout.fillWidth: true
@@ -57,27 +57,27 @@ Item {
                             model: ["High", "Normal", "Low"]
                             currentIndex: MichiThemeState.glassQuality === "high" ? 0
                                 : MichiThemeState.glassQuality === "low" ? 2 : 1
-                            Accessible.name: "Glass quality"
+                            Accessible.name: qsTr("Glass quality")
                             onActivated: index => MichiThemeState.glassQuality =
                                 index === 0 ? "high" : index === 2 ? "low" : "normal"
                         }
                     }
 
                     Controls.MichiSwitch {
-                        text: "Reduce motion"
+                        text: qsTr("Reduce motion")
                         checked: MichiAccessibility.reducedMotion
                         onToggled: MichiAccessibility.reducedMotion = checked
                     }
 
                     Controls.MichiSwitch {
-                        text: "High contrast"
+                        text: qsTr("High contrast")
                         checked: MichiAccessibility.highContrast
                         onToggled: MichiAccessibility.highContrast = checked
                     }
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Low glass quality uses a nearly opaque smoke surface to reduce visual cost."
+                        text: qsTr("Low glass quality uses a nearly opaque smoke surface to reduce visual cost.")
                         wrapMode: Text.WordWrap
                         font.pixelSize: MichiTheme.fontSizeCaption
                         color: MichiTheme.textMuted
@@ -86,7 +86,7 @@ Item {
             }
 
             // ── Playback ────────────────────────────────────
-            MichiPanel {
+            MichiGlassSurface {
                 id: playbackPanel
                 objectName: "playbackSettingsPanel"
                 Layout.fillWidth: true
@@ -101,7 +101,7 @@ Item {
                     spacing: MichiTheme.space12
 
                     Text {
-                        text: "Playback"
+                        text: qsTr("Playback")
                         font.pixelSize: MichiTheme.fontSizeTitle
                         font.weight: MichiTheme.fontWeightBold
                         color: MichiTheme.textPrimary
@@ -112,13 +112,13 @@ Item {
                         spacing: MichiTheme.space12
 
                         Text {
-                            text: "Volume"
+                            text: qsTr("Volume")
                             font.pixelSize: MichiTheme.fontSizeBody
                             color: MichiTheme.textSecondary
                             Layout.preferredWidth: 80
                         }
 
-                        MichiSlider {
+                        Controls.MichiSlider {
                             Layout.fillWidth: true
                             from: 0; to: 100
                             value: playback.volume
@@ -139,13 +139,13 @@ Item {
                         spacing: MichiTheme.space12
 
                         Text {
-                            text: "Mute"
+                            text: qsTr("Mute")
                             font.pixelSize: MichiTheme.fontSizeBody
                             color: MichiTheme.textSecondary
                             Layout.preferredWidth: 80
                         }
 
-                        MichiButton {
+                        Controls.MichiButton {
                             text: playback.muted ? "Unmute" : "Mute"
                             variant: "secondary"
                             checkable: true
@@ -158,7 +158,7 @@ Item {
             }
 
             // ── Library ─────────────────────────────────────
-            MichiPanel {
+            MichiGlassSurface {
                 id: libraryPanel
                 objectName: "librarySettingsPanel"
                 Layout.fillWidth: true
@@ -173,14 +173,14 @@ Item {
                     spacing: MichiTheme.space12
 
                     Text {
-                        text: "Library"
+                        text: qsTr("Library")
                         font.pixelSize: MichiTheme.fontSizeTitle
                         font.weight: MichiTheme.fontWeightBold
                         color: MichiTheme.textPrimary
                     }
 
                     Text {
-                        text: "Music folder"
+                        text: qsTr("Music folder")
                         font.pixelSize: MichiTheme.fontSizeBody
                         color: MichiTheme.textSecondary
                     }
@@ -189,22 +189,22 @@ Item {
                         Layout.fillWidth: true
                         spacing: MichiTheme.space8
 
-                        MichiTextField {
+                        Controls.MichiTextField {
                             Layout.fillWidth: true
                             text: library.currentDir
-                            placeholderText: "No folder set"
+                            placeholderText: qsTr("No folder set")
                             readOnly: true
                         }
 
-                        MichiButton {
-                            text: "Open Library"
+                        Controls.MichiButton {
+                            text: qsTr("Open Library")
                             variant: "secondary"
                             onClicked: navigation.navigate("library")
                         }
                     }
 
                     Text {
-                        text: "Scan folders from the Library screen."
+                        text: qsTr("Scan folders from the Library screen.")
                         font.pixelSize: MichiTheme.fontSizeCaption
                         color: MichiTheme.textMuted
                     }

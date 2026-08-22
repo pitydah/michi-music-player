@@ -23,8 +23,8 @@ Item {
                         running: !MichiAccessibility.reducedMotion && root.visible
                         loops: Animation.Infinite
                         PauseAnimation { duration: index * 90 }
-                        NumberAnimation { to: 1; duration: 180 }
-                        NumberAnimation { to: 0.35; duration: 180 }
+                        NumberAnimation { to: 1; duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
+                        NumberAnimation { to: 0.35; duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
                         PauseAnimation { duration: (2 - index) * 90 }
                     }
                 }

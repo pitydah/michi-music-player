@@ -1,9 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
+import "../primitives"
 import "../theme"
-import "../ui"
 
-MichiPanel {
+MichiGlassSurface {
     id: root
 
     property alias fileName: trackLabel.text

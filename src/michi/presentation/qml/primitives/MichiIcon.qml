@@ -81,117 +81,113 @@ Item {
                 line(ctx, 18, 12, 6, 12)
                 line(ctx, 11, 6.5, 6, 12)
                 line(ctx, 11, 17.5, 6, 12)
-            } else if (root.name === "output-status") {
-                ctx.moveTo(4.5, 10)
-                ctx.lineTo(8, 10)
-                ctx.lineTo(12.5, 6)
-                ctx.lineTo(12.5, 18)
-                ctx.lineTo(8, 14)
-                ctx.lineTo(4.5, 14)
+            } else if (root.name === "output-status" || root.name === "volume" || root.name === "mute") {
+                // High-End Acoustic Transducer / Volume Horn
+                ctx.moveTo(4, 9.5)
+                ctx.lineTo(7.5, 9.5)
+                ctx.lineTo(12, 5.5)
+                ctx.lineTo(12, 18.5)
+                ctx.lineTo(7.5, 14.5)
+                ctx.lineTo(4, 14.5)
                 ctx.closePath()
-                ctx.moveTo(15.5, 9.5)
-                ctx.arc(12.5, 12, 4.5, -0.65, 0.65)
-                ctx.moveTo(18.5, 6.5)
-                ctx.arc(12.5, 12, 7.5, -0.82, 0.82)
-            } else if (root.name === "volume" || root.name === "mute") {
-                ctx.moveTo(4.5, 10)
-                ctx.lineTo(8, 10)
-                ctx.lineTo(12.5, 6)
-                ctx.lineTo(12.5, 18)
-                ctx.lineTo(8, 14)
-                ctx.lineTo(4.5, 14)
-                ctx.closePath()
-                if (root.name === "volume") {
-                    ctx.moveTo(15.5, 9.5)
-                    ctx.arc(12.5, 12, 4.5, -0.65, 0.65)
-                    ctx.moveTo(18.5, 6.5)
-                    ctx.arc(12.5, 12, 7.5, -0.82, 0.82)
+                if (root.name === "mute") {
+                    line(ctx, 15, 9, 20, 15)
+                    line(ctx, 20, 9, 15, 15)
                 } else {
-                    line(ctx, 15.5, 9, 19.5, 15)
-                    line(ctx, 19.5, 9, 15.5, 15)
+                    ctx.moveTo(15, 9)
+                    ctx.arc(12, 12, 4.5, -0.7, 0.7)
+                    ctx.moveTo(18, 6.5)
+                    ctx.arc(12, 12, 8, -0.75, 0.75)
                 }
             } else if (root.name === "search") {
                 ctx.arc(10.5, 10.5, 5.5, 0, Math.PI * 2)
                 line(ctx, 14.5, 14.5, 19.5, 19.5)
             } else if (root.name === "library") {
-                ctx.rect(4.5, 5.5, 3.5, 14)
-                ctx.rect(10.25, 4, 3.5, 15.5)
-                ctx.rect(16, 6.5, 3.5, 13)
+                // Audiophile vinyl sleeve with sliding record
+                ctx.rect(4, 4, 11, 16)
+                ctx.moveTo(17, 6.5)
+                ctx.arc(14.5, 12, 5.5, -0.92, 0.92)
+                ctx.moveTo(15.7, 12)
+                ctx.arc(14.5, 12, 1.2, 0, Math.PI * 2)
             } else if (root.name === "track") {
-                line(ctx, 11, 5, 11, 16)
-                line(ctx, 11, 5, 18.5, 3.5)
-                line(ctx, 18.5, 3.5, 18.5, 14)
-                ctx.moveTo(11, 16)
-                ctx.arc(8, 16.5, 3, 0, Math.PI * 2)
-                ctx.moveTo(18.5, 14)
-                ctx.arc(15.5, 14.5, 3, 0, Math.PI * 2)
+                // Beamed eighth note pair with clean optical symmetry
+                line(ctx, 8, 5, 8, 17)
+                line(ctx, 8, 5, 18.5, 3)
+                line(ctx, 18.5, 3, 18.5, 15)
+                line(ctx, 8, 8, 18.5, 6)
+                ctx.moveTo(8, 17)
+                ctx.arc(5.5, 17, 2.5, 0, Math.PI * 2)
+                ctx.moveTo(18.5, 15)
+                ctx.arc(16, 15, 2.5, 0, Math.PI * 2)
             } else if (root.name === "album") {
-                ctx.rect(4, 4, 16, 16)
-                ctx.moveTo(16, 12)
-                ctx.arc(12, 12, 4, 0, Math.PI * 2)
-                ctx.moveTo(13, 12)
-                ctx.arc(12, 12, 1, 0, Math.PI * 2)
-            } else if (root.name === "recent" || root.name === "history") {
-                ctx.arc(12, 12, 7.5, -0.3, Math.PI * 1.65)
+                // Balanced album sleeve with concentric vinyl grooves
+                ctx.rect(3.5, 3.5, 17, 17)
+                ctx.moveTo(17, 12)
+                ctx.arc(12, 12, 5, 0, Math.PI * 2)
+                ctx.moveTo(13.8, 12)
+                ctx.arc(12, 12, 1.8, 0, Math.PI * 2)
+            } else if (root.name === "history") {
+                // Precision clock with circular return arrow
+                ctx.arc(12, 12, 8, -0.35, Math.PI * 1.62)
                 line(ctx, 12, 12, 12, 7.5)
-                line(ctx, 12, 12, 16, 14)
-                line(ctx, 4.5, 4.5, 5, 9)
-                line(ctx, 4.5, 4.5, 9, 4.8)
+                line(ctx, 12, 12, 16, 12)
+                line(ctx, 4.5, 4.5, 4.5, 9.5)
+                line(ctx, 4.5, 4.5, 9.5, 4.5)
+            } else if (root.name === "recent") {
+                // Precision clock with distinct plus badge
+                ctx.arc(10.5, 12, 7, 0, Math.PI * 2)
+                line(ctx, 10.5, 12, 10.5, 8)
+                line(ctx, 10.5, 12, 14, 12)
+                line(ctx, 19, 6.5, 19, 11.5)
+                line(ctx, 16.5, 9, 21.5, 9)
             } else if (root.name === "playlist") {
-                line(ctx, 4, 6.5, 13.5, 6.5)
-                line(ctx, 4, 11.5, 13.5, 11.5)
+                line(ctx, 4, 6.5, 14, 6.5)
+                line(ctx, 4, 11.5, 14, 11.5)
                 line(ctx, 4, 16.5, 11, 16.5)
-                line(ctx, 16, 8, 16, 16)
-                line(ctx, 16, 8, 19.5, 7)
-                ctx.moveTo(16, 16)
-                ctx.arc(14, 16.5, 2, 0, Math.PI * 2)
+                line(ctx, 16.5, 7.5, 16.5, 16.5)
+                line(ctx, 16.5, 7.5, 20, 6.5)
+                ctx.moveTo(16.5, 16.5)
+                ctx.arc(14.5, 16.5, 2, 0, Math.PI * 2)
             } else if (root.name === "plus" || root.name === "add") {
                 line(ctx, 12, 5, 12, 19)
                 line(ctx, 5, 12, 19, 12)
             } else if (root.name === "pin") {
-                line(ctx, 8, 4, 16, 4)
-                line(ctx, 9.5, 4, 9.5, 8.5)
-                line(ctx, 14.5, 4, 14.5, 8.5)
-                line(ctx, 6.5, 8.5, 17.5, 8.5)
-                line(ctx, 6.5, 8.5, 10.5, 13.5)
-                line(ctx, 17.5, 8.5, 13.5, 13.5)
-                line(ctx, 10.5, 13.5, 13.5, 13.5)
-                line(ctx, 12, 13.5, 12, 20.5)
+                line(ctx, 8, 4.5, 16, 4.5)
+                line(ctx, 9.5, 4.5, 9.5, 12)
+                line(ctx, 14.5, 4.5, 14.5, 12)
+                line(ctx, 6.5, 12, 17.5, 12)
+                line(ctx, 12, 12, 12, 19.5)
             } else if (root.name === "cat") {
-                ctx.moveTo(5.5, 10)
-                ctx.lineTo(4.5, 4)
-                ctx.lineTo(9, 7)
-                ctx.bezierCurveTo(10.8, 5.8, 13.2, 5.8, 15, 7)
-                ctx.lineTo(19.5, 4)
-                ctx.lineTo(18.5, 10)
-                ctx.bezierCurveTo(19.8, 17, 16, 20, 12, 20)
-                ctx.bezierCurveTo(8, 20, 4.2, 17, 5.5, 10)
-                ctx.moveTo(8.5, 12)
-                ctx.arc(8.5, 12, 1, 0, Math.PI * 2)
-                ctx.moveTo(15.5, 12)
-                ctx.arc(15.5, 12, 1, 0, Math.PI * 2)
-                ctx.moveTo(11, 15.2)
-                ctx.lineTo(12, 16)
-                ctx.lineTo(13, 15.2)
+                // Minimalist Japanese feline crest / modernist geometric emblem
+                ctx.moveTo(4.5, 9)
+                ctx.lineTo(6, 4.5)
+                ctx.lineTo(9.5, 7.5)
+                ctx.lineTo(14.5, 7.5)
+                ctx.lineTo(18, 4.5)
+                ctx.lineTo(19.5, 9)
+                ctx.lineTo(18.5, 15)
+                ctx.lineTo(12, 19.5)
+                ctx.lineTo(5.5, 15)
+                ctx.closePath()
+                // Inner precision eye markers
+                line(ctx, 8, 12, 10, 12)
+                line(ctx, 14, 12, 16, 12)
+                line(ctx, 12, 14, 12, 15.5)
             } else if (root.name === "view-grid") {
                 ctx.rect(4.5, 4.5, 6, 6)
                 ctx.rect(13.5, 4.5, 6, 6)
                 ctx.rect(4.5, 13.5, 6, 6)
                 ctx.rect(13.5, 13.5, 6, 6)
             } else if (root.name === "view-path") {
-                ctx.rect(7.5, 4.5, 9, 15)
-                line(ctx, 3.5, 7.5, 6.5, 6.5)
-                line(ctx, 3.5, 7.5, 3.5, 16.5)
-                line(ctx, 3.5, 16.5, 6.5, 17.5)
-                line(ctx, 20.5, 7.5, 17.5, 6.5)
-                line(ctx, 20.5, 7.5, 20.5, 16.5)
-                line(ctx, 20.5, 16.5, 17.5, 17.5)
+                ctx.rect(8, 4.5, 8, 15)
+                ctx.rect(3.5, 7, 3, 10)
+                ctx.rect(17.5, 7, 3, 10)
             } else if (root.name === "view-vinyl") {
-                ctx.arc(12, 12, 7.5, 0, Math.PI * 2)
-                ctx.moveTo(15, 12)
-                ctx.arc(12, 12, 3, 0, Math.PI * 2)
-                ctx.moveTo(13, 12)
-                ctx.arc(12, 12, 1, 0, Math.PI * 2)
+                ctx.rect(3.5, 4.5, 11, 15)
+                ctx.moveTo(17, 6.5)
+                ctx.arc(14.5, 12, 6.5, -0.95, 0.95)
+                ctx.moveTo(15.5, 12)
+                ctx.arc(14.5, 12, 1, 0, Math.PI * 2)
             } else if (root.name === "view-timeline") {
                 line(ctx, 7, 3.5, 7, 20.5)
                 ctx.moveTo(8.5, 6.5)
@@ -229,16 +225,14 @@ Item {
                 line(ctx, 5, 14.5, 19, 14.5)
                 line(ctx, 5, 19, 19, 19)
             } else if (root.name === "queue") {
-                line(ctx, 4.5, 6.5, 17.5, 6.5)
-                line(ctx, 4.5, 11.5, 17.5, 11.5)
-                line(ctx, 4.5, 16.5, 13, 16.5)
-                ctx.moveTo(15.5, 14.5)
-                ctx.lineTo(19.5, 16.5)
-                ctx.lineTo(15.5, 18.5)
+                // Precision play queue with tier lines and play indicator
+                line(ctx, 4, 6.5, 20, 6.5)
+                line(ctx, 4, 11.5, 13, 11.5)
+                line(ctx, 4, 16.5, 11, 16.5)
+                ctx.moveTo(15.5, 11.5)
+                ctx.lineTo(20.5, 14.5)
+                ctx.lineTo(15.5, 17.5)
                 ctx.closePath()
-                ctx.fill()
-                ctx.restore()
-                return
             } else if (root.name === "shuffle") {
                 ctx.moveTo(4, 7)
                 ctx.lineTo(7.5, 7)
@@ -264,20 +258,30 @@ Item {
                 line(ctx, 9, 18, 6.5, 15.5)
                 if (root.name === "repeat-one") {
                     ctx.stroke()
+                    // "1" as vector lines so it scales with the icon size
+                    // (the old hardcoded 8px fillText shrank to ~5px at
+                    // iconSmall and broke the font family)
                     ctx.beginPath()
-                    ctx.font = "bold 8px sans-serif"
-                    ctx.textAlign = "center"
-                    ctx.textBaseline = "middle"
-                    ctx.fillText("1", 12, 12)
+                    ctx.moveTo(12.5, 7.5)
+                    ctx.lineTo(12.5, 15.5)
+                    ctx.lineTo(9.8, 13.8)
+                    ctx.lineTo(9.8, 15.4)
+                    ctx.lineTo(15.2, 15.4)
+                    ctx.lineTo(15.2, 13.8)
+                    ctx.lineTo(12.5, 15.5)
+                    ctx.stroke()
                     ctx.restore()
                     return
                 }
             } else if (root.name === "sliders" || root.name === "equalizer") {
                 if (root.name === "equalizer") {
-                    line(ctx, 5, 19, 5, 11)
+                    // Audiophile 4-band precision spectrum bars
+                    line(ctx, 5.5, 19, 5.5, 11)
                     line(ctx, 9.5, 19, 9.5, 6)
                     line(ctx, 14.5, 19, 14.5, 13)
-                    line(ctx, 19, 19, 19, 8)
+                    line(ctx, 18.5, 19, 18.5, 8)
+                    // Precision baseline
+                    line(ctx, 3.5, 20, 20.5, 20)
                 } else {
                     line(ctx, 6, 4, 6, 20)
                     line(ctx, 12, 4, 12, 20)
@@ -310,24 +314,28 @@ Item {
                 ctx.lineTo(10, 12.5)
                 ctx.closePath()
             } else if (root.name === "audio-output") {
-                ctx.rect(4, 5, 11, 11)
-                line(ctx, 6.5, 19, 12.5, 19)
-                line(ctx, 9.5, 16, 9.5, 19)
-                ctx.moveTo(17, 9)
-                ctx.arc(14, 10.5, 4, -0.65, 0.65)
-                ctx.moveTo(19.5, 7)
-                ctx.arc(14, 10.5, 7, -0.75, 0.75)
+                // Studio Reference Monitor Speaker
+                ctx.rect(5, 3.5, 14, 17)
+                ctx.moveTo(14, 7.5)
+                ctx.arc(12, 7.5, 2, 0, Math.PI * 2)
+                ctx.moveTo(16, 14.5)
+                ctx.arc(12, 14.5, 4, 0, Math.PI * 2)
+                ctx.moveTo(13.2, 14.5)
+                ctx.arc(12, 14.5, 1.2, 0, Math.PI * 2)
             } else if (root.name === "audio-engine") {
-                ctx.moveTo(12, 3.5)
-                ctx.lineTo(19, 6.5)
-                ctx.lineTo(19, 15.5)
-                ctx.lineTo(12, 20.5)
-                ctx.lineTo(5, 15.5)
-                ctx.lineTo(5, 6.5)
-                ctx.closePath()
-                ctx.moveTo(7.5, 12)
-                ctx.bezierCurveTo(9.5, 7.5, 10.5, 16.5, 12, 12)
-                ctx.bezierCurveTo(13.5, 7.5, 14.5, 16.5, 16.5, 12)
+                // Discrete DAC microchip with pure sinusoidal waveform
+                ctx.rect(5.5, 5.5, 13, 13)
+                line(ctx, 8.5, 3.5, 8.5, 5.5)
+                line(ctx, 15.5, 3.5, 15.5, 5.5)
+                line(ctx, 8.5, 18.5, 8.5, 20.5)
+                line(ctx, 15.5, 18.5, 15.5, 20.5)
+                line(ctx, 3.5, 8.5, 5.5, 8.5)
+                line(ctx, 3.5, 15.5, 5.5, 15.5)
+                line(ctx, 18.5, 8.5, 20.5, 8.5)
+                line(ctx, 18.5, 15.5, 20.5, 15.5)
+                ctx.moveTo(8, 12)
+                ctx.bezierCurveTo(9.5, 9, 10.5, 15, 12, 12)
+                ctx.bezierCurveTo(13.5, 9, 14.5, 15, 16, 12)
             } else if (root.name === "device") {
                 ctx.rect(5, 4, 14, 16)
                 line(ctx, 8, 7.5, 16, 7.5)
@@ -336,20 +344,22 @@ Item {
                 ctx.moveTo(13, 17)
                 ctx.arc(12, 17, 1, 0, Math.PI * 2)
             } else if (root.name === "settings") {
-                ctx.arc(12, 12, 3.5, 0, Math.PI * 2)
+                // Precision knurled rotary dial with central axis hub
+                ctx.arc(12, 12, 4, 0, Math.PI * 2)
                 for (var i = 0; i < 8; i++) {
                     var angle = i * Math.PI / 4.0
                     var cosA = Math.cos(angle)
                     var sinA = Math.sin(angle)
-                    ctx.moveTo(12 + cosA * 5.8, 12 + sinA * 5.8)
+                    ctx.moveTo(12 + cosA * 5.5, 12 + sinA * 5.5)
                     ctx.lineTo(12 + cosA * 8.5, 12 + sinA * 8.5)
                 }
             } else if (root.name === "heart") {
+                // Symmetrical, optically balanced heart
                 ctx.moveTo(12, 19.5)
-                ctx.bezierCurveTo(4.5, 14.5, 3.5, 8, 8, 5.8)
+                ctx.bezierCurveTo(4.5, 14, 3.5, 7.5, 8, 5.5)
                 ctx.bezierCurveTo(10.5, 4.5, 12, 6.8, 12, 8)
-                ctx.bezierCurveTo(12, 6.8, 13.5, 4.5, 16, 5.8)
-                ctx.bezierCurveTo(20.5, 8, 19.5, 14.5, 12, 19.5)
+                ctx.bezierCurveTo(12, 6.8, 13.5, 4.5, 16, 5.5)
+                ctx.bezierCurveTo(20.5, 7.5, 19.5, 14, 12, 19.5)
             } else if (root.name === "close") {
                 line(ctx, 6, 6, 18, 18)
                 line(ctx, 18, 6, 6, 18)
@@ -368,6 +378,9 @@ Item {
             } else if (root.name === "chevron-right") {
                 line(ctx, 9, 6, 15, 12)
                 line(ctx, 15, 12, 9, 18)
+            } else if (root.name === "chevron-down") {
+                line(ctx, 6, 9, 12, 15)
+                line(ctx, 12, 15, 18, 9)
             } else if (root.name === "info") {
                 ctx.arc(12, 12, 7.5, 0, Math.PI * 2)
                 line(ctx, 12, 10.5, 12, 16.5)
@@ -386,26 +399,29 @@ Item {
                 line(ctx, 6, 9.5, 12, 15.5)
                 line(ctx, 12, 15.5, 18, 9.5)
             } else if (root.name === "folder") {
-                ctx.moveTo(4, 7)
-                ctx.lineTo(9.5, 7)
-                ctx.lineTo(11.5, 9.5)
-                ctx.lineTo(20, 9.5)
-                ctx.lineTo(20, 18)
-                ctx.lineTo(4, 18)
+                // Modern file folder with clean tab
+                ctx.moveTo(3.5, 7)
+                ctx.lineTo(9, 7)
+                ctx.lineTo(11, 9.5)
+                ctx.lineTo(20.5, 9.5)
+                ctx.lineTo(20.5, 18.5)
+                ctx.lineTo(3.5, 18.5)
                 ctx.closePath()
             } else if (root.name === "artist") {
+                // Precision user portrait
                 ctx.arc(12, 8, 3.5, 0, Math.PI * 2)
                 ctx.moveTo(18.5, 19.5)
                 ctx.arc(12, 19.5, 6.5, Math.PI, Math.PI * 2)
             } else if (root.name === "genre") {
+                // Symmetrical metadata / audio tag
                 ctx.moveTo(4.5, 7.5)
-                ctx.lineTo(14.5, 7.5)
+                ctx.lineTo(13.5, 7.5)
                 ctx.lineTo(19.5, 12)
-                ctx.lineTo(14.5, 16.5)
+                ctx.lineTo(13.5, 16.5)
                 ctx.lineTo(4.5, 16.5)
                 ctx.closePath()
-                ctx.moveTo(8.5, 12)
-                ctx.arc(7.5, 12, 1, 0, Math.PI * 2)
+                ctx.moveTo(9, 12)
+                ctx.arc(8, 12, 1, 0, Math.PI * 2)
             } else if (root.name === "more") {
                 ctx.arc(6, 12, 1.5, 0, Math.PI * 2)
                 ctx.moveTo(13.5, 12)

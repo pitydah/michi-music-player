@@ -18,6 +18,7 @@ MichiGlassSurface {
         && library.scanStatus !== "CANCELLED"
         && library.scanStatus !== "FAILED"
     elevation: "subtle"
+    tileSeed: 2
     shadowed: true
     textured: true
     accented: root.scanning || ((typeof library !== "undefined" && library) && library.scanStatus === "FAILED")
@@ -34,6 +35,17 @@ MichiGlassSurface {
         return "Search title, artist, album, genre or composer…"
     }
 
+    // Shared scan entry point (toolbar button + empty-library CTA): scans the
+    // configured directory or opens the source picker when none is set.
+    function performScan() {
+        if (typeof library === "undefined" || !library)
+            return
+        if (library.currentDir.length > 0)
+            library.scan(library.currentDir)
+        else
+            sourcePopover.open()
+    }
+
     ColumnLayout {
         id: toolbarContent
         anchors.fill: parent
@@ -47,7 +59,7 @@ MichiGlassSurface {
             orientation: Qt.Horizontal
 
             handle: Item {
-                implicitWidth: 12
+                implicitWidth: 16
                 implicitHeight: navigationSplit.height
                 HoverHandler {
                     id: navigationHandleHover
@@ -55,16 +67,11 @@ MichiGlassSurface {
                 }
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 4
-                    height: navigationHandleHover.hovered ? 24 : 16
-                    radius: 2
+                    width: 1
+                    height: 20
                     color: navigationHandleHover.hovered
                         ? MichiSemanticColors.auroraCyanBorder
                         : MichiSemanticColors.borderSubtle
-                    Behavior on height {
-                        enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.micro }
-                    }
                 }
             }
 
@@ -92,7 +99,7 @@ MichiGlassSurface {
                         visible: typeof library !== "undefined" && library
                             && library.searchActive
                             && library.searchTotalCount === 0
-                        text: "No results"
+                        text: qsTr("No results")
                         tone: "warning"
                     }
 
@@ -115,15 +122,15 @@ MichiGlassSurface {
                     }
 
                     Item {
-                        Layout.preferredWidth: 34
-                        Layout.preferredHeight: 34
+                        Layout.preferredWidth: MichiMetrics.controlMedium
+                        Layout.preferredHeight: MichiMetrics.controlMedium
 
                         MichiIconButton {
                             id: sourceBtn
                             anchors.fill: parent
                             iconName: "folder"
                             selected: sourcePopover.visible
-                            accessibleName: "Music folder source"
+                            accessibleName: qsTr("Music folder source")
                             onClicked: {
                                 if (sourcePopover.visible)
                                     sourcePopover.close()
@@ -142,19 +149,13 @@ MichiGlassSurface {
                     MichiButton {
                         text: root.width < 760 ? "Scan" : "Scan library"
                         iconName: "library"
+                        variant: "secondary"
                         iconOnly: root.width < 980
-                        accessibleName: "Scan library"
+                        accessibleName: qsTr("Scan library")
                         enabled: !root.scanning
                             && typeof library !== "undefined" && library
                             && library.currentDir.length > 0
-                        onClicked: {
-                            if (typeof library !== "undefined" && library) {
-                                if (library.currentDir.length > 0)
-                                    library.scan(library.currentDir)
-                                else
-                                    sourcePopover.open()
-                            }
-                        }
+                        onClicked: root.performScan()
                     }
                 }
             }
@@ -210,7 +211,7 @@ MichiGlassSurface {
                 elide: Text.ElideMiddle
             }
             MichiButton {
-                text: "Cancel"
+                text: qsTr("Cancel")
                 variant: "ghost"
                 visible: root.scanning
                 onClicked: { if (typeof library !== "undefined" && library) library.cancel_scan() }

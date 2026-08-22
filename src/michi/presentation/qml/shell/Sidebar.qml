@@ -12,6 +12,7 @@ MichiGlassSurface {
     property bool compact: false
     contentPadding: MichiSpacing.sm
     elevation: "elevated"
+    tileSeed: 1
     shadowed: true
     textured: true
     accented: true
@@ -30,19 +31,13 @@ MichiGlassSurface {
     Rectangle {
         anchors.fill: parent
         radius: root.radius
-        opacity: 0.62
+        opacity: 0.35
         z: 0
         gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop {
-                position: 0
-                color: MichiSemanticColors.auroraPurpleSurface
-            }
-            GradientStop { position: 0.46; color: "transparent" }
-            GradientStop {
-                position: 1
-                color: MichiSemanticColors.auroraCyanSurface
-            }
+            orientation: Gradient.Vertical
+            GradientStop { position: 0; color: MichiSemanticColors.contentAmbientBlue }
+            GradientStop { position: 0.5; color: "transparent" }
+            GradientStop { position: 1; color: MichiSemanticColors.contentAmbientPurple }
         }
     }
 
@@ -70,12 +65,10 @@ MichiGlassSurface {
                     Layout.leftMargin: MichiSpacing.md
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
-                    radius: 10
+                    radius: 8
                     color: routeItem._active
                         ? MichiSemanticColors.surfaceSelected
                         : routeItem.hovered ? MichiSemanticColors.controlSurface : "transparent"
-                    border.width: routeItem._active ? 1 : 0
-                    border.color: MichiSemanticColors.auroraCyanBorderSubtle
                     MichiIcon {
                         anchors.centerIn: parent
                         name: modelData.icon
@@ -102,19 +95,19 @@ MichiGlassSurface {
                     : routeItem._active ? MichiSemanticColors.surfaceSelected
                     : routeItem.hovered || routeItem.visualFocus ? MichiSemanticColors.surfaceHover : "transparent"
                 border.width: routeItem._active ? 1 : 0
-                border.color: MichiSemanticColors.auroraBorderSubtle
+                border.color: MichiSemanticColors.auroraCyanBorderSubtle
+
                 Rectangle {
                     visible: routeItem._active
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
+                    anchors.topMargin: 8
+                    anchors.bottomMargin: 8
+                    anchors.leftMargin: 1
                     width: 3
-                    radius: 2
-                    gradient: Gradient {
-                        GradientStop { position: 0; color: MichiPalette.auroraBlue }
-                        GradientStop { position: 0.5; color: MichiPalette.auroraCyan }
-                        GradientStop { position: 1; color: MichiPalette.auroraPurple }
-                    }
+                    radius: 1.5
+                    color: MichiPalette.auroraCyan
                 }
                 Behavior on color {
                     enabled: !MichiAccessibility.reducedMotion
@@ -171,7 +164,7 @@ MichiGlassSurface {
                         font.weight: Font.DemiBold
                     }
                     MichiText {
-                        text: "LOCAL HI-FI"
+                        text: qsTr("LOCAL HI-FI")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -185,6 +178,9 @@ MichiGlassSurface {
                     radius: 4
                     color: (typeof library !== "undefined" && library && library.fileCount > 0)
                         ? MichiPalette.auroraGreen : MichiPalette.textMuted
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: (typeof library !== "undefined" && library && library.fileCount > 0)
+                        ? "Library ready" : "Library empty"
                 }
             }
         }

@@ -43,6 +43,9 @@ from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.infrastructure.library_index import SqliteLibraryIndexRepository
 from michi.infrastructure.library_prefs import SqliteLibraryPrefsRepository
 from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtractor
+from michi.infrastructure.playlist_artwork_store import (
+    FilesystemPlaylistArtworkStore,
+)
 from michi.infrastructure.playlists import SqlitePlaylistsRepository
 from michi.infrastructure.qt_backend import (
     QtMultimediaBackend as QtMultimediaBackend,  # noqa: F401 — re-export histórico para tests
@@ -206,7 +209,12 @@ def _build_services(
     library_index = SqliteLibraryIndexRepository(db_path)
     library_prefs_repo = SqliteLibraryPrefsRepository(db_path)
     playlists_repo = SqlitePlaylistsRepository(db_path)
-    playlist_service = PlaylistService(queue, playlists_repo)
+    covers_dir = Path(db_path).parent / "playlist_covers"
+    covers_dir.mkdir(parents=True, exist_ok=True)
+    playlist_artwork_store = FilesystemPlaylistArtworkStore(covers_dir)
+    playlist_service = PlaylistService(
+        queue, playlists_repo, artwork_store=playlist_artwork_store
+    )
 
     scan_relay = ScanRelay()
     scan_runner = ThreadScanRunner(scan_relay)

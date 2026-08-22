@@ -34,24 +34,12 @@ Rectangle {
     Accessible.name: root.album
         ? root.album.title + " by " + root.album.artist
         : "Album"
-    Accessible.description: "Open album"
+    Accessible.description: qsTr("Open album")
 
-    Keys.onEnterPressed: root.activated()
-    Keys.onReturnPressed: root.activated()
-    Keys.onSpacePressed: root.activated()
+    Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
+    Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
+    Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); root.activated() }
 
-    function formatDuration(ms) {
-        if (ms <= 0)
-            return ""
-        var totalSeconds = Math.floor(ms / 1000)
-        var hours = Math.floor(totalSeconds / 3600)
-        var minutes = Math.floor((totalSeconds % 3600) / 60)
-        var seconds = totalSeconds % 60
-        if (hours > 0)
-            return hours + ":" + (minutes < 10 ? "0" : "") + minutes
-                + ":" + (seconds < 10 ? "0" : "") + seconds
-        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
-    }
 
     RowLayout {
         anchors.fill: parent
@@ -105,7 +93,7 @@ Rectangle {
         MichiText {
             visible: root.showDuration
             Layout.preferredWidth: 58
-            text: root.album ? root.formatDuration(root.album.durationMs) : ""
+            text: root.album ? MichiFormat.formatDuration(root.album.durationMs) : ""
             role: "technical"
             technical: true
             horizontalAlignment: Text.AlignRight
@@ -124,6 +112,7 @@ Rectangle {
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
     TapHandler {
         onTapped: {
+            MichiAccessibility.notePointer()
             root.forceActiveFocus()
             root.activated()
         }
@@ -134,5 +123,10 @@ Rectangle {
     Behavior on color {
         enabled: !MichiAccessibility.reducedMotion
         ColorAnimation { duration: MichiMotion.micro }
+    }
+    // Smooth the 0↔1 border toggle instead of popping it
+    Behavior on border.width {
+        enabled: !MichiAccessibility.reducedMotion
+        NumberAnimation { duration: MichiMotion.micro }
     }
 }

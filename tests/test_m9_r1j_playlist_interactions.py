@@ -754,7 +754,16 @@ class TestSearchOverlayFocusLifecycle:
             overlay.setProperty("opened", False)
             _process()
             assert overlay.property("enabled") is False
-            assert overlay.property("opacity") == 0.0
+            # The panel fade-out Behavior (MichiMotion.panel, 220ms) converges
+            # to 0 over several frames; drain real time instead of assuming an
+            # instant jump (flaky on slow CI runners).
+            from PySide6.QtTest import QTest
+
+            for _ in range(10):
+                if overlay.property("opacity") <= 0.001:
+                    break
+                QTest.qWait(30)
+            assert overlay.property("opacity") <= 0.001
             assert not self._focus_within(inp, window), (
                 "Search input retiene foco tras cerrar el overlay"
             )

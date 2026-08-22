@@ -1,6 +1,9 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
+import "../patterns"
 import "../theme"
 
 ListView {
@@ -15,9 +18,26 @@ ListView {
     boundsBehavior: Flickable.StopAtBounds
     headerPositioning: ListView.InlineHeader
 
-    header: TrackTableHeader {
+    ScrollBar.vertical: MichiScrollBar { }
+
+    header: Item {
         width: root.width
-        actionColumnWidth: 32
+        height: root.count > 0 ? favoritesTableHeader.implicitHeight : root.height
+
+        TrackTableHeader {
+            id: favoritesTableHeader
+            width: parent.width
+            actionColumnWidth: 32
+            visible: root.count > 0
+        }
+
+        EmptyState {
+            anchors.fill: parent
+            visible: root.count === 0
+            title: qsTr("No favorites yet")
+            message: qsTr("Tap the heart on any track to save it here.")
+            iconName: "heart"
+        }
     }
 
     delegate: TrackRow {

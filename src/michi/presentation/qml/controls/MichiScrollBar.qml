@@ -12,11 +12,16 @@ ScrollBar {
         implicitWidth: 4
         implicitHeight: 4
         radius: 2
-        color: root.pressed ? MichiPalette.auroraBlue : MichiPalette.textMuted
-        opacity: root.active ? 0.8 : 0
+        color: root.pressed ? MichiPalette.auroraCyan
+            : root.hovered ? MichiPalette.textSecondary : MichiPalette.textMuted
+        opacity: root.active || root.hovered ? (root.hovered ? 0.95 : 0.72) : 0
         Behavior on opacity {
             enabled: !MichiAccessibility.reducedMotion
-            NumberAnimation { duration: MichiMotion.standard }
+            NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
+        }
+        Behavior on color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
         }
     }
     background: Item { }

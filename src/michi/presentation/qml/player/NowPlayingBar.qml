@@ -25,6 +25,7 @@ Item {
     property bool hasNext: false
     property bool shuffleEnabled: false
     property string repeatMode: "NONE"
+    property bool showRemainingTime: false
 
     readonly property bool hasTrack: trackTitle.length > 0
     readonly property bool compact: width < 1320
@@ -240,14 +241,19 @@ Item {
                 }
 
                 MichiText {
+                    id: remainingLabel
                     objectName: "remainingLabel"
-                    Layout.preferredWidth: 40
-                    text: formatTime(root.duration)
+                    Layout.preferredWidth: 44
+                    text: root.showRemainingTime && root.duration > 0
+                        ? ("-" + formatTime(Math.max(0, root.duration - root.position)))
+                        : formatTime(root.duration)
                     role: "technical"
                     technical: true
-                    color: MichiPalette.textPrimary
+                    color: remHover.hovered ? MichiPalette.auroraCyan : MichiPalette.textPrimary
                     horizontalAlignment: Text.AlignRight
                     verticalAlignment: Text.AlignVCenter
+                    HoverHandler { id: remHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: root.showRemainingTime = !root.showRemainingTime }
                 }
             }
 
@@ -306,9 +312,25 @@ Item {
                             border.width: 1
                             border.color: playPauseButton.visualFocus
                                 ? MichiSemanticColors.focusRing
-                                : MichiSemanticColors.borderStrong
+                                : root.status === "playing"
+                                    ? MichiSemanticColors.auroraCyanBorder
+                                    : MichiSemanticColors.borderStrong
                             scale: playPauseButton.pressed ? 0.96
                                 : playPauseButton.hovered ? 1.025 : 1
+
+                            // Soft radial glow aura during playback
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: parent.width + 6
+                                height: parent.height + 6
+                                radius: 20
+                                color: "transparent"
+                                border.width: 1
+                                border.color: MichiSemanticColors.auroraCyanBorderSubtle
+                                visible: root.status === "playing"
+                                opacity: 0.6
+                            }
+
                             Behavior on scale {
                                 enabled: !MichiAccessibility.reducedMotion
                                 NumberAnimation {

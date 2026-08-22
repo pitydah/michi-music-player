@@ -21,8 +21,8 @@ RowLayout {
             SequentialAnimation on height {
                 running: root.playing && !MichiAccessibility.reducedMotion
                 loops: Animation.Infinite
-                NumberAnimation { to: 12 - index * 2; duration: 170 + index * 40; easing.type: Easing.InOutCubic }
-                NumberAnimation { to: 4 + index * 2; duration: 170 + index * 40; easing.type: Easing.InOutCubic }
+                NumberAnimation { to: 12 - index * 2; duration: MichiMotion.standard + index * 40; easing.type: MichiMotion.inOutCubic }
+                NumberAnimation { to: 4 + index * 2; duration: MichiMotion.standard + index * 40; easing.type: MichiMotion.inOutCubic }
             }
         }
     }

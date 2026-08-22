@@ -23,13 +23,12 @@ Item {
     implicitHeight: MichiMetrics.controlLarge
     clip: true
 
-    MichiGlassSurface {
+    Rectangle {
         anchors.fill: parent
-        elevation: "subtle"
         radius: MichiRadius.lg
-        contentPadding: 0
-        textured: true
-        shadowed: false
+        color: MichiPalette.smoke
+        border.width: 1
+        border.color: MichiSemanticColors.borderSubtle
     }
 
     function ensureCurrentTabVisible() {
@@ -55,7 +54,7 @@ Item {
     Flickable {
         id: navigationFlickable
         anchors.fill: parent
-        anchors.margins: 2
+        anchors.margins: 3
         contentWidth: tabRow.implicitWidth
         contentHeight: height
         clip: true
@@ -65,13 +64,14 @@ Item {
         RowLayout {
             id: tabRow
             height: parent.height
-            spacing: 2
+            spacing: MichiSpacing.xs
 
             Repeater {
                 id: tabRepeater
                 model: root.tabs
                 delegate: TabButton {
                     id: tabButton
+                    required property int index
                     required property var modelData
                     Layout.preferredHeight: tabRow.height
                     Layout.preferredWidth: tabContent.implicitWidth + MichiSpacing.md * 2
@@ -84,10 +84,10 @@ Item {
 
                     contentItem: RowLayout {
                         id: tabContent
-                        spacing: MichiSpacing.xs
+                        spacing: MichiSpacing.sm
                         MichiIcon {
-                            Layout.preferredWidth: 16
-                            Layout.preferredHeight: 16
+                            Layout.preferredWidth: 18
+                            Layout.preferredHeight: 18
                             name: tabButton.modelData.icon
                             iconColor: tabButton.checked
                                 ? MichiPalette.auroraCyan
@@ -115,17 +115,6 @@ Item {
                                     ? MichiSemanticColors.surfaceHover : "transparent"
                         border.width: tabButton.checked ? 1 : 0
                         border.color: MichiSemanticColors.auroraCyanBorderSubtle
-
-                        // Bottom Aurora indicator cue
-                        Rectangle {
-                            visible: tabButton.checked
-                            y: parent.height - 2
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: Math.min(parent.width - 16, 32)
-                            height: 2
-                            radius: 1
-                            color: MichiPalette.auroraCyan
-                        }
 
                         Behavior on color {
                             enabled: !MichiAccessibility.reducedMotion

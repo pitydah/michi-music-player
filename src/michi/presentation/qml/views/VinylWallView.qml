@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../primitives"
 import "../theme"
@@ -31,8 +32,8 @@ GridView {
     focus: true
     cacheBuffer: cellHeight * 2
     Accessible.role: Accessible.List
-    Accessible.name: "Albums on the vinyl wall"
-    Accessible.description: "Use arrow keys to browse and Enter to open"
+    Accessible.name: qsTr("Albums on the vinyl wall")
+    Accessible.description: qsTr("Use arrow keys to browse and Enter to open")
 
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)
@@ -43,10 +44,7 @@ GridView {
             library.select_album(albumModel[currentIndex].key)
     }
 
-    ScrollBar.vertical: ScrollBar {
-        policy: ScrollBar.AsNeeded
-        width: MichiSpacing.sm
-    }
+    ScrollBar.vertical: MichiScrollBar { }
 
     delegate: Item {
         id: vinylTile
@@ -62,16 +60,17 @@ GridView {
         activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
-        Accessible.description: "Open album"
+        Accessible.selected: vinylTile.selected
+        Accessible.description: qsTr("Open album")
 
         Rectangle {
             anchors.fill: parent
             radius: MichiRadius.lg
             color: vinylTile.selected ? MichiSemanticColors.surfaceSelected
-                : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-            border.width: vinylTile.selected || hover.hovered ? 1 : 0
+                : hover.hovered ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
+            border.width: 1
             border.color: vinylTile.selected
-                ? MichiPalette.auroraCyan : MichiSemanticColors.borderSubtle
+                ? MichiPalette.auroraCyan : hover.hovered ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
             MichiFocusRing {
                 visualFocus: vinylTile.activeFocus
                     && MichiAccessibility.keyboardMode
@@ -95,9 +94,19 @@ GridView {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.horizontalCenterOffset: hover.hovered || vinylTile.selected
                     ? width * 0.16 : width * 0.04
-                color: MichiPalette.graphite
+                color: MichiPalette.graphiteRaised
                 border.width: 1
-                border.color: MichiSemanticColors.borderSubtle
+                border.color: MichiSemanticColors.borderStrong
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: width / 2
+                    color: "transparent"
+                    border.width: 1
+                    border.color: MichiSemanticColors.innerHighlight
+                    opacity: 0.5
+                }
 
                 Repeater {
                     model: 3
@@ -109,19 +118,19 @@ GridView {
                         color: "transparent"
                         border.width: 1
                         border.color: MichiSemanticColors.borderSubtle
-                        opacity: 0.6
+                        opacity: 0.7
                     }
                 }
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: parent.width * 0.30
+                    width: parent.width * 0.32
                     height: width
                     radius: width / 2
                     color: vinylTile.selected
-                        ? MichiPalette.auroraPurple : MichiPalette.smokeRaised
+                        ? MichiPalette.auroraCyan : MichiPalette.graphiteRaised
                     border.width: 1
-                    border.color: MichiSemanticColors.borderSubtle
+                    border.color: MichiSemanticColors.innerHighlight
                     Rectangle {
                         anchors.centerIn: parent
                         width: MichiSpacing.xs
@@ -192,10 +201,15 @@ GridView {
 
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
         TapHandler {
+            id: vinylTap
+            // First tap selects (showing the rich selected state: disc
+            // offset, cyan label); tapping the already-selected tile opens.
             onTapped: {
+                var wasCurrent = albumVinyl.currentIndex === vinylTile.index
                 albumVinyl.currentIndex = vinylTile.index
                 vinylTile.forceActiveFocus()
-                library.select_album(modelData.key)
+                if (wasCurrent)
+                    library.select_album(modelData.key)
             }
         }
         Keys.onReturnPressed: library.select_album(modelData.key)

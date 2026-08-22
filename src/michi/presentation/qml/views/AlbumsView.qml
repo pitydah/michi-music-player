@@ -14,6 +14,8 @@ ColumnLayout {
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
     property real albumZoom: 1.0
+    signal sortModeRequested(string mode)
+    signal sortDirectionRequested(bool descending)
     readonly property var presentationAlbums: buildPresentationAlbums(library.albums)
     readonly property var presentationTimelineAlbums: buildTimelineAlbums(
         library.timelineAlbums, presentationAlbums)
@@ -78,6 +80,14 @@ ColumnLayout {
                 : root.normalized(left.title).localeCompare(root.normalized(right.title))
         })
         return rows
+    }
+
+    // Header click-to-sort entry point: same mode toggles direction.
+    function requestAlbumSort(mode) {
+        if (mode === root.albumSortMode)
+            root.sortDirectionRequested(!root.albumSortDescending)
+        else
+            root.sortModeRequested(mode)
     }
 
     function componentForMode(mode) {
@@ -207,6 +217,8 @@ ColumnLayout {
             anchors.fill: parent
             albumModel: root.presentationAlbums
             sortMode: root.albumSortMode
+            sortDescending: root.albumSortDescending
+            onSortRequested: mode => root.requestAlbumSort(mode)
         }
     }
 

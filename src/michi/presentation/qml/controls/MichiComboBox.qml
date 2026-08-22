@@ -21,11 +21,19 @@ ComboBox {
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
     }
-    indicator: MichiText {
+    indicator: MichiIcon {
         x: root.width - width - MichiSpacing.md
         y: root.topPadding + (root.availableHeight - height) / 2
-        text: "⌄"
-        role: "secondary"
+        width: MichiMetrics.iconSmall
+        height: width
+        name: "chevron-down"
+        iconColor: !root.enabled ? MichiPalette.textDisabled
+            : root.pressed || root.visualFocus ? MichiPalette.auroraCyan
+            : root.hovered ? MichiPalette.textPrimary : MichiPalette.textSecondary
+        Behavior on iconColor {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
+        }
     }
     background: Rectangle {
         radius: MichiRadius.md
@@ -41,19 +49,39 @@ ComboBox {
         text: modelData
         highlighted: root.highlightedIndex === index
         contentItem: MichiText { text: option.text; role: "secondary"; color: option.highlighted ? MichiPalette.textPrimary : MichiPalette.textSecondary }
-        background: Rectangle { color: option.highlighted ? MichiSemanticColors.surfaceSelected : "transparent"; radius: MichiRadius.sm }
+        background: Rectangle {
+            radius: MichiRadius.sm
+            color: option.down ? MichiSemanticColors.surfacePressed
+                : option.highlighted ? MichiSemanticColors.surfaceHover : "transparent"
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
+        }
     }
     popup: Popup {
         y: root.height + MichiSpacing.xs
         width: root.width
         implicitHeight: contentItem.implicitHeight + MichiSpacing.sm * 2
         padding: MichiSpacing.xs
+        focus: true
+        enter: Transition {
+            NumberAnimation {
+                property: "opacity"; from: 0; to: 1
+                duration: MichiMotion.panel
+                easing.type: MichiMotion.outCubic
+            }
+        }
+        exit: Transition {
+            NumberAnimation {
+                property: "opacity"; from: 1; to: 0
+                duration: MichiMotion.standard
+                easing.type: MichiMotion.outCubic
+            }
+        }
         contentItem: ListView {
             clip: true
             implicitHeight: Math.min(contentHeight, 260)
             model: root.popup.visible ? root.delegateModel : null
             currentIndex: root.highlightedIndex
         }
-        background: MichiGlassSurface { elevation: "elevated"; contentPadding: 0 }
+        background: MichiGlassSurface { elevation: "elevated"; contentPadding: 0; radius: MichiRadius.md }
     }
 }

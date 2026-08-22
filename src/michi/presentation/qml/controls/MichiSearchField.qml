@@ -24,6 +24,11 @@ Item {
             Layout.fillWidth: true
             leftPadding: MichiSpacing.xl + MichiSpacing.sm
             rightPadding: root.text.length > 0 ? MichiSpacing.xl + MichiSpacing.sm : MichiSpacing.md
+            // Ease the clear-button reflow instead of jumping the text
+            Behavior on rightPadding {
+                enabled: !MichiAccessibility.reducedMotion
+                NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
+            }
             onTextEdited: root.edited(text)
             Keys.onDownPressed: event => {
                 root.nextResultRequested()

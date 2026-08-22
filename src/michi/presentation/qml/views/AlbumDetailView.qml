@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../media"
@@ -20,7 +21,7 @@ ColumnLayout {
             ? inspectedTrack.bitDepth + "-bit" : "Unknown" },
         { label: "Channels", value: inspectedTrack.channels > 0
             ? String(inspectedTrack.channels) : "Unknown" },
-        { label: "File size", value: root.formatFileSize(inspectedTrack.fileSize) },
+        { label: "File size", value: MichiFormat.formatFileSize(inspectedTrack.fileSize) },
         { label: "Path", value: inspectedTrack.path }
     ] : []
 
@@ -31,36 +32,20 @@ ColumnLayout {
 
     onVisibleChanged: if (!visible) inspectedTrack = null
 
-    function formatFileSize(bytes) {
-        if (!bytes || bytes <= 0)
-            return "Unknown"
-        if (bytes >= 1073741824)
-            return (bytes / 1073741824).toFixed(2) + " GB"
-        return (bytes / 1048576).toFixed(1) + " MB"
-    }
 
-    function formatDuration(milliseconds) {
-        var seconds = Math.max(0, Math.floor(milliseconds / 1000))
-        var minutes = Math.floor(seconds / 60)
-        var hours = Math.floor(minutes / 60)
-        var remainingMinutes = minutes % 60
-        if (hours > 0)
-            return hours + " hr " + remainingMinutes + " min"
-        return minutes + " min"
-    }
 
     RowLayout {
         Layout.fillWidth: true
         spacing: MichiSpacing.sm
 
         MichiButton {
-            text: "Back"
+            text: qsTr("Back")
             iconName: "back"
             variant: "ghost"
             onClicked: library.clear_album_selection()
         }
         MichiText {
-            text: "Library"
+            text: qsTr("Library")
             role: "secondary"
             color: MichiPalette.textMuted
         }
@@ -83,6 +68,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: heroContent.implicitHeight + MichiSpacing.xl * 2
         elevation: "elevated"
+        tileSeed: 5
         contentPadding: MichiSpacing.xl
         accented: true
         accentColor: MichiPalette.auroraBlue
@@ -93,13 +79,28 @@ ColumnLayout {
             anchors.fill: parent
             spacing: MichiSpacing.xl
 
-            Artwork {
-                sourcePath: library.albumArtwork
-                fallbackText: library.albumTitle
-                Layout.preferredWidth: Math.min(232, Math.max(164, root.width * .19))
+            Item {
+                Layout.preferredWidth: Math.min(240, Math.max(190, root.width * .20))
                 Layout.preferredHeight: Layout.preferredWidth
                 Layout.alignment: Qt.AlignTop
-                requestedSize: 512
+
+                // Deep Drop Shadow
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    radius: MichiRadius.lg + 4
+                    color: MichiSemanticColors.glassShadowFar
+                    opacity: 0.85
+                    z: -1
+                }
+
+                Artwork {
+                    anchors.fill: parent
+                    sourcePath: library.albumArtwork
+                    fallbackText: library.albumTitle
+                    requestedSize: 512
+                    radius: MichiRadius.lg
+                }
             }
 
             ColumnLayout {
@@ -130,30 +131,52 @@ ColumnLayout {
 
                 RowLayout {
                     spacing: MichiSpacing.sm
-                    AudioQualityBadge { label: library.albumTechnicalSummary }
+                    // Compact chips for narrow widths; the stats column
+                    // (≥960px) carries the same info — never both at once.
+                    AudioQualityBadge {
+                        label: library.albumTechnicalSummary
+                        visible: root.width < 960
+                    }
                     MichiStatusChip {
                         text: library.albumTracks.length
                             + (library.albumTracks.length === 1 ? " track" : " tracks")
                         tone: "neutral"
                         dotVisible: false
+                        visible: root.width < 960
                     }
                     MichiStatusChip {
-                        text: root.formatDuration(library.albumDurationMs)
+                        text: MichiFormat.formatHoursMinutes(library.albumDurationMs)
                         tone: "neutral"
                         dotVisible: false
-                        visible: library.albumDurationMs > 0
+                        visible: root.width < 960 && library.albumDurationMs > 0
                     }
                 }
 
                 Item { Layout.fillHeight: true }
 
                 RowLayout {
-                    spacing: MichiSpacing.sm
+                    spacing: MichiSpacing.md
+
                     MichiButton {
-                        text: "Play album"
+                        text: qsTr("Play album")
+                        variant: "primary"
                         iconName: "play"
                         enabled: library.albumTracks.length > 0
                         onClicked: library.activate_album_track(0)
+                    }
+
+                    MichiButton {
+                        text: qsTr("Shuffle")
+                        variant: "secondary"
+                        iconName: "shuffle"
+                        enabled: library.albumTracks.length > 0
+                        onClicked: {
+                            if (typeof playback !== "undefined" && playback) {
+                                playback.shuffle = true
+                            }
+                            var randomIndex = Math.floor(Math.random() * library.albumTracks.length)
+                            library.activate_album_track(randomIndex)
+                        }
                     }
                 }
             }
@@ -176,20 +199,20 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "DURATION"
+                        text: qsTr("DURATION")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
                     }
                     MichiText {
-                        text: root.formatDuration(library.albumDurationMs)
+                        text: MichiFormat.formatHoursMinutes(library.albumDurationMs)
                         role: "secondary"
                     }
                 }
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "TRACKS"
+                        text: qsTr("TRACKS")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -202,7 +225,7 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "LIBRARY QUALITY"
+                        text: qsTr("LIBRARY QUALITY")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -249,6 +272,8 @@ ColumnLayout {
                 spacing: MichiSpacing.xs
                 boundsBehavior: Flickable.StopAtBounds
                 headerPositioning: ListView.InlineHeader
+
+                ScrollBar.vertical: MichiScrollBar { }
 
                 header: TrackTableHeader {
                     width: albumTracksList.width
