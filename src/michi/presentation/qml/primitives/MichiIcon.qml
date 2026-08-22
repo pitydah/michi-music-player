@@ -111,33 +111,33 @@ Item {
                 ctx.arc(14.5, 12, 1.2, 0, Math.PI * 2)
             } else if (root.name === "track") {
                 // Beamed eighth note pair with clean optical symmetry
-                line(ctx, 8.5, 6, 8.5, 16)
-                line(ctx, 8.5, 6, 18, 4)
-                line(ctx, 18, 4, 18, 14)
-                line(ctx, 8.5, 8.5, 18, 6.5)
-                ctx.moveTo(8.5, 16)
-                ctx.arc(6, 16, 2.5, 0, Math.PI * 2)
-                ctx.moveTo(18, 14)
-                ctx.arc(15.5, 14, 2.5, 0, Math.PI * 2)
+                line(ctx, 8, 5, 8, 17)
+                line(ctx, 8, 5, 18.5, 3)
+                line(ctx, 18.5, 3, 18.5, 15)
+                line(ctx, 8, 8, 18.5, 6)
+                ctx.moveTo(8, 17)
+                ctx.arc(5.5, 17, 2.5, 0, Math.PI * 2)
+                ctx.moveTo(18.5, 15)
+                ctx.arc(16, 15, 2.5, 0, Math.PI * 2)
             } else if (root.name === "album") {
-                // Balanced album sleeve (15x15) with concentric vinyl grooves
-                ctx.rect(4.5, 4.5, 15, 15)
-                ctx.moveTo(16, 12)
-                ctx.arc(12, 12, 4, 0, Math.PI * 2)
-                ctx.moveTo(13.5, 12)
-                ctx.arc(12, 12, 1.5, 0, Math.PI * 2)
+                // Balanced album sleeve with concentric vinyl grooves
+                ctx.rect(3.5, 3.5, 17, 17)
+                ctx.moveTo(17, 12)
+                ctx.arc(12, 12, 5, 0, Math.PI * 2)
+                ctx.moveTo(13.8, 12)
+                ctx.arc(12, 12, 1.8, 0, Math.PI * 2)
             } else if (root.name === "history") {
                 // Precision clock with circular return arrow
-                ctx.arc(12, 12, 7.5, -0.3, Math.PI * 1.6)
-                line(ctx, 12, 12, 12, 8)
-                line(ctx, 12, 12, 15.5, 12)
-                line(ctx, 5.5, 4.5, 5.5, 9)
-                line(ctx, 5.5, 4.5, 10, 4.5)
+                ctx.arc(12, 12, 8, -0.35, Math.PI * 1.62)
+                line(ctx, 12, 12, 12, 7.5)
+                line(ctx, 12, 12, 16, 12)
+                line(ctx, 4.5, 4.5, 4.5, 9.5)
+                line(ctx, 4.5, 4.5, 9.5, 4.5)
             } else if (root.name === "recent") {
                 // Precision clock with distinct plus badge
-                ctx.arc(10.5, 12, 6.5, 0, Math.PI * 2)
-                line(ctx, 10.5, 12, 10.5, 8.5)
-                line(ctx, 10.5, 12, 13.5, 12)
+                ctx.arc(10.5, 12, 7, 0, Math.PI * 2)
+                line(ctx, 10.5, 12, 10.5, 8)
+                line(ctx, 10.5, 12, 14, 12)
                 line(ctx, 19, 6.5, 19, 11.5)
                 line(ctx, 16.5, 9, 21.5, 9)
             } else if (root.name === "playlist") {

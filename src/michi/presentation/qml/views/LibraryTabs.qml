@@ -84,17 +84,17 @@ Item {
 
                     contentItem: RowLayout {
                         id: tabContent
-                        spacing: MichiSpacing.xs
+                        spacing: MichiSpacing.sm
                         MichiIcon {
-                            Layout.preferredWidth: 16
-                            Layout.preferredHeight: 16
+                            Layout.preferredWidth: 18
+                            Layout.preferredHeight: 18
                             name: tabButton.modelData.icon
                             iconColor: tabButton.checked
                                 ? MichiPalette.auroraCyan
                                 : tabButton.hovered
                                     ? MichiPalette.textPrimary
                                     : MichiPalette.textSecondary
-                            strokeWidth: tabButton.checked ? 1.8 : 1.5
+                            strokeWidth: tabButton.checked ? 2.0 : 1.7
                         }
                         MichiText {
                             text: tabButton.text
