@@ -164,3 +164,15 @@ Michi-nativos.
   FAIL (triple) → NULL cleanup error primary, pipeline retained.
 - Code-validation evidence: full suite 1696 passed at CODE_VALIDATED_HEAD
   43a1281 (1 pre-existing conditional skip: M11.3B Qt-runtime).
+
+## M11.3C-R5.1 cleanup exception-boundary seal
+
+- The two best-effort cleanup boundaries (terminal close teardown and
+  failed-preroll lifecycle cleanup) catch ANY normal Exception from the
+  GStreamer bindings (TypeError, ValueError, GLib.Error, ...), not only
+  RuntimeError: the error is recorded, later cleanup steps (NULL, timer,
+  pump) always run, and first-error-wins preserves the original exception
+  object. BaseException (KeyboardInterrupt/SystemExit/GeneratorExit) is
+  never caught. Normal load replacement stays transactional/strict.
+- Code-validation evidence: full suite 1701 passed at CODE_VALIDATED_HEAD
+  aaed097 (1 pre-existing conditional skip: M11.3B Qt-runtime).
