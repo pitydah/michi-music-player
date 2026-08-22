@@ -4,6 +4,8 @@ Never touches the canonical library ports (MetadataExtractorPort,
 LibraryIndexRepository, ArtworkCachePort stay untouched by these fakes).
 """
 
+import hashlib
+from dataclasses import asdict
 from pathlib import Path
 
 from michi.application.enrichment_ports import (
@@ -24,6 +26,8 @@ from michi.domain.enrichment import (
     ArtistExternalIdentity,
     ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
+    EnrichmentAssetRecord,
+    KnowledgeProvenance,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
 )
@@ -78,7 +82,7 @@ class FakeArtistProvider(ArtistKnowledgeProviderPort):
             biography=f"Biography of {external_artist_id}",
             external_genres=(f"genre-{external_artist_id}",),
             artwork_asset_id=f"asset-{external_artist_id}",
-            source="fake",
+            provenance=KnowledgeProvenance(provider="fake"),
         )
 
 
@@ -101,7 +105,7 @@ class FakeAlbumProvider(AlbumKnowledgeProviderPort):
             release_id=release_id,
             external_genres=(f"genre-{release_group_id}",),
             first_release_year=1959,
-            source="fake",
+            provenance=KnowledgeProvenance(provider="fake"),
         )
 
 
@@ -209,21 +213,35 @@ class RecordingAssetStore(EnrichmentAssetStorePort):
 
     def __init__(self):
         self.assets: dict[str, bytes] = {}
+        self.records: dict[str, EnrichmentAssetRecord] = {}
         self.stored_ids: list[str] = []
 
-    def store(self, asset_id: str, data: bytes, mime_type: str) -> str | None:
-        del mime_type  # unused in the fake
-        self.assets[asset_id] = data
-        self.stored_ids.append(asset_id)
-        return f"/enrichment/assets/{asset_id}"
+    def store(
+        self, record: EnrichmentAssetRecord, data: bytes
+    ) -> EnrichmentAssetRecord | None:
+        self.assets[record.asset_id] = data
+        self.stored_ids.append(record.asset_id)
+        completed = EnrichmentAssetRecord(
+            **{
+                **asdict(record),
+                "checksum": hashlib.sha256(data).hexdigest(),
+                "local_path": f"/enrichment/assets/{record.asset_id}",
+            }
+        )
+        self.records[record.asset_id] = completed
+        return completed
 
     def path_for(self, asset_id: str) -> Path | None:
         if asset_id not in self.assets:
             return None
         return Path(f"/enrichment/assets/{asset_id}")
 
+    def record_for(self, asset_id: str) -> EnrichmentAssetRecord | None:
+        return self.records.get(asset_id)
+
     def clear(self) -> None:
         self.assets.clear()
+        self.records.clear()
 
 
 class RecordingLibraryIndexRepository(LibraryIndexRepository):
