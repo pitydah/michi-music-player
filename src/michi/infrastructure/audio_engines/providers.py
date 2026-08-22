@@ -23,7 +23,15 @@ _MPD_NOT_IMPLEMENTED = (
 
 
 class QtEngineProvider(AudioEngineProviderPort):
-    """Reference/safe engine: wraps the existing QtMultimediaBackend."""
+    """Reference/safe engine: wraps the existing QtMultimediaBackend.
+
+    M11.3A-R1 lifecycle ownership: the provider OWNS the backend instance it
+    opens — open() is deterministic (same instance until close), close() is
+    idempotent, and a later open() produces a fresh valid backend. The
+    transport router MUST detach BEFORE the provider closes (SWITCH ORDER)."""
+
+    def __init__(self) -> None:
+        self._backend: AudioPort | None = None
 
     @property
     def engine_id(self) -> AudioEngineId:
@@ -48,15 +56,25 @@ class QtEngineProvider(AudioEngineProviderPort):
         )
 
     def open(self) -> AudioPort:
+        """Deterministic: repeated open returns the SAME owned instance (no
+        uncontrolled parallel Qt engines) until close()."""
+        if self._backend is not None:
+            return self._backend
         from michi.infrastructure.qt_backend import QtMultimediaBackend
 
-        return QtMultimediaBackend()
+        backend = QtMultimediaBackend()
+        self._backend = backend
+        return backend
 
     def close(self) -> None:
-        # M11.3A foundation: the backend is released by its owner; the
-        # provider owns no long-lived backend instance yet (full lifecycle
-        # normalization belongs to M11.3B).
-        pass
+        """Idempotent: releases the owned backend. Callers MUST detach the
+        transport router BEFORE close (SWITCH ORDER: stop → detach →
+        provider close → target open → bind → validate)."""
+        backend = self._backend
+        self._backend = None
+        if backend is None:
+            return
+        backend.stop()
 
 
 class GStreamerEngineProvider(AudioEngineProviderPort):

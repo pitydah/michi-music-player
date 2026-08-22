@@ -39,9 +39,27 @@ class TestQtProvider:
     def test_open_returns_audio_port(self, qapp):
         from michi.application.ports import AudioPort
 
-        port = QtEngineProvider().open()
+        provider = QtEngineProvider()
+        port = provider.open()
         assert isinstance(port, AudioPort)
-        port.stop()  # release resources cleanly
+        provider.close()  # release resources cleanly
+
+    def test_open_is_deterministic_same_instance(self, qapp):
+        provider = QtEngineProvider()
+        first = provider.open()
+        second = provider.open()
+        assert first is second  # no uncontrolled parallel Qt engines
+        provider.close()
+
+    def test_close_idempotent_and_reopen_fresh(self, qapp):
+        provider = QtEngineProvider()
+        first = provider.open()
+        provider.close()
+        provider.close()  # idempotent — no error
+        second = provider.open()
+        assert second is not first  # fresh backend after close
+        assert second is provider.open()  # deterministic again
+        provider.close()
 
     def test_no_qt_import_at_module_time(self):
         """Base wheel usability: module import must not require QtMultimedia

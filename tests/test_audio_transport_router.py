@@ -258,6 +258,30 @@ class TestEventRouting:
         assert router.bound_engine_id is None
 
 
+class TestDetachBeforeCloseContract:
+    def test_unbind_then_close_blocks_all_callbacks(self):
+        """SWITCH ORDER: router detaches BEFORE provider closes — a backend
+        event after close must NEVER reach the consumer."""
+        router, events = self._consumer_router()
+        a = RecordingBackend("A")
+        router.bind(AudioEngineId.QT_MULTIMEDIA, a)
+        # detach first (the order that M11.3F will enforce)
+        router.unbind()
+        # close the provider-owned backend afterwards
+        a.fire_end_of_media()
+        a.fire_position(1)
+        a.fire_media_accepted(Path("/m/x.mp3"))
+        assert events == []
+
+    def _consumer_router(self):
+        router = AudioTransportRouter()
+        events = []
+        router.subscribe_end_of_media(lambda: events.append("eom"))
+        router.subscribe_position_changed(lambda ms: events.append(f"pos:{ms}"))
+        router.subscribe_media_accepted(lambda p: events.append(f"acc:{p.name}"))
+        return router, events
+
+
 class TestRouterArchitecture:
     def test_router_is_audio_port_and_binding_port(self):
         router = AudioTransportRouter()
