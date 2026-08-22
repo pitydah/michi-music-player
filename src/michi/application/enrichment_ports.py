@@ -105,11 +105,16 @@ class KnowledgeRepositoryPort(ABC):
 
     The repository owns its own storage (enrichment.db). It MUST NEVER
     touch library_index / library_meta tables and never share the
-    canonical library index database semantics. Best effort: sqlite
-    errors are logged, never raised.
+    canonical library index database semantics.
 
     R1: knowledge != identity. This port owns ONLY downloaded knowledge.
-    Identity authority lives in ``IdentityRepositoryPort``."""
+    Identity authority lives in ``IdentityRepositoryPort``.
+
+    R3 TRUTHFUL STORAGE: knowledge is cache-like, but storage truth is
+    still observable — WRITES (save/delete/clear_knowledge) raise
+    ``EnrichmentStorageError`` on failure (never a fake success). READS
+    also raise ``EnrichmentStorageError`` on storage failure; a
+    malformed cache row degrades to None (logged, never a crash)."""
 
     @abstractmethod
     def save_artist_profile(self, profile: ArtistKnowledgeProfile) -> None: ...
@@ -155,8 +160,12 @@ class IdentityRepositoryPort(ABC):
     ``clear_identities``) removes them.
 
     R2 TRUTHFUL PERSISTENCE: identity WRITES (save/delete/clear) raise
-    ``EnrichmentStorageError`` on failure — never silent. Reads degrade
-    to None (fail-closed presentation)."""
+    ``EnrichmentStorageError`` on failure — never silent.
+
+    R3 TRUTHFUL READS: load failures RAISE ``EnrichmentStorageError``
+    too — None means "no identity exists", NEVER "storage is broken".
+    A read failure must not be mistaken for absence (and never trigger
+    automatic re-resolution)."""
 
     @abstractmethod
     def save_artist_identity(self, identity: ArtistExternalIdentity) -> None: ...
@@ -210,8 +219,9 @@ class EnrichmentAssetStorePort(ABC):
         self, record: EnrichmentAssetRecord, data: bytes
     ) -> EnrichmentAssetRecord | None:
         """Validate + persist asset bytes; returns the COMPLETED record
-        (checksum / dimensions / local_path filled) or None when any
-        validation step fails — a failure never leaves a partial asset."""
+        (checksum / dimensions / managed_object filled) or None when any
+        validation step fails — a failure never leaves a partial asset
+        and never destroys the previous valid asset."""
 
     @abstractmethod
     def path_for(self, asset_id: str) -> Path | None: ...

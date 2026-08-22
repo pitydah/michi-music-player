@@ -35,6 +35,7 @@ from michi.application.enrichment_ports import (
     AlbumKnowledgeProviderPort,
     ArtistKnowledgeProviderPort,
     EnrichmentAssetStorePort,
+    EnrichmentStorageError,
     ExternalIdentityResolverPort,
     IdentityRepositoryPort,
     KnowledgeRepositoryPort,
@@ -221,7 +222,16 @@ class EnrichmentService:
         verdict = self._ledger.deliver(request)
         if verdict is not DeliveryVerdict.COMMITTED:
             return verdict
-        self._repository.save_artist_profile(profile)
+        # R3: COMMITTED means ACTUALLY persisted. A failed knowledge
+        # write is STORAGE_FAILED — terminal, never a fake success.
+        try:
+            self._repository.save_artist_profile(profile)
+        except EnrichmentStorageError:
+            logger.warning(
+                "enrichment artist profile persistence failed for %r",
+                request.local_entity_key,
+            )
+            return DeliveryVerdict.STORAGE_FAILED
         return verdict
 
     def deliver_artist_failure(self, request: EnrichmentRequest) -> DeliveryVerdict:
@@ -335,7 +345,14 @@ class EnrichmentService:
         verdict = self._ledger.deliver(request)
         if verdict is not DeliveryVerdict.COMMITTED:
             return verdict
-        self._repository.save_album_profile(profile)
+        try:
+            self._repository.save_album_profile(profile)
+        except EnrichmentStorageError:
+            logger.warning(
+                "enrichment album profile persistence failed for %r",
+                request.local_entity_key,
+            )
+            return DeliveryVerdict.STORAGE_FAILED
         return verdict
 
     def deliver_album_failure(self, request: EnrichmentRequest) -> DeliveryVerdict:
@@ -429,10 +446,20 @@ class EnrichmentService:
         """Knowledge is valid ONLY under the CURRENT resolved identity:
         a profile whose external id differs (or whose identity is missing)
         is never returned — stale rows are invisible to presentation."""
-        identity = self._identity_repository.load_artist_identity(local_artist_key)
-        if identity is None:
+        # R3 presentation-safe degradation: storage failures on READS
+        # become None for the presentation caller (authority workflows
+        # keep the truthful raise).
+        try:
+            identity = self._identity_repository.load_artist_identity(local_artist_key)
+            if identity is None:
+                return None
+            profile = self._repository.load_artist_profile(local_artist_key)
+        except EnrichmentStorageError:
+            logger.warning(
+                "enrichment artist knowledge read degraded for %r",
+                local_artist_key,
+            )
             return None
-        profile = self._repository.load_artist_profile(local_artist_key)
         if profile is None or profile.external_artist_id != identity.external_artist_id:
             return None
         return profile
@@ -440,10 +467,17 @@ class EnrichmentService:
     def get_album_knowledge(self, local_album_key: str) -> AlbumKnowledgeProfile | None:
         """Album knowledge is valid ONLY when both the release GROUP and
         the release EDITION match the current identity."""
-        identity = self._identity_repository.load_album_identity(local_album_key)
-        if identity is None:
+        try:
+            identity = self._identity_repository.load_album_identity(local_album_key)
+            if identity is None:
+                return None
+            profile = self._repository.load_album_profile(local_album_key)
+        except EnrichmentStorageError:
+            logger.warning(
+                "enrichment album knowledge read degraded for %r",
+                local_album_key,
+            )
             return None
-        profile = self._repository.load_album_profile(local_album_key)
         if profile is None:
             return None
         if profile.release_group_id != identity.release_group_id:

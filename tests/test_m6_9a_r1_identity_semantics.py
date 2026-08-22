@@ -92,10 +92,12 @@ class TestYearOnlyIsForbidden:
 
     def test_album_title_gate_ignores_year_coincidence(self):
         # Local title Kind of Blue: rg-b has the matching YEAR but not the
-        # title — the title gate excludes it regardless.
+        # title — the title gate excludes it regardless (R3: with artist
+        # evidence present, the gate still decides by title + artist).
         evidence = AlbumIdentityEvidence(
             local_album_key="album-a",
             local_album_title="Kind of Blue",
+            local_album_artist_name="Miles Davis",
             local_year=1970,
         )
         resolution = resolve_album_identity(
@@ -103,11 +105,13 @@ class TestYearOnlyIsForbidden:
                 ReleaseGroupCandidate(
                     release_group_id="rg-a",
                     title="Kind of Blue",
+                    artist_credit_names=("Miles Davis",),
                     first_release_year=1959,
                 ),
                 ReleaseGroupCandidate(
                     release_group_id="rg-b",
                     title="Bitches Brew",
+                    artist_credit_names=("Miles Davis",),
                     first_release_year=1970,
                 ),
             ],
