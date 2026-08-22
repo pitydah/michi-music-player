@@ -401,15 +401,10 @@ class TestPlaylistOnlySearch:
             assert scroll.property("visible") is True
             # Qt 6 materializa delegates de Repeater solo al renderizar
             # (no fiable en offscreen) — verificamos el MODELO que alimenta
-            # el delegate: repeater count + datos proyectados.
-            from PySide6.QtCore import QObject
-
-            reps = [
-                c
-                for c in overlay.findChildren(QObject)
-                if str(c.metaObject().className()) == "QQuickRepeater"
-            ]
-            playlist_repeater = reps[3]  # orden: tracks, albums, artists, playlists
+            # el delegate: repeater count + datos proyectados. El locator es
+            # el objectName ESTABLE (M9-R1K), nunca el índice posicional.
+            playlist_repeater = _find_item(overlay, "playlistSearchRepeater")
+            assert playlist_repeater is not None
             assert playlist_repeater.property("count") == 1
             rows = world["pb"].property("searchPlaylists")
             assert rows[0]["name"] == "Road Trip"
@@ -436,6 +431,115 @@ class TestPlaylistOnlySearch:
             assert world["nav"].state.current_route == AppRoute.PLAYLISTS
             assert world["nav"].state.playlist_id == a.playlist_id
             assert world["service"].navigation.recent_ids[0] == a.playlist_id
+            runtime = errors.drain()
+            assert runtime == []
+        finally:
+            errors.restore()
+            engine.deleteLater()
+
+
+class TestSearchOverlayClosedState:
+    """M9-R1K: the closed overlay (opacity 0 + enabled false) must not be an
+    interactive/actionable Search surface."""
+
+    def test_closed_overlay_is_non_interactive(self, tmp_path, qapp):
+        world = _world(tmp_path)
+        world["service"].create_playlist("Road Trip")
+        world["library"].search("Road Trip")
+        engine = _engine(world)
+        errors = _QmlErrors()
+        try:
+            overlay = _load(engine, "patterns/SearchOverlay.qml", errors)
+            assert overlay.property("opened") is False
+            assert overlay.property("opacity") == 0.0
+            assert overlay.property("enabled") is False
+            inp = _find_item(overlay, "searchOverlayInput")
+            assert inp is not None
+            # closed: the input must not hold active interactive focus
+            # (activeFocus is not reliably observable without a window; the
+            # enforceable semantic gate is enabled=false — Qt delivers input
+            # only to enabled items; screen-reader verification stays
+            # Beta/RC QA per M9-R1K scope)
+            inp.forceActiveFocus()
+            _process()
+            assert inp.property("activeFocus") is False
+            runtime = errors.drain()
+            assert runtime == []
+        finally:
+            errors.restore()
+            engine.deleteLater()
+
+    def test_closed_overlay_not_enabled_for_input(self, tmp_path, qapp):
+        """The closed overlay must not consume interaction — enabled=false is
+        the enforceable Qt semantic (no pointer/keyboard delivery to disabled
+        items)."""
+        world = _world(tmp_path)
+        engine = _engine(world)
+        errors = _QmlErrors()
+        try:
+            overlay = _load(engine, "patterns/SearchOverlay.qml", errors)
+            assert overlay.property("enabled") is False
+            assert overlay.property("opacity") == 0.0
+            runtime = errors.drain()
+            assert runtime == []
+        finally:
+            errors.restore()
+            engine.deleteLater()
+
+
+class TestLazyBindingRegression:
+    """M9-R1K: the e4af323 defect is regression-locked — the CLOSED →
+    search update → OPEN sequence must re-evaluate every result surface."""
+
+    def test_closed_search_open_reevaluates(self, tmp_path, qapp):
+        world = _world(tmp_path)
+        engine = _engine(world)
+        errors = _QmlErrors()
+        try:
+            overlay = _load(engine, "patterns/SearchOverlay.qml", errors)
+            assert overlay.property("opened") is False
+            # 1. closed: playlist + search arrive AFTER instantiation
+            world["service"].create_playlist("Road Trip")
+            world["library"].search("Road Trip")
+            _process()
+            assert world["pb"].property("searchPlaylistCount") == 1
+            # 2. open: every result surface re-evaluates
+            overlay.setProperty("opened", True)
+            _process()
+            assert overlay.property("combinedResultCount") == 1
+            empty = _find_item(overlay, "searchEmptyState")
+            scroll = _find_item(overlay, "searchResultsScroll")
+            assert empty.property("visible") is False
+            assert scroll.property("visible") is True
+            repeater = _find_item(overlay, "playlistSearchRepeater")
+            assert repeater is not None
+            assert repeater.property("count") == 1
+            runtime = errors.drain()
+            assert runtime == []
+        finally:
+            errors.restore()
+            engine.deleteLater()
+
+    def test_clear_and_reopen_no_stale_results(self, tmp_path, qapp):
+        world = _world(tmp_path)
+        engine = _engine(world)
+        errors = _QmlErrors()
+        try:
+            overlay = _load(engine, "patterns/SearchOverlay.qml", errors)
+            world["service"].create_playlist("Road Trip")
+            world["library"].search("Road Trip")
+            overlay.setProperty("opened", True)
+            _process()
+            assert overlay.property("combinedResultCount") == 1
+            overlay.setProperty("opened", False)
+            _process()
+            world["library"].clear_search()
+            _process()
+            assert world["pb"].property("searchPlaylistCount") == 0
+            overlay.setProperty("opened", True)
+            _process()
+            assert overlay.property("combinedResultCount") == 0
+            assert world["pb"].property("searchPlaylists") == []
             runtime = errors.drain()
             assert runtime == []
         finally:

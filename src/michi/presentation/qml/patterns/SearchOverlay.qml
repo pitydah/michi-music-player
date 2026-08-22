@@ -78,6 +78,7 @@ Item {
     }
     MichiGlassSurface {
         id: searchPanel
+        objectName: "searchOverlayPanel"
         elevation: "modal"
         accented: true
         accentColor: MichiPalette.auroraCyan
@@ -98,6 +99,7 @@ Item {
                 spacing: MichiSpacing.md
                 MichiSearchField {
                     id: searchInput
+                    objectName: "searchOverlayInput"
                     Layout.fillWidth: true
                     text: library.searchQuery
                     placeholderText: "Search tracks, albums, artists and playlists"
@@ -207,6 +209,7 @@ Item {
                     MichiText { text: "Playlists"; role: "section"; visible: playlists.searchPlaylistCount > 0 }
                     Repeater {
                         id: playlistsRepeater
+                        objectName: "playlistSearchRepeater"
                         model: searchOverlay.visiblePlaylistCount
                         delegate: MichiEntityRow {
                             objectName: "playlistSearchRow" + index
