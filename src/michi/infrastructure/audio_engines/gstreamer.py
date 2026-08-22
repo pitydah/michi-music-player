@@ -15,6 +15,8 @@ NO GStreamer types leave this module.
 
 import logging
 import threading
+from dataclasses import dataclass
+from enum import Enum, auto
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, Signal
@@ -233,10 +235,39 @@ def gst_time_to_millis(ns: int) -> int:
     return int(ns) // 1_000_000
 
 
+class _GstEventKind(Enum):
+    """Tipos de observación backend normalizada (M11.3C-R6.5)."""
+
+    ASYNC_DONE = auto()
+    STATE_CHANGED = auto()
+    ERROR = auto()
+    EOS = auto()
+    DURATION_CHANGED = auto()
+    POSITION_TICK = auto()
+
+
+@dataclass(frozen=True, slots=True)
+class _GstEvent:
+    """Envelope inmutable de observación backend (M11.3C-R6.5).
+
+    El pump GLib SOLO observa/normaliza y encola este snapshot; el commit
+    semántico ocurre en el hilo owner tras revalidar la generación."""
+
+    generation: int | None
+    kind: _GstEventKind
+    status: PlaybackStatus | None = None
+    reason: str | None = None
+
+
 class _EventBridge(QObject):
     """Qt signal bridge: emitted from the pump thread, delivered on the
-    owner thread via EXPLICIT QueuedConnection (M11.3C-R1)."""
+    owner thread via EXPLICIT QueuedConnection (M11.3C-R1).
 
+    M11.3C-R6.5: el backend entra por UN solo path (sig_event, eventos
+    inmutables normalizados); los sig_* restantes son SOLO publicación de
+    callbacks públicos emitidos por el owner tras el commit."""
+
+    sig_event = Signal(object)
     sig_eom = Signal()
     sig_pos = Signal(int)
     sig_dur = Signal(int)
@@ -268,6 +299,10 @@ class GStreamerAudioPort(AudioPort):
         self._pending_play = False
         self._current_state = PlaybackStatus.STOPPED
         self._eos_emitted = False
+        # observaciones diferidas owner-thread, generación-escoped (R6.5)
+        self._deferred_playing_generation: int | None = None
+        self._deferred_eos_generation: int | None = None
+        self._duration_refresh_generation: int | None = None
         self._volume = 1.0
         self._muted = False
         self._pipeline = None
@@ -287,6 +322,8 @@ class GStreamerAudioPort(AudioPort):
         self._rej: list = []
         self._pst: list = []
         # explicit QueuedConnection: pump thread → owner thread
+        # (M11.3C-R6.5: UN solo path canónico de eventos backend)
+        self._bridge.sig_event.connect(self._on_backend_event, Qt.QueuedConnection)
         self._bridge.sig_eom.connect(self._deliver_eom, Qt.QueuedConnection)
         self._bridge.sig_pos.connect(self._deliver_pos, Qt.QueuedConnection)
         self._bridge.sig_dur.connect(self._deliver_dur, Qt.QueuedConnection)
@@ -329,7 +366,10 @@ class GStreamerAudioPort(AudioPort):
         El callback del bus captura la generación vigente."""
 
         def on_bus_message(bus_, message, user_data=None):
-            self._process_message(message, generation)
+            # el callback captura pipeline Y generación del watch (R6.5):
+            # la provenance top-level usa el pipeline CAPTURADO, nunca un
+            # self._pipeline que pueda cambiar concurrentemente
+            self._process_message(message, generation, pipeline)
             return True  # keep source
 
         self._bus_source = self._bindings.create_bus_source(
@@ -363,15 +403,14 @@ class GStreamerAudioPort(AudioPort):
         self._bus = None
 
     def _poll_position(self) -> None:
-        """Bounded position polling for the CURRENT accepted source only."""
+        """GLib timer (pump): enqueue POSITION_TICK — el OWNER resuelve
+        contra su verdad actual (nunca posición para media pendiente o
+        pipelines no aceptados). Sin lecturas semánticas cross-thread."""
         if self._closed:
             return
-        pipeline = self._pipeline
-        if pipeline is None or self._current_path is None:
-            return
-        ok, ns = self._bindings.query_position(pipeline)
-        if ok:
-            self._bridge.sig_pos.emit(gst_time_to_millis(ns))
+        self._bridge.sig_event.emit(
+            _GstEvent(generation=None, kind=_GstEventKind.POSITION_TICK)
+        )
 
     # ------------------------------------------------------------------
     # AudioPort — transport commands (symbolic states only)
@@ -400,7 +439,7 @@ class GStreamerAudioPort(AudioPort):
         # construcción/configuración/attach/preroll-request del pipeline B
         # dispara un rollback best-effort y re-lanza la excepción ORIGINAL
         # como primaria (los fallos de limpieza son secundarios).
-        self._generation += 1
+        self._invalidate_generation()
         self._pending_path = Path(file_path)
         self._current_path = None
         self._eos_emitted = False
@@ -530,7 +569,7 @@ class GStreamerAudioPort(AudioPort):
         La generación del candidato se invalida SIEMPRE — ningún evento
         tardío de B puede quedar autoritativo aunque el cleanup físico
         falle (ownership residual = ancla retryable, nunca media válida)."""
-        self._generation += 1
+        self._invalidate_generation()
         self._pending_path = None
         self._current_path = None
         self._pending_play = False
@@ -575,7 +614,7 @@ class GStreamerAudioPort(AudioPort):
             # generación se invalida (mata aceptaciones tardías).
             if not self._try_stop_pipeline():
                 return  # teardown del candidato falló: no fingir cancelación
-            self._generation += 1
+            self._invalidate_generation()
             self._pending_path = None
             self._pending_play = False
             self._eos_emitted = False
@@ -633,7 +672,7 @@ class GStreamerAudioPort(AudioPort):
         if self._closed:
             return
         self._closed = True
-        self._generation += 1  # invalidate any in-flight message
+        self._invalidate_generation()  # in-flight messages stale
         # FIRST-ERROR-WINS (M11.3C-R3/R5): la secuencia canónica es
         # 1) invalidar generación, 2) teardown del pipeline (bus watch +
         # NULL, best-effort — un fallo de remoción NUNCA salta el request
@@ -699,7 +738,7 @@ class GStreamerAudioPort(AudioPort):
         """
         # 1. invalidar la generación del candidato fallido: cualquier
         #    callback del bus ya attachado queda stale (captured != current)
-        self._generation += 1
+        self._invalidate_generation()
         # 2. identidad semántica del candidato: sin media falsa
         self._pending_path = None
         self._current_path = None
@@ -774,80 +813,238 @@ class GStreamerAudioPort(AudioPort):
         return first_error
 
     # ------------------------------------------------------------------
-    # bus message translation — TYPE-AWARE provenance (M11.3C-R1)
+    # backend event pipeline — M11.3C-R6.5 owner-thread seal
+    #
+    # GLib PUMP = backend observation ONLY (translate → enqueue immutable
+    # _GstEvent); QT OWNER = AudioPort semantic authority (revalidate
+    # generation + lifecycle → commit → publish callbacks). El pump NUNCA
+    # muta estado semántico: _pending_path/_current_path/_pending_play/
+    # _current_state/_eos_emitted/_generation son owner-thread state.
     # ------------------------------------------------------------------
 
-    def _process_message(self, message, captured_generation: int) -> None:
-        """Translate one bus message.
+    def _process_message(
+        self, message, captured_generation: int, captured_pipeline=None
+    ) -> None:
+        """PUMP (translate-only): normaliza una observación de bus en un
+        _GstEvent inmutable y lo encola. CERO mutación semántica.
 
         PROVENANCE POLICY (no catch-all src rule):
-        - generation MUST match the current one (stale isolation).
-        - STATE_CHANGED: top-level pipeline only.
-        - ERROR: ANY child element of the CURRENT graph is valid.
-        - EOS / ASYNC_DONE / DURATION_CHANGED: current generation, once.
+        - STATE_CHANGED: top-level del pipeline CAPTURADO por este watch.
+        - ERROR: cualquier elemento del grafo actual es válido (child-error).
+        - EOS / ASYNC_DONE / DURATION_CHANGED: llevan la generación
+          capturada; el owner decide en el commit point.
         """
         if self._closed:
             return
         if message is None:
             return  # bus source teardown puede entregar un mensaje null
+        # check temprano de stale SOLO como optimización: la corrección la
+        # garantiza el recheck del owner en el commit (R6.5)
         if captured_generation != self._generation:
-            return  # stale source / old pipeline
+            return
         msg_type = self._bindings.message_type(message)
         mt = self._bindings.MESSAGE_TYPE
         if msg_type == mt.EOS:
-            # EOS = fin natural del media ACTUAL (M11.3C-R6 P1-02): converge
-            # a STOPPED antes del EOM y retiene la fuente para replay. El
-            # guard _pending_play evita que un EOS tardío (ya encolado antes
-            # de un stop explícito del usuario) cree un fin natural falso.
-            if (
-                self._pending_path is None
-                and self._current_path is not None
-                and self._pending_play
-                and not self._eos_emitted
-            ):
-                self._eos_emitted = True
-                self._pending_play = False
-                # orden: STOPPED (convergencia) ANTES de EOM (QueueService
-                # decide el siguiente load/repeat sobre estado ya convergido)
-                self._deliver_state_if(PlaybackStatus.STOPPED)
-                self._bridge.sig_eom.emit()
+            self._bridge.sig_event.emit(
+                _GstEvent(generation=captured_generation, kind=_GstEventKind.EOS)
+            )
         elif msg_type == mt.ERROR:
-            # child-element errors are valid for the current graph
+            # child-element errors are valid for the current graph:
+            # normalización de la razón en el pump, decisión en el owner
             reason = self._bindings.parse_error(message)
-            candidate = self._pending_path or self._current_path
-            if candidate is not None:
-                self._pending_path = None
-                self._current_path = None
-                self._bridge.sig_rej.emit(candidate, reason)
+            self._bridge.sig_event.emit(
+                _GstEvent(
+                    generation=captured_generation,
+                    kind=_GstEventKind.ERROR,
+                    reason=reason,
+                )
+            )
         elif msg_type == mt.ASYNC_DONE:
-            # COMMAND = intención; ASYNC_DONE = aceptación del media/transición
-            # asíncrona completada. NUNCA publica PLAYING: el estado runtime
-            # solo proviene de STATE_CHANGED (R2).
-            if self._pending_path is not None:
-                self._current_path = self._pending_path
-                self._pending_path = None
-                self._bridge.sig_acc.emit(self._current_path)
+            # NUNCA publica PLAYING y NUNCA commitea el candidato aquí:
+            # la aceptación es un commit del owner (R6.5)
+            self._bridge.sig_event.emit(
+                _GstEvent(generation=captured_generation, kind=_GstEventKind.ASYNC_DONE)
+            )
         elif msg_type == mt.STATE_CHANGED:
-            # top-level pipeline only (children transition constantly)
-            if self._bindings.message_is_from_pipeline(message, self._pipeline):
-                self._on_pipeline_state(message)
-        elif msg_type == mt.DURATION_CHANGED and self._pipeline is not None:
-            ok, ns = self._bindings.query_duration(self._pipeline)
-            if ok:
-                self._bridge.sig_dur.emit(gst_time_to_millis(ns))
+            # top-level del pipeline capturado por ESTE watch (no el
+            # self._pipeline actual, que puede cambiar concurrentemente)
+            if self._bindings.message_is_from_pipeline(message, captured_pipeline):
+                status = self._normalize_state(message)
+                if status is not None:
+                    self._bridge.sig_event.emit(
+                        _GstEvent(
+                            generation=captured_generation,
+                            kind=_GstEventKind.STATE_CHANGED,
+                            status=status,
+                        )
+                    )
+        elif msg_type == mt.DURATION_CHANGED:
+            # sin query en el pump: el owner consulta en el commit point
+            self._bridge.sig_event.emit(
+                _GstEvent(
+                    generation=captured_generation, kind=_GstEventKind.DURATION_CHANGED
+                )
+            )
 
-    def _on_pipeline_state(self, message) -> None:
+    def _normalize_state(self, message) -> PlaybackStatus | None:
+        """PUMP: Gst.State → PlaybackStatus normalizado (o None)."""
         state = self._bindings.state_of(message)
         if state is None:
-            return
+            return None
         if state == self._bindings.STATE.PLAYING:
+            return PlaybackStatus.PLAYING
+        if state == self._bindings.STATE.PAUSED:
+            return PlaybackStatus.PAUSED
+        if state in (self._bindings.STATE.NULL, self._bindings.STATE.READY):
+            return PlaybackStatus.STOPPED
+        return None
+
+    def _on_backend_event(self, event) -> None:
+        """OWNER (único commit semántico): revalida closed + generación +
+        lifecycle, commitea estado interno ANTES de publicar callbacks.
+
+        Un evento que pasó el check temprano del pump pero quedó encolado
+        mientras la generación cambiaba muere aquí (provenance en commit)."""
+        if self._closed:
+            return
+        if event.generation is not None and event.generation != self._generation:
+            return  # stale queued event
+        kind = event.kind
+        if kind == _GstEventKind.ASYNC_DONE:
+            self._commit_acceptance(event)
+        elif kind == _GstEventKind.STATE_CHANGED:
+            self._commit_state(event)
+        elif kind == _GstEventKind.EOS:
+            self._commit_eos(event)
+        elif kind == _GstEventKind.ERROR:
+            self._commit_error(event)
+        elif kind == _GstEventKind.DURATION_CHANGED:
+            if self._pending_path is not None and self._current_path is None:
+                # duración observada antes de la aceptación: refrescar
+                # post-acceptance para esa generación (nunca antes)
+                self._duration_refresh_generation = event.generation
+                return
+            self._publish_duration()
+        elif kind == _GstEventKind.POSITION_TICK:
+            self._publish_position()
+
+    def _commit_acceptance(self, event) -> None:
+        """OWNER: ASYNC_DONE = commit de aceptación del media.
+
+        Orden: identidad interna commitada → media_accepted → PLAYING/EOS/
+        duration diferidos de la generación (re-encolados como eventos para
+        revalidar generación tras callbacks reentrantes)."""
+        if self._pending_path is None:
+            return  # duplicado o ya commiteado (idempotente)
+        candidate = self._pending_path
+        self._current_path = candidate
+        self._pending_path = None
+        # estado interno ANTES del callback público (reentrancy-safe)
+        self._bridge.sig_acc.emit(candidate)
+        # PLAYING observado antes de la aceptación: diferido hasta ahora.
+        # Revalidación tras el callback de aceptación (el subscriber pudo
+        # hacer stop()/load()): la intención (_pending_play) y la generación
+        # deben seguir permitiendo la publicación (M11.3C-R6.5 reentrancy).
+        if self._pending_play and self._deferred_playing_generation == event.generation:
+            self._deferred_playing_generation = None
+            self._bridge.sig_event.emit(
+                _GstEvent(
+                    generation=event.generation,
+                    kind=_GstEventKind.STATE_CHANGED,
+                    status=PlaybackStatus.PLAYING,
+                )
+            )
+        # EOS observado antes de la aceptación (pistas muy cortas)
+        if self._deferred_eos_generation == event.generation:
+            self._deferred_eos_generation = None
+            self._bridge.sig_event.emit(
+                _GstEvent(generation=event.generation, kind=_GstEventKind.EOS)
+            )
+        # duración observada antes de la aceptación
+        if self._duration_refresh_generation == event.generation:
+            self._duration_refresh_generation = None
+            self._bridge.sig_event.emit(
+                _GstEvent(
+                    generation=event.generation, kind=_GstEventKind.DURATION_CHANGED
+                )
+            )
+
+    def _commit_state(self, event) -> None:
+        """OWNER: STATE_CHANGED normalizado → PlaybackStatus canónico.
+
+        PLAYING nunca es autoritativo antes de la aceptación del media
+        (se difiere por generación). Preroll PAUSED con candidato pendiente
+        no es user PAUSED."""
+        status = event.status
+        if status == PlaybackStatus.PLAYING:
+            if self._pending_path is not None and self._current_path is None:
+                # PLAYING temprano: diferir hasta la aceptación (R6.5)
+                self._deferred_playing_generation = event.generation
+                return
             self._deliver_state_if(PlaybackStatus.PLAYING)
-        elif state == self._bindings.STATE.PAUSED:
-            # preroll PAUSED (sin intención de pausa) no es user PAUSED
+        elif status == PlaybackStatus.PAUSED:
             if not self._pending_play and self._pending_path is None:
                 self._deliver_state_if(PlaybackStatus.PAUSED)
-        elif state in (self._bindings.STATE.NULL, self._bindings.STATE.READY):
+        elif status == PlaybackStatus.STOPPED:
             self._deliver_state_if(PlaybackStatus.STOPPED)
+
+    def _commit_eos(self, event) -> None:
+        """OWNER: EOS = fin natural del media ACEPTADO actual — converge a
+        STOPPED antes del EOM (guard de late-EOS vía _pending_play). Un EOS
+        observado con el candidato aún pendiente se difiere por generación
+        (nunca EOM antes de la aceptación)."""
+        if self._pending_path is not None and self._current_path is None:
+            self._deferred_eos_generation = event.generation
+            return
+        if (
+            self._current_path is not None
+            and self._pending_play
+            and not self._eos_emitted
+        ):
+            self._eos_emitted = True
+            self._pending_play = False
+            self._deliver_state_if(PlaybackStatus.STOPPED)
+            self._bridge.sig_eom.emit()
+
+    def _commit_error(self, event) -> None:
+        """OWNER: ERROR de la generación vigente → rejection del candidato
+        o de la fuente actual (child-error provenance preservado)."""
+        reason = event.reason or "gstreamer error"
+        candidate = self._pending_path or self._current_path
+        if candidate is not None:
+            self._pending_path = None
+            self._current_path = None
+            self._bridge.sig_rej.emit(candidate, reason)
+
+    def _publish_duration(self) -> None:
+        """OWNER: consulta la duración del pipeline VIGENTE y publica."""
+        if self._pipeline is None:
+            return
+        ok, ns = self._bindings.query_duration(self._pipeline)
+        if ok:
+            self._bridge.sig_dur.emit(gst_time_to_millis(ns))
+
+    def _publish_position(self) -> None:
+        """OWNER: posición del source ACEPTADO actual únicamente (nunca
+        media pendiente); se resuelve contra la verdad actual del owner."""
+        pipeline = self._pipeline
+        if pipeline is None or self._current_path is None:
+            return
+        ok, ns = self._bindings.query_position(pipeline)
+        if ok:
+            self._bridge.sig_pos.emit(gst_time_to_millis(ns))
+
+    def _invalidate_generation(self) -> None:
+        """OWNER: avanza la generación (monotónica, nunca decrece) y limpia
+        las observaciones diferidas de la generación anterior (R6.5).
+
+        La invalidación es para supersesión de transacciones, cancelación
+        terminal de candidatos, reemplazo destructivo y close — NUNCA para
+        stop/replay de un source aceptado."""
+        self._generation += 1
+        self._deferred_playing_generation = None
+        self._deferred_eos_generation = None
+        self._duration_refresh_generation = None
 
     def _request_state(self, state) -> bool:
         """State request failure-atomic: devuelve True solo si GStreamer
