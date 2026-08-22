@@ -46,14 +46,18 @@ def _normalize_identity_text(raw: str) -> str:
 
 
 def dedupe_identity_ids(values: Sequence[str]) -> tuple[str, ...]:
-    """R3.1: normalize same-role identity hints — distinct non-empty
+    """R3.1/R3.2: normalize same-role identity hints — strip surrounding
+    whitespace, drop empty-after-strip values, dedupe the stripped
     values preserving first-seen order. Repeated observations of the
     SAME id ("A", "A") are one identity; distinct ids are a conflict.
-    NEVER called across roles (track artist != album artist)."""
+    NEVER called across roles (track artist != album artist) and NEVER
+    case-normalized (external IDs are case-sensitive by provider
+    contract)."""
     seen: list[str] = []
     for value in values:
-        if value and value not in seen:
-            seen.append(value)
+        stripped = value.strip()
+        if stripped and stripped not in seen:
+            seen.append(stripped)
     return tuple(seen)
 
 
@@ -364,6 +368,39 @@ def resolve_artist_identity(
     )
 
 
+def resolve_release_hint_for_group(
+    release_group_id: str,
+    hint_release: str,
+    edition_candidates: Sequence[ReleaseEditionCandidate],
+) -> tuple[IdentityResolutionStatus, str]:
+    """R3.2 RELEASE-EDITION CONTRADICTION DETECTION.
+
+    A specific Release ID identifies ONE edition identity. Evaluate one
+    deduplicated release hint against edition candidates for a resolved
+    release group:
+
+    - no matching candidate -> (RESOLVED, "") — not assigned;
+    - matches in ONE group == resolved group -> (RESOLVED, hint);
+    - matches in ONE group != resolved group -> IDENTITY_CONFLICT;
+    - matches across MULTIPLE distinct groups -> IDENTITY_CONFLICT,
+      even if one of them equals the resolved group (contradictory
+      evidence is never accepted via ``any()``);
+    - duplicate identical candidates (same release, same group) are
+      duplicate observations, not a conflict.
+    """
+    matches = [
+        edition for edition in edition_candidates if edition.release_id == hint_release
+    ]
+    if not matches:
+        return IdentityResolutionStatus.RESOLVED, ""
+    groups = dedupe_identity_ids(edition.release_group_id for edition in matches)
+    if len(groups) > 1:
+        return IdentityResolutionStatus.IDENTITY_CONFLICT, ""
+    if groups[0] == release_group_id:
+        return IdentityResolutionStatus.RESOLVED, hint_release
+    return IdentityResolutionStatus.IDENTITY_CONFLICT, ""
+
+
 def resolve_album_identity(
     group_candidates: Sequence[ReleaseGroupCandidate],
     edition_candidates: Sequence[ReleaseEditionCandidate],
@@ -497,23 +534,10 @@ def resolve_album_identity(
             # not corroboration).
             release_id = ""
         else:
-            matches = [
-                edition
-                for edition in edition_candidates
-                if edition.release_id == hint_release
-            ]
-            if not matches:
-                # CASE D: no candidate corroborates the hinted release.
-                release_id = ""
-            elif any(
-                edition.release_group_id == release_group_id for edition in matches
-            ):
-                # CASE B: corroborated within the resolved group.
-                release_id = hint_release
-            else:
-                # CASE C: the hinted release provably belongs to a
-                # DIFFERENT group — a contradiction is never silently
-                # dropped.
+            status, release_id = resolve_release_hint_for_group(
+                release_group_id, hint_release, edition_candidates
+            )
+            if status is IdentityResolutionStatus.IDENTITY_CONFLICT:
                 return AlbumIdentityResolution(
                     status=IdentityResolutionStatus.IDENTITY_CONFLICT,
                     candidate_ids=(hint_release,),
@@ -579,9 +603,13 @@ class ArtistExternalIdentity:
     resolved_at: str = ""
 
     def __post_init__(self) -> None:
-        if not self.local_artist_key:
+        # R3.2: type-validate BEFORE attribute access — a wrong status
+        # TYPE must raise ValueError, never AttributeError.
+        if not isinstance(self.status, IdentityStatus):
+            raise ValueError(f"status must be an IdentityStatus, got {self.status!r}")
+        if not self.local_artist_key.strip():
             raise ValueError("local_artist_key must not be empty")
-        if not self.external_artist_id:
+        if not self.external_artist_id.strip():
             raise ValueError("external_artist_id must not be empty")
         if self.status is not IdentityStatus.RESOLVED:
             raise ValueError(
@@ -611,10 +639,14 @@ class AlbumExternalIdentity:
     resolved_at: str = ""
 
     def __post_init__(self) -> None:
-        if not self.local_album_key:
+        if not isinstance(self.status, IdentityStatus):
+            raise ValueError(f"status must be an IdentityStatus, got {self.status!r}")
+        if not self.local_album_key.strip():
             raise ValueError("local_album_key must not be empty")
-        if not self.release_group_id:
+        if not self.release_group_id.strip():
             raise ValueError("release_group_id must not be empty")
+        if self.release_id and not self.release_id.strip():
+            raise ValueError("release_id must not be whitespace-only")
         if self.status is not IdentityStatus.RESOLVED:
             raise ValueError(
                 "persistent identity rows are RESOLVED mappings only; "
