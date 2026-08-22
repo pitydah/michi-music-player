@@ -66,11 +66,13 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   M9 remains FROZEN.
 
   M9-R1J traceability:
-  - implementation: 6ee9e12..7d78fab (suite 1449 passed)
-  - closeout: f713a89 (docs refreeze)
-  - final test-harness head: 79f764f (QML error-capture scoping)
-  - P2 hardening follow-up (dynamic real-chain gates, overlay lazy-binding
-    fix, combined-count traceability): 58b2e1e.. (see git log)
+  - implementation: 6ee9e12..7d78fab
+  - implementation validation: 1449 passed
+  - documentation closeout: f713a89
+  - QML error-capture refinement: 79f764f (intermediate test-harness step)
+  - SearchOverlay lazy-binding + real-chain dynamic-gate hardening: e4af323
+  - final P2 hardening (stable repeater locator, closed-overlay gates,
+    lazy-binding regression): ccb4500..
 - **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
   engine selector, DAC selector, Output Profile selector, output state,
   actual format telemetry, Signal Path, DSD mode, BitPerfectState, hotplug/
