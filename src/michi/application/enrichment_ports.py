@@ -37,6 +37,15 @@ class EnrichmentProviderError(RuntimeError):
     caller discards the request and the local library stays untouched."""
 
 
+class EnrichmentStorageError(RuntimeError):
+    """A durable enrichment storage write FAILED (R2).
+
+    The identity authority must never fail silently: identity saves,
+    deletes and clears raise this normalized error so the Application can
+    observe the failure. sqlite3.Error never crosses the infrastructure/
+    application boundary. The canonical library is never affected."""
+
+
 class ExternalIdentityResolverPort(ABC):
     """Resolves local identity evidence into external identity candidates.
 
@@ -138,11 +147,16 @@ class KnowledgeRepositoryPort(ABC):
 
 
 class IdentityRepositoryPort(ABC):
-    """Persistence of the external identity authority (R1) — enrichment.db.
+    """Persistence of the external identity authority (R1/R2) —
+    enrichment.db.
 
     IDENTITY != KNOWLEDGE: resolved/manual mappings live here and survive
     knowledge deletion. Only ``reset_*_identity`` (or
-    ``clear_identities``) removes them. Never raises on sqlite errors."""
+    ``clear_identities``) removes them.
+
+    R2 TRUTHFUL PERSISTENCE: identity WRITES (save/delete/clear) raise
+    ``EnrichmentStorageError`` on failure — never silent. Reads degrade
+    to None (fail-closed presentation)."""
 
     @abstractmethod
     def save_artist_identity(self, identity: ArtistExternalIdentity) -> None: ...

@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 from enrichment_fakes import (
+    FailingIdentityRepository,
     FakeAlbumProvider,
     FakeArtistProvider,
     FakeIdentityResolver,
@@ -27,6 +28,8 @@ from enrichment_fakes import (
 from michi.application.enrichment_service import EnrichmentService
 from michi.domain.enrichment import (
     AlbumExternalIdentity,
+    AlbumIdentityEvidence,
+    AlbumIdentityHints,
     ArtistExternalIdentity,
     ArtistIdentityEvidence,
     ArtistIdentityHints,
@@ -70,7 +73,6 @@ class TestIdentityPersistence:
             local_artist_key="the cure",
             external_artist_id="mb-xyz",
             match_method=MatchMethod.MANUAL,
-            manually_confirmed=True,
             resolved_at="2026-08-22T00:00:00+00:00",
         )
         repo.save_artist_identity(identity)
@@ -226,7 +228,6 @@ class TestManualIdentityAuthority:
         identity = identity_repo.load_artist_identity("artist a")
         assert identity is not None
         assert identity.match_method is MatchMethod.MANUAL
-        assert identity.manually_confirmed is True
 
     def test_reset_permits_rematching(self):
         service, _, identity_repo = make_service()
@@ -331,7 +332,6 @@ class TestMatchMethodProvenance:
         identity = identity_repo.load_artist_identity("artist a")
         assert identity is not None
         assert identity.match_method is MatchMethod.EMBEDDED_HINT
-        assert identity.manually_confirmed is False
 
     def test_auto_method_persisted(self):
         from michi.domain.enrichment import ArtistCandidate, LocalAlbumEvidence
@@ -441,3 +441,91 @@ class TestDeliveryIdentityGuard:
             is DeliveryVerdict.COMMITTED
         )
         assert repository.write_count == 1
+
+
+class TestStorageFailureTruth:
+    """R2 §35-41: identity persistence must never fail silently."""
+
+    def _service_with(self, identity_repo):
+        return EnrichmentService(
+            resolver=FakeIdentityResolver(),
+            artist_provider=FakeArtistProvider(),
+            album_provider=FakeAlbumProvider(),
+            repository=RecordingKnowledgeRepository(),
+            identity_repository=identity_repo,
+        )
+
+    def test_identity_save_failure_blocks_artist_request(self):
+        from michi.application.enrichment_ports import EnrichmentStorageError
+
+        identity_repo = FailingIdentityRepository()
+        service = self._service_with(identity_repo)
+        with pytest.raises(EnrichmentStorageError):
+            service.request_artist_enrichment(
+                artist_evidence(name="Artist A", mbids=("mb-a",))
+            )
+        assert service.pending_count() == 0
+        assert identity_repo.load_artist_identity("artist a") is None
+
+    def test_identity_save_failure_blocks_album_request(self):
+        from michi.application.enrichment_ports import EnrichmentStorageError
+
+        identity_repo = FailingIdentityRepository()
+        service = self._service_with(identity_repo)
+        evidence = AlbumIdentityEvidence(
+            local_album_key="album-a",
+            local_album_title="Album X",
+            identity_hints=AlbumIdentityHints(release_group_ids=("rg-a",)),
+        )
+        with pytest.raises(EnrichmentStorageError):
+            service.request_album_enrichment(evidence)
+        assert service.pending_count() == 0
+
+    def test_manual_save_failure_is_truthful(self):
+        from michi.application.enrichment_ports import EnrichmentStorageError
+
+        identity_repo = FailingIdentityRepository()
+        service = self._service_with(identity_repo)
+        with pytest.raises(EnrichmentStorageError):
+            service.confirm_artist_identity("artist a", "mb-manual")
+        assert identity_repo.load_artist_identity("artist a") is None
+
+    def test_manual_album_save_failure_is_truthful(self):
+        from michi.application.enrichment_ports import EnrichmentStorageError
+
+        identity_repo = FailingIdentityRepository()
+        service = self._service_with(identity_repo)
+        with pytest.raises(EnrichmentStorageError):
+            service.confirm_album_identity("album a", "rg-manual")
+
+    def test_reset_delete_failure_invalidates_request_first(self):
+        from michi.application.enrichment_ports import EnrichmentStorageError
+
+        identity_repo = FailingIdentityRepository()
+        identity_repo.fail_save = False
+        identity_repo.fail_delete = True
+        service = self._service_with(identity_repo)
+        outcome = service.request_artist_enrichment(
+            artist_evidence(name="Artist A", mbids=("mb-a",))
+        )
+        assert outcome.request is not None
+        with pytest.raises(EnrichmentStorageError):
+            service.reset_artist_identity("artist a")
+        # Runtime safety: the pending request was invalidated BEFORE the
+        # failing delete — the old result can never commit.
+        profile = service._artist_provider.fetch_profile("artist a", "mb-a")
+        assert (
+            service.deliver_artist_profile(outcome.request, profile)
+            is DeliveryVerdict.STALE
+        )
+
+    def test_clear_identities_failure_is_truthful(self):
+        from michi.application.enrichment_ports import EnrichmentStorageError
+
+        identity_repo = FailingIdentityRepository()
+        identity_repo.fail_save = False
+        identity_repo.fail_delete = False
+        identity_repo.fail_clear = True
+        service = self._service_with(identity_repo)
+        with pytest.raises(EnrichmentStorageError):
+            service.clear_identities()

@@ -537,13 +537,16 @@ class ArtistExternalIdentity:
     """Durable external identity authority for ONE local artist key.
 
     Separate from knowledge: the mapping survives knowledge deletion.
-    Never added to ArtistRef."""
+    Never added to ArtistRef.
+
+    R2: the manual authority is expressed EXCLUSIVELY by
+    ``match_method == MatchMethod.MANUAL`` — the redundant
+    ``manually_confirmed`` boolean was removed (schema 3)."""
 
     local_artist_key: str
     external_artist_id: str
     status: IdentityStatus = IdentityStatus.RESOLVED
     match_method: MatchMethod = MatchMethod.AUTO
-    manually_confirmed: bool = False
     resolved_at: str = ""
 
 
@@ -559,7 +562,6 @@ class AlbumExternalIdentity:
     release_id: str = ""
     status: IdentityStatus = IdentityStatus.RESOLVED
     match_method: MatchMethod = MatchMethod.AUTO
-    manually_confirmed: bool = False
     resolved_at: str = ""
 
 
