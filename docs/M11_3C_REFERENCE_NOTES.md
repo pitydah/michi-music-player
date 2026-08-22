@@ -88,3 +88,17 @@ Michi-nativos.
   DURATION_CHANGED generation-guarded. No catch-all src rule.
 - Provider probe truth: GI + Gst 1.0 + playbin3 factory must all exist for
   available=True (playbin3 missing → unavailable with truthful reason).
+
+## M11.3C-R2 final runtime truth seal
+
+- ASYNC_DONE = acceptance only; NEVER publishes PLAYING (runtime state truth
+  comes exclusively from STATE_CHANGED new_state == PLAYING).
+- State requests are failure-atomic: preroll PAUSED failure rejects the
+  candidate once (+ best-effort NULL teardown + port reusable); play/pause
+  roll back intents on FAILURE; stop publishes STOPPED only after a
+  successful NULL; pipeline replacement aborts if the previous NULL fails;
+  close reports teardown errors but stays best-effort.
+- Pump termination integrity: join(timeout) followed by is_alive() — a live
+  worker retains its references and raises instead of being silently lost.
+- Real adapter smoke: GStreamerAudioPort with real GI (custom MainContext/
+  bus GSource/fakesink) — SKIP truthful when local plugins lack WAV decode.
