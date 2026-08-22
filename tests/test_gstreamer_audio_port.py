@@ -98,6 +98,7 @@ class FakeBus:
         self.watch_callback = None
         self.remove_watch_count = 0
         self.fail_remove_watch = False
+        self.remove_watch_exception: Exception | None = None
 
     def create_watch(self):
         self.sources_created += 1
@@ -109,6 +110,8 @@ class FakeBus:
         return 42  # id sintético (bookkeeping only)
 
     def remove_watch(self):
+        if self.remove_watch_exception is not None:
+            raise self.remove_watch_exception
         if self.fail_remove_watch or not self.watch_installed:
             return False
         self.watch_installed = False
@@ -174,6 +177,7 @@ class FakeBindings:
         self.ignore_quit = False  # simula pump que no termina
         self.null_request_count = 0  # requests STATE.NULL emitidos
         self.fail_remove_watch = False  # buses nuevos heredan el fallo
+        self.remove_watch_exception: Exception | None = None  # o la excepción
 
     def supports_pump(self):
         return True
@@ -206,6 +210,7 @@ class FakeBindings:
     def get_bus(self, pipeline):
         bus = pipeline.get_bus()
         bus.fail_remove_watch = self.fail_remove_watch
+        bus.remove_watch_exception = self.remove_watch_exception
         return bus
 
     def create_context(self):
@@ -1478,6 +1483,127 @@ class TestPrerollCleanupErrorOrder:
         bindings.failed_states.discard(_FakeState.NULL)
         bus = port._bus
         bus.fail_remove_watch = False
+        port.close()
+        assert port._pipeline is None
+
+
+class TestCleanupExceptionBoundary:
+    """M11.3C-R5.1: los boundaries de cleanup best-effort capturan CUALQUIER
+    Exception normal (no solo RuntimeError) — el binding puede lanzar
+    ValueError/TypeError/GLib.Error. BaseException nunca se captura."""
+
+    def test_close_detach_exception_still_attempts_null(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = port._pipeline
+        bus_a = port._bus
+        bus_a.remove_watch_exception = ValueError("synthetic remove exception")
+        with pytest.raises(ValueError, match="synthetic remove exception"):
+            port.close()
+        assert port._closed is True
+        assert bindings.null_request_count == 1  # NULL intentado pese a todo
+        assert pipeline.state == _FakeState.NULL
+        assert port._pipeline is None  # NULL OK → liberado
+        assert port._timer_source is None  # timer cleanup continuó
+        assert port._pump is None  # pump cleanup continuó
+        assert bus_a.remove_watch_count == 0  # la remoción no ocurrió (evidencia)
+
+    def test_close_detach_typeerror_null_fails_retains_pipeline(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = port._pipeline
+        bus_a = port._bus
+        bus_a.remove_watch_exception = TypeError("synthetic remove exception")
+        bindings.failed_states.add(_FakeState.NULL)
+        with pytest.raises(TypeError, match="synthetic remove exception"):
+            port.close()
+        # TypeError es PRIMARIO (el detach ocurre primero en la cronología),
+        # pero el NULL igual se intentó y el pipeline se retiene
+        assert bindings.null_request_count == 1
+        assert port._pipeline is pipeline  # NULL falló → retenido
+        assert port._pump is None  # pump cleanup continuó
+        assert port._closed is True
+
+    def test_close_detach_exception_pump_timeout_keeps_first_error(self, qapp):
+        bindings = FakeBindings()
+        bindings.ignore_quit = True
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        bus_a = port._bus
+        pump = port._pump
+        bus_a.remove_watch_exception = ValueError("synthetic remove exception")
+        with pytest.raises(ValueError, match="synthetic remove exception"):
+            port.close()
+        # ValueError primario; el timeout del pump es secundario
+        assert port._pipeline is None  # NULL OK
+        assert port._pump is pump  # worker vivo retenido (secundario)
+        bindings.ignore_quit = False
+        bindings.quit_loop(port._loop or "loop")
+        pump.join(timeout=2.0)
+        port._pump = None
+        port._loop = None
+        port._context = None
+
+    def test_preroll_null_ok_detach_exception(self, qapp):
+        bindings = FakeBindings()
+        bindings.failed_states.add(_FakeState.PAUSED)
+        bindings.remove_watch_exception = ValueError("synthetic detach exception")
+        port = _port(bindings)
+        rejected = []
+        accepted = []
+        states = []
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        with pytest.raises(ValueError, match="synthetic detach exception"):
+            port.load(Path("/m/b.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert rejected == [
+            (Path("/m/b.flac"), "GStreamer failed to enter PAUSED during preroll")
+        ]
+        assert accepted == []
+        assert states == []
+        assert bindings.null_request_count == 1  # el NULL OK ocurrió
+        assert port._pipeline is not None  # ownership retenido (evidencia)
+        bus = port._bus
+        bus.remove_watch_exception = None
+        port._detach_pipeline_sources()
+        port._pipeline = None
+
+    def test_preroll_triple_detach_exception_null_is_primary(self, qapp):
+        # CRÍTICO: PAUSED FAIL + NULL FAIL + detach ValueError
+        # → primario: NULL cleanup RuntimeError (NO ValueError)
+        bindings = FakeBindings()
+        bindings.failed_states.update({_FakeState.PAUSED, _FakeState.NULL})
+        bindings.remove_watch_exception = ValueError("synthetic detach exception")
+        port = _port(bindings)
+        rejected = []
+        accepted = []
+        states = []
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.load(Path("/m/b.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert rejected == [
+            (Path("/m/b.flac"), "GStreamer failed to enter PAUSED during preroll")
+        ]
+        assert accepted == []
+        assert states == []
+        failed_pipeline = bindings.pipelines[-1]
+        assert port._pipeline is failed_pipeline  # retenido
+        assert bindings.null_request_count == 1
+        assert port._pending_path is None
+        assert port._current_path is None
+        # limpieza del test: close() con fallos removidos limpia todo
+        bindings.failed_states.discard(_FakeState.NULL)
+        bus = port._bus
+        bus.remove_watch_exception = None
         port.close()
         assert port._pipeline is None
 
