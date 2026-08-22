@@ -1,8 +1,12 @@
 # M6.9A-R2 — Enrichment Identity + Storage Convergence
 
-Status: implemented. Scope: clean-branch reconstruction + identity/storage
-convergence on the M6.9A/R1 enrichment foundation. NO network providers,
-NO tag extraction, NO presentation, NO bootstrap wiring.
+Status: implemented; reconstructed cleanly on current main by M6.9A-R3.
+
+> **M6.9A-R3 supersedes parts of this document** (no-artist album gate,
+> release corroboration, truthful identity/knowledge reads+writes,
+> STORAGE_FAILED, transactional clears, non-mutating schema discovery,
+> biography provenance, object integrity). See
+> `docs/M6_9A_R3_FINAL_FOUNDATION_SEAL.md` for the current contract.
 
 ## Clean branch reconstruction
 
