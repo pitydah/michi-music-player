@@ -169,24 +169,13 @@ class PlaybackService:
         self._resume_prepared_pending = False  # supersedes any pending confirm
         self._accepted = False
         self._intent = True
+        # PHASE 1 — LOAD (M11.3C-R6.2): la disposición de AudioLoadError
+        # describe exactamente esta fase. El source previo puede estar
+        # preservado (True) o ya no garantizado (False).
         try:
             self._audio.load(file_path)
-            self._audio.play()
         except Exception as exc:
-            self._pending_path = None
-            self._pending_on_accepted = None
-            self._pending_on_rejected = None
-            self._pending_on_cancelled = None
-            self._pending_resume_position_ms = None
-            self._resume_prepared_pending = False
-            # M11.3C-R6.1: disposición EXPLÍCITA del source previo. Con
-            # AudioLoadError(previous_source_preserved=False) el backend
-            # cruzó un commit point destructivo y ya no garantiza el source:
-            # NO restaurar la aceptación previa (sería autoridad falsa).
-            # file_path sigue siendo la identidad lógica del último track
-            # commiteado; un play() posterior lo recarga por el camino
-            # canónico. Con disposición preservada (o excepción genérica
-            # legacy) se restauran la aceptación e intención previas.
+            self._clear_pending()
             if isinstance(exc, AudioLoadError) and not exc.previous_source_preserved:
                 self._intent = False
                 self._accepted = False
@@ -196,9 +185,34 @@ class PlaybackService:
                 self._intent = previous_intent
                 self._accepted = previous_accepted
             raise
+        # PHASE 2 — PLAY (M11.3C-R6.2): load(B) ya terminó exitosamente —
+        # el source previo YA NO puede asumirse válido (el backend cruzó el
+        # commit point y B está armado/pending). Un fallo de play() NO
+        # restaura la aceptación/intención de A: converger a STOPPED con
+        # identidad lógica A y dejar el candidato B terminalizado; un
+        # play() posterior recarga A por el camino canónico. Un
+        # media_accepted(B) tardío no puede committear B (pending limpio).
+        try:
+            self._audio.play()
+        except Exception:
+            self._clear_pending()
+            self._intent = False
+            self._accepted = False
+            self._state.status = PlaybackStatus.STOPPED
+            self._notify()
+            raise
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
         self._notify()
+
+    def _clear_pending(self) -> None:
+        """Terminaliza el candidato pendiente sin invocar callbacks."""
+        self._pending_path = None
+        self._pending_on_accepted = None
+        self._pending_on_rejected = None
+        self._pending_on_cancelled = None
+        self._pending_resume_position_ms = None
+        self._resume_prepared_pending = False
 
     def prepare_for_resume(self, file_path: Path, position_ms: int) -> None:
         """Request a startup resume: LOAD the candidate, never autoplay.
