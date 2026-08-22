@@ -83,6 +83,10 @@ Michi-nativos.
   `source.attach(custom_context)`; position poll via
   `GLib.timeout_source_new` + attach. Sources destroyed on pipeline
   replacement/close; no orphan pump (pump_start_count == 1 across loads).
+  **SUPERSEDED BY R3/R4** — current truth: the bus watch is installed with
+  `Gst.Bus.add_watch()` (GstBusFunc marshaller) while the port's custom
+  MainContext is thread-default, and removed with `Gst.Bus.remove_watch()`
+  (no watch-id argument); the position timer remains the explicit GSource.
 - Provenance is TYPE-AWARE: STATE_CHANGED top-level pipeline only; ERROR
   accepts child-element sources of the CURRENT generation; EOS/ASYNC_DONE/
   DURATION_CHANGED generation-guarded. No catch-all src rule.
@@ -197,3 +201,29 @@ Michi-nativos.
   teardown the adapter converges to STOPPED before arming B.
 - Code-validation evidence: full suite 1730 passed at CODE_VALIDATED_HEAD
   f88e729 (1 pre-existing conditional skip: M11.3B Qt-runtime).
+
+
+## M11.3C-R6.1 resource ownership & load-disposition convergence seal
+
+- Failed-ARM ownership invariant: the pipeline is the retryable cleanup
+  anchor — it is released ONLY when NULL AND the bus watch removal both
+  succeeded (NULL OK + detach FAIL retains pipeline/bus/watch, so close()
+  or a later load can retry the removal; `_pipeline is None` implies
+  `_bus_source is None` in normal states). No permanently orphaned
+  Gst.Bus watch.
+- AudioLoadError (application/ports.py): canonical synchronous load
+  failure with explicit previous_source_preserved disposition. GStreamer
+  raises it with False for any PHASE B ARM failure (the old source already
+  crossed the destructive teardown commit point), chaining the original
+  low-level exception as __cause__. Pre-commit failures (teardown failure,
+  watch detach failure while A is retained) keep the preserved semantics.
+- PlaybackService: destructive failures no longer restore backend
+  acceptance/intent (file_path stays the last committed LOGICAL track;
+  status STOPPED); play() reloads the committed track through the
+  canonical candidate path when no backend acceptance exists — no silent
+  no-op. M11.3D MPD MUST raise AudioLoadError with truthful disposition.
+- Real stop→play gate: real playbin3 + fakesink WAV — accept, real
+  PLAYING, stop → NULL (source/generation/pipeline retained), second play
+  → PLAYING again, single acceptance, close clean.
+- Code-validation evidence: full suite 1745 passed at CODE_VALIDATED_HEAD
+  04a5063 (1 pre-existing conditional skip: M11.3B Qt-runtime).
