@@ -13,6 +13,7 @@ from michi.application.enrichment_ports import (
     ArtistKnowledgeProviderPort,
     EnrichmentAssetStorePort,
     EnrichmentProviderError,
+    EnrichmentStorageError,
     ExternalIdentityResolverPort,
     IdentityRepositoryPort,
     KnowledgeRepositoryPort,
@@ -206,6 +207,41 @@ class InMemoryIdentityRepository(IdentityRepositoryPort):
         self.clear_calls += 1
         self.artists.clear()
         self.albums.clear()
+
+
+class FailingIdentityRepository(InMemoryIdentityRepository):
+    """R2 storage-failure fake: writes raise the normalized storage
+    error (configurable per operation). Reads behave normally."""
+
+    def __init__(self):
+        super().__init__()
+        self.fail_save = True
+        self.fail_delete = True
+        self.fail_clear = True
+
+    def _maybe_fail(self, flag: bool) -> None:
+        if flag:
+            raise EnrichmentStorageError("injected storage failure")
+
+    def save_artist_identity(self, identity: ArtistExternalIdentity) -> None:
+        self._maybe_fail(self.fail_save)
+        super().save_artist_identity(identity)
+
+    def save_album_identity(self, identity: AlbumExternalIdentity) -> None:
+        self._maybe_fail(self.fail_save)
+        super().save_album_identity(identity)
+
+    def delete_artist_identity(self, local_artist_key: str) -> None:
+        self._maybe_fail(self.fail_delete)
+        super().delete_artist_identity(local_artist_key)
+
+    def delete_album_identity(self, local_album_key: str) -> None:
+        self._maybe_fail(self.fail_delete)
+        super().delete_album_identity(local_album_key)
+
+    def clear_identities(self) -> None:
+        self._maybe_fail(self.fail_clear)
+        super().clear_identities()
 
 
 class RecordingAssetStore(EnrichmentAssetStorePort):
