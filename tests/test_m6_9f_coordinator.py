@@ -120,9 +120,7 @@ class HintExtractorStub:
 
         return ExternalIdentityHints(
             musicbrainz_artist_ids=tuple(self._artist_hints),
-            musicbrainz_release_group_id=(
-                self._release_hints[0] if self._release_hints else ""
-            ),
+            musicbrainz_release_group_ids=tuple(self._release_hints),
         )
 
 
@@ -168,7 +166,7 @@ class FakeMbKnowledge(MusicBrainzKnowledgeProviderPort):
 class FakeWikidata(WikidataKnowledgeProviderPort):
     def fetch_artist_claims(self, qid):
         return WikidataArtistClaims(
-            country="United States",
+            country_qid="Q30",
             commons_image_title="Artist.jpg",
         )
 
@@ -280,7 +278,10 @@ class TestArtistEndToEnd:
         profile = service.get_artist_knowledge("artist a")
         assert profile is not None
         assert profile.biography == "A composer biography."
-        assert profile.country == "United States"
+        # R1: country is a QID with its own Wikidata provenance — never a
+        # disguised label.
+        assert profile.country_qid == "Q30"
+        assert profile.wikidata_provenance.provider == "wikidata"
         assert profile.commons_image_title == "Artist.jpg"
         assert profile.external_genres == ("Classical",)
         # Canonical model untouched (firewall).
@@ -393,11 +394,14 @@ class TestPrivacyAndOfflineContracts:
             tracks,
             on_state=lambda k, s: states.append(s),
         )
-        assert states == [EnrichmentOperationState.OFFLINE]
+        # R1 (P2-01): a user decision is DISABLED, never OFFLINE.
+        assert states == [EnrichmentOperationState.DISABLED]
         assert mb.artist_calls == 0
         assert repository.write_count == 0
 
-    def test_cancelled_flow_no_commit(self):
+    def test_cancel_all_is_reusable(self):
+        # R1: cancel_all() cancels ACTIVE operations only — the
+        # coordinator stays fully reusable afterwards.
         coordinator, service, repository, _ = make_coordinator(FakeMbKnowledge())
         coordinator.cancel_all()
         tracks = _tracks()
@@ -409,6 +413,26 @@ class TestPrivacyAndOfflineContracts:
             tracks,
             on_state=lambda k, s: states.append(s),
         )
+        assert states[-1] in (
+            EnrichmentOperationState.READY,
+            EnrichmentOperationState.PARTIAL,
+        )
+        assert repository.write_count == 1
+
+    def test_shutdown_is_terminal(self):
+        coordinator, service, repository, _ = make_coordinator(FakeMbKnowledge())
+        coordinator.shutdown()
+        tracks = _tracks()
+        model = build_music_model(tracks)
+        states: list[EnrichmentOperationState] = []
+        coordinator.enrich_artist(
+            model.artists[0],
+            model.albums,
+            tracks,
+            on_state=lambda k, s: states.append(s),
+        )
+        # Deterministic rejection after terminal shutdown: no work, no
+        # commit, CANCELLED reported.
         assert states == [EnrichmentOperationState.CANCELLED]
         assert repository.write_count == 0
 

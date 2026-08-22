@@ -88,6 +88,14 @@ def _data_dir() -> Path:
     return path
 
 
+def _cache_dir() -> Path:
+    """R1: ONE canonical cache location authority (Qt CacheLocation)."""
+    base = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
+    path = Path(base)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 @dataclass
 class ServiceGraph:
     """The production library graph — the same wiring for app and tests."""
@@ -130,16 +138,16 @@ class EnrichmentGraph:
     asset_store: FilesystemEnrichmentAssetStore
 
 
-def _build_enrichment_graph(data_dir: Path, enabled) -> EnrichmentGraph:
+def _build_enrichment_graph(
+    data_dir: Path, cache_root: Path, enabled
+) -> EnrichmentGraph:
     """M6.9G composition root for enrichment (isolated from audio)."""
     enrichment_db = data_dir / "enrichment.db"
     repository = SqliteEnrichmentRepository(enrichment_db)
     asset_store = FilesystemEnrichmentAssetStore(data_dir / "enrichment-assets")
     transport = UrllibHttpTransport()
     limiter = MusicBrainzRateLimiter()
-    cache = FilesystemProviderCache(
-        Path.home() / ".cache" / "michi" / "enrichment" / "provider-cache"
-    )
+    cache = FilesystemProviderCache(cache_root / "enrichment" / "provider-cache")
     resolver = MusicBrainzIdentityResolver(transport, limiter, cache)
     service = EnrichmentService(
         resolver=resolver,
@@ -420,7 +428,9 @@ class ApplicationContainer:
             current = settings.load().online_enrichment
             return bool(current)
 
-        self._enrichment = _build_enrichment_graph(_data_dir(), enrichment_enabled)
+        self._enrichment = _build_enrichment_graph(
+            _data_dir(), _cache_dir(), enrichment_enabled
+        )
 
         # Library/settings coordination: restore last_directory, sync on scan
         lib_prefs = LibraryPreferencesCoordinator(library, settings)
@@ -604,10 +614,12 @@ class ApplicationContainer:
         self._queue = None
         self._playback = None
         self._settings = None
-        # M6.9F shutdown: stop accepting enrichment jobs, cancel queued
-        # work and join workers BEFORE the container finishes teardown.
+        # M6.9-R1 shutdown owner: the coordinator owns the enrichment
+        # executor lifecycle (freeze work, cancel operations, invalidate
+        # pending requests, join workers) — the container never closes
+        # the executor behind its back.
         if self._enrichment is not None:
-            self._enrichment.executor.shutdown(wait=True)
+            self._enrichment.coordinator.shutdown()
             self._enrichment = None
         self._app = None
 

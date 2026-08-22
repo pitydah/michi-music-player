@@ -35,6 +35,7 @@ from michi.application.enrichment_ports import (
     AlbumKnowledgeProviderPort,
     ArtistKnowledgeProviderPort,
     EnrichmentAssetStorePort,
+    EnrichmentProviderError,
     EnrichmentStorageError,
     ExternalIdentityResolverPort,
     IdentityRepositoryPort,
@@ -304,8 +305,15 @@ class EnrichmentService:
             # embedded identity: reuse it without resolving.
             return self._short_circuit_artist(existing, generation)
 
-        candidates = self._resolver.find_artist_candidates(evidence)
-        resolution = resolve_artist_identity(candidates, evidence)
+        if current_hints:
+            # R1 OFFLINE EMBEDDED AUTHORITY: explicit identity hints are
+            # LOCAL evidence — they resolve WITHOUT any network search
+            # (a single distinct hint resolves directly; multiple
+            # distinct hints conflict with ZERO network calls).
+            resolution = resolve_artist_identity((), evidence)
+        else:
+            candidates = self._resolver.find_artist_candidates(evidence)
+            resolution = resolve_artist_identity(candidates, evidence)
         if resolution.status is not IdentityResolutionStatus.RESOLVED:
             # R3.1: evidence no longer supports the old automatic
             # mapping — revoke it (ledger first, then durable deletion).
@@ -426,11 +434,30 @@ class EnrichmentService:
                     evidence,
                     resolved_artist_external_id=artist_identity.external_artist_id,
                 )
-        group_candidates = self._resolver.find_release_group_candidates(evidence)
-        edition_candidates = self._resolver.find_release_edition_candidates(evidence)
-        resolution = resolve_album_identity(
-            group_candidates, edition_candidates, evidence
-        )
+        if current_rg_hints:
+            # R1 OFFLINE EMBEDDED RG AUTHORITY: an explicit release-group
+            # hint resolves WITHOUT a group search. A release-edition
+            # hint still requires corroboration — if the edition lookup
+            # fails (offline), the RG persists and the release stays ""
+            # (never trusted without corroboration).
+            if current_release_hints:
+                try:
+                    edition_candidates = self._resolver.find_release_edition_candidates(
+                        evidence
+                    )
+                except EnrichmentProviderError:
+                    edition_candidates = ()
+            else:
+                edition_candidates = ()
+            resolution = resolve_album_identity((), edition_candidates, evidence)
+        else:
+            group_candidates = self._resolver.find_release_group_candidates(evidence)
+            edition_candidates = self._resolver.find_release_edition_candidates(
+                evidence
+            )
+            resolution = resolve_album_identity(
+                group_candidates, edition_candidates, evidence
+            )
         if resolution.status is not IdentityResolutionStatus.RESOLVED:
             self._revoke_album_identity(local_key)
             return EnrichmentRequestOutcome(resolution=resolution, request=None)
@@ -568,6 +595,19 @@ class EnrichmentService:
         """Delete downloaded knowledge; MANUAL/AUTO/EMBEDDED_HINT identity
         mappings are PRESERVED."""
         self._repository.clear_knowledge()
+
+    def cancel_artist_request(self, local_artist_key: str) -> None:
+        """M6.9-BACKEND-R1: invalidate ONLY the async correlation for an
+        artist — never deletes identity, knowledge or local data."""
+        self._ledger.invalidate(EnrichmentEntityKind.ARTIST, local_artist_key)
+
+    def cancel_album_request(self, local_album_key: str) -> None:
+        """R1: invalidate ONLY the async correlation for an album."""
+        self._ledger.invalidate(EnrichmentEntityKind.ALBUM, local_album_key)
+
+    def cancel_all_requests(self) -> None:
+        """R1: invalidate every pending async enrichment request."""
+        self._ledger.invalidate_all()
 
     def clear_artist_knowledge(self, local_artist_key: str) -> None:
         """M6.9F: per-entity intent — knowledge only, identity preserved."""
