@@ -1,7 +1,7 @@
 # M11.3 — Multi-Engine Audio Runtime (contract)
 
 Implementation contract for the multi-engine audio runtime. Status: **IN
-PROGRESS — M11.3A + M11.3B + M11.3C DONE / TESTED / FROZEN** (authorized by
+PROGRESS — M11.3A + M11.3B + M11.3C DONE / TESTED / FROZEN (+ M11.3C-R1 real-runtime convergence)** (authorized by
 the 2026-08-21 product-owner realignment; foundation 2026-08-22, productive
 Qt runtime 2026-08-22, GStreamer adapter 2026-08-22). This document defines
 the M11.3 contracts and records implementation status for each subphase.
@@ -28,7 +28,7 @@ the M11.3 contracts and records implementation status for each subphase.
 | M11.3A registry | IMPLEMENTED / TESTED |
 | M11.3A AudioEngineService | IMPLEMENTED FOUNDATION — NO SWITCHING YET |
 | Qt provider | IMPLEMENTED — **PRODUCTIVE REFERENCE ENGINE (M11.3B + M11.3B-R1)**; single canonical provider (registry identity), transactional startup, backend ownership + exception-safe close |
-| GStreamer provider | **IMPLEMENTED (M11.3C)** — operational GStreamerAudioPort (playbin3), lazy GI runtime, generation-guarded stale isolation, pump thread + Qt bridge dispatch; availability runtime-dependent; NOT default |
+| GStreamer provider | **IMPLEMENTED (M11.3C + M11.3C-R1)** — operational GStreamerAudioPort (playbin3), lazy GI runtime; R1: symbolic Gst.State semantics (no raw ints), ONE GLib MainContext/MainLoop/pump per port with explicit GSource attach (bus.create_watch + timeout_source_new), generation-aware TYPE-BASED provenance (child-element errors accepted; stale generations ignored), truthful probe (GI + Gst + playbin3 factory); availability runtime-dependent; NOT default |
 | MPD provider | PROBE ONLY — managed adapter M11.3D |
 | Engine availability runtime | foundation now — full discovery M11.3E |
 | Selection / persistence | M11.3F |

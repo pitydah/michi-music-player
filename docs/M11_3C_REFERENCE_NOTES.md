@@ -72,3 +72,19 @@ close (guard post-close).
 
 Zero source copied; todas las decisiones reimplementadas en contratos
 Michi-nativos.
+
+## M11.3C-R1 runtime correction (real GI verification)
+
+- Real Gst.State values verified: NULL=1, READY=2, PAUSED=3, PLAYING=4 —
+  the fake had modeled incompatible values; production now uses ONLY
+  symbolic `bindings.STATE.*` (regression-locked).
+- GLib ownership corrected: ONE MainContext/MainLoop/pump thread per port;
+  bus watch via `bus.create_watch()` + `source.set_callback` +
+  `source.attach(custom_context)`; position poll via
+  `GLib.timeout_source_new` + attach. Sources destroyed on pipeline
+  replacement/close; no orphan pump (pump_start_count == 1 across loads).
+- Provenance is TYPE-AWARE: STATE_CHANGED top-level pipeline only; ERROR
+  accepts child-element sources of the CURRENT generation; EOS/ASYNC_DONE/
+  DURATION_CHANGED generation-guarded. No catch-all src rule.
+- Provider probe truth: GI + Gst 1.0 + playbin3 factory must all exist for
+  available=True (playbin3 missing → unavailable with truthful reason).
