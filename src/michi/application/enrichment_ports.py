@@ -24,12 +24,17 @@ from michi.domain.enrichment import (
     AlbumKnowledgeProfile,
     ArtistCandidate,
     ArtistExternalIdentity,
+    ArtistExternalLinks,
     ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
+    BiographyKnowledge,
+    CommonsImageKnowledge,
+    CoverArtKnowledge,
     EnrichmentAssetRecord,
     ExternalIdentityHints,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
+    WikidataArtistClaims,
 )
 
 
@@ -334,3 +339,58 @@ class ProviderCachePort(ABC):
 
     @abstractmethod
     def remove_expired(self, older_than_days: int = 90) -> int: ...
+
+
+# ---------------------------------------------------------------------------
+# M6.9E — KNOWLEDGE PROVIDER PORTS (identity stays the resolver's authority)
+# ---------------------------------------------------------------------------
+
+
+class MusicBrainzKnowledgeProviderPort(ABC):
+    """MusicBrainz structured knowledge for a RESOLVED identity, plus
+    the verified URL relations that bridge to Wikidata/Wikipedia."""
+
+    @abstractmethod
+    def fetch_artist(
+        self, local_artist_key: str, external_artist_id: str
+    ) -> ArtistKnowledgeProfile: ...
+
+    @abstractmethod
+    def artist_links(self, external_artist_id: str) -> ArtistExternalLinks: ...
+
+    @abstractmethod
+    def fetch_release_group(
+        self, local_album_key: str, release_group_id: str, release_id: str = ""
+    ) -> AlbumKnowledgeProfile: ...
+
+
+class WikidataKnowledgeProviderPort(ABC):
+    """Wikidata structured facts ONLY for a verified QID (never name
+    search — Wikidata is not an identity resolver)."""
+
+    @abstractmethod
+    def fetch_artist_claims(self, qid: str) -> WikidataArtistClaims: ...
+
+
+class WikipediaBiographyProviderPort(ABC):
+    """Bounded Wikipedia biography for a VERIFIED page title."""
+
+    @abstractmethod
+    def fetch_biography(self, title: str, language: str = "") -> BiographyKnowledge: ...
+
+
+class WikimediaCommonsProviderPort(ABC):
+    """Verified Commons image metadata (license/attribution)."""
+
+    @abstractmethod
+    def fetch_image(self, file_title: str) -> CommonsImageKnowledge: ...
+
+
+class CoverArtArchiveProviderPort(ABC):
+    """CAA external album-cover fallback for a resolved Release or
+    Release Group."""
+
+    @abstractmethod
+    def fetch_cover(
+        self, release_id: str = "", release_group_id: str = ""
+    ) -> CoverArtKnowledge: ...

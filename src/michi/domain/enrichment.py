@@ -752,6 +752,16 @@ class ArtistKnowledgeProfile:
     biography_provenance: KnowledgeProvenance = field(
         default_factory=KnowledgeProvenance
     )
+    # M6.9E typed external knowledge (all provider-attributable via
+    # provenance; never canonical local metadata).
+    sort_name: str = ""
+    artist_type: str = ""
+    area: str = ""
+    country: str = ""
+    official_website: str = ""
+    wikipedia_page_title: str = ""
+    wikipedia_language: str = ""
+    commons_image_title: str = ""
 
 
 @dataclass(frozen=True)
@@ -782,6 +792,66 @@ class AlbumKnowledgeProfile:
                 "release-level facts (release_year/label) require a "
                 "specific release identity (release_id)"
             )
+
+
+# ---------------------------------------------------------------------------
+# 4a. PROVIDER EXTERNAL-KNOWLEDGE DTOS (M6.9E — pure, typed, provenance-bound)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ArtistExternalLinks:
+    """Verified identity links discovered through MusicBrainz URL
+    relationships — the ONLY lawful bridge to Wikidata/Wikipedia."""
+
+    wikidata_qid: str = ""
+    wikipedia_title: str = ""
+    wikipedia_language: str = ""
+
+
+@dataclass(frozen=True)
+class WikidataArtistClaims:
+    """Deterministic/fail-closed Wikidata facts for a VERIFIED QID.
+    Ambiguous multi-claims stay unresolved (empty)."""
+
+    country: str = ""
+    official_website: str = ""
+    commons_image_title: str = ""
+    wikipedia_title: str = ""
+    wikipedia_language: str = ""
+    begin_year: int = 0
+    end_year: int = 0
+
+
+@dataclass(frozen=True)
+class BiographyKnowledge:
+    """Bounded Wikipedia biography extract (never raw HTML)."""
+
+    text: str = ""
+    page_title: str = ""
+    source_url: str = ""
+    language: str = ""
+    license: str = ""
+    attribution: str = ""
+
+
+@dataclass(frozen=True)
+class CommonsImageKnowledge:
+    """Verified Wikimedia Commons image metadata (URL + license facts)."""
+
+    source_url: str = ""
+    license: str = ""
+    license_url: str = ""
+    artist: str = ""
+    attribution: str = ""
+
+
+@dataclass(frozen=True)
+class CoverArtKnowledge:
+    """Cover Art Archive external-cover metadata (fallback authority)."""
+
+    image_url: str = ""
+    entity_kind: str = ""  # "release" | "release-group"
 
 
 # ---------------------------------------------------------------------------
@@ -1008,7 +1078,9 @@ def _decode_provenance(value) -> KnowledgeProvenance | None:
     return KnowledgeProvenance(**kwargs)
 
 
-def _decode_profile(raw, model, str_fields, int_fields, tuple_fields, nested_fields):
+def _decode_profile(
+    raw, model, str_fields, int_fields, tuple_fields, nested_fields, optional_fields=()
+):
     try:
         payload = json.loads(raw)
     except ValueError:
@@ -1039,13 +1111,30 @@ def _decode_profile(raw, model, str_fields, int_fields, tuple_fields, nested_fie
         else:
             return None
         kwargs[name] = value
-    if set(kwargs) != set(model.__dataclass_fields__):
-        return None  # missing field(s)
+    missing = set(model.__dataclass_fields__) - set(kwargs)
+    # M6.9E: profile-extension fields are OPTIONAL on decode so that
+    # historical (R1/R2/R3-era) persisted profiles remain readable;
+    # every pre-extension field stays strictly required.
+    if not missing.issubset(set(optional_fields)):
+        return None  # missing required field(s)
     return model(**kwargs)
 
 
+_ARTIST_OPTIONAL_FIELDS = {
+    "sort_name",
+    "artist_type",
+    "area",
+    "country",
+    "official_website",
+    "wikipedia_page_title",
+    "wikipedia_language",
+    "commons_image_title",
+}
+
+
 def decode_artist_profile(raw: str) -> ArtistKnowledgeProfile | None:
-    """Strict decode; any violation returns None (skip, never fabricate)."""
+    """Strict decode; any violation returns None (skip, never fabricate).
+    M6.9E extension fields are optional (historical rows stay valid)."""
     return _decode_profile(
         raw,
         ArtistKnowledgeProfile,
@@ -1053,6 +1142,7 @@ def decode_artist_profile(raw: str) -> ArtistKnowledgeProfile | None:
         _ARTIST_INT_FIELDS,
         _ARTIST_TUPLE_FIELDS,
         _NESTED_PROVENANCE_FIELDS,
+        _ARTIST_OPTIONAL_FIELDS,
     )
 
 
