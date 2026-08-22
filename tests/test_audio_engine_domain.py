@@ -85,12 +85,27 @@ class TestDescriptor:
 
     def test_capabilities_are_transport_only(self):
         caps = AudioEngineCapabilities()
-        assert caps.local_file_playback is True
-        assert caps.seek and caps.pause and caps.volume and caps.mute
+        # conservative defaults: UNKNOWN != TRUE — implemented adapters
+        # explicitly supply truthful capabilities
+        assert caps.local_file_playback is False
+        assert caps.seek is False
+        assert caps.pause is False
+        assert caps.volume is False
+        assert caps.mute is False
         # M11.4/M11.5 capabilities must NOT exist here
         for forbidden in ("dsd", "bit_perfect", "exclusive", "sample_rates"):
             assert not hasattr(caps, forbidden)
             assert not hasattr(AudioEngineState(), forbidden)
+
+    def test_implemented_adapter_supplies_truthful_capabilities(self):
+        from michi.infrastructure.audio_engines.providers import QtEngineProvider
+
+        caps = QtEngineProvider().probe().capabilities
+        assert caps.local_file_playback is True
+        assert caps.seek is True
+        assert caps.pause is True
+        assert caps.volume is True
+        assert caps.mute is True
 
 
 class TestActivationSemantics:

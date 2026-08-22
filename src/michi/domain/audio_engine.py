@@ -48,11 +48,15 @@ class AudioEngineCapabilities:
     M11.4/M11.5 capabilities (DSD, DoP, bitPerfect, exclusive, hardwareVolume,
     sampleRates, deviceIds, DAC) deliberately do NOT belong here."""
 
-    local_file_playback: bool = True
-    seek: bool = True
-    pause: bool = True
-    volume: bool = True
-    mute: bool = True
+    # Conservative defaults: UNKNOWN != TRUE. Implemented adapters must
+    # explicitly supply their truthful transport capabilities (Qt provider
+    # does); probe-only providers (GStreamer/MPD before C/D) keep these
+    # conservative values until their adapters exist.
+    local_file_playback: bool = False
+    seek: bool = False
+    pause: bool = False
+    volume: bool = False
+    mute: bool = False
 
 
 @dataclass(frozen=True)

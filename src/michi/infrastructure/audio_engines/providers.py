@@ -48,11 +48,21 @@ class QtEngineProvider(AudioEngineProviderPort):
         except Exception as exc:  # pragma: no cover - import surface varies
             available = False
             reason = f"Qt Multimedia no disponible: {exc}"
+        from michi.domain.audio_engine import AudioEngineCapabilities
+
         return AudioEngineDescriptor(
             engine_id=self.engine_id,
             display_name=_QT_MULTIMEDIA_DISPLAY,
             available=available,
             unavailable_reason=reason,
+            # truthful transport capabilities of the implemented adapter
+            capabilities=AudioEngineCapabilities(
+                local_file_playback=True,
+                seek=True,
+                pause=True,
+                volume=True,
+                mute=True,
+            ),
         )
 
     def open(self) -> AudioPort:

@@ -10,6 +10,7 @@ import pytest
 
 import michi.bootstrap as bootstrap
 from michi.bootstrap import ApplicationContainer
+from michi.domain.audio_engine import AudioEngineId
 from michi.domain.persistence_health import (
     PersistenceDiagnostic,
     PersistenceHealth,
@@ -913,11 +914,23 @@ class TestBootstrapStartup:
         class BackendBoomError(RuntimeError):
             pass
 
-        def fake_backend():
-            events.append("backend")
-            raise BackendBoomError("stop here")
+        # M11.3B: the Qt backend is created through QtEngineProvider.open()
+        # inside the productive wiring — intercept the provider instead of
+        # the backend class.
+        class BoomProvider:
+            engine_id = AudioEngineId.QT_MULTIMEDIA
 
-        monkeypatch.setattr(bootstrap, "QtMultimediaBackend", fake_backend)
+            def __init__(self):
+                pass
+
+            def open(self):
+                events.append("backend")
+                raise BackendBoomError("stop here")
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(bootstrap, "QtEngineProvider", BoomProvider)
 
         container = ApplicationContainer()
         with pytest.raises(BackendBoomError):

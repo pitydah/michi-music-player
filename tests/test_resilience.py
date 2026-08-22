@@ -25,8 +25,16 @@ class StopSpy:
 
     def stop(self):
         self.calls += 1
+
+    def unbind(self):
+        self.calls += 1
         if self.fail:
             raise RuntimeError("stop failure")
+
+    def close(self):
+        self.calls += 1
+        if self.fail:
+            raise RuntimeError("close failure")
 
 
 class DisposeSpy:
@@ -193,6 +201,8 @@ class TestApplicationContainerShutdown:
         coord = StopSpy()
         prefs = StopSpy()
         backend = StopSpy()
+        router = StopSpy()
+        provider = StopSpy()
         engine = DeleteLaterSpy()
         pb = DisposeSpy()
         qb = DisposeSpy()
@@ -208,6 +218,8 @@ class TestApplicationContainerShutdown:
         container._lb = lb
         container._nb = nb
         container._backend = backend
+        container._audio_router = router
+        container._qt_engine_provider = provider
         container._engine = engine
 
         with pytest.raises(OSError, match="disk full"):
@@ -219,7 +231,7 @@ class TestApplicationContainerShutdown:
         assert qb.calls >= 1
         assert lb.calls >= 1
         assert nb.calls >= 1
-        assert backend.calls >= 1
+        assert provider.calls >= 1  # M11.3B: provider close (backend stop interno)
         assert engine.calls >= 1
         assert container._pb is None
         assert container._settings is None
@@ -230,6 +242,8 @@ class TestApplicationContainerShutdown:
         coord = StopSpy()
         prefs = StopSpy()
         backend = StopSpy()
+        router = StopSpy()
+        provider = StopSpy()
         engine = DeleteLaterSpy()
 
         pb = DisposeSpy(fail=True)
@@ -250,6 +264,8 @@ class TestApplicationContainerShutdown:
         container._lb = lb
         container._nb = nb
         container._backend = backend
+        container._audio_router = router
+        container._qt_engine_provider = provider
         container._engine = engine
 
         with pytest.raises(RuntimeError, match="dispose failure"):
@@ -258,7 +274,7 @@ class TestApplicationContainerShutdown:
         assert qb.calls >= 1
         assert lb.calls >= 1
         assert nb.calls >= 1
-        assert backend.calls >= 1
+        assert provider.calls >= 1  # M11.3B: provider close (backend stop interno)
         assert engine.calls >= 1
 
     def test_shutdown_idempotent_no_crash(self):
@@ -266,6 +282,8 @@ class TestApplicationContainerShutdown:
         coord = StopSpy()
         prefs = StopSpy()
         backend = StopSpy()
+        provider = StopSpy()  # provider.close() owned lifecycle
+        router = StopSpy()  # router.unbind() detach
         engine = DeleteLaterSpy()
         pb = DisposeSpy()
         qb = DisposeSpy()
@@ -285,6 +303,8 @@ class TestApplicationContainerShutdown:
         container._lb = lb
         container._nb = nb
         container._backend = backend
+        container._audio_router = router
+        container._qt_engine_provider = provider
         container._engine = engine
 
         container.shutdown()
@@ -292,7 +312,11 @@ class TestApplicationContainerShutdown:
 
         assert coord.calls == 1
         assert pb.calls == 1
-        assert backend.calls == 1
+        # M11.3B: the backend is stopped by the provider close; the router
+        # detaches BEFORE the provider closes (SWITCH ORDER)
+        assert router.calls == 1
+        assert provider.calls == 1
+        assert backend.calls == 0  # nunca detenido directamente por el container
 
     def test_settings_bridge_reference_cleared_after_shutdown(self):
         container = ApplicationContainer()
@@ -331,6 +355,8 @@ class TestApplicationContainerShutdown:
         coord = StopSpy()
         prefs = StopSpy()
         backend = StopSpy()
+        router = StopSpy()
+        provider = StopSpy()
         engine = DeleteLaterSpy()
         pb = DisposeSpy(fail=True)  # second failure
         qb = DisposeSpy()
@@ -346,6 +372,8 @@ class TestApplicationContainerShutdown:
         container._lb = lb
         container._nb = nb
         container._backend = backend
+        container._audio_router = router
+        container._qt_engine_provider = provider
         container._engine = engine
 
         with pytest.raises(OSError, match="disk full"):
@@ -355,7 +383,7 @@ class TestApplicationContainerShutdown:
         assert qb.calls == 1
         assert lb.calls == 1
         assert nb.calls == 1
-        assert backend.calls == 1
+        assert provider.calls == 1  # M11.3B: provider close idempotente
         assert engine.calls == 1
         assert container._pb is None
         assert container._backend is None

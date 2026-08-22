@@ -15,6 +15,9 @@ from PySide6.QtCore import QStandardPaths, Qt, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
+from michi.application.audio_engine_registry import AudioEngineRegistry
+from michi.application.audio_engine_service import AudioEngineService
+from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.coordinator import PlaybackCoordinator
 from michi.application.library_preferences_coordinator import (
     LibraryPreferencesCoordinator,
@@ -29,7 +32,13 @@ from michi.application.playlist_navigation_coordinator import (
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
+from michi.domain.audio_engine import AudioEngineId
 from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
+from michi.infrastructure.audio_engines.providers import (
+    GStreamerEngineProvider,
+    MpdEngineProvider,
+    QtEngineProvider,
+)
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.infrastructure.library_index import SqliteLibraryIndexRepository
 from michi.infrastructure.library_prefs import SqliteLibraryPrefsRepository
@@ -74,6 +83,10 @@ class ServiceGraph:
     queue: QueueService
     playback: PlaybackService
     backend: object
+    audio_router: AudioTransportRouter
+    audio_engine_registry: AudioEngineRegistry
+    audio_engine_service: AudioEngineService
+    qt_engine_provider: QtEngineProvider
     scanner: object
     metadata_extractor: object
     artwork_provider: object
@@ -100,8 +113,21 @@ def _build_services(
     tests). All library persistence is real: SqliteLibraryIndexRepository,
     SqliteLibraryPrefsRepository, SqlitePlaylistsRepository.
     """
+    # M11.3B: productive multi-engine runtime wiring — the canonical
+    # transport injected into PlaybackService/PlaybackCoordinator is the
+    # AudioTransportRouter (stable identity). The Qt engine is the
+    # reference provider; tests may inject a fake backend which is bound
+    # through the SAME router (TEST GRAPH == PRODUCTION GRAPH).
+    qt_provider = QtEngineProvider()
+    registry = AudioEngineRegistry(
+        [QtEngineProvider(), GStreamerEngineProvider(), MpdEngineProvider()]
+    )
+    engine_service = AudioEngineService(registry)
+    router = AudioTransportRouter()
     if backend is None:
-        backend = QtMultimediaBackend()
+        backend = qt_provider.open()
+    router.bind(AudioEngineId.QT_MULTIMEDIA, backend)
+    engine_service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
     if scanner is None:
         scanner = FilesystemLibraryScanner()
     if metadata_extractor is None:
@@ -111,7 +137,7 @@ def _build_services(
     if artwork_cache is _MISSING:
         artwork_cache = ArtworkCache(Path.home() / ".cache" / "michi" / "artwork")
 
-    playback = PlaybackService(backend)
+    playback = PlaybackService(router)
     queue = QueueService(playback)
 
     library_index = SqliteLibraryIndexRepository(db_path)
@@ -157,6 +183,10 @@ def _build_services(
         queue=queue,
         playback=playback,
         backend=backend,
+        audio_router=router,
+        audio_engine_registry=registry,
+        audio_engine_service=engine_service,
+        qt_engine_provider=qt_provider,
         scanner=scanner,
         metadata_extractor=metadata_extractor,
         artwork_provider=artwork_provider,
@@ -171,6 +201,8 @@ class ApplicationContainer:
         self._app: QGuiApplication | None = None
         self._engine: QQmlApplicationEngine | None = None
         self._backend: QtMultimediaBackend | None = None
+        self._audio_router: AudioTransportRouter | None = None
+        self._qt_engine_provider: QtEngineProvider | None = None
         self._settings: SettingsService | None = None
         self._playback: PlaybackService | None = None
         self._queue: QueueService | None = None
@@ -202,6 +234,8 @@ class ApplicationContainer:
         repo = SQLiteSettingsRepository.open_for_startup(db_path)
         graph = _build_services(db_path)
         backend = graph.backend
+        self._audio_router = graph.audio_router
+        self._qt_engine_provider = graph.qt_engine_provider
         settings = SettingsService(repo)
 
         playback = graph.playback
@@ -227,7 +261,9 @@ class ApplicationContainer:
         lib_prefs = LibraryPreferencesCoordinator(library, settings)
         lib_prefs.start()
 
-        coordinator = PlaybackCoordinator(backend, queue, playback)
+        # M11.3B: PlaybackCoordinator subscribes to the SAME router instance
+        # as PlaybackService — one transport identity for both consumers.
+        coordinator = PlaybackCoordinator(graph.audio_router, queue, playback)
         coordinator.start()
 
         # Session persistence (M5.C5): runtime checkpoints + startup restore.
@@ -363,9 +399,18 @@ class ApplicationContainer:
             except Exception as exc:
                 error = error or exc
 
+        # M11.3B SWITCH ORDER: the router detaches BEFORE the provider
+        # closes. The provider owns the backend lifecycle (stop + release);
+        # the container never stops the backend directly anymore.
         try:
-            if self._backend:
-                self._backend.stop()
+            if self._audio_router:
+                self._audio_router.unbind()
+        except Exception as exc:
+            error = error or exc
+
+        try:
+            if self._qt_engine_provider:
+                self._qt_engine_provider.close()
         except Exception as exc:
             error = error or exc
 
@@ -376,6 +421,8 @@ class ApplicationContainer:
             error = error or exc
 
         self._engine = None
+        self._audio_router = None
+        self._qt_engine_provider = None
         self._lb = None
         self._plb = None
         self._qb = None
