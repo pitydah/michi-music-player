@@ -59,6 +59,7 @@ from michi.domain.enrichment import (
     dedupe_identity_ids,
     resolve_album_identity,
     resolve_artist_identity,
+    resolve_release_hint_for_group,
 )
 
 logger = logging.getLogger(__name__)
@@ -161,6 +162,71 @@ class EnrichmentService:
             existing.local_album_key,
             existing.release_group_id,
             existing.release_id,
+            generation,
+        )
+        return EnrichmentRequestOutcome(resolution=resolution, request=request)
+
+    def _refine_embedded_album_release(
+        self,
+        existing: AlbumExternalIdentity,
+        evidence: AlbumIdentityEvidence,
+        generation: int,
+    ) -> EnrichmentRequestOutcome:
+        """R3.2: persisted EMBEDDED RG + NEW explicit release hint(s).
+
+        The persisted group stays authoritative (never downgraded to
+        AUTO); the current release evidence is evaluated via the pure
+        contradiction-aware helper:
+        - corroborated in the persisted group -> refine the edition
+          (MatchMethod remains EMBEDDED_HINT; old release-level
+          knowledge invalidated if the tuple changed);
+        - uncorroborated -> group preserved, release not trusted;
+        - proven in another group / multiple groups -> IDENTITY_CONFLICT
+          and revocation of the non-manual mapping.
+        """
+        hints = dedupe_identity_ids(evidence.identity_hints.release_ids)
+        if len(hints) > 1:
+            self._revoke_album_identity(existing.local_album_key)
+            return EnrichmentRequestOutcome(
+                resolution=AlbumIdentityResolution(
+                    status=IdentityResolutionStatus.IDENTITY_CONFLICT,
+                    candidate_ids=hints,
+                ),
+                request=None,
+            )
+        edition_candidates = self._resolver.find_release_edition_candidates(evidence)
+        status, release_id = resolve_release_hint_for_group(
+            existing.release_group_id, hints[0], edition_candidates
+        )
+        if status is IdentityResolutionStatus.IDENTITY_CONFLICT:
+            self._revoke_album_identity(existing.local_album_key)
+            return EnrichmentRequestOutcome(
+                resolution=AlbumIdentityResolution(
+                    status=IdentityResolutionStatus.IDENTITY_CONFLICT,
+                    candidate_ids=(hints[0],),
+                ),
+                request=None,
+            )
+        self._persist_album_identity_transition(
+            AlbumExternalIdentity(
+                local_album_key=existing.local_album_key,
+                release_group_id=existing.release_group_id,
+                release_id=release_id,
+                status=IdentityStatus.RESOLVED,
+                match_method=MatchMethod.EMBEDDED_HINT,
+                resolved_at=_utc_now_iso(),
+            )
+        )
+        resolution = AlbumIdentityResolution(
+            status=IdentityResolutionStatus.RESOLVED,
+            release_group_id=existing.release_group_id,
+            release_id=release_id,
+        )
+        request = self._register(
+            EnrichmentEntityKind.ALBUM,
+            existing.local_album_key,
+            existing.release_group_id,
+            release_id,
             generation,
         )
         return EnrichmentRequestOutcome(resolution=resolution, request=request)
@@ -329,12 +395,27 @@ class EnrichmentService:
         current_rg_hints = dedupe_identity_ids(
             evidence.identity_hints.release_group_ids
         )
+        current_release_hints = dedupe_identity_ids(evidence.identity_hints.release_ids)
         if (
             existing is not None
             and existing.match_method is MatchMethod.EMBEDDED_HINT
             and not current_rg_hints
+            and not current_release_hints
         ):
+            # R3.2: short-circuit ONLY without ANY current direct album
+            # hint — a NEW explicit release_id is direct edition evidence
+            # and must be processed, never ignored.
             return self._short_circuit_album(existing, generation)
+        if (
+            existing is not None
+            and existing.match_method is MatchMethod.EMBEDDED_HINT
+            and not current_rg_hints
+            and current_release_hints
+        ):
+            # R3.2 RELEASE-ONLY REFINEMENT: the persisted RG remains the
+            # stronger direct identity authority; the current explicit
+            # release hint is evaluated against it.
+            return self._refine_embedded_album_release(existing, evidence, generation)
 
         if not evidence.resolved_artist_external_id and evidence.local_album_artist_key:
             artist_identity = self._identity_repository.load_artist_identity(
