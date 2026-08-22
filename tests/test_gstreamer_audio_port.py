@@ -172,6 +172,8 @@ class FakeBindings:
         self.failed_states: set = set()
         self.fail_next_states: list = []
         self.ignore_quit = False  # simula pump que no termina
+        self.null_request_count = 0  # requests STATE.NULL emitidos
+        self.fail_remove_watch = False  # buses nuevos heredan el fallo
 
     def supports_pump(self):
         return True
@@ -191,6 +193,8 @@ class FakeBindings:
         return p
 
     def set_state(self, pipeline, state):
+        if state == _FakeState.NULL:
+            self.null_request_count += 1
         if self.fail_next_states:
             expected = self.fail_next_states.pop(0)
             if state == expected:
@@ -200,7 +204,9 @@ class FakeBindings:
         return pipeline.set_state(state)
 
     def get_bus(self, pipeline):
-        return pipeline.get_bus()
+        bus = pipeline.get_bus()
+        bus.fail_remove_watch = self.fail_remove_watch
+        return bus
 
     def create_context(self):
         return "ctx"
@@ -1294,14 +1300,186 @@ class TestBusWatchLifecycleSeal:
         with pytest.raises(RuntimeError, match="bus watch"):
             port.close()
         assert port._closed is True
-        # el fallo de remoción (cronológicamente primero en el teardown
-        # terminal) es el error primario; el pipeline queda retenido
-        assert port._pipeline is bindings.pipelines[0]
+        # R5: el fallo de remoción (cronológicamente primero en el teardown
+        # terminal) es el error primario, pero el pipeline igual recibió
+        # NULL y se liberó; el bookkeeping del bus watch queda como
+        # evidencia de la remoción fallida
+        assert port._pipeline is None  # NULL OK → transport detenido
+        assert port._bus_source is not None  # bookkeeping retenido
         assert port._pump is None  # la limpieza del pump continuó
         # liberación manual del bookkeeping retenido para salir limpio
         bus_a.fail_remove_watch = False
         port._detach_pipeline_sources()
+        assert bus_a.remove_watch_count == 1
+        assert port._bus_source is None
+
+
+class TestTerminalCleanupFirstErrorWins:
+    """M11.3C-R5: el cleanup terminal es BEST-EFFORT — un error de limpieza
+    NUNCA corta los pasos posteriores; el primer error cronológico gana."""
+
+    def test_close_remove_failure_still_nulls_pipeline(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = port._pipeline
+        bus_a = port._bus
+        bus_a.fail_remove_watch = True
+        with pytest.raises(RuntimeError, match="bus watch"):
+            port.close()
+        assert port._closed is True
+        # el pipeline recibió NULL a pesar del fallo del watch
+        assert bindings.null_request_count == 1
+        assert pipeline.state == _FakeState.NULL
+        assert port._pipeline is None  # NULL OK → transport detenido
+        assert bus_a.remove_watch_count == 0  # la remoción falló (evidencia)
+        assert port._pump is None  # pump terminó
+        assert port._timer_source is None  # timer destruido
+        bus_a.fail_remove_watch = False
+        port._detach_pipeline_sources()
+
+    def test_close_remove_and_null_double_failure(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = port._pipeline
+        bus_a = port._bus
+        bus_a.fail_remove_watch = True
+        bindings.failed_states.add(_FakeState.NULL)
+        with pytest.raises(RuntimeError, match="bus watch"):
+            port.close()
+        # first-error-wins: el watch falló primero → primario
+        assert bindings.null_request_count == 1  # NULL igual se intentó
+        assert port._pipeline is pipeline  # NULL falló → retenido
+        assert port._pump is None  # pump cleanup continuó
+        assert port._closed is True
+        bus_a.fail_remove_watch = False
+        bindings.failed_states.discard(_FakeState.NULL)
+        port._detach_pipeline_sources()
         port._pipeline = None
+
+    def test_close_null_failure_primary_over_pump_timeout(self, qapp):
+        # R3 regression: remove OK + NULL FAIL + pump timeout → NULL primario
+        bindings = FakeBindings()
+        bindings.failed_states.add(_FakeState.NULL)
+        bindings.ignore_quit = True
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pump = port._pump
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.close()
+        assert port._pump is pump  # worker vivo retenido (secundario)
+        bindings.ignore_quit = False
+        bindings.quit_loop(port._loop or "loop")
+        pump.join(timeout=2.0)
+        port._pump = None
+        port._loop = None
+        port._context = None
+
+    def test_close_pump_only_failure(self, qapp):
+        # R2/R4 regression: remove OK + NULL OK + pump timeout → pump primario
+        bindings = FakeBindings()
+        bindings.ignore_quit = True
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pump = port._pump
+        with pytest.raises(RuntimeError, match="did not terminate"):
+            port.close()
+        assert port._pipeline is None  # NULL OK
+        assert port._pump is pump
+        bindings.ignore_quit = False
+        bindings.quit_loop(port._loop or "loop")
+        pump.join(timeout=2.0)
+        port._pump = None
+        port._loop = None
+        port._context = None
+
+
+class TestPrerollCleanupErrorOrder:
+    """M11.3C-R5 P1-02: en la limpieza del preroll fallido, el NULL cleanup
+    es PRIMARIO; el detach del bus es SECUNDARIO y nunca lo reemplaza."""
+
+    def _port_with(self, bindings, fail_paused, fail_null, fail_remove):
+        if fail_paused:
+            bindings.failed_states.add(_FakeState.PAUSED)
+        if fail_null:
+            bindings.failed_states.add(_FakeState.NULL)
+        bindings.fail_remove_watch = fail_remove
+        port = _port(bindings)
+        rejected = []
+        accepted = []
+        states = []
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        return port, rejected, accepted, states
+
+    def test_preroll_null_ok_remove_ok_reject_only(self, qapp):
+        # CASE 1: PAUSED FAIL + NULL OK + remove OK → solo rechazo, reusable
+        bindings = FakeBindings()
+        port, rejected, accepted, _states = self._port_with(
+            bindings, True, False, False
+        )
+        port.load(Path("/m/b.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert rejected == [
+            (Path("/m/b.flac"), "GStreamer failed to enter PAUSED during preroll")
+        ]
+        assert accepted == []
+        assert port._pipeline is None  # NULL OK → liberado
+        assert port._bus_source is None
+        # port reutilizable
+        port.close()
+
+    def test_preroll_null_ok_remove_fail_raises_bus_error(self, qapp):
+        # CASE 2: PAUSED FAIL + NULL OK + remove FAIL → bus cleanup error
+        bindings = FakeBindings()
+        port, rejected, accepted, states = self._port_with(bindings, True, False, True)
+        with pytest.raises(RuntimeError, match="bus watch"):
+            port.load(Path("/m/b.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert rejected == [
+            (Path("/m/b.flac"), "GStreamer failed to enter PAUSED during preroll")
+        ]
+        assert accepted == []
+        assert states == []
+        # el pipeline ya llegó a NULL pero el ownership queda retenido como
+        # evidencia de que el lifecycle cleanup no completó
+        assert port._pipeline is not None
+        assert port._bus_source is not None  # bookkeeping del watch retenido
+        # limpieza para salir del test
+        bus = port._bus
+        bus.fail_remove_watch = False
+        port._detach_pipeline_sources()
+        port._pipeline = None
+
+    def test_preroll_triple_failure_null_is_primary(self, qapp):
+        # CASE 3 CRÍTICO: PAUSED FAIL + NULL FAIL + remove FAIL
+        # → primario: NULL cleanup failure (NO "bus watch")
+        bindings = FakeBindings()
+        port, rejected, accepted, states = self._port_with(bindings, True, True, True)
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.load(Path("/m/b.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert rejected == [
+            (Path("/m/b.flac"), "GStreamer failed to enter PAUSED during preroll")
+        ]
+        assert accepted == []
+        assert states == []
+        failed_pipeline = bindings.pipelines[-1]
+        assert port._pipeline is failed_pipeline  # ownership retenido
+        assert bindings.null_request_count == 1  # NULL intentado exactamente 1
+        assert port._current_path is None
+        assert port._pending_path is None
+        # close() posterior con fallos removidos limpia todo
+        bindings.failed_states.discard(_FakeState.NULL)
+        bus = port._bus
+        bus.fail_remove_watch = False
+        port.close()
+        assert port._pipeline is None
 
 
 @pytest.mark.gstreamer_runtime
