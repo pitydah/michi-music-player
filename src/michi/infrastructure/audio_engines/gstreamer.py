@@ -238,9 +238,13 @@ class GStreamerAudioPort(AudioPort):
     """playbin3 transport behind the canonical AudioPort contract.
 
     ONE GLib MainContext/MainLoop/pump thread per port (created once);
-    each load() replaces the pipeline and its bus GSource, capturing the
-    current generation in the bus callback. Messages are processed by a
-    type-aware provenance policy. close() terminates everything."""
+    each load() replaces the pipeline and its Gst.Bus watch installed
+    through Gst.Bus.add_watch() while the port's custom MainContext is
+    thread-default, capturing the current generation in the bus callback.
+    The bounded position timer remains an explicit GSource owned by the
+    custom context. Messages are processed by a type-aware provenance
+    policy. close() terminates everything (best-effort, first-error-wins).
+    """
 
     def __init__(self, bindings: GStreamerBindings | None = None) -> None:
         super().__init__()
@@ -407,18 +411,27 @@ class GStreamerAudioPort(AudioPort):
             self._eos_emitted = False
             if candidate is not None:
                 self._bridge.sig_rej.emit(candidate, reason)
-            if self._bindings.set_state(pipeline, self._bindings.STATE.NULL):
-                self._detach_pipeline_sources()
-                self._pipeline = None
-            else:
-                # double failure: el pipeline fallido queda retenido (close()
-                # podrá limpiarlo); su bus se desacopla para que ningún
-                # mensaje suelto pueda leerse como aceptación.
-                self._detach_pipeline_sources()
-                raise RuntimeError(
+            # Limpieza del pipeline fallido — FIRST LIFECYCLE CLEANUP ERROR
+            # WINS (M11.3C-R5 P1-02): el NULL cleanup es PRIMARIO; el
+            # detach del bus watch es SECUNDARIO y NUNCA reemplaza al error
+            # de NULL. media_rejected ya fue emitido (evento semántico).
+            primary_cleanup_error = None
+            if not self._bindings.set_state(pipeline, self._bindings.STATE.NULL):
+                primary_cleanup_error = RuntimeError(
                     "pipeline fallido no pudo transicionar a NULL durante la "
                     "limpieza de preroll"
                 )
+            try:
+                self._detach_pipeline_sources()
+            except RuntimeError as exc:
+                if primary_cleanup_error is None:
+                    primary_cleanup_error = exc
+                # si el NULL ya falló, el error del bus queda como falla
+                # secundaria: no reemplaza al primario
+            if primary_cleanup_error is None:
+                self._pipeline = None
+            if primary_cleanup_error is not None:
+                raise primary_cleanup_error
             return
 
     def play(self) -> None:
@@ -496,22 +509,14 @@ class GStreamerAudioPort(AudioPort):
             return
         self._closed = True
         self._generation += 1  # invalidate any in-flight message
-        # FIRST-ERROR-WINS (M11.3C-R3): la secuencia canónica es 1) invalidar
-        # generación, 2) teardown del pipeline, 3) limpieza de sources,
-        # 4) quit del pump, 5) join. La PRIMERA falla cronológica es la
-        # autoritativa; las posteriores NUNCA reemplazan a la primaria.
-        primary_error = None
-        try:
-            teardown_ok = self._teardown_pipeline_terminal()
-        except RuntimeError as exc:
-            # bus watch removal failure (or watch-without-bus): the first
-            # chronological cleanup error stays authoritative (M11.3C-R4)
-            primary_error = exc
-        else:
-            if not teardown_ok:
-                primary_error = RuntimeError(
-                    "pipeline no pudo transicionar a NULL durante close"
-                )
+        # FIRST-ERROR-WINS (M11.3C-R3/R5): la secuencia canónica es
+        # 1) invalidar generación, 2) teardown del pipeline (bus watch +
+        # NULL, best-effort — un fallo de remoción NUNCA salta el request
+        # NULL), 3) limpieza de sources, 4) quit del pump, 5) join. La
+        # PRIMERA falla cronológica es la autoritativa; las posteriores
+        # NUNCA reemplazan a la primaria. El teardown terminal ya no puede
+        # lanzar: devuelve su primer error.
+        primary_error = self._teardown_pipeline_terminal()
         # destroy timer + sources
         if self._timer_source is not None:
             self._bindings.destroy_source(self._timer_source)
@@ -559,18 +564,39 @@ class GStreamerAudioPort(AudioPort):
         self._pipeline = None
         return True
 
-    def _teardown_pipeline_terminal(self) -> bool:
-        """Teardown TERMINAL (close): el detach de fuentes es aceptable
-        aunque NULL luego falle (port._closed, sin callbacks futuros), pero
-        la referencia al pipeline se retiene si NULL falla. Devuelve True si
-        llegó a NULL (o no había pipeline)."""
+    def _teardown_pipeline_terminal(self) -> Exception | None:
+        """Teardown TERMINAL best-effort (close). Devuelve el PRIMER error
+        cronológico de limpieza, o None.
+
+        M11.3C-R5: un error de cleanup NUNCA corta la secuencia. Aunque el
+        detach del bus watch falle, el pipeline SIEMPRE recibe su request
+        NULL; la referencia se retiene solo si NULL falla (ownership
+        truthful). El pump/timer cleanup ocurre en close() después."""
         if self._pipeline is None:
-            return True
-        self._detach_pipeline_sources()
-        if not self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL):
-            return False
-        self._pipeline = None
-        return True
+            return None
+        first_error = None
+        try:
+            self._detach_pipeline_sources()
+        except RuntimeError as exc:
+            first_error = exc  # bus watch removal failure (o watch sin bus)
+        # NON-NEGOTIABLE: el request NULL se intenta aunque el detach falle
+        try:
+            null_ok = self._bindings.set_state(
+                self._pipeline, self._bindings.STATE.NULL
+            )
+        except Exception as exc:  # noqa: BLE001 — best-effort terminal
+            if first_error is None:
+                first_error = exc
+        else:
+            if null_ok:
+                # transport detenido: el pipeline se libera aunque el
+                # bookkeeping del bus watch quede como evidencia
+                self._pipeline = None
+            elif first_error is None:
+                first_error = RuntimeError(
+                    "pipeline no pudo transicionar a NULL durante close"
+                )
+        return first_error
 
     # ------------------------------------------------------------------
     # bus message translation — TYPE-AWARE provenance (M11.3C-R1)
