@@ -84,10 +84,10 @@ class ExternalIdentityHints:
 
     musicbrainz_artist_ids: tuple[str, ...] = ()
     musicbrainz_album_artist_ids: tuple[str, ...] = ()
-    musicbrainz_release_id: str = ""
-    musicbrainz_release_group_id: str = ""
-    musicbrainz_recording_id: str = ""
-    musicbrainz_release_track_id: str = ""
+    musicbrainz_release_group_ids: tuple[str, ...] = ()
+    musicbrainz_release_ids: tuple[str, ...] = ()
+    musicbrainz_recording_ids: tuple[str, ...] = ()
+    musicbrainz_release_track_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -120,16 +120,12 @@ class AlbumIdentityHints:
 
     @classmethod
     def from_file_hints(cls, raw: ExternalIdentityHints) -> "AlbumIdentityHints":
-        """Project the album-role hints from raw file hints."""
+        """Project the album-role hints from raw file hints (R1: every
+        distinct same-role observation is preserved — conflicts are the
+        domain gates' job, never first-wins)."""
         return cls(
-            release_group_ids=(
-                (raw.musicbrainz_release_group_id,)
-                if raw.musicbrainz_release_group_id
-                else ()
-            ),
-            release_ids=(
-                (raw.musicbrainz_release_id,) if raw.musicbrainz_release_id else ()
-            ),
+            release_group_ids=dedupe_identity_ids(raw.musicbrainz_release_group_ids),
+            release_ids=dedupe_identity_ids(raw.musicbrainz_release_ids),
             album_artist_ids=dedupe_identity_ids(raw.musicbrainz_album_artist_ids),
         )
 
@@ -728,6 +724,7 @@ class KnowledgeProvenance:
     license: str = ""
     license_url: str = ""
     attribution: str = ""
+    is_stale: bool = False  # R1: truthfully marks stale-cache knowledge
 
 
 @dataclass(frozen=True)
@@ -757,11 +754,20 @@ class ArtistKnowledgeProfile:
     sort_name: str = ""
     artist_type: str = ""
     area: str = ""
-    country: str = ""
     official_website: str = ""
     wikipedia_page_title: str = ""
     wikipedia_language: str = ""
     commons_image_title: str = ""
+    # R1 provenance-by-provider: Wikidata facts carry their OWN
+    # provenance and never overwrite MusicBrainz facts (begin/end stay
+    # MusicBrainz-owned).
+    country_qid: str = ""
+    country_label: str = ""
+    wikidata_begin_year: int = 0
+    wikidata_end_year: int = 0
+    wikidata_provenance: KnowledgeProvenance = field(
+        default_factory=KnowledgeProvenance
+    )
 
 
 @dataclass(frozen=True)
@@ -812,15 +818,19 @@ class ArtistExternalLinks:
 @dataclass(frozen=True)
 class WikidataArtistClaims:
     """Deterministic/fail-closed Wikidata facts for a VERIFIED QID.
-    Ambiguous multi-claims stay unresolved (empty)."""
+    Ambiguous multi-claims stay unresolved (empty). R1: country is a
+    QID (never disguised as a label); freshness rides along truthfully."""
 
-    country: str = ""
+    country_qid: str = ""
+    country_label: str = ""
     official_website: str = ""
     commons_image_title: str = ""
     wikipedia_title: str = ""
     wikipedia_language: str = ""
     begin_year: int = 0
     end_year: int = 0
+    retrieved_at: str = ""
+    is_stale: bool = False
 
 
 @dataclass(frozen=True)
@@ -833,6 +843,8 @@ class BiographyKnowledge:
     language: str = ""
     license: str = ""
     attribution: str = ""
+    retrieved_at: str = ""
+    is_stale: bool = False
 
 
 @dataclass(frozen=True)
@@ -844,6 +856,8 @@ class CommonsImageKnowledge:
     license_url: str = ""
     artist: str = ""
     attribution: str = ""
+    retrieved_at: str = ""
+    is_stale: bool = False
 
 
 @dataclass(frozen=True)
@@ -1063,18 +1077,26 @@ def encode_album_profile(profile: AlbumKnowledgeProfile) -> str:
 
 
 def _decode_provenance(value) -> KnowledgeProvenance | None:
-    """Strict nested provenance decode: dict of str fields only."""
+    """Strict nested provenance decode. R1: ``is_stale`` is OPTIONAL on
+    decode (historical rows without it decode as False — backward
+    compatible, no schema change)."""
     if not isinstance(value, dict):
         return None
     kwargs = {}
     for name, item in value.items():
         if name not in KnowledgeProvenance.__dataclass_fields__:
             continue  # future field — tolerated
-        if not isinstance(item, str):
+        if name == "is_stale":
+            if not isinstance(item, bool):
+                return None
+        elif not isinstance(item, str):
             return None
         kwargs[name] = item
-    if set(kwargs) != set(KnowledgeProvenance.__dataclass_fields__):
+    missing = set(KnowledgeProvenance.__dataclass_fields__) - set(kwargs)
+    if missing and missing != {"is_stale"}:
         return None
+    if "is_stale" not in kwargs:
+        kwargs["is_stale"] = False
     return KnowledgeProvenance(**kwargs)
 
 
@@ -1124,11 +1146,15 @@ _ARTIST_OPTIONAL_FIELDS = {
     "sort_name",
     "artist_type",
     "area",
-    "country",
     "official_website",
     "wikipedia_page_title",
     "wikipedia_language",
     "commons_image_title",
+    "country_qid",
+    "country_label",
+    "wikidata_begin_year",
+    "wikidata_end_year",
+    "wikidata_provenance",
 }
 
 

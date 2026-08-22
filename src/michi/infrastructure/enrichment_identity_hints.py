@@ -65,22 +65,20 @@ class MutagenIdentityHintExtractor(IdentityHintExtractorPort):
             role = _ALL_ROLES.get(str(key).casefold())
             if role is None:
                 continue
+            # R1: read EVERY valid observation of the same role; strip;
+            # drop blanks; identical ids dedupe; DISTINCT ids are
+            # preserved (conflict semantics belong to the domain gates —
+            # never first-wins here).
             observed.setdefault(role, []).extend(_as_strings(value))
 
-        def single(role: str) -> str:
-            """First distinct non-blank observation for a single-value
-            role (extra distinct observations ride the tuple roles; the
-            domain conflict gates remain authoritative)."""
-            ids = dedupe_identity_ids(observed.get(role, []))
-            return ids[0] if ids else ""
+        def role_ids(role: str) -> tuple[str, ...]:
+            return dedupe_identity_ids(observed.get(role, []))
 
         return ExternalIdentityHints(
-            musicbrainz_artist_ids=dedupe_identity_ids(observed.get("artist_ids", [])),
-            musicbrainz_album_artist_ids=dedupe_identity_ids(
-                observed.get("album_artist_ids", [])
-            ),
-            musicbrainz_release_group_id=single("release_group_ids"),
-            musicbrainz_release_id=single("release_ids"),
-            musicbrainz_recording_id=single("recording_ids"),
-            musicbrainz_release_track_id=single("release_track_ids"),
+            musicbrainz_artist_ids=role_ids("artist_ids"),
+            musicbrainz_album_artist_ids=role_ids("album_artist_ids"),
+            musicbrainz_release_group_ids=role_ids("release_group_ids"),
+            musicbrainz_release_ids=role_ids("release_ids"),
+            musicbrainz_recording_ids=role_ids("recording_ids"),
+            musicbrainz_release_track_ids=role_ids("release_track_ids"),
         )

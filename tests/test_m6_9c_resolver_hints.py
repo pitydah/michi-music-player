@@ -400,7 +400,7 @@ class TestIdentityHints:
                 "/m/a.flac": ExternalIdentityHints(
                     musicbrainz_artist_ids=("track-id",),
                     musicbrainz_album_artist_ids=("album-id",),
-                    musicbrainz_release_group_id="rg-x",
+                    musicbrainz_release_group_ids=("rg-x",),
                 )
             }
         )
@@ -471,8 +471,8 @@ class TestEvidenceBuilder:
         extractor = TestIdentityHints.FakeHintExtractor(
             {
                 "/m/a.flac": ExternalIdentityHints(
-                    musicbrainz_release_group_id="rg-x",
-                    musicbrainz_release_id="rel-x",
+                    musicbrainz_release_group_ids=("rg-x",),
+                    musicbrainz_release_ids=("rel-x",),
                 ),
                 "/m/b.flac": ExternalIdentityHints(),
             }

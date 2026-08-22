@@ -29,6 +29,8 @@ def _aggregate_hints(
         if merged is None:
             merged = hints
             continue
+        # R1: AGGREGATION IS A UNION of same-role observations — never
+        # `a or b` (which would hide cross-track conflicts).
         merged = ExternalIdentityHints(
             musicbrainz_artist_ids=(
                 *merged.musicbrainz_artist_ids,
@@ -38,19 +40,21 @@ def _aggregate_hints(
                 *merged.musicbrainz_album_artist_ids,
                 *hints.musicbrainz_album_artist_ids,
             ),
-            musicbrainz_release_id=(
-                merged.musicbrainz_release_id or hints.musicbrainz_release_id
+            musicbrainz_release_group_ids=(
+                *merged.musicbrainz_release_group_ids,
+                *hints.musicbrainz_release_group_ids,
             ),
-            musicbrainz_release_group_id=(
-                merged.musicbrainz_release_group_id
-                or hints.musicbrainz_release_group_id
+            musicbrainz_release_ids=(
+                *merged.musicbrainz_release_ids,
+                *hints.musicbrainz_release_ids,
             ),
-            musicbrainz_recording_id=(
-                merged.musicbrainz_recording_id or hints.musicbrainz_recording_id
+            musicbrainz_recording_ids=(
+                *merged.musicbrainz_recording_ids,
+                *hints.musicbrainz_recording_ids,
             ),
-            musicbrainz_release_track_id=(
-                merged.musicbrainz_release_track_id
-                or hints.musicbrainz_release_track_id
+            musicbrainz_release_track_ids=(
+                *merged.musicbrainz_release_track_ids,
+                *hints.musicbrainz_release_track_ids,
             ),
         )
     return merged or ExternalIdentityHints()

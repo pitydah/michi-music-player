@@ -122,10 +122,10 @@ class TestExternalIdentityHintsAreSeparate:
         assert ExternalIdentityHints() == ExternalIdentityHints(
             musicbrainz_artist_ids=(),
             musicbrainz_album_artist_ids=(),
-            musicbrainz_release_id="",
-            musicbrainz_release_group_id="",
-            musicbrainz_recording_id="",
-            musicbrainz_release_track_id="",
+            musicbrainz_release_ids=(),
+            musicbrainz_release_group_ids=(),
+            musicbrainz_recording_ids=(),
+            musicbrainz_release_track_ids=(),
         )
 
 
@@ -172,7 +172,7 @@ class TestRoleSeparation:
         raw = ExternalIdentityHints(
             musicbrainz_artist_ids=("freddie-id",),
             musicbrainz_album_artist_ids=("various-id",),
-            musicbrainz_release_group_id="rg-x",
+            musicbrainz_release_group_ids=("rg-x",),
         )
         artist_hints = ArtistIdentityHints.from_file_hints(raw)
         album_hints = AlbumIdentityHints.from_file_hints(raw)

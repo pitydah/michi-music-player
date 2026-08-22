@@ -45,6 +45,11 @@ class EnrichmentProviderError(RuntimeError):
     caller discards the request and the local library stays untouched."""
 
 
+class EnrichmentTransportError(EnrichmentProviderError):
+    """R1: operational transport failure (URLError/TimeoutError/OSError/
+    body-read failure) — retryable category, never an HTTP status."""
+
+
 class EnrichmentHttpStatusError(EnrichmentProviderError):
     """Narrow transport error carrying the provider HTTP status (M6.9):
     enables the bounded retry policy (429/502/503/504) without leaking
