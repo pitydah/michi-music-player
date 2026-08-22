@@ -171,3 +171,31 @@ def test_album_table_header_click_to_sort_wired():
     assert "signal sortModeRequested(string mode)" in host
     library_view = read("views/LibraryView.qml")
     assert "onSortModeRequested: mode => root.albumSortMode = mode" in library_view
+
+
+# ── Phase 2: queue keyboard navigation and dismissal ──────────────────────────
+
+
+def test_queue_list_keyboard_navigation_and_selection_feedback():
+    content = read("components/QueuePanel.qml")
+    assert "keyNavigationEnabled: true" in content
+    assert "activeFocusOnTab: true" in content
+    assert "selected: queueList.isCurrentItem" in content
+    assert "onActiveFocusChanged" in content
+    assert "MichiScrollBar" in content
+
+
+def test_queue_clear_requires_confirmation():
+    content = read("components/QueuePanel.qml")
+    assert "clearQueueDialog.open()" in content
+    assert 'title: qsTr("Clear queue?")' in content
+    assert 'variant: "danger"' in content
+
+
+def test_queue_view_dismisses_with_escape_and_animation():
+    content = read("views/QueueView.qml")
+    assert "Keys.onEscapePressed: root.dismiss()" in content
+    assert "function dismiss()" in content
+    assert "enabled: root.revealed" in content
+    assert "Accessible.role: Accessible.Dialog" in content
+    assert "root.forceActiveFocus()" in content

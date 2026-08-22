@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../media"
@@ -53,7 +54,7 @@ MichiGlassSurface {
                 text: "Clear"
                 variant: "ghost"
                 enabled: root.count > 0
-                onClicked: root.clearClicked()
+                onClicked: clearQueueDialog.open()
             }
         }
 
@@ -74,6 +75,13 @@ MichiGlassSurface {
             clip: true
             spacing: MichiSpacing.xs
             boundsBehavior: Flickable.StopAtBounds
+            keyNavigationEnabled: true
+            keyNavigationWraps: false
+            activeFocusOnTab: true
+            focus: true
+            Accessible.role: Accessible.List
+            Accessible.name: "Queue tracks"
+            ScrollBar.vertical: MichiScrollBar { }
 
             delegate: RowLayout {
                 required property int index
@@ -89,12 +97,16 @@ MichiGlassSurface {
                     album: modelData.album || ""
                     durationMs: modelData.durationMs || 0
                     playing: index === root.currentIndex
-                    selected: index === root.currentIndex
+                    selected: queueList.isCurrentItem
                     showRemove: true
                     showArtistColumn: root.width >= 460
                     showAlbumColumn: false
                     showQualityColumn: false
                     showDurationColumn: root.width >= 390
+                    onActiveFocusChanged: {
+                        if (activeFocus)
+                            queueList.currentIndex = index
+                    }
                     onActivated: root.trackClicked(index)
                     onRemoveRequested: root.removeRequested(index)
                 }
@@ -109,6 +121,40 @@ MichiGlassSurface {
                     accessibleName: "Move track down"
                     enabled: index + 1 < root.count
                     onClicked: root.moveRequested(index, index + 1)
+                }
+            }
+        }
+    }
+
+    // Destructive action guard: clearing the queue requires confirmation.
+    MichiDialog {
+        id: clearQueueDialog
+        title: qsTr("Clear queue?")
+        modal: true
+        contentItem: ColumnLayout {
+            spacing: MichiSpacing.md
+            MichiText {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 320
+                text: qsTr("Remove all %n track(s) from the queue?", "", root.count)
+                role: "secondary"
+                wrapMode: Text.WordWrap
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: MichiSpacing.sm
+                MichiButton {
+                    text: qsTr("Cancel")
+                    variant: "ghost"
+                    onClicked: clearQueueDialog.close()
+                }
+                MichiButton {
+                    text: qsTr("Clear queue")
+                    variant: "danger"
+                    onClicked: {
+                        clearQueueDialog.close()
+                        root.clearClicked()
+                    }
                 }
             }
         }

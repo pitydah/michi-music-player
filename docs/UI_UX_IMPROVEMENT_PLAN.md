@@ -61,6 +61,12 @@ test fix). CI green at head `bf329df`, 1575 tests + 13 structural tests in
 **Commit A (done):** items 1 + scan-retry portion of item 6 — `LibraryContentHost`
 ErrorState gains "Retry scan" action; LoadingState excludes FAILED/CANCELLED.
 
+**Commit B (done):** items 2 + 3 + 12 — QueuePanel ListView gains
+`keyNavigationEnabled` + keyboard-selection feedback (`queueList.isCurrentItem`)
++ scrollbar; QueueView dismisses with Escape, grabs focus, gates the scrim on
+`revealed` and animates its exit before teardown; Clear queue now requires a
+`MichiDialog` confirmation.
+
 ## Phase 3 — 🟠 WARNING: visual consistency & copy (~5 h)
 
 | # | Finding | Evidence | Fix | Effort |
