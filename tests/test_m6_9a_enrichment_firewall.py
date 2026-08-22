@@ -15,6 +15,7 @@ from enrichment_fakes import (
     FakeAlbumProvider,
     FakeArtistProvider,
     FakeIdentityResolver,
+    InMemoryIdentityRepository,
     RecordingAssetStore,
     RecordingKnowledgeRepository,
 )
@@ -39,6 +40,7 @@ def make_service(resolver=None, artist_provider=None, album_provider=None):
         artist_provider=artist_provider or FakeArtistProvider(),
         album_provider=album_provider or FakeAlbumProvider(),
         repository=RecordingKnowledgeRepository(),
+        identity_repository=InMemoryIdentityRepository(),
         asset_store=RecordingAssetStore(),
     )
     return service, service._repository
