@@ -195,9 +195,14 @@ class GStreamerBindings:
         return message.src is pipeline
 
     def state_of(self, message):
-        """Nuevo estado de un mensaje STATE_CHANGED (o None si no aplica)."""
+        """Nuevo estado de un mensaje STATE_CHANGED (o None si no aplica).
+
+        M11.3C-R6.2: PyGObject devuelve una TUPLA (old, new, pending) —
+        `parse_state_changed().new` falla siempre (AttributeError → None) y
+        ningún estado real se publicaba. Desempaquetar la tupla."""
         try:
-            return message.parse_state_changed().new
+            _old, new, _pending = message.parse_state_changed()
+            return new
         except Exception:
             return None
 
