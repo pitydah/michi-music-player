@@ -548,6 +548,57 @@ class TestEnrichmentRequestLedger:
         assert ledger.deliver(a) is DeliveryVerdict.COMMITTED
         assert ledger.deliver(b) is DeliveryVerdict.COMMITTED
 
+    def test_invalidate_makes_current_request_stale(self):
+        """R2: invalidate(entity) -> the pending request is non-committable;
+        a late delivery yields STALE, never COMMITTED."""
+        ledger = EnrichmentRequestLedger()
+        a = self._request("a", EnrichmentEntityKind.ARTIST, "artist-a")
+        ledger.register(a)
+        ledger.invalidate(EnrichmentEntityKind.ARTIST, "artist-a")
+        assert ledger.deliver(a) is DeliveryVerdict.STALE
+        assert ledger.pending_count() == 0
+
+    def test_invalidate_is_scoped_to_one_entity(self):
+        ledger = EnrichmentRequestLedger()
+        a = self._request("a", EnrichmentEntityKind.ARTIST, "artist-a")
+        b = self._request("b", EnrichmentEntityKind.ARTIST, "artist-b")
+        ledger.register(a)
+        ledger.register(b)
+        ledger.invalidate(EnrichmentEntityKind.ARTIST, "artist-a")
+        assert ledger.deliver(a) is DeliveryVerdict.STALE
+        assert ledger.deliver(b) is DeliveryVerdict.COMMITTED
+
+    def test_invalidate_scoped_by_entity_kind(self):
+        ledger = EnrichmentRequestLedger()
+        artist = self._request("a", EnrichmentEntityKind.ARTIST, "shared-key")
+        album = self._request("al", EnrichmentEntityKind.ALBUM, "shared-key")
+        ledger.register(artist)
+        ledger.register(album)
+        ledger.invalidate(EnrichmentEntityKind.ARTIST, "shared-key")
+        assert ledger.deliver(artist) is DeliveryVerdict.STALE
+        assert ledger.deliver(album) is DeliveryVerdict.COMMITTED
+
+    def test_invalidate_all_stales_everything(self):
+        ledger = EnrichmentRequestLedger()
+        a = self._request("a", EnrichmentEntityKind.ARTIST, "artist-a")
+        b = self._request("b", EnrichmentEntityKind.ALBUM, "album-b")
+        ledger.register(a)
+        ledger.register(b)
+        ledger.invalidate_all()
+        assert ledger.deliver(a) is DeliveryVerdict.STALE
+        assert ledger.deliver(b) is DeliveryVerdict.STALE
+        assert ledger.pending_count() == 0
+
+    def test_invalidate_then_new_request_commits(self):
+        ledger = EnrichmentRequestLedger()
+        first = self._request("a-1", EnrichmentEntityKind.ARTIST, "artist-a")
+        ledger.register(first)
+        ledger.invalidate(EnrichmentEntityKind.ARTIST, "artist-a")
+        second = self._request("a-2", EnrichmentEntityKind.ARTIST, "artist-a")
+        ledger.register(second)
+        assert ledger.deliver(first) is DeliveryVerdict.STALE
+        assert ledger.deliver(second) is DeliveryVerdict.COMMITTED
+
 
 class TestKnowledgeProfileCodecs:
     def test_artist_profile_round_trip(self):

@@ -208,16 +208,18 @@ class ArtistCandidate:
 
 @dataclass(frozen=True)
 class ReleaseGroupCandidate:
-    """One remote release-group candidate (R1).
+    """One remote release-group candidate (R2).
 
-    ``title`` is the required eligibility gate; ``artist_credit_external_ids``
-    allows artist-credit compatibility when the artist identity is already
-    resolved; ``first_release_year`` is corroborating only (never
-    sufficient alone)."""
+    ``title`` is the required eligibility gate; artist identity lives in
+    BOTH ``artist_credit_external_ids`` (verified external ids) and
+    ``artist_credit_names`` (normalized-name fallback when the artist
+    external identity is not yet resolved). ``first_release_year`` is
+    corroborating only — YEAR NEVER identifies the artist (R2)."""
 
     release_group_id: str
     title: str = ""
     artist_credit_external_ids: tuple[str, ...] = ()
+    artist_credit_names: tuple[str, ...] = ()
     first_release_year: int = 0
 
 
@@ -364,17 +366,22 @@ def resolve_album_identity(
     edition_candidates: Sequence[ReleaseEditionCandidate],
     evidence: AlbumIdentityEvidence,
 ) -> AlbumIdentityResolution:
-    """ALBUM IDENTITY GATE (R1, structural).
+    """ALBUM IDENTITY GATE (R1 + R2, structural).
 
     - release-group hints: a single hint is authoritative when
       corroborated; multiple DISTINCT same-role hints -> IDENTITY_CONFLICT;
     - without hints, the candidate release-group TITLE must match the
       local album title under canonical normalization — a matching year
       alone is NEVER sufficient (title is a required gate);
-    - artist compatibility: when the artist identity is already resolved,
-      candidates whose artist credits are known but exclude that external
-      id are ineligible;
-    - ``first_release_year`` corroborates a title match, never creates it;
+    - R2 ARTIST GATE: title + year never identifies the artist. When the
+      artist external id is resolved, only candidates whose artist credits
+      INCLUDE it survive; otherwise the local album-artist NAME must match
+      a candidate credit name; candidates that cannot prove compatibility
+      are excluded (fail-closed). Without ANY artist information, common-
+      title duplicates stay AMBIGUOUS — year never chooses across artists;
+    - ``first_release_year`` corroborates ONLY among candidates that
+      already passed title + artist gates (documented same-artist
+      duplicate case); it never creates a match;
     - the release EDITION (``release_id``) stays "" unless a release id
       hint corroborated against the resolved release group exists.
       Title/year can never infer an edition.
@@ -414,36 +421,62 @@ def resolve_album_identity(
         ]
         if not eligible:
             return AlbumIdentityResolution(status=IdentityResolutionStatus.NO_MATCH)
+        # R2 ARTIST GATE: an album title (+ year) NEVER identifies the
+        # artist. Candidates that cannot PROVE artist compatibility are
+        # excluded (fail-closed, prefer false negative).
         resolved_artist = evidence.resolved_artist_external_id
+        local_artist_name = _normalize_identity_text(evidence.local_album_artist_name)
         if resolved_artist:
-            compatible = [
+            eligible = [
+                c for c in eligible if resolved_artist in c.artist_credit_external_ids
+            ]
+            if not eligible:
+                return AlbumIdentityResolution(status=IdentityResolutionStatus.NO_MATCH)
+        elif local_artist_name:
+            eligible = [
                 c
                 for c in eligible
-                if not c.artist_credit_external_ids
-                or resolved_artist in c.artist_credit_external_ids
+                if any(
+                    _normalize_identity_text(name) == local_artist_name
+                    for name in c.artist_credit_names
+                )
             ]
-            if not compatible:
+            if not eligible:
                 return AlbumIdentityResolution(status=IdentityResolutionStatus.NO_MATCH)
-            eligible = compatible
-        scored: list[tuple[int, str]] = []
-        for candidate in eligible:
-            year_corroboration = (
-                1
-                if candidate.first_release_year > 0
-                and candidate.first_release_year == evidence.local_year
-                else 0
-            )
-            scored.append((year_corroboration, candidate.release_group_id))
-        best = max(year_corroboration for year_corroboration, _ in scored)
-        winners = [
-            rg for year_corroboration, rg in scored if year_corroboration == best
-        ]
-        if len(winners) > 1:
-            return AlbumIdentityResolution(
-                status=IdentityResolutionStatus.AMBIGUOUS,
-                candidate_ids=tuple(sorted(winners)),
-            )
-        release_group_id = winners[0]
+        if len(eligible) > 1:
+            # Duplicates remain ONLY when the artist gate verified the
+            # same artist (or no artist gate existed at all). Without ANY
+            # artist information, common-title duplicates stay AMBIGUOUS —
+            # year is NEVER cross-artist identity (R2).
+            if not resolved_artist and not local_artist_name:
+                return AlbumIdentityResolution(
+                    status=IdentityResolutionStatus.AMBIGUOUS,
+                    candidate_ids=tuple(sorted(c.release_group_id for c in eligible)),
+                )
+            # Verified same-artist duplicates: year MAY corroborate
+            # (documented R2 semantics — title + artist compatibility
+            # gates already established identity).
+            scored: list[tuple[int, str]] = []
+            for candidate in eligible:
+                year_corroboration = (
+                    1
+                    if candidate.first_release_year > 0
+                    and candidate.first_release_year == evidence.local_year
+                    else 0
+                )
+                scored.append((year_corroboration, candidate.release_group_id))
+            best = max(year_corroboration for year_corroboration, _ in scored)
+            winners = [
+                rg for year_corroboration, rg in scored if year_corroboration == best
+            ]
+            if len(winners) > 1:
+                return AlbumIdentityResolution(
+                    status=IdentityResolutionStatus.AMBIGUOUS,
+                    candidate_ids=tuple(sorted(winners)),
+                )
+            release_group_id = winners[0]
+        else:
+            release_group_id = eligible[0].release_group_id
 
     release_id = ""
     if len(release_hints) == 1:
@@ -656,12 +689,17 @@ class EnrichmentRequest:
     Every operation carries exactly this context; a result may be committed
     ONLY if it still matches it (see ``EnrichmentRequestLedger``). Never
     correlate async results through mutable globals like ``_active_artist``.
-    """
+
+    R2 RELEASE-EDITION CORRELATION: ``external_variant_id`` identifies the
+    specific release edition when one exists:
+    ARTIST: "" (external_entity_id is the artist MBID);
+    ALBUM:   release MBID when the edition is known, else ""."""
 
     request_id: str
     entity_kind: EnrichmentEntityKind
     local_entity_key: str
     external_entity_id: str
+    external_variant_id: str = ""
     generation: int = 0
 
 
@@ -713,8 +751,8 @@ class EnrichmentRequestLedger:
 
         COMMITTED — the request is still current (it is consumed: a second
         delivery of the same request becomes UNKNOWN);
-        STALE — superseded by a newer request (out-of-order / stale
-        identity); UNKNOWN — never registered."""
+        STALE — superseded by a newer request or explicitly invalidated
+        (out-of-order / stale identity); UNKNOWN — never registered."""
         key = self._key(request)
         current = self._current.get(key)
         if current is not None and current.request_id == request.request_id:
@@ -723,6 +761,31 @@ class EnrichmentRequestLedger:
         if request.request_id in self._superseded.get(key, ()):
             return DeliveryVerdict.STALE
         return DeliveryVerdict.UNKNOWN
+
+    def invalidate(
+        self, entity_kind: EnrichmentEntityKind, local_entity_key: str
+    ) -> None:
+        """R2: make the current pending request for an entity
+        non-committable (identity reset / change / clear). The invalidated
+        id is recorded as superseded so a late delivery yields STALE —
+        never COMMITTED, never silently forgotten."""
+        key = (entity_kind, local_entity_key)
+        current = self._current.pop(key, None)
+        if current is None:
+            return
+        superseded = self._superseded.setdefault(
+            key, deque(maxlen=self._SUPERSEDED_CAP)
+        )
+        superseded.append(current.request_id)
+
+    def invalidate_all(self) -> None:
+        """R2: invalidate every pending request (clear-identities)."""
+        for key, request in list(self._current.items()):
+            superseded = self._superseded.setdefault(
+                key, deque(maxlen=self._SUPERSEDED_CAP)
+            )
+            superseded.append(request.request_id)
+        self._current.clear()
 
     def pending_count(self) -> int:
         return len(self._current)
