@@ -51,8 +51,8 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   create/rename dialog workflows and hardened card accessibility. Final
   convergence range: b6b8311..6249cb8 (suite 1437 passed). M9 remains FROZEN.
 
-  **M9-R1J interaction & search reactivity seal (2026-08-21, 6ee9e12..7d78fab,
-  suite 1449 passed)**: Detail rename/delete route through the shared shell
+  **M9-R1J interaction & search reactivity seal (2026-08-21)**: Detail
+  rename/delete route through the shared shell
   dialogs via semantic intents (PlaylistDetailView never opens dialogs nor
   references their ids); PlaylistsBridge now observes LibraryService
   (symmetrically disposed) making playlist search fully reactive;
@@ -64,6 +64,13 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   `@Slot(str, result=bool)` (missing the second arg) so QML renames would
   have failed at runtime; corrected to `@Slot(str, str, result=bool)`.
   M9 remains FROZEN.
+
+  M9-R1J traceability:
+  - implementation: 6ee9e12..7d78fab (suite 1449 passed)
+  - closeout: f713a89 (docs refreeze)
+  - final test-harness head: 79f764f (QML error-capture scoping)
+  - P2 hardening follow-up (dynamic real-chain gates, overlay lazy-binding
+    fix, combined-count traceability): 58b2e1e.. (see git log)
 - **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
   engine selector, DAC selector, Output Profile selector, output state,
   actual format telemetry, Signal Path, DSD mode, BitPerfectState, hotplug/

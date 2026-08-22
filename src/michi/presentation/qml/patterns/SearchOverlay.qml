@@ -6,7 +6,7 @@ import "../primitives"
 import "../theme"
 
 Item {
-    id: root
+    id: searchOverlay
     property bool opened: false
     property int resultIndex: 0
     readonly property int visibleTrackCount: Math.min(6, library.searchTrackCount)
@@ -21,7 +21,10 @@ Item {
         + visibleArtistCount + visiblePlaylistCount
     signal closeRequested()
     signal navigationRequested(string routeId)
-    visible: opacity > 0
+    // Qt 6 lazy bindings: `visible: opacity > 0` en el root dejaba el
+    // subtree con bindings diferidos que nunca se re-evaluaban (el scroll
+    // de resultados nunca renderizaba). Opacity alone + enabled controlan
+    // la visibilidad sin romper la evaluación de los hijos.
     opacity: opened ? 1 : 0
     enabled: opened
     Keys.onEscapePressed: closeRequested()
@@ -71,17 +74,17 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: MichiSemanticColors.scrimStrong
-        MouseArea { anchors.fill: parent; onClicked: root.closeRequested() }
+        MouseArea { anchors.fill: parent; onClicked: searchOverlay.closeRequested() }
     }
     MichiGlassSurface {
         id: searchPanel
         elevation: "modal"
         accented: true
         accentColor: MichiPalette.auroraCyan
-        width: Math.min(720, root.width - MichiSpacing.xxl * 2)
-        height: Math.min(520, root.height - MichiSpacing.xxl * 2)
+        width: Math.min(720, searchOverlay.width - MichiSpacing.xxl * 2)
+        height: Math.min(520, searchOverlay.height - MichiSpacing.xxl * 2)
         anchors.horizontalCenter: parent.horizontalCenter
-        y: root.opened ? MichiSpacing.xxxl : MichiSpacing.xxl
+        y: searchOverlay.opened ? MichiSpacing.xxxl : MichiSpacing.xxl
         Behavior on y {
             enabled: !MichiAccessibility.reducedMotion
             NumberAnimation { duration: MichiMotion.panel; easing.type: MichiMotion.outCubic }
@@ -99,14 +102,14 @@ Item {
                     text: library.searchQuery
                     placeholderText: "Search tracks, albums, artists and playlists"
                     onEdited: query => {
-                        root.resultIndex = 0
+                        searchOverlay.resultIndex = 0
                         library.search(query)
                     }
                     onClearRequested: library.clear_search()
-                    onNextResultRequested: root.moveResult(1)
-                    onPreviousResultRequested: root.moveResult(-1)
-                    onActivateResultRequested: root.activateResult()
-                    onEscapeRequested: root.closeRequested()
+                    onNextResultRequested: searchOverlay.moveResult(1)
+                    onPreviousResultRequested: searchOverlay.moveResult(-1)
+                    onActivateResultRequested: searchOverlay.activateResult()
+                    onEscapeRequested: searchOverlay.closeRequested()
                 }
                 MichiStatusChip {
                     text: "CTRL F"
@@ -115,7 +118,7 @@ Item {
             }
             MichiStatusChip {
                 visible: library.searchActive
-                text: root.combinedResultCount + " results · "
+                text: searchOverlay.combinedResultCount + " results · "
                     + library.searchTrackCount + " tracks · "
                     + library.searchAlbumCount + " albums · "
                     + library.searchArtistCount + " artists · "
@@ -125,17 +128,19 @@ Item {
             }
             MichiDivider { Layout.fillWidth: true }
             EmptyState {
+                objectName: "searchEmptyState"
                 Layout.fillWidth: true; Layout.fillHeight: true
-                visible: !library.searchActive || root.combinedResultCount === 0
+                visible: !library.searchActive || searchOverlay.combinedResultCount === 0
                 title: library.searchActive ? "No results" : "Search your library"
                 message: library.searchActive
                     ? "Try a title, artist, album, playlist, genre or composer."
                     : "Results are grouped by musical entity and remain fully local."
             }
             MichiScrollView {
+                objectName: "searchResultsScroll"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: library.searchActive && root.combinedResultCount > 0
+                visible: library.searchActive && searchOverlay.combinedResultCount > 0
                 contentWidth: availableWidth
 
                 ColumnLayout {
@@ -144,7 +149,7 @@ Item {
 
                     MichiText { text: "Tracks"; role: "section"; visible: library.searchTrackCount > 0 }
                     Repeater {
-                        model: root.visibleTrackCount
+                        model: searchOverlay.visibleTrackCount
                         delegate: TrackRow {
                             required property int index
                             Layout.fillWidth: true
@@ -154,68 +159,71 @@ Item {
                             durationMs: library.songRows[index].durationMs
                             quality: library.songRows[index].qualityLabel
                             playing: playback.currentPath === library.songRows[index].path
-                            selected: root.resultIndex === index
+                            selected: searchOverlay.resultIndex === index
                             onActivated: {
                                 library.activate(index)
-                                root.closeRequested()
-                                root.navigationRequested("now_playing")
+                                searchOverlay.closeRequested()
+                                searchOverlay.navigationRequested("now_playing")
                             }
                         }
                     }
 
                     MichiText { text: "Albums"; role: "section"; visible: library.searchAlbumCount > 0 }
                     Repeater {
-                        model: root.visibleAlbumCount
+                        model: searchOverlay.visibleAlbumCount
                         delegate: MichiButton {
                             required property int index
                             Layout.fillWidth: true
                             text: library.albums[index].title + " · " + library.albums[index].artist
                             variant: "ghost"
-                            selected: root.resultIndex === root.visibleTrackCount + index
+                            selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount + index
                             onClicked: {
                                 library.select_album(library.albums[index].key)
-                                root.closeRequested()
-                                root.navigationRequested("library")
+                                searchOverlay.closeRequested()
+                                searchOverlay.navigationRequested("library")
                             }
                         }
                     }
 
                     MichiText { text: "Artists"; role: "section"; visible: library.searchArtistCount > 0 }
                     Repeater {
-                        model: root.visibleArtistCount
+                        model: searchOverlay.visibleArtistCount
                         delegate: MichiEntityRow {
                             required property int index
                             Layout.fillWidth: true
                             iconName: "artist"
                             title: library.artists[index].name
                             technical: library.artists[index].trackCount + " tracks"
-                            selected: root.resultIndex === root.visibleTrackCount
-                                + root.visibleAlbumCount + index
+                            selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount
+                                + searchOverlay.visibleAlbumCount + index
                             onActivated: {
                                 library.select_artist(library.artists[index].key)
-                                root.closeRequested()
-                                root.navigationRequested("library")
+                                searchOverlay.closeRequested()
+                                searchOverlay.navigationRequested("library")
                             }
                         }
                     }
 
                     MichiText { text: "Playlists"; role: "section"; visible: playlists.searchPlaylistCount > 0 }
                     Repeater {
-                        model: root.visiblePlaylistCount
+                        id: playlistsRepeater
+                        model: searchOverlay.visiblePlaylistCount
                         delegate: MichiEntityRow {
+                            objectName: "playlistSearchRow" + index
                             required property int index
                             Layout.fillWidth: true
                             iconName: "queue"
                             title: playlists.searchPlaylists[index].name
                             technical: playlists.searchPlaylists[index].trackCount + " tracks"
-                            selected: root.resultIndex === root.visibleTrackCount
-                                + root.visibleAlbumCount + root.visibleArtistCount + index
+                            selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount
+                                + searchOverlay.visibleAlbumCount
+                                + searchOverlay.visibleArtistCount + index
                             onActivated: {
                                 // M9-R1: playlist result opens the first-class
                                 // PLAYLISTS route (validated + Recent) — never
                                 // Library > Playlists, never name resolution.
                                 playlists.open_playlist(playlists.searchPlaylists[index].playlistId)
-                                root.closeRequested()
+                                searchOverlay.closeRequested()
                             }
                         }
                     }
@@ -235,7 +243,7 @@ Item {
                 }
             }
         }
-        Component.onCompleted: if (root.opened) searchInput.forceInputFocus()
+        Component.onCompleted: if (searchOverlay.opened) searchInput.forceInputFocus()
     }
     onOpenedChanged: if (opened) {
         resultIndex = 0

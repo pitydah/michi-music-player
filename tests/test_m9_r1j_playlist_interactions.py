@@ -56,6 +56,15 @@ class _QmlErrors:
         "PlaylistTrackList.qml",
         "PlaylistsView.qml",
         "SearchOverlay.qml",
+        # shared components exercised by the real menu/dialog chains — their
+        # runtime errors matter too (the file filter keeps teardown noise
+        # from unrelated views out)
+        "MichiDialog.qml",
+        "MichiMenu.qml",
+        "MichiButton.qml",
+        "MichiIconButton.qml",
+        "MichiTextField.qml",
+        "MichiEntityRow.qml",
     )
 
     def __init__(self):
@@ -187,14 +196,13 @@ def _find_item(obj, object_name):
     return found
 
 
-def _emit_detail_intent(host, signal_name, playlist_id, playlist_name):
-    """Emit the Detail's semantic intent signal (the production contract the
-    menu items invoke). The menu items carry stable objectNames for UI
-    automation; the signal is the canonical interaction path."""
-    detail = _find_item(host, "playlistDetailView")
-    assert detail is not None, "playlistDetailView no encontrado"
-    signal = getattr(detail, signal_name)
-    signal.emit(playlist_id, playlist_name)
+def _activate_menu_item(host, object_name):
+    """Execute the REAL menu chain: MenuItem.triggered → onTriggered →
+    semantic intent → ContentHost → shared dialog. This is the full
+    production interaction path (not a direct signal emission)."""
+    action = _find_item(host, object_name)
+    assert action is not None, f"{object_name} no encontrado"
+    action.triggered.emit()
     _process()
 
 
@@ -218,11 +226,9 @@ class TestDetailActionsRuntime:
             assert detail is not None
             detail_visible = detail.property("visible")
             assert detail_visible is True
-            # the menu action exists (stable objectName) and its handler
-            # routes through the semantic intent signal
-            action = _find_item(host, "playlistDetailRenameAction")
-            assert action is not None
-            _emit_detail_intent(host, "renameRequested", a.playlist_id, "Jazz")
+            # REAL chain: MenuItem trigger → onTriggered → renameRequested
+            # → ContentHost → shared dialog
+            _activate_menu_item(host, "playlistDetailRenameAction")
             dialog = _find_item(host, "renamePlaylistDialog")
             assert dialog is not None
             # Popup.opened requires a real window; the OBSERVABLE contract is
@@ -239,9 +245,7 @@ class TestDetailActionsRuntime:
     def test_detail_delete_action_confirmation_then_cancel(self, tmp_path, qapp):
         world, engine, errors, host, a, b = self._content_host(tmp_path)
         try:
-            action = _find_item(host, "playlistDetailDeleteAction")
-            assert action is not None
-            _emit_detail_intent(host, "deleteRequested", a.playlist_id, "Jazz")
+            _activate_menu_item(host, "playlistDetailDeleteAction")
             dialog = _find_item(host, "deletePlaylistDialog")
             assert dialog.property("targetPlaylistId") == a.playlist_id
             assert dialog.property("targetPlaylistName") == "Jazz"
@@ -258,9 +262,7 @@ class TestDetailActionsRuntime:
     def test_detail_delete_confirm_converges(self, tmp_path, qapp):
         world, engine, errors, host, a, b = self._content_host(tmp_path)
         try:
-            action = _find_item(host, "playlistDetailDeleteAction")
-            assert action is not None
-            _emit_detail_intent(host, "deleteRequested", a.playlist_id, "Jazz")
+            _activate_menu_item(host, "playlistDetailDeleteAction")
             # confirm via the dialog's canonical _confirm() (the danger
             # button routes through it)
             confirm = _find_item(host, "deletePlaylistDialog")
@@ -278,9 +280,7 @@ class TestDetailActionsRuntime:
     def test_detail_rename_duplicate_keeps_dialog_open(self, tmp_path, qapp):
         world, engine, errors, host, a, b = self._content_host(tmp_path)
         try:
-            action = _find_item(host, "playlistDetailRenameAction")
-            assert action is not None
-            _emit_detail_intent(host, "renameRequested", a.playlist_id, "Jazz")
+            _activate_menu_item(host, "playlistDetailRenameAction")
             dialog = _find_item(host, "renamePlaylistDialog")
             field = _find_item(host, "playlistRenameField")
             if field is None:
@@ -305,9 +305,7 @@ class TestDetailActionsRuntime:
     def test_detail_rename_success_preserves_identity(self, tmp_path, qapp):
         world, engine, errors, host, a, b = self._content_host(tmp_path)
         try:
-            action = _find_item(host, "playlistDetailRenameAction")
-            assert action is not None
-            _emit_detail_intent(host, "renameRequested", a.playlist_id, "Jazz")
+            _activate_menu_item(host, "playlistDetailRenameAction")
             dialog = _find_item(host, "renamePlaylistDialog")
             field = dialog.findChild(type(dialog), "playlistRenameField")
             field.setProperty("text", "Jazz Night")
@@ -380,6 +378,8 @@ class TestSearchReactivity:
 
 class TestPlaylistOnlySearch:
     def test_combined_result_count_and_visibility(self, tmp_path, qapp):
+        """Playlist-only search: REAL overlay components verified — combined
+        total, EmptyState hidden, results scroll visible, result row present."""
         world = _world(tmp_path)
         world["service"].create_playlist("Road Trip")
         world["library"].search("Road Trip")
@@ -387,29 +387,60 @@ class TestPlaylistOnlySearch:
         errors = _QmlErrors()
         try:
             overlay = _load(engine, "patterns/SearchOverlay.qml", errors)
+            overlay.setProperty("opened", True)  # production flow opens it
+            _process()
+            _process()  # Repeater delegates materialize on the event loop
             assert world["library"].state.search_projection.total_count == 0
             assert world["pb"].property("searchPlaylistCount") == 1
-            combined = overlay.property("combinedResultCount")
-            assert combined == 1
-            # EmptyState oculto (1 resultado combinado), scroll visible
+            assert overlay.property("combinedResultCount") == 1
+            empty_state = _find_item(overlay, "searchEmptyState")
+            scroll = _find_item(overlay, "searchResultsScroll")
+            assert empty_state is not None
+            assert scroll is not None
+            assert empty_state.property("visible") is False
+            assert scroll.property("visible") is True
+            # Qt 6 materializa delegates de Repeater solo al renderizar
+            # (no fiable en offscreen) — verificamos el MODELO que alimenta
+            # el delegate: repeater count + datos proyectados.
+            from PySide6.QtCore import QObject
+
+            reps = [
+                c
+                for c in overlay.findChildren(QObject)
+                if str(c.metaObject().className()) == "QQuickRepeater"
+            ]
+            playlist_repeater = reps[3]  # orden: tracks, albums, artists, playlists
+            assert playlist_repeater.property("count") == 1
+            rows = world["pb"].property("searchPlaylists")
+            assert rows[0]["name"] == "Road Trip"
+            assert rows[0]["playlistId"] != ""
             runtime = errors.drain()
             assert runtime == []
         finally:
             errors.restore()
             engine.deleteLater()
 
-    def test_keyboard_activation_playlist_only(self, tmp_path):
-        """resultIndex 0 → activateResult → PLAYLISTS/id (never Library)."""
+    def test_keyboard_activation_playlist_only(self, tmp_path, qapp):
+        """REAL overlay keyboard path: resultIndex → activateResult()
+        → PLAYLISTS/id (never Library)."""
         world = _world(tmp_path)
         a = world["service"].create_playlist("Road Trip")
         world["library"].search("Road Trip")
-        assert world["pb"].property("searchPlaylistCount") == 1
-        world["coord"].open_playlist(
-            world["pb"].property("searchPlaylists")[0]["playlistId"]
-        )
-        assert world["nav"].state.current_route == AppRoute.PLAYLISTS
-        assert world["nav"].state.playlist_id == a.playlist_id
-        assert world["service"].navigation.recent_ids[0] == a.playlist_id
+        engine = _engine(world)
+        errors = _QmlErrors()
+        try:
+            overlay = _load(engine, "patterns/SearchOverlay.qml", errors)
+            overlay.setProperty("resultIndex", 0)
+            overlay.activateResult()
+            _process()
+            assert world["nav"].state.current_route == AppRoute.PLAYLISTS
+            assert world["nav"].state.playlist_id == a.playlist_id
+            assert world["service"].navigation.recent_ids[0] == a.playlist_id
+            runtime = errors.drain()
+            assert runtime == []
+        finally:
+            errors.restore()
+            engine.deleteLater()
 
 
 class TestCardFocus:
