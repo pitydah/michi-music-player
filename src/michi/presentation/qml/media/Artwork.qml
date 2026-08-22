@@ -41,11 +41,43 @@ Rectangle {
             NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic }
         }
     }
+    // Physical spine shadow on the left edge
+    Rectangle {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 3
+        visible: root.hasArtwork && image.status === Image.Ready
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: MichiSemanticColors.glassShadow }
+            GradientStop { position: 1; color: "transparent" }
+        }
+        z: 2
+    }
+
+    // Top physical rim highlight
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 1
+        visible: root.hasArtwork && image.status === Image.Ready
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: MichiSemanticColors.innerHighlight }
+            GradientStop { position: 0.8; color: MichiSemanticColors.glassInnerBorder }
+            GradientStop { position: 1; color: "transparent" }
+        }
+        z: 2
+    }
+
     Rectangle {
         anchors.fill: parent
         radius: root.radius
         color: "transparent"
         border.width: 1
         border.color: MichiSemanticColors.borderSubtle
+        z: 3
     }
 }
