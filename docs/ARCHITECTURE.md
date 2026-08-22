@@ -155,8 +155,11 @@ engines adapt TO Michi contracts, never the reverse:
   The registry holds the SAME canonical Qt provider instance
   (registry.provider(QT_MULTIMEDIA) is qt_provider); reference startup is
   transactional (PROBE→CAN_ACTIVATE→INITIALIZING→OPEN→BIND→VALIDATE→READY
-  with UNAVAILABLE/FAILED convergence). GStreamer/MPD adapters attach
-  behind the same router in M11.3C/M11.3D.
+  with UNAVAILABLE/FAILED convergence). The GStreamer adapter (M11.3C)
+  attaches behind the same router: GStreamerEngineProvider →
+  GStreamerAudioPort (playbin3, lazy GI, own GLib pump + Qt bridge
+  dispatch, generation-guarded stale isolation) — available when the GI
+  runtime exists, never the default. MPD attaches in M11.3D.
 - **Audio Lab boundary**: a future DSP stage (CamillaDSP-style external
   process) may insert between Engine and Output Policy AFTER PLAYER STABLE;
   the architecture leaves the seam, the stage is not implemented.
