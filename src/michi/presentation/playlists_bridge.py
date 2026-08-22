@@ -260,24 +260,30 @@ class PlaylistsBridge(QObject):
                     "bitDepth": 0,
                     "channels": 0,
                     "fileSize": 0,
+                    "artworkPath": "",
+                    "hasArtwork": False,
                 }
             )
         return rows
 
     def _track_row(self, ref) -> dict:
+        path_str = str(ref.file_path)
+        artwork = self._artwork_for_path(path_str)
         return {
             "displayName": ref.display_name,
             "title": ref.title or ref.display_name,
             "artist": ref.artist,
             "album": ref.album,
             "durationMs": ref.duration_ms,
-            "path": str(ref.file_path),
+            "path": path_str,
             "qualityLabel": make_track_quality_label(ref),
             "codec": ref.codec,
             "sampleRateHz": ref.sample_rate_hz,
             "bitDepth": ref.bit_depth,
             "channels": ref.channels,
             "fileSize": ref.file_size,
+            "artworkPath": artwork,
+            "hasArtwork": bool(artwork),
         }
 
     def _get_search_playlists(self) -> list[dict]:

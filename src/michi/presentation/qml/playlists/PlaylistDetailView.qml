@@ -46,15 +46,31 @@ Item {
         }
     }
 
+    // Atmospheric Ambient Glow on top
+    Rectangle {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 240
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0; color: MichiSemanticColors.contentAmbientBlue }
+            GradientStop { position: 0.6; color: MichiSemanticColors.contentAmbientPurple }
+            GradientStop { position: 1; color: "transparent" }
+        }
+        z: 0
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: MichiSpacing.xl
         spacing: MichiSpacing.lg
+        z: 1
 
-        // Hero Header
+        // Top Navigation Bar
         RowLayout {
             Layout.fillWidth: true
-            spacing: MichiSpacing.md
+            spacing: MichiSpacing.sm
 
             MichiIconButton {
                 iconName: "back"
@@ -62,29 +78,95 @@ Item {
                 onClicked: root.backRequested()
             }
 
-            PlaylistArtwork {
-                Layout.preferredWidth: 80
-                Layout.preferredHeight: 80
-                customCoverPath: playlists.selectedPlaylistCustomCoverPath || ""
-                mosaicArtworkPaths: playlists.selectedPlaylistMosaicArtworkPaths || []
-                fallbackText: playlists.selectedPlaylistName
-                radius: MichiRadius.lg
+            Item { Layout.fillWidth: true }
+        }
 
-                MouseArea {
+        // Hero Header (Mockup Composition)
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: MichiSpacing.xl
+
+            Item {
+                Layout.preferredWidth: 160
+                Layout.preferredHeight: 160
+
+                // Drop Shadow
+                Rectangle {
                     anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: coverDialog.open()
+                    anchors.margins: -4
+                    radius: MichiRadius.lg + 4
+                    color: MichiSemanticColors.glassShadowFar
+                    opacity: 0.8
+                    z: -1
+                }
+
+                PlaylistArtwork {
+                    id: heroArtwork
+                    anchors.fill: parent
+                    customCoverPath: playlists.selectedPlaylistCustomCoverPath || ""
+                    mosaicArtworkPaths: playlists.selectedPlaylistMosaicArtworkPaths || []
+                    fallbackText: playlists.selectedPlaylistName
+                    radius: MichiRadius.lg
+
+                    MouseArea {
+                        id: coverMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: coverDialog.open()
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: MichiRadius.lg
+                            color: MichiPalette.obsidianDeep
+                            opacity: coverMouseArea.containsMouse ? 0.65 : 0
+                            Behavior on opacity {
+                                NumberAnimation { duration: MichiMotion.micro }
+                            }
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 4
+                                visible: coverMouseArea.containsMouse
+                                MichiIcon {
+                                    name: "sliders"
+                                    width: 24
+                                    height: 24
+                                    iconColor: MichiPalette.textPrimary
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                                MichiText {
+                                    text: qsTr("Change cover")
+                                    role: "technical"
+                                    technical: true
+                                    color: MichiPalette.textPrimary
+                                    Layout.alignment: Qt.AlignHCenter
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
             ColumnLayout {
-                spacing: 2
+                spacing: MichiSpacing.sm
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+
+                MichiText {
+                    text: qsTr("PLAYLIST")
+                    role: "technical"
+                    technical: true
+                    color: MichiPalette.auroraCyan
+                    font.weight: Font.Bold
+                    font.letterSpacing: 1.2
+                }
 
                 MichiText {
                     id: titleText
                     text: playlists.selectedPlaylistName
-                    role: "section"
+                    role: "display"
+                    font.weight: Font.Bold
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                     color: MichiPalette.textPrimary
@@ -93,44 +175,49 @@ Item {
                 MichiText {
                     text: playlists.playlistTracks.length + (playlists.playlistTracks.length === 1 ? " track" : " tracks")
                         + (playlists.selectedPlaylistDurationMs > 0 ? " · " + root.formatTotalDuration(playlists.selectedPlaylistDurationMs) : "")
-                    role: "technical"
-                    technical: true
+                        + " · " + qsTr("Local Collection")
+                    role: "secondary"
                     color: MichiPalette.textSecondary
                 }
-            }
 
-            Item { Layout.fillWidth: true }
+                Item { Layout.preferredHeight: MichiSpacing.xs }
 
-            MichiIconButton {
-                iconName: "pin"
-                selected: playlists.selectedPlaylistPinned
-                accessibleName: playlists.selectedPlaylistPinned
-                    ? qsTr("Unpin playlist") : qsTr("Pin playlist")
-                onClicked: root.togglePinRequested()
-            }
+                // Quick Actions Row
+                RowLayout {
+                    spacing: MichiSpacing.md
 
-            MichiButton {
-                text: qsTr("Play Now")
-                variant: "primary"
-                iconName: "play"
-                enabled: playlists.playlistTracks.length > 0
-                accessibleName: qsTr("Play playlist now")
-                onClicked: root.playRequested()
-            }
+                    MichiButton {
+                        text: qsTr("Play")
+                        variant: "primary"
+                        iconName: "play"
+                        enabled: playlists.playlistTracks.length > 0
+                        accessibleName: qsTr("Play playlist now")
+                        onClicked: root.playRequested()
+                    }
 
-            MichiButton {
-                text: qsTr("Add to Queue")
-                variant: "secondary"
-                iconName: "queue"
-                enabled: playlists.playlistTracks.length > 0
-                accessibleName: qsTr("Add playlist to queue")
-                onClicked: playlists.queue_selected_playlist()
-            }
+                    MichiButton {
+                        text: qsTr("Add to Queue")
+                        variant: "secondary"
+                        iconName: "queue"
+                        enabled: playlists.playlistTracks.length > 0
+                        accessibleName: qsTr("Add playlist to queue")
+                        onClicked: playlists.queue_selected_playlist()
+                    }
 
-            MichiIconButton {
-                iconName: "more"
-                accessibleName: qsTr("More options")
-                onClicked: detailMenu.popup()
+                    MichiIconButton {
+                        iconName: "pin"
+                        selected: playlists.selectedPlaylistPinned
+                        accessibleName: playlists.selectedPlaylistPinned
+                            ? qsTr("Unpin playlist") : qsTr("Pin playlist")
+                        onClicked: root.togglePinRequested()
+                    }
+
+                    MichiIconButton {
+                        iconName: "more"
+                        accessibleName: qsTr("More options")
+                        onClicked: detailMenu.popup()
+                    }
+                }
             }
         }
 
