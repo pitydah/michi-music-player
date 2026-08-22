@@ -79,12 +79,19 @@ class QtEngineProvider(AudioEngineProviderPort):
     def close(self) -> None:
         """Idempotent: releases the owned backend. Callers MUST detach the
         transport router BEFORE close (SWITCH ORDER: stop → detach →
-        provider close → target open → bind → validate)."""
+        provider close → target open → bind → validate).
+
+        Exception safety: ownership is released in `finally`, so a failing
+        stop() can never leave a phantom "owned" engine behind; the error is
+        propagated to the caller (best-effort shutdown policy applies at the
+        container level)."""
         backend = self._backend
-        self._backend = None
         if backend is None:
             return
-        backend.stop()
+        try:
+            backend.stop()
+        finally:
+            self._backend = None
 
 
 class GStreamerEngineProvider(AudioEngineProviderPort):
