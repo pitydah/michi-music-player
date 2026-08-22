@@ -218,10 +218,25 @@ class FailingIdentityRepository(InMemoryIdentityRepository):
         self.fail_save = True
         self.fail_delete = True
         self.fail_clear = True
+        self.fail_load = False
 
     def _maybe_fail(self, flag: bool) -> None:
         if flag:
             raise EnrichmentStorageError("injected storage failure")
+
+    def _maybe_fail_load(self) -> None:
+        if self.fail_load:
+            raise EnrichmentStorageError("injected identity read failure")
+
+    def load_artist_identity(
+        self, local_artist_key: str
+    ) -> ArtistExternalIdentity | None:
+        self._maybe_fail_load()
+        return super().load_artist_identity(local_artist_key)
+
+    def load_album_identity(self, local_album_key: str) -> AlbumExternalIdentity | None:
+        self._maybe_fail_load()
+        return super().load_album_identity(local_album_key)
 
     def save_artist_identity(self, identity: ArtistExternalIdentity) -> None:
         self._maybe_fail(self.fail_save)
@@ -304,3 +319,38 @@ class RecordingLibraryIndexRepository(LibraryIndexRepository):
 
     def version(self) -> int:
         return 1
+
+
+class FailingKnowledgeRepository(RecordingKnowledgeRepository):
+    """R3 storage-failure fake: knowledge WRITES raise the normalized
+    storage error (configurable). Reads behave normally."""
+
+    def __init__(self):
+        super().__init__()
+        self.fail_save = True
+        self.fail_delete = True
+        self.fail_clear = True
+
+    def _maybe_fail(self, flag: bool) -> None:
+        if flag:
+            raise EnrichmentStorageError("injected knowledge storage failure")
+
+    def save_artist_profile(self, profile: ArtistKnowledgeProfile) -> None:
+        self._maybe_fail(self.fail_save)
+        super().save_artist_profile(profile)
+
+    def save_album_profile(self, profile: AlbumKnowledgeProfile) -> None:
+        self._maybe_fail(self.fail_save)
+        super().save_album_profile(profile)
+
+    def delete_artist_profile(self, local_artist_key: str) -> None:
+        self._maybe_fail(self.fail_delete)
+        super().delete_artist_profile(local_artist_key)
+
+    def delete_album_profile(self, local_album_key: str) -> None:
+        self._maybe_fail(self.fail_delete)
+        super().delete_album_profile(local_album_key)
+
+    def clear_knowledge(self) -> None:
+        self._maybe_fail(self.fail_clear)
+        super().clear_knowledge()
