@@ -18,6 +18,7 @@ Default TTLs (M6.9 contract):
 """
 
 import base64
+import contextlib
 import hashlib
 import json
 import os
@@ -50,9 +51,7 @@ class FilesystemProviderCache(ProviderCachePort):
 
     @staticmethod
     def cache_key(provider: str, url: str) -> str:
-        return hashlib.sha256(
-            f"{provider}|{url}".encode("utf-8")
-        ).hexdigest()
+        return hashlib.sha256(f"{provider}|{url}".encode()).hexdigest()
 
     def _entry_path(self, key: str) -> Path:
         return self._root / key[:2] / f"{key}.json"
@@ -146,7 +145,5 @@ class FilesystemProviderCache(ProviderCachePort):
 
     @staticmethod
     def _discard(path: Path) -> None:
-        try:
+        with contextlib.suppress(OSError):
             path.unlink(missing_ok=True)
-        except OSError:
-            pass

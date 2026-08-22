@@ -9,8 +9,6 @@ Security matrix (no live network — all tests use injectable seams):
 
 import io
 import threading
-import time
-from pathlib import Path
 
 import pytest
 
@@ -21,8 +19,8 @@ from michi.application.enrichment_ports import (
 )
 from michi.infrastructure.enrichment_http import (
     MAX_PROVIDER_BODY_BYTES,
-    UrllibHttpTransport,
     MusicBrainzRateLimiter,
+    UrllibHttpTransport,
     _ValidatingRedirectHandler,
     is_allowed_host,
     validate_provider_url,
@@ -33,9 +31,7 @@ from michi.infrastructure.enrichment_provider_cache import (
 
 
 class FakeResponse:
-    def __init__(
-        self, body: bytes, status: int = 200, headers=None, url=None
-    ):
+    def __init__(self, body: bytes, status: int = 200, headers=None, url=None):
         self._body = body
         self.status = status
         self.headers = headers or {}
@@ -132,9 +128,7 @@ class TestTransport:
     def test_get_returns_response(self):
         opener = FakeOpener([ChunkedResponse(b'{"ok": true}')])
         transport = UrllibHttpTransport(opener=opener)
-        response = transport.get(
-            HttpRequest(url="https://musicbrainz.org/ws/2/test")
-        )
+        response = transport.get(HttpRequest(url="https://musicbrainz.org/ws/2/test"))
         assert response.status_code == 200
         assert response.body == b'{"ok": true}'
         assert response.final_url == "https://musicbrainz.org/ws/2/test"
@@ -149,9 +143,7 @@ class TestTransport:
     def test_non_get_rejected(self):
         transport = UrllibHttpTransport(opener=FakeOpener([]))
         with pytest.raises(ValueError):
-            transport.get(
-                HttpRequest(url="https://musicbrainz.org/x", method="POST")
-            )
+            transport.get(HttpRequest(url="https://musicbrainz.org/x", method="POST"))
 
     def test_body_cap_enforced(self):
         huge = ChunkedResponse(b"x" * (MAX_PROVIDER_BODY_BYTES + 1024))
@@ -174,9 +166,7 @@ class TestTransport:
     def test_redirect_validation_rejects_bad_host(self):
         handler = _ValidatingRedirectHandler()
         with pytest.raises(EnrichmentProviderError):
-            handler.redirect_request(
-                None, None, 302, "found", {}, "https://evil.com/x"
-            )
+            handler.redirect_request(None, None, 302, "found", {}, "https://evil.com/x")
 
     def test_redirect_validation_rejects_http(self):
         handler = _ValidatingRedirectHandler()
@@ -233,9 +223,7 @@ class TestMusicBrainzRateLimiter:
 
 class TestProviderCache:
     def test_fresh_hit(self, tmp_path):
-        cache = FilesystemProviderCache(
-            tmp_path / "cache", clock=lambda: 1000.0
-        )
+        cache = FilesystemProviderCache(tmp_path / "cache", clock=lambda: 1000.0)
         cache.put(
             "musicbrainz_search",
             "https://musicbrainz.org/ws/2/artist?query=x",
@@ -260,9 +248,7 @@ class TestProviderCache:
         )
         state["now"] = 2000.0
         assert cache.get("wikipedia", "https://en.wikipedia.org/api/x") is None
-        stale = cache.get_stale(
-            "wikipedia", "https://en.wikipedia.org/api/x"
-        )
+        stale = cache.get_stale("wikipedia", "https://en.wikipedia.org/api/x")
         assert stale is not None
         assert stale.body == b"bio"
 
