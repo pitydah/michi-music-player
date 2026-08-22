@@ -17,7 +17,6 @@ import time
 from urllib.parse import quote
 
 from michi.application.enrichment_ports import (
-    EnrichmentHttpStatusError,
     EnrichmentProviderError,
     ExternalIdentityResolverPort,
     HttpRequest,
@@ -33,7 +32,10 @@ from michi.domain.enrichment import (
     ReleaseGroupCandidate,
     dedupe_identity_ids,
 )
-from michi.infrastructure.enrichment_http import MusicBrainzRateLimiter
+from michi.infrastructure.enrichment_http import (
+    MusicBrainzRateLimiter,
+    ProviderRequestExecutor,
+)
 from michi.infrastructure.enrichment_provider_cache import (
     DEFAULT_TTLS_SECONDS,
 )
@@ -102,30 +104,23 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
         cache: ProviderCachePort | None = None,
         retry_sleeper=time.sleep,
     ) -> None:
-        self._transport = transport
-        self._limiter = limiter
+        # R1: ONE shared bounded retry policy (ProviderRequestExecutor).
+        self._executor = ProviderRequestExecutor(
+            transport, limiter, sleeper=retry_sleeper
+        )
         self._cache = cache
-        self._retry_sleeper = retry_sleeper
 
     # -- transport --------------------------------------------------------
 
     def _get_json(self, url: str, ttl_category: str) -> dict:
+        # R1: IDENTITY resolution uses FRESH cache only — a cache hit
+        # never consumes a rate-limit slot; a physical attempt always
+        # goes through the limiter inside ProviderRequestExecutor.
         if self._cache is not None:
             cached = self._cache.get(ttl_category, url)
             if cached is not None:
                 return self._parse_json(cached.body, url)
-        attempts = 0
-        while True:
-            self._limiter.wait()
-            try:
-                response = self._transport.get(HttpRequest(url=url))
-                break
-            except EnrichmentHttpStatusError as exc:
-                if exc.status_code in _RETRYABLE_STATUS and attempts < 2:
-                    attempts += 1
-                    self._retry_sleeper(self._retry_delay(exc, attempts))
-                    continue
-                raise
+        response = self._executor.get(HttpRequest(url=url))
         payload = self._parse_json(response.body, url)
         if self._cache is not None:
             self._cache.put(
@@ -139,17 +134,6 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
                 last_modified=response.headers.get("last-modified", ""),
             )
         return payload
-
-    @staticmethod
-    def _retry_delay(exc: EnrichmentHttpStatusError, attempt: int) -> float:
-        raw = exc.headers.get("retry-after", "")
-        try:
-            value = float(raw)
-            if 0 < value <= 10:
-                return value
-        except (TypeError, ValueError):
-            pass
-        return float(attempt)  # bounded backoff: 1s, 2s
 
     @staticmethod
     def _parse_json(body: bytes, url: str) -> dict:
@@ -180,14 +164,17 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
         candidates: list[ArtistCandidate] = []
         for raw in artists[:MAX_ARTIST_CANDIDATES]:
             if not isinstance(raw, dict):
-                continue  # malformed single candidate: skip
+                continue  # candidate-local malformed: skip only this one
             try:
                 external_id = _require_str(raw, "id")
                 name = _optional_str(raw, "name")
                 disambiguation = _optional_str(raw, "disambiguation")
-                known_albums = self._known_albums_for(external_id)
             except EnrichmentProviderError:
-                continue
+                continue  # candidate-local malformed: skip only this one
+            # R1 FALSE-UNIQUENESS GATE: a support-evidence (album browse)
+            # failure ABORTS the whole resolution — it must never make a
+            # failed candidate disappear and fake uniqueness.
+            known_albums = self._known_albums_for(external_id)
             candidates.append(
                 ArtistCandidate(
                     external_artist_id=external_id,

@@ -21,6 +21,7 @@ from urllib.parse import urlsplit
 from michi.application.enrichment_ports import (
     EnrichmentHttpStatusError,
     EnrichmentProviderError,
+    EnrichmentTransportError,
     HttpRequest,
     HttpResponse,
     HttpTransportPort,
@@ -129,7 +130,8 @@ class UrllibHttpTransport(HttpTransportPort):
                 f"provider HTTP {exc.code} for {request.url}",
             ) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            raise EnrichmentProviderError(
+            # R1: typed transport failure (retryable category).
+            raise EnrichmentTransportError(
                 f"provider request failed for {request.url}: {exc}"
             ) from exc
         try:
@@ -165,11 +167,75 @@ class UrllibHttpTransport(HttpTransportPort):
                 break
             total += len(chunk)
             if total > MAX_PROVIDER_BODY_BYTES:
-                raise EnrichmentProviderError(
+                raise EnrichmentTransportError(
                     "provider body exceeds the configured maximum"
                 )
             chunks.append(chunk)
         return b"".join(chunks)
+
+
+_RETRYABLE_HTTP_STATUS = (429, 502, 503, 504)
+_MAX_ATTEMPTS = 3
+
+
+class ProviderRequestExecutor:
+    """R1: THE single bounded retry policy for all providers.
+
+    - GET only; max 3 attempts;
+    - retries EnrichmentTransportError and HTTP 429/502/503/504;
+    - never retries 400/401/403/404, malformed payloads, URL policy
+      rejections or content-validation failures (those are NOT transport
+      failures and never reach the retry loop);
+    - Retry-After honored when numeric and 0 < value <= 10, else a
+      bounded backoff of 1s / 2s;
+    - every PHYSICAL attempt goes through the MusicBrainz rate limiter
+      when one is provided (cache hits never consume a limiter slot —
+      the caller checks the cache first).
+    """
+
+    def __init__(
+        self,
+        transport: HttpTransportPort,
+        limiter: "MusicBrainzRateLimiter | None" = None,
+        sleeper=time.sleep,
+    ) -> None:
+        self._transport = transport
+        self._limiter = limiter
+        self._sleeper = sleeper
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        if request.method != "GET":
+            raise ValueError(f"only GET is supported, got {request.method!r}")
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            if self._limiter is not None:
+                self._limiter.wait()
+            try:
+                return self._transport.get(request)
+            except EnrichmentTransportError:
+                if attempt >= _MAX_ATTEMPTS:
+                    raise
+                self._sleeper(self._backoff(None, attempt))
+            except EnrichmentHttpStatusError as exc:
+                if (
+                    exc.status_code in _RETRYABLE_HTTP_STATUS
+                    and attempt < _MAX_ATTEMPTS
+                ):
+                    self._sleeper(self._backoff(exc, attempt))
+                    continue
+                raise
+        raise AssertionError("unreachable")
+
+    @staticmethod
+    def _backoff(exc, attempt: int) -> float:
+        if exc is not None:
+            raw = exc.headers.get("retry-after", "")
+            try:
+                value = float(raw)
+                if 0 < value <= 10:
+                    return value
+            except (TypeError, ValueError):
+                pass
+        return float(attempt)  # bounded: 1s, 2s
 
 
 class MusicBrainzRateLimiter:

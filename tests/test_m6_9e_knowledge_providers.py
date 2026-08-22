@@ -112,7 +112,8 @@ class TestWikidata:
         )
         provider = WikidataKnowledgeProvider(transport)
         claims = provider.fetch_artist_claims("Q42")
-        assert claims.country == "Q145"
+        assert claims.country_qid == "Q145"
+        assert claims.country_label == ""
         assert claims.official_website == "https://x.org"
         assert claims.commons_image_title == "Artist.jpg"
         assert claims.begin_year == 1976
@@ -204,23 +205,25 @@ class TestWikipedia:
         bio = WikipediaBiographyProvider(transport).fetch_biography("X", language="es")
         assert bio.language == "es"
 
-    def test_missing_extract_raises(self):
+    def test_missing_extract_is_empty_optional(self):
+        # R1: a page without an extract is an EMPTY optional biography.
         transport = FakeHttpTransport()
         transport.route(
             "https://en.wikipedia.org/api/rest_v1/page/summary/",
             json_response({"title": "X"}),
         )
-        with pytest.raises(EnrichmentProviderError):
-            WikipediaBiographyProvider(transport).fetch_biography("X")
+        bio = WikipediaBiographyProvider(transport).fetch_biography("X")
+        assert bio.text == ""
 
-    def test_404_means_no_biography_error(self):
+    def test_404_means_no_biography_not_failure(self):
+        # R1 (P2-02): 404 → empty optional result, never FAILED.
         transport = FakeHttpTransport()
         transport.route(
             "https://en.wikipedia.org/api/rest_v1/page/summary/",
             EnrichmentHttpStatusError(404, {}, "missing"),
         )
-        with pytest.raises(EnrichmentProviderError):
-            WikipediaBiographyProvider(transport).fetch_biography("X")
+        bio = WikipediaBiographyProvider(transport).fetch_biography("X")
+        assert bio.text == ""
 
 
 class TestCommons:
@@ -284,14 +287,15 @@ class TestCommons:
         assert image.license == ""  # UNKNOWN, never fabricated
         assert image.source_url.startswith("https://upload.wikimedia.org/")
 
-    def test_missing_page_raises(self):
+    def test_missing_page_is_empty_optional(self):
+        # R1: a missing verified image is an EMPTY optional result.
         transport = FakeHttpTransport()
         transport.route(
             "https://commons.wikimedia.org/w/api.php",
             json_response({"query": {"pages": {"-1": {"missing": ""}}}}),
         )
-        with pytest.raises(EnrichmentProviderError):
-            WikimediaCommonsProvider(transport).fetch_image("X.jpg")
+        image = WikimediaCommonsProvider(transport).fetch_image("X.jpg")
+        assert image.source_url == ""
 
 
 class TestCoverArtArchive:
@@ -333,14 +337,15 @@ class TestCoverArtArchive:
         cover = CoverArtArchiveProvider(transport).fetch_cover(release_group_id="rg-x")
         assert cover.entity_kind == "release-group"
 
-    def test_404_no_cover(self):
+    def test_404_means_no_cover_not_failure(self):
+        # R1 (P2-02): 404 → empty optional cover, never FAILED.
         transport = FakeHttpTransport()
         transport.route(
             "https://coverartarchive.org/release/rel-x",
             EnrichmentHttpStatusError(404, {}, "missing"),
         )
-        with pytest.raises(EnrichmentProviderError):
-            CoverArtArchiveProvider(transport).fetch_cover(release_id="rel-x")
+        cover = CoverArtArchiveProvider(transport).fetch_cover(release_id="rel-x")
+        assert cover.image_url == ""
 
     def test_unpermitted_image_host_ignored(self):
         transport = FakeHttpTransport()

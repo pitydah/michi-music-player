@@ -123,14 +123,18 @@ class FilesystemProviderCache(ProviderCachePort):
         temp.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
         os.replace(temp, path)
 
-    def remove_expired(self, older_than_days: int = 90) -> int:
-        """Bounded explicit maintenance: delete entries whose expires_at
-        is older than the retention window. Returns removed count."""
+    def remove_expired(
+        self, older_than_days: int = 90, max_entries_per_run: int = 1000
+    ) -> int:
+        """R1 BOUNDED explicit maintenance: deterministic traversal
+        (sorted paths), hard cap on examined entries per run. Never
+        scans an arbitrarily huge cache. Returns removed count."""
         horizon = self._clock() - older_than_days * 86400
         removed = 0
         if not self._root.exists():
             return 0
-        for path in self._root.rglob("*.json"):
+        paths = sorted(self._root.rglob("*.json"))
+        for path in paths[:max_entries_per_run]:
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
                 expires_at = float(payload.get("expires_at", 0))

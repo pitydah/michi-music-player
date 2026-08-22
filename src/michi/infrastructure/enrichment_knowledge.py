@@ -1,5 +1,4 @@
-"""Structured knowledge providers (M6.9E) — MusicBrainz, Wikidata,
-Wikipedia, Wikimedia Commons, Cover Art Archive.
+"""Structured knowledge providers (M6.9E + M6.9-BACKEND-R1).
 
 Field ownership (M6.9 contract):
 - IDENTITY: MusicBrainz (resolver);
@@ -9,13 +8,24 @@ Field ownership (M6.9 contract):
 - ARTIST IMAGE: Wikimedia Commons (verified file claim);
 - ALBUM EXTERNAL COVER: Cover Art Archive (fallback authority).
 
-Every provider validates untrusted JSON strictly, never coerces types,
-and returns typed knowledge DTOs with truthful provenance — unknown
-license/attribution stays UNKNOWN, never fabricated.
+R1 additions:
+- ONE shared bounded retry policy (ProviderRequestExecutor);
+- STALE cache is KNOWLEDGE-only and truthfully marked
+  (KnowledgeProvenance.is_stale / retrieved_at) — identity resolution
+  never touches stale entries;
+- optional sources treat 404 as EMPTY optional results (never FAILED);
+- Wikidata claim selection is deterministic and fail-closed
+  (preferred rank → distinct values; contradictions stay unresolved;
+  deprecated ignored; provider order irrelevant); country is a QID
+  (country_qid), never disguised as a label; verified sitelinks provide
+  a Wikipedia fallback (requested language → enwiki);
+- every provider payload carries truthful retrieved_at (UTC ISO-8601,
+  injectable clock).
 """
 
 import json
-from urllib.parse import quote
+from datetime import UTC, datetime
+from urllib.parse import quote, unquote, urlsplit
 
 from michi.application.enrichment_ports import (
     ArtistExternalLinks,
@@ -23,7 +33,9 @@ from michi.application.enrichment_ports import (
     CommonsImageKnowledge,
     CoverArtArchiveProviderPort,
     CoverArtKnowledge,
+    EnrichmentHttpStatusError,
     EnrichmentProviderError,
+    EnrichmentTransportError,
     HttpRequest,
     HttpTransportPort,
     MusicBrainzKnowledgeProviderPort,
@@ -37,8 +49,12 @@ from michi.domain.enrichment import (
     AlbumKnowledgeProfile,
     ArtistKnowledgeProfile,
     KnowledgeProvenance,
+    dedupe_identity_ids,
 )
-from michi.infrastructure.enrichment_http import MusicBrainzRateLimiter
+from michi.infrastructure.enrichment_http import (
+    MusicBrainzRateLimiter,
+    ProviderRequestExecutor,
+)
 from michi.infrastructure.enrichment_musicbrainz import (
     API_ROOT,
     _first_release_year,
@@ -52,28 +68,70 @@ from michi.infrastructure.enrichment_provider_cache import (
 MAX_BIOGRAPHY_CHARS = 4000
 
 
-def _strict_str(value, field: str) -> str:
-    if not isinstance(value, str):
-        raise EnrichmentProviderError(f"provider field {field!r} is not a str")
-    return value
+def _utc_now_iso() -> str:
+    """R1: UTC ISO-8601 retrieval timestamp (injectable per provider)."""
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class _CachedGetter:
-    """Shared cached-GET helper for knowledge providers (fresh cache
-    only — knowledge is cache-like; identity decisions never use it)."""
+    """Shared cached-GET helper for knowledge providers (R1).
+
+    Fresh cache first; on a transient network failure KNOWLEDGE may fall
+    back to a stale entry, truthfully flagged (is_stale=True) with the
+    original retrieval time. Identity resolution never uses this helper
+    with allow_stale.
+    """
 
     def __init__(
-        self, transport: HttpTransportPort, cache: ProviderCachePort | None
+        self,
+        transport: HttpTransportPort,
+        cache: ProviderCachePort | None,
+        limiter: MusicBrainzRateLimiter | None = None,
+        sleeper=None,
+        clock=_utc_now_iso,
     ) -> None:
-        self._transport = transport
-        self._cache = cache
+        import time as _time
 
-    def get_json(self, url: str, ttl_category: str) -> dict:
+        self._executor = ProviderRequestExecutor(
+            transport, limiter, sleeper=sleeper or _time.sleep
+        )
+        self._cache = cache
+        self._clock = clock
+
+    def get_json(
+        self, url: str, ttl_category: str, allow_stale: bool = False
+    ) -> tuple[dict, bool, str]:
+        """Returns (payload, is_stale, retrieved_at_iso)."""
         if self._cache is not None:
             cached = self._cache.get(ttl_category, url)
             if cached is not None:
-                return self._parse(cached.body, url)
-        response = self._transport.get(HttpRequest(url=url))
+                return (
+                    self._parse(cached.body, url),
+                    False,
+                    self._iso(cached.retrieved_at),
+                )
+        try:
+            response = self._executor.get(HttpRequest(url=url))
+        except (EnrichmentTransportError, EnrichmentHttpStatusError) as exc:
+            if (
+                allow_stale
+                and self._cache is not None
+                and isinstance(
+                    exc, (EnrichmentTransportError, EnrichmentHttpStatusError)
+                )
+                and not (
+                    isinstance(exc, EnrichmentHttpStatusError)
+                    and exc.status_code in (400, 401, 403, 404)
+                )
+            ):
+                stale = self._cache.get_stale(ttl_category, url)
+                if stale is not None:
+                    return (
+                        self._parse(stale.body, url),
+                        True,
+                        self._iso(stale.retrieved_at),
+                    )
+            raise
         payload = self._parse(response.body, url)
         if self._cache is not None:
             self._cache.put(
@@ -83,8 +141,14 @@ class _CachedGetter:
                 ttl_seconds=DEFAULT_TTLS_SECONDS.get(
                     ttl_category, DEFAULT_TTLS_SECONDS["musicbrainz_lookup"]
                 ),
+                etag=response.headers.get("etag", ""),
+                last_modified=response.headers.get("last-modified", ""),
             )
-        return payload
+        return payload, False, self._clock()
+
+    @staticmethod
+    def _iso(epoch: float) -> str:
+        return datetime.fromtimestamp(epoch, UTC).isoformat(timespec="seconds")
 
     @staticmethod
     def _parse(body: bytes, url: str) -> dict:
@@ -109,19 +173,20 @@ class MusicBrainzKnowledgeProvider(MusicBrainzKnowledgeProviderPort):
         transport: HttpTransportPort,
         limiter: MusicBrainzRateLimiter,
         cache: ProviderCachePort | None = None,
+        sleeper=None,
+        clock=_utc_now_iso,
     ) -> None:
-        self._getter = _CachedGetter(transport, cache)
-        self._limiter = limiter
-
-    def _get_json(self, url: str, ttl_category: str) -> dict:
-        self._limiter.wait()
-        return self._getter.get_json(url, ttl_category)
+        self._getter = _CachedGetter(
+            transport, cache, limiter=limiter, sleeper=sleeper, clock=clock
+        )
 
     def fetch_artist(
         self, local_artist_key: str, external_artist_id: str
     ) -> ArtistKnowledgeProfile:
         url = f"{API_ROOT}/artist/{quote(external_artist_id)}?inc=genres+tags&fmt=json"
-        payload = self._get_json(url, "musicbrainz_lookup")
+        payload, is_stale, retrieved_at = self._getter.get_json(
+            url, "musicbrainz_lookup", allow_stale=True
+        )
         genres = []
         for entry in _require_list(payload, "genres") or []:
             if isinstance(entry, dict) and isinstance(entry.get("name"), str):
@@ -147,13 +212,18 @@ class MusicBrainzKnowledgeProvider(MusicBrainzKnowledgeProviderPort):
                 else ""
             ),
             provenance=KnowledgeProvenance(
-                provider="musicbrainz", external_entity_id=external_artist_id
+                provider="musicbrainz",
+                external_entity_id=external_artist_id,
+                retrieved_at=retrieved_at,
+                is_stale=is_stale,
             ),
         )
 
     def artist_links(self, external_artist_id: str) -> ArtistExternalLinks:
         url = f"{API_ROOT}/artist/{quote(external_artist_id)}?inc=url-rels&fmt=json"
-        payload = self._get_json(url, "musicbrainz_lookup")
+        payload, _, _ = self._getter.get_json(
+            url, "musicbrainz_lookup", allow_stale=True
+        )
         wikidata_qid = ""
         wikipedia_title = ""
         wikipedia_language = ""
@@ -185,7 +255,9 @@ class MusicBrainzKnowledgeProvider(MusicBrainzKnowledgeProviderPort):
         self, local_album_key: str, release_group_id: str, release_id: str = ""
     ) -> AlbumKnowledgeProfile:
         url = f"{API_ROOT}/release-group/{quote(release_group_id)}?inc=genres&fmt=json"
-        payload = self._get_json(url, "musicbrainz_lookup")
+        payload, is_stale, retrieved_at = self._getter.get_json(
+            url, "musicbrainz_lookup", allow_stale=True
+        )
         genres = []
         for entry in payload.get("genres", []) or []:
             if isinstance(entry, dict) and isinstance(entry.get("name"), str):
@@ -197,7 +269,10 @@ class MusicBrainzKnowledgeProvider(MusicBrainzKnowledgeProviderPort):
             external_genres=tuple(sorted(set(genres), key=str.casefold)),
             first_release_year=_first_release_year(payload),
             provenance=KnowledgeProvenance(
-                provider="musicbrainz", external_entity_id=release_group_id
+                provider="musicbrainz",
+                external_entity_id=release_group_id,
+                retrieved_at=retrieved_at,
+                is_stale=is_stale,
             ),
         )
 
@@ -209,8 +284,6 @@ def _year(raw: str) -> int:
 
 def _parse_wikipedia_resource(resource: str) -> tuple[str, str]:
     """https://<lang>.wikipedia.org/wiki/<Title> -> (title, lang)."""
-    from urllib.parse import unquote, urlsplit
-
     parts = urlsplit(resource)
     host = parts.hostname or ""
     if not host.endswith(".wikipedia.org") or not parts.path.startswith("/wiki/"):
@@ -220,22 +293,73 @@ def _parse_wikipedia_resource(resource: str) -> tuple[str, str]:
     return title, language
 
 
+def _select_claim_value(claims: dict, properties: tuple[str, ...]) -> str:
+    """R1 deterministic, fail-closed claim selection.
+
+    For each RANK level (preferred first, then normal):
+    - deprecated claims are discarded;
+    - values are extracted and deduplicated;
+    - EXACTLY ONE distinct value → use it;
+    - MORE than one distinct value → unresolved (""), never first-wins;
+    - no value at this rank → try the next rank level.
+    Provider order is irrelevant by construction.
+    """
+    for rank in ("preferred", "normal"):
+        values: list[str] = []
+        for prop in properties:
+            for claim in claims.get(prop, []) or []:
+                if not isinstance(claim, dict):
+                    continue
+                if claim.get("rank") == "deprecated":
+                    continue
+                if claim.get("rank") != rank:
+                    continue
+                mainsnak = claim.get("mainsnak")
+                if not isinstance(mainsnak, dict):
+                    continue
+                datavalue = mainsnak.get("datavalue")
+                if not isinstance(datavalue, dict):
+                    continue
+                value = datavalue.get("value")
+                if isinstance(value, str) and value:
+                    values.append(value)
+                elif isinstance(value, dict) and isinstance(value.get("id"), str):
+                    values.append(value["id"])
+                elif isinstance(value, dict) and isinstance(value.get("time"), str):
+                    values.append(value["time"])
+        distinct = dedupe_identity_ids(values)
+        if len(distinct) == 1:
+            return distinct[0]
+        if len(distinct) > 1:
+            return ""  # contradictory: unresolved, never first-wins
+    return ""
+
+
 class WikidataKnowledgeProvider(WikidataKnowledgeProviderPort):
-    """wbgetentities for a verified QID only."""
+    """wbgetentities for a verified QID only (claims + sitelinks)."""
 
     def __init__(
-        self, transport: HttpTransportPort, cache: ProviderCachePort | None = None
+        self,
+        transport: HttpTransportPort,
+        cache: ProviderCachePort | None = None,
+        sleeper=None,
+        clock=_utc_now_iso,
     ) -> None:
-        self._getter = _CachedGetter(transport, cache)
+        self._getter = _CachedGetter(transport, cache, sleeper=sleeper, clock=clock)
 
-    def fetch_artist_claims(self, qid: str) -> WikidataArtistClaims:
+    def fetch_artist_claims(
+        self, qid: str, preferred_language: str = "en"
+    ) -> WikidataArtistClaims:
         if not (qid.startswith("Q") and qid[1:].isdigit()):
             raise EnrichmentProviderError(f"invalid Wikidata QID: {qid!r}")
         url = (
             "https://www.wikidata.org/w/api.php?action=wbgetentities"
-            f"&ids={quote(qid)}&format=json&formatversion=2&props=claims"
+            f"&ids={quote(qid)}&format=json&formatversion=2"
+            "&props=claims|sitelinks"
         )
-        payload = self._getter.get_json(url, "wikidata")
+        payload, is_stale, retrieved_at = self._getter.get_json(
+            url, "wikidata", allow_stale=True
+        )
         entities = payload.get("entities")
         if not isinstance(entities, dict):
             raise EnrichmentProviderError("wikidata entities missing")
@@ -244,61 +368,44 @@ class WikidataKnowledgeProvider(WikidataKnowledgeProviderPort):
             raise EnrichmentProviderError("wikidata entity missing")
         claims = entity.get("claims")
         if not isinstance(claims, dict):
-            return WikidataArtistClaims()
+            claims = {}
+        wikipedia_title, wikipedia_language = _sitelink(
+            entity.get("sitelinks"), preferred_language
+        )
+        begin_raw = _select_claim_value(claims, ("P571", "P569"))
+        end_raw = _select_claim_value(claims, ("P576", "P570"))
         return WikidataArtistClaims(
-            country=_preferred_claim_str(claims, ("P27", "P495")),
-            official_website=_preferred_claim_str(claims, ("P856",)),
-            commons_image_title=_preferred_claim_file(claims, ("P18",)),
-            begin_year=_preferred_claim_year(claims, ("P571", "P569")),
-            end_year=_preferred_claim_year(claims, ("P576", "P570")),
+            country_qid=_select_claim_value(claims, ("P27", "P495")),
+            country_label="",  # R1: labels are NEVER invented here
+            official_website=_select_claim_value(claims, ("P856",)),
+            commons_image_title=_file_title(_select_claim_value(claims, ("P18",))),
+            wikipedia_title=wikipedia_title,
+            wikipedia_language=wikipedia_language,
+            begin_year=_year_from_claim(begin_raw),
+            end_year=_year_from_claim(end_raw),
+            retrieved_at=retrieved_at,
+            is_stale=is_stale,
         )
 
 
-def _preferred_claim_str(claims: dict, properties: tuple[str, ...]) -> str:
-    """Deterministic preferred/normal-rank selection; no guessing."""
-    for prop in properties:
-        for claim in claims.get(prop, []) or []:
-            if not isinstance(claim, dict):
-                continue
-            if claim.get("rank") == "deprecated":
-                continue
-            mainsnak = claim.get("mainsnak")
-            if not isinstance(mainsnak, dict):
-                continue
-            datavalue = mainsnak.get("datavalue")
-            if not isinstance(datavalue, dict):
-                continue
-            value = datavalue.get("value")
-            if isinstance(value, str) and value:
-                return value
-            if isinstance(value, dict) and isinstance(value.get("id"), str):
-                return value["id"]
-            if isinstance(value, dict) and isinstance(value.get("time"), str):
-                return value["time"]
-    return ""
+def _sitelink(sitelinks, preferred_language: str) -> tuple[str, str]:
+    """R1 verified sitelink fallback: requested language → enwiki."""
+    if not isinstance(sitelinks, dict):
+        return "", ""
+    for lang in (preferred_language, "en"):
+        entry = sitelinks.get(f"{lang}wiki")
+        if isinstance(entry, dict) and isinstance(entry.get("title"), str):
+            return entry["title"], lang
+    return "", ""
 
 
-def _preferred_claim_file(claims: dict, properties: tuple[str, ...]) -> str:
-    for prop in properties:
-        for claim in claims.get(prop, []) or []:
-            if not isinstance(claim, dict):
-                continue
-            if claim.get("rank") == "deprecated":
-                continue
-            mainsnak = claim.get("mainsnak")
-            if not isinstance(mainsnak, dict):
-                continue
-            datavalue = mainsnak.get("datavalue")
-            if not isinstance(datavalue, dict):
-                continue
-            value = datavalue.get("value")
-            if isinstance(value, str) and value.startswith("File:"):
-                return value[len("File:") :]
-    return ""
+def _file_title(raw: str) -> str:
+    if raw.startswith("File:"):
+        return raw[len("File:") :]
+    return raw
 
 
-def _preferred_claim_year(claims: dict, properties: tuple[str, ...]) -> int:
-    raw = _preferred_claim_str(claims, properties)
+def _year_from_claim(raw: str) -> int:
     if not raw:
         return 0
     digits = "".join(ch for ch in raw if ch.isdigit())[:4]
@@ -306,12 +413,19 @@ def _preferred_claim_year(claims: dict, properties: tuple[str, ...]) -> int:
 
 
 class WikipediaBiographyProvider(WikipediaBiographyProviderPort):
-    """REST summary extract for a VERIFIED page title (bounded text)."""
+    """REST summary extract for a VERIFIED page title (bounded text).
+
+    R1: a 404 is an EMPTY OPTIONAL result (no biography), never FAILED.
+    """
 
     def __init__(
-        self, transport: HttpTransportPort, cache: ProviderCachePort | None = None
+        self,
+        transport: HttpTransportPort,
+        cache: ProviderCachePort | None = None,
+        sleeper=None,
+        clock=_utc_now_iso,
     ) -> None:
-        self._getter = _CachedGetter(transport, cache)
+        self._getter = _CachedGetter(transport, cache, sleeper=sleeper, clock=clock)
 
     def fetch_biography(self, title: str, language: str = "") -> BiographyKnowledge:
         lang = language or "en"
@@ -319,10 +433,18 @@ class WikipediaBiographyProvider(WikipediaBiographyProviderPort):
             f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/"
             f"{quote(title.replace(' ', '_'))}"
         )
-        payload = self._getter.get_json(url, "wikipedia")
+        try:
+            payload, is_stale, retrieved_at = self._getter.get_json(
+                url, "wikipedia", allow_stale=True
+            )
+        except EnrichmentHttpStatusError as exc:
+            if exc.status_code == 404:
+                # R1 (P2-02): no page → empty OPTIONAL biography.
+                return BiographyKnowledge()
+            raise
         extract = payload.get("extract")
         if not isinstance(extract, str):
-            raise EnrichmentProviderError("wikipedia extract missing")
+            return BiographyKnowledge()
         text = " ".join(extract.split())
         if len(text) > MAX_BIOGRAPHY_CHARS:
             text = text[:MAX_BIOGRAPHY_CHARS]
@@ -342,6 +464,8 @@ class WikipediaBiographyProvider(WikipediaBiographyProviderPort):
             page_title=page_title,
             source_url=desktop,
             language=lang,
+            retrieved_at=retrieved_at,
+            is_stale=is_stale,
         )
 
 
@@ -349,9 +473,13 @@ class WikimediaCommonsProvider(WikimediaCommonsProviderPort):
     """imageinfo + extmetadata for a verified Commons file title."""
 
     def __init__(
-        self, transport: HttpTransportPort, cache: ProviderCachePort | None = None
+        self,
+        transport: HttpTransportPort,
+        cache: ProviderCachePort | None = None,
+        sleeper=None,
+        clock=_utc_now_iso,
     ) -> None:
-        self._getter = _CachedGetter(transport, cache)
+        self._getter = _CachedGetter(transport, cache, sleeper=sleeper, clock=clock)
 
     def fetch_image(self, file_title: str) -> CommonsImageKnowledge:
         url = (
@@ -359,10 +487,17 @@ class WikimediaCommonsProvider(WikimediaCommonsProviderPort):
             f"&titles={quote(f'File:{file_title}')}"
             "&prop=imageinfo&iiprop=url|extmetadata&format=json"
         )
-        payload = self._getter.get_json(url, "commons")
+        try:
+            payload, is_stale, retrieved_at = self._getter.get_json(
+                url, "commons", allow_stale=True
+            )
+        except EnrichmentHttpStatusError as exc:
+            if exc.status_code == 404:
+                return CommonsImageKnowledge()
+            raise
         pages = payload.get("query", {}).get("pages")
         if not isinstance(pages, dict):
-            raise EnrichmentProviderError("commons pages missing")
+            return CommonsImageKnowledge()
         for page in pages.values():
             if not isinstance(page, dict):
                 continue
@@ -376,7 +511,7 @@ class WikimediaCommonsProvider(WikimediaCommonsProviderPort):
                 continue
             source_url = info.get("url")
             if not isinstance(source_url, str) or not source_url:
-                raise EnrichmentProviderError("commons image url missing")
+                continue
             metadata = info.get("extmetadata") or {}
             return CommonsImageKnowledge(
                 source_url=source_url,
@@ -384,25 +519,32 @@ class WikimediaCommonsProvider(WikimediaCommonsProviderPort):
                 license_url=_meta_str(metadata, "LicenseUrl"),
                 artist=_meta_str(metadata, "Artist"),
                 attribution=_meta_str(metadata, "Credit"),
+                retrieved_at=retrieved_at,
+                is_stale=is_stale,
             )
-        raise EnrichmentProviderError("commons image not found")
+        return CommonsImageKnowledge()
 
 
 def _meta_str(metadata, key: str) -> str:
     entry = metadata.get(key)
     if isinstance(entry, dict) and isinstance(entry.get("value"), str):
-        value = entry["value"].strip()
-        return value
+        return entry["value"].strip()
     return ""
 
 
 class CoverArtArchiveProvider(CoverArtArchiveProviderPort):
-    """CAA JSON lookup for a resolved Release or Release Group."""
+    """CAA JSON lookup for a resolved Release or Release Group.
+
+    R1: 404 → empty optional cover (never FAILED)."""
 
     def __init__(
-        self, transport: HttpTransportPort, cache: ProviderCachePort | None = None
+        self,
+        transport: HttpTransportPort,
+        cache: ProviderCachePort | None = None,
+        sleeper=None,
+        clock=_utc_now_iso,
     ) -> None:
-        self._getter = _CachedGetter(transport, cache)
+        self._getter = _CachedGetter(transport, cache, sleeper=sleeper, clock=clock)
 
     def fetch_cover(
         self, release_id: str = "", release_group_id: str = ""
@@ -415,7 +557,12 @@ class CoverArtArchiveProvider(CoverArtArchiveProviderPort):
             entity_kind = "release-group"
         else:
             raise EnrichmentProviderError("CAA cover requires an entity id")
-        payload = self._getter.get_json(url, "coverart")
+        try:
+            payload, _, _ = self._getter.get_json(url, "coverart", allow_stale=True)
+        except EnrichmentHttpStatusError as exc:
+            if exc.status_code == 404:
+                return CoverArtKnowledge(entity_kind=entity_kind)
+            raise
         images = payload.get("images")
         if not isinstance(images, list) or not images:
             return CoverArtKnowledge(entity_kind=entity_kind)
