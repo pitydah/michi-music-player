@@ -165,7 +165,6 @@ Item {
 
                 heroHeader: PlaylistHero {
                     width: trackList.width
-                    implicitHeight: root.heroHeight
                     playlistName: playlists.selectedPlaylistName
                     trackCount: playlists.playlistTracks.length
                     durationMs: playlists.selectedPlaylistDurationMs

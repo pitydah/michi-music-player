@@ -26,9 +26,12 @@ Item {
     signal changeCoverRequested()
     signal togglePinRequested()
 
-    // Editorial header height (~30-40% of the first screen); the page
-    // overrides this to track the window height.
-    implicitHeight: 260
+    // Editorial header height (~30-40% of the first screen). Self-sized
+    // from the hosting view (the ListView header's parent) — the page must
+    // NOT pass a height here: inside this component scope `root` is this
+    // hero, so any page-root reference in a property binding would collapse
+    // the header to zero height.
+    implicitHeight: Math.max(240, Math.min(300, (parent ? parent.height : 600) * 0.36))
 
     // Atmospheric depth only — never a saturated glow
     Rectangle {

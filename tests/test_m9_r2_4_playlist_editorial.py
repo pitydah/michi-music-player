@@ -118,3 +118,19 @@ def test_page_connects_play_track_and_shuffle():
     assert "playlists.play_track(index)" in host
     assert "onShuffleRequested" in host
     assert 'navigation.navigate("library")' in host
+
+
+def test_hero_self_sizes_and_page_never_collapses_it():
+    hero = read("playlists/PlaylistHero.qml")
+    # the hero computes its own editorial height from its host view; a
+    # page-side `implicitHeight: root.heroHeight` binding would resolve
+    # `root` to the hero (component scope wins in property bindings) and
+    # collapse the ListView header to zero — regression guard.
+    assert "implicitHeight: Math.max(240, Math.min(300," in hero
+    assert "(parent ? parent.height : 600) * 0.36)" in hero
+    page = read("playlists/PlaylistDetailView.qml")
+    assert "implicitHeight: root.heroHeight" not in page
+    assert (
+        "implicitHeight:"
+        not in page.split("heroHeader: PlaylistHero {")[1].split("playlistName:")[0]
+    )
