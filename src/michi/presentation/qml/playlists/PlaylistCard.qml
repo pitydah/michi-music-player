@@ -46,13 +46,6 @@ Item {
         root.openRequested()
     }
 
-    function formatTime(ms) {
-        if (!ms || ms <= 0) return ""
-        var totalSeconds = Math.round(ms / 1000)
-        var minutes = Math.floor(totalSeconds / 60)
-        var seconds = totalSeconds % 60
-        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
-    }
 
     HoverHandler { id: hoverHandler }
     TapHandler {
@@ -205,7 +198,7 @@ Item {
 
             MichiText {
                 text: root.trackCount + (root.trackCount === 1 ? " track" : " tracks")
-                    + (root.durationMs > 0 ? " · " + root.formatTime(root.durationMs) : "")
+                    + (root.durationMs > 0 ? " · " + MichiFormat.formatDuration(root.durationMs) : "")
                 role: "secondary"
                 elide: Text.ElideRight
                 color: MichiPalette.textSecondary

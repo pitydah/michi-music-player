@@ -80,14 +80,22 @@ def _contrast_ratio(foreground: str, background: str) -> float:
 
 def test_text_muted_meets_wcag_aa_on_primary_surfaces():
     palette = read("theme/MichiPalette.qml")
-    muted = next(
-        line.split('"')[1] for line in palette.splitlines() if "textMuted:" in line
-    )
+    line = next(line for line in palette.splitlines() if "textMuted:" in line)
+    # textMuted is now conditional on highContrast; the normal-mode value is
+    # the last hex literal in the declaration.
+    muted = [tok for tok in line.split('"') if tok.startswith("#")][-1]
     assert muted == "#8A90A0"
     for surface in ("#090B11", "#14171C", "#1F232A"):
         assert _contrast_ratio(muted, surface) >= 4.5, (
             f"textMuted {muted} on {surface} must be >= 4.5:1"
         )
+
+
+def test_high_contrast_lifts_secondary_text_tiers():
+    palette = read("theme/MichiPalette.qml")
+    assert 'MichiAccessibility.highContrast ? "#C9CEDB"' in palette
+    assert 'MichiAccessibility.highContrast ? "#ADB3C2"' in palette
+    assert 'MichiAccessibility.highContrast ? "#8A91A1"' in palette
 
 
 # ── P1: empty states and library CTA ──────────────────────────────────────────
@@ -338,3 +346,23 @@ def test_settings_view_uses_real_controls():
     assert "Controls.MichiTextField" in content
     assert "Controls.MichiButton" in content
     assert "MichiGlassSurface {" in content
+
+
+# ── Phase 4: MichiFormat singleton ────────────────────────────────────────────
+
+
+def test_michi_format_singleton_registered_and_used():
+    qmldir = Path("src/michi/presentation/qml/theme/qmldir").read_text()
+    assert "singleton MichiFormat 1.0 MichiFormat.qml" in qmldir
+    for rel in [
+        "media/TrackRow.qml",
+        "media/MichiAlbumRow.qml",
+        "playlists/PlaylistCard.qml",
+        "playlists/PlaylistsView.qml",
+        "playlists/PlaylistTrackList.qml",
+        "views/AlbumDetailView.qml",
+    ]:
+        content = read(rel)
+        assert "MichiFormat.format" in content, rel
+        assert "function formatTime" not in content, rel
+        assert "function formatDuration" not in content, rel

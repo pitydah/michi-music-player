@@ -34,7 +34,7 @@ Rectangle {
     signal inspectorRequested()
     signal removeRequested()
     readonly property string durationText: duration.length > 0
-        ? duration : formatDuration(durationMs)
+        ? duration : MichiFormat.formatDuration(durationMs)
     // Minimum height keeps action icon-buttons (controlMedium = 36px)
     // comfortably contained in every density, artwork rows add their own size.
     implicitHeight: showArtwork
@@ -65,14 +65,6 @@ Rectangle {
         }
     }
 
-    function formatDuration(ms) {
-        if (ms <= 0)
-            return ""
-        var totalSeconds = Math.floor(ms / 1000)
-        var minutes = Math.floor(totalSeconds / 60)
-        var seconds = totalSeconds % 60
-        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
-    }
 
     function moveByPage(direction) {
         var view = root.ListView.view

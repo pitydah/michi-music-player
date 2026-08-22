@@ -99,6 +99,13 @@ legacy `ui/` wrapper layer (`MichiButton/Panel/Slider/TextField`) and unused
 `components/NowPlayingPanel.qml` still imports `../ui` — dead code reserved
 for the Now Playing redesign.
 
+**Commit G (done):** items 21 + 19 — high-contrast mode now lifts
+textSecondary/textMuted/textDisabled (~7:1 on obsidian) instead of borders
+only; new `MichiFormat` singleton (theme/qmldir) replaces the 6 in-scope
+formatTime/formatDuration/formatFileSize copies (TrackRow, MichiAlbumRow,
+PlaylistCard, PlaylistsView, PlaylistTrackList, AlbumDetailView). Now
+Playing copies stay untouched (out of scope).
+
 ## Phase 3 — 🟠 WARNING: visual consistency & copy (~5 h)
 
 | # | Finding | Evidence | Fix | Effort |

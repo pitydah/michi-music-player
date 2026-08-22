@@ -13,9 +13,11 @@ QtObject {
     readonly property color smoke: "#1F232A"
     readonly property color smokeRaised: "#282D36"
     readonly property color textPrimary: "#ECEEF3"
-    readonly property color textSecondary: "#9CA1AE"
-    readonly property color textMuted: "#8A90A0" // WCAG AA >=4.5:1 on obsidian/graphite/smoke
-    readonly property color textDisabled: "#4C515D"
+    // High-contrast mode lifts the secondary tiers so all functional text
+    // exceeds 7:1 on obsidian (borders/opacity alone are not enough).
+    readonly property color textSecondary: MichiAccessibility.highContrast ? "#C9CEDB" : "#9CA1AE"
+    readonly property color textMuted: MichiAccessibility.highContrast ? "#ADB3C2" : "#8A90A0" // WCAG AA >=4.5:1 on obsidian/graphite/smoke
+    readonly property color textDisabled: MichiAccessibility.highContrast ? "#8A91A1" : "#4C515D"
     readonly property color auroraBlue: "#4CA6FF"
     readonly property color auroraCyan: "#21D6E6"
     readonly property color auroraPurple: "#9A7CFF"

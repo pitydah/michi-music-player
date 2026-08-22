@@ -64,13 +64,6 @@ Item {
         return list
     }
 
-    function formatTime(ms) {
-        if (!ms || ms <= 0) return ""
-        var totalSeconds = Math.round(ms / 1000)
-        var minutes = Math.floor(totalSeconds / 60)
-        var seconds = totalSeconds % 60
-        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
-    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -325,7 +318,7 @@ Item {
                     }
 
                     MichiText {
-                        text: root.formatTime(modelData.durationMs)
+                        text: MichiFormat.formatDuration(modelData.durationMs)
                         role: "technical"
                         technical: true
                         Layout.preferredWidth: 70

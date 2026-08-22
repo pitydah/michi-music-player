@@ -21,7 +21,7 @@ ColumnLayout {
             ? inspectedTrack.bitDepth + "-bit" : "Unknown" },
         { label: "Channels", value: inspectedTrack.channels > 0
             ? String(inspectedTrack.channels) : "Unknown" },
-        { label: "File size", value: root.formatFileSize(inspectedTrack.fileSize) },
+        { label: "File size", value: MichiFormat.formatFileSize(inspectedTrack.fileSize) },
         { label: "Path", value: inspectedTrack.path }
     ] : []
 
@@ -32,23 +32,7 @@ ColumnLayout {
 
     onVisibleChanged: if (!visible) inspectedTrack = null
 
-    function formatFileSize(bytes) {
-        if (!bytes || bytes <= 0)
-            return "Unknown"
-        if (bytes >= 1073741824)
-            return (bytes / 1073741824).toFixed(2) + " GB"
-        return (bytes / 1048576).toFixed(1) + " MB"
-    }
 
-    function formatDuration(milliseconds) {
-        var seconds = Math.max(0, Math.floor(milliseconds / 1000))
-        var minutes = Math.floor(seconds / 60)
-        var hours = Math.floor(minutes / 60)
-        var remainingMinutes = minutes % 60
-        if (hours > 0)
-            return hours + " hr " + remainingMinutes + " min"
-        return minutes + " min"
-    }
 
     RowLayout {
         Layout.fillWidth: true
@@ -160,7 +144,7 @@ ColumnLayout {
                         visible: root.width < 960
                     }
                     MichiStatusChip {
-                        text: root.formatDuration(library.albumDurationMs)
+                        text: MichiFormat.formatHoursMinutes(library.albumDurationMs)
                         tone: "neutral"
                         dotVisible: false
                         visible: root.width < 960 && library.albumDurationMs > 0
@@ -220,7 +204,7 @@ ColumnLayout {
                         color: MichiPalette.textMuted
                     }
                     MichiText {
-                        text: root.formatDuration(library.albumDurationMs)
+                        text: MichiFormat.formatHoursMinutes(library.albumDurationMs)
                         role: "secondary"
                     }
                 }

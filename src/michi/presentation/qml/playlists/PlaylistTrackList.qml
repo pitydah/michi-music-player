@@ -160,7 +160,7 @@ Item {
                     }
 
                     MichiText {
-                        text: modelData.durationMs > 0 ? root.formatTime(modelData.durationMs) : ""
+                        text: modelData.durationMs > 0 ? MichiFormat.formatDuration(modelData.durationMs) : ""
                         role: "technical"
                         technical: true
                         Layout.preferredWidth: 64
@@ -228,10 +228,4 @@ Item {
         }
     }
 
-    function formatTime(ms) {
-        var totalSeconds = Math.round(ms / 1000)
-        var minutes = Math.floor(totalSeconds / 60)
-        var seconds = totalSeconds % 60
-        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
-    }
 }
