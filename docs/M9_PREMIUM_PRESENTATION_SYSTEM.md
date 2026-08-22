@@ -74,6 +74,12 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   - M9-R1K P2 hardening implementation: ccb4500441d17ca5c633f29c6e9311b1042bcd6d
   - M9-R1K documentation closeout: 48d38e6a62befd2a295c556cda0a65b9e0beb601
   - M9-R1L final QA (real open→focus→close focus gate): 6af09b200075c85fca72fa263be183f68529ca6d
+  - M9-R1M QML harness integrity seal: f3f9dff56ea342ae9714449c33401e40b370b0a9
+    validation: 1456 passed (Ruff PASS, build PASS, QML gates PASS, product diff ZERO)
+    statement: the QML test harness now distinguishes pre-existing teardown
+    noise from runtime errors emitted by the component under current test; a
+    deliberate runtime ReferenceError probe is regression-tested and must be
+    detected.
 - **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
   engine selector, DAC selector, Output Profile selector, output state,
   actual format telemetry, Signal Path, DSD mode, BitPerfectState, hotplug/
