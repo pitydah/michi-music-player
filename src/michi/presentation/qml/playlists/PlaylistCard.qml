@@ -84,13 +84,95 @@ Item {
         anchors.margins: MichiSpacing.md
         spacing: MichiSpacing.sm
 
-        PlaylistArtwork {
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: width
-            customCoverPath: root.customCoverPath
-            mosaicArtworkPaths: root.mosaicArtworkPaths
-            fallbackText: root.playlistName
-            radius: MichiRadius.md
+
+            // Vinyl Record peeking out to the right on hover
+            Rectangle {
+                id: vinylDisc
+                anchors.verticalCenter: parent.verticalCenter
+                x: hoverHandler.hovered ? parent.width * 0.16 : 0
+                width: parent.width * 0.94
+                height: width
+                radius: width / 2
+                color: MichiPalette.obsidianDeep
+                border.width: 1
+                border.color: MichiSemanticColors.borderStrong
+                z: 0
+
+                // Grooves
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width * 0.72
+                    height: width
+                    radius: width / 2
+                    color: "transparent"
+                    border.width: 1
+                    border.color: MichiPalette.graphite
+                }
+
+                // Center Label
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width * 0.34
+                    height: width
+                    radius: width / 2
+                    color: MichiPalette.auroraBlue
+                    opacity: 0.85
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 6
+                        height: 6
+                        radius: 3
+                        color: MichiPalette.obsidian
+                    }
+                }
+
+                Behavior on x {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation {
+                        duration: MichiMotion.standard
+                        easing.type: MichiMotion.outCubic
+                    }
+                }
+            }
+
+            PlaylistArtwork {
+                anchors.fill: parent
+                customCoverPath: root.customCoverPath
+                mosaicArtworkPaths: root.mosaicArtworkPaths
+                fallbackText: root.playlistName
+                radius: MichiRadius.md
+                z: 1
+            }
+
+            // Quick Play Button Overlay on Hover
+            Rectangle {
+                anchors.centerIn: parent
+                width: 44
+                height: 44
+                radius: 22
+                color: MichiSemanticColors.scrimStrong
+                border.width: 1
+                border.color: MichiSemanticColors.auroraCyanBorder
+                visible: hoverHandler.hovered
+                z: 2
+
+                MichiIcon {
+                    name: "play"
+                    width: 20
+                    height: 20
+                    anchors.centerIn: parent
+                    iconColor: MichiPalette.auroraCyan
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.playRequested()
+                }
+            }
         }
 
         MichiText {
