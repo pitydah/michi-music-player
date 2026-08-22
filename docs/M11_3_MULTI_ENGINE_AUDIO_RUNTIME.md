@@ -3,7 +3,8 @@
 Implementation contract for the multi-engine audio runtime. Status: **IN
 PROGRESS — M11.3A DONE / TESTED / FROZEN** (authorized by the 2026-08-21
 product-owner realignment; foundation delivered 2026-08-22). This document
-defines contracts, not implementation.
+defines the M11.3 contracts and records implementation status for each
+subphase.
 
 ## Resolved binding decisions (M11.3A, ADR 0007)
 
@@ -17,6 +18,50 @@ defines contracts, not implementation.
   `playid`, `pause`, `stop`, `seekid`/`seekcur`, `setvol`, `currentsong`,
   `idle`/`noidle` (if required for event convergence). No generic arbitrary
   command execution is exposed to the application layer.
+
+## Implementation status — M11.3A vs productive runtime
+
+| Subphase / piece | Status |
+| --- | --- |
+| M11.3A domain contracts | IMPLEMENTED / TESTED |
+| M11.3A AudioTransportRouter | IMPLEMENTED / TESTED — **NOT PRODUCTIVELY WIRED** |
+| M11.3A registry | IMPLEMENTED / TESTED |
+| M11.3A AudioEngineService | IMPLEMENTED FOUNDATION — NO SWITCHING YET |
+| Qt provider | IMPLEMENTED FOUNDATION — productive lifecycle integration M11.3B |
+| GStreamer provider | PROBE ONLY — adapter M11.3C |
+| MPD provider | PROBE ONLY — managed adapter M11.3D |
+| Engine availability runtime | foundation now — full discovery M11.3E |
+| Selection / persistence | M11.3F |
+| Failure convergence | M11.3G |
+
+**CURRENT PRODUCTIVE PATH (unchanged by M11.3A):**
+
+```
+PlaybackService / PlaybackCoordinator
+      ↓
+QtMultimediaBackend            (direct — no router yet)
+```
+
+**TARGET AFTER M11.3B (productive wiring):**
+
+```
+QtEngineProvider
+      ↓
+QtMultimediaBackend
+      ↓
+AudioTransportRouter           (ONE instance for both consumers)
+      ↓
+PlaybackService / PlaybackCoordinator
+```
+
+The SAME router instance is used by both consumers. Until M11.3B, the router
+is IMPLEMENTED / TESTED / FOUNDATIONAL only — the bootstrap graph is
+deliberately NOT migrated in M11.3A(-R1).
+
+**SWITCH ORDER (recorded for M11.3F, validated for Qt in M11.3B):**
+STOP → router detach/unbind → provider close → target provider open →
+router bind → validation. The router MUST detach BEFORE the provider closes;
+never close a provider while the router remains intentionally attached.
 
 ## Stable router architecture (M11.3A)
 
@@ -53,8 +98,7 @@ preserving the established Michi domain contracts (PlaybackState, QueueState).
 ```
 PlaybackService  (sole PlaybackState owner — unchanged)
       │
-   AudioPort  (ABC — boundary unchanged in shape; may gain engine-capability
-      │         and quiescent-reconfigure slots per M11.3A)
+   AudioPort  (ABC — TRANSPORT ONLY, now and forever; ADR 0007)
       │
    ┌───┼───────────┐
    │   │           │

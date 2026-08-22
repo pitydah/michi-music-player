@@ -56,6 +56,26 @@ reconstruct services nor turn AudioPort into a God interface.
   present) is distinct from `implemented` (adapter ready).
 - M13 owns distro/package delivery policy for GStreamer/MPD runtime pieces.
 
+## Implementation-truth clarifications (M11.3A-R1)
+
+- The stable router architecture is accepted; the router foundation EXISTS
+  but is NOT yet wired into the productive graph (bootstrap still connects
+  PlaybackService/PlaybackCoordinator directly to QtMultimediaBackend).
+- Productive wiring belongs to M11.3B; M11.3A never claims it.
+- Provider lifecycle order (mandatory): STOP → router detach/unbind →
+  provider close → target provider open → router bind → validation. Never
+  close a provider while the router remains intentionally attached.
+- AVAILABLE != IMPLEMENTED != ACTIVATABLE:
+  - available = runtime/dependency detectable on this machine;
+  - implemented = Michi has an operational AudioPort adapter;
+  - can_activate = available AND implemented (canonical future selection
+    gate — selection code MUST use registry.can_activate(), never
+    is_available() alone).
+- The lifecycle axis (AudioEngineState.lifecycle) describes the ENGINE
+  RUNTIME SLOT, not PlaybackStatus and not the selected descriptor.
+- Initial lifecycle is UNINITIALIZED (startup before any activation) —
+  it never falsely implies "Qt unavailable".
+
 ## Alternatives rejected
 
 - **GStreamer via ctypes/subprocess-only**: rejects GI typelib surface used by
