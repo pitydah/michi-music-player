@@ -1,10 +1,10 @@
 # M11.3 — Multi-Engine Audio Runtime (contract)
 
 Implementation contract for the multi-engine audio runtime. Status: **IN
-PROGRESS — M11.3A + M11.3B DONE / TESTED / FROZEN** (authorized by the
-2026-08-21 product-owner realignment; foundation 2026-08-22, productive Qt
-runtime 2026-08-22). This document defines the M11.3 contracts and records
-implementation status for each subphase.
+PROGRESS — M11.3A + M11.3B + M11.3C DONE / TESTED / FROZEN** (authorized by
+the 2026-08-21 product-owner realignment; foundation 2026-08-22, productive
+Qt runtime 2026-08-22, GStreamer adapter 2026-08-22). This document defines
+the M11.3 contracts and records implementation status for each subphase.
 
 ## Resolved binding decisions (M11.3A, ADR 0007)
 
@@ -28,7 +28,7 @@ implementation status for each subphase.
 | M11.3A registry | IMPLEMENTED / TESTED |
 | M11.3A AudioEngineService | IMPLEMENTED FOUNDATION — NO SWITCHING YET |
 | Qt provider | IMPLEMENTED — **PRODUCTIVE REFERENCE ENGINE (M11.3B + M11.3B-R1)**; single canonical provider (registry identity), transactional startup, backend ownership + exception-safe close |
-| GStreamer provider | PROBE ONLY — adapter M11.3C |
+| GStreamer provider | **IMPLEMENTED (M11.3C)** — operational GStreamerAudioPort (playbin3), lazy GI runtime, generation-guarded stale isolation, pump thread + Qt bridge dispatch; availability runtime-dependent; NOT default |
 | MPD provider | PROBE ONLY — managed adapter M11.3D |
 | Engine availability runtime | foundation now — full discovery M11.3E |
 | Selection / persistence | M11.3F |
