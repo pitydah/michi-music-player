@@ -1,9 +1,9 @@
 """Engine provider implementations — infrastructure layer (M11.3A).
 
-GStreamer and MPD are AVAILABILITY-PROBE ONLY in this WP: their adapters are
-deliberately NOT implemented (M11.3C / M11.3D). The descriptors distinguish
-dependency availability (installed) from implementation readiness
-(implemented), so nothing falsely claims READY.
+GStreamer has an IMPLEMENTED adapter (M11.3C/M11.3C-R1) with runtime-
+dependent availability (GI + Gst + playbin3 required). MPD remains
+availability-probe only (M11.3D). Descriptors distinguish dependency
+availability (installed) from implementation readiness (implemented).
 """
 
 from michi.application.audio_engine_registry import AudioEngineProviderPort
@@ -111,6 +111,8 @@ class GStreamerEngineProvider(AudioEngineProviderPort):
         return AudioEngineId.GSTREAMER
 
     def probe(self) -> AudioEngineDescriptor:
+        """Truthful availability (M11.3C-R1): GI + Gst 1.0 + playbin3
+        factory must ALL exist — the adapter depends on playbin3."""
         available = False
         reason = None
         try:
@@ -118,8 +120,12 @@ class GStreamerEngineProvider(AudioEngineProviderPort):
                 GStreamerBindings,
             )
 
-            GStreamerBindings().ensure_loaded()
-            available = True
+            bindings = GStreamerBindings()
+            bindings.ensure_loaded()
+            if not bindings.playbin3_available():
+                reason = "playbin3 no disponible en el runtime GStreamer"
+            else:
+                available = True
         except (ImportError, ValueError) as exc:
             reason = f"PyGObject/GStreamer no disponible: {exc}"
         return AudioEngineDescriptor(

@@ -1,19 +1,12 @@
-"""GStreamer AudioPort transport (M11.3C).
+"""GStreamer AudioPort transport (M11.3C / M11.3C-R1).
 
-Lazy PyGObject/GI bindings, infrastructure-only. The adapter owns a
-dedicated GLib MainContext/MainLoop + pump thread for its bus; all GStreamer
-messages are translated into the canonical AudioPort events and delivered
-through a Qt signal bridge (QueuedConnection) so consumers receive callbacks
-on the OWNER thread — the same thread-affinity as QtMultimediaBackend.
-
-STALE ISOLATION: a per-source generation token guards every event type
-(acceptance/rejection/EOS/state/duration/position/error); messages from an
-old generation or after close() are ignored.
-
-TEST SEAM: the bindings object is injectable. The production bindings load
-gi/Gst lazily and provide a real pump; the test fake provides the same
-object surface but delivers messages directly via the adapter's
-`_process_message` (deterministic unit tests without a GStreamer runtime).
+Lazy PyGObject/GI bindings, infrastructure-only. The adapter owns ONE GLib
+MainContext/MainLoop/pump thread per port; the current pipeline's bus watch
+and ONE bounded position timer are GSource objects attached explicitly to
+that custom context. Bus messages are translated with a GENERATION-AWARE
+provenance policy (per message type), delivered to the owner thread via a
+Qt signal bridge (QueuedConnection) — same thread-affinity as
+QtMultimediaBackend.
 
 NO GStreamer types leave this module.
 """
@@ -21,7 +14,7 @@ NO GStreamer types leave this module.
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Qt, Signal
 
 from michi.application.ports import AudioPort
 from michi.domain.playback import PlaybackStatus
@@ -30,7 +23,11 @@ _POSITION_POLL_MS = 500
 
 
 class GStreamerBindings:
-    """Lazy GObject Introspection facade for GStreamer (production)."""
+    """Lazy GObject Introspection facade for GStreamer (production).
+
+    Encapsulates ALL GI-specific mechanics: state enums, MainContext/GSource
+    attachment, bus watches, timeout sources, message parsing. The adapter
+    orchestrates lifecycle through this surface only."""
 
     def __init__(self) -> None:
         self._gst = None
@@ -38,8 +35,8 @@ class GStreamerBindings:
         self._init_error: Exception | None = None
 
     def ensure_loaded(self) -> None:
-        """Lazy GI load — never called at import time. Raises ImportError
-        with the truthful cause when gi/GStreamer is unavailable."""
+        """Lazy GI load — never at import time. Raises ImportError with the
+        truthful cause when gi/GStreamer is unavailable."""
         if self._gst is not None:
             return
         if self._init_error is not None:
@@ -62,7 +59,18 @@ class GStreamerBindings:
         """Production bindings own a GLib pump; test fakes deliver directly."""
         return True
 
-    # -- pipeline / bus surface (objects are opaque; duck-typed) --
+    # ------------------------------------------------------------------
+    # GStreamer runtime truth (M11.3C-R1)
+    # ------------------------------------------------------------------
+
+    def playbin3_available(self) -> bool:
+        """playbin3 factory exists in the installed runtime."""
+        self.ensure_loaded()
+        return self._gst.ElementFactory.find("playbin3") is not None
+
+    # ------------------------------------------------------------------
+    # pipeline / bus surface (objects are opaque; duck-typed)
+    # ------------------------------------------------------------------
 
     def make_playbin3(self):
         self.ensure_loaded()
@@ -75,22 +83,48 @@ class GStreamerBindings:
     def get_bus(self, pipeline):
         return pipeline.get_bus()
 
-    def bus_add_watch(self, bus, callback):
-        return bus.add_watch(self._glib.PRIORITY_DEFAULT, callback, None)
+    # -- GLib event machinery (M11.3C-R1: explicit GSource ownership) --
 
-    def bus_remove_watch(self, bus, watch_id=None):
-        try:
-            if watch_id is not None:
-                return bus.remove_watch(watch_id)
-            return bus.remove_watch()
-        except Exception:
-            return False
-
-    def new_main_context(self):
+    def create_context(self):
         return self._glib.MainContext.new()
 
-    def new_main_loop(self, context):
+    def create_loop(self, context):
         return self._glib.MainLoop.new(context, False)
+
+    def run_loop(self, loop):
+        loop.run()
+
+    def quit_loop(self, loop):
+        loop.quit()
+
+    def push_thread_default(self, context):
+        context.push_thread_default()
+
+    def pop_thread_default(self, context):
+        context.pop_thread_default()
+
+    def create_bus_source(self, bus, callback):
+        """GSource del bus attachado EXPLÍCITAMENTE al contexto custom."""
+        source = bus.create_watch()
+        source.set_callback(callback, None, None)
+        return source
+
+    def attach_source(self, source, context) -> int:
+        return source.attach(context)
+
+    def destroy_source(self, source) -> None:
+        from contextlib import suppress
+
+        with suppress(Exception):
+            source.destroy()  # source ya destruido o contexto muerto
+
+    def create_timeout_source(self, interval_ms: int, callback):
+        source = self._glib.timeout_source_new(interval_ms)
+        source.set_callback(callback)
+        return source
+
+    def iteration(self, context, blocking: bool) -> bool:
+        return self._glib.MainContext.iteration(context, blocking)
 
     def query_position(self, pipeline):
         ok, position = pipeline.query_position(self._gst.Format.TIME)
@@ -128,7 +162,7 @@ class GStreamerBindings:
         return str(err.message) if err is not None else "gstreamer error"
 
     def message_is_from_pipeline(self, message, pipeline) -> bool:
-        return message.src == pipeline
+        return message.src is pipeline
 
     def state_of(self, message):
         """Nuevo estado de un mensaje STATE_CHANGED (o None si no aplica)."""
@@ -137,7 +171,7 @@ class GStreamerBindings:
         except Exception:
             return None
 
-    # -- enums (production values) --
+    # -- enums (canonical real GStreamer values) --
 
     @property
     def STATE(self):  # noqa: N802 — GStreamer enum surface
@@ -160,7 +194,7 @@ def gst_time_to_millis(ns: int) -> int:
 
 class _EventBridge(QObject):
     """Qt signal bridge: emitted from the pump thread, delivered on the
-    owner thread (QueuedConnection via AutoConnection cross-thread)."""
+    owner thread via EXPLICIT QueuedConnection (M11.3C-R1)."""
 
     sig_eom = Signal()
     sig_pos = Signal(int)
@@ -173,8 +207,10 @@ class _EventBridge(QObject):
 class GStreamerAudioPort(AudioPort):
     """playbin3 transport behind the canonical AudioPort contract.
 
-    The Qt event bridge is COMPOSED (not inherited) to avoid a metaclass
-    conflict between the ABC AudioPort and QObject."""
+    ONE GLib MainContext/MainLoop/pump thread per port (created once);
+    each load() replaces the pipeline and its bus GSource, capturing the
+    current generation in the bus callback. Messages are processed by a
+    type-aware provenance policy. close() terminates everything."""
 
     def __init__(self, bindings: GStreamerBindings | None = None) -> None:
         super().__init__()
@@ -191,11 +227,13 @@ class GStreamerAudioPort(AudioPort):
         self._muted = False
         self._pipeline = None
         self._bus = None
-        self._watch_id = None
+        self._bus_source = None
+        self._bus_source_attached = False
+        self._timer_source = None
         self._context = None
         self._loop = None
         self._pump: threading.Thread | None = None
-        self._stop_pump = threading.Event()
+        self._pump_start_count = 0
         # consumer registrations
         self._eom: list = []
         self._pos: list = []
@@ -203,94 +241,82 @@ class GStreamerAudioPort(AudioPort):
         self._acc: list = []
         self._rej: list = []
         self._pst: list = []
-        # wire the bridge (AutoConnection: direct from owner thread,
-        # queued from the pump thread)
-        self._bridge.sig_eom.connect(self._deliver_eom)
-        self._bridge.sig_pos.connect(self._deliver_pos)
-        self._bridge.sig_dur.connect(self._deliver_dur)
-        self._bridge.sig_acc.connect(self._deliver_acc)
-        self._bridge.sig_rej.connect(self._deliver_rej)
-        self._bridge.sig_state.connect(self._deliver_state)
+        # explicit QueuedConnection: pump thread → owner thread
+        self._bridge.sig_eom.connect(self._deliver_eom, Qt.QueuedConnection)
+        self._bridge.sig_pos.connect(self._deliver_pos, Qt.QueuedConnection)
+        self._bridge.sig_dur.connect(self._deliver_dur, Qt.QueuedConnection)
+        self._bridge.sig_acc.connect(self._deliver_acc, Qt.QueuedConnection)
+        self._bridge.sig_rej.connect(self._deliver_rej, Qt.QueuedConnection)
+        self._bridge.sig_state.connect(self._deliver_state, Qt.QueuedConnection)
 
     # ------------------------------------------------------------------
-    # lifecycle
+    # lifecycle — ONE pump per port (M11.3C-R1)
     # ------------------------------------------------------------------
 
-    def _teardown_pipeline(self) -> None:
-        """Release the current pipeline (bus watch detach + NULL). The pump
-        and its MainContext stay alive for the next pipeline."""
-        if self._pipeline is None:
+    def _ensure_pump(self):
+        """Create the pump/context/loop ONCE (never per load)."""
+        if self._pump is not None:
             return
-        if self._bus is not None:
-            if self._watch_id is not None:
-                self._bindings.bus_remove_watch(self._bus, self._watch_id)
-            else:
-                self._bindings.bus_remove_watch(self._bus)
-            self._watch_id = None
-            self._bus = None
-        self._bindings.set_state(self._pipeline, 0)  # GST_STATE_NULL
-        self._pipeline = None
-
-    def _ensure_pipeline(self):
-        if self._pipeline is not None:
-            return self._pipeline
         if self._closed:
             raise RuntimeError("GStreamerAudioPort cerrado")
         self._bindings.ensure_loaded()
-        pipeline = self._bindings.make_playbin3()
-        if pipeline is None:
-            raise RuntimeError("playbin3 no disponible")
-        self._pipeline = pipeline
-        self._bindings.set_volume(pipeline, self._volume)
-        self._bindings.set_muted(pipeline, self._muted)
-        self._bus = self._bindings.get_bus(pipeline)
-        if self._bindings.supports_pump():
-            self._start_pump()
-        else:
-            # test seam: mensajes entregados manualmente vía _process_message
-            self._watch_id = None
-        return pipeline
-
-    def _start_pump(self) -> None:
-        self._context = self._bindings.new_main_context()
-        self._loop = self._bindings.new_main_loop(self._context)
-
-        def bus_callback(bus, message, user_data=None):
-            self._process_message(message)
-            return True  # keep watch
-
-        self._watch_id = self._bindings.bus_add_watch(self._bus, bus_callback)
-
-        # bounded position polling
-        def _poll_position():
-            if self._pipeline is not None and self._current_path is not None:
-                ok, ns = self._bindings.query_position(self._pipeline)
-                if ok:
-                    self._bridge.sig_pos.emit(gst_time_to_millis(ns))
-            return True  # keep timer
-
-        self._context.timeout_add(_POSITION_POLL_MS, _poll_position)
-        self._stop_pump.clear()
+        self._context = self._bindings.create_context()
+        self._loop = self._bindings.create_loop(self._context)
+        self._pump_start_count += 1
         self._pump = threading.Thread(
             target=self._pump_run, name="michi-gst-pump", daemon=True
         )
         self._pump.start()
 
     def _pump_run(self) -> None:
-        import gi  # noqa: PLC0415
-
-        gi.require_version("GLib", "2.0")
-        from gi.repository import GLib  # noqa: PLC0415
-
-        self._context.push_thread_default()
+        self._bindings.push_thread_default(self._context)
         try:
-            GLib.MainContext.iteration(self._context, True)
-            self._loop.run()
+            self._bindings.run_loop(self._loop)
         finally:
-            self._context.pop_thread_default()
+            self._bindings.pop_thread_default(self._context)
+
+    def _attach_pipeline_sources(self, pipeline, bus, generation: int) -> None:
+        """Attach the bus GSource and the single position timer to the
+        CUSTOM context. The bus callback CAPTURES the generation."""
+
+        def on_bus_message(bus_, message, user_data=None):
+            self._process_message(message, generation)
+            return True  # keep source
+
+        self._bus_source = self._bindings.create_bus_source(bus, on_bus_message)
+        self._bindings.attach_source(self._bus_source, self._context)
+        self._bus_source_attached = True
+        if self._timer_source is None:
+
+            def on_timer():
+                self._poll_position()
+                return True  # keep timer
+
+            self._timer_source = self._bindings.create_timeout_source(
+                _POSITION_POLL_MS, on_timer
+            )
+            self._bindings.attach_source(self._timer_source, self._context)
+
+    def _detach_pipeline_sources(self) -> None:
+        if self._bus_source is not None:
+            self._bindings.destroy_source(self._bus_source)
+            self._bus_source = None
+            self._bus_source_attached = False
+        self._bus = None
+
+    def _poll_position(self) -> None:
+        """Bounded position polling for the CURRENT accepted source only."""
+        if self._closed:
+            return
+        pipeline = self._pipeline
+        if pipeline is None or self._current_path is None:
+            return
+        ok, ns = self._bindings.query_position(pipeline)
+        if ok:
+            self._bridge.sig_pos.emit(gst_time_to_millis(ns))
 
     # ------------------------------------------------------------------
-    # AudioPort — transport commands
+    # AudioPort — transport commands (symbolic states only)
     # ------------------------------------------------------------------
 
     def load(self, file_path: Path) -> None:
@@ -301,26 +327,40 @@ class GStreamerAudioPort(AudioPort):
         self._current_path = None
         self._eos_emitted = False
         self._pending_play = False
-        # pipeline NUEVO por fuente: la identidad del pipeline ES el token de
-        # generación — los mensajes en vuelo del pipeline anterior jamás se
-        # traducen (guard por message.src)
+        self._bindings.ensure_loaded()
+        if not self._bindings.playbin3_available():
+            raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
+        # pipeline NUEVO por fuente; el pump sobrevive
         self._teardown_pipeline()
-        pipeline = self._ensure_pipeline()
+        self._ensure_pump()
+        pipeline = self._bindings.make_playbin3()
+        if pipeline is None:
+            raise RuntimeError("playbin3 no disponible")
+        self._pipeline = pipeline
+        self._bindings.set_volume(pipeline, self._volume)
+        self._bindings.set_muted(pipeline, self._muted)
+        self._bus = self._bindings.get_bus(pipeline)
         self._bindings.set_uri(pipeline, Path(file_path).resolve().as_uri())
-        # preroll: ASYNC_DONE (misma generación) es la evidencia de aceptación
-        self._bindings.set_state(pipeline, 2)  # GST_STATE_PAUSED
+        if self._bindings.supports_pump():
+            self._attach_pipeline_sources(pipeline, self._bus, self._generation)
+        else:
+            # test seam: mensajes entregados manualmente
+            self._bus_source = None
+            self._bus_source_attached = False
+        # preroll: ASYNC_DONE (generación vigente) = evidencia de aceptación
+        self._bindings.set_state(pipeline, self._bindings.STATE.PAUSED)
 
     def play(self) -> None:
         if self._closed or self._pipeline is None:
             return
         self._pending_play = True
-        self._bindings.set_state(self._pipeline, 4)  # GST_STATE_PLAYING
+        self._bindings.set_state(self._pipeline, self._bindings.STATE.PLAYING)
 
     def pause(self) -> None:
         if self._closed or self._pipeline is None:
             return
         self._pending_play = False
-        self._bindings.set_state(self._pipeline, 2)  # GST_STATE_PAUSED
+        self._bindings.set_state(self._pipeline, self._bindings.STATE.PAUSED)
 
     def resume(self) -> None:
         self.play()
@@ -328,10 +368,11 @@ class GStreamerAudioPort(AudioPort):
     def stop(self) -> None:
         if self._closed or self._pipeline is None:
             return
+        self._generation += 1  # cancela aceptaciones pendientes en vuelo
         self._pending_play = False
         self._pending_path = None
         self._current_path = None
-        self._bindings.set_state(self._pipeline, 0)  # GST_STATE_NULL
+        self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL)
         if self._current_state is not PlaybackStatus.STOPPED:
             self._current_state = PlaybackStatus.STOPPED
             self._bridge.sig_state.emit(PlaybackStatus.STOPPED)
@@ -349,41 +390,46 @@ class GStreamerAudioPort(AudioPort):
     def seek(self, position_ms: int) -> None:
         if self._closed or self._pipeline is None:
             return
+        # failure no commitea éxito falso (sin evento de posición inventado)
         self._bindings.seek(self._pipeline, millis_to_gst_time(position_ms))
 
     def position(self) -> int:
         if self._closed or self._pipeline is None:
             return 0
         ok, ns = self._bindings.query_position(self._pipeline)
-        return gst_time_to_millis(ns) if ok else 0
+        if not ok or ns < 0:
+            return 0
+        return gst_time_to_millis(ns)
 
     def duration(self) -> int:
         if self._closed or self._pipeline is None:
             return 0
         ok, ns = self._bindings.query_duration(self._pipeline)
-        return gst_time_to_millis(ns) if ok else 0
+        if not ok or ns < 0:
+            return 0
+        return gst_time_to_millis(ns)
 
     # ------------------------------------------------------------------
     # close / teardown
     # ------------------------------------------------------------------
 
     def close(self) -> None:
-        """Terminal lifecycle: invalidate generation, stop the pump, detach
-        the watch, pipeline → NULL, release references. No callbacks after
-        close."""
         if self._closed:
             return
         self._closed = True
         self._generation += 1  # invalidate any in-flight message
+        self._teardown_pipeline()
+        # destroy timer + sources
+        if self._timer_source is not None:
+            self._bindings.destroy_source(self._timer_source)
+            self._timer_source = None
         if self._pump is not None:
-            self._stop_pump.set()
             if self._loop is not None:
-                self._loop.quit()
+                self._bindings.quit_loop(self._loop)
             self._pump.join(timeout=2.0)
             self._pump = None
             self._loop = None
             self._context = None
-        self._teardown_pipeline()
         self._pending_path = None
         self._current_path = None
         self._eom = []
@@ -393,23 +439,29 @@ class GStreamerAudioPort(AudioPort):
         self._rej = []
         self._pst = []
 
-    # ------------------------------------------------------------------
-    # bus message translation (generation-guarded, owner-thread delivery)
-    # ------------------------------------------------------------------
-
-    def _process_message(self, message) -> None:
-        """Translate one bus message (called from the pump thread in
-        production, or directly from the owner thread in tests).
-
-        STALE GUARD (global): only messages from the CURRENT pipeline are
-        translated. Each load() replaces the pipeline, so messages from a
-        previous source (EOS/ERROR/ASYNC_DONE/STATE_CHANGED still in
-        flight) are ignored by identity — the generation token."""
-        if self._closed:
-            return
+    def _teardown_pipeline(self) -> None:
         if self._pipeline is None:
             return
-        if not self._bindings.message_is_from_pipeline(message, self._pipeline):
+        self._detach_pipeline_sources()
+        self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL)
+        self._pipeline = None
+
+    # ------------------------------------------------------------------
+    # bus message translation — TYPE-AWARE provenance (M11.3C-R1)
+    # ------------------------------------------------------------------
+
+    def _process_message(self, message, captured_generation: int) -> None:
+        """Translate one bus message.
+
+        PROVENANCE POLICY (no catch-all src rule):
+        - generation MUST match the current one (stale isolation).
+        - STATE_CHANGED: top-level pipeline only.
+        - ERROR: ANY child element of the CURRENT graph is valid.
+        - EOS / ASYNC_DONE / DURATION_CHANGED: current generation, once.
+        """
+        if self._closed:
+            return
+        if captured_generation != self._generation:
             return  # stale source / old pipeline
         msg_type = self._bindings.message_type(message)
         mt = self._bindings.MESSAGE_TYPE
@@ -422,6 +474,7 @@ class GStreamerAudioPort(AudioPort):
                 self._eos_emitted = True
                 self._bridge.sig_eom.emit()
         elif msg_type == mt.ERROR:
+            # child-element errors are valid for the current graph
             reason = self._bindings.parse_error(message)
             candidate = self._pending_path or self._current_path
             if candidate is not None:
@@ -429,7 +482,6 @@ class GStreamerAudioPort(AudioPort):
                 self._current_path = None
                 self._bridge.sig_rej.emit(candidate, reason)
         elif msg_type == mt.ASYNC_DONE:
-            # preroll completado → evidencia de aceptación (misma generación)
             if self._pending_path is not None:
                 self._current_path = self._pending_path
                 self._pending_path = None
@@ -437,13 +489,13 @@ class GStreamerAudioPort(AudioPort):
                 if self._pending_play:
                     self._deliver_state_if(PlaybackStatus.PLAYING)
         elif msg_type == mt.STATE_CHANGED:
-            self._on_pipeline_state(message)
+            # top-level pipeline only (children transition constantly)
+            if self._bindings.message_is_from_pipeline(message, self._pipeline):
+                self._on_pipeline_state(message)
         elif msg_type == mt.DURATION_CHANGED and self._pipeline is not None:
             ok, ns = self._bindings.query_duration(self._pipeline)
             if ok:
                 self._bridge.sig_dur.emit(gst_time_to_millis(ns))
-        # _ = gen — la generación se captura al crear mensajes en el fake;
-        # el adapter nunca entrega tras close() (guard superior)
 
     def _on_pipeline_state(self, message) -> None:
         state = self._bindings.state_of(message)
@@ -465,7 +517,7 @@ class GStreamerAudioPort(AudioPort):
         self._bridge.sig_state.emit(status)
 
     # ------------------------------------------------------------------
-    # bridge slots (owner thread)
+    # bridge slots (owner thread — QueuedConnection)
     # ------------------------------------------------------------------
 
     def _deliver_eom(self) -> None:
