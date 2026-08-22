@@ -50,7 +50,7 @@ def test_equalizer_is_distinct_from_sliders() -> None:
     branch = icon_src.split(
         '} else if (root.name === "sliders" || root.name === "equalizer") {'
     )[1].split('} else if (root.name === "sort") {')[0]
-    assert "5, 19, 5, 11" in branch  # Equalizer vertical bars
+    assert "5.5, 19, 5.5, 11" in branch  # Equalizer vertical bars
     assert "6, 4, 6, 20" in branch  # Sliders rails
 
 

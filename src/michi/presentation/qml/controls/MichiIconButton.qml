@@ -32,7 +32,7 @@ Button {
             : root.selected ? MichiSemanticColors.surfaceSelected : "transparent"
         border.width: root.selected || root.hovered ? 1 : 0
         border.color: root.selected ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
-        scale: root.pressed ? 0.92 : root.hovered ? 1.045 : 1
+        scale: root.pressed ? 0.985 : root.hovered ? 1.02 : 1
 
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion

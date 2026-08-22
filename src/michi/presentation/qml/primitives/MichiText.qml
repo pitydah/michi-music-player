@@ -22,6 +22,6 @@ Text {
     font.letterSpacing: role === "display" ? -0.35
         : role === "title" ? -0.18
         : role === "technical" ? 0.22 : 0
-    font.features: technical ? ({ "tnum": 1 }) : ({})
+    font.features: (technical || role === "technical" || role === "caption") ? ({ "tnum": 1 }) : ({})
     renderType: Text.NativeRendering
 }

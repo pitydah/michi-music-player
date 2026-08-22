@@ -42,8 +42,8 @@ Item {
             Repeater {
                 model: (root.mosaicArtworkPaths && root.mosaicArtworkPaths.length >= 4) ? root.mosaicArtworkPaths.slice(0, 4) : []
                 Artwork {
-                    width: bgContainer.width / 2
-                    height: bgContainer.height / 2
+                    width: (bgContainer.width - 1) / 2
+                    height: (bgContainer.height - 1) / 2
                     sourcePath: modelData
                     requestedSize: Math.round(width * Screen.devicePixelRatio)
                 }
@@ -128,6 +128,15 @@ Item {
                 name: "playlist"
                 iconColor: MichiPalette.auroraCyan
             }
+        }
+
+        // Inner physical perimeter frame
+        Rectangle {
+            anchors.fill: parent
+            radius: root.radius
+            color: "transparent"
+            border.width: 1
+            border.color: MichiSemanticColors.borderSubtle
         }
     }
 }

@@ -109,7 +109,13 @@ Item {
             anchors.top: parent.top
             height: 1
             radius: root.radius
-            color: MichiSemanticColors.innerHighlight
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: "transparent" }
+                GradientStop { position: 0.25; color: MichiSemanticColors.innerHighlight }
+                GradientStop { position: 0.75; color: MichiSemanticColors.innerHighlight }
+                GradientStop { position: 1; color: "transparent" }
+            }
         }
 
         Rectangle {
