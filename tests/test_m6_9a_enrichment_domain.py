@@ -31,6 +31,7 @@ from michi.domain.enrichment import (
     EnrichmentRequestLedger,
     ExternalIdentityHints,
     IdentityResolutionStatus,
+    KnowledgeProvenance,
     LocalAlbumEvidence,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
@@ -557,7 +558,9 @@ class TestKnowledgeProfileCodecs:
             external_genres=("Classical", "Film Score"),
             begin_year=1932,
             artwork_asset_id="asset-1",
-            source="test",
+            provenance=KnowledgeProvenance(
+                provider="musicbrainz", source_url="https://example.org/a"
+            ),
         )
         raw = encode_artist_profile(profile)
         assert isinstance(raw, str)
@@ -573,7 +576,7 @@ class TestKnowledgeProfileCodecs:
             release_year=0,
             label="",
             artwork_asset_id="",
-            source="test",
+            provenance=KnowledgeProvenance(provider="musicbrainz"),
         )
         raw = encode_album_profile(profile)
         assert decode_album_profile(raw) == profile
