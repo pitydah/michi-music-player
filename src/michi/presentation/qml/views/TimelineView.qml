@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../primitives"
 import "../theme"
@@ -41,10 +42,7 @@ ListView {
             library.select_album(albumModel[currentIndex].key)
     }
 
-    ScrollBar.vertical: ScrollBar {
-        policy: ScrollBar.AsNeeded
-        width: MichiSpacing.sm
-    }
+    ScrollBar.vertical: MichiScrollBar { }
 
     section.delegate: Item {
         required property string section
@@ -85,7 +83,7 @@ ListView {
                     }
                 }
                 role: "section"
-                font.weight: Font.Bold
+                font.weight: Font.DemiBold
                 color: MichiPalette.textPrimary
             }
 
@@ -190,8 +188,10 @@ ListView {
                 text: modelData.year > 0 ? String(modelData.year) : "—"
                 role: "technical"
                 technical: true
+                // One accent per surface: cyan is reserved for the active
+                // state (selected dot/row), not for every row's year.
                 color: modelData.year > 0
-                    ? MichiPalette.auroraCyan : MichiPalette.textMuted
+                    ? MichiPalette.textSecondary : MichiPalette.textMuted
             }
             MichiText {
                 visible: modelData.trackCount > 0

@@ -73,6 +73,14 @@ vinyl wall first tap selects / second tap opens; timeline adds `reuseItems`,
 4px-grid margins (20/28/48), an opaque floating section header, and animated
 row background.
 
+**Commit D (done):** items 6 + 7 + 9 + 10 + 15 — one accent per surface
+(timeline years neutral, vinyl labels neutral when unselected, cover-flow
+border unified to cyan); ArtistDetail hero elevated to glass like the album
+hero; MichiScrollBar on vinyl/timeline; section headers DemiBold; album
+detail metadata no longer duplicated at ≥960px (chips <960, stats column
+≥960). Item 8 (badge geometry) deferred — the deviating badge lives in the
+excluded Now Playing surface.
+
 ## Phase 3 — 🟠 WARNING: visual consistency & copy (~5 h)
 
 | # | Finding | Evidence | Fix | Effort |

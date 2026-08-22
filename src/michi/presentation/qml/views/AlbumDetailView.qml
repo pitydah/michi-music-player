@@ -146,18 +146,24 @@ ColumnLayout {
 
                 RowLayout {
                     spacing: MichiSpacing.sm
-                    AudioQualityBadge { label: library.albumTechnicalSummary }
+                    // Compact chips for narrow widths; the stats column
+                    // (≥960px) carries the same info — never both at once.
+                    AudioQualityBadge {
+                        label: library.albumTechnicalSummary
+                        visible: root.width < 960
+                    }
                     MichiStatusChip {
                         text: library.albumTracks.length
                             + (library.albumTracks.length === 1 ? " track" : " tracks")
                         tone: "neutral"
                         dotVisible: false
+                        visible: root.width < 960
                     }
                     MichiStatusChip {
                         text: root.formatDuration(library.albumDurationMs)
                         tone: "neutral"
                         dotVisible: false
-                        visible: library.albumDurationMs > 0
+                        visible: root.width < 960 && library.albumDurationMs > 0
                     }
                 }
 

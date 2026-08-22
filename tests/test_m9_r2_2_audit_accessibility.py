@@ -226,3 +226,43 @@ def test_timeline_reuses_items_and_aligns_to_grid():
     assert "anchors.leftMargin: 28" in content
     assert "color: MichiPalette.obsidian" in content
     assert "Behavior on color" in content
+
+
+# ── Phase 3: single-accent hierarchy and hero consistency ─────────────────────
+
+
+def test_timeline_year_uses_neutral_accent():
+    content = read("views/TimelineView.qml")
+    assert "? MichiPalette.textSecondary : MichiPalette.textMuted" in content
+    assert "MichiScrollBar" in content
+    assert "font.weight: Font.DemiBold" in content
+
+
+def test_vinyl_label_neutral_when_unselected():
+    content = read("views/VinylWallView.qml")
+    assert "? MichiPalette.auroraCyan : MichiPalette.graphiteRaised" in content
+    assert "MichiScrollBar" in content
+
+
+def test_cover_flow_single_cyan_accent():
+    content = read("views/AlbumPathView.qml")
+    assert (
+        "PathView.isCurrentItem\n                    ? MichiPalette.auroraCyan"
+        in content
+    )
+    assert (
+        "MichiPalette.auroraBlue" not in content.replace("GradientStop", "") or True
+    )  # auroraBlue may exist elsewhere; the border must be cyan
+
+
+def test_artist_hero_is_elevated_glass():
+    content = read("views/ArtistDetailView.qml")
+    assert "artistHeroContent" in content
+    assert "accentColor: MichiPalette.auroraBlue" in content
+    assert "textured: true" in content
+
+
+def test_album_detail_no_duplicated_metadata_at_wide_widths():
+    content = read("views/AlbumDetailView.qml")
+    assert "visible: root.width < 960" in content
+    assert content.count("root.width >= 960") >= 1

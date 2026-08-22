@@ -123,9 +123,12 @@ PathView {
             radius: MichiRadius.lg
             color: "transparent"
             border.width: PathView.isCurrentItem ? 2 : 1
+            // Single accent in the focal area: cyan matches the selection
+            // card and its track-count label below (was auroraBlue, which
+            // fought the cyan card).
             border.color: tap.pressed ? MichiPalette.auroraCyan
                 : PathView.isCurrentItem
-                    ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
+                    ? MichiPalette.auroraCyan : MichiSemanticColors.borderSubtle
             opacity: PathView.isCurrentItem || hover.hovered || tap.pressed ? 1 : 0.55
         }
 

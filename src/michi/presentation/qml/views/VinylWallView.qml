@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../primitives"
 import "../theme"
@@ -43,10 +44,7 @@ GridView {
             library.select_album(albumModel[currentIndex].key)
     }
 
-    ScrollBar.vertical: ScrollBar {
-        policy: ScrollBar.AsNeeded
-        width: MichiSpacing.sm
-    }
+    ScrollBar.vertical: MichiScrollBar { }
 
     delegate: Item {
         id: vinylTile
@@ -129,7 +127,7 @@ GridView {
                     height: width
                     radius: width / 2
                     color: vinylTile.selected
-                        ? MichiPalette.auroraCyan : MichiPalette.auroraPurpleSurface
+                        ? MichiPalette.auroraCyan : MichiPalette.graphiteRaised
                     border.width: 1
                     border.color: MichiSemanticColors.innerHighlight
                     Rectangle {
