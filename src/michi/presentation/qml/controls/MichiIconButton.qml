@@ -21,7 +21,7 @@ Button {
         height: width
         anchors.centerIn: parent
         iconColor: !root.enabled ? MichiPalette.textDisabled
-            : root.selected ? MichiPalette.auroraBlue
+            : root.selected ? MichiPalette.auroraCyan
             : root.hovered ? MichiPalette.textPrimary : MichiPalette.textSecondary
     }
     background: Rectangle {
@@ -31,7 +31,7 @@ Button {
             : root.hovered ? MichiSemanticColors.surfaceHover
             : root.selected ? MichiSemanticColors.surfaceSelected : "transparent"
         border.width: root.selected || root.hovered ? 1 : 0
-        border.color: root.selected ? MichiPalette.auroraBlue : MichiSemanticColors.borderSubtle
+        border.color: root.selected ? MichiSemanticColors.auroraCyanBorderSubtle : MichiSemanticColors.borderSubtle
         scale: root.pressed ? 0.985 : root.hovered ? 1.02 : 1
 
         Behavior on color {
