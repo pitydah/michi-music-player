@@ -271,6 +271,28 @@ class ScanCancelToken:
         self.cancelled: bool = False
 
 
+class AudioLoadError(RuntimeError):
+    """Fallo sincrónico de AudioPort.load con disposición de la fuente previa.
+
+    M11.3C-R6.1: cualquier backend que cruce un commit point destructivo
+    (el source previo dejó de estar garantizado) ANTES de fallar debe
+    levantar este error con previous_source_preserved=False. Los backends
+    que fallan sin cruzar el commit point usan True (o la excepción
+    genérica heredada). El MPD (M11.3D) debe cumplir la misma regla."""
+
+    def __init__(
+        self,
+        candidate_path: Path,
+        detail: str,
+        *,
+        previous_source_preserved: bool,
+    ) -> None:
+        super().__init__(detail)
+        self.candidate_path = candidate_path
+        self.detail = detail
+        self.previous_source_preserved = previous_source_preserved
+
+
 class ScanCancelled(Exception):  # noqa: N818 — name pinned by the M6.4 contract
     """Cooperative cancellation signal (M6.4)."""
 

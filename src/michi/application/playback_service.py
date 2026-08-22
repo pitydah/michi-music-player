@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from michi.application.ports import AudioPort
+from michi.application.ports import AudioLoadError, AudioPort
 from michi.domain.playback import PlaybackState, PlaybackStatus
 
 
@@ -172,15 +172,29 @@ class PlaybackService:
         try:
             self._audio.load(file_path)
             self._audio.play()
-        except Exception:
+        except Exception as exc:
             self._pending_path = None
             self._pending_on_accepted = None
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
             self._pending_resume_position_ms = None
             self._resume_prepared_pending = False
-            self._intent = previous_intent
-            self._accepted = previous_accepted
+            # M11.3C-R6.1: disposición EXPLÍCITA del source previo. Con
+            # AudioLoadError(previous_source_preserved=False) el backend
+            # cruzó un commit point destructivo y ya no garantiza el source:
+            # NO restaurar la aceptación previa (sería autoridad falsa).
+            # file_path sigue siendo la identidad lógica del último track
+            # commiteado; un play() posterior lo recarga por el camino
+            # canónico. Con disposición preservada (o excepción genérica
+            # legacy) se restauran la aceptación e intención previas.
+            if isinstance(exc, AudioLoadError) and not exc.previous_source_preserved:
+                self._intent = False
+                self._accepted = False
+                self._state.status = PlaybackStatus.STOPPED
+                self._notify()
+            else:
+                self._intent = previous_intent
+                self._accepted = previous_accepted
             raise
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
@@ -214,14 +228,22 @@ class PlaybackService:
         self._accepted = False
         try:
             self._audio.load(file_path)
-        except Exception:
+        except Exception as exc:
             self._pending_path = None
             self._pending_on_accepted = None
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
             self._pending_resume_position_ms = None
             self._resume_prepared_pending = False
-            self._accepted = previous_accepted
+            # M11.3C-R6.1: misma disposición que load_and_play — un fallo
+            # destructivo NO restaura aceptación previa (nunca autoplay,
+            # nunca latche de resume armado).
+            if isinstance(exc, AudioLoadError) and not exc.previous_source_preserved:
+                self._accepted = False
+                self._state.status = PlaybackStatus.STOPPED
+                self._notify()
+            else:
+                self._accepted = previous_accepted
             raise
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
@@ -329,6 +351,18 @@ class PlaybackService:
         self._notify()
 
     def play(self) -> None:
+        # M11.3C-R6.1: si no hay media aceptada en el backend pero existe un
+        # track lógico commiteado y no hay candidato pendiente, recargar el
+        # track por el camino canónico. load_and_play() ya invoca
+        # _audio.play() directamente — el fallback NUNCA recorre play()
+        # recursivamente ni llama _audio.load() a secas.
+        if (
+            not self._accepted
+            and self._pending_path is None
+            and self._state.file_path is not None
+        ):
+            self.load_and_play(self._state.file_path)
+            return
         previous_intent = self._intent
         self._intent = True
         try:
