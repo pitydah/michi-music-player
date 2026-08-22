@@ -535,6 +535,31 @@ class AlbumExternalIdentity:
 # ---------------------------------------------------------------------------
 
 
+class EnrichmentEntityKind(Enum):
+    """Entity kind of an asynchronous enrichment operation."""
+
+    ARTIST = auto()
+    ALBUM = auto()
+
+
+@dataclass(frozen=True)
+class KnowledgeProvenance:
+    """Structured provenance of one externally acquired knowledge payload
+    (R1). Empty fields mean UNKNOWN — never fabricate values. Individual
+    payloads may come from different sources than the identity (identity:
+    MusicBrainz, biography: Wikipedia, image: Wikimedia Commons), so
+    profiles may carry per-field provenance where semantics differ."""
+
+    provider: str = ""
+    external_entity_id: str = ""
+    source_url: str = ""
+    retrieved_at: str = ""
+    language: str = ""
+    license: str = ""
+    license_url: str = ""
+    attribution: str = ""
+
+
 @dataclass(frozen=True)
 class ArtistKnowledgeProfile:
     """Downloaded artist knowledge, joined by LOCAL artist key.
@@ -543,7 +568,8 @@ class ArtistKnowledgeProfile:
     external genres, external dates, artwork asset id) live ONLY here —
     never in TrackMetadata/ArtistRef, never written into audio files.
     R1: NO async lifecycle state (generation/request ids/pending state)
-    may ever live here — this is data, not request state."""
+    may ever live here — this is data, not request state. Provenance is
+    structured; the biography may carry its own provenance."""
 
     local_artist_key: str
     external_artist_id: str
@@ -552,7 +578,10 @@ class ArtistKnowledgeProfile:
     begin_year: int = 0
     end_year: int = 0
     artwork_asset_id: str = ""
-    source: str = ""
+    provenance: KnowledgeProvenance = field(default_factory=KnowledgeProvenance)
+    biography_provenance: KnowledgeProvenance = field(
+        default_factory=KnowledgeProvenance
+    )
 
 
 @dataclass(frozen=True)
@@ -563,8 +592,9 @@ class AlbumKnowledgeProfile:
     local TrackMetadata.year and AlbumRef.year are never touched.
     ``external_genres`` never merge into local GenreRef values.
     ``release_id`` stays "" unless edition-identifying evidence exists.
-    R1: release-level facts (``release_year``, ``label``) must stay ""
-    unless ``release_id`` identifies the specific edition."""
+    R1 release-level rule: ``release_year`` and ``label`` are
+    RELEASE-level facts — they must stay "" unless ``release_id``
+    identifies the specific edition (enforced invariant)."""
 
     local_album_key: str
     release_group_id: str
@@ -574,19 +604,49 @@ class AlbumKnowledgeProfile:
     release_year: int = 0
     label: str = ""
     artwork_asset_id: str = ""
-    source: str = ""
+    provenance: KnowledgeProvenance = field(default_factory=KnowledgeProvenance)
+
+    def __post_init__(self) -> None:
+        if not self.release_id and (self.release_year or self.label):
+            raise ValueError(
+                "release-level facts (release_year/label) require a "
+                "specific release identity (release_id)"
+            )
+
+
+# ---------------------------------------------------------------------------
+# 4b. EXTERNAL ASSET RECORD (R1 — provenance + validation foundation)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class EnrichmentAssetRecord:
+    """Provenance + metadata record for ONE downloaded external asset.
+
+    The asset store fills ``checksum`` / ``width`` / ``height`` /
+    ``local_path`` during validation+storage; the caller supplies
+    provenance fields. Never a path derived from remote titles: the
+    caller-supplied ``asset_id`` is strictly validated (digest-safe)."""
+
+    asset_id: str
+    entity_kind: EnrichmentEntityKind
+    external_entity_id: str
+    mime_type: str
+    checksum: str = ""
+    provider: str = ""
+    source_url: str = ""
+    creator: str = ""
+    license: str = ""
+    license_url: str = ""
+    attribution: str = ""
+    width: int = 0
+    height: int = 0
+    local_path: str = ""
 
 
 # ---------------------------------------------------------------------------
 # ASYNC ENTITY-CORRELATION FIREWALL
 # ---------------------------------------------------------------------------
-
-
-class EnrichmentEntityKind(Enum):
-    """Entity kind of an asynchronous enrichment operation."""
-
-    ARTIST = auto()
-    ALBUM = auto()
 
 
 @dataclass(frozen=True)
@@ -703,6 +763,14 @@ _ALBUM_TUPLE_FIELDS = {
     for name, f in AlbumKnowledgeProfile.__dataclass_fields__.items()
     if f.type == tuple[str, ...]
 }
+_NESTED_PROVENANCE_FIELDS = {
+    name
+    for name, f in (
+        ArtistKnowledgeProfile.__dataclass_fields__
+        | AlbumKnowledgeProfile.__dataclass_fields__
+    ).items()
+    if f.type is KnowledgeProvenance
+}
 
 
 def encode_artist_profile(profile: ArtistKnowledgeProfile) -> str:
@@ -715,7 +783,23 @@ def encode_album_profile(profile: AlbumKnowledgeProfile) -> str:
     return json.dumps(asdict(profile), sort_keys=True)
 
 
-def _decode_profile(raw, model, str_fields, int_fields, tuple_fields):
+def _decode_provenance(value) -> KnowledgeProvenance | None:
+    """Strict nested provenance decode: dict of str fields only."""
+    if not isinstance(value, dict):
+        return None
+    kwargs = {}
+    for name, item in value.items():
+        if name not in KnowledgeProvenance.__dataclass_fields__:
+            continue  # future field — tolerated
+        if not isinstance(item, str):
+            return None
+        kwargs[name] = item
+    if set(kwargs) != set(KnowledgeProvenance.__dataclass_fields__):
+        return None
+    return KnowledgeProvenance(**kwargs)
+
+
+def _decode_profile(raw, model, str_fields, int_fields, tuple_fields, nested_fields):
     try:
         payload = json.loads(raw)
     except ValueError:
@@ -738,6 +822,11 @@ def _decode_profile(raw, model, str_fields, int_fields, tuple_fields):
             ):
                 return None
             value = tuple(value)
+        elif name in nested_fields:
+            nested = _decode_provenance(value)
+            if nested is None:
+                return None
+            value = nested
         else:
             return None
         kwargs[name] = value
@@ -754,6 +843,7 @@ def decode_artist_profile(raw: str) -> ArtistKnowledgeProfile | None:
         _ARTIST_STR_FIELDS,
         _ARTIST_INT_FIELDS,
         _ARTIST_TUPLE_FIELDS,
+        _NESTED_PROVENANCE_FIELDS,
     )
 
 
@@ -765,4 +855,5 @@ def decode_album_profile(raw: str) -> AlbumKnowledgeProfile | None:
         _ALBUM_STR_FIELDS,
         _ALBUM_INT_FIELDS,
         _ALBUM_TUPLE_FIELDS,
+        _NESTED_PROVENANCE_FIELDS,
     )

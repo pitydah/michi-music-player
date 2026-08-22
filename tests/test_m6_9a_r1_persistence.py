@@ -32,6 +32,7 @@ from michi.domain.enrichment import (
     ArtistIdentityHints,
     DeliveryVerdict,
     IdentityStatus,
+    KnowledgeProvenance,
     MatchMethod,
 )
 from michi.infrastructure.enrichment_repository import (
@@ -176,7 +177,9 @@ class TestSchemaMigration:
         db_path = tmp_path / "enrichment.db"
         self._create_v1_database(db_path)
         profile = ArtistKnowledgeProfile(
-            local_artist_key="the cure", external_artist_id="mb-xyz", source="v1"
+            local_artist_key="the cure",
+            external_artist_id="mb-xyz",
+            provenance=KnowledgeProvenance(provider="v1"),
         )
         conn = sqlite3.connect(str(db_path))
         try:
