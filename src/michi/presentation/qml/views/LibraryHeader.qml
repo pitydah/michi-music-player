@@ -44,7 +44,23 @@ PageHeader {
             || root.albumTimelineGrouping !== "decade"
         ))
 
-    title: "Library"
+    // Wayfinding: the header names the active tab (was a static "Library")
+    // so users always know where they are inside the library.
+    function tabTitle() {
+        switch (root.currentTab) {
+            case "albums": return "Albums"
+            case "artists": return "Artists"
+            case "genres": return "Genres"
+            case "playlists": return "Playlists"
+            case "favorites": return "Favorites"
+            case "history": return "History"
+            case "recently": return "Recently Added"
+            case "folders": return "Folders"
+            default: return "Songs"
+        }
+    }
+
+    title: root.tabTitle()
     subtitle: (typeof library !== "undefined" && library && library.fileCount > 0)
         ? library.fileCount + " tracks · " + library.albumCount + " albums · "
             + library.artistCount + " artists"

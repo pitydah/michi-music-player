@@ -103,6 +103,7 @@ ColumnLayout {
                         // Playlists by canonical id (PLAINTLIST-HIERARCHY-02).
                         playlists.add_track_to_playlist(modelData.playlistId, addTargetPath)
                         addTargetPath = ""
+                        window.showToast(qsTr("Added to %1", "", modelData.name))
                     }
                 }
             }

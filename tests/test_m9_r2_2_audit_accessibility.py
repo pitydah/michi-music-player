@@ -366,3 +366,37 @@ def test_michi_format_singleton_registered_and_used():
         assert "MichiFormat.format" in content, rel
         assert "function formatTime" not in content, rel
         assert "function formatDuration" not in content, rel
+
+
+# ── Phase 4: wayfinding titles and toast feedback ─────────────────────────────
+
+
+def test_library_header_names_active_tab():
+    content = read("views/LibraryHeader.qml")
+    assert "function tabTitle()" in content
+    assert 'case "albums": return "Albums"' in content
+    assert "title: root.tabTitle()" in content
+
+
+def test_toast_host_supports_action_and_is_wired():
+    toast = read("patterns/ToastHost.qml")
+    assert "function showWithAction" in toast
+    assert "property string actionText" in toast
+    shell = read("shell/AppShell.qml")
+    assert "ToastHost" in shell
+    assert "function showToast(text, tone)" in shell
+    assert "function showToastWithAction" in shell
+    main = read("../main.qml")
+    assert "function showToast(text, tone)" in main
+    assert "appShell.showToast(text, tone)" in main
+
+
+def test_action_feedback_call_sites():
+    lib_host = read("views/LibraryContentHost.qml")
+    assert 'qsTr("Added to %1", "", modelData.name)' in lib_host
+    host = read("shell/ContentHost.qml")
+    assert "Removed from playlist" in host
+    assert "add_track_to_playlist(" in host
+    queue = read("views/QueueView.qml")
+    assert 'window.showToast(qsTr("Removed from queue"))' in queue
+    assert 'window.showToast(qsTr("Queue cleared"))' in queue

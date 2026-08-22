@@ -65,8 +65,14 @@ Item {
                 shuffleEnabled: queue.shuffleEnabled
                 onTrackClicked: index => queue.play_index(index)
                 onMoveRequested: (fromIndex, toIndex) => queue.move_track(fromIndex, toIndex)
-                onRemoveRequested: index => queue.remove_track(index)
-                onClearClicked: queue.clear_queue()
+                onRemoveRequested: index => {
+                    queue.remove_track(index)
+                    window.showToast(qsTr("Removed from queue"))
+                }
+                onClearClicked: {
+                    queue.clear_queue()
+                    window.showToast(qsTr("Queue cleared"))
+                }
                 onPreviousRequested: queue.previous_track()
                 onNextRequested: queue.next_track()
                 onRepeatModeRequested: mode => queue.set_repeat_mode(mode)

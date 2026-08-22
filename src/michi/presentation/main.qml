@@ -66,4 +66,11 @@ ApplicationWindow {
         currentRoute: navigation.currentRoute
         onNavigationRequested: routeId => navigation.navigate(routeId)
     }
+
+    // Global action feedback: any component may call window.showToast(...)
+    // (or showToastWithAction for an undo-style action button).
+    function showToast(text, tone) { appShell.showToast(text, tone) }
+    function showToastWithAction(text, action, handler, tone) {
+        appShell.showToastWithAction(text, action, handler, tone)
+    }
 }

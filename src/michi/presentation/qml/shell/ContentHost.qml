@@ -100,7 +100,19 @@ Item {
                     deleteDialog.targetPlaylistName = playlistName
                     deleteDialog.open()
                 }
-                onRemoveTrackRequested: index => playlists.remove_track(index)
+                onRemoveTrackRequested: index => {
+                    var removed = playlists.playlistTracks[index]
+                    playlists.remove_track(index)
+                    if (removed && removed.path) {
+                        // Phase 4 undo: re-add the removed track by path.
+                        window.showToastWithAction(
+                            qsTr("Removed from playlist"), qsTr("Undo"),
+                            function() {
+                                playlists.add_track_to_playlist(
+                                    playlists.selectedPlaylistId, removed.path)
+                            })
+                    }
+                }
                 onMoveTrackRequested: (fromIndex, toIndex) => {
                     playlists.move_track(fromIndex, toIndex)
                 }

@@ -106,6 +106,13 @@ formatTime/formatDuration/formatFileSize copies (TrackRow, MichiAlbumRow,
 PlaylistCard, PlaylistsView, PlaylistTrackList, AlbumDetailView). Now
 Playing copies stay untouched (out of scope).
 
+**Commit H (done):** items 16 + 17 + 20 (partial) — the library header now
+names the active tab (wayfinding); ToastHost gains an optional action button
+and is wired globally (`window.showToast` / `showToastWithAction` via
+AppShell) with feedback for add-to-playlist, queue remove, queue clear and
+pin/unpin, plus an **Undo** action for remove-from-playlist (re-adds by
+path). Queue undo deferred — the queue service has no insert API.
+
 ## Phase 3 — 🟠 WARNING: visual consistency & copy (~5 h)
 
 | # | Finding | Evidence | Fix | Effort |

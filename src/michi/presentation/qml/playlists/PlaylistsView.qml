@@ -242,7 +242,12 @@ Item {
                     }
                     onOpenRequested: root.openPlaylistRequested(playlistCell.modelData.playlistId)
                     onPlayRequested: root.playPlaylistRequested(playlistCell.modelData.playlistId)
-                    onPinToggled: root.pinPlaylistRequested(playlistCell.modelData.playlistId, !playlistCell.modelData.pinned)
+                    onPinToggled: {
+                        root.pinPlaylistRequested(playlistCell.modelData.playlistId, !playlistCell.modelData.pinned)
+                        window.showToast(playlistCell.modelData.pinned
+                            ? qsTr("Unpinned %1", "", playlistCell.modelData.name)
+                            : qsTr("Pinned %1", "", playlistCell.modelData.name))
+                    }
                     onChangeCoverRequested: {
                         root.pendingCoverPlaylistId = playlistCell.modelData.playlistId
                         coverDialog.open()
