@@ -110,15 +110,18 @@ Item {
                 ctx.moveTo(15.7, 12)
                 ctx.arc(14.5, 12, 1.2, 0, Math.PI * 2)
             } else if (root.name === "track") {
-                // Modern musical note with clean stem and head
-                line(ctx, 14, 5, 14, 15.5)
-                line(ctx, 14, 5, 19, 7)
-                line(ctx, 19, 7, 19, 10.5)
-                ctx.moveTo(14, 15.5)
-                ctx.arc(10.5, 15.5, 3.5, 0, Math.PI * 2)
+                // Beamed eighth note pair with clean optical symmetry
+                line(ctx, 8.5, 6, 8.5, 16)
+                line(ctx, 8.5, 6, 18, 4)
+                line(ctx, 18, 4, 18, 14)
+                line(ctx, 8.5, 8.5, 18, 6.5)
+                ctx.moveTo(8.5, 16)
+                ctx.arc(6, 16, 2.5, 0, Math.PI * 2)
+                ctx.moveTo(18, 14)
+                ctx.arc(15.5, 14, 2.5, 0, Math.PI * 2)
             } else if (root.name === "album") {
-                // Sleek album sleeve with central vinyl disc
-                ctx.rect(4, 4, 16, 16)
+                // Balanced album sleeve (15x15) with concentric vinyl grooves
+                ctx.rect(4.5, 4.5, 15, 15)
                 ctx.moveTo(16, 12)
                 ctx.arc(12, 12, 4, 0, Math.PI * 2)
                 ctx.moveTo(13.5, 12)
@@ -344,11 +347,12 @@ Item {
                     ctx.lineTo(12 + cosA * 8.5, 12 + sinA * 8.5)
                 }
             } else if (root.name === "heart") {
+                // Symmetrical, optically balanced heart
                 ctx.moveTo(12, 19.5)
-                ctx.bezierCurveTo(4.5, 14.5, 3.5, 8, 8, 5.8)
+                ctx.bezierCurveTo(4.5, 14, 3.5, 7.5, 8, 5.5)
                 ctx.bezierCurveTo(10.5, 4.5, 12, 6.8, 12, 8)
-                ctx.bezierCurveTo(12, 6.8, 13.5, 4.5, 16, 5.8)
-                ctx.bezierCurveTo(20.5, 8, 19.5, 14.5, 12, 19.5)
+                ctx.bezierCurveTo(12, 6.8, 13.5, 4.5, 16, 5.5)
+                ctx.bezierCurveTo(20.5, 7.5, 19.5, 14, 12, 19.5)
             } else if (root.name === "close") {
                 line(ctx, 6, 6, 18, 18)
                 line(ctx, 18, 6, 6, 18)
@@ -386,12 +390,12 @@ Item {
                 line(ctx, 12, 15.5, 18, 9.5)
             } else if (root.name === "folder") {
                 // Modern file folder with clean tab
-                ctx.moveTo(4, 7)
+                ctx.moveTo(3.5, 7)
                 ctx.lineTo(9, 7)
                 ctx.lineTo(11, 9.5)
-                ctx.lineTo(20, 9.5)
-                ctx.lineTo(20, 18)
-                ctx.lineTo(4, 18)
+                ctx.lineTo(20.5, 9.5)
+                ctx.lineTo(20.5, 18.5)
+                ctx.lineTo(3.5, 18.5)
                 ctx.closePath()
             } else if (root.name === "artist") {
                 // Precision user portrait
@@ -399,15 +403,15 @@ Item {
                 ctx.moveTo(18.5, 19.5)
                 ctx.arc(12, 19.5, 6.5, Math.PI, Math.PI * 2)
             } else if (root.name === "genre") {
-                // Minimalist metadata / price tag with circular eyelet
-                ctx.moveTo(5, 7.5)
+                // Symmetrical metadata / audio tag
+                ctx.moveTo(4.5, 7.5)
                 ctx.lineTo(13.5, 7.5)
-                ctx.lineTo(19, 13)
-                ctx.lineTo(13.5, 18.5)
-                ctx.lineTo(5, 18.5)
+                ctx.lineTo(19.5, 12)
+                ctx.lineTo(13.5, 16.5)
+                ctx.lineTo(4.5, 16.5)
                 ctx.closePath()
-                ctx.moveTo(9.5, 13)
-                ctx.arc(8.5, 13, 1, 0, Math.PI * 2)
+                ctx.moveTo(9, 12)
+                ctx.arc(8, 12, 1, 0, Math.PI * 2)
             } else if (root.name === "more") {
                 ctx.arc(6, 12, 1.5, 0, Math.PI * 2)
                 ctx.moveTo(13.5, 12)
