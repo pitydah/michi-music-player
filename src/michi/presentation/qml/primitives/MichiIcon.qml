@@ -103,12 +103,12 @@ Item {
                 ctx.arc(10.5, 10.5, 5.5, 0, Math.PI * 2)
                 line(ctx, 14.5, 14.5, 19.5, 19.5)
             } else if (root.name === "library") {
-                // Precision vinyl archive crate / shelf
-                ctx.rect(4.5, 4.5, 15, 15)
-                line(ctx, 9.5, 4.5, 9.5, 19.5)
-                line(ctx, 14.5, 4.5, 14.5, 19.5)
-                line(ctx, 4.5, 14.5, 9.5, 14.5)
-                line(ctx, 9.5, 9.5, 14.5, 9.5)
+                // Audiophile vinyl sleeve with sliding record
+                ctx.rect(4, 4, 11, 16)
+                ctx.moveTo(17, 6.5)
+                ctx.arc(14.5, 12, 5.5, -0.92, 0.92)
+                ctx.moveTo(15.7, 12)
+                ctx.arc(14.5, 12, 1.2, 0, Math.PI * 2)
             } else if (root.name === "track") {
                 // Modern musical note with clean stem and head
                 line(ctx, 14, 5, 14, 15.5)

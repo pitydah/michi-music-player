@@ -110,8 +110,8 @@ MichiGlassSurface {
                     }
 
                     Item {
-                        Layout.preferredWidth: 34
-                        Layout.preferredHeight: 34
+                        Layout.preferredWidth: MichiMetrics.controlMedium
+                        Layout.preferredHeight: MichiMetrics.controlMedium
 
                         MichiIconButton {
                             id: sourceBtn
