@@ -4,6 +4,8 @@ Never touches the canonical library ports (MetadataExtractorPort,
 LibraryIndexRepository, ArtworkCachePort stay untouched by these fakes).
 """
 
+import hashlib
+from dataclasses import asdict
 from pathlib import Path
 
 from michi.application.enrichment_ports import (
@@ -11,15 +13,22 @@ from michi.application.enrichment_ports import (
     ArtistKnowledgeProviderPort,
     EnrichmentAssetStorePort,
     EnrichmentProviderError,
+    EnrichmentStorageError,
     ExternalIdentityResolverPort,
+    IdentityRepositoryPort,
     KnowledgeRepositoryPort,
 )
 from michi.application.ports import LibraryIndexRepository
 from michi.domain.enrichment import (
+    AlbumExternalIdentity,
+    AlbumIdentityEvidence,
     AlbumKnowledgeProfile,
     ArtistCandidate,
+    ArtistExternalIdentity,
+    ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
-    IdentityEvidence,
+    EnrichmentAssetRecord,
+    KnowledgeProvenance,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
 )
@@ -32,24 +41,24 @@ class FakeIdentityResolver(ExternalIdentityResolverPort):
         self._artists = tuple(artists)
         self._groups = tuple(groups)
         self._editions = tuple(editions)
-        self.artist_evidence: list[IdentityEvidence] = []
-        self.group_evidence: list[IdentityEvidence] = []
-        self.edition_evidence: list[IdentityEvidence] = []
+        self.artist_evidence: list[ArtistIdentityEvidence] = []
+        self.group_evidence: list[AlbumIdentityEvidence] = []
+        self.edition_evidence: list[AlbumIdentityEvidence] = []
 
     def find_artist_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: ArtistIdentityEvidence
     ) -> tuple[ArtistCandidate, ...]:
         self.artist_evidence.append(evidence)
         return self._artists
 
     def find_release_group_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: AlbumIdentityEvidence
     ) -> tuple[ReleaseGroupCandidate, ...]:
         self.group_evidence.append(evidence)
         return self._groups
 
     def find_release_edition_candidates(
-        self, evidence: IdentityEvidence
+        self, evidence: AlbumIdentityEvidence
     ) -> tuple[ReleaseEditionCandidate, ...]:
         self.edition_evidence.append(evidence)
         return self._editions
@@ -74,7 +83,7 @@ class FakeArtistProvider(ArtistKnowledgeProviderPort):
             biography=f"Biography of {external_artist_id}",
             external_genres=(f"genre-{external_artist_id}",),
             artwork_asset_id=f"asset-{external_artist_id}",
-            source="fake",
+            provenance=KnowledgeProvenance(provider="fake"),
         )
 
 
@@ -97,7 +106,7 @@ class FakeAlbumProvider(AlbumKnowledgeProviderPort):
             release_id=release_id,
             external_genres=(f"genre-{release_group_id}",),
             first_release_year=1959,
-            source="fake",
+            provenance=KnowledgeProvenance(provider="fake"),
         )
 
 
@@ -109,6 +118,9 @@ class RecordingKnowledgeRepository(KnowledgeRepositoryPort):
         self.albums: dict[str, AlbumKnowledgeProfile] = {}
         self.artist_saves: list[ArtistKnowledgeProfile] = []
         self.album_saves: list[AlbumKnowledgeProfile] = []
+        self.artist_deletes: list[str] = []
+        self.album_deletes: list[str] = []
+        self.clear_knowledge_calls = 0
 
     def save_artist_profile(self, profile: ArtistKnowledgeProfile) -> None:
         self.artists[profile.local_artist_key] = profile
@@ -117,6 +129,14 @@ class RecordingKnowledgeRepository(KnowledgeRepositoryPort):
     def save_album_profile(self, profile: AlbumKnowledgeProfile) -> None:
         self.albums[profile.local_album_key] = profile
         self.album_saves.append(profile)
+
+    def delete_artist_profile(self, local_artist_key: str) -> None:
+        self.artist_deletes.append(local_artist_key)
+        self.artists.pop(local_artist_key, None)
+
+    def delete_album_profile(self, local_album_key: str) -> None:
+        self.album_deletes.append(local_album_key)
+        self.albums.pop(local_album_key, None)
 
     def load_artist_profile(
         self, local_artist_key: str
@@ -132,7 +152,8 @@ class RecordingKnowledgeRepository(KnowledgeRepositoryPort):
     def load_album_profiles(self) -> tuple[AlbumKnowledgeProfile, ...]:
         return tuple(sorted(self.albums.values(), key=lambda p: p.local_album_key))
 
-    def clear(self) -> None:
+    def clear_knowledge(self) -> None:
+        self.clear_knowledge_calls += 1
         self.artists.clear()
         self.albums.clear()
 
@@ -144,26 +165,134 @@ class RecordingKnowledgeRepository(KnowledgeRepositoryPort):
         return len(self.artist_saves) + len(self.album_saves)
 
 
+class InMemoryIdentityRepository(IdentityRepositoryPort):
+    """In-memory identity authority with a call log."""
+
+    def __init__(self):
+        self.artists: dict[str, ArtistExternalIdentity] = {}
+        self.albums: dict[str, AlbumExternalIdentity] = {}
+        self.artist_saves: list[ArtistExternalIdentity] = []
+        self.album_saves: list[AlbumExternalIdentity] = []
+        self.clear_calls = 0
+
+    def save_artist_identity(self, identity: ArtistExternalIdentity) -> None:
+        self.artists[identity.local_artist_key] = identity
+        self.artist_saves.append(identity)
+
+    def save_album_identity(self, identity: AlbumExternalIdentity) -> None:
+        self.albums[identity.local_album_key] = identity
+        self.album_saves.append(identity)
+
+    def delete_artist_identity(self, local_artist_key: str) -> None:
+        self.artists.pop(local_artist_key, None)
+
+    def delete_album_identity(self, local_album_key: str) -> None:
+        self.albums.pop(local_album_key, None)
+
+    def load_artist_identity(
+        self, local_artist_key: str
+    ) -> ArtistExternalIdentity | None:
+        return self.artists.get(local_artist_key)
+
+    def load_album_identity(self, local_album_key: str) -> AlbumExternalIdentity | None:
+        return self.albums.get(local_album_key)
+
+    def load_artist_identities(self) -> tuple[ArtistExternalIdentity, ...]:
+        return tuple(sorted(self.artists.values(), key=lambda i: i.local_artist_key))
+
+    def load_album_identities(self) -> tuple[AlbumExternalIdentity, ...]:
+        return tuple(sorted(self.albums.values(), key=lambda i: i.local_album_key))
+
+    def clear_identities(self) -> None:
+        self.clear_calls += 1
+        self.artists.clear()
+        self.albums.clear()
+
+
+class FailingIdentityRepository(InMemoryIdentityRepository):
+    """R2 storage-failure fake: writes raise the normalized storage
+    error (configurable per operation). Reads behave normally."""
+
+    def __init__(self):
+        super().__init__()
+        self.fail_save = True
+        self.fail_delete = True
+        self.fail_clear = True
+        self.fail_load = False
+
+    def _maybe_fail(self, flag: bool) -> None:
+        if flag:
+            raise EnrichmentStorageError("injected storage failure")
+
+    def _maybe_fail_load(self) -> None:
+        if self.fail_load:
+            raise EnrichmentStorageError("injected identity read failure")
+
+    def load_artist_identity(
+        self, local_artist_key: str
+    ) -> ArtistExternalIdentity | None:
+        self._maybe_fail_load()
+        return super().load_artist_identity(local_artist_key)
+
+    def load_album_identity(self, local_album_key: str) -> AlbumExternalIdentity | None:
+        self._maybe_fail_load()
+        return super().load_album_identity(local_album_key)
+
+    def save_artist_identity(self, identity: ArtistExternalIdentity) -> None:
+        self._maybe_fail(self.fail_save)
+        super().save_artist_identity(identity)
+
+    def save_album_identity(self, identity: AlbumExternalIdentity) -> None:
+        self._maybe_fail(self.fail_save)
+        super().save_album_identity(identity)
+
+    def delete_artist_identity(self, local_artist_key: str) -> None:
+        self._maybe_fail(self.fail_delete)
+        super().delete_artist_identity(local_artist_key)
+
+    def delete_album_identity(self, local_album_key: str) -> None:
+        self._maybe_fail(self.fail_delete)
+        super().delete_album_identity(local_album_key)
+
+    def clear_identities(self) -> None:
+        self._maybe_fail(self.fail_clear)
+        super().clear_identities()
+
+
 class RecordingAssetStore(EnrichmentAssetStorePort):
     """In-memory external artwork store; call log for authority gates."""
 
     def __init__(self):
         self.assets: dict[str, bytes] = {}
+        self.records: dict[str, EnrichmentAssetRecord] = {}
         self.stored_ids: list[str] = []
 
-    def store(self, asset_id: str, data: bytes, mime_type: str) -> str | None:
-        del mime_type  # unused in the fake
-        self.assets[asset_id] = data
-        self.stored_ids.append(asset_id)
-        return f"/enrichment/assets/{asset_id}"
+    def store(
+        self, record: EnrichmentAssetRecord, data: bytes
+    ) -> EnrichmentAssetRecord | None:
+        self.assets[record.asset_id] = data
+        self.stored_ids.append(record.asset_id)
+        completed = EnrichmentAssetRecord(
+            **{
+                **asdict(record),
+                "checksum": hashlib.sha256(data).hexdigest(),
+                "managed_object": f"objects/{hashlib.sha256(data).hexdigest()}.jpg",
+            }
+        )
+        self.records[record.asset_id] = completed
+        return completed
 
     def path_for(self, asset_id: str) -> Path | None:
         if asset_id not in self.assets:
             return None
         return Path(f"/enrichment/assets/{asset_id}")
 
+    def record_for(self, asset_id: str) -> EnrichmentAssetRecord | None:
+        return self.records.get(asset_id)
+
     def clear(self) -> None:
         self.assets.clear()
+        self.records.clear()
 
 
 class RecordingLibraryIndexRepository(LibraryIndexRepository):
@@ -190,3 +319,38 @@ class RecordingLibraryIndexRepository(LibraryIndexRepository):
 
     def version(self) -> int:
         return 1
+
+
+class FailingKnowledgeRepository(RecordingKnowledgeRepository):
+    """R3 storage-failure fake: knowledge WRITES raise the normalized
+    storage error (configurable). Reads behave normally."""
+
+    def __init__(self):
+        super().__init__()
+        self.fail_save = True
+        self.fail_delete = True
+        self.fail_clear = True
+
+    def _maybe_fail(self, flag: bool) -> None:
+        if flag:
+            raise EnrichmentStorageError("injected knowledge storage failure")
+
+    def save_artist_profile(self, profile: ArtistKnowledgeProfile) -> None:
+        self._maybe_fail(self.fail_save)
+        super().save_artist_profile(profile)
+
+    def save_album_profile(self, profile: AlbumKnowledgeProfile) -> None:
+        self._maybe_fail(self.fail_save)
+        super().save_album_profile(profile)
+
+    def delete_artist_profile(self, local_artist_key: str) -> None:
+        self._maybe_fail(self.fail_delete)
+        super().delete_artist_profile(local_artist_key)
+
+    def delete_album_profile(self, local_album_key: str) -> None:
+        self._maybe_fail(self.fail_delete)
+        super().delete_album_profile(local_album_key)
+
+    def clear_knowledge(self) -> None:
+        self._maybe_fail(self.fail_clear)
+        super().clear_knowledge()
