@@ -174,5 +174,26 @@ Michi-nativos.
   pump) always run, and first-error-wins preserves the original exception
   object. BaseException (KeyboardInterrupt/SystemExit/GeneratorExit) is
   never caught. Normal load replacement stays transactional/strict.
-- Code-validation evidence: full suite 1701 passed at CODE_VALIDATED_HEAD
-  aaed097 (1 pre-existing conditional skip: M11.3B Qt-runtime).
+## M11.3C-R6 transport lifecycle & arm transaction seal
+
+- stop() has TWO semantics: a PENDING candidate stop cancels the candidate
+  (transactional teardown, generation invalidation blocks late
+  acceptance); an ACCEPTED source stop stops the transport WITHOUT
+  unloading — current_path/generation/pipeline/bus watch stay intact, so
+  play()/resume() replay the same source with no new load and position
+  polling keeps working.
+- EOS converges to STOPPED before emitting EOM exactly once per terminal
+  cycle; the current source is retained; a late EOS queued before an
+  explicit user stop is ignored (pending-play guard). play() after EOS
+  performs a controlled NULL→PLAYING restart on the same pipeline (no
+  reload, no second media_accepted); failure-atomic: the EOS marker
+  resets only when PLAYING succeeds.
+- The pipeline ARM (PHASE B of load) is exception-atomic: any normal
+  Exception during construction/configuration/watch/timer/PAUSED request
+  triggers _rollback_failed_arm() — failed-candidate generation
+  invalidation, candidate identity cleared, broken timer destroyed,
+  best-effort NULL + watch detach, truthful ownership — and the ORIGINAL
+  arm exception is re-raised as primary. After a successful old-source
+  teardown the adapter converges to STOPPED before arming B.
+- Code-validation evidence: full suite 1730 passed at CODE_VALIDATED_HEAD
+  f88e729 (1 pre-existing conditional skip: M11.3B Qt-runtime).
