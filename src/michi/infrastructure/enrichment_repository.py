@@ -18,6 +18,7 @@ import sqlite3
 from pathlib import Path
 
 from michi.application.enrichment_ports import (
+    EnrichmentStorageError,
     IdentityRepositoryPort,
     KnowledgeRepositoryPort,
 )
@@ -161,14 +162,15 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
 
     @staticmethod
     def _artist_identity_from_row(row) -> ArtistExternalIdentity | None:
-        key, external_id, status, method, confirmed, resolved_at = row
+        # Schema 2 rows carry the legacy manually_confirmed column; R2
+        # normalizes it away: MANUAL authority comes ONLY from MatchMethod.
+        key, external_id, status, method, _confirmed, resolved_at = row
         try:
             return ArtistExternalIdentity(
                 local_artist_key=key,
                 external_artist_id=external_id,
                 status=IdentityStatus[status],
                 match_method=MatchMethod[method],
-                manually_confirmed=bool(confirmed),
                 resolved_at=resolved_at,
             )
         except (KeyError, ValueError):
@@ -177,7 +179,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
 
     @staticmethod
     def _album_identity_from_row(row) -> AlbumExternalIdentity | None:
-        key, rg_id, release_id, status, method, confirmed, resolved_at = row
+        key, rg_id, release_id, status, method, _confirmed, resolved_at = row
         try:
             return AlbumExternalIdentity(
                 local_album_key=key,
@@ -185,7 +187,6 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                 release_id=release_id,
                 status=IdentityStatus[status],
                 match_method=MatchMethod[method],
-                manually_confirmed=bool(confirmed),
                 resolved_at=resolved_at,
             )
         except (KeyError, ValueError):
@@ -211,14 +212,14 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                         identity.external_artist_id,
                         identity.status.name,
                         identity.match_method.name,
-                        int(identity.manually_confirmed),
+                        int(identity.match_method is MatchMethod.MANUAL),
                         identity.resolved_at,
                     ),
                 )
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment artist identity save failed: %s", exc)
+            raise EnrichmentStorageError(f"artist identity save failed: {exc}") from exc
 
     def save_album_identity(self, identity: AlbumExternalIdentity) -> None:
         try:
@@ -241,22 +242,24 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                         identity.release_id,
                         identity.status.name,
                         identity.match_method.name,
-                        int(identity.manually_confirmed),
+                        int(identity.match_method is MatchMethod.MANUAL),
                         identity.resolved_at,
                     ),
                 )
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment album identity save failed: %s", exc)
+            raise EnrichmentStorageError(f"album identity save failed: {exc}") from exc
 
     def delete_artist_identity(self, local_artist_key: str) -> None:
-        self._delete("artist_identity", "local_artist_key", local_artist_key)
+        self._delete_identity("artist_identity", "local_artist_key", local_artist_key)
 
     def delete_album_identity(self, local_album_key: str) -> None:
-        self._delete("album_identity", "local_album_key", local_album_key)
+        self._delete_identity("album_identity", "local_album_key", local_album_key)
 
-    def _delete(self, table: str, column: str, key: str) -> None:
+    def _delete_identity(self, table: str, column: str, key: str) -> None:
+        """R2: identity DELETES are truthful — failures raise the
+        normalized storage error instead of pretending success."""
         try:
             conn = self._connect()
             try:
@@ -264,7 +267,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment identity delete failed: %s", exc)
+            raise EnrichmentStorageError(f"{table} delete failed: {exc}") from exc
 
     def load_artist_identity(
         self, local_artist_key: str
@@ -367,7 +370,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("enrichment identity clear failed: %s", exc)
+            raise EnrichmentStorageError(f"identity clear failed: {exc}") from exc
 
     # -- knowledge (downloaded) ---------------------------------------------
 
