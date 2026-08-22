@@ -60,7 +60,15 @@ _VERSION_KEY = "enrichment_schema_version"
 
 
 class EnrichmentSchemaError(RuntimeError):
-    """The enrichment database schema is newer than this build supports."""
+    """The enrichment database violates the schema/version CONTRACT.
+
+    Raised for: a future (newer) schema version, malformed/zero/negative
+    version metadata, missing required tables, an invalid current shape
+    (including a mislabeled V2 identity shape inside a V3 database),
+    corrupt migration sources (partial V2, unexpected V1 identity
+    tables) and missing version rows. Schema violations NEVER mutate
+    the database and are distinct from operational storage failures
+    (``EnrichmentStorageError``)."""
 
 
 # ---------------------------------------------------------------------------
@@ -180,10 +188,13 @@ def _transform_v1_album(payload: dict) -> str | None:
 class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort):
     """Single schema authority for enrichment.db.
 
-    R2 TRUTHFUL PERSISTENCE: identity WRITES raise
-    ``EnrichmentStorageError`` on failure. Knowledge writes remain
-    best-effort (documented cache semantics) — a failed knowledge write
-    never hurts the canonical library."""
+    R3 TRUTHFUL PERSISTENCE: identity AND knowledge reads/writes raise
+    ``EnrichmentStorageError`` on operational failure (never a silent
+    fake success); malformed identity authority rows raise as
+    corruption (never degrade to 'no identity'). Malformed knowledge
+    CACHE rows degrade to None (rebuildable cache, logged). Schema
+    contract violations raise ``EnrichmentSchemaError`` without
+    mutating the database."""
 
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
@@ -311,11 +322,21 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                     f"than supported {CURRENT_ENRICHMENT_SCHEMA}"
                 )
             if version in (1, 2):
+                if version == 1:
+                    # R3.1: historical V1 has NO identity tables — if any
+                    # exists the database is inconsistent and never guessed.
+                    self._require_identity_tables_absent(conn)
+                else:
+                    # R3.1: V2 requires BOTH identity tables in the exact
+                    # V2 shape (including the legacy boolean).
+                    self._validate_v2_identity_shape(conn)
                 conn.execute("BEGIN")
                 try:
                     if version == 1:
                         self._migrate_v1_knowledge(conn)
-                    self._migrate_v2_identities(conn)
+                        self._create_identity_tables_v3(conn)
+                    else:
+                        self._migrate_v2_identities(conn)
                     conn.execute(
                         "UPDATE enrichment_meta SET value = ? WHERE key = ?",
                         (str(CURRENT_ENRICHMENT_SCHEMA), _VERSION_KEY),
@@ -337,16 +358,70 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
 
     @staticmethod
     def _validate_current_schema(conn) -> None:
-        """R3 fail-closed current-schema validation: required tables AND
-        required columns must exist. A corrupt current-version database
-        is rejected — identity tables are USER AUTHORITY and are never
-        silently recreated empty."""
-        required = {
+        """R3/R3.1 fail-closed current-schema validation. Identity
+        authority shape is EXACT — a V3 database whose identity tables
+        still carry the legacy V2 ``manually_confirmed`` column is a
+        mislabeled V2 and never accepted. Identity tables are USER
+        AUTHORITY and are never silently recreated empty."""
+        exact_identity = {
+            "artist_identity": [
+                "local_artist_key",
+                "external_artist_id",
+                "status",
+                "match_method",
+                "resolved_at",
+            ],
+            "album_identity": [
+                "local_album_key",
+                "release_group_id",
+                "release_id",
+                "status",
+                "match_method",
+                "resolved_at",
+            ],
+        }
+        for table, columns in exact_identity.items():
+            actual = SqliteEnrichmentRepository._table_columns(conn, table)
+            if actual != columns:
+                raise EnrichmentSchemaError(f"table {table} invalid shape: {actual}")
+        subset = {
+            "artist_knowledge": ("local_artist_key", "profile"),
+            "album_knowledge": ("local_album_key", "profile"),
+            "enrichment_meta": ("key", "value"),
+        }
+        for table, columns in subset.items():
+            actual = SqliteEnrichmentRepository._table_columns(conn, table)
+            if actual is None:
+                raise EnrichmentSchemaError(f"missing table {table}")
+            missing = [c for c in columns if c not in actual]
+            if missing:
+                raise EnrichmentSchemaError(f"table {table} missing columns: {missing}")
+
+    @staticmethod
+    def _table_columns(conn, table: str) -> list[str] | None:
+        info = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        return [row[1] for row in info] if info else None
+
+    @staticmethod
+    def _require_identity_tables_absent(conn) -> None:
+        for table in ("artist_identity", "album_identity"):
+            if SqliteEnrichmentRepository._table_columns(conn, table) is not None:
+                raise EnrichmentSchemaError(
+                    f"v1 database unexpectedly contains {table}"
+                )
+
+    @staticmethod
+    def _validate_v2_identity_shape(conn) -> None:
+        """R3.1: a V2 database MUST contain BOTH identity tables with
+        the exact V2 column shape (including manually_confirmed). A
+        partial or wrong-shape V2 is corrupt and never migrated."""
+        expected = {
             "artist_identity": (
                 "local_artist_key",
                 "external_artist_id",
                 "status",
                 "match_method",
+                "manually_confirmed",
                 "resolved_at",
             ),
             "album_identity": (
@@ -355,20 +430,16 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                 "release_id",
                 "status",
                 "match_method",
+                "manually_confirmed",
                 "resolved_at",
             ),
-            "artist_knowledge": ("local_artist_key", "profile"),
-            "album_knowledge": ("local_album_key", "profile"),
-            "enrichment_meta": ("key", "value"),
         }
-        for table, columns in required.items():
-            info = conn.execute(f"PRAGMA table_info({table})").fetchall()
-            if not info:
-                raise EnrichmentSchemaError(f"missing table {table}")
-            actual = {row[1] for row in info}
-            missing = [c for c in columns if c not in actual]
-            if missing:
-                raise EnrichmentSchemaError(f"table {table} missing columns: {missing}")
+        for table, columns in expected.items():
+            actual = SqliteEnrichmentRepository._table_columns(conn, table)
+            if actual != list(columns):
+                raise EnrichmentSchemaError(
+                    f"v2 identity table {table} invalid shape: {actual}"
+                )
 
     def _migrate_v1_knowledge(self, conn) -> None:
         """REAL v1 data transformation (R2): rewrite every valid v1
@@ -448,6 +519,10 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             conn.execute(f"ALTER TABLE {table}_v3 RENAME TO {table}")
 
     def version(self) -> int:
+        """R3.1 TRUTH: a valid initialized repository returns its
+        numeric version; a missing/malformed version row is a schema
+        contract violation (EnrichmentSchemaError); an operational
+        SQLite failure is EnrichmentStorageError. NEVER a fake 0."""
         try:
             conn = self._connect()
             try:
@@ -456,18 +531,24 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                 ).fetchone()
             finally:
                 conn.close()
-            if row is None:
-                return 0
-            return int(row[0]) if str(row[0]).isdigit() else 0
         except sqlite3.Error as exc:
             raise EnrichmentStorageError(
                 f"enrichment version read failed: {exc}"
             ) from exc
+        if row is None:
+            raise EnrichmentSchemaError("enrichment version row missing")
+        raw = row[0]
+        if not str(raw).isdigit() or int(raw) <= 0:
+            raise EnrichmentSchemaError(f"invalid enrichment schema version: {raw!r}")
+        return int(raw)
 
     # -- identity authority (truthful writes) --------------------------------
 
     @staticmethod
-    def _artist_identity_from_row(row) -> ArtistExternalIdentity | None:
+    def _artist_identity_from_row(row) -> ArtistExternalIdentity:
+        """R3.1: a malformed persistent identity row is CORRUPT USER
+        AUTHORITY — it raises (never None, never silently skipped,
+        never normalized into a valid mapping). None means absence."""
         key, external_id, status, method, resolved_at = row
         try:
             return ArtistExternalIdentity(
@@ -477,12 +558,15 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                 match_method=MatchMethod[method],
                 resolved_at=resolved_at,
             )
-        except (KeyError, ValueError):
-            logger.warning("enrichment artist identity row %r malformed; skipping", key)
-            return None
+        except (KeyError, ValueError) as exc:
+            raise EnrichmentStorageError(
+                f"malformed artist identity row {key!r}: {exc}"
+            ) from exc
 
     @staticmethod
-    def _album_identity_from_row(row) -> AlbumExternalIdentity | None:
+    def _album_identity_from_row(row) -> AlbumExternalIdentity:
+        """R3.1: malformed persistent album identity -> error (never
+        None, never skipped)."""
         key, rg_id, release_id, status, method, resolved_at = row
         try:
             return AlbumExternalIdentity(
@@ -493,9 +577,10 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                 match_method=MatchMethod[method],
                 resolved_at=resolved_at,
             )
-        except (KeyError, ValueError):
-            logger.warning("enrichment album identity row %r malformed; skipping", key)
-            return None
+        except (KeyError, ValueError) as exc:
+            raise EnrichmentStorageError(
+                f"malformed album identity row {key!r}: {exc}"
+            ) from exc
 
     def save_artist_identity(self, identity: ArtistExternalIdentity) -> None:
         try:
@@ -630,12 +715,9 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             raise EnrichmentStorageError(
                 f"artist identity load all failed: {exc}"
             ) from exc
-        identities = []
-        for row in rows:
-            identity = self._artist_identity_from_row(row)
-            if identity is not None:
-                identities.append(identity)
-        return tuple(identities)
+        # R3.1: identity authority corruption never yields a partial
+        # result — any malformed row raises.
+        return tuple(self._artist_identity_from_row(row) for row in rows)
 
     def load_album_identities(self) -> tuple[AlbumExternalIdentity, ...]:
         try:
@@ -652,12 +734,7 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             raise EnrichmentStorageError(
                 f"album identity load all failed: {exc}"
             ) from exc
-        identities = []
-        for row in rows:
-            identity = self._album_identity_from_row(row)
-            if identity is not None:
-                identities.append(identity)
-        return tuple(identities)
+        return tuple(self._album_identity_from_row(row) for row in rows)
 
     def clear_identities(self) -> None:
         """R3 TRANSACTIONAL: both identity tables are cleared atomically
