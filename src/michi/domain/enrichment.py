@@ -387,16 +387,34 @@ def resolve_release_hint_for_group(
       evidence is never accepted via ``any()``);
     - duplicate identical candidates (same release, same group) are
       duplicate observations, not a conflict.
+
+    R3.2.1 DEFENSIVE INPUT: the resolved group and the hint are
+    programmer/domain-contract arguments — invalid values raise
+    ValueError (never reinterpreted as remote conflict). A MATCHING
+    release candidate whose release_group_id is not a non-blank str is
+    contradictory external evidence: IDENTITY_CONFLICT — never silently
+    discarded, never an IndexError.
     """
+    if not isinstance(release_group_id, str) or not release_group_id.strip():
+        raise ValueError("release_group_id must be a non-blank str")
+    if not isinstance(hint_release, str) or not hint_release.strip():
+        raise ValueError("hint_release must be a non-blank str")
+    resolved_group = release_group_id.strip()
     matches = [
         edition for edition in edition_candidates if edition.release_id == hint_release
     ]
     if not matches:
         return IdentityResolutionStatus.RESOLVED, ""
-    groups = dedupe_identity_ids(edition.release_group_id for edition in matches)
+    normalized_groups: list[str] = []
+    for edition in matches:
+        group = edition.release_group_id
+        if not isinstance(group, str) or not group.strip():
+            return IdentityResolutionStatus.IDENTITY_CONFLICT, ""
+        normalized_groups.append(group.strip())
+    groups = dedupe_identity_ids(normalized_groups)
     if len(groups) > 1:
         return IdentityResolutionStatus.IDENTITY_CONFLICT, ""
-    if groups[0] == release_group_id:
+    if groups[0] == resolved_group:
         return IdentityResolutionStatus.RESOLVED, hint_release
     return IdentityResolutionStatus.IDENTITY_CONFLICT, ""
 
@@ -603,14 +621,25 @@ class ArtistExternalIdentity:
     resolved_at: str = ""
 
     def __post_init__(self) -> None:
-        # R3.2: type-validate BEFORE attribute access — a wrong status
-        # TYPE must raise ValueError, never AttributeError.
+        # R3.2/R3.2.1: runtime TYPE validation BEFORE any attribute
+        # access or string method — a wrong type must raise ValueError,
+        # never AttributeError/TypeError.
         if not isinstance(self.status, IdentityStatus):
             raise ValueError(f"status must be an IdentityStatus, got {self.status!r}")
+        for field_name in ("local_artist_key", "external_artist_id", "resolved_at"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str):
+                raise ValueError(
+                    f"{field_name} must be str, got {type(value).__name__}"
+                )
         if not self.local_artist_key.strip():
             raise ValueError("local_artist_key must not be empty")
         if not self.external_artist_id.strip():
             raise ValueError("external_artist_id must not be empty")
+        # R3.2.1: durable external identity must ALREADY be canonical —
+        # edge whitespace is rejected, never silently stripped/persisted.
+        if self.external_artist_id != self.external_artist_id.strip():
+            raise ValueError("external_artist_id must not have edge whitespace")
         if self.status is not IdentityStatus.RESOLVED:
             raise ValueError(
                 "persistent identity rows are RESOLVED mappings only; "
@@ -641,12 +670,27 @@ class AlbumExternalIdentity:
     def __post_init__(self) -> None:
         if not isinstance(self.status, IdentityStatus):
             raise ValueError(f"status must be an IdentityStatus, got {self.status!r}")
+        for field_name in (
+            "local_album_key",
+            "release_group_id",
+            "release_id",
+            "resolved_at",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, str):
+                raise ValueError(
+                    f"{field_name} must be str, got {type(value).__name__}"
+                )
         if not self.local_album_key.strip():
             raise ValueError("local_album_key must not be empty")
         if not self.release_group_id.strip():
             raise ValueError("release_group_id must not be empty")
+        if self.release_group_id != self.release_group_id.strip():
+            raise ValueError("release_group_id must not have edge whitespace")
         if self.release_id and not self.release_id.strip():
             raise ValueError("release_id must not be whitespace-only")
+        if self.release_id != self.release_id.strip():
+            raise ValueError("release_id must not have edge whitespace")
         if self.status is not IdentityStatus.RESOLVED:
             raise ValueError(
                 "persistent identity rows are RESOLVED mappings only; "
