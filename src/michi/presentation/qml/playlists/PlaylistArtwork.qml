@@ -1,0 +1,133 @@
+import QtQuick
+import QtQuick.Layouts
+import "../media"
+import "../primitives"
+import "../theme"
+
+Item {
+    id: root
+
+    property string customCoverPath: ""
+    property var mosaicArtworkPaths: []
+    property string fallbackText: "P"
+    property real radius: MichiRadius.md
+
+    implicitWidth: 120
+    implicitHeight: 120
+
+    Rectangle {
+        id: bgContainer
+        anchors.fill: parent
+        radius: root.radius
+        color: MichiPalette.obsidianDeep
+        clip: true
+
+        // Case 1: Custom Cover
+        Artwork {
+            anchors.fill: parent
+            visible: root.customCoverPath !== ""
+            sourcePath: root.customCoverPath
+            radius: root.radius
+            requestedSize: Math.round(Math.max(root.width, root.height) * Screen.devicePixelRatio)
+        }
+
+        // Case 2: Mosaic of 4
+        Grid {
+            anchors.fill: parent
+            columns: 2
+            rows: 2
+            spacing: 1
+            visible: root.customCoverPath === "" && root.mosaicArtworkPaths && root.mosaicArtworkPaths.length >= 4
+
+            Repeater {
+                model: (root.mosaicArtworkPaths && root.mosaicArtworkPaths.length >= 4) ? root.mosaicArtworkPaths.slice(0, 4) : []
+                Artwork {
+                    width: bgContainer.width / 2
+                    height: bgContainer.height / 2
+                    sourcePath: modelData
+                    requestedSize: Math.round(width * Screen.devicePixelRatio)
+                }
+            }
+        }
+
+        // Case 3: Mosaic of 3 (1 large left, 2 stacked right)
+        RowLayout {
+            anchors.fill: parent
+            spacing: 1
+            visible: root.customCoverPath === "" && root.mosaicArtworkPaths && root.mosaicArtworkPaths.length === 3
+
+            Artwork {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                sourcePath: (root.mosaicArtworkPaths && root.mosaicArtworkPaths.length === 3) ? root.mosaicArtworkPaths[0] : ""
+                requestedSize: Math.round(width * Screen.devicePixelRatio)
+            }
+
+            ColumnLayout {
+                Layout.preferredWidth: parent.width / 2
+                Layout.fillHeight: true
+                spacing: 1
+
+                Artwork {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    sourcePath: (root.mosaicArtworkPaths && root.mosaicArtworkPaths.length === 3) ? root.mosaicArtworkPaths[1] : ""
+                    requestedSize: Math.round(width * Screen.devicePixelRatio)
+                }
+                Artwork {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    sourcePath: (root.mosaicArtworkPaths && root.mosaicArtworkPaths.length === 3) ? root.mosaicArtworkPaths[2] : ""
+                    requestedSize: Math.round(width * Screen.devicePixelRatio)
+                }
+            }
+        }
+
+        // Case 4: Mosaic of 2 (Left & Right)
+        RowLayout {
+            anchors.fill: parent
+            spacing: 1
+            visible: root.customCoverPath === "" && root.mosaicArtworkPaths && root.mosaicArtworkPaths.length === 2
+
+            Artwork {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                sourcePath: (root.mosaicArtworkPaths && root.mosaicArtworkPaths.length === 2) ? root.mosaicArtworkPaths[0] : ""
+                requestedSize: Math.round(width * Screen.devicePixelRatio)
+            }
+            Artwork {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                sourcePath: (root.mosaicArtworkPaths && root.mosaicArtworkPaths.length === 2) ? root.mosaicArtworkPaths[1] : ""
+                requestedSize: Math.round(width * Screen.devicePixelRatio)
+            }
+        }
+
+        // Case 5: Single Artwork
+        Artwork {
+            anchors.fill: parent
+            visible: root.customCoverPath === "" && root.mosaicArtworkPaths && root.mosaicArtworkPaths.length === 1
+            sourcePath: (root.mosaicArtworkPaths && root.mosaicArtworkPaths.length === 1) ? root.mosaicArtworkPaths[0] : ""
+            radius: root.radius
+            requestedSize: Math.round(Math.max(root.width, root.height) * Screen.devicePixelRatio)
+        }
+
+        // Case 6: Fallback (Empty / 0 tracks)
+        Rectangle {
+            anchors.fill: parent
+            visible: root.customCoverPath === "" && (!root.mosaicArtworkPaths || root.mosaicArtworkPaths.length === 0)
+            radius: root.radius
+            color: MichiSemanticColors.auroraPurpleSurface
+            border.width: 1
+            border.color: MichiSemanticColors.auroraPurpleBorder
+
+            MichiIcon {
+                anchors.centerIn: parent
+                width: Math.min(root.width * 0.45, 36)
+                height: width
+                name: "playlist"
+                iconColor: MichiPalette.auroraCyan
+            }
+        }
+    }
+}

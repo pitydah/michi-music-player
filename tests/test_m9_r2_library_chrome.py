@@ -1,0 +1,62 @@
+"""Tests for M9-R2 Library Chrome, View Options popup, and single-strip toolbar."""
+
+from pathlib import Path
+
+QML = Path("src/michi/presentation/qml")
+
+
+def _text(relative: str) -> str:
+    return (QML / relative).read_text()
+
+
+def test_six_view_icons_remain_in_library_header() -> None:
+    header_src = _text("views/LibraryHeader.qml")
+    for view_mode in (
+        "view-grid",
+        "view-path",
+        "view-vinyl",
+        "view-timeline",
+        "view-magazine",
+        "view-list",
+    ):
+        assert f'icon: "{view_mode}"' in header_src
+
+
+def test_view_options_popup_consolidates_density_precision_zoom_sort() -> None:
+    header_src = _text("views/LibraryHeader.qml")
+    popup_src = _text("views/LibraryViewOptionsPopup.qml")
+    assert "View options" in header_src
+    assert "LibraryViewOptionsPopup" in header_src
+    assert 'objectName: "libraryDensityControl"' in popup_src
+    assert "Precision metadata" in popup_src
+    assert "zoom-out" in popup_src
+    assert "zoom-in" in popup_src
+    assert "SORT & FILTER" in popup_src
+    assert "TIMELINE GROUPING" in popup_src
+
+
+def test_toolbar_is_single_strip_with_source_popover() -> None:
+    toolbar_src = _text("views/LibraryToolbar.qml")
+    assert "LibraryTabs" in toolbar_src
+    assert "MichiSearchField" in toolbar_src
+    assert "LibrarySourcePopover" in toolbar_src
+    # Permanent second albums row is removed from toolbar
+    assert 'objectName: "albumOrganizationControl"' not in toolbar_src
+    assert 'objectName: "albumSizeControl"' not in toolbar_src
+
+
+def test_library_tabs_has_7_tabs_and_no_folders() -> None:
+    tabs_src = _text("views/LibraryTabs.qml")
+    expected_tabs = [
+        '{ value: "songs", label: "Songs"',
+        '{ value: "albums", label: "Albums"',
+        '{ value: "artists", label: "Artists"',
+        '{ value: "genres", label: "Genres"',
+        '{ value: "favorites", label: "Favorites"',
+        '{ value: "history", label: "History"',
+        '{ value: "recently", label: "Recently Added"',
+    ]
+    for tab in expected_tabs:
+        assert tab in tabs_src
+    assert 'label: "Folders"' not in tabs_src
+    assert 'value: "folders"' not in tabs_src

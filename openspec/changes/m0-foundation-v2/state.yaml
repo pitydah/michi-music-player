@@ -21,6 +21,32 @@ G5_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
 G5_GATE:
   status: PASS
   evidence: 77 lines (31 debt + 46 backlog); 7 debt entries with severity distinct from P0/P1; 13 backlog entries with justification and sizing; prettier clean; G1+G2+G3+G4 preserved; G6+ BACKLOG
+A1: DONE
+A1_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+A1_GATE:
+  status: PASS
+  evidence: 41 lines; 7/7 headers; Proposed; 2026-08-10; prettier normalized
+A2: DONE
+A2_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+A2_GATE:
+  status: PASS
+  evidence: 91 lines (49+42); 7/7 headers per file; Proposed; 2026-08-10; prettier normalized
+A3: DONE
+A3_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+A3_GATE:
+  status: PASS
+  evidence: 162 lines (64+54+44); 7/7 headers per file; Proposed; 2026-08-10; prettier normalized
+A4: DONE
+A4_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+A4_GATE:
+  status: PASS
+  evidence: 148 lines (42+43+63); 7/7 headers per file; Proposed; 2026-08-10; prettier normalized
+A5: DONE
+A5_TRANSITION: BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+A5_GATE:
+  status: PASS
+  evidence: 51 lines; 7/7 headers; Proposed; 2026-08-10; prettier normalized
+A6_PLUS: BACKLOG
 G6_PLUS: BACKLOG
 SDD:
   - openspec/config.yaml

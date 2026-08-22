@@ -47,11 +47,11 @@ Chain: G1→G2→G3→G4→G5→A1→A2→A3→A4→A5→AR→L→R. Slice: comm
 
 ## Architecture
 
-- [ ] [BACKLOG] 2.1 A1←G5: D1 Proposed; `ws&&scope A1&&adr A1`; `$E`.
-- [ ] [BACKLOG] 2.2 A2←A1: D3/D4 Proposed; `ws&&scope A2&&adr A2`; `$E`.
-- [ ] [BACKLOG] 2.3 A3←A2: D2/D5/D6 Proposed; `ws&&scope A3&&adr A3`; `$E`.
-- [ ] [BACKLOG] 2.4 A4←A3: D7/D9/D10 Proposed; `ws&&scope A4&&adr A4`; `$E`.
-- [ ] [BACKLOG] 2.5 A5←A4: D8 Proposed; `ws&&scope A5&&adr A5`; `$E`.
+- [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 2.1 A1←G5: D1 Proposed; `ws&&scope A1&&adr A1`; `$E`; 41 lines, 7/7 headers PASS (2026-08-10).
+- [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 2.2 A2←A1: D3/D4 Proposed; `ws&&scope A2&&adr A2`; `$E`; 49+42 lines, 7/7 headers PASS (2026-08-10).
+- [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 2.3 A3←A2: D2/D5/D6 Proposed; `ws&&scope A3&&adr A3`; `$E`; 64+54+44 lines, 7/7 headers PASS (2026-08-10).
+- [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 2.4 A4←A3: D7/D9/D10 Proposed; `ws&&scope A4&&adr A4`; `$E`; 42+43+63 lines, 7/7 headers PASS (2026-08-10).
+- [x] [BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE] 2.5 A5←A4: D8 Proposed; `ws&&scope A5&&adr A5`; `$E`; 51 lines, 7/7 headers PASS (2026-08-10).
 - [ ] [BACKLOG] 2.6 AR←A5: architecture; `ws&&scope AR`; `$E`.
 
 ## Evidence

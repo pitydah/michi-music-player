@@ -68,13 +68,10 @@ GridView {
             anchors.fill: parent
             radius: MichiRadius.lg
             color: vinylTile.selected ? MichiSemanticColors.surfaceSelected
-                : hover.hovered ? MichiSemanticColors.surfaceHover
-                : MichiSemanticColors.controlSurface
-            border.width: 1
+                : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
+            border.width: vinylTile.selected || hover.hovered ? 1 : 0
             border.color: vinylTile.selected
-                ? MichiPalette.auroraBlue : hover.hovered
-                    ? MichiSemanticColors.borderStrong
-                    : MichiSemanticColors.borderSubtle
+                ? MichiPalette.auroraCyan : MichiSemanticColors.borderSubtle
             MichiFocusRing {
                 visualFocus: vinylTile.activeFocus
                     && MichiAccessibility.keyboardMode
@@ -90,18 +87,6 @@ GridView {
             height: vinylTile.stageSize
 
             Rectangle {
-                anchors.centerIn: parent
-                width: parent.width * 0.88
-                height: width
-                radius: width / 2
-                color: vinylTile.selected
-                    ? MichiSemanticColors.auroraCyanSurface : "transparent"
-                border.width: vinylTile.selected ? 1 : 0
-                border.color: MichiSemanticColors.auroraCyanBorderSubtle
-                opacity: vinylTile.selected ? 0.48 : 0
-            }
-
-            Rectangle {
                 id: vinylDisc
                 width: vinylTile.sleeveSize
                 height: width
@@ -109,33 +94,34 @@ GridView {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.horizontalCenterOffset: hover.hovered || vinylTile.selected
-                    ? width * 0.24 : width * 0.15
+                    ? width * 0.16 : width * 0.04
                 color: MichiPalette.graphite
                 border.width: 1
-                border.color: MichiSemanticColors.borderStrong
+                border.color: MichiSemanticColors.borderSubtle
 
                 Repeater {
-                    model: 4
+                    model: 3
                     Rectangle {
                         anchors.centerIn: parent
-                        width: vinylDisc.width - MichiSpacing.md - index * vinylDisc.width * 0.16
+                        width: vinylDisc.width - MichiSpacing.md - index * vinylDisc.width * 0.18
                         height: width
                         radius: width / 2
                         color: "transparent"
                         border.width: 1
                         border.color: MichiSemanticColors.borderSubtle
+                        opacity: 0.6
                     }
                 }
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: parent.width * 0.31
+                    width: parent.width * 0.30
                     height: width
                     radius: width / 2
                     color: vinylTile.selected
                         ? MichiPalette.auroraPurple : MichiPalette.smokeRaised
                     border.width: 1
-                    border.color: MichiSemanticColors.borderStrong
+                    border.color: MichiSemanticColors.borderSubtle
                     Rectangle {
                         anchors.centerIn: parent
                         width: MichiSpacing.xs
@@ -160,7 +146,7 @@ GridView {
                 height: width
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
-                anchors.horizontalCenterOffset: -width * 0.12
+                anchors.horizontalCenterOffset: -width * 0.06
                 z: 2
                 sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
                 fallbackText: modelData.title

@@ -125,6 +125,92 @@ MichiSurface {
                 ]
             }
 
+            MichiText { text: "Iconography (24x24 Native Grid · 16 / 20 / 24)"; role: "section" }
+            MichiGlassSurface {
+                Layout.fillWidth: true
+                elevation: "standard"
+                implicitHeight: iconLayout.implicitHeight + MichiSpacing.xl * 2
+                ColumnLayout {
+                    id: iconLayout
+                    anchors.fill: parent
+                    anchors.margins: MichiSpacing.lg
+                    spacing: MichiSpacing.lg
+
+                    RowLayout {
+                        spacing: MichiSpacing.xl
+                        MichiText { text: "State Variations:"; role: "caption"; color: MichiPalette.textSecondary }
+                        RowLayout {
+                            spacing: MichiSpacing.sm
+                            MichiIcon { name: "settings"; width: 20; height: 20; iconColor: MichiPalette.textPrimary }
+                            MichiText { text: "Default"; role: "caption" }
+                        }
+                        RowLayout {
+                            spacing: MichiSpacing.sm
+                            MichiIcon { name: "settings"; width: 20; height: 20; iconColor: MichiPalette.auroraBlue }
+                            MichiText { text: "Active (Aurora)"; role: "caption"; color: MichiPalette.auroraBlue }
+                        }
+                        RowLayout {
+                            spacing: MichiSpacing.sm
+                            MichiIcon { name: "settings"; width: 20; height: 20; iconColor: MichiPalette.smoke }
+                            MichiText { text: "Disabled"; role: "caption"; color: MichiPalette.smoke }
+                        }
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: MichiSpacing.md
+                        Repeater {
+                            model: [
+                                "play", "pause", "stop", "previous", "next", "back",
+                                "output-status", "volume", "mute", "search", "library",
+                                "track", "album", "artist", "genre", "playlist", "plus",
+                                "pin", "cat", "view-grid", "view-list", "view-vinyl",
+                                "view-path", "view-magazine", "view-timeline",
+                                "density-compact", "density-standard", "density-comfortable",
+                                "queue", "shuffle", "repeat", "repeat-one",
+                                "sliders", "equalizer", "sort", "sort-ascending", "sort-descending",
+                                "filter", "audio-output", "audio-engine", "device", "settings",
+                                "heart", "history", "recent", "info", "trash", "folder", "more", "home"
+                            ]
+                            delegate: Rectangle {
+                                width: 156
+                                height: 56
+                                radius: MichiMetrics.radiusSmall
+                                color: MichiPalette.obsidianRaised
+                                border.color: MichiPalette.smoke
+                                border.width: 1
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: MichiSpacing.xs
+                                    spacing: MichiSpacing.xs
+
+                                    ColumnLayout {
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 2
+                                        MichiText {
+                                            text: modelData
+                                            role: "caption"
+                                            color: MichiPalette.textPrimary
+                                            elide: Text.ElideRight
+                                            Layout.preferredWidth: 72
+                                        }
+                                    }
+
+                                    RowLayout {
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 4
+                                        MichiIcon { name: modelData; width: 16; height: 16; iconColor: MichiPalette.textSecondary }
+                                        MichiIcon { name: modelData; width: 20; height: 20; iconColor: MichiPalette.textPrimary }
+                                        MichiIcon { name: modelData; width: 24; height: 24; iconColor: MichiPalette.auroraBlue }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             MichiText { text: "System states"; role: "section" }
             RowLayout {
                 Layout.fillWidth: true

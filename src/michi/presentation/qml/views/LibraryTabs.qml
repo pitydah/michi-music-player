@@ -14,7 +14,6 @@ Item {
         { value: "albums", label: "Albums", icon: "album" },
         { value: "artists", label: "Artists", icon: "artist" },
         { value: "genres", label: "Genres", icon: "genre" },
-        { value: "folders", label: "Folders", icon: "folder" },
         { value: "favorites", label: "Favorites", icon: "heart" },
         { value: "history", label: "History", icon: "history" },
         { value: "recently", label: "Recently Added", icon: "recent" }
@@ -66,7 +65,7 @@ Item {
         RowLayout {
             id: tabRow
             height: parent.height
-            spacing: 1
+            spacing: 2
 
             Repeater {
                 id: tabRepeater
@@ -75,7 +74,7 @@ Item {
                     id: tabButton
                     required property var modelData
                     Layout.preferredHeight: tabRow.height
-                    Layout.preferredWidth: tabContent.implicitWidth + MichiSpacing.sm * 2
+                    Layout.preferredWidth: tabContent.implicitWidth + MichiSpacing.md * 2
                     text: modelData.label
                     checked: root.currentTab === modelData.value
                     focusPolicy: Qt.StrongFocus
@@ -86,29 +85,16 @@ Item {
                     contentItem: RowLayout {
                         id: tabContent
                         spacing: MichiSpacing.xs
-                        Rectangle {
-                            Layout.preferredWidth: 28
-                            Layout.preferredHeight: 28
-                            radius: 9
-                            color: tabButton.checked
-                                ? MichiSemanticColors.auroraCyanSurface
+                        MichiIcon {
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            name: tabButton.modelData.icon
+                            iconColor: tabButton.checked
+                                ? MichiPalette.auroraCyan
                                 : tabButton.hovered
-                                    ? MichiSemanticColors.surfaceHover : "transparent"
-                            border.width: tabButton.checked ? 1 : 0
-                            border.color: MichiSemanticColors.auroraCyanBorderStrong
-
-                            MichiIcon {
-                                anchors.centerIn: parent
-                                width: 18
-                                height: 18
-                                name: tabButton.modelData.icon
-                                iconColor: tabButton.checked
-                                    ? MichiPalette.auroraCyan
-                                    : tabButton.hovered
-                                        ? MichiPalette.textPrimary
-                                        : MichiPalette.textSecondary
-                                strokeWidth: tabButton.checked ? 2.05 : 1.8
-                            }
+                                    ? MichiPalette.textPrimary
+                                    : MichiPalette.textSecondary
+                            strokeWidth: tabButton.checked ? 2.0 : 1.7
                         }
                         MichiText {
                             text: tabButton.text
@@ -127,22 +113,23 @@ Item {
                                 ? MichiSemanticColors.surfaceSelected
                                 : tabButton.hovered
                                     ? MichiSemanticColors.surfaceHover : "transparent"
-                        border.width: tabButton.checked || tabButton.hovered ? 1 : 0
-                        border.color: tabButton.checked
-                            ? MichiSemanticColors.auroraCyanBorderSubtle
-                            : MichiSemanticColors.borderSubtle
-                        scale: tabButton.pressed ? 0.98 : 1
+                        border.width: tabButton.checked ? 1 : 0
+                        border.color: MichiSemanticColors.auroraCyanBorderSubtle
+
+                        // Bottom Aurora indicator cue
+                        Rectangle {
+                            visible: tabButton.checked
+                            y: parent.height - 2
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: Math.min(parent.width - 16, 32)
+                            height: 2
+                            radius: 1
+                            color: MichiPalette.auroraCyan
+                        }
 
                         Behavior on color {
                             enabled: !MichiAccessibility.reducedMotion
                             ColorAnimation { duration: MichiMotion.micro }
-                        }
-                        Behavior on scale {
-                            enabled: !MichiAccessibility.reducedMotion
-                            NumberAnimation {
-                                duration: MichiMotion.micro
-                                easing.type: MichiMotion.outCubic
-                            }
                         }
                         MichiFocusRing { visualFocus: tabButton.visualFocus }
                     }

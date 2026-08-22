@@ -62,20 +62,19 @@ def _load_sidebar(engine):
 
 
 class TestSidebarStructure:
-    def test_sidebar_has_playlists_section(self, qapp, tmp_path):
+    def test_sidebar_has_first_level_navigation(self, qapp, tmp_path):
         engine, *_ = _world(tmp_path)
         text = Path(QML_DIR / "shell" / "Sidebar.qml").read_text()
-        assert '"PLAYLISTS"' in text
-        assert "All Playlists" in text
-        assert "PINNED" in text
-        assert "RECENT" in text
-        assert "New Playlist" in text
-        assert "createPlaylistRequested" in text
+        assert '{ id: "now_playing"' in text
+        assert '{ id: "library"' in text
+        assert '{ id: "playlists"' in text
+        assert '{ id: "settings"' in text
+        assert "Local · " in text
         obj = _load_sidebar(engine)
         assert obj is not None
         engine.deleteLater()
 
-    def test_sidebar_instantiates_with_pinned_and_recent(self, qapp, tmp_path):
+    def test_sidebar_instantiates_cleanly(self, qapp, tmp_path):
         engine, service, nav, _, _, _ = _world(tmp_path)
         a = service.create_playlist("A")
         b = service.create_playlist("B")
@@ -84,14 +83,6 @@ class TestSidebarStructure:
         service.mark_recent(b.playlist_id)
         obj = _load_sidebar(engine)
         assert obj is not None
-        engine.deleteLater()
-
-    def test_sidebar_bounded_projection(self, qapp, tmp_path):
-        """Pinned/recent rows are bounded to 5 by slice; Sidebar never
-        renders every playlist permanently."""
-        engine, *_ = _world(tmp_path)
-        text = Path(QML_DIR / "shell" / "Sidebar.qml").read_text()
-        assert ".slice(0, 5)" in text
         engine.deleteLater()
 
 
@@ -113,15 +104,4 @@ class TestSidebarBridgeProjection:
         service.mark_recent(b.playlist_id)
         recent = pb.property("recentPlaylists")
         assert [r["playlistId"] for r in recent] == [b.playlist_id]
-        engine.deleteLater()
-
-    def test_library_not_selected_while_playlists_active(self, qapp, tmp_path):
-        """Sidebar selected state derives from navigation: PLAYLISTS active
-        never highlights Library — no PLAYLISTS row inside the NAVIGATION
-        section."""
-        engine, *_ = _world(tmp_path)
-        text = Path(QML_DIR / "shell" / "Sidebar.qml").read_text()
-        # the NAVIGATION route list must not contain a playlists route
-        nav_list = text.split("_bottom_routes")[0]
-        assert '{ id: "playlists"' not in nav_list
         engine.deleteLater()

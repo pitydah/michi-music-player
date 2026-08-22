@@ -50,7 +50,14 @@ def _decode_playlist_entry(entry) -> Playlist | None:
     else:
         # V1 record or empty/wrong-typed id: deterministic legacy identity.
         playlist_id = legacy_playlist_id(name)
-    return Playlist(playlist_id=playlist_id, name=name, track_paths=tuple(paths))
+    raw_cover = entry.get("custom_cover_path")
+    custom_cover_path = raw_cover if isinstance(raw_cover, str) else ""
+    return Playlist(
+        playlist_id=playlist_id,
+        name=name,
+        track_paths=tuple(paths),
+        custom_cover_path=custom_cover_path,
+    )
 
 
 def _decode_navigation_state(value: object) -> PlaylistNavigationState:
@@ -162,6 +169,7 @@ class SqlitePlaylistsRepository(PlaylistsPort):
                 "id": p.playlist_id,
                 "name": p.name,
                 "track_paths": list(p.track_paths),
+                "custom_cover_path": p.custom_cover_path,
             }
             for p in playlists
         ]

@@ -27,3 +27,4 @@ src/michi_music_player.egg-info/
 .pytest_cache/
 dist/
 build/
+.opencode/

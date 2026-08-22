@@ -158,6 +158,7 @@ class PlaylistService:
             playlist_id=playlist.playlist_id,
             name=cleaned,
             track_paths=playlist.track_paths,
+            custom_cover_path=playlist.custom_cover_path,
         )
         self._persist()
         self._notify()
@@ -174,6 +175,7 @@ class PlaylistService:
             playlist_id=playlist.playlist_id,
             name=playlist.name,
             track_paths=(*playlist.track_paths, path),
+            custom_cover_path=playlist.custom_cover_path,
         )
         self._persist()
         self._notify()
@@ -191,6 +193,7 @@ class PlaylistService:
             playlist_id=playlist.playlist_id,
             name=playlist.name,
             track_paths=tuple(paths),
+            custom_cover_path=playlist.custom_cover_path,
         )
         self._persist()
         self._notify()
@@ -210,9 +213,27 @@ class PlaylistService:
             playlist_id=playlist.playlist_id,
             name=playlist.name,
             track_paths=tuple(paths),
+            custom_cover_path=playlist.custom_cover_path,
         )
         self._persist()
         self._notify()
+
+    def set_custom_cover(self, playlist_id: str, cover_path: str) -> None:
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return
+        playlist = self._playlists[index]
+        self._playlists[index] = Playlist(
+            playlist_id=playlist.playlist_id,
+            name=playlist.name,
+            track_paths=playlist.track_paths,
+            custom_cover_path=cover_path,
+        )
+        self._persist()
+        self._notify()
+
+    def remove_custom_cover(self, playlist_id: str) -> None:
+        self.set_custom_cover(playlist_id, "")
 
     def play_playlist(self, playlist_id: str) -> None:
         index = self._find_by_id(playlist_id)

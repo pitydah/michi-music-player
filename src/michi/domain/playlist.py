@@ -37,11 +37,12 @@ class Playlist:
     """A user-defined persistent ordered collection of track paths.
 
     playlist_id is the canonical identity; name is mutable user-visible
-    metadata."""
+    metadata. custom_cover_path is optional user-provided artwork."""
 
     playlist_id: str
     name: str
     track_paths: tuple[str, ...] = ()
+    custom_cover_path: str = ""
 
 
 @dataclass(frozen=True)

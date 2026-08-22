@@ -67,9 +67,15 @@ ListView {
                 color: MichiPalette.auroraBlue
             }
             MichiText {
-                text: Number(section) > 0
-                    ? (albumTimeline.groupByDecade ? section + "s" : section)
-                    : "Unknown date"
+                text: {
+                    if (albumTimeline.groupByDecade) {
+                        return (section === "Unknown era" || section === "0" || section === "")
+                            ? "Unknown date" : section
+                    } else {
+                        var y = parseInt(section, 10)
+                        return (!isNaN(y) && y > 0) ? String(y) : "Unknown date"
+                    }
+                }
                 role: "section"
                 font.weight: Font.Bold
             }

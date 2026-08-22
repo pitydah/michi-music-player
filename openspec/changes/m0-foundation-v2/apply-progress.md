@@ -1,4 +1,4 @@
-# Apply Progress: M0 Foundation v2 — G1+G2+G3+G4 (Batches 1–4)
+# Apply Progress: M0 Foundation v2 — G1–G5 + A1–A5 (Batches 1–10)
 
 ## Immutable Anchors
 
@@ -10,7 +10,7 @@
 
 - **Delivery strategy**: auto-chain
 - **Chain strategy**: stacked-to-main
-- **Current work unit**: G4 (task 1.4)
+- **Current work unit**: A5 (task 2.5)
 - **PR boundary**: `docs/MASTER_ROADMAP_1.0.md` only (stacked on G3)
 - **Estimated review budget**: 753 lines (357 M0-M8 + 396 M9-M16); 396 new within ≤400 limit
 
@@ -18,6 +18,8 @@
 
 - **Strict TDD**: false (no test runner; confirmed by config.yaml `tdd: false`, `test_command: ""`)
 - **Artifact store**: hybrid (OpenSpec files + Engram)
+
+# Apply Progress: M0 Foundation v2 — G1–G5 + A1–A5 (Batches 1–10)
 
 ## Completed Tasks
 
@@ -609,12 +611,120 @@ N/A — docs-only milestone, no build/test/runtime target exists.
 | Runtime harness command/scenario and exact result | N/A — docs-only; no build system, test target, framework, or runnable project command exists (config.yaml `test_command: ""`, `build_command: ""`) |
 | Rollback boundary | `docs/TECHNICAL_DEBT_REGISTER.md`, `docs/POST_1_0_BACKLOG.md` — exact files; revert tasks.md G5 checkbox, state.yaml G5 lines, apply-progress.md G5 section; G1+G2+G3+G4 files preserved |
 
+### 2.1 A1←G5: D1 Proposed (C++20 Domain Core, Qt 6 Infrastructure)
+
+- **Status**: DONE (verified 2026-08-10)
+- **Transition**: BACKLOG → READY → IN_PROGRESS → REVIEW → VERIFY → DONE
+- **Files**: `docs/adr/0001-d1-language-runtime.md` (41 lines)
+- **Total**: 41 lines
+
+#### Verification Evidence
+
+| Check | Result |
+|---|---|
+| 7 required headers (Title, Date, Context, Decision, Consequences, Alternatives considered, Status) | PASS — 7/7 |
+| Date format YYYY-MM-DD (2026-08-10) | PASS |
+| Status = Proposed | PASS |
+| Prettier normalized | PASS — unchanged |
+
+#### Rollback Boundary
+
+`rm docs/adr/0001-d1-language-runtime.md`; revert tasks.md 2.1 checkbox, state.yaml A1 lines, apply-progress.md A1 section.
+
+### 2.2 A2←A1: D3/D4 Proposed (State Ownership + Composition Root)
+
+- **Status**: DONE (verified 2026-08-10)
+- **Transition**: BACKLOG → READY → IN_PROGRESS → REVIEW → VERIFY → DONE
+- **Files**: `docs/adr/0002-d3-state-ownership.md` (49 lines), `docs/adr/0003-d4-composition.md` (42 lines)
+- **Total**: 91 lines
+
+#### Verification Evidence
+
+| Check | Result |
+|---|---|
+| 7 required headers (both files) | PASS — 7/7 each |
+| Date format YYYY-MM-DD (2026-08-10) | PASS |
+| Status = Proposed (both) | PASS |
+| Prettier normalized | PASS |
+
+#### Rollback Boundary
+
+`rm docs/adr/0002-d3-state-ownership.md docs/adr/0003-d4-composition.md`; revert tasks.md 2.2 checkbox, state.yaml A2 lines, apply-progress.md A2 section.
+
+### 2.3 A3←A2: D2/D5/D6 Proposed (Layers + Lifecycle + Concurrency)
+
+- **Status**: DONE (verified 2026-08-10)
+- **Transition**: BACKLOG → READY → IN_PROGRESS → REVIEW → VERIFY → DONE
+- **Files**: `docs/adr/0004-d2-layers.md` (64 lines), `docs/adr/0005-d5-lifecycle.md` (54 lines), `docs/adr/0006-d6-concurrency.md` (44 lines)
+- **Total**: 162 lines
+
+#### Verification Evidence
+
+| Check | Result |
+|---|---|
+| 7 required headers (all 3 files) | PASS — 7/7 each |
+| Date format YYYY-MM-DD (2026-08-10) | PASS |
+| Status = Proposed (all) | PASS |
+| Prettier normalized | PASS |
+| D2 cites predecessor D1 (0001) | PASS |
+| D5 cites predecessor D4 (0003) | PASS |
+| D6 cites predecessor D1 (0001) | PASS |
+
+#### Rollback Boundary
+
+`rm docs/adr/0004-d2-layers.md docs/adr/0005-d5-lifecycle.md docs/adr/0006-d6-concurrency.md`; revert tasks.md 2.3 checkbox, state.yaml A3 lines, apply-progress.md A3 section.
+
+### 2.4 A4←A3: D7/D9/D10 Proposed (QML Boundary + Persistence + Effects)
+
+- **Status**: DONE (verified 2026-08-10)
+- **Transition**: BACKLOG → READY → IN_PROGRESS → REVIEW → VERIFY → DONE
+- **Files**: `docs/adr/0007-d7-qml-boundary.md` (42 lines), `docs/adr/0008-d9-persistence.md` (43 lines), `docs/adr/0009-d10-errors-effects.md` (63 lines)
+- **Total**: 148 lines
+
+#### Verification Evidence
+
+| Check | Result |
+|---|---|
+| 7 required headers (all 3 files) | PASS — 7/7 each |
+| Date format YYYY-MM-DD (2026-08-10) | PASS |
+| Status = Proposed (all) | PASS |
+| Prettier normalized | PASS |
+| D7 cites predecessor D1 (0001) | PASS |
+| D9 cites predecessor D1 (0001) | PASS |
+| D10 cites predecessor D3 (0002) | PASS |
+
+#### Rollback Boundary
+
+`rm docs/adr/0007-d7-qml-boundary.md docs/adr/0008-d9-persistence.md docs/adr/0009-d10-errors-effects.md`; revert tasks.md 2.4 checkbox, state.yaml A4 lines, apply-progress.md A4 section.
+
+### 2.5 A5←A4: D8 Proposed (IAudioEngine Port)
+
+- **Status**: DONE (verified 2026-08-10)
+- **Transition**: BACKLOG → READY → IN_PROGRESS → REVIEW → VERIFY → DONE
+- **Files**: `docs/adr/0010-d8-audio-port.md` (51 lines)
+- **Total**: 51 lines
+
+#### Verification Evidence
+
+| Check | Result |
+|---|---|
+| 7 required headers | PASS — 7/7 |
+| Date format YYYY-MM-DD (2026-08-10) | PASS |
+| Status = Proposed | PASS |
+| Prettier normalized | PASS |
+| D8 cites predecessor D1 (0001) | PASS |
+| Authored last per sequence D1→D3/D4→D2/D5/D6→D7/D9/D10→D8 | PASS |
+
+#### Rollback Boundary
+
+`rm docs/adr/0010-d8-audio-port.md`; revert tasks.md 2.5 checkbox, state.yaml A5 lines, apply-progress.md A5 section.
+
 ## Remaining Tasks (BACKLOG)
 
-- [ ] 2.1–2.6: Architecture ADRs
+- [ ] 2.6: Architecture document (AR←A5)
 - [ ] 3.1–3.2: Evidence and Index
 
 ## Chain State
 
-- **Current**: G5 (stacked-to-main slice 5) — DONE via BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
-- **Next**: A1 → A2 → A3 → A4 → A5 → AR → L → R (all unchecked BACKLOG; not ready or admitted)
+- **Current**: A5 (stacked-to-main slice 10) — DONE via BACKLOG→READY→IN_PROGRESS→REVIEW→VERIFY→DONE
+- **Next**: AR → L → R (all unchecked BACKLOG; not ready or admitted)

@@ -10,9 +10,21 @@ PageHeader {
 
     property string currentTab: "songs"
     property string albumMode: "grid"
+    property string albumSortMode: "title"
+    property bool albumSortDescending: false
+    property string albumFilterMode: "all"
+    property string albumTimelineGrouping: "decade"
+    property real albumZoom: 1.0
+
     signal albumModeRequested(string mode)
+    signal albumSortRequested(string mode)
+    signal albumSortDirectionRequested(bool descending)
+    signal albumFilterRequested(string mode)
+    signal albumTimelineGroupingRequested(string mode)
+    signal albumZoomRequested(real value)
+
     readonly property bool albumViewsVisible: currentTab === "albums"
-        && library.selectedAlbumKey === ""
+        && (typeof library === "undefined" || !library || library.selectedAlbumKey === "")
     readonly property var albumViewModes: [
         { value: "grid", label: "Grid", icon: "view-grid" },
         { value: "cover", label: "PathView", icon: "view-path" },
@@ -21,12 +33,13 @@ PageHeader {
         { value: "magazine", label: "Magazine", icon: "view-magazine" },
         { value: "list", label: "List", icon: "view-list" }
     ]
-    readonly property bool precisionRelevant: [
-        "songs", "albums", "favorites", "history", "recently", "playlists"
-    ].indexOf(currentTab) !== -1
+
+    readonly property bool hasNonDefaultOptions: MichiThemeState.density !== "standard"
+        || MichiThemeState.precisionMode
+        || (root.currentTab === "albums" && (root.albumZoom !== 1.0 || root.albumSortMode !== "title" || root.albumFilterMode !== "all"))
 
     title: "Library"
-    subtitle: library.fileCount > 0
+    subtitle: (typeof library !== "undefined" && library && library.fileCount > 0)
         ? library.fileCount + " tracks · " + library.albumCount + " albums · "
             + library.artistCount + " artists"
         : "Your local music collection"
@@ -57,39 +70,57 @@ PageHeader {
         color: MichiSemanticColors.borderSubtle
     }
 
-    MichiText {
-        visible: root.width >= 920
-        text: "DENSITY"
-        role: "technical"
-        technical: true
-        color: MichiPalette.textMuted
-    }
+    Item {
+        id: viewOptionsContainer
+        Layout.preferredWidth: 36
+        Layout.preferredHeight: 36
 
-    MichiSegmentedControl {
-        objectName: "libraryDensityControl"
-        model: [
-            { value: "comfortable", label: "Comfortable", icon: "density-comfortable" },
-            { value: "standard", label: "Standard", icon: "density-standard" },
-            { value: "compact", label: "Compact", icon: "density-compact" }
-        ]
-        currentValue: MichiThemeState.density
-        compact: true
-        accessiblePrefix: "Library density"
-        Accessible.name: "Library density"
-        onSelected: value => MichiThemeState.density = value
-    }
+        MichiIconButton {
+            id: viewOptionsBtn
+            anchors.centerIn: parent
+            width: 34
+            height: 34
+            iconName: "sliders"
+            accessibleName: "View options"
+            selected: viewOptionsPopup.visible || root.hasNonDefaultOptions
+            onClicked: {
+                if (viewOptionsPopup.visible) {
+                    viewOptionsPopup.close()
+                } else {
+                    viewOptionsPopup.open()
+                }
+            }
+        }
 
-    Rectangle {
-        visible: root.precisionRelevant && root.width >= 760
-        Layout.preferredWidth: 1
-        Layout.preferredHeight: 26
-        color: MichiSemanticColors.borderSubtle
-    }
+        // Tiny Aurora status dot for non-default settings
+        Rectangle {
+            visible: root.hasNonDefaultOptions
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.topMargin: 3
+            anchors.rightMargin: 3
+            width: 6
+            height: 6
+            radius: 3
+            color: MichiPalette.auroraCyan
+        }
 
-    MichiSwitch {
-        visible: root.precisionRelevant && root.width >= 760
-        text: root.width < 1800 ? "Precision" : "Precision metadata"
-        checked: MichiThemeState.precisionMode
-        onToggled: MichiThemeState.precisionMode = checked
+        LibraryViewOptionsPopup {
+            id: viewOptionsPopup
+            x: -244
+            y: parent.height + MichiSpacing.xs
+            currentTab: root.currentTab
+            albumMode: root.albumMode
+            albumSortMode: root.albumSortMode
+            albumSortDescending: root.albumSortDescending
+            albumFilterMode: root.albumFilterMode
+            albumTimelineGrouping: root.albumTimelineGrouping
+            albumZoom: root.albumZoom
+            onAlbumSortRequested: mode => root.albumSortRequested(mode)
+            onAlbumSortDirectionRequested: desc => root.albumSortDirectionRequested(desc)
+            onAlbumFilterRequested: mode => root.albumFilterRequested(mode)
+            onAlbumTimelineGroupingRequested: grp => root.albumTimelineGroupingRequested(grp)
+            onAlbumZoomRequested: zoom => root.albumZoomRequested(zoom)
+        }
     }
 }

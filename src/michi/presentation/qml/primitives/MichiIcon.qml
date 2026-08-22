@@ -21,135 +21,413 @@ Item {
         antialiasing: true
 
         function line(ctx, x1, y1, x2, y2) {
-            ctx.moveTo(x1, y1); ctx.lineTo(x2, y2)
+            ctx.moveTo(x1, y1)
+            ctx.lineTo(x2, y2)
         }
 
         onPaint: {
             var ctx = getContext("2d")
-            var w = width; var h = height; var cx = w / 2; var cy = h / 2
+            var w = width
+            var h = height
             ctx.reset()
+            if (w <= 0 || h <= 0) return
+
+            ctx.save()
+            ctx.scale(w / 24.0, h / 24.0)
+
             ctx.strokeStyle = root.iconColor
             ctx.fillStyle = root.iconColor
             ctx.lineWidth = root.strokeWidth
             ctx.lineCap = "round"
             ctx.lineJoin = "round"
             ctx.beginPath()
+
             if (root.name === "play") {
-                ctx.moveTo(w * .34, h * .23); ctx.lineTo(w * .76, cy); ctx.lineTo(w * .34, h * .77); ctx.closePath(); ctx.fill(); return
+                ctx.moveTo(8, 5.5)
+                ctx.lineTo(18.5, 12)
+                ctx.lineTo(8, 18.5)
+                ctx.closePath()
+                ctx.fill()
+                ctx.restore()
+                return
             } else if (root.name === "pause") {
-                ctx.fillRect(w * .3, h * .24, w * .13, h * .52); ctx.fillRect(w * .57, h * .24, w * .13, h * .52); return
+                ctx.fillRect(6, 5, 3.6, 14)
+                ctx.fillRect(14.4, 5, 3.6, 14)
+                ctx.restore()
+                return
             } else if (root.name === "stop") {
-                ctx.fillRect(w * .28, h * .28, w * .44, h * .44); return
+                ctx.fillRect(6, 6, 12, 12)
+                ctx.restore()
+                return
             } else if (root.name === "previous") {
-                ctx.fillRect(w * .22, h * .25, w * .08, h * .5); ctx.moveTo(w * .72, h * .25); ctx.lineTo(w * .34, cy); ctx.lineTo(w * .72, h * .75); ctx.closePath(); ctx.fill(); return
+                ctx.fillRect(4.5, 5.5, 2.2, 13)
+                ctx.moveTo(18.5, 5.5)
+                ctx.lineTo(8.5, 12)
+                ctx.lineTo(18.5, 18.5)
+                ctx.closePath()
+                ctx.fill()
+                ctx.restore()
+                return
             } else if (root.name === "next") {
-                ctx.fillRect(w * .7, h * .25, w * .08, h * .5); ctx.moveTo(w * .28, h * .25); ctx.lineTo(w * .66, cy); ctx.lineTo(w * .28, h * .75); ctx.closePath(); ctx.fill(); return
+                ctx.fillRect(17.3, 5.5, 2.2, 13)
+                ctx.moveTo(5.5, 5.5)
+                ctx.lineTo(15.5, 12)
+                ctx.lineTo(5.5, 18.5)
+                ctx.closePath()
+                ctx.fill()
+                ctx.restore()
+                return
             } else if (root.name === "back") {
-                line(ctx, w * .76, cy, w * .24, cy); line(ctx, w * .24, cy, w * .44, h * .3); line(ctx, w * .24, cy, w * .44, h * .7)
+                line(ctx, 18, 12, 6, 12)
+                line(ctx, 11, 6.5, 6, 12)
+                line(ctx, 11, 17.5, 6, 12)
             } else if (root.name === "output-status") {
-                ctx.moveTo(w * .18, h * .42); ctx.lineTo(w * .34, h * .42); ctx.lineTo(w * .52, h * .26); ctx.lineTo(w * .52, h * .74); ctx.lineTo(w * .34, h * .58); ctx.lineTo(w * .18, h * .58); ctx.closePath(); ctx.moveTo(w * .64, h * .4); ctx.arc(w * .57, cy, w * .18, -.65, .65); ctx.moveTo(w * .79, h * .24); ctx.arc(w * .62, cy, w * .3, -.85, .85)
+                ctx.moveTo(4.5, 10)
+                ctx.lineTo(8, 10)
+                ctx.lineTo(12.5, 6)
+                ctx.lineTo(12.5, 18)
+                ctx.lineTo(8, 14)
+                ctx.lineTo(4.5, 14)
+                ctx.closePath()
+                ctx.moveTo(15.5, 9.5)
+                ctx.arc(12.5, 12, 4.5, -0.65, 0.65)
+                ctx.moveTo(18.5, 6.5)
+                ctx.arc(12.5, 12, 7.5, -0.82, 0.82)
             } else if (root.name === "volume" || root.name === "mute") {
-                ctx.moveTo(w * .2, h * .42); ctx.lineTo(w * .36, h * .42); ctx.lineTo(w * .55, h * .25); ctx.lineTo(w * .55, h * .75); ctx.lineTo(w * .36, h * .58); ctx.lineTo(w * .2, h * .58); ctx.closePath();
-                if (root.name === "volume") { ctx.moveTo(w * .65, h * .38); ctx.arc(w * .58, cy, w * .2, -.7, .7) }
-                else { line(ctx, w * .65, h * .37, w * .83, h * .63); line(ctx, w * .83, h * .37, w * .65, h * .63) }
+                ctx.moveTo(4.5, 10)
+                ctx.lineTo(8, 10)
+                ctx.lineTo(12.5, 6)
+                ctx.lineTo(12.5, 18)
+                ctx.lineTo(8, 14)
+                ctx.lineTo(4.5, 14)
+                ctx.closePath()
+                if (root.name === "volume") {
+                    ctx.moveTo(15.5, 9.5)
+                    ctx.arc(12.5, 12, 4.5, -0.65, 0.65)
+                    ctx.moveTo(18.5, 6.5)
+                    ctx.arc(12.5, 12, 7.5, -0.82, 0.82)
+                } else {
+                    line(ctx, 15.5, 9, 19.5, 15)
+                    line(ctx, 19.5, 9, 15.5, 15)
+                }
             } else if (root.name === "search") {
-                ctx.arc(w * .43, h * .43, w * .24, 0, Math.PI * 2); line(ctx, w * .61, h * .61, w * .82, h * .82)
+                ctx.arc(10.5, 10.5, 5.5, 0, Math.PI * 2)
+                line(ctx, 14.5, 14.5, 19.5, 19.5)
             } else if (root.name === "library") {
-                ctx.rect(w * .2, h * .22, w * .15, h * .58); ctx.rect(w * .43, h * .16, w * .15, h * .64); ctx.rect(w * .66, h * .28, w * .15, h * .52)
+                ctx.rect(4.5, 5.5, 3.5, 14)
+                ctx.rect(10.25, 4, 3.5, 15.5)
+                ctx.rect(16, 6.5, 3.5, 13)
             } else if (root.name === "track") {
-                line(ctx, w * .48, h * .22, w * .48, h * .67); line(ctx, w * .48, h * .22, w * .78, h * .16); line(ctx, w * .78, h * .16, w * .78, h * .58); ctx.moveTo(w * .48, h * .67); ctx.arc(w * .35, h * .69, w * .13, 0, Math.PI * 2); ctx.moveTo(w * .78, h * .58); ctx.arc(w * .65, h * .60, w * .13, 0, Math.PI * 2)
+                line(ctx, 11, 5, 11, 16)
+                line(ctx, 11, 5, 18.5, 3.5)
+                line(ctx, 18.5, 3.5, 18.5, 14)
+                ctx.moveTo(11, 16)
+                ctx.arc(8, 16.5, 3, 0, Math.PI * 2)
+                ctx.moveTo(18.5, 14)
+                ctx.arc(15.5, 14.5, 3, 0, Math.PI * 2)
             } else if (root.name === "album") {
-                ctx.rect(w * .18, h * .18, w * .64, h * .64); ctx.moveTo(w * .68, cy); ctx.arc(cx, cy, w * .18, 0, Math.PI * 2); ctx.moveTo(cx + 1.5, cy); ctx.arc(cx, cy, 1.5, 0, Math.PI * 2)
-            } else if (root.name === "recent") {
-                ctx.arc(cx, cy, w * .31, -.35, Math.PI * 1.65); line(ctx, cx, cy, cx, h * .3); line(ctx, cx, cy, w * .66, h * .58); line(ctx, w * .18, h * .2, w * .2, h * .4); line(ctx, w * .18, h * .2, w * .38, h * .21)
+                ctx.rect(4, 4, 16, 16)
+                ctx.moveTo(16, 12)
+                ctx.arc(12, 12, 4, 0, Math.PI * 2)
+                ctx.moveTo(13, 12)
+                ctx.arc(12, 12, 1, 0, Math.PI * 2)
+            } else if (root.name === "recent" || root.name === "history") {
+                ctx.arc(12, 12, 7.5, -0.3, Math.PI * 1.65)
+                line(ctx, 12, 12, 12, 7.5)
+                line(ctx, 12, 12, 16, 14)
+                line(ctx, 4.5, 4.5, 5, 9)
+                line(ctx, 4.5, 4.5, 9, 4.8)
             } else if (root.name === "playlist") {
-                line(ctx, w * .18, h * .27, w * .58, h * .27); line(ctx, w * .18, h * .48, w * .58, h * .48); line(ctx, w * .18, h * .69, w * .48, h * .69); line(ctx, w * .68, h * .34, w * .68, h * .7); line(ctx, w * .68, h * .34, w * .84, h * .3); ctx.moveTo(w * .68, h * .7); ctx.arc(w * .58, h * .71, w * .1, 0, Math.PI * 2)
-            } else if (root.name === "plus") {
-                line(ctx, cx, h * .3, cx, h * .7); line(ctx, w * .3, cy, w * .7, cy)
+                line(ctx, 4, 6.5, 13.5, 6.5)
+                line(ctx, 4, 11.5, 13.5, 11.5)
+                line(ctx, 4, 16.5, 11, 16.5)
+                line(ctx, 16, 8, 16, 16)
+                line(ctx, 16, 8, 19.5, 7)
+                ctx.moveTo(16, 16)
+                ctx.arc(14, 16.5, 2, 0, Math.PI * 2)
+            } else if (root.name === "plus" || root.name === "add") {
+                line(ctx, 12, 5, 12, 19)
+                line(ctx, 5, 12, 19, 12)
             } else if (root.name === "pin") {
-                line(ctx, w * .3, h * .82, w * .7, h * .82); line(ctx, w * .34, h * .34, w * .34, h * .2); line(ctx, w * .66, h * .34, w * .66, h * .2); ctx.moveTo(w * .34, h * .2); ctx.lineTo(w * .66, h * .2); line(ctx, w * .5, h * .34, w * .5, h * .72); ctx.moveTo(w * .3, h * .72); ctx.lineTo(w * .7, h * .72)
+                line(ctx, 8, 4, 16, 4)
+                line(ctx, 9.5, 4, 9.5, 8.5)
+                line(ctx, 14.5, 4, 14.5, 8.5)
+                line(ctx, 6.5, 8.5, 17.5, 8.5)
+                line(ctx, 6.5, 8.5, 10.5, 13.5)
+                line(ctx, 17.5, 8.5, 13.5, 13.5)
+                line(ctx, 10.5, 13.5, 13.5, 13.5)
+                line(ctx, 12, 13.5, 12, 20.5)
             } else if (root.name === "cat") {
-                ctx.moveTo(w * .22, h * .42); ctx.lineTo(w * .18, h * .16); ctx.lineTo(w * .38, h * .29); ctx.bezierCurveTo(w * .45, h * .24, w * .55, h * .24, w * .62, h * .29); ctx.lineTo(w * .82, h * .16); ctx.lineTo(w * .78, h * .42); ctx.bezierCurveTo(w * .83, h * .72, w * .68, h * .84, cx, h * .84); ctx.bezierCurveTo(w * .32, h * .84, w * .17, h * .72, w * .22, h * .42); ctx.moveTo(w * .34, h * .5); ctx.arc(w * .34, h * .5, 1.2, 0, Math.PI * 2); ctx.moveTo(w * .66, h * .5); ctx.arc(w * .66, h * .5, 1.2, 0, Math.PI * 2); ctx.moveTo(w * .45, h * .64); ctx.lineTo(cx, h * .68); ctx.lineTo(w * .55, h * .64)
+                ctx.moveTo(5.5, 10)
+                ctx.lineTo(4.5, 4)
+                ctx.lineTo(9, 7)
+                ctx.bezierCurveTo(10.8, 5.8, 13.2, 5.8, 15, 7)
+                ctx.lineTo(19.5, 4)
+                ctx.lineTo(18.5, 10)
+                ctx.bezierCurveTo(19.8, 17, 16, 20, 12, 20)
+                ctx.bezierCurveTo(8, 20, 4.2, 17, 5.5, 10)
+                ctx.moveTo(8.5, 12)
+                ctx.arc(8.5, 12, 1, 0, Math.PI * 2)
+                ctx.moveTo(15.5, 12)
+                ctx.arc(15.5, 12, 1, 0, Math.PI * 2)
+                ctx.moveTo(11, 15.2)
+                ctx.lineTo(12, 16)
+                ctx.lineTo(13, 15.2)
             } else if (root.name === "view-grid") {
-                ctx.rect(w * .18, h * .18, w * .25, h * .25); ctx.rect(w * .57, h * .18, w * .25, h * .25); ctx.rect(w * .18, h * .57, w * .25, h * .25); ctx.rect(w * .57, h * .57, w * .25, h * .25)
+                ctx.rect(4.5, 4.5, 6, 6)
+                ctx.rect(13.5, 4.5, 6, 6)
+                ctx.rect(4.5, 13.5, 6, 6)
+                ctx.rect(13.5, 13.5, 6, 6)
             } else if (root.name === "view-path") {
-                ctx.rect(w * .2, h * .29, w * .42, h * .48); ctx.rect(w * .38, h * .2, w * .42, h * .48); line(ctx, w * .26, h * .68, w * .52, h * .68)
+                ctx.rect(7.5, 4.5, 9, 15)
+                line(ctx, 3.5, 7.5, 6.5, 6.5)
+                line(ctx, 3.5, 7.5, 3.5, 16.5)
+                line(ctx, 3.5, 16.5, 6.5, 17.5)
+                line(ctx, 20.5, 7.5, 17.5, 6.5)
+                line(ctx, 20.5, 7.5, 20.5, 16.5)
+                line(ctx, 20.5, 16.5, 17.5, 17.5)
             } else if (root.name === "view-vinyl") {
-                ctx.arc(cx, cy, w * .32, 0, Math.PI * 2); ctx.moveTo(w * .62, cy); ctx.arc(cx, cy, w * .12, 0, Math.PI * 2); ctx.moveTo(cx + 1, cy); ctx.arc(cx, cy, 1.5, 0, Math.PI * 2)
+                ctx.arc(12, 12, 7.5, 0, Math.PI * 2)
+                ctx.moveTo(15, 12)
+                ctx.arc(12, 12, 3, 0, Math.PI * 2)
+                ctx.moveTo(13, 12)
+                ctx.arc(12, 12, 1, 0, Math.PI * 2)
             } else if (root.name === "view-timeline") {
-                line(ctx, w * .3, h * .16, w * .3, h * .84); ctx.moveTo(w * .36, h * .28); ctx.arc(w * .3, h * .28, w * .06, 0, Math.PI * 2); ctx.moveTo(w * .36, h * .52); ctx.arc(w * .3, h * .52, w * .06, 0, Math.PI * 2); ctx.moveTo(w * .36, h * .76); ctx.arc(w * .3, h * .76, w * .06, 0, Math.PI * 2); line(ctx, w * .43, h * .28, w * .8, h * .28); line(ctx, w * .43, h * .52, w * .72, h * .52); line(ctx, w * .43, h * .76, w * .78, h * .76)
+                line(ctx, 7, 3.5, 7, 20.5)
+                ctx.moveTo(8.5, 6.5)
+                ctx.arc(7, 6.5, 1.5, 0, Math.PI * 2)
+                ctx.moveTo(8.5, 12)
+                ctx.arc(7, 12, 1.5, 0, Math.PI * 2)
+                ctx.moveTo(8.5, 17.5)
+                ctx.arc(7, 17.5, 1.5, 0, Math.PI * 2)
+                line(ctx, 10.5, 6.5, 19.5, 6.5)
+                line(ctx, 10.5, 12, 17.5, 12)
+                line(ctx, 10.5, 17.5, 19, 17.5)
             } else if (root.name === "view-magazine") {
-                ctx.rect(w * .17, h * .2, w * .4, h * .6); ctx.rect(w * .64, h * .2, w * .19, h * .22); line(ctx, w * .64, h * .53, w * .83, h * .53); line(ctx, w * .64, h * .66, w * .83, h * .66); line(ctx, w * .64, h * .79, w * .78, h * .79)
+                ctx.rect(4, 4.5, 9.5, 15)
+                ctx.rect(15, 4.5, 5, 5)
+                line(ctx, 15, 12.5, 20, 12.5)
+                line(ctx, 15, 15.5, 20, 15.5)
+                line(ctx, 15, 18.5, 18.5, 18.5)
             } else if (root.name === "view-list") {
-                ctx.rect(w * .18, h * .2, w * .13, h * .13); ctx.rect(w * .18, h * .44, w * .13, h * .13); ctx.rect(w * .18, h * .68, w * .13, h * .13); line(ctx, w * .4, h * .265, w * .82, h * .265); line(ctx, w * .4, h * .505, w * .82, h * .505); line(ctx, w * .4, h * .745, w * .82, h * .745)
+                ctx.rect(4.5, 5, 3, 3)
+                ctx.rect(4.5, 10.5, 3, 3)
+                ctx.rect(4.5, 16, 3, 3)
+                line(ctx, 9.5, 6.5, 19.5, 6.5)
+                line(ctx, 9.5, 12, 19.5, 12)
+                line(ctx, 9.5, 17.5, 19.5, 17.5)
             } else if (root.name === "density-comfortable") {
-                line(ctx, w * .22, h * .28, w * .78, h * .28); line(ctx, w * .22, h * .72, w * .78, h * .72)
+                line(ctx, 5, 7, 19, 7)
+                line(ctx, 5, 17, 19, 17)
             } else if (root.name === "density-standard") {
-                line(ctx, w * .22, h * .25, w * .78, h * .25); line(ctx, w * .22, cy, w * .78, cy); line(ctx, w * .22, h * .75, w * .78, h * .75)
+                line(ctx, 5, 6, 19, 6)
+                line(ctx, 5, 12, 19, 12)
+                line(ctx, 5, 18, 18, 18)
             } else if (root.name === "density-compact") {
-                line(ctx, w * .22, h * .22, w * .78, h * .22); line(ctx, w * .22, h * .41, w * .78, h * .41); line(ctx, w * .22, h * .59, w * .78, h * .59); line(ctx, w * .22, h * .78, w * .78, h * .78)
+                line(ctx, 5, 5, 19, 5)
+                line(ctx, 5, 9.5, 19, 9.5)
+                line(ctx, 5, 14.5, 19, 14.5)
+                line(ctx, 5, 19, 19, 19)
             } else if (root.name === "queue") {
-                line(ctx, w * .2, h * .28, w * .72, h * .28); line(ctx, w * .2, h * .5, w * .72, h * .5); line(ctx, w * .2, h * .72, w * .55, h * .72); ctx.moveTo(w * .66, h * .62); ctx.lineTo(w * .84, h * .72); ctx.lineTo(w * .66, h * .82); ctx.closePath()
+                line(ctx, 4.5, 6.5, 17.5, 6.5)
+                line(ctx, 4.5, 11.5, 17.5, 11.5)
+                line(ctx, 4.5, 16.5, 13, 16.5)
+                ctx.moveTo(15.5, 14.5)
+                ctx.lineTo(19.5, 16.5)
+                ctx.lineTo(15.5, 18.5)
+                ctx.closePath()
+                ctx.fill()
+                ctx.restore()
+                return
             } else if (root.name === "shuffle") {
-                ctx.moveTo(w * .18, h * .3); ctx.lineTo(w * .31, h * .3); ctx.bezierCurveTo(w * .45, h * .3, w * .53, h * .7, w * .68, h * .7); line(ctx, w * .68, h * .7, w * .82, h * .7); line(ctx, w * .72, h * .6, w * .82, h * .7); line(ctx, w * .72, h * .8, w * .82, h * .7); ctx.moveTo(w * .18, h * .7); ctx.lineTo(w * .31, h * .7); ctx.bezierCurveTo(w * .45, h * .7, w * .53, h * .3, w * .68, h * .3); line(ctx, w * .68, h * .3, w * .82, h * .3); line(ctx, w * .72, h * .2, w * .82, h * .3); line(ctx, w * .72, h * .4, w * .82, h * .3)
+                ctx.moveTo(4, 7)
+                ctx.lineTo(7.5, 7)
+                ctx.bezierCurveTo(11, 7, 13, 17, 16.5, 17)
+                line(ctx, 16.5, 17, 20, 17)
+                line(ctx, 17.5, 14.5, 20, 17)
+                line(ctx, 17.5, 19.5, 20, 17)
+
+                ctx.moveTo(4, 17)
+                ctx.lineTo(7.5, 17)
+                ctx.bezierCurveTo(11, 17, 13, 7, 16.5, 7)
+                line(ctx, 16.5, 7, 20, 7)
+                line(ctx, 17.5, 4.5, 20, 7)
+                line(ctx, 17.5, 9.5, 20, 7)
             } else if (root.name === "repeat" || root.name === "repeat-one") {
-                ctx.moveTo(w * .2, h * .34); ctx.lineTo(w * .73, h * .34); line(ctx, w * .63, h * .24, w * .73, h * .34); line(ctx, w * .63, h * .44, w * .73, h * .34); ctx.moveTo(w * .8, h * .66); ctx.lineTo(w * .27, h * .66); line(ctx, w * .37, h * .56, w * .27, h * .66); line(ctx, w * .37, h * .76, w * .27, h * .66); if (root.name === "repeat-one") { ctx.stroke(); ctx.beginPath(); ctx.font = Math.round(h * .34) + "px sans-serif"; ctx.fillText("1", w * .45, h * .59); return }
+                ctx.moveTo(4.5, 8.5)
+                ctx.lineTo(17.5, 8.5)
+                line(ctx, 15, 6, 17.5, 8.5)
+                line(ctx, 15, 11, 17.5, 8.5)
+                ctx.moveTo(19.5, 15.5)
+                ctx.lineTo(6.5, 15.5)
+                line(ctx, 9, 13, 6.5, 15.5)
+                line(ctx, 9, 18, 6.5, 15.5)
+                if (root.name === "repeat-one") {
+                    ctx.stroke()
+                    ctx.beginPath()
+                    ctx.font = "bold 8px sans-serif"
+                    ctx.textAlign = "center"
+                    ctx.textBaseline = "middle"
+                    ctx.fillText("1", 12, 12)
+                    ctx.restore()
+                    return
+                }
             } else if (root.name === "sliders" || root.name === "equalizer") {
-                line(ctx, w * .27, h * .18, w * .27, h * .82); line(ctx, cx, h * .18, cx, h * .82); line(ctx, w * .73, h * .18, w * .73, h * .82); ctx.moveTo(w * .2, h * .36); ctx.lineTo(w * .34, h * .36); ctx.moveTo(w * .43, h * .62); ctx.lineTo(w * .57, h * .62); ctx.moveTo(w * .66, h * .42); ctx.lineTo(w * .8, h * .42)
+                if (root.name === "equalizer") {
+                    line(ctx, 5, 19, 5, 11)
+                    line(ctx, 9.5, 19, 9.5, 6)
+                    line(ctx, 14.5, 19, 14.5, 13)
+                    line(ctx, 19, 19, 19, 8)
+                } else {
+                    line(ctx, 6, 4, 6, 20)
+                    line(ctx, 12, 4, 12, 20)
+                    line(ctx, 18, 4, 18, 20)
+                    line(ctx, 3.5, 8, 8.5, 8)
+                    line(ctx, 9.5, 16, 14.5, 16)
+                    line(ctx, 15.5, 11, 20.5, 11)
+                }
             } else if (root.name === "sort") {
-                line(ctx, w * .2, h * .25, w * .68, h * .25); line(ctx, w * .2, cy, w * .56, cy); line(ctx, w * .2, h * .75, w * .44, h * .75); line(ctx, w * .72, h * .22, w * .72, h * .78); line(ctx, w * .62, h * .68, w * .72, h * .78); line(ctx, w * .82, h * .68, w * .72, h * .78)
+                line(ctx, 4.5, 6.5, 15.5, 6.5)
+                line(ctx, 4.5, 12, 12.5, 12)
+                line(ctx, 4.5, 17.5, 9.5, 17.5)
+                line(ctx, 17.5, 5.5, 17.5, 18.5)
+                line(ctx, 15, 16, 17.5, 18.5)
+                line(ctx, 20, 16, 17.5, 18.5)
             } else if (root.name === "sort-ascending") {
-                line(ctx, cx, h * .78, cx, h * .22); line(ctx, w * .38, h * .34, cx, h * .22); line(ctx, w * .62, h * .34, cx, h * .22)
+                line(ctx, 12, 18.5, 12, 5.5)
+                line(ctx, 8.5, 9, 12, 5.5)
+                line(ctx, 15.5, 9, 12, 5.5)
             } else if (root.name === "sort-descending") {
-                line(ctx, cx, h * .22, cx, h * .78); line(ctx, w * .38, h * .66, cx, h * .78); line(ctx, w * .62, h * .66, cx, h * .78)
+                line(ctx, 12, 5.5, 12, 18.5)
+                line(ctx, 8.5, 15, 12, 18.5)
+                line(ctx, 15.5, 15, 12, 18.5)
             } else if (root.name === "filter") {
-                ctx.moveTo(w * .16, h * .22); ctx.lineTo(w * .84, h * .22); ctx.lineTo(w * .59, h * .5); ctx.lineTo(w * .59, h * .76); ctx.lineTo(w * .41, h * .84); ctx.lineTo(w * .41, h * .5); ctx.closePath()
+                ctx.moveTo(4, 5.5)
+                ctx.lineTo(20, 5.5)
+                ctx.lineTo(14, 12.5)
+                ctx.lineTo(14, 18)
+                ctx.lineTo(10, 19.5)
+                ctx.lineTo(10, 12.5)
+                ctx.closePath()
             } else if (root.name === "audio-output") {
-                ctx.rect(w * .16, h * .2, w * .48, h * .48); line(ctx, w * .3, h * .79, w * .5, h * .79); line(ctx, w * .4, h * .68, w * .4, h * .79); ctx.moveTo(w * .68, h * .38); ctx.arc(w * .61, cy, w * .17, -.65, .65); ctx.moveTo(w * .82, h * .25); ctx.arc(w * .64, cy, w * .29, -.82, .82)
+                ctx.rect(4, 5, 11, 11)
+                line(ctx, 6.5, 19, 12.5, 19)
+                line(ctx, 9.5, 16, 9.5, 19)
+                ctx.moveTo(17, 9)
+                ctx.arc(14, 10.5, 4, -0.65, 0.65)
+                ctx.moveTo(19.5, 7)
+                ctx.arc(14, 10.5, 7, -0.75, 0.75)
             } else if (root.name === "audio-engine") {
-                ctx.moveTo(cx, h * .12); ctx.lineTo(w * .78, h * .28); ctx.lineTo(w * .78, h * .66); ctx.lineTo(cx, h * .84); ctx.lineTo(w * .22, h * .66); ctx.lineTo(w * .22, h * .28); ctx.closePath(); ctx.moveTo(w * .3, cy); ctx.bezierCurveTo(w * .38, h * .28, w * .44, h * .72, cx, cy); ctx.bezierCurveTo(w * .58, h * .28, w * .64, h * .72, w * .7, cy)
+                ctx.moveTo(12, 3.5)
+                ctx.lineTo(19, 6.5)
+                ctx.lineTo(19, 15.5)
+                ctx.lineTo(12, 20.5)
+                ctx.lineTo(5, 15.5)
+                ctx.lineTo(5, 6.5)
+                ctx.closePath()
+                ctx.moveTo(7.5, 12)
+                ctx.bezierCurveTo(9.5, 7.5, 10.5, 16.5, 12, 12)
+                ctx.bezierCurveTo(13.5, 7.5, 14.5, 16.5, 16.5, 12)
             } else if (root.name === "device") {
-                ctx.rect(w * .25, h * .15, w * .5, h * .7); ctx.moveTo(w * .4, h * .27); ctx.lineTo(w * .6, h * .27); ctx.arc(cx, h * .58, w * .1, 0, Math.PI * 2); ctx.fillRect(cx - 1, h * .77, 2, 2)
+                ctx.rect(5, 4, 14, 16)
+                line(ctx, 8, 7.5, 16, 7.5)
+                ctx.moveTo(14.5, 13)
+                ctx.arc(12, 13, 2.5, 0, Math.PI * 2)
+                ctx.moveTo(13, 17)
+                ctx.arc(12, 17, 1, 0, Math.PI * 2)
             } else if (root.name === "settings") {
-                ctx.arc(cx, cy, w * .17, 0, Math.PI * 2); ctx.moveTo(cx, h * .12); ctx.lineTo(cx, h * .24); ctx.moveTo(cx, h * .76); ctx.lineTo(cx, h * .88); ctx.moveTo(w * .12, cy); ctx.lineTo(w * .24, cy); ctx.moveTo(w * .76, cy); ctx.lineTo(w * .88, cy)
+                ctx.arc(12, 12, 3.5, 0, Math.PI * 2)
+                for (var i = 0; i < 8; i++) {
+                    var angle = i * Math.PI / 4.0
+                    var cosA = Math.cos(angle)
+                    var sinA = Math.sin(angle)
+                    ctx.moveTo(12 + cosA * 5.8, 12 + sinA * 5.8)
+                    ctx.lineTo(12 + cosA * 8.5, 12 + sinA * 8.5)
+                }
             } else if (root.name === "heart") {
-                ctx.moveTo(cx, h * .82); ctx.bezierCurveTo(w * .18, h * .62, w * .12, h * .35, w * .31, h * .25); ctx.bezierCurveTo(w * .43, h * .19, cx, h * .29, cx, h * .36); ctx.bezierCurveTo(cx, h * .29, w * .57, h * .19, w * .69, h * .25); ctx.bezierCurveTo(w * .88, h * .35, w * .82, h * .62, cx, h * .82)
-            } else if (root.name === "history") {
-                ctx.arc(cx, cy, w * .31, -.35, Math.PI * 1.65); line(ctx, cx, cy, cx, h * .31); line(ctx, cx, cy, w * .67, h * .58); line(ctx, w * .19, h * .2, w * .2, h * .4); line(ctx, w * .19, h * .2, w * .39, h * .21)
+                ctx.moveTo(12, 19.5)
+                ctx.bezierCurveTo(4.5, 14.5, 3.5, 8, 8, 5.8)
+                ctx.bezierCurveTo(10.5, 4.5, 12, 6.8, 12, 8)
+                ctx.bezierCurveTo(12, 6.8, 13.5, 4.5, 16, 5.8)
+                ctx.bezierCurveTo(20.5, 8, 19.5, 14.5, 12, 19.5)
             } else if (root.name === "close") {
-                line(ctx, w * .25, h * .25, w * .75, h * .75); line(ctx, w * .75, h * .25, w * .25, h * .75)
-            } else if (root.name === "add") {
-                line(ctx, cx, h * .22, cx, h * .78); line(ctx, w * .22, cy, w * .78, cy)
+                line(ctx, 6, 6, 18, 18)
+                line(ctx, 18, 6, 6, 18)
             } else if (root.name === "zoom-out") {
-                ctx.arc(w * .43, h * .43, w * .24, 0, Math.PI * 2); line(ctx, w * .61, h * .61, w * .82, h * .82); line(ctx, w * .29, h * .43, w * .57, h * .43)
+                ctx.arc(10.5, 10.5, 5.5, 0, Math.PI * 2)
+                line(ctx, 14.5, 14.5, 19.5, 19.5)
+                line(ctx, 7.5, 10.5, 13.5, 10.5)
             } else if (root.name === "zoom-in") {
-                ctx.arc(w * .43, h * .43, w * .24, 0, Math.PI * 2); line(ctx, w * .61, h * .61, w * .82, h * .82); line(ctx, w * .29, h * .43, w * .57, h * .43); line(ctx, w * .43, h * .29, w * .43, h * .57)
+                ctx.arc(10.5, 10.5, 5.5, 0, Math.PI * 2)
+                line(ctx, 14.5, 14.5, 19.5, 19.5)
+                line(ctx, 7.5, 10.5, 13.5, 10.5)
+                line(ctx, 10.5, 7.5, 10.5, 13.5)
             } else if (root.name === "chevron-left") {
-                line(ctx, w * .64, h * .24, w * .36, cy); line(ctx, w * .36, cy, w * .64, h * .76)
+                line(ctx, 15, 6, 9, 12)
+                line(ctx, 9, 12, 15, 18)
             } else if (root.name === "chevron-right") {
-                line(ctx, w * .36, h * .24, w * .64, cy); line(ctx, w * .64, cy, w * .36, h * .76)
+                line(ctx, 9, 6, 15, 12)
+                line(ctx, 15, 12, 9, 18)
             } else if (root.name === "info") {
-                ctx.arc(cx, cy, w * .32, 0, Math.PI * 2); line(ctx, cx, h * .43, cx, h * .72); ctx.fillRect(cx - 1, h * .27, 2, 2)
+                ctx.arc(12, 12, 7.5, 0, Math.PI * 2)
+                line(ctx, 12, 10.5, 12, 16.5)
+                ctx.moveTo(13, 7.5)
+                ctx.arc(12, 7.5, 1, 0, Math.PI * 2)
             } else if (root.name === "trash") {
-                ctx.rect(w * .3, h * .31, w * .4, h * .5); line(ctx, w * .23, h * .25, w * .77, h * .25); line(ctx, w * .4, h * .18, w * .6, h * .18); line(ctx, w * .42, h * .42, w * .42, h * .68); line(ctx, w * .58, h * .42, w * .58, h * .68)
+                ctx.rect(7, 8, 10, 11)
+                line(ctx, 5.5, 6.5, 18.5, 6.5)
+                line(ctx, 9.5, 4.5, 14.5, 4.5)
+                line(ctx, 10, 10.5, 10, 16)
+                line(ctx, 14, 10.5, 14, 16)
             } else if (root.name === "up") {
-                line(ctx, w * .24, h * .62, cx, h * .36); line(ctx, cx, h * .36, w * .76, h * .62)
+                line(ctx, 6, 14.5, 12, 8.5)
+                line(ctx, 12, 8.5, 18, 14.5)
             } else if (root.name === "down") {
-                line(ctx, w * .24, h * .38, cx, h * .64); line(ctx, cx, h * .64, w * .76, h * .38)
+                line(ctx, 6, 9.5, 12, 15.5)
+                line(ctx, 12, 15.5, 18, 9.5)
             } else if (root.name === "folder") {
-                ctx.moveTo(w * .17, h * .3); ctx.lineTo(w * .42, h * .3); ctx.lineTo(w * .5, h * .4); ctx.lineTo(w * .83, h * .4); ctx.lineTo(w * .83, h * .76); ctx.lineTo(w * .17, h * .76); ctx.closePath()
+                ctx.moveTo(4, 7)
+                ctx.lineTo(9.5, 7)
+                ctx.lineTo(11.5, 9.5)
+                ctx.lineTo(20, 9.5)
+                ctx.lineTo(20, 18)
+                ctx.lineTo(4, 18)
+                ctx.closePath()
             } else if (root.name === "artist") {
-                ctx.arc(cx, h * .34, w * .16, 0, Math.PI * 2); ctx.arc(cx, h * .83, w * .29, Math.PI, Math.PI * 2)
+                ctx.arc(12, 8, 3.5, 0, Math.PI * 2)
+                ctx.moveTo(18.5, 19.5)
+                ctx.arc(12, 19.5, 6.5, Math.PI, Math.PI * 2)
             } else if (root.name === "genre") {
-                ctx.moveTo(w * .18, h * .31); ctx.lineTo(w * .61, h * .31); ctx.lineTo(w * .82, cy); ctx.lineTo(w * .61, h * .69); ctx.lineTo(w * .18, h * .69); ctx.closePath(); ctx.moveTo(w * .3, cy); ctx.arc(w * .3, cy, 1.5, 0, Math.PI * 2)
+                ctx.moveTo(4.5, 7.5)
+                ctx.lineTo(14.5, 7.5)
+                ctx.lineTo(19.5, 12)
+                ctx.lineTo(14.5, 16.5)
+                ctx.lineTo(4.5, 16.5)
+                ctx.closePath()
+                ctx.moveTo(8.5, 12)
+                ctx.arc(7.5, 12, 1, 0, Math.PI * 2)
             } else if (root.name === "more") {
-                ctx.fillRect(w * .2, cy - 1, 2, 2); ctx.fillRect(cx - 1, cy - 1, 2, 2); ctx.fillRect(w * .8 - 2, cy - 1, 2, 2); return
+                ctx.arc(6, 12, 1.5, 0, Math.PI * 2)
+                ctx.moveTo(13.5, 12)
+                ctx.arc(12, 12, 1.5, 0, Math.PI * 2)
+                ctx.moveTo(19.5, 12)
+                ctx.arc(18, 12, 1.5, 0, Math.PI * 2)
+                ctx.fill()
+                ctx.restore()
+                return
             } else if (root.name === "home") {
-                ctx.moveTo(w * .18, h * .48); ctx.lineTo(cx, h * .18); ctx.lineTo(w * .82, h * .48); ctx.moveTo(w * .27, h * .4); ctx.lineTo(w * .27, h * .82); ctx.lineTo(w * .73, h * .82); ctx.lineTo(w * .73, h * .4)
+                ctx.moveTo(4.5, 11.5)
+                ctx.lineTo(12, 5)
+                ctx.lineTo(19.5, 11.5)
+                ctx.moveTo(6.5, 10)
+                ctx.lineTo(6.5, 19)
+                ctx.lineTo(17.5, 19)
+                ctx.lineTo(17.5, 10)
             } else {
-                ctx.arc(cx, cy, w * .29, 0, Math.PI * 2)
+                ctx.arc(12, 12, 7, 0, Math.PI * 2)
             }
             ctx.stroke()
+            ctx.restore()
         }
     }
 }

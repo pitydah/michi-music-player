@@ -208,12 +208,14 @@ def test_library_delegates_use_shared_media_rows() -> None:
 
 def test_density_precision_and_inspector_are_real_surfaces() -> None:
     header = _text("views/LibraryHeader.qml")
+    popup = _text("views/LibraryViewOptionsPopup.qml")
     toolbar = _text("views/LibraryToolbar.qml")
     album_detail = _text("views/AlbumDetailView.qml")
-    assert 'objectName: "libraryDensityControl"' in header
-    assert "MichiThemeState.density" in header
-    assert "compact: true" in header
-    assert "MichiThemeState.precisionMode" in header
+    assert "View options" in header
+    assert 'objectName: "libraryDensityControl"' in popup
+    assert "MichiThemeState.density" in popup
+    assert "compact: true" in popup
+    assert "MichiThemeState.precisionMode" in popup
     assert "MichiThemeState.density" not in toolbar
     assert "MichiThemeState.precisionMode" not in toolbar
     assert "InspectorPanel" in album_detail
@@ -233,8 +235,10 @@ def test_library_navigation_and_path_selection_follow_the_canon() -> None:
     assert "LibraryTabs {" in toolbar
     assert "onCurrentTabRequested" in library
     assert "LibraryTabs {" not in library
-    for icon in ("track", "album", "artist", "genre", "folder"):
+    for icon in ("track", "album", "artist", "genre", "heart", "history", "recent"):
         assert f'icon: "{icon}"' in tabs
+    # M9-R2: Folders removed from visual tabs per product decision
+    assert 'icon: "folder"' not in tabs
     # M9-R1 hierarchy: Playlists is a first-class Shell feature — it is NOT
     # a Library tab (canonical playlist navigation resolves through
     # AppRoute.PLAYLISTS, per PLAYLIST-HIERARCHY-01/03).
@@ -248,7 +252,7 @@ def test_library_navigation_and_path_selection_follow_the_canon() -> None:
 
 def test_album_artwork_zoom_is_real_and_persistent() -> None:
     library = _text("views/LibraryView.qml")
-    toolbar = _text("views/LibraryToolbar.qml")
+    popup = _text("views/LibraryViewOptionsPopup.qml")
     content = _text("views/LibraryContentHost.qml")
     albums = _text("views/AlbumsView.qml")
     grid = _text("views/AlbumGridView.qml")
@@ -257,9 +261,8 @@ def test_album_artwork_zoom_is_real_and_persistent() -> None:
     icons = _text("primitives/MichiIcon.qml")
     assert "property real albumZoom: 1.0" in library
     assert "onAlbumZoomRequested" in library
-    assert 'objectName: "albumSizeControl"' in toolbar
-    assert 'iconName: "zoom-out"' in toolbar
-    assert 'iconName: "zoom-in"' in toolbar
+    assert "zoom-out" in popup
+    assert "zoom-in" in popup
     assert "albumZoom: root.albumZoom" in content
     assert albums.count("albumZoom: root.albumZoom") == 3
     for source in (grid, vinyl, path):
@@ -395,12 +398,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
         "view-list",
     ):
         assert f'icon: "{icon}"' in header
-    assert "sourceExpanded" in toolbar
     assert "albumModeRequested" in header
     assert "MichiSegmentedControl {" not in albums
     assert "onAlbumModeRequested" in library
-    assert "albumTimelineGroupingRequested" in toolbar
-    assert 'groupByDecade: root.albumTimelineGrouping === "decade"' in albums
     assert "sourceComponent: root.componentForMode(root.albumMode)" in albums
     assert "root.currentValue = modelData.value" not in segmented
 
@@ -409,7 +409,7 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     shell = _text("shell/AppShell.qml")
     sidebar = _text("shell/Sidebar.qml")
     tabs = _text("views/LibraryTabs.qml")
-    toolbar = _text("views/LibraryToolbar.qml")
+    popup = _text("views/LibraryViewOptionsPopup.qml")
     bar = _text("player/NowPlayingBar.qml")
     glass = _text("primitives/MichiGlassSurface.qml")
     button = _text("controls/MichiButton.qml")
@@ -425,7 +425,7 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     assert "root.enabled && root.primary" in button
     assert "anchors.bottom: parent.bottom" not in tabs
     assert "visible: root.selected" not in icon_button
-    assert 'objectName: "albumSizeControl"' in toolbar
+    assert "zoom-out" in popup
     quality = bar.split('objectName: "qualityBadge"', 1)[1].split(
         'objectName: "queueButton"', 1
     )[0]

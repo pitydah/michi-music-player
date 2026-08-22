@@ -51,24 +51,23 @@ Item {
             Layout.fillWidth: true
             currentTab: root.currentTab
             albumMode: root.albumMode
-            onAlbumModeRequested: mode => root.requestAlbumMode(mode)
-        }
-
-        LibraryToolbar {
-            Layout.fillWidth: true
-            currentTab: root.currentTab
-            albumMode: root.albumMode
             albumSortMode: root.albumSortMode
             albumSortDescending: root.albumSortDescending
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
             albumZoom: root.albumZoom
-            onCurrentTabRequested: tab => root.currentTab = tab
+            onAlbumModeRequested: mode => root.requestAlbumMode(mode)
             onAlbumSortRequested: mode => root.albumSortMode = mode
             onAlbumSortDirectionRequested: descending => root.albumSortDescending = descending
             onAlbumFilterRequested: mode => root.albumFilterMode = mode
             onAlbumTimelineGroupingRequested: mode => root.albumTimelineGrouping = mode
             onAlbumZoomRequested: value => root.requestAlbumZoom(value)
+        }
+
+        LibraryToolbar {
+            Layout.fillWidth: true
+            currentTab: root.currentTab
+            onCurrentTabRequested: tab => root.currentTab = tab
         }
 
         LibraryContentHost {

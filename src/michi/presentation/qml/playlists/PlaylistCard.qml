@@ -14,6 +14,9 @@ Item {
     property string playlistId: ""
     property string playlistName: ""
     property int trackCount: 0
+    property int durationMs: 0
+    property string customCoverPath: ""
+    property var mosaicArtworkPaths: []
     property bool pinned: false
     signal openRequested()
     signal playRequested()
@@ -21,9 +24,18 @@ Item {
     signal renameRequested()
     signal deleteRequested()
 
-    implicitHeight: 176
+    implicitHeight: 220
+    implicitWidth: 200
     Accessible.role: Accessible.Button
     Accessible.name: playlistName + ", " + trackCount + " tracks"
+
+    function formatTime(ms) {
+        if (!ms || ms <= 0) return ""
+        var totalSeconds = Math.round(ms / 1000)
+        var minutes = Math.floor(totalSeconds / 60)
+        var seconds = totalSeconds % 60
+        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -38,75 +50,60 @@ Item {
         }
     }
 
-    // Deterministic 2x2 mosaic placeholder: neutral Michi surfaces, never
-    // random colors. Real artwork derivation is a later refinement.
-    Row {
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.topMargin: MichiSpacing.md
-        anchors.leftMargin: MichiSpacing.md
-        anchors.rightMargin: MichiSpacing.md
-        height: 76
-        spacing: 6
-        Rectangle {
-            width: parent.width / 2 - 3
-            height: parent.height
-            radius: MichiRadius.md
-            color: MichiSemanticColors.auroraPurpleSurface
-        }
-        Rectangle {
-            width: parent.width / 2 - 3
-            height: parent.height
-            radius: MichiRadius.md
-            color: MichiSemanticColors.auroraCyanSurface
-        }
-    }
-
     ColumnLayout {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        anchors.fill: parent
         anchors.margins: MichiSpacing.md
-        spacing: 2
-        RowLayout {
+        spacing: MichiSpacing.sm
+
+        PlaylistArtwork {
             Layout.fillWidth: true
-            spacing: MichiSpacing.xs
-            MichiText {
-                text: root.playlistName
-                role: "secondary"
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-                color: MichiPalette.textPrimary
-                font.weight: Font.DemiBold
-            }
-            MichiIcon {
-                visible: root.pinned
-                name: "pin"
-                width: 13
-                height: 13
-                iconColor: MichiPalette.auroraCyan
-            }
+            Layout.preferredHeight: width
+            customCoverPath: root.customCoverPath
+            mosaicArtworkPaths: root.mosaicArtworkPaths
+            fallbackText: root.playlistName
+            radius: MichiRadius.md
         }
-        MichiText {
-            text: root.trackCount + (root.trackCount === 1 ? " track" : " tracks")
-            role: "technical"
-            technical: true
-            color: MichiPalette.textSecondary
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: MichiSpacing.xs
+                MichiText {
+                    text: root.playlistName
+                    role: "secondary"
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                    color: MichiPalette.textPrimary
+                    font.weight: Font.DemiBold
+                }
+                MichiIcon {
+                    visible: root.pinned
+                    name: "pin"
+                    width: 13
+                    height: 13
+                    iconColor: MichiPalette.auroraCyan
+                }
+            }
+
+            MichiText {
+                text: root.trackCount + (root.trackCount === 1 ? " track" : " tracks")
+                    + (root.durationMs > 0 ? " · " + root.formatTime(root.durationMs) : "")
+                role: "technical"
+                technical: true
+                color: MichiPalette.textSecondary
+            }
         }
     }
 
-    // M9-R1I keyboard accessibility: the card surface is focusable and
-    // activates with Enter/Space; internal controls (Play/Pin/More) are
-    // separate controls that never trigger the open action.
+    // M9-R1I keyboard accessibility
     MouseArea {
         id: rootArea
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        // M9-R1J: no focus:true on every GridView delegate — cards become
-        // focusable only through Tab (activeFocusOnTab), never claiming
-        // initial focus by merely existing.
         activeFocusOnTab: true
         Keys.onReturnPressed: root.openRequested()
         Keys.onEnterPressed: root.openRequested()
@@ -119,7 +116,7 @@ Item {
         }
     }
 
-    // Visible focus state for the card (quiet content surface, no glass).
+    // Visible focus state
     Rectangle {
         anchors.fill: parent
         radius: MichiRadius.lg
@@ -136,6 +133,8 @@ Item {
         anchors.topMargin: MichiSpacing.md
         anchors.rightMargin: MichiSpacing.md
         spacing: MichiSpacing.xs
+        z: 3
+
         MichiIconButton {
             iconName: "play"
             accessibleName: qsTr("Play ") + root.playlistName
@@ -166,8 +165,17 @@ Item {
             onTriggered: root.playRequested()
         }
         MenuItem {
+            text: qsTr("Add to Queue")
+            onTriggered: playlists.queue_playlist(root.playlistId)
+        }
+        MenuItem {
             text: root.pinned ? qsTr("Unpin") : qsTr("Pin")
             onTriggered: root.pinToggled()
+        }
+        MenuItem {
+            text: qsTr("Use Automatic Mosaic")
+            visible: (root.customCoverPath || "") !== ""
+            onTriggered: playlists.remove_custom_cover(root.playlistId)
         }
         MenuItem {
             text: qsTr("Rename")

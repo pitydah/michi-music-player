@@ -72,7 +72,37 @@ class PlaylistsBridge(QObject):
 
     # ------------------------------------------------------------------
     # Row projection (canonical playlist row shape)
-    # ------------------------------------------------------------------
+    def _artwork_for_path(self, path_str: str) -> str:
+        if self._library is None:
+            return ""
+        for a in self._library.state.albums:
+            if path_str in a.track_paths:
+                return self._library.artwork_path_for(a.key) or ""
+        return ""
+
+    def _mosaic_for_paths(self, track_paths: tuple[str, ...]) -> list[str]:
+        if self._library is None:
+            return []
+        artworks: list[str] = []
+        seen: set[str] = set()
+        for path_str in track_paths:
+            art = self._artwork_for_path(path_str)
+            if art and art not in seen:
+                seen.add(art)
+                artworks.append(art)
+                if len(artworks) == 4:
+                    break
+        return artworks
+
+    def _duration_for_paths(self, track_paths: tuple[str, ...]) -> int:
+        if self._library is None:
+            return 0
+        total = 0
+        for path_str in track_paths:
+            ref = self._library.resolve_trackref(Path(path_str))
+            if ref is not None:
+                total += ref.duration_ms
+        return total
 
     def _rows(self) -> list[dict]:
         if self._playlist_service is None:
@@ -84,6 +114,9 @@ class PlaylistsBridge(QObject):
                 "playlistId": p.playlist_id,
                 "name": p.name,
                 "trackCount": len(p.track_paths),
+                "durationMs": self._duration_for_paths(p.track_paths),
+                "customCoverPath": p.custom_cover_path,
+                "mosaicArtworkPaths": self._mosaic_for_paths(p.track_paths),
                 "pinned": p.playlist_id in nav.pinned_ids,
                 "recentRank": recent_rank.get(p.playlist_id, -1),
             }
@@ -127,11 +160,24 @@ class PlaylistsBridge(QObject):
         return self._current_playlist_id()
 
     def _get_selected_playlist_name(self) -> str:
-        playlist_id = self._current_playlist_id()
-        if not playlist_id or self._playlist_service is None:
-            return ""
-        playlist = self._playlist_service.get_playlist(playlist_id)
+        playlist = self._selected()
         return playlist.name if playlist is not None else ""
+
+    def _get_selected_playlist_custom_cover(self) -> str:
+        playlist = self._selected()
+        return playlist.custom_cover_path if playlist is not None else ""
+
+    def _get_selected_playlist_duration_ms(self) -> int:
+        playlist = self._selected()
+        if playlist is None:
+            return 0
+        return self._duration_for_paths(playlist.track_paths)
+
+    def _get_selected_playlist_mosaic_artworks(self) -> list[str]:
+        playlist = self._selected()
+        if playlist is None:
+            return []
+        return self._mosaic_for_paths(playlist.track_paths)
 
     def _get_selected_playlist_pinned(self) -> bool:
         playlist_id = self._current_playlist_id()
@@ -245,6 +291,15 @@ class PlaylistsBridge(QObject):
     selectedPlaylistPinned = Property(
         bool, _get_selected_playlist_pinned, notify=playlists_changed
     )
+    selectedPlaylistCustomCoverPath = Property(
+        str, _get_selected_playlist_custom_cover, notify=playlists_changed
+    )
+    selectedPlaylistDurationMs = Property(
+        int, _get_selected_playlist_duration_ms, notify=playlists_changed
+    )
+    selectedPlaylistMosaicArtworkPaths = Property(
+        list, _get_selected_playlist_mosaic_artworks, notify=playlists_changed
+    )
     playlistTracks = Property(list, _get_playlist_tracks, notify=playlists_changed)
     playlistTrackRows = Property(
         list, _get_playlist_track_rows, notify=playlists_changed
@@ -313,6 +368,16 @@ class PlaylistsBridge(QObject):
             self._playlist_service.unpin_playlist(playlist_id)
 
     @Slot(str, str)
+    def set_custom_cover(self, playlist_id: str, path: str) -> None:
+        if self._playlist_service is not None:
+            self._playlist_service.set_custom_cover(playlist_id, path)
+
+    @Slot(str)
+    def remove_custom_cover(self, playlist_id: str) -> None:
+        if self._playlist_service is not None:
+            self._playlist_service.remove_custom_cover(playlist_id)
+
+    @Slot(str, str)
     def add_track(self, playlist_id: str, path: str) -> None:
         if self._playlist_service is not None:
             self._playlist_service.add_track(playlist_id, Path(path))
@@ -339,6 +404,23 @@ class PlaylistsBridge(QObject):
     def play_playlist(self, playlist_id: str) -> None:
         if self._playlist_service is not None:
             self._playlist_service.play_playlist(playlist_id)
+
+    @Slot(str)
+    def queue_playlist(self, playlist_id: str) -> None:
+        if (
+            self._playlist_service is not None
+            and getattr(self._playlist_service, "_queue", None) is not None
+        ):
+            p = self._playlist_service.get_playlist(playlist_id)
+            if p is not None:
+                for path in p.track_paths:
+                    self._playlist_service._queue.add(Path(path))
+
+    @Slot()
+    def queue_selected_playlist(self) -> None:
+        pid = self._current_playlist_id()
+        if pid:
+            self.queue_playlist(pid)
 
     @Slot(str, str)
     def add_track_to_playlist(self, playlist_id: str, path: str) -> None:

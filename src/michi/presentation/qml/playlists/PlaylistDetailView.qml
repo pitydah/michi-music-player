@@ -1,14 +1,14 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../controls"
 import "../patterns"
 import "../primitives"
 import "../theme"
 
-// PlaylistDetailView — PLAYLISTS + playlist_id. Header (back, name, count,
-// pin, play), track list with remove/reorder, rename and delete flows.
-// Delete requires confirmation; wording never implies file deletion.
+// PlaylistDetailView — PLAYLISTS + playlist_id. Header with real artwork mosaic / custom cover,
+// honest Play Now & Add to Queue buttons, total duration, and track list.
 Item {
     id: root
 
@@ -17,45 +17,70 @@ Item {
     signal backRequested()
     signal playRequested()
     signal togglePinRequested()
-    // M9-R1J: presentation-intent emitters only — dialogs live in the
-    // Shell (ContentHost); the Detail NEVER opens dialogs itself.
     signal renameRequested(string playlistId, string playlistName)
     signal deleteRequested(string playlistId, string playlistName)
     signal removeTrackRequested(int index)
     signal moveTrackRequested(int fromIndex, int toIndex)
 
-    readonly property bool _selected: playlists.selectedPlaylistId === root.playlistId
+    function formatTotalDuration(ms) {
+        if (!ms || ms <= 0) return ""
+        var totalSec = Math.round(ms / 1000)
+        var hours = Math.floor(totalSec / 3600)
+        var minutes = Math.floor((totalSec % 3600) / 60)
+        var seconds = totalSec % 60
+        if (hours > 0)
+            return hours + " hr " + minutes + " min"
+        return minutes + " min " + (seconds > 0 ? (seconds + " sec") : "")
+    }
+
+    FileDialog {
+        id: coverDialog
+        title: qsTr("Select Playlist Cover Image")
+        nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp)"]
+        onAccepted: {
+            var path = selectedFile.toString()
+            if (path.indexOf("file://") === 0) {
+                path = path.substring(7)
+            }
+            playlists.set_custom_cover(root.playlistId, path)
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: MichiSpacing.xl
         spacing: MichiSpacing.lg
 
+        // Hero Header
         RowLayout {
             Layout.fillWidth: true
             spacing: MichiSpacing.md
+
             MichiIconButton {
                 iconName: "back"
                 accessibleName: qsTr("Back to All Playlists")
                 onClicked: root.backRequested()
             }
-            Rectangle {
-                Layout.preferredWidth: 64
-                Layout.preferredHeight: 64
+
+            PlaylistArtwork {
+                Layout.preferredWidth: 80
+                Layout.preferredHeight: 80
+                customCoverPath: playlists.selectedPlaylistCustomCoverPath || ""
+                mosaicArtworkPaths: playlists.selectedPlaylistMosaicArtworkPaths || []
+                fallbackText: playlists.selectedPlaylistName
                 radius: MichiRadius.lg
-                color: MichiSemanticColors.auroraPurpleSurface
-                border.width: 1
-                border.color: MichiSemanticColors.auroraPurpleBorder
-                MichiIcon {
-                    anchors.centerIn: parent
-                    name: "playlist"
-                    width: 30
-                    height: 30
-                    iconColor: MichiPalette.auroraCyan
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: coverDialog.open()
                 }
             }
+
             ColumnLayout {
                 spacing: 2
+                Layout.fillWidth: true
+
                 MichiText {
                     id: titleText
                     text: playlists.selectedPlaylistName
@@ -64,31 +89,44 @@ Item {
                     Layout.fillWidth: true
                     color: MichiPalette.textPrimary
                 }
+
                 MichiText {
-                    text: playlists.playlistTracks.length + " tracks"
+                    text: playlists.playlistTracks.length + (playlists.playlistTracks.length === 1 ? " track" : " tracks")
+                        + (playlists.selectedPlaylistDurationMs > 0 ? " · " + root.formatTotalDuration(playlists.selectedPlaylistDurationMs) : "")
                     role: "technical"
                     technical: true
                     color: MichiPalette.textSecondary
                 }
             }
+
             Item { Layout.fillWidth: true }
+
             MichiIconButton {
                 iconName: "pin"
-                // M9-R1I: pin state derives from the navigated playlist
-                // (selectedPlaylistPinned projection) — never playlists[0].
                 selected: playlists.selectedPlaylistPinned
                 accessibleName: playlists.selectedPlaylistPinned
                     ? qsTr("Unpin playlist") : qsTr("Pin playlist")
                 onClicked: root.togglePinRequested()
             }
+
             MichiButton {
-                text: qsTr("Play")
+                text: qsTr("Play Now")
                 variant: "primary"
                 iconName: "play"
                 enabled: playlists.playlistTracks.length > 0
-                accessibleName: qsTr("Play playlist")
+                accessibleName: qsTr("Play playlist now")
                 onClicked: root.playRequested()
             }
+
+            MichiButton {
+                text: qsTr("Add to Queue")
+                variant: "secondary"
+                iconName: "queue"
+                enabled: playlists.playlistTracks.length > 0
+                accessibleName: qsTr("Add playlist to queue")
+                onClicked: playlists.queue_selected_playlist()
+            }
+
             MichiIconButton {
                 iconName: "sliders"
                 accessibleName: qsTr("More options")
@@ -96,9 +134,6 @@ Item {
             }
         }
 
-        // M9-R1I: only ONE surface owns the body — the track list hides
-        // when empty (no hidden ListView consuming layout space) and the
-        // EmptyState fills the available height exclusively.
         PlaylistTrackList {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -121,6 +156,15 @@ Item {
     MichiMenu {
         id: detailMenu
         MenuItem {
+            text: qsTr("Change Cover…")
+            onTriggered: coverDialog.open()
+        }
+        MenuItem {
+            text: qsTr("Use Automatic Mosaic")
+            visible: (playlists.selectedPlaylistCustomCoverPath || "") !== ""
+            onTriggered: playlists.remove_custom_cover(root.playlistId)
+        }
+        MenuItem {
             objectName: "playlistDetailRenameAction"
             text: qsTr("Rename")
             onTriggered: root.renameRequested(
@@ -133,5 +177,4 @@ Item {
                 root.playlistId, playlists.selectedPlaylistName)
         }
     }
-
 }
