@@ -569,6 +569,14 @@ class EnrichmentService:
         mappings are PRESERVED."""
         self._repository.clear_knowledge()
 
+    def clear_artist_knowledge(self, local_artist_key: str) -> None:
+        """M6.9F: per-entity intent — knowledge only, identity preserved."""
+        self._repository.delete_artist_profile(local_artist_key)
+
+    def clear_album_knowledge(self, local_album_key: str) -> None:
+        """M6.9F: per-entity intent — knowledge only, identity preserved."""
+        self._repository.delete_album_profile(local_album_key)
+
     def clear_identities(self) -> None:
         """R2 safest public contract: invalidate ALL pending requests,
         clear the identity authority, clear active knowledge. No old
