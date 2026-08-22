@@ -76,6 +76,15 @@ reconstruct services nor turn AudioPort into a God interface.
 - Initial lifecycle is UNINITIALIZED (startup before any activation) —
   it never falsely implies "Qt unavailable".
 
+## Implementation realization (M11.3B)
+
+- M11.3B made AudioTransportRouter PRODUCTIVE with Qt Multimedia as the
+  reference provider: the productive graph is QtEngineProvider →
+  QtMultimediaBackend → AudioTransportRouter → PlaybackService/
+  PlaybackCoordinator (one router instance, one owned backend, engine state
+  READY). Shutdown honors SWITCH ORDER (router detach before provider
+  close); provider close is exception-safe (ownership released in finally).
+
 ## Alternatives rejected
 
 - **GStreamer via ctypes/subprocess-only**: rejects GI typelib surface used by

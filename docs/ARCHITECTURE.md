@@ -149,12 +149,12 @@ engines adapt TO Michi contracts, never the reverse:
   never persists `hw:N`/card-index as canonical identity.
   ADR: docs/adr/0007-multi-engine-audio-runtime.md.
 
-  **Wiring truth (M11.3A-R1)**: the router is IMPLEMENTED / TESTED as
-  foundation, but the CURRENT productive graph still connects
-  PlaybackService/PlaybackCoordinator DIRECTLY to QtMultimediaBackend.
-  The router becomes productive in M11.3B (QtEngineProvider →
-  QtMultimediaBackend → AudioTransportRouter → services; one router
-  instance for both consumers).
+  **Wiring truth (M11.3B)**: the router IS PRODUCTIVE — the current graph
+  connects PlaybackService/PlaybackCoordinator through ONE
+  AudioTransportRouter bound to the Qt provider's single owned backend
+  (QtEngineProvider → QtMultimediaBackend → AudioTransportRouter →
+  services). GStreamer/MPD adapters will attach behind the same router in
+  M11.3C/M11.3D.
 - **Audio Lab boundary**: a future DSP stage (CamillaDSP-style external
   process) may insert between Engine and Output Policy AFTER PLAYER STABLE;
   the architecture leaves the seam, the stage is not implemented.

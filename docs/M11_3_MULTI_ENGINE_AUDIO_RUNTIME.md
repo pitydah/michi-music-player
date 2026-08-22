@@ -1,10 +1,10 @@
 # M11.3 — Multi-Engine Audio Runtime (contract)
 
 Implementation contract for the multi-engine audio runtime. Status: **IN
-PROGRESS — M11.3A DONE / TESTED / FROZEN** (authorized by the 2026-08-21
-product-owner realignment; foundation delivered 2026-08-22). This document
-defines the M11.3 contracts and records implementation status for each
-subphase.
+PROGRESS — M11.3A + M11.3B DONE / TESTED / FROZEN** (authorized by the
+2026-08-21 product-owner realignment; foundation 2026-08-22, productive Qt
+runtime 2026-08-22). This document defines the M11.3 contracts and records
+implementation status for each subphase.
 
 ## Resolved binding decisions (M11.3A, ADR 0007)
 
@@ -24,39 +24,31 @@ subphase.
 | Subphase / piece | Status |
 | --- | --- |
 | M11.3A domain contracts | IMPLEMENTED / TESTED |
-| M11.3A AudioTransportRouter | IMPLEMENTED / TESTED — **NOT PRODUCTIVELY WIRED** |
+| M11.3A AudioTransportRouter | IMPLEMENTED / TESTED — **PRODUCTIVELY WIRED (M11.3B)** |
 | M11.3A registry | IMPLEMENTED / TESTED |
 | M11.3A AudioEngineService | IMPLEMENTED FOUNDATION — NO SWITCHING YET |
-| Qt provider | IMPLEMENTED FOUNDATION — productive lifecycle integration M11.3B |
+| Qt provider | IMPLEMENTED — **PRODUCTIVE REFERENCE ENGINE (M11.3B)**; backend ownership + exception-safe close |
 | GStreamer provider | PROBE ONLY — adapter M11.3C |
 | MPD provider | PROBE ONLY — managed adapter M11.3D |
 | Engine availability runtime | foundation now — full discovery M11.3E |
 | Selection / persistence | M11.3F |
 | Failure convergence | M11.3G |
 
-**CURRENT PRODUCTIVE PATH (unchanged by M11.3A):**
-
-```
-PlaybackService / PlaybackCoordinator
-      ↓
-QtMultimediaBackend            (direct — no router yet)
-```
-
-**TARGET AFTER M11.3B (productive wiring):**
+**CURRENT PRODUCTIVE PATH (since M11.3B):**
 
 ```
 QtEngineProvider
       ↓
-QtMultimediaBackend
+QtMultimediaBackend           (ONE owned backend)
       ↓
-AudioTransportRouter           (ONE instance for both consumers)
-      ↓
-PlaybackService / PlaybackCoordinator
+AudioTransportRouter          (ONE instance for both consumers)
+     ↙                    ↘
+PlaybackService         PlaybackCoordinator
 ```
 
-The SAME router instance is used by both consumers. Until M11.3B, the router
-is IMPLEMENTED / TESTED / FOUNDATIONAL only — the bootstrap graph is
-deliberately NOT migrated in M11.3A(-R1).
+The SAME router instance is injected into both consumers; the provider owns
+the single Qt backend. M11.3C (GStreamer) and M11.3D (MPD) will add their
+adapters behind the same router.
 
 **SWITCH ORDER (recorded for M11.3F, validated for Qt in M11.3B):**
 STOP → router detach/unbind → provider close → target provider open →
