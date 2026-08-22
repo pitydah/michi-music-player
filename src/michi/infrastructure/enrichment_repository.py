@@ -297,13 +297,26 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
                     raise EnrichmentSchemaError(
                         "enrichment tables exist without version metadata"
                     )
-                self._create_knowledge_tables(conn)
-                self._create_meta_table(conn)
-                self._create_identity_tables_v3(conn)
-                conn.execute(
-                    "INSERT INTO enrichment_meta(key, value) VALUES(?, ?)",
-                    (_VERSION_KEY, str(CURRENT_ENRICHMENT_SCHEMA)),
-                )
+                # R3.2.1 TRANSACTIONAL INITIALIZATION: a brand-new
+                # enrichment.db is created atomically — all tables plus
+                # the version row commit together, and the resulting
+                # schema is validated BEFORE COMMIT. A failure leaves NO
+                # partial enrichment schema.
+                conn.execute("BEGIN")
+                try:
+                    self._create_knowledge_tables(conn)
+                    self._create_meta_table(conn)
+                    self._create_identity_tables_v3(conn)
+                    conn.execute(
+                        "INSERT INTO enrichment_meta(key, value) VALUES(?, ?)",
+                        (_VERSION_KEY, str(CURRENT_ENRICHMENT_SCHEMA)),
+                    )
+                    self._validate_current_schema(conn)
+                    conn.execute("COMMIT")
+                except Exception:
+                    with contextlib.suppress(sqlite3.Error):
+                        conn.execute("ROLLBACK")
+                    raise
                 return
             row = conn.execute(
                 "SELECT value FROM enrichment_meta WHERE key = ?", (_VERSION_KEY,)
@@ -463,6 +476,20 @@ class SqliteEnrichmentRepository(KnowledgeRepositoryPort, IdentityRepositoryPort
             rows = conn.execute(f"SELECT {columns} FROM {table}").fetchall()
             for row in rows:
                 try:
+                    # R3.2.1: the LEGACY boolean is validated as a
+                    # historical INTEGER flag (exactly 0 or 1) — it has
+                    # ZERO current authority (MatchMethod is the
+                    # authority) and is dropped in V3.
+                    confirmed_index = 4 if table == "artist_identity" else 5
+                    confirmed = row[confirmed_index]
+                    if (
+                        isinstance(confirmed, bool)
+                        or not isinstance(confirmed, int)
+                        or confirmed not in (0, 1)
+                    ):
+                        raise EnrichmentStorageError(
+                            f"invalid legacy manually_confirmed {confirmed!r}"
+                        )
                     if table == "artist_identity":
                         SqliteEnrichmentRepository._artist_identity_from_row(
                             (row[0], row[1], row[2], row[3], row[5])
