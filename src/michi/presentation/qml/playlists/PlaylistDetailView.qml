@@ -114,12 +114,18 @@ Item {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: coverDialog.open()
+                        onPressed: coverButton.forceActiveFocus()
+
+                        Keys.onReturnPressed: coverDialog.open()
+                        Keys.onEnterPressed: coverDialog.open()
+                        Keys.onSpacePressed: coverDialog.open()
 
                         Rectangle {
                             anchors.fill: parent
                             radius: MichiRadius.lg
                             color: MichiPalette.obsidianDeep
-                            opacity: coverMouseArea.containsMouse ? 0.65 : 0
+                            opacity: coverMouseArea.containsMouse
+                                || coverButton.activeFocus ? 0.65 : 0
                             Behavior on opacity {
                                 NumberAnimation { duration: MichiMotion.micro }
                             }
@@ -128,6 +134,7 @@ Item {
                                 anchors.centerIn: parent
                                 spacing: 4
                                 visible: coverMouseArea.containsMouse
+                                    || coverButton.activeFocus
                                 MichiIcon {
                                     name: "sliders"
                                     width: 24
@@ -144,6 +151,21 @@ Item {
                                 }
                             }
                         }
+
+                        // Keyboard focus surface: Tab-reachable, Enter/Space opens the dialog
+                        Item {
+                            id: coverButton
+                            anchors.fill: parent
+                            focusPolicy: Qt.StrongFocus
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.Button
+                            Accessible.name: qsTr("Change playlist cover")
+                            Accessible.description: qsTr("Opens a file dialog to choose a custom cover image")
+                            Keys.onReturnPressed: coverDialog.open()
+                            Keys.onEnterPressed: coverDialog.open()
+                            Keys.onSpacePressed: coverDialog.open()
+                        }
+                        MichiFocusRing { visualFocus: coverButton.activeFocus && MichiAccessibility.keyboardMode }
                     }
                 }
             }

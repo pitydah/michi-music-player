@@ -10,6 +10,8 @@ ListView {
 
     property var albumModel: library.albums
     property string sortMode: "title"
+    property bool sortDescending: false
+    signal sortRequested(string mode)
     readonly property bool showArtistColumn: width >= 620
     readonly property bool showYearColumn: width >= 500
     readonly property bool showTrackCountColumn: width >= 760
@@ -41,6 +43,8 @@ ListView {
         showDuration: root.showDurationColumn
         showTechnical: root.showTechnicalColumn
         sortMode: root.sortMode
+        sortDescending: root.sortDescending
+        onSortRequested: mode => root.sortRequested(mode)
     }
 
     Keys.onReturnPressed: {

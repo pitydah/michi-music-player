@@ -89,6 +89,8 @@ Item {
             clip: true
             model: root.rows
             spacing: 2
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: MichiScrollBar { }
             delegate: ItemDelegate {
                 id: trackItem
                 width: ListView.view.width

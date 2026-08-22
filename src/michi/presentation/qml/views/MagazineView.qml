@@ -50,10 +50,21 @@ Item {
                 radius: MichiRadius.lg
                 color: MichiPalette.obsidianRaised
                 border.width: 1
-                border.color: heroHover.hovered
-                    ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
+                border.color: heroTap.pressed
+                    ? MichiSemanticColors.auroraCyanBorder
+                    : heroHover.hovered
+                        ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
                 clip: true
                 visible: root.heroAlbum !== null
+                focusPolicy: Qt.StrongFocus
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Button
+                Accessible.name: root.heroAlbum
+                    ? root.heroAlbum.title + " by " + root.heroAlbum.artist : ""
+
+                Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); if (root.heroAlbum) library.select_album(root.heroAlbum.key) }
+                Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); if (root.heroAlbum) library.select_album(root.heroAlbum.key) }
+                Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); if (root.heroAlbum) library.select_album(root.heroAlbum.key) }
 
                 RowLayout {
                     anchors.fill: parent
@@ -118,12 +129,8 @@ Item {
                 }
 
                 HoverHandler { id: heroHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler {
-                    onTapped: {
-                        if (root.heroAlbum)
-                            library.select_album(root.heroAlbum.key)
-                    }
-                }
+                TapHandler { id: heroTap; onTapped: { if (root.heroAlbum) library.select_album(root.heroAlbum.key) } }
+                MichiFocusRing { visualFocus: heroCard.activeFocus && MichiAccessibility.keyboardMode }
             }
 
             // 2. Medium Features (2 larger cards)
@@ -146,10 +153,18 @@ Item {
                         color: medHover.hovered
                             ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
                         border.width: 1
-                        border.color: medHover.hovered
-                            ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
+                        border.color: medTap.pressed
+                            ? MichiSemanticColors.auroraCyanBorder
+                            : medHover.hovered
+                                ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
+                        focusPolicy: Qt.StrongFocus
+                        activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: modelData.title + " by " + modelData.artist
+
+                        Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
+                        Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
+                        Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
 
                         RowLayout {
                             anchors.fill: parent
@@ -196,7 +211,8 @@ Item {
                         }
 
                         HoverHandler { id: medHover; cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: library.select_album(modelData.key) }
+                        TapHandler { id: medTap; onTapped: library.select_album(modelData.key) }
+                        MichiFocusRing { visualFocus: medFeature.activeFocus && MichiAccessibility.keyboardMode }
                     }
                 }
             }
@@ -221,10 +237,18 @@ Item {
                         color: compHover.hovered
                             ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
                         border.width: 1
-                        border.color: compHover.hovered
-                            ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
+                        border.color: compTap.pressed
+                            ? MichiSemanticColors.auroraCyanBorder
+                            : compHover.hovered
+                                ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
+                        focusPolicy: Qt.StrongFocus
+                        activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: modelData.title + " by " + modelData.artist
+
+                        Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
+                        Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
+                        Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
 
                         RowLayout {
                             anchors.fill: parent
@@ -273,7 +297,8 @@ Item {
                         }
 
                         HoverHandler { id: compHover; cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: library.select_album(modelData.key) }
+                        TapHandler { id: compTap; onTapped: library.select_album(modelData.key) }
+                        MichiFocusRing { visualFocus: compactFeature.activeFocus && MichiAccessibility.keyboardMode }
                     }
                 }
             }

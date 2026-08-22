@@ -1,6 +1,9 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
+import "../patterns"
 import "../theme"
 
 ListView {
@@ -18,9 +21,26 @@ ListView {
     keyNavigationEnabled: true
     headerPositioning: ListView.InlineHeader
 
-    header: TrackTableHeader {
+    ScrollBar.vertical: MichiScrollBar { }
+
+    header: Item {
         width: root.width
-        actionColumnWidth: 76
+        height: root.count > 0 ? songsTableHeader.implicitHeight : root.height
+
+        TrackTableHeader {
+            id: songsTableHeader
+            width: parent.width
+            actionColumnWidth: 76
+            visible: root.count > 0
+        }
+
+        EmptyState {
+            anchors.fill: parent
+            visible: root.count === 0
+            title: qsTr("No songs in your library")
+            message: qsTr("Scan a music folder from the toolbar to populate your library.")
+            iconName: "track"
+        }
     }
 
     delegate: TrackRow {

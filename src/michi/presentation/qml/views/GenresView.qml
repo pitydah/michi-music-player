@@ -1,6 +1,9 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
+import "../patterns"
 import "../theme"
 
 // GenresView — Audiophile Genre navigation with direct search filtering
@@ -14,6 +17,17 @@ ListView {
     clip: true
     spacing: MichiSpacing.xs
     boundsBehavior: Flickable.StopAtBounds
+
+    ScrollBar.vertical: MichiScrollBar { }
+
+    header: EmptyState {
+        width: root.width
+        height: root.height
+        visible: root.count === 0
+        title: qsTr("No genres found")
+        message: qsTr("Scan a music folder to build genre navigation.")
+        iconName: "genre"
+    }
 
     delegate: MichiEntityRow {
         required property var modelData

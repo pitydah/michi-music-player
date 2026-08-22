@@ -18,6 +18,7 @@ Item {
     property string customCoverPath: ""
     property var mosaicArtworkPaths: []
     property bool pinned: false
+    property bool selected: false
     signal openRequested()
     signal playRequested()
     signal pinToggled()
@@ -70,13 +71,26 @@ Item {
         radius: MichiRadius.lg
         color: hoverHandler.hovered
             ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
-        border.width: 1
-        border.color: hoverHandler.hovered
-            ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
+        border.width: root.selected ? 1 : 1
+        border.color: root.selected
+            ? MichiSemanticColors.auroraCyanBorder
+            : hoverHandler.hovered
+                ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }
         }
+    }
+
+    // Keyboard-current indicator (grid arrow-key navigation)
+    Rectangle {
+        visible: root.selected
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.min(parent.width - MichiSpacing.xl * 2, 32)
+        height: 2
+        radius: 1
+        color: MichiPalette.auroraCyan
     }
 
     ColumnLayout {

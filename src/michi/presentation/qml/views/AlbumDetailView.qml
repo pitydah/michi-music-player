@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../media"
@@ -280,6 +281,8 @@ ColumnLayout {
                 spacing: MichiSpacing.xs
                 boundsBehavior: Flickable.StopAtBounds
                 headerPositioning: ListView.InlineHeader
+
+                ScrollBar.vertical: MichiScrollBar { }
 
                 header: TrackTableHeader {
                     width: albumTracksList.width

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../media"
@@ -98,6 +99,8 @@ ColumnLayout {
         boundsBehavior: Flickable.StopAtBounds
         keyNavigationEnabled: true
         headerPositioning: ListView.InlineHeader
+
+        ScrollBar.vertical: MichiScrollBar { }
 
         header: TrackTableHeader {
             width: artistTracksList.width

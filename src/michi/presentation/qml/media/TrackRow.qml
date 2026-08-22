@@ -35,7 +35,11 @@ Rectangle {
     signal removeRequested()
     readonly property string durationText: duration.length > 0
         ? duration : formatDuration(durationMs)
-    implicitHeight: showArtwork ? Math.max(MichiThemeState.rowHeight, 44) : MichiThemeState.rowHeight
+    // Minimum height keeps action icon-buttons (controlMedium = 36px)
+    // comfortably contained in every density, artwork rows add their own size.
+    implicitHeight: showArtwork
+        ? Math.max(MichiThemeState.rowHeight, 44)
+        : Math.max(MichiThemeState.rowHeight, MichiMetrics.controlMedium)
     color: selected || playing ? MichiSemanticColors.surfaceSelected
         : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
     radius: MichiRadius.sm
@@ -140,8 +144,8 @@ Rectangle {
             visible: root.showFavorite
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected || root.favorite ? 1 : 0.18
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
+            Layout.preferredWidth: MichiMetrics.controlMedium
+            Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "heart"
             selected: root.favorite
             accessibleName: root.favorite ? "Remove from favorites" : "Add to favorites"
@@ -151,8 +155,8 @@ Rectangle {
             visible: root.showAddToPlaylist
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected ? 1 : 0.18
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
+            Layout.preferredWidth: MichiMetrics.controlMedium
+            Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "add"
             accessibleName: "Add to playlist"
             onClicked: root.addToPlaylistRequested()
@@ -161,8 +165,8 @@ Rectangle {
             visible: root.showInspector
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected ? 1 : 0.18
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
+            Layout.preferredWidth: MichiMetrics.controlMedium
+            Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "info"
             accessibleName: "Track information"
             onClicked: root.inspectorRequested()
@@ -171,8 +175,8 @@ Rectangle {
             visible: root.showRemove
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected ? 1 : 0.18
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
+            Layout.preferredWidth: MichiMetrics.controlMedium
+            Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "trash"
             accessibleName: "Remove from queue"
             onClicked: root.removeRequested()

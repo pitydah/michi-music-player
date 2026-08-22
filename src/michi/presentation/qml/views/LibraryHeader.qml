@@ -84,8 +84,8 @@ PageHeader {
         MichiIconButton {
             id: viewOptionsBtn
             anchors.centerIn: parent
-            width: 34
-            height: 34
+            width: MichiMetrics.controlMedium
+            height: MichiMetrics.controlMedium
             iconName: "sliders"
             accessibleName: "View options"
             selected: viewOptionsPopup.visible || root.hasNonDefaultOptions

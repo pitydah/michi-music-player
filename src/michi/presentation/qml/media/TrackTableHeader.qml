@@ -11,7 +11,9 @@ Rectangle {
     property bool showArtwork: true
     property int actionColumnWidth: 0
 
-    implicitHeight: 30
+    // Matches the minimum TrackRow height (controlMedium) so the header
+    // never reads shorter than its rows.
+    implicitHeight: MichiMetrics.controlMedium
     color: MichiSemanticColors.controlSurface
     radius: MichiRadius.sm
     border.width: 1

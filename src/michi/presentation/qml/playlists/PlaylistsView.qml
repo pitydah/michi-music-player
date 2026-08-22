@@ -195,27 +195,70 @@ Item {
             cellWidth: Math.max(220, (root.width - MichiSpacing.xl * 2) / Math.max(1, Math.floor((root.width - MichiSpacing.xl) / 240)))
             cellHeight: 260
             model: root.filteredPlaylists
-            delegate: PlaylistCard {
-                width: gridView.cellWidth - MichiSpacing.lg
-                height: gridView.cellHeight - MichiSpacing.lg
-                playlistId: modelData.playlistId
-                playlistName: modelData.name
-                trackCount: modelData.trackCount
-                durationMs: modelData.durationMs || 0
-                customCoverPath: modelData.customCoverPath || ""
-                mosaicArtworkPaths: modelData.mosaicArtworkPaths || []
-                pinned: modelData.pinned
-                onOpenRequested: root.openPlaylistRequested(modelData.playlistId)
-                onPlayRequested: root.playPlaylistRequested(modelData.playlistId)
-                onPinToggled: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
-                onChangeCoverRequested: {
-                    root.pendingCoverPlaylistId = modelData.playlistId
-                    coverDialog.open()
+            keyNavigationEnabled: true
+            keyNavigationWraps: false
+            activeFocusOnTab: true
+            focus: true
+            Accessible.role: Accessible.List
+            Accessible.name: "Playlists in grid view"
+            Accessible.description: "Use arrow keys to browse and Enter to open a playlist"
+
+            Keys.onReturnPressed: {
+                if (currentIndex >= 0 && currentIndex < root.filteredPlaylists.length)
+                    root.openPlaylistRequested(root.filteredPlaylists[currentIndex].playlistId)
+            }
+            Keys.onEnterPressed: {
+                if (currentIndex >= 0 && currentIndex < root.filteredPlaylists.length)
+                    root.openPlaylistRequested(root.filteredPlaylists[currentIndex].playlistId)
+            }
+            Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Home) {
+                    currentIndex = count > 0 ? 0 : -1
+                    positionViewAtBeginning()
+                    event.accepted = true
+                } else if (event.key === Qt.Key_End) {
+                    currentIndex = count > 0 ? count - 1 : -1
+                    positionViewAtEnd()
+                    event.accepted = true
                 }
-                onRenameRequested: root.renamePlaylistRequested(
-                    modelData.playlistId, modelData.name)
-                onDeleteRequested: root.deletePlaylistRequested(
-                    modelData.playlistId, modelData.name)
+            }
+
+            delegate: Item {
+                id: playlistCell
+                required property int index
+                required property var modelData
+                readonly property bool current: GridView.isCurrentItem
+
+                width: gridView.cellWidth
+                height: gridView.cellHeight
+
+                PlaylistCard {
+                    anchors.fill: parent
+                    anchors.margins: MichiSpacing.lg / 2
+                    selected: playlistCell.current
+                    playlistId: playlistCell.modelData.playlistId
+                    playlistName: playlistCell.modelData.name
+                    trackCount: playlistCell.modelData.trackCount
+                    durationMs: playlistCell.modelData.durationMs || 0
+                    customCoverPath: playlistCell.modelData.customCoverPath || ""
+                    mosaicArtworkPaths: playlistCell.modelData.mosaicArtworkPaths || []
+                    pinned: playlistCell.modelData.pinned
+                    onActiveFocusChanged: {
+                        if (activeFocus)
+                            gridView.currentIndex = playlistCell.index
+                    }
+                    onOpenRequested: root.openPlaylistRequested(playlistCell.modelData.playlistId)
+                    onPlayRequested: root.playPlaylistRequested(playlistCell.modelData.playlistId)
+                    onPinToggled: root.pinPlaylistRequested(playlistCell.modelData.playlistId, !playlistCell.modelData.pinned)
+                    onChangeCoverRequested: {
+                        root.pendingCoverPlaylistId = playlistCell.modelData.playlistId
+                        coverDialog.open()
+                    }
+                    onRenameRequested: root.renamePlaylistRequested(
+                        playlistCell.modelData.playlistId, playlistCell.modelData.name)
+                    onDeleteRequested: root.deletePlaylistRequested(
+                        playlistCell.modelData.playlistId, playlistCell.modelData.name)
+                }
             }
         }
 

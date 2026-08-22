@@ -14,7 +14,7 @@ QtObject {
     readonly property color smokeRaised: "#282D36"
     readonly property color textPrimary: "#ECEEF3"
     readonly property color textSecondary: "#9CA1AE"
-    readonly property color textMuted: "#686E7C"
+    readonly property color textMuted: "#8A90A0" // WCAG AA >=4.5:1 on obsidian/graphite/smoke
     readonly property color textDisabled: "#4C515D"
     readonly property color auroraBlue: "#4CA6FF"
     readonly property color auroraCyan: "#21D6E6"

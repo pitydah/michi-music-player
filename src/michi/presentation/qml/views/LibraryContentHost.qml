@@ -19,6 +19,9 @@ ColumnLayout {
     property string albumTimelineGrouping: "decade"
     property real albumZoom: 1.0
     property var _content: null   // the current tab view
+    signal scanRequested()
+    signal sortModeRequested(string mode)
+    signal sortDirectionRequested(bool descending)
 
     // M6.7: explicit per-tab management. The object tree must NOT keep the
     // previous tab alive after a switch (the findChild unload contract in
@@ -122,7 +125,10 @@ ColumnLayout {
         visible: library.fileCount === 0
             && (library.scanStatus === "" || library.scanStatus === "IDLE")
         title: "No music yet"
-        message: "Choose a music directory above and scan it to build your local library."
+        message: "Scan a music folder to build your local library. Everything stays on your device."
+        actionText: "Choose Music Folder"
+        iconName: "folder"
+        onActionRequested: root.scanRequested()
     }
 
     LoadingState {
@@ -154,6 +160,8 @@ ColumnLayout {
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
             albumZoom: root.albumZoom
+            onSortModeRequested: mode => root.sortModeRequested(mode)
+            onSortDirectionRequested: descending => root.sortDirectionRequested(descending)
         }
     }
 

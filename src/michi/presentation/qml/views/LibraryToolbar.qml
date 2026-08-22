@@ -34,6 +34,17 @@ MichiGlassSurface {
         return "Search title, artist, album, genre or composer…"
     }
 
+    // Shared scan entry point (toolbar button + empty-library CTA): scans the
+    // configured directory or opens the source picker when none is set.
+    function performScan() {
+        if (typeof library === "undefined" || !library)
+            return
+        if (library.currentDir.length > 0)
+            library.scan(library.currentDir)
+        else
+            sourcePopover.open()
+    }
+
     ColumnLayout {
         id: toolbarContent
         anchors.fill: parent
@@ -143,14 +154,7 @@ MichiGlassSurface {
                         enabled: !root.scanning
                             && typeof library !== "undefined" && library
                             && library.currentDir.length > 0
-                        onClicked: {
-                            if (typeof library !== "undefined" && library) {
-                                if (library.currentDir.length > 0)
-                                    library.scan(library.currentDir)
-                                else
-                                    sourcePopover.open()
-                            }
-                        }
+                        onClicked: root.performScan()
                     }
                 }
             }
