@@ -1,8 +1,45 @@
 # M11.3 — Multi-Engine Audio Runtime (contract)
 
-Implementation contract for the multi-engine audio runtime. Status: **NOT
-STARTED** (authorized by the 2026-08-21 product-owner realignment; scheduled
-after M9-R1 refreeze). This document defines contracts, not implementation.
+Implementation contract for the multi-engine audio runtime. Status: **IN
+PROGRESS — M11.3A DONE / TESTED / FROZEN** (authorized by the 2026-08-21
+product-owner realignment; foundation delivered 2026-08-22). This document
+defines contracts, not implementation.
+
+## Resolved binding decisions (M11.3A, ADR 0007)
+
+- **GStreamer binding: PyGObject / GObject Introspection**
+  (`gi.repository.Gst`, `gi.require_version("Gst", "1.0")`). Lazy,
+  infrastructure-only imports; GI/GStreamer are system/runtime capabilities,
+  NOT mandatory base dependencies — the base Michi wheel stays usable without
+  them. M13 owns final distro/package delivery.
+- **MPD client: in-repo minimal MPD protocol client** (no python-mpd2) over a
+  private Unix socket; command surface for M11.3D: `status`, `clear`, `addid`,
+  `playid`, `pause`, `stop`, `seekid`/`seekcur`, `setvol`, `currentsong`,
+  `idle`/`noidle` (if required for event convergence). No generic arbitrary
+  command execution is exposed to the application layer.
+
+## Stable router architecture (M11.3A)
+
+```
+PlaybackService / PlaybackCoordinator      (subscribe ONCE)
+      │
+      ▼
+AudioTransportRouter : AudioPort           (stable identity — never replaced)
+      │   + AudioTransportBindingPort (bind/unbind)
+      ▼
+current concrete AudioPort  (QtMultimediaBackend today)
+```
+
+- Router forwards commands and callbacks; on switch it detaches the old
+  backend and attaches the new one — no duplicate delivery, no stale
+  callbacks, no loss.
+- Commands with no bound backend raise `AudioTransportUnavailableError`
+  (deterministic failure; never silent no-op; never fabricated 0).
+- `AudioEngineService` owns AudioEngineState (SELECTED != ACTIVE);
+  `AudioEngineRegistry` owns the provider set (one per canonical id);
+  providers own engine lifecycle (probe/open/close).
+- Default selected engine: QT_MULTIMEDIA. Runtime switching belongs to
+  M11.3F (quiescent only).
 
 ## Purpose
 

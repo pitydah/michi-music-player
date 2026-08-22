@@ -139,11 +139,15 @@ engines adapt TO Michi contracts, never the reverse:
 - Engine switching for 1.0 is performed from a QUIESCENT/STOPPED state
   (stop → close → init → bind → validate → ready); no seamless handover
   mid-track. Selection is persisted.
-- **Provisional owners (finalized in M11.3A/M11.4A)**: `AudioEngineService`
-  → AudioEngineState; `AudioOutputService` → AudioOutputState;
-  `AudioDeviceRegistry` → canonical discovered-device projection.
+- **Owners (M11.3A)**: `AudioEngineService` → AudioEngineState (sole
+  authority; SELECTED != ACTIVE); `AudioEngineRegistry` → provider set (one
+  per canonical id, deterministic order); providers (`AudioEngineProviderPort`)
+  own engine lifecycle (probe/open/close). `AudioTransportRouter` implements
+  AudioPort + AudioTransportBindingPort — PlaybackService/Coordinator keep
+  subscribing to the SAME router object across engine switches.
   Backend-specific device strings live only in adapter bindings; the domain
   never persists `hw:N`/card-index as canonical identity.
+  ADR: docs/adr/0007-multi-engine-audio-runtime.md.
 - **Audio Lab boundary**: a future DSP stage (CamillaDSP-style external
   process) may insert between Engine and Output Policy AFTER PLAYER STABLE;
   the architecture leaves the seam, the stage is not implemented.
