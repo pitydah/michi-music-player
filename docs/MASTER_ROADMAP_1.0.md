@@ -89,7 +89,7 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 | M11.2D Startup Preflight     | TESTED     | Read-only preflight before any writable open; deterministic health routing; recovery staged (M11.2E installs for recoverable states); backend constructed only after preflight |
 | M11.2E Recovery              | TESTED     | Validated automatic restore + quarantine: healthy-LKG-authorized trusted candidate installed atomically after byte-exact quarantine of original artifacts; terminal states non-recovering; LKG preserved; field malformed stays on M11.2C | — (safe mode remains Post-1.0) |
 | M8-R1 Playlists Navigation   | TESTED     | DELIVERED (M8-R1, DONE): stable opaque `playlist_id` (UUID4; deterministic UUIDv5 legacy migration, no writeback on load, duplicate first-wins), identity-based PlaylistService CRUD, pinned/recent (MRU bounded 5, id-based, delete prunes), AppRoute.PLAYLISTS + playlist target semantics (rename keeps target, delete-selected converges to All Playlists), identity-driven bridges, minimal ContentHost route plumbing. 9f0aa0e..cc7422f; suite 1324 passed | M8 Navigation — TESTED / REFROZEN |
-| M11.3 Multi-Engine Runtime   | AUDITED    | Not implemented — research evidence collected (RESEARCH-01: engine abstraction, gapless, setformat, MPD policy; AUDIO_ENGINE_REFERENCE_AUDIT.md) | Work package M11.3 — READY |
+| M11.3 Multi-Engine Runtime   | AUDITED    | IN PROGRESS (C–G outstanding): M11.3A + M11.3A-R1 DONE, M11.3B + M11.3B-R1 DONE, M11.3B-R2 DONE (final integrity seal). Productive runtime: QtEngineProvider → QtMultimediaBackend → AudioTransportRouter → PlaybackService/PlaybackCoordinator; transactional startup, first-error-wins, six-callback contract verified. Remaining: C (GStreamer adapter), D (MPD adapter), E (availability), F (selection/persistence), G (convergence) | Work package M11.3 — IN PROGRESS |
 | M11.4 Audiophile Output/DAC  | AUDITED    | Not implemented — research evidence collected (RESEARCH-01: device identity, capabilities, profiles, DSD/DoP, volume; DAC_DEVICE_REFERENCE_AUDIT.md + AUDIOPHILE_FEATURE_MATRIX.md) | Work package M11.4 — READY |
 | M11.5 Audiophile Guarantees  | AUDITED    | Not implemented — research evidence collected (RESEARCH-01: bit-perfect contract, gapless ownership, cross-format degradation; BIT_PERFECT_CONTRACT_PROPOSAL.md) | Work package M11.5 — READY |
 
@@ -111,7 +111,7 @@ The ONE canonical execution order after the current baseline (M1–M11.2E + M7 S
 9. **M15 Release Candidate** — zero P0/P1, full docs, migration guide, signed RC artifacts.
 10. **M16 Michi Music Player 1.0 Stable** — public stable release, project FROZEN.
 
-**NEXT AUTHORIZED WP: M11.3 — MULTI-ENGINE AUDIO RUNTIME** (after M9-R1 DONE and M9 REFROZEN; per the product-owner realignment of 2026-08-21; `STATUS_MATRIX.md`, the M9 implementation contract and the M11.x contracts reference this document).
+**NEXT AUTHORIZED WP: M11.3C — GSTREAMER AUDIOPORT ADAPTER** (M11.3 overall is IN PROGRESS with A/B complete and C the next subphase; per the product-owner realignment of 2026-08-21; `STATUS_MATRIX.md`, the M9 implementation contract and the M11.x contracts reference this document).
 
 ### Historical / Superseded execution record
 
