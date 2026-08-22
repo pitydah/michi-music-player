@@ -9,7 +9,11 @@ and router parity. No real GStreamer runtime required (CI-safe).
 A small optional smoke test exercises the REAL GI runtime when available.
 """
 
+import os
 from pathlib import Path
+
+import pytest
+from PySide6.QtGui import QGuiApplication
 
 from michi.application.audio_transport_router import AudioTransportRouter
 from michi.domain.audio_engine import AudioEngineId
@@ -182,6 +186,15 @@ class FakeBindings:
     @property
     def MESSAGE_TYPE(self):  # noqa: N802 — GStreamer enum surface
         return _FakeMsgType
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication([])
+    yield app
 
 
 def _port(bindings=None):
