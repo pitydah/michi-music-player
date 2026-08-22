@@ -26,12 +26,12 @@ PageHeader {
     readonly property bool albumViewsVisible: currentTab === "albums"
         && (typeof library === "undefined" || !library || library.selectedAlbumKey === "")
     readonly property var albumViewModes: [
-        { value: "grid", label: "Grid", icon: "view-grid" },
-        { value: "cover", label: "PathView", icon: "view-path" },
-        { value: "vinyl", label: "Vinyl Wall", icon: "view-vinyl" },
-        { value: "timeline", label: "Timeline", icon: "view-timeline" },
-        { value: "magazine", label: "Magazine", icon: "view-magazine" },
-        { value: "list", label: "List", icon: "view-list" }
+        { value: "grid", label: qsTr("Grid"), icon: "view-grid" },
+        { value: "cover", label: qsTr("PathView"), icon: "view-path" },
+        { value: "vinyl", label: qsTr("Vinyl Wall"), icon: "view-vinyl" },
+        { value: "timeline", label: qsTr("Timeline"), icon: "view-timeline" },
+        { value: "magazine", label: qsTr("Magazine"), icon: "view-magazine" },
+        { value: "list", label: qsTr("List"), icon: "view-list" }
     ]
 
     readonly property bool hasNonDefaultOptions: MichiThemeState.density !== "standard"
@@ -68,7 +68,7 @@ PageHeader {
 
     MichiText {
         visible: root.albumViewsVisible && root.width >= 1120
-        text: "VIEWS"
+        text: qsTr("VIEWS")
         role: "technical"
         technical: true
         color: MichiPalette.textMuted
@@ -81,7 +81,7 @@ PageHeader {
         currentValue: root.albumMode
         compact: true
         accessiblePrefix: "Album view"
-        Accessible.name: "Album view"
+        Accessible.name: qsTr("Album view")
         onSelected: value => root.albumModeRequested(value)
     }
 
@@ -103,7 +103,7 @@ PageHeader {
             width: MichiMetrics.controlMedium
             height: MichiMetrics.controlMedium
             iconName: "sliders"
-            accessibleName: "View options"
+            accessibleName: qsTr("View options")
             selected: viewOptionsPopup.visible || root.hasNonDefaultOptions
             onClicked: {
                 if (viewOptionsPopup.visible) {

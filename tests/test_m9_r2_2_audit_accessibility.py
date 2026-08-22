@@ -118,7 +118,7 @@ def test_flat_views_have_empty_states():
 
 def test_empty_library_has_scan_cta():
     content = read("views/LibraryContentHost.qml")
-    assert 'actionText: "Choose Music Folder"' in content
+    assert 'actionText: qsTr("Choose Music Folder")' in content
     assert "onActionRequested: root.scanRequested()" in content
     toolbar = read("views/LibraryToolbar.qml")
     assert "function performScan()" in toolbar
@@ -400,3 +400,23 @@ def test_action_feedback_call_sites():
     queue = read("views/QueueView.qml")
     assert 'window.showToast(qsTr("Removed from queue"))' in queue
     assert 'window.showToast(qsTr("Queue cleared"))' in queue
+
+
+# ── Phase 4: full qsTr coverage (no intra-file mixes) ─────────────────────────
+
+
+def test_no_hardcoded_visible_strings_in_mixed_files():
+    magazine = read("views/MagazineView.qml")
+    assert 'text: qsTr("SPOTLIGHT")' in magazine
+    assert '"0%1", "", index + 2' in magazine
+    card = read("playlists/PlaylistCard.qml")
+    assert "Pinned playlist" in card  # accessible name stays (decorative dot)
+    toolbar = read("views/LibraryToolbar.qml")
+    assert 'text: qsTr("No results")' in toolbar
+    assert 'text: qsTr("Cancel")' in toolbar
+    header = read("views/LibraryHeader.qml")
+    assert 'label: qsTr("Grid")' in header
+    assert 'text: qsTr("VIEWS")' in header
+    settings = read("views/SettingsView.qml")
+    assert 'title: qsTr("Settings")' in settings
+    assert 'text: qsTr("High contrast")' in settings

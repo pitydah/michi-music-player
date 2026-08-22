@@ -31,7 +31,7 @@ Item {
         spacing: MichiSpacing.xs
         activeFocusOnTab: true
         Accessible.role: Accessible.List
-        Accessible.name: "Albums in magazine editorial view"
+        Accessible.name: qsTr("Albums in magazine editorial view")
 
         ScrollBar.vertical: ScrollBar {
             policy: ScrollBar.AsNeeded
@@ -87,7 +87,7 @@ Item {
                         spacing: MichiSpacing.xs
 
                         MichiText {
-                            text: "SPOTLIGHT"
+                            text: qsTr("SPOTLIGHT")
                             role: "technical"
                             technical: true
                             color: MichiPalette.auroraCyan
@@ -185,7 +185,7 @@ Item {
                                 spacing: MichiSpacing.xxs
 
                                 MichiText {
-                                    text: "0" + (index + 2)
+                                    text: qsTr("0%1", "", index + 2)
                                     role: "technical"
                                     technical: true
                                     color: MichiPalette.auroraPurple
@@ -267,7 +267,7 @@ Item {
                             }
 
                             MichiText {
-                                text: "0" + (index + 4)
+                                text: qsTr("0%1", "", index + 4)
                                 role: "technical"
                                 technical: true
                                 color: MichiPalette.textMuted

@@ -163,7 +163,7 @@ MichiGlassSurface {
                         font.weight: Font.DemiBold
                     }
                     MichiText {
-                        text: "LOCAL HI-FI"
+                        text: qsTr("LOCAL HI-FI")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted

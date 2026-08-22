@@ -32,8 +32,8 @@ GridView {
     focus: true
     cacheBuffer: cellHeight * 2
     Accessible.role: Accessible.List
-    Accessible.name: "Albums on the vinyl wall"
-    Accessible.description: "Use arrow keys to browse and Enter to open"
+    Accessible.name: qsTr("Albums on the vinyl wall")
+    Accessible.description: qsTr("Use arrow keys to browse and Enter to open")
 
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)
@@ -61,7 +61,7 @@ GridView {
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
         Accessible.selected: vinylTile.selected
-        Accessible.description: "Open album"
+        Accessible.description: qsTr("Open album")
 
         Rectangle {
             anchors.fill: parent

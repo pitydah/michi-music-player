@@ -56,7 +56,7 @@ Rectangle {
                 anchors.leftMargin: MichiSpacing.xs
                 spacing: MichiSpacing.xs
                 MichiText {
-                    text: "ALBUM"
+                    text: qsTr("ALBUM")
                     role: "technical"
                     technical: true
                     color: root.sortMode === "title"
@@ -89,7 +89,7 @@ Rectangle {
                 anchors.leftMargin: MichiSpacing.xs
                 spacing: MichiSpacing.xs
                 MichiText {
-                    text: "ALBUM ARTIST"
+                    text: qsTr("ALBUM ARTIST")
                     role: "technical"
                     technical: true
                     color: root.sortMode === "artist"
@@ -121,7 +121,7 @@ Rectangle {
                 spacing: MichiSpacing.xs
                 Item { Layout.fillWidth: true }
                 MichiText {
-                    text: "YEAR"
+                    text: qsTr("YEAR")
                     role: "technical"
                     technical: true
                     color: root.sortMode === "year"
@@ -152,7 +152,7 @@ Rectangle {
                 spacing: MichiSpacing.xs
                 Item { Layout.fillWidth: true }
                 MichiText {
-                    text: "TRACKS"
+                    text: qsTr("TRACKS")
                     role: "technical"
                     technical: true
                     horizontalAlignment: Text.AlignRight
@@ -184,7 +184,7 @@ Rectangle {
                 spacing: MichiSpacing.xs
                 Item { Layout.fillWidth: true }
                 MichiText {
-                    text: "TIME"
+                    text: qsTr("TIME")
                     role: "technical"
                     technical: true
                     horizontalAlignment: Text.AlignRight
@@ -209,7 +209,7 @@ Rectangle {
                 anchors.fill: parent
                 anchors.leftMargin: MichiSpacing.xs
                 MichiText {
-                    text: "FORMAT"
+                    text: qsTr("FORMAT")
                     role: "technical"
                     technical: true
                     color: MichiPalette.textMuted

@@ -67,7 +67,7 @@ ColumnLayout {
         message: library.hasDiagnostic
             ? library.diagnosticMessage
             : "The library could not be scanned. Check your music folder and try again."
-        actionText: "Retry scan"
+        actionText: qsTr("Retry scan")
         onActionRequested: root.scanRequested()
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? implicitHeight : 0
@@ -86,7 +86,7 @@ ColumnLayout {
             anchors.fill: parent
             spacing: MichiSpacing.sm
             MichiText {
-                text: "ADD TRACK TO"
+                text: qsTr("ADD TRACK TO")
                 role: "technical"
                 technical: true
                 color: MichiPalette.auroraPurple
@@ -111,7 +111,7 @@ ColumnLayout {
             Item { Layout.fillWidth: true }
             MichiIconButton {
                 iconName: "close"
-                accessibleName: "Cancel playlist selection"
+                accessibleName: qsTr("Cancel playlist selection")
                 onClicked: addTargetPath = ""
             }
         }
@@ -129,9 +129,9 @@ ColumnLayout {
         Layout.fillHeight: true
         visible: library.fileCount === 0
             && (library.scanStatus === "" || library.scanStatus === "IDLE")
-        title: "No music yet"
-        message: "Scan a music folder to build your local library. Everything stays on your device."
-        actionText: "Choose Music Folder"
+        title: qsTr("No music yet")
+        message: qsTr("Scan a music folder to build your local library. Everything stays on your device.")
+        actionText: qsTr("Choose Music Folder")
         iconName: "folder"
         onActionRequested: root.scanRequested()
     }
@@ -145,7 +145,7 @@ ColumnLayout {
         visible: library.fileCount === 0
             && library.scanStatus !== "" && library.scanStatus !== "IDLE"
             && library.scanStatus !== "FAILED" && library.scanStatus !== "CANCELLED"
-        message: "Building your library…"
+        message: qsTr("Building your library…")
     }
 
     Component {

@@ -42,16 +42,16 @@ MichiGlassSurface {
             spacing: MichiSpacing.sm
             PageHeader {
                 Layout.fillWidth: true
-                title: "Queue"
+                title: qsTr("Queue")
                 subtitle: root.count + (root.count === 1 ? " track" : " tracks")
             }
             MichiIconButton {
                 iconName: "close"
-                accessibleName: "Close queue"
+                accessibleName: qsTr("Close queue")
                 onClicked: root.closeRequested()
             }
             MichiButton {
-                text: "Clear"
+                text: qsTr("Clear")
                 variant: "ghost"
                 enabled: root.count > 0
                 onClicked: clearQueueDialog.open()
@@ -62,8 +62,8 @@ MichiGlassSurface {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: root.count === 0
-            title: "Queue is empty"
-            message: "Play a track from the library to start listening."
+            title: qsTr("Queue is empty")
+            message: qsTr("Play a track from the library to start listening.")
         }
 
         ListView {
@@ -80,7 +80,7 @@ MichiGlassSurface {
             activeFocusOnTab: true
             focus: true
             Accessible.role: Accessible.List
-            Accessible.name: "Queue tracks"
+            Accessible.name: qsTr("Queue tracks")
             ScrollBar.vertical: MichiScrollBar { }
 
             delegate: RowLayout {
@@ -114,14 +114,14 @@ MichiGlassSurface {
                 // row's own hover-reveal trash (TrackRow opacity pattern).
                 MichiIconButton {
                     iconName: "up"
-                    accessibleName: "Move track up"
+                    accessibleName: qsTr("Move track up")
                     enabled: index > 0
                     opacity: queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18
                     onClicked: root.moveRequested(index, index - 1)
                 }
                 MichiIconButton {
                     iconName: "down"
-                    accessibleName: "Move track down"
+                    accessibleName: qsTr("Move track down")
                     enabled: index + 1 < root.count
                     opacity: queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18
                     onClicked: root.moveRequested(index, index + 1)

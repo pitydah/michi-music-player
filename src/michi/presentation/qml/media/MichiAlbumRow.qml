@@ -34,7 +34,7 @@ Rectangle {
     Accessible.name: root.album
         ? root.album.title + " by " + root.album.artist
         : "Album"
-    Accessible.description: "Open album"
+    Accessible.description: qsTr("Open album")
 
     Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
     Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); root.activated() }

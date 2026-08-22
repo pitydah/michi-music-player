@@ -150,7 +150,7 @@ Rectangle {
             Layout.preferredWidth: MichiMetrics.controlMedium
             Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "add"
-            accessibleName: "Add to playlist"
+            accessibleName: qsTr("Add to playlist")
             onClicked: root.addToPlaylistRequested()
         }
         MichiIconButton {
@@ -160,7 +160,7 @@ Rectangle {
             Layout.preferredWidth: MichiMetrics.controlMedium
             Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "info"
-            accessibleName: "Track information"
+            accessibleName: qsTr("Track information")
             onClicked: root.inspectorRequested()
         }
         MichiIconButton {
@@ -170,7 +170,7 @@ Rectangle {
             Layout.preferredWidth: MichiMetrics.controlMedium
             Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "trash"
-            accessibleName: "Remove from queue"
+            accessibleName: qsTr("Remove from queue")
             onClicked: root.removeRequested()
         }
     }

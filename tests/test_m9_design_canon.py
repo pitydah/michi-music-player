@@ -166,7 +166,7 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "Behavior on scale" in button
     assert "MichiStatusChip" in toolbar
     assert 'import "../controls"' in content
-    assert 'text: "ADD TRACK TO"' in content
+    assert 'text: qsTr("ADD TRACK TO")' in content
     assert "MichiIconButton" in content
     assert "property bool revealed" in queue
     assert "Gradient.Horizontal" in now_playing
@@ -246,7 +246,7 @@ def test_library_navigation_and_path_selection_follow_the_canon() -> None:
     assert "width: Math.min(720" in path_view
     assert "anchors.leftMargin: MichiSpacing.xl" not in path_view
     assert "anchors.bottom: parent.bottom" in path_view
-    assert 'text: "Open album"' in path_view
+    assert 'text: qsTr("Open album")' in path_view
 
 
 def test_album_artwork_zoom_is_real_and_persistent() -> None:

@@ -6,7 +6,7 @@ import "../theme"
 
 MichiGlassSurface {
     id: root
-    property string title: "Track information"
+    property string title: qsTr("Track information")
     property var rows: []
     signal closeRequested()
     elevation: "elevated"

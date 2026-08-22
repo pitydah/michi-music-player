@@ -31,8 +31,8 @@ PathView {
     activeFocusOnTab: true
     focus: true
     Accessible.role: Accessible.List
-    Accessible.name: "Albums in PathView"
-    Accessible.description: "Use Left and Right to browse and Enter to open"
+    Accessible.name: qsTr("Albums in PathView")
+    Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
 
     Keys.onLeftPressed: decrementCurrentIndex()
     Keys.onRightPressed: incrementCurrentIndex()
@@ -250,7 +250,7 @@ PathView {
                 Layout.preferredWidth: MichiMetrics.controlMedium
                 Layout.preferredHeight: MichiMetrics.controlMedium
                 iconName: "chevron-left"
-                accessibleName: "Previous album"
+                accessibleName: qsTr("Previous album")
                 enabled: albumsPath.count > 1
                 onClicked: albumsPath.decrementCurrentIndex()
             }
@@ -258,15 +258,15 @@ PathView {
                 Layout.preferredWidth: MichiMetrics.controlMedium
                 Layout.preferredHeight: MichiMetrics.controlMedium
                 iconName: "chevron-right"
-                accessibleName: "Next album"
+                accessibleName: qsTr("Next album")
                 enabled: albumsPath.count > 1
                 onClicked: albumsPath.incrementCurrentIndex()
             }
             MichiButton {
-                text: "Play"
+                text: qsTr("Play")
                 iconName: "play"
                 variant: "primary"
-                accessibleName: "Play selected album"
+                accessibleName: qsTr("Play selected album")
                 onClicked: {
                     if (albumsPath.currentAlbum) {
                         library.select_album(albumsPath.currentAlbum.key)
@@ -275,10 +275,10 @@ PathView {
                 }
             }
             MichiButton {
-                text: "Open album"
+                text: qsTr("Open album")
                 iconName: "album"
                 variant: "secondary"
-                accessibleName: "Open selected album"
+                accessibleName: qsTr("Open selected album")
                 onClicked: {
                     if (albumsPath.currentAlbum)
                         library.select_album(albumsPath.currentAlbum.key)

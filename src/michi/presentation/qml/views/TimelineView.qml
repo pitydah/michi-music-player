@@ -30,8 +30,8 @@ ListView {
     section.labelPositioning: ViewSection.CurrentLabelAtStart
         | ViewSection.InlineLabels
     Accessible.role: Accessible.List
-    Accessible.name: "Album timeline"
-    Accessible.description: "Albums grouped chronologically"
+    Accessible.name: qsTr("Album timeline")
+    Accessible.description: qsTr("Albums grouped chronologically")
 
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)

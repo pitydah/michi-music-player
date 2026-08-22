@@ -39,13 +39,13 @@ ColumnLayout {
         spacing: MichiSpacing.sm
 
         MichiButton {
-            text: "Back"
+            text: qsTr("Back")
             iconName: "back"
             variant: "ghost"
             onClicked: library.clear_album_selection()
         }
         MichiText {
-            text: "Library"
+            text: qsTr("Library")
             role: "secondary"
             color: MichiPalette.textMuted
         }
@@ -157,7 +157,7 @@ ColumnLayout {
                     spacing: MichiSpacing.md
 
                     MichiButton {
-                        text: "Play album"
+                        text: qsTr("Play album")
                         variant: "primary"
                         iconName: "play"
                         enabled: library.albumTracks.length > 0
@@ -165,7 +165,7 @@ ColumnLayout {
                     }
 
                     MichiButton {
-                        text: "Shuffle"
+                        text: qsTr("Shuffle")
                         variant: "secondary"
                         iconName: "shuffle"
                         enabled: library.albumTracks.length > 0
@@ -198,7 +198,7 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "DURATION"
+                        text: qsTr("DURATION")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -211,7 +211,7 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "TRACKS"
+                        text: qsTr("TRACKS")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -224,7 +224,7 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "LIBRARY QUALITY"
+                        text: qsTr("LIBRARY QUALITY")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted

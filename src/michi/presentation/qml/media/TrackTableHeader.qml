@@ -28,7 +28,7 @@ Rectangle {
 
         MichiText {
             Layout.preferredWidth: 20
-            text: "#"
+            text: qsTr("#")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
@@ -41,7 +41,7 @@ Rectangle {
         }
         MichiText {
             Layout.fillWidth: true
-            text: "TITLE"
+            text: qsTr("TITLE")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
@@ -49,7 +49,7 @@ Rectangle {
         MichiText {
             visible: root.showArtistColumn
             Layout.preferredWidth: 160
-            text: "ARTIST"
+            text: qsTr("ARTIST")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
@@ -57,7 +57,7 @@ Rectangle {
         MichiText {
             visible: root.showAlbumColumn && !MichiThemeState.precisionMode
             Layout.preferredWidth: 180
-            text: "ALBUM"
+            text: qsTr("ALBUM")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
@@ -65,7 +65,7 @@ Rectangle {
         MichiText {
             visible: MichiThemeState.precisionMode
             Layout.preferredWidth: 150
-            text: "QUALITY"
+            text: qsTr("QUALITY")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
@@ -73,7 +73,7 @@ Rectangle {
         Item {
             Layout.preferredWidth: 48
             Layout.fillHeight: true
-            Accessible.name: "Duration"
+            Accessible.name: qsTr("Duration")
             MichiIcon {
                 anchors.centerIn: parent
                 width: MichiMetrics.iconSmall

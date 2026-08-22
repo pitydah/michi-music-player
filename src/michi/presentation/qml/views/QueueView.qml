@@ -48,7 +48,7 @@ Item {
             Layout.fillHeight: true
             Layout.preferredWidth: Math.max(360, Math.min(520, root.width * 0.46))
             Accessible.role: Accessible.Dialog
-            Accessible.name: "Queue"
+            Accessible.name: qsTr("Queue")
 
             QueuePanel {
                 anchors.top: parent.top

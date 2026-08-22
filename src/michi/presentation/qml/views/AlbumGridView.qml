@@ -39,8 +39,8 @@ GridView {
     focus: true
     cacheBuffer: cellHeight * 2
     Accessible.role: Accessible.List
-    Accessible.name: "Albums in grid view"
-    Accessible.description: "Use arrow keys to browse and Enter to open an album"
+    Accessible.name: qsTr("Albums in grid view")
+    Accessible.description: qsTr("Use arrow keys to browse and Enter to open an album")
 
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)

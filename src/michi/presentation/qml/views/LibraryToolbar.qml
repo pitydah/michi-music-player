@@ -98,7 +98,7 @@ MichiGlassSurface {
                         visible: typeof library !== "undefined" && library
                             && library.searchActive
                             && library.searchTotalCount === 0
-                        text: "No results"
+                        text: qsTr("No results")
                         tone: "warning"
                     }
 
@@ -129,7 +129,7 @@ MichiGlassSurface {
                             anchors.fill: parent
                             iconName: "folder"
                             selected: sourcePopover.visible
-                            accessibleName: "Music folder source"
+                            accessibleName: qsTr("Music folder source")
                             onClicked: {
                                 if (sourcePopover.visible)
                                     sourcePopover.close()
@@ -150,7 +150,7 @@ MichiGlassSurface {
                         iconName: "library"
                         variant: "secondary"
                         iconOnly: root.width < 980
-                        accessibleName: "Scan library"
+                        accessibleName: qsTr("Scan library")
                         enabled: !root.scanning
                             && typeof library !== "undefined" && library
                             && library.currentDir.length > 0
@@ -210,7 +210,7 @@ MichiGlassSurface {
                 elide: Text.ElideMiddle
             }
             MichiButton {
-                text: "Cancel"
+                text: qsTr("Cancel")
                 variant: "ghost"
                 visible: root.scanning
                 onClicked: { if (typeof library !== "undefined" && library) library.cancel_scan() }

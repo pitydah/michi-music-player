@@ -6,7 +6,7 @@ import "../theme"
 
 Item {
     id: root
-    property string title: "Nothing here yet"
+    property string title: qsTr("Nothing here yet")
     property string message: ""
     property string actionText: ""
     property string iconName: "library"

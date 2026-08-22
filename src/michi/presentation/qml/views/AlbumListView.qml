@@ -33,7 +33,7 @@ ListView {
     reuseItems: true
     headerPositioning: ListView.OverlayHeader
     Accessible.role: Accessible.Table
-    Accessible.name: "Albums in list view"
+    Accessible.name: qsTr("Albums in list view")
 
     header: AlbumTableHeader {
         width: root.width

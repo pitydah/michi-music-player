@@ -102,7 +102,7 @@ Item {
                     objectName: "searchOverlayInput"
                     Layout.fillWidth: true
                     text: library.searchQuery
-                    placeholderText: "Search tracks, albums, artists and playlists"
+                    placeholderText: qsTr("Search tracks, albums, artists and playlists")
                     onEdited: query => {
                         searchOverlay.resultIndex = 0
                         library.search(query)
@@ -114,7 +114,7 @@ Item {
                     onEscapeRequested: searchOverlay.closeRequested()
                 }
                 MichiStatusChip {
-                    text: "CTRL F"
+                    text: qsTr("CTRL F")
                     dotVisible: false
                 }
             }

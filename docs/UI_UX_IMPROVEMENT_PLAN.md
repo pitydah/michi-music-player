@@ -113,6 +113,12 @@ AppShell) with feedback for add-to-playlist, queue remove, queue clear and
 pin/unpin, plus an **Undo** action for remove-from-playlist (re-adds by
 path). Queue undo deferred — the queue service has no insert API.
 
+**Commit I (done):** item 18 — full qsTr coverage across the in-scope
+surfaces (toolbar, library host, sidebar, header, tabs/options popup,
+source popover, search overlay, settings, media headers/rows, immersive
+views, detail views, pattern defaults, magazine/playlist mixes). Only Now
+Playing strings remain untranslated (out of scope). Canon tests updated.
+
 ## Phase 3 — 🟠 WARNING: visual consistency & copy (~5 h)
 
 | # | Finding | Evidence | Fix | Effort |

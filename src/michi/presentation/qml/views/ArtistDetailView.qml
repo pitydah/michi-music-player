@@ -56,7 +56,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: MichiSpacing.sm
                 MichiButton {
-                    text: "Back"
+                    text: qsTr("Back")
                     variant: "ghost"
                     Layout.alignment: Qt.AlignLeft
                     onClicked: library.clear_artist_selection()
@@ -77,7 +77,7 @@ ColumnLayout {
     }
 
     MichiText {
-        text: "Albums"
+        text: qsTr("Albums")
         role: "section"
         visible: library.artistAlbums.length > 0
     }
@@ -100,7 +100,7 @@ ColumnLayout {
         }
     }
 
-    MichiText { text: "Tracks"; role: "section" }
+    MichiText { text: qsTr("Tracks"); role: "section" }
 
     ListView {
         id: artistTracksList
