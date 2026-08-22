@@ -27,9 +27,10 @@ Item {
             : hover.hovered
                 ? MichiSemanticColors.surfaceHover
                 : root.selected
-                    ? MichiSemanticColors.surfaceSelected : MichiSemanticColors.contentSurface
-        border.width: root.selected ? 1 : 0
-        border.color: MichiSemanticColors.auroraCyanBorderSubtle
+        border.width: 1
+        border.color: root.selected
+            ? MichiSemanticColors.auroraCyanBorderSubtle
+            : hover.hovered ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
 
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
