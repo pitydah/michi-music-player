@@ -131,3 +131,20 @@ Michi-nativos.
   all mandatory factories are present. Code-validation evidence: full suite
   1681 passed at CODE_VALIDATED_HEAD c20360d (1 pre-existing conditional
   skip: M11.3B Qt-runtime).
+
+## M11.3C-R4 bus watch lifecycle seal
+
+- Gst.Bus.add_watch() is correct for install; its return value is a source
+  ID for bookkeeping only. Removal uses Gst.Bus.remove_watch() with NO
+  source-id parameter (verified against real GI: passing an id raises
+  TypeError). The previous remove_bus_watch(bus, watch_id) + blanket
+  suppress(Exception) hid that TypeError and leaked old bus watches across
+  load(A)→load(B)→load(C)→close().
+- remove_bus_watch(bus) now uses the real contract and returns bool;
+  _detach_pipeline_sources() raises on failed/impossible removal; load
+  replacement aborts before arming B when old watch removal fails; close()
+  composes removal failure into first-error-wins.
+- Repeated real-watch lifecycle verified: real Gst.Bus add/remove across
+  A→B→C→close (TrackingRealBindings: add 3 / remove 3 / active watches 0).
+  Code-validation evidence: full suite 1689 passed at CODE_VALIDATED_HEAD
+  1f5a481 (1 pre-existing conditional skip: M11.3B Qt-runtime).
