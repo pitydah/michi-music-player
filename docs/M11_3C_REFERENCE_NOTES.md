@@ -278,3 +278,23 @@ Michi-nativos.
   None). Code-validation evidence: full suite 1755 passed at
   CODE_VALIDATED_HEAD ab8f84e (1 pre-existing conditional skip: M11.3B
   Qt-runtime).
+
+
+## M11.3C-R6.4 state-change failure return convergence seal
+
+- Final synchronous transport rule: for a PENDING candidate, a PLAYING
+  command failure is terminal whether it arrives as a Python exception OR
+  as Gst.StateChangeReturn.FAILURE (False) — FAILURE return IS FAILURE.
+  Both channels converge on the same terminalization (generation
+  invalidation → semantic identity cleared → best-effort physical
+  teardown → primary play failure raised; secondary cleanup problems are
+  logged with truthful retryable ownership).
+- For an ACCEPTED source (incl. EOS replay), a rejected PLAYING request
+  does not destroy source ownership — the source remains loaded and
+  retryable.
+- This closes the last GStreamer failure-signalling gap before MPD: an
+  engine adapter must normalize backend-native failure (GStreamer
+  StateChangeReturn / MPD ACK / socket errors / timeouts) into the
+  canonical AudioPort exception contract — never leak ambiguous success.
+- Code-validation evidence: full suite 1763 passed at CODE_VALIDATED_HEAD
+  963419b (1 pre-existing conditional skip: M11.3B Qt-runtime).

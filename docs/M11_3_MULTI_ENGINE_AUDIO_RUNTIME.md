@@ -1,7 +1,7 @@
 # M11.3 — Multi-Engine Audio Runtime (contract)
 
 Implementation contract for the multi-engine audio runtime. Status: **IN
-PROGRESS — M11.3A + M11.3B + M11.3C DONE / TESTED / FROZEN (+ M11.3C-R1 runtime convergence + M11.3C-R2 final runtime truth seal + M11.3C-R3 final failure-atomicity seal + M11.3C-R4 bus watch lifecycle seal + M11.3C-R5 terminal cleanup seal + M11.3C-R5.1 cleanup exception-boundary seal + M11.3C-R6 transport lifecycle & arm transaction seal + M11.3C-R6.1 resource ownership seal + M11.3C-R6.2 terminal runtime truth seal + M11.3C-R6.3 post-play-failure ownership seal)** (authorized by
+PROGRESS — M11.3A + M11.3B + M11.3C DONE / TESTED / FROZEN (+ M11.3C-R1 runtime convergence + M11.3C-R2 final runtime truth seal + M11.3C-R3 final failure-atomicity seal + M11.3C-R4 bus watch lifecycle seal + M11.3C-R5 terminal cleanup seal + M11.3C-R5.1 cleanup exception-boundary seal + M11.3C-R6 transport lifecycle & arm transaction seal + M11.3C-R6.1 resource ownership seal + M11.3C-R6.2 terminal runtime truth seal + M11.3C-R6.3 post-play-failure ownership seal + M11.3C-R6.4 state-change failure return seal)** (authorized by
 the 2026-08-21 product-owner realignment; foundation 2026-08-22, productive
 Qt runtime 2026-08-22, GStreamer adapter 2026-08-22). This document defines
 the M11.3 contracts and records implementation status for each subphase.
