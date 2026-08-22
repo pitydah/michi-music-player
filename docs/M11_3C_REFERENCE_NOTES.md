@@ -148,3 +148,19 @@ Michi-nativos.
   A→B→C→close (TrackingRealBindings: add 3 / remove 3 / active watches 0).
   Code-validation evidence: full suite 1689 passed at CODE_VALIDATED_HEAD
   1f5a481 (1 pre-existing conditional skip: M11.3B Qt-runtime).
+
+## M11.3C-R5 terminal cleanup seal
+
+- close() is BEST-EFFORT: a bus-watch removal failure can never skip the
+  pipeline NULL request; the pipeline is cleared only when NULL succeeds
+  (retained when it fails) and timer/pump cleanup always continues. The
+  first chronological cleanup failure is authoritative (remove → NULL →
+  timer → pump), later failures are secondary (never replace the primary).
+- Failed-preroll cleanup ordering: NULL cleanup failure is PRIMARY; a
+  later bus-watch detach failure is SECONDARY and never replaces the NULL
+  error. media_rejected remains the semantic event, emitted before
+  cleanup. Contract table: PAUSED+NULL OK+remove OK → reject only;
+  PAUSED+NULL OK+remove FAIL → bus cleanup error; PAUSED+NULL FAIL+remove
+  FAIL (triple) → NULL cleanup error primary, pipeline retained.
+- Code-validation evidence: full suite 1696 passed at CODE_VALIDATED_HEAD
+  43a1281 (1 pre-existing conditional skip: M11.3B Qt-runtime).
