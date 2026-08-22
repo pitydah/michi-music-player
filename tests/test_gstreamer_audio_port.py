@@ -143,6 +143,7 @@ class FakeBindings:
     def __init__(self, playbin3_present=True):
         self.pipelines = []
         self.playbin3_present = playbin3_present
+        self.missing_factories: set = set()
         self.timer_sources = []
         self.timer_callback = None
         self._quit = threading.Event()
@@ -157,7 +158,10 @@ class FakeBindings:
         pass
 
     def playbin3_available(self):
-        return self.playbin3_present
+        return self.playbin3_present and "playbin3" not in self.missing_factories
+
+    def element_factory_find(self, name):
+        return None if name in self.missing_factories else object()
 
     def make_playbin3(self):
         p = FakePipeline(f"P{len(self.pipelines)}")
@@ -195,10 +199,14 @@ class FakeBindings:
     def pop_thread_default(self, context):
         pass
 
-    def create_bus_source(self, bus, callback):
+    def create_bus_source(self, bus, callback, context=None):
         source = bus.create_watch()
         source.set_callback(callback)
         return source
+
+    def remove_bus_watch(self, bus, source):
+        if source is not None:
+            source.destroy()
 
     def attach_source(self, source, context):
         return source.attach(context)
@@ -915,9 +923,242 @@ class TestPumpTerminationIntegrity:
         port._context = None
 
 
+class TestLoadReplacementTransaction:
+    """M11.3C-R3 P1-01: load(B) es transaccional — el teardown de A es el
+    commit point; ninguna mutación de estado ocurre antes de NULL exitoso."""
+
+    def _port_playing_a(self, bindings):
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        port.play()
+        msg2, gen2 = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, msg2, gen2)
+        return port, pipeline
+
+    def test_failed_replacement_preserves_old_source_transaction(self, qapp):
+        bindings = FakeBindings()
+        port, old_pipeline = self._port_playing_a(bindings)
+        old_generation = port._generation
+        old_bus_source = port._bus_source
+        old_current_path = port._current_path
+        old_pending_play = port._pending_play
+        old_current_state = port._current_state
+        bindings.fail_next_states.append(_FakeState.NULL)
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.load(Path("/m/b.flac"))
+        # la fuente vieja sigue siendo canónica en TODO sentido
+        assert port._pipeline is old_pipeline
+        assert port._current_path == old_current_path == Path("/m/a.flac")
+        assert port._pending_path is None  # B nunca se arma
+        assert port._generation == old_generation  # sin avance falso
+        assert port._pending_play is old_pending_play  # intención de play intacta
+        assert port._current_state is old_current_state == PlaybackStatus.PLAYING
+        # el bus viejo sigue attachado y observable
+        assert port._bus_source is old_bus_source
+        assert old_bus_source.destroyed is False
+        assert len(bindings.pipelines) == 1  # B nunca se creó
+        port.close()
+
+    def test_failed_replacement_preserves_generation(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._port_playing_a(bindings)
+        bindings.fail_next_states.append(_FakeState.NULL)
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.load(Path("/m/b.flac"))
+        assert port._generation == 1  # el intento fallido NO avanza la generación
+        port.close()
+
+    def test_failed_replacement_preserves_old_bus_source(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._port_playing_a(bindings)
+        old_bus_source = port._bus_source
+        bindings.fail_next_states.append(_FakeState.NULL)
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.load(Path("/m/b.flac"))
+        # pipeline vivo sin bus = zombie: prohibido en reemplazo normal
+        assert port._bus_source is old_bus_source
+        assert old_bus_source.destroyed is False
+        port.close()
+
+    def test_replacement_recovers_after_null_failure(self, qapp):
+        bindings = FakeBindings()
+        port, _ = self._port_playing_a(bindings)
+        old_generation = port._generation
+        bindings.fail_next_states.append(_FakeState.NULL)
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.load(Path("/m/b.flac"))
+        # recuperación: el retry reemplaza A y arma B normalmente
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.load(Path("/m/b.flac"))
+        assert port._generation == old_generation + 1  # avanza EXACTAMENTE una vez
+        assert len(bindings.pipelines) == 2  # B creado
+        pipeline_b = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        _deliver(port, msg, gen)
+        assert accepted == [Path("/m/b.flac")]
+        assert port._current_path == Path("/m/b.flac")
+        assert port._pipeline is pipeline_b
+        port.close()
+
+
+class TestPrerollCleanupAtomicity:
+    """M11.3C-R3 P1-02: la limpieza del preroll fallido es failure-atomic —
+    nunca fingir que el pipeline fallido desapareció."""
+
+    def test_preroll_failure_with_successful_cleanup_reusable(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        rejected = []
+        accepted = []
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        bindings.failed_states.add(_FakeState.PAUSED)
+        port.load(Path("/m/a.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert rejected == [
+            (Path("/m/a.flac"), "GStreamer failed to enter PAUSED during preroll")
+        ]
+        assert accepted == []
+        # limpieza exitosa: pipeline liberado, bus destruido, port reutilizable
+        assert port._pipeline is None
+        assert port._bus_source is None
+        assert port._pending_path is None
+        assert port._current_path is None
+        bindings.failed_states.clear()
+        port.load(Path("/m/b.flac"))
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+        assert accepted == [Path("/m/b.flac")]
+        port.close()
+
+    def test_preroll_failure_and_null_cleanup_failure_retains_pipeline(self, qapp):
+        bindings = FakeBindings()
+        bindings.failed_states.update({_FakeState.PAUSED, _FakeState.NULL})
+        port = _port(bindings)
+        rejected = []
+        accepted = []
+        states = []
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        with pytest.raises(RuntimeError, match="limpieza de preroll"):
+            port.load(Path("/m/b.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        # el rechazo es el evento semántico primario, exactamente una vez
+        assert rejected == [
+            (Path("/m/b.flac"), "GStreamer failed to enter PAUSED during preroll")
+        ]
+        assert accepted == []
+        assert states == []
+        # el pipeline fallido queda RETENIDO (no fingir limpieza exitosa)
+        failed_pipeline = bindings.pipelines[-1]
+        assert port._pipeline is failed_pipeline
+        assert port._current_path is None  # sin media actual falsa
+        assert port._pending_path is None
+        # close() con NULL ya exitoso limpia el pipeline retenido
+        bindings.failed_states.discard(_FakeState.NULL)
+        port.close()
+        assert port._pipeline is None
+
+
+class TestCloseFirstErrorWins:
+    """M11.3C-R3 P1-03: en close() la PRIMERA falla cronológica es la
+    autoritativa (teardown antes que pump); la secundaria no la reemplaza."""
+
+    def test_close_first_error_wins_over_pump_timeout(self, qapp):
+        bindings = FakeBindings()
+        bindings.failed_states.add(_FakeState.NULL)
+        bindings.ignore_quit = True  # el pump además no termina
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = port._pipeline
+        pump = port._pump
+        assert pipeline is not None and pump is not None
+        with pytest.raises(RuntimeError, match="NULL"):
+            port.close()
+        # el error primario (teardown) gana sobre el timeout del pump
+        assert port._closed is True
+        assert port._pipeline is pipeline  # ownership retenido si NULL falló
+        assert port._pump is pump  # worker vivo retenido
+        assert pump.is_alive() is True
+        # liberar el fake pump para que el test termine limpio
+        bindings.ignore_quit = False
+        bindings.quit_loop(port._loop or "loop")
+        pump.join(timeout=2.0)
+        assert pump.is_alive() is False
+        port._pump = None
+        port._loop = None
+        port._context = None
+
+    def test_close_pump_timeout_when_no_prior_error(self, qapp):
+        # H: sin error previo, el timeout del pump es el primario (R2 green)
+        bindings = FakeBindings()
+        bindings.ignore_quit = True
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pump = port._pump
+        with pytest.raises(RuntimeError, match="did not terminate"):
+            port.close()
+        assert port._closed is True
+        assert port._pump is pump
+        assert pump.is_alive() is True
+        bindings.ignore_quit = False
+        bindings.quit_loop(port._loop or "loop")
+        pump.join(timeout=2.0)
+        assert pump.is_alive() is False
+        port._pump = None
+        port._loop = None
+        port._context = None
+
+
+class TestRealSmokeTruthfulSeam:
+    """M11.3C-R3 P1-04: clasificación truthful del smoke real — SKIP solo
+    con dependencia probada ausente; timeout con deps = FAIL (sin waits)."""
+
+    def test_real_smoke_missing_dependency_skips_truthfully(self):
+        from michi.infrastructure.audio_engines.gstreamer import (
+            _probe_missing_runtime_dependencies,
+            _smoke_outcome,
+        )
+
+        bindings = FakeBindings()
+        assert _probe_missing_runtime_dependencies(bindings) is None
+        bindings.missing_factories.add("wavparse")
+        missing = _probe_missing_runtime_dependencies(bindings)
+        assert missing == "wavparse"  # nombra la dependencia real ausente
+        outcome, detail = _smoke_outcome(missing, [], [])
+        assert outcome == "skip"
+        assert detail == "wavparse"
+
+    def test_real_smoke_timeout_with_dependencies_present_fails(self):
+        from michi.infrastructure.audio_engines.gstreamer import (
+            _probe_missing_runtime_dependencies,
+            _smoke_outcome,
+        )
+
+        bindings = FakeBindings()  # sin dependencias ausentes
+        missing = _probe_missing_runtime_dependencies(bindings)
+        assert missing is None
+        # timeout sin dependencia probada ausente = FAIL (no SKIP)
+        outcome, detail = _smoke_outcome(missing, [], [])
+        assert outcome == "fail"
+        assert "did not accept" in detail
+        # rejected también es FAIL con la razón visible
+        outcome2, detail2 = _smoke_outcome(missing, [], [(Path("/m/x.wav"), "boom")])
+        assert outcome2 == "fail"
+        assert "boom" in detail2
+
+
 @pytest.mark.gstreamer_runtime
 class TestRealRuntimeSmoke:
-    """P2-01: smoke real de GI/GStreamer — SKIP truthful si no hay runtime."""
+    """P2-01/P1-04: smoke real de GI/GStreamer — SKIP truthful solo con
+    dependencia probada ausente; timeout con deps presentes = FAIL."""
 
     def _tiny_wav(self, tmp_path):
         """WAV determinístico minúsculo (44.1kHz mono 16-bit, ~50ms)."""
@@ -936,8 +1177,11 @@ class TestRealRuntimeSmoke:
         return path
 
     def test_real_gstreamer_audioport_smoke(self, qapp, tmp_path):
-        """P2-01: el ADAPTER real completo — pump GLib real, fakesink,
-        preroll de un WAV local, close/join. SKIP truthful sin runtime."""
+        """P2-01/P1-04: el ADAPTER real completo — pump GLib real, bus watch
+        real, fakesink, preroll de un WAV local, close/join.
+
+        SKIP solo con una dependencia PROBADA ausente (preflight de
+        factories); timeout con dependencias presentes = FAIL genuino."""
         try:
             import gi  # noqa: PLC0415
 
@@ -951,6 +1195,8 @@ class TestRealRuntimeSmoke:
         from michi.infrastructure.audio_engines.gstreamer import (
             GStreamerAudioPort,
             GStreamerBindings,
+            _probe_missing_runtime_dependencies,
+            _smoke_outcome,
         )
 
         class RealSmokeBindings(GStreamerBindings):
@@ -968,10 +1214,18 @@ class TestRealRuntimeSmoke:
 
         bindings = RealSmokeBindings()
         bindings.ensure_loaded()
+        # PREFLIGHT truthful: SKIP solo si una dependencia probada está ausente
+        missing = _probe_missing_runtime_dependencies(bindings)
+        if missing is not None:
+            pytest.skip(f"dependency absent: {missing} element factory not available")
         wav = self._tiny_wav(tmp_path)
         port = GStreamerAudioPort(bindings)
         accepted = []
+        rejected = []
+        states = []
         port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
         port.load(wav)
         # pump real corriendo: bounded wait por la aceptación
         import time
@@ -979,11 +1233,14 @@ class TestRealRuntimeSmoke:
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
             QCoreApplication.processEvents()
-            if accepted:
+            if accepted or rejected:
                 break
             time.sleep(0.02)
-        if not accepted:
-            pytest.skip("preroll no completó en 2s — plugins decode/typefind ausentes")
+        outcome, detail = _smoke_outcome(missing, accepted, rejected)
+        if outcome != "pass":
+            pytest.fail(
+                detail + f" (accepted={accepted}, rejected={rejected}, states={states})"
+            )
         assert accepted == [wav]
         pump = port._pump
         assert pump is not None and pump.is_alive()
@@ -1015,16 +1272,15 @@ class TestRealRuntimeSmoke:
         assert bindings.playbin3_available() is True
         pipeline = bindings.make_playbin3()
         assert pipeline is not None
-        # contexto custom + bus source attach real
+        # contexto custom + bus watch real (M11.3C-R3: add_watch canónico)
         ctx = bindings.create_context()
         bus = bindings.get_bus(pipeline)
 
         def on_bus(b, m, d=None):
             return True
 
-        source = bindings.create_bus_source(bus, on_bus)
-        bindings.attach_source(source, ctx)
-        bindings.destroy_source(source)
+        watch_id = bindings.create_bus_source(bus, on_bus, ctx)
+        bindings.remove_bus_watch(bus, watch_id)
         # teardown real
         bindings.set_state(pipeline, bindings.STATE.NULL)
         assert pipeline.get_state(0).state == Gst.State.NULL
