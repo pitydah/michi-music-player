@@ -1867,9 +1867,9 @@ class TestEosConvergence:
 
 
 class TestArmTransaction:
-    """M11.3C-R6 P1-03: el ARM del pipeline nuevo es exception-atomic —
-    cualquier excepción deja el adapter coherente y la excepción ORIGINAL
-    es la primaria."""
+    """M11.3C-R6 P1-03 / R6.1: el ARM del pipeline nuevo es
+    exception-atomic — la excepción de ARM ORIGINAL queda como __cause__ de
+    AudioLoadError(previous_source_preserved=False) y el adapter coherente."""
 
     ARM_STAGES = [
         "make_playbin3",
@@ -1886,6 +1886,8 @@ class TestArmTransaction:
 
     @pytest.mark.parametrize("stage", ARM_STAGES)
     def test_arm_exception_leaves_adapter_coherent(self, qapp, stage):
+        from michi.application.ports import AudioLoadError
+
         bindings = FakeBindings()
         bindings.arm_exception_stage = stage
         bindings.arm_exception = ValueError(f"synthetic arm failure: {stage}")
@@ -1894,8 +1896,14 @@ class TestArmTransaction:
         states = []
         port.subscribe_media_accepted(lambda p: accepted.append(p))
         port.subscribe_playback_state_changed(lambda s: states.append(s))
-        with pytest.raises(ValueError, match=f"arm failure: {stage}"):
+        with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
+        # disposición destructiva (PHASE A ya cruzó el commit point) y la
+        # causa de bajo nivel preservada como __cause__
+        assert caught.value.previous_source_preserved is False
+        assert caught.value.candidate_path == Path("/m/b.flac")
+        assert isinstance(caught.value.__cause__, ValueError)
+        assert f"arm failure: {stage}" in str(caught.value.__cause__)
         # sin candidato fantasma, sin media falsa
         assert port._pending_path is None
         assert port._current_path is None
@@ -1909,8 +1917,12 @@ class TestArmTransaction:
         bindings = FakeBindings()
         bindings.arm_exception_stage = "attach_source"
         port = _port(bindings)
-        with pytest.raises(ValueError, match="attach_source"):
+        from michi.application.ports import AudioLoadError
+
+        with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
+        assert caught.value.previous_source_preserved is False
+        assert isinstance(caught.value.__cause__, ValueError)
         bus_b = bindings.pipelines[-1].get_bus()
         assert bus_b.watch_installed is False  # watch removido en rollback
         # late mensaje del candidato fallido (generación vieja) → ignorado
@@ -1926,7 +1938,9 @@ class TestArmTransaction:
         bindings = FakeBindings()
         bindings.arm_exception_stage = "set_uri"
         port = _port(bindings)
-        with pytest.raises(ValueError, match="set_uri"):
+        from michi.application.ports import AudioLoadError
+
+        with pytest.raises(AudioLoadError):
             port.load(Path("/m/b.flac"))
         # retry: el port sigue usable
         bindings.arm_exception_stage = None
@@ -1957,7 +1971,9 @@ class TestArmTransaction:
         port.subscribe_playback_state_changed(lambda s: states.append(s))
         # B arma falla en set_uri (después del teardown de A)
         bindings.arm_exception_stage = "set_uri"
-        with pytest.raises(ValueError, match="set_uri"):
+        from michi.application.ports import AudioLoadError
+
+        with pytest.raises(AudioLoadError):
             port.load(Path("/m/b.flac"))
         for _ in range(5):
             QCoreApplication.processEvents()
@@ -1971,7 +1987,9 @@ class TestArmTransaction:
         bindings = FakeBindings()
         bindings.arm_exception_stage = "attach_source"  # timer creado y falla
         port = _port(bindings)
-        with pytest.raises(ValueError, match="attach_source"):
+        from michi.application.ports import AudioLoadError
+
+        with pytest.raises(AudioLoadError):
             port.load(Path("/m/b.flac"))
         # el timer creado por el arm fallido se destruyó
         assert port._timer_source is None
@@ -1988,8 +2006,11 @@ class TestArmTransaction:
         bindings.failed_states.add(_FakeState.NULL)  # cleanup NULL falla
         bindings.fail_remove_watch = True  # y el remove del watch falla
         port = _port(bindings)
-        with pytest.raises(ValueError, match="set_uri"):
+        from michi.application.ports import AudioLoadError
+
+        with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
+        assert isinstance(caught.value.__cause__, ValueError)
         # la excepción ORIGINAL del arm sigue siendo primaria
         assert port._pending_path is None
         assert port._current_path is None
@@ -2069,6 +2090,177 @@ class TestGStreamerQueueIntegration:
         _deliver(port, m3, g3)
         assert q.state.current_index == 0
         assert svc.state.file_path == Path("/m/a.flac")
+        port.close()
+
+
+class TestFailedArmOwnership:
+    """M11.3C-R6.1 P1-01: tras un ARM fallido con remoción del watch también
+    fallida, el pipeline se retiene como ANCLA de limpieza retryable —
+    nunca _pipeline=None con _bus_source!=None."""
+
+    def _failed_arm_with_retained_watch(self):
+        bindings = FakeBindings()
+        bindings.arm_exception_stage = "attach_source"  # watch ya instalado
+        bindings.fail_remove_watch = True  # y la remoción falla
+        bindings.arm_exception = ValueError("synthetic attach failure")
+        port = _port(bindings)
+        accepted = []
+        states = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        from michi.application.ports import AudioLoadError
+
+        with pytest.raises(AudioLoadError) as caught:
+            port.load(Path("/m/b.flac"))
+        assert isinstance(caught.value.__cause__, ValueError)
+        assert caught.value.previous_source_preserved is False
+        return bindings, port, accepted, states
+
+    def test_failed_arm_retains_pipeline_bus_and_watch(self, qapp):
+        bindings, port, accepted, states = self._failed_arm_with_retained_watch()
+        # NULL cleanup OK + detach FAIL → pipeline retenido como ancla
+        assert port._pipeline is not None
+        assert port._bus is not None
+        assert port._bus_source is not None
+        bus_b = port._bus
+        assert bus_b.watch_installed is True  # watch sigue instalado
+        assert bus_b.remove_watch_count == 0
+        # identidad semántica limpia y generación invalidada
+        assert port._pending_path is None
+        assert port._current_path is None
+        assert accepted == []
+        assert states == []
+        bus_b.fail_remove_watch = False  # liberar antes del close
+        port.close()
+
+    def test_close_retries_retained_watch(self, qapp):
+        bindings, port, accepted, states = self._failed_arm_with_retained_watch()
+        bus_b = port._bus
+        # deshabilitar el fallo en el BUS retenido (el flag del bindings se
+        # copió al bus en get_bus)
+        bus_b.fail_remove_watch = False
+        port.close()
+        assert bus_b.watch_installed is False  # watch removido en el retry
+        assert bus_b.remove_watch_count == 1
+        assert port._bus_source is None
+        assert port._bus is None
+        assert port._pipeline is None
+        assert port._pump is None  # pump terminó
+
+    def test_next_load_recovers_retained_watch(self, qapp):
+        bindings, port, accepted, states = self._failed_arm_with_retained_watch()
+        bus_b = port._bus
+        bus_b.fail_remove_watch = False
+        bindings.fail_remove_watch = False  # los buses nuevos no heredan fallo
+        bindings.arm_exception_stage = None  # desarmar el inyector
+        # load(C): _try_stop_pipeline limpia el ownership retenido de B y
+        # arma C exactamente una vez
+        accepted.clear()
+        port.load(Path("/m/c.flac"))
+        assert bus_b.watch_installed is False  # B watch removido
+        assert bus_b.remove_watch_count == 1
+        pipeline_c = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_c)
+        _deliver(port, msg, gen)
+        assert accepted == [Path("/m/c.flac")]
+        assert port._bus is not None
+        assert port._bus.watch_installed is True  # un solo watch activo
+        port.close()
+
+
+class TestGStreamerPlaybackDisposition:
+    """M11.3C-R6.1 P1-02: GStreamerAudioPort + PlaybackService — la verdad
+    del backend y la de la app convergen tras fallos destructivos."""
+
+    def test_destructive_arm_failure_converges_playback(self, qapp):
+        from michi.application.playback_service import PlaybackService
+        from michi.application.ports import AudioLoadError
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        # A aceptada y PLAYING
+        svc.load_and_play(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        assert svc._accepted is True
+        # B ARM falla en set_uri (después del teardown destructivo de A)
+        bindings.arm_exception_stage = "set_uri"
+        bindings.arm_exception = ValueError("synthetic set_uri failure")
+        with pytest.raises(AudioLoadError) as caught:
+            svc.load_and_play(Path("/m/b.flac"))
+        assert caught.value.previous_source_preserved is False
+        assert isinstance(caught.value.__cause__, ValueError)
+        assert "set_uri" in str(caught.value.__cause__)
+        # GStreamer: sin fuente
+        assert port._current_path is None
+        assert port._pending_path is None
+        # PlaybackService: identidad lógica A, sin aceptación backend
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        port.close()
+
+    def test_play_recovers_logical_track_after_destructive_failure(self, qapp):
+        from michi.application.playback_service import PlaybackService
+        from michi.application.ports import AudioLoadError
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        svc.load_and_play(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        bindings.arm_exception_stage = "set_uri"
+        bindings.arm_exception = ValueError("synthetic set_uri failure")
+        with pytest.raises(AudioLoadError):
+            svc.load_and_play(Path("/m/b.flac"))
+        # play() recarga A por el camino canónico
+        bindings.arm_exception_stage = None
+        svc.play()
+        assert port._pending_path == Path("/m/a.flac")  # A pendiente de nuevo
+        pipeline_a2 = bindings.pipelines[-1]
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a2)
+        _deliver(port, m2, g2)
+        assert svc._accepted is True
+        port.play()
+        m3, g3 = msg_state(port, pipeline_a2, _FakeState.PLAYING)
+        _deliver(port, m3, g3)
+        assert svc.state.status == PlaybackStatus.PLAYING  # sin no-op
+        port.close()
+
+    def test_controlled_rejection_then_play_recovers_a(self, qapp):
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        svc.load_and_play(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        # B preroll controlado falla (PAUSED → False) → rejection
+        bindings.failed_states.add(_FakeState.PAUSED)
+        svc.load_and_play(Path("/m/b.flac"))
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert svc.state.file_path == Path("/m/a.flac")  # identidad lógica
+        assert svc._accepted is False  # sin autoridad backend
+        assert svc.state.status == PlaybackStatus.STOPPED
+        # play() recarga A
+        bindings.failed_states.clear()
+        svc.play()
+        assert port._pending_path == Path("/m/a.flac")
+        pipeline_a2 = bindings.pipelines[-1]
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a2)
+        _deliver(port, m2, g2)
+        assert svc._accepted is True
         port.close()
 
 
@@ -2244,6 +2436,105 @@ class TestRealRuntimeSmoke:
         assert TrackingRealBindings.remove_count == 3
         assert port._pipeline is None
         assert port._bus is None
+
+    def test_real_stop_play_replay(self, qapp, tmp_path):
+        """M11.3C-R6.1: gate REAL stop→play — la fuente aceptada sobrevive
+        al stop y reproduce de nuevo (mismo pipeline, sin reload).
+
+        Verifica la verdad del RUNTIME real: en este entorno el playbin3 +
+        fakesink emite un único STATE_CHANGED top-level (el bus no entrega
+        PLAYING observable), así que el gate observa el estado REAL del
+        pipeline (get_state) más el accept del adapter y los comandos sin
+        break de generación/bus."""
+        try:
+            import gi  # noqa: PLC0415
+
+            gi.require_version("Gst", "1.0")
+            from gi.repository import Gst  # noqa: PLC0415
+
+            Gst.init(None)
+        except (ImportError, ValueError):
+            pytest.skip("GI/GStreamer runtime no disponible")
+
+        import time
+
+        from michi.infrastructure.audio_engines.gstreamer import (
+            GStreamerAudioPort,
+            GStreamerBindings,
+            _probe_missing_runtime_dependencies,
+        )
+
+        class StopPlayBindings(GStreamerBindings):
+            def make_playbin3(self):
+                pipeline = super().make_playbin3()
+                if pipeline is None:
+                    pytest.skip("playbin3 no disponible")
+                fakesink = self._gst.ElementFactory.make(
+                    "fakesink", "michi_test_audio_sink"
+                )
+                fakesink.set_property("sync", True)  # reloj real, sin HW
+                pipeline.set_property("audio-sink", fakesink)
+                return pipeline
+
+        bindings = StopPlayBindings()
+        bindings.ensure_loaded()
+        missing = _probe_missing_runtime_dependencies(bindings)
+        if missing is not None:
+            pytest.skip(f"dependency absent: {missing} element factory not available")
+        # WAV de ~5 segundos: margen para el replay antes del EOS natural
+        import struct
+        import wave
+
+        wav = tmp_path / "stop_play.wav"
+        with wave.open(str(wav), "w") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"".join(struct.pack("<h", 0) for _ in range(44100 * 5)))
+
+        port = GStreamerAudioPort(bindings)
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+
+        def wait_for(predicate, what):
+            deadline = time.monotonic() + 3.0
+            while time.monotonic() < deadline:
+                QCoreApplication.processEvents()
+                if predicate():
+                    return True
+                time.sleep(0.02)
+            return False
+
+        port.load(wav)
+        assert wait_for(lambda: bool(accepted), "accept"), "no accept"
+        pipeline = port._pipeline
+        assert pipeline is not None
+        assert len(accepted) == 1
+        # primer play → el pipeline REAL llega a PLAYING
+        port.play()
+        assert wait_for(
+            lambda: pipeline.get_state(0).state == Gst.State.PLAYING, "PLAYING"
+        ), f"no real PLAYING (state={pipeline.get_state(0).state})"
+        assert port._pending_play is True
+        # stop → NULL real, fuente retenida (mismo pipeline, misma generación)
+        generation_before = port._generation
+        port.stop()
+        assert wait_for(
+            lambda: pipeline.get_state(0).state == Gst.State.NULL, "NULL"
+        ), f"no real NULL (state={pipeline.get_state(0).state})"
+        assert port._current_path == wav  # fuente retenida
+        assert port._pipeline is pipeline  # mismo pipeline
+        assert port._generation == generation_before  # generación intacta
+        # segundo play → PLAYING otra vez (replay sin reload)
+        port.play()
+        assert wait_for(
+            lambda: pipeline.get_state(0).state == Gst.State.PLAYING, "rePLAYING"
+        ), f"no real re-PLAYING (state={pipeline.get_state(0).state})"
+        assert port._pending_play is True
+        assert len(accepted) == 1  # sin segundo media_accepted
+        port.close()
+        assert port._pipeline is None
+        assert port._pump is None
 
     def test_real_gi_smoke(self):
         try:

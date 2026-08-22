@@ -880,3 +880,165 @@ class TestReentrantSeek:
         # No eternal latch: a later position update must NOT emit the event.
         playback_service.update_position(230000)
         assert events == []
+
+
+class TestLoadDisposition:
+    """M11.3C-R6.1: la disposición de la fuente previa es explícita y
+    PlaybackService nunca infiere aceptación tras un fallo destructivo."""
+
+    def _accept_a(self, playback_service, fake_audio):
+        playback_service.load_and_play(Path("/m/a.flac"))
+        fake_audio.trigger_media_accepted(Path("/m/a.flac"))
+        assert playback_service._accepted is True
+
+    def test_audio_load_error_data_contract(self):
+        from michi.application.ports import AudioLoadError
+
+        err = AudioLoadError(Path("/m/b.flac"), "boom", previous_source_preserved=False)
+        assert str(err) == "boom"
+        assert err.candidate_path == Path("/m/b.flac")
+        assert err.detail == "boom"
+        assert err.previous_source_preserved is False
+
+    def test_destructive_failure_does_not_restore_acceptance(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        from michi.application.ports import AudioLoadError
+
+        self._accept_a(playback_service, fake_audio)
+        monkeypatch.setattr(
+            fake_audio,
+            "load",
+            lambda p: (_ for _ in ()).throw(
+                AudioLoadError(
+                    Path("/m/b.flac"), "arm B failed", previous_source_preserved=False
+                )
+            ),
+        )
+        with pytest.raises(AudioLoadError):
+            playback_service.load_and_play(Path("/m/b.flac"))
+        assert playback_service.state.file_path == Path("/m/a.flac")
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service._accepted is False
+        assert playback_service._intent is False
+        assert playback_service._pending_path is None
+
+    def test_play_reloads_committed_track_after_destructive_failure(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        from michi.application.ports import AudioLoadError
+
+        self._accept_a(playback_service, fake_audio)
+        load_calls = []
+
+        def failing_load(p):
+            load_calls.append(p)
+            raise AudioLoadError(
+                Path("/m/b.flac"), "arm B failed", previous_source_preserved=False
+            )
+
+        monkeypatch.setattr(fake_audio, "load", failing_load)
+        with pytest.raises(AudioLoadError):
+            playback_service.load_and_play(Path("/m/b.flac"))
+        # play() recarga A por el camino canónico (load + play, sin no-op)
+        monkeypatch.setattr(fake_audio, "load", lambda p: load_calls.append(p))
+        playback_service.play()
+        assert load_calls[-1] == Path("/m/a.flac")
+        fake_audio.trigger_media_accepted(Path("/m/a.flac"))
+        assert playback_service._accepted is True
+        assert playback_service.state.file_path == Path("/m/a.flac")
+
+    def test_preserved_failure_restores_acceptance(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        from michi.application.ports import AudioLoadError
+
+        self._accept_a(playback_service, fake_audio)
+        monkeypatch.setattr(
+            fake_audio,
+            "load",
+            lambda p: (_ for _ in ()).throw(
+                AudioLoadError(
+                    Path("/m/b.flac"),
+                    "pre-commit failure",
+                    previous_source_preserved=True,
+                )
+            ),
+        )
+        with pytest.raises(AudioLoadError):
+            playback_service.load_and_play(Path("/m/b.flac"))
+        # aceptación e intención previas restauradas (no destructivo)
+        assert playback_service._accepted is True
+        assert playback_service._intent is True
+
+    def test_legacy_generic_exception_restores_acceptance(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._accept_a(playback_service, fake_audio)
+        monkeypatch.setattr(
+            fake_audio,
+            "load",
+            lambda p: (_ for _ in ()).throw(RuntimeError("load failed")),
+        )
+        with pytest.raises(RuntimeError):
+            playback_service.load_and_play(Path("/m/b.flac"))
+        assert playback_service._accepted is True  # comportamiento legacy
+        assert playback_service._intent is True
+
+    def test_play_no_reload_when_accepted(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        self._accept_a(playback_service, fake_audio)
+        load_calls = []
+        monkeypatch.setattr(fake_audio, "load", lambda p: load_calls.append(p))
+        playback_service.play()
+        # sin reload: play() directo sobre la fuente aceptada (R6 stop→play)
+        assert load_calls == []
+
+    def test_play_no_reload_while_pending(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        from michi.application.ports import AudioLoadError
+
+        self._accept_a(playback_service, fake_audio)
+        monkeypatch.setattr(
+            fake_audio,
+            "load",
+            lambda p: (_ for _ in ()).throw(
+                AudioLoadError(
+                    Path("/m/b.flac"), "arm B failed", previous_source_preserved=False
+                )
+            ),
+        )
+        with pytest.raises(AudioLoadError):
+            playback_service.load_and_play(Path("/m/b.flac"))
+        # candidato pendiente nuevo → play() no recarga el track lógico
+        monkeypatch.setattr(
+            fake_audio, "load", lambda p: setattr(fake_audio, "loaded", p)
+        )
+        playback_service.load_and_play(Path("/m/c.flac"))
+        playback_service.play()
+        assert fake_audio.loaded == Path("/m/c.flac")  # sin recarga de A
+
+    def test_prepare_for_resume_destructive_failure(
+        self, playback_service, fake_audio, monkeypatch
+    ):
+        from michi.application.ports import AudioLoadError
+
+        self._accept_a(playback_service, fake_audio)
+        monkeypatch.setattr(
+            fake_audio,
+            "load",
+            lambda p: (_ for _ in ()).throw(
+                AudioLoadError(
+                    Path("/m/b.flac"), "arm B failed", previous_source_preserved=False
+                )
+            ),
+        )
+        with pytest.raises(AudioLoadError):
+            playback_service.prepare_for_resume(Path("/m/b.flac"), 120000)
+        assert playback_service._accepted is False
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert playback_service.state.file_path == Path("/m/a.flac")
+        assert playback_service._pending_path is None
+        assert playback_service._resume_prepared_pending is False
