@@ -492,19 +492,27 @@ class GStreamerAudioPort(AudioPort):
             self._eos_emitted = False
             return
         if self._pending_path is not None and self._current_path is None:
-            # CASO A — CANDIDATE PENDING (M11.3C-R6.3): un RAISE del request
-            # PLAYING deja al candidato B TERMINAL en el backend (failure-
-            # atomic) — la excepción original del play es PRIMARIA; los
-            # fallos de cleanup son SECUNDARIOS. Sin esto, PlaybackService
-            # limpiaría B localmente pero el backend seguiría poseyéndolo
-            # (pipeline/generación/bus vigentes → eventos tardíos válidos).
+            # CASO A — CANDIDATE PENDING (M11.3C-R6.3/R6.4): un fallo del
+            # request PLAYING — por RAISE de excepción O por retorno
+            # Gst.StateChangeReturn.FAILURE (False) — deja al candidato B
+            # TERMINAL en el backend (failure-atomic). La falla de PLAYING
+            # es PRIMARIA; los fallos de cleanup son SECUNDARIOS. Sin esto,
+            # PlaybackService limpiaría B localmente pero el backend seguiría
+            # poseyéndolo (pipeline/generación/bus vigentes → eventos
+            # tardíos válidos, candidato pending indefinido).
             try:
                 play_ok = self._request_state(self._bindings.STATE.PLAYING)
             except Exception as play_exc:  # noqa: BLE001 — command boundary
                 self._cancel_pending_candidate_after_failure()
                 raise play_exc
-            if play_ok:
-                self._pending_play = True
+            if not play_ok:
+                # CHANNEL B: GStreamer rechazó explícitamente la transición
+                # (StateChangeReturn.FAILURE) — FAILURE return IS FAILURE.
+                self._cancel_pending_candidate_after_failure()
+                raise RuntimeError(
+                    "GStreamer failed to enter PLAYING for pending candidate"
+                )
+            self._pending_play = True
             return
         # CASO B — ACCEPTED SOURCE: un fallo de play() sobre la fuente
         # aceptada NO cancela el candidato (no existe) ni descarga la
@@ -514,23 +522,37 @@ class GStreamerAudioPort(AudioPort):
         # si falla: la intención NO se commitea; sin estado falso
 
     def _cancel_pending_candidate_after_failure(self) -> None:
-        """Cancela un candidato pendiente tras un RAISE del comando play()
-        (M11.3C-R6.3). Misma semántica que la cancelación por stop() de un
-        candidato pendiente, con first-error-wins: NO lanza (el error del
-        play es el primario). La generación del candidato se invalida
-        SIEMPRE — ningún evento tardío de B puede quedar autoritativo
-        aunque el cleanup físico falle (ownership residual = ancla
-        retryable, nunca media válida)."""
+        """Terminaliza un candidato pendiente tras un fallo del comando
+        play() (M11.3C-R6.3/R6.4). Se invoca cuando el request PLAYING
+        sobre el candidato O RAISE o REPORTA FAILURE (False). Misma
+        semántica que la cancelación por stop() de un candidato pendiente,
+        con first-error-wins: NO lanza (la falla del play es la primaria).
+        La generación del candidato se invalida SIEMPRE — ningún evento
+        tardío de B puede quedar autoritativo aunque el cleanup físico
+        falle (ownership residual = ancla retryable, nunca media válida)."""
         self._generation += 1
         self._pending_path = None
         self._current_path = None
         self._pending_play = False
         self._eos_emitted = False
+        # Cleanup físico best-effort: NULL + detach. Tanto el retorno False
+        # como un RAISE son fallos de limpieza — el ownership queda retenido
+        # truthfully (retryable) y se registra un diagnóstico acotado.
         try:  # noqa: SIM105 — no se usa suppress: el ownership residual debe
             # seguir siendo observable en el bookkeeping (retryable)
-            self._try_stop_pipeline()  # NULL + detach best-effort
-        except Exception:  # noqa: BLE001 — cleanup secondary
-            pass  # ownership retenido truthfully (retryable)
+            cleanup_ok = self._try_stop_pipeline()  # NULL + detach
+        except Exception as exc:  # noqa: BLE001 — cleanup secondary
+            _logger.warning(
+                "gstreamer: pending candidate cleanup raised (retaining "
+                "retryable ownership): %s",
+                exc,
+            )
+            return
+        if not cleanup_ok:
+            _logger.warning(
+                "gstreamer: pending candidate cleanup could not reach NULL; "
+                "retaining retryable ownership"
+            )
 
     def pause(self) -> None:
         if self._closed or self._pipeline is None:
