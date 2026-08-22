@@ -12,13 +12,16 @@ from michi.application.enrichment_ports import (
     EnrichmentAssetStorePort,
     EnrichmentProviderError,
     ExternalIdentityResolverPort,
+    IdentityRepositoryPort,
     KnowledgeRepositoryPort,
 )
 from michi.application.ports import LibraryIndexRepository
 from michi.domain.enrichment import (
+    AlbumExternalIdentity,
     AlbumIdentityEvidence,
     AlbumKnowledgeProfile,
     ArtistCandidate,
+    ArtistExternalIdentity,
     ArtistIdentityEvidence,
     ArtistKnowledgeProfile,
     ReleaseEditionCandidate,
@@ -110,6 +113,9 @@ class RecordingKnowledgeRepository(KnowledgeRepositoryPort):
         self.albums: dict[str, AlbumKnowledgeProfile] = {}
         self.artist_saves: list[ArtistKnowledgeProfile] = []
         self.album_saves: list[AlbumKnowledgeProfile] = []
+        self.artist_deletes: list[str] = []
+        self.album_deletes: list[str] = []
+        self.clear_knowledge_calls = 0
 
     def save_artist_profile(self, profile: ArtistKnowledgeProfile) -> None:
         self.artists[profile.local_artist_key] = profile
@@ -118,6 +124,14 @@ class RecordingKnowledgeRepository(KnowledgeRepositoryPort):
     def save_album_profile(self, profile: AlbumKnowledgeProfile) -> None:
         self.albums[profile.local_album_key] = profile
         self.album_saves.append(profile)
+
+    def delete_artist_profile(self, local_artist_key: str) -> None:
+        self.artist_deletes.append(local_artist_key)
+        self.artists.pop(local_artist_key, None)
+
+    def delete_album_profile(self, local_album_key: str) -> None:
+        self.album_deletes.append(local_album_key)
+        self.albums.pop(local_album_key, None)
 
     def load_artist_profile(
         self, local_artist_key: str
@@ -133,7 +147,8 @@ class RecordingKnowledgeRepository(KnowledgeRepositoryPort):
     def load_album_profiles(self) -> tuple[AlbumKnowledgeProfile, ...]:
         return tuple(sorted(self.albums.values(), key=lambda p: p.local_album_key))
 
-    def clear(self) -> None:
+    def clear_knowledge(self) -> None:
+        self.clear_knowledge_calls += 1
         self.artists.clear()
         self.albums.clear()
 
@@ -143,6 +158,50 @@ class RecordingKnowledgeRepository(KnowledgeRepositoryPort):
     @property
     def write_count(self) -> int:
         return len(self.artist_saves) + len(self.album_saves)
+
+
+class InMemoryIdentityRepository(IdentityRepositoryPort):
+    """In-memory identity authority with a call log."""
+
+    def __init__(self):
+        self.artists: dict[str, ArtistExternalIdentity] = {}
+        self.albums: dict[str, AlbumExternalIdentity] = {}
+        self.artist_saves: list[ArtistExternalIdentity] = []
+        self.album_saves: list[AlbumExternalIdentity] = []
+        self.clear_calls = 0
+
+    def save_artist_identity(self, identity: ArtistExternalIdentity) -> None:
+        self.artists[identity.local_artist_key] = identity
+        self.artist_saves.append(identity)
+
+    def save_album_identity(self, identity: AlbumExternalIdentity) -> None:
+        self.albums[identity.local_album_key] = identity
+        self.album_saves.append(identity)
+
+    def delete_artist_identity(self, local_artist_key: str) -> None:
+        self.artists.pop(local_artist_key, None)
+
+    def delete_album_identity(self, local_album_key: str) -> None:
+        self.albums.pop(local_album_key, None)
+
+    def load_artist_identity(
+        self, local_artist_key: str
+    ) -> ArtistExternalIdentity | None:
+        return self.artists.get(local_artist_key)
+
+    def load_album_identity(self, local_album_key: str) -> AlbumExternalIdentity | None:
+        return self.albums.get(local_album_key)
+
+    def load_artist_identities(self) -> tuple[ArtistExternalIdentity, ...]:
+        return tuple(sorted(self.artists.values(), key=lambda i: i.local_artist_key))
+
+    def load_album_identities(self) -> tuple[AlbumExternalIdentity, ...]:
+        return tuple(sorted(self.albums.values(), key=lambda i: i.local_album_key))
+
+    def clear_identities(self) -> None:
+        self.clear_calls += 1
+        self.artists.clear()
+        self.albums.clear()
 
 
 class RecordingAssetStore(EnrichmentAssetStorePort):
