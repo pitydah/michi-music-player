@@ -309,6 +309,21 @@ QT, GST, MPD = (
 )
 
 
+@pytest.fixture(scope="module")
+def qapp():
+    """Instancia Qt offscreen local (patrón del repo) — sin depender de
+    pytest-qt, que no está en la CI (real-MPD runtime test)."""
+    import os
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication([])
+    yield app
+
+
 # ---------------------------------------------------------------------------
 # G1 — STARTUP SELECTED CONVERGENCE
 # ---------------------------------------------------------------------------
