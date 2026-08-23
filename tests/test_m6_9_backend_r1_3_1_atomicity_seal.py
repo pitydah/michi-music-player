@@ -25,6 +25,7 @@ Seal matrix (§16):
 """
 
 import threading
+import time
 from pathlib import Path
 
 from enrichment_fakes import (
@@ -336,7 +337,15 @@ class TestBeginLinearization:
             service.gates[1]["post_alloc"].set()
             t1.join(timeout=5)
             assert not t1.is_alive()
-            gate2 = service.gates[2]
+            # Caller #2 was parked on the coordinator lock; its gate is
+            # created when it reaches the service. Wait deterministically
+            # for it (poll with deadline, no sleep) — a bare dict access
+            # here races the worker's scheduling.
+            gate2 = None
+            deadline = time.monotonic() + 5
+            while gate2 is None and time.monotonic() < deadline:
+                gate2 = service.gates.get(2)
+            assert gate2 is not None, "caller #2 never reached begin_operation"
             assert gate2["entered"].wait(timeout=5)
             gate2["proceed"].set()
             assert gate2["returned"].wait(timeout=5)
