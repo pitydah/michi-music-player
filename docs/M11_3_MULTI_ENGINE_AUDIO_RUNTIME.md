@@ -45,29 +45,32 @@ the M11.3 contracts and records implementation status for each subphase.
 | M11.3A domain contracts | IMPLEMENTED / TESTED |
 | M11.3A AudioTransportRouter | IMPLEMENTED / TESTED — **PRODUCTIVELY WIRED (M11.3B)** |
 | M11.3A registry | IMPLEMENTED / TESTED |
-| M11.3A AudioEngineService | IMPLEMENTED FOUNDATION — NO SWITCHING YET |
+| M11.3A AudioEngineService | IMPLEMENTED / TESTED — state authority; selection/switching SEALED in M11.3F (explicit quiescent switch transaction via AudioEngineSelectionCoordinator, SELECTED != ACTIVE, single-transaction reentrancy guard) |
 | Qt provider | IMPLEMENTED — **PRODUCTIVE REFERENCE ENGINE (M11.3B + M11.3B-R1)**; single canonical provider (registry identity), transactional startup, backend ownership + exception-safe close |
 | GStreamer provider | **IMPLEMENTED (M11.3C + M11.3C-R1 + M11.3C-R2 + M11.3C-R3 + M11.3C-R4 + M11.3C-R5 + M11.3C-R5.1 + M11.3C-R6)** — R4: bus watch lifecycle seal — Gst.Bus.remove_watch() con contrato real (SIN watch-id; el id de add_watch es bookkeeping only), falla de remoción truthfully observable (sin suppress; load no arma B; close lo compone en first-error-wins), ciclo real repetido A→B→C→close verificado (add 3 / remove 3 / 0 activos). R6: transport lifecycle & arm transaction seal — stop() con dos semánticas (candidato pendiente = cancelación; fuente aceptada = transporte detenido con replay sin load), EOS converge a STOPPED antes de EOM (replay same-source, late-EOS guardado), ARM de pipeline exception-atomic (rollback + excepción original primaria), convergencia STOPPED tras teardown del source activo. R5: terminal cleanup seal — close() best-effort (un fallo del bus watch NUNCA salta el request NULL; pipeline liberado solo con NULL OK; timer/pump siempre continúan), orden de errores en preroll fallido (NULL cleanup PRIMARIO; detach SECUNDARIO que nunca lo reemplaza). R3: load() transactional (old pipeline canonical hasta NULL exitoso; replacement fallido preserva pipeline/bus/generation/intención y nunca crea B), preroll cleanup failure-atomic (NULL fallido retiene ownership + raise), close first-error-wins (teardown antes que pump), bus watch real via bus.add_watch (create_watch+set_callback perdía TODO mensaje real), smoke real truthful (SKIP solo con dependency probada ausente; timeout con deps = FAIL). R2: ASYNC_DONE acepta sin publicar PLAYING (estado solo por STATE_CHANGED), state requests failure-atomic (preroll/play/pause/stop/teardown), pump join-timeout retiene ownership, real adapter smoke (fakesink), probe real ejercitado por monkeypatch.  operational GStreamerAudioPort (playbin3), lazy GI runtime; R1: symbolic Gst.State semantics (no raw ints), ONE GLib MainContext/MainLoop/pump per port; position timer as explicit GSource, bus watch via Gst.Bus.add_watch()/remove_watch(), generation-aware TYPE-BASED provenance (child-element errors accepted; stale generations ignored), truthful probe (GI + Gst + playbin3 factory); availability runtime-dependent; NOT default |
 | MPD provider | **IMPLEMENTED / TESTED / REAL-RUNTIME VERIFIED / FROZEN (M11.3D)** — managed private child process, private Unix socket, in-repo protocol client, MPDAudioPort transport adapter, synchronous acceptance, honest crash/transport/status.error convergence, real MPD 0.24.14 startup + natural EOS + explicit stop verified. No engine switching/persistence/fallback (M11.3E/F/G). |
-| Engine availability runtime | foundation now — full discovery M11.3E |
-| Selection / persistence | M11.3F |
+| Engine availability runtime | DONE / TESTED / FROZEN (M11.3E) — fresh side-effect-free probes, canonical three-engine snapshot, available != implemented, activation blocker priority, no state mutation |
+| Selection / persistence | DONE / TESTED / FROZEN (M11.3F) — persisted SELECTED preference, quiescent switching, backend acceptance invalidation, volume/mute continuity, no fallback |
 | Failure convergence | M11.3G |
 
-**CURRENT PRODUCTIVE PATH (since M11.3B):**
+**CURRENT PRODUCTIVE PATH (since M11.3B, multi-engine since M11.3F):**
 
 ```
-QtEngineProvider
+<active engine provider>     (Qt | GStreamer | MPD — the ACTUAL active
+      ↓                       provider, resolved at switch/shutdown time,
+<owned backend / AudioPort>   NEVER hard-coded)
       ↓
-QtMultimediaBackend           (ONE owned backend)
-      ↓
-AudioTransportRouter          (ONE instance for both consumers)
+AudioTransportRouter          (ONE stable instance for both consumers)
      ↙                    ↘
 PlaybackService         PlaybackCoordinator
 ```
 
 The SAME router instance is injected into both consumers; the provider owns
-the single Qt backend. M11.3C (GStreamer) and M11.3D (MPD) added their
-adapters behind the same router (both DONE / TESTED / FROZEN).
+the concrete backend. Since M11.3F the router may be productively bound to
+Qt, GStreamer or MPD: explicit quiescent switching (AudioEngineSelectionCoordinator)
+transfers ownership, invalidates old-backend acceptance and restores
+volume/mute; shutdown releases the ACTUALLY active provider (ownership
+retained on failed teardown). All three adapters DONE / TESTED / FROZEN.
 
 **SWITCH ORDER (recorded for M11.3F, validated for Qt in M11.3B):**
 STOP → router detach/unbind → provider close → target provider open →
