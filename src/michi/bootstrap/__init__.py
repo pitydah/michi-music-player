@@ -659,7 +659,11 @@ class ApplicationContainer:
         # Qt→MPD switch the MPD provider owns the runtime; after Qt→GStreamer
         # the GStreamer provider does. The provider is closed only after the
         # router has detached (SWITCH ORDER), and never while the router
-        # still reports itself bound to it.
+        # still reports itself bound to it. F-FINAL-P1-01: on teardown
+        # failure the audio ownership handles are RETAINED (never erased) so
+        # a retry/diagnosis/eventual close keeps an explicit path to the
+        # still-open runtime (e.g. the managed MPD process/socket).
+        audio_runtime_released = False
         try:
             if self._audio_engine_registry and self._audio_engine_service:
                 _shutdown_audio_runtime(
@@ -677,6 +681,8 @@ class ApplicationContainer:
                     self._qt_engine_provider.close()
         except Exception as exc:
             error = error or exc
+        else:
+            audio_runtime_released = True
 
         try:
             if self._engine:
@@ -685,10 +691,14 @@ class ApplicationContainer:
             error = error or exc
 
         self._engine = None
-        self._audio_router = None
-        self._audio_engine_registry = None
-        self._audio_engine_service = None
-        self._qt_engine_provider = None
+        if audio_runtime_released:
+            # Audio teardown completed: safe to drop the audio ownership
+            # handles. If it FAILED, keep them — the runtime is still open
+            # and the owner must retain an explicit path to it.
+            self._audio_router = None
+            self._audio_engine_registry = None
+            self._audio_engine_service = None
+            self._qt_engine_provider = None
         self._lb = None
         self._plb = None
         self._qb = None

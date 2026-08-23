@@ -176,19 +176,20 @@ class AudioEngineSelectionCoordinator:
         if active is not None:
             self._engine_service.mark_closing(active)
             # 8a. ROUTER UNBIND — failure: DO NOT close/open, first-error.
-            #     P1-02: preserve PHYSICAL truth. If the detach did NOT
-            #     happen, the source is still open/bound/validated — the slot
-            #     stays READY with active=source (SELECTED != ACTIVE is
-            #     canonical). If the detach DID happen despite the exception,
-            #     no bound source remains (mark_failed).
+            #     F-FINAL-P2-01: AudioTransportRouter._detach() is NOT
+            #     failure-atomic — an exception may occur after SOME
+            #     callbacks were detached while bound_engine_id still equals
+            #     the source. Physical ownership truth (active=source) is
+            #     preserved, but READY is NOT guaranteed: the projection is
+            #     conservatively FAILED via mark_bound_failed (callback
+            #     completeness cannot be assumed). If the detach DID happen
+            #     despite the exception (bound None), no source remains.
             try:
                 self._router.unbind()
             except Exception as original:
                 bound = self._router.bound_engine_id
                 if bound == active:
-                    self._engine_service.mark_switch_aborted_preserving_active(
-                        active, str(original)
-                    )
+                    self._engine_service.mark_bound_failed(active, str(original))
                 elif bound is None:
                     self._engine_service.mark_failed(active, str(original))
                 else:
