@@ -268,10 +268,10 @@ class TestLibraryIndexIsolation:
         service, _ = build_service(tmp_path)
         from michi.domain.enrichment import EnrichmentEntityKind
 
-        for generation in (1, 2, 3):  # initial + refreshes
-            service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a", generation)
+        for _ in (1, 2, 3):  # initial + refreshes
+            gen = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
             outcome = service.request_artist_enrichment(
-                artist_evidence("mb-a"), generation=generation
+                artist_evidence("mb-a"), generation=gen
             )
             profile = service._artist_provider.fetch_profile("artist a", "mb-a")
             assert (

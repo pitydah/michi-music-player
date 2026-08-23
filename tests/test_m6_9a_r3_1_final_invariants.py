@@ -38,6 +38,7 @@ from michi.domain.enrichment import (
     ArtistIdentityEvidence,
     ArtistIdentityHints,
     DeliveryVerdict,
+    EnrichmentEntityKind,
     IdentityResolutionStatus,
     IdentityStatus,
     LocalAlbumEvidence,
@@ -256,7 +257,8 @@ class TestAuthorityPrecedence:
         resolver = ScriptedResolver()
         service = make_service(resolver=resolver)
         service.confirm_artist_identity("artist a", "mb-manual")
-        outcome = service.request_artist_enrichment(artist_evidence())
+        gen = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
+        outcome = service.request_artist_enrichment(artist_evidence(), generation=gen)
         assert outcome.request is not None
         assert outcome.request.external_entity_id == "mb-manual"
         assert resolver.artist_calls == 0

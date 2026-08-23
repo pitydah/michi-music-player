@@ -25,6 +25,7 @@ from michi.domain.enrichment import (
     ArtistIdentityEvidence,
     ArtistIdentityHints,
     DeliveryVerdict,
+    EnrichmentEntityKind,
 )
 
 
@@ -214,8 +215,10 @@ class TestIdentityTransitionKnowledgeInvalidation:
         deleted; old in-flight rel-A result STALE; rel-B can commit."""
         service, repository, identity_repo = make_service()
         service.confirm_album_identity("album-a", "rg-x", release_id="rel-a")
+        gen = service.begin_operation(EnrichmentEntityKind.ALBUM, "album-a")
         outcome_a = service.request_album_enrichment(
-            album_evidence(key="album-a", rg_ids=("rg-x",), release_ids=("rel-a",))
+            album_evidence(key="album-a", rg_ids=("rg-x",), release_ids=("rel-a",)),
+            generation=gen,
         )
         profile_a = service._album_provider.fetch_profile("album-a", "rg-x", "rel-a")
         assert (
@@ -234,8 +237,10 @@ class TestIdentityTransitionKnowledgeInvalidation:
             is DeliveryVerdict.STALE
         )
         # New rel-B response commits.
+        gen2 = service.begin_operation(EnrichmentEntityKind.ALBUM, "album-a")
         outcome_b = service.request_album_enrichment(
-            album_evidence(key="album-a", rg_ids=("rg-x",), release_ids=("rel-b",))
+            album_evidence(key="album-a", rg_ids=("rg-x",), release_ids=("rel-b",)),
+            generation=gen2,
         )
         profile_b = service._album_provider.fetch_profile("album-a", "rg-x", "rel-b")
         assert (
@@ -273,8 +278,10 @@ class TestKnowledgeReadAuthority:
     def test_album_knowledge_requires_group_and_edition_match(self):
         service, _, _ = make_service()
         service.confirm_album_identity("album-a", "rg-x", release_id="rel-a")
+        gen = service.begin_operation(EnrichmentEntityKind.ALBUM, "album-a")
         outcome = service.request_album_enrichment(
-            album_evidence(key="album-a", rg_ids=("rg-x",), release_ids=("rel-a",))
+            album_evidence(key="album-a", rg_ids=("rg-x",), release_ids=("rel-a",)),
+            generation=gen,
         )
         profile = service._album_provider.fetch_profile("album-a", "rg-x", "rel-a")
         service.deliver_album_profile(outcome.request, profile)

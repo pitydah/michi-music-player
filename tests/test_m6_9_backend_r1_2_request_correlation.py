@@ -77,7 +77,14 @@ class BlockingResolver(ExternalIdentityResolverPort):
 
 
 class NoopKnowledge(MusicBrainzKnowledgeProviderPort):
+    def __init__(self, block_fetch: threading.Event | None = None):
+        self._block_fetch = block_fetch
+        self.entered_fetch = threading.Event()
+
     def fetch_artist(self, local_artist_key, external_artist_id):
+        self.entered_fetch.set()
+        if self._block_fetch is not None:
+            self._block_fetch.wait(timeout=15)
         return ArtistKnowledgeProfile(
             local_artist_key=local_artist_key,
             external_artist_id=external_artist_id,
@@ -122,7 +129,7 @@ def _tracks():
 
 
 class Harness:
-    def __init__(self, hintless=False):
+    def __init__(self, hintless=False, knowledge=None):
         self.repository = RecordingKnowledgeRepository()
         self.identity_repo = InMemoryIdentityRepository()
         self.resolver = BlockingResolver()
@@ -133,13 +140,14 @@ class Harness:
             repository=self.repository,
             identity_repository=self.identity_repo,
         )
+        self.knowledge = knowledge if knowledge is not None else NoopKnowledge()
         self.coordinator = EnrichmentCoordinator(
             service=self.service,
             resolver=self.resolver,
             evidence_builder=LibraryEnrichmentEvidenceBuilder(
                 NoHintsExtractor() if hintless else SingleHintExtractor()
             ),
-            mb_knowledge=NoopKnowledge(),
+            mb_knowledge=self.knowledge,
             wikidata=None,
             wikipedia=None,
             commons=None,
@@ -221,25 +229,33 @@ class TestRequestCorrelationRaces:
 
     def test_old_worker_cannot_invalidate_new_request_exact(self):
         """Direct ledger proof: a stale request id/generation can never
-        invalidate the current one."""
-        harness = Harness(hintless=True)
+        invalidate the current one.
+
+        Deterministic: B's worker is parked inside ``fetch_artist`` AFTER
+        registering — while parked, the ledger provably holds B's request
+        (registration precedes fetch in the worker)."""
+        harness = Harness(
+            hintless=True,
+            knowledge=NoopKnowledge(block_fetch=threading.Event()),
+        )
         harness.enrich_artist("A")
         assert harness.resolver.entered.wait(timeout=5)
         harness.enrich_artist("B")
-        # B registered its request; simulate A's late EXACT cancellation
-        # attempt using A's own (never-registered) context — the
-        # key-scoped public cancel refers to the ACTIVE operation (B).
-        # Instead: prove exact invalidation protects B via the ledger.
+        # B registers its request, then blocks in fetch_artist. Fetch
+        # entry implies registration completed (it precedes the fetch).
+        assert harness.knowledge.entered_fetch.wait(timeout=5)
         from michi.domain.enrichment import EnrichmentEntityKind
 
         current = harness.service._ledger._current.get(
             (EnrichmentEntityKind.ARTIST, "artist a")
         )
-        assert current is not None  # B's request exists
+        assert current is not None  # B's request exists (parked)
         stale_attempt = harness.service.cancel_request_exact(
-            current if False else _stale_request(current)
+            _stale_request(current)
         )
         assert stale_attempt is False  # stale context cannot invalidate
+        # Unpark B: it commits under its own context (write_count == 1).
+        harness.knowledge._block_fetch.set()
         harness.resolver.release.set()
         harness.coordinator._executor.shutdown(wait=True)
         # B's request was untouched by the stale attempt -> it commits.

@@ -33,6 +33,7 @@ from michi.domain.enrichment import (
     ArtistIdentityEvidence,
     ArtistIdentityHints,
     DeliveryVerdict,
+    EnrichmentEntityKind,
     IdentityStatus,
     MatchMethod,
 )
@@ -154,8 +155,9 @@ class TestManualIdentityAuthority:
         service, _, identity_repo = make_service(resolver=resolver)
         # Automatic resolution would go to mb-auto; the user picks mb-manual.
         service.confirm_artist_identity("artist a", "mb-manual")
+        gen = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
         outcome = service.request_artist_enrichment(
-            artist_evidence(name="Artist A", mbids=("mb-auto",))
+            artist_evidence(name="Artist A", mbids=("mb-auto",)), generation=gen
         )
         assert outcome.request is not None
         assert outcome.request.external_entity_id == "mb-manual"
@@ -168,8 +170,9 @@ class TestManualIdentityAuthority:
         service.confirm_artist_identity("artist a", "mb-manual")
         service.reset_artist_identity("artist a")
         assert identity_repo.load_artist_identity("artist a") is None
+        gen = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
         outcome = service.request_artist_enrichment(
-            artist_evidence(name="Artist A", mbids=("mb-auto",))
+            artist_evidence(name="Artist A", mbids=("mb-auto",)), generation=gen
         )
         assert outcome.request is not None
         assert outcome.request.external_entity_id == "mb-auto"
@@ -177,8 +180,9 @@ class TestManualIdentityAuthority:
     def test_identity_change_invalidates_old_knowledge(self):
         service, repository, identity_repo = make_service()
         service.confirm_artist_identity("artist a", "mb-a")
+        gen = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
         outcome = service.request_artist_enrichment(
-            artist_evidence(name="Artist A", mbids=("mb-a",))
+            artist_evidence(name="Artist A", mbids=("mb-a",)), generation=gen
         )
         profile = service._artist_provider.fetch_profile("artist a", "mb-a")
         assert (
@@ -196,8 +200,9 @@ class TestManualIdentityAuthority:
     def test_reset_clears_identity_and_knowledge(self):
         service, repository, identity_repo = make_service()
         service.confirm_artist_identity("artist a", "mb-a")
+        gen = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
         outcome = service.request_artist_enrichment(
-            artist_evidence(name="Artist A", mbids=("mb-a",))
+            artist_evidence(name="Artist A", mbids=("mb-a",)), generation=gen
         )
         profile = service._artist_provider.fetch_profile("artist a", "mb-a")
         service.deliver_artist_profile(outcome.request, profile)
@@ -218,8 +223,9 @@ class TestManualIdentityAuthority:
         )
         service.confirm_artist_identity("artist a", "mb-manual")
         service.confirm_album_identity("album a", "rg-manual")
+        gen = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
         outcome = service.request_artist_enrichment(
-            artist_evidence(name="Artist A", mbids=("mb-manual",))
+            artist_evidence(name="Artist A", mbids=("mb-manual",)), generation=gen
         )
         profile = service._artist_provider.fetch_profile("artist a", "mb-manual")
         service.deliver_artist_profile(outcome.request, profile)
@@ -242,8 +248,9 @@ class TestManualIdentityAuthority:
             identity_repository=identity_repo,
         )
         service.confirm_artist_identity("artist a", "mb-manual")
+        gen = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
         outcome = service.request_artist_enrichment(
-            artist_evidence(name="Artist A", mbids=("mb-manual",))
+            artist_evidence(name="Artist A", mbids=("mb-manual",)), generation=gen
         )
         service.deliver_artist_profile(
             outcome.request,
@@ -353,16 +360,14 @@ class TestDeliveryIdentityGuard:
         assert repository.write_count == 0
 
     def test_superseded_request_stale_then_committed(self):
-        from michi.domain.enrichment import EnrichmentEntityKind
-
         service, repository, _ = make_service()
-        service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a", 1)
+        gen1 = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
         first = service.request_artist_enrichment(
-            artist_evidence(name="Artist A", mbids=("mb-a",)), generation=1
+            artist_evidence(name="Artist A", mbids=("mb-a",)), generation=gen1
         )
-        service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a", 2)
+        gen2 = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
         second = service.request_artist_enrichment(
-            artist_evidence(name="Artist A", mbids=("mb-a",)), generation=2
+            artist_evidence(name="Artist A", mbids=("mb-a",)), generation=gen2
         )
         assert (
             service.deliver_artist_profile(

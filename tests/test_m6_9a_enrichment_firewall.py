@@ -28,6 +28,7 @@ from michi.domain.enrichment import (
     ArtistIdentityEvidence,
     ArtistIdentityHints,
     DeliveryVerdict,
+    EnrichmentEntityKind,
     IdentityResolutionStatus,
     LocalAlbumEvidence,
     ReleaseGroupCandidate,
@@ -94,18 +95,16 @@ class TestArtistConcurrencyFirewall:
         assert stored_b.biography != stored_a.biography
 
     def test_stale_identity_result_discarded(self):
-        from michi.domain.enrichment import EnrichmentEntityKind
-
         service, repo = make_service(resolver=FakeIdentityResolver(artists=[]))
-        service.begin_operation(EnrichmentEntityKind.ARTIST, "artist-a", 1)
+        gen1 = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist-a")
         outcome_v1 = service.request_artist_enrichment(
             artist_evidence(key="artist-a", name="Artist A", mbids=("mb-old",)),
-            generation=1,
+            generation=gen1,
         )
-        service.begin_operation(EnrichmentEntityKind.ARTIST, "artist-a", 2)
+        gen2 = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist-a")
         outcome_v2 = service.request_artist_enrichment(
             artist_evidence(key="artist-a", name="Artist A", mbids=("mb-new",)),
-            generation=2,
+            generation=gen2,
         )
 
         stale_profile = service._artist_provider.fetch_profile("artist-a", "mb-old")
