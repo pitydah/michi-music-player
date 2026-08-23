@@ -1,5 +1,10 @@
 # M6.9-BACKEND-R1.1 — Final Transport + Stale + Async + Lifecycle Seal
 
+> **SUPERSEDED BY M6.9-BACKEND-R1.2 (FINAL CORRELATION SEAL).** R1.2
+> closes the request-correlation and real-tag-compatibility defects
+> found after R1.1. See `docs/M6_9_BACKEND_R1_2_FINAL_CLOSURE.md`.
+> R1.1's transport/stale/async work remains in force.
+
 Status: implemented. This WP closes the M6.9 library enrichment BACKEND
 definitively (before presentation). NO UI/QML/EnrichmentBridge; NO
 M11.3D; NO audio changes; NO canonical metadata changes; NO tag writes;
