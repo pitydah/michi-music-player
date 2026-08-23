@@ -15,10 +15,10 @@ MichiGlassSurface {
     tileSeed: 1
     shadowed: true
     textured: true
-    // True smoke glass: always-on backdrop blur + translucent smoked
-    // material, so the content scrolling behind reads through softly.
+    // Backdrop blur stays (explicit smoke request), but the material and
+    // texture follow the library toolbar's treatment: standard glass
+    // opacity, grain and brand glint — no extra ambient tint layer.
     forceBlur: true
-    materialOpacityOverride: 0.68
     accented: true
     // Single accent per surface: cyan (the functional active state) —
     // the previous auroraPurple glass accent competed with the cyan
@@ -34,19 +34,6 @@ MichiGlassSurface {
     readonly property var _bottom_routes: [
         { id: "settings", label: "Settings", icon: "settings" }
     ]
-
-    // Deep-blue atmosphere only — no purple (one hue family)
-    Rectangle {
-        anchors.fill: parent
-        radius: root.radius
-        opacity: 0.22
-        z: 0
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0; color: MichiSemanticColors.contentAmbientBlue }
-            GradientStop { position: 0.5; color: "transparent" }
-        }
-    }
 
     Component {
         id: routeDelegate
