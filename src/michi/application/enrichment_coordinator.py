@@ -1,24 +1,29 @@
-"""Enrichment orchestration (M6.9F + M6.9-BACKEND-R1).
+"""Enrichment orchestration (M6.9F + BACKEND-R1 + R1.1).
 
 The coordinator owns the provider WORKFLOW (evidence -> identity ->
 knowledge -> assets -> delivery) while EnrichmentService remains the
-identity/commit authority. It never owns canonical library metadata,
-never runs network on the caller's thread (all work is submitted to the
-executor), and reports EPHEMERAL operation states that are never
-persisted as identity and never stored inside knowledge profiles.
+identity/commit authority.
 
-R1 CANCELLATION MODEL (per-operation, race-safe):
-- every operation carries an immutable ``EnrichmentOperationToken``
-  (operation_id / entity_kind / local_entity_key / cancelled state);
-- a new operation on the same entity SUPERSEDES the previous one;
-- ``cancel_all()`` cancels ACTIVE operations only — the coordinator
-  stays fully reusable afterwards;
-- ``shutdown()`` is TERMINAL: freeze new work, cancel active
-  operations, invalidate pending requests and join the executor;
-- cancellation is checked before resolution, after resolution, before
-  every remote phase, after expensive provider calls, before asset
-  store and IMMEDIATELY before delivery — a cancelled operation never
-  commits knowledge.
+R1.1 additions:
+
+- EXCEPTION BOUNDARY: the whole ``_run_artist`` / ``_run_album`` body
+  (INCLUDING identity resolution) converges to a terminal state:
+  transient failures -> OFFLINE; other provider/HTTP failures ->
+  FAILED; unexpected programming errors are logged and FAILED — a
+  worker Future can never die silently leaving the observer stuck.
+- LINEARIZABLE DELIVERY: the final commit is serialized against
+  cancel/supersede/shutdown under the coordinator lock (the network
+  phases never hold it). If cancellation wins first the operation
+  cannot deliver; if delivery wins first it completes exactly once.
+- STALE TRUTH: stale knowledge from ANY provider (MB links, Commons,
+  CAA, Wikipedia, Wikidata) marks the final state PARTIAL — never
+  READY; stale identity resolution remains impossible.
+- WIKIPEDIA FALLBACK: the biography fetch uses the FINAL projected
+  page/language (MusicBrainz relation, else verified Wikidata
+  sitelink) — never a name search.
+- ASYNC SEARCH: submission is controlled (returns False after
+  shutdown, never raises RuntimeError); provider failures surface via
+  an error callback — never as an empty success.
 """
 
 import logging
@@ -34,7 +39,6 @@ from michi.application.enrichment_ports import (
     CoverArtArchiveProviderPort,
     EnrichmentAssetStorePort,
     EnrichmentExecutorPort,
-    EnrichmentHttpStatusError,
     EnrichmentProviderError,
     ExternalIdentityResolverPort,
     HttpRequest,
@@ -43,6 +47,7 @@ from michi.application.enrichment_ports import (
     WikidataKnowledgeProviderPort,
     WikimediaCommonsProviderPort,
     WikipediaBiographyProviderPort,
+    is_transient_provider_failure,
 )
 from michi.application.enrichment_service import EnrichmentService
 from michi.domain.enrichment import (
@@ -97,8 +102,7 @@ class AlbumIdentityCandidateView:
 
 
 class EnrichmentOperationToken:
-    """R1 per-operation cancellation state (application-only, never
-    persisted, never identity)."""
+    """R1 per-operation cancellation state (application-only)."""
 
     def __init__(
         self, entity_kind: EnrichmentEntityKind, local_entity_key: str
@@ -117,9 +121,8 @@ class EnrichmentOperationToken:
 
 
 StateCallback = Callable[[str, EnrichmentOperationState], None]
-CandidateCallback = Callable[
-    [tuple[ArtistIdentityCandidateView | AlbumIdentityCandidateView, ...]], None
-]
+ResultCallback = Callable[[tuple], None]
+ErrorCallback = Callable[[EnrichmentProviderError], None]
 
 
 class EnrichmentCoordinator:
@@ -158,14 +161,11 @@ class EnrichmentCoordinator:
         self._lock = threading.Lock()
         self._shutting_down = False
 
-    # -- operation registry (R1) ---------------------------------------------
+    # -- operation registry ----------------------------------------------------
 
     def _begin_operation(
         self, entity_kind: EnrichmentEntityKind, local_entity_key: str
     ) -> EnrichmentOperationToken | None:
-        """Register the current operation for an entity; a NEW operation
-        supersedes (cancels) the previous one. Returns None when the
-        coordinator is shutting down."""
         token = EnrichmentOperationToken(entity_kind, local_entity_key)
         with self._lock:
             if self._shutting_down:
@@ -173,7 +173,7 @@ class EnrichmentCoordinator:
             key = (entity_kind, local_entity_key)
             previous = self._operations.get(key)
             if previous is not None:
-                previous.cancel()  # supersession
+                previous.cancel()
             self._operations[key] = token
         return token
 
@@ -184,7 +184,13 @@ class EnrichmentCoordinator:
             if current is token:
                 del self._operations[key]
 
-    # -- public intents ------------------------------------------------------
+    def _current_token(
+        self, entity_kind: EnrichmentEntityKind, local_entity_key: str
+    ) -> EnrichmentOperationToken | None:
+        with self._lock:
+            return self._operations.get((entity_kind, local_entity_key))
+
+    # -- public intents ---------------------------------------------------------
 
     def enrich_artist(
         self,
@@ -239,25 +245,22 @@ class EnrichmentCoordinator:
         self.enrich_album(album, resolved_artist_external_id, on_state)
 
     def cancel_artist(self, local_artist_key: str) -> None:
-        """Cancel the ACTIVE artist operation (superseded by design)."""
         with self._lock:
             token = self._operations.get(
                 (EnrichmentEntityKind.ARTIST, local_artist_key)
             )
-        if token is not None:
-            token.cancel()
+            if token is not None:
+                token.cancel()
         self._service.cancel_artist_request(local_artist_key)
 
     def cancel_album(self, local_album_key: str) -> None:
         with self._lock:
             token = self._operations.get((EnrichmentEntityKind.ALBUM, local_album_key))
-        if token is not None:
-            token.cancel()
+            if token is not None:
+                token.cancel()
         self._service.cancel_album_request(local_album_key)
 
     def cancel_all(self) -> None:
-        """Cancel ACTIVE operations only — the coordinator remains fully
-        reusable afterwards."""
         with self._lock:
             tokens = list(self._operations.values())
         for token in tokens:
@@ -265,8 +268,6 @@ class EnrichmentCoordinator:
         self._service.cancel_all_requests()
 
     def shutdown(self) -> None:
-        """TERMINAL: freeze new work, cancel active operations,
-        invalidate pending requests and join the executor."""
         with self._lock:
             self._shutting_down = True
             tokens = list(self._operations.values())
@@ -287,35 +288,75 @@ class EnrichmentCoordinator:
     def reset_album_identity(self, local_album_key: str) -> None:
         self._service.reset_album_identity(local_album_key)
 
-    # -- manual search (R1: ALWAYS off the caller's thread) -------------------
+    # -- manual async search (R1.1: controlled submission) -----------------------
+
+    def _submit_if_running(self, work) -> bool:
+        """R1.1: controlled submission boundary — after shutdown the
+        method returns False instead of raising RuntimeError."""
+        with self._lock:
+            if self._shutting_down:
+                return False
+            self._executor.submit(work)
+            return True
 
     def search_artist_candidates_async(
         self,
         artist_name: str,
-        on_result: CandidateCallback,
-    ) -> None:
-        """R1: manual candidate search runs on the enrichment executor —
-        the caller is never blocked by network work."""
-        self._executor.submit(
-            lambda: on_result(self._search_artist_candidates_sync(artist_name))
+        on_result: ResultCallback,
+        on_error: ErrorCallback | None = None,
+    ) -> bool:
+        """Returns True when the job was accepted; False when the
+        coordinator is shutting down. Provider failures reach
+        ``on_error`` — never an empty success."""
+        return self._submit_if_running(
+            lambda: self._search_artist_worker(artist_name, on_result, on_error)
         )
 
     def search_album_candidates_async(
         self,
         album_title: str,
         artist_name: str,
-        on_result: CandidateCallback,
-    ) -> None:
-        self._executor.submit(
-            lambda: on_result(
-                self._search_album_candidates_sync(album_title, artist_name)
+        on_result: ResultCallback,
+        on_error: ErrorCallback | None = None,
+    ) -> bool:
+        return self._submit_if_running(
+            lambda: self._search_album_worker(
+                album_title, artist_name, on_result, on_error
             )
         )
+
+    def _search_artist_worker(
+        self,
+        artist_name: str,
+        on_result: ResultCallback,
+        on_error: ErrorCallback | None,
+    ) -> None:
+        try:
+            on_result(self._search_artist_candidates_sync(artist_name))
+        except EnrichmentProviderError as exc:
+            if on_error is not None:
+                on_error(exc)
+            else:
+                logger.warning("async artist search failed: %s", exc)
+
+    def _search_album_worker(
+        self,
+        album_title: str,
+        artist_name: str,
+        on_result: ResultCallback,
+        on_error: ErrorCallback | None,
+    ) -> None:
+        try:
+            on_result(self._search_album_candidates_sync(album_title, artist_name))
+        except EnrichmentProviderError as exc:
+            if on_error is not None:
+                on_error(exc)
+            else:
+                logger.warning("async album search failed: %s", exc)
 
     def _search_artist_candidates_sync(
         self, artist_name: str
     ) -> tuple[ArtistIdentityCandidateView, ...]:
-        """INTERNAL (executor thread): results NEVER become identity."""
         if not self._enabled():
             return ()
         evidence = ArtistIdentityEvidence(
@@ -364,7 +405,7 @@ class EnrichmentCoordinator:
             local_album_key, release_group_id, release_id
         )
 
-    # -- artist workflow -------------------------------------------------------
+    # -- artist workflow ----------------------------------------------------------
 
     def _run_artist(
         self,
@@ -375,19 +416,15 @@ class EnrichmentCoordinator:
         on_state: StateCallback | None,
     ) -> None:
         try:
-            if self._gate_cancelled(
-                token, artist.key, None, on_state, cancel_artist=True
-            ):
+            if token.cancelled:
+                self._service.cancel_artist_request(artist.key)
+                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
                 return
             self._report(
                 on_state, artist.key, EnrichmentOperationState.RESOLVING_IDENTITY
             )
             evidence = self._evidence_builder.artist_evidence(artist, albums, tracks)
             outcome = self._service.request_artist_enrichment(evidence)
-            if self._gate_cancelled(
-                token, artist.key, outcome.request, on_state, cancel_artist=True
-            ):
-                return
             if outcome.request is None:
                 state = {
                     IdentityResolutionStatus.AMBIGUOUS: (
@@ -408,69 +445,80 @@ class EnrichmentCoordinator:
             self._report(
                 on_state, artist.key, EnrichmentOperationState.FETCHING_KNOWLEDGE
             )
-            if self._gate_cancelled(token, artist.key, request, on_state):
+            if token.cancelled:
+                self._service.cancel_artist_request(local_key)
+                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
                 return
 
             partial = False
-            try:
-                profile = self._mb.fetch_artist(local_key, external_id)
-            except EnrichmentProviderError as exc:
-                self._service.deliver_artist_failure(request)
-                self._report_failure(on_state, artist.key, exc)
-                return
-            if self._gate_cancelled(token, artist.key, request, on_state):
+            profile = self._mb.fetch_artist(local_key, external_id)
+            if token.cancelled:
+                self._service.cancel_artist_request(local_key)
+                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
                 return
             try:
                 links = self._mb.artist_links(external_id)
             except EnrichmentProviderError:
                 links = ArtistExternalLinks()
                 partial = True
+            partial = partial or links.is_stale
             profile, partial = self._apply_artist_links(profile, links, partial)
-            if self._gate_cancelled(token, artist.key, request, on_state):
+            if token.cancelled:
+                self._service.cancel_artist_request(local_key)
+                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
                 return
-            profile, partial = self._apply_biography(profile, links, partial)
-            if self._gate_cancelled(token, artist.key, request, on_state):
+            profile, partial = self._apply_biography(profile, partial)
+            if token.cancelled:
+                self._service.cancel_artist_request(local_key)
+                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_artist_image(profile, external_id, partial)
-            if self._gate_cancelled(token, artist.key, request, on_state):
-                return
-            # R1: IMMEDIATELY before delivery — a cancelled operation
-            # never commits knowledge.
-            verdict = self._service.deliver_artist_profile(request, profile)
-            if verdict is DeliveryVerdict.COMMITTED:
-                stale = (
-                    profile.provenance.is_stale or profile.biography_provenance.is_stale
-                )
-                self._report(
-                    on_state,
-                    artist.key,
-                    EnrichmentOperationState.PARTIAL
-                    if (partial or stale)
-                    else EnrichmentOperationState.READY,
-                )
-            else:
-                self._report(on_state, artist.key, EnrichmentOperationState.FAILED)
+            self._commit_artist(token, request, profile, partial, on_state)
+        except EnrichmentProviderError as exc:
+            self._terminal_failure(token, artist.key, exc, on_state)
+        except Exception as exc:  # noqa: BLE001 — unexpected programming errors
+            logger.exception("unexpected artist enrichment failure: %s", exc)
+            self._terminal_unexpected(token, artist.key, on_state)
         finally:
             self._end_operation(token)
 
-    def _gate_cancelled(
+    def _commit_artist(
         self,
         token: EnrichmentOperationToken,
-        local_key: str,
         request,
+        profile: ArtistKnowledgeProfile,
+        partial: bool,
         on_state: StateCallback | None,
-        cancel_artist: bool = False,
-    ) -> bool:
-        """R1 gate: True when the operation was cancelled. Invalidates the
-        pending request and reports CANCELLED — ZERO knowledge commit."""
-        if not token.cancelled:
-            return False
-        self._service.cancel_artist_request(local_key)
-        self._report(on_state, local_key, EnrichmentOperationState.CANCELLED)
-        return True
+    ) -> None:
+        """R1.1 LINEARIZATION POINT: serialized against cancel /
+        supersede / shutdown. If cancellation wins first, the operation
+        can never deliver; if this gate wins first, the commit happens
+        exactly once."""
+        local_key = token.local_entity_key
+        with self._lock:
+            current = self._operations.get((EnrichmentEntityKind.ARTIST, local_key))
+            if self._shutting_down or token.cancelled or current is not token:
+                self._service.cancel_artist_request(local_key)
+                self._report(on_state, local_key, EnrichmentOperationState.CANCELLED)
+                return
+            stale = profile.provenance.is_stale or profile.biography_provenance.is_stale
+            verdict = self._service.deliver_artist_profile(request, profile)
+        if verdict is DeliveryVerdict.COMMITTED:
+            self._report(
+                on_state,
+                local_key,
+                EnrichmentOperationState.PARTIAL
+                if (partial or stale)
+                else EnrichmentOperationState.READY,
+            )
+        else:
+            self._report(on_state, local_key, EnrichmentOperationState.FAILED)
 
     def _apply_artist_links(
-        self, profile: ArtistKnowledgeProfile, links: ArtistExternalLinks, partial: bool
+        self,
+        profile: ArtistKnowledgeProfile,
+        links: ArtistExternalLinks,
+        partial: bool,
     ) -> tuple[ArtistKnowledgeProfile, bool]:
         merged = replace(
             profile,
@@ -509,19 +557,21 @@ class EnrichmentCoordinator:
         )
 
     def _apply_biography(
-        self, profile: ArtistKnowledgeProfile, links: ArtistExternalLinks, partial: bool
+        self, profile: ArtistKnowledgeProfile, partial: bool
     ) -> tuple[ArtistKnowledgeProfile, bool]:
-        if self._wikipedia is None or not links.wikipedia_title:
+        """R1.1: biography uses the FINAL projected page/language
+        (MusicBrainz relation, else verified Wikidata sitelink) already
+        merged into the profile — never the original links object, never
+        a name search."""
+        title = profile.wikipedia_page_title
+        language = profile.wikipedia_language
+        if self._wikipedia is None or not title:
             return profile, partial
         try:
-            bio = self._wikipedia.fetch_biography(
-                links.wikipedia_title, links.wikipedia_language
-            )
+            bio = self._wikipedia.fetch_biography(title, language)
         except EnrichmentProviderError:
             return profile, True
         if not bio.text:
-            # R1 (P2-02): a verified page without biography is an empty
-            # OPTIONAL result — PARTIAL, never FAILED.
             return profile, True
         return (
             replace(
@@ -529,7 +579,7 @@ class EnrichmentCoordinator:
                 biography=bio.text,
                 biography_provenance=KnowledgeProvenance(
                     provider="wikipedia",
-                    external_entity_id=links.wikipedia_title,
+                    external_entity_id=title,
                     source_url=bio.source_url,
                     language=bio.language,
                     license=bio.license,
@@ -551,7 +601,8 @@ class EnrichmentCoordinator:
         try:
             image = self._commons.fetch_image(profile.commons_image_title)
             if not image.source_url:
-                return profile, True  # optional image missing
+                return profile, True
+            partial = partial or image.is_stale
             response = self._transport.get(HttpRequest(url=image.source_url))
         except (EnrichmentProviderError, ValueError):
             return profile, True
@@ -572,7 +623,7 @@ class EnrichmentCoordinator:
             return profile, True
         return replace(profile, artwork_asset_id=stored.asset_id), partial
 
-    # -- album workflow -------------------------------------------------------
+    # -- album workflow ------------------------------------------------------------
 
     def _run_album(
         self,
@@ -593,10 +644,6 @@ class EnrichmentCoordinator:
                 album, resolved_artist_external_id
             )
             outcome = self._service.request_album_enrichment(evidence)
-            if token.cancelled:
-                self._service.cancel_album_request(album.key)
-                self._report(on_state, album.key, EnrichmentOperationState.CANCELLED)
-                return
             if outcome.request is None:
                 state = {
                     IdentityResolutionStatus.AMBIGUOUS: (
@@ -620,38 +667,52 @@ class EnrichmentCoordinator:
                 self._report(on_state, album.key, EnrichmentOperationState.CANCELLED)
                 return
             partial = False
-            try:
-                profile = self._mb.fetch_release_group(
-                    request.local_entity_key,
-                    request.external_entity_id,
-                    request.external_variant_id,
-                )
-            except EnrichmentProviderError as exc:
-                self._service.deliver_album_failure(request)
-                self._report_failure(on_state, album.key, exc)
-                return
+            profile = self._mb.fetch_release_group(
+                request.local_entity_key,
+                request.external_entity_id,
+                request.external_variant_id,
+            )
             if token.cancelled:
                 self._service.cancel_album_request(album.key)
                 self._report(on_state, album.key, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_cover(profile, partial)
-            if token.cancelled:
-                self._service.cancel_album_request(album.key)
-                self._report(on_state, album.key, EnrichmentOperationState.CANCELLED)
-                return
-            verdict = self._service.deliver_album_profile(request, profile)
-            if verdict is DeliveryVerdict.COMMITTED:
-                self._report(
-                    on_state,
-                    album.key,
-                    EnrichmentOperationState.PARTIAL
-                    if (partial or profile.provenance.is_stale)
-                    else EnrichmentOperationState.READY,
-                )
-            else:
-                self._report(on_state, album.key, EnrichmentOperationState.FAILED)
+            self._commit_album(token, request, profile, partial, on_state)
+        except EnrichmentProviderError as exc:
+            self._terminal_failure(token, album.key, exc, on_state)
+        except Exception as exc:  # noqa: BLE001 — unexpected programming errors
+            logger.exception("unexpected album enrichment failure: %s", exc)
+            self._terminal_unexpected(token, album.key, on_state)
         finally:
             self._end_operation(token)
+
+    def _commit_album(
+        self,
+        token: EnrichmentOperationToken,
+        request,
+        profile: AlbumKnowledgeProfile,
+        partial: bool,
+        on_state: StateCallback | None,
+    ) -> None:
+        """R1.1 LINEARIZATION POINT (album)."""
+        local_key = token.local_entity_key
+        with self._lock:
+            current = self._operations.get((EnrichmentEntityKind.ALBUM, local_key))
+            if self._shutting_down or token.cancelled or current is not token:
+                self._service.cancel_album_request(local_key)
+                self._report(on_state, local_key, EnrichmentOperationState.CANCELLED)
+                return
+            verdict = self._service.deliver_album_profile(request, profile)
+        if verdict is DeliveryVerdict.COMMITTED:
+            self._report(
+                on_state,
+                local_key,
+                EnrichmentOperationState.PARTIAL
+                if (partial or profile.provenance.is_stale)
+                else EnrichmentOperationState.READY,
+            )
+        else:
+            self._report(on_state, local_key, EnrichmentOperationState.FAILED)
 
     def _apply_cover(
         self, profile: AlbumKnowledgeProfile, partial: bool
@@ -664,7 +725,8 @@ class EnrichmentCoordinator:
                 release_group_id=profile.release_group_id,
             )
             if not cover.image_url:
-                return profile, True  # optional cover missing
+                return profile, partial or cover.is_stale
+            partial = partial or cover.is_stale
             response = self._transport.get(HttpRequest(url=cover.image_url))
         except (EnrichmentProviderError, ValueError):
             return profile, True
@@ -682,12 +744,43 @@ class EnrichmentCoordinator:
             return profile, True
         return replace(profile, artwork_asset_id=stored.asset_id), partial
 
-    # -- helpers ----------------------------------------------------------------
+    # -- terminal convergence (R1.1) --------------------------------------------------
+
+    def _terminal_failure(
+        self,
+        token: EnrichmentOperationToken,
+        local_key: str,
+        exc: EnrichmentProviderError,
+        on_state: StateCallback | None,
+    ) -> None:
+        """Known provider/transport failures converge to a terminal
+        state: transient -> OFFLINE; other provider HTTP/payload ->
+        FAILED. The pending request is invalidated — no late commit."""
+        if token.entity_kind is EnrichmentEntityKind.ARTIST:
+            self._service.cancel_artist_request(local_key)
+        else:
+            self._service.cancel_album_request(local_key)
+        if is_transient_provider_failure(exc):
+            self._report(on_state, local_key, EnrichmentOperationState.OFFLINE)
+        else:
+            self._report(on_state, local_key, EnrichmentOperationState.FAILED)
+
+    def _terminal_unexpected(
+        self,
+        token: EnrichmentOperationToken,
+        local_key: str,
+        on_state: StateCallback | None,
+    ) -> None:
+        if token.entity_kind is EnrichmentEntityKind.ARTIST:
+            self._service.cancel_artist_request(local_key)
+        else:
+            self._service.cancel_album_request(local_key)
+        self._report(on_state, local_key, EnrichmentOperationState.FAILED)
+
+    # -- helpers -----------------------------------------------------------------------
 
     @staticmethod
     def _declared_mime(response) -> str:
-        """R1 (P1-11): normalize Content-Type; pass ONLY a supported
-        image MIME as the declared hint, else "" (sniff decides)."""
         raw = response.headers.get("content-type", "")
         mime = raw.split(";", 1)[0].strip().lower()
         if mime in {"image/jpeg", "image/png", "image/webp"}:
@@ -700,16 +793,3 @@ class EnrichmentCoordinator:
     ) -> None:
         if on_state is not None:
             on_state(key, state)
-
-    @staticmethod
-    def _report_failure(
-        on_state: StateCallback | None, key: str, exc: EnrichmentProviderError
-    ) -> None:
-        if isinstance(exc, EnrichmentHttpStatusError):
-            EnrichmentCoordinator._report(
-                on_state, key, EnrichmentOperationState.FAILED
-            )
-        else:
-            EnrichmentCoordinator._report(
-                on_state, key, EnrichmentOperationState.OFFLINE
-            )

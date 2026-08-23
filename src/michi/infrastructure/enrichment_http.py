@@ -11,6 +11,7 @@ Security contract (M6.9):
 Standard library only: urllib.request/parse, json, time, threading.
 """
 
+import http.client
 import importlib.metadata
 import threading
 import time
@@ -25,6 +26,7 @@ from michi.application.enrichment_ports import (
     HttpRequest,
     HttpResponse,
     HttpTransportPort,
+    is_transient_provider_failure,
 )
 
 # 8 MiB — a provider JSON body must never exceed this (M6.9 contract).
@@ -136,7 +138,9 @@ class UrllibHttpTransport(HttpTransportPort):
             ) from exc
         try:
             body = self._read_bounded(response)
-        except EnrichmentProviderError:
+        except EnrichmentTransportError:
+            # R1.1: body-read failures are normalized transport errors
+            # (they participate in the bounded retry policy upstream).
             response.close()
             raise
         status = getattr(response, "status", None)
@@ -159,22 +163,31 @@ class UrllibHttpTransport(HttpTransportPort):
 
     @staticmethod
     def _read_bounded(response) -> bytes:
+        """R1.1: EVERY body-read failure (TimeoutError, OSError,
+        http.client.IncompleteRead, other transport-read errors) is
+        normalized to EnrichmentTransportError and participates in the
+        same bounded retry policy. Invalid JSON / oversized bodies /
+        unsafe redirects / validation failures are NOT transport errors."""
         chunks: list[bytes] = []
         total = 0
-        while True:
-            chunk = response.read(64 * 1024)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > MAX_PROVIDER_BODY_BYTES:
-                raise EnrichmentTransportError(
-                    "provider body exceeds the configured maximum"
-                )
-            chunks.append(chunk)
+        try:
+            while True:
+                chunk = response.read(64 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_PROVIDER_BODY_BYTES:
+                    raise EnrichmentTransportError(
+                        "provider body exceeds the configured maximum"
+                    )
+                chunks.append(chunk)
+        except (TimeoutError, OSError) as exc:
+            raise EnrichmentTransportError(f"provider body read failed: {exc}") from exc
+        except http.client.HTTPException as exc:
+            raise EnrichmentTransportError(f"provider body read failed: {exc}") from exc
         return b"".join(chunks)
 
 
-_RETRYABLE_HTTP_STATUS = (429, 502, 503, 504)
 _MAX_ATTEMPTS = 3
 
 
@@ -211,15 +224,9 @@ class ProviderRequestExecutor:
                 self._limiter.wait()
             try:
                 return self._transport.get(request)
-            except EnrichmentTransportError:
-                if attempt >= _MAX_ATTEMPTS:
-                    raise
-                self._sleeper(self._backoff(None, attempt))
-            except EnrichmentHttpStatusError as exc:
-                if (
-                    exc.status_code in _RETRYABLE_HTTP_STATUS
-                    and attempt < _MAX_ATTEMPTS
-                ):
+            except (EnrichmentTransportError, EnrichmentHttpStatusError) as exc:
+                # R1.1: ONE canonical transient rule drives the retry.
+                if is_transient_provider_failure(exc) and attempt < _MAX_ATTEMPTS:
                     self._sleeper(self._backoff(exc, attempt))
                     continue
                 raise
@@ -227,7 +234,8 @@ class ProviderRequestExecutor:
 
     @staticmethod
     def _backoff(exc, attempt: int) -> float:
-        if exc is not None:
+        # Retry-After only exists on HTTP status errors (R1.1).
+        if isinstance(exc, EnrichmentHttpStatusError):
             raw = exc.headers.get("retry-after", "")
             try:
                 value = float(raw)

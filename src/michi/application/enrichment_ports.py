@@ -50,6 +50,27 @@ class EnrichmentTransportError(EnrichmentProviderError):
     body-read failure) — retryable category, never an HTTP status."""
 
 
+_TRANSIENT_HTTP_STATUS = frozenset({429, 502, 503, 504})
+
+
+def is_transient_provider_failure(exc: BaseException) -> bool:
+    """R1.1: THE single canonical transient-failure rule used by the
+    retry policy, the stale-cache fallback eligibility and the
+    OFFLINE/FAILED operation classification:
+
+    - EnrichmentTransportError: transient;
+    - EnrichmentHttpStatusError with 429/502/503/504: transient;
+    - EVERYTHING else (400/401/403/404/418/500/501/505, invalid JSON,
+      validation failures, unsafe URLs, provider contract violations):
+      NOT transient.
+    """
+    if isinstance(exc, EnrichmentTransportError):
+        return True
+    if isinstance(exc, EnrichmentHttpStatusError):
+        return exc.status_code in _TRANSIENT_HTTP_STATUS
+    return False
+
+
 class EnrichmentHttpStatusError(EnrichmentProviderError):
     """Narrow transport error carrying the provider HTTP status (M6.9):
     enables the bounded retry policy (429/502/503/504) without leaking
