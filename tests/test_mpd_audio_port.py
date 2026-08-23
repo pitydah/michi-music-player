@@ -8,12 +8,11 @@ from PySide6.QtCore import QCoreApplication
 
 from michi.application.ports import AudioLoadError
 from michi.domain.playback import PlaybackStatus
-from michi.infrastructure.audio_engines.mpd import MpdProtocolError
 from michi.infrastructure.audio_engines.mpd import (
     MPDAudioPort,
+    MpdProtocolError,
     _MpdEvent,
     _MpdEventKind,
-    _ManagedMpdRuntime,
 )
 
 
@@ -363,9 +362,7 @@ class TestEos:
         port.subscribe_end_of_media(lambda: eoms.append(1))
 
         def on_state(s):
-            if s == PlaybackStatus.STOPPED and port._current_path == Path(
-                "/m/a.flac"
-            ):
+            if s == PlaybackStatus.STOPPED and port._current_path == Path("/m/a.flac"):
                 port.load(Path("/m/c.flac"))
 
         port.subscribe_playback_state_changed(on_state)

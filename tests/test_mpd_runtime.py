@@ -1,6 +1,5 @@
 """M11.3D — managed MPD runtime tests (deterministic, fake process)."""
 
-import os
 import signal
 import subprocess
 import time
@@ -36,8 +35,6 @@ class _FakeProcess:
         self._socket_path = None
         conf_path = args[-1]
         if _FakeProcess.create_socket:
-            import re
-
             for line in Path(conf_path).read_text(encoding="utf-8").splitlines():
                 if line.startswith("bind_to_address "):
                     self._socket_path = line.split(" ", 1)[1]
@@ -186,7 +183,9 @@ class TestShutdown:
         runtime.close()
         assert runtime.process is None
 
-    def test_r8_kill_fallback_on_term_timeout(self, fake_runtime, tmp_path, monkeypatch):
+    def test_r8_kill_fallback_on_term_timeout(
+        self, fake_runtime, tmp_path, monkeypatch
+    ):
         runtime, proc = self._started(fake_runtime, tmp_path)
 
         def stuck_wait(timeout=None):

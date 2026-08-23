@@ -7,8 +7,8 @@ import pytest
 
 from michi.infrastructure.audio_engines.mpd import (
     MpdProtocolError,
-    _MpdProtocolClient,
     _mpd_seconds_to_millis,
+    _MpdProtocolClient,
     _quote_mpd_arg,
 )
 

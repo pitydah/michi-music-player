@@ -195,7 +195,6 @@ class TestMpdProvider:
 
     def test_pv4_same_instance_until_close(self, monkeypatch):
         import michi.infrastructure.audio_engines.mpd as mpd_mod
-        import michi.infrastructure.audio_engines.providers as prov_mod
 
         class FakeRuntime:
             def start(self):

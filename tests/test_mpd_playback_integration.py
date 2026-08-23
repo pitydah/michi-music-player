@@ -6,12 +6,12 @@ from pathlib import Path
 import pytest
 from PySide6.QtCore import QCoreApplication
 
-from michi.application.ports import AudioLoadError
 from michi.application.playback_service import PlaybackService
+from michi.application.ports import AudioLoadError
 from michi.domain.playback import PlaybackStatus
 from michi.infrastructure.audio_engines.mpd import (
-    MpdProtocolError,
     MPDAudioPort,
+    MpdProtocolError,
     _MpdEvent,
     _MpdEventKind,
 )

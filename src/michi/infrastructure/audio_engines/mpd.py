@@ -32,6 +32,7 @@ no auto-restart (M11.3G owns fallback); no output/DAC claims (M11.4/M11.5).
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import shutil
@@ -45,7 +46,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QTimer, Qt, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
 
 from michi.application.ports import AudioLoadError, AudioPort
 from michi.domain.playback import PlaybackStatus
@@ -120,16 +121,12 @@ class _MpdProtocolClient:
         greeting = self._read_line()
         if not greeting.startswith("OK MPD "):
             self.close()
-            raise MpdProtocolError(
-                f"greeting MPD inválido: {greeting!r}"
-            )
+            raise MpdProtocolError(f"greeting MPD inválido: {greeting!r}")
 
     def close(self) -> None:
         if self._sock is not None:
-            try:
+            with contextlib.suppress(OSError):
                 self._sock.close()
-            except OSError:
-                pass
             self._sock = None
 
     @property
@@ -316,9 +313,7 @@ class _ManagedMpdRuntime:
         self.runtime_dir = base
         self.socket_path = str(base / "mpd.sock")
         conf_path = base / "mpd.conf"
-        conf_path.write_text(
-            _render_mpd_conf(base, music_dir), encoding="utf-8"
-        )
+        conf_path.write_text(_render_mpd_conf(base, music_dir), encoding="utf-8")
         # spawn --no-daemon (nunca shell=True, nunca daemonizar)
         self._process = subprocess.Popen(
             [self._executable, "--no-daemon", "--stderr", str(conf_path)],
@@ -381,17 +376,13 @@ class _ManagedMpdRuntime:
         process = self._process
         self._process = None
         if process is not None and process.poll() is None:
-            try:
+            with contextlib.suppress(OSError, ProcessLookupError):
                 process.send_signal(signal.SIGTERM)
-            except (OSError, ProcessLookupError):
-                pass
             try:
                 process.wait(timeout=3.0)
             except subprocess.TimeoutExpired:
-                try:
+                with contextlib.suppress(OSError, ProcessLookupError):
                     process.kill()
-                except (OSError, ProcessLookupError):
-                    pass
                 try:
                     process.wait(timeout=3.0)
                 except subprocess.TimeoutExpired:
@@ -543,9 +534,7 @@ class MPDAudioPort(AudioPort):
 
     def _observer_main(self, generation: int) -> None:
         try:
-            idle_client = _MpdProtocolClient(
-                self._runtime.socket_path, timeout=30.0
-            )
+            idle_client = _MpdProtocolClient(self._runtime.socket_path, timeout=30.0)
             idle_client.connect()
             while not self._observer_stop.is_set():
                 try:
@@ -580,10 +569,8 @@ class MPDAudioPort(AudioPort):
                     _MpdEvent(generation, _MpdEventKind.TRANSPORT_ERROR, str(exc))
                 )
         finally:
-            try:
+            with contextlib.suppress(Exception):  # noqa: BLE001
                 idle_client.close()
-            except Exception:  # noqa: BLE001
-                pass
 
     # ------------------------------------------------------------------
     # owner commit (única autoridad semántica)
