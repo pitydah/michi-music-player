@@ -819,15 +819,25 @@ class TestThreadAffinity:
         port.close()
 
     def test_post_close_queued_event_isolated(self, qapp):
-        """P2-02: evento encolado ANTES de close → cero delivery tras close."""
+        """P2-02/R6.5.2: evento encolado ANTES de close → cero delivery
+        tras close — por la ruta REAL (sig_event del pump → owner)."""
+        from michi.infrastructure.audio_engines.gstreamer import (
+            _GstEvent,
+            _GstEventKind,
+        )
+
         bindings = FakeBindings()
         port = _port(bindings)
         callbacks = []
         port.subscribe_media_accepted(lambda p: callbacks.append(p))
+        port.load(Path("/m/queued.flac"))
+        generation = port._generation
 
-        # worker encola ANTES de close
+        # worker encola ANTES de close (ruta canónica: sig_event)
         def worker():
-            port._bridge.sig_acc.emit(Path("/m/queued.flac"))
+            port._bridge.sig_event.emit(
+                _GstEvent(generation=generation, kind=_GstEventKind.ASYNC_DONE)
+            )
 
         thread = threading.Thread(target=worker)
         thread.start()
@@ -836,6 +846,7 @@ class TestThreadAffinity:
         for _ in range(10):
             QCoreApplication.processEvents()
         assert callbacks == []
+        assert port._current_path is None  # sin commit post-close
         port.close()  # idempotente
 
 
@@ -3426,6 +3437,204 @@ class TestAtomicPublication:
         m4, g4 = _msg(port, _FakeMsgType.EOS, pipeline_a)
         _deliver(port, m4, g4)
         assert events == ["PlaybackStatus.STOPPED", "eom"]  # sin duplicados
+        port.close()
+
+
+class TestSynchronousCallbackReentrancy:
+    """M11.3C-R6.5.2: callbacks públicos DIRECTOS son reentrantes — el
+    cleanup de la transacción vieja completa ANTES del callback terminal, y
+    ningún comando viejo reanuda tras un callback que cambió la transacción."""
+
+    def test_t1_preroll_rejection_callback_loads_c_keeps_c(self, qapp):
+        bindings = FakeBindings()
+        bindings.failed_states.add(_FakeState.PAUSED)  # preroll de B falla
+        port = _port(bindings)
+        rejected = []
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+
+        def on_rejected(path, reason):
+            # reentrancy: el subscriber arranca C DENTRO del load(B) — C
+            # es una transacción VÁLIDA (el preroll ya no debe fallar)
+            bindings.failed_states.clear()
+            port.load(Path("/m/c.flac"))
+
+        port.subscribe_media_rejected(on_rejected)
+        port.load(Path("/m/b.flac"))
+        pipeline_c = bindings.pipelines[-1]
+        # B rechazada exactamente una vez
+        assert rejected == [
+            (Path("/m/b.flac"), "GStreamer failed to enter PAUSED during preroll")
+        ]
+        # C es la dueña: ownership coherente, B no tocó C
+        assert port._pending_path == Path("/m/c.flac")
+        assert port._current_path is None
+        assert port._pipeline is pipeline_c
+        assert port._bus is not None
+        assert port._bus.watch_installed is True  # watch de C intacto
+        assert port._bus_source is not None
+        assert port._generation == 2  # load(B) invalida (0→1), load(C) (1→2)
+        # C acepta normalmente
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_c)
+        _deliver(port, msg, gen)
+        assert port._current_path == Path("/m/c.flac")
+        port.close()
+
+    def test_t2_preroll_rejection_callback_closes(self, qapp):
+        bindings = FakeBindings()
+        bindings.failed_states.add(_FakeState.PAUSED)
+        port = _port(bindings)
+
+        def on_rejected(path, reason):
+            port.close()
+
+        port.subscribe_media_rejected(on_rejected)
+        port.load(Path("/m/b.flac"))
+        # cerrado terminalmente, sin resurrección post-close
+        assert port._closed is True
+        assert port._pipeline is None
+        assert port._bus is None
+        assert port._bus_source is None
+        port.close()  # idempotente
+
+    def test_t3_stopped_callback_during_load_supersedes_outer(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        # A aceptada y PLAYING
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+
+        def on_state(s):
+            # el subscriber del STOPPED (convergencia del load(B)) arranca C
+            if s == PlaybackStatus.STOPPED:
+                port.load(Path("/m/c.flac"))
+
+        port.subscribe_playback_state_changed(on_state)
+        # load(B) externo: el teardown de A converge STOPPED → callback → C
+        port.load(Path("/m/b.flac"))
+        # el load(B) externo detecta la supersesión y NO arma B
+        assert port._pending_path == Path("/m/c.flac")
+        assert port._current_path is None
+        assert port._bus is not None
+        # C acepta y reproduce
+        pipeline_c = bindings.pipelines[-1]
+        assert port._pipeline is pipeline_c
+        msg3, g3 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_c)
+        _deliver(port, msg3, g3)
+        assert port._current_path == Path("/m/c.flac")
+        port.close()
+
+    def test_t8_bridge_has_sig_event_only(self):
+        from PySide6.QtCore import Signal
+
+        from michi.infrastructure.audio_engines.gstreamer import _EventBridge
+
+        signals = [
+            name
+            for name, value in vars(_EventBridge).items()
+            if isinstance(value, Signal)
+        ]
+        assert signals == ["sig_event"]
+
+
+class TestSynchronousRejectionDisposition:
+    """M11.3C-R6.5.2 BLOCKER B: una rejection SÍNCRONA (dentro de load())
+    terminaliza la request de PlaybackService — sin play() ni epílogo."""
+
+    def _a_committed(self, bindings, port, svc):
+        svc.load_and_play(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        assert svc._accepted is True
+        return pipeline_a
+
+    def test_t4_synchronous_rejection_terminal_no_play(self, qapp):
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        self._a_committed(bindings, port, svc)
+        # B: preroll PAUSED → False (rejection SÍNCRONA dentro del load)
+        bindings.failed_states.add(_FakeState.PAUSED)
+        svc.load_and_play(Path("/m/b.flac"))
+        # disposición terminal
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert svc._pending_path is None
+        assert (
+            svc.state.error_message == "GStreamer failed to enter PAUSED during preroll"
+        )
+        # NO se emitió ningún request PLAYING para B (el pipeline de B se
+        # limpió en el load — el play nunca llegó a ejecutarse)
+        assert bindings.pipelines[-1].state == _FakeState.NULL
+        port.close()
+
+    def test_t5_recovery_after_synchronous_rejection(self, qapp):
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+        self._a_committed(bindings, port, svc)
+        bindings.failed_states.add(_FakeState.PAUSED)
+        svc.load_and_play(Path("/m/b.flac"))
+        # recuperación canónica: play() recarga A
+        bindings.failed_states.clear()
+        svc.play()
+        assert port._pending_path == Path("/m/a.flac")
+        pipeline_a2 = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a2)
+        _deliver(port, msg, gen)
+        assert svc._accepted is True
+        assert svc.state.file_path == Path("/m/a.flac")
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a2, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        assert svc.state.status == PlaybackStatus.PLAYING
+        assert svc.state.error_message is None  # limpiado por el request OK
+        port.close()
+
+    def test_t6_synchronous_acceptance_still_plays(self, qapp):
+        # future-proofing: un backend que acepta SÍNCRONICAMENTE dentro del
+        # load() → load_and_play continúa al play()
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+
+        original_load = port.load
+
+        def sync_accepting_load(path):
+            original_load(path)
+            # acceptance sincrónica (simula backend que reporta al instante)
+            pipeline = bindings.pipelines[-1]
+            msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+            _deliver(port, msg, gen)
+
+        port.load = sync_accepting_load
+        play_calls = []
+
+        original_play = port.play
+
+        def tracking_play():
+            play_calls.append(1)
+            original_play()
+
+        port.play = tracking_play
+        svc.load_and_play(Path("/m/a.flac"))
+        # acceptance sincrónica commiteada y PHASE 2 (play) se ejecutó
+        assert svc._accepted is True
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert play_calls == [1]
         port.close()
 
 
