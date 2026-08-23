@@ -1156,22 +1156,24 @@ class TestF41RecoveryLKG:
 
 
 class TestF42AdapterContract:
+    # Content hashes of the FROZEN adapter files at the M11.3F baseline
+    # (be663c6299ef54ec911d0e8dd0e1ec05edd55bda). Content-anchored (no git
+    # history needed) so the gate also runs in shallow CI checkouts.
+    _BASELINE_HASHES = {
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "1ee9e1d5fc493797",
+        "src/michi/infrastructure/audio_engines/mpd.py": "e542d2cbcb5e2e4d",
+        "src/michi/infrastructure/qt_backend.py": "88614638da12acd8",
+        "src/michi/application/ports.py": "aa76e1d8089c2c4e",
+        "src/michi/application/queue_service.py": "00a0f39531fc6b1d",
+        "src/michi/application/audio_transport_router.py": "d27e9dca6304722c",
+    }
+
     def test_f42_no_adapter_source_changes(self):
         """Frozen adapters must be byte-identical to the M11.3F baseline."""
-        import subprocess
+        import hashlib
+        from pathlib import Path
 
-        base = "be663c6299ef54ec911d0e8dd0e1ec05edd55bda"
-        for rel in [
-            "src/michi/infrastructure/audio_engines/gstreamer.py",
-            "src/michi/infrastructure/audio_engines/mpd.py",
-            "src/michi/infrastructure/qt_backend.py",
-            "src/michi/application/ports.py",
-            "src/michi/application/queue_service.py",
-            "src/michi/application/audio_transport_router.py",
-        ]:
-            r = subprocess.run(
-                ["git", "diff", "--quiet", base, "--", rel],
-                capture_output=True,
-                text=True,
-            )
-            assert r.returncode == 0, f"adapter changed vs baseline: {rel}"
+        for rel, expected in self._BASELINE_HASHES.items():
+            data = Path(rel).read_bytes()
+            actual = hashlib.sha256(data).hexdigest()[:16]
+            assert actual == expected, f"adapter changed vs baseline: {rel}"
