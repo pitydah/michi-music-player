@@ -367,3 +367,21 @@ Michi-nativos.
 - Code-validation evidence: full suite 1797 passed at CODE_VALIDATED_HEAD
   19c634f (working tree CLEAN; 1 pre-existing conditional skip: M11.3B
   Qt-runtime).
+
+
+## M11.3C Final Transaction Ownership & Reentrancy Seal
+
+- GATE 1: GStreamerAudioPort private `_load_epoch` token tracks load command
+  ownership; re-validated after direct `_deliver_state_if(PlaybackStatus.STOPPED)`
+  convergence. Outer `load()` commands cancelled by reentrant `stop()`,
+  `close()`, or superseding `load()` do not arm the superseded candidate.
+- GATE 2: `PlaybackService.prepare_for_resume()` request epoch revalidation;
+  distinguishes synchronous rejection (terminal, error preserved, no seek,
+  no success epilogue), synchronous acceptance (proceeds to seek without
+  autoplay), and async pending (retains pending candidate without early seek).
+- GATE 3: `PlaybackService` request-scoped exception handlers recheck
+  `my_epoch != self._request_epoch` before mutating state; an old exception
+  propagates cleanly without clobbering a superseded request.
+- Evidence: 1803 passed, 1 skipped at CODE_VALIDATED_HEAD c1191e9.
+  M11.3C is DEFINITIVELY DONE / TESTED / FROZEN.
+
