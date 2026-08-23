@@ -27,6 +27,7 @@ class SettingsState:
     recent_files: list[str] = field(default_factory=list)
     theme: str = "dark"
     window_geometry: WindowGeometry = WindowGeometry()
+    online_enrichment: bool = False  # M6.9 privacy: network DEFAULT OFF
 
 
 def window_geometry_to_json(geometry: WindowGeometry) -> str:

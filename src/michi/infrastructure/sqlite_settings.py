@@ -949,6 +949,13 @@ class SQLiteSettingsRepository(SettingsRepository):
                         "invalid persisted setting 'window_geometry'; "
                         "using default geometry"
                     )
+            elif key == "online_enrichment":
+                state.online_enrichment, malformed = _decode_online_enrichment(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'online_enrichment'; "
+                        "using default False"
+                    )
         return state
 
     def save(self, state: SettingsState) -> None:
@@ -959,6 +966,7 @@ class SQLiteSettingsRepository(SettingsRepository):
             ("recent_files", json.dumps(state.recent_files)),
             ("theme", state.theme),
             ("window_geometry", window_geometry_to_json(state.window_geometry)),
+            ("online_enrichment", str(state.online_enrichment).lower()),
         ]
         # Explicit close (M5-PRODUCTION-LIFECYCLE-GATE): the with-conn only
         # commits; close deterministically instead of waiting for GC.
@@ -970,6 +978,13 @@ class SQLiteSettingsRepository(SettingsRepository):
             conn.commit()
         finally:
             conn.close()
+
+
+def _decode_online_enrichment(raw: object) -> tuple[bool, bool]:
+    """M6.9: strict boolean decode; anything else -> default False."""
+    if isinstance(raw, str) and raw.strip().lower() in {"true", "false"}:
+        return raw.strip().lower() == "true", False
+    return False, True
 
 
 def _quarantine_primary_artifacts(db_path: Path) -> Path:

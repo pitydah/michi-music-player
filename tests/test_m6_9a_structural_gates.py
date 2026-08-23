@@ -232,3 +232,184 @@ class TestEnrichmentModulesAreIsolated:
             assert "michi.application.ports" not in module
         for banned in ("save", "delete", "tags"):
             assert banned not in attrs, banned
+
+
+class TestR1RoleSeparationGates:
+    """R1 §73: production resolver code must NEVER combine track-artist
+    and album-artist ids into one conflict set."""
+
+    def test_no_combined_role_helper_exists(self):
+        source = read("src/michi/domain/enrichment.py")
+        assert "combined_artist_ids" not in source
+
+    def test_typed_hint_carriers_are_role_exclusive(self):
+        from michi.domain.enrichment import AlbumIdentityHints, ArtistIdentityHints
+
+        assert set(ArtistIdentityHints.__dataclass_fields__) == {"artist_ids"}
+        assert set(AlbumIdentityHints.__dataclass_fields__) == {
+            "release_group_ids",
+            "release_ids",
+            "album_artist_ids",
+        }
+
+
+class TestR1IdentityVsKnowledgeGates:
+    """R1 §74-75: identity persistence must not depend on knowledge
+    profiles; persisted knowledge must carry no async lifecycle state."""
+
+    def test_identity_records_never_reference_knowledge_profiles(self):
+        from michi.domain.enrichment import (
+            AlbumExternalIdentity,
+            ArtistExternalIdentity,
+        )
+
+        for model in (ArtistExternalIdentity, AlbumExternalIdentity):
+            fields = set(model.__dataclass_fields__)
+            assert "profile" not in fields
+            assert "knowledge" not in fields
+
+    def test_knowledge_profiles_carry_no_request_state(self):
+        from michi.domain.enrichment import (
+            AlbumKnowledgeProfile,
+            ArtistKnowledgeProfile,
+        )
+
+        forbidden = {"generation", "request_id", "pending", "callback"}
+        for model in (ArtistKnowledgeProfile, AlbumKnowledgeProfile):
+            assert not set(model.__dataclass_fields__).intersection(forbidden)
+
+    def test_knowledge_profiles_have_structured_provenance(self):
+        from michi.domain.enrichment import (
+            AlbumKnowledgeProfile,
+            ArtistKnowledgeProfile,
+            KnowledgeProvenance,
+        )
+
+        assert "provenance" in ArtistKnowledgeProfile.__dataclass_fields__
+        assert "biography_provenance" in ArtistKnowledgeProfile.__dataclass_fields__
+        assert "provenance" in AlbumKnowledgeProfile.__dataclass_fields__
+        provenance_fields = set(KnowledgeProvenance.__dataclass_fields__)
+        assert "provider" in provenance_fields
+        assert "source_url" in provenance_fields
+
+    def test_identity_repository_is_a_distinct_port(self):
+        import inspect
+
+        from michi.application.enrichment_ports import (
+            IdentityRepositoryPort,
+            KnowledgeRepositoryPort,
+        )
+
+        identity_methods = {
+            name
+            for name, _ in inspect.getmembers(IdentityRepositoryPort)
+            if name.startswith(("save_", "load_", "delete_", "clear_"))
+        }
+        assert "save_artist_identity" in identity_methods
+        assert "save_album_identity" in identity_methods
+        assert "clear_identities" in identity_methods
+        knowledge_methods = {
+            name
+            for name, _ in inspect.getmembers(KnowledgeRepositoryPort)
+            if name.startswith(("save_", "load_", "delete_", "clear_"))
+        }
+        assert "clear_knowledge" in knowledge_methods
+        assert "clear_knowledge" not in identity_methods
+        assert "clear_identities" not in knowledge_methods
+
+    def test_no_ambiguous_generic_clear_remains(self):
+        import inspect
+
+        from michi.application.enrichment_ports import (
+            IdentityRepositoryPort,
+            KnowledgeRepositoryPort,
+        )
+
+        for port in (IdentityRepositoryPort, KnowledgeRepositoryPort):
+            assert not any(
+                name == "clear"
+                for name, _ in inspect.getmembers(port)
+                if name.startswith("clear")
+            )
+
+
+class TestR2StructuralGates:
+    """R2 §79: no absolute asset paths, release variant correlation,
+    ledger invalidation API, no redundant manual state."""
+
+    def test_asset_record_has_no_absolute_path_field(self):
+        from michi.domain.enrichment import EnrichmentAssetRecord
+
+        fields = set(EnrichmentAssetRecord.__dataclass_fields__)
+        assert "local_path" not in fields
+        assert "managed_object" in fields
+
+    def test_request_carries_release_variant(self):
+        from michi.domain.enrichment import EnrichmentRequest
+
+        assert "external_variant_id" in EnrichmentRequest.__dataclass_fields__
+
+    def test_ledger_exposes_invalidation_api(self):
+        from michi.domain.enrichment import EnrichmentRequestLedger
+
+        assert callable(EnrichmentRequestLedger.invalidate)
+        assert callable(EnrichmentRequestLedger.invalidate_all)
+
+    def test_identity_records_have_no_redundant_manual_state(self):
+        from michi.domain.enrichment import (
+            AlbumExternalIdentity,
+            ArtistExternalIdentity,
+        )
+
+        for model in (ArtistExternalIdentity, AlbumExternalIdentity):
+            assert "manually_confirmed" not in model.__dataclass_fields__
+
+    def test_album_candidate_carries_artist_credit_names(self):
+        from michi.domain.enrichment import ReleaseGroupCandidate
+
+        assert "artist_credit_names" in ReleaseGroupCandidate.__dataclass_fields__
+
+    def test_service_exposes_knowledge_read_authority(self):
+        from michi.application.enrichment_service import EnrichmentService
+
+        assert callable(EnrichmentService.get_artist_knowledge)
+        assert callable(EnrichmentService.get_album_knowledge)
+
+
+class TestR3StructuralGates:
+    """R3: STORAGE_FAILED verdict, truthful read/write port contracts,
+    transactional-clear presence, no stale path terminology."""
+
+    def test_delivery_verdict_has_storage_failed(self):
+        from michi.domain.enrichment import DeliveryVerdict
+
+        assert hasattr(DeliveryVerdict, "STORAGE_FAILED")
+
+    def test_identity_port_docs_require_truthful_reads(self):
+        import inspect
+
+        from michi.application.enrichment_ports import IdentityRepositoryPort
+
+        doc = inspect.getdoc(IdentityRepositoryPort) or ""
+        assert "EnrichmentStorageError" in doc
+
+    def test_knowledge_port_docs_require_truthful_writes(self):
+        import inspect
+
+        from michi.application.enrichment_ports import KnowledgeRepositoryPort
+
+        doc = inspect.getdoc(KnowledgeRepositoryPort) or ""
+        assert "EnrichmentStorageError" in doc
+
+    def test_no_stale_local_path_terminology_in_ports(self):
+        from pathlib import Path
+
+        source = Path("src/michi/application/enrichment_ports.py").read_text()
+        assert "local_path" not in source
+        assert "managed_object" in source
+
+    def test_clear_operations_transactional_markers(self):
+        from pathlib import Path
+
+        source = Path("src/michi/infrastructure/enrichment_repository.py").read_text()
+        assert "ROLLBACK" in source

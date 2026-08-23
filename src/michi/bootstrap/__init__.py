@@ -19,6 +19,10 @@ from michi.application.audio_engine_registry import AudioEngineRegistry
 from michi.application.audio_engine_service import AudioEngineService
 from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.coordinator import PlaybackCoordinator
+from michi.application.enrichment_coordinator import EnrichmentCoordinator
+from michi.application.enrichment_evidence import LibraryEnrichmentEvidenceBuilder
+from michi.application.enrichment_executor import ThreadPoolEnrichmentExecutor
+from michi.application.enrichment_service import EnrichmentService
 from michi.application.library_preferences_coordinator import (
     LibraryPreferencesCoordinator,
 )
@@ -39,6 +43,22 @@ from michi.infrastructure.audio_engines.providers import (
     MpdEngineProvider,
     QtEngineProvider,
 )
+from michi.infrastructure.enrichment_assets import FilesystemEnrichmentAssetStore
+from michi.infrastructure.enrichment_http import (
+    MusicBrainzRateLimiter,
+    UrllibHttpTransport,
+)
+from michi.infrastructure.enrichment_identity_hints import MutagenIdentityHintExtractor
+from michi.infrastructure.enrichment_knowledge import (
+    CoverArtArchiveProvider,
+    MusicBrainzKnowledgeProvider,
+    WikidataKnowledgeProvider,
+    WikimediaCommonsProvider,
+    WikipediaBiographyProvider,
+)
+from michi.infrastructure.enrichment_musicbrainz import MusicBrainzIdentityResolver
+from michi.infrastructure.enrichment_provider_cache import FilesystemProviderCache
+from michi.infrastructure.enrichment_repository import SqliteEnrichmentRepository
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.infrastructure.library_index import SqliteLibraryIndexRepository
 from michi.infrastructure.library_prefs import SqliteLibraryPrefsRepository
@@ -63,6 +83,14 @@ _MISSING = object()  # sentinel: production default vs explicit None override
 
 def _data_dir() -> Path:
     base = QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)
+    path = Path(base)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _cache_dir() -> Path:
+    """R1: ONE canonical cache location authority (Qt CacheLocation)."""
+    base = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
     path = Path(base)
     path.mkdir(parents=True, exist_ok=True)
     return path
@@ -95,6 +123,77 @@ class ServiceGraph:
     metadata_extractor: object
     artwork_provider: object
     artwork_cache: object
+
+
+@dataclass
+class EnrichmentGraph:
+    """M6.9 production enrichment composition (LAZY: constructing this
+    graph performs ZERO network requests — providers only act on explicit
+    user operations)."""
+
+    coordinator: EnrichmentCoordinator
+    executor: ThreadPoolEnrichmentExecutor
+    service: EnrichmentService
+    repository: SqliteEnrichmentRepository
+    asset_store: FilesystemEnrichmentAssetStore
+
+
+def _build_enrichment_graph(
+    data_dir: Path, cache_root: Path, enabled
+) -> EnrichmentGraph:
+    """M6.9G composition root for enrichment (isolated from audio)."""
+    enrichment_db = data_dir / "enrichment.db"
+    repository = SqliteEnrichmentRepository(enrichment_db)
+    asset_store = FilesystemEnrichmentAssetStore(data_dir / "enrichment-assets")
+    transport = UrllibHttpTransport()
+    limiter = MusicBrainzRateLimiter()
+    cache = FilesystemProviderCache(cache_root / "enrichment" / "provider-cache")
+    resolver = MusicBrainzIdentityResolver(transport, limiter, cache)
+    service = EnrichmentService(
+        resolver=resolver,
+        artist_provider=_NullKnowledgeProvider(),
+        album_provider=_NullKnowledgeProvider(),
+        repository=repository,
+        identity_repository=repository,
+        asset_store=asset_store,
+    )
+    mb_knowledge = MusicBrainzKnowledgeProvider(transport, limiter, cache)
+    wikidata = WikidataKnowledgeProvider(transport, cache)
+    wikipedia = WikipediaBiographyProvider(transport, cache)
+    commons = WikimediaCommonsProvider(transport, cache)
+    coverart = CoverArtArchiveProvider(transport, cache)
+    hint_extractor = MutagenIdentityHintExtractor()
+    evidence_builder = LibraryEnrichmentEvidenceBuilder(hint_extractor)
+    executor = ThreadPoolEnrichmentExecutor(max_workers=2)
+    coordinator = EnrichmentCoordinator(
+        service=service,
+        resolver=resolver,
+        evidence_builder=evidence_builder,
+        mb_knowledge=mb_knowledge,
+        wikidata=wikidata,
+        wikipedia=wikipedia,
+        commons=commons,
+        coverart=coverart,
+        asset_store=asset_store,
+        executor=executor,
+        transport=transport,
+        enabled=enabled,
+    )
+    return EnrichmentGraph(
+        coordinator=coordinator,
+        executor=executor,
+        service=service,
+        repository=repository,
+        asset_store=asset_store,
+    )
+
+
+class _NullKnowledgeProvider:
+    """No-op knowledge providers (the coordinator never fetches through
+    EnrichmentService providers — it fetches via the M6.9 providers)."""
+
+    def fetch_profile(self, *args, **kwargs):
+        raise RuntimeError("unused in the M6.9 coordinator composition")
 
 
 def _initialize_reference_audio_runtime(
@@ -282,6 +381,8 @@ class ApplicationContainer:
         self._plb: PlaylistsBridge | None = None
         self._nb: NavigationBridge | None = None
         self._sb: SettingsBridge | None = None
+        self._enrichment: EnrichmentGraph | None = None
+        self._enrichment_settings: SettingsService | None = None
 
     def initialize(self) -> None:
         QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -317,6 +418,19 @@ class ApplicationContainer:
         # Load persisted preferences once
         s = settings.load()
         playback.restore_volume(s.volume, s.muted)
+
+        # M6.9G: LAZY enrichment composition — construction performs ZERO
+        # network; providers act only on explicit user operations gated by
+        # the Online Library Enrichment setting (DEFAULT OFF).
+        self._enrichment_settings = settings
+
+        def enrichment_enabled() -> bool:
+            current = settings.load().online_enrichment
+            return bool(current)
+
+        self._enrichment = _build_enrichment_graph(
+            _data_dir(), _cache_dir(), enrichment_enabled
+        )
 
         # Library/settings coordination: restore last_directory, sync on scan
         lib_prefs = LibraryPreferencesCoordinator(library, settings)
@@ -500,6 +614,13 @@ class ApplicationContainer:
         self._queue = None
         self._playback = None
         self._settings = None
+        # M6.9-R1 shutdown owner: the coordinator owns the enrichment
+        # executor lifecycle (freeze work, cancel operations, invalidate
+        # pending requests, join workers) — the container never closes
+        # the executor behind its back.
+        if self._enrichment is not None:
+            self._enrichment.coordinator.shutdown()
+            self._enrichment = None
         self._app = None
 
         if error is not None:
