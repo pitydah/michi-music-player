@@ -18,13 +18,6 @@ _QT_MULTIMEDIA_DISPLAY = "Qt Multimedia"
 _GSTREAMER_DISPLAY = "GStreamer"
 _MPD_DISPLAY = "MPD"
 
-_GSTREAMER_NOT_IMPLEMENTED = (
-    "GStreamer runtime disponible pero el adaptador AudioPort está pendiente (M11.3C)"
-)
-_MPD_NOT_IMPLEMENTED = (
-    "MPD ejecutable disponible pero el adaptador AudioPort está pendiente (M11.3D)"
-)
-
 
 class QtEngineProvider(AudioEngineProviderPort):
     """Reference/safe engine: wraps the existing QtMultimediaBackend.
