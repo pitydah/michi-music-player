@@ -517,6 +517,14 @@ class MPDAudioPort(AudioPort):
             self._observer = None
             if observer is not None:
                 self._observer_stop.set()
+                # GATE 3 (M11.3D-R2): liberar el recv bloqueante del idle
+                # ANTES del join — si el observer está bloqueado en idle(),
+                # el join expiraría y el thread quedaría vivo
+                idle_client = self._idle_client
+                if idle_client is not None:
+                    with contextlib.suppress(Exception):
+                        idle_client.close()
+                self._idle_client = None
                 observer.join(timeout=2.0)
             if self._client is not None:
                 self._client.close()
@@ -628,7 +636,12 @@ class MPDAudioPort(AudioPort):
         try:
             status = self._client.status()
         except MpdProtocolError as exc:
-            if not self._runtime.child_alive():
+            # GATE 1 (M11.3D-R2): proceso vivo ≠ transporte sano. Con el
+            # socket de comandos roto no se puede consultar la verdad del
+            # daemon → convergencia honesta (nunca return silencioso).
+            if self._runtime.child_alive():
+                self._converge_transport_error(str(exc))
+            else:
                 self._converge_process_exit(str(exc))
             return
         error = status.get("error")
@@ -717,7 +730,12 @@ class MPDAudioPort(AudioPort):
             return
         try:
             status = self._client.status()
-        except MpdProtocolError:
+        except MpdProtocolError as exc:
+            # GATE 1: pérdida del transporte de comandos con source
+            # autoritativo → convergencia honesta (una vez; el cleanup de
+            # current_path hace no-op los ticks siguientes)
+            if self._current_path is not None:
+                self._converge_transport_error(str(exc))
             return
         elapsed = status.get("elapsed")
         if elapsed is not None:
@@ -737,14 +755,22 @@ class MPDAudioPort(AudioPort):
         try:
             self._client.clear()
         except MpdProtocolError as exc:
-            # C3 (M11.3D-R1): un ACK DETERMINISTA del clear es una rejection
-            # controlada → la fuente previa sigue. Un fallo de transporte
-            # desconocido (EOF/socket/timeout) NO prueba preservación:
-            # MPD pudo ejecutar clear → FAIL CLOSED (False).
+            if exc.is_ack:
+                # ACK DETERMINISTA: clear rechazado → la fuente previa sigue
+                # (current_path/song_id intactos)
+                raise AudioLoadError(
+                    file_path, str(exc), previous_source_preserved=True
+                ) from exc
+            # GATE 2 (M11.3D-R2): resultado de IPC DESCONOCIDO — MPD pudo
+            # ejecutar clear → FAIL CLOSED: la fuente previa NO está
+            # garantizada Y la autoridad backend vieja se abandona (nunca
+            # un ghost song_id tras un clear incierto)
+            self._pending_path = None
+            self._current_path = None
+            self._song_id = None
+            self._pending_play = False
             raise AudioLoadError(
-                file_path,
-                str(exc),
-                previous_source_preserved=exc.is_ack,
+                file_path, str(exc), previous_source_preserved=False
             ) from exc
         try:
             song_id = self._client.addid(str(file_path.resolve()))
