@@ -1,5 +1,6 @@
 """M11.3E — Engine Runtime Availability Truth Seal (deterministic)."""
 
+import os
 import shutil
 
 import pytest
@@ -92,6 +93,19 @@ def _registry_with(*desc_factories):
     providers = [_CountingProvider(f) for f in desc_factories]
     registry = AudioEngineRegistry(providers)
     return registry, providers
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    """Instancia Qt offscreen local (patrón del repo) — sin depender de
+    pytest-qt, que no está en la CI."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication([])
+    yield app
 
 
 @pytest.fixture
