@@ -342,3 +342,61 @@ Michi-nativos.
   cross AudioPort (R6.5 claim now actually true).
 - Code-validation evidence: full suite 1790 passed at CODE_VALIDATED_HEAD
   3af246c (1 pre-existing conditional skip: M11.3B Qt-runtime).
+
+
+## M11.3C-R6.5.2 synchronous callback / command reentrancy seal
+
+- FINAL SYNCHRONOUS CALLBACK CONTRACT: direct owner callbacks are
+  reentrant — a subscriber may load/stop/close/play inside any command.
+  Therefore command-local cleanup is completed BEFORE terminal callbacks
+  (preroll rejection: full B NULL+detach cleanup before media_rejected;
+  a captured cleanup error may raise after the callback without mutating
+  state), and any callback occurring before command completion requires
+  transaction revalidation before further mutation (load() rechecks its
+  generation token after the STOPPED convergence and never arms over a
+  reentrant supersession).
+- PlaybackService request contract: a private _request_epoch identifies
+  each logical request; a synchronous ACCEPTED during load() may
+  continue to PLAY; a synchronous REJECTED/CANCELLED/SUPERSEDED during
+  load() is terminal — no PLAY phase, no success epilogue (rejection
+  reason preserved). This is a design requirement for future MPD.
+- Committed test tree validated: the historical post-close gate used the
+  removed sig_acc (its worker thread died silently — the old green was
+  vacuous); rewritten to the real sig_event path. _EventBridge defines
+  exactly one Signal.
+- Code-validation evidence: full suite 1797 passed at CODE_VALIDATED_HEAD
+  19c634f (working tree CLEAN; 1 pre-existing conditional skip: M11.3B
+  Qt-runtime).
+
+
+## M11.3C Final Transaction Ownership & Reentrancy Seal
+
+- GATE 1: GStreamerAudioPort private `_load_epoch` token tracks load command
+  ownership; re-validated after direct `_deliver_state_if(PlaybackStatus.STOPPED)`
+  convergence. Outer `load()` commands cancelled by reentrant `stop()`,
+  `close()`, or superseding `load()` do not arm the superseded candidate.
+- GATE 2: `PlaybackService.prepare_for_resume()` request epoch revalidation;
+  distinguishes synchronous rejection (terminal, error preserved, no seek,
+  no success epilogue), synchronous acceptance (proceeds to seek without
+  autoplay), and async pending (retains pending candidate without early seek).
+- GATE 3: `PlaybackService` request-scoped exception handlers recheck
+  `my_epoch != self._request_epoch` before mutating state; an old exception
+  propagates cleanly without clobbering a superseded request.
+- Evidence: 1805 passed, 1 skipped at CODE_VALIDATED_HEAD 1b34dee.
+  M11.3C is DEFINITIVELY DONE / TESTED / FROZEN.
+
+
+## M11.3C Final Same-Request Terminal Disposition Seal
+
+- P1 FIXED: PlaybackService exception handlers in `load_and_play()` and
+  `prepare_for_resume()` now explicitly check if the current request was
+  already terminalized synchronously (`_pending_path is None and not _accepted`)
+  before applying legacy rollback. A cleanup/lifecycle exception raised by the
+  backend after a synchronous terminal callback propagates to the caller without
+  restoring stale previous acceptance or intent.
+- Canonical invariant preserved: backend physical truth = AudioPort semantic
+  truth = PlaybackService canonical truth.
+- Evidence: 1805 passed, 1 skipped at CODE_VALIDATED_HEAD 1b34dee (tree CLEAN).
+  M11.3C is DEFINITIVELY DONE / TESTED / FROZEN; NEXT AUTHORIZED WP: M11.3D.
+
+

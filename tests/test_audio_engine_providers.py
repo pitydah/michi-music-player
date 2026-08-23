@@ -154,18 +154,120 @@ class TestGStreamerProvider:
 
 
 class TestMpdProvider:
-    def test_probe_truthful(self):
+    def test_pv1_missing_executable(self, monkeypatch):
+        monkeypatch.setattr("shutil.which", lambda name: None)
         desc = MpdEngineProvider().probe()
-        assert desc.engine_id == AudioEngineId.MPD
-        assert desc.implemented is False
-        if not desc.available:
-            assert "mpd" in (desc.unavailable_reason or "")
+        assert desc.available is False
+        assert desc.implemented is True
+        assert desc.can_activate is False
+        assert desc.activation_blocker is not None
 
-    def test_open_not_implemented_in_a(self):
-        with pytest.raises(NotImplementedError):
-            MpdEngineProvider().open()
+    def test_pv2_installed_executable(self, monkeypatch):
+        monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/mpd")
+        desc = MpdEngineProvider().probe()
+        assert desc.available is True
+        assert desc.implemented is True
+        assert desc.can_activate is True
+        assert desc.capabilities.local_file_playback is True
+        assert desc.capabilities.seek is True
+        assert desc.capabilities.pause is True
+        assert desc.capabilities.volume is True
+        assert desc.capabilities.mute is True
 
-    def test_probe_does_not_spawn(self):
+    def test_pv3_probe_never_spawns(self):
+        import ast
+
+        import michi.infrastructure.audio_engines.providers as mod
+
+        tree = ast.parse(inspect.getsource(mod))
+        imported = set()
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                imported.update(a.name for a in n.names)
+            elif isinstance(n, ast.ImportFrom):
+                imported.add(n.module or "")
+        assert "subprocess" not in imported
+        # probe() solo descubre el binario; nunca lo ejecuta
+        probe_src = inspect.getsource(MpdEngineProvider.probe)
+        assert "shutil.which" in probe_src
+        assert "subprocess" not in probe_src
+        assert "Popen" not in probe_src
+
+    def test_pv4_same_instance_until_close(self, monkeypatch):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+
+        class FakeRuntime:
+            def start(self):
+                pass
+
+            def close(self):
+                pass
+
+            socket_path = "/tmp/x.sock"
+
+        class FakePort:
+            def open(self):
+                pass
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(mpd_mod, "MPDAudioPort", FakePort)
+        monkeypatch.setattr(mpd_mod, "_ManagedMpdRuntime", FakeRuntime)
+        provider = MpdEngineProvider()
+        first = provider.open()
+        assert provider.open() is first  # misma instancia hasta close
+        provider.close()
+        assert provider._port is None
+
+    def test_pv5_close_idempotent(self, monkeypatch):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+
+        class FakePort:
+            def open(self):
+                pass
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(mpd_mod, "MPDAudioPort", FakePort)
+        provider = MpdEngineProvider()
+        provider.open()
+        provider.close()
+        provider.close()  # idempotente
+        assert provider._port is None
+
+    def test_pv6_fresh_port_after_close(self, monkeypatch):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+
+        class FakePort:
+            def open(self):
+                pass
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(mpd_mod, "MPDAudioPort", FakePort)
+        provider = MpdEngineProvider()
+        first = provider.open()
+        provider.close()
+        second = provider.open()
+        assert second is not first  # port fresco tras close
+
+    def test_pv7_failed_open_no_phantom(self, monkeypatch):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+
+        class FailingPort:
+            def open(self):
+                raise RuntimeError("startup failed")
+
+        monkeypatch.setattr(mpd_mod, "MPDAudioPort", FailingPort)
+        provider = MpdEngineProvider()
+        with pytest.raises(RuntimeError, match="startup failed"):
+            provider.open()
+        assert provider._port is None  # sin port fantasma
+
+    def test_probe_does_not_spawn_legacy(self):
         """probe() must never spawn MPD nor touch system MPD paths."""
         import ast
 
@@ -203,12 +305,11 @@ class TestProviderActivation:
         assert desc.capabilities.volume is True
         assert desc.capabilities.mute is True
 
-    def test_mpd_blocked_by_implementation(self):
+    def test_mpd_implemented_runtime_dependent(self):
+        """M11.3D: implemented=True; can_activate = available (executable)."""
         desc = MpdEngineProvider().probe()
-        assert desc.implemented is False
-        assert desc.can_activate is False
-        assert desc.implementation_reason is not None
-        assert "M11.3D" in desc.implementation_reason
+        assert desc.implemented is True
+        assert desc.can_activate == desc.available
 
     def test_missing_dependency_unavailable_reason(self):
         class Missing(AudioEngineProviderPort):
@@ -258,7 +359,7 @@ class TestProviderComposition:
         # GStreamer/MPD: installed status varies by machine; implemented is
         # always False in M11.3A
         assert descriptors[1].implemented is True  # GStreamer (M11.3C)
-        assert descriptors[2].implemented is False  # MPD (M11.3D)
+        assert descriptors[2].implemented is True  # MPD (M11.3D)
 
 
 class TestAudioEngineService:

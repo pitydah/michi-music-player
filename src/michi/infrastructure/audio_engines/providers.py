@@ -168,11 +168,15 @@ class GStreamerEngineProvider(AudioEngineProviderPort):
 
 
 class MpdEngineProvider(AudioEngineProviderPort):
-    """Availability probe for MPD (private managed process, M11.3D).
+    """MPD as a MANAGED PRIVATE child process behind AudioPort (M11.3D).
 
-    probe() only checks the executable is discoverable — it NEVER spawns
-    MPD, never attaches to a system daemon and never inspects /run/mpd,
-    /etc/mpd.conf or ~/.config/mpd."""
+    probe() is SIDE-EFFECT FREE: it only checks the executable is
+    discoverable — it NEVER spawns MPD, never creates runtime dirs or
+    sockets, never attaches to a system daemon and never inspects
+    /run/mpd, /etc/mpd.conf or ~/.config/mpd."""
+
+    def __init__(self) -> None:
+        self._port = None
 
     @property
     def engine_id(self) -> AudioEngineId:
@@ -189,12 +193,32 @@ class MpdEngineProvider(AudioEngineProviderPort):
             display_name=_MPD_DISPLAY,
             available=available,
             unavailable_reason=reason,
-            implemented=False,
-            implementation_reason=_MPD_NOT_IMPLEMENTED,
+            implemented=True,
+            implementation_reason=None,
+            capabilities=AudioEngineCapabilities(
+                local_file_playback=True,
+                seek=True,
+                pause=True,
+                volume=True,
+                mute=True,
+            ),
         )
 
     def open(self) -> AudioPort:
-        raise NotImplementedError("MPD AudioPort adapter pendiente (M11.3D)")
+        """Abre el runtime gestionado y devuelve el MISMO port hasta close.
+
+        Si la inicialización falla, no queda ningún port a medio abrir."""
+        if self._port is not None:
+            return self._port
+        from michi.infrastructure.audio_engines.mpd import MPDAudioPort
+
+        port = MPDAudioPort()
+        port.open()  # failure-atomic: si falla, el runtime se limpia solo
+        self._port = port
+        return port
 
     def close(self) -> None:
-        pass
+        port = self._port
+        self._port = None
+        if port is not None:
+            port.close()
