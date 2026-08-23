@@ -1190,3 +1190,454 @@ class TestG9RealMpd:
             mpd_mod._pick_runtime_parent = original_pick
             if port is not None:
                 port.close()
+
+
+# ---------------------------------------------------------------------------
+# R — FINAL OWNERSHIP / GENERATION SEAL (P1-01 / P1-02 / P1-03)
+# ---------------------------------------------------------------------------
+
+
+class TestRStartupOwnership:
+    """P1-01: typed activation disposition gates the Qt fallback."""
+
+    def test_r1_late_failure_cleanup_unbind_fails_unsafe_bound(self):
+        """volume restore fails + cleanup unbind fails → router still bound
+        preferred: NO Qt fallback, active=preferred, FAILED, no fallback_from."""
+        h = make_g(
+            QT,
+            GST,
+            MPD,
+            start_selected=GST,
+            open_errors={QT: RuntimeError("qt should not open")},
+        )
+        gst = h.providers[GST]
+
+        def boom_unbind():
+            raise RuntimeError("cleanup unbind failed")
+
+        h.router.unbind = boom_unbind  # type: ignore[method-assign]
+
+        class VolumeFailPort(FakePort):
+            def set_volume(self, value):
+                raise RuntimeError("volume restore failed")
+
+        def failing_open():
+            gst.open_count += 1
+            gst._runtime_generation += 1
+            gst.port = VolumeFailPort(gst.engine_id, gst)
+            return gst.port
+
+        gst.open = failing_open  # type: ignore[method-assign]
+        h.convergence.converge_startup()
+        st = h.service.state
+        assert h.providers[QT].open_count == 0  # NO fallback
+        assert h.router.bound_engine_id == GST  # still bound preferred
+        assert st.active_engine_id == GST
+        assert st.lifecycle == AudioEngineLifecycle.FAILED
+        assert st.fallback_from is None
+
+    def test_r2_late_failure_close_fails_unsafe_close(self):
+        """volume restore fails + cleanup unbind ok + provider.close fails →
+        NO Qt fallback, router unbound, FAILED, error records BOTH facts."""
+        h = make_g(
+            QT,
+            GST,
+            MPD,
+            start_selected=GST,
+            close_errors={GST: RuntimeError("release blew up")},
+        )
+        gst = h.providers[GST]
+
+        class VolumeFailPort(FakePort):
+            def set_volume(self, value):
+                raise RuntimeError("volume restore failed")
+
+        def failing_open():
+            gst.open_count += 1
+            gst._runtime_generation += 1
+            gst.port = VolumeFailPort(gst.engine_id, gst)
+            return gst.port
+
+        gst.open = failing_open  # type: ignore[method-assign]
+        h.convergence.converge_startup()
+        st = h.service.state
+        assert h.providers[QT].open_count == 0  # NO fallback
+        assert h.router.bound_engine_id is None  # detached
+        assert st.active_engine_id is None
+        assert st.lifecycle == AudioEngineLifecycle.FAILED
+        assert st.fallback_from is None
+        assert "volume restore failed" in st.error_message
+        assert "release blew up" in st.error_message  # secondary truth
+
+    def test_r3_late_failure_safe_released_fallback_once(self):
+        """volume restore fails + cleanup detach ok + close ok → Qt fallback
+        exactly once."""
+        h = make_g(QT, GST, MPD, start_selected=GST)
+        gst = h.providers[GST]
+
+        class VolumeFailPort(FakePort):
+            def set_volume(self, value):
+                raise RuntimeError("volume restore failed")
+
+        def failing_open():
+            gst.open_count += 1
+            gst._runtime_generation += 1
+            gst.port = VolumeFailPort(gst.engine_id, gst)
+            return gst.port
+
+        gst.open = failing_open  # type: ignore[method-assign]
+        h.convergence.converge_startup()
+        st = h.service.state
+        assert h.providers[QT].open_count == 1  # fallback once
+        assert st.active_engine_id == QT
+        assert st.lifecycle == AudioEngineLifecycle.READY
+        assert st.fallback_from == GST
+
+    def test_r4_open_failure_before_ownership_fallback_once(self):
+        """provider.open() raises before ownership → SAFE → Qt fallback once."""
+        h = make_g(
+            QT,
+            GST,
+            MPD,
+            start_selected=GST,
+            open_errors={GST: RuntimeError("gst init failed")},
+        )
+        h.convergence.converge_startup()
+        st = h.service.state
+        assert h.providers[QT].open_count == 1
+        assert st.active_engine_id == QT
+        assert st.lifecycle == AudioEngineLifecycle.READY
+        assert st.fallback_from == GST
+
+    def test_r_qt_fallback_unsafe_bound_keeps_physical_truth(self):
+        """Qt fallback itself fails UNSAFE_BOUND → active=Qt (bound), FAILED,
+        fallback_from None (never claim fallback on a failed fallback)."""
+        h = make_g(
+            QT,
+            GST,
+            MPD,
+            start_selected=GST,
+            open_errors={GST: RuntimeError("gst init failed")},
+        )
+        qt = h.providers[QT]
+
+        def boom_unbind():
+            raise RuntimeError("qt cleanup unbind failed")
+
+        h.router.unbind = boom_unbind  # type: ignore[method-assign]
+
+        class VolumeFailPort(FakePort):
+            def set_volume(self, value):
+                raise RuntimeError("qt volume restore failed")
+
+        def failing_qt_open():
+            qt.open_count += 1
+            qt._runtime_generation += 1
+            qt.port = VolumeFailPort(qt.engine_id, qt)
+            return qt.port
+
+        qt.open = failing_qt_open  # type: ignore[method-assign]
+        h.convergence.converge_startup()
+        st = h.service.state
+        assert h.router.bound_engine_id == QT
+        assert st.active_engine_id == QT  # physical truth preserved
+        assert st.lifecycle == AudioEngineLifecycle.FAILED
+        assert st.fallback_from is None
+
+
+class TestRTargetRelease:
+    """P1-02: F→G recovery requires detach AND successful target close."""
+
+    def test_r5_target_close_fails_no_recovery(self):
+        """explicit switch late failure + detach ok + target close fails →
+        recovery NOT invoked, no Qt fallback, original exception propagates,
+        selected stays target, router unbound."""
+        h = make_g(QT, GST, MPD, start_selected=MPD)
+        h.activate(MPD)
+        gst = h.providers[GST]
+        recovery_calls = []
+        real_recover = h.convergence.recover_safe_unbound_failure
+
+        def spy_recover(target, reason):
+            recovery_calls.append((target, reason))
+            real_recover(target, reason)  # delegate honestly
+
+        h.selection.set_recovery_callback(spy_recover)
+
+        class VolumeFailPort(FakePort):
+            def set_volume(self, value):
+                raise RuntimeError("volume restore failed")
+
+        def failing_open():
+            gst.open_count += 1
+            gst._runtime_generation += 1
+            gst.port = VolumeFailPort(gst.engine_id, gst)
+            return gst.port
+
+        gst.open = failing_open  # type: ignore[method-assign]
+
+        def failing_close():
+            gst.close_count += 1
+            raise RuntimeError("target release failed")
+
+        gst.close = failing_close  # type: ignore[method-assign]
+        with pytest.raises(RuntimeError, match="volume restore failed"):
+            h.selection.switch_to(GST)
+        assert recovery_calls == []  # NOT safe: close failed
+        assert h.providers[QT].open_count == 0  # no fallback
+        assert h.router.bound_engine_id is None  # detached
+        st = h.service.state
+        assert st.selected_engine_id == GST  # persisted target preserved
+        assert st.active_engine_id is None
+        assert st.lifecycle == AudioEngineLifecycle.FAILED
+        assert st.fallback_from is None
+        assert h.selection.last_failure_stage.value == (
+            "target_activation_detached_close_failed"
+        )
+
+    def test_r6_target_close_succeeds_recovery_invoked(self):
+        """same setup but close succeeds → recovery invoked exactly once,
+        Qt fallback succeeds, original exception STILL propagates."""
+        h = make_g(QT, GST, MPD, start_selected=MPD)
+        h.activate(MPD)
+        gst = h.providers[GST]
+        recovery_calls = []
+        real_recover = h.convergence.recover_safe_unbound_failure
+
+        def spy_recover(target, reason):
+            recovery_calls.append((target, reason))
+            real_recover(target, reason)  # delegate honestly
+
+        h.selection.set_recovery_callback(spy_recover)
+
+        class VolumeFailPort(FakePort):
+            def set_volume(self, value):
+                raise RuntimeError("volume restore failed")
+
+        def failing_open():
+            gst.open_count += 1
+            gst._runtime_generation += 1
+            gst.port = VolumeFailPort(gst.engine_id, gst)
+            return gst.port
+
+        gst.open = failing_open  # type: ignore[method-assign]
+        with pytest.raises(RuntimeError, match="volume restore failed"):
+            h.selection.switch_to(GST)
+        assert len(recovery_calls) == 1  # invoked exactly once
+        assert recovery_calls[0][0] == GST
+        st = h.service.state
+        assert st.selected_engine_id == GST
+        assert st.active_engine_id == QT
+        assert st.lifecycle == AudioEngineLifecycle.READY
+        assert st.fallback_from == GST
+        assert h.selection.last_failure_stage.value == (
+            "target_activation_detached_released"
+        )
+
+    def test_r6b_recovery_wired_to_convergence_fallback(self):
+        """The recovery callback wired to the REAL convergence coordinator
+        performs the safe Qt fallback after detach + successful close."""
+        h = make_g(QT, GST, MPD, start_selected=MPD)
+        h.activate(MPD)
+        gst = h.providers[GST]
+        # GH wires selection.set_recovery_callback(convergence.recover_...)
+        # — the default wiring already delegates to the real coordinator.
+
+        class VolumeFailPort(FakePort):
+            def set_volume(self, value):
+                raise RuntimeError("volume restore failed")
+
+        def failing_open():
+            gst.open_count += 1
+            gst._runtime_generation += 1
+            gst.port = VolumeFailPort(gst.engine_id, gst)
+            return gst.port
+
+        gst.open = failing_open  # type: ignore[method-assign]
+        with pytest.raises(RuntimeError, match="volume restore failed"):
+            h.selection.switch_to(GST)
+        st = h.service.state
+        assert st.selected_engine_id == GST
+        assert st.active_engine_id == QT  # real convergence fallback
+        assert st.lifecycle == AudioEngineLifecycle.READY
+        assert st.fallback_from == GST
+
+
+class TestRGeneration:
+    """P1-03: provider-generation authority across MPD open/close/reopen."""
+
+    def test_r7_reopen_current_fatal_event_published(self, monkeypatch):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+        from michi.infrastructure.audio_engines import providers as prov_mod
+
+        class FakePort:
+            def __init__(self, runtime_failure_callback=None):
+                self.runtime_failure_callback = runtime_failure_callback
+                self.opened = False
+
+            def set_runtime_failure_callback(self, callback):
+                self.runtime_failure_callback = callback
+
+            def open(self):
+                self.opened = True
+
+            def close(self):
+                self.opened = False
+
+        monkeypatch.setattr(mpd_mod, "MPDAudioPort", FakePort)
+        provider = prov_mod.MpdEngineProvider()
+        events = []
+        provider.subscribe_runtime_failed(lambda e: events.append(e))
+        # runtime #1
+        _port1 = provider.open()
+        gen1 = provider.current_runtime_generation
+        provider.close()
+        # runtime #2
+        port2 = provider.open()
+        gen2 = provider.current_runtime_generation
+        assert gen2 != gen1
+        # current runtime #2 fatal event → published with provider gen
+        assert port2.runtime_failure_callback is not None
+        port2.runtime_failure_callback(1, "MPD process exited")
+        assert len(events) == 1
+        assert events[0].engine_id == MPD
+        assert events[0].runtime_generation == gen2
+
+    def test_r8_old_runtime_event_after_reopen_ignored(self, monkeypatch):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+        from michi.infrastructure.audio_engines import providers as prov_mod
+
+        class FakePort:
+            def __init__(self, runtime_failure_callback=None):
+                self.runtime_failure_callback = runtime_failure_callback
+
+            def set_runtime_failure_callback(self, callback):
+                self.runtime_failure_callback = callback
+
+            def open(self):
+                pass
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(mpd_mod, "MPDAudioPort", FakePort)
+        provider = prov_mod.MpdEngineProvider()
+        events = []
+        provider.subscribe_runtime_failed(lambda e: events.append(e))
+        port1 = provider.open()
+        gen1 = provider.current_runtime_generation
+        provider.close()
+        port2 = provider.open()
+        gen2 = provider.current_runtime_generation
+        assert gen2 != gen1
+        # late callback from runtime #1 (its closure captured gen1)
+        port1.runtime_failure_callback(1, "late old failure")
+        assert events == []  # stale: ignored
+        # current runtime #2 event accepted
+        port2.runtime_failure_callback(1, "current failure")
+        assert len(events) == 1
+        assert events[0].runtime_generation == gen2
+
+    def test_r9_exactly_one_event_correct_generation(self, monkeypatch):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+        from michi.infrastructure.audio_engines import providers as prov_mod
+
+        class FakePort:
+            def __init__(self, runtime_failure_callback=None):
+                self.runtime_failure_callback = runtime_failure_callback
+
+            def set_runtime_failure_callback(self, callback):
+                self.runtime_failure_callback = callback
+
+            def open(self):
+                pass
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(mpd_mod, "MPDAudioPort", FakePort)
+        provider = prov_mod.MpdEngineProvider()
+        events = []
+        provider.subscribe_runtime_failed(lambda e: events.append(e))
+        _port1 = provider.open()
+        provider.close()
+        port2 = provider.open()
+        gen2 = provider.current_runtime_generation
+        # duplicate burst from current runtime
+        port2.runtime_failure_callback(1, "transport error")
+        port2.runtime_failure_callback(1, "process exit")
+        assert len(events) == 2  # both published (coordinator coalesces)
+        assert all(e.runtime_generation == gen2 for e in events)
+
+
+class TestRRealReopen:
+    def test_r10_real_mpd_reopen_process_exit_uses_current_generation(
+        self, qapp, tmp_path
+    ):
+        """P1-03 REAL regression: one provider instance, open #1 → close →
+        open #2 → external kill of runtime #2 → EXACTLY ONE fatal event with
+        the CURRENT provider generation (not the port-internal one)."""
+        import shutil
+        import tempfile
+        import time
+
+        if shutil.which("mpd") is None:
+            pytest.skip("mpd executable no encontrado (dependency ausente)")
+
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+        from michi.infrastructure.audio_engines import providers as prov_mod
+
+        # SHORT runtime parent: bounded AF_UNIX socket path.
+        runtime_dir = tempfile.mkdtemp(prefix="michi-g10-")
+        import pathlib
+
+        original_pick = mpd_mod._pick_runtime_parent
+        mpd_mod._pick_runtime_parent = lambda: pathlib.Path(runtime_dir)
+        provider = prov_mod.MpdEngineProvider()
+        events = []
+        provider.subscribe_runtime_failed(lambda e: events.append(e))
+        port2 = None
+        try:
+            # runtime #1
+            _port1 = provider.open()
+            gen1 = provider.current_runtime_generation
+            deadline = time.time() + 10
+            while (
+                _port1._runtime.process is None
+                or _port1._runtime.process.poll() is not None
+            ):
+                if time.time() > deadline:
+                    pytest.skip("real MPD no arrancó (entorno)")
+                time.sleep(0.05)
+            provider.close()
+            # runtime #2
+            port2 = provider.open()
+            gen2 = provider.current_runtime_generation
+            assert gen2 != gen1  # distinct provider incarnations
+            deadline = time.time() + 10
+            while (
+                port2._runtime.process is None
+                or port2._runtime.process.poll() is not None
+            ):
+                if time.time() > deadline:
+                    pytest.skip("real MPD runtime #2 no arrancó")
+                time.sleep(0.05)
+            proc2 = port2._runtime.process
+            proc2.kill()  # external termination of runtime #2
+            from PySide6.QtCore import QCoreApplication
+
+            deadline = time.time() + 10
+            while not events and time.time() < deadline:
+                for _ in range(5):
+                    QCoreApplication.processEvents()
+                time.sleep(0.03)
+            for _ in range(5):
+                QCoreApplication.processEvents()
+            assert len(events) == 1  # exactly ONE fatal event
+            assert events[0].engine_id == MPD
+            assert events[0].runtime_generation == gen2  # CURRENT provider gen
+        finally:
+            mpd_mod._pick_runtime_parent = original_pick
+            if port2 is not None:
+                port2.close()
+            provider.close()

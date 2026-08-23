@@ -209,6 +209,9 @@ class TestMpdProvider:
             def __init__(self, runtime_failure_callback=None):
                 self.runtime_failure_callback = runtime_failure_callback
 
+            def set_runtime_failure_callback(self, callback):
+                self.runtime_failure_callback = callback
+
             def open(self):
                 pass
 
@@ -230,6 +233,9 @@ class TestMpdProvider:
             def __init__(self, runtime_failure_callback=None):
                 self.runtime_failure_callback = runtime_failure_callback
 
+            def set_runtime_failure_callback(self, callback):
+                self.runtime_failure_callback = callback
+
             def open(self):
                 pass
 
@@ -250,6 +256,9 @@ class TestMpdProvider:
             def __init__(self, runtime_failure_callback=None):
                 self.runtime_failure_callback = runtime_failure_callback
 
+            def set_runtime_failure_callback(self, callback):
+                self.runtime_failure_callback = callback
+
             def open(self):
                 pass
 
@@ -269,6 +278,9 @@ class TestMpdProvider:
         class FailingPort:
             def __init__(self, runtime_failure_callback=None):
                 self.runtime_failure_callback = runtime_failure_callback
+
+            def set_runtime_failure_callback(self, callback):
+                self.runtime_failure_callback = callback
 
             def open(self):
                 raise RuntimeError("startup failed")

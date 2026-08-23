@@ -1212,7 +1212,7 @@ class TestF42AdapterContract:
     # at the baseline hashes.
     _BASELINE_HASHES = {
         "src/michi/infrastructure/audio_engines/gstreamer.py": "1ee9e1d5fc493797",
-        "src/michi/infrastructure/audio_engines/mpd.py": "b692a32994d77c58",
+        "src/michi/infrastructure/audio_engines/mpd.py": "4c00fee3978b37c1",
         "src/michi/infrastructure/qt_backend.py": "88614638da12acd8",
         "src/michi/application/ports.py": "aa76e1d8089c2c4e",
         "src/michi/application/queue_service.py": "00a0f39531fc6b1d",
