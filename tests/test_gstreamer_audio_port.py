@@ -781,6 +781,11 @@ class TestThreadAffinity:
     """P2-02: los callbacks llegan en el hilo del OWNER vía QueuedConnection."""
 
     def test_callback_on_owner_thread(self, qapp):
+        from michi.infrastructure.audio_engines.gstreamer import (
+            _GstEvent,
+            _GstEventKind,
+        )
+
         bindings = FakeBindings()
         port = _port(bindings)
         owner_thread_id = threading.get_ident()
@@ -790,13 +795,18 @@ class TestThreadAffinity:
             callback_threads.append(threading.get_ident())
 
         port.subscribe_media_accepted(on_acc)
+        port.load(Path("/m/a.flac"))
+        generation = port._generation
 
-        # WORKER: emite a través del puente del adapter (ruta del pump)
+        # WORKER: emula el pump — LA ÚNICA ruta real (sig_event desde el
+        # pump thread con QueuedConnection → owner → commit → directo)
         worker_thread_id = []
 
         def worker():
             worker_thread_id.append(threading.get_ident())
-            port._bridge.sig_acc.emit(Path("/m/a.flac"))
+            port._bridge.sig_event.emit(
+                _GstEvent(generation=generation, kind=_GstEventKind.ASYNC_DONE)
+            )
 
         thread = threading.Thread(target=worker)
         thread.start()
@@ -3227,6 +3237,195 @@ class TestOwnerThreadProvenanceSeal:
         assert callback_threads, "callbacks esperados"
         assert all(t == owner_thread for t in callback_threads)
         assert pump_thread is not None  # pump en thread separado
+        port.close()
+
+
+class TestAtomicPublication:
+    """M11.3C-R6.5.1: la publicación owner→subscriber es DIRECTA (sin
+    segunda cola Qt). El commit interno y la observación pública ocurren
+    en la misma transacción del owner; los callbacks reentrantes se
+    manejan con revalidación post-publicación."""
+
+    def _pump_translate(self, port, message, generation):
+        port._process_message(message, generation, port._pipeline)
+
+    def _drain(self):
+        for _ in range(8):
+            QCoreApplication.processEvents()
+
+    def test_t2_acceptance_subscriber_sees_committed_state(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        seen = {}
+
+        def on_acc(p):
+            seen["current"] = port._current_path
+            seen["pending"] = port._pending_path
+
+        port.subscribe_media_accepted(on_acc)
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, msg, gen)
+        # commit y publicación son atómicos: el subscriber ve el estado
+        # commiteado (current == B, pending == None)
+        assert seen == {"current": Path("/m/a.flac"), "pending": None}
+
+    def test_t3_accept_callback_loads_c_kills_deferred_b(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.play()
+
+        def on_acc(path):
+            port.load(Path("/m/c.flac"))  # reentrancy: supersede B
+
+        port.subscribe_media_accepted(on_acc)
+        # PLAYING de B observado y diferido (pending)
+        m, g = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        self._pump_translate(port, m, g)
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, m2, g2)  # acc → load(C) → generación cambia
+        self._drain()
+        # sin deferred PLAYING de B tras la supersesión
+        assert PlaybackStatus.PLAYING not in states
+        assert port._pending_path == Path("/m/c.flac")
+        assert port._current_path is None
+        port.close()
+
+    def test_t4_accept_callback_stops_no_playing(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.play()
+
+        def on_acc(path):
+            port.stop()
+
+        port.subscribe_media_accepted(on_acc)
+        m, g = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        self._pump_translate(port, m, g)  # PLAYING diferido
+        m2, g2 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, m2, g2)
+        self._drain()
+        # el stop del callback cancela el deferred PLAYING (intención)
+        assert PlaybackStatus.PLAYING not in states
+        assert port._current_state == PlaybackStatus.STOPPED
+        port.close()
+
+    def test_t5_accept_callback_closes_no_publication(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        states = []
+        eoms = []
+        durations = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        port.subscribe_duration_changed(lambda ms: durations.append(ms))
+        port.play()
+
+        def on_acc(path):
+            port.close()
+
+        port.subscribe_media_accepted(on_acc)
+        m, g = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        self._pump_translate(port, m, g)
+        m2, g2 = _msg(port, _FakeMsgType.DURATION_CHANGED, pipeline_a)
+        self._pump_translate(port, m2, g2)
+        m3, g3 = _msg(port, _FakeMsgType.EOS, pipeline_a)
+        self._pump_translate(port, m3, g3)
+        m4, g4 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, m4, g4)  # acc → close()
+        self._drain()
+        # cero publicaciones posteriores al close (ni deferred ni cola)
+        assert states == []
+        assert eoms == []
+        assert durations == []
+        port.close()
+
+    def test_t10_stopped_subscriber_loads_b_suppresses_eom(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        eoms = []
+
+        def on_state(s):
+            # el subscriber del STOPPED carga B INMEDIATAMENTE
+            if s == PlaybackStatus.STOPPED:
+                port.load(Path("/m/b.flac"))
+
+        port.subscribe_playback_state_changed(on_state)
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        m3, g3 = _msg(port, _FakeMsgType.EOS, pipeline_a)
+        _deliver(port, m3, g3)
+        self._drain()
+        # EOM(A) suprimido: la supersesión ocurrió dentro del callback
+        # del STOPPED → la revalidación post-publicación lo bloquea
+        assert eoms == []
+        assert port._pending_path == Path("/m/b.flac")
+        assert port._generation == 2  # load(A)=1, load(B) del callback=2
+        port.close()
+
+    def test_t11_stopped_subscriber_closes_suppresses_eom(self, qapp):
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        eoms = []
+
+        def on_state(s):
+            if s == PlaybackStatus.STOPPED:
+                port.close()
+
+        port.subscribe_playback_state_changed(on_state)
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        m3, g3 = _msg(port, _FakeMsgType.EOS, pipeline_a)
+        _deliver(port, m3, g3)
+        self._drain()
+        assert eoms == []  # close dentro del callback → EOM suprimido
+        assert port._closed is True
+        port.close()
+
+    def test_t12_normal_eom_exactly_once(self, qapp):
+        # EOS normal con subscriber pasivo: STOPPED → EOM exactamente una vez
+        bindings = FakeBindings()
+        port = _port(bindings)
+        port.load(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        events = []
+        port.subscribe_playback_state_changed(lambda s: events.append(str(s)))
+        port.subscribe_end_of_media(lambda: events.append("eom"))
+        m3, g3 = _msg(port, _FakeMsgType.EOS, pipeline_a)
+        _deliver(port, m3, g3)
+        # orden exacto: STOPPED antes de EOM, una sola vez
+        assert events == ["PlaybackStatus.STOPPED", "eom"]
+        m4, g4 = _msg(port, _FakeMsgType.EOS, pipeline_a)
+        _deliver(port, m4, g4)
+        assert events == ["PlaybackStatus.STOPPED", "eom"]  # sin duplicados
         port.close()
 
 
