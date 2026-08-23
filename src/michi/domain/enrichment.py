@@ -192,6 +192,7 @@ class IdentityResolutionStatus(Enum):
     AMBIGUOUS = auto()
     IDENTITY_CONFLICT = auto()
     NO_MATCH = auto()
+    SUPERSEDED = auto()  # R1.2: a stale generation can never commit
 
 
 @dataclass(frozen=True)
@@ -1014,6 +1015,33 @@ class EnrichmentRequestLedger:
             key, deque(maxlen=self._SUPERSEDED_CAP)
         )
         superseded.append(current.request_id)
+
+    def invalidate_if_current(
+        self,
+        entity_kind: EnrichmentEntityKind,
+        local_entity_key: str,
+        expected_request_id: str,
+        expected_generation: int,
+    ) -> bool:
+        """R1.2 EXACT REQUEST INVALIDATION: invalidate ONLY the request
+        whose request_id AND generation match the current one. A stale
+        worker (older generation or an already-replaced request) can
+        NEVER invalidate a newer request — returns False in that case."""
+        key = (entity_kind, local_entity_key)
+        current = self._current.get(key)
+        if current is None:
+            return False
+        if (
+            current.request_id != expected_request_id
+            or current.generation != expected_generation
+        ):
+            return False
+        superseded = self._superseded.setdefault(
+            key, deque(maxlen=self._SUPERSEDED_CAP)
+        )
+        superseded.append(current.request_id)
+        del self._current[key]
+        return True
 
     def invalidate_all(self) -> None:
         """R2: invalidate every pending request (clear-identities)."""
