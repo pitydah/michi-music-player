@@ -104,32 +104,49 @@ class EnrichmentService:
     # R1.2 OPERATION GENERATION AUTHORITY
     # ------------------------------------------------------------------
 
-    def begin_operation(
-        self,
-        entity_kind: EnrichmentEntityKind,
-        local_entity_key: str,
-        generation: int,
-    ) -> None:
-        """Record ``generation`` as the current productive authority for
-        the entity (monotonic: a higher generation always wins)."""
-        with self._authority_lock:
-            key = (entity_kind, local_entity_key)
-            current = self._operation_generations.get(key, 0)
-            self._operation_generations[key] = max(current, generation)
+    def _bump_generation_locked(
+        self, entity_kind: EnrichmentEntityKind, local_entity_key: str
+    ) -> int:
+        """THE single generation allocator (R1.3). Generations are
+        strictly monotonic per entity for the Service lifetime — never
+        reused, never cleared."""
+        key = (entity_kind, local_entity_key)
+        current = self._operation_generations.get(key, 0)
+        next_generation = current + 1
+        self._operation_generations[key] = next_generation
+        return next_generation
 
-    def cancel_operation(
+    def begin_operation(
+        self, entity_kind: EnrichmentEntityKind, local_entity_key: str
+    ) -> int:
+        """R1.3: THE Service is the SOLE generation authority. Allocates
+        the next monotonic generation and registers it as CURRENT."""
+        with self._authority_lock:
+            return self._bump_generation_locked(entity_kind, local_entity_key)
+
+    def retire_operation(
         self,
         entity_kind: EnrichmentEntityKind,
         local_entity_key: str,
         generation: int,
-    ) -> None:
-        """Make ``generation`` non-current. Only affects the generation
-        that IS currently authorized — never a newer one (no-op for a
-        superseded generation)."""
+    ) -> bool:
+        """R1.3 canonical retirement barrier.
+
+        Under the authority lock: if ``generation`` is NOT the current
+        authority it returns False (a stale worker can never retire a
+        newer generation). If it IS current: the authority epoch is
+        advanced (the generation can never cross a commit gate again)
+        and the pending request of THAT generation (if any) is
+        invalidated — atomically."""
         with self._authority_lock:
             key = (entity_kind, local_entity_key)
-            if self._operation_generations.get(key) == generation:
-                self._operation_generations[key] = generation + 1
+            if self._operation_generations.get(key) != generation:
+                return False
+            self._bump_generation_locked(entity_kind, local_entity_key)
+            self._ledger.invalidate_if_generation_current(
+                entity_kind, local_entity_key, generation
+            )
+            return True
 
     def is_current_operation(
         self,
@@ -263,6 +280,8 @@ class EnrichmentService:
         external_entity_id: str,
         external_variant_id: str,
         generation: int,
+        artist_dependency_local_key: str = "",
+        artist_dependency_id: str = "",
     ) -> EnrichmentRequest:
         request = EnrichmentRequest(
             request_id=uuid4().hex,
@@ -271,6 +290,8 @@ class EnrichmentService:
             external_entity_id=external_entity_id,
             external_variant_id=external_variant_id,
             generation=generation,
+            artist_dependency_local_key=artist_dependency_local_key,
+            artist_dependency_id=artist_dependency_id,
         )
         self._ledger.register(request)
         return request
@@ -493,6 +514,8 @@ class EnrichmentService:
                 resolution.release_group_id,
                 resolution.release_id,
                 generation,
+                evidence.local_album_artist_key,
+                evidence.resolved_artist_external_id,
             )
             return EnrichmentRequestOutcome(resolution=resolution, request=request)
 
@@ -564,6 +587,8 @@ class EnrichmentService:
                 existing.release_group_id,
                 release_id,
                 generation,
+                evidence.local_album_artist_key,
+                evidence.resolved_artist_external_id,
             )
             return EnrichmentRequestOutcome(resolution=resolution, request=request)
 
@@ -594,6 +619,23 @@ class EnrichmentService:
                 or current.release_id != request.external_variant_id
             ):
                 return DeliveryVerdict.STALE
+            if request.artist_dependency_id:
+                # R1.3 FIX-07: the album actually resolved through its
+                # artist identity at request time (a non-empty dependency
+                # id) — revalidate under the authority lock. If the
+                # artist identity was reset or re-confirmed since, this
+                # result is stale (zero writes). A dependency key without
+                # a captured id played no part in resolution and is not
+                # enforced.
+                artist_identity = self._identity_repository.load_artist_identity(
+                    request.artist_dependency_local_key
+                )
+                if (
+                    artist_identity is None
+                    or artist_identity.external_artist_id
+                    != request.artist_dependency_id
+                ):
+                    return DeliveryVerdict.STALE
             verdict = self._ledger.deliver(request)
             if verdict is not DeliveryVerdict.COMMITTED:
                 return verdict
@@ -620,6 +662,12 @@ class EnrichmentService:
     def confirm_artist_identity(
         self, local_artist_key: str, external_artist_id: str
     ) -> ArtistExternalIdentity:
+        """R1.3 MANUAL AUTHORITY BARRIER: under the same authority lock,
+        the current generation epoch is advanced (every in-flight
+        automatic operation becomes SUPERSEDED), the same-generation
+        pending request is invalidated, and the MANUAL identity is
+        persisted. MANUAL can never be downgraded by a late AUTO/
+        EMBEDDED operation."""
         identity = ArtistExternalIdentity(
             local_artist_key=local_artist_key,
             external_artist_id=external_artist_id,
@@ -628,11 +676,21 @@ class EnrichmentService:
             resolved_at=_utc_now_iso(),
         )
         with self._authority_lock:
+            self._bump_generation_locked(
+                EnrichmentEntityKind.ARTIST, local_artist_key
+            )
+            self._ledger.invalidate(EnrichmentEntityKind.ARTIST, local_artist_key)
             self._persist_artist_identity_transition(identity)
         return identity
 
     def reset_artist_identity(self, local_artist_key: str) -> None:
+        """R1.3 RESET BARRIER: advance the epoch and invalidate the
+        same-generation request under the lock — an old worker can never
+        resurrect identity/request/knowledge after a reset."""
         with self._authority_lock:
+            self._bump_generation_locked(
+                EnrichmentEntityKind.ARTIST, local_artist_key
+            )
             self._ledger.invalidate(EnrichmentEntityKind.ARTIST, local_artist_key)
             self._identity_repository.delete_artist_identity(local_artist_key)
             self._repository.delete_artist_profile(local_artist_key)
@@ -643,6 +701,9 @@ class EnrichmentService:
         release_group_id: str,
         release_id: str = "",
     ) -> AlbumExternalIdentity:
+        """R1.3 MANUAL ALBUM BARRIER (same semantics as the artist one —
+        the exact manual release tuple can never be replaced by a late
+        automatic operation)."""
         identity = AlbumExternalIdentity(
             local_album_key=local_album_key,
             release_group_id=release_group_id,
@@ -652,17 +713,32 @@ class EnrichmentService:
             resolved_at=_utc_now_iso(),
         )
         with self._authority_lock:
+            self._bump_generation_locked(
+                EnrichmentEntityKind.ALBUM, local_album_key
+            )
+            self._ledger.invalidate(EnrichmentEntityKind.ALBUM, local_album_key)
             self._persist_album_identity_transition(identity)
         return identity
 
     def reset_album_identity(self, local_album_key: str) -> None:
         with self._authority_lock:
+            self._bump_generation_locked(
+                EnrichmentEntityKind.ALBUM, local_album_key
+            )
             self._ledger.invalidate(EnrichmentEntityKind.ALBUM, local_album_key)
             self._identity_repository.delete_album_identity(local_album_key)
             self._repository.delete_album_profile(local_album_key)
 
     def clear_identities(self) -> None:
+        """R1.3 GLOBAL AUTHORITY BARRIER: every known entity's epoch is
+        advanced (no generation can ever commit again), all pending
+        requests are invalidated, then identity + knowledge are cleared.
+        The generation dict is NEVER cleared — monotonicity is kept for
+        the Service lifetime."""
         with self._authority_lock:
+            for key in list(self._operation_generations):
+                entity_kind, local_entity_key = key
+                self._bump_generation_locked(entity_kind, local_entity_key)
             self._ledger.invalidate_all()
             self._identity_repository.clear_identities()
             self._repository.clear_knowledge()
@@ -682,21 +758,6 @@ class EnrichmentService:
     def clear_album_knowledge(self, local_album_key: str) -> None:
         with self._authority_lock:
             self._repository.delete_album_profile(local_album_key)
-
-    def cancel_artist_request(self, local_artist_key: str) -> None:
-        """Legacy key-scoped intent (kept for compatibility): invalidates
-        the CURRENT request of the entity. Exact per-request invalidation
-        is ``cancel_request_exact`` — stale workers must use that."""
-        with self._authority_lock:
-            self._ledger.invalidate(EnrichmentEntityKind.ARTIST, local_artist_key)
-
-    def cancel_album_request(self, local_album_key: str) -> None:
-        with self._authority_lock:
-            self._ledger.invalidate(EnrichmentEntityKind.ALBUM, local_album_key)
-
-    def cancel_all_requests(self) -> None:
-        with self._authority_lock:
-            self._ledger.invalidate_all()
 
     def get_artist_knowledge(
         self, local_artist_key: str

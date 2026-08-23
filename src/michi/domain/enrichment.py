@@ -934,6 +934,13 @@ class EnrichmentRequest:
     external_entity_id: str
     external_variant_id: str = ""
     generation: int = 0
+    # R1.3 FIX-07: when an ALBUM operation resolved through the album's
+    # artist identity, the dependency is captured at request time and
+    # revalidated at delivery time. If the artist identity is missing or
+    # points elsewhere, the result is stale — an album can never commit
+    # knowledge correlated with an artist identity it no longer depends on.
+    artist_dependency_local_key: str = ""
+    artist_dependency_id: str = ""
 
 
 class DeliveryVerdict(Enum):
@@ -1035,6 +1042,27 @@ class EnrichmentRequestLedger:
             current.request_id != expected_request_id
             or current.generation != expected_generation
         ):
+            return False
+        superseded = self._superseded.setdefault(
+            key, deque(maxlen=self._SUPERSEDED_CAP)
+        )
+        superseded.append(current.request_id)
+        del self._current[key]
+        return True
+
+    def invalidate_if_generation_current(
+        self,
+        entity_kind: EnrichmentEntityKind,
+        local_entity_key: str,
+        generation: int,
+    ) -> bool:
+        """R1.3: invalidate the pending request of ``entity`` ONLY when
+        it belongs to ``generation``. Works before a request exists
+        (returns False); a stale generation can never invalidate a newer
+        generation's request."""
+        key = (entity_kind, local_entity_key)
+        current = self._current.get(key)
+        if current is None or current.generation != generation:
             return False
         superseded = self._superseded.setdefault(
             key, deque(maxlen=self._SUPERSEDED_CAP)
