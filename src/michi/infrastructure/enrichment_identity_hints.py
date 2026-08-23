@@ -63,6 +63,7 @@ _ROLE_KEYS: dict[str, set[str]] = {
     },
     "recording_ids": {
         "musicbrainz_recordingid",
+        "musicbrainz_trackid",  # real Picard/Vorbis key (R1.2)
         "musicbrainz/track id",
         "musicbrainz track id",
     },
@@ -93,31 +94,39 @@ def _role_for_key(key: str) -> str | None:
     return None
 
 
-def _as_strings(value) -> list[str]:
-    """Accept str / list[str] / bytes / list[bytes] observations.
+_SENTINEL = object()
 
-    bytes values (MP4FreeForm, UFID data) decode UTF-8 losslessly; a
-    failed decode is skipped — never coerced, never fabricated.
+
+def _extract_text_value(value) -> list[str]:
+    """R1.2 STRICT recursive extraction.
+
+    Accepts ONLY str / bytes (valid UTF-8) / lists+tuples of those /
+    Mutagen attribute objects exposing a ``.value`` that is str or
+    bytes. NO generic str(...) coercion — arbitrary representations are
+    never fabricated into identity values.
     """
+    if isinstance(value, str):
+        return [value]
     if isinstance(value, bytes):
         try:
             return [value.decode("utf-8")]
         except UnicodeDecodeError:
             return []
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list):
+    if isinstance(value, (list, tuple)):
         result: list[str] = []
         for item in value:
-            if isinstance(item, bytes):
-                try:
-                    result.append(item.decode("utf-8"))
-                except UnicodeDecodeError:
-                    continue
-            elif isinstance(item, str):
-                result.append(item)
+            result.extend(_extract_text_value(item))
         return result
-    return []
+    raw = getattr(value, "value", _SENTINEL)
+    if raw is _SENTINEL:
+        return []
+    return _extract_text_value(raw)
+
+
+def _as_strings(value) -> list[str]:
+    """Public helper kept for compatibility; delegates to the strict
+    recursive extractor (ASF attribute objects included)."""
+    return _extract_text_value(value)
 
 
 class MutagenIdentityHintExtractor(IdentityHintExtractorPort):

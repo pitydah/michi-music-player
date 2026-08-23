@@ -24,6 +24,8 @@ EXTRACTOR = MutagenIdentityHintExtractor()
 
 class TestVorbisFamily:
     def test_full_role_set(self):
+        # R1.2 (P1-18): every recording key is probed ISOLATED so a
+        # mis-mapping can never hide behind another key.
         tags = VCommentDict()
         for key in (
             "MUSICBRAINZ_ARTISTID",
@@ -31,7 +33,6 @@ class TestVorbisFamily:
             "MUSICBRAINZ_RELEASEGROUPID",
             "MUSICBRAINZ_ALBUMID",
             "MUSICBRAINZ_RECORDINGID",
-            "MUSICBRAINZ_TRACKID",
             "MUSICBRAINZ_RELEASETRACKID",
         ):
             tags[key] = [f"{key}-value"]
@@ -48,6 +49,13 @@ class TestVorbisFamily:
         assert hints.musicbrainz_release_track_ids == (
             "MUSICBRAINZ_RELEASETRACKID-value",
         )
+
+    def test_vorbis_trackid_maps_to_recording_isolated(self):
+        tags = VCommentDict()
+        tags["MUSICBRAINZ_TRACKID"] = ["recording-x"]
+        hints = EXTRACTOR.extract_hints_from_tags(tags)
+        assert hints.musicbrainz_recording_ids == ("recording-x",)
+        assert hints.musicbrainz_release_track_ids == ()
 
     def test_same_role_conflict_preserved(self):
         tags = VCommentDict()
