@@ -46,6 +46,8 @@ class _FakeClient:
         self.addid_ack: str | None = None
         self.addid_fatal: str | None = None
         self.clear_ack: str | None = None
+        self.clear_fatal: str | None = None
+        self.status_error: str | None = None
         self.playid_ack: str | None = None
         self.next_id = 1
 
@@ -57,6 +59,8 @@ class _FakeClient:
 
     def status(self):
         self.commands.append("status")
+        if self.status_error:
+            raise MpdProtocolError(self.status_error)
         status = {"state": self.state, "volume": self.volume}
         if self.songid is not None:
             status["songid"] = self.songid
@@ -69,7 +73,9 @@ class _FakeClient:
     def clear(self):
         self.commands.append("clear")
         if self.clear_ack:
-            raise MpdProtocolError(self.clear_ack)
+            raise MpdProtocolError(self.clear_ack, is_ack=True)
+        if self.clear_fatal:
+            raise MpdProtocolError(self.clear_fatal, is_ack=False)
         self.songid = None
         self.state = "stop"
 
@@ -350,3 +356,51 @@ class TestBackendLossConvergence:
         assert svc.state.status == PlaybackStatus.STOPPED
         assert "broken" in (svc.state.error_message or "")  # reason del evento
         assert port._current_path is None
+
+
+class TestGate1CommandTransportLoss:
+    """GATE 1 full-stack (M11.3D-R2): el fallo del status() con hijo vivo
+    converge PlaybackService — sin inyección manual de TRANSPORT_ERROR."""
+
+    def test_g1_status_failure_converges_playback(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        assert svc._accepted is True
+        assert svc.state.status == PlaybackStatus.PLAYING
+        # el socket de comandos se rompe (hijo vivo)
+        fake.status_error = "command socket EOF"
+        _refresh(port)
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert "command socket EOF" in (svc.state.error_message or "")
+        assert port._current_path is None
+        assert port._song_id is None
+
+
+class TestGate2ClearUnknownFullStack:
+    """GATE 2 full-stack (M11.3D-R2): clear con IPC desconocido → sin
+    ghost A en ninguna capa."""
+
+    def test_g2_unknown_clear_converges_playback(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        assert svc._accepted is True
+        # clear con resultado desconocido durante load(B)
+        fake.clear_fatal = "EOF during clear"
+        with pytest.raises(AudioLoadError) as caught:
+            svc.load_and_play(Path("/m/b.flac"))
+        assert caught.value.previous_source_preserved is False
+        # PlaybackService: identidad lógica A, sin autoridad backend
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        # MPDAudioPort: sin ghost A
+        assert port._current_path is None
+        assert port._song_id is None
