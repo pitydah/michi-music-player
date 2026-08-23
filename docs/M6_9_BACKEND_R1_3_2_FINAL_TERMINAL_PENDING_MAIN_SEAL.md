@@ -109,6 +109,41 @@ R1.3.1 behavior before the fix:
   base main `8a2537f`
 - Lint / Test / Build: see run conclusion (must be success)
 
+## FINAL TERMINAL LINEARIZATION (last P1)
+
+The original R1.3.2 terminal path still contained a TOCTOU:
+
+    check obsolete (Coordinator lock released)
+    -> race window: manual/reset/cancel/supersession steals authority
+    -> retire_operation returns False
+    -> bool IGNORED
+    -> OFFLINE / FAILED (wrong: authority was lost BEFORE terminalizing)
+
+The final seal makes the terminal authority claim ONE linearizable
+decision: `_claim_terminal_authority(token)` performs the Coordinator
+state check (shutdown / token cancelled / registry no longer holds
+this token) AND the Service retirement (`retire_operation` -> bool)
+under the SAME `Coordinator._lock` acquisition. The retire bool IS the
+verdict:
+
+- True  -> this terminal path won: transient -> OFFLINE,
+  non-transient/unexpected -> FAILED;
+- False -> authority was already lost: CANCELLED.
+
+Both `_terminal_failure` and `_terminal_unexpected` use the SAME
+helper (order: CLAIM -> exact request cleanup via
+`cancel_request_exact` (request_id + generation) -> classify). The old
+`_operation_is_obsolete` method is removed (no remaining callers).
+
+Deterministic proof (`GatedRetireService` gates `retire_operation`
+before the service authority lock): while the terminal claim owns the
+Coordinator lock, a concurrent `confirm_artist_identity` is provably
+BLOCKED (`manual_done` unset); after the claim finishes, the worker
+reports OFFLINE (it won), the manual confirm completes and the MANUAL
+identity stands. This test was RED on R1.3.2 (the manual confirm
+completed during the worker's gated retire because the retire ran
+outside the Coordinator lock) and is GREEN after the fix.
+
 ## Final verdict
 
 - P0 = 0
