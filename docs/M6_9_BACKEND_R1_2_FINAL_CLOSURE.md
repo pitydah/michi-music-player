@@ -1,5 +1,12 @@
 # M6.9-BACKEND-R1.2 — Final Request Correlation + Real Tag Compatibility Seal
 
+> SUPERSEDED FOR FINAL AUTHORITY CLOSURE BY R1.3
+> (`docs/M6_9_BACKEND_R1_3_FINAL_AUTHORITY_CLOSURE.md`): R1.3 moves the
+> generation authority entirely into EnrichmentService, replaces
+> key-scoped cancellation with generation retirement barriers and adds
+> album artist-dependency revalidation. This document remains the
+> record of the R1.2 correlation seal itself.
+
 Status: implemented. R1.2 closes the backend concurrency/correlation
 defects found after R1.1 (which is therefore SUPERSEDED by this final
 correlation seal). NO UI/QML/EnrichmentBridge; NO M11.3D; NO audio;
