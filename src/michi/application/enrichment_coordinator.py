@@ -872,6 +872,29 @@ class EnrichmentCoordinator:
 
     # -- terminal convergence (R1.1) --------------------------------------------------
 
+    def _operation_is_obsolete(self, token: EnrichmentOperationToken) -> bool:
+        """R1.3.2 P1-01: an operation is OBSOLETE when it can no longer
+        produce a meaningful result, even if its worker is still running:
+
+        - the token was cancelled (manual confirm / reset / supersession);
+        - the coordinator is shutting down;
+        - the coordinator registry no longer holds THIS token (a newer
+          operation owns the entity);
+        - the Service says this token's generation is no longer current.
+
+        LOCK ORDER: Coordinator._lock -> Service._authority_lock (the
+        coordinator lock is released before the service call; the
+        service never calls back into the coordinator)."""
+        with self._lock:
+            if self._shutting_down or token.cancelled:
+                return True
+            current = self._operations.get((token.entity_kind, token.local_entity_key))
+            if current is not token:
+                return True
+        return not self._service.is_current_operation(
+            token.entity_kind, token.local_entity_key, token.generation
+        )
+
     def _terminal_failure(
         self,
         token: EnrichmentOperationToken,
@@ -880,11 +903,19 @@ class EnrichmentCoordinator:
         exc: EnrichmentProviderError,
         on_state: StateCallback | None,
     ) -> None:
-        """R1.2: known provider/transport failures converge to a
-        terminal state (transient -> OFFLINE; other -> FAILED). The
-        worker invalidates EXACTLY its own request (if any) and its own
-        generation — a stale worker can NEVER cancel a newer
-        generation's request."""
+        """R1.3.2 P1-01: an OBSOLETE operation that fails late (after
+        cancel / manual confirm / reset / supersession) converges to
+        CANCELLED — a dead generation never surfaces OFFLINE or FAILED
+        to the UI. Current operations keep the R1.2 contract: transient
+        -> OFFLINE, other -> FAILED. The worker invalidates EXACTLY its
+        own request (if any) and its own generation — a stale worker can
+        NEVER cancel a newer generation's request."""
+        if self._operation_is_obsolete(token):
+            self._retire_token(token)
+            if request is not None:
+                self._service.cancel_request_exact(request)
+            self._report(token, on_state, EnrichmentOperationState.CANCELLED)
+            return
         self._retire_token(token)
         if request is not None:
             self._service.cancel_request_exact(request)
@@ -900,6 +931,15 @@ class EnrichmentCoordinator:
         local_key: str,
         on_state: StateCallback | None,
     ) -> None:
+        """R1.3.2 P1-01 (unexpected-error variant): a late unexpected
+        exception from an obsolete operation is suppressed as CANCELLED;
+        current operations converge to FAILED."""
+        if self._operation_is_obsolete(token):
+            self._retire_token(token)
+            if request is not None:
+                self._service.cancel_request_exact(request)
+            self._report(token, on_state, EnrichmentOperationState.CANCELLED)
+            return
         self._retire_token(token)
         if request is not None:
             self._service.cancel_request_exact(request)
