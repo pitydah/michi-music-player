@@ -391,3 +391,505 @@ class _ManagedMpdRuntime:
         self.socket_path = None
         if runtime_dir is not None:
             shutil.rmtree(runtime_dir, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# D3/D4 — MPDAudioPort: transport semantics + owner-thread event convergence
+# ---------------------------------------------------------------------------
+
+
+class _MpdEventKind(Enum):
+    REFRESH_PLAYER = auto()
+    PROCESS_EXIT = auto()
+    TRANSPORT_ERROR = auto()
+
+
+@dataclass(frozen=True, slots=True)
+class _MpdEvent:
+    """Observación inmutable del observer thread (M11.3C lesson)."""
+
+    runtime_generation: int
+    kind: _MpdEventKind
+    reason: str | None = None
+
+
+class _MpdEventBridge(QObject):
+    """ÚNICA frontera asíncrona: observer thread → owner thread."""
+
+    sig_event = Signal(object)
+
+
+class MPDAudioPort(AudioPort):
+    """Transport MPD gestionado detrás del contrato canónico AudioPort.
+
+    El observer thread SOLO observa (idle/EOF) y encola _MpdEvent; el
+    owner thread re-valida y re-consulta la verdad del daemon antes del
+    commit semántico y publica callbacks DIRECTOS. La cola privada de MPD
+    es UN slot de transporte (cero o una canción de Michi); el song ID es
+    identidad engine-local. Nunca adopta daemons externos, nunca
+    auto-reinicia (M11.3G), nunca emite EOM por stop/reemplazo/crash."""
+
+    def __init__(
+        self,
+        runtime: _ManagedMpdRuntime | None = None,
+        poll_interval_ms: int = 500,
+    ) -> None:
+        super().__init__()
+        self._bridge = _MpdEventBridge()
+        self._runtime = runtime if runtime is not None else _ManagedMpdRuntime()
+        self._client: _MpdProtocolClient | None = None
+        self._runtime_generation = 0
+        self._closed = True  # se abre con open()
+        # identity engine-local
+        self._pending_path: Path | None = None
+        self._current_path: Path | None = None
+        self._song_id: int | None = None
+        # semántica
+        self._pending_play = False
+        self._current_state = PlaybackStatus.STOPPED
+        self._eos_emitted = False
+        self._volume = 80
+        self._muted = False
+        # command ownership (M11.3C lesson): tokens privados
+        self._load_epoch = 0
+        # observer
+        self._observer: threading.Thread | None = None
+        self._observer_stop = threading.Event()
+        # poller owner-thread (posición) — QTimer en el thread owner
+        self._poller: QTimer | None = None
+        # subscribers
+        self._eom: list = []
+        self._pos: list = []
+        self._dur: list = []
+        self._acc: list = []
+        self._rej: list = []
+        self._pst: list = []
+        self._bridge.sig_event.connect(self._on_backend_event, Qt.QueuedConnection)
+
+    # ------------------------------------------------------------------
+    # lifecycle
+    # ------------------------------------------------------------------
+
+    def open(self) -> None:
+        """Abre el runtime gestionado (failure-atomic) y arranca el
+        observer. El observer usa UNA segunda conexión idle."""
+        if not self._closed:
+            return
+        self._runtime.start()
+        self._runtime_generation += 1
+        generation = self._runtime_generation
+        self._client = _MpdProtocolClient(self._runtime.socket_path, timeout=5.0)
+        self._client.connect()
+        # observer thread con conexión idle propia (nunca bloquea comandos)
+        self._observer_stop.clear()
+        self._observer = threading.Thread(
+            target=self._observer_main,
+            args=(generation,),
+            name="michi-mpd-observer",
+            daemon=True,
+        )
+        self._observer.start()
+        # poller de posición (owner-thread, solo mientras runtime abierto)
+        self._poller = QTimer()
+        self._poller.setInterval(500)
+        self._poller.timeout.connect(self._poll_position)
+        self._poller.start()
+        self._closed = False
+
+    def close(self) -> None:
+        """Idempotente: detiene observer y poller, cierra sockets, termina
+        el hijo, remueve artefactos."""
+        if self._closed:
+            return
+        self._closed = True
+        self._runtime_generation += 1  # invalida eventos en vuelo
+        self._observer_stop.set()
+        observer = self._observer
+        self._observer = None
+        if observer is not None:
+            observer.join(timeout=2.0)
+        if self._poller is not None:
+            self._poller.stop()
+            self._poller = None
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+        self._pending_path = None
+        self._current_path = None
+        self._song_id = None
+        self._pending_play = False
+        self._eos_emitted = False
+        self._eom = []
+        self._pos = []
+        self._dur = []
+        self._acc = []
+        self._rej = []
+        self._pst = []
+        self._runtime.close()
+
+    # ------------------------------------------------------------------
+    # observer (OBSERVES ONLY — nunca muta semántica)
+    # ------------------------------------------------------------------
+
+    def _observer_main(self, generation: int) -> None:
+        try:
+            idle_client = _MpdProtocolClient(
+                self._runtime.socket_path, timeout=30.0
+            )
+            idle_client.connect()
+            while not self._observer_stop.is_set():
+                try:
+                    changed = idle_client.idle("player")
+                except MpdProtocolError as exc:
+                    if self._observer_stop.is_set():
+                        break
+                    if self._runtime.child_alive():
+                        self._bridge.sig_event.emit(
+                            _MpdEvent(
+                                generation,
+                                _MpdEventKind.REFRESH_PLAYER,
+                                None,
+                            )
+                        )
+                        continue
+                    self._bridge.sig_event.emit(
+                        _MpdEvent(
+                            generation,
+                            _MpdEventKind.PROCESS_EXIT,
+                            str(exc),
+                        )
+                    )
+                    break
+                if changed:
+                    self._bridge.sig_event.emit(
+                        _MpdEvent(generation, _MpdEventKind.REFRESH_PLAYER)
+                    )
+        except Exception as exc:  # noqa: BLE001 — observer isolation
+            if not self._observer_stop.is_set():
+                self._bridge.sig_event.emit(
+                    _MpdEvent(generation, _MpdEventKind.TRANSPORT_ERROR, str(exc))
+                )
+        finally:
+            try:
+                idle_client.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    # ------------------------------------------------------------------
+    # owner commit (única autoridad semántica)
+    # ------------------------------------------------------------------
+
+    def _on_backend_event(self, event) -> None:
+        if self._closed:
+            return
+        if event.runtime_generation != self._runtime_generation:
+            return  # evento stale de un runtime anterior
+        if event.kind == _MpdEventKind.PROCESS_EXIT:
+            self._converge_process_exit(event.reason)
+            return
+        if event.kind == _MpdEventKind.TRANSPORT_ERROR:
+            self._converge_transport_error(event.reason)
+            return
+        if event.kind == _MpdEventKind.REFRESH_PLAYER:
+            self._refresh_status()
+
+    def _refresh_status(self) -> None:
+        """Re-consulta la verdad del daemon y commitea el estado (solo si
+        el daemon confirma; nunca PLAYING optimista)."""
+        if self._closed or self._client is None:
+            return
+        try:
+            status = self._client.status()
+        except MpdProtocolError as exc:
+            if not self._runtime.child_alive():
+                self._converge_process_exit(str(exc))
+            return
+        state = status.get("state", "stop")
+        if state == "play":
+            self._deliver_state_if(PlaybackStatus.PLAYING)
+        elif state == "pause":
+            self._deliver_state_if(PlaybackStatus.PAUSED)
+        elif state == "stop":
+            self._commit_stopped(status)
+
+    def _commit_stopped(self, status: dict[str, str]) -> None:
+        """STOPPED convergente. EOS natural SOLO si veníamos de PLAYING
+        con intención y el daemon ya no reporta la canción actual."""
+        if self._current_state == PlaybackStatus.STOPPED:
+            return
+        was_playing = self._current_state == PlaybackStatus.PLAYING
+        current = self._current_path
+        self._pending_play = False
+        self._deliver_state_if(PlaybackStatus.STOPPED)
+        # REVALIDACIÓN post-callback (M11.3C lesson): el subscriber del
+        # STOPPED pudo cargar C/cerrar → EOM de la fuente vieja suprimido.
+        # El fin natural requiere: veníamos de PLAYING, la fuente sigue
+        # siendo la misma, el daemon ya no reporta la canción (el stop
+        # explícito de MPD retiene songid).
+        if (
+            was_playing
+            and current is not None
+            and self._current_path == current
+            and not self._eos_emitted
+            and status.get("songid") is None
+        ):
+            self._emit_natural_eos()
+        self._eos_emitted = False
+
+    def _emit_natural_eos(self) -> None:
+        """STOPPED ya publicado; revalida y emite EOM como ÚLTIMA acción
+        (un subscriber del STOPPED pudo cargar C/cerrar → EOM suprimido)."""
+        if self._closed:
+            return
+        self._eos_emitted = True
+        self._deliver_eom()
+
+    def _converge_process_exit(self, reason: str | None) -> None:
+        """El hijo murió: sin PLAYING futuro, sin EOM, convergencia
+        honesta, sin auto-restart (M11.3G)."""
+        if self._current_path is not None or self._pending_path is not None:
+            self._pending_path = None
+            self._current_path = None
+            self._song_id = None
+            self._pending_play = False
+            self._eos_emitted = True  # nunca EOM por crash
+            self._deliver_state_if(PlaybackStatus.STOPPED)
+
+    def _converge_transport_error(self, reason: str | None) -> None:
+        if self._current_path is not None:
+            self._current_path = None
+            self._song_id = None
+            self._pending_play = False
+            self._deliver_state_if(PlaybackStatus.STOPPED)
+
+    # ------------------------------------------------------------------
+    # position / duration (owner thread, solo source aceptado)
+    # ------------------------------------------------------------------
+
+    def _poll_position(self) -> None:
+        if self._closed or self._client is None:
+            return
+        if self._current_path is None:
+            return
+        try:
+            status = self._client.status()
+        except MpdProtocolError:
+            return
+        elapsed = status.get("elapsed")
+        if elapsed is not None:
+            self._deliver_pos(_mpd_seconds_to_millis(elapsed))
+
+    # ------------------------------------------------------------------
+    # transport commands (owner thread)
+    # ------------------------------------------------------------------
+
+    def load(self, file_path: Path) -> None:
+        if self._closed or self._client is None:
+            raise RuntimeError("MPD port cerrado")
+        self._load_epoch += 1
+        my_load_epoch = self._load_epoch
+        # COMMIT POINT DESTRUCTIVO: clear() — tras confirmarse, la fuente
+        # previa ya no está garantizada (AudioLoadError=False)
+        try:
+            self._client.clear()
+        except MpdProtocolError as exc:
+            # pre-commit: la fuente previa sigue (si aún existe)
+            raise AudioLoadError(
+                file_path, str(exc), previous_source_preserved=True
+            ) from exc
+        try:
+            song_id = self._client.addid(str(file_path.resolve()))
+        except MpdProtocolError as exc:
+            # post-commit: la fuente previa se perdió → rejection B
+            self._pending_path = None
+            self._current_path = None
+            self._song_id = None
+            self._deliver_rej(file_path, str(exc))
+            raise AudioLoadError(
+                file_path, str(exc), previous_source_preserved=False
+            ) from exc
+        # aceptación SÍNCRONA (MPD la confirma al instante)
+        if my_load_epoch != self._load_epoch:
+            return  # un callback reentrante supersedió este load
+        self._pending_path = None
+        self._current_path = file_path
+        self._song_id = song_id
+        self._eos_emitted = False
+        self._deliver_acc(file_path)
+
+    def play(self) -> None:
+        if self._closed or self._client is None:
+            return
+        if self._song_id is None:
+            return
+        try:
+            self._client.playid(self._song_id)
+        except MpdProtocolError as exc:
+            # sin ghost accepted: converger honesto
+            self._converge_transport_error(str(exc))
+            raise RuntimeError(f"MPD play failed: {exc}") from exc
+        self._pending_play = True
+        # PLAYING NUNCA es optimista: espera la verdad del daemon
+
+    def pause(self) -> None:
+        if self._closed or self._client is None:
+            return
+        try:
+            self._client.pause(True)
+        except MpdProtocolError as exc:
+            raise RuntimeError(f"MPD pause failed: {exc}") from exc
+        self._pending_play = False
+
+    def resume(self) -> None:
+        if self._closed or self._client is None:
+            return
+        try:
+            self._client.pause(False)
+        except MpdProtocolError as exc:
+            raise RuntimeError(f"MPD resume failed: {exc}") from exc
+        self._pending_play = True
+
+    def stop(self) -> None:
+        if self._closed or self._client is None:
+            return
+        self._pending_play = False
+        try:
+            self._client.stop()
+        except MpdProtocolError as exc:
+            raise RuntimeError(f"MPD stop failed: {exc}") from exc
+        # STOPPED solo cuando el daemon confirma state=stop (refresh)
+        self._refresh_status()
+
+    def seek(self, position_ms: int) -> None:
+        if self._closed or self._client is None:
+            return
+        if self._song_id is None:
+            return
+        try:
+            self._client.seekid(self._song_id, position_ms / 1000.0)
+        except MpdProtocolError as exc:
+            raise RuntimeError(f"MPD seek failed: {exc}") from exc
+
+    def position(self) -> int:
+        if self._closed or self._client is None or self._current_path is None:
+            return 0
+        try:
+            status = self._client.status()
+        except MpdProtocolError:
+            return 0
+        return _mpd_seconds_to_millis(status.get("elapsed", "0"))
+
+    def duration(self) -> int:
+        if self._closed or self._client is None or self._current_path is None:
+            return 0
+        try:
+            song = self._client.currentsong()
+        except MpdProtocolError:
+            return 0
+        return _mpd_seconds_to_millis(song.get("duration", song.get("Time", "0")))
+
+    def set_volume(self, value: int) -> None:
+        if self._closed or self._client is None:
+            return
+        self._volume = max(0, min(100, value))
+        if not self._muted:
+            try:
+                self._client.setvol(self._volume)
+            except MpdProtocolError as exc:
+                raise RuntimeError(f"MPD setvol failed: {exc}") from exc
+
+    def set_muted(self, muted: bool) -> None:
+        if self._closed or self._client is None:
+            return
+        self._muted = muted
+        effective = 0 if muted else self._volume
+        try:
+            self._client.setvol(effective)
+        except MpdProtocolError as exc:
+            raise RuntimeError(f"MPD setvol failed: {exc}") from exc
+
+    # ------------------------------------------------------------------
+    # publication (owner thread, DIRECT)
+    # ------------------------------------------------------------------
+
+    def _deliver_state_if(self, status: PlaybackStatus) -> None:
+        if self._current_state is status:
+            return
+        self._current_state = status
+        self._deliver_state(status)
+
+    def _deliver_eom(self) -> None:
+        for cb in list(self._eom):
+            cb()
+
+    def _deliver_pos(self, ms: int) -> None:
+        for cb in list(self._pos):
+            cb(ms)
+
+    def _deliver_dur(self, ms: int) -> None:
+        for cb in list(self._dur):
+            cb(ms)
+
+    def _deliver_acc(self, path) -> None:
+        for cb in list(self._acc):
+            cb(path)
+
+    def _deliver_rej(self, path, reason: str) -> None:
+        for cb in list(self._rej):
+            cb(path, reason)
+
+    def _deliver_state(self, status) -> None:
+        for cb in list(self._pst):
+            cb(status)
+
+    # ------------------------------------------------------------------
+    # subscriptions (idempotentes)
+    # ------------------------------------------------------------------
+
+    def subscribe_end_of_media(self, cb) -> None:
+        if cb not in self._eom:
+            self._eom.append(cb)
+
+    def unsubscribe_end_of_media(self, cb) -> None:
+        if cb in self._eom:
+            self._eom.remove(cb)
+
+    def subscribe_position_changed(self, cb) -> None:
+        if cb not in self._pos:
+            self._pos.append(cb)
+
+    def unsubscribe_position_changed(self, cb) -> None:
+        if cb in self._pos:
+            self._pos.remove(cb)
+
+    def subscribe_duration_changed(self, cb) -> None:
+        if cb not in self._dur:
+            self._dur.append(cb)
+
+    def unsubscribe_duration_changed(self, cb) -> None:
+        if cb in self._dur:
+            self._dur.remove(cb)
+
+    def subscribe_media_accepted(self, cb) -> None:
+        if cb not in self._acc:
+            self._acc.append(cb)
+
+    def unsubscribe_media_accepted(self, cb) -> None:
+        if cb in self._acc:
+            self._acc.remove(cb)
+
+    def subscribe_media_rejected(self, cb) -> None:
+        if cb not in self._rej:
+            self._rej.append(cb)
+
+    def unsubscribe_media_rejected(self, cb) -> None:
+        if cb in self._rej:
+            self._rej.remove(cb)
+
+    def subscribe_playback_state_changed(self, cb) -> None:
+        if cb not in self._pst:
+            self._pst.append(cb)
+
+    def unsubscribe_playback_state_changed(self, cb) -> None:
+        if cb in self._pst:
+            self._pst.remove(cb)
