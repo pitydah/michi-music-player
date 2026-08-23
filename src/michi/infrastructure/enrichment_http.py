@@ -22,6 +22,7 @@ from urllib.parse import urlsplit
 from michi.application.enrichment_ports import (
     EnrichmentHttpStatusError,
     EnrichmentProviderError,
+    EnrichmentResponseLimitError,
     EnrichmentTransportError,
     HttpRequest,
     HttpResponse,
@@ -138,22 +139,21 @@ class UrllibHttpTransport(HttpTransportPort):
             ) from exc
         try:
             body = self._read_bounded(response)
-        except EnrichmentTransportError:
-            # R1.1: body-read failures are normalized transport errors
-            # (they participate in the bounded retry policy upstream).
+            status = getattr(response, "status", None)
+            if not isinstance(status, int):
+                status = response.getcode()
+            final_url = response.geturl()
+            try:
+                validate_provider_url(final_url)
+            except ValueError as exc:
+                raise EnrichmentProviderError(
+                    f"provider final URL invalid: {exc}"
+                ) from exc
+            response_headers = {k.lower(): v for k, v in response.headers.items()}
+        finally:
+            # R1.2 UNIVERSAL CLOSE: every exit path closes the response —
+            # success, read failures, oversized bodies, invalid final URL.
             response.close()
-            raise
-        status = getattr(response, "status", None)
-        if not isinstance(status, int):
-            status = response.getcode()
-        final_url = response.geturl()
-        try:
-            validate_provider_url(final_url)
-        except ValueError as exc:
-            response.close()
-            raise EnrichmentProviderError(f"provider final URL invalid: {exc}") from exc
-        response_headers = {k.lower(): v for k, v in response.headers.items()}
-        response.close()
         return HttpResponse(
             status_code=int(status),
             headers=response_headers,
@@ -177,7 +177,9 @@ class UrllibHttpTransport(HttpTransportPort):
                     break
                 total += len(chunk)
                 if total > MAX_PROVIDER_BODY_BYTES:
-                    raise EnrichmentTransportError(
+                    # R1.2: oversized is NOT a transport failure — never
+                    # transient, never retried, never stale-eligible.
+                    raise EnrichmentResponseLimitError(
                         "provider body exceeds the configured maximum"
                     )
                 chunks.append(chunk)
