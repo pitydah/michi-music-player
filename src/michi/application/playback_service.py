@@ -198,6 +198,11 @@ class PlaybackService:
         except Exception as exc:
             if my_epoch != self._request_epoch:
                 raise
+            if self._pending_path is None and not self._accepted:
+                # SAME REQUEST already terminalized synchronously (media_rejected /
+                # cancelled callback): preserve terminal rejection/cancellation
+                # state and propagate the lifecycle exception.
+                raise
             self._clear_pending()
             if isinstance(exc, AudioLoadError) and not exc.previous_source_preserved:
                 self._intent = False
@@ -281,6 +286,10 @@ class PlaybackService:
             self._audio.load(file_path)
         except Exception as exc:
             if my_epoch != self._request_epoch:
+                raise
+            if self._pending_path is None and not self._accepted:
+                # SAME REQUEST already terminalized synchronously (media_rejected /
+                # cancelled callback): preserve terminal rejection state.
                 raise
             self._pending_path = None
             self._pending_on_accepted = None
