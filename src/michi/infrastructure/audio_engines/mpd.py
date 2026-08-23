@@ -124,10 +124,18 @@ class _MpdProtocolClient:
             raise MpdProtocolError(f"greeting MPD inválido: {greeting!r}")
 
     def close(self) -> None:
-        if self._sock is not None:
+        """Cierre determinista: shutdown(SHUT_RDWR) ANTES de close().
+
+        GATE A1 (M11.3D-R3): close() solo NO despierta un recv() bloqueado
+        en otro thread (observado con socket AF_UNIX real) — shutdown()
+        libera el recv pendiente de forma determinista (EOF/error)."""
+        sock = self._sock
+        self._sock = None  # nadie más lo considera conectado
+        if sock is not None:
             with contextlib.suppress(OSError):
-                self._sock.close()
-            self._sock = None
+                sock.shutdown(socket.SHUT_RDWR)
+            with contextlib.suppress(OSError):
+                sock.close()
 
     @property
     def connected(self) -> bool:
@@ -290,9 +298,15 @@ class _ManagedMpdRuntime:
     best-effort); shutdown TERM → KILL → reap → remoción de artefactos;
     close() idempotente. NUNCA adopta un daemon externo."""
 
-    def __init__(self, executable: str = "mpd", startup_timeout: float = 5.0):
+    def __init__(
+        self,
+        executable: str = "mpd",
+        startup_timeout: float = 5.0,
+        null_output: bool = False,
+    ):
         self._executable = executable
         self._startup_timeout = startup_timeout
+        self._null_output = null_output  # SOLO para tests/smoke reales
         self.runtime_dir: Path | None = None
         self.socket_path: str | None = None
         self._process: subprocess.Popen | None = None
@@ -320,7 +334,10 @@ class _ManagedMpdRuntime:
         self.runtime_dir = base
         self.socket_path = str(base / "mpd.sock")
         conf_path = base / "mpd.conf"
-        conf_path.write_text(_render_mpd_conf(base, music_dir), encoding="utf-8")
+        conf_path.write_text(
+            _render_mpd_conf(base, music_dir, null_output=self._null_output),
+            encoding="utf-8",
+        )
         # spawn --no-daemon (nunca shell=True, nunca daemonizar)
         self._process = subprocess.Popen(
             [self._executable, "--no-daemon", "--stderr", str(conf_path)],
