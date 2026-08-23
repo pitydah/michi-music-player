@@ -7,10 +7,11 @@ ON TOP of the frozen M11.3D main and the complete R1.3 backend.
 - BASE MAIN (current frozen main): `9677734854a3bd8da3ee55b26cbfea88d215553d`
   (`docs(audio): definitively freeze m11.3d` — M11.3D-R2 DONE/TESTED/FROZEN)
 - R1.3 SOURCE (audited historical head): `149fb3cabce6919ad7b591fd7630ee5b7180903e`
-- FINAL CODE VALIDATED HEAD: `230e06a` (merge + FIX-A/B/C/D + seal tests)
-- CI HEAD: recorded in the follow-up commit once exact-head CI passed
-- Tests (full suite, final head): 2427 passed, 2 skipped, 13 warnings
-  (baseline after merge: 2418; +9 new seal tests)
+- FINAL CODE VALIDATED HEAD: `4c9ea5b5dd0fbcae320d53a8b3d103f04747f21f`
+- CI HEAD: `4c9ea5b5dd0fbcae320d53a8b3d103f04747f21f` (exact-head CI:
+  Lint PASS / Test PASS / Build PASS)
+- Tests (full suite, final head, CI environment): 2427 passed, 2 skipped,
+  13 warnings (baseline after merge: 2418; +9 new seal tests)
 
 History: `git merge-base --is-ancestor` returns 0 for BOTH the frozen
 main and the R1.3 source — the final head contains both histories plus
@@ -137,7 +138,14 @@ exact-once, MANUAL never downgraded) are re-proven by it.
   audio engine, M11.3B composition): 431 passed, 2 skipped — no
   M11.3D-R2 rollback (`git diff 9677734 -- audio_engines
   playback_service.py audio_engine_service.py` is EMPTY)
-- full suite: 2427 passed, 2 skipped, 13 warnings (no new warnings)
+- full suite (CI environment): 2427 passed, 2 skipped, 13 warnings (no
+  new warnings). NOTE: on this developer machine two PRE-EXISTING
+  environmental failures appear (verified identical on the frozen main
+  `9677734` in isolation): `test_registry_has_three_canonical_engines`
+  (assumes MPD not activable; `/usr/bin/mpd` is installed here) and
+  `test_mpd_real_runtime::test_real_private_runtime_smoke` (launches a
+  real MPD daemon whose generated config fails on this host). Neither is
+  touched by this WP — the audio diff vs main is empty.
 - `ruff check src tests`: PASS; `ruff format --check src tests`: PASS
 - `python -m build`: PASS
 - exact-head CI: Lint PASS / Test PASS / Build PASS
