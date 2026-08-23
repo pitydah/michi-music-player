@@ -16,6 +16,7 @@ loops — one failure event = one convergence attempt, then stop.
 """
 
 import logging
+from enum import Enum
 
 from michi.application.audio_engine_registry import AudioEngineRegistry
 from michi.application.audio_engine_runtime_failure import (
@@ -31,6 +32,27 @@ from michi.domain.audio_engine import AudioEngineId
 logger = logging.getLogger(__name__)
 
 
+class ActivationDisposition(Enum):
+    """Typed activation outcome (M11.3G final ownership seal).
+
+    READY — engine opened, router bound, identity validated, volume/mute
+            restored, AudioEngineState READY.
+    FAILED_SAFE_RELEASED — activation failed, router definitely unbound,
+            provider definitely released/closed: NO old runtime ownership
+            remains. THIS is the only failure that authorizes Qt fallback.
+    FAILED_UNSAFE_BOUND — activation failed, router still reports a bound
+            engine: state reflects the physical bound owner, lifecycle
+            FAILED, NO provider close while bound, NO fallback.
+    FAILED_UNSAFE_CLOSE — router detached but provider.close() failed:
+            ownership cannot be proven released, NO fallback.
+    """
+
+    READY = "ready"
+    FAILED_SAFE_RELEASED = "failed_safe_released"
+    FAILED_UNSAFE_BOUND = "failed_unsafe_bound"
+    FAILED_UNSAFE_CLOSE = "failed_unsafe_close"
+
+
 class AudioEngineConvergenceCoordinator:
     """Involuntary engine convergence — the G authority.
 
@@ -38,6 +60,10 @@ class AudioEngineConvergenceCoordinator:
     Qt is the canonical REFERENCE / SAFE engine; there is NO fallback chain
     and GStreamer/MPD are NEVER automatic alternates. If Qt itself is the
     failed engine: NO automatic alternate engine.
+
+    CORE SAFETY INVARIANT: automatic Qt fallback is allowed ONLY when the
+    previous/failed runtime is PROVEN FULLY RELEASED — router unbound AND
+    provider close completed. Either unproven → NO fallback.
     """
 
     def __init__(
@@ -103,20 +129,28 @@ class AudioEngineConvergenceCoordinator:
                 )
             return False
 
-        if not self._activate_and_bind(engine_id, fallback_from=None, message=None):
-            if allow_qt_fallback:
-                # Preserve the ORIGINAL activation failure reason (primary
-                # error truth) in the fallback message.
-                original = self._engine_service.state.error_message
-                return self._try_qt_fallback(
-                    fallback_from=engine_id,
-                    primary_reason=(
-                        f"{engine_id.value} activation failed: "
-                        f"{original or 'unknown error'}"
-                    ),
-                )
-            return False
-        return True
+        disposition = self._activate_and_bind(
+            engine_id, fallback_from=None, message=None
+        )
+        if disposition is ActivationDisposition.READY:
+            return True
+        if allow_qt_fallback and (
+            disposition is ActivationDisposition.FAILED_SAFE_RELEASED
+        ):
+            # ONLY proven full release (router unbound + provider released)
+            # authorizes the automatic Qt fallback. Preserve the ORIGINAL
+            # activation failure reason (primary error truth).
+            original = self._engine_service.state.error_message
+            return self._try_qt_fallback(
+                fallback_from=engine_id,
+                primary_reason=(
+                    f"{engine_id.value} activation failed: "
+                    f"{original or 'unknown error'}"
+                ),
+            )
+        # FAILED_UNSAFE_BOUND / FAILED_UNSAFE_CLOSE: STOP convergence,
+        # final state already FAILED, NO Qt fallback.
+        return False
 
     def _activate_and_bind(
         self,
@@ -124,20 +158,24 @@ class AudioEngineConvergenceCoordinator:
         *,
         fallback_from: AudioEngineId | None,
         message: str | None,
-    ) -> bool:
+    ) -> ActivationDisposition:
         """PROBE→INITIALIZING→OPEN→BIND→VALIDATE→READY (or fallback_ready).
 
-        Returns True on READY. On failure: cleans up safely (router unbound
-        + provider closed best effort when detach succeeded; never closes a
-        still-bound provider) and returns False with honest state."""
+        Returns the typed ActivationDisposition. On failure the cleanup
+        branches EXACTLY by physical truth: still-bound → FAILED_UNSAFE_BOUND
+        (never close a bound provider); detached + close ok →
+        FAILED_SAFE_RELEASED; detached + close failed → FAILED_UNSAFE_CLOSE
+        (ownership cannot be proven released)."""
         provider = self._registry.provider(engine_id)
         volume, muted = self._playback.snapshot_volume()
         self._engine_service.mark_initializing(engine_id)
         try:
             port = provider.open()
         except Exception as exc:
+            # open raised BEFORE ownership existed: router still unbound, no
+            # provider runtime ownership established — SAFE for fallback.
             self._engine_service.mark_failed(engine_id, str(exc))
-            return False
+            return ActivationDisposition.FAILED_SAFE_RELEASED
         try:
             self._router.bind(engine_id, port)
             if self._router.bound_engine_id != engine_id:
@@ -149,34 +187,50 @@ class AudioEngineConvergenceCoordinator:
             # only (never through an unbound router).
             self._playback.restore_volume(volume, muted)
         except Exception as exc:
+            primary = str(exc)
             from contextlib import suppress
 
             with suppress(Exception):
                 self._router.unbind()
-            if self._router.bound_engine_id is None:
-                with suppress(Exception):
-                    provider.close()
-                self._engine_service.mark_failed(engine_id, str(exc))
-            else:
+            if self._router.bound_engine_id is not None:
+                # CASE A: still physically bound — never close it, never
+                # fallback; state reflects the physical bound owner.
                 self._engine_service.mark_bound_failed(
-                    self._router.bound_engine_id, str(exc)
+                    self._router.bound_engine_id, primary
                 )
-            return False
+                return ActivationDisposition.FAILED_UNSAFE_BOUND
+            # CASE B: detached — attempt provider release.
+            try:
+                provider.close()
+            except Exception as close_exc:
+                # Ownership cannot be proven released: UNSAFE, no fallback.
+                # Primary activation error stays primary; the close failure
+                # is secondary diagnostic truth in the state message.
+                self._engine_service.mark_failed(
+                    engine_id,
+                    f"{primary}; provider release failed: {close_exc}",
+                )
+                return ActivationDisposition.FAILED_UNSAFE_CLOSE
+            self._engine_service.mark_failed(engine_id, primary)
+            return ActivationDisposition.FAILED_SAFE_RELEASED
         if fallback_from is not None:
             self._engine_service.mark_fallback_ready(
                 engine_id, fallback_from, message or "engine convergence"
             )
         else:
             self._engine_service.mark_ready(engine_id)
-        return True
+        return ActivationDisposition.READY
 
     def _try_qt_fallback(
         self, *, fallback_from: AudioEngineId, primary_reason: str
     ) -> bool:
         """Attempt the ONE automatic fallback: Qt Multimedia, exactly once.
 
-        Never mutates persisted selection. Never loops. If Qt cannot
-        activate, projects convergence_failed carrying BOTH facts."""
+        Never mutates persisted selection. Never loops. The Qt fallback
+        activation follows the SAME ownership rule (typed disposition):
+        only a SAFE Qt result may project READY with fallback_from; an
+        UNSAFE Qt result must NOT claim fallback_from and must preserve
+        physical truth (bound Qt stays active=Qt FAILED)."""
         qt_descriptor = self._registry.descriptor(AudioEngineId.QT_MULTIMEDIA)
         if not qt_descriptor.can_activate:
             blocker = qt_descriptor.activation_blocker or "unavailable"
@@ -184,16 +238,23 @@ class AudioEngineConvergenceCoordinator:
                 f"{primary_reason}; Qt Multimedia fallback unavailable: {blocker}"
             )
             return False
-        if not self._activate_and_bind(
+        disposition = self._activate_and_bind(
             AudioEngineId.QT_MULTIMEDIA,
             fallback_from=fallback_from,
             message=(f"{primary_reason}; using Qt Multimedia fallback"),
-        ):
-            self._engine_service.mark_convergence_failed(
-                f"{primary_reason}; Qt Multimedia fallback failed"
-            )
+        )
+        if disposition is ActivationDisposition.READY:
+            return True
+        if disposition is ActivationDisposition.FAILED_UNSAFE_BOUND:
+            # Physical truth already projected by mark_bound_failed inside
+            # _activate_and_bind: active=Qt (bound), FAILED, fallback_from
+            # None. Do NOT overwrite with active=None.
             return False
-        return True
+        # FAILED_SAFE_RELEASED / FAILED_UNSAFE_CLOSE → no active engine.
+        self._engine_service.mark_convergence_failed(
+            f"{primary_reason}; Qt Multimedia fallback failed"
+        )
+        return False
 
     # ------------------------------------------------------------------
     # Explicit-switch safe recovery (F→G seam)

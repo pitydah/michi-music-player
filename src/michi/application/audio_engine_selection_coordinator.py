@@ -52,12 +52,16 @@ class AudioEngineSwitchFailureStage(Enum):
     """Transaction diagnostics: where an explicit switch failed.
 
     Orchestration-only — never persisted, never part of AudioEngineState.
-    Used by M11.3G to decide whether automatic fallback is SAFE."""
+    Used by M11.3G to decide whether automatic fallback is SAFE: only
+    TARGET_OPEN (no target ownership existed) and
+    TARGET_ACTIVATION_DETACHED_RELEASED (detach + provider close both
+    succeeded) authorize the recovery callback."""
 
     SOURCE_UNBIND = "source_unbind"
     SOURCE_CLOSE = "source_close"
     TARGET_OPEN = "target_open"
-    TARGET_ACTIVATION_DETACHED = "target_activation_detached"
+    TARGET_ACTIVATION_DETACHED_RELEASED = "target_activation_detached_released"
+    TARGET_ACTIVATION_DETACHED_CLOSE_FAILED = "target_activation_detached_close_failed"
     TARGET_ACTIVATION_STILL_BOUND = "target_activation_still_bound"
 
 
@@ -287,14 +291,30 @@ class AudioEngineSelectionCoordinator:
             with suppress(Exception):
                 self._router.unbind()
             if self._router.bound_engine_id is None:
-                # Detach succeeded: safe to release target ownership.
-                with suppress(Exception):
+                # Detach succeeded: release target ownership. The recovery
+                # callback is invoked ONLY when the provider close ALSO
+                # succeeds (P1-02: detach alone does not prove the runtime
+                # is fully released — a failed close makes fallback UNSAFE).
+                try:
                     provider.close()
+                except Exception as close_exc:
+                    self.last_failure_stage = AudioEngineSwitchFailureStage(
+                        "target_activation_detached_close_failed"
+                    )
+                    self._engine_service.mark_failed(
+                        target,
+                        f"{original}; provider release failed: {close_exc}",
+                    )
+                    # FIRST ERROR WINS: the ORIGINAL activation error is the
+                    # primary exception; the close failure is secondary
+                    # diagnostic truth (recorded in state, never the raise).
+                    raise original from close_exc
                 self._engine_service.mark_failed(target, str(original))
-                # M11.3G seam: SAFE for fallback (router detached, target
-                # closed). The original error still propagates afterwards.
+                # M11.3G seam: SAFE for fallback ONLY because detach AND
+                # release both succeeded. The original error still
+                # propagates afterwards.
                 self.last_failure_stage = (
-                    AudioEngineSwitchFailureStage.TARGET_ACTIVATION_DETACHED
+                    AudioEngineSwitchFailureStage.TARGET_ACTIVATION_DETACHED_RELEASED
                 )
                 if self._recover_callback is not None:
                     self._recover_callback(target, str(original))
