@@ -374,22 +374,38 @@ class TestE4QtAvailability:
 
 
 class TestE7SideEffectsAndState:
-    def test_e14_probe_all_does_not_open_engines(self):
-        registry, providers = _registry_with(
+    def _three_factories(self):
+        return [
             _DescFactory(AudioEngineId.QT_MULTIMEDIA, available=True),
-        )
+            _DescFactory(
+                AudioEngineId.GSTREAMER,
+                available=False,
+                unavailable_reason="GI unavailable",
+            ),
+            _DescFactory(
+                AudioEngineId.MPD,
+                available=False,
+                unavailable_reason="mpd executable missing",
+            ),
+        ]
+
+    def test_e14_probe_all_does_not_open_engines(self):
+        """probe-all sobre TODO el registry no abre ningún engine."""
+        registry, providers = _registry_with(*self._three_factories())
         registry.descriptors()
-        assert providers[0].open_count == 0
-        assert providers[0].close_count == 0
+        for provider in providers:
+            assert provider.open_count == 0
+            assert provider.close_count == 0
 
     def test_e15_one_probe_per_provider_per_snapshot(self):
-        registry, providers = _registry_with(
-            _DescFactory(AudioEngineId.QT_MULTIMEDIA, available=True),
-        )
+        """one probe / provider / snapshot — para todo el registry."""
+        registry, providers = _registry_with(*self._three_factories())
         registry.descriptors()
-        assert providers[0].probe_count == 1
+        for provider in providers:
+            assert provider.probe_count == 1
         registry.descriptors()
-        assert providers[0].probe_count == 2  # fresco en cada consulta
+        for provider in providers:
+            assert provider.probe_count == 2  # fresco en cada consulta
 
     def test_e16_availability_query_does_not_mutate_engine_state(self, qapp):
         from michi import bootstrap
@@ -430,6 +446,10 @@ class TestE7SideEffectsAndState:
         )
         assert after == before  # sin mutación de estado
         assert after[2] == AudioEngineLifecycle.READY
+        # teardown conforme al SWITCH ORDER congelado: STOP -> router
+        # UNBIND -> provider CLOSE (el router nunca queda ligado a un
+        # backend cerrado)
+        router.unbind()
         qt_provider.close()
 
 
@@ -492,6 +512,9 @@ class TestE9ProductionComposition:
         # GStreamer y MPD NO se abren durante el startup normal
         assert TrackingGst.opened == 0
         assert TrackingMpd.opened == 0
+        # teardown conforme al SWITCH ORDER congelado: STOP -> router
+        # UNBIND -> provider CLOSE
+        router.unbind()
         qt_provider.close()
 
     def test_e19_alternate_availability_does_not_change_active(self, qapp):
@@ -520,6 +543,8 @@ class TestE9ProductionComposition:
         assert service.state.active_engine_id == AudioEngineId.QT_MULTIMEDIA
         registry.descriptors()  # disponibilidad alterna consultada
         assert service.state.active_engine_id == AudioEngineId.QT_MULTIMEDIA
+        # teardown conforme al SWITCH ORDER congelado
+        router.unbind()
         qt_provider.close()
 
 

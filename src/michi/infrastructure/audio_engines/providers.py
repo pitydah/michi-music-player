@@ -1,9 +1,10 @@
 """Engine provider implementations — infrastructure layer (M11.3A).
 
-GStreamer has an IMPLEMENTED adapter (M11.3C/M11.3C-R1) with runtime-
-dependent availability (GI + Gst + playbin3 required). MPD remains
-availability-probe only (M11.3D). Descriptors distinguish dependency
-availability (installed) from implementation readiness (implemented).
+GStreamer and MPD both have implemented AudioPort adapters.
+Runtime availability remains environment-dependent (GStreamer: GI +
+Gst + playbin3 required; MPD: executable + server on the socket).
+Descriptors distinguish dependency availability (available) from
+implementation readiness (implemented).
 """
 
 from michi.application.audio_engine_registry import AudioEngineProviderPort
