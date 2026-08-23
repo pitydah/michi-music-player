@@ -232,3 +232,162 @@ def _mpd_seconds_to_millis(seconds: str | float) -> int:
     if value < 0:
         return 0
     return int(round(value * 1000))
+
+
+# ---------------------------------------------------------------------------
+# D2 — managed private MPD process/runtime (Michi-owned, never adopted)
+# ---------------------------------------------------------------------------
+
+
+def _pick_runtime_parent() -> Path:
+    """XDG_RUNTIME_DIR válido y escribible, o un tempdir seguro (0700)."""
+    xdg = os.environ.get("XDG_RUNTIME_DIR")
+    if xdg:
+        candidate = Path(xdg)
+        if candidate.is_dir() and os.access(candidate, os.W_OK):
+            return candidate
+    return Path(tempfile.gettempdir())
+
+
+def _render_mpd_conf(runtime_dir: Path, music_dir: Path) -> str:
+    """Config mínima privada — SOLO paths de este runtime; nada del sistema."""
+    return "\n".join(
+        [
+            "bind_to_address " + str(runtime_dir / "mpd.sock"),
+            "port 0",
+            "pid_file " + str(runtime_dir / "mpd.pid"),
+            "log_file " + str(runtime_dir / "mpd.log"),
+            "db_file " + str(runtime_dir / "database"),
+            "state_file " + str(runtime_dir / "state"),
+            "sticker_file " + str(runtime_dir / "stickers.sqlite"),
+            "playlist_directory " + str(runtime_dir / "playlists"),
+            "music_directory " + str(music_dir),
+            "auto_update no",
+            'audio_output {\n\ttype\t\t"null"\n\tname\t\t"Michi MPD Transport"\n}',
+            "",
+        ]
+    )
+
+
+class _ManagedMpdRuntime:
+    """Posee UN proceso MPD privado con su árbol de runtime único.
+
+    Startup bounded y failure-atomic (primer error primario; limpieza
+    best-effort); shutdown TERM → KILL → reap → remoción de artefactos;
+    close() idempotente. NUNCA adopta un daemon externo."""
+
+    def __init__(self, executable: str = "mpd", startup_timeout: float = 5.0):
+        self._executable = executable
+        self._startup_timeout = startup_timeout
+        self.runtime_dir: Path | None = None
+        self.socket_path: str | None = None
+        self._process: subprocess.Popen | None = None
+        self._closed = True
+
+    # -- startup -------------------------------------------------------------
+
+    def start(self) -> None:
+        """Crea el runtime, genera la config, spawna MPD y valida el
+        handshake. Failure-atomic: cualquier fallo limpia TODO y re-lanza
+        el error ORIGINAL."""
+        try:
+            self._start_inner()
+        except Exception:
+            self.close()
+            raise
+
+    def _start_inner(self) -> None:
+        parent = _pick_runtime_parent()
+        base = parent / f"michi-mpd-{os.getpid()}-{time.time_ns():x}"
+        base.mkdir(mode=0o700)
+        music_dir = base / "music"
+        music_dir.mkdir(mode=0o700)
+        (base / "playlists").mkdir(mode=0o700)
+        self.runtime_dir = base
+        self.socket_path = str(base / "mpd.sock")
+        conf_path = base / "mpd.conf"
+        conf_path.write_text(
+            _render_mpd_conf(base, music_dir), encoding="utf-8"
+        )
+        # spawn --no-daemon (nunca shell=True, nunca daemonizar)
+        self._process = subprocess.Popen(
+            [self._executable, "--no-daemon", "--stderr", str(conf_path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        # bounded wait por el socket + liveness del hijo
+        deadline = time.monotonic() + self._startup_timeout
+        while time.monotonic() < deadline:
+            if self._process.poll() is not None:
+                raise MpdProtocolError(
+                    "MPD child exited during startup: "
+                    f"rc={self._process.returncode} "
+                    f"stderr={self._read_stderr()}"
+                )
+            if os.path.exists(self.socket_path):
+                break
+            time.sleep(0.05)
+        if not os.path.exists(self.socket_path):
+            raise MpdProtocolError("MPD socket no apareció dentro del timeout")
+        # handshake real
+        probe = _MpdProtocolClient(self.socket_path, timeout=2.0)
+        probe.connect()
+        probe.status()
+        probe.close()
+        self._closed = False
+
+    def _read_stderr(self) -> str:
+        if self._process is None or self._process.stderr is None:
+            return ""
+        try:
+            return self._process.stderr.read()[:2000]
+        except (OSError, ValueError):
+            return ""
+
+    # -- liveness / ownership ------------------------------------------------
+
+    @property
+    def process(self) -> subprocess.Popen | None:
+        return self._process
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    def child_alive(self) -> bool:
+        if self._process is None:
+            return False
+        return self._process.poll() is None
+
+    # -- shutdown ------------------------------------------------------------
+
+    def close(self) -> None:
+        """TERM → bounded wait → KILL → reap → remover artefactos.
+        Idempotente; NUNCA deja un proceso huérfano."""
+        if self._closed and self._process is None:
+            return
+        self._closed = True
+        process = self._process
+        self._process = None
+        if process is not None and process.poll() is None:
+            try:
+                process.send_signal(signal.SIGTERM)
+            except (OSError, ProcessLookupError):
+                pass
+            try:
+                process.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                try:
+                    process.kill()
+                except (OSError, ProcessLookupError):
+                    pass
+                try:
+                    process.wait(timeout=3.0)
+                except subprocess.TimeoutExpired:
+                    _logger.warning("mpd: child no reaped; releasing handle")
+        runtime_dir = self.runtime_dir
+        self.runtime_dir = None
+        self.socket_path = None
+        if runtime_dir is not None:
+            shutil.rmtree(runtime_dir, ignore_errors=True)
