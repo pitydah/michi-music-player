@@ -785,6 +785,18 @@ class TestGate3OpenFailureAfterObserver:
 
         monkeypatch.setattr(mpd_mod, "QTimer", FailingTimer)
         monkeypatch.setattr(mpd_mod, "_MpdProtocolClient", _FakeClient)
+        # GATE A2 (M11.3D-R3): retener el THREAD REAL del observer (el
+        # cleanup pone port._observer = None — eso solo no prueba la muerte
+        # del thread)
+        real_thread = threading.Thread
+        created_threads = []
+
+        def tracked_thread(*args, **kwargs):
+            t = real_thread(*args, **kwargs)
+            created_threads.append(t)
+            return t
+
+        monkeypatch.setattr(mpd_mod.threading, "Thread", tracked_thread)
         closed = []
 
         class TrackingRuntime(_FakeRuntime):
@@ -795,9 +807,11 @@ class TestGate3OpenFailureAfterObserver:
         port = MPDAudioPort(runtime=TrackingRuntime(), poll_interval_ms=50)
         with pytest.raises(RuntimeError, match="poller setup failed"):
             port.open()
-        # observer arrancado y luego limpiado: idle socket cerrado antes
-        # del join → sin thread vivo
-        assert port._observer is None or not port._observer.is_alive()
+        # el THREAD REAL del observer está muerto (sin leak)
+        assert created_threads, "el observer thread nunca se creó"
+        observer_thread = created_threads[0]
+        assert not observer_thread.is_alive()
+        assert port._observer is None
         assert port._idle_client is None
         assert port._client is None
         assert port._poller is None

@@ -36,8 +36,8 @@ class _FakeProcess:
         conf_path = args[-1]
         if _FakeProcess.create_socket:
             for line in Path(conf_path).read_text(encoding="utf-8").splitlines():
-                if line.startswith("bind_to_address "):
-                    self._socket_path = line.split(" ", 1)[1]
+                if line.startswith('bind_to_address "'):
+                    self._socket_path = line.split('"')[1]
                     Path(self._socket_path).touch()
         _FakeProcess.instances.append(self)
 
@@ -128,7 +128,7 @@ class TestRuntimeDirectory:
         assert "mpd.sock" in conf
         assert "/etc/mpd.conf" not in conf
         assert "/run/mpd" not in conf
-        assert "auto_update no" in conf
+        assert 'auto_update "no"' in conf
         runtime.close()
 
 
@@ -212,7 +212,7 @@ class TestConfigRender:
     def test_conf_private_paths_only(self, tmp_path):
         runtime_dir = tmp_path / "rt"
         conf = _render_mpd_conf(runtime_dir, runtime_dir / "music")
-        assert f"bind_to_address {runtime_dir / 'mpd.sock'}" in conf
+        assert f'bind_to_address "{runtime_dir / "mpd.sock"}"' in conf
         assert "music_directory" in conf
 
     def test_c1a_production_config_has_no_null_output(self, tmp_path):

@@ -396,7 +396,12 @@ class TestProductiveComposition:
             assert graph.audio_engine_registry.can_activate(
                 AudioEngineId.GSTREAMER
             ) == graph.audio_engine_registry.is_available(AudioEngineId.GSTREAMER)
-            assert graph.audio_engine_registry.can_activate(AudioEngineId.MPD) is False
+            # runtime-dependent: MPD can_activate == executable instalado
+            import shutil
+
+            assert graph.audio_engine_registry.can_activate(AudioEngineId.MPD) == (
+                shutil.which("mpd") is not None
+            )
         finally:
             graph.qt_engine_provider.close()
 
