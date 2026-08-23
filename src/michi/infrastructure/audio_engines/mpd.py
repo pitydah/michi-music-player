@@ -274,16 +274,15 @@ def _render_mpd_conf(
     configuración DAC/output explícita. La salida null SOLO se usa en
     tests/smoke deterministas (null_output=True)."""
     lines = [
-        "bind_to_address " + str(runtime_dir / "mpd.sock"),
-        "port 0",
-        "pid_file " + str(runtime_dir / "mpd.pid"),
-        "log_file " + str(runtime_dir / "mpd.log"),
-        "db_file " + str(runtime_dir / "database"),
-        "state_file " + str(runtime_dir / "state"),
-        "sticker_file " + str(runtime_dir / "stickers.sqlite"),
-        "playlist_directory " + str(runtime_dir / "playlists"),
-        "music_directory " + str(music_dir),
-        "auto_update no",
+        'bind_to_address "' + str(runtime_dir / "mpd.sock") + '"',
+        'pid_file "' + str(runtime_dir / "mpd.pid") + '"',
+        'log_file "' + str(runtime_dir / "mpd.log") + '"',
+        'db_file "' + str(runtime_dir / "database") + '"',
+        'state_file "' + str(runtime_dir / "state") + '"',
+        'sticker_file "' + str(runtime_dir / "stickers.sqlite") + '"',
+        'playlist_directory "' + str(runtime_dir / "playlists") + '"',
+        'music_directory "' + str(music_dir) + '"',
+        'auto_update "no"',
     ]
     if null_output:
         lines.append('audio_output {\n\ttype\t\t"null"\n\tname\t\t"Michi MPD Test"\n}')
