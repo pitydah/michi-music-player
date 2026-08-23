@@ -3,11 +3,13 @@
 Implementation contract for the multi-engine audio runtime. Status: **IN
 PROGRESS — M11.3A + M11.3B + M11.3C + M11.3D + M11.3E + M11.3F DONE / TESTED / FROZEN (M11.3F:
 quiescent engine selection + persistence — persisted SELECTED preference,
-final lifecycle seal: active-provider-aware shutdown (never hard-coded Qt),
-pre-detach unbind failure preserves source active truth (READY, SELECTED !=
-ACTIVE), synchronous switch reentrancy rejected (single transaction guard),
-target cleanup never closes a still-bound provider (physical truth == state
-active truth, first-error-wins preserved), no fallback;
+absolute final lifecycle seal: active-provider-aware shutdown (never
+hard-coded Qt) with ownership RETAINED on failed teardown (retry-safe),
+source unbind failure preserves active identity CONSERVATIVELY as FAILED
+(router detach is not failure-atomic — READY is never assumed after an
+unbind exception), synchronous switch reentrancy rejected (single
+transaction guard), still-bound target never closed, router physical
+identity == state active identity, first-error-wins preserved, no fallback;
 (audio_engine_id, strict decode, field-level malformed fallback to Qt), explicit
 switch transaction (preflight can_activate → quiescent → stop → revalidate →
 persist-before-destructive → closing → router unbind → source close → invalidate
