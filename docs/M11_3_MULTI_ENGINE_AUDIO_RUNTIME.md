@@ -1,7 +1,13 @@
 # M11.3 — Multi-Engine Audio Runtime (contract)
 
 Implementation contract for the multi-engine audio runtime. Status: **IN
-PROGRESS — M11.3A + M11.3B + M11.3C + M11.3D + M11.3E + M11.3F DONE / TESTED / FROZEN (M11.3F:
+PROGRESS — M11.3A + M11.3B + M11.3C + M11.3D + M11.3E + M11.3F + M11.3G DONE / TESTED / FROZEN — M11.3 OVERALL TESTED / FROZEN (M11.3G:
+engine convergence — selected-first startup, ONE automatic fallback engine
+(Qt Multimedia; no fallback chain, no auto-select of GStreamer/MPD, Qt
+itself has no alternate), fatal runtime engine loss convergence, safe
+explicit-switch recovery, Playback/Queue/resume/restart convergence,
+fallback_from semantics, no silent resume, no background polling, shutdown
+disables recovery before teardown; M11.3F:
 quiescent engine selection + persistence — persisted SELECTED preference,
 absolute final lifecycle seal: active-provider-aware shutdown (never
 hard-coded Qt) with ownership RETAINED on failed teardown (retry-safe),
@@ -102,7 +108,8 @@ PlaybackService / PlaybackCoordinator      (subscribe ONCE)
 AudioTransportRouter : AudioPort           (stable identity — never replaced)
       │   + AudioTransportBindingPort (bind/unbind)
       ▼
-current concrete AudioPort  (QtMultimediaBackend today)
+currently bound concrete AudioPort
+(QtMultimediaBackend | GStreamerAudioPort | MPDAudioPort)
 ```
 
 - Router forwards commands and callbacks; on switch it detaches the old
@@ -113,7 +120,10 @@ current concrete AudioPort  (QtMultimediaBackend today)
 - `AudioEngineService` owns AudioEngineState (SELECTED != ACTIVE);
   `AudioEngineRegistry` owns the provider set (one per canonical id);
   providers own engine lifecycle (probe/open/close).
-- Default selected engine: QT_MULTIMEDIA. Runtime switching belongs to
+- Default selected engine: QT_MULTIMEDIA. Runtime switching is implemented
+  and sealed by M11.3F (explicit quiescent transaction); M11.3G owns
+  involuntary convergence (startup selected-first, safe Qt fallback,
+  runtime loss).
   M11.3F (quiescent only).
 
 ## Purpose
