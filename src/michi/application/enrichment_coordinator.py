@@ -186,6 +186,16 @@ class EnrichmentCoordinator:
     def _begin_operation(
         self, entity_kind: EnrichmentEntityKind, local_entity_key: str
     ) -> EnrichmentOperationToken | None:
+        """R1.3.1 FIX-B: ONE linearization point. Admission, previous
+        cancellation, generation allocation, token creation and token
+        publication happen under a SINGLE coordinator-lock acquisition —
+        no placeholder, no second lock section. A stale begin can never
+        publish over a newer one because publication is atomic with the
+        allocation that produced the generation.
+
+        LOCK ORDER: Coordinator._lock -> Service._authority_lock (the
+        service never calls back into the coordinator; no inverse path
+        exists). No provider/network or executor wait under these locks."""
         with self._lock:
             if self._shutting_down:
                 return None
@@ -193,13 +203,10 @@ class EnrichmentCoordinator:
             previous = self._operations.get(key)
             if previous is not None:
                 previous.cancel()
-            self._operations[key] = None  # placeholder; replaced below
-        # R1.3: THE SERVICE is the sole generation authority.
-        generation = self._service.begin_operation(entity_kind, local_entity_key)
-        token = EnrichmentOperationToken(entity_kind, local_entity_key, generation)
-        with self._lock:
+            generation = self._service.begin_operation(entity_kind, local_entity_key)
+            token = EnrichmentOperationToken(entity_kind, local_entity_key, generation)
             self._operations[key] = token
-        return token
+            return token
 
     def _end_operation(self, token: EnrichmentOperationToken) -> None:
         with self._lock:
@@ -347,9 +354,21 @@ class EnrichmentCoordinator:
         self._service.clear_album_knowledge(local_album_key)
 
     def reset_artist_identity(self, local_artist_key: str) -> None:
+        """R1.3.1 FIX-C (reset variant): cancel the physical token of
+        THIS entity before the Service reset barrier runs."""
+        with self._lock:
+            token = self._operations.get(
+                (EnrichmentEntityKind.ARTIST, local_artist_key)
+            )
+            if token is not None:
+                token.cancel()
         self._service.reset_artist_identity(local_artist_key)
 
     def reset_album_identity(self, local_album_key: str) -> None:
+        with self._lock:
+            token = self._operations.get((EnrichmentEntityKind.ALBUM, local_album_key))
+            if token is not None:
+                token.cancel()
         self._service.reset_album_identity(local_album_key)
 
     # -- manual async search (R1.1: controlled submission) -----------------------
@@ -474,11 +493,28 @@ class EnrichmentCoordinator:
     def confirm_artist_identity(
         self, local_artist_key: str, external_artist_id: str
     ) -> None:
+        """R1.3.1 FIX-C: lifecycle truth — the in-flight physical token
+        of THIS entity is cancelled BEFORE the Service barrier runs.
+        Correctness never depends on the worker cooperating: the Service
+        barrier (generation bump + request invalidation + identity
+        persistence) remains the sole authority; the token cancel only
+        makes the obsolete work converge to CANCELLED at its next
+        checkpoint instead of wasting provider calls."""
+        with self._lock:
+            token = self._operations.get(
+                (EnrichmentEntityKind.ARTIST, local_artist_key)
+            )
+            if token is not None:
+                token.cancel()
         self._service.confirm_artist_identity(local_artist_key, external_artist_id)
 
     def confirm_album_identity(
         self, local_album_key: str, release_group_id: str, release_id: str = ""
     ) -> None:
+        with self._lock:
+            token = self._operations.get((EnrichmentEntityKind.ALBUM, local_album_key))
+            if token is not None:
+                token.cancel()
         self._service.confirm_album_identity(
             local_album_key, release_group_id, release_id
         )
@@ -590,7 +626,14 @@ class EnrichmentCoordinator:
                 if (partial or stale)
                 else EnrichmentOperationState.READY,
             )
+        elif verdict is DeliveryVerdict.STALE:
+            # R1.3.1 FIX-D: the generation lost authority (manual
+            # confirm / reset / supersession) — the operation is
+            # OBSOLETE, not failed. Converge to CANCELLED; STALE is
+            # never a user-facing functional error.
+            self._report(token, on_state, EnrichmentOperationState.CANCELLED)
         else:
+            # STORAGE_FAILED / MISMATCHED / UNKNOWN remain failures.
             self._report(token, on_state, EnrichmentOperationState.FAILED)
 
     def _apply_artist_links(
@@ -791,6 +834,9 @@ class EnrichmentCoordinator:
                 if (partial or profile.provenance.is_stale)
                 else EnrichmentOperationState.READY,
             )
+        elif verdict is DeliveryVerdict.STALE:
+            # R1.3.1 FIX-D (album): obsolete, not failed.
+            self._report(token, on_state, EnrichmentOperationState.CANCELLED)
         else:
             self._report(token, on_state, EnrichmentOperationState.FAILED)
 
