@@ -2,9 +2,11 @@
 
 GStreamer and MPD both have implemented AudioPort adapters.
 Runtime availability remains environment-dependent (GStreamer: GI +
-Gst + playbin3 required; MPD: executable + server on the socket).
+Gst + playbin3; MPD: executable discoverable in PATH). The managed MPD
+process and private socket are established only during activation /
+open(), never during passive availability probing.
 Descriptors distinguish dependency availability (available) from
-implementation readiness (implemented).
+adapter implementation truth (implemented).
 """
 
 from michi.application.audio_engine_registry import AudioEngineProviderPort
