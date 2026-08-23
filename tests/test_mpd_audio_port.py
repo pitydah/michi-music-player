@@ -1,5 +1,6 @@
 """M11.3D — MPDAudioPort transport tests (deterministic, fake protocol)."""
 
+import os
 import threading
 from pathlib import Path
 
@@ -14,6 +15,20 @@ from michi.infrastructure.audio_engines.mpd import (
     _MpdEvent,
     _MpdEventKind,
 )
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    """Instancia Qt offscreen (patrón del repo — sin depender de
+    pytest-qt, que no está en la CI): processEvents() entrega los eventos
+    QueuedConnection del bridge observer → owner."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication([])
+    yield app
 
 
 class _FakeClient:
