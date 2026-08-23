@@ -498,6 +498,17 @@ class MPDAudioPort(AudioPort):
         self._pst: list = []
         self._bridge.sig_event.connect(self._on_backend_event, Qt.QueuedConnection)
 
+    def set_runtime_failure_callback(
+        self, callback: Callable[[int, str], None] | None
+    ) -> None:
+        """M11.3G: re-asocia el callback del seam tras open().
+
+        El provider captura su PROPIA generación en el momento del open y la
+        cierra en el callback (dominio del provider); la generación interna
+        del port (primer argumento) es un dominio SEPARADO que el provider
+        no compara directamente."""
+        self._runtime_failure_callback = callback
+
     # ------------------------------------------------------------------
     # lifecycle
     # ------------------------------------------------------------------

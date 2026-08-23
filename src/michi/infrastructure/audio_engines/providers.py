@@ -264,15 +264,29 @@ class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
     def open(self) -> AudioPort:
         """Abre el runtime gestionado y devuelve el MISMO port hasta close.
 
-        Si la inicialización falla, no queda ningún port a medio abrir."""
+        Si la inicialización falla, no queda ningún port a medio abrir.
+
+        P1-03 generation ownership: la generación del PROVIDER identifica la
+        encarnación del runtime owned (open/close/reopen). El callback se
+        re-asocia DESPUÉS del open capturando ESA generación — la generación
+        interna del port (dominio separado) nunca se compara con la del
+        provider."""
         if self._port is not None:
             return self._port
         from michi.infrastructure.audio_engines.mpd import MPDAudioPort
 
-        port = MPDAudioPort(runtime_failure_callback=self._relay_mpd_runtime_failure)
+        port = MPDAudioPort()
         port.open()  # failure-atomic: si falla, el runtime se limpia solo
         self._port = port
         self._bump_runtime_generation()
+        owned_generation = self._runtime_generation
+        # closure por-open: captura la generación del PROVIDER en el momento
+        # del open; el int del port (primer arg) es su dominio interno.
+        port.set_runtime_failure_callback(
+            lambda _port_generation, reason: self._relay_owned_mpd_failure(
+                owned_generation, reason
+            )
+        )
         return port
 
     def close(self) -> None:
@@ -282,10 +296,11 @@ class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
             port.close()
         self._invalidate_runtime_generation()
 
-    def _relay_mpd_runtime_failure(self, generation: int, reason: str) -> None:
-        """M11.3G minimal seam: the port's PROVEN fatal runtime loss
-        (PROCESS_EXIT / fatal TRANSPORT_ERROR) published through the
-        provider lifecycle seam with the PORT's runtime generation."""
-        if generation != self._runtime_generation:
-            return  # stale port event (older runtime generation)
+    def _relay_owned_mpd_failure(self, owned_generation: int, reason: str) -> None:
+        """P1-03: publica el fatal runtime loss SOLO si la encarnación del
+        provider que capturó esta closure es la actual (generación del
+        provider, no del port). Un evento tardío de un runtime cerrado tras
+        reopen queda stale y se ignora."""
+        if owned_generation != self._runtime_generation:
+            return  # stale: encarnación anterior del provider
         self.emit_runtime_failure(reason)
