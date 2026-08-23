@@ -15,8 +15,15 @@ MichiGlassSurface {
     tileSeed: 1
     shadowed: true
     textured: true
+    // True smoke glass: always-on backdrop blur + translucent smoked
+    // material, so the content scrolling behind reads through softly.
+    forceBlur: true
+    materialOpacityOverride: 0.68
     accented: true
-    accentColor: MichiPalette.auroraPurple
+    // Single accent per surface: cyan (the functional active state) —
+    // the previous auroraPurple glass accent competed with the cyan
+    // active item and the blue/purple ambient gradient (chromatic noise).
+    accentColor: MichiPalette.auroraCyan
 
     readonly property var _routes: [
         { id: "now_playing", label: "Now Playing", icon: "play" },
@@ -28,22 +35,22 @@ MichiGlassSurface {
         { id: "settings", label: "Settings", icon: "settings" }
     ]
 
+    // Deep-blue atmosphere only — no purple (one hue family)
     Rectangle {
         anchors.fill: parent
         radius: root.radius
-        opacity: 0.35
+        opacity: 0.22
         z: 0
         gradient: Gradient {
             orientation: Gradient.Vertical
             GradientStop { position: 0; color: MichiSemanticColors.contentAmbientBlue }
             GradientStop { position: 0.5; color: "transparent" }
-            GradientStop { position: 1; color: MichiSemanticColors.contentAmbientPurple }
         }
     }
 
     MichiMaterialTexture {
         anchors.fill: parent
-        textureOpacity: 0.14
+        textureOpacity: 0.2
         z: 0
     }
 
@@ -144,15 +151,10 @@ MichiGlassSurface {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: 14
-                    color: MichiSemanticColors.auroraPurpleSurface
+                    // Single-accent brand tile: cyan on deep obsidian
+                    color: MichiPalette.obsidianRaised
                     border.width: 1
-                    border.color: MichiSemanticColors.auroraPurpleBorder
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        radius: 11
-                        color: MichiSemanticColors.auroraCyanSurface
-                    }
+                    border.color: MichiSemanticColors.auroraCyanBorderSubtle
                     MichiIcon {
                         anchors.centerIn: parent
                         width: 23

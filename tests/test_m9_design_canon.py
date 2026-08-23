@@ -420,7 +420,13 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     assert "SplitView.minimumWidth: MichiMetrics.sidebarCompact" in shell
     assert 'elevation: "elevated"' in sidebar
     assert "MichiMaterialTexture" in sidebar
-    assert "textureOpacity: 0.14" in sidebar
+    assert "textureOpacity: 0.2" in sidebar
+    # true smoke glass: always-on blur, translucent smoked material,
+    # single cyan accent (no purple chromatic noise)
+    assert "forceBlur: true" in sidebar
+    assert "materialOpacityOverride: 0.68" in sidebar
+    assert "accentColor: MichiPalette.auroraCyan" in sidebar
+    assert "contentAmbientPurple" not in sidebar
     assert "property bool accentLineVisible: false" in glass
     assert "root.accented && root.accentLineVisible" in glass
     assert "root.enabled && root.primary" in button

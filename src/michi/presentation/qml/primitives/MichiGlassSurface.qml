@@ -14,9 +14,17 @@ Item {
     property bool shadowed: elevation !== "subtle"
     property bool textured: elevation !== "subtle"
     property int tileSeed: 0
+    // Always-on backdrop blur (true smoke glass) for hero surfaces like
+    // the sidebar — overrides the high-quality-only gate.
+    property bool forceBlur: false
+    // Explicit material opacity override (0..1); -1 keeps the quality-based
+    // default. Lower values make the glass more translucent.
+    property real materialOpacityOverride: -1
     property real radius: elevation === "subtle"
         ? MichiRadius.md : MichiRadius.floating
-    readonly property real materialOpacity: MichiThemeState.glassQuality === "low" ? 0.96
+    readonly property real materialOpacity: root.materialOpacityOverride >= 0
+        ? root.materialOpacityOverride
+        : MichiThemeState.glassQuality === "low" ? 0.96
         : MichiThemeState.glassQuality === "high" ? 0.76 : 0.86
     readonly property bool raised: elevation === "modal" || elevation === "elevated"
     readonly property color materialTop: MichiSemanticColors.glassTop(
@@ -27,8 +35,10 @@ Item {
     // Real backdrop blur (QtQuick.Effects) — only at high glass quality and
     // on non-subtle surfaces, where the render cost is justified. Falls back
     // to the tinted-gradient material otherwise (no window in tests → off).
-    readonly property bool blurEnabled: MichiThemeState.glassQuality === "high"
-        && root.elevation !== "subtle" && root.window !== null
+    readonly property bool blurEnabled: root.window !== null
+        && (root.forceBlur
+            || (MichiThemeState.glassQuality === "high"
+                && root.elevation !== "subtle"))
     readonly property real blurAmount: root.elevation === "modal" ? MichiElevation.modalBlur
         : root.raised ? MichiElevation.elevatedBlur : MichiElevation.standardBlur
 
