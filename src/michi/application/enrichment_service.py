@@ -449,14 +449,25 @@ class EnrichmentService:
         ):
             return self._refine_embedded_album_release(existing, evidence, generation)
 
-        if not evidence.resolved_artist_external_id and evidence.local_album_artist_key:
+        # R1.3.1 FIX-A: capture the artist dependency BEFORE the resolver.
+        # If this album resolution relies on the PERSISTED artist
+        # identity, that dependency must still hold at the exact moment
+        # the Album identity is persisted — not only at knowledge
+        # delivery. An explicitly supplied external id that does not
+        # come from a persisted local identity is NEVER invented into a
+        # dependency (documented contract, §4.3).
+        dependency_artist_local_key = ""
+        dependency_artist_external_id = ""
+        if evidence.local_album_artist_key and not evidence.resolved_artist_external_id:
             artist_identity = self._identity_repository.load_artist_identity(
                 evidence.local_album_artist_key
             )
             if artist_identity is not None:
+                dependency_artist_local_key = evidence.local_album_artist_key
+                dependency_artist_external_id = artist_identity.external_artist_id
                 evidence = replace(
                     evidence,
-                    resolved_artist_external_id=artist_identity.external_artist_id,
+                    resolved_artist_external_id=dependency_artist_external_id,
                 )
 
         # RESOLUTION (no authority lock).
@@ -480,7 +491,16 @@ class EnrichmentService:
                 group_candidates, edition_candidates, evidence
             )
 
-        # AUTHORITY COMMIT GATE.
+        # AUTHORITY COMMIT GATE (R1.3.1 FIX-A): under the authority lock,
+        # in strict order:
+        #   A. the Album generation must still be current;
+        #   B. if the resolution depended on the persisted artist
+        #      identity, that identity must still exist;
+        #   C. it must still point EXACTLY to the captured external id;
+        #   D. only then is AlbumExternalIdentity persisted;
+        #   E. and the request registered — ONE authority decision.
+        # Identity persistence + request registration are never split
+        # from the dependency revalidation.
         with self._authority_lock:
             if not self._is_current_locked(
                 EnrichmentEntityKind.ALBUM, local_key, generation
@@ -497,6 +517,21 @@ class EnrichmentService:
             if not resolution.release_group_id:
                 self._revoke_album_identity(local_key)
                 return EnrichmentRequestOutcome(resolution=resolution, request=None)
+            if dependency_artist_external_id:
+                artist_identity = self._identity_repository.load_artist_identity(
+                    dependency_artist_local_key
+                )
+                if (
+                    artist_identity is None
+                    or artist_identity.external_artist_id
+                    != dependency_artist_external_id
+                ):
+                    return EnrichmentRequestOutcome(
+                        resolution=AlbumIdentityResolution(
+                            status=IdentityResolutionStatus.SUPERSEDED
+                        ),
+                        request=None,
+                    )
             method = MatchMethod.EMBEDDED_HINT if current_rg_hints else MatchMethod.AUTO
             self._persist_album_identity_transition(
                 AlbumExternalIdentity(
@@ -514,8 +549,8 @@ class EnrichmentService:
                 resolution.release_group_id,
                 resolution.release_id,
                 generation,
-                evidence.local_album_artist_key,
-                evidence.resolved_artist_external_id,
+                dependency_artist_local_key,
+                dependency_artist_external_id,
             )
             return EnrichmentRequestOutcome(resolution=resolution, request=request)
 
@@ -587,8 +622,12 @@ class EnrichmentService:
                 existing.release_group_id,
                 release_id,
                 generation,
-                evidence.local_album_artist_key,
-                evidence.resolved_artist_external_id,
+                # R1.3.1 FIX-A: the refine path resolves the edition from
+                # embedded release hints, NOT from a persisted artist
+                # identity — no dependency is invented (documented
+                # contract, §4.3).
+                "",
+                "",
             )
             return EnrichmentRequestOutcome(resolution=resolution, request=request)
 
@@ -619,14 +658,14 @@ class EnrichmentService:
                 or current.release_id != request.external_variant_id
             ):
                 return DeliveryVerdict.STALE
-            if request.artist_dependency_id:
-                # R1.3 FIX-07: the album actually resolved through its
-                # artist identity at request time (a non-empty dependency
-                # id) — revalidate under the authority lock. If the
-                # artist identity was reset or re-confirmed since, this
-                # result is stale (zero writes). A dependency key without
-                # a captured id played no part in resolution and is not
-                # enforced.
+            if request.artist_dependency_id and request.artist_dependency_local_key:
+                # R1.3 FIX-07 (kept, BOUNDARY 2): the album actually
+                # resolved through its artist identity at request time —
+                # revalidate under the authority lock at KNOWLEDGE
+                # delivery. If the artist identity was reset or
+                # re-confirmed since, this result is stale (zero writes).
+                # The dependency id without a local key never played a
+                # part in resolution and is not enforced.
                 artist_identity = self._identity_repository.load_artist_identity(
                     request.artist_dependency_local_key
                 )
