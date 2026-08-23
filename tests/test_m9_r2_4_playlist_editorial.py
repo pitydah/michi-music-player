@@ -220,3 +220,30 @@ def test_keyboard_navigation_updates_visible_selection():
     # both keyboard paths (row keys + list keys) reproduce from the index
     assert "Keys.onReturnPressed: root.playTrackRequested(index)" in table
     assert "root.playTrackRequested(currentIndex)" in table
+
+
+# ── Audit debt block (W1, W5, O2) ─────────────────────────────────────────────
+
+
+def test_michi_format_is_locale_aware():
+    fmt = read("theme/MichiFormat.qml")
+    assert "Qt.locale().toString(n)" in fmt
+    assert 'qsTr("hr")' in fmt
+    assert 'qsTr("min")' in fmt
+    assert 'qsTr("Unknown")' in fmt
+    # zero-padding happens before the locale digits
+    assert '_digit(minutes < 10 ? "0" + minutes : minutes)' in fmt
+
+
+def test_reorder_keeps_keyboard_cursor_on_moved_row():
+    table = read("playlists/PlaylistTrackList.qml")
+    assert "root.trackSelected(index - 1)" in table
+    assert "trackList.currentIndex = index - 1" in table
+    assert "trackList.currentItem.forceActiveFocus()" in table
+    assert "root.trackSelected(index + 1)" in table
+
+
+def test_add_tracks_becomes_icon_only_on_narrow_windows():
+    hero = read("playlists/PlaylistHero.qml")
+    assert 'text: parent.width < 700 ? "" : qsTr("Add tracks")' in hero
+    assert "implicitWidth: parent.width < 700 ? 30 : undefined" in hero

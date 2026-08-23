@@ -206,10 +206,13 @@ Item {
                 }
                 MichiButton {
                     visible: root.hasTracks
-                    text: qsTr("Add tracks")
+                    // icon-only on narrow windows so the action row never
+                    // crowds the title block
+                    text: parent.width < 700 ? "" : qsTr("Add tracks")
                     iconName: "plus"
                     variant: "ghost"
                     implicitHeight: 30
+                    implicitWidth: parent.width < 700 ? 30 : undefined
                     accessibleName: qsTr("Add tracks from library")
                     onClicked: root.addTracksRequested()
                 }

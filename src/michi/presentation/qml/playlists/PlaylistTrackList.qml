@@ -241,6 +241,12 @@ Item {
                 if (event.modifiers & Qt.AltModifier) {
                     if (index > 0) {
                         root.moveTrackRequested(index, index - 1)
+                        // keep the keyboard cursor on the moved row (the
+                        // delegate reorders underneath the focus)
+                        root.trackSelected(index - 1)
+                        trackList.currentIndex = index - 1
+                        if (trackList.currentItem)
+                            trackList.currentItem.forceActiveFocus()
                         event.accepted = true
                     }
                 }
@@ -249,6 +255,10 @@ Item {
                 if (event.modifiers & Qt.AltModifier) {
                     if (index < root.rows.length - 1) {
                         root.moveTrackRequested(index, index + 1)
+                        root.trackSelected(index + 1)
+                        trackList.currentIndex = index + 1
+                        if (trackList.currentItem)
+                            trackList.currentItem.forceActiveFocus()
                         event.accepted = true
                     }
                 }
