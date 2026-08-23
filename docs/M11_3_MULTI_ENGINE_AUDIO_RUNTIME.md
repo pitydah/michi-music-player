@@ -1,7 +1,15 @@
 # M11.3 — Multi-Engine Audio Runtime (contract)
 
 Implementation contract for the multi-engine audio runtime. Status: **IN
-PROGRESS — M11.3A + M11.3B + M11.3C + M11.3D + M11.3E DONE / TESTED / FROZEN (M11.3E:
+PROGRESS — M11.3A + M11.3B + M11.3C + M11.3D + M11.3E + M11.3F DONE / TESTED / FROZEN (M11.3F:
+quiescent engine selection + persistence — persisted SELECTED preference
+(audio_engine_id, strict decode, field-level malformed fallback to Qt), explicit
+switch transaction (preflight can_activate → quiescent → stop → revalidate →
+persist-before-destructive → closing → router unbind → source close → invalidate
+old backend acceptance → initializing → target open → bind+validate → restore
+volume/mute → READY), SELECTED != ACTIVE truthful, no fallback/no reopen/no
+auto-select (M11.3G owns recovery); F restart contract: selected restored,
+active stays Qt READY until explicit switching; M11.3E:
 runtime availability truth seal — fresh side-effect-free probes, implemented vs
 available separated, canonical three-engine snapshot, no switching/persistence/
 fallback; M11.3D: managed/private MPD adapter, REAL-RUNTIME VERIFIED with MPD

@@ -145,6 +145,17 @@ engines adapt TO Michi contracts, never the reverse:
   own engine lifecycle (probe/open/close). `AudioTransportRouter` implements
   AudioPort + AudioTransportBindingPort — PlaybackService/Coordinator keep
   subscribing to the SAME router object across engine switches.
+  **M11.3F — `AudioEngineSelectionCoordinator`** is the single explicit
+  switch transaction (application layer, framework-free, providers only via
+  the registry): preflight can_activate → quiescent (PlaybackService semantic
+  query) → stop → revalidate → persist SELECTED (SettingsService, durable
+  BEFORE the destructive boundary) → closing → router unbind → source close →
+  invalidate old backend acceptance (next play() reloads the logical track on
+  the new backend) → initializing → target open → bind + validate → restore
+  volume/mute → READY. SELECTED != ACTIVE is truthful during the window and
+  after restart (F restart contract: persisted selected restored, active stays
+  Qt READY until explicit switching — M11.3G owns automatic convergence).
+  No fallback, no reopen, no auto-select.
   Backend-specific device strings live only in adapter bindings; the domain
   never persists `hw:N`/card-index as canonical identity.
   ADR: docs/adr/0007-multi-engine-audio-runtime.md.
