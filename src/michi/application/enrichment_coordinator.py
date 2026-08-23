@@ -101,15 +101,33 @@ class AlbumIdentityCandidateView:
     provider: str = "musicbrainz"
 
 
+@dataclass(frozen=True)
+class EnrichmentOperationEvent:
+    """R1.2 typed, operation-correlated state event (application-only,
+    never persisted, never identity). The future Presentation bridge
+    filters by generation: any event belonging to an older generation is
+    STALE by definition."""
+
+    operation_id: str
+    generation: int
+    entity_kind: EnrichmentEntityKind
+    local_entity_key: str
+    state: EnrichmentOperationState
+
+
 class EnrichmentOperationToken:
-    """R1 per-operation cancellation state (application-only)."""
+    """R1/R1.2 per-operation cancellation + generation state."""
 
     def __init__(
-        self, entity_kind: EnrichmentEntityKind, local_entity_key: str
+        self,
+        entity_kind: EnrichmentEntityKind,
+        local_entity_key: str,
+        generation: int,
     ) -> None:
         self.operation_id = uuid.uuid4().hex
         self.entity_kind = entity_kind
         self.local_entity_key = local_entity_key
+        self.generation = generation
         self._cancelled = threading.Event()
 
     def cancel(self) -> None:
@@ -120,7 +138,7 @@ class EnrichmentOperationToken:
         return self._cancelled.is_set()
 
 
-StateCallback = Callable[[str, EnrichmentOperationState], None]
+StateCallback = Callable[[EnrichmentOperationEvent], None]
 ResultCallback = Callable[[tuple], None]
 ErrorCallback = Callable[[EnrichmentProviderError], None]
 
@@ -158,23 +176,30 @@ class EnrichmentCoordinator:
         self._operations: dict[
             tuple[EnrichmentEntityKind, str], EnrichmentOperationToken
         ] = {}
-        self._lock = threading.Lock()
+        self._generation_counter: dict[tuple[EnrichmentEntityKind, str], int] = {}
+        # R1.2: reentrant — inline executors run work inside the
+        # submission scope; service calls never take this lock.
+        self._lock = threading.RLock()
         self._shutting_down = False
 
-    # -- operation registry ----------------------------------------------------
+    # -- operation registry (R1.2: monotonic generations) ----------------------
 
     def _begin_operation(
         self, entity_kind: EnrichmentEntityKind, local_entity_key: str
     ) -> EnrichmentOperationToken | None:
-        token = EnrichmentOperationToken(entity_kind, local_entity_key)
         with self._lock:
             if self._shutting_down:
                 return None
             key = (entity_kind, local_entity_key)
+            generation = self._generation_counter.get(key, 0) + 1
+            self._generation_counter[key] = generation
+            token = EnrichmentOperationToken(entity_kind, local_entity_key, generation)
             previous = self._operations.get(key)
             if previous is not None:
                 previous.cancel()
             self._operations[key] = token
+        # Service-side generation authority (outside the coordinator lock).
+        self._service.begin_operation(entity_kind, local_entity_key, generation)
         return token
 
     def _end_operation(self, token: EnrichmentOperationToken) -> None:
@@ -200,15 +225,37 @@ class EnrichmentCoordinator:
         on_state: StateCallback | None = None,
     ) -> None:
         if not self._enabled():
-            self._report(on_state, artist.key, EnrichmentOperationState.DISABLED)
+            self._report_policy(
+                on_state,
+                EnrichmentEntityKind.ARTIST,
+                artist.key,
+                EnrichmentOperationState.DISABLED,
+            )
             return
         token = self._begin_operation(EnrichmentEntityKind.ARTIST, artist.key)
         if token is None:
-            self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
+            self._report_policy(
+                on_state,
+                EnrichmentEntityKind.ARTIST,
+                artist.key,
+                EnrichmentOperationState.CANCELLED,
+            )
             return
-        self._executor.submit(
+        if not self._submit_if_running(
             lambda: self._run_artist(token, artist, albums, tracks, on_state)
-        )
+        ):
+            # R1.2: submission rejected (executor closed) — cancel this
+            # generation exactly, remove the token, publish CANCELLED.
+            self._service.cancel_operation(
+                EnrichmentEntityKind.ARTIST, artist.key, token.generation
+            )
+            self._end_operation(token)
+            self._report_policy(
+                on_state,
+                EnrichmentEntityKind.ARTIST,
+                artist.key,
+                EnrichmentOperationState.CANCELLED,
+            )
 
     def enrich_album(
         self,
@@ -217,15 +264,35 @@ class EnrichmentCoordinator:
         on_state: StateCallback | None = None,
     ) -> None:
         if not self._enabled():
-            self._report(on_state, album.key, EnrichmentOperationState.DISABLED)
+            self._report_policy(
+                on_state,
+                EnrichmentEntityKind.ALBUM,
+                album.key,
+                EnrichmentOperationState.DISABLED,
+            )
             return
         token = self._begin_operation(EnrichmentEntityKind.ALBUM, album.key)
         if token is None:
-            self._report(on_state, album.key, EnrichmentOperationState.CANCELLED)
+            self._report_policy(
+                on_state,
+                EnrichmentEntityKind.ALBUM,
+                album.key,
+                EnrichmentOperationState.CANCELLED,
+            )
             return
-        self._executor.submit(
+        if not self._submit_if_running(
             lambda: self._run_album(token, album, resolved_artist_external_id, on_state)
-        )
+        ):
+            self._service.cancel_operation(
+                EnrichmentEntityKind.ALBUM, album.key, token.generation
+            )
+            self._end_operation(token)
+            self._report_policy(
+                on_state,
+                EnrichmentEntityKind.ALBUM,
+                album.key,
+                EnrichmentOperationState.CANCELLED,
+            )
 
     def refresh_artist_enrichment(
         self,
@@ -251,14 +318,24 @@ class EnrichmentCoordinator:
             )
             if token is not None:
                 token.cancel()
-        self._service.cancel_artist_request(local_artist_key)
+        if token is not None:
+            # R1.2: generation-scoped cancellation — a public cancel only
+            # ever invalidates the CURRENT generation's authority.
+            self._service.cancel_operation(
+                EnrichmentEntityKind.ARTIST, local_artist_key, token.generation
+            )
+            self._service.cancel_artist_request(local_artist_key)
 
     def cancel_album(self, local_album_key: str) -> None:
         with self._lock:
             token = self._operations.get((EnrichmentEntityKind.ALBUM, local_album_key))
             if token is not None:
                 token.cancel()
-        self._service.cancel_album_request(local_album_key)
+        if token is not None:
+            self._service.cancel_operation(
+                EnrichmentEntityKind.ALBUM, local_album_key, token.generation
+            )
+            self._service.cancel_album_request(local_album_key)
 
     def cancel_all(self) -> None:
         with self._lock:
@@ -291,13 +368,17 @@ class EnrichmentCoordinator:
     # -- manual async search (R1.1: controlled submission) -----------------------
 
     def _submit_if_running(self, work) -> bool:
-        """R1.1: controlled submission boundary — after shutdown the
-        method returns False instead of raising RuntimeError."""
+        """R1.1/R1.2: controlled submission boundary — after shutdown
+        the method returns False instead of raising RuntimeError. The
+        executor port itself also owns an admission contract (submit ->
+        bool)."""
         with self._lock:
             if self._shutting_down:
                 return False
-            self._executor.submit(work)
-            return True
+            accepted = self._executor.submit(work)
+            # Legacy ports return None; the R1.2 executor port returns
+            # bool (False = closed). None counts as accepted.
+            return accepted is not False
 
     def search_artist_candidates_async(
         self,
@@ -415,16 +496,19 @@ class EnrichmentCoordinator:
         tracks: tuple[TrackRef, ...],
         on_state: StateCallback | None,
     ) -> None:
+        request = None
         try:
             if token.cancelled:
-                self._service.cancel_artist_request(artist.key)
-                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
+                self._service.cancel_operation(
+                    EnrichmentEntityKind.ARTIST, artist.key, token.generation
+                )
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
-            self._report(
-                on_state, artist.key, EnrichmentOperationState.RESOLVING_IDENTITY
-            )
+            self._report(token, on_state, EnrichmentOperationState.RESOLVING_IDENTITY)
             evidence = self._evidence_builder.artist_evidence(artist, albums, tracks)
-            outcome = self._service.request_artist_enrichment(evidence)
+            outcome = self._service.request_artist_enrichment(
+                evidence, generation=token.generation
+            )
             if outcome.request is None:
                 state = {
                     IdentityResolutionStatus.AMBIGUOUS: (
@@ -437,24 +521,24 @@ class EnrichmentCoordinator:
                         EnrichmentOperationState.NOT_FOUND
                     ),
                 }.get(outcome.resolution.status, EnrichmentOperationState.FAILED)
-                self._report(on_state, artist.key, state)
+                if outcome.resolution.status is IdentityResolutionStatus.SUPERSEDED:
+                    state = EnrichmentOperationState.CANCELLED
+                self._report(token, on_state, state)
                 return
             request = outcome.request
             external_id = request.external_entity_id
             local_key = request.local_entity_key
-            self._report(
-                on_state, artist.key, EnrichmentOperationState.FETCHING_KNOWLEDGE
-            )
+            self._report(token, on_state, EnrichmentOperationState.FETCHING_KNOWLEDGE)
             if token.cancelled:
                 self._service.cancel_artist_request(local_key)
-                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
 
             partial = False
             profile = self._mb.fetch_artist(local_key, external_id)
             if token.cancelled:
                 self._service.cancel_artist_request(local_key)
-                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             try:
                 links = self._mb.artist_links(external_id)
@@ -465,20 +549,20 @@ class EnrichmentCoordinator:
             profile, partial = self._apply_artist_links(profile, links, partial)
             if token.cancelled:
                 self._service.cancel_artist_request(local_key)
-                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_biography(profile, partial)
             if token.cancelled:
                 self._service.cancel_artist_request(local_key)
-                self._report(on_state, artist.key, EnrichmentOperationState.CANCELLED)
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_artist_image(profile, external_id, partial)
             self._commit_artist(token, request, profile, partial, on_state)
         except EnrichmentProviderError as exc:
-            self._terminal_failure(token, artist.key, exc, on_state)
+            self._terminal_failure(token, request, artist.key, exc, on_state)
         except Exception as exc:  # noqa: BLE001 — unexpected programming errors
             logger.exception("unexpected artist enrichment failure: %s", exc)
-            self._terminal_unexpected(token, artist.key, on_state)
+            self._terminal_unexpected(token, request, artist.key, on_state)
         finally:
             self._end_operation(token)
 
@@ -499,20 +583,20 @@ class EnrichmentCoordinator:
             current = self._operations.get((EnrichmentEntityKind.ARTIST, local_key))
             if self._shutting_down or token.cancelled or current is not token:
                 self._service.cancel_artist_request(local_key)
-                self._report(on_state, local_key, EnrichmentOperationState.CANCELLED)
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             stale = profile.provenance.is_stale or profile.biography_provenance.is_stale
             verdict = self._service.deliver_artist_profile(request, profile)
         if verdict is DeliveryVerdict.COMMITTED:
             self._report(
+                token,
                 on_state,
-                local_key,
                 EnrichmentOperationState.PARTIAL
                 if (partial or stale)
                 else EnrichmentOperationState.READY,
             )
         else:
-            self._report(on_state, local_key, EnrichmentOperationState.FAILED)
+            self._report(token, on_state, EnrichmentOperationState.FAILED)
 
     def _apply_artist_links(
         self,
@@ -632,18 +716,21 @@ class EnrichmentCoordinator:
         resolved_artist_external_id: str,
         on_state: StateCallback | None,
     ) -> None:
+        request = None
         try:
             if token.cancelled:
-                self._service.cancel_album_request(album.key)
-                self._report(on_state, album.key, EnrichmentOperationState.CANCELLED)
+                self._service.cancel_operation(
+                    EnrichmentEntityKind.ALBUM, album.key, token.generation
+                )
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
-            self._report(
-                on_state, album.key, EnrichmentOperationState.RESOLVING_IDENTITY
-            )
+            self._report(token, on_state, EnrichmentOperationState.RESOLVING_IDENTITY)
             evidence = self._evidence_builder.album_evidence(
                 album, resolved_artist_external_id
             )
-            outcome = self._service.request_album_enrichment(evidence)
+            outcome = self._service.request_album_enrichment(
+                evidence, generation=token.generation
+            )
             if outcome.request is None:
                 state = {
                     IdentityResolutionStatus.AMBIGUOUS: (
@@ -656,15 +743,15 @@ class EnrichmentCoordinator:
                         EnrichmentOperationState.NOT_FOUND
                     ),
                 }.get(outcome.resolution.status, EnrichmentOperationState.FAILED)
-                self._report(on_state, album.key, state)
+                if outcome.resolution.status is IdentityResolutionStatus.SUPERSEDED:
+                    state = EnrichmentOperationState.CANCELLED
+                self._report(token, on_state, state)
                 return
             request = outcome.request
-            self._report(
-                on_state, album.key, EnrichmentOperationState.FETCHING_KNOWLEDGE
-            )
+            self._report(token, on_state, EnrichmentOperationState.FETCHING_KNOWLEDGE)
             if token.cancelled:
                 self._service.cancel_album_request(album.key)
-                self._report(on_state, album.key, EnrichmentOperationState.CANCELLED)
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             partial = False
             profile = self._mb.fetch_release_group(
@@ -674,15 +761,15 @@ class EnrichmentCoordinator:
             )
             if token.cancelled:
                 self._service.cancel_album_request(album.key)
-                self._report(on_state, album.key, EnrichmentOperationState.CANCELLED)
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_cover(profile, partial)
             self._commit_album(token, request, profile, partial, on_state)
         except EnrichmentProviderError as exc:
-            self._terminal_failure(token, album.key, exc, on_state)
+            self._terminal_failure(token, request, album.key, exc, on_state)
         except Exception as exc:  # noqa: BLE001 — unexpected programming errors
             logger.exception("unexpected album enrichment failure: %s", exc)
-            self._terminal_unexpected(token, album.key, on_state)
+            self._terminal_unexpected(token, request, album.key, on_state)
         finally:
             self._end_operation(token)
 
@@ -700,19 +787,19 @@ class EnrichmentCoordinator:
             current = self._operations.get((EnrichmentEntityKind.ALBUM, local_key))
             if self._shutting_down or token.cancelled or current is not token:
                 self._service.cancel_album_request(local_key)
-                self._report(on_state, local_key, EnrichmentOperationState.CANCELLED)
+                self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             verdict = self._service.deliver_album_profile(request, profile)
         if verdict is DeliveryVerdict.COMMITTED:
             self._report(
+                token,
                 on_state,
-                local_key,
                 EnrichmentOperationState.PARTIAL
                 if (partial or profile.provenance.is_stale)
                 else EnrichmentOperationState.READY,
             )
         else:
-            self._report(on_state, local_key, EnrichmentOperationState.FAILED)
+            self._report(token, on_state, EnrichmentOperationState.FAILED)
 
     def _apply_cover(
         self, profile: AlbumKnowledgeProfile, partial: bool
@@ -749,33 +836,35 @@ class EnrichmentCoordinator:
     def _terminal_failure(
         self,
         token: EnrichmentOperationToken,
+        request,
         local_key: str,
         exc: EnrichmentProviderError,
         on_state: StateCallback | None,
     ) -> None:
-        """Known provider/transport failures converge to a terminal
-        state: transient -> OFFLINE; other provider HTTP/payload ->
-        FAILED. The pending request is invalidated — no late commit."""
-        if token.entity_kind is EnrichmentEntityKind.ARTIST:
-            self._service.cancel_artist_request(local_key)
-        else:
-            self._service.cancel_album_request(local_key)
+        """R1.2: known provider/transport failures converge to a
+        terminal state (transient -> OFFLINE; other -> FAILED). The
+        worker invalidates EXACTLY its own request (if any) and its own
+        generation — a stale worker can NEVER cancel a newer
+        generation's request."""
+        self._service.cancel_operation(token.entity_kind, local_key, token.generation)
+        if request is not None:
+            self._service.cancel_request_exact(request)
         if is_transient_provider_failure(exc):
-            self._report(on_state, local_key, EnrichmentOperationState.OFFLINE)
+            self._report(token, on_state, EnrichmentOperationState.OFFLINE)
         else:
-            self._report(on_state, local_key, EnrichmentOperationState.FAILED)
+            self._report(token, on_state, EnrichmentOperationState.FAILED)
 
     def _terminal_unexpected(
         self,
         token: EnrichmentOperationToken,
+        request,
         local_key: str,
         on_state: StateCallback | None,
     ) -> None:
-        if token.entity_kind is EnrichmentEntityKind.ARTIST:
-            self._service.cancel_artist_request(local_key)
-        else:
-            self._service.cancel_album_request(local_key)
-        self._report(on_state, local_key, EnrichmentOperationState.FAILED)
+        self._service.cancel_operation(token.entity_kind, local_key, token.generation)
+        if request is not None:
+            self._service.cancel_request_exact(request)
+        self._report(token, on_state, EnrichmentOperationState.FAILED)
 
     # -- helpers -----------------------------------------------------------------------
 
@@ -788,8 +877,41 @@ class EnrichmentCoordinator:
         return ""
 
     @staticmethod
-    def _report(
-        on_state: StateCallback | None, key: str, state: EnrichmentOperationState
+    def _report_policy(
+        on_state: StateCallback | None,
+        entity_kind: EnrichmentEntityKind,
+        local_entity_key: str,
+        state: EnrichmentOperationState,
     ) -> None:
+        """R1.2: NON-OPERATION policy notices (DISABLED / shutdown
+        rejection). They carry operation_id "" and generation 0 — by
+        definition never confused with a real correlated operation."""
         if on_state is not None:
-            on_state(key, state)
+            on_state(
+                EnrichmentOperationEvent(
+                    operation_id="",
+                    generation=0,
+                    entity_kind=entity_kind,
+                    local_entity_key=local_entity_key,
+                    state=state,
+                )
+            )
+
+    @staticmethod
+    def _report(
+        token: EnrichmentOperationToken,
+        on_state: StateCallback | None,
+        state: EnrichmentOperationState,
+    ) -> None:
+        """R1.2: every callback carries the full operation correlation
+        (operation_id + generation)."""
+        if on_state is not None:
+            on_state(
+                EnrichmentOperationEvent(
+                    operation_id=token.operation_id,
+                    generation=token.generation,
+                    entity_kind=token.entity_kind,
+                    local_entity_key=token.local_entity_key,
+                    state=state,
+                )
+            )

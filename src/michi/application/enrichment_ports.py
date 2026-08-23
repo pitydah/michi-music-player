@@ -68,7 +68,15 @@ def is_transient_provider_failure(exc: BaseException) -> bool:
         return True
     if isinstance(exc, EnrichmentHttpStatusError):
         return exc.status_code in _TRANSIENT_HTTP_STATUS
-    return False
+    return False  # includes EnrichmentResponseLimitError
+
+
+class EnrichmentResponseLimitError(EnrichmentProviderError):
+    """R1.2: a provider response exceeded the configured size bound.
+
+    NOT a transport failure: never transient, never retried, never
+    eligible for stale fallback, never OFFLINE — a content/limit failure
+    (FAILED)."""
 
 
 class EnrichmentHttpStatusError(EnrichmentProviderError):
@@ -319,11 +327,16 @@ class IdentityHintExtractorPort(ABC):
 
 
 class EnrichmentExecutorPort(ABC):
-    """Off-UI-thread execution boundary (M6.9F). All provider work runs
-    here — never on the Qt UI thread."""
+    """Off-UI-thread execution boundary (M6.9F + R1.2). All provider
+    work runs here — never on the Qt UI thread.
+
+    R1.2 ADMISSION CONTRACT: ``submit`` returns True when the job was
+    accepted, False when the executor is closed — it NEVER raises
+    RuntimeError after shutdown. ``shutdown`` marks the executor closed
+    under its own lifecycle lock."""
 
     @abstractmethod
-    def submit(self, work: Callable[[], None]) -> None: ...
+    def submit(self, work: Callable[[], None]) -> bool: ...
 
     @abstractmethod
     def shutdown(self, wait: bool = True) -> None: ...

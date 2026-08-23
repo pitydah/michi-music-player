@@ -6,6 +6,7 @@ ThreadPoolExecutor; max 2 general provider workers (MusicBrainz remains
 serialized by its own process-wide rate limiter).
 """
 
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from michi.application.enrichment_ports import EnrichmentExecutorPort
@@ -18,11 +19,21 @@ class ThreadPoolEnrichmentExecutor(EnrichmentExecutorPort):
         self._pool = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="michi-enrichment"
         )
+        self._lifecycle = threading.Lock()
+        self._closed = False
 
-    def submit(self, work) -> None:
-        self._pool.submit(work)
+    def submit(self, work) -> bool:
+        """R1.2: admission-controlled — False when closed, never raises
+        RuntimeError after shutdown."""
+        with self._lifecycle:
+            if self._closed:
+                return False
+            self._pool.submit(work)
+            return True
 
     def shutdown(self, wait: bool = True) -> None:
+        with self._lifecycle:
+            self._closed = True
         # cancel_futures: queued-but-not-started jobs are dropped on
         # shutdown; running jobs finish within a bounded wait.
         self._pool.shutdown(wait=wait, cancel_futures=True)
