@@ -77,8 +77,8 @@ class BlockingExecutor(EnrichmentExecutorPort):
     def __init__(self):
         self._inner = ThreadPoolEnrichmentExecutor(max_workers=1)
 
-    def submit(self, work) -> None:
-        self._inner.submit(work)
+    def submit(self, work) -> bool:
+        return self._inner.submit(work)
 
     def shutdown(self, wait: bool = True) -> None:
         self._inner.shutdown(wait=wait)
@@ -145,9 +145,9 @@ class TestCancellationMidFlight:
         states: list[EnrichmentOperationState] = []
         done = threading.Event()
 
-        def on_state(key, state):
-            states.append(state)
-            if state is EnrichmentOperationState.CANCELLED:
+        def on_state(ev):
+            states.append(ev.state)
+            if ev.state is EnrichmentOperationState.CANCELLED:
                 done.set()
 
         coordinator.enrich_artist(model.artists[0], model.albums, tracks, on_state)
@@ -169,9 +169,9 @@ class TestCancellationMidFlight:
         second_states: list[EnrichmentOperationState] = []
         second_done = threading.Event()
 
-        def on_second(key, state):
-            second_states.append(state)
-            if state in (
+        def on_second(ev):
+            second_states.append(ev.state)
+            if ev.state in (
                 EnrichmentOperationState.READY,
                 EnrichmentOperationState.PARTIAL,
                 EnrichmentOperationState.FAILED,
@@ -180,7 +180,10 @@ class TestCancellationMidFlight:
                 second_done.set()
 
         coordinator.enrich_artist(
-            model.artists[0], model.albums, tracks, lambda k, s: first_states.append(s)
+            model.artists[0],
+            model.albums,
+            tracks,
+            lambda ev: first_states.append(ev.state),
         )
         assert knowledge.entered.wait(timeout=5)
         # Supersession: a NEW operation on the same entity cancels A.
@@ -206,7 +209,7 @@ class TestCancellationMidFlight:
         model = build_music_model(tracks)
         states: list[EnrichmentOperationState] = []
         coordinator.enrich_artist(
-            model.artists[0], model.albums, tracks, lambda k, s: states.append(s)
+            model.artists[0], model.albums, tracks, lambda ev: states.append(ev.state)
         )
         knowledge.release.set()
         coordinator._executor.shutdown(wait=True)
@@ -222,7 +225,7 @@ class TestCancellationMidFlight:
         model = build_music_model(tracks)
         states: list[EnrichmentOperationState] = []
         coordinator.enrich_artist(
-            model.artists[0], model.albums, tracks, lambda k, s: states.append(s)
+            model.artists[0], model.albums, tracks, lambda ev: states.append(ev.state)
         )
         assert states == [EnrichmentOperationState.CANCELLED]
         assert repository.write_count == 0

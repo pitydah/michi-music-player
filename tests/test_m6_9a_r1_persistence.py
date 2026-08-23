@@ -353,10 +353,14 @@ class TestDeliveryIdentityGuard:
         assert repository.write_count == 0
 
     def test_superseded_request_stale_then_committed(self):
+        from michi.domain.enrichment import EnrichmentEntityKind
+
         service, repository, _ = make_service()
+        service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a", 1)
         first = service.request_artist_enrichment(
             artist_evidence(name="Artist A", mbids=("mb-a",)), generation=1
         )
+        service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a", 2)
         second = service.request_artist_enrichment(
             artist_evidence(name="Artist A", mbids=("mb-a",)), generation=2
         )

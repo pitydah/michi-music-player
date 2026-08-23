@@ -94,11 +94,15 @@ class TestArtistConcurrencyFirewall:
         assert stored_b.biography != stored_a.biography
 
     def test_stale_identity_result_discarded(self):
+        from michi.domain.enrichment import EnrichmentEntityKind
+
         service, repo = make_service(resolver=FakeIdentityResolver(artists=[]))
+        service.begin_operation(EnrichmentEntityKind.ARTIST, "artist-a", 1)
         outcome_v1 = service.request_artist_enrichment(
             artist_evidence(key="artist-a", name="Artist A", mbids=("mb-old",)),
             generation=1,
         )
+        service.begin_operation(EnrichmentEntityKind.ARTIST, "artist-a", 2)
         outcome_v2 = service.request_artist_enrichment(
             artist_evidence(key="artist-a", name="Artist A", mbids=("mb-new",)),
             generation=2,

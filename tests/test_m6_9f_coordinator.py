@@ -56,8 +56,9 @@ class InlineExecutor(EnrichmentExecutorPort):
     def __init__(self):
         self.shutdown_calls = 0
 
-    def submit(self, work) -> None:
+    def submit(self, work) -> bool:
         work()
+        return True
 
     def shutdown(self, wait: bool = True) -> None:
         self.shutdown_calls += 1
@@ -274,7 +275,7 @@ class TestArtistEndToEnd:
         artist = model.artists[0]
         states: list[EnrichmentOperationState] = []
         coordinator.enrich_artist(
-            artist, model.albums, tracks, on_state=lambda k, s: states.append(s)
+            artist, model.albums, tracks, on_state=lambda ev: states.append(ev.state)
         )
         assert states[-1] in (
             EnrichmentOperationState.READY,
@@ -324,7 +325,7 @@ class TestArtistEndToEnd:
             model.artists[0],
             model.albums,
             tracks,
-            on_state=lambda k, s: states.append(s),
+            on_state=lambda ev: states.append(ev.state),
         )
         # No hints + no candidates → fail-closed NOT_FOUND (no identity,
         # no knowledge, no AUTO guess).
@@ -343,7 +344,7 @@ class TestArtistEndToEnd:
             model.artists[0],
             model.albums,
             tracks,
-            on_state=lambda k, s: states.append(s),
+            on_state=lambda ev: states.append(ev.state),
         )
         assert states[-1] is EnrichmentOperationState.OFFLINE
         assert repository.write_count == 0
@@ -359,7 +360,7 @@ class TestAlbumEndToEnd:
         model = build_music_model(tracks)
         album = model.albums[0]
         states: list[EnrichmentOperationState] = []
-        coordinator.enrich_album(album, on_state=lambda k, s: states.append(s))
+        coordinator.enrich_album(album, on_state=lambda ev: states.append(ev.state))
         assert states[-1] in (
             EnrichmentOperationState.READY,
             EnrichmentOperationState.PARTIAL,
@@ -397,7 +398,7 @@ class TestPrivacyAndOfflineContracts:
             model.artists[0],
             model.albums,
             tracks,
-            on_state=lambda k, s: states.append(s),
+            on_state=lambda ev: states.append(ev.state),
         )
         # R1 (P2-01): a user decision is DISABLED, never OFFLINE.
         assert states == [EnrichmentOperationState.DISABLED]
@@ -416,7 +417,7 @@ class TestPrivacyAndOfflineContracts:
             model.artists[0],
             model.albums,
             tracks,
-            on_state=lambda k, s: states.append(s),
+            on_state=lambda ev: states.append(ev.state),
         )
         assert states[-1] in (
             EnrichmentOperationState.READY,
@@ -434,7 +435,7 @@ class TestPrivacyAndOfflineContracts:
             model.artists[0],
             model.albums,
             tracks,
-            on_state=lambda k, s: states.append(s),
+            on_state=lambda ev: states.append(ev.state),
         )
         # Deterministic rejection after terminal shutdown: no work, no
         # commit, CANCELLED reported.
@@ -454,7 +455,7 @@ class TestPrivacyAndOfflineContracts:
         # Enrichment now uses the manual authority (no re-resolution).
         states: list[EnrichmentOperationState] = []
         coordinator.enrich_artist(
-            artist, model.albums, tracks, on_state=lambda k, s: states.append(s)
+            artist, model.albums, tracks, on_state=lambda ev: states.append(ev.state)
         )
         profile = service.get_artist_knowledge(artist.key)
         assert profile is not None

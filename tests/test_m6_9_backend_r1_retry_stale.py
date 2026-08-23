@@ -239,7 +239,7 @@ class TestStalePolicy:
         ).build_music_model(tracks)
         states: list[EnrichmentOperationState] = []
         coordinator.enrich_artist(
-            model.artists[0], model.albums, tracks, lambda k, s: states.append(s)
+            model.artists[0], model.albums, tracks, lambda ev: states.append(ev.state)
         )
         coordinator._executor.shutdown(wait=True)
         assert states[-1] is EnrichmentOperationState.PARTIAL

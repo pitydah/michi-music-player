@@ -148,8 +148,8 @@ def _run_artist(coordinator):
     states: list[EnrichmentOperationState] = []
     done = threading.Event()
 
-    def on_state(key, state):
-        states.append(state)
+    def on_state(ev):
+        states.append(ev.state)
         done.set()
 
     coordinator.enrich_artist(model.artists[0], model.albums, _tracks(), on_state)
@@ -179,7 +179,7 @@ class TestAsyncFailureConvergence:
         done = threading.Event()
         coordinator.enrich_album(
             model.albums[0],
-            on_state=lambda k, s: (states.append(s), done.set()),
+            on_state=lambda ev: (states.append(ev.state), done.set()),
         )
         assert done.wait(timeout=10)
         coordinator._executor.shutdown(wait=True)
@@ -231,9 +231,9 @@ class TestLinearizableDelivery:
         coordinator._mb.fetch_artist = blocking_fetch
         done = threading.Event()
 
-        def on_state(key, state):
-            states.append(state)
-            if state is EnrichmentOperationState.CANCELLED:
+        def on_state(ev):
+            states.append(ev.state)
+            if ev.state is EnrichmentOperationState.CANCELLED:
                 done.set()
 
         coordinator.enrich_artist(model.artists[0], model.albums, _tracks(), on_state)
@@ -265,14 +265,14 @@ class TestLinearizableDelivery:
             model.artists[0],
             model.albums,
             _tracks(),
-            lambda k, s: first_states.append(s),
+            lambda ev: first_states.append(ev.state),
         )
         assert entered.wait(timeout=10)
         coordinator.enrich_artist(
             model.artists[0],
             model.albums,
             _tracks(),
-            lambda k, s: (second_states.append(s), second_done.set()),
+            lambda ev: (second_states.append(ev.state), second_done.set()),
         )
         release.set()
         assert second_done.wait(timeout=10)

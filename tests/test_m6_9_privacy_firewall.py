@@ -91,7 +91,7 @@ class TestNoNetworkInCanonicalScan:
             coordinator_module.EnrichmentCoordinator.enrich_artist
         )
         assert "self._enabled()" in source
-        assert "self._executor.submit" in source
+        assert "_submit_if_running" in source
 
 
 class TestNoTagWriteInEnrichment:

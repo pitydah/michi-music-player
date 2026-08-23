@@ -266,7 +266,10 @@ class TestLibraryIndexIsolation:
         rows_before = index_rows(tmp_path / "library.db")
         spy = RecordingLibraryIndexRepository()
         service, _ = build_service(tmp_path)
-        for generation in (0, 1, 2):  # initial + refreshes
+        from michi.domain.enrichment import EnrichmentEntityKind
+
+        for generation in (1, 2, 3):  # initial + refreshes
+            service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a", generation)
             outcome = service.request_artist_enrichment(
                 artist_evidence("mb-a"), generation=generation
             )
