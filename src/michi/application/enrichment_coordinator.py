@@ -872,28 +872,42 @@ class EnrichmentCoordinator:
 
     # -- terminal convergence (R1.1) --------------------------------------------------
 
-    def _operation_is_obsolete(self, token: EnrichmentOperationToken) -> bool:
-        """R1.3.2 P1-01: an operation is OBSOLETE when it can no longer
-        produce a meaningful result, even if its worker is still running:
+    def _claim_terminal_authority(self, token: EnrichmentOperationToken) -> bool:
+        """FINAL TERMINAL LINEARIZATION (R1.3.2 seal): ONE atomic
+        terminal-authority decision — who wins, the terminal claim or a
+        concurrent cancel / manual confirm / reset / supersession /
+        shutdown?
 
-        - the token was cancelled (manual confirm / reset / supersession);
-        - the coordinator is shutting down;
-        - the coordinator registry no longer holds THIS token (a newer
-          operation owns the entity);
-        - the Service says this token's generation is no longer current.
+        True: this terminal path WON — the generation was still current
+        and was retired successfully by this claim (the retire bool is
+        the linearization verdict; it is never ignored).
 
-        LOCK ORDER: Coordinator._lock -> Service._authority_lock (the
-        coordinator lock is released before the service call; the
-        service never calls back into the coordinator)."""
+        False: the operation had ALREADY lost authority (shutdown, token
+        cancelled, registry holds a different token, or the Service
+        refused the retirement) — the terminal path must report
+        CANCELLED.
+
+        The Coordinator state check AND the Service retirement happen
+        under the SAME Coordinator._lock acquisition: there is no window
+        in which authority can change between the check and the
+        retirement. LOCK ORDER: Coordinator._lock ->
+        Service._authority_lock (no inverse path exists; the service
+        never calls back into the coordinator). No network, no provider
+        calls, no callbacks, no executor wait under these locks."""
         with self._lock:
-            if self._shutting_down or token.cancelled:
-                return True
+            if self._shutting_down:
+                token.cancel()
+                return False
             current = self._operations.get((token.entity_kind, token.local_entity_key))
-            if current is not token:
-                return True
-        return not self._service.is_current_operation(
-            token.entity_kind, token.local_entity_key, token.generation
-        )
+            if token.cancelled or current is not token:
+                token.cancel()
+                return False
+            token.cancel()
+            return self._service.retire_operation(
+                token.entity_kind,
+                token.local_entity_key,
+                token.generation,
+            )
 
     def _terminal_failure(
         self,
@@ -903,22 +917,20 @@ class EnrichmentCoordinator:
         exc: EnrichmentProviderError,
         on_state: StateCallback | None,
     ) -> None:
-        """R1.3.2 P1-01: an OBSOLETE operation that fails late (after
-        cancel / manual confirm / reset / supersession) converges to
-        CANCELLED — a dead generation never surfaces OFFLINE or FAILED
-        to the UI. Current operations keep the R1.2 contract: transient
-        -> OFFLINE, other -> FAILED. The worker invalidates EXACTLY its
-        own request (if any) and its own generation — a stale worker can
-        NEVER cancel a newer generation's request."""
-        if self._operation_is_obsolete(token):
-            self._retire_token(token)
-            if request is not None:
-                self._service.cancel_request_exact(request)
-            self._report(token, on_state, EnrichmentOperationState.CANCELLED)
-            return
-        self._retire_token(token)
+        """FINAL TERMINAL LINEARIZATION: CLAIM -> exact request cleanup
+        -> classify. An operation that lost authority BEFORE
+        terminalizing converges to CANCELLED (a dead generation never
+        surfaces OFFLINE or FAILED to the UI); an operation whose
+        terminal claim WON keeps the contract: transient -> OFFLINE,
+        other -> FAILED. The worker invalidates EXACTLY its own request
+        (request_id + generation) — a stale worker can NEVER cancel a
+        newer generation's request."""
+        won_terminal_authority = self._claim_terminal_authority(token)
         if request is not None:
             self._service.cancel_request_exact(request)
+        if not won_terminal_authority:
+            self._report(token, on_state, EnrichmentOperationState.CANCELLED)
+            return
         if is_transient_provider_failure(exc):
             self._report(token, on_state, EnrichmentOperationState.OFFLINE)
         else:
@@ -931,18 +943,15 @@ class EnrichmentCoordinator:
         local_key: str,
         on_state: StateCallback | None,
     ) -> None:
-        """R1.3.2 P1-01 (unexpected-error variant): a late unexpected
-        exception from an obsolete operation is suppressed as CANCELLED;
-        current operations converge to FAILED."""
-        if self._operation_is_obsolete(token):
-            self._retire_token(token)
-            if request is not None:
-                self._service.cancel_request_exact(request)
-            self._report(token, on_state, EnrichmentOperationState.CANCELLED)
-            return
-        self._retire_token(token)
+        """FINAL TERMINAL LINEARIZATION (unexpected variant): the SAME
+        single claim. Late unexpected exception after authority loss ->
+        CANCELLED; current unexpected programming failure -> FAILED."""
+        won_terminal_authority = self._claim_terminal_authority(token)
         if request is not None:
             self._service.cancel_request_exact(request)
+        if not won_terminal_authority:
+            self._report(token, on_state, EnrichmentOperationState.CANCELLED)
+            return
         self._report(token, on_state, EnrichmentOperationState.FAILED)
 
     # -- helpers -----------------------------------------------------------------------

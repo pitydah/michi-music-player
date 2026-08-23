@@ -227,17 +227,21 @@ def _single_artist_model(name):
 
 
 class CoordinatorHarness:
-    def __init__(self, knowledge=None):
+    def __init__(self, knowledge=None, service=None):
         self.repository = RecordingKnowledgeRepository()
         self.identity_repo = InMemoryIdentityRepository()
         self.resolver = GateResolver()
-        self.service = EnrichmentService(
+        self.service = service or EnrichmentService(
             resolver=self.resolver,
             artist_provider=FakeArtistProvider(),
             album_provider=FakeAlbumProvider(),
             repository=self.repository,
             identity_repository=self.identity_repo,
         )
+        if service is not None:
+            self.resolver = service._resolver
+            self.repository = service._repository
+            self.identity_repo = service._identity_repository
         self.knowledge = knowledge if knowledge is not None else _NoopKnowledge()
         self.coordinator = EnrichmentCoordinator(
             service=self.service,
@@ -575,3 +579,138 @@ class TestOldFailureVsNewRequest:
         # Exactly one commit: B's.
         assert harness.write_count == 1
         assert harness.service.pending_count() == 0
+
+
+# ----------------------------------------------------------------------
+# FINAL TERMINAL LINEARIZATION — TOCTOU terminal authority (P1)
+# ----------------------------------------------------------------------
+
+
+class GatedRetireService(EnrichmentService):
+    """Gates retire_operation BEFORE the service authority lock so the
+    test can hold the terminal claim inside its linearization section
+    and prove that a concurrent manual confirm CANNOT interleave."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.retire_entered = threading.Event()
+        self.retire_continue = threading.Event()
+        self.retire_calls = 0
+
+    def retire_operation(self, entity_kind, local_entity_key, generation):
+        self.retire_calls += 1
+        self.retire_entered.set()
+        self.retire_continue.wait(timeout=15)
+        return super().retire_operation(entity_kind, local_entity_key, generation)
+
+
+class TestTerminalLinearization:
+    def test_terminal_claim_wins_first_blocks_concurrent_manual(self):
+        """WHY THIS FAILED ON R1.3.2: _operation_is_obsolete() released
+        the Coordinator lock and _retire_token() called
+        retire_operation OUTSIDE it. While the worker's retire was
+        gated, the manual confirm could acquire the lock, cancel the
+        token and bump the generation; the worker's retire then returned
+        False, the BOOL WAS IGNORED, and the worker emitted OFFLINE even
+        though authority had been lost BEFORE terminalization.
+
+        With the fix the Coordinator state check and the Service
+        retirement are ONE linearizable decision under Coordinator._lock
+        — the manual confirm must stay BLOCKED until the terminal claim
+        finishes."""
+        service = GatedRetireService(
+            resolver=GateResolver(),
+            artist_provider=FakeArtistProvider(),
+            album_provider=FakeAlbumProvider(),
+            repository=RecordingKnowledgeRepository(),
+            identity_repository=InMemoryIdentityRepository(),
+        )
+        harness = CoordinatorHarness(
+            service=service,
+            knowledge=GatedKnowledge(error=EnrichmentTransportError("offline")),
+        )
+        harness.enrich_artist("Artist A")
+        assert harness.resolver.entered.wait(timeout=5)
+        harness.resolver.release.set()
+        # Worker registered request A and is parked in the provider fetch.
+        assert harness.knowledge.entered_fetch.wait(timeout=5)
+        harness.knowledge.release_fetch.set()  # provider fails with transient error
+
+        # The worker enters the terminal claim and is gated INSIDE
+        # Coordinator._lock (before the service authority lock).
+        assert service.retire_entered.wait(timeout=5)
+
+        # Concurrent manual confirm: it needs Coordinator._lock, which the
+        # terminal claim owns — it MUST stay blocked.
+        manual_done = threading.Event()
+        manual_attempted = threading.Event()
+
+        def manual():
+            manual_attempted.set()
+            harness.coordinator.confirm_artist_identity("artist a", "mb-manual")
+            manual_done.set()
+
+        manual_thread = threading.Thread(target=manual)
+        manual_thread.start()
+        assert manual_attempted.wait(timeout=5)
+        # While the terminal claim owns the coordinator lock the manual
+        # confirm cannot complete (0.5s safety bound, not a sleep).
+        assert not manual_done.wait(timeout=0.5)
+
+        # Release the terminal claim: it wins (generation was current).
+        service.retire_continue.set()
+        assert harness.terminal["Artist A"].wait(timeout=5)
+        assert manual_done.wait(timeout=5)
+        manual_thread.join(timeout=5)
+        assert not manual_thread.is_alive()
+        harness.coordinator._executor.shutdown(wait=True)
+
+        # The terminal claim won the race: transient error -> OFFLINE.
+        assert harness.states["Artist A"][-1] is EnrichmentOperationState.OFFLINE
+        assert EnrichmentOperationState.FAILED not in harness.states["Artist A"]
+        # The manual confirm completed afterwards: MANUAL identity stands.
+        identity = harness.identity_repo.load_artist_identity("artist a")
+        assert identity is not None and identity.match_method is MatchMethod.MANUAL
+        assert harness.service.pending_count() == 0
+
+    def test_unexpected_late_exception_after_manual_is_cancelled(self):
+        """WHY THIS FAILED ON R1.3.2: _terminal_unexpected classified the
+        exception (always FAILED) without a linearizable authority
+        decision — a RuntimeError surfacing AFTER a manual confirm lost
+        authority still produced FAILED instead of CANCELLED."""
+        harness = CoordinatorHarness(
+            knowledge=GatedKnowledge(error=RuntimeError("boom"))
+        )
+        harness.enrich_artist("Artist A")
+        assert harness.resolver.entered.wait(timeout=5)
+        harness.resolver.release.set()
+        assert harness.knowledge.entered_fetch.wait(timeout=5)
+        # MANUAL wins authority BEFORE the worker's unexpected exception.
+        harness.coordinator.confirm_artist_identity("artist a", "mb-manual")
+        harness.knowledge.release_fetch.set()
+        assert harness.terminal["Artist A"].wait(timeout=5)
+        harness.coordinator._executor.shutdown(wait=True)
+
+        assert harness.states["Artist A"][-1] is EnrichmentOperationState.CANCELLED
+        assert EnrichmentOperationState.FAILED not in harness.states["Artist A"]
+        identity = harness.identity_repo.load_artist_identity("artist a")
+        assert identity is not None and identity.match_method is MatchMethod.MANUAL
+        assert harness.write_count == 0
+        assert harness.service.pending_count() == 0
+
+    def test_unexpected_current_exception_is_failed(self):
+        """CONTROL: a CURRENT operation with an unexpected programming
+        exception still converges to FAILED via _terminal_unexpected."""
+        harness = CoordinatorHarness(
+            knowledge=GatedKnowledge(error=RuntimeError("boom"))
+        )
+        harness.enrich_artist("Artist A")
+        assert harness.resolver.entered.wait(timeout=5)
+        harness.resolver.release.set()
+        assert harness.knowledge.entered_fetch.wait(timeout=5)
+        harness.knowledge.release_fetch.set()
+        assert harness.terminal["Artist A"].wait(timeout=5)
+        harness.coordinator._executor.shutdown(wait=True)
+
+        assert harness.states["Artist A"][-1] is EnrichmentOperationState.FAILED
+        assert harness.write_count == 0
