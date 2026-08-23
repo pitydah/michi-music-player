@@ -342,3 +342,28 @@ Michi-nativos.
   cross AudioPort (R6.5 claim now actually true).
 - Code-validation evidence: full suite 1790 passed at CODE_VALIDATED_HEAD
   3af246c (1 pre-existing conditional skip: M11.3B Qt-runtime).
+
+
+## M11.3C-R6.5.2 synchronous callback / command reentrancy seal
+
+- FINAL SYNCHRONOUS CALLBACK CONTRACT: direct owner callbacks are
+  reentrant — a subscriber may load/stop/close/play inside any command.
+  Therefore command-local cleanup is completed BEFORE terminal callbacks
+  (preroll rejection: full B NULL+detach cleanup before media_rejected;
+  a captured cleanup error may raise after the callback without mutating
+  state), and any callback occurring before command completion requires
+  transaction revalidation before further mutation (load() rechecks its
+  generation token after the STOPPED convergence and never arms over a
+  reentrant supersession).
+- PlaybackService request contract: a private _request_epoch identifies
+  each logical request; a synchronous ACCEPTED during load() may
+  continue to PLAY; a synchronous REJECTED/CANCELLED/SUPERSEDED during
+  load() is terminal — no PLAY phase, no success epilogue (rejection
+  reason preserved). This is a design requirement for future MPD.
+- Committed test tree validated: the historical post-close gate used the
+  removed sig_acc (its worker thread died silently — the old green was
+  vacuous); rewritten to the real sig_event path. _EventBridge defines
+  exactly one Signal.
+- Code-validation evidence: full suite 1797 passed at CODE_VALIDATED_HEAD
+  19c634f (working tree CLEAN; 1 pre-existing conditional skip: M11.3B
+  Qt-runtime).
