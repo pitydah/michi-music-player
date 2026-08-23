@@ -382,6 +382,21 @@ Michi-nativos.
 - GATE 3: `PlaybackService` request-scoped exception handlers recheck
   `my_epoch != self._request_epoch` before mutating state; an old exception
   propagates cleanly without clobbering a superseded request.
-- Evidence: 1803 passed, 1 skipped at CODE_VALIDATED_HEAD c1191e9.
+- Evidence: 1805 passed, 1 skipped at CODE_VALIDATED_HEAD 1b34dee.
   M11.3C is DEFINITIVELY DONE / TESTED / FROZEN.
+
+
+## M11.3C Final Same-Request Terminal Disposition Seal
+
+- P1 FIXED: PlaybackService exception handlers in `load_and_play()` and
+  `prepare_for_resume()` now explicitly check if the current request was
+  already terminalized synchronously (`_pending_path is None and not _accepted`)
+  before applying legacy rollback. A cleanup/lifecycle exception raised by the
+  backend after a synchronous terminal callback propagates to the caller without
+  restoring stale previous acceptance or intent.
+- Canonical invariant preserved: backend physical truth = AudioPort semantic
+  truth = PlaybackService canonical truth.
+- Evidence: 1805 passed, 1 skipped at CODE_VALIDATED_HEAD 1b34dee (tree CLEAN).
+  M11.3C is DEFINITIVELY DONE / TESTED / FROZEN; NEXT AUTHORIZED WP: M11.3D.
+
 
