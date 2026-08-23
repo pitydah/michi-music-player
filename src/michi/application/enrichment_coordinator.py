@@ -325,11 +325,7 @@ class EnrichmentCoordinator:
         its own generation retirement. A new operation started after the
         snapshot is never accidentally cancelled."""
         with self._lock:
-            tokens = [
-                token
-                for token in self._operations.values()
-                if token is not None
-            ]
+            tokens = [token for token in self._operations.values() if token is not None]
         for token in tokens:
             self._retire_token(token)
 
@@ -339,11 +335,7 @@ class EnrichmentCoordinator:
         shutdown can never cross an authority gate."""
         with self._lock:
             self._shutting_down = True
-            tokens = [
-                token
-                for token in self._operations.values()
-                if token is not None
-            ]
+            tokens = [token for token in self._operations.values() if token is not None]
         for token in tokens:
             self._retire_token(token)
         self._executor.shutdown(wait=True)
@@ -362,9 +354,7 @@ class EnrichmentCoordinator:
 
     # -- manual async search (R1.1: controlled submission) -----------------------
 
-    def _retire_token(
-        self, token: EnrichmentOperationToken, request=None
-    ) -> None:
+    def _retire_token(self, token: EnrichmentOperationToken, request=None) -> None:
         """R1.3 single retirement helper: token.cancel() + the Service
         generation barrier (retire_operation) which atomically retires
         the generation AND invalidates the same-generation request.

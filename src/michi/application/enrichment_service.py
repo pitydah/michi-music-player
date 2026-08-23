@@ -676,9 +676,7 @@ class EnrichmentService:
             resolved_at=_utc_now_iso(),
         )
         with self._authority_lock:
-            self._bump_generation_locked(
-                EnrichmentEntityKind.ARTIST, local_artist_key
-            )
+            self._bump_generation_locked(EnrichmentEntityKind.ARTIST, local_artist_key)
             self._ledger.invalidate(EnrichmentEntityKind.ARTIST, local_artist_key)
             self._persist_artist_identity_transition(identity)
         return identity
@@ -688,9 +686,7 @@ class EnrichmentService:
         same-generation request under the lock — an old worker can never
         resurrect identity/request/knowledge after a reset."""
         with self._authority_lock:
-            self._bump_generation_locked(
-                EnrichmentEntityKind.ARTIST, local_artist_key
-            )
+            self._bump_generation_locked(EnrichmentEntityKind.ARTIST, local_artist_key)
             self._ledger.invalidate(EnrichmentEntityKind.ARTIST, local_artist_key)
             self._identity_repository.delete_artist_identity(local_artist_key)
             self._repository.delete_artist_profile(local_artist_key)
@@ -713,18 +709,14 @@ class EnrichmentService:
             resolved_at=_utc_now_iso(),
         )
         with self._authority_lock:
-            self._bump_generation_locked(
-                EnrichmentEntityKind.ALBUM, local_album_key
-            )
+            self._bump_generation_locked(EnrichmentEntityKind.ALBUM, local_album_key)
             self._ledger.invalidate(EnrichmentEntityKind.ALBUM, local_album_key)
             self._persist_album_identity_transition(identity)
         return identity
 
     def reset_album_identity(self, local_album_key: str) -> None:
         with self._authority_lock:
-            self._bump_generation_locked(
-                EnrichmentEntityKind.ALBUM, local_album_key
-            )
+            self._bump_generation_locked(EnrichmentEntityKind.ALBUM, local_album_key)
             self._ledger.invalidate(EnrichmentEntityKind.ALBUM, local_album_key)
             self._identity_repository.delete_album_identity(local_album_key)
             self._repository.delete_album_profile(local_album_key)

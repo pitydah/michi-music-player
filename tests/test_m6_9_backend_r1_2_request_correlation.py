@@ -250,9 +250,7 @@ class TestRequestCorrelationRaces:
             (EnrichmentEntityKind.ARTIST, "artist a")
         )
         assert current is not None  # B's request exists (parked)
-        stale_attempt = harness.service.cancel_request_exact(
-            _stale_request(current)
-        )
+        stale_attempt = harness.service.cancel_request_exact(_stale_request(current))
         assert stale_attempt is False  # stale context cannot invalidate
         # Unpark B: it commits under its own context (write_count == 1).
         harness.knowledge._block_fetch.set()

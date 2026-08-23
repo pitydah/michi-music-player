@@ -383,10 +383,7 @@ class TestDeliveryRaces:
             artist_evidence(name="Artist A", mbids=("mb-a",)), generation=gen2
         )
         assert outcome2.request is not None
-        assert (
-            service.deliver_artist_failure(outcome1.request)
-            is DeliveryVerdict.STALE
-        )
+        assert service.deliver_artist_failure(outcome1.request) is DeliveryVerdict.STALE
         assert (
             service.deliver_artist_profile(
                 outcome2.request,
@@ -407,10 +404,7 @@ class TestDeliveryRaces:
             album_evidence(key="album-a", rg_ids=("rg-a",)), generation=gen2
         )
         assert outcome2.request is not None
-        assert (
-            service.deliver_album_failure(outcome1.request)
-            is DeliveryVerdict.STALE
-        )
+        assert service.deliver_album_failure(outcome1.request) is DeliveryVerdict.STALE
         assert (
             service.deliver_album_profile(
                 outcome2.request,
@@ -433,16 +427,12 @@ class TestEpochBarriers:
         gen2 = service.begin_operation(EnrichmentEntityKind.ARTIST, "artist a")
         # A stale retire (older generation) is a no-op barrier.
         assert (
-            service.retire_operation(
-                EnrichmentEntityKind.ARTIST, "artist a", gen1
-            )
+            service.retire_operation(EnrichmentEntityKind.ARTIST, "artist a", gen1)
             is False
         )
         # The CURRENT generation retires and invalidates its request.
         assert (
-            service.retire_operation(
-                EnrichmentEntityKind.ARTIST, "artist a", gen2
-            )
+            service.retire_operation(EnrichmentEntityKind.ARTIST, "artist a", gen2)
             is True
         )
 
@@ -473,8 +463,7 @@ class TestEpochBarriers:
         ]
         assert generations == sorted(set(generations))
         assert all(
-            generations[i] < generations[i + 1]
-            for i in range(len(generations) - 1)
+            generations[i] < generations[i + 1] for i in range(len(generations) - 1)
         )
 
 
@@ -580,9 +569,7 @@ class CoordinatorHarness:
         self.coordinator = EnrichmentCoordinator(
             service=self.service,
             resolver=self.resolver,
-            evidence_builder=LibraryEnrichmentEvidenceBuilder(
-                _NoHintsExtractor()
-            ),
+            evidence_builder=LibraryEnrichmentEvidenceBuilder(_NoHintsExtractor()),
             mb_knowledge=NoopKnowledge(),
             wikidata=None,
             wikipedia=None,
