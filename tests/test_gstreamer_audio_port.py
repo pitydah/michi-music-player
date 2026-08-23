@@ -3875,6 +3875,93 @@ class TestFinalTransactionOwnershipAndReentrancySeal:
         assert pipeline_c.seek_calls == [12000 * 1_000_000]
         port.close()
 
+    def test_t7_same_request_rejection_plus_cleanup_error_preserves_terminal_state(
+        self, qapp
+    ):
+        """P1: Same-request synchronous rejection + cleanup error does NOT restore
+        stale previous acceptance/intent.
+        """
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+
+        # Setup A: committed and PLAYING
+        svc.load_and_play(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+
+        # Precondition
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is True
+        assert svc._intent is True
+        assert svc.state.status == PlaybackStatus.PLAYING
+
+        # Configure B: preroll fails and bus detach raises cleanup error
+        bindings.failed_states.add(_FakeState.PAUSED)
+        bindings.remove_watch_exception = RuntimeError("B cleanup error")
+
+        with pytest.raises(RuntimeError, match="B cleanup error"):
+            svc.load_and_play(Path("/m/b.flac"))
+
+        # Expected after catching:
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._pending_path is None
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert (
+            svc.state.error_message == "GStreamer failed to enter PAUSED during preroll"
+        )
+
+        # AudioPort expected: no accepted B, no pending B
+        assert port._pending_path is None
+        assert port._current_path is None
+
+        # Clean up retained test failure injection for clean close
+        bindings.remove_watch_exception = None
+        if port._bus is not None:
+            port._bus.remove_watch_exception = None
+        port.close()
+
+    def test_t8_prepare_for_resume_same_request_rejection_plus_cleanup_error(
+        self, qapp
+    ):
+        """P1: Same-request prepare_for_resume synchronous rejection + cleanup error
+        preserves terminal rejection state.
+        """
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        bindings.failed_states.add(_FakeState.PAUSED)
+        bindings.remove_watch_exception = RuntimeError("B prepare cleanup error")
+
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+
+        with pytest.raises(RuntimeError, match="B prepare cleanup error"):
+            svc.prepare_for_resume(Path("/m/b.flac"), 42000)
+
+        # Expected after catching:
+        assert svc._pending_path is None
+        assert svc._accepted is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert (
+            svc.state.error_message == "GStreamer failed to enter PAUSED during preroll"
+        )
+        assert svc._pending_resume_position_ms is None
+        assert svc._resume_prepared_pending is False
+
+        bindings.remove_watch_exception = None
+        if port._bus is not None:
+            port._bus.remove_watch_exception = None
+        port.close()
+
 
 @pytest.mark.gstreamer_runtime
 class TestRealRuntimeSmoke:
