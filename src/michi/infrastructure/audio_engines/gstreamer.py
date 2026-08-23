@@ -418,11 +418,20 @@ class GStreamerAudioPort(AudioPort):
         # dueño (pipeline + bus observables) y NO se crea B.
         if not self._try_stop_pipeline():
             raise RuntimeError("pipeline anterior no pudo transicionar a NULL")
+        # token de transacción del load (M11.3C-R6.5.2): la convergencia
+        # STOPPED es un callback DIRECTO — un subscriber puede reentrar con
+        # load(C)/close() antes del ARM de B
+        my_generation = self._generation
         # CONVERGENCIA (M11.3C-R6): el teardown del source activo A dejó el
         # transporte STOPPED. Converger AHORA (no depender de un
         # STATE_CHANGED del pipeline viejo ya desacoplado) para que un fallo
         # posterior del ARM de B no deje un PLAYING falso en la app.
         self._deliver_state_if(PlaybackStatus.STOPPED)
+        # REVALIDACIÓN post-callback (M11.3C-R6.5.2): el subscriber del
+        # STOPPED pudo reentrar (load(C)/close()) y ya no somos dueños de la
+        # transacción → NUNCA armar B sobre la transacción nueva
+        if self._closed or self._generation != my_generation:
+            return
         # PHASE B — ARM NEW (M11.3C-R6 exception-atomic): el commit point
         # (teardown OK de A) ya pasó. CUALQUIER excepción normal durante la
         # construcción/configuración/attach/preroll-request del pipeline B
@@ -474,12 +483,13 @@ class GStreamerAudioPort(AudioPort):
             self._current_path = None
             self._pending_play = False
             self._eos_emitted = False
-            if candidate is not None:
-                self._deliver_rej(candidate, reason)
-            # Limpieza del pipeline fallido — FIRST LIFECYCLE CLEANUP ERROR
-            # WINS (M11.3C-R5 P1-02): el NULL cleanup es PRIMARIO; el
-            # detach del bus watch es SECUNDARIO y NUNCA reemplaza al error
-            # de NULL. media_rejected ya fue emitido (evento semántico).
+            # M11.3C-R6.5.2 (BLOCKER A): el CLEANUP COMPLETO de B ocurre
+            # ANTES del callback media_rejected — un subscriber reentrante
+            # puede arrancar C y el cleanup viejo NUNCA debe tocar campos
+            # globales nuevos (self._pipeline/_bus/_bus_source ya serían de
+            # C). El cleanup opera sobre el ownership LOCAL de B.
+            # FIRST LIFECYCLE CLEANUP ERROR WINS (M11.3C-R5 P1-02): el NULL
+            # cleanup es PRIMARIO; el detach es SECUNDARIO.
             primary_cleanup_error = None
             if not self._bindings.set_state(pipeline, self._bindings.STATE.NULL):
                 primary_cleanup_error = RuntimeError(
@@ -498,6 +508,12 @@ class GStreamerAudioPort(AudioPort):
                 # secundaria: no reemplaza al primario
             if primary_cleanup_error is None:
                 self._pipeline = None
+            # cleanup COMPLETO → recién ahora el callback público (R6.5.2):
+            # ningún código viejo de B se ejecutará después del callback
+            if candidate is not None:
+                self._deliver_rej(candidate, reason)
+            # un cleanup error capturado puede raise DESPUÉS del callback
+            # (no muta estado, no daña una transacción C reentrante)
             if primary_cleanup_error is not None:
                 raise primary_cleanup_error
             return

@@ -77,6 +77,11 @@ class PlaybackService:
         self._resume_prepared_pending: bool = False
         self._intent = False
         self._accepted = False
+        # M11.3C-R6.5.2: token privado de transacción de request — los
+        # callbacks públicos son DIRECTOS (pueden rechazar/aceptar/superseder
+        # sincrónicamente DENTRO de load()); el epoch permite al request
+        # externo detectar que ya no es dueño de la transacción
+        self._request_epoch = 0
         self._audio.subscribe_media_accepted(self._on_media_accepted)
         self._audio.subscribe_media_rejected(self._on_media_rejected)
         self._audio.subscribe_playback_state_changed(self._on_playback_state_changed)
@@ -173,6 +178,8 @@ class PlaybackService:
         """
         previous_intent = self._intent
         previous_accepted = self._accepted
+        self._request_epoch += 1
+        my_epoch = self._request_epoch
         self._pending_path = file_path
         self._pending_on_accepted = on_accepted
         self._pending_on_rejected = on_rejected
@@ -183,7 +190,9 @@ class PlaybackService:
         self._intent = True
         # PHASE 1 — LOAD (M11.3C-R6.2): la disposición de AudioLoadError
         # describe exactamente esta fase. El source previo puede estar
-        # preservado (True) o ya no garantizado (False).
+        # preservado (True) o ya no garantizado (False). NOTA (R6.5.2):
+        # con callbacks DIRECTOS, load() puede REJECT/ACCEPT/SUPERSEDE
+        # esta request SÍNCRONICAMENTE dentro de esta llamada.
         try:
             self._audio.load(file_path)
         except Exception as exc:
@@ -197,6 +206,16 @@ class PlaybackService:
                 self._intent = previous_intent
                 self._accepted = previous_accepted
             raise
+        # RECHECK DE DISPOSICIÓN (M11.3C-R6.5.2 BLOCKER B): tras load(),
+        # esta request pudo terminar sincrónicamente (REJECTED/ACCEPTED) o
+        # ser supersedida por un request reentrante.
+        if my_epoch != self._request_epoch:
+            return  # supersedida reentrantemente: el nuevo request es dueño
+        if self._pending_path is None and not self._accepted:
+            # terminal sincrónica (REJECTED/CANCELLED): sin play() ni
+            # epílogo de éxito — el error_message de la rejection se
+            # preserva y el estado STOPPED queda canónico
+            return
         # PHASE 2 — PLAY (M11.3C-R6.2): load(B) ya terminó exitosamente —
         # el source previo YA NO puede asumirse válido (el backend cruzó el
         # commit point y B está armado/pending). Un fallo de play() NO
@@ -246,6 +265,7 @@ class PlaybackService:
         if position_ms < 0:
             position_ms = 0
         previous_accepted = self._accepted
+        self._request_epoch += 1  # M11.3C-R6.5.2: request identity
         self._pending_path = file_path
         self._pending_on_accepted = None
         self._pending_on_rejected = None
