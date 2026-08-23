@@ -7,6 +7,7 @@ additionally wires the QML engine, settings/coordinators and owns the
 shutdown lifecycle.
 """
 
+import logging
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -80,6 +81,8 @@ from michi.presentation.playback_bridge import PlaybackBridge
 from michi.presentation.playlists_bridge import PlaylistsBridge
 from michi.presentation.queue_bridge import QueueBridge
 from michi.presentation.settings_bridge import SettingsBridge
+
+logger = logging.getLogger(__name__)
 
 _MISSING = object()  # sentinel: production default vs explicit None override
 
@@ -359,6 +362,59 @@ def _build_services(
     )
 
 
+def _shutdown_audio_runtime(router, engine_service, registry) -> None:
+    """M11.3F P1-01: release the ACTUALLY active provider — never hard-coded Qt.
+
+    Ownership resolved from the canonical runtime graph: state active vs
+    router physical bound are captured BEFORE the unbind. Happy path:
+    state_active == router_bound → unbind → verify detached → close
+    registry.provider(active). When identities differ (invariant violation)
+    the PHYSICALLY BOUND identity defines cleanup ownership (it is what the
+    router references); the violation is surfaced via error_message, never
+    silently repaired. If unbind() raises AND the router still reports
+    itself bound, the bound provider is NOT closed (router → closed backend
+    forbidden) and the original unbind error is preserved as first error.
+    """
+    if router is None or engine_service is None or registry is None:
+        return
+    state_active = engine_service.state.active_engine_id
+    router_bound = router.bound_engine_id
+    # Cleanup ownership: the physically bound engine wins when a binding
+    # exists (that is what the router references); otherwise the canonical
+    # active engine projection.
+    physical_owner = router_bound if router_bound is not None else state_active
+    if state_active != router_bound:
+        logger.warning(
+            "engine shutdown invariant violation: state active=%s, "
+            "router bound=%s; using physical binding for cleanup ownership",
+            state_active.value if state_active else None,
+            router_bound.value if router_bound else None,
+        )
+    primary_error: Exception | None = None
+    try:
+        router.unbind()
+    except Exception as exc:
+        primary_error = exc
+    if router.bound_engine_id is not None:
+        # CASE B: unbind raised AND the router still references the provider
+        # — never close it. Preserve the original unbind error.
+        raise (
+            primary_error
+            if primary_error is not None
+            else RuntimeError("router still bound after unbind")
+        )
+    # CASE A / happy path: detached (or unbind raised after detach).
+    if physical_owner is not None:
+        try:
+            registry.provider(physical_owner).close()
+        except Exception as exc:
+            if primary_error is None:
+                raise
+            logger.warning("engine shutdown close failed: %s", exc)
+    if primary_error is not None:
+        raise primary_error
+
+
 class ApplicationContainer:
     """Creates and owns all long-lived components. Explicit wiring only."""
 
@@ -366,6 +422,8 @@ class ApplicationContainer:
         self._app: QGuiApplication | None = None
         self._engine: QQmlApplicationEngine | None = None
         self._audio_router: AudioTransportRouter | None = None
+        self._audio_engine_registry: AudioEngineRegistry | None = None
+        self._audio_engine_service: AudioEngineService | None = None
         self._qt_engine_provider: QtEngineProvider | None = None
         self._engine_selection_coordinator: AudioEngineSelectionCoordinator | None = (
             None
@@ -403,6 +461,8 @@ class ApplicationContainer:
         repo = SQLiteSettingsRepository.open_for_startup(db_path)
         graph = _build_services(db_path)
         self._audio_router = graph.audio_router
+        self._audio_engine_registry = graph.audio_engine_registry
+        self._audio_engine_service = graph.audio_engine_service
         self._qt_engine_provider = graph.qt_engine_provider
         settings = SettingsService(repo)
 
@@ -593,18 +653,28 @@ class ApplicationContainer:
             except Exception as exc:
                 error = error or exc
 
-        # M11.3B SWITCH ORDER: the router detaches BEFORE the provider
-        # closes. The provider owns the backend lifecycle (stop + release);
-        # the container never stops the backend directly anymore.
+        # M11.3F P1-01: shutdown releases the ACTUALLY ACTIVE provider —
+        # resolved from the canonical graph (registry + engine service +
+        # router physical truth). NEVER a hard-coded Qt provider: after a
+        # Qt→MPD switch the MPD provider owns the runtime; after Qt→GStreamer
+        # the GStreamer provider does. The provider is closed only after the
+        # router has detached (SWITCH ORDER), and never while the router
+        # still reports itself bound to it.
         try:
-            if self._audio_router:
-                self._audio_router.unbind()
-        except Exception as exc:
-            error = error or exc
-
-        try:
-            if self._qt_engine_provider:
-                self._qt_engine_provider.close()
+            if self._audio_engine_registry and self._audio_engine_service:
+                _shutdown_audio_runtime(
+                    self._audio_router,
+                    self._audio_engine_service,
+                    self._audio_engine_registry,
+                )
+            else:
+                # Partial container (tests / interrupted startup): no engine
+                # graph — preserve the historical SWITCH ORDER unbind + close
+                # with the reference provider handle.
+                if self._audio_router:
+                    self._audio_router.unbind()
+                if self._qt_engine_provider:
+                    self._qt_engine_provider.close()
         except Exception as exc:
             error = error or exc
 
@@ -616,6 +686,8 @@ class ApplicationContainer:
 
         self._engine = None
         self._audio_router = None
+        self._audio_engine_registry = None
+        self._audio_engine_service = None
         self._qt_engine_provider = None
         self._lb = None
         self._plb = None

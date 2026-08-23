@@ -150,3 +150,41 @@ class AudioEngineService:
                 error_message=None,
             )
         )
+
+    def mark_switch_aborted_preserving_active(
+        self, engine_id: AudioEngineId, message: str
+    ) -> None:
+        """M11.3F P1-02: the switch transaction failed BEFORE the source was
+        detached — the source runtime is still open, bound, validated and
+        usable. Lifecycle describes the ENGINE RUNTIME SLOT: the slot is
+        still READY. The active engine is NOT absent; SELECTED != ACTIVE is
+        canonical (target preference already durably persisted). This is NOT
+        fallback and NOT a failed slot — only the transaction failed."""
+        self._replace(
+            AudioEngineState(
+                selected_engine_id=self._state.selected_engine_id,
+                active_engine_id=engine_id,
+                lifecycle=AudioEngineLifecycle.READY,
+                switching_to=None,
+                error_message=message,
+                fallback_from=None,
+            )
+        )
+
+    def mark_bound_failed(self, engine_id: AudioEngineId, message: str) -> None:
+        """M11.3F P1-04: target activation failed AFTER the router bound it
+        AND the cleanup detach also failed — the target remains PHYSICALLY
+        bound. State must reflect physical truth: active=engine_id, lifecycle
+        FAILED (the activation transaction failed; it is NOT READY). Never
+        close a provider the router still references. Distinct from
+        mark_failed() (which means active=None — M11.3B startup semantics)."""
+        self._replace(
+            AudioEngineState(
+                selected_engine_id=self._state.selected_engine_id,
+                active_engine_id=engine_id,
+                lifecycle=AudioEngineLifecycle.FAILED,
+                switching_to=None,
+                error_message=message,
+                fallback_from=None,
+            )
+        )

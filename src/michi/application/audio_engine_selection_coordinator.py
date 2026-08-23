@@ -32,6 +32,14 @@ class AudioEngineSwitchUnavailableError(AudioEngineSwitchError):
     """The target cannot activate (available=False / not implemented)."""
 
 
+class AudioEngineSwitchInProgressError(AudioEngineSwitchError):
+    """A switch transaction is already in progress; nested switch rejected.
+
+    AudioEngineService publishes state changes synchronously, so a
+    subscriber may attempt switch_to(C) while switch_to(B) is mid-flight.
+    Exactly ONE explicit engine switch transaction may exist at a time."""
+
+
 class AudioEngineSelectionCoordinator:
     """Explicit quiescent engine selection — the single switch transaction.
 
@@ -78,12 +86,35 @@ class AudioEngineSelectionCoordinator:
         self._router = router
         self._playback = playback
         self._settings = settings
+        # M11.3F P1-03: synchronous reentrancy guard — exactly ONE explicit
+        # switch transaction at a time (owner-thread model, boolean only).
+        self._switch_in_progress = False
 
     # ------------------------------------------------------------------
     # Public transaction
     # ------------------------------------------------------------------
 
     def switch_to(self, target: AudioEngineId) -> None:
+        """Explicit quiescent switch to ``target``. Deterministic failure.
+
+        Pre-destructive checks (registered / can_activate / quiescent) fail
+        with the OLD runtime untouched: no stop, no persistence mutation, no
+        unbind, no close, no target open. Same-engine idempotence: when
+        selected == active == target and READY, this is a no-op."""
+        # M11.3F P1-03: reentrancy guard — a subscriber of AudioEngineService
+        # state changes may attempt a nested switch while this transaction is
+        # mid-flight; reject it deterministically.
+        if self._switch_in_progress:
+            raise AudioEngineSwitchInProgressError(
+                "engine switch already in progress; nested switch rejected"
+            )
+        self._switch_in_progress = True
+        try:
+            self._switch_to_transaction(target)
+        finally:
+            self._switch_in_progress = False
+
+    def _switch_to_transaction(self, target: AudioEngineId) -> None:
         """Explicit quiescent switch to ``target``. Deterministic failure.
 
         Pre-destructive checks (registered / can_activate / quiescent) fail
@@ -117,16 +148,20 @@ class AudioEngineSelectionCoordinator:
                 "pending load, no play intent, no resume in flight)"
             )
 
-        # 4. STOP — transport truth + clean lifecycle residue.
-        self._playback.stop()
+        # 4. STOP — transport truth + clean lifecycle residue. Only when a
+        #    source runtime physically exists: with active=None (e.g. a
+        #    previous FAILED transaction left the router unbound) there is
+        #    no backend to stop — quiescence was already verified above.
+        if active is not None:
+            self._playback.stop()
 
-        # 5. REVALIDATE QUIESCENT — stop() notifies subscribers; a DIRECT /
-        #    reentrant subscriber may have requested new playback.
-        if not self._playback.is_engine_switch_quiescent():
-            raise AudioEngineSwitchNotQuiescentError(
-                "quiescence lost after stop (reentrant playback request); "
-                "switch aborted before the destructive boundary"
-            )
+            # 5. REVALIDATE QUIESCENT — stop() notifies subscribers; a
+            #    DIRECT / reentrant subscriber may have requested playback.
+            if not self._playback.is_engine_switch_quiescent():
+                raise AudioEngineSwitchNotQuiescentError(
+                    "quiescence lost after stop (reentrant playback request); "
+                    "switch aborted before the destructive boundary"
+                )
 
         # 6. PERSIST SELECTION — durable BEFORE the destructive boundary.
         #    On save failure: preference restored, old runtime untouched
@@ -141,10 +176,26 @@ class AudioEngineSelectionCoordinator:
         if active is not None:
             self._engine_service.mark_closing(active)
             # 8a. ROUTER UNBIND — failure: DO NOT close/open, first-error.
+            #     P1-02: preserve PHYSICAL truth. If the detach did NOT
+            #     happen, the source is still open/bound/validated — the slot
+            #     stays READY with active=source (SELECTED != ACTIVE is
+            #     canonical). If the detach DID happen despite the exception,
+            #     no bound source remains (mark_failed).
             try:
                 self._router.unbind()
             except Exception as original:
-                self._engine_service.mark_failed(active, str(original))
+                bound = self._router.bound_engine_id
+                if bound == active:
+                    self._engine_service.mark_switch_aborted_preserving_active(
+                        active, str(original)
+                    )
+                elif bound is None:
+                    self._engine_service.mark_failed(active, str(original))
+                else:
+                    # Unexpected physical identity: preserve observable truth
+                    # without fabricating (bound engine is what the router
+                    # actually references).
+                    self._engine_service.mark_bound_failed(bound, str(original))
                 raise
             # 8b. CLOSE ACTIVE PROVIDER — after unbind (never close a
             #     provider the router is attached to). Failure: destructive
@@ -182,15 +233,27 @@ class AudioEngineSelectionCoordinator:
             #     transport BEFORE READY.
             self._playback.restore_volume(volume, muted)
         except Exception as original:
-            # Target bound (or partially bound): release best effort. Never
-            # replace the primary error with a cleanup error.
+            # Target bound (or partially bound): release best effort. P1-04:
+            # NEVER close the target provider while the router still reports
+            # itself bound to it — that would create router → closed backend.
+            # If the cleanup detach failed, the state must reflect the
+            # PHYSICAL truth (active=target, lifecycle=FAILED, primary error).
             from contextlib import suppress
 
             with suppress(Exception):
                 self._router.unbind()
-            with suppress(Exception):
-                provider.close()
-            self._engine_service.mark_failed(target, str(original))
+            if self._router.bound_engine_id is None:
+                # Detach succeeded: safe to release target ownership.
+                with suppress(Exception):
+                    provider.close()
+                self._engine_service.mark_failed(target, str(original))
+            else:
+                # Detach failed: target remains physically bound. Do NOT
+                # close it. State reflects physical truth, primary error
+                # preserved (cleanup unbind error stays secondary).
+                self._engine_service.mark_bound_failed(
+                    self._router.bound_engine_id, str(original)
+                )
             raise
 
         # 12. READY — only after bind validation + transport restore.
