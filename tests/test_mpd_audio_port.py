@@ -46,6 +46,7 @@ class _FakeClient:
         self.error: str | None = None
         self.addid_ack: str | None = None
         self.clear_ack: str | None = None
+        self.clear_fatal: str | None = None
         self.playid_ack: str | None = None
         self.next_id = 1
 
@@ -75,7 +76,9 @@ class _FakeClient:
     def clear(self):
         self._record("clear")
         if self.clear_ack:
-            raise MpdProtocolError(self.clear_ack)
+            raise MpdProtocolError(self.clear_ack, is_ack=True)
+        if self.clear_fatal:
+            raise MpdProtocolError(self.clear_fatal, is_ack=False)
         self.songid = None
         self.state = "stop"
 
@@ -207,12 +210,20 @@ class TestLoad:
         assert port._current_path is None
         assert port._song_id is None
 
-    def test_l4_clear_failure_preserves_source(self, mpd_env):
+    def test_l4_clear_ack_preserves_source(self, mpd_env):
         port, fake = mpd_env
         fake.clear_ack = "ACK [5@0] {clear} db busy"
         with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
-        assert caught.value.previous_source_preserved is True
+        assert caught.value.previous_source_preserved is True  # ACK → True
+
+    def test_c3b_clear_unknown_outcome_fails_closed(self, mpd_env):
+        port, fake = mpd_env
+        fake.clear_fatal = "socket closed during clear"
+        with pytest.raises(AudioLoadError) as caught:
+            port.load(Path("/m/b.flac"))
+        # IPC desconocido: MPD pudo ejecutar clear → FAIL CLOSED (False)
+        assert caught.value.previous_source_preserved is False
 
     def test_l5_failure_after_clear_is_destructive(self, mpd_env):
         port, fake = mpd_env
@@ -509,3 +520,157 @@ class TestProcessExitTransportError:
         assert port._current_path is None
         assert port._song_id is None
         assert port._current_state == PlaybackStatus.STOPPED
+
+
+class TestOpenFailureAtomicity:
+    def test_c2_connect_failure_cleans_runtime(self, monkeypatch, qapp):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+
+        started = []
+        closed = []
+
+        class FailingConnectClient:
+            def __init__(self, *a, **k):
+                pass
+
+            def connect(self):
+                raise MpdProtocolError("connect refused")
+
+            def close(self):
+                pass
+
+        class TrackingRuntime(_FakeRuntime):
+            def start(self):
+                started.append(1)
+
+            def close(self):
+                closed.append(1)
+                self.closed = True
+
+        monkeypatch.setattr(mpd_mod, "_MpdProtocolClient", FailingConnectClient)
+        port = MPDAudioPort(runtime=TrackingRuntime())
+        with pytest.raises(MpdProtocolError, match="connect refused"):
+            port.open()
+        # failure-atomic: runtime cerrado exactamente una vez, sin recursos
+        assert started == [1]
+        assert closed == [1]
+        assert port._client is None
+        assert port._observer is None
+        assert port._poller is None
+        assert port._closed is True
+
+
+class TestObserverFailure:
+    def _port_with_idle_error(self, monkeypatch, qapp, runtime_alive, on_event=None):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+
+        class IdleFailingClient(_FakeClient):
+            def idle(self, *subsystems):
+                raise MpdProtocolError("idle connection broken")
+
+        monkeypatch.setattr(mpd_mod, "_MpdProtocolClient", IdleFailingClient)
+        runtime = _FakeRuntime()
+        runtime.alive = runtime_alive
+        port = MPDAudioPort(runtime=runtime, poll_interval_ms=50)
+        if on_event is not None:
+            # el observer emite DURANTE open() — suscribir ANTES
+            port._bridge.sig_event.connect(on_event)
+        port.open()
+        return port
+
+    def test_c4a_idle_eof_child_alive_transport_error(self, monkeypatch, qapp):
+        errors = []
+        port = self._port_with_idle_error(
+            monkeypatch,
+            qapp,
+            runtime_alive=True,
+            on_event=lambda e: errors.append(e.kind),
+        )
+        port._observer.join(timeout=2.0)
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        # UN evento terminal TRANSPORT_ERROR (sin loop)
+        assert errors == [_MpdEventKind.TRANSPORT_ERROR]
+        port.close()
+
+    def test_c4b_idle_eof_child_dead_process_exit(self, monkeypatch, qapp):
+        errors = []
+        port = self._port_with_idle_error(
+            monkeypatch,
+            qapp,
+            runtime_alive=False,
+            on_event=lambda e: errors.append(e.kind),
+        )
+        port._observer.join(timeout=2.0)
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert errors == [_MpdEventKind.PROCESS_EXIT]
+        port.close()
+
+    def test_c4c_single_terminal_event_no_loop(self, monkeypatch, qapp):
+        errors = []
+        port = self._port_with_idle_error(
+            monkeypatch,
+            qapp,
+            runtime_alive=True,
+            on_event=lambda e: errors.append(e.kind),
+        )
+        port._observer.join(timeout=2.0)
+        for _ in range(5):
+            QCoreApplication.processEvents()
+        assert errors.count(_MpdEventKind.TRANSPORT_ERROR) == 1
+        port.close()
+
+    def test_c4d_close_terminates_observer(self, mpd_env):
+        port, fake = mpd_env
+        observer = port._observer
+        assert observer is not None and observer.is_alive()
+        port.close()
+        assert not observer.is_alive()
+        assert port._idle_client is None
+
+
+class TestStatusError:
+    def test_c6a_error_converges_rejected_no_eom(self, mpd_env):
+        port, fake = mpd_env
+        states = []
+        rejected = []
+        eoms = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.subscribe_media_rejected(lambda p, r: rejected.append((p, r)))
+        port.subscribe_end_of_media(lambda: eoms.append(1))
+        port.load(Path("/m/a.flac"))
+        port.play()
+        fake.state = "play"
+        _refresh(port)
+        assert states[-1] == PlaybackStatus.PLAYING
+        # el daemon reporta error de playback
+        fake.state = "stop"
+        fake.error = "decoder failed"
+        _refresh(port)
+        assert states[-1] == PlaybackStatus.STOPPED
+        assert rejected == [(Path("/m/a.flac"), "decoder failed")]
+        assert eoms == []
+        assert port._current_path is None
+        assert port._song_id is None
+
+    def test_c6b_error_with_state_play_no_playing(self, mpd_env):
+        port, fake = mpd_env
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.load(Path("/m/a.flac"))
+        fake.state = "play"
+        fake.error = "output failed"
+        _refresh(port)
+        # el error gana sobre state=play: sin PLAYING falso
+        assert PlaybackStatus.PLAYING not in states
+        assert port._current_state == PlaybackStatus.STOPPED
+        assert port._current_path is None
+
+
+class TestPollInterval:
+    def test_poll_interval_honored(self, mpd_env):
+        # el fixture usa poll_interval_ms=50 → el QTimer respeta el valor
+        port, fake = mpd_env
+        assert port._poller is not None
+        assert port._poller.interval() == 50

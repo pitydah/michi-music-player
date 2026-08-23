@@ -213,9 +213,27 @@ class TestConfigRender:
         runtime_dir = tmp_path / "rt"
         conf = _render_mpd_conf(runtime_dir, runtime_dir / "music")
         assert f"bind_to_address {runtime_dir / 'mpd.sock'}" in conf
-        assert "audio_output" in conf
-        assert "null" in conf  # salida null para runtime de prueba
         assert "music_directory" in conf
+
+    def test_c1a_production_config_has_no_null_output(self, tmp_path):
+        runtime_dir = tmp_path / "rt"
+        conf = _render_mpd_conf(runtime_dir, runtime_dir / "music")
+        assert "null" not in conf  # producción: MPD elige su salida
+
+    def test_c1b_test_config_supports_null_output(self, tmp_path):
+        runtime_dir = tmp_path / "rt"
+        conf = _render_mpd_conf(runtime_dir, runtime_dir / "music", null_output=True)
+        assert "null" in conf
+        assert "audio_output" in conf
+
+    def test_c1c_production_runtime_default_no_null(self, fake_runtime, tmp_path):
+
+        # el runtime productivo usa el default null_output=False
+        runtime = _ManagedMpdRuntime()
+        runtime._start_inner()
+        conf = (runtime.runtime_dir / "mpd.conf").read_text(encoding="utf-8")
+        assert "null" not in conf
+        runtime.close()
 
     def test_runtime_parent_prefers_xdg(self, tmp_path, monkeypatch):
         monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))

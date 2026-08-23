@@ -294,3 +294,59 @@ class TestThreadAffinity:
         port.subscribe_media_accepted(on_acc)
         port.load(Path("/m/a.flac"))
         assert callback_threads == [owner_thread]
+
+
+class TestBackendLossConvergence:
+    """C5 (M11.3D-R1): la pérdida del backend (crash/transporte) debe
+    converger PlaybackService — accepted/intent False, sin EOM."""
+
+    def test_c5_process_exit_converges_playback(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        assert svc._accepted is True
+        assert svc.state.status == PlaybackStatus.PLAYING
+        # el hijo muere
+        port._bridge.sig_event.emit(
+            _MpdEvent(port._runtime_generation, _MpdEventKind.PROCESS_EXIT, "died")
+        )
+        _drain()
+        # PlaybackService convergido: identidad lógica A, sin autoridad
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert "died" in (svc.state.error_message or "")  # reason del evento
+        # MPDAudioPort sin autoridad backend
+        assert port._current_path is None
+        assert port._song_id is None
+        assert port._pending_path is None
+
+    def test_c5_no_eom_on_process_exit(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        eoms = []
+        svc.subscribe_end_of_media(lambda: eoms.append(1))
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        port._bridge.sig_event.emit(
+            _MpdEvent(port._runtime_generation, _MpdEventKind.PROCESS_EXIT, "died")
+        )
+        _drain()
+        assert eoms == []  # crash nunca emite EOM
+
+    def test_c5_transport_error_converges_playback(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        port._bridge.sig_event.emit(
+            _MpdEvent(port._runtime_generation, _MpdEventKind.TRANSPORT_ERROR, "broken")
+        )
+        _drain()
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert "broken" in (svc.state.error_message or "")  # reason del evento
+        assert port._current_path is None
