@@ -1,12 +1,32 @@
-"""READ-ONLY external identity-hint extraction (M6.9D).
+"""READ-ONLY external identity-hint extraction (M6.9D + BACKEND-R1.1).
 
 A SEPARATE enrichment-specific extractor — the canonical
 ``InfrastructureMetadataExtractor`` is untouched and must never read
 MusicBrainz tags. Hints are LOCAL EVIDENCE (context 2), never canonical
 metadata, and tag bytes are NEVER written.
 
-Unreadable/corrupt tag blocks yield EMPTY hints (never an error for the
-library scan — most libraries contain no MBIDs).
+R1.1 REAL-MUTAGEN FAMILY SUPPORT (verified against mutagen 1.47):
+
+- Vorbis family (FLAC / Ogg / Opus):
+    keys MUSICBRAINZ_ARTISTID, MUSICBRAINZ_ALBUMARTISTID,
+    MUSICBRAINZ_RELEASEGROUPID, MUSICBRAINZ_ALBUMID,
+    MUSICBRAINZ_RECORDINGID, MUSICBRAINZ_TRACKID,
+    MUSICBRAINZ_RELEASETRACKID (str values).
+- ID3 (MP3 / WAV):
+    TXXX frames keyed ``TXXX:<desc>`` with case-insensitive
+    "MusicBrainz ..." descriptions (str values); the RECORDING id rides
+    a UFID frame with owner "http://musicbrainz.org" (bytes data) — the
+    real Picard representation.
+- MP4/M4A:
+    freeform atoms ``----:com.apple.iTunes:MusicBrainz ...`` whose
+    values are bytes (MP4FreeForm is a bytes subclass).
+- ASF/WMA:
+    ``MusicBrainz/...`` keys with str values.
+- Anything unreadable or with unrecognized representations yields
+  EMPTY hints — never an error for the library scan.
+
+Every role keeps ALL distinct observations (strip, drop blanks, dedupe
+identical) — never first-wins; conflicts belong to the domain gates.
 """
 
 import logging
@@ -19,32 +39,84 @@ from michi.domain.enrichment import ExternalIdentityHints, dedupe_identity_ids
 
 logger = logging.getLogger(__name__)
 
-# tag key (casefolded) -> ExternalIdentityHints semantic role
-_ARTIST_ROLE_KEYS = {"musicbrainz_artistid": "artist_ids"}
-_ALBUM_ARTIST_ROLE_KEYS = {"musicbrainz_albumartistid": "album_artist_ids"}
-_ALBUM_ROLE_KEYS = {
-    "musicbrainz_releasegroupid": "release_group_ids",
-    "musicbrainz_albumid": "release_ids",
-}
-_OTHER_ROLE_KEYS = {
-    "musicbrainz_recordingid": "recording_ids",
-    "musicbrainz_releasetrackid": "release_track_ids",
+# role -> set of recognized key spellings (casefolded)
+_ROLE_KEYS: dict[str, set[str]] = {
+    "artist_ids": {
+        "musicbrainz_artistid",
+        "musicbrainz/artist id",
+        "musicbrainz artist id",
+    },
+    "album_artist_ids": {
+        "musicbrainz_albumartistid",
+        "musicbrainz/album artist id",
+        "musicbrainz album artist id",
+    },
+    "release_group_ids": {
+        "musicbrainz_releasegroupid",
+        "musicbrainz/release group id",
+        "musicbrainz release group id",
+    },
+    "release_ids": {
+        "musicbrainz_albumid",
+        "musicbrainz/album id",
+        "musicbrainz album id",
+    },
+    "recording_ids": {
+        "musicbrainz_recordingid",
+        "musicbrainz/track id",
+        "musicbrainz track id",
+    },
+    "release_track_ids": {
+        "musicbrainz_releasetrackid",
+        "musicbrainz/release track id",
+        "musicbrainz release track id",
+    },
 }
 
-_ALL_ROLES = {
-    **_ARTIST_ROLE_KEYS,
-    **_ALBUM_ARTIST_ROLE_KEYS,
-    **_ALBUM_ROLE_KEYS,
-    **_OTHER_ROLE_KEYS,
+_ROLE_BY_KEY: dict[str, str] = {
+    spelling: role for role, spellings in _ROLE_KEYS.items() for spelling in spellings
 }
+
+_MB_UFID_OWNER = "http://musicbrainz.org"
+
+
+def _role_for_key(key: str) -> str | None:
+    """Family-agnostic role mapping: bare spellings (Vorbis/ASF) plus
+    the MP4 freeform prefix stripped (----:com.apple.itunes:...)."""
+    normalized = key.casefold().strip()
+    role = _ROLE_BY_KEY.get(normalized)
+    if role is not None:
+        return role
+    for prefix in ("----:com.apple.itunes:", "----:com.apple.iTunes:"):
+        if normalized.startswith(prefix.casefold()):
+            return _ROLE_BY_KEY.get(normalized[len(prefix.casefold()) :])
+    return None
 
 
 def _as_strings(value) -> list[str]:
-    """Accept str / list[str] observations only; never coerce numbers."""
+    """Accept str / list[str] / bytes / list[bytes] observations.
+
+    bytes values (MP4FreeForm, UFID data) decode UTF-8 losslessly; a
+    failed decode is skipped — never coerced, never fabricated.
+    """
+    if isinstance(value, bytes):
+        try:
+            return [value.decode("utf-8")]
+        except UnicodeDecodeError:
+            return []
     if isinstance(value, str):
         return [value]
     if isinstance(value, list):
-        return [str(item) for item in value if isinstance(item, str)]
+        result: list[str] = []
+        for item in value:
+            if isinstance(item, bytes):
+                try:
+                    result.append(item.decode("utf-8"))
+                except UnicodeDecodeError:
+                    continue
+            elif isinstance(item, str):
+                result.append(item)
+        return result
     return []
 
 
@@ -59,26 +131,54 @@ class MutagenIdentityHintExtractor(IdentityHintExtractorPort):
             return ExternalIdentityHints()
         if audio is None or audio.tags is None:
             return ExternalIdentityHints()
+        return self.extract_hints_from_tags(audio.tags)
 
+    def extract_hints_from_tags(self, tags) -> ExternalIdentityHints:
+        """R1.1 seam over REAL mutagen tag objects (all families).
+
+        Iterates ``tags.items()`` exactly like the file path does and
+        applies the family-agnostic role mapping + full same-role
+        observation preservation."""
         observed: dict[str, list[str]] = {}
-        for key, value in audio.tags.items():
-            role = _ALL_ROLES.get(str(key).casefold())
-            if role is None:
+        for raw_key, value in tags.items():
+            key = str(raw_key)
+            role = _role_for_key(key)
+            if role is not None:
+                observed.setdefault(role, []).extend(_as_strings(value))
                 continue
-            # R1: read EVERY valid observation of the same role; strip;
-            # drop blanks; identical ids dedupe; DISTINCT ids are
-            # preserved (conflict semantics belong to the domain gates —
-            # never first-wins here).
-            observed.setdefault(role, []).extend(_as_strings(value))
-
-        def role_ids(role: str) -> tuple[str, ...]:
-            return dedupe_identity_ids(observed.get(role, []))
-
+            # ID3 TXXX frames: key "TXXX:<desc>" — desc drives the role.
+            if key.casefold().startswith("txxx:"):
+                role = _role_for_key(key[5:])
+                if role is not None:
+                    desc_attr = getattr(value, "text", None)
+                    observed.setdefault(role, []).extend(_as_strings(desc_attr))
+                continue
+            # ID3 UFID frames: recording id via the MusicBrainz owner.
+            if key.casefold().startswith("ufid:"):
+                owner = key[5:].strip()
+                if owner.casefold() == _MB_UFID_OWNER:
+                    observed.setdefault("recording_ids", []).extend(
+                        _as_strings(getattr(value, "data", None))
+                    )
+                continue
+            # Fallback: any other key whose casefolded form matches a
+            # known role spelling (Vorbis/ASF variants already covered,
+            # defensive for unknown tag families).
         return ExternalIdentityHints(
-            musicbrainz_artist_ids=role_ids("artist_ids"),
-            musicbrainz_album_artist_ids=role_ids("album_artist_ids"),
-            musicbrainz_release_group_ids=role_ids("release_group_ids"),
-            musicbrainz_release_ids=role_ids("release_ids"),
-            musicbrainz_recording_ids=role_ids("recording_ids"),
-            musicbrainz_release_track_ids=role_ids("release_track_ids"),
+            musicbrainz_artist_ids=dedupe_identity_ids(observed.get("artist_ids", [])),
+            musicbrainz_album_artist_ids=dedupe_identity_ids(
+                observed.get("album_artist_ids", [])
+            ),
+            musicbrainz_release_group_ids=dedupe_identity_ids(
+                observed.get("release_group_ids", [])
+            ),
+            musicbrainz_release_ids=dedupe_identity_ids(
+                observed.get("release_ids", [])
+            ),
+            musicbrainz_recording_ids=dedupe_identity_ids(
+                observed.get("recording_ids", [])
+            ),
+            musicbrainz_release_track_ids=dedupe_identity_ids(
+                observed.get("release_track_ids", [])
+            ),
         )

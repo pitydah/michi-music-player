@@ -132,7 +132,12 @@ class FakeMbKnowledge(MusicBrainzKnowledgeProviderPort):
     def fetch_artist(self, local_artist_key, external_artist_id):
         self.artist_calls += 1
         if self._offline:
-            raise EnrichmentProviderError("network unavailable")
+            # R1.1: offline is a TRANSPORT failure — classified OFFLINE.
+            from michi.application.enrichment_ports import (
+                EnrichmentTransportError,
+            )
+
+            raise EnrichmentTransportError("network unavailable")
         return ArtistKnowledgeProfile(
             local_artist_key=local_artist_key,
             external_artist_id=external_artist_id,
