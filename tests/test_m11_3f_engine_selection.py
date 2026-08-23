@@ -15,6 +15,7 @@ from michi.application.audio_engine_registry import (
 from michi.application.audio_engine_selection_coordinator import (
     AudioEngineSelectionCoordinator,
     AudioEngineSwitchError,
+    AudioEngineSwitchInProgressError,
     AudioEngineSwitchNotQuiescentError,
     AudioEngineSwitchUnavailableError,
 )
@@ -276,13 +277,33 @@ class FakeSettingsRepository(SettingsRepository):
 
 
 class FakeRouter(AudioTransportRouter):
-    """Router with injectable unbind failure."""
+    """Router with injectable unbind failure.
 
-    def __init__(self, *, unbind_error: Exception | None = None):
+    ``unbind_error``: every unbind raises (pre-detach). ``unbind_script``:
+    per-call list of exceptions — each unbind consumes the next entry (None
+    = succeed); a script entry raises BEFORE detaching.
+    """
+
+    def __init__(
+        self,
+        *,
+        unbind_error: Exception | None = None,
+        unbind_script: list[Exception | None] | None = None,
+    ):
         super().__init__()
         self._unbind_error = unbind_error
+        self._unbind_script = list(unbind_script) if unbind_script else None
+        self.unbind_calls = 0
 
     def unbind(self) -> None:
+        self.unbind_calls += 1
+        if self._unbind_script is not None:
+            if self.unbind_calls <= len(self._unbind_script):
+                failure = self._unbind_script[self.unbind_calls - 1]
+                if failure is not None:
+                    raise failure
+            super().unbind()
+            return
         if self._unbind_error is not None:
             raise self._unbind_error
         super().unbind()
@@ -296,13 +317,14 @@ class EngineHarness:
         self,
         *providers: FakeProvider,
         unbind_error: Exception | None = None,
+        unbind_script: list[Exception | None] | None = None,
         settings_initial: SettingsState | None = None,
         start_active: AudioEngineId = AudioEngineId.QT_MULTIMEDIA,
     ):
         self.providers = {p.engine_id: p for p in providers}
         self.registry = AudioEngineRegistry(list(providers))
         self.service = AudioEngineService(self.registry)
-        self.router = FakeRouter(unbind_error=unbind_error)
+        self.router = FakeRouter(unbind_error=unbind_error, unbind_script=unbind_script)
         self.playback = PlaybackService(self.router)
         self.settings_repo = FakeSettingsRepository(initial=settings_initial)
         self.settings = SettingsService(self.settings_repo)
@@ -351,6 +373,7 @@ def make_harness(
     *ids: AudioEngineId,
     available: dict[AudioEngineId, bool] | None = None,
     unbind_error: Exception | None = None,
+    unbind_script: list[Exception | None] | None = None,
     start_active: AudioEngineId = AudioEngineId.QT_MULTIMEDIA,
     open_errors: dict[AudioEngineId, Exception] | None = None,
     close_errors: dict[AudioEngineId, Exception] | None = None,
@@ -369,7 +392,10 @@ def make_harness(
         for eid in ids
     ]
     return EngineHarness(
-        *providers, unbind_error=unbind_error, start_active=start_active
+        *providers,
+        unbind_error=unbind_error,
+        unbind_script=unbind_script,
+        start_active=start_active,
     )
 
 
@@ -893,6 +919,11 @@ class TestF8FailureAtomicity:
         assert h.playback._accepted is False
 
     def test_f30_router_unbind_failure_does_not_close_source(self):
+        """P1-02: pre-detach unbind failure preserves SOURCE active truth.
+
+        The source runtime is still open/bound/validated — the slot stays
+        READY with active=source (SELECTED != ACTIVE canonical); the router
+        physical truth == state active truth."""
         h = make_harness(
             AudioEngineId.QT_MULTIMEDIA,
             AudioEngineId.GSTREAMER,
@@ -901,10 +932,21 @@ class TestF8FailureAtomicity:
         qt = h.providers[AudioEngineId.QT_MULTIMEDIA]
         with pytest.raises(RuntimeError, match="unbind failed"):
             h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        # source untouched: still bound + open, target never opened
+        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
         assert qt.close_count == 0
         assert h.providers[AudioEngineId.GSTREAMER].open_count == 0
         st = h.service.state
-        assert st.lifecycle == AudioEngineLifecycle.FAILED
+        # SELECTED = target (durably persisted user intent), ACTIVE = source
+        assert st.selected_engine_id == AudioEngineId.GSTREAMER
+        assert st.active_engine_id == AudioEngineId.QT_MULTIMEDIA
+        assert st.lifecycle == AudioEngineLifecycle.READY
+        assert st.switching_to is None
+        assert "unbind failed" in st.error_message
+        # persisted preference = target
+        assert h.settings.state.audio_engine_id == AudioEngineId.GSTREAMER
+        # router physical truth == state active truth (mandatory F seal)
+        assert h.router.bound_engine_id == st.active_engine_id
 
     def test_f33_target_bind_failure_cleanup_no_fallback(self):
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
@@ -1177,3 +1219,211 @@ class TestF42AdapterContract:
             data = Path(rel).read_bytes()
             actual = hashlib.sha256(data).hexdigest()[:16]
             assert actual == expected, f"adapter changed vs baseline: {rel}"
+
+
+# ---------------------------------------------------------------------------
+# F11 — FINAL LIFECYCLE SEAL (P1-01 shutdown, P1-02 truth, P1-03 reentrancy,
+#       P1-04 bound-target cleanup)
+# ---------------------------------------------------------------------------
+
+
+class TestF11LifecycleSeal:
+    def _shutdown(self, h):
+        from michi import bootstrap
+
+        return bootstrap._shutdown_audio_runtime(h.router, h.service, h.registry)
+
+    def test_f43_shutdown_active_qt(self):
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER, AudioEngineId.MPD
+        )
+        self._shutdown(h)
+        assert h.providers[AudioEngineId.QT_MULTIMEDIA].close_count == 1
+        assert h.providers[AudioEngineId.GSTREAMER].close_count == 0
+        assert h.providers[AudioEngineId.MPD].close_count == 0
+        assert h.router.bound_engine_id is None
+
+    def test_f44_shutdown_after_switch_to_gstreamer(self):
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER, AudioEngineId.MPD
+        )
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+        assert h.service.state.active_engine_id == AudioEngineId.GSTREAMER
+        self._shutdown(h)
+        # the ACTUAL active provider is closed — never hard-coded Qt
+        assert h.providers[AudioEngineId.GSTREAMER].close_count == 1
+        assert h.providers[AudioEngineId.QT_MULTIMEDIA].close_count == 1
+        assert h.providers[AudioEngineId.MPD].close_count == 0
+
+    def test_f45_shutdown_after_switch_to_mpd(self):
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER, AudioEngineId.MPD
+        )
+        h.coordinator.switch_to(AudioEngineId.MPD)
+        assert h.router.bound_engine_id == AudioEngineId.MPD
+        assert h.service.state.active_engine_id == AudioEngineId.MPD
+        self._shutdown(h)
+        # managed/private MPD ownership: the MPD provider is the shutdown owner
+        assert h.providers[AudioEngineId.MPD].close_count == 1
+        assert h.providers[AudioEngineId.QT_MULTIMEDIA].close_count == 1
+
+    def test_f46_shutdown_unbind_failure_does_not_close_still_bound(self):
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.GSTREAMER,
+            AudioEngineId.MPD,
+            unbind_error=RuntimeError("shutdown unbind failed"),
+        )
+        qt = h.providers[AudioEngineId.QT_MULTIMEDIA]
+        with pytest.raises(RuntimeError, match="shutdown unbind failed"):
+            self._shutdown(h)
+        # never close a provider the router still references
+        assert qt.close_count == 0
+        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        # no alternate provider opened
+        assert h.providers[AudioEngineId.GSTREAMER].open_count == 0
+        assert h.providers[AudioEngineId.MPD].open_count == 0
+
+    def test_f47_nested_switch_rejected(self):
+        """P1-03: a synchronous subscriber attempting a nested switch during
+        the outer transaction is rejected with AudioEngineSwitchInProgressError."""
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER, AudioEngineId.MPD
+        )
+        nested_error = []
+        seen_states = []
+
+        def subscriber():
+            st = h.service.state
+            seen_states.append((st.selected_engine_id, st.active_engine_id))
+            # after the outer mark_selected(GSTREAMER): try nested switch to MPD
+            if (
+                st.selected_engine_id == AudioEngineId.GSTREAMER
+                and st.switching_to == AudioEngineId.GSTREAMER
+                and not nested_error
+            ):
+                try:
+                    h.coordinator.switch_to(AudioEngineId.MPD)
+                except AudioEngineSwitchInProgressError as exc:
+                    nested_error.append(exc)
+                except Exception as exc:  # pragma: no cover - guard failure
+                    nested_error.append(exc)
+
+        h.service.subscribe_changed(subscriber)
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        # nested switch rejected deterministically
+        assert len(nested_error) == 1
+        assert isinstance(nested_error[0], AudioEngineSwitchInProgressError)
+        # MPD never probed/opened/persisted by the nested attempt
+        mpd = h.providers[AudioEngineId.MPD]
+        assert mpd.open_count == 0
+        assert mpd.probe_count == 0  # nested switch rejected before probing
+        assert h.settings.state.audio_engine_id == AudioEngineId.GSTREAMER
+        # outer switch completed normally
+        st = h.service.state
+        assert st.selected_engine_id == AudioEngineId.GSTREAMER
+        assert st.active_engine_id == AudioEngineId.GSTREAMER
+        assert st.lifecycle == AudioEngineLifecycle.READY
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+        # guard reset (finally) — a subsequent switch is accepted
+        h.coordinator.switch_to(AudioEngineId.MPD)
+        assert h.service.state.active_engine_id == AudioEngineId.MPD
+
+    def test_f48_guard_resets_after_failure(self):
+        """P1-03: after a failed switch the guard must reset — a second
+        explicit switch is accepted (no permanently wedged coordinator)."""
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.GSTREAMER,
+            open_errors={AudioEngineId.GSTREAMER: RuntimeError("gst init failed")},
+        )
+        with pytest.raises(RuntimeError, match="gst init failed"):
+            h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        assert h.coordinator._switch_in_progress is False
+        # second transaction accepted
+        h.providers[AudioEngineId.GSTREAMER]._open_error = None
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        st = h.service.state
+        assert st.active_engine_id == AudioEngineId.GSTREAMER
+        assert st.lifecycle == AudioEngineLifecycle.READY
+
+    def test_f49_target_cleanup_unbind_failure_preserves_bound_target(self):
+        """P1-04: target activation fails late (volume restore) AND the
+        cleanup unbind also fails — the target stays PHYSICALLY bound, is
+        NOT closed, state reflects active=target FAILED, primary error wins."""
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.GSTREAMER,
+            unbind_script=[None, RuntimeError("cleanup unbind failed")],
+        )
+        gst = h.providers[AudioEngineId.GSTREAMER]
+        qt = h.providers[AudioEngineId.QT_MULTIMEDIA]
+        gst.fail_next_volume()
+
+        class VolumeFailPort(FakePort):
+            def set_volume(self, value):
+                raise RuntimeError("volume restore failed")
+
+        gst.port = None
+
+        def failing_open():
+            gst.events.append("open")
+            gst.open_count += 1
+            FakeProvider._open_count += 1
+            gst.port = VolumeFailPort(gst.engine_id, gst)
+            return gst.port
+
+        gst.open = failing_open  # type: ignore[method-assign]
+        with pytest.raises(RuntimeError, match="volume restore failed"):
+            h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        # first unbind (source detach) succeeded: Qt closed; target opened
+        assert qt.close_count == 1
+        assert gst.open_count == 1
+        # cleanup unbind FAILED: target remains physically bound, NOT closed
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+        assert gst.close_count == 0
+        st = h.service.state
+        assert st.selected_engine_id == AudioEngineId.GSTREAMER
+        assert st.active_engine_id == AudioEngineId.GSTREAMER
+        assert st.lifecycle == AudioEngineLifecycle.FAILED
+        assert st.switching_to is None
+        assert "volume restore failed" in st.error_message
+        # router physical truth == state active truth
+        assert h.router.bound_engine_id == st.active_engine_id
+
+    def test_f50_shutdown_owns_failed_but_bound_target(self):
+        """Shutdown ownership resolves the ACTUAL active provider even when
+        lifecycle == FAILED (activation failed late, cleanup detach failed,
+        target still physically bound) — never hard-coded Qt."""
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.GSTREAMER,
+            unbind_script=[None, RuntimeError("cleanup unbind failed")],
+        )
+        gst = h.providers[AudioEngineId.GSTREAMER]
+        gst.fail_next_volume()
+
+        class VolumeFailPort(FakePort):
+            def set_volume(self, value):
+                raise RuntimeError("volume restore failed")
+
+        gst.port = None
+
+        def failing_open():
+            gst.events.append("open")
+            gst.open_count += 1
+            FakeProvider._open_count += 1
+            gst.port = VolumeFailPort(gst.engine_id, gst)
+            return gst.port
+
+        gst.open = failing_open  # type: ignore[method-assign]
+        with pytest.raises(RuntimeError, match="volume restore failed"):
+            h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        # pre-shutdown truth: FAILED but physically bound to GStreamer
+        assert h.service.state.lifecycle == AudioEngineLifecycle.FAILED
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+        # the shutdown unbind now SUCCEEDS (script consumed) → GST released
+        self._shutdown(h)
+        assert h.router.bound_engine_id is None
+        assert gst.close_count == 1
