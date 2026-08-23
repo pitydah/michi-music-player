@@ -120,8 +120,18 @@ class EnrichmentService:
         self, entity_kind: EnrichmentEntityKind, local_entity_key: str
     ) -> int:
         """R1.3: THE Service is the SOLE generation authority. Allocates
-        the next monotonic generation and registers it as CURRENT."""
+        the next monotonic generation and registers it as CURRENT.
+
+        R1.3.2 P1-02: under the SAME authority lock the previous pending
+        request of this entity (if any) is invalidated FIRST — a new
+        begin immediately supersedes the old request, so no zombie
+        request can outlive the operation that produced it. Atomic:
+        invalidation + monotonic bump + current registration are one
+        authority decision. The invalidation can never touch a NEWER
+        request: this begin holds the highest generation by
+        construction."""
         with self._authority_lock:
+            self._ledger.invalidate(entity_kind, local_entity_key)
             return self._bump_generation_locked(entity_kind, local_entity_key)
 
     def retire_operation(
