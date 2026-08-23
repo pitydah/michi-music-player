@@ -1205,9 +1205,14 @@ class TestF42AdapterContract:
     # Content hashes of the FROZEN adapter files at the M11.3F baseline
     # (be663c6299ef54ec911d0e8dd0e1ec05edd55bda). Content-anchored (no git
     # history needed) so the gate also runs in shallow CI checkouts.
+    # M11.3G AUTHORIZED EXCEPTION: mpd.py gained the minimal fatal-runtime
+    # notification seam (runtime_failure_callback — PROCESS_EXIT / fatal
+    # TRANSPORT_ERROR publication only; transport semantics unchanged), so
+    # its hash moved to the M11.3G value. The other five files remain frozen
+    # at the baseline hashes.
     _BASELINE_HASHES = {
         "src/michi/infrastructure/audio_engines/gstreamer.py": "1ee9e1d5fc493797",
-        "src/michi/infrastructure/audio_engines/mpd.py": "e542d2cbcb5e2e4d",
+        "src/michi/infrastructure/audio_engines/mpd.py": "b692a32994d77c58",
         "src/michi/infrastructure/qt_backend.py": "88614638da12acd8",
         "src/michi/application/ports.py": "aa76e1d8089c2c4e",
         "src/michi/application/queue_service.py": "00a0f39531fc6b1d",

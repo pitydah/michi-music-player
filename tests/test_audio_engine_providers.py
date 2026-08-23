@@ -206,6 +206,9 @@ class TestMpdProvider:
             socket_path = "/tmp/x.sock"
 
         class FakePort:
+            def __init__(self, runtime_failure_callback=None):
+                self.runtime_failure_callback = runtime_failure_callback
+
             def open(self):
                 pass
 
@@ -224,6 +227,9 @@ class TestMpdProvider:
         import michi.infrastructure.audio_engines.mpd as mpd_mod
 
         class FakePort:
+            def __init__(self, runtime_failure_callback=None):
+                self.runtime_failure_callback = runtime_failure_callback
+
             def open(self):
                 pass
 
@@ -241,6 +247,9 @@ class TestMpdProvider:
         import michi.infrastructure.audio_engines.mpd as mpd_mod
 
         class FakePort:
+            def __init__(self, runtime_failure_callback=None):
+                self.runtime_failure_callback = runtime_failure_callback
+
             def open(self):
                 pass
 
@@ -258,6 +267,9 @@ class TestMpdProvider:
         import michi.infrastructure.audio_engines.mpd as mpd_mod
 
         class FailingPort:
+            def __init__(self, runtime_failure_callback=None):
+                self.runtime_failure_callback = runtime_failure_callback
+
             def open(self):
                 raise RuntimeError("startup failed")
 

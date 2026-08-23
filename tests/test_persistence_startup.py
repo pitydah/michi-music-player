@@ -895,6 +895,35 @@ class FakeQGuiApplication:
     def setOrganizationName(self, _name):  # noqa: N802 — Qt API name
         pass
 
+    def quit(self):
+        pass
+
+
+class FakeQmlEngine:
+    """Minimal QQmlApplicationEngine fake — the QML surface is not the
+    subject of the startup-order tests."""
+
+    class _Signal:
+        def connect(self, _cb):
+            pass
+
+    class _Context:
+        def setContextProperty(self, *_args, **_kwargs):  # noqa: N802
+            pass
+
+    def __init__(self):
+        self.quit = self._Signal()
+        self._context = self._Context()
+
+    def rootContext(self):  # noqa: N802 — Qt API name
+        return self._context
+
+    def load(self, *_args):
+        pass
+
+    def rootObjects(self):  # noqa: N802 — Qt API name
+        return []
+
 
 class TestBootstrapStartup:
     def test_initialize_uses_open_for_startup_before_backend(
@@ -903,6 +932,7 @@ class TestBootstrapStartup:
         events = []
         monkeypatch.setattr(bootstrap, "_data_dir", lambda: tmp_path)
         monkeypatch.setattr(bootstrap, "QGuiApplication", FakeQGuiApplication)
+        monkeypatch.setattr(bootstrap, "QQmlApplicationEngine", FakeQmlEngine)
 
         def fake_open(db_path):
             events.append("open_for_startup")
@@ -911,13 +941,12 @@ class TestBootstrapStartup:
 
         monkeypatch.setattr(SQLiteSettingsRepository, "open_for_startup", fake_open)
 
-        class BackendBoomError(RuntimeError):
-            pass
-
-        # M11.3B: the Qt backend is created through QtEngineProvider.open()
-        # inside the productive wiring — intercept the provider instead of
-        # the backend class.
-        class BoomProvider:
+        # M11.3G: the engine activation goes through the SELECTED-FIRST
+        # convergence — the backend is created through
+        # QtEngineProvider.open() inside _build_services. Intercept the
+        # provider to record the ORDER: persistence preflight MUST precede
+        # the audio backend construction.
+        class RecordingProvider:
             engine_id = AudioEngineId.QT_MULTIMEDIA
 
             def __init__(self):
@@ -935,17 +964,29 @@ class TestBootstrapStartup:
 
             def open(self):
                 events.append("backend")
-                raise BackendBoomError("stop here")
+                from tests.test_m11_3f_engine_selection import (
+                    FakePort,
+                    FakeProvider,
+                )
+
+                owner = FakeProvider(self.engine_id)
+                port = FakePort(self.engine_id, owner)
+                return port
 
             def close(self):
                 pass
 
-        monkeypatch.setattr(bootstrap, "QtEngineProvider", BoomProvider)
+        monkeypatch.setattr(bootstrap, "QtEngineProvider", RecordingProvider)
 
         container = ApplicationContainer()
-        with pytest.raises(BackendBoomError):
-            container.initialize()
-        assert events == ["open_for_startup", "backend"]
+        container.initialize()
+        # persistence preflight happened BEFORE the audio backend was built
+        assert events.index("open_for_startup") < events.index("backend")
+        # the graph converged to a READY Qt engine (selected-first default)
+        assert (
+            container._audio_engine_service.state.active_engine_id
+            == AudioEngineId.QT_MULTIMEDIA
+        )
 
     def test_backend_not_constructed_when_preflight_fails(self, tmp_path, monkeypatch):
         monkeypatch.setattr(bootstrap, "_data_dir", lambda: tmp_path)

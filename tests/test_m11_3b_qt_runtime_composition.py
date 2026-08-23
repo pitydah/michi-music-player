@@ -482,6 +482,12 @@ class TestShutdownIntegrity:
 
 class TestStartupFailure:
     def test_open_failure_marks_failed(self, tmp_path, monkeypatch):
+        """M11.3G selected-first startup: an activation failure does NOT
+        crash the graph — the state converges honestly to FAILED (active
+        None, router unbound) and the rest of Michi can keep existing
+        without playback. (Pre-G the forced-Qt startup re-raised; G §15
+        requires honest degradation instead. The original-error raise is
+        still exercised by the injected-backend test seam path.)"""
         from michi import bootstrap
 
         class BoomProvider:
@@ -505,9 +511,14 @@ class TestStartupFailure:
 
         monkeypatch.setattr(bootstrap, "QtEngineProvider", BoomProvider)
         from michi.bootstrap import _build_services
+        from michi.domain.audio_engine import AudioEngineLifecycle
 
-        with pytest.raises(RuntimeError, match="qt init failed"):
-            _build_services(tmp_path / "michi.db")
+        graph = _build_services(tmp_path / "michi.db")
+        state = graph.audio_engine_service.state
+        assert state.lifecycle == AudioEngineLifecycle.FAILED
+        assert state.active_engine_id is None
+        assert "qt init failed" in state.error_message
+        assert graph.audio_router.bound_engine_id is None
 
     def test_unavailable_probe_blocks_activation(self):
         """probe unavailable → can_activate False → never READY."""
