@@ -217,6 +217,10 @@ Item {
             onTriggered: root.shuffleRequested()
         }
         MenuItem {
+            text: qsTr("Add tracks…")
+            onTriggered: root.addMusicRequested()
+        }
+        MenuItem {
             text: qsTr("Change Cover…")
             onTriggered: coverDialog.open()
         }

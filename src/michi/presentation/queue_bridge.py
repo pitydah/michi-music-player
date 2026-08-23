@@ -98,6 +98,13 @@ class QueueBridge(QObject):
     def remove_track(self, index: int) -> None:
         self._service.remove(index)
 
+    @Slot(int, str)
+    def insert_at(self, index: int, file_path: str) -> None:
+        """Restore a track at a position (undo for remove-from-queue)."""
+        from pathlib import Path
+
+        self._service.insert_at(index, Path(file_path))
+
     @Slot()
     def next_track(self) -> None:
         self._service.next()

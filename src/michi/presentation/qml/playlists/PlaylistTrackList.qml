@@ -65,6 +65,48 @@ Item {
                 root.playTrackRequested(currentIndex)
         }
 
+        // Reorder by drag & drop: drop line + move to the target row
+        DropArea {
+            anchors.fill: parent
+            keys: ["application/x-michi-playlist-index"]
+
+            onPositionChanged: drag => {
+                var to = trackList.indexAt(drag.x, drag.y)
+                var item = to >= 0 ? trackList.itemAtIndex(to) : null
+                if (!item) {
+                    insertLine.visible = false
+                    return
+                }
+                insertLine.visible = true
+                insertLine.y = drag.y > item.y + item.height / 2
+                    ? item.y + item.height : item.y
+            }
+            onExited: insertLine.visible = false
+            onDropped: drag => {
+                insertLine.visible = false
+                var from = parseInt(
+                    drag.mimeData["application/x-michi-playlist-index"])
+                var to = trackList.indexAt(drag.x, drag.y)
+                if (from >= 0 && to >= 0 && from !== to)
+                    root.moveTrackRequested(from, to)
+                drag.accept(Qt.MoveAction)
+            }
+        }
+
+        // Insertion indicator for the drag reorder
+        Rectangle {
+            id: insertLine
+            visible: false
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: MichiSpacing.md
+            anchors.rightMargin: MichiSpacing.md
+            height: 2
+            radius: 1
+            color: MichiPalette.auroraCyan
+            z: 10
+        }
+
         delegate: ItemDelegate {
             id: trackItem
             required property int index
@@ -89,10 +131,31 @@ Item {
                 anchors.rightMargin: MichiSpacing.sm
                 spacing: MichiSpacing.md
 
-                // Track number / playing indicator (36-40px)
+                // Track number / playing indicator (36-40px) — doubles as
+                // the drag handle for reordering (M7)
                 Item {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 40
+
+                    Drag.active: dragHandler.active
+                    Drag.source: trackItem
+                    Drag.supportedActions: Qt.MoveAction
+                    Drag.mimeData: { "application/x-michi-playlist-index": index }
+                    Drag.hotSpot.x: width / 2
+                    Drag.hotSpot.y: height / 2
+
+                    DragHandler {
+                        id: dragHandler
+                        acceptedButtons: Qt.LeftButton
+                        cursorShape: Qt.OpenHandCursor
+                        onActiveChanged: {
+                            if (active)
+                                trackItem.opacity = 0.45
+                            else
+                                trackItem.opacity = 1
+                        }
+                    }
+
                     MichiText {
                         anchors.centerIn: parent
                         visible: !trackItem.isPlaying
@@ -297,6 +360,10 @@ Item {
                 MenuItem {
                     text: qsTr("Play")
                     onTriggered: root.playTrackRequested(index)
+                }
+                MenuItem {
+                    text: qsTr("Add to Queue")
+                    onTriggered: queue.add_file(modelData.path)
                 }
                 MichiSeparator { }
                 MenuItem {

@@ -66,8 +66,16 @@ Item {
                 onTrackClicked: index => queue.play_index(index)
                 onMoveRequested: (fromIndex, toIndex) => queue.move_track(fromIndex, toIndex)
                 onRemoveRequested: index => {
+                    var removed = queue.trackRows[index]
                     queue.remove_track(index)
-                    window.showToast(qsTr("Removed from queue"))
+                    // Phase-4 undo: restore the track where it was
+                    if (removed && removed.path) {
+                        window.showToastWithAction(
+                            qsTr("Removed from queue"), qsTr("Undo"),
+                            function() {
+                                queue.insert_at(index, removed.path)
+                            })
+                    }
                 }
                 onClearClicked: {
                     queue.clear_queue()

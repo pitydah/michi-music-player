@@ -398,8 +398,8 @@ def test_action_feedback_call_sites():
     assert "Removed from playlist" in host
     assert "add_track_to_playlist(" in host
     queue = read("views/QueueView.qml")
-    assert 'window.showToast(qsTr("Removed from queue"))' in queue
-    assert 'window.showToast(qsTr("Queue cleared"))' in queue
+    assert 'qsTr("Removed from queue"), qsTr("Undo")' in queue
+    assert "queue.insert_at(index, removed.path)" in queue
 
 
 # ── Phase 4: full qsTr coverage (no intra-file mixes) ─────────────────────────

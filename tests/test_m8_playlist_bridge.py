@@ -238,3 +238,17 @@ def test_play_track_clamps_out_of_range_index(tmp_path):
     assert queue.state.count == 2
     audio.trigger_media_accepted(paths[1])
     assert queue.state.current_index == 1  # clamped to last track
+
+
+def test_queue_insert_at_restores_removed_position(tmp_path):
+    """Undo support: insert_at puts a removed track back where it was."""
+    library, queue, audio, paths = _tracks(tmp_path, ("a.mp3", "b.mp3", "c.mp3"))
+    for p in paths:
+        queue.add(p)
+    queue.remove(1)  # b removed
+    assert [t.file_path.name for t in queue.state.tracks] == ["a.mp3", "c.mp3"]
+    queue.insert_at(1, paths[1])
+    assert [t.file_path.name for t in queue.state.tracks] == ["a.mp3", "b.mp3", "c.mp3"]
+    # clamping: beyond the end appends
+    queue.insert_at(99, paths[0])
+    assert queue.state.count == 4

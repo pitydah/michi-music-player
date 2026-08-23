@@ -204,6 +204,19 @@ Audit against the editorial-playlist spec closed the remaining gaps:
 - D5 fixed: row context buttons 28 → 32px (spec 32-36)
 - 9 new structural tests (18 total in test_m9_r2_4)
 
+## Pending-feature block (done)
+
+- **M7 drag & drop reorder**: the track number is a drag handle
+  (DragHandler + mimeData); a cyan insertion line follows the pointer and
+  dropping moves the track (Alt+arrows keyboard path unchanged)
+- **Queue remove undo (item 20 complete)**: `QueueService.insert_at` +
+  `QueueBridge.insert_at`; removing from the queue shows an Undo toast
+  that restores the track at its original position
+- **Add to Queue per row** in the playlist track menu
+  (`queue.add_file(path)`)
+- **Add tracks…** added to the playlist detail More menu
+- 6 structural tests + 2 backend tests (insert_at restore/clamp)
+
 ## Out of scope (do not touch)
 
 - Now Playing surface: `views/NowPlayingView.qml`, `media/ArtworkFocusMode.qml`,

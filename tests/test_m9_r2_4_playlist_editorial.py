@@ -247,3 +247,32 @@ def test_add_tracks_becomes_icon_only_on_narrow_windows():
     hero = read("playlists/PlaylistHero.qml")
     assert 'text: parent.width < 700 ? "" : qsTr("Add tracks")' in hero
     assert "implicitWidth: parent.width < 700 ? 30 : undefined" in hero
+
+
+# ── Pending-feature block (drag reorder, queue undo, queue row action) ───────
+
+
+def test_drag_reorder_handle_and_drop_line():
+    table = read("playlists/PlaylistTrackList.qml")
+    assert "Drag.active: dragHandler.active" in table
+    assert '"application/x-michi-playlist-index": index' in table
+    assert "DragHandler {" in table
+    assert "DropArea {" in table
+    assert "trackList.indexAt(drag.x, drag.y)" in table
+    assert "insertLine.visible = false" in table
+    assert "root.moveTrackRequested(from, to)" in table
+
+
+def test_row_menu_adds_to_queue():
+    table = read("playlists/PlaylistTrackList.qml")
+    assert 'qsTr("Add to Queue")' in table
+    assert "queue.add_file(modelData.path)" in table
+
+
+def test_queue_remove_offers_undo_and_detail_menu_adds_tracks():
+    queue = read("views/QueueView.qml")
+    assert 'qsTr("Removed from queue"), qsTr("Undo")' in queue
+    assert "queue.insert_at(index, removed.path)" in queue
+    page = read("playlists/PlaylistDetailView.qml")
+    assert 'qsTr("Add tracks…")' in page
+    assert "onTriggered: root.addMusicRequested()" in page
