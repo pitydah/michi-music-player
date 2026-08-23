@@ -10,9 +10,9 @@ Image {
 
     // Dense film grain: dots are internally 5-22% opaque, so the tile
     // opacity lands each dot at ~1-5% (standard) / ~2-8% (high) on screen —
-    // perceptible as material, never as noise.
-    property real textureOpacity: MichiThemeState.glassQuality === "high" ? 0.36
-        : MichiThemeState.glassQuality === "low" ? 0 : 0.22
+    // perceptible as material, never as noise. Negative values fall back
+    // to the quality-based default (surfaces may pass -1 from the glass).
+    property real textureOpacity: -1
 
     sourceSize.width: 128
     sourceSize.height: 128
@@ -21,7 +21,9 @@ Image {
     cache: true
     smooth: true
     mipmap: false
-    opacity: textureOpacity
+    opacity: root.textureOpacity >= 0 ? root.textureOpacity
+        : MichiThemeState.glassQuality === "high" ? 0.36
+        : MichiThemeState.glassQuality === "low" ? 0 : 0.22
     visible: opacity > 0
     Accessible.ignored: true
 

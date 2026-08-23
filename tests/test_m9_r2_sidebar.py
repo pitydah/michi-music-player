@@ -11,10 +11,16 @@ def _text(relative: str) -> str:
 
 def test_sidebar_first_level_routes() -> None:
     sidebar_src = _text("shell/Sidebar.qml")
-    assert '{ id: "now_playing", label: "Now Playing", icon: "play" }' in sidebar_src
-    assert '{ id: "library", label: "Library", icon: "library" }' in sidebar_src
-    assert '{ id: "playlists", label: "Playlists", icon: "playlist" }' in sidebar_src
-    assert '{ id: "settings", label: "Settings", icon: "settings" }' in sidebar_src
+    assert (
+        '{ id: "now_playing", label: qsTr("Now Playing"), icon: "play" }' in sidebar_src
+    )
+    assert '{ id: "library", label: qsTr("Library"), icon: "library" }' in sidebar_src
+    assert (
+        '{ id: "playlists", label: qsTr("Playlists"), icon: "playlist" }' in sidebar_src
+    )
+    assert (
+        '{ id: "settings", label: qsTr("Settings"), icon: "settings" }' in sidebar_src
+    )
 
 
 def test_sidebar_has_no_deep_tree_or_nested_glass_card() -> None:

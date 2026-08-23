@@ -123,3 +123,22 @@ class TestSidebarMaterial:
         # true smoke glass
         assert "forceBlur: true" in text
         assert "materialOpacityOverride: 0.68" in text
+
+    def test_premium_material_overrides_and_chip(self):
+        text = Path(QML_DIR / "shell" / "Sidebar.qml").read_text()
+        glass = Path(QML_DIR / "primitives" / "MichiGlassSurface.qml").read_text()
+        # texture/glint overrides wired through the glass
+        assert "textureOpacityOverride: 0.18" in text
+        assert "glintScale: 0.4" in text
+        assert "property real textureOpacityOverride: -1" in glass
+        assert "property real glintScale: -1" in glass
+        # state chip replaces the bare dot (shape + color + text)
+        assert "MichiStatusChip" in text
+        assert 'qsTr("READY")' in text
+        # route labels translated + playlist count badge + plural form
+        assert 'qsTr("Playlists")' in text
+        assert 'modelData.id === "playlists"' in text
+        assert 'qsTr("Local · %n track(s)", "", library.fileCount)' in text
+        # collapse fade: labels animate opacity/width (no layout pop)
+        assert "opacity: root.compact ? 0 : 1" in text
+        assert "Layout.preferredWidth: root.compact ? 0 : implicitWidth" in text

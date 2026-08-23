@@ -18,7 +18,7 @@ def _text(rel: str) -> str:
 class TestHierarchy:
     def test_playlists_is_first_class_shell(self):
         sidebar = _text("shell/Sidebar.qml")
-        assert '{ id: "playlists", label: "Playlists"' in sidebar
+        assert '{ id: "playlists", label: qsTr("Playlists")' in sidebar
 
     def test_library_has_no_playlists_tab(self):
         tabs = _text("views/LibraryTabs.qml")
