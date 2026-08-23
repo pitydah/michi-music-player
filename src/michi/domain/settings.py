@@ -3,6 +3,8 @@
 import json
 from dataclasses import dataclass, field
 
+from michi.domain.audio_engine import AudioEngineId
+
 
 @dataclass(frozen=True)
 class WindowGeometry:
@@ -28,6 +30,9 @@ class SettingsState:
     theme: str = "dark"
     window_geometry: WindowGeometry = WindowGeometry()
     online_enrichment: bool = False  # M6.9 privacy: network DEFAULT OFF
+    # M11.3F: persisted user engine preference (SELECTED intent — never the
+    # ACTIVE engine). Missing/malformed preference falls back to Qt.
+    audio_engine_id: AudioEngineId = AudioEngineId.QT_MULTIMEDIA
 
 
 def window_geometry_to_json(geometry: WindowGeometry) -> str:

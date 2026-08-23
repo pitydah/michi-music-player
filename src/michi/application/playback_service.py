@@ -522,6 +522,53 @@ class PlaybackService:
     def snapshot_volume(self) -> tuple[int, bool]:
         return (self._state.volume, self._state.muted)
 
+    def is_engine_switch_quiescent(self) -> bool:
+        """TRUE only when an engine switch is safe (M11.3F).
+
+        STOPPED alone is NOT enough: the service may be STOPPED while a load
+        request is pending, play intent is armed awaiting backend PLAYING,
+        prepare_for_resume is pending, or a resume confirmation latch is
+        armed. Quiescent means none of those are in flight. A loaded and
+        ACCEPTED but explicitly STOPPED current track IS quiescent. The
+        switch coordinator must never inspect the private fields directly —
+        this read-only semantic query is the only gate."""
+        return (
+            self._state.status == PlaybackStatus.STOPPED
+            and self._pending_path is None
+            and not self._intent
+            and self._pending_resume_position_ms is None
+            and not self._resume_prepared_pending
+        )
+
+    def invalidate_backend_acceptance_for_engine_switch(self) -> None:
+        """M11.3F switch-seal: clear OLD-BACKEND acceptance, keep logical state.
+
+        After an engine switch the new backend has never loaded the current
+        logical track. Precondition: engine-switch quiescent. Effect:
+        state.file_path / STOPPED / canonical volume / canonical mute are
+        preserved; backend-specific acceptance and play intent are cleared;
+        the request epoch is advanced so any stale in-flight request of the
+        old backend is obsolete. NO load, NO play, NO seek, NO Queue mutation.
+
+        After this call the NEXT play() reloads the logical current track on
+        the NEW backend through the canonical reload path. This is an engine
+        switch boundary — deliberately NOT media rejection."""
+        if not self.is_engine_switch_quiescent():
+            raise RuntimeError(
+                "cannot invalidate backend acceptance: playback is not "
+                "engine-switch quiescent"
+            )
+        self._request_epoch += 1
+        self._pending_path = None
+        self._pending_on_accepted = None
+        self._pending_on_rejected = None
+        self._pending_on_cancelled = None
+        self._pending_resume_position_ms = None
+        self._resume_prepared_pending = False
+        self._intent = False
+        self._accepted = False
+        # file_path / status / volume / muted / position / duration preserved.
+
     def switch_track(self, file_path: Path) -> None:
         self._audio.stop()
         self._state.status = PlaybackStatus.STOPPED

@@ -102,3 +102,51 @@ class AudioEngineService:
                 error_message=message,
             )
         )
+
+    # ------------------------------------------------------------------
+    # M11.3F — selection/switching semantic transitions. All state changes
+    # flow through these methods; the coordinator NEVER assigns state.
+    # ------------------------------------------------------------------
+
+    def restore_selected(self, engine_id: AudioEngineId) -> None:
+        """Restore the persisted SELECTED preference at startup.
+
+        SELECTED != ACTIVE contract: this only re-baselines the user/product
+        intent projection. It does NOT converge active to selected (that is
+        M11.3G restart convergence, deliberately NOT implemented in F)."""
+        self._replace(
+            AudioEngineState(
+                selected_engine_id=engine_id,
+                active_engine_id=self._state.active_engine_id,
+                lifecycle=self._state.lifecycle,
+                switching_to=self._state.switching_to,
+                error_message=self._state.error_message,
+            )
+        )
+
+    def mark_selected(self, engine_id: AudioEngineId) -> None:
+        """Selection committed (persisted). The old engine may STILL be
+        active for the switch transaction window: selected != active is
+        truthful. Exposes switching_to=engine_id."""
+        self._replace(
+            AudioEngineState(
+                selected_engine_id=engine_id,
+                active_engine_id=self._state.active_engine_id,
+                lifecycle=self._state.lifecycle,
+                switching_to=engine_id,
+                error_message=None,
+            )
+        )
+
+    def mark_closing(self, engine_id: AudioEngineId) -> None:
+        """CLOSING: source teardown in progress (still active/bound until
+        the router unbind + provider close complete)."""
+        self._replace(
+            AudioEngineState(
+                selected_engine_id=self._state.selected_engine_id,
+                active_engine_id=engine_id,
+                lifecycle=AudioEngineLifecycle.CLOSING,
+                switching_to=self._state.switching_to,
+                error_message=None,
+            )
+        )

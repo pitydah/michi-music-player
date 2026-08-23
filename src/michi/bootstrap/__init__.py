@@ -16,6 +16,9 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 from michi.application.audio_engine_registry import AudioEngineRegistry
+from michi.application.audio_engine_selection_coordinator import (
+    AudioEngineSelectionCoordinator,
+)
 from michi.application.audio_engine_service import AudioEngineService
 from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.coordinator import PlaybackCoordinator
@@ -364,6 +367,9 @@ class ApplicationContainer:
         self._engine: QQmlApplicationEngine | None = None
         self._audio_router: AudioTransportRouter | None = None
         self._qt_engine_provider: QtEngineProvider | None = None
+        self._engine_selection_coordinator: AudioEngineSelectionCoordinator | None = (
+            None
+        )
         self._settings: SettingsService | None = None
         self._playback: PlaybackService | None = None
         self._queue: QueueService | None = None
@@ -418,6 +424,20 @@ class ApplicationContainer:
         # Load persisted preferences once
         s = settings.load()
         playback.restore_volume(s.volume, s.muted)
+
+        # M11.3F: restore the persisted SELECTED engine preference (Qt
+        # default; malformed preference → Qt). Deliberately NO automatic
+        # selected→active convergence: until M11.3G, selected=MPD with
+        # active=Qt READY is a valid, truthful startup state (the F restart
+        # contract). Explicit switching runs through the coordinator.
+        graph.audio_engine_service.restore_selected(s.audio_engine_id)
+        self._engine_selection_coordinator = AudioEngineSelectionCoordinator(
+            engine_service=graph.audio_engine_service,
+            registry=graph.audio_engine_registry,
+            router=graph.audio_router,
+            playback=playback,
+            settings=settings,
+        )
 
         # M6.9G: LAZY enrichment composition — construction performs ZERO
         # network; providers act only on explicit user operations gated by

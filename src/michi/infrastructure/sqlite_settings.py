@@ -12,6 +12,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from michi.application.persistence import SettingsRepository
+from michi.domain.audio_engine import AudioEngineId
 from michi.domain.persistence_health import (
     PersistenceDiagnostic,
     PersistenceHealth,
@@ -956,6 +957,13 @@ class SQLiteSettingsRepository(SettingsRepository):
                         "invalid persisted setting 'online_enrichment'; "
                         "using default False"
                     )
+            elif key == "audio_engine_id":
+                state.audio_engine_id, malformed = _decode_audio_engine_id(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'audio_engine_id'; "
+                        "using default qt_multimedia"
+                    )
         return state
 
     def save(self, state: SettingsState) -> None:
@@ -967,6 +975,7 @@ class SQLiteSettingsRepository(SettingsRepository):
             ("theme", state.theme),
             ("window_geometry", window_geometry_to_json(state.window_geometry)),
             ("online_enrichment", str(state.online_enrichment).lower()),
+            ("audio_engine_id", state.audio_engine_id.value),
         ]
         # Explicit close (M5-PRODUCTION-LIFECYCLE-GATE): the with-conn only
         # commits; close deterministically instead of waiting for GC.
@@ -985,6 +994,22 @@ def _decode_online_enrichment(raw: object) -> tuple[bool, bool]:
     if isinstance(raw, str) and raw.strip().lower() in {"true", "false"}:
         return raw.strip().lower() == "true", False
     return False, True
+
+
+def _decode_audio_engine_id(raw: object) -> tuple[AudioEngineId, bool]:
+    """M11.3F: strict decode against AudioEngineId canonical values.
+
+    Only the exact persistence-safe strings ("qt_multimedia", "gstreamer",
+    "mpd") decode. Anything else (empty, wrong case, unknown id, BLOB /
+    non-text) is FIELD-LEVEL malformed: fall back to QT_MULTIMEDIA with
+    malformed=True. NEVER triggers database recovery/quarantine — a bad
+    preference is not database corruption.
+    """
+    if isinstance(raw, str):
+        for engine in AudioEngineId:
+            if raw == engine.value:
+                return engine, False
+    return AudioEngineId.QT_MULTIMEDIA, True
 
 
 def _quarantine_primary_artifacts(db_path: Path) -> Path:

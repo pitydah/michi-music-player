@@ -5,6 +5,7 @@ Does NOT own runtime Playback/Queue/Library state.
 """
 
 from michi.application.persistence import SettingsRepository
+from michi.domain.audio_engine import AudioEngineId
 from michi.domain.settings import SettingsState, WindowGeometry
 
 
@@ -46,3 +47,21 @@ class SettingsService:
     def set_window_geometry(self, geometry: WindowGeometry) -> None:
         self.state.window_geometry = geometry
         self.save()
+
+    def set_audio_engine(self, engine_id: AudioEngineId) -> None:
+        """Persist the SELECTED engine preference (M11.3F).
+
+        Durable save BEFORE any destructive engine-switch boundary: if the
+        persistence write fails, the in-memory preference is restored to its
+        previous value and the ORIGINAL persistence error re-raised — no
+        half-mutated preference survives a failed save.
+        """
+        previous = self.state.audio_engine_id
+        if previous == engine_id:
+            return
+        self.state.audio_engine_id = engine_id
+        try:
+            self.save()
+        except Exception:
+            self.state.audio_engine_id = previous
+            raise
