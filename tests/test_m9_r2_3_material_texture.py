@@ -129,3 +129,12 @@ def test_bar_time_formatting_delegates_to_michi_format():
     bar = read("player/NowPlayingBar.qml")
     assert "return MichiFormat.formatDuration(seconds * 1000)" in bar
     assert "var minutes = Math.floor(safe / 60)" not in bar
+
+
+def test_glint_gated_to_elevated_surfaces_only():
+    glass = read("primitives/MichiGlassSurface.qml")
+    # the brand cat glint must not bleed into quiet surfaces (library
+    # toolbar is elevation "subtle") — regression guard
+    assert 'visible: parent.width > 0 && root.elevation !== "subtle"' in glass
+    toolbar = read("views/LibraryToolbar.qml")
+    assert 'elevation: "subtle"' in toolbar

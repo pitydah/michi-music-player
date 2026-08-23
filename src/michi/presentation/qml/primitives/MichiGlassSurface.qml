@@ -118,14 +118,16 @@ Item {
 
         // ── Specular glint: the brand cat silhouette (vector path from the
         // Michi brand artwork) as the light catch — a radial glow shaped
-        // like the cat, not a circle ──
+        // like the cat, not a circle. Elevated/modal surfaces only: the
+        // glint must NOT bleed into quiet surfaces like the library
+        // toolbar (elevation "subtle").
         Item {
             id: glintHost
             anchors.top: parent.top
             anchors.left: parent.left
             width: Math.min(parent.width, parent.height) * 0.55
             height: width * 0.584   // viewBox 100 x 58.4
-            visible: parent.width > 0
+            visible: parent.width > 0 && root.elevation !== "subtle"
             Shape {
                 anchors.fill: parent
                 ShapePath {
