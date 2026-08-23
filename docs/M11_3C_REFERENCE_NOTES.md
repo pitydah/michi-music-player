@@ -320,3 +320,25 @@ Michi-nativos.
   clears deferred observations; accepted stop/replay keeps generation.
 - Code-validation evidence: full suite 1783 passed at CODE_VALIDATED_HEAD
   ccd4e55 (1 pre-existing conditional skip: M11.3B Qt-runtime).
+
+
+## M11.3C-R6.5.1 owner-to-subscriber atomic publication seal
+
+- FINAL CONCURRENCY MODEL: GLib pump = backend observation; the pump →
+  owner Qt.QueuedConnection is the ONLY asynchronous semantic boundary;
+  the Qt owner commits AudioPort truth and publishes public callbacks
+  DIRECTLY (synchronous, same owner transaction) — the second queued
+  publication hop is REMOVED, so no unprovenanced event can be pending
+  between canonical AudioPort truth and its subscribers.
+- Public callback reentrancy is supported through post-callback
+  revalidation: acceptance revalidates closed/generation/current before
+  applying deferred work; EOS revalidates before EOM (a STOPPED
+  subscriber that loads B or closes suppresses the stale EOM — no stale
+  higher-level navigation). Deferred PLAYING/EOS/duration run as direct
+  owner helpers (no owner→owner requeue).
+- Precise claim: backend-originated events carry generation across the
+  only async queue boundary and are revalidated at owner commit; after
+  commit, publication is synchronous, so queued stale events can never
+  cross AudioPort (R6.5 claim now actually true).
+- Code-validation evidence: full suite 1790 passed at CODE_VALIDATED_HEAD
+  3af246c (1 pre-existing conditional skip: M11.3B Qt-runtime).

@@ -260,20 +260,14 @@ class _GstEvent:
 
 
 class _EventBridge(QObject):
-    """Qt signal bridge: emitted from the pump thread, delivered on the
-    owner thread via EXPLICIT QueuedConnection (M11.3C-R1).
+    """Qt signal bridge: ONE asynchronous boundary (M11.3C-R6.5.1).
 
-    M11.3C-R6.5: el backend entra por UN solo path (sig_event, eventos
-    inmutables normalizados); los sig_* restantes son SOLO publicación de
-    callbacks públicos emitidos por el owner tras el commit."""
+    El pump emite sig_event con QueuedConnection explícito (única frontera
+    asíncrona pump → owner). Tras el commit del owner, los callbacks
+    públicos se publican DIRECTAMENTE (misma transacción del owner) — no
+    existe segunda cola sin provenance."""
 
     sig_event = Signal(object)
-    sig_eom = Signal()
-    sig_pos = Signal(int)
-    sig_dur = Signal(int)
-    sig_acc = Signal(object)
-    sig_rej = Signal(object, str)
-    sig_state = Signal(object)
 
 
 class GStreamerAudioPort(AudioPort):
@@ -321,15 +315,10 @@ class GStreamerAudioPort(AudioPort):
         self._acc: list = []
         self._rej: list = []
         self._pst: list = []
-        # explicit QueuedConnection: pump thread → owner thread
-        # (M11.3C-R6.5: UN solo path canónico de eventos backend)
+        # explicit QueuedConnection: pump thread → owner thread — LA ÚNICA
+        # frontera asíncrona (M11.3C-R6.5.1). Los callbacks públicos se
+        # publican directo desde el owner (sin segunda cola).
         self._bridge.sig_event.connect(self._on_backend_event, Qt.QueuedConnection)
-        self._bridge.sig_eom.connect(self._deliver_eom, Qt.QueuedConnection)
-        self._bridge.sig_pos.connect(self._deliver_pos, Qt.QueuedConnection)
-        self._bridge.sig_dur.connect(self._deliver_dur, Qt.QueuedConnection)
-        self._bridge.sig_acc.connect(self._deliver_acc, Qt.QueuedConnection)
-        self._bridge.sig_rej.connect(self._deliver_rej, Qt.QueuedConnection)
-        self._bridge.sig_state.connect(self._deliver_state, Qt.QueuedConnection)
 
     # ------------------------------------------------------------------
     # lifecycle — ONE pump per port (M11.3C-R1)
@@ -486,7 +475,7 @@ class GStreamerAudioPort(AudioPort):
             self._pending_play = False
             self._eos_emitted = False
             if candidate is not None:
-                self._bridge.sig_rej.emit(candidate, reason)
+                self._deliver_rej(candidate, reason)
             # Limpieza del pipeline fallido — FIRST LIFECYCLE CLEANUP ERROR
             # WINS (M11.3C-R5 P1-02): el NULL cleanup es PRIMARIO; el
             # detach del bus watch es SECUNDARIO y NUNCA reemplaza al error
@@ -931,43 +920,75 @@ class GStreamerAudioPort(AudioPort):
     def _commit_acceptance(self, event) -> None:
         """OWNER: ASYNC_DONE = commit de aceptación del media.
 
-        Orden: identidad interna commitada → media_accepted → PLAYING/EOS/
-        duration diferidos de la generación (re-encolados como eventos para
-        revalidar generación tras callbacks reentrantes)."""
+        Orden (M11.3C-R6.5.1 NON-NEGOTIABLE): validar → capturar → commit
+        interno → PUBLICACIÓN DIRECTA → revalidar tras el callback (el
+        subscriber puede hacer load/stop/close) → solo entonces aplicar el
+        trabajo diferido de la generación (sin segunda cola Qt)."""
         if self._pending_path is None:
             return  # duplicado o ya commiteado (idempotente)
         candidate = self._pending_path
+        generation = event.generation
         self._current_path = candidate
         self._pending_path = None
         # estado interno ANTES del callback público (reentrancy-safe)
-        self._bridge.sig_acc.emit(candidate)
-        # PLAYING observado antes de la aceptación: diferido hasta ahora.
-        # Revalidación tras el callback de aceptación (el subscriber pudo
-        # hacer stop()/load()): la intención (_pending_play) y la generación
-        # deben seguir permitiendo la publicación (M11.3C-R6.5 reentrancy).
-        if self._pending_play and self._deferred_playing_generation == event.generation:
-            self._deferred_playing_generation = None
-            self._bridge.sig_event.emit(
-                _GstEvent(
-                    generation=event.generation,
-                    kind=_GstEventKind.STATE_CHANGED,
-                    status=PlaybackStatus.PLAYING,
-                )
-            )
-        # EOS observado antes de la aceptación (pistas muy cortas)
-        if self._deferred_eos_generation == event.generation:
-            self._deferred_eos_generation = None
-            self._bridge.sig_event.emit(
-                _GstEvent(generation=event.generation, kind=_GstEventKind.EOS)
-            )
-        # duración observada antes de la aceptación
-        if self._duration_refresh_generation == event.generation:
-            self._duration_refresh_generation = None
-            self._bridge.sig_event.emit(
-                _GstEvent(
-                    generation=event.generation, kind=_GstEventKind.DURATION_CHANGED
-                )
-            )
+        self._deliver_acc(candidate)
+        # REVALIDACIÓN post-callback: el subscriber pudo cambiar la
+        # transacción (load/stop/close)
+        if (
+            self._closed
+            or self._generation != generation
+            or self._current_path != candidate
+        ):
+            return
+        # PLAYING observado antes de la aceptación: aplicado directo solo
+        # si la intención sigue permitiendo la publicación
+        if self._pending_play and self._deferred_playing_generation == generation:
+            self._apply_deferred_playing(generation)
+        if self._deferred_eos_generation == generation:
+            self._apply_deferred_eos(generation)
+        if self._duration_refresh_generation == generation:
+            self._apply_deferred_duration(generation)
+
+    def _apply_deferred_playing(self, generation) -> None:
+        """OWNER (directo, sin re-enqueue): PLAYING diferido tras la
+        aceptación — revalidado contra la transacción vigente."""
+        if self._closed or self._generation != generation:
+            return
+        if self._current_path is None:
+            return
+        self._deferred_playing_generation = None
+        self._deliver_state_if(PlaybackStatus.PLAYING)
+
+    def _apply_deferred_eos(self, generation) -> None:
+        """OWNER (directo): EOS diferido hasta la aceptación — STOPPED
+        primero, revalidación, y EOM como ÚLTIMA acción (un subscriber del
+        STOPPED pudo cargar B/cerrar → EOM suprimido)."""
+        if self._closed or self._generation != generation:
+            return
+        if self._current_path is None:
+            return
+        self._deferred_eos_generation = None
+        self._eos_emitted = True
+        self._pending_play = False
+        self._deliver_state_if(PlaybackStatus.STOPPED)
+        if (
+            self._closed
+            or self._generation != generation
+            or self._current_path is None
+            or not self._eos_emitted
+        ):
+            return
+        self._deliver_eom()
+
+    def _apply_deferred_duration(self, generation) -> None:
+        """OWNER (directo): refresco de duración diferido hasta la
+        aceptación, revalidado."""
+        if self._closed or self._generation != generation:
+            return
+        if self._current_path is None:
+            return
+        self._duration_refresh_generation = None
+        self._publish_duration()
 
     def _commit_state(self, event) -> None:
         """OWNER: STATE_CHANGED normalizado → PlaybackStatus canónico.
@@ -1001,10 +1022,22 @@ class GStreamerAudioPort(AudioPort):
             and self._pending_play
             and not self._eos_emitted
         ):
+            generation = event.generation
+            current = self._current_path
             self._eos_emitted = True
             self._pending_play = False
             self._deliver_state_if(PlaybackStatus.STOPPED)
-            self._bridge.sig_eom.emit()
+            # REVALIDACIÓN (M11.3C-R6.5.1): el subscriber del STOPPED pudo
+            # cargar B/cerrar/superseder A → EOM(A) suprimido. EOM es la
+            # ÚLTIMA acción del commit EOS (sin mutación posterior).
+            if (
+                self._closed
+                or self._generation != generation
+                or self._current_path != current
+                or not self._eos_emitted
+            ):
+                return
+            self._deliver_eom()
 
     def _commit_error(self, event) -> None:
         """OWNER: ERROR de la generación vigente → rejection del candidato
@@ -1014,7 +1047,7 @@ class GStreamerAudioPort(AudioPort):
         if candidate is not None:
             self._pending_path = None
             self._current_path = None
-            self._bridge.sig_rej.emit(candidate, reason)
+            self._deliver_rej(candidate, reason)
 
     def _publish_duration(self) -> None:
         """OWNER: consulta la duración del pipeline VIGENTE y publica."""
@@ -1022,7 +1055,7 @@ class GStreamerAudioPort(AudioPort):
             return
         ok, ns = self._bindings.query_duration(self._pipeline)
         if ok:
-            self._bridge.sig_dur.emit(gst_time_to_millis(ns))
+            self._deliver_dur(gst_time_to_millis(ns))
 
     def _publish_position(self) -> None:
         """OWNER: posición del source ACEPTADO actual únicamente (nunca
@@ -1032,7 +1065,7 @@ class GStreamerAudioPort(AudioPort):
             return
         ok, ns = self._bindings.query_position(pipeline)
         if ok:
-            self._bridge.sig_pos.emit(gst_time_to_millis(ns))
+            self._deliver_pos(gst_time_to_millis(ns))
 
     def _invalidate_generation(self) -> None:
         """OWNER: avanza la generación (monotónica, nunca decrece) y limpia
@@ -1057,7 +1090,7 @@ class GStreamerAudioPort(AudioPort):
         if self._current_state is status:
             return
         self._current_state = status
-        self._bridge.sig_state.emit(status)
+        self._deliver_state(status)
 
     # ------------------------------------------------------------------
     # bridge slots (owner thread — QueuedConnection)
