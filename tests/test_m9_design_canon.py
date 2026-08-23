@@ -426,7 +426,10 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     # true smoke glass: always-on blur, translucent smoked material,
     # single cyan accent (no purple chromatic noise)
     assert "forceBlur: true" in sidebar
-    assert "materialOpacityOverride: 0.68" in sidebar
+    # sidebar texture follows the library toolbar treatment:
+    # standard glass material (no translucency override, no ambient tint)
+    assert "materialOpacityOverride" not in sidebar
+    assert "contentAmbientBlue" not in sidebar
     assert "accentColor: MichiPalette.auroraCyan" in sidebar
     assert "contentAmbientPurple" not in sidebar
     assert "property bool accentLineVisible: false" in glass

@@ -122,4 +122,6 @@ class TestSidebarMaterial:
         assert "contentAmbientPurple" not in text
         # true smoke glass
         assert "forceBlur: true" in text
-        assert "materialOpacityOverride: 0.68" in text
+        # toolbar-style texture: standard material, no ambient tint layer
+        assert "materialOpacityOverride" not in text
+        assert "contentAmbientBlue" not in text
