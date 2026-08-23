@@ -60,7 +60,15 @@ _logger = logging.getLogger(__name__)
 
 class MpdProtocolError(RuntimeError):
     """Fallo del protocolo MPD: ACK del daemon, greeting inválido, EOF o
-    malformación. Nunca se filtra el ACK crudo como arquitectura."""
+    malformación. Nunca se filtra el ACK crudo como arquitectura.
+
+    is_ack=True marca una REJECTION DETERMINISTA del daemon (ACK): el
+    adapter la trata como media_rejected controlada; los demás fallos
+    (socket/EOF) son errores de transporte con disposición destructiva."""
+
+    def __init__(self, message: str, *, is_ack: bool = False) -> None:
+        super().__init__(message)
+        self.is_ack = is_ack
 
 
 def _quote_mpd_arg(arg: str) -> str:
@@ -159,7 +167,9 @@ class _MpdProtocolClient:
             if response_line == "OK":
                 return _parse_key_value_response(lines)
             if response_line.startswith("ACK"):
-                raise MpdProtocolError(f"MPD command rejected: {response_line}")
+                raise MpdProtocolError(
+                    f"MPD command rejected: {response_line}", is_ack=True
+                )
             lines.append(response_line)
 
     # -- typed command surface (M11.3D only) --------------------------------
@@ -700,10 +710,17 @@ class MPDAudioPort(AudioPort):
         try:
             song_id = self._client.addid(str(file_path.resolve()))
         except MpdProtocolError as exc:
-            # post-commit: la fuente previa se perdió → rejection B
+            # post-commit: la fuente previa se perdió
             self._pending_path = None
             self._current_path = None
             self._song_id = None
+            if exc.is_ack:
+                # REJECTION CONTROLADA del daemon (ACK determinista):
+                # media_rejected SIN excepción — el PlaybackService la
+                # trata como disposición terminal sincrónica
+                self._deliver_rej(file_path, str(exc))
+                return
+            # fallo no determinista (socket/EOF): disposición destructiva
             self._deliver_rej(file_path, str(exc))
             raise AudioLoadError(
                 file_path, str(exc), previous_source_preserved=False
