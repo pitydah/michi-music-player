@@ -1,5 +1,6 @@
 """M11.3D — PlaybackService + MPDAudioPort integration (deterministic)."""
 
+import os
 import threading
 from pathlib import Path
 
@@ -17,6 +18,20 @@ from michi.infrastructure.audio_engines.mpd import (
 )
 
 
+@pytest.fixture(scope="module")
+def qapp():
+    """Instancia Qt offscreen (patrón del repo — sin depender de
+    pytest-qt, que no está en la CI): processEvents() entrega los eventos
+    QueuedConnection del bridge observer → owner."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication([])
+    yield app
+
+
 class _FakeClient:
     idle_event = threading.Event()
 
@@ -31,6 +46,8 @@ class _FakeClient:
         self.addid_ack: str | None = None
         self.addid_fatal: str | None = None
         self.clear_ack: str | None = None
+        self.clear_fatal: str | None = None
+        self.status_error: str | None = None
         self.playid_ack: str | None = None
         self.next_id = 1
 
@@ -42,6 +59,8 @@ class _FakeClient:
 
     def status(self):
         self.commands.append("status")
+        if self.status_error:
+            raise MpdProtocolError(self.status_error)
         status = {"state": self.state, "volume": self.volume}
         if self.songid is not None:
             status["songid"] = self.songid
@@ -54,7 +73,9 @@ class _FakeClient:
     def clear(self):
         self.commands.append("clear")
         if self.clear_ack:
-            raise MpdProtocolError(self.clear_ack)
+            raise MpdProtocolError(self.clear_ack, is_ack=True)
+        if self.clear_fatal:
+            raise MpdProtocolError(self.clear_fatal, is_ack=False)
         self.songid = None
         self.state = "stop"
 
@@ -279,3 +300,107 @@ class TestThreadAffinity:
         port.subscribe_media_accepted(on_acc)
         port.load(Path("/m/a.flac"))
         assert callback_threads == [owner_thread]
+
+
+class TestBackendLossConvergence:
+    """C5 (M11.3D-R1): la pérdida del backend (crash/transporte) debe
+    converger PlaybackService — accepted/intent False, sin EOM."""
+
+    def test_c5_process_exit_converges_playback(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        assert svc._accepted is True
+        assert svc.state.status == PlaybackStatus.PLAYING
+        # el hijo muere
+        port._bridge.sig_event.emit(
+            _MpdEvent(port._runtime_generation, _MpdEventKind.PROCESS_EXIT, "died")
+        )
+        _drain()
+        # PlaybackService convergido: identidad lógica A, sin autoridad
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert "died" in (svc.state.error_message or "")  # reason del evento
+        # MPDAudioPort sin autoridad backend
+        assert port._current_path is None
+        assert port._song_id is None
+        assert port._pending_path is None
+
+    def test_c5_no_eom_on_process_exit(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        eoms = []
+        svc.subscribe_end_of_media(lambda: eoms.append(1))
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        port._bridge.sig_event.emit(
+            _MpdEvent(port._runtime_generation, _MpdEventKind.PROCESS_EXIT, "died")
+        )
+        _drain()
+        assert eoms == []  # crash nunca emite EOM
+
+    def test_c5_transport_error_converges_playback(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        port._bridge.sig_event.emit(
+            _MpdEvent(port._runtime_generation, _MpdEventKind.TRANSPORT_ERROR, "broken")
+        )
+        _drain()
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert "broken" in (svc.state.error_message or "")  # reason del evento
+        assert port._current_path is None
+
+
+class TestGate1CommandTransportLoss:
+    """GATE 1 full-stack (M11.3D-R2): el fallo del status() con hijo vivo
+    converge PlaybackService — sin inyección manual de TRANSPORT_ERROR."""
+
+    def test_g1_status_failure_converges_playback(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        assert svc._accepted is True
+        assert svc.state.status == PlaybackStatus.PLAYING
+        # el socket de comandos se rompe (hijo vivo)
+        fake.status_error = "command socket EOF"
+        _refresh(port)
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert "command socket EOF" in (svc.state.error_message or "")
+        assert port._current_path is None
+        assert port._song_id is None
+
+
+class TestGate2ClearUnknownFullStack:
+    """GATE 2 full-stack (M11.3D-R2): clear con IPC desconocido → sin
+    ghost A en ninguna capa."""
+
+    def test_g2_unknown_clear_converges_playback(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.load_and_play(Path("/m/a.flac"))
+        fake.state = "play"
+        _refresh(port)
+        assert svc._accepted is True
+        # clear con resultado desconocido durante load(B)
+        fake.clear_fatal = "EOF during clear"
+        with pytest.raises(AudioLoadError) as caught:
+            svc.load_and_play(Path("/m/b.flac"))
+        assert caught.value.previous_source_preserved is False
+        # PlaybackService: identidad lógica A, sin autoridad backend
+        assert svc.state.file_path == Path("/m/a.flac")
+        assert svc._accepted is False
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        # MPDAudioPort: sin ghost A
+        assert port._current_path is None
+        assert port._song_id is None

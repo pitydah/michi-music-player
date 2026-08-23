@@ -256,24 +256,31 @@ def _pick_runtime_parent() -> Path:
     return Path(tempfile.gettempdir())
 
 
-def _render_mpd_conf(runtime_dir: Path, music_dir: Path) -> str:
-    """Config mínima privada — SOLO paths de este runtime; nada del sistema."""
-    return "\n".join(
-        [
-            "bind_to_address " + str(runtime_dir / "mpd.sock"),
-            "port 0",
-            "pid_file " + str(runtime_dir / "mpd.pid"),
-            "log_file " + str(runtime_dir / "mpd.log"),
-            "db_file " + str(runtime_dir / "database"),
-            "state_file " + str(runtime_dir / "state"),
-            "sticker_file " + str(runtime_dir / "stickers.sqlite"),
-            "playlist_directory " + str(runtime_dir / "playlists"),
-            "music_directory " + str(music_dir),
-            "auto_update no",
-            'audio_output {\n\ttype\t\t"null"\n\tname\t\t"Michi MPD Transport"\n}',
-            "",
-        ]
-    )
+def _render_mpd_conf(
+    runtime_dir: Path, music_dir: Path, *, null_output: bool = False
+) -> str:
+    """Config mínima privada — SOLO paths de este runtime; nada del sistema.
+
+    PRODUCCIÓN (null_output=False): NO se emite un bloque audio_output —
+    MPD usa su selección de salida por defecto hasta que M11.4 posea la
+    configuración DAC/output explícita. La salida null SOLO se usa en
+    tests/smoke deterministas (null_output=True)."""
+    lines = [
+        "bind_to_address " + str(runtime_dir / "mpd.sock"),
+        "port 0",
+        "pid_file " + str(runtime_dir / "mpd.pid"),
+        "log_file " + str(runtime_dir / "mpd.log"),
+        "db_file " + str(runtime_dir / "database"),
+        "state_file " + str(runtime_dir / "state"),
+        "sticker_file " + str(runtime_dir / "stickers.sqlite"),
+        "playlist_directory " + str(runtime_dir / "playlists"),
+        "music_directory " + str(music_dir),
+        "auto_update no",
+    ]
+    if null_output:
+        lines.append('audio_output {\n\ttype\t\t"null"\n\tname\t\t"Michi MPD Test"\n}')
+    lines.append("")
+    return "\n".join(lines)
 
 
 class _ManagedMpdRuntime:
@@ -437,6 +444,7 @@ class MPDAudioPort(AudioPort):
     ) -> None:
         super().__init__()
         self._bridge = _MpdEventBridge()
+        self._poll_interval_ms = poll_interval_ms
         self._runtime = runtime if runtime is not None else _ManagedMpdRuntime()
         self._client: _MpdProtocolClient | None = None
         self._runtime_generation = 0
@@ -456,6 +464,7 @@ class MPDAudioPort(AudioPort):
         # observer
         self._observer: threading.Thread | None = None
         self._observer_stop = threading.Event()
+        self._idle_client: _MpdProtocolClient | None = None
         # poller owner-thread (posición) — QTimer en el thread owner
         self._poller: QTimer | None = None
         # subscribers
@@ -472,30 +481,58 @@ class MPDAudioPort(AudioPort):
     # ------------------------------------------------------------------
 
     def open(self) -> None:
-        """Abre el runtime gestionado (failure-atomic) y arranca el
-        observer. El observer usa UNA segunda conexión idle."""
+        """Abre el runtime gestionado — TRANSACCIONAL (M11.3D-R1 C2):
+        cualquier fallo tras runtime.start() limpia TODO lo creado (cliente,
+        observer, poller), cierra el runtime y re-lanza el error ORIGINAL.
+        Nunca queda un hijo huérfano ni un port a medio abrir."""
         if not self._closed:
             return
-        self._runtime.start()
-        self._runtime_generation += 1
-        generation = self._runtime_generation
-        self._client = _MpdProtocolClient(self._runtime.socket_path, timeout=5.0)
-        self._client.connect()
-        # observer thread con conexión idle propia (nunca bloquea comandos)
-        self._observer_stop.clear()
-        self._observer = threading.Thread(
-            target=self._observer_main,
-            args=(generation,),
-            name="michi-mpd-observer",
-            daemon=True,
-        )
-        self._observer.start()
-        # poller de posición (owner-thread, solo mientras runtime abierto)
-        self._poller = QTimer()
-        self._poller.setInterval(500)
-        self._poller.timeout.connect(self._poll_position)
-        self._poller.start()
-        self._closed = False
+        try:
+            self._runtime.start()
+            self._runtime_generation += 1
+            generation = self._runtime_generation
+            self._client = _MpdProtocolClient(self._runtime.socket_path, timeout=5.0)
+            self._client.connect()
+            # observer thread con conexión idle propia (nunca bloquea comandos)
+            self._observer_stop.clear()
+            self._observer = threading.Thread(
+                target=self._observer_main,
+                args=(generation,),
+                name="michi-mpd-observer",
+                daemon=True,
+            )
+            self._observer.start()
+            # poller de posición (owner-thread, solo mientras runtime abierto)
+            self._poller = QTimer()
+            self._poller.setInterval(self._poll_interval_ms)
+            self._poller.timeout.connect(self._poll_position)
+            self._poller.start()
+            self._closed = False
+        except Exception:
+            # FIRST ERROR WINS: limpieza best-effort de cada recurso creado
+            if self._poller is not None:
+                self._poller.stop()
+                self._poller = None
+            observer = self._observer
+            self._observer = None
+            if observer is not None:
+                self._observer_stop.set()
+                # GATE 3 (M11.3D-R2): liberar el recv bloqueante del idle
+                # ANTES del join — si el observer está bloqueado en idle(),
+                # el join expiraría y el thread quedaría vivo
+                idle_client = self._idle_client
+                if idle_client is not None:
+                    with contextlib.suppress(Exception):
+                        idle_client.close()
+                self._idle_client = None
+                observer.join(timeout=2.0)
+            if self._client is not None:
+                self._client.close()
+                self._client = None
+            self._runtime_generation += 1
+            self._runtime.close()
+            self._closed = True
+            raise
 
     def close(self) -> None:
         """Idempotente: detiene observer y poller, cierra sockets, termina
@@ -505,6 +542,11 @@ class MPDAudioPort(AudioPort):
         self._closed = True
         self._runtime_generation += 1  # invalida eventos en vuelo
         self._observer_stop.set()
+        # libera el recv bloqueante del observer idle (C4-D)
+        idle_client = self._idle_client
+        if idle_client is not None:
+            with contextlib.suppress(Exception):
+                idle_client.close()
         observer = self._observer
         self._observer = None
         if observer is not None:
@@ -533,44 +575,40 @@ class MPDAudioPort(AudioPort):
     # ------------------------------------------------------------------
 
     def _observer_main(self, generation: int) -> None:
+        """OBSERVA SOLO. Un fallo del transporte idle produce EXACTAMENTE
+        UN evento terminal (TRANSPORT_ERROR con hijo vivo, PROCESS_EXIT con
+        hijo muerto) y el observer sale — sin loops error/refresh (C4)."""
+        idle_client = None
         try:
-            idle_client = _MpdProtocolClient(self._runtime.socket_path, timeout=30.0)
+            idle_client = _MpdProtocolClient(
+                self._runtime.socket_path,
+                timeout=None,  # idle bloqueante
+            )
             idle_client.connect()
+            self._idle_client = idle_client  # close() del port lo libera
             while not self._observer_stop.is_set():
-                try:
-                    changed = idle_client.idle("player")
-                except MpdProtocolError as exc:
-                    if self._observer_stop.is_set():
-                        break
-                    if self._runtime.child_alive():
-                        self._bridge.sig_event.emit(
-                            _MpdEvent(
-                                generation,
-                                _MpdEventKind.REFRESH_PLAYER,
-                                None,
-                            )
-                        )
-                        continue
-                    self._bridge.sig_event.emit(
-                        _MpdEvent(
-                            generation,
-                            _MpdEventKind.PROCESS_EXIT,
-                            str(exc),
-                        )
-                    )
-                    break
+                changed = idle_client.idle("player")
                 if changed:
                     self._bridge.sig_event.emit(
                         _MpdEvent(generation, _MpdEventKind.REFRESH_PLAYER)
                     )
-        except Exception as exc:  # noqa: BLE001 — observer isolation
-            if not self._observer_stop.is_set():
+        except MpdProtocolError as exc:
+            if self._observer_stop.is_set():
+                pass  # cierre normal: close() cerró el socket idle
+            elif self._runtime.child_alive():
+                # transporte del observer roto con hijo vivo: UN evento
                 self._bridge.sig_event.emit(
                     _MpdEvent(generation, _MpdEventKind.TRANSPORT_ERROR, str(exc))
                 )
+            else:
+                self._bridge.sig_event.emit(
+                    _MpdEvent(generation, _MpdEventKind.PROCESS_EXIT, str(exc))
+                )
         finally:
+            self._idle_client = None
             with contextlib.suppress(Exception):  # noqa: BLE001
-                idle_client.close()
+                if idle_client is not None:
+                    idle_client.close()
 
     # ------------------------------------------------------------------
     # owner commit (única autoridad semántica)
@@ -598,8 +636,19 @@ class MPDAudioPort(AudioPort):
         try:
             status = self._client.status()
         except MpdProtocolError as exc:
-            if not self._runtime.child_alive():
+            # GATE 1 (M11.3D-R2): proceso vivo ≠ transporte sano. Con el
+            # socket de comandos roto no se puede consultar la verdad del
+            # daemon → convergencia honesta (nunca return silencioso).
+            if self._runtime.child_alive():
+                self._converge_transport_error(str(exc))
+            else:
                 self._converge_process_exit(str(exc))
+            return
+        error = status.get("error")
+        if error:
+            # C6 (M11.3D-R1): un error del daemon para el media actual NO es
+            # verdad de reproducción normal → convergencia terminal honesta
+            self._converge_media_error(error)
             return
         state = status.get("state", "stop")
         if state == "play":
@@ -641,23 +690,34 @@ class MPDAudioPort(AudioPort):
         self._eos_emitted = True
         self._deliver_eom()
 
+    def _converge_media_loss(self, reason: str | None) -> None:
+        """C5/C6: pérdida de autoridad del source aceptado — captura el
+        path perdido, limpia autoridad backend, STOPPED, y media_rejected
+        (PlaybackService terminaliza accepted/intent). NUNCA EOM."""
+        lost = self._current_path or self._pending_path
+        self._pending_path = None
+        self._current_path = None
+        self._song_id = None
+        self._pending_play = False
+        self._eos_emitted = True  # la pérdida nunca es fin natural
+        self._deliver_state_if(PlaybackStatus.STOPPED)
+        if lost is not None:
+            self._deliver_rej(lost, reason or "MPD transport lost")
+
     def _converge_process_exit(self, reason: str | None) -> None:
         """El hijo murió: sin PLAYING futuro, sin EOM, convergencia
         honesta, sin auto-restart (M11.3G)."""
         if self._current_path is not None or self._pending_path is not None:
-            self._pending_path = None
-            self._current_path = None
-            self._song_id = None
-            self._pending_play = False
-            self._eos_emitted = True  # nunca EOM por crash
-            self._deliver_state_if(PlaybackStatus.STOPPED)
+            self._converge_media_loss(reason or "MPD process exited")
 
     def _converge_transport_error(self, reason: str | None) -> None:
         if self._current_path is not None:
-            self._current_path = None
-            self._song_id = None
-            self._pending_play = False
-            self._deliver_state_if(PlaybackStatus.STOPPED)
+            self._converge_media_loss(reason or "MPD transport error")
+
+    def _converge_media_error(self, reason: str | None) -> None:
+        """C6: status.error del daemon para el media actual."""
+        if self._current_path is not None:
+            self._converge_media_loss(reason or "MPD playback error")
 
     # ------------------------------------------------------------------
     # position / duration (owner thread, solo source aceptado)
@@ -670,7 +730,12 @@ class MPDAudioPort(AudioPort):
             return
         try:
             status = self._client.status()
-        except MpdProtocolError:
+        except MpdProtocolError as exc:
+            # GATE 1: pérdida del transporte de comandos con source
+            # autoritativo → convergencia honesta (una vez; el cleanup de
+            # current_path hace no-op los ticks siguientes)
+            if self._current_path is not None:
+                self._converge_transport_error(str(exc))
             return
         elapsed = status.get("elapsed")
         if elapsed is not None:
@@ -690,9 +755,22 @@ class MPDAudioPort(AudioPort):
         try:
             self._client.clear()
         except MpdProtocolError as exc:
-            # pre-commit: la fuente previa sigue (si aún existe)
+            if exc.is_ack:
+                # ACK DETERMINISTA: clear rechazado → la fuente previa sigue
+                # (current_path/song_id intactos)
+                raise AudioLoadError(
+                    file_path, str(exc), previous_source_preserved=True
+                ) from exc
+            # GATE 2 (M11.3D-R2): resultado de IPC DESCONOCIDO — MPD pudo
+            # ejecutar clear → FAIL CLOSED: la fuente previa NO está
+            # garantizada Y la autoridad backend vieja se abandona (nunca
+            # un ghost song_id tras un clear incierto)
+            self._pending_path = None
+            self._current_path = None
+            self._song_id = None
+            self._pending_play = False
             raise AudioLoadError(
-                file_path, str(exc), previous_source_preserved=True
+                file_path, str(exc), previous_source_preserved=False
             ) from exc
         try:
             song_id = self._client.addid(str(file_path.resolve()))

@@ -15,6 +15,20 @@ REQUIRED = [
 ]
 
 
+@pytest.fixture(scope="module")
+def qapp():
+    """Instancia Qt offscreen (patrón del repo — sin depender de
+    pytest-qt, que no está en la CI): processEvents() entrega los eventos
+    QueuedConnection del bridge observer → owner."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication([])
+    yield app
+
+
 def _require_mpd():
     if shutil.which("mpd") is None:
         pytest.skip("dependency absent: mpd executable not found in PATH")
