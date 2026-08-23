@@ -287,11 +287,8 @@ def test_playlist_card_title_role_is_valid():
 
 def test_status_dots_have_accessible_names():
     assert 'Accessible.name: "Pinned playlist"' in read("playlists/PlaylistCard.qml")
-    # the sidebar library state is now a status chip: shape + color + text
-    sidebar = read("shell/Sidebar.qml")
-    assert "MichiStatusChip" in sidebar
-    assert 'qsTr("READY")' in sidebar
-    assert 'qsTr("EMPTY")' in sidebar
+    assert "Accessible.name:" in read("shell/Sidebar.qml")
+    assert "Library ready" in read("shell/Sidebar.qml")
 
 
 def test_copy_uses_lowercase_tracks_and_placeholder_quotes():

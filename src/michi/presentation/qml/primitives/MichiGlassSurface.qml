@@ -14,11 +14,6 @@ Item {
     property bool shadowed: elevation !== "subtle"
     property bool textured: elevation !== "subtle"
     property int tileSeed: 0
-    // Grain intensity override (-1 = quality default 0.22/0.36). Surfaces
-    // like the sidebar want a finer grain than cards.
-    property real textureOpacityOverride: -1
-    // Glint (brand cat) size override (fraction of min dimension; default 0.6)
-    property real glintScale: -1
     // Always-on backdrop blur (true smoke glass) for hero surfaces like
     // the sidebar — overrides the high-quality-only gate.
     property bool forceBlur: false
@@ -118,8 +113,6 @@ Item {
         MichiMaterialTexture {
             anchors.fill: parent
             tileSeed: root.tileSeed
-            textureOpacity: root.textureOpacityOverride >= 0
-                ? root.textureOpacityOverride : -1
             visible: root.textured && opacity > 0
         }
 
@@ -130,8 +123,7 @@ Item {
             id: glintHost
             anchors.top: parent.top
             anchors.left: parent.left
-            width: Math.min(parent.width, parent.height)
-                * (root.glintScale >= 0 ? root.glintScale : 0.6)
+            width: Math.min(parent.width, parent.height) * 0.55
             height: width * 0.584   // viewBox 100 x 58.4
             visible: parent.width > 0
             Shape {

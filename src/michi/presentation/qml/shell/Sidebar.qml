@@ -19,10 +19,6 @@ MichiGlassSurface {
     // material, so the content scrolling behind reads through softly.
     forceBlur: true
     materialOpacityOverride: 0.68
-    // Finer grain than cards (navigation surface, not a tile) and a
-    // discreet brand glint — ultra-premium restraint.
-    textureOpacityOverride: 0.18
-    glintScale: 0.4
     accented: true
     // Single accent per surface: cyan (the functional active state) —
     // the previous auroraPurple glass accent competed with the cyan
@@ -30,29 +26,25 @@ MichiGlassSurface {
     accentColor: MichiPalette.auroraCyan
 
     readonly property var _routes: [
-        { id: "now_playing", label: qsTr("Now Playing"), icon: "play" },
-        { id: "library", label: qsTr("Library"), icon: "library" },
-        { id: "playlists", label: qsTr("Playlists"), icon: "playlist" }
+        { id: "now_playing", label: "Now Playing", icon: "play" },
+        { id: "library", label: "Library", icon: "library" },
+        { id: "playlists", label: "Playlists", icon: "playlist" }
     ]
 
     readonly property var _bottom_routes: [
-        { id: "settings", label: qsTr("Settings"), icon: "settings" }
+        { id: "settings", label: "Settings", icon: "settings" }
     ]
 
-    function libraryReady() {
-        return typeof library !== "undefined" && library && library.fileCount > 0
-    }
-
-    // Deep-blue atmosphere, extended for vertical depth — one hue family
+    // Deep-blue atmosphere only — no purple (one hue family)
     Rectangle {
         anchors.fill: parent
         radius: root.radius
-        opacity: 0.16
+        opacity: 0.22
         z: 0
         gradient: Gradient {
             orientation: Gradient.Vertical
             GradientStop { position: 0; color: MichiSemanticColors.contentAmbientBlue }
-            GradientStop { position: 0.6; color: "transparent" }
+            GradientStop { position: 0.5; color: "transparent" }
         }
     }
 
@@ -91,35 +83,11 @@ MichiGlassSurface {
                     }
                 }
                 MichiText {
+                    visible: !root.compact
                     text: modelData.label
                     role: "secondary"
-                    // Fade the label when collapsing to compact (width and
-                    // opacity animate together — no layout pop)
-                    opacity: root.compact ? 0 : 1
-                    Layout.preferredWidth: root.compact ? 0 : implicitWidth
-                    Behavior on opacity {
-                        enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
-                    }
-                    Behavior on Layout.preferredWidth {
-                        enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
-                    }
                     font.weight: routeItem._active ? Font.DemiBold : Font.Normal
                     color: routeItem._active || routeItem.hovered ? MichiPalette.textPrimary : MichiPalette.textSecondary
-                }
-                // Playlist count badge (quiet, informational)
-                MichiText {
-                    visible: modelData.id === "playlists"
-                        && typeof playlists !== "undefined" && playlists
-                        && playlists.playlists && !root.compact
-                    text: playlists.playlists.length
-                    role: "technical"
-                    technical: true
-                    color: MichiPalette.textMuted
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.rightMargin: MichiSpacing.md
-                    opacity: 0.85
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -191,30 +159,32 @@ MichiGlassSurface {
                     }
                 }
                 ColumnLayout {
+                    visible: !root.compact
                     spacing: 0
-                    opacity: root.compact ? 0 : 1
-                    Layout.preferredWidth: root.compact ? 0 : implicitWidth
-                    Behavior on opacity {
-                        enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
-                    }
-                    Behavior on Layout.preferredWidth {
-                        enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
-                    }
                     MichiText {
                         text: "Michi"
                         role: "title"
                         color: MichiPalette.textPrimary
                         font.weight: Font.DemiBold
                     }
-                    // State chip: shape + color + text (never color-only)
-                    MichiStatusChip {
-                        text: root.libraryReady() ? qsTr("READY") : qsTr("EMPTY")
-                        tone: root.libraryReady() ? "success" : "neutral"
-                        dotVisible: true
-                        implicitHeight: 18
+                    MichiText {
+                        text: qsTr("LOCAL HI-FI")
+                        role: "technical"
+                        technical: true
+                        color: MichiPalette.textMuted
                     }
+                }
+                Item { Layout.fillWidth: true }
+                Rectangle {
+                    visible: !root.compact
+                    Layout.preferredWidth: 7
+                    Layout.preferredHeight: 7
+                    radius: 4
+                    color: (typeof library !== "undefined" && library && library.fileCount > 0)
+                        ? MichiPalette.auroraGreen : MichiPalette.textMuted
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: (typeof library !== "undefined" && library && library.fileCount > 0)
+                        ? "Library ready" : "Library empty"
                 }
             }
         }
@@ -249,8 +219,8 @@ MichiGlassSurface {
                 }
                 MichiText {
                     text: (typeof library !== "undefined" && library && library.fileCount > 0)
-                        ? qsTr("Local · %n track(s)", "", library.fileCount)
-                        : qsTr("Local · Ready")
+                        ? "Local · " + library.fileCount + " tracks"
+                        : "Local · Ready"
                     role: "caption"
                     color: MichiPalette.textSecondary
                     elide: Text.ElideRight
