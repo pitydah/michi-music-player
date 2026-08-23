@@ -3638,6 +3638,244 @@ class TestSynchronousRejectionDisposition:
         port.close()
 
 
+class TestFinalTransactionOwnershipAndReentrancySeal:
+    """M11.3C Final Transaction Ownership & Reentrancy Seal (Gates 1, 2, 3)."""
+
+    def test_t1_stopped_during_load_svc_stop_b_never_arms(self, qapp):
+        """GATE 1: STOPPED callback during outer load(B) -> svc.stop()
+        -> outer GStreamer load(B) must NOT continue and arm B.
+        """
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+
+        # Setup: A accepted and PLAYING
+        svc.load_and_play(Path("/m/a.flac"))
+        pipeline_a = bindings.pipelines[-1]
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
+        _deliver(port, msg, gen)
+        port.play()
+        m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
+        _deliver(port, m2, g2)
+        assert svc.state.status == PlaybackStatus.PLAYING
+
+        pipelines_before = len(bindings.pipelines)
+
+        def on_port_state(s):
+            if s == PlaybackStatus.STOPPED:
+                svc.stop()
+
+        port.subscribe_playback_state_changed(on_port_state)
+
+        svc.load_and_play(Path("/m/b.flac"))
+
+        # PlaybackService:
+        assert svc._pending_path is None
+        assert svc._intent is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+
+        # GStreamer: B is NOT armed, no pipeline created, no pending
+        assert port._pending_path is None
+        assert port._current_path is None
+        assert port._pipeline is None
+        assert len(bindings.pipelines) == pipelines_before
+        port.close()
+
+    def test_t2_prepare_for_resume_sync_rejection(self, qapp):
+        """GATE 2 Test A: prepare_for_resume(B, 42000) with sync rejection
+        -> pending_path is None, accepted False, status STOPPED,
+        rejection error preserved, no seek, _pending_resume_position_ms cleared,
+        _resume_prepared_pending False.
+        """
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        bindings.failed_states.add(_FakeState.PAUSED)
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+
+        seek_calls = []
+        original_seek = port.seek
+        port.seek = lambda pos: (seek_calls.append(pos), original_seek(pos))
+
+        svc.prepare_for_resume(Path("/m/b.flac"), 42000)
+
+        assert svc._pending_path is None
+        assert svc._accepted is False
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert (
+            svc.state.error_message == "GStreamer failed to enter PAUSED during preroll"
+        )
+        assert seek_calls == []
+        assert svc._pending_resume_position_ms is None
+        assert svc._resume_prepared_pending is False
+        port.close()
+
+    def test_t3_prepare_for_resume_sync_acceptance(self, qapp):
+        """GATE 2 Test B: prepare_for_resume(B, 42000) with sync acceptance
+        -> accepted True, seek(42000) occurs, autoplay does NOT occur,
+        status remains STOPPED.
+        """
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+
+        original_load = port.load
+
+        def sync_accepting_load(path):
+            original_load(path)
+            pipeline = bindings.pipelines[-1]
+            msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+            _deliver(port, msg, gen)
+
+        port.load = sync_accepting_load
+        play_calls = []
+        port.play = lambda: play_calls.append(1)
+
+        svc.prepare_for_resume(Path("/m/b.flac"), 42000)
+
+        assert svc._accepted is True
+        assert svc.state.file_path == Path("/m/b.flac")
+        assert play_calls == []
+        assert svc.state.status == PlaybackStatus.STOPPED
+        pipeline = bindings.pipelines[-1]
+        assert pipeline.seek_calls == [42000 * 1_000_000]
+        port.close()
+
+    def test_t4_prepare_for_resume_async_pending_then_accepted(self, qapp):
+        """GATE 2 Test C: prepare_for_resume(B, 42000) async:
+        before ASYNC_DONE: pending B valid, no seek
+        after ASYNC_DONE: B accepted, seek(42000) occurs.
+        """
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+
+        play_calls = []
+        port.play = lambda: play_calls.append(1)
+
+        svc.prepare_for_resume(Path("/m/b.flac"), 42000)
+
+        # Before ASYNC_DONE:
+        assert svc._pending_path == Path("/m/b.flac")
+        assert svc._accepted is False
+        pipeline_b = bindings.pipelines[-1]
+        assert pipeline_b.seek_calls == []
+
+        # Deliver ASYNC_DONE:
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
+        _deliver(port, msg, gen)
+
+        # After ASYNC_DONE:
+        assert svc._accepted is True
+        assert svc.state.file_path == Path("/m/b.flac")
+        assert play_calls == []
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert pipeline_b.seek_calls == [42000 * 1_000_000]
+        port.close()
+
+    def test_t5_old_b_exception_after_c_supersession_c_unchanged(self, qapp):
+        """GATE 3: B rejection callback starts C successfully, then old B
+        raises its captured cleanup exception.
+        After catching: PlaybackService represents C, C request epoch current,
+        C intent unchanged, no B error overwrote C, B handler did not clear C.
+        """
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        bindings.failed_states.add(_FakeState.PAUSED)
+        # B's remove_bus_watch will raise during B's cleanup
+        bindings.remove_watch_exception = RuntimeError("B bus watch detach error")
+
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+
+        def on_rejected(rejected_path, reason):
+            if rejected_path == Path("/m/b.flac"):
+                # Clean up failure injections for subsequent C request
+                bindings.failed_states.clear()
+                bindings.remove_watch_exception = None
+                # Clear remove_watch_exception on bus_b so C's load
+                # can teardown B cleanly
+                if port._bus is not None:
+                    port._bus.remove_watch_exception = None
+                # Subscriber starts request C
+                svc.load_and_play(Path("/m/c.flac"))
+
+        port.subscribe_media_rejected(on_rejected)
+
+        # load_and_play(B) will see B preroll fail -> rejection starts C ->
+        # load(B) raises captured B cleanup exception -> load_and_play(B) enters except
+        with pytest.raises(RuntimeError, match="B bus watch detach error"):
+            svc.load_and_play(Path("/m/b.flac"))
+
+        # After catching: C must remain completely intact and un-clobbered
+        epoch_c = svc._request_epoch
+        assert svc._pending_path == Path("/m/c.flac")
+        assert svc._intent is True
+        assert svc._accepted is False
+        assert svc.state.error_message != "B bus watch detach error"
+
+        # AudioPort ownership: C's pipeline and bus are active
+        pipeline_c = bindings.pipelines[-1]
+        assert port._pipeline is pipeline_c
+        assert port._bus is not None
+        assert port._bus.pipeline is pipeline_c
+
+        # C accepts normally:
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_c)
+        _deliver(port, msg, gen)
+        assert svc._accepted is True
+        assert svc.state.file_path == Path("/m/c.flac")
+        assert svc._request_epoch == epoch_c
+        port.close()
+
+    def test_t6_old_b_exception_during_prepare_for_resume_c_unchanged(self, qapp):
+        """GATE 3 (T6): Same old-exception protection for prepare_for_resume."""
+        from michi.application.playback_service import PlaybackService
+
+        bindings = FakeBindings()
+        bindings.failed_states.add(_FakeState.PAUSED)
+        bindings.remove_watch_exception = RuntimeError("B prepare cleanup error")
+
+        port = GStreamerAudioPort(bindings)
+        svc = PlaybackService(port)
+
+        def on_rejected(rejected_path, reason):
+            if rejected_path == Path("/m/b.flac"):
+                bindings.failed_states.clear()
+                bindings.remove_watch_exception = None
+                if port._bus is not None:
+                    port._bus.remove_watch_exception = None
+                svc.prepare_for_resume(Path("/m/c.flac"), 12000)
+
+        port.subscribe_media_rejected(on_rejected)
+
+        with pytest.raises(RuntimeError, match="B prepare cleanup error"):
+            svc.prepare_for_resume(Path("/m/b.flac"), 42000)
+
+        # C remains intact
+        assert svc._pending_path == Path("/m/c.flac")
+        assert svc._pending_resume_position_ms == 12000
+        assert svc._accepted is False
+
+        pipeline_c = bindings.pipelines[-1]
+        assert port._pipeline is pipeline_c
+
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_c)
+        _deliver(port, msg, gen)
+        assert svc._accepted is True
+        assert svc.state.file_path == Path("/m/c.flac")
+        assert pipeline_c.seek_calls == [12000 * 1_000_000]
+        port.close()
+
+
 @pytest.mark.gstreamer_runtime
 class TestRealRuntimeSmoke:
     """P2-01/P1-04: smoke real de GI/GStreamer — SKIP truthful solo con
