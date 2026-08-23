@@ -159,7 +159,7 @@ engines adapt TO Michi contracts, never the reverse:
   attaches behind the same router: GStreamerEngineProvider →
   GStreamerAudioPort (playbin3, lazy GI, own GLib pump + Qt bridge
   dispatch, generation-guarded stale isolation) — available when the GI
-  runtime exists, never the default. MPD attaches in M11.3D.
+  runtime exists, never the default. MPD attaches behind the same AudioTransportRouter through MpdEngineProvider → MPDAudioPort: managed/private MPD child, private AF_UNIX socket, Michi-owned lifecycle, engine-local queue slot only — never QueueService authority.
 - **Audio Lab boundary**: a future DSP stage (CamillaDSP-style external
   process) may insert between Engine and Output Policy AFTER PLAYER STABLE;
   the architecture leaves the seam, the stage is not implemented.
