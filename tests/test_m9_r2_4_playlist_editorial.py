@@ -276,3 +276,40 @@ def test_queue_remove_offers_undo_and_detail_menu_adds_tracks():
     page = read("playlists/PlaylistDetailView.qml")
     assert 'qsTr("Add tracks…")' in page
     assert "onTriggered: root.addMusicRequested()" in page
+
+
+# ── Sidebar + NowPlayingBar audit block ───────────────────────────────────────
+
+
+def test_sidebar_dead_signal_removed_and_active_state_announced():
+    sidebar = read("shell/Sidebar.qml")
+    assert "signal createPlaylistRequested" not in sidebar
+    assert "Accessible.checked: routeItem._active" in sidebar
+    assert "MichiTooltip {" in sidebar  # compact mode labels
+    shell = read("shell/AppShell.qml")
+    # sidebar wiring removed; ContentHost's own create signal kept
+    assert shell.count("onCreatePlaylistRequested") == 1
+
+
+def test_now_playing_bar_repeat_has_non_chromatic_state():
+    bar = read("player/NowPlayingBar.qml")
+    assert 'opacity: root.repeatMode === "NONE" ? 0.45 : 1' in bar
+    assert 'qsTr("Repeat: %1", "", root.repeatMode.toLowerCase())' in bar
+    # the album line is readable secondary text now, not caption-muted
+    assert '"Unknown album")' in bar
+    assert 'role: "secondary"' in bar
+    assert "opacity: 0.7" in bar
+
+
+def test_now_playing_bar_accessibles_are_translated():
+    bar = read("player/NowPlayingBar.qml")
+    for string in [
+        "Playback position",
+        "Previous track",
+        "Next track",
+        "Volume",
+        "Audio settings",
+        "Output selection unavailable",
+    ]:
+        assert f'qsTr("{string}")' in bar, string
+    assert 'qsTr("%1 percent", "", Math.round(value))' in bar

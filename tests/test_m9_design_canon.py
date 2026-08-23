@@ -174,9 +174,9 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "Gradient.Horizontal" in now_playing
     assert 'objectName: "qualityBadge"' in now_playing
     assert now_playing.count('objectName: "outputDeviceButton"') == 1
-    assert 'accessibleName: "Output selection unavailable"' in now_playing
+    assert 'accessibleName: qsTr("Output selection unavailable")' in now_playing
     assert now_playing.count('objectName: "audioEngineIndicator"') == 1
-    assert 'Accessible.name: "Audio engine selection planned"' in now_playing
+    assert 'Accessible.name: qsTr("Audio engine selection planned")' in now_playing
     assert 'objectName: "audioEngineButton"' not in now_playing
     assert 'objectName: "outputStatusButton"' not in now_playing
 

@@ -152,8 +152,9 @@ Item {
                         text: root.hasTrack
                             ? (root.album.length > 0 ? root.album : "Unknown album")
                             : "Local library"
-                        role: "caption"
-                        color: MichiPalette.textMuted
+                        role: "secondary"
+                        color: MichiPalette.textSecondary
+                        opacity: 0.7
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -201,8 +202,9 @@ Item {
                     focusPolicy: Qt.StrongFocus
                     hoverEnabled: true
                     Accessible.role: Accessible.Slider
-                    Accessible.name: "Playback position"
-                    Accessible.description: formatTime(value) + " of " + formatTime(root.duration)
+                    Accessible.name: qsTr("Playback position")
+                    Accessible.description: qsTr("%1 of %2", "",
+                        formatTime(value), formatTime(root.duration))
                     onMoved: root.seekRequested(Math.round(value))
 
                     background: Rectangle {
@@ -279,7 +281,7 @@ Item {
                         objectName: "shuffleButton"
                         iconName: "shuffle"
                         accessibleName: root.shuffleEnabled
-                            ? "Disable shuffle" : "Enable shuffle"
+                            ? qsTr("Disable shuffle") : qsTr("Enable shuffle")
                         selected: root.shuffleEnabled
                         enabled: root.hasTrack
                         onClicked: root.shuffleRequested(!root.shuffleEnabled)
@@ -287,7 +289,7 @@ Item {
                     MichiIconButton {
                         objectName: "previousButton"
                         iconName: "previous"
-                        accessibleName: "Previous track"
+                        accessibleName: qsTr("Previous track")
                         enabled: root.hasPrevious
                         onClicked: root.previousRequested()
                     }
@@ -301,7 +303,7 @@ Item {
                         focusPolicy: Qt.StrongFocus
                         hoverEnabled: true
                         Accessible.role: Accessible.Button
-                        Accessible.name: root.status === "playing" ? "Pause" : "Play"
+                        Accessible.name: root.status === "playing" ? qsTr("Pause") : qsTr("Play")
                         onClicked: root.playPauseRequested()
 
                         contentItem: Item {
@@ -411,15 +413,22 @@ Item {
                     MichiIconButton {
                         objectName: "nextButton"
                         iconName: "next"
-                        accessibleName: "Next track"
+                        accessibleName: qsTr("Next track")
                         enabled: root.hasNext
                         onClicked: root.nextRequested()
                     }
                     MichiIconButton {
                         objectName: "repeatButton"
                         iconName: root.repeatMode === "ONE" ? "repeat-one" : "repeat"
-                        accessibleName: "Repeat: " + root.repeatMode.toLowerCase()
+                        accessibleName: qsTr("Repeat: %1", "", root.repeatMode.toLowerCase())
                         selected: root.repeatMode !== "NONE"
+                        // Repeat ALL vs NONE share the same glyph — the
+                        // dimmed opacity adds a non-chromatic differentiator
+                        opacity: root.repeatMode === "NONE" ? 0.45 : 1
+                        Behavior on opacity {
+                            enabled: !MichiAccessibility.reducedMotion
+                            NumberAnimation { duration: MichiMotion.micro }
+                        }
                         enabled: root.hasTrack
                         onClicked: root.repeatRequested(nextRepeatMode(root.repeatMode))
                     }
@@ -447,7 +456,7 @@ Item {
                 Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
                 iconName: root.muted || root.volume === 0 ? "mute" : "volume"
-                accessibleName: root.muted ? "Unmute" : "Mute"
+                accessibleName: root.muted ? qsTr("Unmute") : qsTr("Mute")
                 onClicked: root.muteRequested(!root.muted)
             }
 
@@ -472,8 +481,8 @@ Item {
                     focusPolicy: Qt.StrongFocus
                     hoverEnabled: true
                     Accessible.role: Accessible.Slider
-                    Accessible.name: "Volume"
-                    Accessible.description: Math.round(value) + " percent"
+                    Accessible.name: qsTr("Volume")
+                    Accessible.description: qsTr("%1 percent", "", Math.round(value))
                     onMoved: root.volumeRequested(Math.round(value))
 
                     background: Rectangle {
@@ -549,7 +558,7 @@ Item {
                 Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
                 iconName: "equalizer"
-                accessibleName: "Audio settings"
+                accessibleName: qsTr("Audio settings")
                 onClicked: root.settingsRequested()
             }
 
@@ -560,7 +569,7 @@ Item {
                 Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
                 iconName: "audio-output"
-                accessibleName: "Output selection unavailable"
+                accessibleName: qsTr("Output selection unavailable")
                 enabled: false
                 opacity: 0.62
             }
@@ -574,7 +583,7 @@ Item {
                 Layout.preferredHeight: 34
                 opacity: 0.62
                 Accessible.role: Accessible.StaticText
-                Accessible.name: "Audio engine selection planned"
+                Accessible.name: qsTr("Audio engine selection planned")
 
                 Rectangle {
                     anchors.fill: parent

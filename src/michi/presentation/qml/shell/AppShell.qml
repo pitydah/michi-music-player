@@ -76,7 +76,6 @@ Item {
             compact: width < 156 || MichiBreakpoints.isCompact(root.width)
             currentRoute: root.currentRoute
             onNavigationRequested: routeId => root.navigationRequested(routeId)
-            onCreatePlaylistRequested: playlistCreateDialog.open()
         }
 
         ContentHost {

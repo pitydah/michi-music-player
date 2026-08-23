@@ -1,13 +1,13 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../primitives"
 import "../theme"
 
 MichiGlassSurface {
     id: root
     signal navigationRequested(string routeId)
-    signal createPlaylistRequested()
     property string currentRoute: ""
     property bool compact: false
     contentPadding: MichiSpacing.sm
@@ -58,6 +58,7 @@ MichiGlassSurface {
             hoverEnabled: true
             Accessible.role: Accessible.Button
             Accessible.name: modelData.label
+            Accessible.checked: routeItem._active
 
             contentItem: RowLayout {
                 spacing: MichiSpacing.md
@@ -116,6 +117,13 @@ MichiGlassSurface {
                 MichiFocusRing { visualFocus: routeItem.visualFocus }
             }
             onClicked: root.navigationRequested(modelData.id)
+
+            // Compact mode hides the labels — the tooltip keeps the
+            // route name discoverable on hover
+            MichiTooltip {
+                visible: root.compact && routeItem.hovered
+                text: modelData.label
+            }
         }
     }
 
