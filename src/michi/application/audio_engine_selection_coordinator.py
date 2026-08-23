@@ -8,9 +8,17 @@ It composes those authorities into ONE canonical transaction.
 
 Framework-free: no PySide6, no gi, no Gst, no MPD protocol/runtime, no
 sqlite3. Providers are obtained ONLY through the registry — never
-instantiated here. No background threads, no timers, no polling, no
-automatic fallback (M11.3G owns fallback/restart convergence).
+instantiated here. No background threads, no timers, no polling.
+
+M11.3G seam: after a SAFE post-destructive target failure (source already
+closed, router safely unbound) the coordinator may notify the convergence
+coordinator via ``recover_safe_unbound_failure`` so G can attempt the ONE
+automatic Qt fallback. F's thrown-exception semantics never change: the
+original target error still propagates after G recovery.
 """
+
+from collections.abc import Callable
+from enum import Enum
 
 from michi.application.audio_engine_registry import AudioEngineRegistry
 from michi.application.audio_engine_service import AudioEngineService
@@ -38,6 +46,19 @@ class AudioEngineSwitchInProgressError(AudioEngineSwitchError):
     AudioEngineService publishes state changes synchronously, so a
     subscriber may attempt switch_to(C) while switch_to(B) is mid-flight.
     Exactly ONE explicit engine switch transaction may exist at a time."""
+
+
+class AudioEngineSwitchFailureStage(Enum):
+    """Transaction diagnostics: where an explicit switch failed.
+
+    Orchestration-only — never persisted, never part of AudioEngineState.
+    Used by M11.3G to decide whether automatic fallback is SAFE."""
+
+    SOURCE_UNBIND = "source_unbind"
+    SOURCE_CLOSE = "source_close"
+    TARGET_OPEN = "target_open"
+    TARGET_ACTIVATION_DETACHED = "target_activation_detached"
+    TARGET_ACTIVATION_STILL_BOUND = "target_activation_still_bound"
 
 
 class AudioEngineSelectionCoordinator:
@@ -89,6 +110,21 @@ class AudioEngineSelectionCoordinator:
         # M11.3F P1-03: synchronous reentrancy guard — exactly ONE explicit
         # switch transaction at a time (owner-thread model, boolean only).
         self._switch_in_progress = False
+        # M11.3G seam: safe-fallback recovery callback (never replaces the
+        # original exception; may be None when G is not wired).
+        self._recover_callback: Callable[[AudioEngineId, str], None] | None = None
+        # Transaction diagnostics: stage of the LAST failed transaction.
+        self.last_failure_stage: AudioEngineSwitchFailureStage | None = None
+
+    def set_recovery_callback(
+        self, callback: Callable[[AudioEngineId, str], None] | None
+    ) -> None:
+        """M11.3G seam: register the safe-unbound-failure recovery handler.
+
+        Called ONLY after TARGET_OPEN or TARGET_ACTIVATION_DETACHED
+        failures (source ownership released, router safely unbound). The
+        callback must never replace the original exception."""
+        self._recover_callback = callback
 
     # ------------------------------------------------------------------
     # Public transaction
@@ -109,6 +145,7 @@ class AudioEngineSelectionCoordinator:
                 "engine switch already in progress; nested switch rejected"
             )
         self._switch_in_progress = True
+        self.last_failure_stage = None  # reset at the start of every transaction
         try:
             self._switch_to_transaction(target)
         finally:
@@ -187,6 +224,7 @@ class AudioEngineSelectionCoordinator:
             try:
                 self._router.unbind()
             except Exception as original:
+                self.last_failure_stage = AudioEngineSwitchFailureStage.SOURCE_UNBIND
                 bound = self._router.bound_engine_id
                 if bound == active:
                     self._engine_service.mark_bound_failed(active, str(original))
@@ -206,6 +244,7 @@ class AudioEngineSelectionCoordinator:
             try:
                 source_provider.close()
             except Exception as original:
+                self.last_failure_stage = AudioEngineSwitchFailureStage.SOURCE_CLOSE
                 self._playback.invalidate_backend_acceptance_for_engine_switch()
                 self._engine_service.mark_failed(active, str(original))
                 raise
@@ -218,9 +257,13 @@ class AudioEngineSelectionCoordinator:
         try:
             target_port = provider.open()
         except Exception as original:
+            self.last_failure_stage = AudioEngineSwitchFailureStage.TARGET_OPEN
             # Target never opened: no ownership to release. FAILED is the
             # honest lifecycle; selected target stays as persisted intent.
             self._engine_service.mark_failed(target, str(original))
+            # M11.3G seam: SAFE for fallback (source closed, router unbound).
+            if self._recover_callback is not None:
+                self._recover_callback(target, str(original))
             raise
         try:
             self._router.bind(target, target_port)
@@ -248,10 +291,21 @@ class AudioEngineSelectionCoordinator:
                 with suppress(Exception):
                     provider.close()
                 self._engine_service.mark_failed(target, str(original))
+                # M11.3G seam: SAFE for fallback (router detached, target
+                # closed). The original error still propagates afterwards.
+                self.last_failure_stage = (
+                    AudioEngineSwitchFailureStage.TARGET_ACTIVATION_DETACHED
+                )
+                if self._recover_callback is not None:
+                    self._recover_callback(target, str(original))
             else:
                 # Detach failed: target remains physically bound. Do NOT
                 # close it. State reflects physical truth, primary error
-                # preserved (cleanup unbind error stays secondary).
+                # preserved (cleanup unbind error stays secondary). NOT SAFE
+                # for fallback (two concurrently owned engines forbidden).
+                self.last_failure_stage = (
+                    AudioEngineSwitchFailureStage.TARGET_ACTIVATION_STILL_BOUND
+                )
                 self._engine_service.mark_bound_failed(
                     self._router.bound_engine_id, str(original)
                 )

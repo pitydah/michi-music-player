@@ -402,9 +402,16 @@ class PersistenceCoordinator:
             self._last_volume = volume
             self._last_muted = muted
 
-    def restore(self) -> None:
+    def restore(self, *, engine_available: bool = True) -> None:
         """Startup: rebuild the queue, then resume playback only when the
         queue current identity matches the persisted playback identity.
+
+        M11.3G (§66): ``engine_available=False`` (no engine could be
+        activated at startup) restores the QueueState and the logical
+        current-track identity but MUST NOT attempt a backend load/seek —
+        the router is unbound and no resume may be fabricated. The resume
+        phase stays NONE; the next startup (or an explicit engine
+        activation) retries normally.
 
         The coherence rule (§4/§22) guards the resume: ``prepare_for_resume``
         is requested ONLY when ``snapshot.queue_current_index`` is valid and
@@ -443,6 +450,7 @@ class PersistenceCoordinator:
                 snapshot.playback_path is not None
                 and 0 <= idx < len(entries)
                 and entries[idx].file_path == snapshot.playback_path
+                and engine_available  # M11.3G §66: never resume unbound
             )
             if coherent:
                 # M5-LAST-GATE-2: the loaded snapshot is the last valid

@@ -483,6 +483,46 @@ class PlaybackService:
         ):
             on_cancelled(cancelled_path)
 
+    def converge_after_engine_loss(self, reason: str) -> None:
+        """M11.3G: converge PlaybackState after a FATAL ENGINE RUNTIME LOSS.
+
+        Owned by PlaybackService — the convergence coordinator never mutates
+        private fields directly. Effects:
+        - request epoch incremented (stale in-flight requests obsolete)
+        - pending candidate terminated EXACTLY ONCE through the existing
+          REJECTION semantics (engine loss is failure, NOT user cancellation)
+        - pending resume slot + resume confirmation latch cleared
+        - intent=False, accepted=False, PlaybackStatus=STOPPED
+        - committed file_path, last canonical position, volume and mute
+          PRESERVED (informational)
+        - error_message=reason, canonical notify
+        NO autoplay, NO EOM, NO seek, NO Queue mutation.
+        """
+        # Capture the pending rejection callback BEFORE clearing, preserving
+        # the existing reentrancy discipline (clear pending first, then fire).
+        self._request_epoch += 1
+        pending_path = self._pending_path
+        on_rejected = self._pending_on_rejected
+        self._pending_path = None
+        self._pending_on_accepted = None
+        self._pending_on_rejected = None
+        self._pending_on_cancelled = None
+        self._pending_resume_position_ms = None
+        self._resume_prepared_pending = False
+        self._intent = False
+        self._accepted = False
+        self._state.status = PlaybackStatus.STOPPED
+        # file_path / position_ms / volume / muted preserved on purpose.
+        self._state.error_message = reason
+        self._notify()
+        if (
+            pending_path is not None
+            and on_rejected is not None
+            and self._pending_path is None
+        ):
+            # Engine loss is a FAILURE, not user cancellation: reject once.
+            on_rejected(pending_path, reason)
+
     def seek(self, position_ms: int) -> None:
         self._audio.seek(position_ms)
         self._state.position_ms = position_ms

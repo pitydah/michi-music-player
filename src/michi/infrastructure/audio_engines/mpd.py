@@ -42,6 +42,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -457,6 +458,7 @@ class MPDAudioPort(AudioPort):
         self,
         runtime: _ManagedMpdRuntime | None = None,
         poll_interval_ms: int = 500,
+        runtime_failure_callback: Callable[[int, str], None] | None = None,
     ) -> None:
         super().__init__()
         self._bridge = _MpdEventBridge()
@@ -465,6 +467,10 @@ class MPDAudioPort(AudioPort):
         self._client: _MpdProtocolClient | None = None
         self._runtime_generation = 0
         self._closed = True  # se abre con open()
+        # M11.3G seam (minimal, OPTIONAL): publica PROVEN fatal runtime loss
+        # (PROCESS_EXIT / fatal TRANSPORT_ERROR) hacia el provider lifecycle
+        # seam — recibe (runtime_generation, reason). NUNCA media errors.
+        self._runtime_failure_callback = runtime_failure_callback
         # identity engine-local
         self._pending_path: Path | None = None
         self._current_path: Path | None = None
@@ -723,10 +729,21 @@ class MPDAudioPort(AudioPort):
     def _converge_process_exit(self, reason: str | None) -> None:
         """El hijo murió: sin PLAYING futuro, sin EOM, convergencia
         honesta, sin auto-restart (M11.3G)."""
+        # M11.3G seam: PROCESS_EXIT es PROVEN fatal runtime loss.
+        if self._runtime_failure_callback is not None:
+            self._runtime_failure_callback(
+                self._runtime_generation, reason or "MPD process exited"
+            )
         if self._current_path is not None or self._pending_path is not None:
             self._converge_media_loss(reason or "MPD process exited")
 
     def _converge_transport_error(self, reason: str | None) -> None:
+        # M11.3G seam: fatal TRANSPORT_ERROR (runtime no confiable) — solo
+        # el transport terminal; el status.error del media NO pasa por aquí.
+        if self._runtime_failure_callback is not None:
+            self._runtime_failure_callback(
+                self._runtime_generation, reason or "MPD transport error"
+            )
         if self._current_path is not None:
             self._converge_media_loss(reason or "MPD transport error")
 

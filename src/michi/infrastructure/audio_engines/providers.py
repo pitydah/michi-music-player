@@ -10,6 +10,11 @@ adapter implementation truth (implemented).
 """
 
 from michi.application.audio_engine_registry import AudioEngineProviderPort
+from michi.application.audio_engine_runtime_failure import (
+    AudioEngineRuntimeFailureEvent,
+    AudioEngineRuntimeFailureSourcePort,
+    RuntimeFailureCallback,
+)
 from michi.application.ports import AudioPort
 from michi.domain.audio_engine import (
     AudioEngineCapabilities,
@@ -22,7 +27,56 @@ _GSTREAMER_DISPLAY = "GStreamer"
 _MPD_DISPLAY = "MPD"
 
 
-class QtEngineProvider(AudioEngineProviderPort):
+class _RuntimeFailureRelayMixin(AudioEngineRuntimeFailureSourcePort):
+    """M11.3G: provider-level runtime-failure observation relay.
+
+    Providers may be open/close/reopen; a delayed failure from runtime
+    generation N must NEVER kill generation N+1 — every emitted event
+    carries the provider's CURRENT runtime generation and the convergence
+    coordinator validates it against the provider at acceptance time.
+    """
+
+    def __init__(self) -> None:
+        self._runtime_failure_listeners: list[RuntimeFailureCallback] = []
+        self._runtime_generation = 0
+
+    @property
+    def current_runtime_generation(self) -> int:
+        """Generation of the CURRENTLY open runtime (invalidated on close)."""
+        return self._runtime_generation
+
+    def subscribe_runtime_failed(self, callback: RuntimeFailureCallback) -> None:
+        if callback not in self._runtime_failure_listeners:
+            self._runtime_failure_listeners.append(callback)
+
+    def unsubscribe_runtime_failed(self, callback: RuntimeFailureCallback) -> None:
+        if callback in self._runtime_failure_listeners:
+            self._runtime_failure_listeners.remove(callback)
+
+    def _bump_runtime_generation(self) -> None:
+        self._runtime_generation += 1
+
+    def _invalidate_runtime_generation(self) -> None:
+        """Invalidate any in-flight events from the runtime being closed:
+        the generation moves forward so stale events are rejected."""
+        self._runtime_generation += 1
+
+    def emit_runtime_failure(self, reason: str) -> None:
+        """Publish a proven fatal runtime loss to subscribers (best-effort:
+        a subscriber exception must not kill the provider lifecycle)."""
+        event = AudioEngineRuntimeFailureEvent(
+            engine_id=self.engine_id,
+            runtime_generation=self._runtime_generation,
+            reason=reason,
+        )
+        for cb in list(self._runtime_failure_listeners):
+            try:
+                cb(event)
+            except Exception:  # pragma: no cover - defensive relay
+                continue
+
+
+class QtEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
     """Reference/safe engine: wraps the existing QtMultimediaBackend.
 
     M11.3A-R1 lifecycle ownership: the provider OWNS the backend instance it
@@ -31,6 +85,7 @@ class QtEngineProvider(AudioEngineProviderPort):
     transport router MUST detach BEFORE the provider closes (SWITCH ORDER)."""
 
     def __init__(self) -> None:
+        _RuntimeFailureRelayMixin.__init__(self)
         self._backend: AudioPort | None = None
 
     @property
@@ -74,6 +129,7 @@ class QtEngineProvider(AudioEngineProviderPort):
 
         backend = QtMultimediaBackend()
         self._backend = backend
+        self._bump_runtime_generation()
         return backend
 
     def close(self) -> None:
@@ -92,14 +148,16 @@ class QtEngineProvider(AudioEngineProviderPort):
             backend.stop()
         finally:
             self._backend = None
+            self._invalidate_runtime_generation()
 
 
-class GStreamerEngineProvider(AudioEngineProviderPort):
+class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
     """GStreamer provider (M11.3C): implemented = True, availability is
     runtime-dependent (GI/GStreamer installed). gi is never imported at
     module import time — the base Michi wheel stays usable without it."""
 
     def __init__(self) -> None:
+        _RuntimeFailureRelayMixin.__init__(self)
         self._port: AudioPort | None = None
 
     @property
@@ -150,6 +208,7 @@ class GStreamerEngineProvider(AudioEngineProviderPort):
 
         port = GStreamerAudioPort()
         self._port = port
+        self._bump_runtime_generation()
         return port
 
     def close(self) -> None:
@@ -161,9 +220,10 @@ class GStreamerEngineProvider(AudioEngineProviderPort):
             port.close()
         finally:
             self._port = None
+            self._invalidate_runtime_generation()
 
 
-class MpdEngineProvider(AudioEngineProviderPort):
+class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
     """MPD as a MANAGED PRIVATE child process behind AudioPort (M11.3D).
 
     probe() is SIDE-EFFECT FREE: it only checks the executable is
@@ -172,6 +232,7 @@ class MpdEngineProvider(AudioEngineProviderPort):
     /run/mpd, /etc/mpd.conf or ~/.config/mpd."""
 
     def __init__(self) -> None:
+        _RuntimeFailureRelayMixin.__init__(self)
         self._port = None
 
     @property
@@ -208,9 +269,10 @@ class MpdEngineProvider(AudioEngineProviderPort):
             return self._port
         from michi.infrastructure.audio_engines.mpd import MPDAudioPort
 
-        port = MPDAudioPort()
+        port = MPDAudioPort(runtime_failure_callback=self._relay_mpd_runtime_failure)
         port.open()  # failure-atomic: si falla, el runtime se limpia solo
         self._port = port
+        self._bump_runtime_generation()
         return port
 
     def close(self) -> None:
@@ -218,3 +280,12 @@ class MpdEngineProvider(AudioEngineProviderPort):
         self._port = None
         if port is not None:
             port.close()
+        self._invalidate_runtime_generation()
+
+    def _relay_mpd_runtime_failure(self, generation: int, reason: str) -> None:
+        """M11.3G minimal seam: the port's PROVEN fatal runtime loss
+        (PROCESS_EXIT / fatal TRANSPORT_ERROR) published through the
+        provider lifecycle seam with the PORT's runtime generation."""
+        if generation != self._runtime_generation:
+            return  # stale port event (older runtime generation)
+        self.emit_runtime_failure(reason)

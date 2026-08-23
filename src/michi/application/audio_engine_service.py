@@ -171,3 +171,50 @@ class AudioEngineService:
                 fallback_from=None,
             )
         )
+
+    # ------------------------------------------------------------------
+    # M11.3G — convergence transitions (fallback / startup / runtime loss).
+    # State ownership stays HERE; the convergence coordinator NEVER assigns
+    # AudioEngineState directly.
+    # ------------------------------------------------------------------
+
+    def mark_fallback_ready(
+        self,
+        active_engine_id: AudioEngineId,
+        fallback_from: AudioEngineId,
+        message: str,
+    ) -> None:
+        """READY through AUTOMATIC fallback (M11.3G).
+
+        active=active_engine_id is running as fallback because preferred
+        engine fallback_from could not be used. selected (persisted user
+        intent) is NEVER overwritten by fallback. error_message carries the
+        deterministic reason (e.g. 'MPD runtime failed: ...; using Qt
+        Multimedia fallback')."""
+        self._replace(
+            AudioEngineState(
+                selected_engine_id=self._state.selected_engine_id,
+                active_engine_id=active_engine_id,
+                lifecycle=AudioEngineLifecycle.READY,
+                switching_to=None,
+                error_message=message,
+                fallback_from=fallback_from,
+            )
+        )
+
+    def mark_convergence_failed(self, message: str) -> None:
+        """M11.3G: convergence attempt ended with NO active engine.
+
+        active=None, lifecycle=FAILED, fallback_from=None. error_message
+        must carry BOTH facts deterministically (preferred failure + fallback
+        failure). Never fabricate READY."""
+        self._replace(
+            AudioEngineState(
+                selected_engine_id=self._state.selected_engine_id,
+                active_engine_id=None,
+                lifecycle=AudioEngineLifecycle.FAILED,
+                switching_to=None,
+                error_message=message,
+                fallback_from=None,
+            )
+        )

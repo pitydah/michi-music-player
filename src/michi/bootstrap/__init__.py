@@ -16,6 +16,9 @@ from PySide6.QtCore import QStandardPaths, Qt, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
+from michi.application.audio_engine_convergence_coordinator import (
+    AudioEngineConvergenceCoordinator,
+)
 from michi.application.audio_engine_registry import AudioEngineRegistry
 from michi.application.audio_engine_selection_coordinator import (
     AudioEngineSelectionCoordinator,
@@ -124,6 +127,7 @@ class ServiceGraph:
     audio_router: AudioTransportRouter
     audio_engine_registry: AudioEngineRegistry
     audio_engine_service: AudioEngineService
+    audio_engine_convergence: AudioEngineConvergenceCoordinator
     qt_engine_provider: QtEngineProvider
     scanner: object
     metadata_extractor: object
@@ -261,6 +265,7 @@ def _build_services(
     db_path,
     *,
     backend=None,
+    startup_selected_engine: AudioEngineId = AudioEngineId.QT_MULTIMEDIA,
     scanner=None,
     metadata_extractor=None,
     artwork_provider=_MISSING,
@@ -276,26 +281,56 @@ def _build_services(
     Mutagen implementations (passing None disables artwork in headless
     tests). All library persistence is real: SqliteLibraryIndexRepository,
     SqliteLibraryPrefsRepository, SqlitePlaylistsRepository.
+
+    M11.3G selected-first startup: ``startup_selected_engine`` is the
+    persisted SELECTED preference (SettingsService.load() in the container;
+    tests default to Qt). The graph activates SELECTED directly (never
+    forcing Qt first) and falls back to the safe Qt reference engine only
+    when the selected engine cannot activate. ``backend`` (test seam) keeps
+    the historical M11.3B reference-Qt path for composition tests.
     """
     # M11.3B-R1: ONE canonical Qt provider instance — the SAME object is
     # registered in the registry AND used as the productive provider
-    # (registry.provider(QT) is qt_provider). The reference engine startup
-    # runs the canonical lifecycle transaction (probe → can_activate →
-    # INITIALIZING → open → bind → validate → READY) with honest failure
-    # convergence (UNAVAILABLE pre-init / FAILED post-init + cleanup).
+    # (registry.provider(QT) is qt_provider). M11.3G: selected-first —
+    # restore the persisted SELECTED preference BEFORE any activation.
     qt_provider = QtEngineProvider()
     gstreamer_provider = GStreamerEngineProvider()
     mpd_provider = MpdEngineProvider()
     registry = AudioEngineRegistry([qt_provider, gstreamer_provider, mpd_provider])
     engine_service = AudioEngineService(registry)
+    engine_service.restore_selected(startup_selected_engine)
     router = AudioTransportRouter()
-    backend = _initialize_reference_audio_runtime(
-        qt_provider,
-        registry,
-        engine_service,
-        router,
-        injected_backend=backend,
+
+    # PlaybackService is needed by convergence (volume/mute restore) — the
+    # graph wiring order is: services → convergence → startup activation.
+    playback = PlaybackService(router)
+    convergence = AudioEngineConvergenceCoordinator(
+        engine_service=engine_service,
+        registry=registry,
+        router=router,
+        playback=playback,
     )
+    for provider in (qt_provider, gstreamer_provider, mpd_provider):
+        convergence.subscribe_provider(provider)
+
+    if backend is not None:
+        # TEST SEAM (M11.3B composition tests): reference-Qt startup with
+        # the injected fake port through the historical canonical
+        # transaction. Production never passes ``backend``.
+        bound_port = _initialize_reference_audio_runtime(
+            qt_provider,
+            registry,
+            engine_service,
+            router,
+            injected_backend=backend,
+        )
+    else:
+        # M11.3G canonical production startup: selected-first convergence
+        # (activate selected, safe Qt fallback, honest FAILED when nothing
+        # can activate — the router may stay unbound).
+        convergence.converge_startup()
+        bound_port = router._bound  # introspection: concrete bound port
+
     if scanner is None:
         scanner = FilesystemLibraryScanner()
     if metadata_extractor is None:
@@ -305,7 +340,6 @@ def _build_services(
     if artwork_cache is _MISSING:
         artwork_cache = ArtworkCache(Path.home() / ".cache" / "michi" / "artwork")
 
-    playback = PlaybackService(router)
     queue = QueueService(playback)
 
     library_index = SqliteLibraryIndexRepository(db_path)
@@ -350,7 +384,8 @@ def _build_services(
         relay=scan_relay,
         queue=queue,
         playback=playback,
-        bound_audio_port=backend,
+        bound_audio_port=bound_port,
+        audio_engine_convergence=convergence,
         audio_router=router,
         audio_engine_registry=registry,
         audio_engine_service=engine_service,
@@ -424,6 +459,7 @@ class ApplicationContainer:
         self._audio_router: AudioTransportRouter | None = None
         self._audio_engine_registry: AudioEngineRegistry | None = None
         self._audio_engine_service: AudioEngineService | None = None
+        self._audio_engine_convergence: AudioEngineConvergenceCoordinator | None = None
         self._qt_engine_provider: QtEngineProvider | None = None
         self._engine_selection_coordinator: AudioEngineSelectionCoordinator | None = (
             None
@@ -459,12 +495,20 @@ class ApplicationContainer:
 
         db_path = _data_dir() / "michi.db"
         repo = SQLiteSettingsRepository.open_for_startup(db_path)
-        graph = _build_services(db_path)
+        settings = SettingsService(repo)
+        # M11.3G selected-first startup: the persisted SELECTED preference is
+        # known BEFORE the engine graph is built — activation converges to
+        # selected (with safe Qt fallback) instead of forcing Qt first.
+        settings_state = settings.load()
+        graph = _build_services(
+            db_path,
+            startup_selected_engine=settings_state.audio_engine_id,
+        )
         self._audio_router = graph.audio_router
         self._audio_engine_registry = graph.audio_engine_registry
         self._audio_engine_service = graph.audio_engine_service
+        self._audio_engine_convergence = graph.audio_engine_convergence
         self._qt_engine_provider = graph.qt_engine_provider
-        settings = SettingsService(repo)
 
         playback = graph.playback
         queue = graph.queue
@@ -481,22 +525,24 @@ class ApplicationContainer:
         # hook only forwards the deleted id.
         playlist_service.set_on_playlist_deleted(navigation.forget_playlist)
 
-        # Load persisted preferences once
-        s = settings.load()
-        playback.restore_volume(s.volume, s.muted)
+        # Restore canonical volume/mute on the ACTIVE transport only — never
+        # through an unbound router (engine convergence may have failed).
+        if graph.audio_engine_service.state.active_engine_id is not None:
+            playback.restore_volume(settings_state.volume, settings_state.muted)
 
-        # M11.3F: restore the persisted SELECTED engine preference (Qt
-        # default; malformed preference → Qt). Deliberately NO automatic
-        # selected→active convergence: until M11.3G, selected=MPD with
-        # active=Qt READY is a valid, truthful startup state (the F restart
-        # contract). Explicit switching runs through the coordinator.
-        graph.audio_engine_service.restore_selected(s.audio_engine_id)
+        # M11.3F: explicit switching through the coordinator (state authority
+        # remains AudioEngineService).
         self._engine_selection_coordinator = AudioEngineSelectionCoordinator(
             engine_service=graph.audio_engine_service,
             registry=graph.audio_engine_registry,
             router=graph.audio_router,
             playback=playback,
             settings=settings,
+        )
+        # M11.3G: safe recovery after destructive explicit-switch target
+        # failures (source closed + router safely unbound).
+        self._engine_selection_coordinator.set_recovery_callback(
+            graph.audio_engine_convergence.recover_safe_unbound_failure
         )
 
         # M6.9G: LAZY enrichment composition — construction performs ZERO
@@ -534,7 +580,15 @@ class ApplicationContainer:
         session_repo = SqliteSessionRepository(db_path)
         persistence = PersistenceCoordinator(session_repo, queue, playback, settings)
         persistence.start()
-        persistence.restore()
+        # M11.3G §66: the startup resume happens ONLY through the engine that
+        # convergence activated (selected or Qt fallback). With no active
+        # engine the queue/logical identity still restore, but no backend
+        # load/seek/play is attempted on an unbound router.
+        persistence.restore(
+            engine_available=(
+                graph.audio_engine_service.state.active_engine_id is not None
+            )
+        )
 
         pb = PlaybackBridge(playback, library)
         qb = QueueBridge(queue, library)
@@ -653,6 +707,15 @@ class ApplicationContainer:
             except Exception as exc:
                 error = error or exc
 
+        # M11.3G G6: disable engine convergence BEFORE the audio teardown
+        # begins — a close-time fatal runtime event (e.g. MPD transport
+        # error while closing) must NEVER trigger a Qt fallback during
+        # application shutdown.
+        if self._engine_selection_coordinator is not None and getattr(
+            self, "_audio_engine_convergence", None
+        ):
+            self._audio_engine_convergence.shutdown()
+
         # M11.3F P1-01: shutdown releases the ACTUALLY ACTIVE provider —
         # resolved from the canonical graph (registry + engine service +
         # router physical truth). NEVER a hard-coded Qt provider: after a
@@ -698,6 +761,7 @@ class ApplicationContainer:
             self._audio_router = None
             self._audio_engine_registry = None
             self._audio_engine_service = None
+            self._audio_engine_convergence = None
             self._qt_engine_provider = None
         self._lb = None
         self._plb = None
