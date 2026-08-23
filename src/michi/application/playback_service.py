@@ -196,6 +196,8 @@ class PlaybackService:
         try:
             self._audio.load(file_path)
         except Exception as exc:
+            if my_epoch != self._request_epoch:
+                raise
             self._clear_pending()
             if isinstance(exc, AudioLoadError) and not exc.previous_source_preserved:
                 self._intent = False
@@ -226,6 +228,8 @@ class PlaybackService:
         try:
             self._audio.play()
         except Exception:
+            if my_epoch != self._request_epoch:
+                raise
             self._clear_pending()
             self._intent = False
             self._accepted = False
@@ -266,6 +270,7 @@ class PlaybackService:
             position_ms = 0
         previous_accepted = self._accepted
         self._request_epoch += 1  # M11.3C-R6.5.2: request identity
+        my_epoch = self._request_epoch
         self._pending_path = file_path
         self._pending_on_accepted = None
         self._pending_on_rejected = None
@@ -275,6 +280,8 @@ class PlaybackService:
         try:
             self._audio.load(file_path)
         except Exception as exc:
+            if my_epoch != self._request_epoch:
+                raise
             self._pending_path = None
             self._pending_on_accepted = None
             self._pending_on_rejected = None
@@ -291,6 +298,19 @@ class PlaybackService:
             else:
                 self._accepted = previous_accepted
             raise
+        if my_epoch != self._request_epoch:
+            return
+        if self._pending_path is None and not self._accepted:
+            # GATE 2: Synchronous rejection (terminal)
+            # Rejection callback already cleared pending/resume latch,
+            # converged status to STOPPED, and preserved error_message.
+            return
+        if self._accepted:
+            # GATE 2: Synchronous acceptance
+            # _on_media_accepted already committed state.file_path and
+            # executed _apply_prepare_seek(). Status remains STOPPED, no autoplay.
+            return
+        # GATE 2: Asynchronous pending (pending_path == candidate, accepted == False)
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
         self._notify()

@@ -308,6 +308,8 @@ class GStreamerAudioPort(AudioPort):
         self._loop = None
         self._pump: threading.Thread | None = None
         self._pump_start_count = 0
+        # load-command ownership epoch (GATE 1)
+        self._load_epoch = 0
         # consumer registrations
         self._eom: list = []
         self._pos: list = []
@@ -411,6 +413,9 @@ class GStreamerAudioPort(AudioPort):
         self._bindings.ensure_loaded()
         if not self._bindings.playbin3_available():
             raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
+        # GATE 1 — load-command ownership token
+        self._load_epoch += 1
+        my_load_epoch = self._load_epoch
         # PHASE A — REPLACE OLD (M11.3C-R3 transactional): la fuente actual
         # sigue siendo canónica HASTA que el teardown tenga éxito. NINGUNA
         # mutación de estado (generation/pending/current/pending_play) antes
@@ -418,19 +423,26 @@ class GStreamerAudioPort(AudioPort):
         # dueño (pipeline + bus observables) y NO se crea B.
         if not self._try_stop_pipeline():
             raise RuntimeError("pipeline anterior no pudo transicionar a NULL")
+        self._current_path = None
+        self._eos_emitted = False
+        self._pending_play = False
         # token de transacción del load (M11.3C-R6.5.2): la convergencia
         # STOPPED es un callback DIRECTO — un subscriber puede reentrar con
-        # load(C)/close() antes del ARM de B
+        # load(C)/stop()/close() antes del ARM de B
         my_generation = self._generation
         # CONVERGENCIA (M11.3C-R6): el teardown del source activo A dejó el
         # transporte STOPPED. Converger AHORA (no depender de un
         # STATE_CHANGED del pipeline viejo ya desacoplado) para que un fallo
         # posterior del ARM de B no deje un PLAYING falso en la app.
         self._deliver_state_if(PlaybackStatus.STOPPED)
-        # REVALIDACIÓN post-callback (M11.3C-R6.5.2): el subscriber del
-        # STOPPED pudo reentrar (load(C)/close()) y ya no somos dueños de la
-        # transacción → NUNCA armar B sobre la transacción nueva
-        if self._closed or self._generation != my_generation:
+        # REVALIDACIÓN post-callback (M11.3C-R6.5.2 / GATE 1): el subscriber
+        # del STOPPED pudo reentrar (load(C)/stop()/close()) y ya no somos
+        # dueños de la transacción → NUNCA armar B sobre la transacción nueva
+        if (
+            self._closed
+            or my_load_epoch != self._load_epoch
+            or self._generation != my_generation
+        ):
             return
         # PHASE B — ARM NEW (M11.3C-R6 exception-atomic): el commit point
         # (teardown OK de A) ya pasó. CUALQUIER excepción normal durante la
@@ -611,6 +623,7 @@ class GStreamerAudioPort(AudioPort):
         self.play()
 
     def stop(self) -> None:
+        self._load_epoch += 1
         if self._closed or self._pipeline is None:
             return
         if self._pending_path is not None and self._current_path is None:
@@ -674,6 +687,7 @@ class GStreamerAudioPort(AudioPort):
     # ------------------------------------------------------------------
 
     def close(self) -> None:
+        self._load_epoch += 1
         if self._closed:
             return
         self._closed = True
