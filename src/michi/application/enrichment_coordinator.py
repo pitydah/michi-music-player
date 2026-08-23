@@ -176,7 +176,6 @@ class EnrichmentCoordinator:
         self._operations: dict[
             tuple[EnrichmentEntityKind, str], EnrichmentOperationToken
         ] = {}
-        self._generation_counter: dict[tuple[EnrichmentEntityKind, str], int] = {}
         # R1.2: reentrant — inline executors run work inside the
         # submission scope; service calls never take this lock.
         self._lock = threading.RLock()
@@ -191,15 +190,15 @@ class EnrichmentCoordinator:
             if self._shutting_down:
                 return None
             key = (entity_kind, local_entity_key)
-            generation = self._generation_counter.get(key, 0) + 1
-            self._generation_counter[key] = generation
-            token = EnrichmentOperationToken(entity_kind, local_entity_key, generation)
             previous = self._operations.get(key)
             if previous is not None:
                 previous.cancel()
+            self._operations[key] = None  # placeholder; replaced below
+        # R1.3: THE SERVICE is the sole generation authority.
+        generation = self._service.begin_operation(entity_kind, local_entity_key)
+        token = EnrichmentOperationToken(entity_kind, local_entity_key, generation)
+        with self._lock:
             self._operations[key] = token
-        # Service-side generation authority (outside the coordinator lock).
-        self._service.begin_operation(entity_kind, local_entity_key, generation)
         return token
 
     def _end_operation(self, token: EnrichmentOperationToken) -> None:
@@ -244,11 +243,9 @@ class EnrichmentCoordinator:
         if not self._submit_if_running(
             lambda: self._run_artist(token, artist, albums, tracks, on_state)
         ):
-            # R1.2: submission rejected (executor closed) — cancel this
-            # generation exactly, remove the token, publish CANCELLED.
-            self._service.cancel_operation(
-                EnrichmentEntityKind.ARTIST, artist.key, token.generation
-            )
+            # R1.3: submission rejected (executor closed) — retire this
+            # generation, remove the token, publish CANCELLED.
+            self._retire_token(token)
             self._end_operation(token)
             self._report_policy(
                 on_state,
@@ -283,9 +280,7 @@ class EnrichmentCoordinator:
         if not self._submit_if_running(
             lambda: self._run_album(token, album, resolved_artist_external_id, on_state)
         ):
-            self._service.cancel_operation(
-                EnrichmentEntityKind.ALBUM, album.key, token.generation
-            )
+            self._retire_token(token)
             self._end_operation(token)
             self._report_policy(
                 on_state,
@@ -316,41 +311,41 @@ class EnrichmentCoordinator:
             token = self._operations.get(
                 (EnrichmentEntityKind.ARTIST, local_artist_key)
             )
-            if token is not None:
-                token.cancel()
         if token is not None:
-            # R1.2: generation-scoped cancellation — a public cancel only
-            # ever invalidates the CURRENT generation's authority.
-            self._service.cancel_operation(
-                EnrichmentEntityKind.ARTIST, local_artist_key, token.generation
-            )
-            self._service.cancel_artist_request(local_artist_key)
+            self._retire_token(token)
 
     def cancel_album(self, local_album_key: str) -> None:
         with self._lock:
             token = self._operations.get((EnrichmentEntityKind.ALBUM, local_album_key))
-            if token is not None:
-                token.cancel()
         if token is not None:
-            self._service.cancel_operation(
-                EnrichmentEntityKind.ALBUM, local_album_key, token.generation
-            )
-            self._service.cancel_album_request(local_album_key)
+            self._retire_token(token)
 
     def cancel_all(self) -> None:
+        """R1.3: cancels the operations ACTIVE AT THE SNAPSHOT — each via
+        its own generation retirement. A new operation started after the
+        snapshot is never accidentally cancelled."""
         with self._lock:
-            tokens = list(self._operations.values())
+            tokens = [
+                token
+                for token in self._operations.values()
+                if token is not None
+            ]
         for token in tokens:
-            token.cancel()
-        self._service.cancel_all_requests()
+            self._retire_token(token)
 
     def shutdown(self) -> None:
+        """R1.3: admission closes FIRST, then every active generation is
+        retired BEFORE the executor waits — a resolver returning during
+        shutdown can never cross an authority gate."""
         with self._lock:
             self._shutting_down = True
-            tokens = list(self._operations.values())
+            tokens = [
+                token
+                for token in self._operations.values()
+                if token is not None
+            ]
         for token in tokens:
-            token.cancel()
-        self._service.cancel_all_requests()
+            self._retire_token(token)
         self._executor.shutdown(wait=True)
 
     def clear_artist_knowledge(self, local_artist_key: str) -> None:
@@ -366,6 +361,18 @@ class EnrichmentCoordinator:
         self._service.reset_album_identity(local_album_key)
 
     # -- manual async search (R1.1: controlled submission) -----------------------
+
+    def _retire_token(
+        self, token: EnrichmentOperationToken, request=None
+    ) -> None:
+        """R1.3 single retirement helper: token.cancel() + the Service
+        generation barrier (retire_operation) which atomically retires
+        the generation AND invalidates the same-generation request.
+        Never key-scoped; never touches a newer generation."""
+        token.cancel()
+        self._service.retire_operation(
+            token.entity_kind, token.local_entity_key, token.generation
+        )
 
     def _submit_if_running(self, work) -> bool:
         """R1.1/R1.2: controlled submission boundary — after shutdown
@@ -499,9 +506,7 @@ class EnrichmentCoordinator:
         request = None
         try:
             if token.cancelled:
-                self._service.cancel_operation(
-                    EnrichmentEntityKind.ARTIST, artist.key, token.generation
-                )
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             self._report(token, on_state, EnrichmentOperationState.RESOLVING_IDENTITY)
@@ -530,14 +535,14 @@ class EnrichmentCoordinator:
             local_key = request.local_entity_key
             self._report(token, on_state, EnrichmentOperationState.FETCHING_KNOWLEDGE)
             if token.cancelled:
-                self._service.cancel_artist_request(local_key)
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
 
             partial = False
             profile = self._mb.fetch_artist(local_key, external_id)
             if token.cancelled:
-                self._service.cancel_artist_request(local_key)
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             try:
@@ -548,12 +553,12 @@ class EnrichmentCoordinator:
             partial = partial or links.is_stale
             profile, partial = self._apply_artist_links(profile, links, partial)
             if token.cancelled:
-                self._service.cancel_artist_request(local_key)
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_biography(profile, partial)
             if token.cancelled:
-                self._service.cancel_artist_request(local_key)
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_artist_image(profile, external_id, partial)
@@ -582,7 +587,7 @@ class EnrichmentCoordinator:
         with self._lock:
             current = self._operations.get((EnrichmentEntityKind.ARTIST, local_key))
             if self._shutting_down or token.cancelled or current is not token:
-                self._service.cancel_artist_request(local_key)
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             stale = profile.provenance.is_stale or profile.biography_provenance.is_stale
@@ -719,9 +724,7 @@ class EnrichmentCoordinator:
         request = None
         try:
             if token.cancelled:
-                self._service.cancel_operation(
-                    EnrichmentEntityKind.ALBUM, album.key, token.generation
-                )
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             self._report(token, on_state, EnrichmentOperationState.RESOLVING_IDENTITY)
@@ -750,7 +753,7 @@ class EnrichmentCoordinator:
             request = outcome.request
             self._report(token, on_state, EnrichmentOperationState.FETCHING_KNOWLEDGE)
             if token.cancelled:
-                self._service.cancel_album_request(album.key)
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             partial = False
@@ -760,7 +763,7 @@ class EnrichmentCoordinator:
                 request.external_variant_id,
             )
             if token.cancelled:
-                self._service.cancel_album_request(album.key)
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_cover(profile, partial)
@@ -786,7 +789,7 @@ class EnrichmentCoordinator:
         with self._lock:
             current = self._operations.get((EnrichmentEntityKind.ALBUM, local_key))
             if self._shutting_down or token.cancelled or current is not token:
-                self._service.cancel_album_request(local_key)
+                self._retire_token(token)
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             verdict = self._service.deliver_album_profile(request, profile)
@@ -846,7 +849,7 @@ class EnrichmentCoordinator:
         worker invalidates EXACTLY its own request (if any) and its own
         generation — a stale worker can NEVER cancel a newer
         generation's request."""
-        self._service.cancel_operation(token.entity_kind, local_key, token.generation)
+        self._retire_token(token)
         if request is not None:
             self._service.cancel_request_exact(request)
         if is_transient_provider_failure(exc):
@@ -861,7 +864,7 @@ class EnrichmentCoordinator:
         local_key: str,
         on_state: StateCallback | None,
     ) -> None:
-        self._service.cancel_operation(token.entity_kind, local_key, token.generation)
+        self._retire_token(token)
         if request is not None:
             self._service.cancel_request_exact(request)
         self._report(token, on_state, EnrichmentOperationState.FAILED)
