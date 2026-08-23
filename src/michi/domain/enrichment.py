@@ -808,11 +808,15 @@ class AlbumKnowledgeProfile:
 @dataclass(frozen=True)
 class ArtistExternalLinks:
     """Verified identity links discovered through MusicBrainz URL
-    relationships — the ONLY lawful bridge to Wikidata/Wikipedia."""
+    relationships — the ONLY lawful bridge to Wikidata/Wikipedia.
+    R1.1: freshness rides along so stale links can never masquerade as
+    fresh (the coordinator marks PARTIAL when they are stale)."""
 
     wikidata_qid: str = ""
     wikipedia_title: str = ""
     wikipedia_language: str = ""
+    retrieved_at: str = ""
+    is_stale: bool = False
 
 
 @dataclass(frozen=True)
@@ -862,10 +866,13 @@ class CommonsImageKnowledge:
 
 @dataclass(frozen=True)
 class CoverArtKnowledge:
-    """Cover Art Archive external-cover metadata (fallback authority)."""
+    """Cover Art Archive external-cover metadata (fallback authority).
+    R1.1: freshness rides along (is_stale/retrieved_at)."""
 
     image_url: str = ""
     entity_kind: str = ""  # "release" | "release-group"
+    retrieved_at: str = ""
+    is_stale: bool = False
 
 
 # ---------------------------------------------------------------------------

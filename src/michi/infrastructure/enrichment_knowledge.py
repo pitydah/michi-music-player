@@ -44,6 +44,7 @@ from michi.application.enrichment_ports import (
     WikidataKnowledgeProviderPort,
     WikimediaCommonsProviderPort,
     WikipediaBiographyProviderPort,
+    is_transient_provider_failure,
 )
 from michi.domain.enrichment import (
     AlbumKnowledgeProfile,
@@ -113,16 +114,12 @@ class _CachedGetter:
         try:
             response = self._executor.get(HttpRequest(url=url))
         except (EnrichmentTransportError, EnrichmentHttpStatusError) as exc:
+            # R1.1: stale fallback eligibility uses THE SAME canonical
+            # transient rule as retry and OFFLINE/FAILED classification.
             if (
                 allow_stale
                 and self._cache is not None
-                and isinstance(
-                    exc, (EnrichmentTransportError, EnrichmentHttpStatusError)
-                )
-                and not (
-                    isinstance(exc, EnrichmentHttpStatusError)
-                    and exc.status_code in (400, 401, 403, 404)
-                )
+                and is_transient_provider_failure(exc)
             ):
                 stale = self._cache.get_stale(ttl_category, url)
                 if stale is not None:
@@ -221,7 +218,7 @@ class MusicBrainzKnowledgeProvider(MusicBrainzKnowledgeProviderPort):
 
     def artist_links(self, external_artist_id: str) -> ArtistExternalLinks:
         url = f"{API_ROOT}/artist/{quote(external_artist_id)}?inc=url-rels&fmt=json"
-        payload, _, _ = self._getter.get_json(
+        payload, is_stale, retrieved_at = self._getter.get_json(
             url, "musicbrainz_lookup", allow_stale=True
         )
         wikidata_qid = ""
@@ -249,6 +246,8 @@ class MusicBrainzKnowledgeProvider(MusicBrainzKnowledgeProviderPort):
             wikidata_qid=wikidata_qid,
             wikipedia_title=wikipedia_title,
             wikipedia_language=wikipedia_language,
+            retrieved_at=retrieved_at,
+            is_stale=is_stale,
         )
 
     def fetch_release_group(
@@ -558,14 +557,20 @@ class CoverArtArchiveProvider(CoverArtArchiveProviderPort):
         else:
             raise EnrichmentProviderError("CAA cover requires an entity id")
         try:
-            payload, _, _ = self._getter.get_json(url, "coverart", allow_stale=True)
+            payload, is_stale, retrieved_at = self._getter.get_json(
+                url, "coverart", allow_stale=True
+            )
         except EnrichmentHttpStatusError as exc:
             if exc.status_code == 404:
                 return CoverArtKnowledge(entity_kind=entity_kind)
             raise
         images = payload.get("images")
         if not isinstance(images, list) or not images:
-            return CoverArtKnowledge(entity_kind=entity_kind)
+            return CoverArtKnowledge(
+                entity_kind=entity_kind,
+                retrieved_at=retrieved_at,
+                is_stale=is_stale,
+            )
         for image in images:
             if not isinstance(image, dict):
                 continue
@@ -575,5 +580,14 @@ class CoverArtArchiveProvider(CoverArtArchiveProviderPort):
             if isinstance(image_url, str) and image_url.startswith(
                 "https://coverartarchive.org/"
             ):
-                return CoverArtKnowledge(image_url=image_url, entity_kind=entity_kind)
-        return CoverArtKnowledge(entity_kind=entity_kind)
+                return CoverArtKnowledge(
+                    image_url=image_url,
+                    entity_kind=entity_kind,
+                    retrieved_at=retrieved_at,
+                    is_stale=is_stale,
+                )
+        return CoverArtKnowledge(
+            entity_kind=entity_kind,
+            retrieved_at=retrieved_at,
+            is_stale=is_stale,
+        )
