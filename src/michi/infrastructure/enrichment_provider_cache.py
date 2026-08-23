@@ -143,24 +143,27 @@ class FilesystemProviderCache(ProviderCachePort):
         for shard in shard_dirs:
             if examined >= max_entries_per_run:
                 break
-            files = sorted(
-                (entry for entry in shard.iterdir() if entry.is_file()),
-                key=lambda e: e.name,
-            )
-            for path in files:
-                if examined >= max_entries_per_run:
-                    break
-                examined += 1
-                try:
-                    payload = json.loads(path.read_text(encoding="utf-8"))
-                    expires_at = float(payload.get("expires_at", 0))
-                except (OSError, ValueError, TypeError):
-                    path.unlink(missing_ok=True)
-                    removed += 1
-                    continue
-                if expires_at < horizon:
-                    path.unlink(missing_ok=True)
-                    removed += 1
+            # R1.2 GENUINELY BOUNDED: streaming iteration with os.scandir
+            # — a shard is never materialized in memory; iteration stops
+            # the moment the cap is reached. Housekeeping is best-effort.
+            with os.scandir(shard) as it:
+                for entry in it:
+                    if examined >= max_entries_per_run:
+                        break
+                    if not entry.is_file():
+                        continue
+                    examined += 1
+                    path = Path(entry.path)
+                    try:
+                        payload = json.loads(path.read_text(encoding="utf-8"))
+                        expires_at = float(payload.get("expires_at", 0))
+                    except (OSError, ValueError, TypeError):
+                        path.unlink(missing_ok=True)
+                        removed += 1
+                        continue
+                    if expires_at < horizon:
+                        path.unlink(missing_ok=True)
+                        removed += 1
         return removed
 
     @staticmethod
