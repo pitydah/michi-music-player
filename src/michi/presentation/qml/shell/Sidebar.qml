@@ -48,12 +48,6 @@ MichiGlassSurface {
         }
     }
 
-    MichiMaterialTexture {
-        anchors.fill: parent
-        textureOpacity: 0.2
-        z: 0
-    }
-
     Component {
         id: routeDelegate
         ItemDelegate {

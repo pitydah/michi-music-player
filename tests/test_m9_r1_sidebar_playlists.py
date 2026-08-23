@@ -105,3 +105,21 @@ class TestSidebarBridgeProjection:
         recent = pb.property("recentPlaylists")
         assert [r["playlistId"] for r in recent] == [b.playlist_id]
         engine.deleteLater()
+
+
+class TestSidebarMaterial:
+    """M9-R2.6: smoke-glass material audit — single grain, single accent."""
+
+    def test_single_grain_single_accent(self):
+        text = Path(QML_DIR / "shell" / "Sidebar.qml").read_text()
+        # no stacked own grain (the glass surfaces texture it once)
+        assert "MichiMaterialTexture" not in text
+        assert "textured: true" in text
+        # single cyan accent — no purple remnants (comment allowed)
+        assert "accentColor: MichiPalette.auroraCyan" in text
+        assert "auroraPurpleSurface" not in text
+        assert "auroraPurpleBorder" not in text
+        assert "contentAmbientPurple" not in text
+        # true smoke glass
+        assert "forceBlur: true" in text
+        assert "materialOpacityOverride: 0.68" in text

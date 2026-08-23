@@ -419,8 +419,10 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     assert 'objectName: "resizableSidebar"' in shell
     assert "SplitView.minimumWidth: MichiMetrics.sidebarCompact" in shell
     assert 'elevation: "elevated"' in sidebar
-    assert "MichiMaterialTexture" in sidebar
-    assert "textureOpacity: 0.2" in sidebar
+    # single grain: the glass surfaces texture (textured: true); the
+    # sidebar must NOT stack its own MichiMaterialTexture on top
+    assert "textured: true" in sidebar
+    assert "MichiMaterialTexture" not in sidebar
     # true smoke glass: always-on blur, translucent smoked material,
     # single cyan accent (no purple chromatic noise)
     assert "forceBlur: true" in sidebar
