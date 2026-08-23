@@ -919,11 +919,15 @@ class TestF8FailureAtomicity:
         assert h.playback._accepted is False
 
     def test_f30_router_unbind_failure_does_not_close_source(self):
-        """P1-02: pre-detach unbind failure preserves SOURCE active truth.
+        """F-FINAL-P2-01: source unbind failure preserves ACTIVE IDENTITY,
+        conservatively FAILED.
 
-        The source runtime is still open/bound/validated — the slot stays
-        READY with active=source (SELECTED != ACTIVE canonical); the router
-        physical truth == state active truth."""
+        AudioTransportRouter._detach() is NOT failure-atomic: an exception
+        may occur after SOME callbacks were detached while bound_engine_id
+        still equals the source. Physical ownership (active=source) is
+        preserved — READY is NOT guaranteed, so the projection is
+        conservatively FAILED. Source NOT closed, target NOT opened, no
+        fallback."""
         h = make_harness(
             AudioEngineId.QT_MULTIMEDIA,
             AudioEngineId.GSTREAMER,
@@ -940,7 +944,7 @@ class TestF8FailureAtomicity:
         # SELECTED = target (durably persisted user intent), ACTIVE = source
         assert st.selected_engine_id == AudioEngineId.GSTREAMER
         assert st.active_engine_id == AudioEngineId.QT_MULTIMEDIA
-        assert st.lifecycle == AudioEngineLifecycle.READY
+        assert st.lifecycle == AudioEngineLifecycle.FAILED  # conservative
         assert st.switching_to is None
         assert "unbind failed" in st.error_message
         # persisted preference = target
@@ -1427,3 +1431,106 @@ class TestF11LifecycleSeal:
         self._shutdown(h)
         assert h.router.bound_engine_id is None
         assert gst.close_count == 1
+
+
+# ---------------------------------------------------------------------------
+# F12 — FINAL CONTAINER OWNERSHIP SEAL (F-FINAL-P1-01)
+# ---------------------------------------------------------------------------
+
+
+class TestF12ContainerOwnership:
+    def _container_with_graph(self, h):
+        """Minimal ApplicationContainer owning the canonical audio graph
+        (same construction style as the resilience container tests)."""
+        from michi.bootstrap import ApplicationContainer
+
+        container = ApplicationContainer()
+        container._audio_router = h.router
+        container._audio_engine_registry = h.registry
+        container._audio_engine_service = h.service
+        container._qt_engine_provider = h.providers[AudioEngineId.QT_MULTIMEDIA]
+        return container
+
+    def test_f51_container_retains_audio_ownership_after_failed_shutdown(self):
+        """F-FINAL-P1-01: a failed audio teardown must NOT erase the container
+        audio ownership references (explicit path to the still-bound runtime)."""
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.GSTREAMER,
+            AudioEngineId.MPD,
+            unbind_error=RuntimeError("unbind failed"),
+        )
+        qt = h.providers[AudioEngineId.QT_MULTIMEDIA]
+        container = self._container_with_graph(h)
+        with pytest.raises(RuntimeError, match="unbind failed"):
+            container.shutdown()
+        # provider NOT closed, router still bound
+        assert qt.close_count == 0
+        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        # ownership retained — the owner keeps an explicit path to the runtime
+        assert container._audio_router is h.router
+        assert container._audio_engine_registry is h.registry
+        assert container._audio_engine_service is h.service
+
+    def test_f52_container_retry_shutdown_releases_retained_audio_runtime(self):
+        """Retry semantics: after a failed audio teardown (ownership retained),
+        a second shutdown with a working unbind releases the ACTUAL provider
+        exactly once and then clears the audio ownership references."""
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.GSTREAMER,
+            AudioEngineId.MPD,
+            unbind_error=RuntimeError("unbind failed"),
+        )
+        qt = h.providers[AudioEngineId.QT_MULTIMEDIA]
+        container = self._container_with_graph(h)
+        # FIRST shutdown fails: ownership retained
+        with pytest.raises(RuntimeError, match="unbind failed"):
+            container.shutdown()
+        assert container._audio_router is h.router
+        assert qt.close_count == 0
+        # make the next unbind succeed, SECOND shutdown releases
+        h.router._unbind_error = None
+        container.shutdown()
+        assert h.router.bound_engine_id is None
+        assert qt.close_count == 1  # exactly once
+        assert container._audio_router is None
+        assert container._audio_engine_registry is None
+        assert container._audio_engine_service is None
+        assert container._qt_engine_provider is None
+        # no alternate engine opened
+        assert h.providers[AudioEngineId.GSTREAMER].open_count == 0
+        assert h.providers[AudioEngineId.MPD].open_count == 0
+
+
+class TestF13FirstErrorRetention:
+    def test_f53_first_error_retained_with_audio_ownership(self):
+        """F53 (optional): an earlier shutdown subsystem error stays the
+        final propagated error, while the failed audio teardown STILL retains
+        ownership (first-error-wins + ownership retention both hold)."""
+        from michi.bootstrap import ApplicationContainer
+
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.GSTREAMER,
+            unbind_error=RuntimeError("audio unbind failed"),
+        )
+        container = ApplicationContainer()
+        container._audio_router = h.router
+        container._audio_engine_registry = h.registry
+        container._audio_engine_service = h.service
+        container._qt_engine_provider = h.providers[AudioEngineId.QT_MULTIMEDIA]
+
+        class BoomCoordinator:
+            def stop(self):
+                raise RuntimeError("coordinator stop failed")
+
+        container._coordinator = BoomCoordinator()
+        with pytest.raises(RuntimeError, match="coordinator stop failed"):
+            container.shutdown()
+        # first-error-wins: the EARLIER error is the final propagated error
+        # audio ownership retained even though its own teardown also failed
+        assert container._audio_router is h.router
+        assert container._audio_engine_registry is h.registry
+        assert container._audio_engine_service is h.service
+        assert h.providers[AudioEngineId.QT_MULTIMEDIA].close_count == 0
