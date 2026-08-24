@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
+import "../enrichment"
 import "../media"
 import "../patterns"
 import "../primitives"
@@ -13,6 +14,14 @@ ColumnLayout {
 
     spacing: MichiThemeState.contentGap
     visible: library.selectedArtistKey !== ""
+
+    /* M6.9: activation is explicit — the artist detail drives enrichment
+     * for the selected artist. Lists/search/scan never trigger it. */
+    readonly property string selectedArtistKey: library.selectedArtistKey
+    onSelectedArtistKeyChanged: {
+        if (root.selectedArtistKey.length > 0)
+            enrichment.activate_artist(root.selectedArtistKey)
+    }
 
     RowLayout {
         Layout.fillWidth: true
@@ -33,8 +42,12 @@ ColumnLayout {
                 anchors.margins: 3
                 radius: width / 2
                 requestedSize: 192
-                sourcePath: library.artistAlbums.length > 0
-                    ? library.artistAlbums[0].artworkPath : ""
+                /* M6.9: external artist portrait wins when present;
+                 * local representative artwork is the fallback. */
+                sourcePath: enrichment.artistArtworkPath.length > 0
+                    ? enrichment.artistArtworkPath
+                    : (library.artistAlbums.length > 0
+                        ? library.artistAlbums[0].artworkPath : "")
                 fallbackText: library.artistName
             }
         }
@@ -60,6 +73,37 @@ ColumnLayout {
                 role: "secondary"
             }
         }
+    }
+
+    /* M6.9 — online knowledge surface (between hero and Albums) */
+    EnrichmentStatusBar {
+        Layout.fillWidth: true
+        state: enrichment.state
+        message: enrichment.stateMessage
+        busy: enrichment.busy
+        visible: enrichment.activeKind === "artist"
+    }
+
+    EnrichmentKnowledgeCard {
+        Layout.fillWidth: true
+        title: "About the artist"
+        knowledge: enrichment.artistKnowledge
+        hasKnowledge: enrichment.artistHasKnowledge
+        sources: enrichment.artistAttributions
+        visible: enrichment.activeKind === "artist"
+    }
+
+    EnrichmentActions {
+        Layout.fillWidth: true
+        kind: "artist"
+        state: enrichment.state
+        onlineEnabled: enrichment.onlineEnabled
+        hasKnowledge: enrichment.artistHasKnowledge
+        visible: enrichment.activeKind === "artist"
+        onRefreshRequested: enrichment.refresh_artist()
+        onReviewRequested: enrichment.open_review("artist")
+        onClearRequested: enrichment.clear_knowledge()
+        onResetRequested: enrichment.reset_identity()
     }
 
     MichiText {
@@ -124,5 +168,19 @@ ColumnLayout {
             onFavoriteToggled: library.toggle_favorite(modelData.path)
             onAddToPlaylistRequested: root.addTargetPath = modelData.path
         }
+    }
+
+    /* M6.9 — manual review dialog */
+    ReviewMatchesDialog {
+        id: reviewDialog
+        visible: enrichment.reviewOpen && enrichment.reviewKind === "artist"
+        kind: "artist"
+        loading: enrichment.reviewLoading
+        errorText: enrichment.reviewError
+        artistCandidates: enrichment.artistCandidates
+        onlineEnabled: enrichment.onlineEnabled
+        onSearchRequested: function (name) { enrichment.search_artist(name) }
+        onConfirmArtist: function (id) { enrichment.confirm_artist_candidate(id) }
+        onClosed: enrichment.close_review()
     }
 }

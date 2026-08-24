@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../controls" as Controls
 import "../patterns"
+import "../primitives"
 import "../theme"
 import "../ui"
 
@@ -207,6 +208,48 @@ Item {
                         text: "Scan folders from the Library screen."
                         font.pixelSize: MichiTheme.fontSizeCaption
                         color: MichiTheme.textMuted
+                    }
+
+                    // ── Online Library Enrichment (M6.9) ──────────
+                    MichiDivider {
+                        Layout.fillWidth: true
+                        Layout.topMargin: MichiTheme.space8
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: MichiTheme.space8
+                        spacing: MichiTheme.space12
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.space4
+
+                            Text {
+                                text: "Online Library Enrichment"
+                                font.pixelSize: MichiTheme.fontSizeBody
+                                color: MichiTheme.textPrimary
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: "Adds artist and album information from online "
+                                    + "music databases (MusicBrainz, Wikidata, Wikipedia, "
+                                    + "Wikimedia Commons, Cover Art Archive). Disabled by "
+                                    + "default. Library scans and application startup never "
+                                    + "contact these services."
+                                font.pixelSize: MichiTheme.fontSizeCaption
+                                color: MichiTheme.textMuted
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
+                        Controls.MichiSwitch {
+                            objectName: "onlineEnrichmentSwitch"
+                            checked: settingsBridge.onlineEnrichment
+                            Accessible.name: "Online Library Enrichment"
+                            onToggled: settingsBridge.set_online_enrichment(checked)
+                        }
                     }
                 }
             }

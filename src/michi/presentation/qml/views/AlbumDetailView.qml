@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
+import "../enrichment"
 import "../media"
 import "../patterns"
 import "../primitives"
@@ -28,6 +29,14 @@ ColumnLayout {
     Layout.fillWidth: true
     Layout.fillHeight: true
     spacing: MichiThemeState.contentGap
+
+    /* M6.9: explicit detail activation drives enrichment for the
+     * selected album — never lists/search/scan. */
+    readonly property string selectedAlbumKey: library.selectedAlbumKey
+    onSelectedAlbumKeyChanged: {
+        if (root.selectedAlbumKey.length > 0)
+            enrichment.activate_album(root.selectedAlbumKey)
+    }
 
     onVisibleChanged: if (!visible) inspectedTrack = null
 
@@ -94,7 +103,8 @@ ColumnLayout {
             spacing: MichiSpacing.xl
 
             Artwork {
-                sourcePath: library.albumArtwork
+                sourcePath: library.albumArtwork.length > 0
+                    ? library.albumArtwork : enrichment.albumArtworkPath
                 fallbackText: library.albumTitle
                 Layout.preferredWidth: Math.min(232, Math.max(164, root.width * .19))
                 Layout.preferredHeight: Layout.preferredWidth
@@ -218,6 +228,38 @@ ColumnLayout {
         }
     }
 
+    /* M6.9 — online knowledge surface (complementary to the canonical
+     * local metadata; local album facts stay authoritative). */
+    EnrichmentStatusBar {
+        Layout.fillWidth: true
+        state: enrichment.state
+        message: enrichment.stateMessage
+        busy: enrichment.busy
+        visible: enrichment.activeKind === "album"
+    }
+
+    EnrichmentKnowledgeCard {
+        Layout.fillWidth: true
+        title: "About this album"
+        knowledge: enrichment.albumKnowledge
+        hasKnowledge: enrichment.albumHasKnowledge
+        sources: enrichment.albumAttributions
+        visible: enrichment.activeKind === "album"
+    }
+
+    EnrichmentActions {
+        Layout.fillWidth: true
+        kind: "album"
+        state: enrichment.state
+        onlineEnabled: enrichment.onlineEnabled
+        hasKnowledge: enrichment.albumHasKnowledge
+        visible: enrichment.activeKind === "album"
+        onRefreshRequested: enrichment.refresh_album()
+        onReviewRequested: enrichment.open_review("album")
+        onClearRequested: enrichment.clear_knowledge()
+        onResetRequested: enrichment.reset_identity()
+    }
+
     InspectorPanel {
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? 210 : 0
@@ -292,5 +334,22 @@ ColumnLayout {
             rows: root.inspectorRows
             onCloseRequested: root.inspectedTrack = null
         }
+    }
+
+    /* M6.9 — manual review dialog */
+    ReviewMatchesDialog {
+        id: reviewDialog
+        visible: enrichment.reviewOpen && enrichment.reviewKind === "album"
+        kind: "album"
+        loading: enrichment.reviewLoading
+        errorText: enrichment.reviewError
+        albumCandidates: enrichment.albumCandidates
+        onlineEnabled: enrichment.onlineEnabled
+        onSearchRequested: function (name) { enrichment.search_album(name, "") }
+        onAlbumSearchRequested: function (title, artistName) {
+            enrichment.search_album(title, artistName)
+        }
+        onConfirmAlbum: function (id) { enrichment.confirm_album_candidate(id) }
+        onClosed: enrichment.close_review()
     }
 }
