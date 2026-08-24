@@ -1,7 +1,8 @@
 # M11.3 — Multi-Engine Audio Runtime (contract)
 
-Implementation contract for the multi-engine audio runtime. Status: **IN
-PROGRESS — M11.3A + M11.3B + M11.3C + M11.3D + M11.3E + M11.3F + M11.3G DONE / TESTED / FROZEN — M11.3 OVERALL TESTED / FROZEN (M11.3G:
+Implementation contract for the multi-engine audio runtime. Status: **DONE /
+TESTED / FROZEN** — M11.3A + M11.3B + M11.3C + M11.3D + M11.3E + M11.3F +
+M11.3G DONE / TESTED / FROZEN — M11.3 OVERALL TESTED / FROZEN (M11.3G:
 engine convergence — selected-first startup, ONE automatic fallback engine
 (Qt Multimedia; no fallback chain, no auto-select of GStreamer/MPD, Qt
 itself has no alternate), fatal runtime engine loss convergence, safe
@@ -57,7 +58,7 @@ the M11.3 contracts and records implementation status for each subphase.
 | MPD provider | **IMPLEMENTED / TESTED / REAL-RUNTIME VERIFIED / FROZEN (M11.3D)** — managed private child process, private Unix socket, in-repo protocol client, MPDAudioPort transport adapter, synchronous acceptance, honest crash/transport/status.error convergence, real MPD 0.24.14 startup + natural EOS + explicit stop verified. No engine switching/persistence/fallback (M11.3E/F/G). |
 | Engine availability runtime | DONE / TESTED / FROZEN (M11.3E) — fresh side-effect-free probes, canonical three-engine snapshot, available != implemented, activation blocker priority, no state mutation |
 | Selection / persistence | DONE / TESTED / FROZEN (M11.3F) — persisted SELECTED preference, quiescent switching, backend acceptance invalidation, volume/mute continuity, no fallback |
-| Failure convergence | M11.3G |
+| Failure convergence | DONE / TESTED / FROZEN (M11.3G) |
 
 **CURRENT PRODUCTIVE PATH (since M11.3B, multi-engine since M11.3F):**
 
@@ -124,7 +125,23 @@ currently bound concrete AudioPort
   and sealed by M11.3F (explicit quiescent transaction); M11.3G owns
   involuntary convergence (startup selected-first, safe Qt fallback,
   runtime loss).
-  M11.3F (quiescent only).
+
+## M11.3G final ownership / generation seal (DONE / TESTED / FROZEN)
+
+- Automatic Qt fallback happens ONLY after the failed runtime is PROVEN
+  FULLY RELEASED (router unbound AND provider close completed). A
+  still-bound provider never triggers fallback; a failed provider close is
+  UNSAFE (never fallback).
+- F→G explicit-switch recovery requires router detach AND successful
+  target release; a target close failure after detach is recorded as
+  secondary diagnostic truth (original activation error stays primary) and
+  never authorizes fallback.
+- MPD provider runtime generation is the canonical authority for G runtime
+  events; the MPDAudioPort internal generation is a SEPARATE domain and is
+  never compared against the provider generation. Stale events from a
+  closed runtime incarnation are ignored; fatal events from the reopened
+  current runtime are accepted exactly once.
+
 
 ## Purpose
 
