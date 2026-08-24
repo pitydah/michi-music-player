@@ -86,16 +86,13 @@ Item {
             }
 
             // M4-R1 final seal: intentional row activation → play intent.
-            // Desktop: mouse primary click on the row body.
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
-                onClicked: (mouse) => {
-                    if (mouse.button === Qt.LeftButton) {
-                        trackItem.forceActiveFocus()
-                        root.playTrackRequested(index)
-                    }
-                }
+            // The ItemDelegate's OWN clicked signal handles the row body
+            // (mouse primary) WITHOUT a full-row overlay MouseArea — the
+            // nested More Options button keeps its own interaction and can
+            // never trigger playback.
+            onClicked: {
+                trackItem.forceActiveFocus()
+                root.playTrackRequested(index)
             }
 
             // Keyboard: Enter/Return on the focused row activates playback.

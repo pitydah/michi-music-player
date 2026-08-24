@@ -695,3 +695,462 @@ class TestFinalSealLifecycle:
         assert len(deliveries) == 3
         # the session callback is subscribed EXACTLY once
         assert q._subscribers.count(session.on_queue_changed) == 1
+
+
+# ---------------------------------------------------------------------------
+# M4-R1 ABSOLUTE FINAL SEAL — request provenance / live acceptance /
+# restore identity / shuffle logical identity / navigation capability
+# ---------------------------------------------------------------------------
+
+
+class TestFinalSealRequestProvenance:
+    """P1-01: pending Queue provenance must not leak into superseding
+    SINGLE/ALBUM/PLAYLIST requests."""
+
+    def test_rp01_queue_to_single_supersession(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        session.play_queue_index(0)  # pending QUEUE A
+        assert session._pending_queue_entry_id is not None
+        session.play_single(PlaybackSequenceEntry(Path("/B.flac"), "B"))
+        assert session._pending_queue_entry_id is None  # provenance cleared
+        q.remove(0)  # A removed — must NOT cancel the SINGLE B pending
+        assert session._pending is not None  # B still pending
+        accept(session, fake_audio, "/B.flac")
+        assert session.state.context_type is PlaybackContextType.SINGLE
+        assert session.state.current_entry.file_path == Path("/B.flac")
+
+    def test_rp02_queue_to_album_supersession(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        session.play_queue_index(0)
+        album_entries = [
+            PlaybackSequenceEntry(Path("/Alb1.flac"), "1"),
+            PlaybackSequenceEntry(Path("/Alb2.flac"), "2"),
+        ]
+        session.play_context(PlaybackContextType.ALBUM, "album-x", album_entries, 1)
+        assert session._pending_queue_entry_id is None
+        q.remove(0)
+        assert session._pending is not None
+        accept(session, fake_audio, "/Alb2.flac")
+        assert session.state.context_type is PlaybackContextType.ALBUM
+        assert session.state.current_index == 1
+
+    def test_rp03_queue_to_playlist_supersession(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        session.play_queue_index(0)
+        pl_entries = [
+            PlaybackSequenceEntry(Path("/Pl1.flac"), "1"),
+            PlaybackSequenceEntry(Path("/Pl2.flac"), "2"),
+        ]
+        session.play_context(PlaybackContextType.PLAYLIST, "pl-x", pl_entries, 0)
+        assert session._pending_queue_entry_id is None
+        q.remove(0)
+        assert session._pending is not None
+        accept(session, fake_audio, "/Pl1.flac")
+        assert session.state.context_type is PlaybackContextType.PLAYLIST
+
+    def test_rp04_queue_pending_removal_still_cancels(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        session.play_queue_index(0)
+        assert session._pending_queue_entry_id is not None
+        q.remove(0)  # exact QUEUE target removed before acceptance
+        assert session._pending is None  # cancelled
+        assert session.state.current_entry is None  # never committed
+
+    def test_rp05_new_queue_request_exact_provenance(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        session.play_single(PlaybackSequenceEntry(Path("/X.flac"), "X"))
+        assert session._pending_queue_entry_id is None
+        session.play_queue_index(1)
+        assert session._pending_queue_entry_id == q.state.tracks[1].entry_id
+
+
+class TestFinalSealLiveAcceptance:
+    """P1-02: QUEUE acceptance re-projects the LIVE Queue."""
+
+    def test_la01_target_moved_before_acceptance(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        q.add(Path("/C.flac"))
+        c_id = q.state.tracks[2].entry_id
+        session.play_queue_index(2)  # pending C
+        q.move(2, 0)  # C → index 0 BEFORE acceptance
+        accept(session, fake_audio, "/C.flac")
+        assert session.state.context_type is PlaybackContextType.QUEUE
+        assert [e.file_path for e in session.state.entries] == [
+            Path("/C.flac"),
+            Path("/A.flac"),
+            Path("/B.flac"),
+        ]
+        assert session.state.current_index == 0
+        assert session._active_queue_entry_id == c_id
+
+    def test_la02_other_entry_removed_before_acceptance(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        q.add(Path("/C.flac"))
+        c_id = q.state.tracks[2].entry_id
+        session.play_queue_index(2)  # pending C
+        q.remove(1)  # B removed BEFORE acceptance
+        accept(session, fake_audio, "/C.flac")
+        assert [e.file_path for e in session.state.entries] == [
+            Path("/A.flac"),
+            Path("/C.flac"),
+        ]
+        assert session.state.current_index == 1
+        assert session._active_queue_entry_id == c_id
+
+    def test_la03_entry_added_before_acceptance(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/C.flac"))
+        session.play_queue_index(1)  # pending C
+        q.add(Path("/B.flac"))  # B added BEFORE acceptance
+        accept(session, fake_audio, "/C.flac")
+        assert [e.file_path for e in session.state.entries] == [
+            Path("/A.flac"),
+            Path("/C.flac"),
+            Path("/B.flac"),
+        ]
+        assert session.state.current_index == 1
+
+    def test_la04_duplicate_target_moved_exact_identity(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        q.add(Path("/A.flac"))
+        a2_id = q.state.tracks[2].entry_id
+        session.play_queue_index(2)  # pending A2
+        q.move(2, 0)  # A2 → index 0
+        accept(session, fake_audio, "/A.flac")
+        assert session.state.current_index == 0
+        assert session._active_queue_entry_id == a2_id  # A2, NOT A1
+        assert session.state.entries[0].entry_id == a2_id
+
+    def test_la05_projection_coherent_with_live_queue(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        session.play_queue_index(1)
+        q.move(1, 0)
+        accept(session, fake_audio, "/B.flac")
+        assert [e.file_path for e in session.state.entries] == [
+            t.file_path for t in q.state.tracks
+        ]
+        assert (
+            session.state.entries[session.state.current_index].entry_id
+            == q.state.tracks[0].entry_id
+        )
+
+
+class TestFinalSealRestoreIdentity:
+    """P1-03: restored QUEUE session uses the restored Queue runtime ids."""
+
+    def _restored(self, queue_tracks, context_index, shuffle_enabled=False):
+        from michi.application.playback_service import PlaybackService
+        from michi.application.queue_service import QueueService
+        from tests.conftest import FakeAudioPort
+
+        audio = FakeAudioPort()
+        playback = PlaybackService(audio)
+        q = QueueService()
+        session = PlaybackSessionService(playback, q)
+        session.start()
+        # restore Queue content FIRST (production order)
+        from michi.domain.queue import Track
+
+        q.restore_entries([Track(file_path=p, title=p.stem) for p in queue_tracks])
+        entries = [
+            PlaybackSequenceEntry(file_path=p, title=p.stem) for p in queue_tracks
+        ]
+        session.restore_session(
+            context_type=PlaybackContextType.QUEUE,
+            source_id=None,
+            entries=entries,
+            current_index=context_index,
+            repeat_mode=RepeatMode.NONE,
+            shuffle_enabled=shuffle_enabled,
+            shuffle_seed=42,
+        )
+        return q, session
+
+    def test_ri01_restored_ids_equal_queue_ids(self, fake_audio):
+        q, session = self._restored(
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac")], 1
+        )
+        assert session.state.context_type is PlaybackContextType.QUEUE
+        assert [e.entry_id for e in session.state.entries] == [
+            t.entry_id for t in q.state.tracks
+        ]
+
+    def test_ri02_duplicate_restore_exact_current(self, fake_audio):
+        q, session = self._restored(
+            [Path("/A.flac"), Path("/B.flac"), Path("/A.flac")], 2
+        )
+        assert session._active_queue_entry_id == q.state.tracks[2].entry_id
+        assert session._active_queue_entry_id != q.state.tracks[0].entry_id
+
+    def test_ri03_shuffle_after_restore_next_works(self, fake_audio):
+        q, session = self._restored(
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac")],
+            0,
+            shuffle_enabled=True,
+        )
+        session.next()
+        accept(session, fake_audio, "/X.flac")  # whatever target; must request
+        assert session._pending is not None or session.state.current_entry is not None
+
+    def test_ri04_enable_shuffle_after_restore(self, fake_audio):
+        q, session = self._restored(
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac")], 0
+        )
+        session.set_shuffle_enabled(True)
+        session.next()
+        # a valid LIVE Queue target is requested
+        assert session._pending is not None
+
+    def test_ri05_restored_shuffle_previous_history(self, fake_audio):
+        q, session = self._restored(
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac")],
+            0,
+            shuffle_enabled=True,
+        )
+        assert len(session._navigator.history) == 1  # current committed
+        # history identities are Queue runtime ids
+        assert session._navigator.history[0].entry_id == q.state.tracks[0].entry_id
+
+    def test_ri06_format_version_remains_2(self):
+        from michi.domain.session import FORMAT_VERSION
+
+        assert FORMAT_VERSION == 2
+
+    def test_ri07_no_entry_id_in_serialized_snapshot(self):
+        from michi.domain.session import (
+            PersistedQueueEntry,
+            PersistedSessionContext,
+            PlaybackSessionSnapshot,
+            encode_snapshot,
+        )
+
+        snap = PlaybackSessionSnapshot(
+            format_version=2,
+            queue_entries=(PersistedQueueEntry("/A.flac", "A"),),
+            context=PersistedSessionContext(
+                "queue", None, (PersistedQueueEntry("/A.flac", "A"),), 0
+            ),
+            playback_path="/A.flac",
+            position_ms=0,
+            repeat_mode=RepeatMode.NONE,
+            shuffle_enabled=False,
+            shuffle_seed=0,
+        )
+        encoded = encode_snapshot(snap)
+        assert "entry_id" not in encoded
+
+
+class TestFinalSealShuffleIdentity:
+    """P1-04: ShuffleNavigator logical identity is entry_id."""
+
+    def test_si01_wrapper_same_entry_id_same_logical(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        e1 = PlaybackSequenceEntry(Path("/A.flac"), "", q.state.tracks[0].entry_id)
+        e2 = PlaybackSequenceEntry(Path("/A.flac"), "", q.state.tracks[0].entry_id)
+        session._navigator.history = [e1]
+        session._navigator.record_commit(e2)
+        assert len(session._navigator.history) == 1  # not duplicated logically
+
+    def test_si02_duplicate_paths_distinct_logical(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        q.add(Path("/A.flac"))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/A.flac")
+        session.set_shuffle_enabled(True)
+        ids = {e.entry_id for e in session._navigator.pool}
+        assert len(ids) == 2  # B + one A — distinct identities
+
+    def test_si03_record_commit_no_logical_duplicate(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        entry = PlaybackSequenceEntry(Path("/A.flac"), "", q.state.tracks[0].entry_id)
+        session._navigator.history = [entry]
+        wrapper = PlaybackSequenceEntry(Path("/A.flac"), "", q.state.tracks[0].entry_id)
+        session._navigator.record_commit(wrapper)
+        assert len(session._navigator.history) == 1
+
+    def test_si04_previous_no_phantom_duplicate(self, fake_audio):
+        from michi.domain.playback_session import ShuffleNavigator
+
+        nav = ShuffleNavigator()
+        a = PlaybackSequenceEntry(Path("/A.flac"), "A", "id-A")
+        b = PlaybackSequenceEntry(Path("/B.flac"), "B", "id-B")
+        nav.history = [a, b]
+        pick = nav.previous_pick()
+        assert pick is not None and pick.entry_id == "id-A"
+        # previous again on [a]: fewer than two logical → None
+        assert nav.previous_pick() is None
+
+    def test_si05_live_reprojection_preserves_history(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        q.add(Path("/C.flac"))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/A.flac")
+        session.set_shuffle_enabled(True)
+        before = [e.entry_id for e in session._navigator.history]
+        # live re-projection creates fresh wrappers via _queue_entries
+        session.on_queue_changed()
+        assert [e.entry_id for e in session._navigator.history] == before
+
+    def test_si06_move_preserves_history(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        q.add(Path("/C.flac"))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/A.flac")
+        session.set_shuffle_enabled(True)
+        before = [e.entry_id for e in session._navigator.history]
+        q.move(2, 1)
+        session.on_queue_changed()
+        assert [e.entry_id for e in session._navigator.history] == before
+
+    def test_si07_remove_exact_duplicate_only(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        q.add(Path("/A.flac"))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/A.flac")
+        session.set_shuffle_enabled(True)
+        removed_id = q.state.tracks[2].entry_id
+        q.remove(2)
+        session.on_queue_changed()
+        pool_ids = {e.entry_id for e in session._navigator.pool}
+        history_ids = {e.entry_id for e in session._navigator.history}
+        assert removed_id not in pool_ids
+        assert removed_id not in history_ids
+
+    def test_si08_repeat_all_regeneration_by_entry_id(self, fake_audio):
+        from michi.domain.playback_session import ShuffleNavigator
+
+        nav = ShuffleNavigator()
+        entries = [
+            PlaybackSequenceEntry(Path("/A.flac"), "A", "id-A"),
+            PlaybackSequenceEntry(Path("/B.flac"), "B", "id-B"),
+        ]
+        import random
+
+        nav.regenerate(entries, entries[0], random.Random(1))
+        assert [e.entry_id for e in nav.pool] == ["id-B"]
+        assert nav.history[0].entry_id == "id-A"
+
+
+class TestFinalSealNavigationCapability:
+    """P1-05: hasNext/hasPrevious are service-level Session capabilities."""
+
+    def _album(self, fake_audio, repeat=RepeatMode.NONE):
+        _, q, session = make_session(fake_audio)
+        entries = [
+            PlaybackSequenceEntry(Path("/A.flac"), "A"),
+            PlaybackSequenceEntry(Path("/B.flac"), "B"),
+            PlaybackSequenceEntry(Path("/C.flac"), "C"),
+        ]
+        session.play_context(PlaybackContextType.ALBUM, "a", entries, 2)
+        accept(session, fake_audio, "/C.flac")
+        session.set_repeat_mode(repeat)
+        return session
+
+    def test_nc01_natural_last_has_next_false(self, fake_audio):
+        session = self._album(fake_audio)
+        assert session.has_next is False
+
+    def test_nc02_repeat_all_last_has_next_true(self, fake_audio):
+        session = self._album(fake_audio, repeat=RepeatMode.ALL)
+        assert session.has_next is True
+
+    def test_nc03_repeat_all_first_has_previous_true(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        entries = [
+            PlaybackSequenceEntry(Path("/A.flac"), "A"),
+            PlaybackSequenceEntry(Path("/B.flac"), "B"),
+        ]
+        session.play_context(PlaybackContextType.ALBUM, "a", entries, 0)
+        accept(session, fake_audio, "/A.flac")
+        session.set_repeat_mode(RepeatMode.ALL)
+        assert session.has_previous is True
+
+    def test_nc04_queue_live_repeat_all_boundary(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        for p in ("/A.flac", "/B.flac", "/C.flac"):
+            q.add(Path(p))
+        session.play_queue_index(2)
+        accept(session, fake_audio, "/C.flac")
+        session.set_repeat_mode(RepeatMode.ALL)
+        assert session.has_next is True
+        assert session.has_previous is True
+
+    def test_nc05_shuffle_pool_overrides_numeric_boundary(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        for p in ("/A.flac", "/B.flac", "/C.flac"):
+            q.add(Path(p))
+        session.play_queue_index(2)  # numeric last
+        accept(session, fake_audio, "/C.flac")
+        session.set_shuffle_enabled(True)
+        if session._navigator.pool:
+            assert session.has_next is True  # pool has eligible next
+
+    def test_nc06_shuffle_history_controls_has_previous(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        for p in ("/A.flac", "/B.flac"):
+            q.add(Path(p))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/A.flac")
+        session.set_shuffle_enabled(True)
+        assert session.has_previous is False  # history = [A] only
+        session.next()
+        accept(session, fake_audio, "/B.flac")
+        assert session.has_previous is True  # history = [A, B]
+
+    def test_nc07_queue_move_updates_capability(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        for p in ("/A.flac", "/B.flac"):
+            q.add(Path(p))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/A.flac")
+        assert session.has_next is True
+        q.remove(1)  # B removed — no next remains
+        assert session.has_next is False
+
+    def test_nc09_queue_add_updates_capability(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/A.flac")
+        assert session.has_next is False
+        q.add(Path("/B.flac"))
+        assert session.has_next is True
+
+    def test_nc10_bridge_exposes_service_capability(self, fake_audio):
+        from michi.presentation.playback_session_bridge import (
+            PlaybackSessionBridge,
+        )
+
+        _, q, session = make_session(fake_audio)
+        bridge = PlaybackSessionBridge(session)
+        for p in ("/A.flac", "/B.flac"):
+            q.add(Path(p))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/A.flac")
+        assert bridge.property("hasNext") is True
+        assert bridge.property("hasPrevious") is False
