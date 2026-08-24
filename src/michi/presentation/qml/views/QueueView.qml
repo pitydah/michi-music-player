@@ -36,20 +36,20 @@ Item {
                 x: root.revealed ? 0 : 36
                 opacity: root.revealed ? 1 : 0
                 trackRows: queue.trackRows
-                currentIndex: queue.currentIndex
+                currentIndex: playbackSession.contextType === "queue" ? playbackSession.currentIndex : -1
                 count: queue.count
-                hasPrev: queue.hasPrevious
-                hasNext: queue.hasNext
-                repeatMode: queue.repeatMode
-                shuffleEnabled: queue.shuffleEnabled
-                onTrackClicked: index => queue.play_index(index)
+                hasPrev: playbackSession.hasPrevious
+                hasNext: playbackSession.hasNext
+                repeatMode: playbackSession.repeatMode
+                shuffleEnabled: playbackSession.shuffleEnabled
+                onTrackClicked: index => playbackSession.play_queue_index(index)
                 onMoveRequested: (fromIndex, toIndex) => queue.move_track(fromIndex, toIndex)
                 onRemoveRequested: index => queue.remove_track(index)
                 onClearClicked: queue.clear_queue()
-                onPreviousRequested: queue.previous_track()
-                onNextRequested: queue.next_track()
-                onRepeatModeRequested: mode => queue.set_repeat_mode(mode)
-                onShuffleRequested: enabled => queue.set_shuffle_enabled(enabled)
+                onPreviousRequested: playbackSession.previous_track()
+                onNextRequested: playbackSession.next_track()
+                onRepeatModeRequested: mode => playbackSession.set_repeat_mode(mode)
+                onShuffleRequested: enabled => playbackSession.set_shuffle_enabled(enabled)
                 onCloseRequested: root.closeRequested()
                 Behavior on x {
                     enabled: !MichiAccessibility.reducedMotion

@@ -17,7 +17,6 @@ from collections.abc import Callable
 from pathlib import Path
 
 from michi.application.ports import PlaylistsPort
-from michi.application.queue_service import QueueService
 from michi.domain.playlist import (
     MAX_RECENT_PLAYLISTS,
     Playlist,
@@ -36,10 +35,9 @@ class PlaylistService:
 
     def __init__(
         self,
-        queue_service: QueueService,
+        *legacy_queue_args,
         playlists_port: PlaylistsPort | None = None,
     ) -> None:
-        self._queue = queue_service
         self._port = playlists_port
         self._playlists: list[Playlist] = list(
             playlists_port.load() if playlists_port is not None else ()
@@ -235,16 +233,6 @@ class PlaylistService:
     def remove_custom_cover(self, playlist_id: str) -> None:
         self.set_custom_cover(playlist_id, "")
 
-    def play_playlist(self, playlist_id: str) -> None:
-        index = self._find_by_id(playlist_id)
-        if index < 0:
-            return
-        was_empty = self._queue.state.count == 0
-        for path in self._playlists[index].track_paths:
-            self._queue.add(Path(path))
-        if was_empty:
-            self._queue.play_index(0)
-
     # ------------------------------------------------------------------
     # Navigation metadata (pinned / recent) — identity-based
     # ------------------------------------------------------------------
@@ -330,8 +318,6 @@ class PlaylistService:
         if playlist_id is not None:
             self.move_track(playlist_id, from_index, to_index)
 
-    def play_playlist_by_name(self, name: str) -> None:
-        """DEPRECATED compatibility: name-based play delegates to id."""
-        playlist_id = self._resolve_name_to_id(name)
-        if playlist_id is not None:
-            self.play_playlist(playlist_id)
+    def resolve_playlist_name(self, name: str) -> str | None:
+        """Name → id resolution (intent coordinators use this)."""
+        return self._resolve_name_to_id(name)

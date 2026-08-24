@@ -23,13 +23,43 @@ from enum import Enum
 from pathlib import Path
 
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.ports import SessionRepository
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.domain.playback import PlaybackStatus
-from michi.domain.session import (
+from michi.domain.playback_session import PlaybackContextType, PlaybackSequenceEntry
+from michi.domain.queue import Track
+
+
+def _session_key(state) -> tuple:
+    """Canonical session identity for change detection (M4-R1).
+
+    Entries are EXCLUDED deliberately: the QUEUE live re-projection updates
+    the published entries on every Queue mutation, and the Queue event
+    itself already checkpoints — entries-only changes must not double-save.
+    """
+    return (
+        state.context_type,
+        state.source_id,
+        state.current_index,
+        state.repeat_mode,
+        state.shuffle_enabled,
+    )
+
+
+_CONTEXT_STRING = {
+    PlaybackContextType.NONE: "none",
+    PlaybackContextType.SINGLE: "single",
+    PlaybackContextType.ALBUM: "album",
+    PlaybackContextType.PLAYLIST: "playlist",
+    PlaybackContextType.QUEUE: "queue",
+}
+_CONTEXT_TYPE = {string: ctx for ctx, string in _CONTEXT_STRING.items()}
+from michi.domain.session import (  # noqa: E402 — after mapping for clarity
     FORMAT_VERSION,
     PersistedQueueEntry,
+    PersistedSessionContext,
     PlaybackSessionSnapshot,
 )
 
@@ -91,12 +121,14 @@ class PersistenceCoordinator:
         self,
         session_repository: SessionRepository,
         queue_service: QueueService,
+        playback_session: PlaybackSessionService,
         playback_service: PlaybackService,
         settings_service: SettingsService,
         position_checkpoint_delta_ms: int = 5000,
     ) -> None:
         self._repo = session_repository
         self._queue = queue_service
+        self._session = playback_session
         self._playback = playback_service
         self._settings = settings_service
         self._position_checkpoint_delta_ms = position_checkpoint_delta_ms
@@ -131,6 +163,11 @@ class PersistenceCoordinator:
         self._restored_snapshot: PlaybackSessionSnapshot | None = None
         # Last-observed volume/mute (P1-B runtime sync baseline).
         self._last_volume, self._last_muted = playback_service.snapshot_volume()
+        # M4-R1: session change-detection baseline — only canonical session
+        # changes (context/current/repeat/shuffle) checkpoint; a session
+        # notification caused by the queue-driven live re-projection must
+        # not double-checkpoint (the queue event already saved).
+        self._last_session_key = _session_key(playback_session.state)
 
     def _build_snapshot(self) -> PlaybackSessionSnapshot:
         """Encode the PUBLIC session state (§26).
@@ -150,6 +187,7 @@ class PersistenceCoordinator:
         fabricates a playback identity the queue does not confirm.
         """
         queue_state = self._queue.state
+        session_state = self._session.state
         if (
             self._resume_phase is not _ResumePhase.NONE
             and self._restored_snapshot is not None
@@ -162,33 +200,42 @@ class PersistenceCoordinator:
                 position_ms = 0
         else:
             playback_state = self._playback.state
+            session_entry = session_state.current_entry
             coherent_runtime = (
                 playback_state.file_path is not None
-                and 0 <= queue_state.current_index < len(queue_state.tracks)
-                and str(queue_state.tracks[queue_state.current_index].file_path)
-                == str(playback_state.file_path)
+                and session_entry is not None
+                and str(session_entry.file_path) == str(playback_state.file_path)
             )
             if coherent_runtime:
                 playback_path = str(playback_state.file_path)
                 position_ms = playback_state.position_ms
             else:
-                # Queue coherence is authoritative: a retained playback
-                # file_path (M4: stop() keeps it) must never become durable
-                # garbage when the queue has no matching current.
+                # PlaybackSession coherence is authoritative (M4-R1 §66): a
+                # retained playback file_path that the active session does
+                # not confirm is never durable garbage.
                 playback_path = None
                 position_ms = 0
+        context_type = session_state.context_type
         return PlaybackSessionSnapshot(
             format_version=FORMAT_VERSION,
             queue_entries=tuple(
                 PersistedQueueEntry(str(track.file_path), track.title)
                 for track in queue_state.tracks
             ),
-            queue_current_index=queue_state.current_index,
+            context=PersistedSessionContext(
+                context_type=_CONTEXT_STRING[context_type],
+                source_id=session_state.source_id,
+                entries=tuple(
+                    PersistedQueueEntry(str(e.file_path), e.title)
+                    for e in session_state.entries
+                ),
+                current_index=session_state.current_index,
+            ),
             playback_path=playback_path,
             position_ms=position_ms,
-            repeat_mode=queue_state.repeat_mode,
-            shuffle_enabled=queue_state.shuffle_enabled,
-            shuffle_seed=self._queue.shuffle_seed,
+            repeat_mode=session_state.repeat_mode,
+            shuffle_enabled=session_state.shuffle_enabled,
+            shuffle_seed=self._session.shuffle_seed,
         )
 
     def _hybrid_coherent(self) -> bool:
@@ -197,13 +244,13 @@ class PersistenceCoordinator:
         path is present, and the LIVE queue current identity matches the
         restored path (string equality)."""
         restored = self._restored_snapshot
+        session_entry = self._session.state.current_entry
         return (
             self._resume_phase is not _ResumePhase.NONE
             and restored is not None
             and restored.playback_path is not None
-            and 0 <= self._queue.state.current_index < len(self._queue.state.tracks)
-            and str(self._queue.state.tracks[self._queue.state.current_index].file_path)
-            == restored.playback_path
+            and session_entry is not None
+            and str(session_entry.file_path) == restored.playback_path
         )
 
     def _release_resume_authority(self, reason: str = "resume resolved") -> None:
@@ -261,6 +308,7 @@ class PersistenceCoordinator:
         if self._started:
             return
         self._queue.subscribe_changed(self._on_queue_changed)
+        self._session.subscribe_changed(self._on_session_changed)
         self._playback.subscribe_changed(self._on_playback_changed)
         self._playback.subscribe_resume_prepared(self._on_resume_prepared)
         self._last_volume, self._last_muted = self._playback.snapshot_volume()
@@ -271,6 +319,7 @@ class PersistenceCoordinator:
         if not self._started:
             return
         self._queue.unsubscribe_changed(self._on_queue_changed)
+        self._session.unsubscribe_changed(self._on_session_changed)
         self._playback.unsubscribe_changed(self._on_playback_changed)
         self._playback.unsubscribe_resume_prepared(self._on_resume_prepared)
         self._started = False
@@ -283,15 +332,50 @@ class PersistenceCoordinator:
         # instead of being suppressed.
         if self._restoring or not self._started:
             return
+        # M4-R1: the session reacts to Queue content mutations (QUEUE live
+        # sync). The coordinator observes Queue changes in production too.
+        self._session.on_queue_changed()
+        # M4-R1: Queue changes only invalidate a resume when they change the
+        # ACTIVE QUEUE context in a way that breaks session playback identity
+        # (SINGLE/ALBUM/PLAYLIST resume is unaffected by Queue content).
+        if self._resume_phase is not _ResumePhase.NONE:
+            session_type = self._session.state.context_type
+            if (
+                session_type is PlaybackContextType.QUEUE
+                and not self._hybrid_coherent()
+            ):
+                self._playback.stop()
+                self._release_resume_authority(reason="queue coherence broken")
+            # non-QUEUE contexts: Queue mutation does NOT invalidate resume
         self.checkpoint()
-        # A queue mutation that broke the hybrid coherence (e.g. removing
-        # the restored current) invalidates the restored playback truth: the
-        # pending resume is cancelled through the PUBLIC machinery (safe
-        # during the window — nothing is playing; stop clears the pending
-        # prepare), THEN the authority is released.
-        if self._resume_phase is not _ResumePhase.NONE and not self._hybrid_coherent():
+
+    def _on_session_changed(self) -> None:
+        # Session context/navigation changes: prompt save. Never while
+        # restoring or disarmed. Only CANONICAL session changes checkpoint —
+        # a session notification caused by the QUEUE live re-projection
+        # (triggered by the same queue event that already checkpoints)
+        # must not double-save.
+        if self._restoring or not self._started:
+            return
+        key = _session_key(self._session.state)
+        if key == self._last_session_key:
+            return  # no canonical change (live re-projection only)
+        self._last_session_key = key
+        # If the active session current identity supersedes during restore,
+        # cancel the pending resume through the public machinery and release
+        # the restored authority (same discipline as queue-coherence).
+        if (
+            self._resume_phase is not _ResumePhase.NONE
+            and self._session.state.current_entry is not None
+            and (
+                self._restored_snapshot is None
+                or str(self._session.state.current_entry.file_path)
+                != self._restored_snapshot.playback_path
+            )
+        ):
             self._playback.stop()
-            self._release_resume_authority(reason="queue coherence broken")
+            self._release_resume_authority(reason="session superseded")
+        self.checkpoint()
 
     def _on_resume_prepared(self, path: Path, position_ms: int) -> None:
         # M5-PRODUCTION-LIFECYCLE-GATE: the backend CONFIRMED the resume
@@ -403,21 +487,23 @@ class PersistenceCoordinator:
             self._last_muted = muted
 
     def restore(self, *, engine_available: bool = True) -> None:
-        """Startup: rebuild the queue, then resume playback only when the
-        queue current identity matches the persisted playback identity.
+        """Startup: rebuild Queue content, restore the PlaybackSession
+        logical context, then resume playback only when the SESSION current
+        entry matches the persisted playback identity (M4-R1 §66).
 
         M11.3G (§66): ``engine_available=False`` (no engine could be
-        activated at startup) restores the QueueState and the logical
-        current-track identity but MUST NOT attempt a backend load/seek —
-        the router is unbound and no resume may be fabricated. The resume
-        phase stays NONE; the next startup (or an explicit engine
-        activation) retries normally.
+        activated at startup) restores QueueState and the logical session
+        context but MUST NOT attempt a backend load/seek — the router is
+        unbound and no resume may be fabricated. The resume phase stays
+        NONE; the next startup (or an explicit engine activation) retries
+        normally.
 
         The coherence rule (§4/§22) guards the resume: ``prepare_for_resume``
-        is requested ONLY when ``snapshot.queue_current_index`` is valid and
-        the entry at that index equals ``snapshot.playback_path`` (string
-        equality). A mismatched or absent playback path restores the queue
-        only — PlaybackState is never fabricated and no load is requested.
+        is requested ONLY when the restored session current entry is valid
+        and equals ``snapshot.playback_path`` (string equality). A
+        mismatched or absent playback path restores content/context only —
+        PlaybackState is never fabricated and no load is requested.
+        Restore NEVER emits a History event and NEVER autoplays.
 
         While restoring, the change notifications (restore_session's queue
         notification, prepare_for_resume's playback notification) are
@@ -443,9 +529,27 @@ class PersistenceCoordinator:
         self._restoring = True
         try:
             snapshot = self._repo.load()
-            self._queue.restore_session(snapshot)
-            entries = snapshot.queue_entries
-            idx = snapshot.queue_current_index
+            # M4-R1: Queue CONTENT restoration (no playback fields).
+            self._queue.restore_entries(
+                [Track(Path(e.file_path), e.title) for e in snapshot.queue_entries]
+            )
+            # M4-R1: PlaybackSession logical context restoration — no backend
+            # command, no autoplay, no History event.
+            context = snapshot.context
+            self._session.restore_session(
+                context_type=_CONTEXT_TYPE[context.context_type],
+                source_id=context.source_id,
+                entries=[
+                    PlaybackSequenceEntry(Path(e.file_path), e.title)
+                    for e in context.entries
+                ],
+                current_index=context.current_index,
+                repeat_mode=snapshot.repeat_mode,
+                shuffle_enabled=snapshot.shuffle_enabled,
+                shuffle_seed=snapshot.shuffle_seed,
+            )
+            entries = context.entries
+            idx = context.current_index
             coherent = (
                 snapshot.playback_path is not None
                 and 0 <= idx < len(entries)
@@ -455,7 +559,7 @@ class PersistenceCoordinator:
             if coherent:
                 # M5-LAST-GATE-2: the loaded snapshot is the last valid
                 # durable truth while the two-phase resume is unresolved; a
-                # shutdown or queue change inside the window must never
+                # shutdown or session change inside the window must never
                 # overwrite it with the incomplete runtime Playback.
                 self._restored_snapshot = snapshot
                 self._resume_phase = _ResumePhase.WAITING_MEDIA
@@ -465,7 +569,7 @@ class PersistenceCoordinator:
                 )
                 # The restore window stays open (WAITING_MEDIA) until the
                 # backend confirms the position (resume_prepared), rejects
-                # it, or the queue coherence breaks.
+                # it, or the session coherence breaks.
             else:
                 # No resume is pending: no restored truth is being held, so a
                 # later shutdown must checkpoint normally.
@@ -532,6 +636,7 @@ class PersistenceCoordinator:
         self._settings.set_playback_preferences(volume, muted)
         self._settings.save()
         self._queue.unsubscribe_changed(self._on_queue_changed)
+        self._session.unsubscribe_changed(self._on_session_changed)
         self._playback.unsubscribe_changed(self._on_playback_changed)
         self._playback.unsubscribe_resume_prepared(self._on_resume_prepared)
         self._restoring = False

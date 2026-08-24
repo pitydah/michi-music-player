@@ -21,7 +21,6 @@ from michi.application.ports import (
     ScanPipelinePort,
     ScanProgress,
 )
-from michi.application.queue_service import QueueService
 from michi.domain.library import (
     HISTORY_CAP,
     RECENT_CAP,
@@ -74,7 +73,7 @@ class LibraryService:
     def __init__(
         self,
         scanner: LibraryScannerPort,
-        queue_service: QueueService,
+        *legacy_queue_args,
         metadata_extractor: MetadataExtractorPort | None = None,
         artwork_provider: ArtworkProviderPort | None = None,
         artwork_cache: ArtworkCachePort | None = None,
@@ -83,7 +82,6 @@ class LibraryService:
         scan_pipeline: ScanPipelinePort | None = None,
     ) -> None:
         self._scanner = scanner
-        self._queue = queue_service
         self._metadata_extractor = metadata_extractor
         self._artwork_provider = artwork_provider
         self._artwork_cache = artwork_cache
@@ -99,7 +97,6 @@ class LibraryService:
             self._state.favorite_paths = prefs.favorite_paths
             self._state.history_paths = prefs.history_paths
             self._state.recently_added_paths = prefs.recently_added_paths
-        queue_service.subscribe_changed(self._on_queue_changed)
 
     @property
     def state(self) -> LibraryState:
@@ -603,28 +600,23 @@ class LibraryService:
         self._persist_prefs()
         self._notify()
 
-    def _on_queue_changed(self) -> None:
-        current = self._queue.state.current_track
-        if current is None:
-            return
-        path = str(current.file_path)
-        if self._state.history_paths and self._state.history_paths[0] == path:
+    def record_history(self, path: Path) -> None:
+        """Record a HISTORY entry for a path that was ACCEPTED as a new
+        playback session commit. Owns history_paths, consecutive dedupe,
+        HISTORY_CAP, persistence and notification. It does NOT decide WHEN
+        playback happened (PlaybackHistoryCoordinator owns that)."""
+        key = str(Path(path))
+        if self._state.history_paths and self._state.history_paths[0] == key:
             return  # consecutive dedupe
-        self._state.history_paths = (path, *self._state.history_paths)[:HISTORY_CAP]
+        self._state.history_paths = (key, *self._state.history_paths)[:HISTORY_CAP]
         self._persist_prefs()
         self._notify()
 
-    def activate(self, visible_index: int) -> None:
-        tracks = self._state.visible_tracks
-        if not (0 <= visible_index < len(tracks)):
-            return
-        self.activate_track(tracks[visible_index])
-
-    def activate_track(self, track: TrackRef) -> None:
-        """TD-013 activation contract for an exact TrackRef: validate the
-        filesystem through the port BEFORE any queue mutation; TRACK_MISSING
-        removes the exact reference; ACCESS/IO/UNKNOWN preserve it; success
-        keeps the existing queue behavior."""
+    def validate_track_for_playback(self, track: TrackRef) -> bool:
+        """TD-013 filesystem validation (kept in LibraryService): TRACK_MISSING
+        removes the exact stale reference / diagnostic; ACCESS/IO/UNKNOWN
+        preserve the reference / diagnostic. Returns True only when the file
+        is playable. The coordinator never becomes a filesystem service."""
         try:
             self._scanner.validate_file(track.file_path)
         except LibraryFilesystemError as exc:
@@ -645,11 +637,19 @@ class LibraryService:
                     path=track.file_path,
                 )
             self._notify()
-            return
-        was_empty = self._queue.state.count == 0
-        self._queue.add(track.file_path, title=track.title or "")
-        if was_empty:
-            self._queue.play_index(0)
+            return False
+        return True
+
+    def visible_tracks(self) -> list[TrackRef]:
+        """Current visible track list (generic lists projection)."""
+        return list(self._state.visible_tracks)
+
+    def album_by_key(self, album_key: str):
+        """Canonical AlbumRef by key, or None."""
+        for album in self._state.albums:
+            if album.key == album_key:
+                return album
+        return None
 
     def artwork_path_for(self, album_key: str) -> str | None:
         """Cached artwork path for an album key, or None when unavailable."""

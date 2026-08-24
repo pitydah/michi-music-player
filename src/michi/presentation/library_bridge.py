@@ -24,10 +24,12 @@ class LibraryBridge(QObject):
     def __init__(
         self,
         service: LibraryService,
+        playback_coordinator=None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._service = service
+        self._playback_coordinator = playback_coordinator
         self._selected_album_key: str = ""
         self._selected_album: AlbumRef | None = None
         self._album_track_refs: list[TrackRef] = []
@@ -571,8 +573,22 @@ class LibraryBridge(QObject):
     @Slot(str)
     def activate_path(self, path: str) -> None:
         ref = self._service.resolve_trackref(Path(path))
-        if ref is not None:
-            self._service.activate_track(ref)
+        if ref is None:
+            return
+        if self._playback_coordinator is not None:
+            self._playback_coordinator.play_track(ref.file_path, title=ref.title or "")
+            return
+        self._service.activate_track(ref)
+
+    @Slot()
+    def play_selected_album(self) -> None:
+        if self._playback_coordinator is not None and self._selected_album_key:
+            self._playback_coordinator.play_album(self._selected_album_key)
+
+    @Slot(str)
+    def play_album(self, album_key: str) -> None:
+        if self._playback_coordinator is not None:
+            self._playback_coordinator.play_album(album_key)
 
     @Slot(str)
     def toggle_favorite(self, path: str) -> None:
@@ -628,11 +644,24 @@ class LibraryBridge(QObject):
 
     @Slot(int)
     def activate_artist_track(self, index: int) -> None:
-        if 0 <= index < len(self._artist_track_refs):
-            self._service.activate_track(self._artist_track_refs[index])
+        """Artist track activation → SINGLE via the library coordinator."""
+        if not (0 <= index < len(self._artist_track_refs)):
+            return
+        ref = self._artist_track_refs[index]
+        if self._playback_coordinator is not None:
+            self._playback_coordinator.play_artist_track_as_single(
+                ref.file_path, title=ref.title or ""
+            )
+            return
+        self._service.activate_track(ref)
 
     @Slot(int)
     def activate_album_track(self, index: int) -> None:
+        """Album Detail track click → ALBUM context at the clicked index
+        (NOT SINGLE)."""
         if not (0 <= index < len(self._album_track_refs)):
+            return
+        if self._playback_coordinator is not None and self._selected_album_key:
+            self._playback_coordinator.play_album_track(self._selected_album_key, index)
             return
         self._service.activate_track(self._album_track_refs[index])

@@ -30,15 +30,25 @@ from michi.application.enrichment_coordinator import EnrichmentCoordinator
 from michi.application.enrichment_evidence import LibraryEnrichmentEvidenceBuilder
 from michi.application.enrichment_executor import ThreadPoolEnrichmentExecutor
 from michi.application.enrichment_service import EnrichmentService
+from michi.application.library_playback_coordinator import (
+    LibraryPlaybackCoordinator,
+)
 from michi.application.library_preferences_coordinator import (
     LibraryPreferencesCoordinator,
 )
 from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.persistence_coordinator import PersistenceCoordinator
+from michi.application.playback_history_coordinator import (
+    PlaybackHistoryCoordinator,
+)
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
+)
+from michi.application.playlist_playback_coordinator import (
+    PlaylistPlaybackCoordinator,
 )
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
@@ -81,6 +91,7 @@ from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
 from michi.presentation.playback_bridge import PlaybackBridge
+from michi.presentation.playback_session_bridge import PlaybackSessionBridge
 from michi.presentation.playlists_bridge import PlaylistsBridge
 from michi.presentation.queue_bridge import QueueBridge
 from michi.presentation.settings_bridge import SettingsBridge
@@ -121,6 +132,10 @@ class ServiceGraph:
     relay: ScanRelay
     queue: QueueService
     playback: PlaybackService
+    playback_session: PlaybackSessionService
+    library_playback: LibraryPlaybackCoordinator
+    playlist_playback: PlaylistPlaybackCoordinator
+    history_coordinator: PlaybackHistoryCoordinator
     # NON-AUTHORITY / OBSERVABILITY ONLY: the concrete port bound inside the
     # router (test handle / introspection). Ownership lives in the provider.
     bound_audio_port: object
@@ -340,26 +355,38 @@ def _build_services(
     if artwork_cache is _MISSING:
         artwork_cache = ArtworkCache(Path.home() / ".cache" / "michi" / "artwork")
 
-    queue = QueueService(playback)
+    queue = QueueService()
 
     library_index = SqliteLibraryIndexRepository(db_path)
     library_prefs_repo = SqliteLibraryPrefsRepository(db_path)
     playlists_repo = SqlitePlaylistsRepository(db_path)
-    playlist_service = PlaylistService(queue, playlists_repo)
+    playlist_service = PlaylistService(playlists_port=playlists_repo)
 
     scan_relay = ScanRelay()
     scan_runner = ThreadScanRunner(scan_relay)
 
     library = LibraryService(
         scanner,
-        queue,
-        metadata_extractor,
-        artwork_provider,
-        artwork_cache,
+        metadata_extractor=metadata_extractor,
+        artwork_provider=artwork_provider,
+        artwork_cache=artwork_cache,
         library_prefs=library_prefs_repo,
         library_index=library_index,
         scan_pipeline=scan_runner,
     )
+    # M4-R1: the active playback session sits ABOVE PlaybackService and
+    # reads Queue content (one-way dependency; Queue never commands
+    # playback). Intent coordinators translate Library/Playlist user
+    # intents into session requests.
+    playback_session = PlaybackSessionService(playback, queue)
+    library_playback = LibraryPlaybackCoordinator(library, playback_session)
+    playlist_playback = PlaylistPlaybackCoordinator(
+        playlist_service, playback_session, queue
+    )
+    history_coordinator = PlaybackHistoryCoordinator(playback_session, library)
+    # QUEUE live-sync: session reacts to Queue content mutations (QUEUE
+    # context only) — Queue itself never subscribes to Playback.
+    queue.subscribe_changed(playback_session.on_queue_changed)
 
     # Owner-thread async dispatch (M6-PRODUCTION-INTEGRATION): the runner
     # emits on the worker thread; the EXPLICIT QueuedConnection delivers
@@ -369,7 +396,7 @@ def _build_services(
     scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
     scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
 
-    lb = LibraryBridge(library)
+    lb = LibraryBridge(library, playback_coordinator=library_playback)
 
     return ServiceGraph(
         db_path=db_path,
@@ -384,6 +411,10 @@ def _build_services(
         relay=scan_relay,
         queue=queue,
         playback=playback,
+        playback_session=playback_session,
+        library_playback=library_playback,
+        playlist_playback=playlist_playback,
+        history_coordinator=history_coordinator,
         bound_audio_port=bound_port,
         audio_engine_convergence=convergence,
         audio_router=router,
@@ -564,7 +595,7 @@ class ApplicationContainer:
 
         # M11.3B: PlaybackCoordinator subscribes to the SAME router instance
         # as PlaybackService — one transport identity for both consumers.
-        coordinator = PlaybackCoordinator(graph.audio_router, queue, playback)
+        coordinator = PlaybackCoordinator(graph.audio_router, playback)
         coordinator.start()
 
         # Session persistence (M5.C5): runtime checkpoints + startup restore.
@@ -578,7 +609,9 @@ class ApplicationContainer:
         # resume_prepared is never lost; _restoring suppresses the
         # restore-generated checkpoints.
         session_repo = SqliteSessionRepository(db_path)
-        persistence = PersistenceCoordinator(session_repo, queue, playback, settings)
+        persistence = PersistenceCoordinator(
+            session_repo, queue, graph.playback_session, playback, settings
+        )
         persistence.start()
         # M11.3G §66: the startup resume happens ONLY through the engine that
         # convergence activated (selected or Qt fallback). With no active
@@ -589,9 +622,13 @@ class ApplicationContainer:
                 graph.audio_engine_service.state.active_engine_id is not None
             )
         )
+        # M4-R1: History is PLAYBACK-COMMIT driven — only NEW accepted
+        # playback requests record History (restore never emits).
+        graph.history_coordinator.start()
 
         pb = PlaybackBridge(playback, library)
         qb = QueueBridge(queue, library)
+        psb = PlaybackSessionBridge(graph.playback_session)
         lb = graph.bridge
         # M8-R1F: application-level coordination for the OPEN PLAYLIST
         # product intent (validate → recent → navigate). Not a state
@@ -605,6 +642,7 @@ class ApplicationContainer:
             playlist_navigation=playlist_nav,
             navigation_service=navigation,
             library=library,
+            playback_coordinator=graph.playlist_playback,
         )
         sb = SettingsBridge(settings)
 
@@ -613,6 +651,7 @@ class ApplicationContainer:
         ctx = engine.rootContext()
         ctx.setContextProperty("playback", pb)
         ctx.setContextProperty("queue", qb)
+        ctx.setContextProperty("playbackSession", psb)
         ctx.setContextProperty("library", lb)
         ctx.setContextProperty("navigation", nb)
         ctx.setContextProperty("playlists", plb)
@@ -631,6 +670,7 @@ class ApplicationContainer:
         self._persistence = persistence
         self._pb = pb
         self._qb = qb
+        self._psb = psb
         self._lb = lb
         self._plb = plb
         self._nb = nb

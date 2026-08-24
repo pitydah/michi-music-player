@@ -105,18 +105,18 @@ Item {
         duration: playback.duration
         volume: playback.volume
         muted: playback.muted
-        hasPrevious: queue.hasPrevious
-        hasNext: queue.hasNext
-        shuffleEnabled: queue.shuffleEnabled
-        repeatMode: queue.repeatMode
+        hasPrevious: playbackSession.hasPrevious
+        hasNext: playbackSession.hasNext
+        shuffleEnabled: playbackSession.shuffleEnabled
+        repeatMode: playbackSession.repeatMode
         onPlayPauseRequested: playback.status === "playing" ? playback.pause() : playback.play()
-        onPreviousRequested: queue.previous_track()
-        onNextRequested: queue.next_track()
+        onPreviousRequested: playbackSession.previous_track()
+        onNextRequested: playbackSession.next_track()
         onSeekRequested: seconds => playback.seek_seconds(seconds)
         onVolumeRequested: value => playback.set_volume(value)
         onMuteRequested: value => playback.set_muted(value)
-        onShuffleRequested: value => queue.set_shuffle_enabled(value)
-        onRepeatRequested: mode => queue.set_repeat_mode(mode)
+        onShuffleRequested: value => playbackSession.set_shuffle_enabled(value)
+        onRepeatRequested: mode => playbackSession.set_repeat_mode(mode)
         onQueueRequested: root.navigationRequested("queue")
         onSettingsRequested: root.navigationRequested("settings")
         onNowPlayingRequested: root.navigationRequested("now_playing")

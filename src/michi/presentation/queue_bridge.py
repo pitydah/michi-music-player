@@ -1,4 +1,10 @@
-"""QML bridge for queue — observes QueueService."""
+"""QML bridge for queue — observes QueueService CONTENT (M4-R1).
+
+QueueBridge is a projection of Queue content ONLY. Playback/navigation
+intents (play_index/next/previous/repeat/shuffle/currentIndex) belong to
+PlaybackSessionBridge. If the Queue UI needs a playing-row highlight it
+derives it from playbackSession.contextType == "queue" →
+playbackSession.currentIndex (never from QueueState)."""
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
@@ -7,7 +13,8 @@ from michi.application.queue_service import QueueService
 
 
 class QueueBridge(QObject):
-    """Thin adapter: QueueService state → QML properties, QML intent → service."""
+    """Thin adapter: QueueService content → QML properties, QML intent →
+    service content mutation."""
 
     queue_changed = Signal()
 
@@ -59,36 +66,12 @@ class QueueBridge(QObject):
             rows.append(row)
         return rows
 
-    def _get_current_index(self) -> int:
-        return self._service.state.current_index
-
     def _get_count(self) -> int:
         return self._service.state.count
 
-    def _get_has_next(self) -> bool:
-        return self._service.has_next
-
-    def _get_has_previous(self) -> bool:
-        return self._service.has_previous
-
-    def _get_repeat_mode(self) -> str:
-        return self._service.state.repeat_mode.name
-
-    def _get_shuffle_enabled(self) -> bool:
-        return self._service.state.shuffle_enabled
-
     trackNames = Property(list, _get_track_names, notify=queue_changed)
     trackRows = Property(list, _get_track_rows, notify=queue_changed)
-    currentIndex = Property(int, _get_current_index, notify=queue_changed)
     count = Property(int, _get_count, notify=queue_changed)
-    hasNext = Property(bool, _get_has_next, notify=queue_changed)
-    hasPrevious = Property(bool, _get_has_previous, notify=queue_changed)
-    repeatMode = Property(str, _get_repeat_mode, notify=queue_changed)
-    shuffleEnabled = Property(bool, _get_shuffle_enabled, notify=queue_changed)
-
-    @Slot(int)
-    def play_index(self, index: int) -> None:
-        self._service.play_index(index)
 
     @Slot(int, int)
     def move_track(self, from_index: int, to_index: int) -> None:
@@ -98,33 +81,11 @@ class QueueBridge(QObject):
     def remove_track(self, index: int) -> None:
         self._service.remove(index)
 
-    @Slot()
-    def next_track(self) -> None:
-        self._service.next()
-
-    @Slot()
-    def previous_track(self) -> None:
-        self._service.previous()
-
     @Slot(str)
     def add_file(self, file_path: str) -> None:
         from pathlib import Path
 
         self._service.add(Path(file_path))
-
-    @Slot(str)
-    def set_repeat_mode(self, mode_name: str) -> None:
-        from michi.domain.queue import RepeatMode
-
-        try:
-            mode = RepeatMode[mode_name.upper()]
-        except KeyError:
-            return
-        self._service.set_repeat_mode(mode)
-
-    @Slot(bool)
-    def set_shuffle_enabled(self, enabled: bool) -> None:
-        self._service.set_shuffle_enabled(enabled)
 
     @Slot()
     def clear_queue(self) -> None:

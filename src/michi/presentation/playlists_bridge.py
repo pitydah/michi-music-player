@@ -39,6 +39,7 @@ class PlaylistsBridge(QObject):
         playlist_navigation: PlaylistNavigationCoordinator | None = None,
         navigation_service: NavigationService | None = None,
         library: LibraryService | None = None,
+        playback_coordinator=None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -46,6 +47,7 @@ class PlaylistsBridge(QObject):
         self._coordinator = playlist_navigation
         self._navigation = navigation_service
         self._library = library
+        self._playback_coordinator = playback_coordinator
         if playlist_service is not None:
             playlist_service.subscribe_changed(self._on_service_changed)
         if navigation_service is not None:
@@ -397,24 +399,28 @@ class PlaylistsBridge(QObject):
     @Slot()
     def play_selected_playlist(self) -> None:
         playlist_id = self._current_playlist_id()
-        if self._playlist_service is not None and playlist_id:
-            self._playlist_service.play_playlist(playlist_id)
+        if playlist_id:
+            self.play_playlist(playlist_id)
 
     @Slot(str)
     def play_playlist(self, playlist_id: str) -> None:
-        if self._playlist_service is not None:
-            self._playlist_service.play_playlist(playlist_id)
+        if self._playback_coordinator is not None:
+            self._playback_coordinator.play_playlist(playlist_id)
+
+    @Slot(int)
+    def play_playlist_track(self, index: int) -> None:
+        """Playlist Detail track click → PLAYLIST context at index N."""
+        if self._playback_coordinator is not None:
+            playlist_id = self._current_playlist_id()
+            if playlist_id:
+                self._playback_coordinator.play_playlist_track(playlist_id, index)
 
     @Slot(str)
     def queue_playlist(self, playlist_id: str) -> None:
-        if (
-            self._playlist_service is not None
-            and getattr(self._playlist_service, "_queue", None) is not None
-        ):
-            p = self._playlist_service.get_playlist(playlist_id)
-            if p is not None:
-                for path in p.track_paths:
-                    self._playlist_service._queue.add(Path(path))
+        """EXPLICIT Queue intent through the coordinator (no private
+        _queue access)."""
+        if self._playback_coordinator is not None:
+            self._playback_coordinator.queue_playlist(playlist_id)
 
     @Slot()
     def queue_selected_playlist(self) -> None:

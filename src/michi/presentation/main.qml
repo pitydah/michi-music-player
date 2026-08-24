@@ -14,8 +14,8 @@ ApplicationWindow {
     color: MichiTheme.backgroundBase
 
     Shortcut { sequence: "Space"; onActivated: { MichiAccessibility.inputModality = "keyboard"; playback.status === "playing" ? playback.pause() : playback.play() } }
-    Shortcut { sequence: "Left"; onActivated: { MichiAccessibility.inputModality = "keyboard"; queue.previous_track() } }
-    Shortcut { sequence: "Right"; onActivated: { MichiAccessibility.inputModality = "keyboard"; queue.next_track() } }
+    Shortcut { sequence: "Left"; onActivated: { MichiAccessibility.inputModality = "keyboard"; playbackSession.previous_track() } }
+    Shortcut { sequence: "Right"; onActivated: { MichiAccessibility.inputModality = "keyboard"; playbackSession.next_track() } }
     Shortcut { sequence: "Ctrl+Q"; onActivated: window.close() }
     Shortcut { sequence: "Ctrl+F"; onActivated: { MichiAccessibility.inputModality = "keyboard"; appShell.openSearch() } }
     Shortcut { sequence: "Ctrl+L"; onActivated: { MichiAccessibility.inputModality = "keyboard"; navigation.navigate("library") } }
