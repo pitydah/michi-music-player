@@ -36,7 +36,12 @@ bit-perfect verdict per the M11.4 evidence model.
 
 ## Gapless ownership (canonical)
 
-- QueueService owns WHICH track is next.
+- PlaybackSessionService owns WHICH track is next (M4-R1 authority).
+- PlaybackService owns transition orchestration.
+- AudioPort / engine owns prepare-next / preload / seamless transport
+  capability.
+- QueueService owns temporary Queue content only (M4-R1 — it no longer
+  decides the next track).
 - PlaybackService owns transition orchestration.
 - AudioPort / engine owns prepare-next / preload / seamless media transition
   capability.
