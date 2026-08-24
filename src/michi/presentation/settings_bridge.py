@@ -9,7 +9,7 @@ SettingsService and never touch persistence directly.
 
 import logging
 
-from PySide6.QtCore import Property, QObject, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.settings_service import SettingsService
 from michi.domain.settings import (
@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 class SettingsBridge(QObject):
     """Thin adapter: SettingsService persisted state → QML properties/slots."""
+
+    onlineEnrichmentChanged = Signal()
 
     def __init__(self, service: SettingsService, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -42,11 +44,17 @@ class SettingsBridge(QObject):
     def _get_window_geometry(self) -> str:
         return window_geometry_to_json(self._service.state.window_geometry)
 
+    def _get_online_enrichment(self) -> bool:
+        return self._service.state.online_enrichment
+
     lastDirectory = Property(str, _get_last_directory)
     volume = Property(int, _get_volume)
     muted = Property(bool, _get_muted)
     theme = Property(str, _get_theme)
     windowGeometry = Property(str, _get_window_geometry)
+    onlineEnrichment = Property(
+        bool, _get_online_enrichment, notify=onlineEnrichmentChanged
+    )
 
     @Slot(str)
     def set_theme(self, theme: str) -> None:
@@ -59,3 +67,8 @@ class SettingsBridge(QObject):
             logger.warning("ignoring malformed window geometry from QML: %r", json_str)
             return
         self._service.set_window_geometry(geometry)
+
+    @Slot(bool)
+    def set_online_enrichment(self, enabled: bool) -> None:
+        self._service.set_online_enrichment(bool(enabled))
+        self.onlineEnrichmentChanged.emit()
