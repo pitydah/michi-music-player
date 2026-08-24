@@ -50,6 +50,8 @@ session current"* — is superseded.
 - Duplicate file paths are first-class (distinct entry_ids).
 - PlaybackSessionService owns its subscriptions explicitly (start/stop).
 - entry_id is never persisted (restart creates fresh ids).
+- QUEUE acceptance re-projects the LIVE Queue by exact entry_id.
+- hasNext/hasPrevious are service-level navigation capabilities.
 
 ## Sequence model
 
