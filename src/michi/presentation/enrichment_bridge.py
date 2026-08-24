@@ -416,13 +416,20 @@ class EnrichmentBridge(QObject):
 
     @Slot()
     def clear_knowledge(self) -> None:
-        """CLEAR ONLINE INFO: identity stays, knowledge disappears."""
+        """CLEAR ONLINE INFO: identity stays, knowledge disappears.
+        The active entity operation is CANCELLED first (generation
+        retired), so a late worker delivery can never resurrect the
+        deleted profile; the presentation intent bump makes every event
+        of that operation stale."""
         if self._disposed or not self._active_key:
             return
         self._invalidate_review_session()
+        self._presentation_intent_id += 1
         if self._active_kind == "artist":
+            self._coordinator.cancel_artist(self._active_key)
             self._coordinator.clear_artist_knowledge(self._active_key)
         elif self._active_kind == "album":
+            self._coordinator.cancel_album(self._active_key)
             self._coordinator.clear_album_knowledge(self._active_key)
         else:
             return
@@ -433,10 +440,13 @@ class EnrichmentBridge(QObject):
 
     @Slot()
     def reset_identity(self) -> None:
-        """RESET MATCH: identity disappears, no automatic re-enrich."""
+        """RESET MATCH: identity disappears, no automatic re-enrich.
+        The backend reset is a generation barrier; the intent bump makes
+        every late event of the previous operation stale for the UI."""
         if self._disposed or not self._active_key:
             return
         self._invalidate_review_session()
+        self._presentation_intent_id += 1
         if self._active_kind == "artist":
             self._coordinator.reset_artist_identity(self._active_key)
         elif self._active_kind == "album":
@@ -458,6 +468,10 @@ class EnrichmentBridge(QObject):
             return
         if not enabled:
             self._invalidate_review_session()
+            # P1 residual: bump the presentation intent BEFORE cancel_all —
+            # the worker's late CANCELLED/FAILED/READY carries the OLD
+            # intent and becomes stale; the UI stays READY/DISABLED.
+            self._presentation_intent_id += 1
         self._online_enabled = enabled
         if not enabled:
             # Persist OFF, cancel live operations: workers lose authority;

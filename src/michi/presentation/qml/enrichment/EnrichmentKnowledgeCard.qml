@@ -70,24 +70,32 @@ MichiGlassSurface {
         /* factual fields — only real projected fields render */
         Flow {
             id: facts
+            objectName: "factsFlow"
             Layout.fillWidth: true
             spacing: MichiSpacing.md
             visible: facts.hasFactualFields()
 
             function hasFactualFields() {
-                return (root.knowledge.country || "")
-                        + (root.knowledge.area || "")
-                        + root.knowledge.beginYear
-                        + (root.knowledge.artistType || "")
-                        + (root.knowledge.website || "")
-                        + (root.knowledge.label || "")
-                        + root.knowledge.releaseYear
-                        + (root.knowledge.genres || []).length
-                    > 0
+                // EXPLICIT boolean presence — never string concatenation:
+                // "Chileundefined..." > 0 is false and would hide facts.
+                return !!(
+                    root.knowledge.country
+                    || root.knowledge.area
+                    || root.knowledge.beginYear
+                    || root.knowledge.endYear
+                    || root.knowledge.artistType
+                    || root.knowledge.website
+                    || root.knowledge.label
+                    || root.knowledge.releaseYear
+                    || (root.knowledge.genres
+                        && root.knowledge.genres.length > 0)
+                )
             }
 
             function fact(label, value) {
-                if (typeof value === "string" && value.length === 0)
+                // undefined/null/"" are all ABSENT — never rendered as
+                // "undefined" (only real projected fields render).
+                if (value === undefined || value === null || value === "")
                     return null
                 if (typeof value === "number" && value === 0)
                     return null
