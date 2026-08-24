@@ -65,3 +65,62 @@ def test_application_has_no_infrastructure_import():
     for module in _modules("application"):
         violations = _violates(_module_prefixes(module), {"michi.infrastructure"})
         assert not violations, module.name
+
+
+def test_m4r1_queue_service_constructor_seal():
+    """AR02/AR03: QueueService has NO legacy positional compatibility seam.
+
+    QueueService(playback) MUST fail at the Python signature level."""
+    import inspect
+
+    from michi.application.queue_service import QueueService
+
+    sig = inspect.signature(QueueService.__init__)
+    params = list(sig.parameters)
+    assert "legacy_playback_args" not in params
+    assert "*" in str(sig)  # keyword-only max_tracks
+    assert "playback" not in "".join(params).lower()
+    # positional call must fail
+    import pytest
+
+    with pytest.raises(TypeError):
+        QueueService(object())  # type: ignore[arg-type]
+
+
+def test_m4r1_queue_service_source_has_no_playback():
+    """AR01: QueueService source has no PlaybackService / playback commands."""
+    import inspect
+
+    from michi.application import queue_service as qs
+
+    src = inspect.getsource(qs)
+    for forbidden in (
+        "import PlaybackService",
+        "from michi.application.playback_service",
+        "load_and_play",
+        "subscribe_end_of_media",
+        "play_index",
+        "set_repeat_mode",
+        "set_shuffle_enabled",
+    ):
+        assert forbidden not in src, f"forbidden in QueueService: {forbidden}"
+
+
+def test_m4r1_queue_state_no_playback_fields():
+    """AR06: QueueState has no current_index/repeat/shuffle."""
+    from michi.domain.queue import QueueState
+
+    assert not hasattr(QueueState(), "current_index")
+    assert not hasattr(QueueState(), "repeat_mode")
+    assert not hasattr(QueueState(), "shuffle_enabled")
+
+
+def test_m4r1_library_bridge_activate_no_service_fallback():
+    """AR05: LibraryBridge.activate does not invoke LibraryService.activate."""
+    import inspect
+
+    from michi.presentation.library_bridge import LibraryBridge
+
+    src = inspect.getsource(LibraryBridge.activate)
+    assert "play_visible_track" in src
+    assert "self._service.activate" not in src

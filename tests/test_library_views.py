@@ -708,3 +708,104 @@ class TestQmlSmoke:
         assert len(bridge.property("albums")) == 1, "album rows must exist"
         obj.deleteLater()
         bridge.dispose()
+
+
+class TestM4R1FinalSealLibraryRouting:
+    """P1-02: LibraryBridge.activate → coordinator (SINGLE, TD-013)."""
+
+    def _bridge(self, tmp_path, scanner, extractor=None):
+        library, queue, session, _, audio = _make_library(scanner, extractor=extractor)
+        session.start()
+        from michi.application.library_playback_coordinator import (
+            LibraryPlaybackCoordinator,
+        )
+
+        coord = LibraryPlaybackCoordinator(library, session)
+        bridge = LibraryBridge(library, playback_coordinator=coord)
+        return library, queue, session, audio, bridge
+
+    def test_l01_activate_routes_to_coordinator_single(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        b = tmp_path / "b.mp3"
+        for p in (a, b):
+            p.write_bytes(b"x")
+        library, queue, session, audio, bridge = self._bridge(
+            tmp_path,
+            _ValidateScanner([a, b]),
+            FakeExtractor(factory=_album_genre_factory()),
+        )
+        library.scan(str(tmp_path))
+        bridge.activate(0)
+        audio.trigger_media_accepted(a)
+        assert session.state.context_type.name == "SINGLE"
+        assert session.state.current_entry.file_path == a
+        assert queue.state.count == 0  # no Queue mutation
+
+    def test_l04_queue_nonempty_songs_click_queue_unchanged(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        a.write_bytes(b"x")
+        library, queue, session, audio, bridge = self._bridge(
+            tmp_path,
+            _ValidateScanner([a]),
+            FakeExtractor(factory=_album_genre_factory()),
+        )
+        library.scan(str(tmp_path))
+        queue.add(Path("/pre/Q1.flac"))
+        queue.add(Path("/pre/Q2.flac"))
+        before = [t.file_path for t in queue.state.tracks]
+        bridge.activate(0)
+        audio.trigger_media_accepted(a)
+        assert [t.file_path for t in queue.state.tracks] == before
+
+    def test_l05_missing_visible_track_no_session_request(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        a.write_bytes(b"x")
+        scanner = _ValidateScanner([a])
+        library, queue, session, audio, bridge = self._bridge(
+            tmp_path, scanner, FakeExtractor(factory=_album_genre_factory())
+        )
+        library.scan(str(tmp_path))
+        scanner.validate_errors = {
+            a: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, a)
+        }
+        bridge.activate(0)
+        # no playback request
+        assert session.state.context_type.name == "NONE"
+        assert audio.loaded is None
+        # TD-013 preserved: exact ref removed + diagnostic
+        assert library.state.tracks == []
+        assert library.state.diagnostic is not None
+
+    def test_l06_missing_activate_path_no_session_request(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        a.write_bytes(b"x")
+        scanner = _ValidateScanner([a])
+        library, queue, session, audio, bridge = self._bridge(
+            tmp_path, scanner, FakeExtractor(factory=_album_genre_factory())
+        )
+        library.scan(str(tmp_path))
+        scanner.validate_errors = {
+            a: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, a)
+        }
+        bridge.activate_path(str(a))
+        assert session.state.context_type.name == "NONE"
+        assert audio.loaded is None
+
+    def test_l08_album_clicked_track_album_context(self, tmp_path):
+        a1 = tmp_path / "a1.mp3"
+        a2 = tmp_path / "a2.mp3"
+        for p in (a1, a2):
+            p.write_bytes(b"x")
+        library, queue, session, audio, bridge = self._bridge(
+            tmp_path,
+            _ValidateScanner([a1, a2]),
+            FakeExtractor(factory=_album_genre_factory()),
+        )
+        library.scan(str(tmp_path))
+        album = library.state.albums[0]
+        bridge.select_album(album.key)
+        bridge.activate_album_track(1)
+        audio.trigger_media_accepted(album.track_paths[1])
+        assert session.state.context_type.name == "ALBUM"
+        assert session.state.current_index == 1
+        assert queue.state.count == 0

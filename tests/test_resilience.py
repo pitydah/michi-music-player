@@ -150,9 +150,8 @@ class FlakyScanner:
 
 class TestLibraryResilience:
     def test_scan_failure_preserves_complete_known_good_library_state(self):
-        audio = FakeAudioPort()
         scanner = FlakyScanner(files=[Path("/good/a.flac"), Path("/good/b.mp3")])
-        library = LibraryService(scanner, QueueService(PlaybackService(audio)))
+        library = LibraryService(scanner)
 
         library.scan("/good")
         assert library.state.current_directory == "/good"
@@ -377,3 +376,52 @@ class TestApplicationContainerShutdown:
         assert provider.calls == 1  # M11.3B: provider close idempotente
         assert engine.calls == 1
         assert container._pb is None
+
+
+class TestM4R1LifecycleShutdown:
+    """LC10: container shutdown stops History + Session and disposes the
+    PlaybackSessionBridge BEFORE audio teardown."""
+
+    def test_lc10_shutdown_order_history_session_psb_before_audio(self):
+        from michi.application.playback_service import PlaybackService
+        from michi.application.playback_session_service import (
+            PlaybackSessionService,
+        )
+        from michi.presentation.playback_session_bridge import (
+            PlaybackSessionBridge,
+        )
+
+        events = []
+        audio = FakeAudioPort()
+        playback = PlaybackService(audio)
+        queue = QueueService()
+        session = PlaybackSessionService(playback, queue)
+        session.start()
+
+        class HistorySpy:
+            def start(self):
+                events.append("history.start")
+
+            def stop(self):
+                events.append("history.stop")
+
+        history = HistorySpy()
+        history.start()
+        psb = PlaybackSessionBridge(session)
+
+        container = ApplicationContainer()
+        container._history_coordinator = history
+        container._playback_session = session
+        container._psb = psb
+        container._persistence = None  # bypass (partial container)
+        container._audio_router = StopSpy()
+        container._qt_engine_provider = StopSpy()
+        container._engine = DeleteLaterSpy()
+
+        container.shutdown()
+        # history stopped and session stopped and psb disposed
+        assert "history.stop" in events
+        assert session._started is False  # session stopped
+        assert psb._disposed is True
+        assert session.on_queue_changed not in queue._subscribers
+        assert session._on_end_of_media not in playback._eom_subscribers

@@ -1,7 +1,5 @@
 """QML bridge for playback — observes PlaybackService."""
 
-from pathlib import Path
-
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
@@ -123,10 +121,6 @@ class PlaybackBridge(QObject):
     muted = Property(bool, _get_muted, notify=state_changed)
     errorMessage = Property(str, _get_error, notify=state_changed)
 
-    @Slot(str)
-    def play_file(self, file_path: str) -> None:
-        self._service.load_and_play(Path(file_path))
-
     @Slot()
     def play(self) -> None:
         self._service.play()
@@ -155,6 +149,6 @@ class PlaybackBridge(QObject):
     def set_muted(self, muted: bool) -> None:
         self._service.set_muted(muted)
 
-    @Slot(str)
-    def switch_track(self, file_path: str) -> None:
-        self._service.switch_track(Path(file_path))
+    # M4-R1 final seal: track SELECTION bypass removed — a new track is
+    # selected ONLY through PlaybackSessionService (SINGLE context). The
+    # transport controls above remain direct PlaybackService operations.

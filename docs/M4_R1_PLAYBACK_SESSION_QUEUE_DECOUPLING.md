@@ -64,6 +64,30 @@ coherence; no autoplay; no History event.
   Library/Playlist no Queue import, QML navigation via playbackSession, no
   private _queue access, zero Queue mutations for SINGLE/ALBUM/PLAYLIST.
 
+## Final convergence seal (M4-R1 FINAL, 2026-08-23)
+
+- Queue entries carry an opaque RUNTIME entry_id (uuid4 hex): unique per
+  insertion, immutable, preserved by move, removed by remove/clear; two
+  entries with the same file_path always differ. file_path is payload,
+  never Queue identity. entry_id is runtime-only (never persisted; restart
+  creates fresh ids — Snapshot V2 contract unchanged).
+- PlaybackSessionService tracks the exact active/pending Queue entry ids;
+  duplicate move/remove/add and pending cancellation are identity-exact;
+  shuffle navigator distinguishes duplicate paths.
+- Library playback routing: LibraryBridge.activate → LibraryPlaybackCoordinator
+  (SINGLE); every Library-origin intent validates TD-013 through
+  LibraryService before any session request; Album clicks stay ALBUM.
+- Playlist row activation: PlaylistTrackList.playTrackRequested(index) →
+  PlaylistsBridge → PLAYLIST context at the exact index; Queue unchanged.
+- Explicit lifecycle: PlaybackSessionService.start()/stop() own the EOM and
+  the ONE Queue→Session delivery; PersistenceCoordinator never redispatches;
+  PlaybackHistoryCoordinator.stop() and PlaybackSessionBridge.dispose() run
+  before audio teardown.
+- QueueService constructor sealed: keyword-only max_tracks — the legacy
+  positional PlaybackService shim is removed (QueueService(playback) fails
+  at signature level).
+- P0=0, P1=0. Full suite 2536 passed at CODE_VALIDATED_HEAD 1ed36f5.
+
 ## Non-goals
 
 - NO Play-Next overlay / interruption stack (future).
@@ -80,3 +104,7 @@ coherence; no autoplay; no History event.
   PlaybackSessionService owns WHICH track is next; PlaybackService owns
   transition orchestration; AudioPort/engine owns prepare-next/preload
   capability; QueueService owns temporary Queue content only.
+
+## Status
+
+DONE / TESTED / FROZEN (M4-R1 final convergence seal).

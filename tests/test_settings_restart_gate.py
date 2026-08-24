@@ -40,7 +40,7 @@ def _build_session(db_path: Path, scanner: FakeScanner):
     settings = SettingsService(repo)
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
     library = LibraryService(scanner, queue)
     prefs = LibraryPreferencesCoordinator(library, settings)
     return repo, settings, playback, queue, library, prefs

@@ -22,7 +22,20 @@ class PlaybackSessionBridge(QObject):
     ) -> None:
         super().__init__(parent)
         self._session = playback_session
-        self._session.subscribe_changed(self.session_changed.emit)
+        self._disposed = False
+        self._session.subscribe_changed(self._on_session_changed)
+
+    def _on_session_changed(self) -> None:
+        if not self._disposed:
+            self.session_changed.emit()
+
+    def dispose(self) -> None:
+        """M4-R1 final seal: unsubscribe exactly this callback. Idempotent;
+        no subscription after dispose."""
+        if self._disposed:
+            return
+        self._disposed = True
+        self._session.unsubscribe_changed(self._on_session_changed)
 
     # ------------------------------------------------------------------
     # Projections

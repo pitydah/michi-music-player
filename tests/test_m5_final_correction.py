@@ -615,6 +615,7 @@ class TestLastGate2:
         # [A,C,B] with the committed current identity (B) following to index
         # 2; kill abruptly. ──
         _r2, _s2, _a2, _p2, queue2, session2, coordinator2 = _build(db)
+        session2.start()  # M4-R1 final seal: session live-sync armed
         coordinator2.start()
         coordinator2.restore()
         queue2.move(1, 2)
@@ -650,6 +651,7 @@ class TestLastGate2:
         # identity) and the pending resume is superseded/cancelled through the
         # queue/playback public machinery; kill abruptly. ──
         _r2, _s2, _a2, _p2, queue2, session2, coordinator2 = _build(db)
+        session2.start()  # M4-R1 final seal: session live-sync armed
         coordinator2.start()
         coordinator2.restore()
         queue2.remove(1)  # removes the restored current B
@@ -1142,6 +1144,7 @@ class TestRemoveCurrentPostRestore:
         # (public playback.stop()); shutdown persists the durable truth
         # None@0 — never the retained B. ──
         repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
+        session2.start()  # M4-R1 final seal: session live-sync armed
         coordinator2.start()  # production lifecycle: start() then restore()
         coordinator2.restore()
         audio2.trigger_media_accepted(_B)  # WAITING_MEDIA -> WAITING_POSITION
@@ -1207,6 +1210,7 @@ class TestRemoveCurrentPostRestore:
         # must NOT resurrect it: the durable truth stays None@0 until a NEW
         # coherent runtime identity appears. ──
         repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
+        session2.start()  # M4-R1 final seal: session live-sync armed
         coordinator2.start()  # production lifecycle: start() then restore()
         coordinator2.restore()
         audio2.trigger_media_accepted(_B)  # WAITING_MEDIA -> WAITING_POSITION

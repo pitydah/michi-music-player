@@ -14,6 +14,7 @@ Item {
     id: root
 
     property var rows: []
+    signal playTrackRequested(int index)
     signal removeTrackRequested(int index)
     signal moveTrackRequested(int fromIndex, int toIndex)
 
@@ -79,9 +80,27 @@ Item {
                 MichiIconButton {
                     iconName: "sliders"
                     accessibleName: qsTr("More options for ") + modelData.title
+                    // The options button/menu must NOT trigger playback.
                     onClicked: trackMenu.popup()
                 }
             }
+
+            // M4-R1 final seal: intentional row activation → play intent.
+            // Desktop: mouse primary click on the row body.
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                onClicked: (mouse) => {
+                    if (mouse.button === Qt.LeftButton) {
+                        trackItem.forceActiveFocus()
+                        root.playTrackRequested(index)
+                    }
+                }
+            }
+
+            // Keyboard: Enter/Return on the focused row activates playback.
+            Keys.onReturnPressed: root.playTrackRequested(index)
+            Keys.onEnterPressed: root.playTrackRequested(index)
 
             background: Rectangle {
                 radius: MichiRadius.md

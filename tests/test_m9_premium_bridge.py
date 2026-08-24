@@ -34,7 +34,7 @@ class _Extractor:
 
 
 def test_queue_bridge_exposes_rows_and_existing_remove_intent() -> None:
-    service = QueueService(PlaybackService(FakeAudioPort()))
+    service = QueueService()
     bridge = QueueBridge(service)
     service.add(Path("/music/one.flac"), "One")
     service.add(Path("/music/two.flac"), "Two")
@@ -80,7 +80,7 @@ def _library_world(tmp_path):
     second.write_bytes(b"x")
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
 
     def metadata(path):
         return TrackMetadata(

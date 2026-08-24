@@ -12,6 +12,14 @@ Dependency direction (essential):
     PlaybackSessionService → QueueService
     NEVER QueueService → PlaybackService/SessionService.
 
+EXPLICIT lifecycle (M4-R1 final seal): start() owns the runtime
+subscriptions (PlaybackService.end_of_media, QueueService.changed); stop()
+unsubscribes both. __init__ subscribes NOTHING. There is exactly ONE
+Queue→Session delivery path (Session owns it).
+
+Queue entry identity: Queue Track.entry_id is the opaque RUNTIME identity —
+file_path is payload, never identity. Duplicate paths are first-class.
+
 No threads, no timers, no asyncio — owner-thread application logic using
 the existing event/callback architecture.
 """
@@ -64,7 +72,39 @@ class PlaybackSessionService:
         self._request_epoch = 0
         self._subscribers: list[Callable[[], None]] = []
         self._committed_subscribers: list[Callable[[Path], None]] = []
+        # M4-R1 final seal: exact Queue runtime identity of the committed
+        # QUEUE current and of the pending QUEUE candidate. NEVER derived
+        # from file_path (duplicates are first-class).
+        self._active_queue_entry_id: str | None = None
+        self._pending_queue_entry_id: str | None = None
+        # Explicit lifecycle: subscriptions are armed ONLY by start().
+        self._started = False
+
+    # ------------------------------------------------------------------
+    # Lifecycle (M4-R1 final seal)
+    # ------------------------------------------------------------------
+
+    def start(self) -> None:
+        """Arm ALL runtime subscriptions (idempotent).
+
+        Owns the ONE Queue→Session delivery path plus the EOM subscription.
+        No duplicate subscription on repeated start()."""
+        if self._started:
+            return
+        self._started = True
         self._playback.subscribe_end_of_media(self._on_end_of_media)
+        self._queue.subscribe_changed(self.on_queue_changed)
+
+    def stop(self) -> None:
+        """Disarm ALL runtime subscriptions (idempotent).
+
+        After stop(), Queue mutations and EOM cannot reach the Session.
+        No playback command, no state fabrication."""
+        if not self._started:
+            return
+        self._started = False
+        self._playback.unsubscribe_end_of_media(self._on_end_of_media)
+        self._queue.unsubscribe_changed(self.on_queue_changed)
 
     # ------------------------------------------------------------------
     # Observability
@@ -105,6 +145,26 @@ class PlaybackSessionService:
             cb(path)
 
     # ------------------------------------------------------------------
+    # Queue entry conversion — ONE canonical helper
+    # ------------------------------------------------------------------
+
+    def _queue_entries(self) -> list[PlaybackSequenceEntry]:
+        """The LIVE Queue as PlaybackSequenceEntry values, preserving exact
+        entry identity (Track.entry_id). Used by every QUEUE path."""
+        return [
+            PlaybackSequenceEntry(
+                file_path=t.file_path, title=t.title, entry_id=t.entry_id
+            )
+            for t in self._queue.state.tracks
+        ]
+
+    def _index_of_queue_entry_id(self, entry_id: str) -> int:
+        for i, t in enumerate(self._queue.state.tracks):
+            if t.entry_id == entry_id:
+                return i
+        return -1
+
+    # ------------------------------------------------------------------
     # Session request transaction
     # ------------------------------------------------------------------
 
@@ -125,6 +185,8 @@ class PlaybackSessionService:
         my_epoch = self._request_epoch
         candidate = entries[index]
         self._pending = candidate
+        if context_type is PlaybackContextType.QUEUE:
+            self._pending_queue_entry_id = candidate.entry_id
         try:
             self._playback.load_and_play(
                 candidate.file_path,
@@ -141,6 +203,7 @@ class PlaybackSessionService:
         except Exception:
             if self._pending is candidate and self._request_epoch == my_epoch:
                 self._pending = None
+                self._pending_queue_entry_id = None
             raise
 
     def _commit(
@@ -160,10 +223,15 @@ class PlaybackSessionService:
         if candidate.file_path != path:
             return
         self._pending = None
+        self._pending_queue_entry_id = None
         self._state.context_type = context_type
         self._state.source_id = source_id
         self._state.entries = tuple(entries)
         self._state.current_index = index
+        if context_type is PlaybackContextType.QUEUE:
+            self._active_queue_entry_id = candidate.entry_id
+        else:
+            self._active_queue_entry_id = None
         if self._state.shuffle_enabled:
             self._navigator.record_commit(candidate)
         self._notify()
@@ -177,6 +245,7 @@ class PlaybackSessionService:
         if candidate.file_path != path:
             return
         self._pending = None
+        self._pending_queue_entry_id = None
 
     def _cancel(self, candidate: PlaybackSequenceEntry, path: Path, epoch: int) -> None:
         if epoch != self._request_epoch:
@@ -186,6 +255,7 @@ class PlaybackSessionService:
         if candidate.file_path != path:
             return
         self._pending = None
+        self._pending_queue_entry_id = None
 
     # ------------------------------------------------------------------
     # Context entry points
@@ -213,67 +283,78 @@ class PlaybackSessionService:
     def play_queue_index(self, index: int) -> None:
         """QUEUE context: the Queue is the LIVE source sequence. QueueService
         itself never commands playback — the session reads QueueState and
-        requests the playback transaction."""
+        requests the playback transaction. The pending candidate preserves
+        the EXACT Queue Track entry identity."""
         tracks = self._queue.state.tracks
         if not (0 <= index < len(tracks)):
             return
-        entries = [
-            PlaybackSequenceEntry(file_path=t.file_path, title=t.title) for t in tracks
-        ]
-        self._request(PlaybackContextType.QUEUE, None, entries, index)
+        self._request(PlaybackContextType.QUEUE, None, self._queue_entries(), index)
 
     # ------------------------------------------------------------------
     # Queue live synchronization (QUEUE context only)
     # ------------------------------------------------------------------
 
     def on_queue_changed(self) -> None:
-        """React to Queue content mutation while the session is QUEUE-context.
+        """React to Queue content mutation.
 
-        - The currently accepted entry keeps playing when removed (identity
-          preserved); the session converges to SINGLE for the accepted path.
-        - A pending QUEUE candidate whose exact entry disappeared is
-          cancelled through PlaybackService public machinery (this applies
-          EVEN BEFORE the context committed: a pending play_queue_index
-          request with context NONE still carries a QUEUE candidate).
+        - The currently accepted entry keeps playing when removed (exact
+          entry_id identity); the session converges to SINGLE for the
+          accepted path — never rebinding to a duplicate path.
+        - A pending QUEUE candidate whose exact entry_id disappeared is
+          cancelled through PlaybackService public machinery (applies even
+          BEFORE the context committed: a pre-commit play_queue_index
+          request carries the exact Queue entry identity).
         - Future entries follow the live Queue ordering for navigation."""
-        # Pending QUEUE candidate removed before acceptance (§29): cancel
-        # regardless of the committed context (a pre-commit request has
-        # context NONE but its pending entry is a QUEUE candidate).
-        if self._pending is not None:
-            pending_gone = not any(
-                t.file_path == self._pending.file_path for t in self._queue.state.tracks
-            )
-            if pending_gone:
-                self._cancel_pending_request(self._pending)
-                return
+        if not self._started:
+            return
+        # Pending QUEUE candidate removed before acceptance (§43): cancel
+        # when its exact entry_id no longer exists.
+        if (
+            self._pending is not None
+            and self._pending_queue_entry_id is not None
+            and self._index_of_queue_entry_id(self._pending_queue_entry_id) < 0
+        ):
+            self._cancel_pending_request(self._pending)
+            return
         if self._state.context_type is not PlaybackContextType.QUEUE:
             return
-        tracks = self._queue.state.tracks
-        current = self._state.current_entry
-        if current is not None:
-            # Live identity tracking: find the accepted entry by OBJECT
-            # identity (duplicates stay distinct).
-            live = next(
-                (t for t in tracks if t.file_path == current.file_path),
-                None,
-            )
-            if live is None:
-                # Current Queue entry removed: playback continues (accepted
-                # media remains valid) but the Queue identity is gone — the
-                # session converges to SINGLE for the accepted path.
-                self._converge_to_single(current)
+        # Shuffle live-sync: drop navigator entries whose exact identity
+        # left the Queue (removals), and register entries that joined it
+        # (adds) — identity-based, never path-based. MOVE never resets the
+        # shuffle history (identity references are order-independent).
+        live_ids = {t.entry_id for t in self._queue.state.tracks}
+        self._navigator.pool = [
+            e for e in self._navigator.pool if e.entry_id in live_ids
+        ]
+        self._navigator.history = [
+            e for e in self._navigator.history if e.entry_id in live_ids
+        ]
+        pool_ids = {e.entry_id for e in self._navigator.pool}
+        history_ids = {e.entry_id for e in self._navigator.history}
+        for entry in self._queue_entries():
+            if (
+                entry.entry_id not in pool_ids
+                and entry.entry_id not in history_ids
+                and entry.entry_id != self._active_queue_entry_id
+            ):
+                self._navigator.add(entry)
+        active_id = self._active_queue_entry_id
+        if active_id is not None:
+            live_index = self._index_of_queue_entry_id(active_id)
+            if live_index < 0:
+                # Current Queue entry removed (exact identity): playback
+                # continues (accepted media remains valid) but the Queue
+                # identity is gone — converge to SINGLE for the accepted
+                # path. MUST NOT rebind to a duplicate with the same path.
+                current = self._state.current_entry
+                if current is not None:
+                    self._converge_to_single(current)
                 return
             # §25: the current entry's identity remains current even when its
             # numeric index moves — re-project the published session to the
             # LIVE ordering (future navigation follows the new order).
-            self._state.entries = tuple(
-                PlaybackSequenceEntry(file_path=t.file_path, title=t.title)
-                for t in tracks
-            )
-            for i, e in enumerate(self._state.entries):
-                if e.file_path == current.file_path:
-                    self._state.current_index = i
-                    break
+            self._state.entries = tuple(self._queue_entries())
+            self._state.current_index = live_index
             self._notify()
 
     def _converge_to_single(self, entry: PlaybackSequenceEntry) -> None:
@@ -284,6 +365,7 @@ class PlaybackSessionService:
         self._state.source_id = None
         self._state.entries = (entry,)
         self._state.current_index = 0
+        self._active_queue_entry_id = None
         if self._state.shuffle_enabled:
             self._navigator.clear()
         self._notify()
@@ -292,6 +374,7 @@ class PlaybackSessionService:
         """Cancel a pending QUEUE candidate removed before acceptance. Uses
         the public PlaybackService stop machinery; never fabricates a commit."""
         self._pending = None
+        self._pending_queue_entry_id = None
         self._request_epoch += 1
         try:
             self._playback.stop()
@@ -299,32 +382,8 @@ class PlaybackSessionService:
             logger.warning("pending-queue-candidate cancel stop failed: %s", exc)
 
     # ------------------------------------------------------------------
-    # Navigation (QUEUE-aware next/previous live below — this is the sole
-    # navigation implementation; see next()/previous() after the live
-    # sequence helpers).
+    # Navigation (QUEUE-aware next/previous)
     # ------------------------------------------------------------------
-
-    def set_repeat_mode(self, mode: RepeatMode) -> None:
-        if not isinstance(mode, RepeatMode):
-            raise ValueError(f"invalid repeat mode: {mode!r}")
-        if self._state.repeat_mode is mode:
-            return
-        self._state.repeat_mode = mode
-        self._notify()
-
-    def set_shuffle_enabled(self, enabled: bool) -> None:
-        if not isinstance(enabled, bool):
-            raise ValueError(f"invalid shuffle flag: {enabled!r}")
-        if self._state.shuffle_enabled is enabled:
-            return
-        self._state.shuffle_enabled = enabled
-        if enabled:
-            self._navigator.reset(
-                list(self._state.entries), self._state.current_entry, self._rng
-            )
-        else:
-            self._navigator.clear()
-        self._notify()
 
     def _play_entry(self, index: int) -> None:
         """Re-request the entry at ``index`` within the CURRENT committed
@@ -338,18 +397,15 @@ class PlaybackSessionService:
         """QUEUE context: the LIVE Queue is the navigation source (§25).
 
         Future entries follow the current Queue ordering (adds/removes/
-        moves reflected); the current entry identity is preserved even when
-        its numeric index moved (tracked by path). Returns (entries,
+        moves reflected); the current entry identity (entry_id) is
+        preserved even when its numeric index moved. Returns (entries,
         current_index) reconstructed from QueueState."""
-        tracks = self._queue.state.tracks
-        entries = [
-            PlaybackSequenceEntry(file_path=t.file_path, title=t.title) for t in tracks
-        ]
-        current = self._state.current_entry
-        if current is None:
+        entries = self._queue_entries()
+        active_id = self._active_queue_entry_id
+        if active_id is None:
             return entries, -1
         for i, e in enumerate(entries):
-            if e.file_path == current.file_path:
+            if e.entry_id == active_id:
                 return entries, i
         return entries, -1
 
@@ -359,10 +415,7 @@ class PlaybackSessionService:
         tracks = self._queue.state.tracks
         if not (0 <= index < len(tracks)):
             return
-        entries = [
-            PlaybackSequenceEntry(file_path=t.file_path, title=t.title) for t in tracks
-        ]
-        self._request(PlaybackContextType.QUEUE, None, entries, index)
+        self._request(PlaybackContextType.QUEUE, None, self._queue_entries(), index)
 
     def next(self) -> None:
         """Manual Next on the active context. Repeat ONE must NOT trap manual
@@ -425,33 +478,27 @@ class PlaybackSessionService:
         if st.current_index > 0:
             self._play_entry(st.current_index - 1)
 
-    def _next_shuffled_live(self) -> None:
-        entries, _ = self._live_sequence()
-        target = self._navigator.pop_next(self._rng)
-        if target is None:
-            if self._state.repeat_mode is RepeatMode.ALL:
-                self._navigator.regenerate(
-                    entries, self._state.current_entry, self._rng
-                )
-                target = self._navigator.pop_next(self._rng)
-                if target is None:
-                    return
-            else:
-                return
-        for i, e in enumerate(entries):
-            if e.file_path == target.file_path:
-                self._request_live_index(i)
-                return
-
-    def _previous_shuffled_live(self) -> None:
-        entries, _ = self._live_sequence()
-        target = self._navigator.previous_pick()
-        if target is None:
+    def set_repeat_mode(self, mode: RepeatMode) -> None:
+        if not isinstance(mode, RepeatMode):
+            raise ValueError(f"invalid repeat mode: {mode!r}")
+        if self._state.repeat_mode is mode:
             return
-        for i, e in enumerate(entries):
-            if e.file_path == target.file_path:
-                self._request_live_index(i)
-                return
+        self._state.repeat_mode = mode
+        self._notify()
+
+    def set_shuffle_enabled(self, enabled: bool) -> None:
+        if not isinstance(enabled, bool):
+            raise ValueError(f"invalid shuffle flag: {enabled!r}")
+        if self._state.shuffle_enabled is enabled:
+            return
+        self._state.shuffle_enabled = enabled
+        if enabled:
+            self._navigator.reset(
+                list(self._state.entries), self._state.current_entry, self._rng
+            )
+        else:
+            self._navigator.clear()
+        self._notify()
 
     def _next_shuffled(self) -> None:
         st = self._state
@@ -475,6 +522,34 @@ class PlaybackSessionService:
             return
         self._play_entry(self._index_of(target))
 
+    def _next_shuffled_live(self) -> None:
+        entries, _ = self._live_sequence()
+        target = self._navigator.pop_next(self._rng)
+        if target is None:
+            if self._state.repeat_mode is RepeatMode.ALL:
+                self._navigator.regenerate(
+                    entries, self._state.current_entry, self._rng
+                )
+                target = self._navigator.pop_next(self._rng)
+                if target is None:
+                    return
+            else:
+                return
+        for i, e in enumerate(entries):
+            if e.entry_id == target.entry_id:
+                self._request_live_index(i)
+                return
+
+    def _previous_shuffled_live(self) -> None:
+        entries, _ = self._live_sequence()
+        target = self._navigator.previous_pick()
+        if target is None:
+            return
+        for i, e in enumerate(entries):
+            if e.entry_id == target.entry_id:
+                self._request_live_index(i)
+                return
+
     def _index_of(self, entry: PlaybackSequenceEntry) -> int:
         for i, e in enumerate(self._state.entries):
             if e is entry:
@@ -493,6 +568,8 @@ class PlaybackSessionService:
         4. Natural order → advance.
         5. Repeat ALL → wrap/regenerate.
         6. No next → PlaybackService.stop()."""
+        if not self._started:
+            return
         if self._pending is not None:
             return  # a new candidate is already in flight: stale EOM
         st = self._state
@@ -554,6 +631,7 @@ class PlaybackSessionService:
         shuffle_seed: int,
     ) -> None:
         self._pending = None
+        self._pending_queue_entry_id = None
         self._request_epoch += 1
         self._state.context_type = context_type
         self._state.source_id = source_id
@@ -571,4 +649,15 @@ class PlaybackSessionService:
             )
         else:
             self._navigator.clear()
+        # Restored QUEUE context: bind the active identity to the exact NEW
+        # runtime Queue entry at current_index (runtime identity — never
+        # durable). No playback command, no autoplay, no History.
+        if context_type is PlaybackContextType.QUEUE and 0 <= current_index < len(
+            self._queue.state.tracks
+        ):
+            self._active_queue_entry_id = self._queue.state.tracks[
+                current_index
+            ].entry_id
+        else:
+            self._active_queue_entry_id = None
         self._notify()

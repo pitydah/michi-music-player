@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 class QueueService:
     """Owns QueueState content. No playback dependency (M4-R1)."""
 
-    def __init__(self, *legacy_playback_args, max_tracks: int = 10000) -> None:
-        """``*legacy_playback_args`` absorbs the pre-M4-R1 positional
-        PlaybackService argument during the migration window WITHOUT
-        importing or referencing PlaybackService (source-level AR01/AR02
-        satisfied: QueueService never imports nor commands playback)."""
+    def __init__(self, *, max_tracks: int = 10000) -> None:
+        """Final M4-R1 constructor seal: keyword-only max_tracks.
+
+        QueueService(playback) MUST FAIL at the Python signature level —
+        no legacy positional compatibility seam."""
         if max_tracks <= 0:
             raise ValueError(f"max_tracks must be positive: {max_tracks!r}")
         self._state = QueueState()

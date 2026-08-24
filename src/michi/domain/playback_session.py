@@ -9,7 +9,8 @@ Pure business logic: no Qt, no backend objects, no TrackRef requirement,
 no metadata database objects.
 """
 
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 
@@ -39,6 +40,7 @@ class PlaybackSequenceEntry:
 
     file_path: Path
     title: str = ""
+    entry_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
 
 @dataclass

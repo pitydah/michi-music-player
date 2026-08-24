@@ -568,7 +568,12 @@ class LibraryBridge(QObject):
 
     @Slot(int)
     def activate(self, visible_index: int) -> None:
-        self._service.activate(visible_index)
+        """M4-R1 final seal: Library playback intents route ONLY through the
+        LibraryPlaybackCoordinator (validate → SINGLE). LibraryService never
+        regains playback authority. A missing coordinator no-ops in isolated
+        presentation tests."""
+        if self._playback_coordinator is not None:
+            self._playback_coordinator.play_visible_track(visible_index)
 
     @Slot(str)
     def activate_path(self, path: str) -> None:

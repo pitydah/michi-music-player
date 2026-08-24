@@ -16,15 +16,11 @@ from michi.domain.playlist import (
     MAX_RECENT_PLAYLISTS,
     PlaylistNavigationState,
 )
-from tests.conftest import FakeAudioPort
 from tests.test_playlists import FakePlaylistsPort
 
 
 def _make(queue_audio=None):
-    from michi.application.playback_service import PlaybackService
-
-    audio = queue_audio or FakeAudioPort()
-    _queue = QueueService(PlaybackService(audio))
+    _queue = QueueService()
     return PlaylistService(playlists_port=FakePlaylistsPort()), _queue
 
 

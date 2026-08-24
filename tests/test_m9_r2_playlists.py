@@ -2,20 +2,18 @@
 
 from pathlib import Path
 
-from michi.application.playback_service import PlaybackService
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 from michi.domain.playlist import Playlist
 from michi.infrastructure.playlist_artwork_store import FilesystemPlaylistArtworkStore
 from michi.infrastructure.playlists import SqlitePlaylistsRepository
 from michi.presentation.playlists_bridge import PlaylistsBridge
-from tests.conftest import FakeAudioPort
 
 QML = Path("src/michi/presentation/qml")
 
 
 def _queue() -> QueueService:
-    return QueueService(PlaybackService(FakeAudioPort()))
+    return QueueService()
 
 
 def test_playlist_domain_and_service_custom_cover() -> None:
