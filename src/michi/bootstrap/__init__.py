@@ -88,6 +88,7 @@ from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+from michi.presentation.enrichment_bridge import EnrichmentBridge
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
 from michi.presentation.playback_bridge import PlaybackBridge
@@ -514,6 +515,7 @@ class ApplicationContainer:
         self._sb: SettingsBridge | None = None
         self._enrichment: EnrichmentGraph | None = None
         self._enrichment_settings: SettingsService | None = None
+        self._eb: EnrichmentBridge | None = None
 
     def initialize(self) -> None:
         QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -588,6 +590,14 @@ class ApplicationContainer:
         self._enrichment = _build_enrichment_graph(
             _data_dir(), _cache_dir(), enrichment_enabled
         )
+        # M6.9-PRESENTATION: ONE production EnrichmentBridge over the
+        # SAME production graph (coordinator/service/asset store).
+        self._eb = EnrichmentBridge(
+            coordinator=self._enrichment.coordinator,
+            service=self._enrichment.service,
+            library=library,
+            asset_store=self._enrichment.asset_store,
+        )
 
         # Library/settings coordination: restore last_directory, sync on scan
         lib_prefs = LibraryPreferencesCoordinator(library, settings)
@@ -656,6 +666,12 @@ class ApplicationContainer:
         ctx.setContextProperty("navigation", nb)
         ctx.setContextProperty("playlists", plb)
         ctx.setContextProperty("settingsBridge", sb)
+        ctx.setContextProperty("enrichment", self._eb)
+
+        # M6.9 policy wiring (composition root): SettingsBridge stays
+        # Settings-only; the EnrichmentBridge reacts to the policy.
+        sb.onlineEnrichmentChanged.connect(self._eb.on_online_enrichment_changed)
+        self._eb.on_online_enrichment_changed(bool(sb.property("onlineEnrichment")))
 
         self._settings = settings
         self._playback = playback
@@ -740,7 +756,7 @@ class ApplicationContainer:
         except Exception as exc:
             error = error or exc
 
-        for bridge in (self._pb, self._qb, self._lb, self._plb, self._nb):
+        for bridge in (self._pb, self._qb, self._lb, self._plb, self._nb, self._eb):
             try:
                 if bridge:
                     bridge.dispose()
