@@ -330,10 +330,14 @@ class TestManualReview:
             ArtistIdentityCandidateView,
         )
 
+        # Stale result from the OLD epoch/session of the SAME entity:
+        # epoch mismatch alone must drop it.
         bridge._apply_candidates(
             "artist",
-            (ArtistIdentityCandidateView("mb-old", "Old", "", "musicbrainz"),),
+            ARTIST_A_KEY,
+            bridge._review_session_id,
             old_epoch,
+            (ArtistIdentityCandidateView("mb-old", "Old", "", "musicbrainz"),),
         )
         assert bridge.property("artistCandidates") == []
 

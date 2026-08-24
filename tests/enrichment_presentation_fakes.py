@@ -227,7 +227,7 @@ class FakePresentationLibrary:
         return tuple(
             track
             for track in self._tracks
-            if make_artist_key(track.album_artist) == artist_key
+            if make_artist_key(track.artist.strip() or "Unknown Artist") == artist_key
         )
 
     def album_by_key(self, album_key):
