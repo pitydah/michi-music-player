@@ -106,9 +106,10 @@ def _make_library_and_queue(scanner, extractor=None):
     """Build LibraryService with a real queue; extractor is optional."""
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
+    PlaybackSessionService(playback, queue)
     if extractor is None:
-        library = LibraryService(scanner, queue)
+        library = LibraryService(scanner)
     else:
         library = LibraryService(scanner, metadata_extractor=extractor)
     return library, queue, audio

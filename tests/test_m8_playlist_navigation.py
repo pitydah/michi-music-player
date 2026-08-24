@@ -14,7 +14,6 @@ from michi.application.navigation_service import NavigationService
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 from michi.domain.navigation import AppRoute
-from tests.conftest import FakeAudioPort
 from tests.test_playlists import FakePlaylistsPort
 
 
@@ -23,10 +22,8 @@ def _nav():
 
 
 def _service_and_nav():
-    from michi.application.playback_service import PlaybackService
 
-    audio = FakeAudioPort()
-    _queue = QueueService(PlaybackService(audio))
+    _queue = QueueService()
     service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     service.set_on_playlist_deleted(nav.forget_playlist)

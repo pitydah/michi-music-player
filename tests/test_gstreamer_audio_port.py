@@ -2072,6 +2072,7 @@ class TestGStreamerQueueIntegration:
         svc = PlaybackService(port)
         q = QueueService()
         session = PlaybackSessionService(svc, q)
+        session.start()  # M4-R1 final seal: explicit lifecycle
         q.add(Path("/m/a.flac"))
         q.add(Path("/m/b.flac"))
         session.play_queue_index(0)
@@ -2111,6 +2112,7 @@ class TestGStreamerQueueIntegration:
         svc = PlaybackService(port)
         q = QueueService()
         session = PlaybackSessionService(svc, q)
+        session.start()  # M4-R1 final seal: explicit lifecycle
         q.add(Path("/m/a.flac"))
         session.set_repeat_mode(RepeatMode.ONE)
         session.play_queue_index(0)

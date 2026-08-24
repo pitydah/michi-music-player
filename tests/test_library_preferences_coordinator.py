@@ -8,7 +8,6 @@ from michi.application.library_preferences_coordinator import (
 )
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
-from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.domain.library import LibraryDiagnosticCode
 from michi.domain.settings import SettingsState
@@ -54,9 +53,8 @@ class TestLibraryPreferencesCoordinator:
         repo = FakeSettingsRepo()
         repo.save(SettingsState(last_directory="/music"))
         settings = SettingsService(repo)
-        svc = PlaybackService(FakeAudioPort())
         scanner = FakeScanner()
-        library = LibraryService(scanner, QueueService(svc))
+        library = LibraryService(scanner)
         coordinator = LibraryPreferencesCoordinator(library, settings)
         coordinator.start()
         assert library.state.current_directory == "/music"
@@ -64,8 +62,7 @@ class TestLibraryPreferencesCoordinator:
 
     def test_empty_preference_no_restore(self):
         settings = SettingsService(FakeSettingsRepo())
-        svc = PlaybackService(FakeAudioPort())
-        library = LibraryService(FakeScanner(), QueueService(svc))
+        library = LibraryService(FakeScanner())
         coordinator = LibraryPreferencesCoordinator(library, settings)
         coordinator.start()
         assert library.state.current_directory == ""
@@ -73,9 +70,8 @@ class TestLibraryPreferencesCoordinator:
 
     def test_successful_scan_updates_settings(self):
         settings = SettingsService(FakeSettingsRepo())
-        svc = PlaybackService(FakeAudioPort())
         scanner = FakeScanner(files=[Path("/music/a.mp3")])
-        library = LibraryService(scanner, QueueService(svc))
+        library = LibraryService(scanner)
         coordinator = LibraryPreferencesCoordinator(library, settings)
         coordinator.start()
         library.scan("/music")
@@ -85,9 +81,8 @@ class TestLibraryPreferencesCoordinator:
         repo = FakeSettingsRepo()
         repo.save(SettingsState(last_directory="/old"))
         settings = SettingsService(repo)
-        svc = PlaybackService(FakeAudioPort())
         scanner = FakeScanner(should_fail=True)
-        library = LibraryService(scanner, QueueService(svc))
+        library = LibraryService(scanner)
         coordinator = LibraryPreferencesCoordinator(library, settings)
         coordinator.start()
         library.scan("/broken")  # must NOT raise
@@ -100,9 +95,8 @@ class TestLibraryPreferencesCoordinator:
         repo = FakeSettingsRepo()
         repo.save(SettingsState(last_directory="/music"))
         settings = SettingsService(repo)
-        svc = PlaybackService(FakeAudioPort())
         scanner = FakeScanner(files=[Path("/music/a.mp3")])
-        library = LibraryService(scanner, QueueService(svc))
+        library = LibraryService(scanner)
         coordinator = LibraryPreferencesCoordinator(library, settings)
         coordinator.start()
         library.scan("/music")
@@ -116,9 +110,8 @@ class TestLibraryPreferencesCoordinator:
         repo = FakeSettingsRepo()
         repo.save(SettingsState(last_directory="/old"))
         settings = SettingsService(repo)
-        svc = PlaybackService(FakeAudioPort())
         scanner = FakeScanner(files=[Path("/music/a.mp3")])
-        library = LibraryService(scanner, QueueService(svc))
+        library = LibraryService(scanner)
         c = LibraryPreferencesCoordinator(library, settings)
         c.start()
         c.start()  # idempotent
@@ -130,9 +123,8 @@ class TestLibraryPreferencesCoordinator:
         repo = FakeSettingsRepo()
         repo.save(SettingsState(last_directory="/old"))
         settings = SettingsService(repo)
-        svc = PlaybackService(FakeAudioPort())
         scanner = FakeScanner(files=[Path("/music/a.mp3")])
-        library = LibraryService(scanner, QueueService(svc))
+        library = LibraryService(scanner)
         c = LibraryPreferencesCoordinator(library, settings)
         c.start()
         c.stop()
@@ -145,12 +137,13 @@ class TestLibraryPreferencesCoordinator:
         repo = CountingSettingsRepo()
         repo.save(SettingsState(last_directory="/music", volume=30))
         settings = SettingsService(repo)
-        svc = PlaybackService(FakeAudioPort())
         scanner = FakeScanner()
-        library = LibraryService(scanner, QueueService(svc))
+        library = LibraryService(scanner)
         # Simulate bootstrap: load once, use for both restore and coordinator
         s = settings.load()
-        svc.restore_volume(s.volume, s.muted)
+        from michi.application.playback_service import PlaybackService
+
+        PlaybackService(FakeAudioPort()).restore_volume(s.volume, s.muted)
         c = LibraryPreferencesCoordinator(library, settings)
         c.start()
         assert repo.load_count == 1
@@ -164,9 +157,8 @@ class TestLibraryBridgeRestore:
         repo = FakeSettingsRepo()
         repo.save(SettingsState(last_directory="/music"))
         settings = SettingsService(repo)
-        svc = PlaybackService(FakeAudioPort())
         scanner = FakeScanner()
-        library = LibraryService(scanner, QueueService(svc))
+        library = LibraryService(scanner)
         c = LibraryPreferencesCoordinator(library, settings)
         c.start()
         bridge = LibraryBridge(library)
@@ -197,7 +189,7 @@ class TestCombinedLifecycle:
         playback.restore_volume(s.volume, s.muted)
 
         scanner = FakeScanner(files=[Path("/music/a.mp3")])
-        library = LibraryService(scanner, QueueService(playback))
+        library = LibraryService(scanner)
         c = LibraryPreferencesCoordinator(library, settings)
         c.start()
 
@@ -229,8 +221,7 @@ class TestCombinedLifecycle:
 
 class TestRestoreDirectoryHint:
     def test_idempotent(self):
-        svc = PlaybackService(FakeAudioPort())
-        library = LibraryService(FakeScanner(), QueueService(svc))
+        library = LibraryService(FakeScanner())
         calls = []
 
         def cb():
@@ -243,7 +234,6 @@ class TestRestoreDirectoryHint:
         assert len(calls) == 1
 
     def test_empty_string_no_op(self):
-        svc = PlaybackService(FakeAudioPort())
-        library = LibraryService(FakeScanner(), QueueService(svc))
+        library = LibraryService(FakeScanner())
         library.restore_directory_hint("")
         assert library.state.current_directory == ""

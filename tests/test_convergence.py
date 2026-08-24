@@ -25,6 +25,7 @@ def _graph(fake_audio, seed: int = 42):
     svc = PlaybackService(fake_audio)
     q = QueueService()
     session = PlaybackSessionService(svc, q, rng=random.Random(seed))
+    session.start()  # M4-R1 final seal: explicit lifecycle arms subscriptions
     return svc, q, session
 
 

@@ -5,7 +5,6 @@ ordering, add/remove/move/clear/replace). It NEVER commands playback:
 navigation/repeat/shuffle/EOM authority lives in PlaybackSessionService
 (see test_playback_session_service.py for the migrated coverage)."""
 
-import random
 from pathlib import Path
 
 import pytest
@@ -46,11 +45,6 @@ class TestQueueMove:
     - the shuffle navigator pool/history are NOT regenerated or corrupted by
       the physical list reorder (objects are identity-based).
     """
-
-    def _shuffle_queue(self, playback_service, seed: int = 42):
-        from michi.application.queue_service import QueueService
-
-        return QueueService(playback_service, rng=random.Random(seed))
 
     def _paths(self, service) -> list:
         return [t.file_path for t in service.state.tracks]
@@ -155,7 +149,7 @@ class TestQueueCapacity:
     def _capacity_service(self, playback_service, max_tracks):
         from michi.application.queue_service import QueueService
 
-        return QueueService(playback_service, max_tracks=max_tracks)
+        return QueueService(max_tracks=max_tracks)
 
     def test_capacity_exact_boundary(self, playback_service):
         from michi.domain.queue import QueueCapacityError  # RED: undefined
@@ -177,5 +171,5 @@ class TestQueueCapacity:
     def test_capacity_default_high(self, playback_service):
         from michi.application.queue_service import QueueService
 
-        service = QueueService(playback_service)
+        service = QueueService()
         assert service.max_tracks == 10000  # public read-only property

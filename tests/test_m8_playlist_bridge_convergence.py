@@ -34,10 +34,8 @@ def _tracks(tmp_path, names=("one.mp3", "two.mp3")):
 
 
 def _nav_bridge():
-    from michi.application.playback_service import PlaybackService
 
-    audio = FakeAudioPort()
-    _queue = QueueService(PlaybackService(audio))
+    _queue = QueueService()
     service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     coord = PlaylistNavigationCoordinator(service, nav)
@@ -171,3 +169,98 @@ class TestBridgeDeleteSelection:
         service.delete_playlist(b.playlist_id)
         assert bridge.property("selectedPlaylistId") == a.playlist_id
         bridge.dispose()
+
+
+class TestM4R1FinalSealPlaylistTrack:
+    """P1-03: Playlist Detail row activation → PLAYLIST context."""
+
+    def _world(self):
+        from michi.application.playback_service import PlaybackService
+        from michi.application.playback_session_service import (
+            PlaybackSessionService,
+        )
+        from michi.application.playlist_playback_coordinator import (
+            PlaylistPlaybackCoordinator,
+        )
+        from michi.application.queue_service import QueueService
+
+        audio = FakeAudioPort()
+        playback = PlaybackService(audio)
+        queue = QueueService()
+        session = PlaybackSessionService(playback, queue)
+        session.start()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
+        nav = NavigationService()
+        service.set_on_playlist_deleted(nav.forget_playlist)
+        nav_coord = PlaylistNavigationCoordinator(service, nav)
+        pcoord = PlaylistPlaybackCoordinator(service, session, queue)
+        bridge = PlaylistsBridge(
+            service,
+            playlist_navigation=nav_coord,
+            navigation_service=nav,
+            playback_coordinator=pcoord,
+        )
+        return service, bridge, session, queue, audio
+
+    def test_pl01_pl02_pl03_tracklist_signal_exists(self):
+        """PlaylistTrackList exposes playTrackRequested; mouse/keyboard rows
+        emit it (QML surface inspected statically)."""
+        from pathlib import Path
+
+        qml = Path(
+            "src/michi/presentation/qml/playlists/PlaylistTrackList.qml"
+        ).read_text()
+        assert "signal playTrackRequested(int index)" in qml
+        assert "root.playTrackRequested(index)" in qml  # mouse + keyboard
+        assert "Keys.onReturnPressed" in qml
+        assert "Keys.onEnterPressed" in qml
+
+    def test_pl04_detail_view_wires_intent(self):
+        from pathlib import Path
+
+        qml = Path(
+            "src/michi/presentation/qml/playlists/PlaylistDetailView.qml"
+        ).read_text()
+        assert (
+            "onPlayTrackRequested: index => playlists.play_playlist_track(index)" in qml
+        )
+
+    def test_pl05_click_index_2_playlist_context(self):
+        from pathlib import Path
+
+        service, bridge, session, queue, audio = self._world()
+        p = service.create_playlist("P")
+        for path in ("/m/P0.flac", "/m/P1.flac", "/m/P2.flac", "/m/P3.flac"):
+            service.add_track(p.playlist_id, Path(path))
+        bridge.open_playlist(p.playlist_id)
+        bridge.play_playlist_track(2)
+        audio.trigger_media_accepted(Path("/m/P2.flac"))
+        assert session.state.context_type.name == "PLAYLIST"
+        assert session.state.source_id == p.playlist_id
+        assert session.state.current_index == 2
+        assert session.state.current_entry.file_path == Path("/m/P2.flac")
+
+    def test_pl06_queue_populated_playlist_click_queue_unchanged(self):
+        from pathlib import Path
+
+        service, bridge, session, queue, audio = self._world()
+        queue.add(Path("/pre/Q1.flac"))
+        queue.add(Path("/pre/Q2.flac"))
+        before = [t.file_path for t in queue.state.tracks]
+        p = service.create_playlist("P")
+        for path in ("/m/P0.flac", "/m/P1.flac"):
+            service.add_track(p.playlist_id, Path(path))
+        bridge.open_playlist(p.playlist_id)
+        bridge.play_playlist_track(1)
+        audio.trigger_media_accepted(Path("/m/P1.flac"))
+        assert [t.file_path for t in queue.state.tracks] == before  # unchanged
+
+    def test_pl07_more_options_does_not_trigger_playback(self):
+        """The More Options button opens the menu only — never playback."""
+        from pathlib import Path
+
+        qml = Path(
+            "src/michi/presentation/qml/playlists/PlaylistTrackList.qml"
+        ).read_text()
+        # the options button calls trackMenu.popup() — not playTrackRequested
+        assert "onClicked: trackMenu.popup()" in qml
