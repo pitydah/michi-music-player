@@ -9,6 +9,7 @@ This module keeps a compatibility re-export of RepeatMode for callers
 still migrating; canonical ownership is playback_session.
 """
 
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -17,8 +18,17 @@ from michi.domain.playback_session import RepeatMode  # noqa: F401  (re-export)
 
 @dataclass
 class Track:
+    """A Queue entry. ``entry_id`` is the opaque RUNTIME identity.
+
+    Unique per Queue insertion, immutable for the lifetime of that entry,
+    preserved by move(), removed by remove()/clear(). Two entries with the
+    same file_path MUST have different entry_ids — file_path is payload,
+    NOT identity. Runtime-only: never persisted (restart creates fresh ids).
+    """
+
     file_path: Path
     title: str = ""
+    entry_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     def __post_init__(self) -> None:
         if not self.title:

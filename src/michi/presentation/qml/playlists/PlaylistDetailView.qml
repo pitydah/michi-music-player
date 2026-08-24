@@ -141,6 +141,7 @@ Item {
             rows: playlists.playlistTrackRows
             onRemoveTrackRequested: index => root.removeTrackRequested(index)
             onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
+            onPlayTrackRequested: index => playlists.play_playlist_track(index)
         }
 
         EmptyState {

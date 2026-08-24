@@ -31,8 +31,20 @@ class LibraryPlaybackCoordinator:
         self._session = playback_session
 
     def play_track(self, file_path: Path, title: str = "") -> None:
-        """Generic track intent → SINGLE (never mutates Queue)."""
-        entry = PlaybackSequenceEntry(file_path=file_path, title=title)
+        """Generic track intent → SINGLE (never mutates Queue).
+
+        TD-013 (M4-R1 final seal): every Library-origin playback intent
+        resolves the TrackRef and validates the filesystem through the
+        LibraryService gate BEFORE requesting the session. A missing track
+        removes the exact stale reference / sets the diagnostic; ACCESS/IO/
+        UNKNOWN preserve the reference. No validation → no playback request.
+        """
+        ref = self._library.resolve_trackref(file_path)
+        if ref is None:
+            return  # not a library track: no playback request
+        if not self._library.validate_track_for_playback(ref):
+            return
+        entry = PlaybackSequenceEntry(file_path=ref.file_path, title=ref.title or title)
         self._session.play_single(entry)
 
     def play_album(self, album_key: str, start_index: int = 0) -> None:
@@ -68,7 +80,9 @@ class LibraryPlaybackCoordinator:
         self.play_album(album_key, start_index=index)
 
     def play_artist_track_as_single(self, file_path: Path, title: str = "") -> None:
-        """Artist track click → SINGLE (no ARTIST context yet)."""
+        """Artist track click → SINGLE (no ARTIST context yet).
+
+        Delegates to the same validated play_track path — TD-013 applies."""
         self.play_track(file_path, title=title)
 
     def play_visible_track(self, index: int) -> None:
