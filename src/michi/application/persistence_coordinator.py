@@ -332,12 +332,12 @@ class PersistenceCoordinator:
         # instead of being suppressed.
         if self._restoring or not self._started:
             return
-        # M4-R1: the session reacts to Queue content mutations (QUEUE live
-        # sync). The coordinator observes Queue changes in production too.
-        self._session.on_queue_changed()
-        # M4-R1: Queue changes only invalidate a resume when they change the
-        # ACTIVE QUEUE context in a way that breaks session playback identity
-        # (SINGLE/ALBUM/PLAYLIST resume is unaffected by Queue content).
+        # M4-R1 final seal: Persistence observes Queue for PERSISTENCE only.
+        # Queue→Session delivery is owned exclusively by
+        # PlaybackSessionService.start() — never redispatch here (one
+        # delivery path). Queue changes only invalidate a resume when they
+        # change the ACTIVE QUEUE context in a way that breaks session
+        # playback identity (SINGLE/ALBUM/PLAYLIST unaffected).
         if self._resume_phase is not _ResumePhase.NONE:
             session_type = self._session.state.context_type
             if (

@@ -384,9 +384,6 @@ def _build_services(
         playlist_service, playback_session, queue
     )
     history_coordinator = PlaybackHistoryCoordinator(playback_session, library)
-    # QUEUE live-sync: session reacts to Queue content mutations (QUEUE
-    # context only) — Queue itself never subscribes to Playback.
-    queue.subscribe_changed(playback_session.on_queue_changed)
 
     # Owner-thread async dispatch (M6-PRODUCTION-INTEGRATION): the runner
     # emits on the worker thread; the EXPLICIT QueuedConnection delivers
@@ -497,6 +494,9 @@ class ApplicationContainer:
         )
         self._settings: SettingsService | None = None
         self._playback: PlaybackService | None = None
+        self._playback_session: PlaybackSessionService | None = None
+        self._history_coordinator: PlaybackHistoryCoordinator | None = None
+        self._psb: PlaybackSessionBridge | None = None
         self._queue: QueueService | None = None
         self._library: LibraryService | None = None
         self._library_prefs: LibraryPreferencesCoordinator | None = None
@@ -612,6 +612,10 @@ class ApplicationContainer:
         persistence = PersistenceCoordinator(
             session_repo, queue, graph.playback_session, playback, settings
         )
+        # M4-R1 final seal: the Session owns its runtime subscriptions
+        # (EOM + the ONE Queue→Session delivery path). start() BEFORE
+        # persistence so the session live-sync is armed for the runtime.
+        graph.playback_session.start()
         persistence.start()
         # M11.3G §66: the startup resume happens ONLY through the engine that
         # convergence activated (selected or Qt fallback). With no active
@@ -659,6 +663,9 @@ class ApplicationContainer:
 
         self._settings = settings
         self._playback = playback
+        self._playback_session = graph.playback_session
+        self._history_coordinator = graph.history_coordinator
+        self._psb = psb
         self._queue = queue
         self._library = library
         self._playlist_service = playlist_service
@@ -709,6 +716,21 @@ class ApplicationContainer:
         except Exception as exc:
             error = error or exc
 
+        # M4-R1 final seal: lifecycle convergence BEFORE audio teardown.
+        # History stopped, Session stopped, PlaybackSessionBridge disposed
+        # — a late Queue/EOM event can never reach the Session, and the
+        # bridge never receives post-shutdown notifications.
+        try:
+            if self._history_coordinator:
+                self._history_coordinator.stop()
+        except Exception as exc:
+            error = error or exc
+        try:
+            if self._playback_session:
+                self._playback_session.stop()
+        except Exception as exc:
+            error = error or exc
+
         # Async scan lifecycle (M6-PRODUCTION-INTEGRATION): freeze the
         # runner (reject new submits + cancel active generations) and close
         # the dispatcher (drop late callbacks) BEFORE any bridge/coordinator
@@ -740,7 +762,14 @@ class ApplicationContainer:
         except Exception as exc:
             error = error or exc
 
-        for bridge in (self._pb, self._qb, self._lb, self._plb, self._nb):
+        for bridge in (
+            self._pb,
+            self._qb,
+            self._psb,
+            self._lb,
+            self._plb,
+            self._nb,
+        ):
             try:
                 if bridge:
                     bridge.dispose()
