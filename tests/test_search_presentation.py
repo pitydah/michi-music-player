@@ -30,11 +30,8 @@ except ImportError:  # pragma: no cover - fallback path
     QQuickListView = QObject  # type: ignore[assignment,misc]
 
 from michi.application.library_service import LibraryService
-from michi.application.playback_service import PlaybackService
-from michi.application.queue_service import QueueService
 from michi.domain.library import TrackMetadata
 from michi.presentation.library_bridge import LibraryBridge
-from tests.conftest import FakeAudioPort
 from tests.test_library_metadata import FakeExtractor, FakeScanner
 
 QML_DIR = Path(__file__).parent.parent / "src" / "michi" / "presentation" / "qml"
@@ -86,9 +83,9 @@ def _make_library(tmp_path):
         p = music / name
         p.write_bytes(b"x")
         paths.append(p)
-    audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    library = LibraryService(FakeScanner(paths), queue, FakeExtractor(factory=_factory))
+    library = LibraryService(
+        FakeScanner(paths), metadata_extractor=FakeExtractor(factory=_factory)
+    )
     library.scan(str(music))
     return library, music
 

@@ -23,13 +23,24 @@ from tests.test_playlists import FakePlaylistsPort
 
 def _build(repo=None):
     from michi.application.playback_service import PlaybackService
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+    from michi.application.playlist_playback_coordinator import (
+        PlaylistPlaybackCoordinator,
+    )
 
     audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    service = PlaylistService(queue, repo if repo is not None else FakePlaylistsPort())
+    playback = PlaybackService(audio)
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue)
+    service = PlaylistService(
+        playlists_port=repo if repo is not None else FakePlaylistsPort()
+    )
     nav = NavigationService()
     service.set_on_playlist_deleted(nav.forget_playlist)
     coord = PlaylistNavigationCoordinator(service, nav)
+    PlaylistPlaybackCoordinator(service, session, queue)
     return service, nav, coord, queue
 
 

@@ -817,34 +817,37 @@ class TestF5F6F7:
         assert h.playback.state.muted is True
 
     def test_f28_queue_state_unchanged(self):
-        from michi.application.queue_service import QueueService
-        from michi.domain.queue import RepeatMode
-
-        h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
-        queue = QueueService(h.playback)
-        # nontrivial queue: A B C + repeat + current identity
-        queue.set_repeat_mode(RepeatMode.ALL)
         from pathlib import Path
 
+        from michi.application.playback_session_service import (
+            PlaybackSessionService,
+        )
+        from michi.application.queue_service import QueueService
+        from michi.domain.playback_session import RepeatMode
+
+        h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
+        queue = QueueService()
+        session = PlaybackSessionService(h.playback, queue)
+        # nontrivial queue: A B C + repeat + current identity
+        session.set_repeat_mode(RepeatMode.ALL)
         queue.add(Path("/music/A.flac"))
         queue.add(Path("/music/B.flac"))
         queue.add(Path("/music/C.flac"))
-        queue.play_index(1)  # current identity = B
+        session.play_queue_index(1)  # current identity = B
         h.playback.stop()  # canonical: switches require quiescent playback
         assert h.playback.is_engine_switch_quiescent() is True
         before = queue.state
-        before_seed = queue.shuffle_seed
+        before_index = session.state.current_index
+        before_repeat = session.state.repeat_mode
         h.coordinator.switch_to(AudioEngineId.GSTREAMER)
         after = queue.state
-        # exact same state: tracks, current identity, repeat, shuffle
+        # exact same state: tracks / session navigation untouched
         assert tuple((t.file_path, t.title) for t in after.tracks) == tuple(
             (t.file_path, t.title) for t in before.tracks
         )
-        assert after.current_index == before.current_index
-        assert after.repeat_mode == before.repeat_mode
-        assert after.shuffle_enabled == before.shuffle_enabled
-        assert queue.shuffle_seed == before_seed
-        assert after.current_track == before.current_track
+        assert session.state.current_index == before_index
+        assert session.state.repeat_mode == before_repeat
+        assert after.count == 3
 
     def test_f29_old_detached_callbacks_ignored(self):
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
@@ -1208,14 +1211,16 @@ class TestF42AdapterContract:
     # M11.3G AUTHORIZED EXCEPTION: mpd.py gained the minimal fatal-runtime
     # notification seam (runtime_failure_callback — PROCESS_EXIT / fatal
     # TRANSPORT_ERROR publication only; transport semantics unchanged), so
-    # its hash moved to the M11.3G value. The other five files remain frozen
-    # at the baseline hashes.
+    # its hash moved to the M11.3G value.
+    # M4-R1 GOVERNANCE CORRECTION: QueueService was REMOVED from the frozen
+    # adapter hash ownership — M11.3 freezes engine/runtime transport
+    # semantics, it does NOT own Queue implementation (queue_service.py is
+    # legitimately refactored by M4-R1).
     _BASELINE_HASHES = {
         "src/michi/infrastructure/audio_engines/gstreamer.py": "1ee9e1d5fc493797",
         "src/michi/infrastructure/audio_engines/mpd.py": "4c00fee3978b37c1",
         "src/michi/infrastructure/qt_backend.py": "88614638da12acd8",
         "src/michi/application/ports.py": "aa76e1d8089c2c4e",
-        "src/michi/application/queue_service.py": "00a0f39531fc6b1d",
         "src/michi/application/audio_transport_router.py": "d27e9dca6304722c",
     }
 

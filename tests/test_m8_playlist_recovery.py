@@ -35,10 +35,20 @@ def _seed_v1(db_path: Path, entries):
 
 def _service(repo):
     from michi.application.playback_service import PlaybackService
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+    from michi.application.playlist_playback_coordinator import (
+        PlaylistPlaybackCoordinator,
+    )
 
     audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    return PlaylistService(queue, repo), queue, audio
+    playback = PlaybackService(audio)
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue)
+    service = PlaylistService(playlists_port=repo)
+    coordinator = PlaylistPlaybackCoordinator(service, session, queue)
+    return service, queue, session, audio, coordinator
 
 
 class TestLegacyToV2FullChain:
@@ -46,7 +56,7 @@ class TestLegacyToV2FullChain:
         db = tmp_path / "michi.db"
         _seed_v1(db, [{"name": "Jazz", "track_paths": ["/a.flac"]}])
         repo = SqlitePlaylistsRepository(db)
-        service, _, _ = _service(repo)
+        service, _, session, _, _ = _service(repo)
         loaded = service.playlists[0]
         assert loaded.playlist_id == legacy_playlist_id("Jazz")
         service.add_track(loaded.playlist_id, "/b.flac")  # persist V2
@@ -61,20 +71,20 @@ class TestLegacyToV2FullChain:
         payload = json.loads(row[0])
         assert payload[0]["id"] == legacy_playlist_id("Jazz")
         # restart: same id, same tracks
-        service2, _, _ = _service(SqlitePlaylistsRepository(db))
+        service2, _, session, _, _ = _service(SqlitePlaylistsRepository(db))
         assert service2.playlists[0].playlist_id == legacy_playlist_id("Jazz")
         assert service2.playlists[0].track_paths == ("/a.flac", "/b.flac")
 
     def test_v2_pinned_recent_survive_restart(self, tmp_path):
         db = tmp_path / "michi.db"
         repo = SqlitePlaylistsRepository(db)
-        service, _, _ = _service(repo)
+        service, _, session, _, _ = _service(repo)
         a = service.create_playlist("A")
         b = service.create_playlist("B")
         service.pin_playlist(a.playlist_id)
         service.mark_recent(b.playlist_id)
         service.mark_recent(a.playlist_id)
-        service2, _, _ = _service(SqlitePlaylistsRepository(db))
+        service2, _, session, _, _ = _service(SqlitePlaylistsRepository(db))
         assert service2.navigation == PlaylistNavigationState(
             pinned_ids=(a.playlist_id,),
             recent_ids=(a.playlist_id, b.playlist_id),
@@ -86,7 +96,7 @@ class TestLegacyToV2FullChain:
         V2 payload verbatim."""
         db = tmp_path / "michi.db"
         repo = SqlitePlaylistsRepository(db)
-        service, _, _ = _service(repo)
+        service, _, session, _, _ = _service(repo)
         a = service.create_playlist("A")
         conn = sqlite3.connect(str(db))
         try:
@@ -119,42 +129,45 @@ class TestLegacyToV2FullChain:
             conn.commit()
         finally:
             conn.close()
-        service, _, _ = _service(SqlitePlaylistsRepository(db))
+        service, _, session, _, _ = _service(SqlitePlaylistsRepository(db))
         assert service.playlists == ()
         assert service.navigation == PlaylistNavigationState()
 
 
 class TestQueueNonRegression:
-    def test_play_playlist_by_id_fills_queue_and_waits_acceptance(self):
+    def test_play_playlist_sets_playlist_context(self):
+        """M4-R1: Play Playlist → PLAYLIST session context; Queue untouched."""
         repo = FakePlaylistsPort()
-        service, queue, audio = _service(repo)
+        service, queue, session, audio, coordinator = _service(repo)
         p = service.create_playlist("P")
         for path in ("/m/a.mp3", "/m/b.mp3"):
             service.add_track(p.playlist_id, Path(path))
-        service.play_playlist(p.playlist_id)
-        assert queue.state.count == 2
-        assert queue.state.current_index == -1  # acceptance-driven
+        coordinator.play_playlist(p.playlist_id)
+        assert queue.state.count == 0  # Queue untouched
+        assert session.state.context_type.name == "NONE"  # acceptance-driven
         audio.trigger_media_accepted(Path("/m/a.mp3"))
-        assert queue.state.current_index == 0
+        assert session.state.context_type.name == "PLAYLIST"
+        assert session.state.current_index == 0
 
     def test_play_playlist_respects_existing_queue_content(self):
         repo = FakePlaylistsPort()
-        service, queue, audio = _service(repo)
+        service, queue, session, audio, coordinator = _service(repo)
         queue.add(Path("/pre/a.mp3"))
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(Path("/pre/a.mp3"))
-        assert queue.state.current_index == 0
+        assert session.state.current_index == 0
         p = service.create_playlist("P")
         service.add_track(p.playlist_id, "/m/b.mp3")
-        service.play_playlist(p.playlist_id)
-        assert queue.state.count == 2  # appends, does not replace
-        assert queue.state.current_index == 0  # existing queue keeps position
+        coordinator.play_playlist(p.playlist_id)
+        # Queue keeps its content; the session context supersedes.
+        assert queue.state.count == 1  # nothing appended
+        assert [t.file_path for t in queue.state.tracks] == [Path("/pre/a.mp3")]
 
     def test_queue_state_never_aliases_playlist(self):
         """QueueState is a separate authority: mutating the queue never
         touches the playlist, and vice versa."""
         repo = FakePlaylistsPort()
-        service, queue, _ = _service(repo)
+        service, queue, session, _, _ = _service(repo)
         p = service.create_playlist("P")
         service.add_track(p.playlist_id, "/m/a.mp3")
         queue.clear()

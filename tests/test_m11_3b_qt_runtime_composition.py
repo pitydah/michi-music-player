@@ -248,9 +248,7 @@ class TestProviderAuthority:
         try:
             assert graph.playback._audio is graph.audio_router
             # instancia REAL del coordinator con el wiring productivo
-            coordinator = PlaybackCoordinator(
-                graph.audio_router, graph.queue, graph.playback
-            )
+            coordinator = PlaybackCoordinator(graph.audio_router, graph.playback)
             assert coordinator._audio is graph.audio_router
             assert coordinator._audio is graph.playback._audio
             coordinator.stop()

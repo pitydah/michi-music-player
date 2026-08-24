@@ -150,8 +150,8 @@ def test_canonical_now_playing_bar_is_shell_bound() -> None:
         "playback.position",
         "playback.duration",
         "playback.volume",
-        "queue.shuffleEnabled",
-        "queue.repeatMode",
+        "playbackSession.shuffleEnabled",
+        "playbackSession.repeatMode",
     ):
         assert projection in shell
 

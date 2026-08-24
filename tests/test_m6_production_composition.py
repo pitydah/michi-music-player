@@ -240,9 +240,12 @@ class TestProductionComposition:
         extractor = CountingExtractor()
         db_path, graph = _make_graph(tmp_path, StatScanner([a, b]), extractor)
         graph.library.scan(str(music))
-        graph.library.activate(0)  # arms the pending track
-        graph.bound_audio_port.trigger_media_accepted(a)  # commit -> history entry
-        assert graph.library.state.history_paths, "activation should arm history"
+        # M4-R1: generic track click → SINGLE via the library coordinator
+        # (never mutates Queue); history is PLAYBACK-COMMIT driven.
+        graph.history_coordinator.start()  # M4-R1: history is commit-driven
+        graph.library_playback.play_visible_track(0)
+        graph.bound_audio_port.trigger_media_accepted(a)  # commit -> history
+        assert graph.library.state.history_paths, "commit should arm history"
 
         _teardown_graph(graph)
         _, graph2 = _make_graph_at(db_path, StatScanner([a, b]), CountingExtractor())

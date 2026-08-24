@@ -798,7 +798,7 @@ class TestReentrantSeek:
     """
 
     def _wire_audio_path(self, playback_service, fake_audio, queue_service):
-        coordinator = PlaybackCoordinator(fake_audio, queue_service, playback_service)
+        coordinator = PlaybackCoordinator(fake_audio, playback_service)
         coordinator.start()
         return coordinator
 

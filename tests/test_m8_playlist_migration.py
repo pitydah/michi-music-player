@@ -90,13 +90,9 @@ class TestNoWritebackDuringLoad:
         db = tmp_path / "michi.db"
         _seed_v1(db, [{"name": "Jazz", "track_paths": ["/a.flac"]}])
         repo = SqlitePlaylistsRepository(db)
-        from michi.application.playback_service import PlaybackService
         from michi.application.playlist_service import PlaylistService
-        from michi.application.queue_service import QueueService
-        from tests.conftest import FakeAudioPort
 
-        audio = FakeAudioPort()
-        service = PlaylistService(QueueService(PlaybackService(audio)), repo)
+        service = PlaylistService(playlists_port=repo)
         loaded = service.playlists[0]
         assert loaded.playlist_id == legacy_playlist_id("Jazz")
         service.add_track(loaded.playlist_id, "/b.flac")  # mutation → persist
@@ -199,12 +195,8 @@ class TestMixedAndMalformed:
         """FakePlaylistsPort seeded with V1-shaped records keeps working and
         the service assigns deterministic legacy ids."""
         port = FakePlaylistsPort(playlists=())
-        from michi.application.playback_service import PlaybackService
         from michi.application.playlist_service import PlaylistService
-        from michi.application.queue_service import QueueService
-        from tests.conftest import FakeAudioPort
 
-        audio = FakeAudioPort()
-        service = PlaylistService(QueueService(PlaybackService(audio)), port)
+        service = PlaylistService(playlists_port=port)
         service.create_playlist("Jazz")
         assert service.playlists[0].playlist_id != ""

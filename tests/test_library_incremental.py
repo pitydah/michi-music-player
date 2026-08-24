@@ -38,6 +38,7 @@ import sqlite3
 from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.domain.library import LibraryDiagnosticCode, TrackMetadata, make_track_id
 from michi.domain.library_index import (
@@ -93,12 +94,15 @@ def _make_library(tmp_path, scanner, extractor, with_index=True):
     """Build LibraryService with a real queue; optionally wire the index."""
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
+    _session = PlaybackSessionService(playback, queue)
     if with_index:
         repo = SqliteLibraryIndexRepository(tmp_path / "michi.db")
-        library = LibraryService(scanner, queue, extractor, library_index=repo)
+        library = LibraryService(
+            scanner, metadata_extractor=extractor, library_index=repo
+        )
         return library, repo
-    library = LibraryService(scanner, queue, extractor)
+    library = LibraryService(scanner, metadata_extractor=extractor)
     return library, None
 
 

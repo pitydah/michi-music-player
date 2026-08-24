@@ -151,7 +151,18 @@ def playback_service(fake_audio: FakeAudioPort):
 def queue_service(playback_service):
     from michi.application.queue_service import QueueService
 
-    return QueueService(playback_service)
+    # M4-R1: QueueService has NO playback dependency (the legacy positional
+    # arg is absorbed and ignored during the migration window).
+    return QueueService()
+
+
+@pytest.fixture
+def playback_session(playback_service, queue_service):
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+
+    return PlaybackSessionService(playback_service, queue_service)
 
 
 class FakeSettingsRepo:

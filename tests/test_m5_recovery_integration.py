@@ -36,7 +36,9 @@ import pytest
 from michi.domain.persistence_health import PersistenceHealth
 from michi.domain.queue import RepeatMode
 from michi.domain.session import (
+    FORMAT_VERSION,
     PersistedQueueEntry,
+    PersistedSessionContext,
     PlaybackSessionSnapshot,
     fresh_snapshot,
 )
@@ -60,17 +62,16 @@ _V1_SETTINGS_ROWS = [
 
 def _snapshot(label: str) -> PlaybackSessionSnapshot:
     """A valid, full playback session snapshot whose identity is label-tagged."""
+    entries = (
+        PersistedQueueEntry(file_path=f"/tracks/{label}-1.mp3", title=f"{label} One"),
+        PersistedQueueEntry(file_path=f"/tracks/{label}-2.mp3", title=f"{label} Two"),
+    )
     return PlaybackSessionSnapshot(
-        format_version=1,
-        queue_entries=(
-            PersistedQueueEntry(
-                file_path=f"/tracks/{label}-1.mp3", title=f"{label} One"
-            ),
-            PersistedQueueEntry(
-                file_path=f"/tracks/{label}-2.mp3", title=f"{label} Two"
-            ),
+        format_version=FORMAT_VERSION,
+        queue_entries=entries,
+        context=PersistedSessionContext(
+            context_type="queue", source_id=None, entries=entries, current_index=1
         ),
-        queue_current_index=1,
         playback_path=f"/tracks/{label}-2.mp3",
         position_ms=234000,
         repeat_mode=RepeatMode.ALL,

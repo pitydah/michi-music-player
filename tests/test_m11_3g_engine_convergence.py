@@ -739,27 +739,31 @@ class TestG3RuntimeLoss:
     def test_g26_queue_current_unchanged(self):
         from pathlib import Path
 
+        from michi.application.playback_session_service import (
+            PlaybackSessionService,
+        )
         from michi.application.queue_service import QueueService
 
         h = make_g(QT, GST, MPD, start_selected=MPD)
         h.activate(MPD)
-        queue = QueueService(h.playback)
+        queue = QueueService()
+        session = PlaybackSessionService(h.playback, queue)
         queue.add(Path("/music/A.flac"))
         queue.add(Path("/music/B.flac"))
         queue.add(Path("/music/C.flac"))
-        queue.play_index(1)
+        session.play_queue_index(1)
         h.playback.stop()
         h.playback.load_and_play("/music/B.flac")
         h.router._bound.emit_media_accepted("/music/B.flac")
         h.playback.play()
         h.router._bound.emit_playback_state(PlaybackStatus.PLAYING)
         before = queue.state
+        before_index = session.state.current_index
         h.providers[MPD].emit_runtime_failure("MPD process exited")
         after = queue.state
         assert tuple(after.tracks) == tuple(before.tracks)
-        assert after.current_index == before.current_index
-        assert after.repeat_mode == before.repeat_mode
-        assert after.shuffle_enabled == before.shuffle_enabled
+        assert session.state.current_index == before_index
+        assert after.count == 3
 
     def test_g27_qt_fallback_exactly_once(self):
         h = make_g(QT, GST, MPD, start_selected=MPD)

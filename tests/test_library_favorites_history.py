@@ -57,6 +57,7 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.domain.library import LibraryDiagnosticCode, LibraryPrefs
 from michi.infrastructure.library_prefs import SqliteLibraryPrefsRepository
@@ -99,12 +100,22 @@ def _make_library_and_queue(scanner, prefs_port=None, extractor=None):
     """
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue)
+    from michi.application.playback_history_coordinator import (
+        PlaybackHistoryCoordinator,
+    )
+
     if extractor is None:
-        library = LibraryService(scanner, queue, library_prefs=prefs_port)
+        library = LibraryService(scanner, library_prefs=prefs_port)
     else:
-        library = LibraryService(scanner, queue, extractor, library_prefs=prefs_port)
-    return library, queue, audio
+        library = LibraryService(
+            scanner, metadata_extractor=extractor, library_prefs=prefs_port
+        )
+    # M4-R1: History is PLAYBACK-COMMIT driven — the coordinator records it.
+    history = PlaybackHistoryCoordinator(session, library)
+    history.start()
+    return library, queue, session, audio
 
 
 def _write_tracks(tmp_path, names):
@@ -119,7 +130,7 @@ class TestFavoritesService:
     def test_toggle_favorite_adds_and_removes(self, tmp_path):
         p = tmp_path / "one.mp3"
         p.write_bytes(b"x")
-        library, _, _ = _make_library_and_queue(FakeScanner())
+        library, _, _, _ = _make_library_and_queue(FakeScanner())
         library.toggle_favorite(p)
         assert str(p) in library.state.favorite_paths
         library.toggle_favorite(p)
@@ -128,7 +139,7 @@ class TestFavoritesService:
     def test_set_favorite_explicit(self, tmp_path):
         p = tmp_path / "one.mp3"
         p.write_bytes(b"x")
-        library, _, _ = _make_library_and_queue(FakeScanner())
+        library, _, _, _ = _make_library_and_queue(FakeScanner())
         library.set_favorite(p, True)
         assert str(p) in library.state.favorite_paths
         library.set_favorite(p, False)
@@ -139,10 +150,10 @@ class TestFavoritesService:
         p2 = tmp_path / "two.mp3"
         for p in (p1, p2):
             p.write_bytes(b"x")
-        first, _, _ = _make_library_and_queue(FakeScanner())
+        first, _, _, _ = _make_library_and_queue(FakeScanner())
         first.toggle_favorite(p2)
         first.toggle_favorite(p1)
-        second, _, _ = _make_library_and_queue(FakeScanner())
+        second, _, _, _ = _make_library_and_queue(FakeScanner())
         second.toggle_favorite(p1)
         second.toggle_favorite(p2)
         expected = tuple(sorted((str(p1), str(p2))))
@@ -153,62 +164,64 @@ class TestFavoritesService:
         port = FakePrefsPort(
             prefs=LibraryPrefs(favorite_paths=("/music/a.mp3", "/music/b.mp3"))
         )
-        library, _, _ = _make_library_and_queue(FakeScanner(), prefs_port=port)
+        library, _, _, _ = _make_library_and_queue(FakeScanner(), prefs_port=port)
         assert library.state.favorite_paths == ("/music/a.mp3", "/music/b.mp3")
 
     def test_toggle_persists_via_port(self, tmp_path):
         p = tmp_path / "one.mp3"
         p.write_bytes(b"x")
         port = FakePrefsPort()
-        library, _, _ = _make_library_and_queue(FakeScanner(), prefs_port=port)
+        library, _, _, _ = _make_library_and_queue(FakeScanner(), prefs_port=port)
         library.toggle_favorite(p)
         assert str(p) in port.saved[-1].favorite_paths
 
 
 class TestHistoryRecording:
     def test_queue_commit_records_history(self):
-        library, queue, audio = _make_library_and_queue(FakeScanner())
+        library, queue, session, audio = _make_library_and_queue(FakeScanner())
         path = Path("/music/one.mp3")
         queue.add(path)
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(path)
         assert library.state.history_paths[0] == str(path)
 
     def test_history_dedupes_consecutive(self):
-        library, queue, audio = _make_library_and_queue(FakeScanner())
+        library, queue, session, audio = _make_library_and_queue(FakeScanner())
         path = Path("/music/one.mp3")
         queue.add(path)
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(path)
-        queue.play_current()
+        session.previous()
         audio.trigger_media_accepted(path)
         assert library.state.history_paths == (str(path),)
 
     def test_history_capped_at_50(self):
-        library, queue, audio = _make_library_and_queue(FakeScanner())
+        library, queue, session, audio = _make_library_and_queue(FakeScanner())
         paths = [Path(f"/music/t{i:02d}.mp3") for i in range(55)]
         for p in paths:
             queue.add(p)
         for i, p in enumerate(paths):
-            queue.play_index(i)
+            session.play_queue_index(i)
             audio.trigger_media_accepted(p)
         assert len(library.state.history_paths) == HISTORY_CAP
         assert library.state.history_paths[0] == str(paths[-1])
         assert library.state.history_paths[-1] == str(paths[5])
 
     def test_history_not_recorded_when_no_commit(self):
-        library, queue, _ = _make_library_and_queue(FakeScanner())
+        library, queue, session, _ = _make_library_and_queue(FakeScanner())
         path = Path("/music/one.mp3")
         queue.add(path)
-        queue.play_index(0)  # pending, never accepted
+        session.play_queue_index(0)  # pending, never accepted
         assert library.state.history_paths == ()
 
     def test_history_persisted(self):
         port = FakePrefsPort()
-        library, queue, audio = _make_library_and_queue(FakeScanner(), prefs_port=port)
+        library, queue, session, audio = _make_library_and_queue(
+            FakeScanner(), prefs_port=port
+        )
         path = Path("/music/one.mp3")
         queue.add(path)
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(path)
         assert str(path) in port.saved[-1].history_paths
 
@@ -223,7 +236,7 @@ class TestRecentlyAdded:
         (p3,p2,p1) (new first, then preserved)."""
         p1, p2, p3 = _write_tracks(tmp_path, ("one.mp3", "two.mp3", "three.mp3"))
         scanner = FakeScanner([p1, p2])
-        library, _, _ = _make_library_and_queue(scanner)
+        library, _, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         assert library.state.recently_added_paths == (str(p2), str(p1))
         scanner.paths = [p1, p2, p3]
@@ -238,7 +251,7 @@ class TestRecentlyAdded:
         still in the library, so an unchanged rescan MUST preserve (p2, p1)."""
         p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
         scanner = FakeScanner([p1, p2])
-        library, _, _ = _make_library_and_queue(scanner)
+        library, _, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         assert library.state.recently_added_paths == (str(p2), str(p1))
         scanner.paths = [p1, p2]
@@ -251,7 +264,7 @@ class TestRecentlyAdded:
         (LOCAL-STABILIZATION-01.6.5 — a rescan must not erase it)."""
         paths = _write_tracks(tmp_path, [f"t{i:02d}.mp3" for i in range(60)])
         scanner = FakeScanner(paths)
-        library, _, _ = _make_library_and_queue(scanner)
+        library, _, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         assert len(library.state.recently_added_paths) == RECENT_CAP
         # Most recent scan order first: the 50 newest scan entries reversed.
@@ -267,7 +280,7 @@ class TestRecentlyAdded:
     def test_failed_scan_preserves_recently_added(self, tmp_path):
         p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
         scanner = FailingScanner([p1, p2])
-        library, _, _ = _make_library_and_queue(scanner)
+        library, _, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         before = library.state.recently_added_paths
         scanner.scan_error = LibraryFilesystemError(
@@ -281,7 +294,9 @@ class TestRecentlyAdded:
         preserved entries) after a successful scan."""
         p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
         port = FakePrefsPort()
-        library, _, _ = _make_library_and_queue(FakeScanner([p1, p2]), prefs_port=port)
+        library, _, _, _ = _make_library_and_queue(
+            FakeScanner([p1, p2]), prefs_port=port
+        )
         library.scan(str(tmp_path))
         assert port.saved[-1].recently_added_paths == (str(p2), str(p1))
 
@@ -292,7 +307,7 @@ class TestRecentlyAdded:
         with only [p1] -> (p1,) — p2 fell out, p1 preserved."""
         p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
         scanner = FakeScanner([p1, p2])
-        library, _, _ = _make_library_and_queue(scanner)
+        library, _, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         assert library.state.recently_added_paths == (str(p2), str(p1))
         p2.unlink()
@@ -306,7 +321,7 @@ class TestRecentlyAdded:
         p1 = tmp_path / "one.mp3"
         p1.write_bytes(b"x")
         scanner = FakeScanner([p1])
-        library, _, _ = _make_library_and_queue(scanner)
+        library, _, _, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         assert library.state.recently_added_paths == (str(p1),)
         scanner.paths = [p1, p1]
@@ -323,7 +338,7 @@ class TestRecentlyAdded:
             prefs=LibraryPrefs(recently_added_paths=(str(p2), str(p1)))
         )
         scanner = FakeScanner([p1, p2])
-        library, _, _ = _make_library_and_queue(scanner, prefs_port=port)
+        library, _, _, _ = _make_library_and_queue(scanner, prefs_port=port)
         library.scan(str(tmp_path))
         library.scan(str(tmp_path))  # unchanged rescan
         assert library.state.recently_added_paths == (str(p2), str(p1))
@@ -410,7 +425,7 @@ class TestBridgeFavoritesHistory:
     def test_bridge_rows_and_toggle(self, tmp_path):
         p1, p2, p3 = _write_tracks(tmp_path, ("one.mp3", "two.mp3", "three.mp3"))
         scanner = FakeScanner([p1, p2])
-        library, queue, audio = _make_library_and_queue(
+        library, queue, session, audio = _make_library_and_queue(
             scanner, extractor=FakeExtractor()
         )
         library.scan(str(tmp_path))
@@ -421,7 +436,7 @@ class TestBridgeFavoritesHistory:
             {"displayName": "T one", "path": str(p1)}
         ]
         queue.add(p1)
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(p1)
         assert bridge.property("historyRows") == [
             {"displayName": "T one", "path": str(p1)}
@@ -441,7 +456,7 @@ class TestBridgeFavoritesHistory:
 
     def test_song_paths_parallel_to_files(self, tmp_path):
         p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
-        library, _, _ = _make_library_and_queue(FakeScanner([p1, p2]))
+        library, _, _, _ = _make_library_and_queue(FakeScanner([p1, p2]))
         library.scan(str(tmp_path))
         bridge = LibraryBridge(library)
         files = bridge.property("files")
@@ -453,7 +468,7 @@ class TestBridgeFavoritesHistory:
     def test_missing_paths_skipped_in_rows(self, tmp_path):
         p1 = tmp_path / "one.mp3"
         p1.write_bytes(b"x")
-        library, _, _ = _make_library_and_queue(FakeScanner([p1]))
+        library, _, _, _ = _make_library_and_queue(FakeScanner([p1]))
         library.scan(str(tmp_path))
         bridge = LibraryBridge(library)
         ghost = tmp_path / "ghost.mp3"
@@ -493,20 +508,22 @@ class TestReferencePersistenceAudit:
         p1 = tmp_path / "one.mp3"
         p1.write_bytes(b"x")
         scanner = _ValidatingScanner([p1])
-        library, queue, _ = _make_library_and_queue(scanner)
+        library, queue, session, _ = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         library.toggle_favorite(p1)
         assert str(p1) in library.state.favorite_paths
         scanner.validate_errors = {
             p1: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, p1)
         }
-        library.activate(0)
+        # TD-013 validation stays LibraryService-owned (M4-R1 §33)
+        track = library.state.tracks[0]
+        assert library.validate_track_for_playback(track) is False
         assert library.state.tracks == []  # membership removed
         assert str(p1) in library.state.favorite_paths  # reference preserved
         assert library.state.diagnostic is not None
         assert library.state.diagnostic.code is LibraryDiagnosticCode.TRACK_MISSING
         assert queue.state.tracks == []
-        assert queue.state.current_index == -1  # queue untouched
+        assert session.state.current_index == -1  # queue untouched
 
     def test_favorites_and_history_survive_identical_rescan(self, tmp_path):
         """An identical rescan must not erase favorites or play history;
@@ -514,11 +531,11 @@ class TestReferencePersistenceAudit:
         and is pinned here too."""
         p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
         scanner = FakeScanner([p1, p2])
-        library, queue, audio = _make_library_and_queue(scanner)
+        library, queue, session, audio = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         library.toggle_favorite(p1)
         queue.add(p1)
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(p1)
         favorites_before = library.state.favorite_paths
         history_before = library.state.history_paths
@@ -537,11 +554,11 @@ class TestReferencePersistenceAudit:
         are pinned here."""
         p1, p2 = _write_tracks(tmp_path, ("one.mp3", "two.mp3"))
         scanner = FailingScanner([p1, p2])
-        library, queue, audio = _make_library_and_queue(scanner)
+        library, queue, session, audio = _make_library_and_queue(scanner)
         library.scan(str(tmp_path))
         library.toggle_favorite(p1)
         queue.add(p1)
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(p1)
         favorites_before = library.state.favorite_paths
         history_before = library.state.history_paths
@@ -560,7 +577,7 @@ class TestReferencePersistenceAudit:
         (membership-derived view)."""
         p1 = tmp_path / "one.mp3"
         p1.write_bytes(b"x")
-        library, _, _ = _make_library_and_queue(FakeScanner())  # never scanned
+        library, _, _, _ = _make_library_and_queue(FakeScanner())  # never scanned
         library.toggle_favorite(p1)
         bridge = LibraryBridge(library)
         assert str(p1) in bridge.property("favoritePaths")
@@ -632,7 +649,7 @@ class TestQmlSmoke:
     def test_library_view_loads_with_new_tabs(self, qapp, tmp_path):
         p1 = tmp_path / "one.mp3"
         p1.write_bytes(b"x")
-        library, _, _ = _make_library_and_queue(
+        library, _, _, _ = _make_library_and_queue(
             FakeScanner([p1]), extractor=FakeExtractor()
         )
         library.scan(str(tmp_path))

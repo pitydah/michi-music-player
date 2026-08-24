@@ -24,8 +24,8 @@ def _make(queue_audio=None):
     from michi.application.playback_service import PlaybackService
 
     audio = queue_audio or FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    return PlaylistService(queue, FakePlaylistsPort()), queue
+    _queue = QueueService(PlaybackService(audio))
+    return PlaylistService(playlists_port=FakePlaylistsPort()), _queue
 
 
 def _seeded(n=3, prefix="P"):
@@ -85,29 +85,23 @@ class TestPinned:
 
     def test_restart_restores_pinned_order(self):
         port = FakePlaylistsPort()
-        from michi.application.playback_service import PlaybackService
 
-        audio = FakeAudioPort()
-        queue = QueueService(PlaybackService(audio))
-        service = PlaylistService(queue, port)
+        service = PlaylistService(playlists_port=port)
         a = service.create_playlist("A")
         b = service.create_playlist("B")
         service.pin_playlist(a.playlist_id)
         service.pin_playlist(b.playlist_id)
-        service2 = PlaylistService(QueueService(PlaybackService(audio)), port)
+        service2 = PlaylistService(playlists_port=port)
         assert service2.navigation.pinned_ids == (a.playlist_id, b.playlist_id)
 
     def test_pinned_persisted_through_real_repo(self, tmp_path):
         from michi.infrastructure.playlists import SqlitePlaylistsRepository
 
         repo = SqlitePlaylistsRepository(tmp_path / "m.db")
-        from michi.application.playback_service import PlaybackService
-
-        audio = FakeAudioPort()
-        service = PlaylistService(QueueService(PlaybackService(audio)), repo)
+        service = PlaylistService(playlists_port=repo)
         a = service.create_playlist("A")
         service.pin_playlist(a.playlist_id)
-        service2 = PlaylistService(QueueService(PlaybackService(audio)), repo)
+        service2 = PlaylistService(playlists_port=repo)
         assert service2.navigation.pinned_ids == (a.playlist_id,)
 
 
@@ -160,15 +154,12 @@ class TestRecent:
 
     def test_restart_preserves_recent_order(self):
         port = FakePlaylistsPort()
-        from michi.application.playback_service import PlaybackService
-
-        audio = FakeAudioPort()
-        service = PlaylistService(QueueService(PlaybackService(audio)), port)
+        service = PlaylistService(playlists_port=port)
         a = service.create_playlist("A")
         b = service.create_playlist("B")
         service.mark_recent(b.playlist_id)
         service.mark_recent(a.playlist_id)
-        service2 = PlaylistService(QueueService(PlaybackService(audio)), port)
+        service2 = PlaylistService(playlists_port=port)
         assert service2.navigation.recent_ids == (a.playlist_id, b.playlist_id)
 
 

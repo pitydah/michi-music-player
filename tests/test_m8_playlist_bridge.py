@@ -53,7 +53,7 @@ def _make_bridge(service, library=None):
 class TestPlaylistRows:
     def test_rows_expose_identity_and_navigation_metadata(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
         service.create_playlist("Chill")
         service.pin_playlist(a.playlist_id)
@@ -70,7 +70,7 @@ class TestPlaylistRows:
 
     def test_rows_names_are_display_only(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("Jazz")
         service.rename_playlist(a.playlist_id, "Jazz Nocturno")
         bridge, _, _ = _make_bridge(service, library=library)
@@ -83,7 +83,7 @@ class TestPlaylistRows:
 class TestSelectionByIdentity:
     def test_select_by_id_and_derived_name(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
         bridge, _, _ = _make_bridge(service, library=library)
         bridge.open_playlist(a.playlist_id)
@@ -93,7 +93,7 @@ class TestSelectionByIdentity:
 
     def test_rename_updates_name_while_id_stays(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
         bridge, _, _ = _make_bridge(service, library=library)
         bridge.open_playlist(a.playlist_id)
@@ -106,7 +106,7 @@ class TestSelectionByIdentity:
         """M9-R1I: names never resolve — opening by name falls back safely
         to All Playlists (name-based presentation identity is gone)."""
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         service.create_playlist("Legacy")
         bridge, _, nav = _make_bridge(service, library=library)
         bridge.open_playlist("Legacy")
@@ -116,7 +116,7 @@ class TestSelectionByIdentity:
 
     def test_unknown_selection_noop(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        bridge, _, _ = _make_bridge(PlaylistService(queue, FakePlaylistsPort()))
+        bridge, _, _ = _make_bridge(PlaylistService(playlists_port=FakePlaylistsPort()))
         bridge.open_playlist("ghost-id")
         assert bridge.property("selectedPlaylistId") == ""
         assert bridge.property("selectedPlaylistName") == ""
@@ -126,7 +126,7 @@ class TestSelectionByIdentity:
 class TestTracksProjection:
     def test_playlist_tracks_still_correct(self, tmp_path):
         library, queue, _, (p1, p2) = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
         service.add_track(a.playlist_id, p1)
         service.add_track(a.playlist_id, p2)
@@ -142,7 +142,7 @@ class TestTracksProjection:
 
     def test_tracks_after_rename(self, tmp_path):
         library, queue, _, (p1,) = _tracks(tmp_path, names=("one.mp3",))
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("A")
         service.add_track(a.playlist_id, p1)
         service.rename_playlist(a.playlist_id, "B")

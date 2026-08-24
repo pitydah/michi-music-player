@@ -42,7 +42,7 @@ def _world(tmp_path):
         FakeScanner(paths), extractor=FakeExtractor()
     )
     library.scan(str(tmp_path))
-    service = PlaylistService(queue, FakePlaylistsPort())
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     coord = PlaylistNavigationCoordinator(service, nav)
     lb = LibraryBridge(library)

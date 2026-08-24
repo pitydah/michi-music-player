@@ -1,4 +1,9 @@
-"""Tests for convergence patch 3."""
+"""Tests for convergence patch 3 (M4-R1 adapted).
+
+EndOfMedia/repeat navigation authority moved from QueueService to
+PlaybackSessionService; PlaybackCoordinator is position/duration
+projection only; LibraryService no longer owns Queue.
+"""
 
 from pathlib import Path
 
@@ -7,10 +12,20 @@ import pytest
 from michi.application.coordinator import PlaybackCoordinator
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.domain.playback import PlaybackStatus
-from michi.domain.queue import RepeatMode
+from michi.domain.playback_session import RepeatMode
 from michi.presentation.playback_bridge import PlaybackBridge
+
+
+def _graph(fake_audio, seed: int = 42):
+    import random
+
+    svc = PlaybackService(fake_audio)
+    q = QueueService()
+    session = PlaybackSessionService(svc, q, rng=random.Random(seed))
+    return svc, q, session
 
 
 class TestSeekBridge:
@@ -30,29 +45,25 @@ class TestSeekBridge:
 
 
 class TestEndOfMedia:
+    """EOM navigation is owned by PlaybackSessionService (M4-R1)."""
+
     def test_with_next(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
+        svc, q, session = _graph(fake_audio)
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
-        q.play_index(0)
+        session.play_queue_index(0)
         fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
-        coord = PlaybackCoordinator(fake_audio, q, svc)
-        coord.start()
         fake_audio.trigger_end_of_media()
-        assert q.state.current_index == 0  # B pending, not committed
+        assert session.state.current_index == 0  # B pending, not committed
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
-        assert q.state.current_index == 1
+        assert session.state.current_index == 1
 
     def test_auto_advance_failure_preserves_index(self, fake_audio, monkeypatch):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
+        svc, q, session = _graph(fake_audio)
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
-        q.play_index(0)
+        session.play_queue_index(0)
         fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
-        coord = PlaybackCoordinator(fake_audio, q, svc)
-        coord.start()
 
         def failing_load(p):
             raise RuntimeError("load failed")
@@ -62,67 +73,51 @@ class TestEndOfMedia:
         with pytest.raises(RuntimeError):
             fake_audio.trigger_end_of_media()
 
-        assert q.state.current_index == 0
+        assert session.state.current_index == 0
 
     def test_auto_advance_rejection_preserves_queue(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
+        svc, q, session = _graph(fake_audio)
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
-        q.play_index(0)
+        session.play_queue_index(0)
         fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
-        coord = PlaybackCoordinator(fake_audio, q, svc)
-        coord.start()
         fake_audio.trigger_end_of_media()
         fake_audio.trigger_media_rejected(Path("/tmp/b.mp3"), "cannot decode")
-        assert q.state.current_index == 0
+        assert session.state.current_index == 0
         assert svc.state.file_path == Path("/tmp/a.mp3")
         assert svc.state.status == PlaybackStatus.STOPPED
         assert svc.state.error_message == "cannot decode"
 
     def test_auto_advance_acceptance_advances_exactly_once(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
+        svc, q, session = _graph(fake_audio)
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
         q.add(Path("/tmp/c.mp3"))
-        q.play_index(0)
+        session.play_queue_index(0)
         fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
-        coord = PlaybackCoordinator(fake_audio, q, svc)
-        coord.start()
         fake_audio.trigger_end_of_media()
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
-        assert q.state.current_index == 1
+        assert session.state.current_index == 1
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))  # duplicate
-        assert q.state.current_index == 1  # no double advance
+        assert session.state.current_index == 1  # no double advance
 
     def test_at_end(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
+        svc, q, session = _graph(fake_audio)
         q.add(Path("/tmp/a.mp3"))
-        q.play_index(0)
+        session.play_queue_index(0)
         fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
-        coord = PlaybackCoordinator(fake_audio, q, svc)
-        coord.start()
         fake_audio.trigger_end_of_media()
         assert svc.state.status == PlaybackStatus.STOPPED
         assert svc.state.position_ms == 0
 
 
 class TestRepeatWithCoordinator:
-    """M4 integration: with PlaybackCoordinator started, end-of-media drives
-    exactly ONE repeat-aware auto-advance via QueueService — the coordinator
-    must not double-load, replay-stop, or cancel wraps."""
-
-    def _build(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
-        coord = PlaybackCoordinator(fake_audio, q, svc)
-        coord.start()
-        return svc, q
+    """M4 integration: EOM drives exactly ONE repeat-aware auto-advance via
+    PlaybackSessionService — the coordinator must not double-load, replay-
+    stop, or cancel wraps."""
 
     def test_coordinator_repeat_none_single_advance(self, fake_audio, monkeypatch):
-        svc, q = self._build(fake_audio)
+        svc, q, session = _graph(fake_audio)
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
         q.add(Path("/tmp/c.mp3"))
@@ -134,20 +129,20 @@ class TestRepeatWithCoordinator:
             real_load(p)
 
         monkeypatch.setattr(fake_audio, "load", spy_load)
-        q.play_index(0)
+        session.play_queue_index(0)
         fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
-        assert q.state.current_index == 0
+        assert session.state.current_index == 0
         loads.clear()
 
         fake_audio.trigger_end_of_media()  # NONE → exactly one advance to B
-        assert loads == [Path("/tmp/b.mp3")]  # coordinator must not double-load
+        assert loads == [Path("/tmp/b.mp3")]  # no double-load
         assert fake_audio.loaded == Path("/tmp/b.mp3")
-        assert q.state.current_index == 0  # pending, not committed
+        assert session.state.current_index == 0  # pending, not committed
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
-        assert q.state.current_index == 1
+        assert session.state.current_index == 1
 
     def test_coordinator_repeat_one_replays_once(self, fake_audio, monkeypatch):
-        svc, q = self._build(fake_audio)
+        svc, q, session = _graph(fake_audio)
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
         q.add(Path("/tmp/c.mp3"))
@@ -159,20 +154,20 @@ class TestRepeatWithCoordinator:
             real_load(p)
 
         monkeypatch.setattr(fake_audio, "load", spy_load)
-        q.set_repeat_mode(RepeatMode.ONE)
-        q.play_index(1)
+        session.set_repeat_mode(RepeatMode.ONE)
+        session.play_queue_index(1)
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
-        assert q.state.current_index == 1
+        assert session.state.current_index == 1
         loads.clear()
 
         fake_audio.trigger_end_of_media()  # ONE → replay B exactly once
         assert loads == [Path("/tmp/b.mp3")]
         assert fake_audio.loaded == Path("/tmp/b.mp3")
         fake_audio.trigger_media_accepted(Path("/tmp/b.mp3"))
-        assert q.state.current_index == 1
+        assert session.state.current_index == 1
 
     def test_coordinator_repeat_all_wraps_at_last(self, fake_audio, monkeypatch):
-        svc, q = self._build(fake_audio)
+        svc, q, session = _graph(fake_audio)
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
         q.add(Path("/tmp/c.mp3"))
@@ -184,21 +179,23 @@ class TestRepeatWithCoordinator:
             real_load(p)
 
         monkeypatch.setattr(fake_audio, "load", spy_load)
-        q.set_repeat_mode(RepeatMode.ALL)
-        q.play_index(2)
+        session.set_repeat_mode(RepeatMode.ALL)
+        session.play_queue_index(2)
         fake_audio.trigger_media_accepted(Path("/tmp/c.mp3"))
-        assert q.state.current_index == 2
+        assert session.state.current_index == 2
         loads.clear()
 
         fake_audio.trigger_end_of_media()  # ALL at last → wrap to index 0
         assert loads == [Path("/tmp/a.mp3")]  # wrap, not stop() cancelling it
         assert fake_audio.loaded == Path("/tmp/a.mp3")
-        assert fake_audio.state == "playing"  # coordinator must not stop()
+        assert fake_audio.state == "playing"  # must not stop()
         fake_audio.trigger_media_accepted(Path("/tmp/a.mp3"))
-        assert q.state.current_index == 0
+        assert session.state.current_index == 0
 
     def test_coordinator_keeps_position_and_duration(self, fake_audio):
-        svc, q = self._build(fake_audio)
+        svc, q, session = _graph(fake_audio)
+        coord = PlaybackCoordinator(fake_audio, svc)
+        coord.start()
         fake_audio.trigger_position(5000)
         fake_audio.trigger_duration(200000)
         assert svc.state.position_ms == 5000
@@ -300,16 +297,14 @@ class TestSubscriptions:
 class TestCoordinatorIdempotent:
     def test_double_start_safe(self, fake_audio):
         svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
-        c = PlaybackCoordinator(fake_audio, q, svc)
+        c = PlaybackCoordinator(fake_audio, svc)
         c.start()
         c.start()  # idempotent
         assert c._started
 
     def test_double_stop_safe(self, fake_audio):
         svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
-        c = PlaybackCoordinator(fake_audio, q, svc)
+        c = PlaybackCoordinator(fake_audio, svc)
         c.start()
         c.stop()
         c.stop()  # idempotent
@@ -326,11 +321,10 @@ class TestServiceNotifications:
         queue_service.add(Path("/tmp/a.mp3"))
         assert len(calls) == 1
 
-    def test_queue_notify_from_library_activate(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
+    def test_queue_notify_not_from_library_playback(self, fake_audio):
+        """M4-R1: library playback intents must NOT mutate the Queue."""
+        svc, q, session = _graph(fake_audio)
 
-        # Need a scanner fake
         class FakeScanner:
             def scan(self, root):
                 return [root / "a.mp3"]
@@ -338,7 +332,7 @@ class TestServiceNotifications:
             def validate_file(self, path):
                 return None
 
-        lib = LibraryService(FakeScanner(), q)
+        lib = LibraryService(FakeScanner())
         lib.scan("/tmp")
 
         calls = []
@@ -347,9 +341,9 @@ class TestServiceNotifications:
             calls.append(1)
 
         q.subscribe_changed(cb)
-        lib.activate(0)
-        assert len(calls) >= 1  # queue was mutated
-        assert q.state.count >= 1
+        lib.record_history(Path("/tmp/a.mp3"))
+        assert calls == []  # library does not touch Queue
+        assert q.state.count == 0
 
     def test_playback_notify_on_play(self, fake_audio):
         svc = PlaybackService(fake_audio)
@@ -375,9 +369,6 @@ class TestServiceNotifications:
         assert svc.state.error_message == "oops"
 
     def test_library_notify_on_scan(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
-
         class FakeScanner:
             def scan(self, root):
                 return [root / "a.mp3"]
@@ -385,7 +376,7 @@ class TestServiceNotifications:
             def validate_file(self, path):
                 return None
 
-        lib = LibraryService(FakeScanner(), q)
+        lib = LibraryService(FakeScanner())
         calls = []
 
         def cb():
@@ -398,9 +389,6 @@ class TestServiceNotifications:
 
 class TestLibraryService:
     def test_scan_and_search(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
-
         from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 
         (tmp := Path("/tmp/michi_test_lib"))
@@ -408,16 +396,13 @@ class TestLibraryService:
         (tmp / "Depeche Mode - a.mp3").write_text("")
         (tmp / "Toto - b.mp3").write_text("")
 
-        lib = LibraryService(FilesystemLibraryScanner(), q)
+        lib = LibraryService(FilesystemLibraryScanner())
         lib.scan(str(tmp))
         assert len(lib.state.visible_tracks) == 2
         lib.search("depeche")
         assert len(lib.state.visible_tracks) == 1
 
-    def test_activate_filtered(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
-
+    def test_activate_filtered_via_session_single(self, fake_audio):
         (tmp := Path("/tmp/michi_test_act"))
         tmp.mkdir(exist_ok=True)
         (tmp / "a.mp3").write_text("")
@@ -426,12 +411,21 @@ class TestLibraryService:
 
         from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 
-        lib = LibraryService(FilesystemLibraryScanner(), q)
+        lib = LibraryService(FilesystemLibraryScanner())
         lib.scan(str(tmp))
         lib.search("b")
         assert len(lib.state.visible_tracks) == 1
-        lib.activate(0)
-        assert q.state.tracks[0].file_path.name == "b.mp3"
+        # generic track click → SINGLE via the coordinator (no Queue)
+        from michi.application.library_playback_coordinator import (
+            LibraryPlaybackCoordinator,
+        )
+
+        svc, q, session = _graph(fake_audio)
+        coord = LibraryPlaybackCoordinator(lib, session)
+        coord.play_visible_track(0)
+        fake_audio.trigger_media_accepted(Path(tmp) / "b.mp3")
+        assert session.state.context_type.name == "SINGLE"
+        assert q.state.count == 0  # Queue untouched
 
 
 class TestPlaybackAuthority:
@@ -448,16 +442,14 @@ class TestPlaybackAuthority:
         assert svc.state.error_message == "e"
 
     def test_coordinator_does_not_mutate_queue_state(self, fake_audio):
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
+        svc, q, session = _graph(fake_audio)
         q.add(Path("/tmp/a.mp3"))
         q.add(Path("/tmp/b.mp3"))
-        c = PlaybackCoordinator(fake_audio, q, svc)
+        c = PlaybackCoordinator(fake_audio, svc)
         c.start()
         fake_audio.trigger_position(1000)
         fake_audio.trigger_duration(2000)
         assert q.state.count == 2
-        assert q.state.current_index == -1
         assert svc.state.position_ms == 1000
         assert svc.state.duration_ms == 2000
 
@@ -505,13 +497,7 @@ class TestBridgeDispose:
 
 class TestLibraryBridgeSearchQuery:
     def test_search_query_property(self, fake_audio):
-        from michi.application.library_service import LibraryService
-        from michi.application.playback_service import PlaybackService
-        from michi.application.queue_service import QueueService
         from michi.presentation.library_bridge import LibraryBridge
-
-        svc = PlaybackService(fake_audio)
-        q = QueueService(svc)
 
         class FakeScanner:
             def scan(self, root):
@@ -520,7 +506,7 @@ class TestLibraryBridgeSearchQuery:
             def validate_file(self, path):
                 return None
 
-        lib = LibraryService(FakeScanner(), q)
+        lib = LibraryService(FakeScanner())
         lib.scan("/tmp")
         bridge = LibraryBridge(lib)
         lib.search("depeche")

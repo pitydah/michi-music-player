@@ -45,6 +45,7 @@ except ImportError:  # pragma: no cover - fallback path
 from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.domain.library import (
     Artwork,
@@ -87,13 +88,30 @@ class _ValidateScanner(FakeScanner):
 def _make_library(scanner, extractor=None, artwork_provider=None, artwork_cache=None):
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue)
     return (
-        LibraryService(scanner, queue, extractor, artwork_provider, artwork_cache),
+        LibraryService(
+            scanner,
+            metadata_extractor=extractor,
+            artwork_provider=artwork_provider,
+            artwork_cache=artwork_cache,
+        ),
         queue,
+        session,
         playback,
         audio,
     )
+
+
+def _bridge_with_coordinator(library, session):
+    """M4-R1: LibraryBridge playback intents route through the coordinator."""
+    from michi.application.library_playback_coordinator import (
+        LibraryPlaybackCoordinator,
+    )
+
+    coord = LibraryPlaybackCoordinator(library, session)
+    return LibraryBridge(library, playback_coordinator=coord)
 
 
 def _album_genre_factory():
@@ -193,7 +211,7 @@ class TestGenreAndFolderModel:
         paths = [dir_a / "a1.mp3", dir_a / "a2.mp3", dir_b / "b1.mp3"]
         for p in paths:
             p.write_bytes(b"x")
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner(paths), FakeExtractor(factory=_dir_genre_factory())
         )
         library.scan(str(tmp_path))
@@ -217,7 +235,7 @@ class TestGenreAndFolderModel:
         path = dir_a / "a1.mp3"
         path.write_bytes(b"x")
         scanner = FailingScanner([path])
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             scanner, FakeExtractor(factory=_dir_genre_factory())
         )
         library.scan(str(tmp_path))
@@ -235,7 +253,7 @@ class TestGenreAndFolderModel:
         assert library.state.diagnostic.code is LibraryDiagnosticCode.DIRECTORY_MISSING
 
     def test_empty_scan_resets_genres_and_folders(self, tmp_path):
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner([]), FakeExtractor(factory=_dir_genre_factory())
         )
         library.scan(str(tmp_path))
@@ -250,14 +268,14 @@ class TestBridgeViews:
             p.write_bytes(b"x")
         provider = FakeArtworkProvider(artwork=Artwork(b"x", "image/png"))
         cache = FakeArtworkCache()
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner(paths),
             FakeExtractor(factory=_album_genre_factory()),
             artwork_provider=provider,
             artwork_cache=cache,
         )
         library.scan(str(tmp_path))
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         rows = bridge.property("albums")
         assert isinstance(rows, list)
         assert len(rows) == 2
@@ -299,11 +317,11 @@ class TestBridgeViews:
         paths = [dir_a / "a1.mp3", dir_a / "a2.mp3", dir_b / "b1.mp3"]
         for p in paths:
             p.write_bytes(b"x")
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner(paths), FakeExtractor(factory=_dir_genre_factory())
         )
         library.scan(str(tmp_path))
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         artists = bridge.property("artists")
         assert isinstance(artists, list) and artists
         assert all(
@@ -338,14 +356,14 @@ class TestBridgeViews:
             p.write_bytes(b"x")
         provider = FakeArtworkProvider(artwork=Artwork(b"x", "image/png"))
         cache = FakeArtworkCache()
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner([a1, a2]),
             FakeExtractor(factory=_album_genre_factory()),
             artwork_provider=provider,
             artwork_cache=cache,
         )
         library.scan(str(tmp_path))
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         album = library.state.albums[0]
         assert album.track_count == 2
         bridge.select_album(album.key)
@@ -387,11 +405,11 @@ class TestBridgeViews:
     def test_select_unknown_album_noop(self, tmp_path):
         path = tmp_path / "a1.mp3"
         path.write_bytes(b"x")
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner([path]), FakeExtractor(factory=_album_genre_factory())
         )
         library.scan(str(tmp_path))
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         assert bridge.property("selectedAlbumKey") == ""
         bridge.select_album("nope")
         assert bridge.property("selectedAlbumKey") == ""
@@ -400,11 +418,11 @@ class TestBridgeViews:
     def test_clear_album_selection(self, tmp_path):
         path = tmp_path / "a1.mp3"
         path.write_bytes(b"x")
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner([path]), FakeExtractor(factory=_album_genre_factory())
         )
         library.scan(str(tmp_path))
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         key = library.state.albums[0].key
         bridge.select_album(key)
         assert bridge.property("selectedAlbumKey") == key
@@ -419,21 +437,23 @@ class TestBridgeViews:
         a2 = tmp_path / "a2.mp3"
         for p in (a1, a2):
             p.write_bytes(b"x")
-        library, queue, _, audio = _make_library(
+        library, queue, session, _, audio = _make_library(
             FakeScanner([a1, a2]), FakeExtractor(factory=_album_genre_factory())
         )
         library.scan(str(tmp_path))
         album = library.state.albums[0]
         target_path = album.track_paths[0]
         ref = next(t for t in library.state.tracks if t.file_path == target_path)
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         bridge.select_album(album.key)
         bridge.activate_album_track(0)
-        assert queue.state.count == 1
-        assert queue.state.tracks[0].file_path == ref.file_path
-        assert queue.state.tracks[0].title == ref.title
+        # M4-R1: Album Detail track click → ALBUM context; Queue NEVER
+        # receives the track.
+        assert queue.state.count == 0
         audio.trigger_media_accepted(target_path)
-        assert queue.state.current_index == 0
+        assert session.state.context_type.name == "ALBUM"
+        assert session.state.current_index == 0
+        assert session.state.current_entry.file_path == ref.file_path
         assert audio.loaded == target_path
         bridge.dispose()
 
@@ -443,7 +463,7 @@ class TestBridgeViews:
         for p in (a1, a2):
             p.write_bytes(b"x")
         scanner = _ValidateScanner([a1, a2])
-        library, queue, *_ = _make_library(
+        library, queue, session, *_ = _make_library(
             scanner, FakeExtractor(factory=_album_genre_factory())
         )
         library.scan(str(tmp_path))
@@ -455,7 +475,7 @@ class TestBridgeViews:
                 LibraryDiagnosticCode.TRACK_MISSING, target_path
             )
         }
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         bridge.select_album(album.key)
         bridge.activate_album_track(0)
         assert queue.state.count == 0  # queue never mutated
@@ -472,7 +492,7 @@ class TestBridgeViews:
         for p in (a1, a2):
             p.write_bytes(b"x")
         scanner = _ValidateScanner([a1, a2])
-        library, queue, *_ = _make_library(
+        library, queue, session, *_ = _make_library(
             scanner, FakeExtractor(factory=_album_genre_factory())
         )
         library.scan(str(tmp_path))
@@ -484,7 +504,7 @@ class TestBridgeViews:
                 LibraryDiagnosticCode.IO_FAILURE, target_path, "i/o error"
             )
         }
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         bridge.select_album(album.key)
         bridge.activate_album_track(0)
         assert queue.state.count == 0  # queue never mutated
@@ -516,7 +536,7 @@ class TestDerivedRebuildOnMissingActivation:
             )
 
         scanner = _ValidateScanner([a, b])
-        library, *_ = _make_library(scanner, FakeExtractor(factory=factory))
+        library, *_, session = _make_library(scanner, FakeExtractor(factory=factory))
         library.scan(str(tmp_path))
         assert len(library.state.albums) == 1
         assert library.state.albums[0].track_count == 2
@@ -524,7 +544,9 @@ class TestDerivedRebuildOnMissingActivation:
         scanner.validate_errors = {
             a: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, a)
         }
-        library.activate(0)  # visible list = [a, b]; index 0 is a
+        # M4-R1: TD-013 validation is LibraryService-owned; the coordinator
+        # calls it BEFORE any playback request (visible list = [a, b]).
+        assert library.validate_track_for_playback(library.state.tracks[0]) is False
         assert [t.file_path for t in library.state.tracks] == [b]
         assert len(library.state.albums) == 1
         assert library.state.albums[0].title == "Alpha"
@@ -558,13 +580,15 @@ class TestDerivedRebuildOnMissingActivation:
             )
 
         scanner = _ValidateScanner([a, b])
-        library, *_ = _make_library(scanner, FakeExtractor(factory=factory))
+        library, *_, session = _make_library(scanner, FakeExtractor(factory=factory))
         library.scan(str(tmp_path))
         assert {al.title for al in library.state.albums} == {"Solo", "Duo"}
         scanner.validate_errors = {
             a: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, a)
         }
-        library.activate(0)  # visible list = [a, b]; index 0 is a
+        # M4-R1: TD-013 validation is LibraryService-owned; the coordinator
+        # calls it BEFORE any playback request (visible list = [a, b]).
+        assert library.validate_track_for_playback(library.state.tracks[0]) is False
         assert [t.file_path for t in library.state.tracks] == [b]
         assert [al.title for al in library.state.albums] == ["Duo"]
         assert library.state.albums[0].track_count == 1
@@ -590,11 +614,11 @@ class TestQmlSmoke:
     def test_library_view_loads_with_tabs(self, qapp, tmp_path):
         path = tmp_path / "song.mp3"
         path.write_bytes(b"x")
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner([path]), FakeExtractor(factory=_album_genre_factory())
         )
         library.scan(str(tmp_path))
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         engine = QQmlEngine()
         engine.addImportPath(str(QML_DIR))
         engine.rootContext().setContextProperty("library", bridge)
@@ -609,11 +633,11 @@ class TestQmlSmoke:
     def test_albums_tab_uses_pathview_carousel(self, qapp, tmp_path):
         path = tmp_path / "song.mp3"
         path.write_bytes(b"x")
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner([path]), FakeExtractor(factory=_album_genre_factory())
         )
         library.scan(str(tmp_path))
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         engine = QQmlEngine()
         engine.addImportPath(str(QML_DIR))
         engine.rootContext().setContextProperty("library", bridge)
@@ -648,14 +672,14 @@ class TestQmlSmoke:
         path.write_bytes(b"x")
         provider = FakeArtworkProvider(artwork=Artwork(b"x", "image/png"))
         cache = FakeArtworkCache()
-        library, *_ = _make_library(
+        library, *_, session = _make_library(
             FakeScanner([path]),
             FakeExtractor(factory=_album_genre_factory()),
             artwork_provider=provider,
             artwork_cache=cache,
         )
         library.scan(str(tmp_path))
-        bridge = LibraryBridge(library)
+        bridge = _bridge_with_coordinator(library, session)
         engine = QQmlEngine()
         engine.addImportPath(str(QML_DIR))
         engine.rootContext().setContextProperty("library", bridge)

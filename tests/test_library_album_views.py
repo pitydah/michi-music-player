@@ -36,6 +36,7 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.domain.library import (
     AlbumRef,
@@ -55,9 +56,15 @@ QML_DIR = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation"
 def _make_library(scanner, extractor=None, artwork_provider=None, artwork_cache=None):
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
+    _session = PlaybackSessionService(playback, queue)
     return (
-        LibraryService(scanner, queue, extractor, artwork_provider, artwork_cache),
+        LibraryService(
+            scanner,
+            metadata_extractor=extractor,
+            artwork_provider=artwork_provider,
+            artwork_cache=artwork_cache,
+        ),
         queue,
         playback,
         audio,

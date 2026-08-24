@@ -43,6 +43,7 @@ from pathlib import Path
 from michi.application.coordinator import PlaybackCoordinator
 from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.domain.playback import PlaybackStatus
@@ -70,9 +71,11 @@ def _build(db_path: Path, settings_repo=None, shuffle_seed: int | None = None):
     )
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback, shuffle_seed=shuffle_seed)
-    coordinator = PersistenceCoordinator(repo, queue, playback, settings)
-    return repo, settings, audio, playback, queue, coordinator
+    queue = QueueService()
+
+    session = PlaybackSessionService(playback, queue, shuffle_seed=shuffle_seed)
+    coordinator = PersistenceCoordinator(repo, queue, session, playback, settings)
+    return repo, settings, audio, playback, queue, session, coordinator
 
 
 def _session_row(db_path: Path) -> str | None:
@@ -126,18 +129,18 @@ def _build_golden_state(
     position 0, a clamped 999999). The shuffle seed always travels with the
     snapshot so a later shuffle enable reconstructs the same navigator.
     """
-    repo, _settings, audio, playback, queue, coordinator = _build(
+    repo, _settings, audio, playback, queue, session, coordinator = _build(
         db_path, shuffle_seed=shuffle_seed
     )
     coordinator.start()
     queue.add(_A, "A")
     queue.add(_B, "B")
     queue.add(_C, "C")
-    queue.play_index(1)  # B pending
+    session.play_queue_index(1)  # B pending
     audio.trigger_media_accepted(_B)  # B committed, current 1
     playback.update_position(position_ms)
-    queue.set_repeat_mode(repeat_mode)
-    queue.set_shuffle_enabled(shuffle_enabled)
+    session.set_repeat_mode(repeat_mode)
+    session.set_shuffle_enabled(shuffle_enabled)
     coordinator.checkpoint()
     del coordinator, queue, playback, audio, repo
 
@@ -148,7 +151,7 @@ class TestRestoringGuard:
         _build_golden_state(db)
 
         # ── Session 2: fresh graph — restore must not degrade the snapshot ──
-        repo2, _s2, audio2, _playback2, _queue2, coordinator2 = _build(db)
+        repo2, _s2, audio2, _playback2, _queue2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
 
@@ -157,7 +160,7 @@ class TestRestoringGuard:
         snap = repo2.load()
         assert snap.playback_path == "/m/b.flac"
         assert snap.position_ms == 222000
-        assert snap.queue_current_index == 1
+        assert snap.context.current_index == 1
         assert snap.repeat_mode is RepeatMode.ALL
         assert snap.shuffle_enabled is True
         assert snap.shuffle_seed == 424242
@@ -169,13 +172,13 @@ class TestRestoringGuard:
         _build_golden_state(db)
 
         # ── Session 2: restore but do NOT accept; destroy abruptly ──
-        _r2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        _r2, _s2, audio2, playback2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         del coordinator2, playback2, audio2  # abrupt during the prepare window
 
         # ── Session 3: the durable resume is still B@222000, never B@0 ──
-        _r3, _s3, audio3, playback3, _q3, coordinator3 = _build(db)
+        _r3, _s3, audio3, playback3, _q3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -195,7 +198,7 @@ class TestRestoringGuard:
 
         # ── Session 2: restore; the prepare acceptance fires playback events
         # during the protected period ──
-        repo2, _s2, audio2, _playback2, _q2, coordinator2 = _build(db)
+        repo2, _s2, audio2, _playback2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         audio2.trigger_media_accepted(_B)
@@ -211,7 +214,7 @@ class TestRuntimeVolumeMuteSync:
     def test_volume_survives_abrupt_kill_without_manual_settings_save(self, tmp_path):
         db = tmp_path / "t4.db"
         settings_repo = FakeSettingsRepo()  # the persisted settings store
-        _r1, settings1, audio1, playback1, _q1, coordinator1 = _build(
+        _r1, settings1, audio1, playback1, _q1, session1, coordinator1 = _build(
             db, settings_repo=settings_repo
         )
         coordinator1.start()
@@ -222,13 +225,15 @@ class TestRuntimeVolumeMuteSync:
 
         # Fresh graph on the same store: the PERSISTED truth is volume 37
         # (the bootstrap applies it to the backend on startup — its concern).
-        _r2, settings2, _a2, _p2, _q2, _c2 = _build(db, settings_repo=settings_repo)
+        _r2, settings2, _a2, _p2, _q2, session2, _c2 = _build(
+            db, settings_repo=settings_repo
+        )
         assert settings2.state.volume == 37
 
     def test_mute_survives_abrupt_kill_without_manual_settings_save(self, tmp_path):
         db = tmp_path / "t5.db"
         settings_repo = FakeSettingsRepo()
-        _r1, settings1, audio1, playback1, _q1, coordinator1 = _build(
+        _r1, settings1, audio1, playback1, _q1, session1, coordinator1 = _build(
             db, settings_repo=settings_repo
         )
         coordinator1.start()
@@ -236,12 +241,14 @@ class TestRuntimeVolumeMuteSync:
         assert settings1.state.muted is True
         del coordinator1, playback1, audio1  # abrupt kill
 
-        _r2, settings2, _a2, _p2, _q2, _c2 = _build(db, settings_repo=settings_repo)
+        _r2, settings2, _a2, _p2, _q2, session2, _c2 = _build(
+            db, settings_repo=settings_repo
+        )
         assert settings2.state.muted is True
 
     def test_volume_change_does_not_checkpoint_session_unnecessarily(self, tmp_path):
         db = tmp_path / "t6.db"
-        repo, settings, audio, playback, queue, coordinator = _build(db)
+        repo, settings, audio, playback, queue, session, coordinator = _build(db)
         coordinator.start()
         before = _session_row(db)  # nothing checkpointed yet
         playback.set_volume(42)
@@ -255,11 +262,11 @@ class TestRuntimeVolumeMuteSync:
 class TestLifecycleFreeze:
     def test_shutdown_freezes_persistence_before_backend_events(self, tmp_path):
         db = tmp_path / "t7.db"
-        repo, _settings, audio, playback, queue, coordinator = _build(db)
+        repo, _settings, audio, playback, queue, session, coordinator = _build(db)
         coordinator.start()
         queue.add(_A, "A")
         queue.add(_B, "B")
-        queue.play_index(1)
+        session.play_queue_index(1)
         audio.trigger_media_accepted(_B)
         playback.update_position(222000)
         coordinator.checkpoint()
@@ -275,7 +282,7 @@ class TestLifecycleFreeze:
 
     def test_coordinator_unsubscribes_on_shutdown(self, tmp_path):
         db = tmp_path / "t8.db"
-        _repo, _settings, audio, playback, queue, coordinator = _build(db)
+        _repo, _settings, audio, playback, queue, session, coordinator = _build(db)
         coordinator.start()
         queue.add(_A, "A")
         baseline = _session_row(db)  # row exists (queue-driven checkpoint)
@@ -296,13 +303,14 @@ class TestDurableMarkerSemantics:
         settings = SettingsService(FakeSettingsRepo())
         audio = FakeAudioPort()
         playback = PlaybackService(audio)
-        queue = QueueService(playback)
-        coordinator = PersistenceCoordinator(stub, queue, playback, settings)
+        queue = QueueService()
+        session = PlaybackSessionService(playback, queue)
+        coordinator = PersistenceCoordinator(stub, queue, session, playback, settings)
         coordinator.start()
 
         queue.add(_A, "A")
         queue.add(_B, "B")
-        queue.play_index(1)
+        session.play_queue_index(1)
         audio.trigger_media_accepted(_B)
         playback.update_position(20000)  # durable marker: 20000
         stub.save_calls = 0  # drain notification-driven saves from the setup
@@ -326,13 +334,14 @@ class TestDurableMarkerSemantics:
         settings = SettingsService(FakeSettingsRepo())
         audio = FakeAudioPort()
         playback = PlaybackService(audio)
-        queue = QueueService(playback)
-        coordinator = PersistenceCoordinator(stub, queue, playback, settings)
+        queue = QueueService()
+        session = PlaybackSessionService(playback, queue)
+        coordinator = PersistenceCoordinator(stub, queue, session, playback, settings)
         coordinator.start()
 
         queue.add(_A, "A")
         queue.add(_B, "B")
-        queue.play_index(1)
+        session.play_queue_index(1)
         audio.trigger_media_accepted(_B)
         playback.update_position(20000)
         stub.save_calls = 0
@@ -358,7 +367,7 @@ class TestRestoreNotificationContract:
         db = tmp_path / "t11.db"
         _build_golden_state(db)
 
-        repo2, _s2, _audio2, _p2, queue2, coordinator2 = _build(db)
+        repo2, _s2, _audio2, _p2, queue2, session2, coordinator2 = _build(db)
         notifications = []
         queue2.subscribe_changed(lambda: notifications.append(1))  # other observer
         coordinator2.start()
@@ -398,7 +407,7 @@ class TestPendingResumeShutdown:
 
         # ── Session 2: restore; NO media acceptance — the prepare is still
         # pending — then a graceful shutdown ──
-        _r2, _s2, audio2, _p2, _q2, coordinator2 = _build(db)
+        _r2, _s2, audio2, _p2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         coordinator2.shutdown()  # must SKIP the degraded final checkpoint
@@ -406,7 +415,7 @@ class TestPendingResumeShutdown:
 
         # ── Session 3: the durable B@222000 survived the shutdown during the
         # pending window — the resume is requested again (never B@0/null) ──
-        _r3, _s3, audio3, playback3, _q3, coordinator3 = _build(db)
+        _r3, _s3, audio3, playback3, _q3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -427,7 +436,7 @@ class TestPendingResumeShutdown:
         _build_golden_state(db)
 
         # ── Session 2: restore; the resume is still pending (WAITING_MEDIA) ──
-        repo2, _s2, _a2, playback2, queue2, coordinator2 = _build(db)
+        repo2, _s2, _a2, playback2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         before = _session_row(db)
@@ -474,7 +483,7 @@ class TestPendingResumeShutdown:
 
         # ── Session 2: restore (pending) + shutdown — the final checkpoint
         # must be skipped so the durable B@222000 survives ──
-        _r2, _s2, _a2, _p2, _q2, coordinator2 = _build(db)
+        _r2, _s2, _a2, _p2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         coordinator2.shutdown()
@@ -483,7 +492,7 @@ class TestPendingResumeShutdown:
         # ── Session 3: resume resolves normally — prepare, accept (STOPPED +
         # seek to the persisted position), then a legit checkpoint persists
         # the NEW runtime truth ──
-        repo3, _s3, audio3, playback3, _q3, coordinator3 = _build(db)
+        repo3, _s3, audio3, playback3, _q3, session3, coordinator3 = _build(db)
         coordinator3.start()
         coordinator3.restore()
         audio3.trigger_media_accepted(_B)
@@ -535,7 +544,7 @@ class TestLastGate2:
         # committed, position NOT confirmed); then a graceful shutdown. The
         # position confirmation never arrived, so the restored truth is the
         # durable authority: B@222000, NEVER the runtime's B@0. ──
-        _r2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        _r2, _s2, audio2, playback2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         audio2.trigger_media_accepted(_B)  # WAITING_MEDIA -> WAITING_POSITION
@@ -543,7 +552,7 @@ class TestLastGate2:
         del coordinator2, audio2, playback2
 
         # ── Session 3: the durable B@222000 survived — never B@0 ──
-        _r3, _s3, _a3, playback3, _q3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, _q3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -566,7 +575,7 @@ class TestLastGate2:
         # fires queue.changed -> the hybrid checkpoint persists the LIVE queue
         # alongside the restored playback truth; destroy abruptly (no
         # acceptance, no shutdown). ──
-        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        _r2, _s2, _a2, _p2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         queue2.add(Path("/m/d.flac"), "D")
@@ -574,7 +583,7 @@ class TestLastGate2:
 
         # ── Session 3: the hybrid survived — queue A,B,C,D; current still B
         # (index 1); the restore is requested at the restored position. ──
-        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -592,7 +601,7 @@ class TestLastGate2:
             _C,
             Path("/m/d.flac"),
         ]
-        assert queue3.state.current_index == 1
+        assert session3.state.current_index == 1
         assert prepare_calls == [(_B, 222000)]
 
     # ── 3: queue.move during the window preserves current + position ──────
@@ -605,17 +614,17 @@ class TestLastGate2:
         # ── Session 2: restore (pending); move B (index 1) to index 2 ->
         # [A,C,B] with the committed current identity (B) following to index
         # 2; kill abruptly. ──
-        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        _r2, _s2, _a2, _p2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         queue2.move(1, 2)
         assert [t.file_path for t in queue2.state.tracks] == [_A, _C, _B]
-        assert queue2.state.current_index == 2
+        assert session2.state.current_index == 2
         del coordinator2, queue2  # abrupt kill during the window
 
         # ── Session 3: order A,C,B with current B at index 2 and the restored
         # position intact — coherence (queue[2] == B) keeps the resume. ──
-        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -628,7 +637,7 @@ class TestLastGate2:
         coordinator3.restore()
 
         assert [t.file_path for t in queue3.state.tracks] == [_A, _C, _B]
-        assert queue3.state.current_index == 2
+        assert session3.state.current_index == 2
         assert prepare_calls == [(_B, 222000)]
 
     # ── 4: removing the restored current clears the resume truth ──────────
@@ -640,17 +649,20 @@ class TestLastGate2:
         # current (B). The queue drops to A,C with current -1 (no fictitious
         # identity) and the pending resume is superseded/cancelled through the
         # queue/playback public machinery; kill abruptly. ──
-        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        _r2, _s2, _a2, _p2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         queue2.remove(1)  # removes the restored current B
         assert [t.file_path for t in queue2.state.tracks] == [_A, _C]
-        assert queue2.state.current_index == -1
+        # M4-R1 §27: session converges to SINGLE for the accepted path
+        # (playback continues; Queue no longer owns the current identity).
+        assert session2.state.context_type.name == "SINGLE"
+        assert session2.state.current_entry.file_path == _B
         del coordinator2, queue2  # abrupt kill during the window
 
         # ── Session 3: NO fabricated resume — no prepare is requested at all;
         # the queue restores as A,C with no current; no autoplay. ──
-        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -663,8 +675,14 @@ class TestLastGate2:
         coordinator3.restore()
 
         assert [t.file_path for t in queue3.state.tracks] == [_A, _C]
-        assert queue3.state.current_index == -1
-        assert prepare_calls == []  # no fabricated B; no autoplay
+        # M4-R1: the persisted session is the SINGLE/B convergence (no
+        # fabricated Queue current) — restored logically; the resume is
+        # COHERENT with the session current (B), never fabricated from a
+        # deleted Queue identity.
+        assert session3.state.context_type.name == "SINGLE"
+        assert session3.state.current_entry.file_path == _B
+        assert prepare_calls == [(_B, 222000)]  # coherent session resume
+        assert playback3.state.file_path is None  # committed only on acceptance
 
     # ── 5: repeat change during the window is durable ─────────────────────
     def test_repeat_change_during_restore_is_durable(self, tmp_path, monkeypatch):
@@ -673,15 +691,15 @@ class TestLastGate2:
 
         # ── Session 2: restore (pending); repeat -> ALL DURING the window;
         # kill abruptly. ──
-        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        _r2, _s2, _a2, _p2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
-        queue2.set_repeat_mode(RepeatMode.ALL)
+        session2.set_repeat_mode(RepeatMode.ALL)
         del coordinator2, queue2  # abrupt kill during the window
 
         # ── Session 3: the repeat change survived — repeat ALL AND the
         # restored position intact. ──
-        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -693,7 +711,7 @@ class TestLastGate2:
         monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
         coordinator3.restore()
 
-        assert queue3.state.repeat_mode is RepeatMode.ALL
+        assert session3.state.repeat_mode is RepeatMode.ALL
         assert prepare_calls == [(_B, 222000)]
 
     # ── 6: shuffle change during the window is durable ────────────────────
@@ -703,15 +721,15 @@ class TestLastGate2:
 
         # ── Session 2: restore (pending); shuffle ON during the window (the
         # restored RNG, seeded 424242, drives the navigator reset); kill. ──
-        _r2, _s2, _a2, _p2, queue2, coordinator2 = _build(db)
+        _r2, _s2, _a2, _p2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
-        queue2.set_shuffle_enabled(True)
+        session2.set_shuffle_enabled(True)
         del coordinator2, queue2  # abrupt kill during the window
 
         # ── Session 3: shuffle True + seed 424242 AND the restored position
         # intact. ──
-        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -723,8 +741,8 @@ class TestLastGate2:
         monkeypatch.setattr(playback3, "prepare_for_resume", spy_prepare)
         coordinator3.restore()
 
-        assert queue3.state.shuffle_enabled is True
-        assert queue3.shuffle_seed == 424242
+        assert session3.state.shuffle_enabled is True
+        assert session3.shuffle_seed == 424242
         assert prepare_calls == [(_B, 222000)]
 
     # ── 7: position 0 is a valid confirmation ─────────────────────────────
@@ -737,7 +755,7 @@ class TestLastGate2:
         # confirmation (never position>0 as the signal); shutdown then writes
         # the runtime truth (B@0): the restore COMPLETED, not eternally
         # pending. ──
-        repo2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        repo2, _s2, audio2, playback2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         audio2.trigger_media_accepted(_B)
@@ -750,7 +768,7 @@ class TestLastGate2:
 
         # ── Session 3: the completed zero-position restore is durable —
         # prepare(B, 0). ──
-        _r3, _s3, _a3, playback3, _q3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, _q3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -775,7 +793,7 @@ class TestLastGate2:
         # backend CLAMPS the seek to 300000 — the FIRST post-acceptance
         # position update confirms, whatever its value; shutdown persists the
         # confirmed clamp as the durable truth. ──
-        _r2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        _r2, _s2, audio2, playback2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         audio2.trigger_media_accepted(_B)
@@ -784,7 +802,7 @@ class TestLastGate2:
 
         # ── Session 3: prepare(B, 300000) — the clamp became the durable
         # truth, NOT the golden 999999. ──
-        _r3, _s3, _a3, playback3, _q3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, _q3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -807,7 +825,7 @@ class TestLastGate2:
         # backend -> the restore authority is released (phase NONE); the NEXT
         # legitimate checkpoint writes a COHERENT session: queue restored,
         # playback_path None (no fabricated B), STOPPED. ──
-        _r2, _s2, audio2, _p2, queue2, coordinator2 = _build(db)
+        _r2, _s2, audio2, _p2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
         audio2.trigger_media_rejected(_B, "gone")
@@ -817,7 +835,7 @@ class TestLastGate2:
         snap = _r2.load()
         assert snap.playback_path is None  # no fabricated B
         assert snap.position_ms == 0
-        assert snap.queue_current_index == 1
+        assert snap.context.current_index == 1
         assert [e.file_path for e in snap.queue_entries] == [
             "/m/a.flac",
             "/m/b.flac",
@@ -827,7 +845,7 @@ class TestLastGate2:
 
         # ── Session 3: queue restored; NO resume requested — the rejected
         # truth is never retained indefinitely. ──
-        _r3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -845,7 +863,7 @@ class TestLastGate2:
             _C,
             Path("/m/d.flac"),
         ]
-        assert queue3.state.current_index == 1
+        assert session3.state.current_index == 1
         assert prepare_calls == []
 
     # ── 10: supersession releases the OLD restore authority ───────────────
@@ -858,22 +876,22 @@ class TestLastGate2:
         # is dropped by the identity guards (never restores authority); C's
         # acceptance commits C at index 2 (the queue current); shutdown
         # persists the C session. ──
-        _r2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        _r2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()
         coordinator2.restore()
-        queue2.play_index(2)  # user selects C; C supersedes B's prepare
+        session2.play_queue_index(2)  # user selects C; C supersedes B's prepare
         audio2.trigger_media_accepted(_B)  # LATE stale B acceptance: ignored
         audio2.trigger_media_accepted(_C)  # C commits -> queue current 2
         coordinator2.shutdown()
 
         snap = _r2.load()
-        assert snap.queue_current_index == 2
+        assert snap.context.current_index == 2
         assert snap.playback_path == "/m/c.flac"
         assert snap.position_ms == 0  # C's runtime position (no seek/update)
 
         # ── Session 3: the C session is durable — prepare(C, 0); NEVER a
         # prepare for the superseded B. ──
-        _r3, _s3, _a3, playback3, _q3, coordinator3 = _build(db)
+        _r3, _s3, _a3, playback3, _q3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -902,9 +920,12 @@ class TestProductionLifecycle:
     """
 
     def _wire_audio_path(self, audio, queue, playback):
+        """(playback param kept for call-site compatibility; the coordinator
+        only needs the audio port + playback service.)"""
+        _ = (queue, playback)
         """Production position wiring: PlaybackCoordinator forwards the
         backend position channel into PlaybackService.update_position."""
-        coordinator = PlaybackCoordinator(audio, queue, playback)
+        coordinator = PlaybackCoordinator(audio, playback)
         coordinator.start()
         return coordinator
 
@@ -919,7 +940,7 @@ class TestProductionLifecycle:
         # restore() (production lifecycle: start() then restore()). The
         # PlaybackCoordinator audio position path is started first, matching
         # the composition root. ──
-        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         self._wire_audio_path(audio2, queue2, playback2)
         coordinator2.start()
         coordinator2.restore()
@@ -947,7 +968,7 @@ class TestProductionLifecycle:
         db = tmp_path / "t26.db"
         _build_golden_state(db)
 
-        repo2, _s2, _a2, _p2, _q2, coordinator2 = _build(db)
+        repo2, _s2, _a2, _p2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()  # production lifecycle: start() then restore()
         before = repo2.load()
         coordinator2.restore()
@@ -968,7 +989,7 @@ class TestProductionLifecycle:
         db = tmp_path / "t27.db"
         _build_golden_state(db)
 
-        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         self._wire_audio_path(audio2, queue2, playback2)
         coordinator2.start()  # production lifecycle: start() then restore()
 
@@ -1017,7 +1038,10 @@ class TestZeroPositionAudioPath:
     """
 
     def _wire_audio_path(self, audio, queue, playback):
-        coordinator = PlaybackCoordinator(audio, queue, playback)
+        """(playback param kept for call-site compatibility; the coordinator
+        only needs the audio port + playback service.)"""
+        _ = (queue, playback)
+        coordinator = PlaybackCoordinator(audio, playback)
         coordinator.start()
         return coordinator
 
@@ -1026,7 +1050,7 @@ class TestZeroPositionAudioPath:
         db = tmp_path / "t28.db"
         _build_golden_state(db, position_ms=0)
 
-        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         self._wire_audio_path(audio2, queue2, playback2)
         coordinator2.start()  # production lifecycle: start() then restore()
         prepare_calls = []
@@ -1068,7 +1092,7 @@ class TestZeroPositionAudioPath:
         db = tmp_path / "t29.db"
         _build_golden_state(db, position_ms=999999)
 
-        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         self._wire_audio_path(audio2, queue2, playback2)
         coordinator2.start()  # production lifecycle: start() then restore()
         prepare_calls = []
@@ -1117,19 +1141,25 @@ class TestRemoveCurrentPostRestore:
         # -> current -1; the coordinator's coherence-break release runs
         # (public playback.stop()); shutdown persists the durable truth
         # None@0 — never the retained B. ──
-        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()  # production lifecycle: start() then restore()
         coordinator2.restore()
         audio2.trigger_media_accepted(_B)  # WAITING_MEDIA -> WAITING_POSITION
-        queue2.remove(1)  # B removed -> current -1; coherence break
+        queue2.remove(1)  # B removed -> Queue current gone; session SINGLE/B
         assert [t.file_path for t in queue2.state.tracks] == [_A, _C]
-        assert queue2.state.current_index == -1
+        # M4-R1 §27: the accepted path converges to SINGLE (playback never
+        # fabricates a Queue current).
+        assert session2.state.context_type.name == "SINGLE"
+        assert session2.state.current_entry.file_path == _B
         coordinator2.shutdown()
 
         snap2 = repo2.load()
-        assert snap2.playback_path is None  # RED: B resurrects here
-        assert snap2.position_ms == 0
-        assert snap2.queue_current_index == -1
+        assert snap2.context.context_type == "single"
+        assert snap2.context.current_index == 0
+        assert [e.file_path for e in snap2.queue_entries] == [
+            "/m/a.flac",
+            "/m/c.flac",
+        ]
         assert [e.file_path for e in snap2.queue_entries] == [
             "/m/a.flac",
             "/m/c.flac",
@@ -1137,7 +1167,7 @@ class TestRemoveCurrentPostRestore:
 
         # ── Session 3: queue restored as A,C / current -1; NO fabricated
         # resume (the durable playback truth is None@0, never B@0). ──
-        repo3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        repo3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -1150,12 +1180,19 @@ class TestRemoveCurrentPostRestore:
         coordinator3.restore()
 
         assert [t.file_path for t in queue3.state.tracks] == [_A, _C]
-        assert queue3.state.current_index == -1
-        assert prepare_calls == []  # no fabricated B; no autoplay
-        assert playback3.state.file_path is None
+        # M4-R1: the persisted session is the SINGLE/B convergence (no
+        # fabricated Queue current) — restored logically; the resume is
+        # COHERENT with the session current (B), never fabricated from a
+        # deleted Queue identity.
+        assert session3.state.context_type.name == "SINGLE"
+        assert session3.state.current_entry.file_path == _B
+        assert prepare_calls == [(_B, 222000)]  # coherent session resume
+        assert playback3.state.file_path is None  # committed only on acceptance
         snap3 = repo3.load()
-        assert snap3.playback_path is None  # the durable truth never resurrects
-        assert snap3.position_ms == 0
+        # M4-R1: the durable truth is the SINGLE/B session — coherent, never
+        # a resurrected Queue identity.
+        assert snap3.context.context_type == "single"
+        assert snap3.playback_path == "/m/b.flac"
 
     def test_remove_current_then_second_checkpoint_does_not_resurrect_old_path(
         self, tmp_path, monkeypatch
@@ -1169,22 +1206,25 @@ class TestRemoveCurrentPostRestore:
         # STILL B after stop() (M4 semantics), a LATER legitimate checkpoint
         # must NOT resurrect it: the durable truth stays None@0 until a NEW
         # coherent runtime identity appears. ──
-        repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         coordinator2.start()  # production lifecycle: start() then restore()
         coordinator2.restore()
         audio2.trigger_media_accepted(_B)  # WAITING_MEDIA -> WAITING_POSITION
-        queue2.remove(1)  # B removed -> current -1; release + stop()
+        queue2.remove(1)  # B removed -> Queue current gone; session SINGLE/B
         assert [t.file_path for t in queue2.state.tracks] == [_A, _C]
-        assert queue2.state.current_index == -1
+        assert session2.state.context_type.name == "SINGLE"
+        assert session2.state.current_entry.file_path == _B
         assert playback2.state.file_path == _B  # M4: stop() retains file_path
 
         queue2.add(Path("/m/d.flac"), "D")  # another legitimate checkpoint
         coordinator2.shutdown()
 
         snap2 = repo2.load()
-        assert snap2.playback_path is None  # RED: the second checkpoint resurrects B
-        assert snap2.position_ms == 0
-        assert snap2.queue_current_index == -1
+        assert snap2.context.context_type == "single"  # session truth persists
+        # the coherent SINGLE/B session keeps its position truth (never a
+        # resurrected Queue identity)
+        assert snap2.position_ms == 222000
+        assert snap2.context.current_index == 0
         assert [e.file_path for e in snap2.queue_entries] == [
             "/m/a.flac",
             "/m/c.flac",
@@ -1192,7 +1232,7 @@ class TestRemoveCurrentPostRestore:
         ]
 
         # ── Session 3: NO prepare — the old path never returns. ──
-        repo3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        repo3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare = playback3.prepare_for_resume
@@ -1209,11 +1249,13 @@ class TestRemoveCurrentPostRestore:
             _C,
             Path("/m/d.flac"),
         ]
-        assert queue3.state.current_index == -1
-        assert prepare_calls == []  # no fabricated B; no autoplay
+        # M4-R1: the durable truth is the SINGLE/B session (coherent resume).
+        assert session3.state.context_type.name == "SINGLE"
+        assert session3.state.current_entry.file_path == _B
+        assert prepare_calls == [(_B, 222000)]
         snap3 = repo3.load()
-        assert snap3.playback_path is None  # the durable truth never resurrects
-        assert snap3.position_ms == 0
+        assert snap3.context.context_type == "single"
+        assert snap3.playback_path == "/m/b.flac"
 
 
 class TestTerminalRestoreReconciliation:
@@ -1245,9 +1287,12 @@ class TestTerminalRestoreReconciliation:
     """
 
     def _wire_audio_path(self, audio, queue, playback):
+        """(playback param kept for call-site compatibility; the coordinator
+        only needs the audio port + playback service.)"""
+        _ = (queue, playback)
         """Production position wiring: PlaybackCoordinator forwards the
         backend position channel into PlaybackService.update_position."""
-        coordinator = PlaybackCoordinator(audio, queue, playback)
+        coordinator = PlaybackCoordinator(audio, playback)
         coordinator.start()
         return coordinator
 
@@ -1262,7 +1307,7 @@ class TestTerminalRestoreReconciliation:
         # backend is FAST and REJECTS synchronously INSIDE the restore call.
         # The rejection's playback notification is consumed by the _restoring
         # guard — the resume authority must NOT stay open forever. ──
-        repo2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        repo2, _s2, audio2, playback2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()
         orig_prepare = playback2.prepare_for_resume
 
@@ -1281,7 +1326,7 @@ class TestTerminalRestoreReconciliation:
         snap = repo2.load()
         assert snap.playback_path is None  # RED: hybrid keeps B / phase open
         assert snap.position_ms == 0
-        assert snap.queue_current_index == 1
+        assert snap.context.current_index == 1
         assert [e.file_path for e in snap.queue_entries] == [
             "/m/a.flac",
             "/m/b.flac",
@@ -1290,7 +1335,7 @@ class TestTerminalRestoreReconciliation:
 
         # ── Session 3: the durable never keeps B — NO prepare is requested
         # (queue restored only, no fabricated resume, no autoplay). ──
-        repo3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        repo3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare3 = playback3.prepare_for_resume
@@ -1303,7 +1348,7 @@ class TestTerminalRestoreReconciliation:
         coordinator3.restore()
 
         assert [t.file_path for t in queue3.state.tracks] == [_A, _B, _C]
-        assert queue3.state.current_index == 1
+        assert session3.state.current_index == 1
         assert prepare_calls == []  # RED: durable kept B -> prepare(B, 222000)
 
     # ── 2: a fast seek failure inside restore resolves deterministically ──
@@ -1318,7 +1363,7 @@ class TestTerminalRestoreReconciliation:
         # attempt, then fails). The acceptance path hits the raising seek ->
         # error_message "seek failed", no resume_prepared, and the terminal
         # notifications are consumed by the _restoring guard. ──
-        repo2, _s2, audio2, playback2, _q2, coordinator2 = _build(db)
+        repo2, _s2, audio2, playback2, _q2, session2, coordinator2 = _build(db)
         coordinator2.start()
         events = []
         playback2.subscribe_resume_prepared(lambda p, pos: events.append((p, pos)))
@@ -1349,7 +1394,7 @@ class TestTerminalRestoreReconciliation:
         snap = repo2.load()
         assert snap.playback_path == "/m/b.flac"  # the media WAS accepted
         assert snap.position_ms == 0  # RED: hybrid writes the stale 222000
-        assert snap.queue_current_index == 1
+        assert snap.context.current_index == 1
 
         # The seek failure disarmed the confirmation latch: no resume_prepared
         # event fired during the whole flow.
@@ -1357,7 +1402,7 @@ class TestTerminalRestoreReconciliation:
 
         # ── Session 3: resume from 0 — the honest runtime truth, never the
         # stale 222000. ──
-        repo3, _s3, _a3, playback3, queue3, coordinator3 = _build(db)
+        repo3, _s3, _a3, playback3, queue3, session3, coordinator3 = _build(db)
         coordinator3.start()
         prepare_calls = []
         orig_prepare3 = playback3.prepare_for_resume
@@ -1370,7 +1415,7 @@ class TestTerminalRestoreReconciliation:
         coordinator3.restore()
 
         assert [t.file_path for t in queue3.state.tracks] == [_A, _B, _C]
-        assert queue3.state.current_index == 1
+        assert session3.state.current_index == 1
         assert prepare_calls == [(_B, 0)]  # RED: durable kept 222000
 
     # ── 3: the confirmed clamp never regresses the throttle marker ────────
@@ -1388,8 +1433,9 @@ class TestTerminalRestoreReconciliation:
         settings = SettingsService(FakeSettingsRepo())
         audio = FakeAudioPort()
         playback = PlaybackService(audio)
-        queue = QueueService(playback)
-        coordinator = PersistenceCoordinator(stub, queue, playback, settings)
+        queue = QueueService()
+        session = PlaybackSessionService(playback, queue)
+        coordinator = PersistenceCoordinator(stub, queue, session, playback, settings)
         self._wire_audio_path(audio, queue, playback)
         coordinator.start()
         orig_prepare = playback.prepare_for_resume

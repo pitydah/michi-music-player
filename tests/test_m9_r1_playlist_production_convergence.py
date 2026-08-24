@@ -17,21 +17,16 @@ from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
 from michi.application.playlist_service import PlaylistService
-from michi.application.queue_service import QueueService
 from michi.domain.navigation import AppRoute
 from michi.presentation.playlists_bridge import PlaylistsBridge
-from tests.conftest import FakeAudioPort
 from tests.test_playlists import FakePlaylistsPort
 
 QML_DIR = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
 
 
 def _world():
-    from michi.application.playback_service import PlaybackService
 
-    audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    service = PlaylistService(queue, FakePlaylistsPort())
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     service.set_on_playlist_deleted(nav.forget_playlist)
     coord = PlaylistNavigationCoordinator(service, nav)

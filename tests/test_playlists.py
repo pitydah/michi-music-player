@@ -46,6 +46,7 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 
@@ -93,10 +94,12 @@ class FakePlaylistsPort:
 
 
 def _make_queue():
-    """Build QueueService over PlaybackService over the shared FakeAudioPort."""
+    """Build QueueService + PlaybackSessionService over FakeAudioPort."""
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    return QueueService(playback), audio
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue)
+    return queue, session, audio
 
 
 def _make_library_and_queue(scanner, extractor=None):
@@ -107,7 +110,7 @@ def _make_library_and_queue(scanner, extractor=None):
     if extractor is None:
         library = LibraryService(scanner, queue)
     else:
-        library = LibraryService(scanner, queue, extractor)
+        library = LibraryService(scanner, metadata_extractor=extractor)
     return library, queue, audio
 
 
@@ -125,8 +128,8 @@ class TestPlaylistService:
     created Playlist."""
 
     def test_create_playlist_appends(self):
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        queue, _, _ = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         created = service.create_playlist("Road Trip")
         assert created.playlist_id != ""
         assert [(x.name, x.track_paths) for x in service.playlists] == [
@@ -134,9 +137,9 @@ class TestPlaylistService:
         ]
 
     def test_create_empty_name_raises(self):
-        queue, _ = _make_queue()
+        queue, _, _ = _make_queue()
         port = FakePlaylistsPort()
-        service = PlaylistService(queue, playlists_port=port)
+        service = PlaylistService(playlists_port=port)
         with pytest.raises(ValueError):
             service.create_playlist("")
         with pytest.raises(ValueError):
@@ -145,16 +148,16 @@ class TestPlaylistService:
         assert port.saved == []  # validation fails before any persist
 
     def test_create_duplicate_name_raises(self):
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        queue, _, _ = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         service.create_playlist("A")
         with pytest.raises(ValueError):
             service.create_playlist("A")
         assert [(x.name, x.track_paths) for x in service.playlists] == [("A", ())]
 
     def test_delete_playlist(self):
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        queue, _, _ = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("A")
         service.create_playlist("B")
         service.delete_playlist(a.playlist_id)
@@ -163,8 +166,8 @@ class TestPlaylistService:
         assert [(x.name, x.track_paths) for x in service.playlists] == [("B", ())]
 
     def test_rename_playlist(self):
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        queue, _, _ = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("A")
         service.create_playlist("C")
         service.rename_playlist(a.playlist_id, "B")
@@ -185,8 +188,8 @@ class TestPlaylistService:
         ]
 
     def test_add_track_appends_and_dedupes(self):
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        queue, _, _ = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         p = service.create_playlist("P")
         p1 = Path("/m/p1.mp3")
         service.add_track(p.playlist_id, p1)
@@ -200,16 +203,16 @@ class TestPlaylistService:
         ]
 
     def test_add_track_unknown_playlist_noop(self):
-        queue, _ = _make_queue()
+        queue, _, _ = _make_queue()
         port = FakePlaylistsPort()
-        service = PlaylistService(queue, playlists_port=port)
+        service = PlaylistService(playlists_port=port)
         service.add_track("ghost-id", Path("/m/a.mp3"))
         assert service.playlists == ()
         assert port.saved == []  # no mutation → no persist
 
     def test_remove_track_bounds(self):
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        queue, _, _ = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         p = service.create_playlist("P")
         service.add_track(p.playlist_id, Path("/m/a.mp3"))
         service.add_track(p.playlist_id, Path("/m/b.mp3"))
@@ -224,10 +227,10 @@ class TestPlaylistService:
         ]
 
     def test_move_track_reorders(self):
-        queue, _ = _make_queue()
+        queue, _, _ = _make_queue()
 
         def seeded(*paths):
-            service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+            service = PlaylistService(playlists_port=FakePlaylistsPort())
             p = service.create_playlist("P")
             for path in paths:
                 service.add_track(p.playlist_id, Path(path))
@@ -267,47 +270,61 @@ class TestPlaylistService:
             ("P", ("c", "a", "b"))
         ]
 
-    def test_play_playlist_fills_queue(self):
-        queue, audio = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+    def test_play_playlist_sets_playlist_context(self):
+        """M4-R1: Play Playlist → PLAYLIST session context; Queue NEVER
+        receives the playlist tracks."""
+        from michi.application.playlist_playback_coordinator import (
+            PlaylistPlaybackCoordinator,
+        )
+
+        queue, session, audio = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
+        coordinator = PlaylistPlaybackCoordinator(service, session, queue)
         p = service.create_playlist("P")
         for path in ("/m/a.mp3", "/m/b.mp3", "/m/c.mp3"):
             service.add_track(p.playlist_id, Path(path))
-        service.play_playlist(p.playlist_id)
-        assert queue.state.count == 3
-        # play_index(0) requested: current_index commits only on acceptance.
-        assert queue.state.current_index == -1
+        coordinator.play_playlist(p.playlist_id)
+        assert queue.state.count == 0  # Queue untouched
+        # context commits ONLY after backend acceptance
+        assert session.state.context_type.name == "NONE"
         audio.trigger_media_accepted(Path("/m/a.mp3"))
-        assert queue.state.current_index == 0
+        assert session.state.context_type.name == "PLAYLIST"
+        assert session.state.count == 3
+        assert session.state.current_index == 0
 
     def test_play_playlist_unknown_noop(self):
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
-        service.play_playlist("ghost-id")
+        from michi.application.playlist_playback_coordinator import (
+            PlaylistPlaybackCoordinator,
+        )
+
+        queue, session, _ = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
+        coordinator = PlaylistPlaybackCoordinator(service, session, queue)
+        coordinator.play_playlist("ghost-id")
         assert queue.state.count == 0
 
     def test_loads_at_construction(self):
         port = FakePlaylistsPort(
             playlists=(Playlist("seeded-id", "Seeded", ("/m/a.mp3",)),)
         )
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=port)
+        queue, _, _ = _make_queue()
+        service = PlaylistService(playlists_port=port)
         assert [(x.playlist_id, x.name, x.track_paths) for x in service.playlists] == [
             ("seeded-id", "Seeded", ("/m/a.mp3",))
         ]
 
     def test_mutations_persist(self):
         port = FakePlaylistsPort()
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=port)
+        queue, _, _ = _make_queue()
+        service = PlaylistService(playlists_port=port)
         created = service.create_playlist("A")
         service.add_track(created.playlist_id, Path("/m/a.mp3"))
         saved = port.saved[-1]
         assert [(x.name, x.track_paths) for x in saved] == [("A", ("/m/a.mp3",))]
 
     def test_notify_on_mutations(self):
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        queue, _, _ = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         calls = []
         service.subscribe_changed(lambda: calls.append(1))
         created = service.create_playlist("A")
@@ -316,14 +333,19 @@ class TestPlaylistService:
         assert len(calls) == 2
 
     def test_no_notify_for_noop_unknown(self):
-        queue, _ = _make_queue()
-        service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        queue, session, _ = _make_queue()
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
+        from michi.application.playlist_playback_coordinator import (
+            PlaylistPlaybackCoordinator,
+        )
+
+        coordinator = PlaylistPlaybackCoordinator(service, session, queue)
         calls = []
         service.subscribe_changed(lambda: calls.append(1))
         service.delete_playlist("ghost-id")
         service.add_track("ghost-id", Path("/m/a.mp3"))
         service.remove_track("ghost-id", 0)
-        service.play_playlist("ghost-id")
+        coordinator.play_playlist("ghost-id")
         assert len(calls) == 0
 
 
@@ -396,16 +418,28 @@ class TestPlaylistBridge:
         service = (
             service
             if service is not None
-            else PlaylistService(queue, playlists_port=FakePlaylistsPort())
+            else PlaylistService(playlists_port=FakePlaylistsPort())
         )
         nav = NavigationService()
         service.set_on_playlist_deleted(nav.forget_playlist)
         coord = PlaylistNavigationCoordinator(service, nav)
+        from michi.application.playback_session_service import (
+            PlaybackSessionService,
+        )
+        from michi.application.playlist_playback_coordinator import (
+            PlaylistPlaybackCoordinator,
+        )
+
+        _session = PlaybackSessionService(
+            PlaybackService(FakeAudioPort()), QueueService()
+        )
+        pcoord = PlaylistPlaybackCoordinator(service, _session, QueueService())
         bridge = PlaylistsBridge(
             service,
             playlist_navigation=coord,
             navigation_service=nav,
             library=library,
+            playback_coordinator=pcoord,
         )
         return bridge, coord
 
@@ -413,7 +447,7 @@ class TestPlaylistBridge:
         library, queue, _, (p1, p2) = self._bridge(
             tmp_path, names=("one.mp3", "two.mp3")
         )
-        playlist_service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        playlist_service = PlaylistService(playlists_port=FakePlaylistsPort())
         trip = playlist_service.create_playlist("Road Trip")
         playlist_service.add_track(trip.playlist_id, p1)
         playlist_service.add_track(trip.playlist_id, p2)
@@ -450,7 +484,7 @@ class TestPlaylistBridge:
 
     def test_bridge_slots(self, tmp_path):
         library, queue, audio, (p1, p2, p3) = self._bridge(tmp_path)
-        playlist_service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        playlist_service = PlaylistService(playlists_port=FakePlaylistsPort())
         bridge, _ = self._plb(queue, library, playlist_service)
 
         bridge.create_and_open_playlist("Mix")
@@ -481,12 +515,14 @@ class TestPlaylistBridge:
         ]
 
         bridge.play_selected_playlist()
-        assert queue.state.count == 2
+        # M4-R1: Play → PLAYLIST session context; Queue NEVER receives the
+        # playlist tracks.
+        assert queue.state.count == 0
         bridge.dispose()
 
     def test_bridge_rename_slot(self, tmp_path):
         library, queue, _, _ = self._bridge(tmp_path)
-        playlist_service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        playlist_service = PlaylistService(playlists_port=FakePlaylistsPort())
         bridge, _ = self._plb(queue, library, playlist_service)
         bridge.create_and_open_playlist("A")
         created = playlist_service.playlists[0]
@@ -516,7 +552,7 @@ class TestQmlSmoke:
             FakeScanner([p1]), extractor=FakeExtractor()
         )
         library.scan(str(tmp_path))
-        playlist_service = PlaylistService(queue, playlists_port=FakePlaylistsPort())
+        playlist_service = PlaylistService(playlists_port=FakePlaylistsPort())
         playlist_service.create_playlist("Road Trip")
         bridge = LibraryBridge(library)
         engine = QQmlEngine()

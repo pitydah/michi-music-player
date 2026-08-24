@@ -2065,47 +2065,56 @@ class TestGStreamerQueueIntegration:
 
         bindings = FakeBindings()
         port = GStreamerAudioPort(bindings)
+        from michi.application.playback_session_service import (
+            PlaybackSessionService,
+        )
+
         svc = PlaybackService(port)
-        q = QueueService(svc)
+        q = QueueService()
+        session = PlaybackSessionService(svc, q)
         q.add(Path("/m/a.flac"))
         q.add(Path("/m/b.flac"))
-        q.play_index(0)
-        coord = PlaybackCoordinator(port, q, svc)
+        session.play_queue_index(0)
+        coord = PlaybackCoordinator(port, svc)
         coord.start()
         # A aceptada vía el adapter real
         pipeline_a = bindings.pipelines[-1]
         msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
         _deliver(port, msg, gen)
-        assert q.state.current_index == 0
+        assert session.state.current_index == 0
         port.play()
         m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
         _deliver(port, m2, g2)
-        # EOS → STOPPED + EOM → Queue pide B exactamente una vez
+        # EOS → STOPPED + EOM → Session pide B exactamente una vez
         eos, eg = _msg(port, _FakeMsgType.EOS, pipeline_a)
         _deliver(port, eos, eg)
-        assert q.state.current_index == 0  # B pending, no commiteado
+        assert session.state.current_index == 0  # B pending, no commiteado
         assert len(bindings.pipelines) == 2  # B armado exactamente una vez
         # B aceptada
         pipeline_b = bindings.pipelines[-1]
         m3, g3 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_b)
         _deliver(port, m3, g3)
-        assert q.state.current_index == 1
+        assert session.state.current_index == 1
         port.close()
 
     def test_repeat_one_requests_a_exactly_once(self, qapp):
         from michi.application.coordinator import PlaybackCoordinator
         from michi.application.playback_service import PlaybackService
+        from michi.application.playback_session_service import (
+            PlaybackSessionService,
+        )
         from michi.application.queue_service import QueueService
-        from michi.domain.queue import RepeatMode
+        from michi.domain.playback_session import RepeatMode
 
         bindings = FakeBindings()
         port = GStreamerAudioPort(bindings)
         svc = PlaybackService(port)
-        q = QueueService(svc)
+        q = QueueService()
+        session = PlaybackSessionService(svc, q)
         q.add(Path("/m/a.flac"))
-        q.set_repeat_mode(RepeatMode.ONE)
-        q.play_index(0)
-        coord = PlaybackCoordinator(port, q, svc)
+        session.set_repeat_mode(RepeatMode.ONE)
+        session.play_queue_index(0)
+        coord = PlaybackCoordinator(port, svc)
         coord.start()
         pipeline_a = bindings.pipelines[-1]
         msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a)
@@ -2119,7 +2128,7 @@ class TestGStreamerQueueIntegration:
         pipeline_a2 = bindings.pipelines[-1]
         m3, g3 = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline_a2)
         _deliver(port, m3, g3)
-        assert q.state.current_index == 0
+        assert session.state.current_index == 0
         assert svc.state.file_path == Path("/m/a.flac")
         port.close()
 

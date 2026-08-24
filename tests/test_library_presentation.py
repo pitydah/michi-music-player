@@ -38,6 +38,7 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.presentation.library_bridge import LibraryBridge
 from tests.conftest import FakeAudioPort
@@ -121,7 +122,8 @@ class FakeScanPipeline:
 def _make_library(scanner, extractor=None, scan_pipeline=None):
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
+    _session = PlaybackSessionService(playback, queue)
     return LibraryService(scanner, queue, extractor, scan_pipeline=scan_pipeline)
 
 

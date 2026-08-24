@@ -18,6 +18,7 @@ from pathlib import Path
 
 from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.domain.playback import PlaybackStatus
@@ -25,6 +26,7 @@ from michi.domain.queue import RepeatMode
 from michi.domain.session import (
     FORMAT_VERSION,
     PersistedQueueEntry,
+    PersistedSessionContext,
     PlaybackSessionSnapshot,
     fresh_snapshot,
 )
@@ -51,11 +53,19 @@ def _snapshot(
     repeat_mode: RepeatMode = RepeatMode.NONE,
     shuffle_enabled: bool = False,
     shuffle_seed: int = 0,
+    context_type: str = "queue",
 ) -> PlaybackSessionSnapshot:
+    """V2 snapshot: context current index == queue current index by default
+    (legacy-style tests use a QUEUE context)."""
     return PlaybackSessionSnapshot(
         format_version=FORMAT_VERSION,
         queue_entries=tuple(entries),
-        queue_current_index=current_index,
+        context=PersistedSessionContext(
+            context_type=context_type,
+            source_id=None,
+            entries=tuple(entries),
+            current_index=current_index,
+        ),
         playback_path=playback_path,
         position_ms=position_ms,
         repeat_mode=repeat_mode,
@@ -72,32 +82,34 @@ def _build(db_path: Path, settings_repo=None, shuffle_seed: int | None = None):
     )
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback, shuffle_seed=shuffle_seed)
-    coordinator = PersistenceCoordinator(repo, queue, playback, settings)
-    return repo, settings, audio, playback, queue, coordinator
+    queue = QueueService()
+
+    session = PlaybackSessionService(playback, queue, shuffle_seed=shuffle_seed)
+    coordinator = PersistenceCoordinator(repo, queue, session, playback, settings)
+    return repo, settings, audio, playback, queue, session, coordinator
 
 
 class TestSnapshotBuilding:
     def test_snapshot_from_public_state(self, tmp_path):
         db = tmp_path / "t1.db"
-        _repo, _settings, audio, playback, queue, coordinator = _build(
+        _repo, _settings, audio, playback, queue, session, coordinator = _build(
             db, shuffle_seed=424242
         )
         queue.add(_A, "A")
         queue.add(_B, "B")
         queue.add(_C, "C")
-        queue.play_index(1)  # B pending
+        session.play_queue_index(1)  # B pending
         audio.trigger_media_accepted(_B)  # committed current = B
         playback.update_position(98765)
-        queue.set_repeat_mode(RepeatMode.ALL)
-        queue.set_shuffle_enabled(True)
+        session.set_repeat_mode(RepeatMode.ALL)
+        session.set_shuffle_enabled(True)
 
         snap = coordinator._build_snapshot()
         assert snap.format_version == FORMAT_VERSION
         assert snap.queue_entries == _entries(
             ("/m/a.flac", "A"), ("/m/b.flac", "B"), ("/m/c.flac", "C")
         )
-        assert snap.queue_current_index == 1
+        assert snap.context.current_index == 1
         assert snap.playback_path == "/m/b.flac"
         assert snap.position_ms == 98765
         assert snap.repeat_mode is RepeatMode.ALL
@@ -106,20 +118,20 @@ class TestSnapshotBuilding:
 
     def test_pending_not_persisted(self, tmp_path):
         db = tmp_path / "t2.db"
-        _repo, _settings, audio, playback, queue, coordinator = _build(db)
+        _repo, _settings, audio, playback, queue, session, coordinator = _build(db)
         queue.add(_A, "A")
         queue.add(_B, "B")
         queue.add(_C, "C")
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(_A)  # committed index 0
-        queue.play_index(2)  # C pending, NOT accepted
+        session.play_queue_index(2)  # C pending, NOT accepted
 
         snap = coordinator._build_snapshot()
         # Committed identity, never the pending candidate.
-        assert snap.queue_current_index == 0
+        assert snap.context.current_index == 0
         assert snap.playback_path == "/m/a.flac"
         assert snap.playback_path != "/m/c.flac"
-        assert snap.queue_current_index != 2
+        assert snap.context.current_index != 2
         # The queue itself is intact (C is still a queued entry).
         assert snap.queue_entries == _entries(
             ("/m/a.flac", "A"), ("/m/b.flac", "B"), ("/m/c.flac", "C")
@@ -129,9 +141,9 @@ class TestSnapshotBuilding:
 class TestCheckpointing:
     def test_checkpoint_saves_session(self, tmp_path):
         db = tmp_path / "t3.db"
-        repo, _settings, audio, playback, queue, coordinator = _build(db)
+        repo, _settings, audio, playback, queue, session, coordinator = _build(db)
         queue.add(_A, "A")
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(_A)
         playback.update_position(1500)
 
@@ -145,7 +157,7 @@ class TestCheckpointing:
 
     def test_queue_change_triggers_checkpoint(self, tmp_path):
         db = tmp_path / "t4.db"
-        repo, _settings, _audio, _playback, queue, coordinator = _build(db)
+        repo, _settings, _audio, _playback, queue, session, coordinator = _build(db)
         # Explicit lifecycle: the queue.changed subscription is armed by
         # start(). No explicit checkpoint call — the started coordinator's
         # own subscription saves.
@@ -153,7 +165,7 @@ class TestCheckpointing:
         queue.add(_A, "A")
         snap = repo.load()
         assert snap.queue_entries == _entries(("/m/a.flac", "A"))
-        assert snap.queue_current_index == -1
+        assert snap.context.current_index == -1
 
         queue.add(_B, "B")
         snap = repo.load()
@@ -161,12 +173,12 @@ class TestCheckpointing:
 
     def test_position_throttle(self, tmp_path):
         db = tmp_path / "t5.db"
-        repo, _settings, audio, playback, queue, coordinator = _build(db)
+        repo, _settings, audio, playback, queue, session, coordinator = _build(db)
         # Explicit lifecycle: playback.changed-driven checkpoints require
         # the started coordinator.
         coordinator.start()
         queue.add(_A, "A")
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(_A)  # baseline checkpoint, position 0
 
         baseline = repo.load()
@@ -180,12 +192,12 @@ class TestCheckpointing:
 
     def test_lifecycle_transition_checkpoints(self, tmp_path):
         db = tmp_path / "t6.db"
-        repo, _settings, audio, playback, queue, coordinator = _build(db)
+        repo, _settings, audio, playback, queue, session, coordinator = _build(db)
         # Explicit lifecycle: the transition notification reaches the
         # started coordinator only.
         coordinator.start()
         queue.add(_A, "A")
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(_A)
         playback.update_position(100)  # tiny delta — throttled, NOT saved
         assert repo.load().position_ms == 0
@@ -204,7 +216,7 @@ class TestRestore:
 
         # ── Session 1: build the golden state and checkpoint ──
         settings_repo = FakeSettingsRepo()
-        repo1, settings1, audio1, playback1, queue1, coordinator1 = _build(
+        repo1, settings1, audio1, playback1, queue1, session1, coordinator1 = _build(
             db, settings_repo=settings_repo, shuffle_seed=424242
         )
         # Explicit lifecycle + runtime volume/mute sync (P1-B): the started
@@ -216,11 +228,11 @@ class TestRestore:
         queue1.add(_A, "A")
         queue1.add(_B, "B")
         queue1.add(_C, "C")
-        queue1.play_index(1)
+        session1.play_queue_index(1)
         audio1.trigger_media_accepted(_B)
         playback1.update_position(222000)
-        queue1.set_repeat_mode(RepeatMode.ALL)
-        queue1.set_shuffle_enabled(True)
+        session1.set_repeat_mode(RepeatMode.ALL)
+        session1.set_shuffle_enabled(True)
         coordinator1.checkpoint()
 
         # Destroy WITHOUT shutdown: restart must not depend on graceful stop.
@@ -228,7 +240,7 @@ class TestRestore:
 
         # ── Session 2: fresh services + coordinator on the SAME db ──
         # Production lifecycle: start() then restore() (target bootstrap order).
-        repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(
+        repo2, settings2, audio2, playback2, queue2, session2, coordinator2 = _build(
             db, settings_repo=settings_repo
         )
         coordinator2.start()
@@ -253,10 +265,10 @@ class TestRestore:
 
         # Queue fully restored.
         assert [t.file_path for t in queue2.state.tracks] == [_A, _B, _C]
-        assert queue2.state.current_index == 1
-        assert queue2.state.repeat_mode is RepeatMode.ALL
-        assert queue2.state.shuffle_enabled is True
-        assert queue2.shuffle_seed == 424242
+        assert session2.state.current_index == 1
+        assert session2.state.repeat_mode is RepeatMode.ALL
+        assert session2.state.shuffle_enabled is True
+        assert session2.shuffle_seed == 424242
         # Coherent resume requested: load + seek, NEVER autoplay.
         assert prepare_calls == [(_B, 222000)]
         assert play_calls == []
@@ -273,16 +285,16 @@ class TestRestore:
 
     def test_restore_no_autoplay(self, tmp_path, monkeypatch):
         db = tmp_path / "t8.db"
-        repo, _settings, audio, playback, queue, coordinator = _build(db)
+        repo, _settings, audio, playback, queue, session, coordinator = _build(db)
         queue.add(_A, "A")
         queue.add(_B, "B")
-        queue.play_index(1)
+        session.play_queue_index(1)
         audio.trigger_media_accepted(_B)
         playback.update_position(222000)
         coordinator.checkpoint()
         del coordinator, queue, playback, audio, repo
 
-        _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        _repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         # Production lifecycle: start() then restore() (target bootstrap order).
         coordinator2.start()
         play_calls = []
@@ -315,7 +327,7 @@ class TestRestore:
             )
         )
 
-        _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        _repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         # Production lifecycle: start() then restore() (target bootstrap order).
         coordinator2.start()
         prepare_calls = []
@@ -331,7 +343,7 @@ class TestRestore:
         # Mismatched path: NEVER prepare with a fabricated playback identity.
         assert prepare_calls == []
         assert [t.file_path for t in queue2.state.tracks] == [_A, _B, _C]
-        assert queue2.state.current_index == 1  # queue restored as-is
+        assert session2.state.current_index == 1  # queue restored as-is
         assert playback2.state.file_path is None
         assert playback2.state.status is PlaybackStatus.STOPPED
         assert audio2.loaded is None  # backend untouched
@@ -347,7 +359,7 @@ class TestRestore:
             )
         )
 
-        _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        _repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         # Production lifecycle: start() then restore() (target bootstrap order).
         coordinator2.start()
         prepare_calls = []
@@ -361,7 +373,7 @@ class TestRestore:
         coordinator2.restore()
 
         assert queue2.state.count == 2  # queue only
-        assert queue2.state.current_index == -1
+        assert session2.state.current_index == -1
         assert prepare_calls == []
         assert playback2.state.file_path is None
         assert playback2.state.status is PlaybackStatus.STOPPED
@@ -379,7 +391,7 @@ class TestRestore:
             )
         )
 
-        _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        _repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         # Production lifecycle: start() then restore() (target bootstrap order).
         coordinator2.start()
         coordinator2.restore()  # coherent -> prepare_for_resume(B, 222000)
@@ -390,40 +402,40 @@ class TestRestore:
         assert playback2.state.file_path is None  # never committed
         assert playback2.state.error_message == "gone"
         assert queue2.state.count == 2
-        assert queue2.state.current_index == 1
+        assert session2.state.current_index == 1
 
     def test_abrupt_termination_checkpoint(self, tmp_path):
         db = tmp_path / "t12.db"
-        repo, _settings, audio, playback, queue, coordinator = _build(db)
+        repo, _settings, audio, playback, queue, session, coordinator = _build(db)
         queue.add(_A, "A")
         queue.add(_B, "B")
-        queue.play_index(1)
+        session.play_queue_index(1)
         audio.trigger_media_accepted(_B)
         playback.update_position(42424)
         coordinator.checkpoint()  # NO shutdown
         del coordinator, queue, playback, audio, repo
 
-        _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        _repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         # Production lifecycle: start() then restore() (target bootstrap order).
         coordinator2.start()
         coordinator2.restore()
         assert [t.file_path for t in queue2.state.tracks] == [_A, _B]
-        assert queue2.state.current_index == 1
+        assert session2.state.current_index == 1
         audio2.trigger_media_accepted(_B)
         assert audio2.seek_calls == [42424]  # restored position sought
 
     def test_duplicate_paths_golden(self, tmp_path):
         db = tmp_path / "t13.db"
-        repo, _settings, audio, playback, queue, coordinator = _build(db)
+        repo, _settings, audio, playback, queue, session, coordinator = _build(db)
         queue.add(_X, "X1")
         queue.add(_A, "A")
         queue.add(_X, "X2")
-        queue.play_index(2)
+        session.play_queue_index(2)
         audio.trigger_media_accepted(_X)  # committed current = X2
         coordinator.checkpoint()
         del coordinator, queue, playback, audio, repo
 
-        _repo2, _s2, audio2, playback2, queue2, coordinator2 = _build(db)
+        _repo2, _s2, audio2, playback2, queue2, session2, coordinator2 = _build(db)
         # Production lifecycle: start() then restore() (target bootstrap order).
         coordinator2.start()
         coordinator2.restore()
@@ -431,7 +443,7 @@ class TestRestore:
         assert len(tracks) == 3  # duplicates survive as distinct entries
         assert tracks[0] is not tracks[2]
         assert tracks[0].file_path == tracks[2].file_path == _X
-        assert queue2.state.current_index == 2
+        assert session2.state.current_index == 2
         assert playback2.state.file_path is None
         audio2.trigger_media_accepted(_X)
         assert playback2.state.file_path == _X
@@ -441,9 +453,9 @@ class TestRestore:
 class TestLifecycle:
     def test_shutdown_checkpoints(self, tmp_path):
         db = tmp_path / "t14.db"
-        repo, settings, audio, playback, queue, coordinator = _build(db)
+        repo, settings, audio, playback, queue, session, coordinator = _build(db)
         queue.add(_A, "A")
-        queue.play_index(0)
+        session.play_queue_index(0)
         audio.trigger_media_accepted(_A)
         playback.update_position(777)
         playback.set_volume(63)
@@ -471,8 +483,9 @@ class TestLifecycle:
         settings = SettingsService(FakeSettingsRepo())
         audio = FakeAudioPort()
         playback = PlaybackService(audio)
-        queue = QueueService(playback)
-        coordinator = PersistenceCoordinator(repo, queue, playback, settings)
+        queue = QueueService()
+        session = PlaybackSessionService(playback, queue)
+        coordinator = PersistenceCoordinator(repo, queue, session, playback, settings)
         # Explicit lifecycle: start() arms the subscriptions so the
         # queue/playback-driven best-effort paths below are exercised.
         coordinator.start()

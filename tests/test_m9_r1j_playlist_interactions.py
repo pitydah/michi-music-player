@@ -125,7 +125,7 @@ def _world(tmp_path):
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
     settings = SettingsService(FakeSettingsRepo())
-    service = PlaylistService(queue, FakePlaylistsPort())
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     service.set_on_playlist_deleted(nav.forget_playlist)
     coord = PlaylistNavigationCoordinator(service, nav)
@@ -387,7 +387,7 @@ class TestSearchReactivity:
         library, queue, _ = _make_library_and_queue(
             FakeScanner([]), extractor=FakeExtractor()
         )
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         service.create_playlist("Road Trip")
         service.create_playlist("Jazz Night")
         nav = NavigationService()
@@ -421,7 +421,7 @@ class TestSearchReactivity:
         library, queue, _ = _make_library_and_queue(
             FakeScanner([]), extractor=FakeExtractor()
         )
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         service.create_playlist("Road Trip")
         nav = NavigationService()
         bridge = PlaylistsBridge(service, navigation_service=nav, library=library)

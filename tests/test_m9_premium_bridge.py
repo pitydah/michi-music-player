@@ -93,14 +93,27 @@ def _library_world(tmp_path):
             bit_depth=24,
         )
 
-    library = LibraryService(_Scanner([first, second]), queue, _Extractor(metadata))
+    library = LibraryService(
+        _Scanner([first, second]), metadata_extractor=_Extractor(metadata)
+    )
     library.scan(str(tmp_path))
-    return library, queue, playback, audio, first
+    from michi.application.library_playback_coordinator import (
+        LibraryPlaybackCoordinator,
+    )
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+
+    session = PlaybackSessionService(playback, queue)
+    coordinator = LibraryPlaybackCoordinator(library, session)
+    return library, queue, session, coordinator, playback, audio, first
 
 
 def test_artist_detail_projection_is_canonical_and_activatable(tmp_path) -> None:
-    library, queue, _playback, audio, _first = _library_world(tmp_path)
-    bridge = LibraryBridge(library)
+    library, queue, session, coordinator, _playback, audio, _first = _library_world(
+        tmp_path
+    )
+    bridge = LibraryBridge(library, playback_coordinator=coordinator)
     artist = bridge.property("artists")[0]
 
     bridge.select_artist(artist["key"])
@@ -114,13 +127,18 @@ def test_artist_detail_projection_is_canonical_and_activatable(tmp_path) -> None
     ]
     bridge.activate_artist_track(1)
     audio.trigger_media_accepted(audio.loaded)
-    assert queue.state.current_track.file_path.name == "two.flac"
+    # M4-R1: artist track → SINGLE context (Queue untouched)
+    assert session.state.context_type.name == "SINGLE"
+    assert session.state.current_entry.file_path.name == "two.flac"
+    assert queue.state.count == 0
     bridge.dispose()
 
 
 def test_playlist_search_is_separate_from_frozen_m7_total(tmp_path) -> None:
-    library, queue, _playback, _audio, _first = _library_world(tmp_path)
-    playlists = PlaylistService(queue)
+    library, queue, _playback, session, coordinator, _audio, _first = _library_world(
+        tmp_path
+    )
+    playlists = PlaylistService()
     playlists.create_playlist("Late Night")
     bridge = LibraryBridge(library)
     # M9-R1: playlist search projection lives in the PlaylistsBridge.
@@ -142,12 +160,14 @@ def test_playlist_search_is_separate_from_frozen_m7_total(tmp_path) -> None:
 
 
 def test_playback_and_queue_enrich_current_track_from_library(tmp_path) -> None:
-    library, queue, playback, audio, first = _library_world(tmp_path)
+    library, queue, session, coordinator, playback, audio, first = _library_world(
+        tmp_path
+    )
     playback_bridge = PlaybackBridge(playback, library)
     queue_bridge = QueueBridge(queue, library)
 
     queue.add(first, "One")
-    queue.play_index(0)
+    session.play_queue_index(0)
     audio.trigger_media_accepted(first)
 
     assert playback_bridge.property("currentPath") == str(first)

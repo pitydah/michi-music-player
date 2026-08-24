@@ -29,6 +29,7 @@ from michi.application.library_preferences_coordinator import (
 )
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.domain.library import (
@@ -77,9 +78,18 @@ class FakeScanner:
 def _make_library(scanner):
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
-    library = LibraryService(scanner, queue)
-    return library, queue, playback, audio
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue)
+    library = LibraryService(scanner)
+    return library, queue, session, playback, audio
+
+
+def _coordinator_for(library, session):
+    from michi.application.library_playback_coordinator import (
+        LibraryPlaybackCoordinator,
+    )
+
+    return LibraryPlaybackCoordinator(library, session)
 
 
 def _patch_os_stat(monkeypatch, target, error):
@@ -315,7 +325,8 @@ class TestSameDirectoryRescan:
 class TestActivationValidation:
     def test_activation_missing_removes_exact_trackref(self):
         scanner = FakeScanner(files=[Path("/m/a.mp3"), Path("/m/b.mp3")])
-        library, queue, playback, audio = _make_library(scanner)
+        library, queue, session, playback, audio = _make_library(scanner)
+        coordinator = _coordinator_for(library, session)
         library.scan("/m")
         tracks_before = list(library.state.tracks)
         missing = Path("/m/a.mp3")
@@ -326,7 +337,7 @@ class TestActivationValidation:
         }
         calls = []
         library.subscribe_changed(lambda: calls.append(1))
-        library.activate(0)
+        coordinator.play_visible_track(0)
         assert len(calls) == 1  # single notify for the activation transition
         assert len(library.state.tracks) == 1
         assert library.state.tracks[0] is tracks_before[1]  # exact ref identity
@@ -339,7 +350,8 @@ class TestActivationValidation:
 
     def test_missing_activation_no_queue_mutation(self):
         scanner = FakeScanner(files=[Path("/m/a.mp3"), Path("/m/b.mp3")])
-        library, queue, playback, audio = _make_library(scanner)
+        library, queue, session, playback, audio = _make_library(scanner)
+        coordinator = _coordinator_for(library, session)
         library.scan("/m")
         missing = Path("/m/a.mp3")
         scanner.validate_errors = {
@@ -347,13 +359,14 @@ class TestActivationValidation:
                 LibraryDiagnosticCode.TRACK_MISSING, missing
             )
         }
-        library.activate(0)
+        coordinator.play_visible_track(0)
         assert queue.state.tracks == []
-        assert queue.state.current_index == -1  # pristine queue, never touched
+        assert session.state.current_index == -1  # pristine queue, never touched
 
     def test_missing_activation_no_playback(self):
         scanner = FakeScanner(files=[Path("/m/a.mp3")])
-        library, queue, playback, audio = _make_library(scanner)
+        library, queue, session, playback, audio = _make_library(scanner)
+        coordinator = _coordinator_for(library, session)
         library.scan("/m")
         missing = Path("/m/a.mp3")
         scanner.validate_errors = {
@@ -361,7 +374,7 @@ class TestActivationValidation:
                 LibraryDiagnosticCode.TRACK_MISSING, missing
             )
         }
-        library.activate(0)
+        coordinator.play_visible_track(0)
         assert audio.state == "stopped"
         assert audio.loaded is None
 
@@ -374,26 +387,28 @@ class TestActivationValidation:
         for f in (alpha, beta, gamma):
             f.write_text("")
         scanner = FakeScanner(files=[alpha, beta, gamma])
-        library, queue, playback, audio = _make_library(scanner)
+        library, queue, session, playback, audio = _make_library(scanner)
+        coordinator = _coordinator_for(library, session)
         library.scan(str(base))
         library.search("beta")
         scanner.validate_errors = {
             beta: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, beta)
         }
-        library.activate(0)  # visible index 0 == beta under the filter
+        coordinator.play_visible_track(0)  # visible index 0 == beta under the filter
         assert [t.file_path for t in library.state.tracks] == [alpha, gamma]
         assert queue.state.count == 0
 
     def test_activation_access_failure_preserves_ref_and_queue(self):
         scanner = FakeScanner(files=[Path("/m/a.mp3")])
-        library, queue, playback, audio = _make_library(scanner)
+        library, queue, session, playback, audio = _make_library(scanner)
+        coordinator = _coordinator_for(library, session)
         library.scan("/m")
         before = list(library.state.tracks)
         p = Path("/m/a.mp3")
         scanner.validate_errors = {
             p: LibraryFilesystemError(LibraryDiagnosticCode.ACCESS_FAILURE, p, "denied")
         }
-        library.activate(0)
+        coordinator.play_visible_track(0)
         assert library.state.tracks == before
         assert library.state.tracks[0] is before[0]
         assert library.state.diagnostic is not None
@@ -403,13 +418,14 @@ class TestActivationValidation:
 
     def test_activation_io_failure_preserves(self):
         scanner = FakeScanner(files=[Path("/m/a.mp3")])
-        library, queue, playback, audio = _make_library(scanner)
+        library, queue, session, playback, audio = _make_library(scanner)
+        coordinator = _coordinator_for(library, session)
         library.scan("/m")
         p = Path("/m/a.mp3")
         scanner.validate_errors = {
             p: LibraryFilesystemError(LibraryDiagnosticCode.IO_FAILURE, p, "i/o error")
         }
-        library.activate(0)
+        coordinator.play_visible_track(0)
         assert len(library.state.tracks) == 1
         assert library.state.diagnostic is not None
         assert library.state.diagnostic.code is LibraryDiagnosticCode.IO_FAILURE
@@ -418,13 +434,14 @@ class TestActivationValidation:
 
     def test_activation_unknown_failure_preserves(self):
         scanner = FakeScanner(files=[Path("/m/a.mp3")])
-        library, queue, playback, audio = _make_library(scanner)
+        library, queue, session, playback, audio = _make_library(scanner)
+        coordinator = _coordinator_for(library, session)
         library.scan("/m")
         p = Path("/m/a.mp3")
         scanner.validate_errors = {
             p: LibraryFilesystemError(LibraryDiagnosticCode.UNKNOWN_FAILURE, p, "weird")
         }
-        library.activate(0)
+        coordinator.play_visible_track(0)
         assert len(library.state.tracks) == 1
         assert library.state.diagnostic is not None
         assert library.state.diagnostic.code is LibraryDiagnosticCode.UNKNOWN_FAILURE
@@ -433,7 +450,8 @@ class TestActivationValidation:
 
     def test_invalid_visible_index_no_validation_no_notify(self):
         scanner = FakeScanner(files=[Path("/m/a.mp3"), Path("/m/b.mp3")])
-        library, *_ = _make_library(scanner)
+        library, queue, session, playback, audio = _make_library(scanner)
+        coordinator = _coordinator_for(library, session)
         library.scan("/m")
         calls = []
         library.subscribe_changed(lambda: calls.append(1))
@@ -442,7 +460,7 @@ class TestActivationValidation:
                 LibraryDiagnosticCode.TRACK_MISSING, Path("/m/a.mp3")
             )
         }
-        library.activate(5)
+        coordinator.play_visible_track(5)
         assert scanner.validated == []
         assert len(calls) == 0
         assert library.state.diagnostic is None
@@ -451,12 +469,15 @@ class TestActivationValidation:
         f = tmp_path / "song.mp3"
         f.write_text("")
         scanner = FilesystemLibraryScanner()
-        library, queue, playback, audio = _make_library(scanner)
+        library, queue, session, playback, audio = _make_library(scanner)
+        coordinator = _coordinator_for(library, session)
         library.scan(str(tmp_path))
-        library.activate(0)
+        coordinator.play_visible_track(0)
         audio.trigger_media_accepted(f)
-        assert queue.state.count == 1
-        assert queue.state.current_index == 0
+        # M4-R1: generic track click → SINGLE; Queue NEVER receives it.
+        assert queue.state.count == 0
+        assert session.state.context_type.name == "SINGLE"
+        assert session.state.current_index == 0
         assert audio.loaded == f
 
 

@@ -25,6 +25,7 @@ from mutagen.mp3 import MP3
 from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.domain.library import (
     AlbumRef,
@@ -94,8 +95,14 @@ class FailingScanner(FakeScanner):
 def _make_library(scanner, extractor=None, artwork_provider=None, artwork_cache=None):
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
-    return LibraryService(scanner, queue, extractor, artwork_provider, artwork_cache)
+    queue = QueueService()
+    _session = PlaybackSessionService(playback, queue)
+    return LibraryService(
+        scanner,
+        metadata_extractor=extractor,
+        artwork_provider=artwork_provider,
+        artwork_cache=artwork_cache,
+    )
 
 
 def _album_factory():

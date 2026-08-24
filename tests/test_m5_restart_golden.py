@@ -38,6 +38,7 @@ from pathlib import Path
 
 from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.domain.playback import PlaybackStatus
@@ -72,11 +73,12 @@ def _build(
     )
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback, shuffle_seed=shuffle_seed)
-    coordinator = PersistenceCoordinator(repo, queue, playback, settings)
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue, shuffle_seed=shuffle_seed)
+    coordinator = PersistenceCoordinator(repo, queue, session, playback, settings)
     if start:
         coordinator.start()
-    return repo, settings, audio, playback, queue, coordinator
+    return repo, settings, audio, playback, queue, session, coordinator
 
 
 def _spy_resume(playback, calls):
@@ -96,7 +98,7 @@ class TestRestartGolden:
 
         # ── Session 1: build the full golden state and checkpoint ──
         settings_repo = SQLiteSettingsRepository(db)
-        repo1, settings1, audio1, playback1, queue1, coordinator1 = _build(
+        repo1, settings1, audio1, playback1, queue1, session1, coordinator1 = _build(
             db, settings_repo=settings_repo, shuffle_seed=424242, start=True
         )
         # Volume/muted through the PUBLIC playback setters ONLY — the started
@@ -111,11 +113,11 @@ class TestRestartGolden:
         queue1.add(_A, "A")
         queue1.add(_B, "B")
         queue1.add(_C, "C")
-        queue1.play_index(1)  # B pending
+        session1.play_queue_index(1)  # B pending
         audio1.trigger_media_accepted(_B)  # B committed, current 1
         playback1.update_position(222000)
-        queue1.set_repeat_mode(RepeatMode.ALL)
-        queue1.set_shuffle_enabled(True)
+        session1.set_repeat_mode(RepeatMode.ALL)
+        session1.set_shuffle_enabled(True)
         coordinator1.checkpoint()  # the golden uses the checkpoint path
 
         # Destroy WITHOUT shutdown: restart must not depend on graceful stop.
@@ -124,7 +126,7 @@ class TestRestartGolden:
         # ── Session 2: fresh services + coordinator on the SAME db ──
         # Production lifecycle: start() then restore() — the subscriptions
         # are armed before the restore (target bootstrap order).
-        repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(
+        repo2, settings2, audio2, playback2, queue2, session2, coordinator2 = _build(
             db, settings_repo=SQLiteSettingsRepository(db), start=True
         )
         prepare_calls = []
@@ -143,11 +145,11 @@ class TestRestartGolden:
 
         # §42 — queue fully restored.
         assert [t.file_path for t in queue2.state.tracks] == [_A, _B, _C]
-        assert queue2.state.current_index == 1
-        assert queue2.state.repeat_mode is RepeatMode.ALL
-        assert queue2.state.shuffle_enabled is True
+        assert session2.state.current_index == 1
+        assert session2.state.repeat_mode is RepeatMode.ALL
+        assert session2.state.shuffle_enabled is True
         # Reconstructed with the DEFAULT seed; restore sets the persisted one.
-        assert queue2.shuffle_seed == 424242
+        assert session2.shuffle_seed == 424242
 
         # §42 — settings fully restored (real SQLite round-trip).
         assert settings2.state.volume == 37
@@ -183,11 +185,11 @@ class TestRestartGolden:
         a = Path("/music/a.flac")
 
         # ── Session 1 ──
-        repo1, settings1, audio1, playback1, queue1, coordinator1 = _build(db)
+        repo1, settings1, audio1, playback1, queue1, session1, coordinator1 = _build(db)
         queue1.add(x, "X1")
         queue1.add(a, "A")
         queue1.add(x, "X2")  # same path, distinct Track object
-        queue1.play_index(2)
+        session1.play_queue_index(2)
         audio1.trigger_media_accepted(x)  # committed current = X2 (identity)
         playback1.update_position(5555)
         coordinator1.checkpoint()
@@ -195,7 +197,7 @@ class TestRestartGolden:
 
         # ── Session 2 ──
         # Production lifecycle: start() then restore() (target bootstrap order).
-        repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(
+        repo2, settings2, audio2, playback2, queue2, session2, coordinator2 = _build(
             db, start=True
         )
         prepare_calls = []
@@ -208,7 +210,7 @@ class TestRestartGolden:
         assert tracks[0] is not tracks[2]  # no collapse by path
         assert tracks[0].file_path == tracks[2].file_path == x
         assert tracks[1].file_path == a
-        assert queue2.state.current_index == 2
+        assert session2.state.current_index == 2
         # Resume coherence: entries[2] == playback path x.flac → prepare X2.
         assert prepare_calls == [(x, 5555)]
         assert playback2.state.file_path is None
@@ -220,23 +222,23 @@ class TestRestartGolden:
         db = tmp_path / "t3.db"
 
         # ── Session 1: RUNTIME checkpoint, then destroy WITHOUT shutdown ──
-        repo1, settings1, audio1, playback1, queue1, coordinator1 = _build(
+        repo1, settings1, audio1, playback1, queue1, session1, coordinator1 = _build(
             db, shuffle_seed=424242
         )
         queue1.add(_A, "A")
         queue1.add(_B, "B")
         queue1.add(_C, "C")
-        queue1.play_index(1)
+        session1.play_queue_index(1)
         audio1.trigger_media_accepted(_B)
         playback1.update_position(42424)
-        queue1.set_repeat_mode(RepeatMode.ALL)
-        queue1.set_shuffle_enabled(True)
+        session1.set_repeat_mode(RepeatMode.ALL)
+        session1.set_shuffle_enabled(True)
         coordinator1.checkpoint()  # runtime checkpoint — NO shutdown() call
         del coordinator1, queue1, playback1, audio1, repo1
 
         # ── Session 2 ──
         # Production lifecycle: start() then restore() (target bootstrap order).
-        repo2, settings2, audio2, playback2, queue2, coordinator2 = _build(
+        repo2, settings2, audio2, playback2, queue2, session2, coordinator2 = _build(
             db, start=True
         )
         prepare_calls = []
@@ -247,10 +249,10 @@ class TestRestartGolden:
         # §44 — the last checkpoint state is restored, no graceful shutdown
         # needed: queue/current/repeat/shuffle/seed/position all survive.
         assert [t.file_path for t in queue2.state.tracks] == [_A, _B, _C]
-        assert queue2.state.current_index == 1
-        assert queue2.state.repeat_mode is RepeatMode.ALL
-        assert queue2.state.shuffle_enabled is True
-        assert queue2.shuffle_seed == 424242
+        assert session2.state.current_index == 1
+        assert session2.state.repeat_mode is RepeatMode.ALL
+        assert session2.state.shuffle_enabled is True
+        assert session2.shuffle_seed == 424242
         assert prepare_calls == [(_B, 42424)]
         audio2.trigger_media_accepted(_B)
         assert audio2.seek_calls == [42424]  # restored position sought

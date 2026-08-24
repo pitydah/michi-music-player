@@ -16,7 +16,6 @@ from michi.domain.playlist import (
     Playlist,
     PlaylistNavigationState,
 )
-from tests.conftest import FakeAudioPort
 from tests.test_playlists import FakePlaylistsPort
 
 
@@ -41,11 +40,8 @@ def _seed(db_path: Path, playlists, nav):
 
 
 def _make(repo):
-    from michi.application.playback_service import PlaybackService
-
-    audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    return PlaylistService(queue, repo), queue
+    _queue = QueueService()
+    return PlaylistService(playlists_port=repo), _queue
 
 
 class TestStartupNormalization:
@@ -99,11 +95,8 @@ class TestStartupNormalization:
                 recent_ids=("B", "ghost", "A"),
             ),
         )
-        from michi.application.playback_service import PlaybackService
 
-        audio = FakeAudioPort()
-        queue = QueueService(PlaybackService(audio))
-        service = PlaylistService(queue, port)
+        service = PlaylistService(playlists_port=port)
         assert service.navigation.pinned_ids == ("A", "B")
         assert service.navigation.recent_ids == ("B", "A")
 

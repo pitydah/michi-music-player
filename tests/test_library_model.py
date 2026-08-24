@@ -38,6 +38,7 @@ from pathlib import Path
 from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.domain.library import (
     AlbumRef,
@@ -88,11 +89,12 @@ def _track(
 def _make_library(scanner, extractor=None):
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
+    _session = PlaybackSessionService(playback, queue)
     if extractor is None:
         library = LibraryService(scanner, queue)
     else:
-        library = LibraryService(scanner, queue, extractor)
+        library = LibraryService(scanner, metadata_extractor=extractor)
     return library
 
 

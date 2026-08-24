@@ -10,7 +10,9 @@ import sqlite3
 
 from michi.domain.queue import RepeatMode
 from michi.domain.session import (
+    FORMAT_VERSION,
     PersistedQueueEntry,
+    PersistedSessionContext,
     PlaybackSessionSnapshot,
     encode_snapshot,
     fresh_snapshot,
@@ -23,14 +25,22 @@ _SESSION_KEY = "session_snapshot"
 
 def _full_snapshot() -> PlaybackSessionSnapshot:
     return PlaybackSessionSnapshot(
-        format_version=1,
+        format_version=FORMAT_VERSION,
         queue_entries=(
-            PersistedQueueEntry(file_path="X1", title="Alpha"),
-            PersistedQueueEntry(file_path="X2", title="Beta"),
-            PersistedQueueEntry(file_path="X1", title="Gamma"),
+            PersistedQueueEntry(file_path="Q1", title="QAlpha"),
+            PersistedQueueEntry(file_path="Q2", title="QBeta"),
         ),
-        queue_current_index=2,
-        playback_path="X2",
+        context=PersistedSessionContext(
+            context_type="queue",
+            source_id=None,
+            entries=(
+                PersistedQueueEntry(file_path="X1", title="Alpha"),
+                PersistedQueueEntry(file_path="X2", title="Beta"),
+                PersistedQueueEntry(file_path="X1", title="Gamma"),
+            ),
+            current_index=2,
+        ),
+        playback_path="X1",
         position_ms=222000,
         repeat_mode=RepeatMode.ALL,
         shuffle_enabled=True,

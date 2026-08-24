@@ -12,8 +12,10 @@ bridge/QML.
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.domain.library import TrackMetadata
+from michi.domain.playback_session import PlaybackSequenceEntry
 from michi.presentation.library_bridge import LibraryBridge
 from tests.conftest import FakeAudioPort
 from tests.test_library_metadata import FakeExtractor, FakeScanner
@@ -77,10 +79,20 @@ def _make(tmp_path, names):
         paths.append(p)
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
-    library = LibraryService(FakeScanner(paths), queue, FakeExtractor(factory=_factory))
+    queue = QueueService()
+    _session = PlaybackSessionService(playback, queue)
+    library = LibraryService(
+        FakeScanner(paths), metadata_extractor=FakeExtractor(factory=_factory)
+    )
     library.scan(str(music))
-    return library, queue, audio, music, paths
+    from michi.application.playback_history_coordinator import (
+        PlaybackHistoryCoordinator,
+    )
+
+    session = PlaybackSessionService(playback, queue)
+    history = PlaybackHistoryCoordinator(session, library)
+    history.start()
+    return library, queue, session, audio, music, paths
 
 
 def _bridge(library):
@@ -145,7 +157,7 @@ class TestUnifiedFiltering:
 
 class TestReferenceFiltering:
     def test_search_filters_favorite_rows_by_matched_track_ids(self, tmp_path):
-        library, queue, audio, music, paths = _make(tmp_path, list(GOLDEN))
+        library, queue, session, audio, music, paths = _make(tmp_path, list(GOLDEN))
         bridge = _bridge(library)
         library.toggle_favorite(paths[1])  # Miles track
         library.toggle_favorite(paths[2])  # Zimmer track
@@ -156,9 +168,11 @@ class TestReferenceFiltering:
         bridge.dispose()
 
     def test_search_filters_history_rows_by_matched_track_ids(self, tmp_path):
-        library, queue, audio, music, paths = _make(tmp_path, list(GOLDEN))
+        library, queue, session, audio, music, paths = _make(tmp_path, list(GOLDEN))
         bridge = _bridge(library)
-        library.activate(0)  # Joni track
+        track = library.state.visible_tracks[0]
+        session.play_single(PlaybackSequenceEntry(track.file_path, track.title or ""))
+        audio.trigger_media_accepted(track.file_path)
         audio.trigger_media_accepted(paths[0])  # commit -> history entry
         assert library.state.history_paths == (str(paths[0]),)
         library.search("zimmer")
@@ -169,7 +183,7 @@ class TestReferenceFiltering:
         bridge.dispose()
 
     def test_search_filters_recent_rows_by_matched_track_ids(self, tmp_path):
-        library, queue, audio, music, paths = _make(tmp_path, list(GOLDEN))
+        library, queue, session, audio, music, paths = _make(tmp_path, list(GOLDEN))
         bridge = _bridge(library)
         assert len(bridge.property("recentlyAddedRows")) == 4
         library.search("joni")
@@ -224,7 +238,7 @@ class TestSelectionSafety:
 
 class TestActiveSearchLifecycle:
     def test_active_search_rebuilds_after_rescan(self, tmp_path):
-        library, queue, audio, music, paths = _make(tmp_path, list(GOLDEN))
+        library, queue, session, audio, music, paths = _make(tmp_path, list(GOLDEN))
         library.search("zimmer")
         # Canonical tie-break: equal scores -> title order.
         assert [t.display_name for t in library.state.visible_tracks] == [
@@ -241,7 +255,7 @@ class TestActiveSearchLifecycle:
         assert [t.display_name for t in library.state.visible_tracks] == []
 
     def test_active_search_metadata_modification_reflected(self, tmp_path):
-        library, queue, audio, music, paths = _make(tmp_path, list(GOLDEN))
+        library, queue, session, audio, music, paths = _make(tmp_path, list(GOLDEN))
         library.search("miles")
         assert [t.display_name for t in library.state.visible_tracks] == ["So What"]
         # The Joni track's metadata is corrected to Miles and rescanned.

@@ -43,7 +43,7 @@ def _world(tmp_path, with_engine=False):
         FakeScanner(paths), extractor=FakeExtractor()
     )
     library.scan(str(tmp_path))
-    service = PlaylistService(queue, FakePlaylistsPort())
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     service.set_on_playlist_deleted(nav.forget_playlist)
     coord = PlaylistNavigationCoordinator(service, nav)

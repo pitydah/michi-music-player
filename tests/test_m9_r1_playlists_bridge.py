@@ -10,9 +10,7 @@ from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
 from michi.application.playlist_service import PlaylistService
-from michi.application.queue_service import QueueService
 from michi.presentation.playlists_bridge import PlaylistsBridge
-from tests.conftest import FakeAudioPort
 from tests.test_library_metadata import FakeExtractor, FakeScanner
 from tests.test_playlists import FakePlaylistsPort, _make_library_and_queue
 
@@ -31,11 +29,8 @@ def _tracks(tmp_path, names=("one.mp3", "two.mp3")):
 
 
 def _build(tmp_path=None, library=None):
-    from michi.application.playback_service import PlaybackService
 
-    audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    service = PlaylistService(queue, FakePlaylistsPort())
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     service.set_on_playlist_deleted(nav.forget_playlist)
     coord = PlaylistNavigationCoordinator(service, nav)
@@ -211,11 +206,10 @@ class TestIntents:
         service.add_track(a.playlist_id, "/m/a.mp3")
         coord.open_playlist(a.playlist_id)
         bridge.play_selected_playlist()
-        # queue filled (verified via service-level behavior in M8 tests);
-        # here we only assert the intent does not crash and routes to queue
-        from michi.application.queue_service import QueueService
-
-        assert isinstance(service._queue, QueueService)  # queue authority kept
+        # M4-R1: Play routes through PlaylistPlaybackCoordinator → the
+        # PlaybackSession (PLAYLIST context); PlaylistService never owns a
+        # queue.
+        assert not hasattr(service, "_queue")  # no queue authority on service
         bridge.play_playlist(a.playlist_id)
 
 

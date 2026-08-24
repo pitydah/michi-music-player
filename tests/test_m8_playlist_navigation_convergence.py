@@ -22,18 +22,35 @@ from tests.test_playlists import FakePlaylistsPort
 
 def _build():
     from michi.application.playback_service import PlaybackService
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+    from michi.application.playlist_playback_coordinator import (
+        PlaylistPlaybackCoordinator,
+    )
 
     audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    service = PlaylistService(queue, FakePlaylistsPort())
+    playback = PlaybackService(audio)
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue)
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     service.set_on_playlist_deleted(nav.forget_playlist)
-    return service, nav, PlaylistNavigationCoordinator(service, nav), queue, audio
+    playback_coordinator = PlaylistPlaybackCoordinator(service, session, queue)
+    return (
+        service,
+        nav,
+        PlaylistNavigationCoordinator(service, nav),
+        queue,
+        session,
+        audio,
+        playback_coordinator,
+    )
 
 
 class TestOpenValid:
     def test_open_valid_playlist_marks_recent_and_navigates(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         a = service.create_playlist("Jazz")
         coord.open_playlist(a.playlist_id)
         assert nav.state.current_route == AppRoute.PLAYLISTS
@@ -41,7 +58,7 @@ class TestOpenValid:
         assert service.navigation.recent_ids == (a.playlist_id,)
 
     def test_open_a_then_b_updates_mru(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         a = service.create_playlist("A")
         b = service.create_playlist("B")
         coord.open_playlist(a.playlist_id)
@@ -49,7 +66,7 @@ class TestOpenValid:
         assert service.navigation.recent_ids == (b.playlist_id, a.playlist_id)
 
     def test_open_b_then_a_reorders_mru(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         a = service.create_playlist("A")
         b = service.create_playlist("B")
         coord.open_playlist(a.playlist_id)
@@ -58,7 +75,7 @@ class TestOpenValid:
         assert service.navigation.recent_ids == (a.playlist_id, b.playlist_id)
 
     def test_open_same_playlist_twice_is_idempotent(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         a = service.create_playlist("A")
         coord.open_playlist(a.playlist_id)
         service_calls, nav_calls = [], []
@@ -72,28 +89,28 @@ class TestOpenValid:
 
 class TestOpenInvalid:
     def test_open_unknown_playlist_falls_back_to_all(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         coord.open_playlist("ghost-id")
         assert nav.state.current_route == AppRoute.PLAYLISTS
         assert nav.state.playlist_id is None
         assert service.navigation.recent_ids == ()
 
     def test_open_empty_id_falls_back_safely(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         coord.open_playlist("")
         assert nav.state.current_route == AppRoute.PLAYLISTS
         assert nav.state.playlist_id is None
         assert service.navigation.recent_ids == ()
 
     def test_open_whitespace_id_falls_back_safely(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         coord.open_playlist("   ")
         assert nav.state.current_route == AppRoute.PLAYLISTS
         assert nav.state.playlist_id is None
         assert service.navigation.recent_ids == ()
 
     def test_open_unknown_never_notifies_playlist_service(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         calls = []
         service.subscribe_changed(lambda: calls.append(1))
         coord.open_playlist("ghost")
@@ -102,7 +119,7 @@ class TestOpenInvalid:
 
 class TestOpenAll:
     def test_open_all_playlists_does_not_mark_recent(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         a = service.create_playlist("A")
         service.mark_recent(a.playlist_id)
         coord.open_all_playlists()
@@ -113,7 +130,7 @@ class TestOpenAll:
 
 class TestNotificationSemantics:
     def test_open_valid_new_playlist_notifies_both_once(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         a = service.create_playlist("A")
         service_calls, nav_calls = [], []
         service.subscribe_changed(lambda: service_calls.append(1))
@@ -123,7 +140,7 @@ class TestNotificationSemantics:
         assert nav_calls == [1]
 
     def test_open_unknown_falls_back_with_single_nav_notification(self):
-        service, nav, coord, _, _ = _build()
+        service, nav, coord, _, _, _, _ = _build()
         service_calls, nav_calls = [], []
         service.subscribe_changed(lambda: service_calls.append(1))
         nav.subscribe_changed(lambda: nav_calls.append(1))
@@ -134,32 +151,34 @@ class TestNotificationSemantics:
 
 class TestOpenIsNotPlay:
     def test_open_does_not_touch_queue(self):
-        service, nav, coord, queue, _ = _build()
+        service, nav, coord, queue, _, _, _ = _build()
         a = service.create_playlist("P")
         service.add_track(a.playlist_id, "/m/a.mp3")
         coord.open_playlist(a.playlist_id)
         assert queue.state.count == 0  # open ≠ play
 
-    def test_play_playlist_still_fills_queue(self):
-        service, nav, coord, queue, audio = _build()
+    def test_play_playlist_sets_session_context(self):
+        """M4-R1: Play Playlist → PLAYLIST session context; Queue untouched."""
+        service, nav, coord, queue, session, audio, pcoord = _build()
         a = service.create_playlist("P")
         service.add_track(a.playlist_id, "/m/a.mp3")
-        service.play_playlist(a.playlist_id)
-        assert queue.state.count == 1
+        pcoord.play_playlist(a.playlist_id)
+        assert queue.state.count == 0
         audio.trigger_media_accepted(__import__("pathlib").Path("/m/a.mp3"))
-        assert queue.state.current_index == 0
+        assert session.state.context_type.name == "PLAYLIST"
+        assert session.state.current_index == 0
 
 
 class TestGetPlaylistQuery:
     def test_get_playlist_valid_and_unknown(self):
-        service, _, _, _, _ = _build()
+        service, _, _, _, _, _, _ = _build()
         a = service.create_playlist("A")
         assert service.get_playlist(a.playlist_id) is not None
         assert service.get_playlist(a.playlist_id).playlist_id == a.playlist_id
         assert service.get_playlist("ghost") is None
 
     def test_get_playlist_no_mutation(self):
-        service, _, _, _, _ = _build()
+        service, _, _, _, _, _, _ = _build()
         a = service.create_playlist("A")
         calls = []
         service.subscribe_changed(lambda: calls.append(1))

@@ -37,8 +37,8 @@ def _nav_bridge():
     from michi.application.playback_service import PlaybackService
 
     audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    service = PlaylistService(queue, FakePlaylistsPort())
+    _queue = QueueService(PlaybackService(audio))
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     coord = PlaylistNavigationCoordinator(service, nav)
     bridge = NavigationBridge(nav, playlist_navigation=coord)
@@ -97,7 +97,7 @@ class TestBridgeOpenIntent:
 class TestSearchPlaylistIdentity:
     def test_search_rows_expose_playlist_id(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
         bridge, _, _ = _make_bridge(service, library=library)
         library.search("Road")
@@ -109,7 +109,7 @@ class TestSearchPlaylistIdentity:
 
     def test_search_after_rename_same_id_new_name(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
         service.rename_playlist(a.playlist_id, "Road Trip Long")
         bridge, _, _ = _make_bridge(service, library=library)
@@ -122,7 +122,7 @@ class TestSearchPlaylistIdentity:
     def test_search_playlist_supports_open_intent_chain(self, tmp_path):
         """M9-R1 readiness: search row playlistId → openPlaylist works."""
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("Road Trip")
         nav = NavigationService()
         coord = PlaylistNavigationCoordinator(service, nav)
@@ -138,7 +138,7 @@ class TestSearchPlaylistIdentity:
 class TestBridgeDeleteSelection:
     def test_delete_selected_clears_bridge_state(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("A")
         bridge, _, _ = _make_bridge(service, library=library)
         bridge.open_playlist(a.playlist_id)
@@ -151,7 +151,7 @@ class TestBridgeDeleteSelection:
 
     def test_delete_selected_via_bridge_slot(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("A")
         bridge, _, _ = _make_bridge(service, library=library)
         bridge.open_playlist(a.playlist_id)
@@ -163,7 +163,7 @@ class TestBridgeDeleteSelection:
 
     def test_delete_other_keeps_selection(self, tmp_path):
         library, queue, _, _ = _tracks(tmp_path)
-        service = PlaylistService(queue, FakePlaylistsPort())
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
         a = service.create_playlist("A")
         b = service.create_playlist("B")
         bridge, _, _ = _make_bridge(service, library=library)

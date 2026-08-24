@@ -26,8 +26,8 @@ def _service_and_nav():
     from michi.application.playback_service import PlaybackService
 
     audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    service = PlaylistService(queue, FakePlaylistsPort())
+    _queue = QueueService(PlaybackService(audio))
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
     nav = NavigationService()
     service.set_on_playlist_deleted(nav.forget_playlist)
     return service, nav

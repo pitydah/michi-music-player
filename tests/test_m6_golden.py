@@ -43,6 +43,7 @@ from mutagen.mp3 import MP3, EasyMP3
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
+from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.ports import (
     MetadataExtractionError,
     ScanCancelToken,
@@ -544,12 +545,12 @@ def _make_library(
     """Build LibraryService with a real queue, index and optional pipeline."""
     audio = FakeAudioPort()
     playback = PlaybackService(audio)
-    queue = QueueService(playback)
+    queue = QueueService()
+    _session = PlaybackSessionService(playback, queue)
     repo = SqliteLibraryIndexRepository(tmp_path / "michi.db")
     library = LibraryService(
         scanner,
-        queue,
-        extractor,
+        metadata_extractor=extractor,
         artwork_provider=artwork_provider,
         artwork_cache=artwork_cache,
         library_index=repo,
@@ -1049,7 +1050,7 @@ class TestGoldenDegradation:
         missing_path = golden.no_art[0]
         ref = next(t for t in library.state.tracks if t.file_path == missing_path)
         missing_path.unlink()
-        library.activate_track(ref)
+        library.validate_track_for_playback(ref)
 
         assert library.state.diagnostic is not None
         assert library.state.diagnostic.code is LibraryDiagnosticCode.TRACK_MISSING

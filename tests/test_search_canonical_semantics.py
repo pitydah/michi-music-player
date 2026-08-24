@@ -26,8 +26,6 @@ import pytest
 from PySide6.QtGui import QGuiApplication
 
 from michi.application.library_service import LibraryService
-from michi.application.playback_service import PlaybackService
-from michi.application.queue_service import QueueService
 from michi.domain.library import TrackMetadata, TrackRef, build_music_model
 from michi.domain.search import (
     SearchQuery,
@@ -35,7 +33,6 @@ from michi.domain.search import (
     build_search_projection,
 )
 from michi.presentation.library_bridge import LibraryBridge
-from tests.conftest import FakeAudioPort
 from tests.test_library_metadata import FakeExtractor, FakeScanner
 
 
@@ -349,9 +346,9 @@ def _service_library(tmp_path):
         p = music / name
         p.write_bytes(b"x")
         paths.append(p)
-    audio = FakeAudioPort()
-    queue = QueueService(PlaybackService(audio))
-    library = LibraryService(FakeScanner(paths), queue, FakeExtractor(factory=_factory))
+    library = LibraryService(
+        FakeScanner(paths), metadata_extractor=FakeExtractor(factory=_factory)
+    )
     library.scan(str(music))
     return library, music
 
