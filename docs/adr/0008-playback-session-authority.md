@@ -43,6 +43,14 @@ session current"* — is superseded.
   context; V1 snapshots migrate (old queue becomes queue_entries; valid old
   current_index becomes a QUEUE context).
 
+## Queue entry identity (final seal clarification)
+
+- Queue entry identity is OPAQUE and RUNTIME-STABLE (entry_id).
+- file_path is payload, not Queue identity.
+- Duplicate file paths are first-class (distinct entry_ids).
+- PlaybackSessionService owns its subscriptions explicitly (start/stop).
+- entry_id is never persisted (restart creates fresh ids).
+
 ## Sequence model
 
 - Playlist is a persistent sequence.
