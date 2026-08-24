@@ -46,8 +46,12 @@ class _EnrichmentRelay(QObject):
     """Marshals worker-thread callbacks to the bridge owner thread."""
 
     event_received = Signal(object, int)  # (EnrichmentOperationEvent, intent_id)
-    candidates_received = Signal(object, object, int)  # (kind, candidates, epoch)
-    search_error = Signal(object, object, int)  # (kind, error, epoch)
+    candidates_received = Signal(
+        object, object, object, int, object
+    )  # (kind, key, session, epoch, candidates)
+    search_error = Signal(
+        object, object, object, int, object
+    )  # (kind, key, session, epoch, error)
 
 
 _STATE_MESSAGES = {
@@ -112,6 +116,8 @@ class EnrichmentBridge(QObject):
         self._disposed = False
         self._presentation_intent_id = 0
         self._manual_search_epoch = 0
+        self._review_session_id = 0
+        self._candidates_session_id = -1
         self._last_generation: dict[tuple[str, str], int] = {}
 
         # policy
@@ -202,6 +208,7 @@ class EnrichmentBridge(QObject):
     def activate_artist(self, local_artist_key: str) -> None:
         if self._disposed or not local_artist_key:
             return
+        self._invalidate_review_session()
         self._presentation_intent_id += 1
         if (
             self._active_kind == "artist"
@@ -233,6 +240,7 @@ class EnrichmentBridge(QObject):
     def activate_album(self, local_album_key: str) -> None:
         if self._disposed or not local_album_key:
             return
+        self._invalidate_review_session()
         self._presentation_intent_id += 1
         if (
             self._active_kind == "album"
@@ -266,6 +274,7 @@ class EnrichmentBridge(QObject):
             return
         if not self._online_enabled:
             return  # network action: not available while OFF
+        self._invalidate_review_session()
         self._presentation_intent_id += 1
         self._start_artist_operation(self._active_key, refresh=True)
 
@@ -275,6 +284,7 @@ class EnrichmentBridge(QObject):
             return
         if not self._online_enabled:
             return
+        self._invalidate_review_session()
         self._presentation_intent_id += 1
         self._start_album_operation(self._active_key, refresh=True)
 
@@ -286,18 +296,21 @@ class EnrichmentBridge(QObject):
     def open_review(self, kind: str) -> None:
         if self._disposed or kind not in ("artist", "album"):
             return
+        self._review_session_id += 1  # fresh review session
         self._review_kind = kind
         self._review_open = True
         self._review_loading = False
         self._review_error = ""
         self._artist_candidates = []
         self._album_candidates = []
+        self._candidates_session_id = -1
         self.changed.emit()
 
     @Slot()
     def close_review(self) -> None:
         if not self._review_open:
             return
+        self._invalidate_review_session()
         self._review_open = False
         self._review_loading = False
         self._review_error = ""
@@ -318,15 +331,18 @@ class EnrichmentBridge(QObject):
             return
         self._manual_search_epoch += 1
         epoch = self._manual_search_epoch
+        session = self._review_session_id
+        kind = "artist"
+        key = self._active_key
         self._review_loading = True
         self._review_error = ""
         self._artist_candidates = []
 
         def on_result(candidates):
-            self._relay.candidates_received.emit("artist", candidates, epoch)
+            self._relay.candidates_received.emit(kind, key, session, epoch, candidates)
 
         def on_error(error):
-            self._relay.search_error.emit("artist", error, epoch)
+            self._relay.search_error.emit(kind, key, session, epoch, error)
 
         self._coordinator.search_artist_candidates_async(name, on_result, on_error)
         self.changed.emit()
@@ -344,15 +360,18 @@ class EnrichmentBridge(QObject):
             return
         self._manual_search_epoch += 1
         epoch = self._manual_search_epoch
+        session = self._review_session_id
+        kind = "album"
+        key = self._active_key
         self._review_loading = True
         self._review_error = ""
         self._album_candidates = []
 
         def on_result(candidates):
-            self._relay.candidates_received.emit("album", candidates, epoch)
+            self._relay.candidates_received.emit(kind, key, session, epoch, candidates)
 
         def on_error(error):
-            self._relay.search_error.emit("album", error, epoch)
+            self._relay.search_error.emit(kind, key, session, epoch, error)
 
         self._coordinator.search_album_candidates_async(
             title, artist_name.strip(), on_result, on_error
@@ -363,6 +382,8 @@ class EnrichmentBridge(QObject):
     def confirm_artist_candidate(self, external_artist_id: str) -> None:
         if self._disposed or self._active_kind != "artist" or not self._active_key:
             return
+        if not self._review_is_current():
+            return  # no valid review session: never confirm stale candidates
         external_artist_id = external_artist_id.strip()
         if not external_artist_id:
             return
@@ -377,6 +398,8 @@ class EnrichmentBridge(QObject):
     def confirm_album_candidate(self, release_group_id: str) -> None:
         if self._disposed or self._active_kind != "album" or not self._active_key:
             return
+        if not self._review_is_current():
+            return  # no valid review session: never confirm stale candidates
         release_group_id = release_group_id.strip()
         if not release_group_id:
             return
@@ -396,6 +419,7 @@ class EnrichmentBridge(QObject):
         """CLEAR ONLINE INFO: identity stays, knowledge disappears."""
         if self._disposed or not self._active_key:
             return
+        self._invalidate_review_session()
         if self._active_kind == "artist":
             self._coordinator.clear_artist_knowledge(self._active_key)
         elif self._active_kind == "album":
@@ -412,6 +436,7 @@ class EnrichmentBridge(QObject):
         """RESET MATCH: identity disappears, no automatic re-enrich."""
         if self._disposed or not self._active_key:
             return
+        self._invalidate_review_session()
         if self._active_kind == "artist":
             self._coordinator.reset_artist_identity(self._active_key)
         elif self._active_kind == "album":
@@ -431,6 +456,8 @@ class EnrichmentBridge(QObject):
     def on_online_enrichment_changed(self, enabled: bool) -> None:
         if self._disposed:
             return
+        if not enabled:
+            self._invalidate_review_session()
         self._online_enabled = enabled
         if not enabled:
             # Persist OFF, cancel live operations: workers lose authority;
@@ -463,6 +490,7 @@ class EnrichmentBridge(QObject):
         self._disposed = True
         self._presentation_intent_id += 1
         self._manual_search_epoch += 1
+        self._review_session_id += 1
         try:
             self._relay.event_received.disconnect(self._apply_event)
             self._relay.candidates_received.disconnect(self._apply_candidates)
@@ -502,11 +530,19 @@ class EnrichmentBridge(QObject):
         self._state_message = self._message_for(kind, event.state)
         self.changed.emit()
 
-    def _apply_candidates(self, kind: str, candidates, epoch: int) -> None:
+    def _apply_candidates(
+        self, kind: str, key: str, session: int, epoch: int, candidates
+    ) -> None:
+        """Accept ONLY results bound to the exact review context: epoch +
+        review session + entity kind + entity key + open review. A stale
+        search from another entity (or an older review session) can never
+        fill this dialog."""
         if (
             self._disposed
             or epoch != self._manual_search_epoch
+            or session != self._review_session_id
             or kind != self._review_kind
+            or key != self._active_key
             or not self._review_open
         ):
             return  # stale manual search
@@ -531,15 +567,22 @@ class EnrichmentBridge(QObject):
                 }
                 for c in candidates
             ]
+        # Bind the visible candidates to this exact review session so a
+        # confirmation can never reuse candidates from another session.
+        self._candidates_session_id = session
         self._review_loading = False
         self._review_error = ""
         self.changed.emit()
 
-    def _apply_search_error(self, kind: str, error, epoch: int) -> None:
+    def _apply_search_error(
+        self, kind: str, key: str, session: int, epoch: int, error
+    ) -> None:
         if (
             self._disposed
             or epoch != self._manual_search_epoch
+            or session != self._review_session_id
             or kind != self._review_kind
+            or key != self._active_key
             or not self._review_open
         ):
             return
@@ -550,6 +593,21 @@ class EnrichmentBridge(QObject):
     # ------------------------------------------------------------------
     # internals
     # ------------------------------------------------------------------
+
+    def _invalidate_review_session(self) -> None:
+        """P0-01: any navigation/policy/confirmation action invalidates
+        the manual-search authority — old results can never be applied."""
+        self._review_session_id += 1
+        self._candidates_session_id = -1
+
+    def _review_is_current(self) -> bool:
+        """Confirmation safety: visible candidates must belong to the
+        exact current review session of the exact active entity."""
+        return (
+            self._review_open
+            and self._candidates_session_id == self._review_session_id
+            and self._review_kind == self._active_kind
+        )
 
     def _reset_transient(self) -> None:
         self._state = "IDLE"
@@ -614,6 +672,9 @@ class EnrichmentBridge(QObject):
             )
             if p.provider
         ]
+        self._merge_asset_attribution(
+            self._artist_attributions, profile.artwork_asset_id
+        )
         self._knowledge_stale = any(
             p.is_stale
             for p in (
@@ -647,6 +708,9 @@ class EnrichmentBridge(QObject):
             if profile.provenance.provider
             else []
         )
+        self._merge_asset_attribution(
+            self._album_attributions, profile.artwork_asset_id
+        )
         self._knowledge_stale = profile.provenance.is_stale
 
     @staticmethod
@@ -670,6 +734,33 @@ class EnrichmentBridge(QObject):
             return ""
         path = self._asset_store.path_for(asset_id)
         return str(path) if path is not None else ""
+
+    def _merge_asset_attribution(self, attributions: list, asset_id: str) -> None:
+        """P1-04: project the asset record's own truthful provenance
+        (creator/license/licenseUrl/attribution/sourceUrl) next to the
+        profile provenance. Never invent fields; skip a row that is
+        semantically identical to an existing profile row."""
+        if not asset_id:
+            return
+        record = self._asset_store.record_for(asset_id)
+        if record is None:
+            return
+        entry = {
+            "provider": record.provider or "",
+            "sourceUrl": record.source_url or "",
+            "creator": record.creator or "",
+            "license": record.license or "",
+            "licenseUrl": record.license_url or "",
+            "attribution": record.attribution or "",
+            "isStale": False,
+        }
+        entry = {k: v for k, v in entry.items() if v or k == "isStale"}
+        for existing in attributions:
+            if existing.get("provider") == entry.get("provider") and existing.get(
+                "sourceUrl"
+            ) == entry.get("sourceUrl"):
+                return  # semantically identical row — avoid duplicates
+        attributions.append(entry)
 
     def _message_for(self, kind: str, state: EnrichmentOperationState) -> str:
         template = _STATE_MESSAGES.get(state.name, "")

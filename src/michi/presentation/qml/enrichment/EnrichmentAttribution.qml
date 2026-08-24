@@ -8,11 +8,11 @@ import "../theme"
 /* M6.9 — EnrichmentAttribution: truthful provenance rows. Every field is
  * projected by the bridge only when the backend actually provided it;
  * nothing is invented here. External links open ONLY when the scheme is
- * https:// (fail closed). */
+ * https:// (fail closed: never file:/javascript:/data:/http:). */
 ColumnLayout {
     id: root
 
-    property var sources: [] // list of dicts: provider/sourceUrl/license/licenseUrl/attribution/retrievedAt/isStale
+    property var sources: [] // list of dicts: provider/sourceUrl/license/licenseUrl/attribution/creator/language/retrievedAt/isStale
 
     spacing: MichiSpacing.xs
     onSourcesChanged: root.visible = root.sources.length > 0
@@ -46,7 +46,32 @@ ColumnLayout {
             }
 
             MichiText {
+                text: modelData.creator || ""
+                role: "technical"
+                color: MichiPalette.textMuted
+                elide: Text.ElideRight
+                Layout.maximumWidth: 160
+                visible: text.length > 0
+            }
+
+            MichiText {
+                text: modelData.attribution || ""
+                role: "technical"
+                color: MichiPalette.textMuted
+                elide: Text.ElideRight
+                Layout.maximumWidth: 200
+                visible: text.length > 0
+            }
+
+            MichiText {
                 text: modelData.license || ""
+                role: "technical"
+                color: MichiPalette.textMuted
+                visible: text.length > 0
+            }
+
+            MichiText {
+                text: modelData.language || ""
                 role: "technical"
                 color: MichiPalette.textMuted
                 visible: text.length > 0
@@ -67,6 +92,14 @@ ColumnLayout {
             }
 
             Item { Layout.fillWidth: true }
+
+            MichiButton {
+                text: "License"
+                variant: "ghost"
+                visible: root.isSafeUrl(modelData.licenseUrl)
+                Accessible.name: "Open license"
+                onClicked: root.openSafe(modelData.licenseUrl)
+            }
 
             MichiButton {
                 text: "Open source"

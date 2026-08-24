@@ -673,8 +673,14 @@ class ApplicationContainer:
         ctx.setContextProperty("enrichment", self._eb)
 
         # M6.9 policy wiring (composition root): SettingsBridge stays
-        # Settings-only; the EnrichmentBridge reacts to the policy.
-        sb.onlineEnrichmentChanged.connect(self._eb.on_online_enrichment_changed)
+        # Settings-only; the EnrichmentBridge reacts to the CURRENT value
+        # (the notify signal carries no payload, so the slot receives the
+        # truthful persisted value — never a guessed transition).
+        sb.onlineEnrichmentChanged.connect(
+            lambda: self._eb.on_online_enrichment_changed(
+                bool(sb.property("onlineEnrichment"))
+            )
+        )
         self._eb.on_online_enrichment_changed(bool(sb.property("onlineEnrichment")))
 
         self._settings = settings

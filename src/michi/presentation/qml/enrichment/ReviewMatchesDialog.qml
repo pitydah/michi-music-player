@@ -108,26 +108,31 @@ MichiDialog {
                 model: root.kind === "artist"
                     ? root.artistCandidates : root.albumCandidates
 
-                delegate: Item {
+                /* ItemDelegate: the row body selects the candidate and
+                 * the nested button keeps its OWN event handling — no
+                 * full-row overlay MouseArea above the button (the
+                 * Playlist/Queue interaction antipattern is not
+                 * reintroduced here). */
+                delegate: ItemDelegate {
                     required property int index
                     required property var modelData
                     width: results.width
                     height: row.implicitHeight + MichiSpacing.sm * 2
+                    highlighted: results.currentIndex === index
+                    Accessible.name: root.kind === "artist"
+                        ? modelData.displayName : modelData.displayTitle
+                    onClicked: results.currentIndex = index
 
-                    Rectangle {
-                        anchors.fill: parent
+                    background: Rectangle {
                         radius: MichiRadius.md
-                        color: results.currentIndex === index
-                            ? MichiSemanticColors.surfaceHover
-                            : "transparent"
-                        border.width: results.currentIndex === index ? 1 : 0
+                        color: parent.highlighted
+                            ? MichiSemanticColors.surfaceHover : "transparent"
+                        border.width: parent.highlighted ? 1 : 0
                         border.color: MichiSemanticColors.borderStrong
                     }
 
-                    RowLayout {
+                    contentItem: RowLayout {
                         id: row
-                        anchors.fill: parent
-                        anchors.margins: MichiSpacing.md
                         spacing: MichiSpacing.md
 
                         ColumnLayout {
@@ -154,6 +159,8 @@ MichiDialog {
                         MichiButton {
                             text: "Use this match"
                             variant: "ghost"
+                            /* button keeps its own event handling — the
+                             * row delegate click must NOT swallow it */
                             onClicked: {
                                 results.currentIndex = index
                                 root.kind === "artist"
@@ -161,11 +168,6 @@ MichiDialog {
                                     : root.confirmAlbum(modelData.externalReleaseGroupId)
                             }
                         }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: results.currentIndex = index
                     }
                 }
 

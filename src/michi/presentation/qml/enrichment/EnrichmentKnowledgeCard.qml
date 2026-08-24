@@ -69,9 +69,10 @@ MichiGlassSurface {
 
         /* factual fields — only real projected fields render */
         Flow {
+            id: facts
             Layout.fillWidth: true
             spacing: MichiSpacing.md
-            visible: root.hasFactualFields()
+            visible: facts.hasFactualFields()
 
             function hasFactualFields() {
                 return (root.knowledge.country || "")
@@ -95,16 +96,16 @@ MichiGlassSurface {
 
             Repeater {
                 model: [
-                    root.fact("Country", root.knowledge.country),
-                    root.fact("Area", root.knowledge.area),
-                    root.fact("Active from", root.knowledge.beginYear),
-                    root.fact("Active until", root.knowledge.endYear),
-                    root.fact("Type", root.knowledge.artistType),
-                    root.fact("Website", root.knowledge.website),
-                    root.fact("Label", root.knowledge.label),
-                    root.fact("Release year", root.knowledge.releaseYear),
-                    root.fact("Genres", root.knowledge.genres
-                              ? root.knowledge.genres.join(", ") : ""),
+                    facts.fact("Country", root.knowledge.country),
+                    facts.fact("Area", root.knowledge.area),
+                    facts.fact("Active from", root.knowledge.beginYear),
+                    facts.fact("Active until", root.knowledge.endYear),
+                    facts.fact("Type", root.knowledge.artistType),
+                    facts.fact("Website", root.knowledge.website),
+                    facts.fact("Label", root.knowledge.label),
+                    facts.fact("Release year", root.knowledge.releaseYear),
+                    facts.fact("Genres", root.knowledge.genres
+                               ? root.knowledge.genres.join(", ") : ""),
                 ]
                 delegate: Item {
                     required property var modelData
@@ -139,5 +140,5 @@ MichiGlassSurface {
 
     /* empty surface: keep layout quiet — the view decides whether to
      * show a CTA via EnrichmentActions */
-    onHasKnowledgeChanged: root.visible = root.hasKnowledge
+    visible: root.hasKnowledge
 }
