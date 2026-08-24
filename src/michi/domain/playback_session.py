@@ -78,11 +78,18 @@ class ShuffleNavigator:
     """Pure shuffle navigation bookkeeping (M4-R1: owned by the Playback
     Session, not by Queue). No RNG stored: callers pass the random generator
     so tests can inject a seeded one. Deterministic seed, history, no random
-    repeat inside a cycle, previous traversal, Repeat-ALL regeneration."""
+    repeat inside a cycle, previous traversal, Repeat-ALL regeneration.
+
+    P1-04 final seal: logical entry identity is ``entry_id`` — Python
+    object identity (``is``) is NEVER used. Wrappers with the same
+    entry_id are the same logical entry; duplicate paths stay distinct."""
 
     def __init__(self) -> None:
         self.pool: list[PlaybackSequenceEntry] = []
         self.history: list[PlaybackSequenceEntry] = []
+
+    def _same(self, a: PlaybackSequenceEntry, b: PlaybackSequenceEntry) -> bool:
+        return a.entry_id == b.entry_id
 
     def reset(
         self,
@@ -90,8 +97,11 @@ class ShuffleNavigator:
         current: PlaybackSequenceEntry | None,
         rng,
     ) -> None:
-        """Fresh cycle: shuffled pool of everything except `current`."""
-        candidates = [e for e in entries if e is not current]
+        """Fresh cycle: shuffled pool of everything except `current` (by
+        entry_id)."""
+        candidates = [
+            e for e in entries if current is None or e.entry_id != current.entry_id
+        ]
         self.pool = rng.sample(candidates, len(candidates)) if candidates else []
         self.history = [current] if current is not None else []
 
@@ -101,8 +111,13 @@ class ShuffleNavigator:
         last_played: PlaybackSequenceEntry | None,
         rng,
     ) -> None:
-        """Repeat-ALL cycle restart: avoid the entry that just played."""
-        candidates = [e for e in entries if e is not last_played]
+        """Repeat-ALL cycle restart: avoid the entry that just played (by
+        entry_id)."""
+        candidates = [
+            e
+            for e in entries
+            if last_played is None or e.entry_id != last_played.entry_id
+        ]
         self.pool = rng.sample(candidates, len(candidates)) if candidates else []
         self.history = [last_played] if last_played is not None else []
 
@@ -113,13 +128,14 @@ class ShuffleNavigator:
         return self.pool.pop(index)
 
     def record_commit(self, entry: PlaybackSequenceEntry) -> None:
-        self.pool = [e for e in self.pool if e is not entry]
-        if not self.history or self.history[-1] is not entry:
+        self.pool = [e for e in self.pool if not self._same(e, entry)]
+        if not self.history or not self._same(self.history[-1], entry):
             self.history.append(entry)
 
     def previous_pick(self) -> PlaybackSequenceEntry | None:
         """Walk real history: current returns to the pool; target is the
-        entry before it. None when history has fewer than two entries."""
+        entry before it (logical identity). None when history has fewer
+        than two LOGICAL entries."""
         if len(self.history) < 2:
             return None
         current = self.history.pop()
@@ -127,11 +143,12 @@ class ShuffleNavigator:
         return self.history[-1]
 
     def remove(self, entry: PlaybackSequenceEntry) -> None:
-        self.pool = [e for e in self.pool if e is not entry]
-        self.history = [e for e in self.history if e is not entry]
+        self.pool = [e for e in self.pool if not self._same(e, entry)]
+        self.history = [e for e in self.history if not self._same(e, entry)]
 
     def add(self, entry: PlaybackSequenceEntry) -> None:
-        self.pool.append(entry)
+        if not any(self._same(e, entry) for e in self.pool):
+            self.pool.append(entry)
 
     def clear(self) -> None:
         self.pool.clear()
