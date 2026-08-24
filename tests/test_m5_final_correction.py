@@ -571,11 +571,13 @@ class TestLastGate2:
         db = tmp_path / "t16.db"
         _build_golden_state(db)
 
-        # ── Session 2: restore (pending); a user queue.add DURING the window
-        # fires queue.changed -> the hybrid checkpoint persists the LIVE queue
-        # alongside the restored playback truth; destroy abruptly (no
-        # acceptance, no shutdown). ──
+        # ── Session 2: restore (pending); a user queue.add DURING the window.
+        # M4-R1 production topology: the Session is STARTED (it owns the one
+        # Queue→Session delivery) so the live Queue mutation re-projects the
+        # Session BEFORE persistence checkpoints — the hybrid snapshot then
+        # carries a STRICTLY coherent context (A,B,C,D). Destroy abruptly. ──
         _r2, _s2, _a2, _p2, queue2, session2, coordinator2 = _build(db)
+        session2.start()  # M4-R1 final seal: session live-sync armed
         coordinator2.start()
         coordinator2.restore()
         queue2.add(Path("/m/d.flac"), "D")
@@ -828,6 +830,7 @@ class TestLastGate2:
         # legitimate checkpoint writes a COHERENT session: queue restored,
         # playback_path None (no fabricated B), STOPPED. ──
         _r2, _s2, audio2, _p2, queue2, session2, coordinator2 = _build(db)
+        session2.start()  # M4-R1 final seal: session live-sync armed
         coordinator2.start()
         coordinator2.restore()
         audio2.trigger_media_rejected(_B, "gone")

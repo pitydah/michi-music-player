@@ -198,14 +198,16 @@ class PlaybackSessionService:
         if self._navigator.pool:
             return True
         if self._state.repeat_mode is RepeatMode.ALL:
-            # regeneration must be able to produce a valid next action
-            candidates = [
-                e
-                for e in entries
-                if self._state.current_entry is None
-                or e.entry_id != self._state.current_entry.entry_id
-            ]
-            return bool(candidates)
+            # P1-03 final seal: hasNext must be EXACTLY equivalent to
+            # next(). next() with Repeat ALL regenerates the cycle and — for
+            # a single-entry context — replays the exact current entry.
+            # Therefore any non-empty context (current valid) has a valid
+            # next action under Repeat ALL, including the one-entry cycle.
+            if not entries:
+                return False
+            if self._state.current_entry is None:
+                return True
+            return True
         return False
 
     def _has_previous_shuffled(self) -> bool:
@@ -297,15 +299,16 @@ class PlaybackSessionService:
             return
         if candidate.file_path != path:
             return
-        self._pending = None
-        self._pending_queue_entry_id = None
-        self._state.context_type = context_type
-        self._state.source_id = source_id
+        # P1-01 final seal: QUEUE commit is FAILURE-ATOMIC. Build and
+        # validate the NEXT state FIRST; only when every step succeeded do
+        # we mutate pending/canonical state. Never:
+        #   mutate canonical state → discover failure → return
+        # (that would publish a partial QUEUE context).
+        commit_entry: PlaybackSequenceEntry
         if context_type is PlaybackContextType.QUEUE:
-            # P1-02 final seal: QUEUE acceptance re-projects the LIVE Queue
-            # (ordering/index may have moved since request time). The exact
-            # candidate is found by entry_id — NEVER by file_path — and a
-            # target absent from the LIVE Queue commits nothing (stale).
+            # Re-project the LIVE Queue (ordering/index may have moved since
+            # request time). The exact candidate is found by entry_id —
+            # NEVER by file_path.
             live_entries = self._queue_entries()
             live_index = -1
             for i, e in enumerate(live_entries):
@@ -313,17 +316,28 @@ class PlaybackSessionService:
                     live_index = i
                     break
             if live_index < 0:
-                return  # exact target gone: do NOT fabricate a QUEUE context
-            self._state.entries = tuple(live_entries)
-            self._state.current_index = live_index
-            self._active_queue_entry_id = candidate.entry_id
+                # Exact target gone from the LIVE Queue: STALE. Nothing is
+                # mutated — pending state AND canonical session state stay
+                # byte-for-byte intact (no partial QUEUE publication).
+                return
+            next_entries = tuple(live_entries)
+            next_index = live_index
+            next_active_id = candidate.entry_id
             commit_entry = live_entries[live_index]
         else:
             # SINGLE/ALBUM/PLAYLIST: snapshot-at-request semantics preserved.
-            self._state.entries = tuple(entries)
-            self._state.current_index = index
-            self._active_queue_entry_id = None
+            next_entries = tuple(entries)
+            next_index = index
+            next_active_id = None
             commit_entry = candidate
+        # ---- commit point: all validation passed ----
+        self._pending = None
+        self._pending_queue_entry_id = None
+        self._state.context_type = context_type
+        self._state.source_id = source_id
+        self._state.entries = next_entries
+        self._state.current_index = next_index
+        self._active_queue_entry_id = next_active_id
         if self._state.shuffle_enabled:
             self._navigator.record_commit(commit_entry)
         self._notify()
@@ -624,6 +638,11 @@ class PlaybackSessionService:
                 )
                 target = self._navigator.pop_next(self._rng)
                 if target is None:
+                    # P1-03 final seal: single-entry cycle with Repeat ALL —
+                    # the live path replays the exact current entry, exactly
+                    # like the non-Queue path (context-type convergence).
+                    if len(entries) == 1:
+                        self._request_live_index(0)
                     return
             else:
                 return
@@ -736,14 +755,14 @@ class PlaybackSessionService:
         # semantics (no fabricated identity, no autoplay).
         if context_type is PlaybackContextType.QUEUE:
             live = self._queue_entries()
-            # Coherence: the persisted QUEUE context must match the restored
-            # LIVE Queue as a PREFIX (same ordered paths/titles for the
-            # persisted length). The M5-LAST-GATE-2 hybrid window allows
-            # live Queue mutations (e.g. adds) that legitimately extend the
-            # persisted context — those stay coherent; structural breaks
-            # (removes/reorders within the persisted span) are incoherent
-            # and fall back to safe NONE semantics.
-            coherent = len(entries) <= len(live) and all(
+            # P1-02 final seal: STRICT structural coherence. The persisted
+            # QUEUE context must have the SAME number of entries as the
+            # restored LIVE Queue AND the same ordered file paths/titles.
+            # Any relaxation (e.g. prefix matching) would fabricate a QUEUE
+            # context that never existed durably — forbidden. Incoherent
+            # restores fall back to safe NONE (existing fail-safe path): no
+            # truncation, no extension, no completion.
+            coherent = len(entries) == len(live) and all(
                 a.file_path == b.file_path and a.title == b.title
                 for a, b in zip(live, entries, strict=False)
             )

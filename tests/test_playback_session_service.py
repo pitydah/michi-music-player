@@ -1154,3 +1154,192 @@ class TestFinalSealNavigationCapability:
         accept(session, fake_audio, "/A.flac")
         assert bridge.property("hasNext") is True
         assert bridge.property("hasPrevious") is False
+
+
+# ---------------------------------------------------------------------------
+# M4-R1 FINAL CORRECTION SEAL — failure-atomic commit / strict restore /
+# single-entry shuffle Repeat ALL convergence
+# ---------------------------------------------------------------------------
+
+
+class TestFinalCorrectionFailureAtomic:
+    """P1-01: QUEUE commit is failure-atomic — a stale acceptance (exact
+    target absent from the LIVE Queue) leaves ALL canonical state intact."""
+
+    def test_fc01_stale_acceptance_keeps_state_byte_for_byte(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        # establish a committed session first (SINGLE context)
+        session.play_single(PlaybackSequenceEntry(Path("/S.flac"), "S"))
+        accept(session, fake_audio, "/S.flac")
+        before_context = session.state.context_type
+        before_entries = session.state.entries
+        before_index = session.state.current_index
+        before_active = session._active_queue_entry_id
+        # request QUEUE A (pending); remove A before acceptance; then the
+        # BACKEND acceptance arrives anyway (stale)
+        q.add(Path("/A.flac"))
+        q.add(Path("/B.flac"))
+        a_id = q.state.tracks[0].entry_id
+        session.play_queue_index(0)
+        assert session._pending_queue_entry_id == a_id
+        q.remove(0)  # exact A gone → subscription cancels the pending
+        assert session._pending is None
+        # simulate a LATE backend acceptance of the stale QUEUE candidate
+        # (epoch unchanged, pending already None → stale path)
+        accept(session, fake_audio, "/A.flac")
+        # canonical state fully intact — NO partial QUEUE publication
+        assert session.state.context_type is before_context
+        assert session.state.context_type.name == "SINGLE"
+        assert session.state.entries == before_entries
+        assert session.state.current_index == before_index
+        assert session._active_queue_entry_id == before_active
+        assert session._pending is None
+        assert session._pending_queue_entry_id is None
+
+    def test_fc02_stale_acceptance_with_pending_superseded(self, fake_audio):
+        """A stale QUEUE acceptance AFTER a superseding SINGLE request must
+        not corrupt the committed context (epoch guard + atomic commit)."""
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/A.flac"))
+        session.play_queue_index(0)  # pending QUEUE A (epoch N)
+        session.play_single(PlaybackSequenceEntry(Path("/B.flac"), "B"))  # epoch N+1
+        # late acceptance of the QUEUE A candidate arrives (stale epoch N)
+        accept(session, fake_audio, "/A.flac")
+        assert session.state.context_type.name == "NONE"  # nothing committed
+        # the SINGLE B pending is intact
+        assert session._pending is not None
+        assert session._pending_queue_entry_id is None
+        accept(session, fake_audio, "/B.flac")
+        assert session.state.context_type.name == "SINGLE"
+        assert session.state.current_entry.file_path == Path("/B.flac")
+
+
+class TestFinalCorrectionStrictRestore:
+    """P1-02: STRICT structural coherence for restored QUEUE — no prefix."""
+
+    def _restore_raw(self, queue_paths, context_paths, context_index):
+        from michi.application.playback_service import PlaybackService
+        from michi.application.queue_service import QueueService
+        from michi.domain.queue import Track
+        from tests.conftest import FakeAudioPort
+
+        audio = FakeAudioPort()
+        playback = PlaybackService(audio)
+        q = QueueService()
+        session = PlaybackSessionService(playback, q)
+        session.start()
+        q.restore_entries([Track(file_path=p, title=p.stem) for p in queue_paths])
+        entries = [
+            PlaybackSequenceEntry(file_path=p, title=p.stem) for p in context_paths
+        ]
+        session.restore_session(
+            context_type=PlaybackContextType.QUEUE,
+            source_id=None,
+            entries=entries,
+            current_index=context_index,
+            repeat_mode=RepeatMode.NONE,
+            shuffle_enabled=False,
+            shuffle_seed=0,
+        )
+        return q, session
+
+    def test_fc03_prefix_mismatch_is_incoherent(self, fake_audio):
+        """Persisted context [A,B] vs restored Queue [A,B,C]: STRICT
+        coherence fails (length differs) → safe NONE, no fabrication."""
+        q, session = self._restore_raw(
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac")],
+            [Path("/A.flac"), Path("/B.flac")],
+            1,
+        )
+        assert session.state.context_type is PlaybackContextType.NONE
+        assert session.state.entries == ()
+        assert session._active_queue_entry_id is None
+
+    def test_fc04_exact_match_restores_queue_identity(self, fake_audio):
+        q, session = self._restore_raw(
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac")],
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac")],
+            1,
+        )
+        assert session.state.context_type is PlaybackContextType.QUEUE
+        assert [e.entry_id for e in session.state.entries] == [
+            t.entry_id for t in q.state.tracks
+        ]
+        assert session._active_queue_entry_id == q.state.tracks[1].entry_id
+
+    def test_fc05_reordered_context_is_incoherent(self, fake_audio):
+        """Same length but different order → incoherent → safe NONE."""
+        q, session = self._restore_raw(
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac")],
+            [Path("/C.flac"), Path("/A.flac"), Path("/B.flac")],
+            0,
+        )
+        assert session.state.context_type is PlaybackContextType.NONE
+
+    def test_fc06_trailing_extra_queue_entry_no_fabrication(self, fake_audio):
+        """Persisted queue had C; restored Queue has extra D — the session
+        must NOT silently extend the context with D (strict)."""
+        q, session = self._restore_raw(
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac"), Path("/D.flac")],
+            [Path("/A.flac"), Path("/B.flac"), Path("/C.flac")],
+            2,
+        )
+        assert session.state.context_type is PlaybackContextType.NONE
+
+
+class TestFinalCorrectionSingleEntryShuffle:
+    """P1-03: single-entry Shuffle + Repeat ALL convergence — hasNext must
+    be exactly equivalent to next() (both Queue and non-Queue)."""
+
+    def test_fc07_single_entry_album_shuffle_repeat_all_next_replays(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        entry = PlaybackSequenceEntry(Path("/Only.flac"), "Only")
+        session.play_context(PlaybackContextType.ALBUM, "a", [entry], 0)
+        accept(session, fake_audio, "/Only.flac")
+        session.set_repeat_mode(RepeatMode.ALL)
+        session.set_shuffle_enabled(True)
+        # hasNext MUST be True: next() replays the exact current entry
+        assert session.has_next is True
+        session.next()
+        accept(session, fake_audio, "/Only.flac")
+        assert session.state.current_index == 0
+        assert session.state.current_entry.file_path == Path("/Only.flac")
+
+    def test_fc08_single_entry_queue_shuffle_repeat_all_next_replays(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/Only.flac"))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/Only.flac")
+        session.set_repeat_mode(RepeatMode.ALL)
+        session.set_shuffle_enabled(True)
+        assert session.has_next is True
+        session.next()
+        assert session._pending is not None  # replay requested
+        accept(session, fake_audio, "/Only.flac")
+        assert session.state.current_index == 0
+        assert session._active_queue_entry_id == q.state.tracks[0].entry_id
+
+    def test_fc09_single_entry_shuffle_no_repeat_has_next_false(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        q.add(Path("/Only.flac"))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/Only.flac")
+        session.set_shuffle_enabled(True)  # Repeat NONE
+        assert session.has_next is False  # exhausted pool, no replay
+
+    def test_fc10_multi_entry_queue_shuffle_repeat_all_has_next(self, fake_audio):
+        _, q, session = make_session(fake_audio)
+        for p in ("/A.flac", "/B.flac"):
+            q.add(Path(p))
+        session.play_queue_index(0)
+        accept(session, fake_audio, "/A.flac")
+        session.set_repeat_mode(RepeatMode.ALL)
+        session.set_shuffle_enabled(True)
+        # pool exhausted after the single eligible target… hasNext must
+        # still be True under Repeat ALL (regeneration or single-edge)
+        if session._navigator.pool:
+            assert session.has_next is True
+        else:
+            assert session.has_next is True
