@@ -582,8 +582,8 @@ class LibraryBridge(QObject):
             return
         if self._playback_coordinator is not None:
             self._playback_coordinator.play_track(ref.file_path, title=ref.title or "")
-            return
-        self._service.activate_track(ref)
+        # P2-01 final seal: no fallback to LibraryService playback authority.
+        # Without a coordinator (isolated presentation test) this no-ops.
 
     @Slot()
     def play_selected_album(self) -> None:
@@ -657,8 +657,7 @@ class LibraryBridge(QObject):
             self._playback_coordinator.play_artist_track_as_single(
                 ref.file_path, title=ref.title or ""
             )
-            return
-        self._service.activate_track(ref)
+        # P2-01 final seal: no LibraryService playback fallback.
 
     @Slot(int)
     def activate_album_track(self, index: int) -> None:
@@ -668,5 +667,4 @@ class LibraryBridge(QObject):
             return
         if self._playback_coordinator is not None and self._selected_album_key:
             self._playback_coordinator.play_album_track(self._selected_album_key, index)
-            return
-        self._service.activate_track(self._album_track_refs[index])
+        # P2-01 final seal: no LibraryService playback fallback.

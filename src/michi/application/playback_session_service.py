@@ -145,6 +145,75 @@ class PlaybackSessionService:
             cb(path)
 
     # ------------------------------------------------------------------
+    # Navigation capability (P1-05 final seal): "would next()/previous()
+    # currently have a valid navigation action?" — real Session policy,
+    # NOT naive index arithmetic.
+    # ------------------------------------------------------------------
+
+    @property
+    def has_next(self) -> bool:
+        st = self._state
+        if st.context_type is PlaybackContextType.NONE:
+            return False
+        if st.context_type is PlaybackContextType.QUEUE:
+            entries, current = self._live_sequence()
+            if current < 0 or not entries:
+                return False
+            if st.shuffle_enabled:
+                return self._has_next_shuffled(entries)
+            if st.repeat_mode is RepeatMode.ALL:
+                return True
+            return current + 1 < len(entries)
+        if not st.entries or st.current_index < 0:
+            return False
+        if st.shuffle_enabled:
+            return self._has_next_shuffled(list(st.entries))
+        if st.repeat_mode is RepeatMode.ALL:
+            return True
+        return st.current_index + 1 < len(st.entries)
+
+    @property
+    def has_previous(self) -> bool:
+        st = self._state
+        if st.context_type is PlaybackContextType.NONE:
+            return False
+        if st.context_type is PlaybackContextType.QUEUE:
+            entries, current = self._live_sequence()
+            if current < 0 or not entries:
+                return False
+            if st.shuffle_enabled:
+                return self._has_previous_shuffled()
+            if st.repeat_mode is RepeatMode.ALL:
+                return True
+            return current > 0
+        if not st.entries or st.current_index < 0:
+            return False
+        if st.shuffle_enabled:
+            return self._has_previous_shuffled()
+        if st.repeat_mode is RepeatMode.ALL:
+            return True
+        return st.current_index > 0
+
+    def _has_next_shuffled(self, entries: list[PlaybackSequenceEntry]) -> bool:
+        if self._navigator.pool:
+            return True
+        if self._state.repeat_mode is RepeatMode.ALL:
+            # P1-03 final seal: hasNext must be EXACTLY equivalent to
+            # next(). next() with Repeat ALL regenerates the cycle and — for
+            # a single-entry context — replays the exact current entry.
+            # Therefore any non-empty context (current valid) has a valid
+            # next action under Repeat ALL, including the one-entry cycle.
+            if not entries:
+                return False
+            if self._state.current_entry is None:
+                return True
+            return True
+        return False
+
+    def _has_previous_shuffled(self) -> bool:
+        return len(self._navigator.history) >= 2
+
+    # ------------------------------------------------------------------
     # Queue entry conversion — ONE canonical helper
     # ------------------------------------------------------------------
 
@@ -185,8 +254,16 @@ class PlaybackSessionService:
         my_epoch = self._request_epoch
         candidate = entries[index]
         self._pending = candidate
+        # P1-01 final seal: every new request REPLACES the pending
+        # provenance completely. pending_queue_entry_id is non-None IF AND
+        # ONLY IF the CURRENT pending request is a QUEUE request — a
+        # superseding SINGLE/ALBUM/PLAYLIST request must never inherit stale
+        # Queue provenance (a later Queue removal would cancel the wrong
+        # pending request).
         if context_type is PlaybackContextType.QUEUE:
             self._pending_queue_entry_id = candidate.entry_id
+        else:
+            self._pending_queue_entry_id = None
         try:
             self._playback.load_and_play(
                 candidate.file_path,
@@ -222,18 +299,47 @@ class PlaybackSessionService:
             return
         if candidate.file_path != path:
             return
+        # P1-01 final seal: QUEUE commit is FAILURE-ATOMIC. Build and
+        # validate the NEXT state FIRST; only when every step succeeded do
+        # we mutate pending/canonical state. Never:
+        #   mutate canonical state → discover failure → return
+        # (that would publish a partial QUEUE context).
+        commit_entry: PlaybackSequenceEntry
+        if context_type is PlaybackContextType.QUEUE:
+            # Re-project the LIVE Queue (ordering/index may have moved since
+            # request time). The exact candidate is found by entry_id —
+            # NEVER by file_path.
+            live_entries = self._queue_entries()
+            live_index = -1
+            for i, e in enumerate(live_entries):
+                if e.entry_id == candidate.entry_id:
+                    live_index = i
+                    break
+            if live_index < 0:
+                # Exact target gone from the LIVE Queue: STALE. Nothing is
+                # mutated — pending state AND canonical session state stay
+                # byte-for-byte intact (no partial QUEUE publication).
+                return
+            next_entries = tuple(live_entries)
+            next_index = live_index
+            next_active_id = candidate.entry_id
+            commit_entry = live_entries[live_index]
+        else:
+            # SINGLE/ALBUM/PLAYLIST: snapshot-at-request semantics preserved.
+            next_entries = tuple(entries)
+            next_index = index
+            next_active_id = None
+            commit_entry = candidate
+        # ---- commit point: all validation passed ----
         self._pending = None
         self._pending_queue_entry_id = None
         self._state.context_type = context_type
         self._state.source_id = source_id
-        self._state.entries = tuple(entries)
-        self._state.current_index = index
-        if context_type is PlaybackContextType.QUEUE:
-            self._active_queue_entry_id = candidate.entry_id
-        else:
-            self._active_queue_entry_id = None
+        self._state.entries = next_entries
+        self._state.current_index = next_index
+        self._active_queue_entry_id = next_active_id
         if self._state.shuffle_enabled:
-            self._navigator.record_commit(candidate)
+            self._navigator.record_commit(commit_entry)
         self._notify()
         self._notify_committed(path)
 
@@ -532,6 +638,11 @@ class PlaybackSessionService:
                 )
                 target = self._navigator.pop_next(self._rng)
                 if target is None:
+                    # P1-03 final seal: single-entry cycle with Repeat ALL —
+                    # the live path replays the exact current entry, exactly
+                    # like the non-Queue path (context-type convergence).
+                    if len(entries) == 1:
+                        self._request_live_index(0)
                     return
             else:
                 return
@@ -635,10 +746,45 @@ class PlaybackSessionService:
         self._request_epoch += 1
         self._state.context_type = context_type
         self._state.source_id = source_id
-        self._state.entries = tuple(entries)
-        if not -1 <= current_index < len(entries):
-            current_index = -1
-        self._state.current_index = current_index
+        # P1-03 final seal: a restored QUEUE context takes its runtime
+        # sequence identity from the ALREADY-RESTORED Queue (QueueService.
+        # restore_entries ran first). The persisted context supplies logical
+        # type/ordering/current_index; entry_id is runtime-only and must
+        # match the Queue Track ids exactly — never independently-decoded
+        # wrappers. When structurally incoherent, keep safe restore
+        # semantics (no fabricated identity, no autoplay).
+        if context_type is PlaybackContextType.QUEUE:
+            live = self._queue_entries()
+            # P1-02 final seal: STRICT structural coherence. The persisted
+            # QUEUE context must have the SAME number of entries as the
+            # restored LIVE Queue AND the same ordered file paths/titles.
+            # Any relaxation (e.g. prefix matching) would fabricate a QUEUE
+            # context that never existed durably — forbidden. Incoherent
+            # restores fall back to safe NONE (existing fail-safe path): no
+            # truncation, no extension, no completion.
+            coherent = len(entries) == len(live) and all(
+                a.file_path == b.file_path and a.title == b.title
+                for a, b in zip(live, entries, strict=False)
+            )
+            if coherent:
+                effective_entries = live
+            else:
+                effective_entries = []
+                self._state.context_type = PlaybackContextType.NONE
+            self._state.entries = tuple(effective_entries)
+            if not -1 <= current_index < len(effective_entries):
+                current_index = -1
+            self._state.current_index = current_index
+            if coherent and 0 <= current_index < len(effective_entries):
+                self._active_queue_entry_id = effective_entries[current_index].entry_id
+            else:
+                self._active_queue_entry_id = None
+        else:
+            self._state.entries = tuple(entries)
+            if not -1 <= current_index < len(entries):
+                current_index = -1
+            self._state.current_index = current_index
+            self._active_queue_entry_id = None
         self._state.repeat_mode = repeat_mode
         self._state.shuffle_enabled = shuffle_enabled
         self._shuffle_seed = shuffle_seed
@@ -649,15 +795,5 @@ class PlaybackSessionService:
             )
         else:
             self._navigator.clear()
-        # Restored QUEUE context: bind the active identity to the exact NEW
-        # runtime Queue entry at current_index (runtime identity — never
-        # durable). No playback command, no autoplay, no History.
-        if context_type is PlaybackContextType.QUEUE and 0 <= current_index < len(
-            self._queue.state.tracks
-        ):
-            self._active_queue_entry_id = self._queue.state.tracks[
-                current_index
-            ].entry_id
-        else:
-            self._active_queue_entry_id = None
+        # No playback command, no autoplay, no History.
         self._notify()

@@ -809,3 +809,113 @@ class TestM4R1FinalSealLibraryRouting:
         assert session.state.context_type.name == "ALBUM"
         assert session.state.current_index == 1
         assert queue.state.count == 0
+
+
+class TestM4R1FinalSealLibraryCleanup:
+    """P2-01/P2-02: no obsolete fallbacks; one TD-013 gate."""
+
+    def _world(self, tmp_path, scanner, extractor=None):
+        library, queue, session, _, audio = _make_library(scanner, extractor=extractor)
+        session.start()
+        bridge = LibraryBridge(library)  # NO coordinator → no-ops expected
+        return library, queue, session, audio, bridge
+
+    def test_lb01_activate_path_without_coordinator_noops(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        a.write_bytes(b"x")
+        library, queue, session, audio, bridge = self._world(
+            tmp_path,
+            _ValidateScanner([a]),
+            FakeExtractor(factory=_album_genre_factory()),
+        )
+        library.scan(str(tmp_path))
+        bridge.activate_path(str(a))
+        assert session.state.context_type.name == "NONE"
+        assert audio.loaded is None
+
+    def test_lb02_artist_without_coordinator_noops(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        a.write_bytes(b"x")
+        library, queue, session, audio, bridge = self._world(
+            tmp_path,
+            _ValidateScanner([a]),
+            FakeExtractor(factory=_album_genre_factory()),
+        )
+        library.scan(str(tmp_path))
+        artist = library.state.artists[0]
+        bridge.select_artist(artist.key)
+        bridge.activate_artist_track(0)
+        assert session.state.context_type.name == "NONE"
+        assert audio.loaded is None
+
+    def test_lb03_album_without_coordinator_noops(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        a.write_bytes(b"x")
+        library, queue, session, audio, bridge = self._world(
+            tmp_path,
+            _ValidateScanner([a]),
+            FakeExtractor(factory=_album_genre_factory()),
+        )
+        library.scan(str(tmp_path))
+        album = library.state.albums[0]
+        bridge.select_album(album.key)
+        bridge.activate_album_track(0)
+        assert session.state.context_type.name == "NONE"
+        assert audio.loaded is None
+
+    def test_lb04_service_activate_track_never_called(self):
+        """LibraryService must not regain playback authority (source gate)."""
+        from michi.application import library_service
+
+        assert not hasattr(library_service.LibraryService, "activate")
+        assert not hasattr(library_service.LibraryService, "activate_track")
+
+    def test_lb05_visible_activation_validates_once(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        a.write_bytes(b"x")
+        scanner = _ValidateScanner([a])
+        library, queue, session, _, audio = _make_library(
+            scanner, extractor=FakeExtractor(factory=_album_genre_factory())
+        )
+        session.start()
+        from michi.application.library_playback_coordinator import (
+            LibraryPlaybackCoordinator,
+        )
+
+        coord = LibraryPlaybackCoordinator(library, session)
+        bridge = LibraryBridge(library, playback_coordinator=coord)
+        library.scan(str(tmp_path))
+        validate_calls = []
+        orig_validate = library.validate_track_for_playback
+
+        def spy_validate(track):
+            validate_calls.append(track)
+            return orig_validate(track)
+
+        library.validate_track_for_playback = spy_validate
+        bridge.activate(0)
+        assert len(validate_calls) == 1  # exactly one TD-013 gate
+        audio.trigger_media_accepted(a)
+        assert session.state.context_type.name == "SINGLE"
+
+    def test_lb06_missing_still_no_session_request(self, tmp_path):
+        a = tmp_path / "a.mp3"
+        a.write_bytes(b"x")
+        scanner = _ValidateScanner([a])
+        library, queue, session, _, audio = _make_library(
+            scanner, extractor=FakeExtractor(factory=_album_genre_factory())
+        )
+        session.start()
+        from michi.application.library_playback_coordinator import (
+            LibraryPlaybackCoordinator,
+        )
+
+        coord = LibraryPlaybackCoordinator(library, session)
+        bridge = LibraryBridge(library, playback_coordinator=coord)
+        library.scan(str(tmp_path))
+        scanner.validate_errors = {
+            a: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, a)
+        }
+        bridge.activate(0)
+        assert session.state.context_type.name == "NONE"
+        assert audio.loaded is None

@@ -55,10 +55,13 @@ class PlaybackSessionBridge(QObject):
         return self._session.state.count
 
     def _get_has_next(self) -> bool:
-        return self._session.state.has_next
+        # P1-05 final seal: consume the SERVICE-level capability (real
+        # Session navigation policy — LIVE Queue, Repeat ALL, shuffle pool/
+        # history) — never naive index arithmetic.
+        return self._session.has_next
 
     def _get_has_previous(self) -> bool:
-        return self._session.state.has_previous
+        return self._session.has_previous
 
     def _get_repeat_mode(self) -> str:
         return self._session.state.repeat_mode.name.lower()

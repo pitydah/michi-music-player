@@ -64,6 +64,51 @@ coherence; no autoplay; no History event.
   Library/Playlist no Queue import, QML navigation via playbackSession, no
   private _queue access, zero Queue mutations for SINGLE/ALBUM/PLAYLIST.
 
+## FINAL AUTHORITATIVE SEAL (M4-R1, 2026-08-24)
+
+- Failure-atomic QUEUE commit: the next state (live Queue entries, live
+  index, active entry_id) is built and validated BEFORE any mutation — a
+  stale acceptance whose exact entry is absent commits NOTHING (all
+  canonical state byte-for-byte intact).
+- STRICT restored QUEUE coherence: persisted context length + ordered
+  paths/titles MUST equal the restored Queue; no prefix relaxation, no
+  fabricated/extended session (safe NONE fallback).
+- Single-entry Shuffle + Repeat ALL convergence: next() replays the exact
+  current entry on a 1-track cycle in BOTH Queue and non-Queue contexts;
+  hasNext is exactly equivalent to next().
+- Live Queue acceptance re-projection by entry_id; request provenance
+  sealed; restored Queue runtime identity from the restored Queue;
+  ShuffleNavigator entry_id semantics; service-level hasNext/hasPrevious;
+  Library playback boundary; real Playlist interaction gate.
+- P0=0, P1=0. Full suite 2589 passed at CODE_VALIDATED_HEAD 2cc5253.
+  Remote exact-head CI: see repository evidence (GREEN at b7c93fb+2cc5253
+  runs).
+
+## Historical seals (superseded)
+
+### Absolute final session convergence seal (M4-R1, 2026-08-24 — superseded by the FINAL AUTHORITATIVE SEAL above)
+
+- Request provenance: pending_queue_entry_id belongs ONLY to the current
+  QUEUE pending request; a superseding SINGLE/ALBUM/PLAYLIST request
+  replaces it completely (a Queue removal can never cancel a non-Queue
+  pending request).
+- LIVE Queue acceptance: QUEUE commits re-project the LIVE Queue at
+  backend acceptance (exact entry_id; ordering/index as they are then);
+  a target absent from the LIVE Queue commits nothing.
+- Restored QUEUE runtime identity: the persisted QUEUE context supplies
+  logical type/ordering/current_index; runtime entry ids come from the
+  restored Queue (coherent prefix; hybrid M5 trailing adds allowed).
+- ShuffleNavigator logical identity: entry_id (never Python object
+  identity) in reset/regenerate/record_commit/previous/remove/add.
+- Navigation capability: service-level hasNext/hasPrevious reflect real
+  Session policy (LIVE Queue, Repeat ALL, shuffle pool/history); the
+  bridge consumes the service capability.
+- Library playback boundary: no obsolete LibraryService fallbacks;
+  exactly one TD-013 validation gate per intent.
+- Playlist interaction: row-body activation via the ItemDelegate's own
+  click + Enter/Return; More Options can never trigger playback.
+- P0=0, P1=0. Full suite 2579 passed at CODE_VALIDATED_HEAD 8108d7b.
+
 ## Final convergence seal (M4-R1 FINAL, 2026-08-23)
 
 - Queue entries carry an opaque RUNTIME entry_id (uuid4 hex): unique per

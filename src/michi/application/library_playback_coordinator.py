@@ -86,12 +86,13 @@ class LibraryPlaybackCoordinator:
         self.play_track(file_path, title=title)
 
     def play_visible_track(self, index: int) -> None:
-        """Generic visible-list track click → SINGLE (validates through the
-        library filesystem gate first)."""
+        """Generic visible-list track click → SINGLE.
+
+        P2-02 final seal: ONE validation gate. This method only resolves
+        the visible TrackRef and delegates to play_track, which performs
+        the canonical resolve + single TD-013 validation — never twice."""
         tracks = self._library.visible_tracks()
         if not (0 <= index < len(tracks)):
             return
         track = tracks[index]
-        if not self._library.validate_track_for_playback(track):
-            return
         self.play_track(track.file_path, title=track.title or "")
