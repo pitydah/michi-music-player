@@ -17,6 +17,7 @@ from enrichment_presentation_fakes import (
     ALBUM_X_KEY,
     ARTIST_A_KEY,
     ARTIST_B_KEY,
+    BlockingMbKnowledge,
     InlineExecutor,
     make_bridge,
     process_events,
@@ -33,6 +34,22 @@ def _app():
     from enrichment_presentation_fakes import ensure_app
 
     return ensure_app()
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    """Local offscreen GUI app (the repository QML pattern) — shadows the
+    pytest-qt plugin fixture so no QApplication mismatch warning fires."""
+    import os
+    import sys as _sys
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication(_sys.argv)
+    yield app
 
 
 def _wait_for(bridge, state, timeout_rounds=40):
@@ -568,3 +585,160 @@ class TestQmlStructuralSeals:
 
 
 from pathlib import Path  # noqa: E402
+
+# ----------------------------------------------------------------------
+# P1 residual — presentation intent barrier for OFF / CLEAR / RESET
+# ----------------------------------------------------------------------
+
+
+class TestPresentationIntentBarrier:
+    """A REAL worker parked mid-flight: after OFF/CLEAR/RESET the late
+    events of the old operation must never change the UI, and CLEAR must
+    never let the old worker resurrect the deleted profile."""
+
+    def _start_blocked_worker(self, knowledge):
+        from michi.application.enrichment_executor import (
+            ThreadPoolEnrichmentExecutor,
+        )
+
+        bridge, service, idr, repo, store, coordinator, library = make_bridge(
+            online=True,
+            mb_knowledge=knowledge,
+            executor=ThreadPoolEnrichmentExecutor(max_workers=2),
+        )
+        bridge.activate_artist(ARTIST_A_KEY)
+        assert knowledge.entered_fetch.wait(timeout=5)  # worker parked
+        return bridge, service, idr, coordinator
+
+    def _settle(self, bridge, rounds=60):
+        """Deliver queued events until the bridge state stabilizes."""
+        for _ in range(rounds):
+            process_events(6)
+        return bridge.property("state")
+
+    def test_fs16_off_keeps_disabled_after_late_cancelled(self):
+        """worker parked -> OFF -> worker released: the late CANCELLED
+        (old intent) is ignored; the UI stays DISABLED, never flips to
+        CANCELLED."""
+        knowledge = BlockingMbKnowledge()
+        bridge, service, _, coordinator = self._start_blocked_worker(knowledge)
+        bridge.on_online_enrichment_changed(False)
+        process_events(6)
+        assert bridge.property("state") == "DISABLED"
+        knowledge.release_fetch.set()  # worker wakes -> CANCELLED (stale)
+        coordinator.shutdown()
+        assert self._settle(bridge) == "DISABLED"
+        assert bridge.property("stateMessage") == "Online info is disabled"
+
+    def test_fs17_clear_cancels_worker_and_profile_stays_deleted(self):
+        """worker parked -> CLEAR -> worker released: the late delivery is
+        STALE (generation retired by the cancel) — the profile does NOT
+        resurrect and the UI stays IDLE."""
+        knowledge = BlockingMbKnowledge()
+        bridge, service, _, coordinator = self._start_blocked_worker(knowledge)
+        assert service.get_artist_knowledge(ARTIST_A_KEY) is None
+
+        bridge.clear_knowledge()
+        process_events(6)
+        assert bridge.property("state") == "IDLE"
+        assert bridge.property("artistHasKnowledge") is False
+
+        knowledge.release_fetch.set()  # worker tries to deliver late
+        coordinator.shutdown()
+        assert self._settle(bridge) == "IDLE"
+        # the explicit Clear action is NOT reverted by the late worker
+        assert service.get_artist_knowledge(ARTIST_A_KEY) is None
+        assert service.pending_count() == 0
+
+    def test_fs18_reset_ignores_late_events(self):
+        """worker parked -> RESET -> worker released: identity stays
+        deleted, late events never change the IDLE projection."""
+        knowledge = BlockingMbKnowledge()
+        bridge, service, identity_repo, coordinator = self._start_blocked_worker(
+            knowledge
+        )
+        bridge.reset_identity()
+        process_events(6)
+        assert bridge.property("state") == "IDLE"
+        knowledge.release_fetch.set()
+        coordinator.shutdown()
+        assert self._settle(bridge) == "IDLE"
+        assert identity_repo.load_artist_identity(ARTIST_A_KEY) is None
+
+
+# ----------------------------------------------------------------------
+# P1 residual — KnowledgeCard factual-presence semantics
+# ----------------------------------------------------------------------
+
+
+class TestKnowledgeCardPresenceSemantics:
+    def test_fs19_factual_presence_boolean_and_no_undefined(self, qapp):
+        """country='Chile' + beginYear + genres -> hasFactualFields() is
+        TRUE (no string concatenation trap); absent fields never render
+        'undefined' (fact() treats undefined/null/"" as absent)."""
+        from pathlib import Path
+
+        from enrichment_presentation_fakes import ensure_app
+        from PySide6.QtCore import QUrl
+        from PySide6.QtQml import QQmlComponent, QQmlEngine, QQmlExpression
+
+        qml_dir = (
+            Path(__file__).resolve().parent.parent
+            / "src"
+            / "michi"
+            / "presentation"
+            / "qml"
+        )
+        ensure_app()
+        engine = QQmlEngine()
+        engine.addImportPath(str(qml_dir))
+        component = QQmlComponent(engine)
+        component.setData(
+            b"""
+            import QtQuick
+            import "../enrichment"
+            EnrichmentKnowledgeCard {
+                objectName: "card"
+                hasKnowledge: true
+                knowledge: {
+                    "country": "Chile",
+                    "beginYear": 1990,
+                    "genres": ["Rock"],
+                }
+            }
+            """,
+            QUrl.fromLocalFile(str(qml_dir / "enrichment/__presence_test.qml")),
+        )
+        assert component.status() == QQmlComponent.Ready, component.errorString()
+        root = component.create()
+        assert root is not None
+        qapp.processEvents()
+
+        from PySide6.QtCore import QObject
+
+        facts = root.findChild(QObject, "factsFlow")
+        assert facts is not None
+
+        # hasFactualFields() on the Flow itself: boolean TRUE with
+        # country + beginYear + genres (no concatenation trap).
+        expr = QQmlExpression(engine.rootContext(), facts, "hasFactualFields()")
+        value, undefined = expr.evaluate()
+        assert undefined is False and value is True
+
+        # fact() with a real value renders the pair; the QJSValue
+        # carries label + value (QML ids are not resolvable from an
+        # external QQmlExpression scope, so values are passed literally —
+        # the in-QML Repeater binding passes root.knowledge.* directly).
+        expr2 = QQmlExpression(engine.rootContext(), facts, "fact('Country', 'Chile')")
+        val, undef2 = expr2.evaluate()
+        assert undef2 is False
+        assert val.property("label").toString() == "Country"
+        assert val.property("value").toString() == "Chile"
+
+        # absent fields: undefined/null/"" are ALL null facts — never
+        # rendered as "undefined".
+        for absent in ("undefined", "null", "''"):
+            expr = QQmlExpression(engine.rootContext(), facts, f"fact('X', {absent})")
+            value, undefined = expr.evaluate()
+            assert undefined is False and value is None, absent
+        engine.deleteLater()

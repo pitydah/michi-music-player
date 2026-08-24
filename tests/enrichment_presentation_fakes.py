@@ -5,6 +5,8 @@ EnrichmentBridge is driven through the real EnrichmentCoordinator over
 fake providers, with a duck-typed library projection.
 """
 
+import threading
+
 from enrichment_fakes import (
     FakeIdentityResolver,
     InMemoryIdentityRepository,
@@ -176,6 +178,24 @@ class FakeMbKnowledge(MusicBrainzKnowledgeProviderPort):
                 license="CC BY-NC-SA 3.0",
             ),
         )
+
+
+class BlockingMbKnowledge(FakeMbKnowledge):
+    """Parks the FIRST fetch_artist call so tests can hold a REAL
+    worker mid-flight, then releases it deterministically."""
+
+    def __init__(self, error=None):
+        super().__init__()
+        self.error = error
+        self.entered_fetch = threading.Event()
+        self.release_fetch = threading.Event()
+
+    def fetch_artist(self, local_artist_key, external_artist_id):
+        self.entered_fetch.set()
+        self.release_fetch.wait(timeout=15)
+        if self.error is not None:
+            raise self.error
+        return super().fetch_artist(local_artist_key, external_artist_id)
 
 
 class CountingResolver(FakeIdentityResolver):
