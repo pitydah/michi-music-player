@@ -9,6 +9,8 @@ Descriptors distinguish dependency availability (available) from
 adapter implementation truth (implemented).
 """
 
+import os
+
 from michi.application.audio_engine_registry import AudioEngineProviderPort
 from michi.application.audio_engine_runtime_failure import (
     AudioEngineRuntimeFailureEvent,
@@ -250,6 +252,12 @@ class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
     sockets, never attaches to a system daemon and never inspects
     /run/mpd, /etc/mpd.conf or ~/.config/mpd."""
 
+    # AR-09/AR-39: probe evidence cache keyed by executable identity
+    # (resolved path + mtime/size). `mpd --version` is dependency
+    # inspection, not engine activation — cached so Settings refresh
+    # stays responsive without re-launching the binary on every probe.
+    _probe_cache: dict[tuple[str, int, int], tuple[bool, str | None]] = {}
+
     def __init__(self) -> None:
         _RuntimeFailureRelayMixin.__init__(self)
         self._port = None
@@ -261,9 +269,42 @@ class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
     def probe(self) -> AudioEngineDescriptor:
         import shutil  # noqa: PLC0415 - stdlib, import-time cheap
 
+        from michi.infrastructure.audio_engines.mpd import (
+            MpdOutputPluginDiscoveryError,
+            _discover_mpd_output_plugins,
+            _select_default_mpd_output_plugin,
+        )
+
         path = shutil.which("mpd")
-        available = path is not None
-        reason = None if available else "mpd executable no encontrado en PATH"
+        if path is None:
+            return AudioEngineDescriptor(
+                engine_id=self.engine_id,
+                display_name=_MPD_DISPLAY,
+                available=False,
+                unavailable_reason="mpd executable no encontrado en PATH",
+                implemented=True,
+                capabilities=AudioEngineCapabilities(
+                    local_file_playback=True, seek=True, pause=True,
+                    volume=True, mute=True,
+                ),
+            )
+        # AR-09: an executable alone is NOT activatable — at least one
+        # supported default-system-output plugin (pipewire/pulse/alsa) must
+        # be compiled in. Bounded `mpd --version` inspection, side-effect
+        # free (no daemon, no socket, no runtime dir), cached by identity.
+        try:
+            stat = os.stat(path)
+            key = (path, stat.st_mtime_ns, stat.st_size)
+        except OSError:
+            key = (path, 0, 0)
+        if key not in MpdEngineProvider._probe_cache:
+            try:
+                compiled = _discover_mpd_output_plugins(path)
+                _select_default_mpd_output_plugin(compiled)
+                MpdEngineProvider._probe_cache[key] = (True, None)
+            except MpdOutputPluginDiscoveryError as exc:
+                MpdEngineProvider._probe_cache[key] = (False, str(exc))
+        available, reason = MpdEngineProvider._probe_cache[key]
         return AudioEngineDescriptor(
             engine_id=self.engine_id,
             display_name=_MPD_DISPLAY,

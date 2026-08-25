@@ -440,3 +440,86 @@ class TestAudioEngineService:
         src = inspect.getsource(mod)
         assert "PlaybackState" not in src
         assert "QueueState" not in src
+
+
+class TestMpdAvailabilityTruth:
+    """AR-09/AR-37/AR-38: executable presence alone is NOT activatable —
+    at least one supported output plugin must be compiled in. Side-effect
+    free probing with identity-cached `mpd --version` inspection."""
+
+    def _probe(self, monkeypatch, discovery_result=None, discovery_error=None):
+        from michi.infrastructure.audio_engines import providers as mod
+
+        calls = {"n": 0}
+
+        def fake_discover(executable):
+            calls["n"] += 1
+            if discovery_error is not None:
+                raise discovery_error
+            return discovery_result
+
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+
+        monkeypatch.setattr(mpd_mod, "_discover_mpd_output_plugins", fake_discover)
+        # isolate from the identity cache (real-host probes may have run)
+        monkeypatch.setattr(mod.MpdEngineProvider, "_probe_cache", {})
+        provider = mod.MpdEngineProvider()
+        desc = provider.probe()
+        return desc, calls
+
+    def test_available_with_pipewire(self, monkeypatch):
+        desc, _ = self._probe(monkeypatch, discovery_result={"pipewire", "alsa"})
+        assert desc.available is True
+        assert desc.can_activate is True
+
+    def test_available_with_pulse_only(self, monkeypatch):
+        desc, _ = self._probe(monkeypatch, discovery_result={"pulse"})
+        assert desc.available is True
+
+    def test_available_with_alsa_only(self, monkeypatch):
+        desc, _ = self._probe(monkeypatch, discovery_result={"alsa"})
+        assert desc.available is True
+
+    def test_unavailable_unsupported_plugins_only(self, monkeypatch):
+        desc, _ = self._probe(
+            monkeypatch, discovery_result={"null", "fifo", "jack"}
+        )
+        assert desc.available is False
+        assert "no supported default audio output" in desc.unavailable_reason
+
+    def test_unavailable_timeout_with_exact_blocker(self, monkeypatch):
+        from michi.infrastructure.audio_engines.mpd import (
+            MpdOutputPluginDiscoveryError,
+        )
+
+        desc, _ = self._probe(
+            monkeypatch,
+            discovery_error=MpdOutputPluginDiscoveryError(
+                "mpd --version timed out after 5.0s"
+            ),
+        )
+        assert desc.available is False
+        assert "timed out" in desc.unavailable_reason
+
+    def test_unavailable_malformed_version(self, monkeypatch):
+        from michi.infrastructure.audio_engines.mpd import (
+            MpdOutputPluginDiscoveryError,
+        )
+
+        desc, _ = self._probe(
+            monkeypatch,
+            discovery_error=MpdOutputPluginDiscoveryError("malformed output"),
+        )
+        assert desc.available is False
+        assert "malformed" in desc.unavailable_reason
+
+    def test_probe_cached_by_executable_identity(self, monkeypatch):
+        """AR-39: repeated probes must not re-launch `mpd --version`."""
+        desc1, calls = self._probe(monkeypatch, discovery_result={"pipewire"})
+        assert calls["n"] == 1
+        from michi.infrastructure.audio_engines import providers as mod
+
+        provider = mod.MpdEngineProvider()
+        desc2 = provider.probe()
+        assert desc2.available is True
+        assert calls["n"] == 1  # cached — no second inspection
