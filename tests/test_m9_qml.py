@@ -95,7 +95,12 @@ class TestRoutedViewRootsNoAnchorsFill:
         assert "playback.volume" in content
         assert "playback.set_volume" in content
         assert "library.currentDir" in content
-        assert "settingsBridge.set" not in content
+        # M6.9-PRESENTATION: the ONLY settings mutation the view performs
+        # is the Online Library Enrichment policy switch; geometry/theme
+        # mutations stay out of the view.
+        assert "settingsBridge.set_theme" not in content
+        assert "settingsBridge.set_window_geometry" not in content
+        assert "settingsBridge.set_online_enrichment" in content
 
 
 class TestQmlSmoke:

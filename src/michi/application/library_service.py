@@ -34,6 +34,7 @@ from michi.domain.library import (
     TrackRef,
     build_folder_model,
     build_music_model,
+    make_artist_key,
     merge_recently_added,
 )
 from michi.domain.library_index import (
@@ -650,6 +651,32 @@ class LibraryService:
             if album.key == album_key:
                 return album
         return None
+
+    def artist_by_key(self, artist_key: str):
+        """Canonical ArtistRef by key, or None (M6.9 Presentation reader)."""
+        for artist in self._state.artists:
+            if artist.key == artist_key:
+                return artist
+        return None
+
+    def albums_for_artist(self, artist_key: str) -> tuple:
+        """Canonical albums whose artist key matches (M6.9 Presentation reader)."""
+        return tuple(
+            album
+            for album in self._state.albums
+            if make_artist_key(album.artist) == artist_key
+        )
+
+    def tracks_for_artist(self, artist_key: str) -> tuple:
+        """Canonical tracks whose TRACK ARTIST matches the artist key
+        (M6.9 Presentation reader). The artist entity identity is the
+        ``track.artist`` role — album_artist is a DIFFERENT semantic role
+        (compilations keep their guest tracks under the track artist)."""
+        return tuple(
+            track
+            for track in self._state.tracks
+            if make_artist_key(track.artist.strip() or "Unknown Artist") == artist_key
+        )
 
     def artwork_path_for(self, album_key: str) -> str | None:
         """Cached artwork path for an album key, or None when unavailable."""

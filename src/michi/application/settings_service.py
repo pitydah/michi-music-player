@@ -65,3 +65,20 @@ class SettingsService:
         except Exception:
             self.state.audio_engine_id = previous
             raise
+
+    def set_online_enrichment(self, enabled: bool) -> None:
+        """Persist the Online Library Enrichment policy (M6.9 Presentation).
+
+        Same transactional truth as ``set_audio_engine``: on save failure the
+        in-memory state is rolled back and the original error re-raised — no
+        half-mutated policy survives a failed save.
+        """
+        previous = self.state.online_enrichment
+        if previous == enabled:
+            return
+        self.state.online_enrichment = enabled
+        try:
+            self.save()
+        except Exception:
+            self.state.online_enrichment = previous
+            raise
