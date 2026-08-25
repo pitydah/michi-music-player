@@ -306,6 +306,51 @@ Qt→MPD→Qt switch reaches READY with volume restored; 4-cycle switch leaves
 no leaked child; a genuine mixer failure remains fatal (target FAILED, never
 READY). F42 adapter hash updated for the authorized mpd.py reopening.
 
+## AUDIO RUNTIME RELIABILITY SEAL (extraordinary authorized reopening)
+
+M11.3 was temporarily reopened for an **Audio Runtime Reliability Seal**
+(physical-truth corrective work) and is now re-frozen:
+
+    M11.3      DONE / TESTED / FROZEN
+    M11.3-UI   DONE / TESTED / FROZEN
+
+No new milestone (no M11.3H). The seal made the existing three engines
+physically truthful without redesigning the architecture:
+
+- **Guaranteed shutdown** (AR-04): the entry point calls container
+  shutdown on EVERY exit path (normal, run() exception, initialize()
+  failure); first-error-wins on error paths.
+- **Ownership invariants** (AR-05/AR-06/AR-08): a live child/thread ALWAYS
+  keeps its ownership handle; failed termination raises an explicit
+  teardown error and retains handle + runtime dir + diagnostics; MPD
+  stderr is a runtime-owned log (no undrained pipe).
+- **Command truth** (AR-02/AR-13/AR-15/AR-16/AR-17): typed
+  AudioTransportError surface (CommandError/UnavailableError); GStreamer
+  play/pause/stop/seek failures raise; PlaybackService stop commits only
+  after the backend accepted and seek never fabricates position; MPD
+  volume/mute commit only after protocol success.
+- **Router transaction safety** (AR-10/AR-31/AR-32): per-binding
+  generation provenance drops stale events from superseded backends even
+  after a failed detach; partial attach failures roll back and never
+  publish a clean binding.
+- **Runtime health telemetry** (AR-11/AR-12): GStreamer activation now
+  proves the runtime is genuinely operational (GI/Gst/playbin3/pump);
+  unexpected pump death emits the canonical runtime-failure event;
+  MPD's bounded poller converges state so edge-triggered idle loss
+  cannot leave state stale.
+- **Availability truth** (AR-09): MPD available=True requires at least
+  one supported default-output plugin (pipewire/pulse/alsa) compiled in;
+  probing stays side-effect free and cached by executable identity.
+- **Cross-engine conformance** (AR-22): one semantic contract proven on
+  REAL Qt, GStreamer and MPD (incl. 130-switch stress, 100 stop/play
+  cycles, 25 close/reopen cycles per real engine, startup no-autoplay
+  golden gate, zero leaks).
+
+AR-01 (orphan MPD child) was REJECTED with evidence on this host: MPD >=
+0.23 sets PR_SET_PDEATHSIG (SIGTERM) when not daemonized — a SIGKILLed
+owner's child self-terminates within ~1s (proven via subprocess harness;
+a plain `sleep` child survives and is reparented normally).
+
 ## Non-goals
 
 - No UI (M9-R2 owns presentation).
