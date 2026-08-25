@@ -351,6 +351,41 @@ AR-01 (orphan MPD child) was REJECTED with evidence on this host: MPD >=
 owner's child self-terminates within ~1s (proven via subprocess harness;
 a plain `sleep` child survives and is reparented normally).
 
+## M11.3 AUDIO RUNTIME RELIABILITY R1 CORRECTIVE SEAL
+
+M11.3 was temporarily reopened for the R1 corrective seal (residual
+reliability defects found by an independent post-implementation audit)
+and is re-frozen:
+
+    M11.3      DONE / TESTED / FROZEN
+    M11.3-UI   DONE / TESTED / FROZEN
+
+No new milestone. The R1 seal closed:
+
+- R1-01/02/03/04/05 — retryable, failure-atomic teardown: `_closed == True`
+  means ALL teardown completed; a failed close retains every ownership
+  handle and a second close retries; the Qt provider closes its backend
+  through the REAL close(); Qt backend close is failure-atomic.
+- R1-06 — ONE canonical AudioTransportUnavailableError (ports.py); the
+  router imports it (duplicate removed); hierarchy identity proven.
+- R1-07 — MPD commands obey the shared typed contract via one
+  translation helper (ACK → CommandError, socket loss →
+  UnavailableError, closed → UnavailableError, live-no-source stop →
+  idempotent no-op, live-no-source position/duration → real 0).
+- R1-08 — partial MPD startup (Popen failure) cleans all runtime
+  artifacts; first-error-wins preserved.
+- R1-09 — conservative stale-Michi-MPD recovery: orphan safety no
+  longer depends blindly on MPD parent-death behavior; multi-fact
+  validation before terminating the exact PID (never killall/pkill,
+  never a system/user MPD); runs once at MpdEngineProvider.open().
+  Real-host evidence: 27 abandoned runtime dirs from earlier sessions
+  were detected and artifact-cleaned.
+- R1-10/11/12 — conformance callbacks unsubscribe the SAME objects
+  (zero callback leaks); stress gates assert and tear down the SAME
+  graph that performed the switches; REAL QtEngineProvider participates
+  in the stress (25 Qt↔MPD + 25 Qt↔GStreamer real cycles; 230 total
+  switches).
+
 ## Non-goals
 
 - No UI (M9-R2 owns presentation).
