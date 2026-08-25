@@ -182,7 +182,15 @@ class TestE2FreshAvailability:
         assert first.implemented is True
         assert first.can_activate is False
         # el runtime aparece DURANTE la vida del proceso
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+
         monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/mpd")
+        monkeypatch.setattr(
+            mpd_mod,
+            "_discover_mpd_output_plugins",
+            lambda executable: {"pipewire"},
+        )
+        monkeypatch.setattr(MpdEngineProvider, "_probe_cache", {})
         second = registry.descriptor(AudioEngineId.MPD)
         assert second.available is True
         assert second.implemented is True
@@ -250,9 +258,16 @@ class TestE6MpdAvailability:
         assert desc.can_activate is False
         assert desc.unavailable_reason
 
-    def test_e08_mpd_present_executable(self, mpd_present):
+    def test_e08_mpd_present_executable(self, mpd_present, monkeypatch):
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
         from michi.infrastructure.audio_engines.providers import MpdEngineProvider
 
+        monkeypatch.setattr(
+            mpd_mod,
+            "_discover_mpd_output_plugins",
+            lambda executable: {"pipewire"},
+        )
+        monkeypatch.setattr(MpdEngineProvider, "_probe_cache", {})
         desc = MpdEngineProvider().probe()
         assert desc.available is True
         assert desc.implemented is True

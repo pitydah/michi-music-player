@@ -127,7 +127,22 @@ class TestGStreamerProvider:
         if not desc.available:
             assert desc.unavailable_reason is not None
 
+    def _gst_runtime_available(self):
+        """Truthful gate: activation needs the real GI/GStreamer runtime."""
+        try:
+            from michi.infrastructure.audio_engines.gstreamer import (
+                GStreamerBindings,
+            )
+
+            b = GStreamerBindings()
+            b.ensure_loaded()
+            return b.playbin3_available()
+        except (ImportError, ValueError):
+            return False
+
     def test_open_returns_audio_port(self, qapp):
+        if not self._gst_runtime_available():
+            pytest.skip("dependency absent: PyGObject/GStreamer runtime")
         from michi.application.ports import AudioPort
 
         provider = GStreamerEngineProvider()
@@ -136,6 +151,8 @@ class TestGStreamerProvider:
         provider.close()
 
     def test_ownership_deterministic(self, qapp):
+        if not self._gst_runtime_available():
+            pytest.skip("dependency absent: PyGObject/GStreamer runtime")
         provider = GStreamerEngineProvider()
         first = provider.open()
         second = provider.open()
@@ -165,7 +182,17 @@ class TestMpdProvider:
         assert desc.activation_blocker is not None
 
     def test_pv2_installed_executable(self, monkeypatch):
+        """Environment-independent: executable present AND a supported
+        output plugin compiled in → activatable (AR-09)."""
+        import michi.infrastructure.audio_engines.mpd as mpd_mod
+
         monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/mpd")
+        monkeypatch.setattr(
+            mpd_mod,
+            "_discover_mpd_output_plugins",
+            lambda executable: {"pipewire", "alsa"},
+        )
+        monkeypatch.setattr(MpdEngineProvider, "_probe_cache", {})
         desc = MpdEngineProvider().probe()
         assert desc.available is True
         assert desc.implemented is True
@@ -450,6 +477,9 @@ class TestMpdAvailabilityTruth:
     def _probe(self, monkeypatch, discovery_result=None, discovery_error=None):
         from michi.infrastructure.audio_engines import providers as mod
 
+        # CI may lack the mpd executable — pin a fake path so the probe
+        # always exercises the output-plugin inspection path
+        monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/mpd")
         calls = {"n": 0}
 
         def fake_discover(executable):

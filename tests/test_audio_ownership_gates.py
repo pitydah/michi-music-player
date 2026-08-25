@@ -8,6 +8,7 @@ harness (no manual GUI).
 """
 
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -105,8 +106,9 @@ class TestRuntimeOwnershipInvariants:
     """Section 20 — fake-level ownership invariants (deterministic)."""
 
     def test_mpd_close_success_releases_everything(self, tmp_path):
+        if shutil.which("mpd") is None:
+            pytest.skip("dependency absent: mpd executable not found in PATH")
         from michi.infrastructure.audio_engines.mpd import _ManagedMpdRuntime
-        from tests.test_mpd_runtime import _FakeProcess  # noqa: F401
 
         runtime = _ManagedMpdRuntime(output_plugin="alsa")
         runtime._start_inner()
