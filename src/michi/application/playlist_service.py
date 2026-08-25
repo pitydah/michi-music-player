@@ -16,7 +16,7 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
-from michi.application.ports import PlaylistsPort
+from michi.application.ports import PlaylistArtworkStorePort, PlaylistsPort
 from michi.domain.playlist import (
     MAX_RECENT_PLAYLISTS,
     Playlist,
@@ -30,15 +30,18 @@ logger = logging.getLogger(__name__)
 
 class PlaylistService:
     """Owns the ordered playlist collection and its navigation metadata
-    (pinned/recent); mutates, persists (best effort) and notifies. Playback
-    goes through the queue (queue direction only)."""
+    (pinned/recent); mutates, persists (best effort) and notifies. M4-R1:
+    playback authority lives in PlaybackSessionService + PlaylistPlaybackCoordinator;
+    QueueService owns temporary Queue content only (never referenced here)."""
 
     def __init__(
         self,
         *legacy_queue_args,
         playlists_port: PlaylistsPort | None = None,
+        artwork_store: PlaylistArtworkStorePort | None = None,
     ) -> None:
         self._port = playlists_port
+        self._artwork_store = artwork_store
         self._playlists: list[Playlist] = list(
             playlists_port.load() if playlists_port is not None else ()
         )
@@ -128,6 +131,8 @@ class PlaylistService:
         index = self._find_by_id(playlist_id)
         if index < 0:
             return
+        if self._artwork_store is not None:
+            self._artwork_store.delete_cover(playlist_id)
         del self._playlists[index]
         # Prune navigation metadata (never dangling ids).
         self._nav = PlaylistNavigationState(
@@ -216,26 +221,44 @@ class PlaylistService:
         self._persist()
         self._notify()
 
-    def set_custom_cover(self, playlist_id: str, cover_path: str) -> None:
+    def set_custom_cover(self, playlist_id: str, cover_path: Path | str) -> str | None:
+        """Sets managed custom cover. Validates, copies to app storage and persists."""
         index = self._find_by_id(playlist_id)
         if index < 0:
-            return
+            return None
+        managed_path = str(cover_path)
+        if self._artwork_store is not None:
+            stored = self._artwork_store.store_cover(playlist_id, cover_path)
+            if stored is None:
+                return None
+            managed_path = stored
         playlist = self._playlists[index]
         self._playlists[index] = Playlist(
             playlist_id=playlist.playlist_id,
             name=playlist.name,
             track_paths=playlist.track_paths,
-            custom_cover_path=cover_path,
+            custom_cover_path=managed_path,
         )
         self._persist()
         self._notify()
+        return managed_path
 
     def remove_custom_cover(self, playlist_id: str) -> None:
-        self.set_custom_cover(playlist_id, "")
-
-    # ------------------------------------------------------------------
-    # Navigation metadata (pinned / recent) — identity-based
-    # ------------------------------------------------------------------
+        """Removes custom cover, deletes managed file and reverts to auto mosaic."""
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return
+        if self._artwork_store is not None:
+            self._artwork_store.delete_cover(playlist_id)
+        playlist = self._playlists[index]
+        self._playlists[index] = Playlist(
+            playlist_id=playlist.playlist_id,
+            name=playlist.name,
+            track_paths=playlist.track_paths,
+            custom_cover_path="",
+        )
+        self._persist()
+        self._notify()
 
     def pin_playlist(self, playlist_id: str) -> None:
         if self._find_by_id(playlist_id) < 0:
@@ -318,6 +341,8 @@ class PlaylistService:
         if playlist_id is not None:
             self.move_track(playlist_id, from_index, to_index)
 
-    def resolve_playlist_name(self, name: str) -> str | None:
-        """Name → id resolution (intent coordinators use this)."""
-        return self._resolve_name_to_id(name)
+    def play_playlist_by_name(self, name: str) -> None:
+        """DEPRECATED compatibility: name-based play delegates to id."""
+        playlist_id = self._resolve_name_to_id(name)
+        if playlist_id is not None:
+            self.play_playlist(playlist_id)

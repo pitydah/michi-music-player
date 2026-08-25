@@ -29,6 +29,7 @@ Popup {
 
     background: MichiGlassSurface {
         elevation: "modal"
+        tileSeed: 4
         radius: MichiRadius.lg
         shadowed: true
         textured: true
@@ -45,7 +46,7 @@ Popup {
             spacing: MichiSpacing.xs
 
             MichiText {
-                text: "DENSITY"
+                text: qsTr("DENSITY")
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
@@ -55,14 +56,14 @@ Popup {
                 objectName: "libraryDensityControl"
                 Layout.fillWidth: true
                 model: [
-                    { value: "comfortable", label: "Comfortable", icon: "density-comfortable" },
-                    { value: "standard", label: "Standard", icon: "density-standard" },
-                    { value: "compact", label: "Compact", icon: "density-compact" }
+                    { value: "comfortable", label: qsTr("Comfortable"), icon: "density-comfortable" },
+                    { value: "standard", label: qsTr("Standard"), icon: "density-standard" },
+                    { value: "compact", label: qsTr("Compact"), icon: "density-compact" }
                 ]
                 currentValue: MichiThemeState.density
                 compact: true
                 accessiblePrefix: "Library density"
-                Accessible.name: "Library density"
+                Accessible.name: qsTr("Library density")
                 onSelected: value => MichiThemeState.density = value
             }
         }
@@ -75,7 +76,7 @@ Popup {
             MichiSwitch {
                 id: precisionSwitch
                 Layout.fillWidth: true
-                text: "Precision metadata"
+                text: qsTr("Precision metadata")
                 checked: MichiThemeState.precisionMode
                 onToggled: MichiThemeState.precisionMode = checked
             }
@@ -95,7 +96,7 @@ Popup {
             }
 
             MichiText {
-                text: "ARTWORK SIZE"
+                text: qsTr("ARTWORK SIZE")
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
@@ -107,7 +108,7 @@ Popup {
 
                 MichiIconButton {
                     iconName: "zoom-out"
-                    accessibleName: "Make artwork smaller"
+                    accessibleName: qsTr("Make artwork smaller")
                     enabled: root.albumZoom > 0.83
                     onClicked: root.albumZoomRequested(root.albumZoom > 1.01 ? 1.0 : 0.82)
                 }
@@ -138,7 +139,7 @@ Popup {
 
                 MichiIconButton {
                     iconName: "zoom-in"
-                    accessibleName: "Make artwork larger"
+                    accessibleName: qsTr("Make artwork larger")
                     enabled: root.albumZoom < 1.21
                     onClicked: root.albumZoomRequested(root.albumZoom < 0.99 ? 1.0 : 1.22)
                 }
@@ -159,7 +160,7 @@ Popup {
             }
 
             MichiText {
-                text: "SORT & FILTER"
+                text: qsTr("SORT & FILTER")
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
@@ -220,7 +221,7 @@ Popup {
             }
 
             MichiText {
-                text: "TIMELINE GROUPING"
+                text: qsTr("TIMELINE GROUPING")
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
@@ -230,12 +231,12 @@ Popup {
                 Layout.fillWidth: true
                 compact: true
                 model: [
-                    { value: "decade", label: "Decades", icon: "view-timeline" },
-                    { value: "year", label: "Years", icon: "history" }
+                    { value: "decade", label: qsTr("Decades"), icon: "view-timeline" },
+                    { value: "year", label: qsTr("Years"), icon: "history" }
                 ]
                 currentValue: root.albumTimelineGrouping
                 accessiblePrefix: "Timeline grouping"
-                Accessible.name: "Timeline grouping"
+                Accessible.name: qsTr("Timeline grouping")
                 onSelected: value => root.albumTimelineGroupingRequested(value)
             }
         }

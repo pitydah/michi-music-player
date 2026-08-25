@@ -105,16 +105,16 @@ class TestRoutedViewRootsNoAnchorsFill:
 
 class TestQmlSmoke:
     def test_michi_button(self, qapp):
-        _load_qml("ui/MichiButton.qml", "MichiButton")
+        _load_qml("controls/MichiButton.qml", "MichiButton")
 
     def test_michi_text_field(self, qapp):
-        _load_qml("ui/MichiTextField.qml", "MichiTextField")
+        _load_qml("controls/MichiTextField.qml", "MichiTextField")
 
-    def test_michi_panel(self, qapp):
-        _load_qml("ui/MichiPanel.qml", "MichiPanel")
+    def test_michi_checkbox(self, qapp):
+        _load_qml("controls/MichiCheckBox.qml", "MichiCheckBox")
 
-    def test_michi_slider(self, qapp):
-        _load_qml("ui/MichiSlider.qml", "MichiSlider")
+    def test_michi_switch(self, qapp):
+        _load_qml("controls/MichiSwitch.qml", "MichiSwitch")
 
     def test_shell(self, qapp):
         _load_qml("shell/AppShell.qml", "AppShell")

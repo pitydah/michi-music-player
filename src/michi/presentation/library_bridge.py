@@ -435,8 +435,22 @@ class LibraryBridge(QObject):
             "fileSize": ref.file_size,
         }
 
+    def _track_row_with_artwork(self, ref: TrackRef) -> dict:
+        row = self._track_row(ref)
+        path = ref.file_path
+        artwork_path = ""
+        for album in self._service.state.albums:
+            if path in album.track_paths:
+                artwork_path = self._service.artwork_path_for(album.key) or ""
+                break
+        row["artworkPath"] = artwork_path
+        return row
+
     def _get_song_rows(self) -> list[dict]:
-        return [self._track_row(ref) for ref in self._service.state.visible_tracks]
+        return [
+            self._track_row_with_artwork(ref)
+            for ref in self._service.state.visible_tracks
+        ]
 
     def _get_favorite_rows(self) -> list[dict]:
         return self._rows_for(self._reference_paths(self._service.state.favorite_paths))
@@ -479,7 +493,7 @@ class LibraryBridge(QObject):
         for path in paths:
             ref = self._service.resolve_trackref(Path(path))
             if ref is not None:
-                rows.append(self._track_row(ref))
+                rows.append(self._track_row_with_artwork(ref))
         return rows
 
     files = Property(list, _get_files, notify=library_changed)

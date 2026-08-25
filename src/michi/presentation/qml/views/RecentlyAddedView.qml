@@ -1,8 +1,13 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
+import "../patterns"
+import "../primitives"
 import "../theme"
 
+// RecentlyAddedView — Recently imported tracks with temporal section headers
 ListView {
     id: root
     objectName: "recentlyView"
@@ -15,9 +20,26 @@ ListView {
     boundsBehavior: Flickable.StopAtBounds
     headerPositioning: ListView.InlineHeader
 
-    header: TrackTableHeader {
+    ScrollBar.vertical: MichiScrollBar { }
+
+    header: Item {
         width: root.width
-        actionColumnWidth: 32
+        height: root.count > 0 ? recentlyTableHeader.implicitHeight : root.height
+
+        TrackTableHeader {
+            id: recentlyTableHeader
+            width: parent.width
+            actionColumnWidth: 32
+            visible: root.count > 0
+        }
+
+        EmptyState {
+            anchors.fill: parent
+            visible: root.count === 0
+            title: qsTr("Nothing added recently")
+            message: qsTr("Newly imported tracks will appear here.")
+            iconName: "recent"
+        }
     }
 
     delegate: TrackRow {

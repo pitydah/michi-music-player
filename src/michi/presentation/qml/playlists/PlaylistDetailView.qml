@@ -7,31 +7,27 @@ import "../patterns"
 import "../primitives"
 import "../theme"
 
-// PlaylistDetailView — PLAYLISTS + playlist_id. Header with real artwork mosaic / custom cover,
-// honest Play Now & Add to Queue buttons, total duration, and track list.
+// PlaylistDetailView — PLAYLISTS + playlist_id editorial page.
+// One continuous surface: atmospheric hero (cover + identity + compact
+// actions) that scrolls away, a sticky quiet column header, and a dense
+// track table below. The playlist is a persistent collection — selecting
+// and playing a track never requires queue operations (play_track).
 Item {
     id: root
 
     objectName: "playlistDetailView"
     property string playlistId: ""
+    property int selectedIndex: -1
     signal backRequested()
     signal playRequested()
+    signal shuffleRequested()
     signal togglePinRequested()
     signal renameRequested(string playlistId, string playlistName)
     signal deleteRequested(string playlistId, string playlistName)
     signal removeTrackRequested(int index)
     signal moveTrackRequested(int fromIndex, int toIndex)
-
-    function formatTotalDuration(ms) {
-        if (!ms || ms <= 0) return ""
-        var totalSec = Math.round(ms / 1000)
-        var hours = Math.floor(totalSec / 3600)
-        var minutes = Math.floor((totalSec % 3600) / 60)
-        var seconds = totalSec % 60
-        if (hours > 0)
-            return hours + " hr " + minutes + " min"
-        return minutes + " min " + (seconds > 0 ? (seconds + " sec") : "")
-    }
+    signal playTrackRequested(int index)
+    signal addMusicRequested()
 
     FileDialog {
         id: coverDialog
@@ -46,116 +42,184 @@ Item {
         }
     }
 
+    // Hero occupies ~30-40% of the first visible screen
+    readonly property real heroHeight: Math.max(240, Math.min(300, root.height * 0.36))
+    // Sticky column header — completely hidden over the hero (the in-flow
+    // header below the hero shows the labels there); fades in with the
+    // backplane once the hero scrolls away
+    readonly property real stickyHeaderOpacity: trackList
+        ? Math.max(0, Math.min(1, (trackList.contentY - (root.heroHeight - 44)) / 44)) : 0
+    readonly property bool showArtist: root.width >= 700
+    readonly property bool showAlbum: root.width >= 900
+    readonly property bool showFormat: root.width > 1200
+
+    // Hero as a Component (ListView.header requires QQmlComponent — an
+    // instantiated Item cannot be assigned). The wrapper scrolls away as a
+    // unit: the editorial hero on top, the quiet column header below it
+    // (it only "sticks" via the separate overlay once the hero leaves).
+    // Bindings are null-safe: the header can be instantiated before the
+    // bridge context resolves, and they re-evaluate on playlists_changed.
+    Component {
+        id: heroComponent
+        Item {
+            implicitHeight: heroItem.implicitHeight + MichiMetrics.controlSmall
+
+            PlaylistHero {
+                id: heroItem
+                objectName: "playlistHero"
+                width: parent.width
+                playlistName: playlists ? playlists.selectedPlaylistName : ""
+                trackCount: playlists ? playlists.playlistTracks.length : 0
+                durationMs: playlists ? playlists.selectedPlaylistDurationMs : 0
+                description: playlists ? (playlists.selectedPlaylistDescription || "") : ""
+                customCoverPath: playlists ? (playlists.selectedPlaylistCustomCoverPath || "") : ""
+                mosaicArtworkPaths: playlists ? (playlists.selectedPlaylistMosaicArtworkPaths || []) : []
+                pinned: playlists ? playlists.selectedPlaylistPinned : false
+            }
+
+            PlaylistColumnHeader {
+                anchors.top: heroItem.bottom
+                width: parent.width
+                showArtist: width >= 700
+                showAlbum: width >= 900
+                showFormat: width > 1200
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        spacing: MichiSpacing.lg
+        spacing: 0
 
-        // Hero Header
+        // Top bar (fixed) — quiet back affordance only
         RowLayout {
             Layout.fillWidth: true
-            spacing: MichiSpacing.md
+            Layout.preferredHeight: 48
+            Layout.leftMargin: MichiSpacing.xl
+            Layout.rightMargin: MichiSpacing.xl
+            spacing: MichiSpacing.sm
+            z: 6
 
             MichiIconButton {
                 iconName: "back"
                 accessibleName: qsTr("Back to All Playlists")
                 onClicked: root.backRequested()
             }
+            Item { Layout.fillWidth: true }
+        }
 
-            PlaylistArtwork {
-                Layout.preferredWidth: 80
-                Layout.preferredHeight: 80
-                customCoverPath: playlists.selectedPlaylistCustomCoverPath || ""
-                mosaicArtworkPaths: playlists.selectedPlaylistMosaicArtworkPaths || []
-                fallbackText: playlists.selectedPlaylistName
-                radius: MichiRadius.lg
+        Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
 
-                MouseArea {
+            // Sticky column header — fades in (labels + backplane) only
+            // while the hero scrolls away; hidden over the hero itself
+            Rectangle {
+                id: columnHeaderBar
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 34
+                z: 5
+                color: MichiSemanticColors.backplane
+                opacity: root.stickyHeaderOpacity
+                clip: true
+                Behavior on opacity {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
+                }
+
+                PlaylistColumnHeader {
                     anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: coverDialog.open()
+                    showArtist: root.showArtist
+                    showAlbum: root.showAlbum
+                    showFormat: root.showFormat
                 }
             }
 
-            ColumnLayout {
-                spacing: 2
-                Layout.fillWidth: true
+            PlaylistTrackList {
+                id: trackList
+                anchors.fill: parent
+                rows: playlists.playlistTrackRows
+                selectedIndex: root.selectedIndex
+                showArtistColumn: root.width >= 700
+                showAlbumColumn: root.width >= 900
+                showFormatColumn: root.width > 1200
+                narrow: root.width < 700
+                heroComponent: heroComponent
 
+                onTrackSelected: index => root.selectedIndex = index
+                onPlayTrackRequested: index => playlists.play_playlist_track(index)
+                onRemoveTrackRequested: index => root.removeTrackRequested(index)
+                onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
+            }
+
+            // Hero signal wiring (created lazily inside the ListView)
+            Connections {
+                target: trackList.headerItem
+                enabled: trackList.headerItem !== null
+                function onPlayRequested() { root.playRequested() }
+                function onShuffleRequested() { root.shuffleRequested() }
+                function onMoreRequested() { detailMenu.popup() }
+                function onChangeCoverRequested() { coverDialog.open() }
+                function onTogglePinRequested() { root.togglePinRequested() }
+                function onAddTracksRequested() { root.addMusicRequested() }
+            }
+
+            // Empty state — hero stays, tracks area shows a quiet prompt
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.topMargin: root.heroHeight
+                anchors.bottomMargin: MichiSpacing.xl
+                visible: playlists.playlistTrackRows.length === 0
+                spacing: MichiSpacing.sm
+
+                Item { Layout.fillHeight: true }
+                MichiIcon {
+                    Layout.alignment: Qt.AlignHCenter
+                    width: 34
+                    height: 34
+                    name: "playlist"
+                    iconColor: MichiPalette.textMuted
+                }
                 MichiText {
-                    id: titleText
-                    text: playlists.selectedPlaylistName
+                    Layout.alignment: Qt.AlignHCenter
+                    text: qsTr("This playlist is empty")
                     role: "section"
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
                     color: MichiPalette.textPrimary
                 }
-
                 MichiText {
-                    text: playlists.playlistTracks.length + (playlists.playlistTracks.length === 1 ? " track" : " tracks")
-                        + (playlists.selectedPlaylistDurationMs > 0 ? " · " + root.formatTotalDuration(playlists.selectedPlaylistDurationMs) : "")
-                    role: "technical"
-                    technical: true
+                    Layout.alignment: Qt.AlignHCenter
+                    text: qsTr("Add music from your library to start listening.")
+                    role: "secondary"
                     color: MichiPalette.textSecondary
+                    opacity: 0.65
                 }
+                Item { Layout.preferredHeight: MichiSpacing.xs }
+                MichiButton {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: qsTr("Add Music")
+                    iconName: "plus"
+                    variant: "secondary"
+                    implicitHeight: MichiMetrics.controlMedium
+                    onClicked: root.addMusicRequested()
+                }
+                Item { Layout.fillHeight: true }
             }
-
-            Item { Layout.fillWidth: true }
-
-            MichiIconButton {
-                iconName: "pin"
-                selected: playlists.selectedPlaylistPinned
-                accessibleName: playlists.selectedPlaylistPinned
-                    ? qsTr("Unpin playlist") : qsTr("Pin playlist")
-                onClicked: root.togglePinRequested()
-            }
-
-            MichiButton {
-                text: qsTr("Play Now")
-                variant: "primary"
-                iconName: "play"
-                enabled: playlists.playlistTracks.length > 0
-                accessibleName: qsTr("Play playlist now")
-                onClicked: root.playRequested()
-            }
-
-            MichiButton {
-                text: qsTr("Add to Queue")
-                variant: "secondary"
-                iconName: "queue"
-                enabled: playlists.playlistTracks.length > 0
-                accessibleName: qsTr("Add playlist to queue")
-                onClicked: playlists.queue_selected_playlist()
-            }
-
-            MichiIconButton {
-                iconName: "sliders"
-                accessibleName: qsTr("More options")
-                onClicked: detailMenu.popup()
-            }
-        }
-
-        PlaylistTrackList {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: playlists.playlistTrackRows.length > 0
-            rows: playlists.playlistTrackRows
-            onRemoveTrackRequested: index => root.removeTrackRequested(index)
-            onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
-            onPlayTrackRequested: index => playlists.play_playlist_track(index)
-        }
-
-        EmptyState {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: playlists.playlistTrackRows.length === 0
-            title: qsTr("Empty playlist")
-            message: qsTr("Add tracks from your library to start collecting them here.")
-            iconName: "playlist"
         }
     }
 
     MichiMenu {
         id: detailMenu
+        MenuItem {
+            text: qsTr("Shuffle Play")
+            onTriggered: root.shuffleRequested()
+        }
+        MenuItem {
+            text: qsTr("Add tracks…")
+            onTriggered: root.addMusicRequested()
+        }
         MenuItem {
             text: qsTr("Change Cover…")
             onTriggered: coverDialog.open()
@@ -167,13 +231,13 @@ Item {
         }
         MenuItem {
             objectName: "playlistDetailRenameAction"
-            text: qsTr("Rename")
+            text: qsTr("Rename…")
             onTriggered: root.renameRequested(
                 root.playlistId, playlists.selectedPlaylistName)
         }
         MenuItem {
             objectName: "playlistDetailDeleteAction"
-            text: qsTr("Delete playlist")
+            text: qsTr("Delete…")
             onTriggered: root.deleteRequested(
                 root.playlistId, playlists.selectedPlaylistName)
         }

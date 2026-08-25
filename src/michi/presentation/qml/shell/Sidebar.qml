@@ -1,21 +1,29 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../primitives"
 import "../theme"
 
 MichiGlassSurface {
     id: root
     signal navigationRequested(string routeId)
-    signal createPlaylistRequested()
     property string currentRoute: ""
     property bool compact: false
     contentPadding: MichiSpacing.sm
     elevation: "elevated"
+    tileSeed: 1
     shadowed: true
     textured: true
+    // Backdrop blur stays (explicit smoke request), but the material and
+    // texture follow the library toolbar's treatment: standard glass
+    // opacity, grain and brand glint — no extra ambient tint layer.
+    forceBlur: true
     accented: true
-    accentColor: MichiPalette.auroraPurple
+    // Single accent per surface: cyan (the functional active state) —
+    // the previous auroraPurple glass accent competed with the cyan
+    // active item and the blue/purple ambient gradient (chromatic noise).
+    accentColor: MichiPalette.auroraCyan
 
     readonly property var _routes: [
         { id: "now_playing", label: "Now Playing", icon: "play" },
@@ -26,31 +34,6 @@ MichiGlassSurface {
     readonly property var _bottom_routes: [
         { id: "settings", label: "Settings", icon: "settings" }
     ]
-
-    Rectangle {
-        anchors.fill: parent
-        radius: root.radius
-        opacity: 0.62
-        z: 0
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop {
-                position: 0
-                color: MichiSemanticColors.auroraPurpleSurface
-            }
-            GradientStop { position: 0.46; color: "transparent" }
-            GradientStop {
-                position: 1
-                color: MichiSemanticColors.auroraCyanSurface
-            }
-        }
-    }
-
-    MichiMaterialTexture {
-        anchors.fill: parent
-        textureOpacity: 0.14
-        z: 0
-    }
 
     Component {
         id: routeDelegate
@@ -63,6 +46,7 @@ MichiGlassSurface {
             hoverEnabled: true
             Accessible.role: Accessible.Button
             Accessible.name: modelData.label
+            Accessible.checked: routeItem._active
 
             contentItem: RowLayout {
                 spacing: MichiSpacing.md
@@ -70,12 +54,10 @@ MichiGlassSurface {
                     Layout.leftMargin: MichiSpacing.md
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
-                    radius: 10
+                    radius: 8
                     color: routeItem._active
                         ? MichiSemanticColors.surfaceSelected
                         : routeItem.hovered ? MichiSemanticColors.controlSurface : "transparent"
-                    border.width: routeItem._active ? 1 : 0
-                    border.color: MichiSemanticColors.auroraCyanBorderSubtle
                     MichiIcon {
                         anchors.centerIn: parent
                         name: modelData.icon
@@ -102,19 +84,19 @@ MichiGlassSurface {
                     : routeItem._active ? MichiSemanticColors.surfaceSelected
                     : routeItem.hovered || routeItem.visualFocus ? MichiSemanticColors.surfaceHover : "transparent"
                 border.width: routeItem._active ? 1 : 0
-                border.color: MichiSemanticColors.auroraBorderSubtle
+                border.color: MichiSemanticColors.auroraCyanBorderSubtle
+
                 Rectangle {
                     visible: routeItem._active
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
+                    anchors.topMargin: 8
+                    anchors.bottomMargin: 8
+                    anchors.leftMargin: 1
                     width: 3
-                    radius: 2
-                    gradient: Gradient {
-                        GradientStop { position: 0; color: MichiPalette.auroraBlue }
-                        GradientStop { position: 0.5; color: MichiPalette.auroraCyan }
-                        GradientStop { position: 1; color: MichiPalette.auroraPurple }
-                    }
+                    radius: 1.5
+                    color: MichiPalette.auroraCyan
                 }
                 Behavior on color {
                     enabled: !MichiAccessibility.reducedMotion
@@ -123,6 +105,13 @@ MichiGlassSurface {
                 MichiFocusRing { visualFocus: routeItem.visualFocus }
             }
             onClicked: root.navigationRequested(modelData.id)
+
+            // Compact mode hides the labels — the tooltip keeps the
+            // route name discoverable on hover
+            MichiTooltip {
+                visible: root.compact && routeItem.hovered
+                text: modelData.label
+            }
         }
     }
 
@@ -143,15 +132,10 @@ MichiGlassSurface {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: 14
-                    color: MichiSemanticColors.auroraPurpleSurface
+                    // Single-accent brand tile: cyan on deep obsidian
+                    color: MichiPalette.obsidianRaised
                     border.width: 1
-                    border.color: MichiSemanticColors.auroraPurpleBorder
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        radius: 11
-                        color: MichiSemanticColors.auroraCyanSurface
-                    }
+                    border.color: MichiSemanticColors.auroraCyanBorderSubtle
                     MichiIcon {
                         anchors.centerIn: parent
                         width: 23
@@ -171,7 +155,7 @@ MichiGlassSurface {
                         font.weight: Font.DemiBold
                     }
                     MichiText {
-                        text: "LOCAL HI-FI"
+                        text: qsTr("LOCAL HI-FI")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -185,6 +169,9 @@ MichiGlassSurface {
                     radius: 4
                     color: (typeof library !== "undefined" && library && library.fileCount > 0)
                         ? MichiPalette.auroraGreen : MichiPalette.textMuted
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: (typeof library !== "undefined" && library && library.fileCount > 0)
+                        ? "Library ready" : "Library empty"
                 }
             }
         }

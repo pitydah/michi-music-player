@@ -26,19 +26,41 @@ PageHeader {
     readonly property bool albumViewsVisible: currentTab === "albums"
         && (typeof library === "undefined" || !library || library.selectedAlbumKey === "")
     readonly property var albumViewModes: [
-        { value: "grid", label: "Grid", icon: "view-grid" },
-        { value: "cover", label: "PathView", icon: "view-path" },
-        { value: "vinyl", label: "Vinyl Wall", icon: "view-vinyl" },
-        { value: "timeline", label: "Timeline", icon: "view-timeline" },
-        { value: "magazine", label: "Magazine", icon: "view-magazine" },
-        { value: "list", label: "List", icon: "view-list" }
+        { value: "grid", label: qsTr("Grid"), icon: "view-grid" },
+        { value: "cover", label: qsTr("PathView"), icon: "view-path" },
+        { value: "vinyl", label: qsTr("Vinyl Wall"), icon: "view-vinyl" },
+        { value: "timeline", label: qsTr("Timeline"), icon: "view-timeline" },
+        { value: "magazine", label: qsTr("Magazine"), icon: "view-magazine" },
+        { value: "list", label: qsTr("List"), icon: "view-list" }
     ]
 
     readonly property bool hasNonDefaultOptions: MichiThemeState.density !== "standard"
         || MichiThemeState.precisionMode
-        || (root.currentTab === "albums" && (root.albumZoom !== 1.0 || root.albumSortMode !== "title" || root.albumFilterMode !== "all"))
+        || (root.currentTab === "albums" && (
+            root.albumZoom !== 1.0
+            || root.albumSortMode !== "title"
+            || root.albumSortDescending === true
+            || root.albumFilterMode !== "all"
+            || root.albumTimelineGrouping !== "decade"
+        ))
 
-    title: "Library"
+    // Wayfinding: the header names the active tab (was a static "Library")
+    // so users always know where they are inside the library.
+    function tabTitle() {
+        switch (root.currentTab) {
+            case "albums": return "Albums"
+            case "artists": return "Artists"
+            case "genres": return "Genres"
+            case "playlists": return "Playlists"
+            case "favorites": return "Favorites"
+            case "history": return "History"
+            case "recently": return "Recently Added"
+            case "folders": return "Folders"
+            default: return "Songs"
+        }
+    }
+
+    title: root.tabTitle()
     subtitle: (typeof library !== "undefined" && library && library.fileCount > 0)
         ? library.fileCount + " tracks · " + library.albumCount + " albums · "
             + library.artistCount + " artists"
@@ -46,7 +68,7 @@ PageHeader {
 
     MichiText {
         visible: root.albumViewsVisible && root.width >= 1120
-        text: "VIEWS"
+        text: qsTr("VIEWS")
         role: "technical"
         technical: true
         color: MichiPalette.textMuted
@@ -59,7 +81,7 @@ PageHeader {
         currentValue: root.albumMode
         compact: true
         accessiblePrefix: "Album view"
-        Accessible.name: "Album view"
+        Accessible.name: qsTr("Album view")
         onSelected: value => root.albumModeRequested(value)
     }
 
@@ -78,10 +100,10 @@ PageHeader {
         MichiIconButton {
             id: viewOptionsBtn
             anchors.centerIn: parent
-            width: 34
-            height: 34
+            width: MichiMetrics.controlMedium
+            height: MichiMetrics.controlMedium
             iconName: "sliders"
-            accessibleName: "View options"
+            accessibleName: qsTr("View options")
             selected: viewOptionsPopup.visible || root.hasNonDefaultOptions
             onClicked: {
                 if (viewOptionsPopup.visible) {

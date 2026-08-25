@@ -202,3 +202,53 @@ class TestNavigationBridge:
         assert hasattr(bridge, "open_playlist")
         assert hasattr(bridge, "open_all_playlists")
         bridge.dispose()
+
+
+def test_play_track_plays_playlist_from_index(tmp_path):
+    """Editorial playlist page: selecting and playing a track must not
+    require queue operations — the queue is a consequence of playback."""
+    library, queue, audio, paths = _tracks(tmp_path, ("a.mp3", "b.mp3", "c.mp3"))
+    service = PlaylistService(queue, FakePlaylistsPort())
+    bridge, coord, _ = _make_bridge(service, library=library)
+    pid = service.create_playlist("Road").playlist_id
+    for p in paths:
+        service.add_track(pid, p)
+    coord.open_playlist(pid)
+
+    bridge.play_track(1)  # start from the second track
+
+    assert queue.state.count == 3
+    # current_index commits only on media acceptance (canonical queue gate)
+    audio.trigger_media_accepted(paths[1])
+    assert queue.state.current_index == 1
+    assert queue.state.tracks[queue.state.current_index].file_path.name == "b.mp3"
+
+
+def test_play_track_clamps_out_of_range_index(tmp_path):
+    library, queue, audio, paths = _tracks(tmp_path, ("a.mp3", "b.mp3"))
+    service = PlaylistService(queue, FakePlaylistsPort())
+    bridge, coord, _ = _make_bridge(service, library=library)
+    pid = service.create_playlist("Road").playlist_id
+    for p in paths:
+        service.add_track(pid, p)
+    coord.open_playlist(pid)
+
+    bridge.play_track(99)
+
+    assert queue.state.count == 2
+    audio.trigger_media_accepted(paths[1])
+    assert queue.state.current_index == 1  # clamped to last track
+
+
+def test_queue_insert_at_restores_removed_position(tmp_path):
+    """Undo support: insert_at puts a removed track back where it was."""
+    library, queue, audio, paths = _tracks(tmp_path, ("a.mp3", "b.mp3", "c.mp3"))
+    for p in paths:
+        queue.add(p)
+    queue.remove(1)  # b removed
+    assert [t.file_path.name for t in queue.state.tracks] == ["a.mp3", "c.mp3"]
+    queue.insert_at(1, paths[1])
+    assert [t.file_path.name for t in queue.state.tracks] == ["a.mp3", "b.mp3", "c.mp3"]
+    # clamping: beyond the end appends
+    queue.insert_at(99, paths[0])
+    assert queue.state.count == 4

@@ -102,7 +102,7 @@ Item {
                     objectName: "searchOverlayInput"
                     Layout.fillWidth: true
                     text: library.searchQuery
-                    placeholderText: "Search tracks, albums, artists and playlists"
+                    placeholderText: qsTr("Search tracks, albums, artists and playlists")
                     onEdited: query => {
                         searchOverlay.resultIndex = 0
                         library.search(query)
@@ -114,7 +114,7 @@ Item {
                     onEscapeRequested: searchOverlay.closeRequested()
                 }
                 MichiStatusChip {
-                    text: "CTRL F"
+                    text: qsTr("CTRL F")
                     dotVisible: false
                 }
             }
@@ -160,6 +160,8 @@ Item {
                             album: library.songRows[index].album
                             durationMs: library.songRows[index].durationMs
                             quality: library.songRows[index].qualityLabel
+                            artworkPath: library.songRows[index].artworkPath || ""
+                            showArtwork: true
                             playing: playback.currentPath === library.songRows[index].path
                             selected: searchOverlay.resultIndex === index
                             onActivated: {
@@ -195,7 +197,7 @@ Item {
                             Layout.fillWidth: true
                             iconName: "artist"
                             title: library.artists[index].name
-                            technical: library.artists[index].trackCount + " tracks"
+                            technical: library.artists[index].trackCount + (library.artists[index].trackCount === 1 ? " track" : " tracks")
                             selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount
                                 + searchOverlay.visibleAlbumCount + index
                             onActivated: {
@@ -217,7 +219,7 @@ Item {
                             Layout.fillWidth: true
                             iconName: "queue"
                             title: playlists.searchPlaylists[index].name
-                            technical: playlists.searchPlaylists[index].trackCount + " tracks"
+                            technical: playlists.searchPlaylists[index].trackCount + (playlists.searchPlaylists[index].trackCount === 1 ? " track" : " tracks")
                             selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount
                                 + searchOverlay.visibleAlbumCount
                                 + searchOverlay.visibleArtistCount + index
@@ -239,7 +241,7 @@ Item {
                             Layout.fillWidth: true
                             iconName: "genre"
                             title: library.genres[index].name
-                            technical: library.genres[index].trackCount + " tracks"
+                            technical: library.genres[index].trackCount + (library.genres[index].trackCount === 1 ? " track" : " tracks")
                             interactive: false
                         }
                     }

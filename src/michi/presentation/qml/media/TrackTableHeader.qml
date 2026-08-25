@@ -8,9 +8,12 @@ Rectangle {
 
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
+    property bool showArtwork: true
     property int actionColumnWidth: 0
 
-    implicitHeight: 30
+    // Matches the minimum TrackRow height (controlMedium) so the header
+    // never reads shorter than its rows.
+    implicitHeight: MichiMetrics.controlMedium
     color: MichiSemanticColors.controlSurface
     radius: MichiRadius.sm
     border.width: 1
@@ -25,15 +28,20 @@ Rectangle {
 
         MichiText {
             Layout.preferredWidth: 20
-            text: "#"
+            text: qsTr("#")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
             horizontalAlignment: Text.AlignHCenter
         }
+        Item {
+            visible: root.showArtwork
+            Layout.preferredWidth: MichiThemeState.density === "comfortable" ? 36 : 30
+            Layout.preferredHeight: Layout.preferredWidth
+        }
         MichiText {
             Layout.fillWidth: true
-            text: "TITLE"
+            text: qsTr("TITLE")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
@@ -41,7 +49,7 @@ Rectangle {
         MichiText {
             visible: root.showArtistColumn
             Layout.preferredWidth: 160
-            text: "ARTIST"
+            text: qsTr("ARTIST")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
@@ -49,7 +57,7 @@ Rectangle {
         MichiText {
             visible: root.showAlbumColumn && !MichiThemeState.precisionMode
             Layout.preferredWidth: 180
-            text: "ALBUM"
+            text: qsTr("ALBUM")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
@@ -57,7 +65,7 @@ Rectangle {
         MichiText {
             visible: MichiThemeState.precisionMode
             Layout.preferredWidth: 150
-            text: "QUALITY"
+            text: qsTr("QUALITY")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted
@@ -65,7 +73,7 @@ Rectangle {
         Item {
             Layout.preferredWidth: 48
             Layout.fillHeight: true
-            Accessible.name: "Duration"
+            Accessible.name: qsTr("Duration")
             MichiIcon {
                 anchors.centerIn: parent
                 width: MichiMetrics.iconSmall

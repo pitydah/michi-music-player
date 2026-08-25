@@ -11,4 +11,5 @@ QtObject {
     readonly property int secondary: 13
     readonly property int technical: 12
     readonly property int caption: 11
+    readonly property int micro: 10
 }

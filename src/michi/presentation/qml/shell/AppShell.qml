@@ -76,7 +76,6 @@ Item {
             compact: width < 156 || MichiBreakpoints.isCompact(root.width)
             currentRoute: root.currentRoute
             onNavigationRequested: routeId => root.navigationRequested(routeId)
-            onCreatePlaylistRequested: playlistCreateDialog.open()
         }
 
         ContentHost {
@@ -153,6 +152,29 @@ Item {
         opened: root.searchOpened
         onCloseRequested: root.searchOpened = false
         onNavigationRequested: routeId => root.navigationRequested(routeId)
+    }
+
+    ToastHost {
+        id: toastHost
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: nowPlayingBar.top
+        anchors.bottomMargin: MichiSpacing.lg
+        z: 200
+        onActionRequested: {
+            if (root._pendingToastAction) {
+                root._pendingToastAction()
+                root._pendingToastAction = null
+            }
+        }
+    }
+
+    property var _pendingToastAction: null
+    function showToast(text, tone) {
+        toastHost.show(text, tone)
+    }
+    function showToastWithAction(text, action, handler, tone) {
+        root._pendingToastAction = handler
+        toastHost.showWithAction(text, action, tone)
     }
 
     function openSearch() { searchOpened = true }

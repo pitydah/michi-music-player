@@ -5,7 +5,7 @@ import "../theme"
 
 RowLayout {
     id: root
-    property string title: ""
+    property string title: qsTr("")
     property string subtitle: ""
     property color accentColor: MichiPalette.auroraBlue
     default property alias actions: actionHost.data

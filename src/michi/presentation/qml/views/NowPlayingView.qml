@@ -9,9 +9,26 @@ Item {
     id: root
     property bool focusMode: false
 
+    // Atmospheric Ambient Glow on top
+    Rectangle {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 320
+        visible: playback.fileName !== ""
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0; color: MichiSemanticColors.contentAmbientBlue }
+            GradientStop { position: 0.6; color: MichiSemanticColors.contentAmbientPurple }
+            GradientStop { position: 1; color: "transparent" }
+        }
+        z: 0
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: MichiTheme.space12
+        z: 1
 
         PageHeader {
             Layout.fillWidth: true

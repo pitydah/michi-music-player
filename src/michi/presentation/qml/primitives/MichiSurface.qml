@@ -23,10 +23,28 @@ Rectangle {
                 ? MichiSemanticColors.contentSurfaceBottom : root.color
         }
     }
-    radius: level === "backplane" || level === "content" ? 0 : MichiRadius.lg
-    border.width: level === "control" ? 1 : 0
+    radius: level === "backplane" ? 0 : level === "content" ? MichiRadius.floating : MichiRadius.lg
+    border.width: level === "backplane" ? 0 : 1
     border.color: MichiSemanticColors.borderSubtle
     clip: radius > 0
+
+    // Top rim highlight on content surface
+    Rectangle {
+        visible: root.level === "content"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 1
+        radius: root.radius
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: 0.2; color: MichiSemanticColors.innerHighlight }
+            GradientStop { position: 0.8; color: MichiSemanticColors.innerHighlight }
+            GradientStop { position: 1; color: "transparent" }
+        }
+        z: 2
+    }
 
     Rectangle {
         visible: root.level === "content"

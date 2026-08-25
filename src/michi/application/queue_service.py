@@ -64,6 +64,18 @@ class QueueService:
             self._state.tracks.append(Track(file_path=path))
         self._notify()
 
+    def insert_at(self, index: int, file_path: Path, title: str = "") -> None:
+        """Insert a track at a specific position (undo support for
+        remove-from-queue: restores the removed track where it was)."""
+        if self._state.count >= self._max_tracks:
+            raise QueueCapacityError(f"queue capacity {self._max_tracks} exceeded")
+        index = max(0, min(index, self._state.count))
+        track = Track(file_path=file_path, title=title)
+        self._state.tracks.insert(index, track)
+        if self._state.shuffle_enabled:
+            self._navigator.add(track)
+        self._notify()
+
     def remove(self, index: int) -> None:
         if 0 <= index < len(self._state.tracks):
             del self._state.tracks[index]

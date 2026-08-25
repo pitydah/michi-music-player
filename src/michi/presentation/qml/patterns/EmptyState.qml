@@ -6,7 +6,7 @@ import "../theme"
 
 Item {
     id: root
-    property string title: "Nothing here yet"
+    property string title: qsTr("Nothing here yet")
     property string message: ""
     property string actionText: ""
     property string iconName: "library"
@@ -19,19 +19,20 @@ Item {
         spacing: MichiSpacing.sm
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 52
-            Layout.preferredHeight: 52
+            Layout.preferredWidth: 48
+            Layout.preferredHeight: 48
             Layout.bottomMargin: MichiSpacing.sm
-            radius: MichiRadius.floating
-            color: MichiSemanticColors.surfaceSelected
+            radius: MichiRadius.lg
+            color: MichiSemanticColors.controlSurface
             border.width: 1
-            border.color: MichiSemanticColors.auroraBorderSubtle
+            border.color: MichiSemanticColors.borderSubtle
             MichiIcon {
                 anchors.centerIn: parent
-                width: MichiMetrics.iconLarge
-                height: width
+                width: 24
+                height: 24
+                strokeWidth: 1.5
                 name: root.iconName
-                iconColor: MichiPalette.auroraBlue
+                iconColor: MichiPalette.auroraCyan
             }
         }
         MichiText {

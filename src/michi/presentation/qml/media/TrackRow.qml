@@ -26,14 +26,20 @@ Rectangle {
     property bool showAlbumColumn: true
     property bool showQualityColumn: MichiThemeState.precisionMode
     property bool showDurationColumn: true
+    property string artworkPath: ""
+    property bool showArtwork: true
     signal activated()
     signal favoriteToggled()
     signal addToPlaylistRequested()
     signal inspectorRequested()
     signal removeRequested()
     readonly property string durationText: duration.length > 0
-        ? duration : formatDuration(durationMs)
-    implicitHeight: MichiThemeState.rowHeight
+        ? duration : MichiFormat.formatDuration(durationMs)
+    // Minimum height keeps action icon-buttons (controlMedium = 36px)
+    // comfortably contained in every density, artwork rows add their own size.
+    implicitHeight: showArtwork
+        ? Math.max(MichiThemeState.rowHeight, 44)
+        : Math.max(MichiThemeState.rowHeight, MichiMetrics.controlMedium)
     color: selected || playing ? MichiSemanticColors.surfaceSelected
         : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
     radius: MichiRadius.sm
@@ -59,14 +65,6 @@ Rectangle {
         }
     }
 
-    function formatDuration(ms) {
-        if (ms <= 0)
-            return ""
-        var totalSeconds = Math.floor(ms / 1000)
-        var minutes = Math.floor(totalSeconds / 60)
-        var seconds = totalSeconds % 60
-        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
-    }
 
     function moveByPage(direction) {
         var view = root.ListView.view
@@ -100,6 +98,16 @@ Rectangle {
                 technical: true
             }
         }
+        Artwork {
+            visible: root.showArtwork
+            Layout.preferredWidth: MichiThemeState.density === "comfortable" ? 36 : 30
+            Layout.preferredHeight: Layout.preferredWidth
+            Layout.alignment: Qt.AlignVCenter
+            sourcePath: root.artworkPath
+            fallbackText: root.album || root.title || "T"
+            radius: MichiRadius.xs
+            requestedSize: Math.round((MichiThemeState.density === "comfortable" ? 36 : 30) * Screen.devicePixelRatio)
+        }
         MichiText {
             Layout.fillWidth: true
             text: root.title
@@ -128,8 +136,8 @@ Rectangle {
             visible: root.showFavorite
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected || root.favorite ? 1 : 0.18
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
+            Layout.preferredWidth: MichiMetrics.controlMedium
+            Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "heart"
             selected: root.favorite
             accessibleName: root.favorite ? "Remove from favorites" : "Add to favorites"
@@ -139,30 +147,30 @@ Rectangle {
             visible: root.showAddToPlaylist
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected ? 1 : 0.18
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
+            Layout.preferredWidth: MichiMetrics.controlMedium
+            Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "add"
-            accessibleName: "Add to playlist"
+            accessibleName: qsTr("Add to playlist")
             onClicked: root.addToPlaylistRequested()
         }
         MichiIconButton {
             visible: root.showInspector
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected ? 1 : 0.18
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
+            Layout.preferredWidth: MichiMetrics.controlMedium
+            Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "info"
-            accessibleName: "Track information"
+            accessibleName: qsTr("Track information")
             onClicked: root.inspectorRequested()
         }
         MichiIconButton {
             visible: root.showRemove
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected ? 1 : 0.18
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
+            Layout.preferredWidth: MichiMetrics.controlMedium
+            Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "trash"
-            accessibleName: "Remove from queue"
+            accessibleName: qsTr("Remove from queue")
             onClicked: root.removeRequested()
         }
     }

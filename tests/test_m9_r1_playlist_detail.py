@@ -117,8 +117,15 @@ class TestQmlSmoke:
         engine.deleteLater()
 
     def test_playlist_detail_smoke(self, qapp, tmp_path):
-        engine, service, _, coord, pb = _world(tmp_path, with_engine=True)
+        engine, service, nav, coord, pb = _world(tmp_path, with_engine=True)
+        # the _world bridge lacks navigation_service, so open_playlist would
+        # never project into the QML surface — rebuild it wired to the nav
+        pb = PlaylistsBridge(
+            service, playlist_navigation=coord, navigation_service=nav, library=None
+        )
+        engine.rootContext().setContextProperty("playlists", pb)
         a = service.create_playlist("Jazz")
+        service.add_track(a.playlist_id, str(tmp_path / "a.mp3"))
         coord.open_playlist(a.playlist_id)
         obj = self._load(engine, "playlists/PlaylistDetailView.qml")
         assert obj is not None
@@ -150,4 +157,76 @@ class TestQmlSmoke:
         service.create_playlist("Jazz")
         obj = self._load(engine, "shell/ContentHost.qml")
         assert obj is not None
+        engine.deleteLater()
+
+
+class TestEditorialHeroRuntime:
+    """M9-R2.5 regression: the editorial hero header must ACTUALLY appear in
+    a real window. ListView.header assigns to an internal QQmlComponent
+    slot — passing a pre-instantiated Item fails the conversion and the
+    header silently never shows; the hero must also complete its fade-in.
+    """
+
+    def _load(self, engine, rel):
+        component = QQmlComponent(engine, str(QML_DIR / rel))
+        errs = "; ".join(e.toString() for e in component.errors())
+        assert component.status() == QQmlComponent.Ready, f"{rel}: {errs}"
+        return component.create()
+
+    def test_hero_header_visible_with_height_and_fade(self, qapp, tmp_path):
+        from PySide6.QtCore import QEventLoop, QTimer
+        from PySide6.QtQuick import QQuickWindow
+
+        engine, service, nav, coord, pb = _world(tmp_path, with_engine=True)
+        # the _world bridge lacks navigation_service, so open_playlist would
+        # never project into the QML surface — rebuild it wired to the nav
+        pb = PlaylistsBridge(
+            service, playlist_navigation=coord, navigation_service=nav, library=None
+        )
+        engine.rootContext().setContextProperty("playlists", pb)
+        a = service.create_playlist("Jazz")
+        service.add_track(a.playlist_id, str(tmp_path / "a.mp3"))
+        coord.open_playlist(a.playlist_id)
+
+        # keep the QQmlComponent alive in this scope: the created page has
+        # no parent yet, and losing the component lets the engine GC
+        # destroy the page before it is attached to the window
+        component = QQmlComponent(
+            engine, str(QML_DIR / "playlists" / "PlaylistDetailView.qml")
+        )
+        errs = "; ".join(e.toString() for e in component.errors())
+        assert component.status() == QQmlComponent.Ready, f"detail: {errs}"
+        page = component.create()
+        win = QQuickWindow()
+        win.resize(1200, 800)
+        page.setParentItem(win.contentItem())
+        win.show()
+
+        # let the scene graph run real frames (offscreen still animates)
+        loop = QEventLoop()
+        for _ in range(12):
+            QTimer.singleShot(30, loop.quit)
+            loop.exec()
+
+        # keep the window referenced so Python GC does not destroy the
+        # scene (and with it every item) mid-test — reference it BEFORE
+        # any findChild/property access
+        assert win.isVisible()
+        assert pb.property("selectedPlaylistName") == "Jazz", (
+            "bridge did not select the playlist"
+        )
+
+        track_list = page.findChild(type(page), "playlistTrackList")
+        assert track_list is not None, "track list not found"
+        header = track_list.property("headerItem")
+        assert header is not None, "hero header was never instantiated"
+        assert header.property("height") > 0, "hero collapsed to zero height"
+        hero = page.findChild(type(page), "playlistHero")
+        assert hero is not None, "playlist hero missing inside the header"
+        # live data via the null-safe Component bindings
+        assert hero.property("playlistName") == "Jazz"
+        # fade-in (MichiMotion.panel = 220ms) must have completed
+        assert hero.property("opacity") > 0.9, (
+            f"hero fade-in did not complete: opacity={hero.property('opacity')}"
+        )
         engine.deleteLater()

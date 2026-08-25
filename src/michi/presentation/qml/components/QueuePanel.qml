@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../media"
@@ -27,7 +28,9 @@ MichiGlassSurface {
     signal shuffleRequested(bool enabled)
     signal closeRequested()
 
-    elevation: "elevated"
+    elevation: "subtle"
+
+    tileSeed: 7
     accented: true
     accentColor: MichiPalette.auroraPurple
     contentPadding: MichiSpacing.lg
@@ -41,19 +44,19 @@ MichiGlassSurface {
             spacing: MichiSpacing.sm
             PageHeader {
                 Layout.fillWidth: true
-                title: "Queue"
+                title: qsTr("Queue")
                 subtitle: root.count + (root.count === 1 ? " track" : " tracks")
             }
             MichiIconButton {
                 iconName: "close"
-                accessibleName: "Close queue"
+                accessibleName: qsTr("Close queue")
                 onClicked: root.closeRequested()
             }
             MichiButton {
-                text: "Clear"
+                text: qsTr("Clear")
                 variant: "ghost"
                 enabled: root.count > 0
-                onClicked: root.clearClicked()
+                onClicked: clearQueueDialog.open()
             }
         }
 
@@ -61,8 +64,8 @@ MichiGlassSurface {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: root.count === 0
-            title: "Queue is empty"
-            message: "Play a track from the library to start listening."
+            title: qsTr("Queue is empty")
+            message: qsTr("Play a track from the library to start listening.")
         }
 
         ListView {
@@ -74,6 +77,13 @@ MichiGlassSurface {
             clip: true
             spacing: MichiSpacing.xs
             boundsBehavior: Flickable.StopAtBounds
+            keyNavigationEnabled: true
+            keyNavigationWraps: false
+            activeFocusOnTab: true
+            focus: true
+            Accessible.role: Accessible.List
+            Accessible.name: qsTr("Queue tracks")
+            ScrollBar.vertical: MichiScrollBar { }
 
             delegate: RowLayout {
                 required property int index
@@ -89,26 +99,69 @@ MichiGlassSurface {
                     album: modelData.album || ""
                     durationMs: modelData.durationMs || 0
                     playing: index === root.currentIndex
-                    selected: index === root.currentIndex
+                    selected: queueList.isCurrentItem
                     showRemove: true
                     showArtistColumn: root.width >= 460
                     showAlbumColumn: false
                     showQualityColumn: false
                     showDurationColumn: root.width >= 390
+                    onActiveFocusChanged: {
+                        if (activeFocus)
+                            queueList.currentIndex = index
+                    }
                     onActivated: root.trackClicked(index)
                     onRemoveRequested: root.removeRequested(index)
                 }
+                // Reorder affordances reveal on row hover, matching the
+                // row's own hover-reveal trash (TrackRow opacity pattern).
                 MichiIconButton {
                     iconName: "up"
-                    accessibleName: "Move track up"
+                    accessibleName: qsTr("Move track up")
                     enabled: index > 0
+                    opacity: queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18
                     onClicked: root.moveRequested(index, index - 1)
                 }
                 MichiIconButton {
                     iconName: "down"
-                    accessibleName: "Move track down"
+                    accessibleName: qsTr("Move track down")
                     enabled: index + 1 < root.count
+                    opacity: queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18
                     onClicked: root.moveRequested(index, index + 1)
+                }
+                HoverHandler { id: queueRow }
+            }
+        }
+    }
+
+    // Destructive action guard: clearing the queue requires confirmation.
+    MichiDialog {
+        id: clearQueueDialog
+        title: qsTr("Clear queue?")
+        modal: true
+        contentItem: ColumnLayout {
+            spacing: MichiSpacing.md
+            MichiText {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 320
+                text: qsTr("Remove all %n track(s) from the queue?", "", root.count)
+                role: "secondary"
+                wrapMode: Text.WordWrap
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: MichiSpacing.sm
+                MichiButton {
+                    text: qsTr("Cancel")
+                    variant: "ghost"
+                    onClicked: clearQueueDialog.close()
+                }
+                MichiButton {
+                    text: qsTr("Clear queue")
+                    variant: "danger"
+                    onClicked: {
+                        clearQueueDialog.close()
+                        root.clearClicked()
+                    }
                 }
             }
         }

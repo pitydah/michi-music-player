@@ -19,28 +19,27 @@ Item {
     Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); activated() }
     Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); activated() }
 
-    MichiGlassSurface {
+    Rectangle {
         anchors.fill: parent
-        elevation: "subtle"
-        contentPadding: MichiSpacing.sm
-        shadowed: hover.hovered || root.selected
-        textured: false
-        accented: root.selected
-        accentColor: MichiPalette.auroraCyan
+        radius: MichiRadius.lg
+        color: tap.pressed
+            ? MichiSemanticColors.surfacePressed
+            : hover.hovered
+                ? MichiSemanticColors.surfaceHover
+                : root.selected
+        border.width: 1
+        border.color: root.selected
+            ? MichiSemanticColors.auroraCyanBorderSubtle
+            : hover.hovered ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
 
-        Rectangle {
-            anchors.fill: parent
-            color: tap.pressed ? MichiSemanticColors.surfacePressed
-                : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-            radius: root.selected ? MichiRadius.lg : MichiRadius.md
-            Behavior on color {
-                enabled: !MichiAccessibility.reducedMotion
-                ColorAnimation { duration: MichiMotion.micro }
-            }
+        Behavior on color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.micro }
         }
 
         ColumnLayout {
             anchors.fill: parent
+            anchors.margins: MichiSpacing.sm
             spacing: MichiSpacing.sm
 
             Item {

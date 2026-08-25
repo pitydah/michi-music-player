@@ -15,6 +15,7 @@ Popup {
 
     background: MichiGlassSurface {
         elevation: "modal"
+        tileSeed: 3
         radius: MichiRadius.lg
         shadowed: true
         textured: true
@@ -37,7 +38,7 @@ Popup {
             }
 
             MichiText {
-                text: "MUSIC LIBRARY SOURCE"
+                text: qsTr("MUSIC LIBRARY SOURCE")
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
@@ -48,8 +49,8 @@ Popup {
             id: dirInput
             Layout.fillWidth: true
             text: library.currentDir
-            placeholderText: "Choose a local music directory…"
-            accessibleName: "Music directory"
+            placeholderText: qsTr("Choose a local music directory…")
+            accessibleName: qsTr("Music directory")
         }
 
         RowLayout {
@@ -59,7 +60,7 @@ Popup {
             Item { Layout.fillWidth: true }
 
             MichiButton {
-                text: "Scan library"
+                text: qsTr("Scan library")
                 variant: "primary"
                 enabled: dirInput.text.length > 0 || library.currentDir.length > 0
                 onClicked: {
