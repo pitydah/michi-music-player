@@ -255,6 +255,96 @@ def _mpd_seconds_to_millis(seconds: str | float) -> int:
 # ---------------------------------------------------------------------------
 
 
+class MpdOutputPluginDiscoveryError(RuntimeError):
+    """MPD output-plugin discovery/selection failed truthfully.
+
+    Raised when the installed MPD reports none of the supported default
+    system-output plugins (pipewire/pulse/alsa) or when `mpd --version`
+    itself cannot be inspected. Deliberately NOT a silent fallback to
+    implicit output autodetection (that is the defect this seals)."""
+
+
+_MPD_DEFAULT_OUTPUT_PREFERENCE: tuple[str, ...] = ("pipewire", "pulse", "alsa")
+
+
+def _parse_mpd_output_plugins(version_output: str) -> set[str]:
+    """Normalize `mpd --version` output → compiled output plugin names.
+
+    MPD >= 0.23 prints the section as::
+
+        Output plugins:
+         shout null fifo pipe alsa ao oss openal solaris pipewire pulse ...
+
+    Output plugins are printed WITHOUT brackets (only decoder/archive
+    plugins use brackets). The parser takes the tokens of the line(s)
+    following the section header until the next blank line."""
+    lines = version_output.splitlines()
+    for idx, line in enumerate(lines):
+        if "Output plugins:" in line:
+            tokens: list[str] = []
+            # plugins may share the header line after the colon
+            remainder = line.split("Output plugins:", 1)[1].split()
+            if remainder:
+                tokens.extend(remainder)
+            # otherwise the next non-blank, non-section line holds them
+            for following in lines[idx + 1 :]:
+                stripped = following.strip()
+                if not stripped:
+                    break
+                if stripped.endswith("plugins:") or stripped.endswith(":"):
+                    break
+                tokens.extend(stripped.split())
+            return set(tokens)
+    return set()
+
+
+def _discover_mpd_output_plugins(
+    executable: str = "mpd", timeout: float = 5.0
+) -> set[str]:
+    """Inspect the installed MPD for its compiled output plugins.
+
+    argv-only (never shell=True), bounded by timeout, decoded safely.
+    Fails truthfully when the command cannot be inspected — implicit
+    autodetection is never used as a fallback."""
+    try:
+        proc = subprocess.run(
+            [executable, "--version"],
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise MpdOutputPluginDiscoveryError(
+            f"MPD executable not found: {executable}"
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise MpdOutputPluginDiscoveryError(
+            f"mpd --version timed out after {timeout}s"
+        ) from exc
+    if proc.returncode != 0:
+        raise MpdOutputPluginDiscoveryError(
+            f"mpd --version failed with exit code {proc.returncode}"
+        )
+    text = proc.stdout.decode("utf-8", errors="replace")
+    return _parse_mpd_output_plugins(text)
+
+
+def _select_default_mpd_output_plugin(compiled: set[str]) -> str:
+    """Deterministic default-system-output plugin: pipewire > pulse > alsa.
+
+    Chooses the first compiled candidate. If none is compiled, raises a
+    deterministic error BEFORE pretending the engine can be ready — this
+    is the M11.3 COMPATIBILITY OUTPUT POLICY (default system output only;
+    no device identity, no DAC, no bit-perfect claim)."""
+    for candidate in _MPD_DEFAULT_OUTPUT_PREFERENCE:
+        if candidate in compiled:
+            return candidate
+    raise MpdOutputPluginDiscoveryError(
+        "MPD is installed but Michi found no supported default audio "
+        "output plugin among pipewire/pulse/alsa."
+    )
+
+
 def _pick_runtime_parent() -> Path:
     """XDG_RUNTIME_DIR válido y escribible, o un tempdir seguro (0700)."""
     xdg = os.environ.get("XDG_RUNTIME_DIR")
@@ -266,14 +356,45 @@ def _pick_runtime_parent() -> Path:
 
 
 def _render_mpd_conf(
-    runtime_dir: Path, music_dir: Path, *, null_output: bool = False
+    runtime_dir: Path,
+    music_dir: Path,
+    *,
+    null_output: bool = False,
+    output_plugin: str | None = None,
 ) -> str:
     """Config mínima privada — SOLO paths de este runtime; nada del sistema.
 
-    PRODUCCIÓN (null_output=False): NO se emite un bloque audio_output —
-    MPD usa su selección de salida por defecto hasta que M11.4 posea la
-    configuración DAC/output explícita. La salida null SOLO se usa en
-    tests/smoke deterministas (null_output=True)."""
+    M11.3-UI-R2 (MPD mixer compatibility correction): PRODUCCIÓN emite SIEMPRE
+    UN bloque audio_output explícito con `mixer_type "software"` — la
+    autodetección implícita de salida de MPD quedó PROHIBIDA porque eligió
+    un mixer hardware ALSA ("PCM") que el dispositivo por defecto no expone
+    (ACK [5@0] {setvol} no such mixer control: PCM). El plugin se selecciona
+    durante la activación (pipewire > pulse > alsa, solo compilados).
+
+    La salida null SOLO se usa en tests/smoke deterministas (null_output=True).
+
+    Este bloque NO selecciona DAC ni dispositivo: es la SALIDA DEL SISTEMA
+    POR DEFECTO. mixer_type "software" garantiza el contrato volume/mute de
+    M11.3; puede alterar muestras con ganancia != 1 → NUNCA claim bit-perfect.
+    M11.4/M11.5 podrán reemplazar esta política por perfiles explícitos."""
+    if null_output:
+        if output_plugin is not None:
+            raise ValueError("null_output and output_plugin are mutually exclusive")
+        audio_output = 'audio_output {\n\ttype\t\t"null"\n\tname\t\t"Michi MPD Test"\n}'
+    elif output_plugin is not None:
+        audio_output = (
+            "audio_output {\n"
+            f'\ttype\t\t"{output_plugin}"\n'
+            '\tname\t\t"Michi MPD Default"\n'
+            '\tmixer_type\t"software"\n'
+            "}"
+        )
+    else:
+        raise ValueError(
+            "production MPD config requires an explicit output_plugin "
+            "(implicit output autodetection is forbidden); pass "
+            "null_output=True for test configs"
+        )
     lines = [
         'bind_to_address "' + str(runtime_dir / "mpd.sock") + '"',
         'pid_file "' + str(runtime_dir / "mpd.pid") + '"',
@@ -284,9 +405,8 @@ def _render_mpd_conf(
         'playlist_directory "' + str(runtime_dir / "playlists") + '"',
         'music_directory "' + str(music_dir) + '"',
         'auto_update "no"',
+        audio_output,
     ]
-    if null_output:
-        lines.append('audio_output {\n\ttype\t\t"null"\n\tname\t\t"Michi MPD Test"\n}')
     lines.append("")
     return "\n".join(lines)
 
@@ -303,10 +423,15 @@ class _ManagedMpdRuntime:
         executable: str = "mpd",
         startup_timeout: float = 5.0,
         null_output: bool = False,
+        output_plugin: str | None = None,
     ):
         self._executable = executable
         self._startup_timeout = startup_timeout
         self._null_output = null_output  # SOLO para tests/smoke reales
+        # M11.3-UI-R2: plugin explícito de salida por defecto. None →
+        # descubierto en start() vía `mpd --version` (pipewire > pulse >
+        # alsa). NUNCA autodetección implícita de salida de MPD.
+        self._output_plugin = output_plugin
         self.runtime_dir: Path | None = None
         self.socket_path: str | None = None
         self._process: subprocess.Popen | None = None
@@ -334,8 +459,18 @@ class _ManagedMpdRuntime:
         self.runtime_dir = base
         self.socket_path = str(base / "mpd.sock")
         conf_path = base / "mpd.conf"
+        # M11.3-UI-R2: producción SIEMPRE con plugin explícito (descubierto
+        # durante la activación, cacheado por instancia). Sin plugin y sin
+        # null_output → error determinista, nunca autodetección implícita.
+        if self._null_output:
+            conf = _render_mpd_conf(base, music_dir, null_output=True)
+        else:
+            if self._output_plugin is None:
+                compiled = _discover_mpd_output_plugins(self._executable)
+                self._output_plugin = _select_default_mpd_output_plugin(compiled)
+            conf = _render_mpd_conf(base, music_dir, output_plugin=self._output_plugin)
         conf_path.write_text(
-            _render_mpd_conf(base, music_dir, null_output=self._null_output),
+            conf,
             encoding="utf-8",
         )
         # spawn --no-daemon (nunca shell=True, nunca daemonizar)

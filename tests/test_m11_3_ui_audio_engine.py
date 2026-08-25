@@ -121,6 +121,26 @@ class TestNowPlayingBar:
         assert "audioEngineActiveName: audioEngine.activeEngineName" in shell
         assert "audioEngineSelectedName: audioEngine.selectedEngineName" in shell
 
+    def test_popup_reduced_motion_gate(self):
+        """M11.3-UI-R2 P2-01: enter/exit fades are gated on
+        MichiAccessibility.reducedMotion — deterministic open/close."""
+        popup = read("player/AudioEnginePopup.qml")
+        assert popup.count("enabled: !MichiAccessibility.reducedMotion") == 2
+
+    def test_popup_keyboard_navigation_skips_disabled(self):
+        """M11.3-UI-R2 P2-02: Up/Down navigation resolves ENABLED rows."""
+        popup = read("player/AudioEnginePopup.qml")
+        assert "function _navigate(fromIndex, delta)" in popup
+        assert "item.enabled" in popup
+        assert "KeyNavigation.up: root._navigate(index, -1)" in popup
+        assert "KeyNavigation.down: root._navigate(index, 1)" in popup
+
+    def test_settings_cards_keyboard_navigation_skips_disabled(self):
+        section = read("views/AudioEngineSettingsSection.qml")
+        assert "function _navigate(fromIndex, delta)" in section
+        assert "KeyNavigation.up: root._navigate(index, -1)" in section
+        assert "KeyNavigation.down: root._navigate(index, 1)" in section
+
 
 class TestSettingsAudioEngine:
     def test_settings_has_audio_engine_section(self):

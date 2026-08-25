@@ -59,7 +59,7 @@ the M11.3 contracts and records implementation status for each subphase.
 | Engine availability runtime | DONE / TESTED / FROZEN (M11.3E) — fresh side-effect-free probes, canonical three-engine snapshot, available != implemented, activation blocker priority, no state mutation |
 | Selection / persistence | DONE / TESTED / FROZEN (M11.3F) — persisted SELECTED preference, quiescent switching, backend acceptance invalidation, volume/mute continuity, no fallback |
 | Failure convergence | DONE / TESTED / FROZEN (M11.3G) |
-| M11.3-UI presentation | DONE / TESTED (M11.3-UI) — AudioEngineBridge (single UI authority over the sealed coordinator; no infra imports), NowPlayingBar quick selector + AudioEnginePopup (quick surface only), Settings > Audio Engine section (Preferred vs In use truth, fallback explanation, availability honesty, progressive technical details, no fake audiophile knobs), output device button preserved + disabled (DAC deferred to M11.4) |
+| M11.3-UI presentation | DONE / TESTED / FROZEN (M11.3-UI + R1) — AudioEngineBridge (single UI authority over the sealed coordinator; no infra imports), NowPlayingBar quick selector + AudioEnginePopup (quick surface only, live-bound, real keyboard focus, reduced-motion gated), Settings > Audio Engine section (Preferred vs In use truth, fallback explanation, availability honesty, progressive technical details, no fake audiophile knobs), output device button preserved + disabled (DAC deferred to M11.4). R2 authorized reopening (MPD mixer compatibility correction): see below. |
 
 **CURRENT PRODUCTIVE PATH (since M11.3B, multi-engine since M11.3F):**
 
@@ -267,6 +267,44 @@ acceptance/error callbacks. M11.3 does NOT add "engine-capability" or
   tunables exist (audiophile audit: 0 truthful P1 knobs; DSD/DoP/bit-perfect/
   exclusive are M11.4/M11.5 scope). Output device selection stays visible but
   disabled (DAC work deferred).
+
+## M11.3-UI-R2 authorized reopening — MPD mixer compatibility correction
+
+Approved concrete reopening of the FROZEN M11.3 implementation, followed by
+re-freeze (no new milestone). Observed on the real local runtime:
+
+    RuntimeError: MPD setvol failed:
+    ACK [5@0] {setvol} Failed to set mixer for "default detected output";
+    no such mixer control: PCM
+
+Root cause: the private MPD runtime rendered NO audio_output block, so MPD
+auto-detected the default output and selected a hardware ALSA mixer control
+("PCM") that the default device does not expose (host evidence: amixer
+scontrols = Master/Capture only; aplay default routes through PipeWire).
+restore_volume therefore failed and MPD could never reach READY.
+
+Fix (transport boundary only, volume/mute contract guaranteed):
+
+- `_discover_mpd_output_plugins(executable)` — bounded `mpd --version`
+  inspection (argv, never shell=True) parsed for the compiled output
+  plugins (MPD >= 0.23 prints them unbracketed on the "Output plugins:"
+  line).
+- `_select_default_mpd_output_plugin(...)` — deterministic preference
+  pipewire > pulse > alsa among the COMPILED plugins only; raises a
+  deterministic `MpdOutputPluginDiscoveryError` when none is available
+  (implicit autodetection stays forbidden).
+- `_render_mpd_conf(..., output_plugin=...)` — production config now emits
+  exactly ONE explicit `audio_output` (default system output, no device
+  identity, no mixer_control "PCM", no DSD/DoP/format) with
+  `mixer_type "software"` which guarantees setvol/mute on any device.
+  Software volume may alter samples at non-unity gain → M11.3 makes NO
+  bit-perfect claim; M11.4/M11.5 own explicit output/mixer profiles.
+
+Verified on the real local host (MPD 0.24.14, pipewire selected):
+setvol(73) → volume 73, setvol(0) → 0, setvol(100) → 100, no ACK; real
+Qt→MPD→Qt switch reaches READY with volume restored; 4-cycle switch leaves
+no leaked child; a genuine mixer failure remains fatal (target FAILED, never
+READY). F42 adapter hash updated for the authorized mpd.py reopening.
 
 ## Non-goals
 

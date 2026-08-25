@@ -32,9 +32,13 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     width: 320
     enter: Transition {
+        // P2-01 (M11.3-UI-R2): no decorative fade under reduced motion;
+        // open/close stay deterministic (instant) without animation.
+        enabled: !MichiAccessibility.reducedMotion
         NumberAnimation { property: "opacity"; from: 0; to: 1; duration: MichiMotion.panel }
     }
     exit: Transition {
+        enabled: !MichiAccessibility.reducedMotion
         NumberAnimation { property: "opacity"; from: 1; to: 0; duration: MichiMotion.standard }
     }
     background: MichiGlassSurface {
@@ -52,6 +56,20 @@ Popup {
                 break
             }
         }
+    }
+
+    // P2-02 (M11.3-UI-R2): Up/Down navigation SKIPS rows that are not
+    // selectable (unavailable / disabled / mid-switch lock). No wrapping.
+    function _navigate(fromIndex, delta) {
+        var count = engineRows.count
+        var i = fromIndex + delta
+        while (i >= 0 && i < count) {
+            var item = engineRows.itemAt(i)
+            if (item !== null && item.enabled)
+                return item
+            i += delta
+        }
+        return null
     }
 
     contentItem: ColumnLayout {
@@ -116,9 +134,10 @@ Popup {
                 // (verified: no double activation with the built-in Space).
                 Keys.onReturnPressed: row.clicked()
                 Keys.onEnterPressed: row.clicked()
-                // Up/Down navigation between engine rows (Tab also works).
-                KeyNavigation.up: index > 0 ? engineRows.itemAt(index - 1) : null
-                KeyNavigation.down: engineRows.itemAt(index + 1)
+                // Up/Down navigation between ENABLED engine rows only
+                // (disabled/unavailable rows are skipped; no wrapping).
+                KeyNavigation.up: root._navigate(index, -1)
+                KeyNavigation.down: root._navigate(index, 1)
 
                 Accessible.name: row.modelData.displayName + " — " + row.statusLabel()
                 Accessible.description: row.modelData.canActivate

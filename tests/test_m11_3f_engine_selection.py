@@ -1212,13 +1212,20 @@ class TestF42AdapterContract:
     # notification seam (runtime_failure_callback — PROCESS_EXIT / fatal
     # TRANSPORT_ERROR publication only; transport semantics unchanged), so
     # its hash moved to the M11.3G value.
+    # M11.3-UI-R2 AUTHORIZED REOPENING (approved concrete defect): mpd.py
+    # gained the explicit default-system-output compatibility policy —
+    # output-plugin discovery (`mpd --version`, pipewire > pulse > alsa) and
+    # a single explicit audio_output with mixer_type "software", replacing
+    # the implicit MPD output autodetection that failed on the local runtime
+    # (ACK [5@0] {setvol} no such mixer control: PCM). Transport semantics
+    # unchanged; volume/mute guaranteed by the software mixer.
     # M4-R1 GOVERNANCE CORRECTION: QueueService was REMOVED from the frozen
     # adapter hash ownership — M11.3 freezes engine/runtime transport
     # semantics, it does NOT own Queue implementation (queue_service.py is
     # legitimately refactored by M4-R1).
     _BASELINE_HASHES = {
         "src/michi/infrastructure/audio_engines/gstreamer.py": "1ee9e1d5fc493797",
-        "src/michi/infrastructure/audio_engines/mpd.py": "4c00fee3978b37c1",
+        "src/michi/infrastructure/audio_engines/mpd.py": "ceaa2ec4c6d283ce",
         "src/michi/infrastructure/qt_backend.py": "88614638da12acd8",
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).

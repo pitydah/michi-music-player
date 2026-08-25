@@ -382,6 +382,57 @@ class TestPopupBehavioral:
         assert str(focus.objectName()) == "enginePopupRow_gstreamer"
         popup.close()
 
+    def test_up_down_navigation_skips_disabled_rows(self, qapp):
+        """P2-02: Qt enabled, GStreamer unavailable (disabled), MPD
+        enabled — Down from Qt must land on MPD (skipping the disabled
+        row); Up from MPD must land back on Qt. No trapping, no wrapping."""
+        h = _build(qapp, POPUP_HARNESS, "player/harness.qml")
+        registry, bridge, window = (h.registry, h.bridge, h.window)
+        gst = registry.provider(AudioEngineId.GSTREAMER)
+        gst._available = False
+        bridge.refresh_engines()
+        _run(qapp, 100)
+        popup = _by_name(window, "enginePopup")
+        popup.open()
+        _run(qapp, 300)
+        qt_row = _by_name(window, "enginePopupRow_qt_multimedia")
+        gst_row = _by_name(window, "enginePopupRow_gstreamer")
+        mpd_row = _by_name(window, "enginePopupRow_mpd")
+        assert qt_row.property("enabled") is True
+        assert gst_row.property("enabled") is False
+        assert mpd_row.property("enabled") is True
+
+        # Down from Qt: skips the disabled GStreamer row → MPD
+        qt_row.forceActiveFocus()
+        _run(qapp)
+        QTest.keyClick(window, Qt.Key_Down)
+        _run(qapp)
+        assert str(window.activeFocusItem().objectName()) == ("enginePopupRow_mpd")
+        # Down again: no wrapping (stays on the last row)
+        QTest.keyClick(window, Qt.Key_Down)
+        _run(qapp)
+        assert str(window.activeFocusItem().objectName()) == ("enginePopupRow_mpd")
+        # Up from MPD: skips disabled GStreamer → Qt
+        QTest.keyClick(window, Qt.Key_Up)
+        _run(qapp)
+        assert str(window.activeFocusItem().objectName()) == (
+            "enginePopupRow_qt_multimedia"
+        )
+        popup.close()
+
+    def test_reduced_motion_popup_still_opens(self, qapp):
+        """P2-01: with reduced motion the popup has no fade transitions;
+        open/close stay deterministic."""
+        h = _build(qapp, POPUP_HARNESS, "player/harness.qml")
+        window = h.window
+        popup = _by_name(window, "enginePopup")
+        popup.open()
+        _run(qapp, 300)
+        assert popup.property("opened") is True
+        QTest.keyClick(window, Qt.Key_Escape)
+        _run(qapp, 300)
+        assert popup.property("opened") is False
+
 
 class TestSettingsBehavioral:
     def test_preferred_in_use_display(self, qapp):

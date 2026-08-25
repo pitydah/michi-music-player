@@ -346,3 +346,266 @@ def test_real_mpd_audio_port_explicit_stop_no_eom(qapp, tmp_path):
         assert eoms == []
     finally:
         port.close()
+
+
+def test_real_mixer_software_guarantees_volume(qapp):
+    """M11.3-UI-R2 gate (section 12): REAL MPD + explicit output policy +
+    software mixer must guarantee setvol — no 'no such mixer control: PCM'.
+
+    The pre-fix implicit output autodetection selected a hardware ALSA
+    mixer ("PCM") that the default device does not expose (ACK [5@0]
+    {setvol}). The explicit compatibility output with software mixer
+    must succeed on the real private runtime."""
+    _require_mpd()
+
+    from michi.infrastructure.audio_engines.mpd import (
+        _ManagedMpdRuntime,
+        _MpdProtocolClient,
+    )
+
+    runtime = _ManagedMpdRuntime(startup_timeout=10.0)
+    runtime.start()
+    try:
+        # production output policy selected deterministically
+        assert runtime._output_plugin in ("pipewire", "pulse", "alsa")
+        conf = (runtime.runtime_dir / "mpd.conf").read_text(encoding="utf-8")
+        assert 'mixer_type\t"software"' in conf
+        assert "mixer_control" not in conf
+
+        client = _MpdProtocolClient(runtime.socket_path, timeout=5.0)
+        client.connect()
+        try:
+            st = client.status()
+            assert "volume" in st  # a mixer actually exists
+            client.setvol(73)
+            assert client.status()["volume"] == "73"
+            client.setvol(0)
+            assert client.status()["volume"] == "0"
+            client.setvol(100)
+            assert client.status()["volume"] == "100"
+        finally:
+            client.close()
+    finally:
+        runtime.close()
+    assert runtime.process is None or runtime.process.poll() is not None
+
+
+def test_real_production_output_policy_selected(qapp):
+    """The local physical gate: private child starts, output policy is
+    selected from the compiled plugin list, protocol connects and the
+    software mixer answers setvol without any ACK."""
+    _require_mpd()
+
+    from michi.infrastructure.audio_engines.mpd import (
+        _discover_mpd_output_plugins,
+        _ManagedMpdRuntime,
+        _MpdProtocolClient,
+        _select_default_mpd_output_plugin,
+    )
+
+    compiled = _discover_mpd_output_plugins()
+    assert compiled  # real evidence from the installed binary
+    selected = _select_default_mpd_output_plugin(compiled)
+    assert selected in ("pipewire", "pulse", "alsa")
+
+    runtime = _ManagedMpdRuntime(startup_timeout=10.0)
+    runtime.start()
+    try:
+        assert runtime._output_plugin == selected
+        client = _MpdProtocolClient(runtime.socket_path, timeout=5.0)
+        client.connect()
+        try:
+            client.setvol(42)
+            assert client.status()["volume"] == "42"
+            client.setvol(100)
+        finally:
+            client.close()
+    finally:
+        runtime.close()
+
+
+class TestRealEngineSwitch:
+    """M11.3-UI-R2 gate (section 13): the FULL explicit switch transaction
+    responsible for the reported defect, against the REAL MPD runtime.
+
+    Qt (fake provider) active → explicit switch to REAL MPD → restore
+    volume/mute succeeds → READY → switch back to Qt → no child leaks.
+    """
+
+    def _graph(self):
+        from michi.application.audio_engine_registry import (
+            AudioEngineRegistry,
+        )
+        from michi.application.audio_engine_selection_coordinator import (
+            AudioEngineSelectionCoordinator,
+        )
+        from michi.application.audio_engine_service import AudioEngineService
+        from michi.application.audio_transport_router import AudioTransportRouter
+        from michi.application.playback_service import PlaybackService
+        from michi.application.settings_service import SettingsService
+        from michi.domain.audio_engine import AudioEngineId
+        from michi.infrastructure.audio_engines.providers import (
+            MpdEngineProvider,
+        )
+        from tests.test_m11_3f_engine_selection import (
+            FakeProvider,
+            FakeSettingsRepository,
+        )
+
+        qt = FakeProvider(AudioEngineId.QT_MULTIMEDIA)
+        mpd = MpdEngineProvider()
+        registry = AudioEngineRegistry([qt, mpd])
+        service = AudioEngineService(registry)
+        router = AudioTransportRouter()
+        playback = PlaybackService(router)
+        settings = SettingsService(FakeSettingsRepository())
+        coordinator = AudioEngineSelectionCoordinator(
+            engine_service=service,
+            registry=registry,
+            router=router,
+            playback=playback,
+            settings=settings,
+        )
+        return qt, mpd, service, router, playback, coordinator
+
+    def test_real_switch_qt_to_mpd_and_back(self, qapp):
+        _require_mpd()
+        from michi.domain.audio_engine import AudioEngineId
+
+        qt, mpd, service, router, playback, coordinator = self._graph()
+        # arm: Qt active (like bootstrap)
+        qt_port = qt.open()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        playback.set_volume(63)
+        playback.set_muted(False)
+
+        # ── Qt → MPD ───────────────────────────────────────────────────
+        coordinator.switch_to(AudioEngineId.MPD)
+        st = service.state
+        assert st.lifecycle.value == "ready"
+        assert st.selected_engine_id == AudioEngineId.MPD
+        assert st.active_engine_id == AudioEngineId.MPD
+        assert router.bound_engine_id == AudioEngineId.MPD
+        assert st.error_message is None
+        # volume restored on the REAL MPD mixer (provider → port → runtime)
+        port = mpd._port
+        assert port is not None and port._client is not None
+        assert port._client.status()["volume"] == "63"
+        assert port._runtime is not None and port._runtime.child_alive()
+
+        # ── MPD → Qt ───────────────────────────────────────────────────
+        coordinator.switch_to(AudioEngineId.QT_MULTIMEDIA)
+        st = service.state
+        assert st.lifecycle.value == "ready"
+        assert st.selected_engine_id == AudioEngineId.QT_MULTIMEDIA
+        assert st.active_engine_id == AudioEngineId.QT_MULTIMEDIA
+        assert router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        assert st.error_message is None
+        # MPD child reaped and artifacts removed — no leak
+        assert port._runtime.process is None
+        assert port._runtime.runtime_dir is None
+
+    def test_real_switch_multiple_cycles_no_leak(self, qapp):
+        _require_mpd()
+        from michi.domain.audio_engine import AudioEngineId
+
+        qt, mpd, service, router, playback, coordinator = self._graph()
+        qt_port = qt.open()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        playback.set_volume(55)
+        playback.set_muted(False)
+
+        last_mpd_runtime = None
+        for target in (
+            AudioEngineId.MPD,
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.MPD,
+            AudioEngineId.QT_MULTIMEDIA,
+        ):
+            coordinator.switch_to(target)
+            st = service.state
+            assert st.lifecycle.value == "ready", target
+            assert st.selected_engine_id == target
+            assert st.active_engine_id == target
+            assert router.bound_engine_id == target
+            assert st.error_message is None
+            # every cycle must restore the canonical volume; keep the last
+            # MPD runtime reference for the leak check after it is closed
+            if target == AudioEngineId.MPD:
+                assert mpd._port._client.status()["volume"] == "55"
+                last_mpd_runtime = mpd._port._runtime
+
+        # final state on Qt (last cycle); MPD fully released
+        assert last_mpd_runtime is not None
+        assert last_mpd_runtime.process is None
+        assert last_mpd_runtime.runtime_dir is None
+
+
+def test_real_mixer_failure_still_fatal(qapp, monkeypatch):
+    """M11.3-UI-R2 gate (section 14): a genuine mixer failure must remain
+    fatal — restore_volume raises, the coordinator never marks READY.
+
+    This proves the fix configures the mixer correctly instead of
+    suppressing mixer failures."""
+    _require_mpd()
+
+    from michi.application.audio_engine_registry import AudioEngineRegistry
+    from michi.application.audio_engine_selection_coordinator import (
+        AudioEngineSelectionCoordinator,
+    )
+    from michi.application.audio_engine_service import AudioEngineService
+    from michi.application.audio_transport_router import AudioTransportRouter
+    from michi.application.playback_service import PlaybackService
+    from michi.application.settings_service import SettingsService
+    from michi.domain.audio_engine import AudioEngineId
+    from michi.infrastructure.audio_engines.providers import (
+        MpdEngineProvider,
+    )
+    from tests.test_m11_3f_engine_selection import (
+        FakeProvider,
+        FakeSettingsRepository,
+    )
+
+    qt = FakeProvider(AudioEngineId.QT_MULTIMEDIA)
+    mpd = MpdEngineProvider()
+    registry = AudioEngineRegistry([qt, mpd])
+    service = AudioEngineService(registry)
+    router = AudioTransportRouter()
+    playback = PlaybackService(router)
+    settings = SettingsService(FakeSettingsRepository())
+    coordinator = AudioEngineSelectionCoordinator(
+        engine_service=service,
+        registry=registry,
+        router=router,
+        playback=playback,
+        settings=settings,
+    )
+    qt_port = qt.open()
+    router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+    service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+
+    # inject a REAL mixer failure at the port boundary (the provider opens
+    # its port inside the switch transaction; a genuine setvol failure must
+    # remain fatal)
+    from michi.infrastructure.audio_engines.mpd import MPDAudioPort
+
+    def broken_set_volume(self, value):
+        raise RuntimeError("MPD setvol failed: mixer exploded")
+
+    monkeypatch.setattr(MPDAudioPort, "set_volume", broken_set_volume)
+
+    with pytest.raises(RuntimeError, match="MPD setvol failed"):
+        coordinator.switch_to(AudioEngineId.MPD)
+    st = service.state
+    # first-error-wins: target NOT ready, honest lifecycle
+    assert st.lifecycle.value == "failed"
+    assert st.active_engine_id != AudioEngineId.MPD
+    # cleanup: no leaked child
+    port = mpd._port
+    if port is not None and port._runtime is not None:
+        runtime = port._runtime
+        assert runtime.process is None or runtime.process.poll() is not None
+        if runtime.process is not None:
+            runtime.process.kill()

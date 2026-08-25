@@ -8,10 +8,14 @@ from pathlib import Path
 import pytest
 
 from michi.infrastructure.audio_engines.mpd import (
+    MpdOutputPluginDiscoveryError,
     MpdProtocolError,
+    _discover_mpd_output_plugins,
     _ManagedMpdRuntime,
+    _parse_mpd_output_plugins,
     _pick_runtime_parent,
     _render_mpd_conf,
+    _select_default_mpd_output_plugin,
 )
 
 
@@ -104,7 +108,7 @@ def fake_runtime(monkeypatch, tmp_path):
 
 class TestRuntimeDirectory:
     def test_r1_unique_runtime_dir(self, fake_runtime, tmp_path):
-        runtime = _ManagedMpdRuntime()
+        runtime = _ManagedMpdRuntime(output_plugin="alsa")
         runtime._start_inner()
         assert runtime.runtime_dir is not None
         assert str(runtime.runtime_dir).startswith(str(tmp_path / "michi-mpd-"))
@@ -112,8 +116,8 @@ class TestRuntimeDirectory:
         runtime.close()
 
     def test_r1_two_runtimes_differ(self, fake_runtime, tmp_path):
-        a = _ManagedMpdRuntime()
-        b = _ManagedMpdRuntime()
+        a = _ManagedMpdRuntime(output_plugin="alsa")
+        b = _ManagedMpdRuntime(output_plugin="alsa")
         a._start_inner()
         b._start_inner()
         assert a.runtime_dir != b.runtime_dir
@@ -122,7 +126,7 @@ class TestRuntimeDirectory:
         b.close()
 
     def test_r2_config_uses_only_private_paths(self, fake_runtime, tmp_path):
-        runtime = _ManagedMpdRuntime()
+        runtime = _ManagedMpdRuntime(output_plugin="alsa")
         runtime._start_inner()
         conf = (runtime.runtime_dir / "mpd.conf").read_text(encoding="utf-8")
         assert "mpd.sock" in conf
@@ -134,7 +138,7 @@ class TestRuntimeDirectory:
 
 class TestSpawn:
     def test_r3_spawn_uses_no_daemon(self, fake_runtime, tmp_path):
-        runtime = _ManagedMpdRuntime()
+        runtime = _ManagedMpdRuntime(output_plugin="alsa")
         runtime._start_inner()
         args = _FakeProcess.instances[0].args
         assert "--no-daemon" in args
@@ -143,7 +147,7 @@ class TestSpawn:
 
     def test_r4_socket_startup_bounded(self, fake_runtime, tmp_path):
         _FakeProcess.create_socket = False  # el socket nunca aparece
-        runtime = _ManagedMpdRuntime(startup_timeout=0.2)
+        runtime = _ManagedMpdRuntime(startup_timeout=0.2, output_plugin="alsa")
         # timeout determinístico rápido
         start = time.monotonic()
         with pytest.raises(MpdProtocolError, match="socket"):
@@ -153,7 +157,7 @@ class TestSpawn:
 
     def test_r5_child_exits_during_startup_fails(self, fake_runtime, tmp_path):
         _FakeProcess.exit_on_start = True
-        runtime = _ManagedMpdRuntime(startup_timeout=0.5)
+        runtime = _ManagedMpdRuntime(startup_timeout=0.5, output_plugin="alsa")
         with pytest.raises(MpdProtocolError, match="exited during startup"):
             runtime.start()
         assert runtime.runtime_dir is None
@@ -162,7 +166,7 @@ class TestSpawn:
 
 class TestShutdown:
     def _started(self, fake_runtime, tmp_path):
-        runtime = _ManagedMpdRuntime()
+        runtime = _ManagedMpdRuntime(output_plugin="alsa")
         runtime._start_inner()
         return runtime, _FakeProcess.instances[0]
 
@@ -201,7 +205,7 @@ class TestShutdown:
         # y nunca toca /run/mpd ni /etc/mpd.conf (verificado en r2); un
         # arranque que no produce socket propio falla cerrado
         _FakeProcess.create_socket = False
-        runtime = _ManagedMpdRuntime(startup_timeout=0.2)
+        runtime = _ManagedMpdRuntime(startup_timeout=0.2, output_plugin="alsa")
         with pytest.raises(MpdProtocolError):
             runtime.start()
         assert runtime.process is None
@@ -211,14 +215,18 @@ class TestShutdown:
 class TestConfigRender:
     def test_conf_private_paths_only(self, tmp_path):
         runtime_dir = tmp_path / "rt"
-        conf = _render_mpd_conf(runtime_dir, runtime_dir / "music")
+        conf = _render_mpd_conf(
+            runtime_dir, runtime_dir / "music", output_plugin="alsa"
+        )
         assert f'bind_to_address "{runtime_dir / "mpd.sock"}"' in conf
         assert "music_directory" in conf
 
     def test_c1a_production_config_has_no_null_output(self, tmp_path):
         runtime_dir = tmp_path / "rt"
-        conf = _render_mpd_conf(runtime_dir, runtime_dir / "music")
-        assert "null" not in conf  # producción: MPD elige su salida
+        conf = _render_mpd_conf(
+            runtime_dir, runtime_dir / "music", output_plugin="alsa"
+        )
+        assert "null" not in conf  # producción: salida explícita, nunca null
 
     def test_c1b_test_config_supports_null_output(self, tmp_path):
         runtime_dir = tmp_path / "rt"
@@ -228,8 +236,8 @@ class TestConfigRender:
 
     def test_c1c_production_runtime_default_no_null(self, fake_runtime, tmp_path):
 
-        # el runtime productivo usa el default null_output=False
-        runtime = _ManagedMpdRuntime()
+        # el runtime productivo usa plugin explícito (nunca implícito)
+        runtime = _ManagedMpdRuntime(output_plugin="alsa")
         runtime._start_inner()
         conf = (runtime.runtime_dir / "mpd.conf").read_text(encoding="utf-8")
         assert "null" not in conf
@@ -244,3 +252,191 @@ class TestConfigRender:
         import tempfile
 
         assert _pick_runtime_parent() == Path(tempfile.gettempdir())
+
+
+class TestOutputPluginDiscovery:
+    """M11.3-UI-R2 — deterministic output-plugin discovery + selection.
+
+    The implicit MPD output autodetection (which selected an ALSA hardware
+    mixer "PCM" missing on the default device) is REPLACED by an explicit
+    compatibility output policy: pipewire > pulse > alsa, software mixer.
+    """
+
+    VERSION_ALL = (
+        "Output plugins:\n"
+        " shout null fifo pipe alsa ao oss openal solaris pipewire pulse "
+        "jack httpd snapcast recorder\n"
+    )
+    VERSION_PULSE_ALSA = "Output plugins:\n shout null fifo alsa pulse\n"
+    VERSION_ALSA_ONLY = "Output plugins:\n shout null fifo alsa\n"
+    VERSION_NONE = "Output plugins:\n shout null fifo jack httpd\n"
+
+    def test_parser_full_fixture(self):
+        plugins = _parse_mpd_output_plugins(self.VERSION_ALL)
+        assert "pipewire" in plugins
+        assert "pulse" in plugins
+        assert "alsa" in plugins
+
+    def test_parser_ignores_other_sections(self):
+        plugins = _parse_mpd_output_plugins(
+            "Decoder plugins:\n [mad] mp3\n\n" + self.VERSION_ALL
+        )
+        assert "mad" not in plugins
+        assert "mp3" not in plugins
+
+    def test_parser_no_output_section(self):
+        assert _parse_mpd_output_plugins("nothing here") == set()
+
+    def test_selection_preference_pipewire_first(self):
+        assert (
+            _select_default_mpd_output_plugin({"alsa", "pipewire", "pulse"})
+            == "pipewire"
+        )
+
+    def test_selection_pulse_over_alsa(self):
+        assert _select_default_mpd_output_plugin({"alsa", "pulse"}) == "pulse"
+
+    def test_selection_alsa_fallback(self):
+        assert _select_default_mpd_output_plugin({"alsa"}) == "alsa"
+
+    def test_selection_no_supported_plugin_raises(self):
+        with pytest.raises(
+            MpdOutputPluginDiscoveryError, match="no supported default audio output"
+        ):
+            _select_default_mpd_output_plugin({"null", "fifo", "jack"})
+
+    def test_discovery_uses_argv_not_shell(self, monkeypatch):
+        """E: never shell=True; bounded; deterministic parse."""
+        captured = {}
+
+        def fake_run(args, **kwargs):
+            captured["args"] = args
+            captured["shell"] = kwargs.get("shell", False)
+            assert args == ["mpd", "--version"]
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                stdout=("Music Player Daemon 0.24.14\n\n" + self.VERSION_ALL).encode(),
+                stderr=b"",
+            )
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        plugins = _discover_mpd_output_plugins("mpd")
+        assert captured["shell"] is False
+        assert plugins == {
+            "shout",
+            "null",
+            "fifo",
+            "pipe",
+            "alsa",
+            "ao",
+            "oss",
+            "openal",
+            "solaris",
+            "pipewire",
+            "pulse",
+            "jack",
+            "httpd",
+            "snapcast",
+            "recorder",
+        }
+
+    def test_discovery_timeout_deterministic(self, monkeypatch):
+        def fake_run(args, **kwargs):
+            raise subprocess.TimeoutExpired(args[0], kwargs.get("timeout", 5.0))
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        with pytest.raises(MpdOutputPluginDiscoveryError, match="timed out"):
+            _discover_mpd_output_plugins("mpd", timeout=0.5)
+
+    def test_discovery_missing_executable_truthful(self, monkeypatch):
+        def fake_run(args, **kwargs):
+            raise FileNotFoundError("mpd")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        with pytest.raises(MpdOutputPluginDiscoveryError, match="not found"):
+            _discover_mpd_output_plugins("mpd")
+
+    def test_discovery_nonzero_exit_truthful(self, monkeypatch):
+        def fake_run(args, **kwargs):
+            return subprocess.CompletedProcess(args, 3, stdout=b"", stderr=b"oops")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        with pytest.raises(MpdOutputPluginDiscoveryError, match="exit code 3"):
+            _discover_mpd_output_plugins("mpd")
+
+
+class TestProductionOutputPolicy:
+    """M11.3-UI-R2 — generated production config contract (section 11.B)."""
+
+    def test_production_config_explicit_single_output(self, tmp_path):
+        runtime_dir = tmp_path / "rt"
+        conf = _render_mpd_conf(
+            runtime_dir, runtime_dir / "music", output_plugin="pipewire"
+        )
+        assert conf.count("audio_output {") == 1
+        assert 'type\t\t"pipewire"' in conf
+        assert 'name\t\t"Michi MPD Default"' in conf
+
+    def test_production_config_software_mixer(self, tmp_path):
+        runtime_dir = tmp_path / "rt"
+        conf = _render_mpd_conf(
+            runtime_dir, runtime_dir / "music", output_plugin="alsa"
+        )
+        assert 'mixer_type\t"software"' in conf
+
+    def test_production_config_no_hardcoded_pcm(self, tmp_path):
+        runtime_dir = tmp_path / "rt"
+        conf = _render_mpd_conf(
+            runtime_dir, runtime_dir / "music", output_plugin="alsa"
+        )
+        assert "mixer_control" not in conf
+        assert "PCM" not in conf
+
+    def test_production_config_no_device_ids(self, tmp_path):
+        runtime_dir = tmp_path / "rt"
+        conf = _render_mpd_conf(
+            runtime_dir, runtime_dir / "music", output_plugin="alsa"
+        )
+        for forbidden in ("hw:", "device", "card", "mixer_control"):
+            assert forbidden not in conf
+
+    def test_production_config_no_audiophile_settings(self, tmp_path):
+        runtime_dir = tmp_path / "rt"
+        conf = _render_mpd_conf(
+            runtime_dir, runtime_dir / "music", output_plugin="pipewire"
+        )
+        for forbidden in (
+            "dsd",
+            "DoP",
+            "sample_rate",
+            "format",
+            "replaygain",
+            "resampler",
+            "dop",
+            "exclusive",
+        ):
+            assert forbidden not in conf
+
+    def test_production_config_forbids_implicit_output(self, tmp_path):
+        """The pre-fix implicit behavior must be impossible now."""
+        runtime_dir = tmp_path / "rt"
+        with pytest.raises(ValueError, match="explicit output_plugin"):
+            _render_mpd_conf(runtime_dir, runtime_dir / "music")
+
+    def test_null_output_config_independent(self, tmp_path):
+        runtime_dir = tmp_path / "rt"
+        conf = _render_mpd_conf(runtime_dir, runtime_dir / "music", null_output=True)
+        assert "null" in conf
+        assert "mixer_type" not in conf  # null output owns no mixer
+        assert 'type\t\t"null"' in conf
+
+    def test_null_and_plugin_mutually_exclusive(self, tmp_path):
+        runtime_dir = tmp_path / "rt"
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            _render_mpd_conf(
+                runtime_dir,
+                runtime_dir / "music",
+                null_output=True,
+                output_plugin="alsa",
+            )

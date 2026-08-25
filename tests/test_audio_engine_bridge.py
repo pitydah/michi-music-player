@@ -38,7 +38,7 @@ def _graph():
         settings=settings,
     )
     bridge = AudioEngineBridge(service, registry, coordinator)
-    return service, registry, coordinator, bridge, qt, gst, mpd
+    return service, registry, coordinator, bridge, qt, gst, mpd, router, playback
 
 
 class TestBridgeProjections:
@@ -141,7 +141,7 @@ class TestLiveEngineModel:
     def test_overlays_follow_state_without_refresh(self):
         """Section 10 mandatory test: state change → engines rows current,
         provider probe count unchanged."""
-        service, registry, _, bridge, qt, gst, mpd = _graph()
+        service, registry, _, bridge, qt, gst, mpd, *_ = _graph()
         bridge.refresh_engines()
         probes_before = sum(p.probe_count for p in (qt, gst, mpd))
         assert [e["selected"] for e in bridge.engines] == [True, False, False]
@@ -248,6 +248,104 @@ class TestSwitchDiagnostics:
         assert failures == [("gstreamer", "Michi could not change the audio engine.")]
         assert "boom in transport" in caplog.text
         assert "boom in transport" in bridge.lastSwitchTechnicalError
+
+
+class TestTransientDiagnosticLifecycle:
+    """P2-03: lastSwitchTechnicalError must never look current after a
+    later successful attempt; clear-on-attempt; notify only on change."""
+
+    def _coordinator_rejecting(self, service, coordinator, exc):
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+
+        def rejecting(target):
+            raise exc
+
+        coordinator.switch_to = rejecting  # type: ignore[method-assign]
+        return service
+
+    def test_failure_populates_diagnostic(self):
+        from michi.application.audio_engine_selection_coordinator import (
+            AudioEngineSwitchNotQuiescentError,
+        )
+
+        service, registry, coordinator, bridge, *_ = _graph()
+        self._coordinator_rejecting(
+            service, coordinator, AudioEngineSwitchNotQuiescentError("not quiescent")
+        )
+        bridge.switch_failed.connect(lambda *_: None)
+        bridge.switch_engine("gstreamer")
+        assert "not quiescent" in bridge.lastSwitchTechnicalError
+
+    def test_failure_then_success_clears_diagnostic(self):
+        from michi.application.audio_engine_selection_coordinator import (
+            AudioEngineSwitchNotQuiescentError,
+        )
+
+        service, registry, coordinator, bridge, qt, _, _, router, _ = _graph()
+        # arm Qt active (graph router) so a real switch can succeed after
+        qt_port = qt.open()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        bridge.switch_failed.connect(lambda *_: None)
+
+        original_switch = coordinator.switch_to
+
+        def rejecting(target):
+            raise AudioEngineSwitchNotQuiescentError("not quiescent")
+
+        coordinator.switch_to = rejecting  # type: ignore[method-assign]
+        bridge.switch_engine("gstreamer")
+        assert bridge.lastSwitchTechnicalError != ""
+
+        # next attempt succeeds with the real transaction
+        coordinator.switch_to = original_switch  # type: ignore[method-assign]
+        bridge.switch_engine("gstreamer")
+        assert bridge.lastSwitchTechnicalError == ""
+
+    def test_invalid_id_notifies(self):
+        _, _, _, bridge, *_ = _graph()
+        notified = []
+        bridge.technical_error_changed.connect(lambda: notified.append(1))
+        bridge.switch_failed.connect(lambda *_: None)
+        bridge.switch_engine("not-an-engine")
+        # attempt start: clear is a no-op (already empty) → exactly ONE
+        # notification for storing the invalid-id diagnostic
+        assert len(notified) == 1
+        assert "not-an-engine" in bridge.lastSwitchTechnicalError
+
+    def test_two_failures_second_replaces_first(self):
+        from michi.application.audio_engine_selection_coordinator import (
+            AudioEngineSwitchNotQuiescentError,
+            AudioEngineSwitchUnavailableError,
+        )
+
+        service, registry, coordinator, bridge, *_ = _graph()
+        bridge.switch_failed.connect(lambda *_: None)
+
+        def rejecting(exc):
+            def inner(target):
+                raise exc
+
+            coordinator.switch_to = inner  # type: ignore[method-assign]
+
+        rejecting(AudioEngineSwitchNotQuiescentError("first failure"))
+        bridge.switch_engine("gstreamer")
+        rejecting(AudioEngineSwitchUnavailableError("second failure"))
+        bridge.switch_engine("gstreamer")
+        assert "second failure" in bridge.lastSwitchTechnicalError
+        assert "first failure" not in bridge.lastSwitchTechnicalError
+
+    def test_notify_only_on_value_change(self):
+        service, registry, coordinator, bridge, *_ = _graph()
+        bridge.switch_failed.connect(lambda *_: None)
+        notified = []
+        bridge.technical_error_changed.connect(lambda: notified.append(1))
+        # success path with empty diagnostic: cleared (no-op) → no notify
+        bridge.switch_engine("gstreamer")  # real switch → success
+        assert bridge.lastSwitchTechnicalError == ""
+        # the clear at attempt start was a no-op (already empty) — zero
+        # notifications for the whole success path
+        assert notified == []
 
 
 class TestBridgeSwitch:
@@ -373,7 +471,7 @@ class TestBridgeLifecycle:
         bridge.dispose()  # idempotent
 
     def test_probe_does_not_open_provider(self):
-        _, registry, _, bridge, qt, gst, mpd = _graph()
+        _, registry, _, bridge, qt, gst, mpd, *_ = _graph()
         bridge.refresh_engines()
         assert qt.open_count == 0
         assert gst.open_count == 0

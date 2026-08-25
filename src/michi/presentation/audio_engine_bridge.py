@@ -260,8 +260,12 @@ class AudioEngineBridge(QObject):
         sole switch authority — this method never stops playback, never
         mutates state, never touches providers/router."""
         target = _decode_engine_id(engine_id)
+        # P2-03 lifecycle: every NEW attempt clears the previous transient
+        # diagnostic FIRST (it must never look current after a later
+        # attempt). Success keeps it empty; failure stores the new one.
+        self._set_technical("")
         if target is None:
-            self._last_switch_technical_error = f"unknown engine id: {engine_id!r}"
+            self._set_technical(f"unknown engine id: {engine_id!r}")
             logger.warning(
                 "audio engine switch rejected: %s", self._last_switch_technical_error
             )
@@ -305,10 +309,18 @@ class AudioEngineBridge(QObject):
         """Presentation-local transient diagnostic evidence (never runtime
         authority, never persisted). Canonical technical truth for
         destructive failures remains AudioEngineService.state.error_message."""
-        self._last_switch_technical_error = str(exc)
+        self._set_technical(str(exc))
+        logger.info("audio engine switch failed: %s", exc)
+
+    def _set_technical(self, text: str) -> None:
+        """Store the transient diagnostic, notifying ONLY when the value
+        actually changed (P2-03 lifecycle: cleared per attempt, replaced by
+        failures, kept empty on success)."""
+        if self._last_switch_technical_error == text:
+            return
+        self._last_switch_technical_error = text
         if not self._disposed:
             self.technical_error_changed.emit()
-        logger.info("audio engine switch failed: %s", exc)
 
     selectedEngineId = Property(str, _get_selected_engine_id, notify=state_changed)
     activeEngineId = Property(str, _get_active_engine_id, notify=state_changed)

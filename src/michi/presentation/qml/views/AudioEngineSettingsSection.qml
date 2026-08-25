@@ -195,8 +195,8 @@ Item {
                     onClicked: root.engineSwitchRequested(card.modelData.id)
                     Keys.onReturnPressed: card.clicked()
                     Keys.onEnterPressed: card.clicked()
-                    KeyNavigation.up: index > 0 ? engineCards.itemAt(index - 1) : null
-                    KeyNavigation.down: engineCards.itemAt(index + 1)
+                    KeyNavigation.up: root._navigate(index, -1)
+                    KeyNavigation.down: root._navigate(index, 1)
 
                     Accessible.name: card.modelData.displayName + " — " + card.statusText()
                     Accessible.description: card.modelData.canActivate
@@ -399,6 +399,20 @@ Item {
     }
 
     property bool _noTunables: true  // M11.3 exposes no user-engine tunables
+
+    // P2-02 (M11.3-UI-R2): Up/Down navigation SKIPS non-selectable cards
+    // (unavailable / disabled / mid-switch lock). No wrapping.
+    function _navigate(fromIndex, delta) {
+        var count = engineCards.count
+        var i = fromIndex + delta
+        while (i >= 0 && i < count) {
+            var item = engineCards.itemAt(i)
+            if (item !== null && item.enabled)
+                return item
+            i += delta
+        }
+        return null
+    }
 
     function _nameOf(engineId) {
         for (var i = 0; i < root.engines.length; i++) {
