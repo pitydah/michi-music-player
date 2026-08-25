@@ -374,6 +374,191 @@ def _select_default_mpd_output_plugin(compiled: set[str]) -> str:
     )
 
 
+# ---------------------------------------------------------------------------
+# R1-09: conservative stale-Michi-MPD recovery (orphan compatibility contract)
+# ---------------------------------------------------------------------------
+#
+# The previous seal rejected the orphan hypothesis on this host because
+# MPD >= 0.23 sets PR_SET_PDEATHSIG (SIGTERM) when not daemonized — the
+# child self-terminates when its owner dies. That behavior is NOT assumed
+# for every MPD executable: a stale Michi-owned child (older MPD, other
+# platforms, ignored SIGTERM) must still be recoverable WITHOUT ever
+# touching a system/user MPD. Recovery only ever acts on a candidate
+# validated by ALL relevant facts; ambiguity → report, never kill.
+
+
+def _read_proc_cmdline(pid: int) -> list[str] | None:
+    """/proc/<pid>/cmdline → argv list; None when unreadable."""
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return None
+    return [
+        part.decode("utf-8", errors="replace")
+        for part in raw.split(b"\0")
+        if part
+    ]
+
+
+def _read_proc_ppid(pid: int) -> int | None:
+    """/proc/<pid>/stat → ppid (field 4); None when unreadable."""
+    try:
+        stat = Path(f"/proc/{pid}/stat").read_text(errors="replace")
+    except OSError:
+        return None
+    try:
+        # comm may contain spaces/parens — parse after the last ')'
+        return int(stat.rsplit(")", 1)[1].split()[1])
+    except (IndexError, ValueError):
+        return None
+
+
+def _read_proc_uid(pid: int) -> int | None:
+    """/proc/<pid> owner UID; None when unreadable."""
+    try:
+        return os.stat(f"/proc/{pid}").st_uid
+    except OSError:
+        return None
+
+
+def _pid_alive(pid: int) -> bool:
+    return os.path.exists(f"/proc/{pid}")
+
+
+def _looks_like_michi_owner(pid: int) -> bool:
+    """A living Michi owner is a python process running the michi app."""
+    cmdline = _read_proc_cmdline(pid)
+    if not cmdline:
+        return False
+    joined = " ".join(cmdline).lower()
+    return "michi" in joined and ("python" in joined or "michi" in joined.split()[0])
+
+
+def _mpd_process_for_conf(conf_path: str) -> int | None:
+    """Find a LIVE process whose command line references EXACTLY this conf
+    in MPD no-daemon mode. None when ambiguous or absent."""
+    conf_resolved = str(Path(conf_path).resolve())
+    for proc in Path("/proc").iterdir():
+        if not proc.name.isdigit():
+            continue
+        pid = int(proc.name)
+        cmdline = _read_proc_cmdline(pid)
+        if not cmdline:
+            continue
+        joined = " ".join(cmdline)
+        if (
+            "--no-daemon" in joined
+            and "--stderr" in joined
+            and conf_resolved in joined
+            and "mpd" in cmdline[0].lower()
+        ):
+            return pid
+    return None
+
+
+def recover_stale_michi_mpd_runtimes(
+    parent: Path | None = None, *, exclude: Path | None = None
+) -> list[dict]:
+    """Conservative startup cleanup of ABANDONED Michi-private MPD runtimes.
+
+    A candidate is acted upon only when ALL facts agree (section 28):
+      dir name michi-mpd-*, owned by current UID, contains a Michi-
+      generated mpd.conf referencing resources inside THAT dir, the live
+      process (if any) references exactly that conf with --no-daemon,
+      process UID matches, it is not the current Michi runtime, and its
+      parent is no longer a living Michi owner.
+
+    Returns a log of actions taken (termination + artifact removal) or
+    skipped-with-reason. NEVER touches system/user MPD: no killall, no
+    pkill, no wildcard authority."""
+    parent = parent or _pick_runtime_parent()
+    results: list[dict] = []
+    for base in sorted(parent.glob("michi-mpd-*")):
+        record = {"runtime_dir": str(base)}
+        try:
+            if not base.is_dir():
+                record["action"] = "skipped: not a directory"
+                results.append(record)
+                continue
+            # fact 2: owned by current UID
+            if os.stat(base).st_uid != os.getuid():
+                record["action"] = "skipped: foreign UID"
+                results.append(record)
+                continue
+            # fact 3: Michi-generated mpd.conf
+            conf = base / "mpd.conf"
+            if not conf.exists():
+                record["action"] = "skipped: no mpd.conf"
+                results.append(record)
+                continue
+            # fact 4: conf references resources inside THIS runtime dir
+            conf_text = conf.read_text(encoding="utf-8", errors="replace")
+            base_str = str(base)
+            if base_str not in conf_text:
+                record["action"] = "skipped: conf does not reference runtime dir"
+                results.append(record)
+                continue
+            # fact 7: never touch the CURRENT Michi runtime
+            if exclude is not None and base.resolve() == exclude.resolve():
+                record["action"] = "skipped: current runtime"
+                results.append(record)
+                continue
+            # fact 5+6: live process referencing exactly this conf
+            pid = _mpd_process_for_conf(str(conf))
+            if pid is not None:
+                if _read_proc_uid(pid) != os.getuid():
+                    record["action"] = "skipped: process UID mismatch"
+                    results.append(record)
+                    continue
+                # fact 8: parent no longer a living Michi owner
+                ppid = _read_proc_ppid(pid)
+                if ppid is not None and _pid_alive(ppid) and _looks_like_michi_owner(ppid):
+                    record["action"] = "skipped: live Michi owner"
+                    results.append(record)
+                    continue
+                # VALIDATED STALE ORPHAN → terminate the exact PID
+                _terminate_exact_pid(pid)
+                record["pid"] = pid
+                record["action"] = "orphan terminated"
+            else:
+                # fact F: stale dir with NO live process → artifact-only
+                # cleanup (ownership/config validation already passed)
+                record["action"] = "stale artifacts removed (no live process)"
+            shutil.rmtree(base, ignore_errors=True)
+            record["result"] = "cleaned"
+        except Exception as exc:  # noqa: BLE001 — recovery must never break
+            # startup; ambiguity is reported, never fatal
+            record["action"] = f"skipped: {exc}"
+            record["result"] = "error"
+        results.append(record)
+    return results
+
+
+def _terminate_exact_pid(pid: int) -> None:
+    """SIGTERM → bounded wait → SIGKILL only if required → prove death."""
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return  # already gone
+    deadline = time.monotonic() + 3.0
+    while time.monotonic() < deadline:
+        if not _pid_alive(pid):
+            return
+        time.sleep(0.1)
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+    deadline = time.monotonic() + 3.0
+    while time.monotonic() < deadline:
+        if not _pid_alive(pid):
+            return
+        time.sleep(0.1)
+    _logger.error(
+        "mpd orphan %s refused termination (TERM+KILL); left untouched", pid
+    )
+
+
 def _pick_runtime_parent() -> Path:
     """XDG_RUNTIME_DIR válido y escribible, o un tempdir seguro (0700)."""
     xdg = os.environ.get("XDG_RUNTIME_DIR")
@@ -586,10 +771,20 @@ class _ManagedMpdRuntime:
         and the handle/runtime_dir/socket_path/diagnostic evidence are
         RETAINED for retry/diagnosis. Idempotent: a successful close can be
         repeated; a FAILED close leaves a retryable ownership state."""
-        if self._closed and self._process is None:
+        if self._closed and self._process is None and self.runtime_dir is None:
             return
         if self._process is None:
-            # nothing owned (already released or never started): mark closed
+            # CASE B (R1-08): PARTIAL STARTUP — no process was ever owned
+            # (e.g. Popen raised before self._process was assigned) but
+            # runtime artifacts (dir/conf/socket/stderr log) may exist.
+            # Clean them up: close the stderr descriptor and remove the
+            # exact runtime directory. Never touch anything else.
+            self._close_stderr_log()
+            runtime_dir = self.runtime_dir
+            self.runtime_dir = None
+            self.socket_path = None
+            if runtime_dir is not None:
+                shutil.rmtree(runtime_dir, ignore_errors=True)
             self._closed = True
             return
         process = self._process

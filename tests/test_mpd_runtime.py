@@ -1,5 +1,6 @@
 """M11.3D — managed MPD runtime tests (deterministic, fake process)."""
 
+import os
 import signal
 import subprocess
 import time
@@ -480,3 +481,290 @@ class TestProductionOutputPolicy:
                 null_output=True,
                 output_plugin="alsa",
             )
+
+
+class TestPartialStartupCleanup:
+    """R1-08: if subprocess.Popen raises before self._process is assigned,
+    the partial runtime artifacts must still be cleaned (no leak)."""
+
+    def test_popen_failure_cleans_partial_runtime(self, monkeypatch, tmp_path):
+        import os
+
+        from michi.infrastructure.audio_engines.mpd import (
+            _ManagedMpdRuntime,
+            _pick_runtime_parent,
+        )
+
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+        real_popen = subprocess.Popen
+
+        def exploding_popen(*args, **kwargs):
+            raise OSError("spawn failed")
+
+        monkeypatch.setattr(subprocess, "Popen", exploding_popen)
+        runtime = _ManagedMpdRuntime(output_plugin="alsa")
+        with pytest.raises(OSError, match="spawn failed"):
+            runtime.start()
+        # first-error-wins: the ORIGINAL error propagates
+        # no process, no runtime dir, no socket, stderr log closed
+        assert runtime.process is None
+        assert runtime.runtime_dir is None
+        assert runtime.socket_path is None
+        leftovers = list(tmp_path.glob("michi-mpd-*"))
+        assert leftovers == [], f"partial runtime leaked: {leftovers}"
+
+    def test_close_case_b_cleans_artifacts_without_process(self, tmp_path):
+        from michi.infrastructure.audio_engines.mpd import (
+            _ManagedMpdRuntime,
+            _render_mpd_conf,
+        )
+
+        runtime = _ManagedMpdRuntime(output_plugin="alsa")
+        base = tmp_path / "michi-mpd-1234-abc"
+        base.mkdir()
+        (base / "music").mkdir()
+        (base / "playlists").mkdir()
+        (base / "mpd.conf").write_text(
+            _render_mpd_conf(base, base / "music", output_plugin="alsa")
+        )
+        (base / "mpd.sock").touch()
+        runtime.runtime_dir = base
+        runtime.socket_path = str(base / "mpd.sock")
+        runtime._stderr_log = (base / "mpd.stderr.log").open("wb")
+        # NO process ever assigned (partial startup)
+        runtime.close()
+        assert runtime.process is None
+        assert runtime.runtime_dir is None
+        assert not base.exists()
+
+
+class TestOrphanRecoveryContract:
+    """R1-09: conservative orphan recovery — multi-fact validation; never
+    touches anything that cannot be PROVEN Michi-owned."""
+
+    def _make_stale_dir(self, tmp_path, name="michi-mpd-9999-dead", conf_ok=True):
+        from michi.infrastructure.audio_engines.mpd import _render_mpd_conf
+
+        base = tmp_path / name
+        base.mkdir()
+        (base / "music").mkdir()
+        (base / "playlists").mkdir()
+        if conf_ok:
+            (base / "mpd.conf").write_text(
+                _render_mpd_conf(base, base / "music", output_plugin="alsa")
+            )
+        else:
+            (base / "mpd.conf").write_text("not a michi config at all")
+        return base
+
+    def test_f_stale_dir_no_process_artifacts_removed(self, tmp_path, monkeypatch):
+        import os
+
+        from michi.infrastructure.audio_engines.mpd import (
+            recover_stale_michi_mpd_runtimes,
+        )
+
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+        base = self._make_stale_dir(tmp_path)
+        results = recover_stale_michi_mpd_runtimes()
+        assert len(results) == 1
+        assert results[0]["action"] == "stale artifacts removed (no live process)"
+        assert not base.exists()
+
+    def test_d_malformed_config_not_touched(self, tmp_path, monkeypatch):
+        from michi.infrastructure.audio_engines.mpd import (
+            recover_stale_michi_mpd_runtimes,
+        )
+
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+        base = self._make_stale_dir(tmp_path, conf_ok=False)
+        results = recover_stale_michi_mpd_runtimes()
+        assert results[0]["action"].startswith("skipped")
+        assert base.exists()  # NOT touched
+
+    def test_c_foreign_uid_dir_not_touched(self, tmp_path, monkeypatch):
+        import os
+
+        from michi.infrastructure.audio_engines.mpd import (
+            recover_stale_michi_mpd_runtimes,
+        )
+
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+        base = self._make_stale_dir(tmp_path)
+        monkeypatch.setattr(
+            "michi.infrastructure.audio_engines.mpd.os.stat",
+            lambda path, **kwargs: type(
+                "S", (), {"st_uid": os.getuid() + 1, "st_mode": 0o40700}
+            )(),
+        )
+        results = recover_stale_michi_mpd_runtimes()
+        assert results[0]["action"] == "skipped: foreign UID"
+        assert base.exists()
+
+    def test_e_current_live_runtime_not_touched(self, tmp_path, monkeypatch):
+        """A live Michi-owned runtime (parent alive + michi owner) is never
+        recovered."""
+        import threading
+
+        from michi.infrastructure.audio_engines.mpd import (
+            _read_proc_cmdline,
+            recover_stale_michi_mpd_runtimes,
+        )
+
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+        base = self._make_stale_dir(tmp_path)
+        # a FAKE live process claiming to own this conf, with a live
+        # michi-owner parent → must be skipped
+        fake_pid = 424242
+        monkeypatch.setattr(
+            "michi.infrastructure.audio_engines.mpd._mpd_process_for_conf",
+            lambda conf: fake_pid,
+        )
+        monkeypatch.setattr(
+            "michi.infrastructure.audio_engines.mpd._read_proc_uid",
+            lambda pid: 1000,
+        )
+        monkeypatch.setattr(
+            "michi.infrastructure.audio_engines.mpd._read_proc_ppid",
+            lambda pid: 1,
+        )
+        monkeypatch.setattr(
+            "michi.infrastructure.audio_engines.mpd._pid_alive",
+            lambda pid: pid == 1,
+        )
+        monkeypatch.setattr(
+            "michi.infrastructure.audio_engines.mpd._looks_like_michi_owner",
+            lambda pid: True,
+        )
+        results = recover_stale_michi_mpd_runtimes()
+        assert results[0]["action"] == "skipped: live Michi owner"
+        assert base.exists()
+
+    def _spoof_mpd_process(self, tmp_path) -> subprocess.Popen:
+        """A REAL long-lived process standing in for a live orphan PID
+        (termination is exercised against the REAL pid)."""
+        helper = tmp_path / "michi_mpd_fake.py"
+        helper.write_text(
+            "#!/usr/bin/env python3" + chr(10)
+            + "import time" + chr(10) + "time.sleep(600)" + chr(10),
+            encoding="utf-8",
+        )
+        helper.chmod(0o700)
+        return subprocess.Popen(
+            [str(helper)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    def test_a_valid_stale_orphan_terminated(self, tmp_path, monkeypatch):
+        """Validated stale orphan: exact PID terminated, exact dir removed.
+        The /proc cmdline matcher is injected (real MPD shape); the
+        TERM/KILL/proof/removal lifecycle runs against the REAL pid."""
+        import os
+
+        from michi.infrastructure.audio_engines.mpd import (
+            recover_stale_michi_mpd_runtimes,
+        )
+
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+        base = self._make_stale_dir(tmp_path)
+        conf = base / "mpd.conf"
+        proc = self._spoof_mpd_process(tmp_path)
+        try:
+            monkeypatch.setattr(
+                "michi.infrastructure.audio_engines.mpd._mpd_process_for_conf",
+                lambda conf_path: proc.pid,
+            )
+            monkeypatch.setattr(
+                "michi.infrastructure.audio_engines.mpd._read_proc_uid",
+                lambda pid: os.getuid(),
+            )
+            monkeypatch.setattr(
+                "michi.infrastructure.audio_engines.mpd._read_proc_ppid",
+                lambda pid: None,  # parent gone/unknown → stale
+            )
+            monkeypatch.setattr(
+                "michi.infrastructure.audio_engines.mpd._pid_alive",
+                lambda pid: pid == proc.pid,
+            )
+            monkeypatch.setattr(
+                "michi.infrastructure.audio_engines.mpd._looks_like_michi_owner",
+                lambda pid: False,
+            )
+            results = recover_stale_michi_mpd_runtimes()
+            assert results[0]["action"] == "orphan terminated"
+            assert results[0]["pid"] == proc.pid
+            assert not base.exists()
+            proc.wait(timeout=5)
+            assert proc.poll() is not None  # REALLY terminated
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=5)
+
+    def test_b_system_mpd_like_process_not_touched(self, tmp_path, monkeypatch):
+        """A process resembling system MPD (cmdline references a DIFFERENT
+        conf) is never terminated — the dir is only artifact-cleaned."""
+        import os
+
+        from michi.infrastructure.audio_engines.mpd import (
+            recover_stale_michi_mpd_runtimes,
+        )
+
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+        base = self._make_stale_dir(tmp_path)
+        proc = self._spoof_mpd_process(tmp_path)
+        try:
+            monkeypatch.setattr(
+                "michi.infrastructure.audio_engines.mpd._mpd_process_for_conf",
+                lambda conf_path: None,  # no process references THIS conf
+            )
+            monkeypatch.setattr(
+                "michi.infrastructure.audio_engines.mpd._read_proc_uid",
+                lambda pid: os.getuid(),
+            )
+            monkeypatch.setattr(
+                "michi.infrastructure.audio_engines.mpd._pid_alive",
+                lambda pid: pid == proc.pid,
+            )
+            results = recover_stale_michi_mpd_runtimes()
+            # no process matches THIS dir's conf → artifact-only cleanup of
+            # the validated dir; the unrelated process is untouched
+            assert results[0]["action"] == "stale artifacts removed (no live process)"
+            assert proc.poll() is None  # system-like process SURVIVES
+        finally:
+            proc.kill()
+            proc.wait(timeout=5)
+
+    def test_cmdline_matcher_requires_michi_shape(self, tmp_path, monkeypatch):
+        """The /proc cmdline matcher only accepts the exact MPD no-daemon
+        shape referencing the conf (injected cmdlines)."""
+        from michi.infrastructure.audio_engines.mpd import (
+            _mpd_process_for_conf,
+        )
+
+        conf = tmp_path / "mpd.conf"
+        fake_pid = os.getpid()  # a REAL /proc entry (the test process)
+        monkeypatch.setattr(
+            "michi.infrastructure.audio_engines.mpd._read_proc_cmdline",
+            lambda pid: ["mpd", "--no-daemon", "--stderr", str(conf)]
+            if pid == fake_pid
+            else None,
+        )
+        assert _mpd_process_for_conf(str(conf)) == fake_pid
+        # different conf → no match
+        monkeypatch.setattr(
+            "michi.infrastructure.audio_engines.mpd._read_proc_cmdline",
+            lambda pid: ["mpd", "--no-daemon", "--stderr", "/etc/mpd.conf"]
+            if pid == fake_pid
+            else None,
+        )
+        assert _mpd_process_for_conf(str(conf)) is None
+        # no --no-daemon (daemonized/system MPD) → no match
+        monkeypatch.setattr(
+            "michi.infrastructure.audio_engines.mpd._read_proc_cmdline",
+            lambda pid: ["mpd", "--stderr", str(conf)]
+            if pid == fake_pid
+            else None,
+        )
+        assert _mpd_process_for_conf(str(conf)) is None

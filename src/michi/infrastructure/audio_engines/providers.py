@@ -9,7 +9,10 @@ Descriptors distinguish dependency availability (available) from
 adapter implementation truth (implemented).
 """
 
+import logging
 import os
+
+_logger = logging.getLogger(__name__)
 
 from michi.application.audio_engine_registry import AudioEngineProviderPort
 from michi.application.audio_engine_runtime_failure import (
@@ -330,9 +333,19 @@ class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
         encarnación del runtime owned (open/close/reopen). El callback se
         re-asocia DESPUÉS del open capturando ESA generación — la generación
         interna del port (dominio separado) nunca se compara con la del
-        provider."""
+        provider.
+
+        R1-09: before activating a NEW private runtime, conservatively
+        recover ABANDONED Michi-owned MPD runtimes from previous sessions
+        (never touches system/user MPD)."""
         if self._port is not None:
             return self._port
+        from michi.infrastructure.audio_engines.mpd import (
+            recover_stale_michi_mpd_runtimes,
+        )
+
+        for outcome in recover_stale_michi_mpd_runtimes():
+            _logger.info("mpd orphan recovery: %s", outcome)
         from michi.infrastructure.audio_engines.mpd import MPDAudioPort
 
         port = MPDAudioPort()
