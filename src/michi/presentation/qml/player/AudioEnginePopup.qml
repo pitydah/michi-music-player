@@ -9,6 +9,10 @@ import "../theme"
 // Simple, fast, no technical clutter. Full configuration lives in
 // Settings > Audio Engine. Never shows DAC/DSD/sample-rate/buffer/
 // pipeline information.
+//
+// M11.3-UI-R1: rows are REAL Buttons (focus + keyboard activation), the
+// popup is LIVE-BOUND to the parent projections (never an imperative
+// snapshot), and competing rows are disabled while a switch is in flight.
 Popup {
     id: root
 
@@ -39,6 +43,17 @@ Popup {
         tileSeed: 8
     }
 
+    // Focus enters the popup predictably: first selectable engine row.
+    onOpened: {
+        for (var i = 0; i < engineRows.count; i++) {
+            var item = engineRows.itemAt(i)
+            if (item && item.enabled) {
+                item.forceActiveFocus()
+                break
+            }
+        }
+    }
+
     contentItem: ColumnLayout {
         spacing: MichiSpacing.xs
 
@@ -62,13 +77,23 @@ Popup {
         }
 
         Repeater {
+            id: engineRows
             model: root.engines
-            delegate: RowLayout {
+            delegate: Button {
                 id: row
                 required property var modelData
+                required property int index
+                objectName: "enginePopupRow_" + row.modelData.id
                 Layout.fillWidth: true
                 Layout.preferredHeight: 38
-                spacing: MichiSpacing.md
+                focusPolicy: Qt.StrongFocus
+                hoverEnabled: true
+                // P2-05: while a switch is in flight NO row is a competing
+                // intent (the coordinator is the real protection; the UI
+                // avoids needless duplicate clicks / rejections).
+                enabled: row.modelData.canActivate
+                    && !row.isSwitching
+                    && root.switchingTo === ""
 
                 property bool isActive: row.modelData.id === root.activeEngineId
                 property bool isSelected: row.modelData.id === root.selectedEngineId
@@ -86,51 +111,63 @@ Popup {
                     return ""
                 }
 
-                Rectangle {
-                    Layout.preferredWidth: 12
-                    Layout.preferredHeight: 12
-                    radius: 6
-                    color: row.isActive
-                        ? MichiSemanticColors.auroraCyan
-                        : "transparent"
-                    border.width: row.isActive ? 0 : 1
-                    border.color: MichiPalette.textDisabled
-                    visible: row.modelData.canActivate || row.isActive
-                }
-                MichiText {
-                    text: row.modelData.displayName
-                    role: "primary"
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                    color: row.isActive
-                        ? MichiPalette.textPrimary
-                        : MichiPalette.textSecondary
-                    Accessible.role: Accessible.StaticText
-                    Accessible.name: row.modelData.displayName + " — " + row.statusLabel()
-                }
-                MichiText {
-                    text: row.statusLabel()
-                    role: "technical"
-                    technical: true
-                    color: row.isActive
-                        ? MichiSemanticColors.auroraCyan
-                        : MichiPalette.textMuted
+                onClicked: root.engineSwitchRequested(row.modelData.id)
+                // AbstractButton activates on Space only — add Return/Enter
+                // (verified: no double activation with the built-in Space).
+                Keys.onReturnPressed: row.clicked()
+                Keys.onEnterPressed: row.clicked()
+                // Up/Down navigation between engine rows (Tab also works).
+                KeyNavigation.up: index > 0 ? engineRows.itemAt(index - 1) : null
+                KeyNavigation.down: engineRows.itemAt(index + 1)
+
+                Accessible.name: row.modelData.displayName + " — " + row.statusLabel()
+                Accessible.description: row.modelData.canActivate
+                    ? qsTr("Select ") + row.modelData.displayName
+                    : qsTr("Not available on this system")
+
+                contentItem: RowLayout {
+                    spacing: MichiSpacing.md
+
+                    Rectangle {
+                        Layout.preferredWidth: 12
+                        Layout.preferredHeight: 12
+                        radius: 6
+                        color: row.isActive
+                            ? MichiPalette.auroraCyan
+                            : "transparent"
+                        border.width: row.isActive ? 0 : 1
+                        border.color: MichiPalette.textDisabled
+                        visible: row.modelData.canActivate || row.isActive
+                    }
+                    MichiText {
+                        text: row.modelData.displayName
+                        role: "primary"
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        color: row.isActive
+                            ? MichiPalette.textPrimary
+                            : MichiPalette.textSecondary
+                    }
+                    MichiText {
+                        objectName: "enginePopupRowStatus_" + row.modelData.id
+                        text: row.statusLabel()
+                        role: "technical"
+                        technical: true
+                        color: row.isActive
+                            ? MichiPalette.auroraCyan
+                            : MichiPalette.textMuted
+                    }
                 }
 
-                MouseArea {
-                    anchors.fill: parent
-                    enabled: row.modelData.canActivate && !row.isSwitching
-                    hoverEnabled: true
-                    onClicked: root.engineSwitchRequested(row.modelData.id)
-                    Accessible.role: Accessible.Button
-                    Accessible.name: qsTr("Select ") + row.modelData.displayName
-                    Accessible.onPressAction: root.engineSwitchRequested(
-                        row.modelData.id
-                    )
-                    cursorShape: Qt.PointingHandCursor
+                background: Rectangle {
+                    radius: MichiRadius.sm
+                    color: row.pressed
+                        ? MichiSemanticColors.surfacePressed
+                        : row.hovered ? MichiSemanticColors.surfaceHover
+                        : "transparent"
+                    border.width: row.visualFocus ? 1 : 0
+                    border.color: MichiSemanticColors.focusRing
                 }
-                Keys.onReturnPressed: root.engineSwitchRequested(row.modelData.id)
-                Keys.onEnterPressed: root.engineSwitchRequested(row.modelData.id)
             }
         }
     }

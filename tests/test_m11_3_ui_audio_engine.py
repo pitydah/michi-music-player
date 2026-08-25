@@ -68,6 +68,59 @@ class TestNowPlayingBar:
         assert "audioEngine.switch_engine" in shell
         assert "audioEngine.refresh_engines" in shell
 
+    def test_popup_live_bound_not_imperative(self):
+        """M11.3-UI-R1 (P1-03): the popup is permanently bound to the
+        parent projections — no imperative copies before opening."""
+        npb = read("player/NowPlayingBar.qml")
+        assert "enginePopup.engines =" not in npb
+        assert "enginePopup.selectedEngineId =" not in npb
+        assert "engines: root.audioEngines" in npb
+        assert "selectedEngineId: root.selectedEngineId" in npb
+        assert "activeEngineId: root.activeEngineId" in npb
+        assert "switchingTo: root.audioEngineSwitchingTo" in npb
+
+    def test_open_requests_controlled_refresh(self):
+        npb = read("player/NowPlayingBar.qml")
+        assert "audioEngineRefreshRequested()" in npb
+        assert "enginePopup.open()" in npb
+
+    def test_tooltip_uses_friendly_names_not_ids(self):
+        """M11.3-UI-R1 (P2-02): tooltip never shows canonical engine IDs."""
+        npb = read("player/NowPlayingBar.qml")
+        tooltip_fn = npb.split("function audioEngineTooltip()")[1].split(
+            "function formatTime"
+        )[0]
+        assert "audioEngineActiveName" in tooltip_fn
+        assert "audioEngineSelectedName" in tooltip_fn
+        # canonical IDs never appear in displayed text (they may appear in
+        # comparison conditions, never in the .arg() output)
+        assert ".arg(root.activeEngineId" not in tooltip_fn
+        assert ".arg(root.selectedEngineId" not in tooltip_fn
+        assert "qt_multimedia" not in tooltip_fn
+
+    def test_tooltip_fallback_wording(self):
+        npb = read("player/NowPlayingBar.qml")
+        tooltip_fn = npb.split("function audioEngineTooltip()")[1].split(
+            "function formatTime"
+        )[0]
+        assert "%1 in use · %2 preferred" in tooltip_fn
+
+    def test_appshell_surfaces_switch_failure_toast(self):
+        """M11.3-UI-R1 (P1-04): switch failures reach the existing
+        ToastHost through AppShell — no new notification machinery."""
+        shell = read("shell/AppShell.qml")
+        assert "Connections {" in shell
+        assert "target: audioEngine" in shell
+        assert "onSwitchFailed" in shell
+        assert "showToast(message" in shell
+        assert "toastHost.show(text, tone)" in shell
+        assert shell.count("ToastHost {") == 1  # reused, not duplicated
+
+    def test_appshell_binds_friendly_engine_names(self):
+        shell = read("shell/AppShell.qml")
+        assert "audioEngineActiveName: audioEngine.activeEngineName" in shell
+        assert "audioEngineSelectedName: audioEngine.selectedEngineName" in shell
+
 
 class TestSettingsAudioEngine:
     def test_settings_has_audio_engine_section(self):

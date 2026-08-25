@@ -91,7 +91,8 @@ class TestBridgeProjections:
         )
         assert bridge.hasFallback is True
         assert bridge.fallbackFrom == "mpd"
-        assert "MPD could not start" in bridge.statusSummary
+        # P2-03: runtime-general wording (failure may be at startup OR after)
+        assert "MPD encountered a problem" in bridge.statusSummary
         assert "Qt Multimedia" in bridge.statusSummary
 
     def test_lifecycle_labels(self):
@@ -125,6 +126,128 @@ class TestBridgeProjections:
         }
         assert "bitPerfect" not in caps
         assert "dsd" not in caps
+
+
+class TestLiveEngineModel:
+    """M11.3-UI-R1: dynamic overlays compose from CURRENT service state.
+
+    AVAILABILITY may be cached (explicit refresh only); RUNTIME STATE
+    (selected/active/switching) must update immediately without re-probe.
+    """
+
+    def _graph(self):
+        return _graph()
+
+    def test_overlays_follow_state_without_refresh(self):
+        """Section 10 mandatory test: state change → engines rows current,
+        provider probe count unchanged."""
+        service, registry, _, bridge, qt, gst, mpd = _graph()
+        bridge.refresh_engines()
+        probes_before = sum(p.probe_count for p in (qt, gst, mpd))
+        assert [e["selected"] for e in bridge.engines] == [True, False, False]
+
+        # Canonical state changes to GStreamer selected+active (no refresh!)
+        service.mark_ready(AudioEngineId.GSTREAMER)
+        service.restore_selected(AudioEngineId.GSTREAMER)
+
+        rows = {e["id"]: e for e in bridge.engines}
+        assert rows["gstreamer"]["selected"] is True
+        assert rows["gstreamer"]["active"] is True
+        assert rows["qt_multimedia"]["active"] is False
+        probes_after = sum(p.probe_count for p in (qt, gst, mpd))
+        assert probes_after == probes_before  # NO provider re-probe
+
+    def test_selected_overlay_live(self):
+        _, _, _, bridge, *_ = _graph()
+        service = bridge._service
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        service.restore_selected(AudioEngineId.MPD)
+        rows = {e["id"]: e for e in bridge.engines}
+        assert rows["mpd"]["selected"] is True
+        assert rows["qt_multimedia"]["selected"] is False
+
+    def test_active_overlay_live(self):
+        _, _, _, bridge, *_ = _graph()
+        service = bridge._service
+        service.mark_ready(AudioEngineId.GSTREAMER)
+        rows = {e["id"]: e for e in bridge.engines}
+        assert rows["gstreamer"]["active"] is True
+        assert rows["qt_multimedia"]["active"] is False
+
+    def test_switching_overlay_live(self):
+        _, _, _, bridge, *_ = _graph()
+        service = bridge._service
+        service.mark_initializing(AudioEngineId.MPD)
+        rows = {e["id"]: e for e in bridge.engines}
+        assert rows["mpd"]["switching"] is True
+        assert rows["qt_multimedia"]["switching"] is False
+
+    def test_engines_changed_fires_on_state_change(self):
+        """Notify contract: engines projection re-evaluates on state change."""
+        _, _, _, bridge, *_ = _graph()
+        service = bridge._service
+        notified = []
+        bridge.engines_changed.connect(lambda: notified.append(1))
+        service.mark_ready(AudioEngineId.GSTREAMER)
+        service.restore_selected(AudioEngineId.GSTREAMER)
+        assert len(notified) >= 2  # one per state notification
+
+    def test_facts_unchanged_by_state_change(self):
+        """Availability facts are NOT re-probed on state change; the cached
+        snapshot stays authoritative until an explicit refresh."""
+        _, registry, _, bridge, *_ = _graph()
+        mpd = registry.provider(AudioEngineId.MPD)
+        mpd._available = False
+        bridge.refresh_engines()
+        service = bridge._service
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        rows = {e["id"]: e for e in bridge.engines}
+        assert rows["mpd"]["available"] is False  # snapshot untouched
+        assert rows["mpd"]["canActivate"] is False
+
+
+class TestSwitchDiagnostics:
+    """P1-07: technical failure evidence never disappears."""
+
+    def test_last_switch_technical_error_records_rejection(self):
+        from michi.application.audio_engine_selection_coordinator import (
+            AudioEngineSwitchNotQuiescentError,
+        )
+
+        service, registry, coordinator, bridge, *_ = _graph()
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        bridge.switch_failed.connect(lambda *_: None)
+
+        def rejecting(target):
+            raise AudioEngineSwitchNotQuiescentError(
+                "engine switch requires quiescent playback"
+            )
+
+        coordinator.switch_to = rejecting  # type: ignore[method-assign]
+        bridge.switch_engine("gstreamer")
+        assert "quiescent playback" in bridge.lastSwitchTechnicalError
+
+    def test_last_switch_technical_error_invalid_id(self):
+        _, _, _, bridge, *_ = _graph()
+        bridge.switch_failed.connect(lambda *_: None)
+        bridge.switch_engine("not-an-engine")
+        assert "not-an-engine" in bridge.lastSwitchTechnicalError
+
+    def test_unexpected_exception_logged_and_surfaces_friendly(self, caplog):
+        service, registry, coordinator, bridge, *_ = _graph()
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        failures = []
+        bridge.switch_failed.connect(lambda eid, msg: failures.append((eid, msg)))
+
+        def exploding(target):
+            raise RuntimeError("boom in transport")
+
+        coordinator.switch_to = exploding  # type: ignore[method-assign]
+        with caplog.at_level("ERROR"):
+            bridge.switch_engine("gstreamer")
+        assert failures == [("gstreamer", "Michi could not change the audio engine.")]
+        assert "boom in transport" in caplog.text
+        assert "boom in transport" in bridge.lastSwitchTechnicalError
 
 
 class TestBridgeSwitch:

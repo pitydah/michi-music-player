@@ -6,6 +6,14 @@ import "../primitives"
 import "../theme"
 
 Item {
+    // M11.3-UI-R1 (P2-04): controlled availability refresh when the
+    // settings surface becomes visible — once per opening, never polling,
+    // never a repeating timer. StackLayout toggles `visible` per route.
+    onVisibleChanged: {
+        if (visible && typeof audioEngine !== "undefined")
+            audioEngine.refresh_engines()
+    }
+
     Flickable {
         anchors.fill: parent
         contentHeight: contentColumn.implicitHeight + MichiTheme.space32
@@ -168,6 +176,7 @@ Item {
                 fallbackFrom: audioEngine.fallbackFrom
                 errorMessage: audioEngine.errorMessage
                 statusSummary: audioEngine.statusSummary
+                switchingTo: audioEngine.switchingTo
                 onEngineSwitchRequested: (engineId) => audioEngine.switch_engine(engineId)
             }
 

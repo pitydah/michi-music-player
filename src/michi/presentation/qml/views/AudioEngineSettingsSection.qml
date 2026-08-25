@@ -9,6 +9,17 @@ import "../theme"
 // configuration surface (M11.3-UI). Explains what an audio engine is,
 // shows Preferred vs In use truthfully, exposes engine cards with plain
 // language, and discloses technical details progressively. Engine != DAC.
+//
+// M11.3-UI-R1 corrective seal:
+//  - P1-01: advanced disclosure `expanded` lives on the OUTER section
+//    (advancedSection) — single unambiguous owner, no dynamic properties.
+//  - P1-06: every surface has content-derived implicit sizing (cards,
+//    fallback banner) — no collapsed geometry.
+//  - P2-01: raw technical error is NOT in the normal fallback surface;
+//    it appears only under Advanced engine details.
+//  - P2-05: engine cards are disabled while a switch is in flight.
+//  - Keyboard: cards and the advanced disclosure are real Buttons with
+//    visible focus, Accessible names and Enter/Space activation.
 Item {
     id: root
 
@@ -19,6 +30,7 @@ Item {
     property string fallbackFrom: ""
     property string errorMessage: ""
     property string statusSummary: ""
+    property string switchingTo: ""
 
     signal engineSwitchRequested(string engineId)
 
@@ -69,6 +81,7 @@ Item {
                         color: MichiTheme.textMuted
                     }
                     Text {
+                        objectName: "audioEnginePreferredValue"
                         text: root._nameOf(root.selectedEngineId)
                         font.pixelSize: MichiTheme.fontSizeBody
                         font.weight: MichiTheme.fontWeightBold
@@ -83,6 +96,7 @@ Item {
                         color: MichiTheme.textMuted
                     }
                     Text {
+                        objectName: "audioEngineActiveValue"
                         text: root.activeEngineId === ""
                             ? qsTr("None")
                             : root._nameOf(root.activeEngineId)
@@ -107,20 +121,29 @@ Item {
             }
 
             // ── Fallback explanation (when preferred != active) ────────
+            // P2-01: HUMAN COPY ONLY — raw technical error is never shown
+            // here; it lives under Advanced engine details.
             Rectangle {
+                id: fallbackBanner
+                objectName: "audioEngineFallbackBanner"
                 visible: root.fallbackFrom !== ""
                     && root.selectedEngineId !== root.activeEngineId
                 Layout.fillWidth: true
                 radius: MichiRadius.md
-                color: MichiSemanticColors.surfaceSoft
+                color: MichiSemanticColors.contentSurface
                 border.width: 1
                 border.color: MichiSemanticColors.borderSubtle
                 Layout.topMargin: MichiTheme.space4
+                // P1-06: content-derived height (never collapsed).
+                implicitHeight: fallbackContent.implicitHeight
+                    + MichiTheme.space12 + MichiTheme.space12
 
                 ColumnLayout {
+                    id: fallbackContent
                     anchors.fill: parent
                     anchors.margins: MichiTheme.space12
                     spacing: MichiTheme.space4
+
                     Text {
                         text: root.statusSummary
                         font.pixelSize: MichiTheme.fontSizeBody
@@ -129,40 +152,62 @@ Item {
                         Layout.fillWidth: true
                         Accessible.role: Accessible.StaticText
                     }
-                    Text {
-                        visible: root.errorMessage !== ""
-                        text: root.errorMessage
-                        font.pixelSize: MichiTheme.fontSizeBody
-                        color: MichiTheme.textSecondary
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                    }
                 }
             }
 
-            // ── Engine cards (plain language, truthful) ────────────────
+            // ── Engine cards (plain language, truthful, keyboard-able) ─
             Repeater {
+                id: engineCards
                 model: root.engines
-                delegate: Rectangle {
+                delegate: Button {
                     id: card
                     required property var modelData
+                    required property int index
+                    objectName: "engineSettingsCard_" + card.modelData.id
                     Layout.fillWidth: true
                     Layout.topMargin: MichiTheme.space4
-                    radius: MichiRadius.md
-                    color: card.modelData.selected
-                        ? MichiSemanticColors.surfaceSoft
-                        : MichiSemanticColors.surfaceSoft
-                    border.width: card.modelData.selected ? 1 : 0
-                    border.color: card.modelData.selected
-                        ? MichiSemanticColors.borderStrong
-                        : "transparent"
+                    focusPolicy: Qt.StrongFocus
+                    hoverEnabled: true
+                    // P2-05: no competing switch intents while switching.
+                    enabled: card.modelData.canActivate
+                        && root.switchingTo === ""
+                    padding: 0
+                    leftPadding: MichiTheme.space12
+                    rightPadding: MichiTheme.space12
+                    topPadding: MichiTheme.space12
+                    bottomPadding: MichiTheme.space12
 
                     property bool isActive: card.modelData.id === root.activeEngineId
                     property bool isSelected: card.modelData.id === root.selectedEngineId
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.space12
+                    function statusText() {
+                        if (card.isActive && card.isSelected)
+                            return qsTr("Preferred · In use")
+                        if (card.isActive)
+                            return qsTr("In use")
+                        if (card.isSelected)
+                            return qsTr("Preferred")
+                        if (!card.modelData.canActivate)
+                            return qsTr("Not available")
+                        return ""
+                    }
+
+                    onClicked: root.engineSwitchRequested(card.modelData.id)
+                    Keys.onReturnPressed: card.clicked()
+                    Keys.onEnterPressed: card.clicked()
+                    KeyNavigation.up: index > 0 ? engineCards.itemAt(index - 1) : null
+                    KeyNavigation.down: engineCards.itemAt(index + 1)
+
+                    Accessible.name: card.modelData.displayName + " — " + card.statusText()
+                    Accessible.description: card.modelData.canActivate
+                        ? qsTr("Select ") + card.modelData.displayName
+                        : qsTr("Not available on this system")
+
+                    // P1-06: Button derives implicitHeight from the content
+                    // column + padding — real positive geometry, wrapping
+                    // descriptions, translation-safe.
+                    contentItem: ColumnLayout {
+                        id: cardContent
                         spacing: MichiTheme.space4
 
                         RowLayout {
@@ -181,11 +226,12 @@ Item {
                             }
                             Item { Layout.fillWidth: true }
                             Text {
+                                objectName: "engineSettingsCardStatus_" + card.modelData.id
                                 text: card.statusText()
                                 font.pixelSize: MichiTheme.fontSizeBody
                                 font.weight: MichiTheme.fontWeightBold
                                 color: card.isActive
-                                    ? MichiSemanticColors.auroraCyan
+                                    ? MichiPalette.auroraCyan
                                     : MichiPalette.textSecondary
                                 Accessible.role: Accessible.StaticText
                             }
@@ -208,67 +254,88 @@ Item {
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
+                    }
 
-                        function statusText() {
-                            if (card.isActive && card.isSelected)
-                                return qsTr("Preferred · In use")
-                            if (card.isActive)
-                                return qsTr("In use")
-                            if (card.isSelected)
-                                return qsTr("Preferred")
-                            if (!card.modelData.canActivate)
-                                return qsTr("Not available")
-                            return ""
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: card.modelData.canActivate
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.engineSwitchRequested(card.modelData.id)
-                            Accessible.role: Accessible.Button
-                            Accessible.name: qsTr("Select ") + card.modelData.displayName
-                            Accessible.onPressAction: root.engineSwitchRequested(
-                                card.modelData.id
-                            )
-                        }
+                    background: Rectangle {
+                        radius: MichiRadius.md
+                        color: card.pressed
+                            ? MichiSemanticColors.surfacePressed
+                            : card.hovered
+                                ? MichiSemanticColors.surfaceHover
+                                : card.isSelected
+                                    ? MichiSemanticColors.contentSurface
+                                    : "transparent"
+                        border.width: card.visualFocus ? 1 : (card.isSelected ? 1 : 0)
+                        border.color: card.visualFocus
+                            ? MichiSemanticColors.focusRing
+                            : card.isSelected
+                                ? MichiSemanticColors.borderStrong
+                                : "transparent"
                     }
                 }
             }
 
             // ── Advanced engine details (progressive disclosure) ───────
+            // P1-01: `expanded` belongs to THIS section (advancedSection);
+            // the inner content only READS it. The disclosure header is a
+            // real Button: mouse AND keyboard (Enter/Space) activation.
             ColumnLayout {
+                id: advancedSection
                 Layout.topMargin: MichiTheme.space8
                 spacing: MichiTheme.space8
                 property bool expanded: false
 
-                Rectangle {
+                Button {
+                    objectName: "engineAdvancedToggle"
                     Layout.fillWidth: true
                     implicitHeight: 34
-                    radius: MichiRadius.md
-                    color: "transparent"
+                    focusPolicy: Qt.StrongFocus
+                    hoverEnabled: true
+                    padding: 0
+                    onClicked: advancedSection.expanded = !advancedSection.expanded
+                    Keys.onReturnPressed: advancedSection.expanded = !advancedSection.expanded
+                    Keys.onEnterPressed: advancedSection.expanded = !advancedSection.expanded
+                    Accessible.name: advancedSection.expanded
+                        ? qsTr("Hide advanced engine details")
+                        : qsTr("Advanced engine details")
 
-                    Text {
-                        text: advanced.expanded ? qsTr("Hide advanced engine details")
+                    contentItem: Text {
+                        text: advancedSection.expanded
+                            ? qsTr("Hide advanced engine details")
                             : qsTr("Advanced engine details")
                         anchors.centerIn: parent
                         font.pixelSize: MichiTheme.fontSizeBody
                         font.weight: MichiTheme.fontWeightBold
                         color: MichiPalette.textSecondary
-                        Accessible.role: Accessible.Button
                     }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: advanced.expanded = !advanced.expanded
+
+                    background: Rectangle {
+                        radius: MichiRadius.md
+                        color: parent.hovered
+                            ? MichiSemanticColors.surfaceHover : "transparent"
+                        border.width: parent.visualFocus ? 1 : 0
+                        border.color: MichiSemanticColors.focusRing
                     }
                 }
 
                 ColumnLayout {
-                    id: advanced
-                    visible: advanced.expanded
+                    id: advancedContent
+                    objectName: "engineAdvancedContent"
+                    visible: advancedSection.expanded
                     spacing: MichiTheme.space4
                     Layout.fillWidth: true
+
+                    // P2-01: the ONLY surface where raw technical failure
+                    // text appears (canonical service error_message).
+                    Text {
+                        visible: root.errorMessage !== ""
+                        text: qsTr("Technical failure reason: %1")
+                            .arg(root.errorMessage)
+                        font.pixelSize: MichiTheme.fontSizeBody
+                        color: MichiPalette.textSecondary
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
 
                     Repeater {
                         model: root.engines

@@ -30,6 +30,8 @@ Item {
     property var audioEngines: []
     property string selectedEngineId: ""
     property string activeEngineId: ""
+    property string audioEngineActiveName: ""
+    property string audioEngineSelectedName: ""
     property string audioEngineLifecycle: ""
     property string audioEngineSwitchingTo: ""
     property string audioEngineFallbackFrom: ""
@@ -586,6 +588,8 @@ Item {
 
             // M11.3-UI: real interactive engine quick-selector.
             // Quick selection only — no configuration, no DAC, no details.
+            // The popup stays LIVE-BOUND to the projections below: engine
+            // state is never copied imperatively, so it updates while open.
             MichiIconButton {
                 objectName: "audioEngineButton"
                 Layout.row: 1
@@ -597,16 +601,11 @@ Item {
                 checkable: true
                 checked: enginePopup.opened
                 onClicked: {
-                    enginePopup.engines = root.audioEngines
-                    enginePopup.selectedEngineId = root.selectedEngineId
-                    enginePopup.activeEngineId = root.activeEngineId
-                    enginePopup.switchingTo = root.audioEngineSwitchingTo
-                    enginePopup.fallbackFrom = root.audioEngineFallbackFrom
-                    enginePopup.hasFallback = root.audioEngineFallbackFrom !== ""
-                        && root.selectedEngineId !== root.activeEngineId
-                    enginePopup.statusSummary = root.audioEngineStatusSummary
-                    enginePopup.open()
+                    // Controlled explicit availability refresh, then open.
+                    // The popup re-renders live from the refreshed model
+                    // (no stale snapshot: rows stay bound to root.*).
                     root.audioEngineRefreshRequested()
+                    enginePopup.open()
                 }
                 Accessible.name: root.audioEngineTooltip()
             }
@@ -615,6 +614,17 @@ Item {
                 id: enginePopup
                 y: -height - MichiSpacing.md
                 x: 0
+                // LIVE BINDINGS (M11.3-UI-R1): no imperative copies — the
+                // popup always mirrors the current bridge projections,
+                // including while it is open.
+                engines: root.audioEngines
+                selectedEngineId: root.selectedEngineId
+                activeEngineId: root.activeEngineId
+                switchingTo: root.audioEngineSwitchingTo
+                fallbackFrom: root.audioEngineFallbackFrom
+                hasFallback: root.audioEngineFallbackFrom !== ""
+                    && root.selectedEngineId !== root.activeEngineId
+                statusSummary: root.audioEngineStatusSummary
                 onEngineSwitchRequested: (engineId) =>
                     root.audioEngineSwitchRequested(engineId)
             }
@@ -685,12 +695,14 @@ Item {
     }
 
     function audioEngineTooltip() {
-        if (root.activeEngineId === "")
+        // Friendly names only — never canonical IDs, never diagnostics.
+        if (root.audioEngineActiveName === "")
             return qsTr("Audio engine")
-        if (root.audioEngineFallbackFrom !== "" && root.selectedEngineId !== root.activeEngineId)
-            return qsTr("Audio engine: %1 in use · %2 preferred")
-                .arg(root.activeEngineId, root.selectedEngineId)
-        return qsTr("Audio engine: %1").arg(root.activeEngineId)
+        if (root.audioEngineFallbackFrom !== ""
+                && root.selectedEngineId !== root.activeEngineId)
+            return qsTr("%1 in use · %2 preferred")
+                .arg(root.audioEngineActiveName, root.audioEngineSelectedName)
+        return qsTr("Audio engine: %1").arg(root.audioEngineActiveName)
     }
 
     function formatTime(seconds) {

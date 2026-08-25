@@ -111,6 +111,8 @@ Item {
         audioEngines: audioEngine.engines
         selectedEngineId: audioEngine.selectedEngineId
         activeEngineId: audioEngine.activeEngineId
+        audioEngineActiveName: audioEngine.activeEngineName
+        audioEngineSelectedName: audioEngine.selectedEngineName
         audioEngineLifecycle: audioEngine.lifecycle
         audioEngineSwitchingTo: audioEngine.switchingTo
         audioEngineFallbackFrom: audioEngine.fallbackFrom
@@ -184,6 +186,17 @@ Item {
     function showToastWithAction(text, action, handler, tone) {
         root._pendingToastAction = handler
         toastHost.showWithAction(text, action, tone)
+    }
+
+    // M11.3-UI-R1 (P1-04): switch failures MUST reach the existing user
+    // feedback surface (ToastHost). The popup stays usable after a failure;
+    // the toast explains the problem. Success needs no toast — the visible
+    // engine state (Active/Preferred/In use) already confirms it.
+    Connections {
+        target: audioEngine
+        function onSwitchFailed(engineId, message) {
+            root.showToast(message, "error")
+        }
     }
 
     function openSearch() { searchOpened = true }

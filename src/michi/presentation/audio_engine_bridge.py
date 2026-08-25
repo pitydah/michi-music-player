@@ -14,6 +14,8 @@ polling, no timers: state flows through AudioEngineService notifications
 and explicit refresh_engines() calls.
 """
 
+import logging
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.audio_engine_registry import AudioEngineRegistry
@@ -26,6 +28,8 @@ from michi.application.audio_engine_selection_coordinator import (
 )
 from michi.application.audio_engine_service import AudioEngineService
 from michi.domain.audio_engine import AudioEngineId, AudioEngineLifecycle
+
+logger = logging.getLogger(__name__)
 
 
 def _lifecycle_label(lifecycle: AudioEngineLifecycle) -> str:
@@ -81,6 +85,7 @@ class AudioEngineBridge(QObject):
     engines_changed = Signal()
     switch_succeeded = Signal(str)
     switch_failed = Signal(str, str)  # (engineId, friendlyMessage)
+    technical_error_changed = Signal()
 
     def __init__(
         self,
@@ -95,8 +100,15 @@ class AudioEngineBridge(QObject):
         self._coordinator = selection_coordinator
         self._disposed = False
         # Controlled availability snapshot — probed on demand, never on
-        # every QML property evaluation.
-        self._engines: list[dict] = []
+        # every QML property evaluation. Contains DESCRIPTOR FACTS ONLY
+        # (no selected/active/switching — those are composed live from
+        # AudioEngineService state so they can never go stale).
+        self._engine_facts: list[dict] = []
+        # Presentation-local transient diagnostic (never runtime authority,
+        # never persisted): the raw exception text of the last switch
+        # failure. Canonical technical truth lives in
+        # AudioEngineService.state.error_message for destructive failures.
+        self._last_switch_technical_error = ""
         self._service.subscribe_changed(self._on_state_changed)
         self.refresh_engines()
 
@@ -114,6 +126,11 @@ class AudioEngineBridge(QObject):
     def _on_state_changed(self) -> None:
         if not self._disposed:
             self.state_changed.emit()
+            # The engines projection composes selected/active/switching from
+            # CURRENT service state — a state change may alter the composed
+            # rows, so the engines notification must fire too (live model,
+            # never stale).
+            self.engines_changed.emit()
 
     # ------------------------------------------------------------------
     # Engine snapshot (controlled refresh — not per-binding probing)
@@ -121,16 +138,16 @@ class AudioEngineBridge(QObject):
 
     @Slot()
     def refresh_engines(self) -> None:
-        """Probe all registered engines (side-effect free) and cache the
-        presentation snapshot. May be called on popup open / settings
-        refresh — never on every binding evaluation."""
-        state = self._service.state
+        """Probe all registered engines (side-effect free) and cache their
+        DESCRIPTOR FACTS ONLY. May be called on popup open / settings
+        refresh — never on every binding evaluation. Runtime overlays
+        (selected/active/switching) are composed live in engines."""
         rows = []
         for descriptor in self._registry.descriptors():
             engine_id = descriptor.engine_id
             rows.append(
                 {
-                    "id": engine_id.value,
+                    "id": engine_id,
                     "displayName": _engine_display_name(engine_id),
                     "shortIdentity": _engine_short_identity(engine_id),
                     "description": _engine_description(engine_id),
@@ -138,9 +155,6 @@ class AudioEngineBridge(QObject):
                     "implemented": descriptor.implemented,
                     "canActivate": descriptor.can_activate,
                     "activationBlocker": descriptor.activation_blocker,
-                    "selected": engine_id == state.selected_engine_id,
-                    "active": engine_id == state.active_engine_id,
-                    "switching": engine_id == state.switching_to,
                     "capabilities": {
                         "localFilePlayback": descriptor.capabilities.local_file_playback,
                         "seek": descriptor.capabilities.seek,
@@ -150,7 +164,7 @@ class AudioEngineBridge(QObject):
                     },
                 }
             )
-        self._engines = rows
+        self._engine_facts = rows
         if not self._disposed:
             self.engines_changed.emit()
 
@@ -197,16 +211,34 @@ class AudioEngineBridge(QObject):
     def _get_error_message(self) -> str:
         return self._service.state.error_message or ""
 
+    def _get_last_switch_technical_error(self) -> str:
+        return self._last_switch_technical_error
+
     def _get_engines(self) -> list[dict]:
-        return list(self._engines)
+        """Live engine rows: cached descriptor facts + CURRENT service state
+        overlays (selected/active/switching). No provider re-probe."""
+        state = self._service.state
+        rows = []
+        for facts in self._engine_facts:
+            engine_id = facts["id"]
+            row = dict(facts)
+            row["id"] = engine_id.value
+            row["selected"] = engine_id == state.selected_engine_id
+            row["active"] = engine_id == state.active_engine_id
+            row["switching"] = engine_id == state.switching_to
+            rows.append(row)
+        return rows
 
     def _get_status_summary(self) -> str:
         """Friendly one-line summary (derived, never persisted)."""
         st = self._service.state
         if st.fallback_from is not None and st.active_engine_id is not None:
+            # Runtime-general wording: convergence may follow a failure at
+            # startup OR a problem after startup. Technical detail lives in
+            # state.error_message (Advanced disclosure only).
             return (
                 f"Michi is temporarily using {_engine_display_name(st.active_engine_id)} "
-                f"because {_engine_display_name(st.fallback_from)} could not start."
+                f"because {_engine_display_name(st.fallback_from)} encountered a problem."
             )
         if (
             st.lifecycle is AudioEngineLifecycle.READY
@@ -229,35 +261,54 @@ class AudioEngineBridge(QObject):
         mutates state, never touches providers/router."""
         target = _decode_engine_id(engine_id)
         if target is None:
+            self._last_switch_technical_error = f"unknown engine id: {engine_id!r}"
+            logger.warning(
+                "audio engine switch rejected: %s", self._last_switch_technical_error
+            )
             self.switch_failed.emit(
                 engine_id, "Michi could not change the audio engine."
             )
             return
         try:
             self._coordinator.switch_to(target)
-        except AudioEngineSwitchNotQuiescentError:
+        except AudioEngineSwitchNotQuiescentError as exc:
+            self._remember_technical(exc)
             self.switch_failed.emit(
                 engine_id, "Stop playback before changing the audio engine."
             )
-        except AudioEngineSwitchUnavailableError:
+        except AudioEngineSwitchUnavailableError as exc:
+            self._remember_technical(exc)
             self.switch_failed.emit(
                 engine_id, "This audio engine is not available on this system."
             )
-        except AudioEngineSwitchInProgressError:
+        except AudioEngineSwitchInProgressError as exc:
+            self._remember_technical(exc)
             self.switch_failed.emit(
                 engine_id, "Michi is already changing the audio engine."
             )
-        except AudioEngineSwitchError:
+        except AudioEngineSwitchError as exc:
+            self._remember_technical(exc)
             self.switch_failed.emit(
                 engine_id, "Michi could not change the audio engine."
             )
-        except Exception:  # pragma: no cover - defensive boundary
+        except Exception as exc:  # defensive boundary — never silent
+            self._remember_technical(exc)
+            logger.exception("unexpected audio engine switch failure")
             self.switch_failed.emit(
                 engine_id, "Michi could not change the audio engine."
             )
         else:
             self.refresh_engines()
             self.switch_succeeded.emit(engine_id)
+
+    def _remember_technical(self, exc: Exception) -> None:
+        """Presentation-local transient diagnostic evidence (never runtime
+        authority, never persisted). Canonical technical truth for
+        destructive failures remains AudioEngineService.state.error_message."""
+        self._last_switch_technical_error = str(exc)
+        if not self._disposed:
+            self.technical_error_changed.emit()
+        logger.info("audio engine switch failed: %s", exc)
 
     selectedEngineId = Property(str, _get_selected_engine_id, notify=state_changed)
     activeEngineId = Property(str, _get_active_engine_id, notify=state_changed)
@@ -269,6 +320,9 @@ class AudioEngineBridge(QObject):
     fallbackFrom = Property(str, _get_fallback_from, notify=state_changed)
     hasFallback = Property(bool, _get_has_fallback, notify=state_changed)
     errorMessage = Property(str, _get_error_message, notify=state_changed)
+    lastSwitchTechnicalError = Property(
+        str, _get_last_switch_technical_error, notify=technical_error_changed
+    )
     engines = Property(list, _get_engines, notify=engines_changed)
     statusSummary = Property(str, _get_status_summary, notify=state_changed)
 
