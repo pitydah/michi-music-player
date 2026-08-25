@@ -175,10 +175,24 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert 'objectName: "qualityBadge"' in now_playing
     assert now_playing.count('objectName: "outputDeviceButton"') == 1
     assert 'accessibleName: qsTr("Output selection unavailable")' in now_playing
-    assert now_playing.count('objectName: "audioEngineIndicator"') == 1
-    assert 'Accessible.name: qsTr("Audio engine selection planned")' in now_playing
-    assert 'objectName: "audioEngineButton"' not in now_playing
+    # M11.3-UI: the placeholder indicator is replaced by a real interactive
+    # quick-selector button. The popup is the quick surface; no configuration
+    # controls (DAC/DSD/sample-rate/buffers) live here.
+    assert now_playing.count('objectName: "audioEngineButton"') == 1
+    assert 'objectName: "audioEngineIndicator"' not in now_playing
+    assert "AudioEnginePopup" in now_playing
     assert 'objectName: "outputStatusButton"' not in now_playing
+
+
+def test_audio_engine_quick_selector_bound_in_shell() -> None:
+    """M11.3-UI: the NowPlayingBar quick selector is wired in AppShell."""
+    now_playing = _text("player/NowPlayingBar.qml")
+    app_shell = _text("shell/AppShell.qml")
+    assert now_playing.count('objectName: "audioEngineButton"') == 1
+    assert 'objectName: "audioEngineIndicator"' not in now_playing
+    assert "AudioEnginePopup" in now_playing
+    assert "onAudioEngineSwitchRequested" in app_shell
+    assert "audioEngine.switch_engine" in app_shell
 
 
 def test_search_and_playback_errors_are_actionable_surfaces() -> None:

@@ -26,6 +26,14 @@ Item {
     property bool shuffleEnabled: false
     property string repeatMode: "NONE"
     property bool showRemainingTime: false
+    // M11.3-UI: quick engine selection projections (bound from AppShell).
+    property var audioEngines: []
+    property string selectedEngineId: ""
+    property string activeEngineId: ""
+    property string audioEngineLifecycle: ""
+    property string audioEngineSwitchingTo: ""
+    property string audioEngineFallbackFrom: ""
+    property string audioEngineStatusSummary: ""
 
     readonly property bool hasTrack: trackTitle.length > 0
     readonly property bool compact: width < 1320
@@ -44,6 +52,8 @@ Item {
     signal queueRequested()
     signal settingsRequested()
     signal nowPlayingRequested()
+    signal audioEngineSwitchRequested(string engineId)
+    signal audioEngineRefreshRequested()
 
     implicitWidth: 800
     implicitHeight: 154
@@ -574,40 +584,39 @@ Item {
                 opacity: 0.62
             }
 
-            Item {
-                id: audioEngineIndicator
-                objectName: "audioEngineIndicator"
+            // M11.3-UI: real interactive engine quick-selector.
+            // Quick selection only — no configuration, no DAC, no details.
+            MichiIconButton {
+                objectName: "audioEngineButton"
                 Layout.row: 1
                 Layout.column: 0
                 Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
-                opacity: 0.62
-                Accessible.role: Accessible.StaticText
-                Accessible.name: qsTr("Audio engine selection planned")
+                iconName: "audio-engine"
+                accessibleName: root.audioEngineTooltip()
+                checkable: true
+                checked: enginePopup.opened
+                onClicked: {
+                    enginePopup.engines = root.audioEngines
+                    enginePopup.selectedEngineId = root.selectedEngineId
+                    enginePopup.activeEngineId = root.activeEngineId
+                    enginePopup.switchingTo = root.audioEngineSwitchingTo
+                    enginePopup.fallbackFrom = root.audioEngineFallbackFrom
+                    enginePopup.hasFallback = root.audioEngineFallbackFrom !== ""
+                        && root.selectedEngineId !== root.activeEngineId
+                    enginePopup.statusSummary = root.audioEngineStatusSummary
+                    enginePopup.open()
+                    root.audioEngineRefreshRequested()
+                }
+                Accessible.name: root.audioEngineTooltip()
+            }
 
-                Rectangle {
-                    anchors.fill: parent
-                    radius: MichiRadius.md
-                    color: engineHover.hovered
-                        ? MichiSemanticColors.surfaceHover : "transparent"
-                    border.width: 1
-                    border.color: engineHover.hovered
-                        ? MichiSemanticColors.borderStrong
-                        : MichiSemanticColors.borderSubtle
-                }
-                MichiIcon {
-                    anchors.centerIn: parent
-                    width: MichiMetrics.iconMedium
-                    height: width
-                    name: "audio-engine"
-                    iconColor: engineHover.hovered
-                        ? MichiPalette.textSecondary : MichiPalette.textDisabled
-                }
-                HoverHandler { id: engineHover; cursorShape: Qt.ArrowCursor }
-                MichiTooltip {
-                    visible: engineHover.hovered
-                    text: "Audio engine selection · planned integration"
-                }
+            AudioEnginePopup {
+                id: enginePopup
+                y: -height - MichiSpacing.md
+                x: 0
+                onEngineSwitchRequested: (engineId) =>
+                    root.audioEngineSwitchRequested(engineId)
             }
 
             Rectangle {
@@ -673,6 +682,15 @@ Item {
                 Layout.fillHeight: true
             }
         }
+    }
+
+    function audioEngineTooltip() {
+        if (root.activeEngineId === "")
+            return qsTr("Audio engine")
+        if (root.audioEngineFallbackFrom !== "" && root.selectedEngineId !== root.activeEngineId)
+            return qsTr("Audio engine: %1 in use · %2 preferred")
+                .arg(root.activeEngineId, root.selectedEngineId)
+        return qsTr("Audio engine: %1").arg(root.activeEngineId)
     }
 
     function formatTime(seconds) {

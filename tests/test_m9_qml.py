@@ -181,7 +181,7 @@ def test_now_playing_bar_preserves_landmarks_in_responsive_layout(qapp):
         "volumeSlider",
         "qualityBadge",
         "outputDeviceButton",
-        "audioEngineIndicator",
+        "audioEngineButton",
     ):
         item = root.findChild(QObject, object_name)
         assert item is not None, object_name

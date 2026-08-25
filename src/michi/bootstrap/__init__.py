@@ -91,6 +91,7 @@ from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+from michi.presentation.audio_engine_bridge import AudioEngineBridge
 from michi.presentation.enrichment_bridge import EnrichmentBridge
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
@@ -506,6 +507,7 @@ class ApplicationContainer:
         self._playback_session: PlaybackSessionService | None = None
         self._history_coordinator: PlaybackHistoryCoordinator | None = None
         self._psb: PlaybackSessionBridge | None = None
+        self._aeb: AudioEngineBridge | None = None
         self._queue: QueueService | None = None
         self._library: LibraryService | None = None
         self._library_prefs: LibraryPreferencesCoordinator | None = None
@@ -651,6 +653,14 @@ class ApplicationContainer:
         pb = PlaybackBridge(playback, library)
         qb = QueueBridge(queue, library)
         psb = PlaybackSessionBridge(graph.playback_session)
+        # M11.3-UI: ONE production AudioEngineBridge over the SAME
+        # AudioEngineService / AudioEngineRegistry / SelectionCoordinator
+        # used by the runtime — no duplicate engine graph.
+        aeb = AudioEngineBridge(
+            engine_service=graph.audio_engine_service,
+            registry=graph.audio_engine_registry,
+            selection_coordinator=self._engine_selection_coordinator,
+        )
         lb = graph.bridge
         # M8-R1F: application-level coordination for the OPEN PLAYLIST
         # product intent (validate → recent → navigate). Not a state
@@ -678,6 +688,7 @@ class ApplicationContainer:
         ctx.setContextProperty("navigation", nb)
         ctx.setContextProperty("playlists", plb)
         ctx.setContextProperty("settingsBridge", sb)
+        ctx.setContextProperty("audioEngine", aeb)
         ctx.setContextProperty("enrichment", self._eb)
 
         # M6.9 policy wiring (composition root): SettingsBridge stays
@@ -696,6 +707,7 @@ class ApplicationContainer:
         self._playback_session = graph.playback_session
         self._history_coordinator = graph.history_coordinator
         self._psb = psb
+        self._aeb = aeb
         self._queue = queue
         self._library = library
         self._playlist_service = playlist_service
@@ -796,6 +808,7 @@ class ApplicationContainer:
             self._pb,
             self._qb,
             self._psb,
+            self._aeb,
             self._lb,
             self._plb,
             self._nb,

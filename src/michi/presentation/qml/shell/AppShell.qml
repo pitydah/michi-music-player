@@ -108,6 +108,13 @@ Item {
         hasNext: playbackSession.hasNext
         shuffleEnabled: playbackSession.shuffleEnabled
         repeatMode: playbackSession.repeatMode
+        audioEngines: audioEngine.engines
+        selectedEngineId: audioEngine.selectedEngineId
+        activeEngineId: audioEngine.activeEngineId
+        audioEngineLifecycle: audioEngine.lifecycle
+        audioEngineSwitchingTo: audioEngine.switchingTo
+        audioEngineFallbackFrom: audioEngine.fallbackFrom
+        audioEngineStatusSummary: audioEngine.statusSummary
         onPlayPauseRequested: playback.status === "playing" ? playback.pause() : playback.play()
         onPreviousRequested: playbackSession.previous_track()
         onNextRequested: playbackSession.next_track()
@@ -119,6 +126,8 @@ Item {
         onQueueRequested: root.navigationRequested("queue")
         onSettingsRequested: root.navigationRequested("settings")
         onNowPlayingRequested: root.navigationRequested("now_playing")
+        onAudioEngineSwitchRequested: (engineId) => audioEngine.switch_engine(engineId)
+        onAudioEngineRefreshRequested: audioEngine.refresh_engines()
     }
 
     Loader {

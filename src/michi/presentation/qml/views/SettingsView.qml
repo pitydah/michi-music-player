@@ -157,6 +157,20 @@ Item {
                 }
             }
 
+            // ── Audio Engine (M11.3-UI) ────────────────────
+            AudioEngineSettingsSection {
+                objectName: "audioEngineSettingsSection"
+                Layout.fillWidth: true
+                engines: audioEngine.engines
+                selectedEngineId: audioEngine.selectedEngineId
+                activeEngineId: audioEngine.activeEngineId
+                lifecycleLabel: audioEngine.lifecycleLabel
+                fallbackFrom: audioEngine.fallbackFrom
+                errorMessage: audioEngine.errorMessage
+                statusSummary: audioEngine.statusSummary
+                onEngineSwitchRequested: (engineId) => audioEngine.switch_engine(engineId)
+            }
+
             // ── Library ─────────────────────────────────────
             MichiGlassSurface {
                 id: libraryPanel

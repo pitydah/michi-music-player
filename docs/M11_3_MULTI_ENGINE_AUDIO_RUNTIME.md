@@ -59,6 +59,7 @@ the M11.3 contracts and records implementation status for each subphase.
 | Engine availability runtime | DONE / TESTED / FROZEN (M11.3E) — fresh side-effect-free probes, canonical three-engine snapshot, available != implemented, activation blocker priority, no state mutation |
 | Selection / persistence | DONE / TESTED / FROZEN (M11.3F) — persisted SELECTED preference, quiescent switching, backend acceptance invalidation, volume/mute continuity, no fallback |
 | Failure convergence | DONE / TESTED / FROZEN (M11.3G) |
+| M11.3-UI presentation | DONE / TESTED (M11.3-UI) — AudioEngineBridge (single UI authority over the sealed coordinator; no infra imports), NowPlayingBar quick selector + AudioEnginePopup (quick surface only), Settings > Audio Engine section (Preferred vs In use truth, fallback explanation, availability honesty, progressive technical details, no fake audiophile knobs), output device button preserved + disabled (DAC deferred to M11.4) |
 
 **CURRENT PRODUCTIVE PATH (since M11.3B, multi-engine since M11.3F):**
 
@@ -252,6 +253,20 @@ acceptance/error callbacks. M11.3 does NOT add "engine-capability" or
   stop, resume preparation, Queue convergence, engine startup failure, engine
   unavailable, target init failure, clean fallback, shutdown,
   persistence/restart.
+- **M11.3-UI — Audio Engine Presentation & Settings (DONE / TESTED)**: the
+  presentation layer for the frozen runtime. AudioEngineBridge is the ONE UI
+  authority: it reads service/registry/coordinator state and is the only
+  caller of `AudioEngineSelectionCoordinator.switch_to`; the bridge never
+  opens/closes providers, never binds the router, never mutates state. Quick
+  selection lives in the NowPlayingBar popup; configuration/diagnostics live
+  in Settings > Audio Engine. Selected != active is always visible (Preferred
+  vs In use); fallback is explained in plain language; unavailable engines
+  show a truthful "cannot use on this system" reason; technical details
+  (engine IDs, capability flags) are behind progressive disclosure. Engine
+  configuration is managed automatically by Michi — no user-exposed
+  tunables exist (audiophile audit: 0 truthful P1 knobs; DSD/DoP/bit-perfect/
+  exclusive are M11.4/M11.5 scope). Output device selection stays visible but
+  disabled (DAC work deferred).
 
 ## Non-goals
 
