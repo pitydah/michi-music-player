@@ -138,3 +138,54 @@ class TestRuntimeOwnershipInvariants:
             port.close()
         assert port._observer is stuck  # handle retained
         stuck.join(timeout=2)  # cleanup
+
+
+class TestRetryableClose:
+    """R1-02: MPDAudioPort close() is retryable — a failed close retains
+    ownership, _closed stays False, and a second close completes."""
+
+    def test_mpd_port_observer_failure_retry_succeeds(self):
+        import threading
+        import time
+
+        from michi.infrastructure.audio_engines.mpd import (
+            MpdOwnershipTeardownError,
+            MPDAudioPort,
+        )
+
+        port = MPDAudioPort()
+        # observer that refuses to die on the FIRST join, then terminates
+        release = threading.Event()
+
+        class StubbornThread(threading.Thread):
+            def __init__(self):
+                super().__init__(daemon=True)
+                self.joins = 0
+
+            def run(self):
+                release.wait(timeout=10)
+
+            def join(self, timeout=None):
+                self.joins += 1
+                if self.joins == 1 and not release.is_set():
+                    # first join: simulate timeout (thread stays alive)
+                    return None
+                return super().join(timeout)
+
+        stuck = StubbornThread()
+        stuck.start()
+        port._observer = stuck
+        port._closing = False
+        port._closed = False
+        with pytest.raises(MpdOwnershipTeardownError, match="observer thread"):
+            port.close()
+        # R1-02: ownership retained, _closed must NOT claim complete close
+        assert port._observer is stuck
+        assert port._closed is False
+        # allow termination and RETRY → full success
+        release.set()
+        port.close()
+        assert port._observer is None
+        assert port._closed is True
+        # every owned resource released (runtime never started → None)
+        assert port._runtime is not None

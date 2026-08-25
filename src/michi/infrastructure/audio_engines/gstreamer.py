@@ -315,6 +315,7 @@ class GStreamerAudioPort(AudioPort):
         self._loop = None
         self._pump: threading.Thread | None = None
         self._pump_start_count = 0
+        self._closing = False  # R1-03: close in progress (retryable)
         # load-command ownership epoch (GATE 1)
         self._load_epoch = 0
         # consumer registrations
@@ -770,10 +771,14 @@ class GStreamerAudioPort(AudioPort):
     # ------------------------------------------------------------------
 
     def close(self) -> None:
+        """R1-03: retryable, failure-atomic close. `_closed == True` only
+        after ALL teardown succeeded; a failure raises with ownership
+        retained and `_closed` still False so a SECOND close retries the
+        remaining teardown (resources already released are None-guarded)."""
         self._load_epoch += 1
         if self._closed:
             return
-        self._closed = True
+        self._closing = True
         self._invalidate_generation()  # in-flight messages stale
         # FIRST-ERROR-WINS (M11.3C-R3/R5): la secuencia canónica es
         # 1) invalidar generación, 2) teardown del pipeline (bus watch +
@@ -825,7 +830,10 @@ class GStreamerAudioPort(AudioPort):
         self._rej = []
         self._pst = []
         if primary_error is not None:
-            raise primary_error
+            raise primary_error  # _closed stays False → retryable
+        # ONLY after the full chain succeeded:
+        self._closed = True
+        self._closing = False
 
     def _try_stop_pipeline(self) -> bool:
         """Reemplazo normal (load): NULL PRIMERO, detach SOLO tras éxito.

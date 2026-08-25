@@ -52,17 +52,23 @@ class TestQtProvider:
         provider.close()
 
     def test_close_exception_safety_releases_ownership(self, qapp):
-        """AR-05: a failing stop() RETAINS the backend handle — a failed
-        close never discards the ownership path to a still-open runtime."""
+        """R1-04/AR-05: the provider closes the backend through its REAL
+        close(); a failing close RETAINS the backend handle — retryable."""
         from michi.application.ports import AudioPort
 
         class BoomBackend(AudioPort):
+            def __init__(self):
+                self.close_calls = 0
+
             def load(self, file_path): ...
             def play(self): ...
             def pause(self): ...
             def resume(self): ...
-            def stop(self):
-                raise RuntimeError("stop failed")
+            def stop(self): ...
+            def close(self):
+                self.close_calls += 1
+                if self.close_calls == 1:
+                    raise RuntimeError("close failed")
 
             def set_volume(self, value): ...
             def set_muted(self, muted): ...
@@ -91,14 +97,17 @@ class TestQtProvider:
         from michi.infrastructure.audio_engines.providers import QtEngineProvider
 
         provider = QtEngineProvider()
-        provider._backend = BoomBackend()
-        with pytest.raises(RuntimeError, match="stop failed"):
+        backend = BoomBackend()
+        provider._backend = backend
+        with pytest.raises(RuntimeError, match="close failed"):
             provider.close()
-        # AR-05: the ownership handle is RETAINED after the failed close
-        assert provider._backend is not None
-        # a retry can still be attempted
-        with pytest.raises(RuntimeError, match="stop failed"):
-            provider.close()
+        # R1-04: the handle is RETAINED after the failed close
+        assert provider._backend is backend
+        assert backend.close_calls == 1
+        # RETRY succeeds once the failure is removed → handle released
+        provider.close()
+        assert backend.close_calls == 2
+        assert provider._backend is None
 
     def test_close_idempotent_and_reopen_fresh(self, qapp):
         provider = QtEngineProvider()
@@ -551,3 +560,61 @@ class TestMpdAvailabilityTruth:
         desc2 = provider.probe()
         assert desc2.available is True
         assert calls["n"] == 1  # cached — no second inspection
+
+
+class TestRetryableTeardown:
+    """R1-01/R1-03: provider retains ownership after a failed close and a
+    retry succeeds; the same port object is released only after proven
+    success."""
+
+    def test_mpd_provider_retains_port_and_retry_succeeds(self, qapp):
+        from michi.infrastructure.audio_engines.providers import (
+            MpdEngineProvider,
+        )
+
+        provider = MpdEngineProvider()
+
+        class BoomPort:
+            def __init__(self):
+                self.close_calls = 0
+
+            def close(self):
+                self.close_calls += 1
+                if self.close_calls == 1:
+                    raise RuntimeError("close failed")
+                if self.close_calls == 3:
+                    raise RuntimeError("close failed again")
+
+        port = BoomPort()
+        provider._port = port
+        with pytest.raises(RuntimeError, match="close failed"):
+            provider.close()
+        assert provider._port is port  # SAME port retained
+        # retry succeeds
+        provider.close()
+        assert port.close_calls == 2
+        assert provider._port is None
+
+    def test_gst_provider_retains_port_on_close_failure(self, qapp):
+        from michi.infrastructure.audio_engines.providers import (
+            GStreamerEngineProvider,
+        )
+
+        provider = GStreamerEngineProvider()
+
+        class BoomPort:
+            def __init__(self):
+                self.close_calls = 0
+
+            def close(self):
+                self.close_calls += 1
+                if self.close_calls == 1:
+                    raise RuntimeError("close failed")
+
+        port = BoomPort()
+        provider._port = port
+        with pytest.raises(RuntimeError, match="close failed"):
+            provider.close()
+        assert provider._port is port
+        provider.close()  # retry succeeds
+        assert provider._port is None

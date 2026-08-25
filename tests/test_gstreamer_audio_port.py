@@ -997,7 +997,12 @@ class TestStateRequestFailureAtomicity:
         bindings.failed_states.add(_FakeState.NULL)
         with pytest.raises(RuntimeError, match="NULL"):
             port.close()
-        assert port._closed is True  # terminal, sin comandos posteriores
+        # R1-03: _closed stays False after a FAILED close — retryable
+        assert port._closed is False
+        # retry succeeds once the failure is removed
+        bindings.failed_states.discard(_FakeState.NULL)
+        port.close()
+        assert port._closed is True
 
 
 class TestPumpTerminationIntegrity:
@@ -1012,17 +1017,17 @@ class TestPumpTerminationIntegrity:
         assert pump is not None
         with pytest.raises(RuntimeError, match="did not terminate"):
             port.close()
-        assert port._closed is True
+        assert port._closed is False  # R1-03: retryable
         assert port._pump is pump  # referencia viva retenida
         assert pump.is_alive() is True
-        # limpieza determinística del test: liberar el pump forzado
+        # liberar el pump forzado y RETRY close() → éxito completo
         bindings.ignore_quit = False
         bindings.quit_loop(port._loop or "loop")
         pump.join(timeout=2.0)
         assert pump.is_alive() is False
-        port._pump = None
-        port._loop = None
-        port._context = None
+        port.close()
+        assert port._closed is True
+        assert port._pump is None
 
 
 class TestLoadReplacementTransaction:
@@ -1189,18 +1194,20 @@ class TestCloseFirstErrorWins:
         with pytest.raises(RuntimeError, match="NULL"):
             port.close()
         # el error primario (teardown) gana sobre el timeout del pump
-        assert port._closed is True
+        assert port._closed is False  # R1-03: retryable
         assert port._pipeline is pipeline  # ownership retenido si NULL falló
         assert port._pump is pump  # worker vivo retenido
         assert pump.is_alive() is True
-        # liberar el fake pump para que el test termine limpio
+        # liberar el fake pump, quitar el fallo y RETRY → éxito
         bindings.ignore_quit = False
         bindings.quit_loop(port._loop or "loop")
         pump.join(timeout=2.0)
         assert pump.is_alive() is False
-        port._pump = None
-        port._loop = None
-        port._context = None
+        bindings.failed_states.discard(_FakeState.NULL)
+        port.close()
+        assert port._closed is True
+        assert port._pump is None
+        assert port._pipeline is None
 
     def test_close_pump_timeout_when_no_prior_error(self, qapp):
         # H: sin error previo, el timeout del pump es el primario (R2 green)
@@ -1211,16 +1218,16 @@ class TestCloseFirstErrorWins:
         pump = port._pump
         with pytest.raises(RuntimeError, match="did not terminate"):
             port.close()
-        assert port._closed is True
+        assert port._closed is False  # R1-03: retryable
         assert port._pump is pump
         assert pump.is_alive() is True
         bindings.ignore_quit = False
         bindings.quit_loop(port._loop or "loop")
         pump.join(timeout=2.0)
         assert pump.is_alive() is False
-        port._pump = None
-        port._loop = None
-        port._context = None
+        port.close()
+        assert port._closed is True
+        assert port._pump is None
 
 
 class TestRealSmokeTruthfulSeam:
@@ -1367,7 +1374,7 @@ class TestBusWatchLifecycleSeal:
         bus_a.fail_remove_watch = True
         with pytest.raises(RuntimeError, match="bus watch"):
             port.close()
-        assert port._closed is True
+        assert port._closed is False  # R1-03: retryable
         # R5: el fallo de remoción (cronológicamente primero en el teardown
         # terminal) es el error primario, pero el pipeline igual recibió
         # NULL y se liberó; el bookkeeping del bus watch queda como
@@ -1395,7 +1402,7 @@ class TestTerminalCleanupFirstErrorWins:
         bus_a.fail_remove_watch = True
         with pytest.raises(RuntimeError, match="bus watch"):
             port.close()
-        assert port._closed is True
+        assert port._closed is False  # R1-03: retryable
         # el pipeline recibió NULL a pesar del fallo del watch
         assert bindings.null_request_count == 1
         assert pipeline.state == _FakeState.NULL
@@ -1420,7 +1427,7 @@ class TestTerminalCleanupFirstErrorWins:
         assert bindings.null_request_count == 1  # NULL igual se intentó
         assert port._pipeline is pipeline  # NULL falló → retenido
         assert port._pump is None  # pump cleanup continuó
-        assert port._closed is True
+        assert port._closed is False  # R1-03: retryable
         bus_a.fail_remove_watch = False
         bindings.failed_states.discard(_FakeState.NULL)
         port._detach_pipeline_sources()
@@ -1564,7 +1571,7 @@ class TestCleanupExceptionBoundary:
         bus_a.remove_watch_exception = ValueError("synthetic remove exception")
         with pytest.raises(ValueError, match="synthetic remove exception"):
             port.close()
-        assert port._closed is True
+        assert port._closed is False  # R1-03: retryable
         assert bindings.null_request_count == 1  # NULL intentado pese a todo
         assert pipeline.state == _FakeState.NULL
         assert port._pipeline is None  # NULL OK → liberado
@@ -1587,7 +1594,7 @@ class TestCleanupExceptionBoundary:
         assert bindings.null_request_count == 1
         assert port._pipeline is pipeline  # NULL falló → retenido
         assert port._pump is None  # pump cleanup continuó
-        assert port._closed is True
+        assert port._closed is False  # R1-03: retryable
 
     def test_close_detach_exception_pump_timeout_keeps_first_error(self, qapp):
         bindings = FakeBindings()

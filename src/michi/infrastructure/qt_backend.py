@@ -36,6 +36,7 @@ class QtMultimediaBackend(AudioPort):
         self._current_source: Path | None = None
         self._media_status_connected = False
         self._playback_state_connected = False
+        self._closing = False  # R1-05: close in progress (retryable)
         # AR-21: source-generation provenance. Qt delivers signals serially
         # from one player, but a media-status event must never be attributed
         # to a source that is no longer current — every handler verifies
@@ -60,12 +61,14 @@ class QtMultimediaBackend(AudioPort):
             self._player.stop()
 
     def close(self) -> None:
-        """Release the Qt multimedia resources deterministically (AR-21/
-        conformance: close is idempotent, drops the source and disconnects
-        observers so no late event can be delivered)."""
+        """R1-05: retryable, failure-atomic release. `_closed == True` only
+        after the whole release chain completed; a failure (injectable via
+        the player seam) raises with the backend fully reachable and
+        `_closed` still False so a SECOND close retries the remaining
+        teardown."""
         if self._closed:
             return
-        self._closed = True
+        self._closing = True
         self._player.stop()
         self._player.setSource(QUrl())
         self._current_source = None
@@ -83,6 +86,9 @@ class QtMultimediaBackend(AudioPort):
                 self._player.errorOccurred.disconnect(self._on_error)
             except (RuntimeError, TypeError):
                 pass
+        # ONLY after the release chain completed:
+        self._closed = True
+        self._closing = False
 
     def set_volume(self, value: int) -> None:
         self._audio_output.setVolume(value / 100.0)

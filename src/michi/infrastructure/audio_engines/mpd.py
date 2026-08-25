@@ -658,6 +658,7 @@ class MPDAudioPort(AudioPort):
         super().__init__()
         self._bridge = _MpdEventBridge()
         self._poll_interval_ms = poll_interval_ms
+        self._closing = False  # R1-02: close in progress (retryable)
         self._runtime = runtime if runtime is not None else _ManagedMpdRuntime()
         self._client: _MpdProtocolClient | None = None
         self._runtime_generation = 0
@@ -763,13 +764,15 @@ class MPDAudioPort(AudioPort):
             raise
 
     def close(self) -> None:
-        """Idempotente: detiene observer y poller, cierra sockets, termina
-        el hijo, remueve artefactos. AR-08: el handle del observer se
-        conserva hasta que su terminación está PROBADA — un join que expira
-        retiene el thread y la evidencia de teardown."""
+        """R1-02: retryable, failure-atomic close. `_closed == True` means
+        ALL teardown completed successfully — never "close started". A
+        failure (observer refuses termination, child refuses death) raises
+        with ownership retained and `_closed` still False, so a SECOND
+        close() retries the remaining teardown. Resources already released
+        in a failed attempt are guarded (None checks) and not re-released."""
         if self._closed:
             return
-        self._closed = True
+        self._closing = True
         self._runtime_generation += 1  # invalida eventos en vuelo
         self._observer_stop.set()
         # libera el recv bloqueante del observer idle (C4-D)
@@ -782,8 +785,8 @@ class MPDAudioPort(AudioPort):
         if observer is not None and observer.is_alive():
             observer.join(timeout=2.0)
             if observer.is_alive():
-                # AR-08: nunca borrar el handle de un thread vivo — retener
-                # y reportar; el port NO puede declarar cierre limpio.
+                # nunca borrar el handle de un thread vivo — retener y
+                # reportar; _closed sigue False → retry posible
                 raise MpdOwnershipTeardownError(
                     "MPD observer thread refused termination; ownership "
                     "handle retained for diagnosis"
@@ -806,7 +809,10 @@ class MPDAudioPort(AudioPort):
         self._acc = []
         self._rej = []
         self._pst = []
-        self._runtime.close()
+        self._runtime.close()  # child death PROVEN inside (or raises + retains)
+        # ONLY after the full chain succeeded:
+        self._closed = True
+        self._closing = False
 
     # ------------------------------------------------------------------
     # observer (OBSERVES ONLY — nunca muta semántica)

@@ -135,22 +135,19 @@ class QtEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
         return backend
 
     def close(self) -> None:
-        """Idempotent: releases the owned backend. Callers MUST detach the
-        transport router BEFORE close (SWITCH ORDER: stop → detach →
-        provider close → target open → bind → validate).
+        """R1-04: releases the owned backend through its REAL close()
+        (QtMultimediaBackend.close owns stop + source release + signal
+        disconnection + late-event prevention). Callers MUST detach the
+        transport router BEFORE close (SWITCH ORDER).
 
-        Exception safety: ownership is released in `finally`, so a failing
-        stop() can never leave a phantom "owned" engine behind; the error is
-        propagated to the caller (best-effort shutdown policy applies at the
-        container level)."""
+        Ownership is released ONLY on proven success: a failing close
+        RETAINS the backend handle and the runtime generation so the
+        still-open runtime stays reachable/diagnosable/retryable."""
         backend = self._backend
         if backend is None:
             return
-        # AR-05: ownership released ONLY on proven success. A failing close
-        # RETAINS the backend handle and the runtime generation so the
-        # still-open runtime stays reachable/diagnosable/retryable — never
-        # discard an ownership handle after a failed close.
-        backend.stop()
+        backend.close()
+        # ONLY AFTER PROVEN SUCCESS:
         self._backend = None
         self._invalidate_runtime_generation()
 
@@ -353,10 +350,16 @@ class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
         return port
 
     def close(self) -> None:
+        """R1-01: the ownership handle is released ONLY after port.close()
+        is PROVEN successful. A failed close (e.g. MpdOwnershipTeardownError)
+        retains the SAME port and the runtime generation — retryable and
+        diagnosable; the provider never discards a still-open runtime."""
         port = self._port
+        if port is None:
+            return
+        port.close()
+        # ONLY AFTER PROVEN SUCCESS:
         self._port = None
-        if port is not None:
-            port.close()
         self._invalidate_runtime_generation()
 
     def _relay_owned_mpd_failure(self, owned_generation: int, reason: str) -> None:
