@@ -73,12 +73,16 @@ class QtMultimediaBackend(AudioPort):
             self._player.mediaStatusChanged.disconnect(self._on_media_status)
             self._media_status_connected = False
         if self._playback_state_connected:
-            self._player.playbackStateChanged.disconnect(self._on_playback_state_changed)
+            self._player.playbackStateChanged.disconnect(
+                self._on_playback_state_changed
+            )
             self._playback_state_connected = False
-        try:
-            self._player.errorOccurred.disconnect(self._on_error)
-        except (RuntimeError, TypeError):
-            pass  # never connected (no rejected subscribers)
+        if self._rej:
+            # only disconnect when it was actually connected (lazy wiring)
+            try:
+                self._player.errorOccurred.disconnect(self._on_error)
+            except (RuntimeError, TypeError):
+                pass
 
     def set_volume(self, value: int) -> None:
         self._audio_output.setVolume(value / 100.0)

@@ -6,14 +6,14 @@ subprocess, no socket, no SQLite. Runtime switching belongs to M11.3F."""
 import logging
 from collections.abc import Callable
 
-_logger = logging.getLogger(__name__)
-
 from michi.application.audio_engine_registry import AudioEngineRegistry
 from michi.domain.audio_engine import (
     AudioEngineId,
     AudioEngineLifecycle,
     AudioEngineState,
 )
+
+_logger = logging.getLogger(__name__)
 
 
 class AudioEngineService:

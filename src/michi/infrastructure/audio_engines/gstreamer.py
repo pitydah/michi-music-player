@@ -15,9 +15,9 @@ NO GStreamer types leave this module.
 
 import logging
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, auto
-from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, Signal
@@ -404,7 +404,9 @@ class GStreamerAudioPort(AudioPort):
             # the owner thread (QueuedConnection) with the current
             # generation; stale/close-time exits are ignored by the owner.
             if not self._closed:
-                self._bridge.sig_pump_died.emit(self._generation, "gstreamer pump exited unexpectedly")
+                self._bridge.sig_pump_died.emit(
+                    self._generation, "gstreamer pump exited unexpectedly"
+                )
 
     def _attach_pipeline_sources(self, pipeline, bus, generation: int) -> None:
         """Instala el bus watch y el timer de posición en el context custom.
@@ -682,9 +684,7 @@ class GStreamerAudioPort(AudioPort):
         previous_intent = self._pending_play
         if not self._request_state(self._bindings.STATE.PAUSED):
             self._pending_play = previous_intent  # rollback de intención
-            raise AudioTransportCommandError(
-                "GStreamer failed to enter PAUSED"
-            )
+            raise AudioTransportCommandError("GStreamer failed to enter PAUSED")
         self._pending_play = False
 
     def resume(self) -> None:
@@ -693,9 +693,7 @@ class GStreamerAudioPort(AudioPort):
     def stop(self) -> None:
         self._load_epoch += 1
         if self._closed:
-            raise AudioTransportUnavailableError(
-                "GStreamer stop on closed transport"
-            )
+            raise AudioTransportUnavailableError("GStreamer stop on closed transport")
         if self._pipeline is None:
             # Vacuously stopped: nothing owned to stop (reentrancy-safe —
             # a stop arriving during a load transition has no pipeline yet;
@@ -725,9 +723,7 @@ class GStreamerAudioPort(AudioPort):
                 # NULL falló: NO publicar STOPPED, NO limpiar el source como
                 # si el stop hubiera tenido éxito; el fallo es EXPLÍCITO
                 # (AR-02): el estado físico es incierto → fail closed.
-                raise AudioTransportCommandError(
-                    "GStreamer stop could not reach NULL"
-                )
+                raise AudioTransportCommandError("GStreamer stop could not reach NULL")
             self._pending_play = False
             self._eos_emitted = False  # stop explícito resetea el marcador EOS
         self._deliver_state_if(PlaybackStatus.STOPPED)
@@ -751,9 +747,7 @@ class GStreamerAudioPort(AudioPort):
         # éxito silencioso); la posición confirmada llega por observación.
         ok = self._bindings.seek(self._pipeline, millis_to_gst_time(position_ms))
         if not ok:
-            raise AudioTransportCommandError(
-                "GStreamer seek rejected by the pipeline"
-            )
+            raise AudioTransportCommandError("GStreamer seek rejected by the pipeline")
 
     def position(self) -> int:
         if self._closed or self._pipeline is None:

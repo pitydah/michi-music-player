@@ -113,11 +113,26 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
         backend = self._bound
         pairs = [
             ("subscribe_end_of_media", lambda cb: backend.subscribe_end_of_media(cb)),
-            ("subscribe_position_changed", lambda cb: backend.subscribe_position_changed(cb)),
-            ("subscribe_duration_changed", lambda cb: backend.subscribe_duration_changed(cb)),
-            ("subscribe_media_accepted", lambda cb: backend.subscribe_media_accepted(cb)),
-            ("subscribe_media_rejected", lambda cb: backend.subscribe_media_rejected(cb)),
-            ("subscribe_playback_state_changed", lambda cb: backend.subscribe_playback_state_changed(cb)),
+            (
+                "subscribe_position_changed",
+                lambda cb: backend.subscribe_position_changed(cb),
+            ),
+            (
+                "subscribe_duration_changed",
+                lambda cb: backend.subscribe_duration_changed(cb),
+            ),
+            (
+                "subscribe_media_accepted",
+                lambda cb: backend.subscribe_media_accepted(cb),
+            ),
+            (
+                "subscribe_media_rejected",
+                lambda cb: backend.subscribe_media_rejected(cb),
+            ),
+            (
+                "subscribe_playback_state_changed",
+                lambda cb: backend.subscribe_playback_state_changed(cb),
+            ),
         ]
         wrapper_factories = [
             self._make_wrapper("eom", generation, backend),
@@ -127,7 +142,7 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
             self._make_wrapper("rejected", generation, backend),
             self._make_wrapper("state", generation, backend),
         ]
-        for (name, subscribe), wrapper in zip(pairs, wrapper_factories, strict=True):
+        for (_name, subscribe), wrapper in zip(pairs, wrapper_factories, strict=True):
             subscribe(wrapper)
             self._wrappers.append(wrapper)
 
@@ -177,7 +192,6 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
     def _make_wrapper(self, kind: str, generation: int, backend: AudioPort):
         """Per-binding forwarding wrapper: drops events whose captured
         (generation, backend) no longer match the current binding."""
-        import functools
 
         def forward(*args):
             if self._bound is not backend or self._binding_generation != generation:

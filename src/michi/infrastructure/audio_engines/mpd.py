@@ -464,8 +464,11 @@ class _ManagedMpdRuntime:
             try:
                 self.close()
             except MpdOwnershipTeardownError as exc:
-                _logger.error("mpd: startup-failure teardown could not prove "
-                              "child death (ownership retained): %s", exc)
+                _logger.error(
+                    "mpd: startup-failure teardown could not prove "
+                    "child death (ownership retained): %s",
+                    exc,
+                )
             raise
 
     def _start_inner(self) -> None:
@@ -497,7 +500,7 @@ class _ManagedMpdRuntime:
         # del runtime (evita deadlock por saturación del pipe y conserva
         # diagnósticos; el archivo se limpia con el runtime tras la muerte
         # del hijo). El log vive en el árbol del runtime (propietario: él).
-        self._stderr_log = open(base / "mpd.stderr.log", "wb")
+        self._stderr_log = (base / "mpd.stderr.log").open("wb")
         self._process = subprocess.Popen(
             [self._executable, "--no-daemon", "--stderr", str(conf_path)],
             stdout=subprocess.DEVNULL,
@@ -530,12 +533,10 @@ class _ManagedMpdRuntime:
         (AR-07: ya no hay pipe; el log es el único stderr del hijo)."""
         if self._stderr_log is None:
             return ""
-        try:
+        with contextlib.suppress(OSError, ValueError):
             self._stderr_log.flush()
-        except (OSError, ValueError):
-            pass
         try:
-            with open(self._stderr_log.name, "r", encoding="utf-8", errors="replace") as fh:
+            with open(self._stderr_log.name, encoding="utf-8", errors="replace") as fh:
                 return fh.read()[:2000]
         except OSError:
             return ""
@@ -607,10 +608,8 @@ class _ManagedMpdRuntime:
         """Cierra el descriptor del log privado (tras muerte del hijo)."""
         if self._stderr_log is None:
             return
-        try:
+        with contextlib.suppress(OSError, ValueError):
             self._stderr_log.close()
-        except (OSError, ValueError):
-            pass
         self._stderr_log = None
 
 
@@ -974,6 +973,14 @@ class MPDAudioPort(AudioPort):
     # ------------------------------------------------------------------
 
     def _poll_position(self) -> None:
+        """Poller bounded (0.5s): consulta la verdad del daemon y entrega
+        posición + ESTADO.
+
+        Reliability seal: MPD idle es edge-triggered — cambios de estado
+        ocurridos durante la ventana query/re-arm del observer pueden
+        perderse. El poller re-consulta status de todos modos, así que
+        converge el estado también (misma verdad que _refresh_status);
+        ningún cambio de estado queda sin observación."""
         if self._closed or self._client is None:
             return
         if self._current_path is None:
@@ -987,6 +994,18 @@ class MPDAudioPort(AudioPort):
             if self._current_path is not None:
                 self._converge_transport_error(str(exc))
             return
+        error = status.get("error")
+        if error:
+            # misma convergencia honesta que _refresh_status (C6)
+            self._converge_media_error(error)
+            return
+        state = status.get("state", "stop")
+        if state == "play":
+            self._deliver_state_if(PlaybackStatus.PLAYING)
+        elif state == "pause":
+            self._deliver_state_if(PlaybackStatus.PAUSED)
+        elif state == "stop":
+            self._commit_stopped(status)
         elapsed = status.get("elapsed")
         if elapsed is not None:
             self._deliver_pos(_mpd_seconds_to_millis(elapsed))

@@ -14,7 +14,9 @@ def _shutdown_best_effort(container: ApplicationContainer) -> None:
     try:
         container.shutdown()
     except Exception as exc:  # noqa: BLE001 — shutdown is best-effort here
-        print(f"WARNING: shutdown failed while handling an error: {exc}", file=sys.stderr)
+        print(
+            f"WARNING: shutdown failed while handling an error: {exc}", file=sys.stderr
+        )
 
 
 def main() -> int:

@@ -284,8 +284,11 @@ class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
                 unavailable_reason="mpd executable no encontrado en PATH",
                 implemented=True,
                 capabilities=AudioEngineCapabilities(
-                    local_file_playback=True, seek=True, pause=True,
-                    volume=True, mute=True,
+                    local_file_playback=True,
+                    seek=True,
+                    pause=True,
+                    volume=True,
+                    mute=True,
                 ),
             )
         # AR-09: an executable alone is NOT activatable — at least one
