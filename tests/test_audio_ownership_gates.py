@@ -105,9 +105,8 @@ class TestRuntimeOwnershipInvariants:
     """Section 20 — fake-level ownership invariants (deterministic)."""
 
     def test_mpd_close_success_releases_everything(self, tmp_path):
-        from tests.test_mpd_runtime import _FakeProcess, _ManagedMpdRuntime  # noqa: F401
-
         from michi.infrastructure.audio_engines.mpd import _ManagedMpdRuntime
+        from tests.test_mpd_runtime import _FakeProcess  # noqa: F401
 
         runtime = _ManagedMpdRuntime(output_plugin="alsa")
         runtime._start_inner()
@@ -121,8 +120,8 @@ class TestRuntimeOwnershipInvariants:
         """AR-08: the port must retain the observer thread handle when the
         join cannot prove termination."""
         from michi.infrastructure.audio_engines.mpd import (
-            MpdOwnershipTeardownError,
             MPDAudioPort,
+            MpdOwnershipTeardownError,
         )
 
         port = MPDAudioPort()

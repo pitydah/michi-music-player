@@ -15,15 +15,14 @@ import threading
 from pathlib import Path
 
 import pytest
-
-from michi.application.ports import (
-    AudioTransportCommandError,
-    AudioTransportUnavailableError,
-)
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QGuiApplication
 
 from michi.application.audio_transport_router import AudioTransportRouter
+from michi.application.ports import (
+    AudioTransportCommandError,
+    AudioTransportUnavailableError,
+)
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.playback import PlaybackStatus
 from michi.infrastructure.audio_engines.gstreamer import (
@@ -1929,7 +1928,7 @@ class TestArmTransaction:
 
     @pytest.mark.parametrize("stage", ARM_STAGES)
     def test_arm_exception_leaves_adapter_coherent(self, qapp, stage):
-        from michi.application.ports import AudioLoadError, AudioTransportCommandError
+        from michi.application.ports import AudioLoadError
 
         bindings = FakeBindings()
         bindings.arm_exception_stage = stage
@@ -1960,7 +1959,7 @@ class TestArmTransaction:
         bindings = FakeBindings()
         bindings.arm_exception_stage = "attach_source"
         port = _port(bindings)
-        from michi.application.ports import AudioLoadError, AudioTransportCommandError
+        from michi.application.ports import AudioLoadError
 
         with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
@@ -1981,7 +1980,7 @@ class TestArmTransaction:
         bindings = FakeBindings()
         bindings.arm_exception_stage = "set_uri"
         port = _port(bindings)
-        from michi.application.ports import AudioLoadError, AudioTransportCommandError
+        from michi.application.ports import AudioLoadError
 
         with pytest.raises(AudioLoadError):
             port.load(Path("/m/b.flac"))
@@ -2014,7 +2013,7 @@ class TestArmTransaction:
         port.subscribe_playback_state_changed(lambda s: states.append(s))
         # B arma falla en set_uri (después del teardown de A)
         bindings.arm_exception_stage = "set_uri"
-        from michi.application.ports import AudioLoadError, AudioTransportCommandError
+        from michi.application.ports import AudioLoadError
 
         with pytest.raises(AudioLoadError):
             port.load(Path("/m/b.flac"))
@@ -2030,7 +2029,7 @@ class TestArmTransaction:
         bindings = FakeBindings()
         bindings.arm_exception_stage = "attach_source"  # timer creado y falla
         port = _port(bindings)
-        from michi.application.ports import AudioLoadError, AudioTransportCommandError
+        from michi.application.ports import AudioLoadError
 
         with pytest.raises(AudioLoadError):
             port.load(Path("/m/b.flac"))
@@ -2049,7 +2048,7 @@ class TestArmTransaction:
         bindings.failed_states.add(_FakeState.NULL)  # cleanup NULL falla
         bindings.fail_remove_watch = True  # y el remove del watch falla
         port = _port(bindings)
-        from michi.application.ports import AudioLoadError, AudioTransportCommandError
+        from michi.application.ports import AudioLoadError
 
         with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
@@ -2162,7 +2161,7 @@ class TestFailedArmOwnership:
         states = []
         port.subscribe_media_accepted(lambda p: accepted.append(p))
         port.subscribe_playback_state_changed(lambda s: states.append(s))
-        from michi.application.ports import AudioLoadError, AudioTransportCommandError
+        from michi.application.ports import AudioLoadError
 
         with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
@@ -2228,7 +2227,7 @@ class TestGStreamerPlaybackDisposition:
 
     def test_destructive_arm_failure_converges_playback(self, qapp):
         from michi.application.playback_service import PlaybackService
-        from michi.application.ports import AudioLoadError, AudioTransportCommandError
+        from michi.application.ports import AudioLoadError
 
         bindings = FakeBindings()
         port = GStreamerAudioPort(bindings)
@@ -2262,7 +2261,7 @@ class TestGStreamerPlaybackDisposition:
 
     def test_play_recovers_logical_track_after_destructive_failure(self, qapp):
         from michi.application.playback_service import PlaybackService
-        from michi.application.ports import AudioLoadError, AudioTransportCommandError
+        from michi.application.ports import AudioLoadError
 
         bindings = FakeBindings()
         port = GStreamerAudioPort(bindings)

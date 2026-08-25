@@ -309,8 +309,11 @@ class TestRouterArchitecture:
 class _StubPort:
     """Deterministic AudioPort stub with injectable subscribe failures."""
 
-    def __init__(self, fail_subscribe: set[int] | None = None,
-                 fail_unsubscribe: set[int] | None = None):
+    def __init__(
+        self,
+        fail_subscribe: set[int] | None = None,
+        fail_unsubscribe: set[int] | None = None,
+    ):
         self.fail_subscribe = fail_subscribe or set()
         self.fail_unsubscribe = fail_unsubscribe or set()
         self.subscribed: list = []
@@ -318,8 +321,12 @@ class _StubPort:
         self._count = 0
         self.events: list = []
         self._listeners = {
-            "end_of_media": [], "position_changed": [], "duration_changed": [],
-            "media_accepted": [], "media_rejected": [], "playback_state_changed": [],
+            "end_of_media": [],
+            "position_changed": [],
+            "duration_changed": [],
+            "media_accepted": [],
+            "media_rejected": [],
+            "playback_state_changed": [],
         }
 
     def _track(self, name, wrapper):
@@ -387,6 +394,7 @@ class _StubPort:
     def set_muted(self, m): ...
     def position(self):
         return 0
+
     def duration(self):
         return 0
 

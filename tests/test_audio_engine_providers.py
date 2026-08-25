@@ -481,9 +481,7 @@ class TestMpdAvailabilityTruth:
         assert desc.available is True
 
     def test_unavailable_unsupported_plugins_only(self, monkeypatch):
-        desc, _ = self._probe(
-            monkeypatch, discovery_result={"null", "fifo", "jack"}
-        )
+        desc, _ = self._probe(monkeypatch, discovery_result={"null", "fifo", "jack"})
         assert desc.available is False
         assert "no supported default audio output" in desc.unavailable_reason
 

@@ -1229,13 +1229,16 @@ class TestF42AdapterContract:
     # semantics, it does NOT own Queue implementation (queue_service.py is
     # legitimately refactored by M4-R1).
     _BASELINE_HASHES = {
-        # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: gstreamer.py
-        # gained explicit typed command failures (play/pause/stop/seek raise
-        # AudioTransportCommandError/UnavailableError instead of silent
-        # returns). Transport semantics otherwise unchanged.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "0597a09aafb9dcff",
-        "src/michi/infrastructure/audio_engines/mpd.py": "5a3206e13b1bdfda",
-        "src/michi/infrastructure/qt_backend.py": "88614638da12acd8",
+        # AUDIO RUNTIME RELIABILITY SEAL authorized reopenings:
+        # - gstreamer.py: explicit typed command failures + activation
+        #   health + pump-death telemetry.
+        # - mpd.py: ownership/teardown hardening, command truth, poller
+        #   state convergence (edge-triggered idle loss self-heals).
+        # - qt_backend.py: close() + source provenance.
+        # Transport semantics otherwise unchanged.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "f2e6dfc79b7d94cf",
+        "src/michi/infrastructure/audio_engines/mpd.py": "662e49e45e7380d5",
+        "src/michi/infrastructure/qt_backend.py": "0d95823cb9c4f128",
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py
@@ -1245,7 +1248,7 @@ class TestF42AdapterContract:
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.
-        "src/michi/application/audio_transport_router.py": "4f579755974d72f4",
+        "src/michi/application/audio_transport_router.py": "ffb572f2ad581e1f",
     }
 
     def test_f42_no_adapter_source_changes(self):

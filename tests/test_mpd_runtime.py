@@ -228,7 +228,9 @@ class TestShutdown:
         monkeypatch.setattr(proc, "wait", stuck_wait)
         runtime_dir = runtime.runtime_dir
         socket_path = runtime.socket_path
-        with pytest.raises(MpdOwnershipTeardownError, match="ownership handle retained"):
+        with pytest.raises(
+            MpdOwnershipTeardownError, match="ownership handle retained"
+        ):
             runtime.close()
         # ownership RETAINED: handle, runtime dir, socket, diagnostics
         assert runtime.process is proc
