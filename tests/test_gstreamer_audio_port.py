@@ -3563,7 +3563,9 @@ class TestSynchronousCallbackReentrancy:
             for name, value in vars(_EventBridge).items()
             if isinstance(value, Signal)
         ]
-        assert signals == ["sig_event"]
+        # AR-11: sig_pump_died is the ONLY additional bridge signal —
+        # the single-async-boundary contract is preserved.
+        assert signals == ["sig_event", "sig_pump_died"]
 
 
 class TestSynchronousRejectionDisposition:
@@ -4316,3 +4318,50 @@ class TestRealRuntimeSmoke:
         # teardown real
         bindings.set_state(pipeline, bindings.STATE.NULL)
         assert pipeline.get_state(0).state == Gst.State.NULL
+
+
+class TestRuntimeHealthTelemetry:
+    """AR-11/AR-12 — pump death telemetry and activation health."""
+
+    def test_activate_starts_pump_and_checks_runtime(self, qapp):
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        port.activate()
+        assert port._pump is not None
+        assert port._pump.is_alive()
+        assert port._pump_entered_run.is_set()
+        port.close()
+
+    def test_activate_fails_truthfully_without_playbin3(self, qapp):
+        bindings = FakeBindings(playbin3_present=False)
+        port = GStreamerAudioPort(bindings)
+        with pytest.raises(RuntimeError, match="playbin3"):
+            port.activate()
+        # no pump left behind
+        assert port._pump is None
+
+    def test_pump_death_emits_runtime_failure_callback(self, qapp):
+        """AR-11: an unexpected pump exit while the port is active invokes
+        the runtime-failure callback once with the current generation;
+        close-time exits never fire it."""
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        port.activate()
+        events = []
+        port.set_runtime_failure_callback(
+            lambda gen, reason: events.append((gen, reason))
+        )
+        # kill the pump thread from outside (simulated unexpected exit)
+        # — make run_loop return by quitting + joining the thread body
+        from PySide6.QtTest import QTest
+
+        port._bindings.quit_loop(port._loop)
+        port._pump.join(timeout=3.0)
+        QTest.qWait(80)  # deliver the QueuedConnection signal
+        assert len(events) == 1
+        assert events[0][0] == port._generation
+        assert "unexpectedly" in events[0][1]
+        # close-time: no further events (port closed after this)
+        port.close()
+        QTest.qWait(80)
+        assert len(events) == 1

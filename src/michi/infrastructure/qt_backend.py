@@ -36,6 +36,11 @@ class QtMultimediaBackend(AudioPort):
         self._current_source: Path | None = None
         self._media_status_connected = False
         self._playback_state_connected = False
+        # AR-21: source-generation provenance. Qt delivers signals serially
+        # from one player, but a media-status event must never be attributed
+        # to a source that is no longer current — every handler verifies
+        # source identity against the player's ACTUAL current source.
+        self._closed = False
 
     def load(self, file_path: Path) -> None:
         self._current_source = file_path
@@ -53,6 +58,27 @@ class QtMultimediaBackend(AudioPort):
     def stop(self) -> None:
         if self._player.playbackState() != QMediaPlayer.StoppedState:
             self._player.stop()
+
+    def close(self) -> None:
+        """Release the Qt multimedia resources deterministically (AR-21/
+        conformance: close is idempotent, drops the source and disconnects
+        observers so no late event can be delivered)."""
+        if self._closed:
+            return
+        self._closed = True
+        self._player.stop()
+        self._player.setSource(QUrl())
+        self._current_source = None
+        if self._media_status_connected:
+            self._player.mediaStatusChanged.disconnect(self._on_media_status)
+            self._media_status_connected = False
+        if self._playback_state_connected:
+            self._player.playbackStateChanged.disconnect(self._on_playback_state_changed)
+            self._playback_state_connected = False
+        try:
+            self._player.errorOccurred.disconnect(self._on_error)
+        except (RuntimeError, TypeError):
+            pass  # never connected (no rejected subscribers)
 
     def set_volume(self, value: int) -> None:
         self._audio_output.setVolume(value / 100.0)
@@ -82,13 +108,22 @@ class QtMultimediaBackend(AudioPort):
             self._media_status_connected = False
 
     def _on_media_status(self, status: QMediaPlayer.MediaStatus) -> None:
+        # AR-21 provenance: only events for the CURRENT source are
+        # authoritative — the player emits serially for its current source,
+        # and this guard makes a stale attribution impossible (a queued
+        # event for a superseded source would fail the identity check).
+        if self._current_source is None:
+            return
+        current = self._player.source().toLocalFile()
+        if current and Path(current) != self._current_source:
+            return  # stale event for a source that is no longer current
         if status == QMediaPlayer.EndOfMedia:
             for cb in list(self._eom):
                 cb()
-        elif status == QMediaPlayer.LoadedMedia and self._current_source is not None:
+        elif status == QMediaPlayer.LoadedMedia:
             for cb in list(self._acc):
                 cb(self._current_source)
-        elif status == QMediaPlayer.InvalidMedia and self._current_source is not None:
+        elif status == QMediaPlayer.InvalidMedia:
             for cb in list(self._rej):
                 cb(self._current_source, "invalid media")
 

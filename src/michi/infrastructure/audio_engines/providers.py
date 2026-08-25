@@ -201,7 +201,9 @@ class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort
 
     def open(self) -> AudioPort:
         """Deterministic: repeated open returns the SAME owned port until
-        close()."""
+        close(). AR-12: activation performs the engine health step (GI/Gst
+        loaded, playbin3 factory, pump started) — READY must mean the
+        runtime is genuinely operational, never an empty Python adapter."""
         if self._port is not None:
             return self._port
         from michi.infrastructure.audio_engines.gstreamer import (
@@ -209,9 +211,25 @@ class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort
         )
 
         port = GStreamerAudioPort()
+        port.activate()  # health gate: raises truthfully if the runtime
+        # cannot come up (provider.open() failure → coordinator FAILED)
         self._port = port
         self._bump_runtime_generation()
+        owned_generation = self._runtime_generation
+        # AR-11: pump-death telemetry relay (same seam contract as MPD)
+        port.set_runtime_failure_callback(
+            lambda port_generation, reason: self._relay_owned_gst_failure(
+                owned_generation, reason
+            )
+        )
         return port
+
+    def _relay_owned_gst_failure(self, owned_generation: int, reason: str) -> None:
+        """AR-11: pump loss of the CURRENTLY OWNED incarnation is a fatal
+        engine runtime failure; a stale generation is ignored."""
+        if self._runtime_generation != owned_generation:
+            return
+        self.emit_runtime_failure(reason)
 
     def close(self) -> None:
         """Idempotent, exception-safe: ownership released in finally."""

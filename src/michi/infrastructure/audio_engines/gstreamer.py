@@ -17,6 +17,7 @@ import logging
 import threading
 from dataclasses import dataclass
 from enum import Enum, auto
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, Signal
@@ -272,6 +273,8 @@ class _EventBridge(QObject):
     existe segunda cola sin provenance."""
 
     sig_event = Signal(object)
+    # AR-11: pump death telemetry (pump thread → owner thread).
+    sig_pump_died = Signal(int, str)
 
 
 class GStreamerAudioPort(AudioPort):
@@ -325,6 +328,47 @@ class GStreamerAudioPort(AudioPort):
         # frontera asíncrona (M11.3C-R6.5.1). Los callbacks públicos se
         # publican directo desde el owner (sin segunda cola).
         self._bridge.sig_event.connect(self._on_backend_event, Qt.QueuedConnection)
+        # AR-11: runtime-failure telemetry seam (provider relays it into the
+        # convergence coordinator through the canonical event type).
+        self._runtime_failure_callback: Callable[[int, str], None] | None = None
+        self._bridge.sig_pump_died.connect(self._on_pump_died, Qt.QueuedConnection)
+
+    # ------------------------------------------------------------------
+    # runtime-failure telemetry (AR-11)
+    # ------------------------------------------------------------------
+
+    def set_runtime_failure_callback(
+        self, callback: Callable[[int, str], None] | None
+    ) -> None:
+        """Re-asocia el seam de fallo de runtime (mismo contrato que MPD):
+        recibe (generación del port, razón). El provider captura SU
+        generación en el closure y decide si el evento es stale."""
+        self._runtime_failure_callback = callback
+
+    def _on_pump_died(self, generation: int, reason: str) -> None:
+        if self._closed:
+            return  # expected close-time exit — never a runtime failure
+        if generation != self._generation:
+            return  # stale generation — ignored
+        cb = self._runtime_failure_callback
+        if cb is not None:
+            cb(generation, reason)
+
+    def activate(self) -> None:
+        """AR-12: activation health — READY must mean the engine runtime is
+        genuinely operational. Ensures GI/Gst loaded, the playbin3 factory
+        exists and the pump context/loop/thread are started. Never loads
+        music; never opens a DAC; no M11.4 work."""
+        if self._closed:
+            raise RuntimeError("GStreamerAudioPort cerrado")
+        self._bindings.ensure_loaded()
+        if not self._bindings.playbin3_available():
+            raise RuntimeError(
+                "GStreamer activation failed: playbin3 factory not available"
+            )
+        self._ensure_pump()
+        if self._pump is None or not self._pump.is_alive():
+            raise RuntimeError("GStreamer activation failed: pump did not start")
 
     # ------------------------------------------------------------------
     # lifecycle — ONE pump per port (M11.3C-R1)
@@ -340,6 +384,7 @@ class GStreamerAudioPort(AudioPort):
         self._context = self._bindings.create_context()
         self._loop = self._bindings.create_loop(self._context)
         self._pump_start_count += 1
+        self._pump_entered_run = threading.Event()
         self._pump = threading.Thread(
             target=self._pump_run, name="michi-gst-pump", daemon=True
         )
@@ -348,9 +393,18 @@ class GStreamerAudioPort(AudioPort):
     def _pump_run(self) -> None:
         self._bindings.push_thread_default(self._context)
         try:
+            # AR-12 race fix: GLib quit() before run_loop is a no-op — the
+            # close path waits (bounded) for this event before quitting.
+            self._pump_entered_run.set()
             self._bindings.run_loop(self._loop)
         finally:
             self._bindings.pop_thread_default(self._context)
+            # AR-11: a pump that exits while the port is NOT closing is an
+            # unexpected engine runtime loss — telemetry is emitted once on
+            # the owner thread (QueuedConnection) with the current
+            # generation; stale/close-time exits are ignored by the owner.
+            if not self._closed:
+                self._bridge.sig_pump_died.emit(self._generation, "gstreamer pump exited unexpectedly")
 
     def _attach_pipeline_sources(self, pipeline, bus, generation: int) -> None:
         """Instala el bus watch y el timer de posición en el context custom.
@@ -741,8 +795,21 @@ class GStreamerAudioPort(AudioPort):
             self._timer_source = None
         if self._pump is not None:
             if self._loop is not None:
-                self._bindings.quit_loop(self._loop)
-            self._pump.join(timeout=2.0)
+                # GLib race (AR-12 evidence): a g_main_loop_quit issued
+                # before the loop is poll-blocking can be lost, leaving the
+                # pump stuck in run(). quit() is idempotent and thread-safe
+                # — retry quit + bounded join until the pump is proven dead
+                # (bounded shutdown verification, max ~1.6s).
+                entered = getattr(self, "_pump_entered_run", None)
+                if entered is not None:
+                    entered.wait(timeout=1.0)
+                for _ in range(4):
+                    self._bindings.quit_loop(self._loop)
+                    self._pump.join(timeout=0.4)
+                    if not self._pump.is_alive():
+                        break
+            else:
+                self._pump.join(timeout=0.4)
             if self._pump.is_alive():
                 # NUNCA perder el ownership mientras el thread viva:
                 # retener referencias y reportar (R2 P1-03)
