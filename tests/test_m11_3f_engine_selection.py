@@ -1236,9 +1236,14 @@ class TestF42AdapterContract:
         #   state convergence (edge-triggered idle loss self-heals).
         # - qt_backend.py: close() + source provenance.
         # Transport semantics otherwise unchanged.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "f2e6dfc79b7d94cf",
-        "src/michi/infrastructure/audio_engines/mpd.py": "662e49e45e7380d5",
-        "src/michi/infrastructure/qt_backend.py": "0d95823cb9c4f128",
+        # R1 CORRECTIVE SEAL authorized reopenings: retryable teardown
+        # (provider/port close), typed MPD command semantics, partial
+        # startup cleanup, orphan recovery. Transport semantics unchanged.
+        "src/michi/infrastructure/audio_engines/mpd.py": "38a6aa11988b00d8",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "8b1f4966c4a87ec1",
+        "src/michi/infrastructure/qt_backend.py": "f161bc988508a91e",
+        "src/michi/infrastructure/audio_engines/providers.py": "f04004094e89c833",
+        "src/michi/application/audio_transport_router.py": "2c67d3bbebeb462c",
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py
@@ -1248,7 +1253,6 @@ class TestF42AdapterContract:
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.
-        "src/michi/application/audio_transport_router.py": "ffb572f2ad581e1f",
     }
 
     def test_f42_no_adapter_source_changes(self):

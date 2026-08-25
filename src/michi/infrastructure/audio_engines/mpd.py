@@ -53,25 +53,20 @@ from michi.application.ports import (
     AudioLoadError,
     AudioPort,
     AudioTransportCommandError,
-    AudioTransportError,
     AudioTransportUnavailableError,
 )
-
-
 from michi.domain.playback import PlaybackStatus
 
 _logger = logging.getLogger(__name__)
 
 
-def _translate_protocol_error(exc: "MpdProtocolError", command: str) -> None:
+def _translate_protocol_error(exc: MpdProtocolError, command: str) -> None:
     """R1-07: ONE translation for protocol failures (raises). ACK
     (deterministic daemon rejection) → AudioTransportCommandError; socket
     EOF / connection loss → AudioTransportUnavailableError. Diagnostic
     truth is chained with `from exc`."""
     if exc.is_ack:
-        raise AudioTransportCommandError(
-            f"MPD {command} rejected: {exc}"
-        ) from exc
+        raise AudioTransportCommandError(f"MPD {command} rejected: {exc}") from exc
     raise AudioTransportUnavailableError(
         f"MPD {command} transport lost: {exc}"
     ) from exc
@@ -393,11 +388,7 @@ def _read_proc_cmdline(pid: int) -> list[str] | None:
         raw = Path(f"/proc/{pid}/cmdline").read_bytes()
     except OSError:
         return None
-    return [
-        part.decode("utf-8", errors="replace")
-        for part in raw.split(b"\0")
-        if part
-    ]
+    return [part.decode("utf-8", errors="replace") for part in raw.split(b"\0") if part]
 
 
 def _read_proc_ppid(pid: int) -> int | None:
@@ -512,7 +503,11 @@ def recover_stale_michi_mpd_runtimes(
                     continue
                 # fact 8: parent no longer a living Michi owner
                 ppid = _read_proc_ppid(pid)
-                if ppid is not None and _pid_alive(ppid) and _looks_like_michi_owner(ppid):
+                if (
+                    ppid is not None
+                    and _pid_alive(ppid)
+                    and _looks_like_michi_owner(ppid)
+                ):
                     record["action"] = "skipped: live Michi owner"
                     results.append(record)
                     continue
@@ -554,9 +549,7 @@ def _terminate_exact_pid(pid: int) -> None:
         if not _pid_alive(pid):
             return
         time.sleep(0.1)
-    _logger.error(
-        "mpd orphan %s refused termination (TERM+KILL); left untouched", pid
-    )
+    _logger.error("mpd orphan %s refused termination (TERM+KILL); left untouched", pid)
 
 
 def _pick_runtime_parent() -> Path:
@@ -1292,9 +1285,7 @@ class MPDAudioPort(AudioPort):
         # CommandError; ACK → CommandError; socket loss → UnavailableError.
         self._require_live_transport("play")
         if self._song_id is None:
-            raise AudioTransportCommandError(
-                "MPD play requires a loaded source"
-            )
+            raise AudioTransportCommandError("MPD play requires a loaded source")
         try:
             self._client.playid(self._song_id)
         except MpdProtocolError as exc:
@@ -1338,9 +1329,7 @@ class MPDAudioPort(AudioPort):
     def seek(self, position_ms: int) -> None:
         self._require_live_transport("seek")
         if self._song_id is None:
-            raise AudioTransportCommandError(
-                "MPD seek requires a loaded source"
-            )
+            raise AudioTransportCommandError("MPD seek requires a loaded source")
         try:
             self._client.seekid(self._song_id, position_ms / 1000.0)
         except MpdProtocolError as exc:
