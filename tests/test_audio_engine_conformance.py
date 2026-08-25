@@ -136,22 +136,23 @@ class _Contract:
     def _load_accept(self, port, wav):
         from michi.domain.playback import PlaybackStatus
 
+        # R1-10: keep the EXACT callback objects and unsubscribe THOSE
         states = []
         accepted = []
-        port.subscribe_playback_state_changed(lambda s: states.append(s))
-        port.subscribe_media_accepted(lambda p: accepted.append(p))
-        port.load(wav)
-        _pump(150)
-        # acceptance may be synchronous (MPD) or async (GStreamer bus)
-        assert accepted, "media must be accepted"
-        # no autoplay on prepare: state must not be PLAYING
-        assert PlaybackStatus.PLAYING not in states
-        port.unsubscribe_media_accepted(
-            accepted.__self__ if False else (lambda p: None)
-        )
-        port.unsubscribe_playback_state_changed(
-            states.__self__ if False else (lambda s: None)
-        )
+        on_state = lambda s: states.append(s)  # noqa: E731
+        on_accepted = lambda p: accepted.append(p)  # noqa: E731
+        port.subscribe_playback_state_changed(on_state)
+        port.subscribe_media_accepted(on_accepted)
+        try:
+            port.load(wav)
+            _pump(150)
+            # acceptance may be synchronous (MPD) or async (GStreamer bus)
+            assert accepted, "media must be accepted"
+            # no autoplay on prepare: state must not be PLAYING
+            assert PlaybackStatus.PLAYING not in states
+        finally:
+            port.unsubscribe_media_accepted(on_accepted)
+            port.unsubscribe_playback_state_changed(on_state)
 
     def _play_truth(self, port):
         from michi.domain.playback import PlaybackStatus
@@ -159,21 +160,21 @@ class _Contract:
         # subscribe BEFORE the command: backends may converge state
         # synchronously (MPD refresh inside stop/play)
         states = []
-        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        on_state = lambda s: states.append(s)  # noqa: E731
+        port.subscribe_playback_state_changed(on_state)
         try:
             port.play()
             _pump(600)
             assert PlaybackStatus.PLAYING in states, f"PLAYING truth missing: {states}"
         finally:
-            port.unsubscribe_playback_state_changed(
-                states.__self__ if False else self._noop
-            )
+            port.unsubscribe_playback_state_changed(on_state)
 
     def _pause_resume(self, port):
         from michi.domain.playback import PlaybackStatus
 
         states = []
-        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        on_state = lambda s: states.append(s)  # noqa: E731
+        port.subscribe_playback_state_changed(on_state)
         try:
             port.pause()
             _pump(600)
@@ -182,7 +183,7 @@ class _Contract:
             _pump(600)
             assert PlaybackStatus.PLAYING in states, f"PLAYING missing: {states}"
         finally:
-            port.unsubscribe_playback_state_changed(self._noop)
+            port.unsubscribe_playback_state_changed(on_state)
 
     def _seek(self, port):
         # seek must not raise; position confirmation may be async
@@ -199,17 +200,14 @@ class _Contract:
         # subscribe BEFORE stop: MPD converges STOPPED synchronously inside
         # the stop command (daemon already confirms via _refresh_status)
         states = []
-        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        on_state = lambda s: states.append(s)  # noqa: E731
+        port.subscribe_playback_state_changed(on_state)
         try:
             port.stop()
             _pump(600)
             assert PlaybackStatus.STOPPED in states, f"STOPPED missing: {states}"
         finally:
-            port.unsubscribe_playback_state_changed(self._noop)
-
-    @staticmethod
-    def _noop(*args):
-        pass
+            port.unsubscribe_playback_state_changed(on_state)
 
     def _no_autoplay_on_prepare(self, port):
         from michi.domain.playback import PlaybackStatus
@@ -419,3 +417,114 @@ class TestStartupNoAutoplay:
         assert playback.state.status == PlaybackStatus.PLAYING
         playback.stop()
         coordinator.switch_to(AudioEngineId.QT_MULTIMEDIA)
+
+
+class TestCallbackLifecycle:
+    """R1-10/section 32: callbacks must be unsubscribed with the SAME
+    object they were subscribed with — repeated contract operations must
+    never grow the subscriber lists."""
+
+    def test_callback_count_does_not_grow(self):
+        from michi.application.ports import AudioPort
+
+        class CountingPort(AudioPort):
+            def __init__(self):
+                self._eom = []
+                self._pos = []
+                self._dur = []
+                self._acc = []
+                self._rej = []
+                self._pst = []
+
+            def load(self, path): ...
+            def play(self): ...
+            def pause(self): ...
+            def resume(self): ...
+            def stop(self): ...
+            def seek(self, ms): ...
+            def set_volume(self, v): ...
+            def set_muted(self, m): ...
+            def position(self):
+                return 0
+
+            def duration(self):
+                return 0
+
+            def subscribe_end_of_media(self, cb):
+                if cb not in self._eom:
+                    self._eom.append(cb)
+
+            def unsubscribe_end_of_media(self, cb):
+                if cb in self._eom:
+                    self._eom.remove(cb)
+
+            def subscribe_position_changed(self, cb):
+                if cb not in self._pos:
+                    self._pos.append(cb)
+
+            def unsubscribe_position_changed(self, cb):
+                if cb in self._pos:
+                    self._pos.remove(cb)
+
+            def subscribe_duration_changed(self, cb):
+                if cb not in self._dur:
+                    self._dur.append(cb)
+
+            def unsubscribe_duration_changed(self, cb):
+                if cb in self._dur:
+                    self._dur.remove(cb)
+
+            def subscribe_media_accepted(self, cb):
+                if cb not in self._acc:
+                    self._acc.append(cb)
+
+            def unsubscribe_media_accepted(self, cb):
+                if cb in self._acc:
+                    self._acc.remove(cb)
+
+            def subscribe_media_rejected(self, cb):
+                if cb not in self._rej:
+                    self._rej.append(cb)
+
+            def unsubscribe_media_rejected(self, cb):
+                if cb in self._rej:
+                    self._rej.remove(cb)
+
+            def subscribe_playback_state_changed(self, cb):
+                if cb not in self._pst:
+                    self._pst.append(cb)
+
+            def unsubscribe_playback_state_changed(self, cb):
+                if cb in self._pst:
+                    self._pst.remove(cb)
+
+        port = CountingPort()
+        kinds = ("eom", "pos", "dur", "acc", "rej", "pst")
+        assert sum(len(getattr(port, f"_{k}")) for k in kinds) == 0
+        # repeat the subscribe → operation → unsubscribe(SAME object)
+        # lifecycle many times; counts must never grow
+        for _ in range(25):
+            subs = {}
+            subs["eom"] = lambda: None
+            subs["pos"] = lambda ms: None
+            subs["dur"] = lambda ms: None
+            subs["acc"] = lambda p: None
+            subs["rej"] = lambda p, r: None
+            subs["pst"] = lambda s: None
+            port.subscribe_end_of_media(subs["eom"])
+            port.subscribe_position_changed(subs["pos"])
+            port.subscribe_duration_changed(subs["dur"])
+            port.subscribe_media_accepted(subs["acc"])
+            port.subscribe_media_rejected(subs["rej"])
+            port.subscribe_playback_state_changed(subs["pst"])
+            assert sum(len(getattr(port, f"_{k}")) for k in kinds) == 6
+            # unsubscribe the SAME objects (R1-10)
+            port.unsubscribe_end_of_media(subs["eom"])
+            port.unsubscribe_position_changed(subs["pos"])
+            port.unsubscribe_duration_changed(subs["dur"])
+            port.unsubscribe_media_accepted(subs["acc"])
+            port.unsubscribe_media_rejected(subs["rej"])
+            port.unsubscribe_playback_state_changed(subs["pst"])
+            assert sum(len(getattr(port, f"_{k}")) for k in kinds) == 0
+        final = sum(len(getattr(port, f"_{k}")) for k in kinds)
+        assert final == 0, f"callback leak: {final} callbacks remain"

@@ -25,7 +25,7 @@ from PySide6.QtCore import QObject, Qt, Signal
 from michi.application.ports import (
     AudioPort,
     AudioTransportCommandError,
-    AudioTransportUnavailableError,
+    AudioTransportUnavailableError,  # canonical (ports.py)
 )
 from michi.domain.playback import PlaybackStatus
 

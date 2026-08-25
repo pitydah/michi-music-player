@@ -488,11 +488,9 @@ class TestPartialStartupCleanup:
     the partial runtime artifacts must still be cleaned (no leak)."""
 
     def test_popen_failure_cleans_partial_runtime(self, monkeypatch, tmp_path):
-        import os
 
         from michi.infrastructure.audio_engines.mpd import (
             _ManagedMpdRuntime,
-            _pick_runtime_parent,
         )
 
         monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
@@ -558,7 +556,6 @@ class TestOrphanRecoveryContract:
         return base
 
     def test_f_stale_dir_no_process_artifacts_removed(self, tmp_path, monkeypatch):
-        import os
 
         from michi.infrastructure.audio_engines.mpd import (
             recover_stale_michi_mpd_runtimes,
@@ -604,10 +601,8 @@ class TestOrphanRecoveryContract:
     def test_e_current_live_runtime_not_touched(self, tmp_path, monkeypatch):
         """A live Michi-owned runtime (parent alive + michi owner) is never
         recovered."""
-        import threading
 
         from michi.infrastructure.audio_engines.mpd import (
-            _read_proc_cmdline,
             recover_stale_michi_mpd_runtimes,
         )
 
@@ -645,8 +640,12 @@ class TestOrphanRecoveryContract:
         (termination is exercised against the REAL pid)."""
         helper = tmp_path / "michi_mpd_fake.py"
         helper.write_text(
-            "#!/usr/bin/env python3" + chr(10)
-            + "import time" + chr(10) + "time.sleep(600)" + chr(10),
+            "#!/usr/bin/env python3"
+            + chr(10)
+            + "import time"
+            + chr(10)
+            + "time.sleep(600)"
+            + chr(10),
             encoding="utf-8",
         )
         helper.chmod(0o700)
@@ -747,24 +746,26 @@ class TestOrphanRecoveryContract:
         fake_pid = os.getpid()  # a REAL /proc entry (the test process)
         monkeypatch.setattr(
             "michi.infrastructure.audio_engines.mpd._read_proc_cmdline",
-            lambda pid: ["mpd", "--no-daemon", "--stderr", str(conf)]
-            if pid == fake_pid
-            else None,
+            lambda pid: (
+                ["mpd", "--no-daemon", "--stderr", str(conf)]
+                if pid == fake_pid
+                else None
+            ),
         )
         assert _mpd_process_for_conf(str(conf)) == fake_pid
         # different conf → no match
         monkeypatch.setattr(
             "michi.infrastructure.audio_engines.mpd._read_proc_cmdline",
-            lambda pid: ["mpd", "--no-daemon", "--stderr", "/etc/mpd.conf"]
-            if pid == fake_pid
-            else None,
+            lambda pid: (
+                ["mpd", "--no-daemon", "--stderr", "/etc/mpd.conf"]
+                if pid == fake_pid
+                else None
+            ),
         )
         assert _mpd_process_for_conf(str(conf)) is None
         # no --no-daemon (daemonized/system MPD) → no match
         monkeypatch.setattr(
             "michi.infrastructure.audio_engines.mpd._read_proc_cmdline",
-            lambda pid: ["mpd", "--stderr", str(conf)]
-            if pid == fake_pid
-            else None,
+            lambda pid: ["mpd", "--stderr", str(conf)] if pid == fake_pid else None,
         )
         assert _mpd_process_for_conf(str(conf)) is None

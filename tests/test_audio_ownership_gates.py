@@ -146,11 +146,10 @@ class TestRetryableClose:
 
     def test_mpd_port_observer_failure_retry_succeeds(self):
         import threading
-        import time
 
         from michi.infrastructure.audio_engines.mpd import (
-            MpdOwnershipTeardownError,
             MPDAudioPort,
+            MpdOwnershipTeardownError,
         )
 
         port = MPDAudioPort()

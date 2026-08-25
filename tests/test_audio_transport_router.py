@@ -483,12 +483,14 @@ class TestCanonicalErrorIdentity:
     the router imports it; both subclasses derive from AudioTransportError."""
 
     def test_router_unavailable_is_canonical_class(self):
-        from michi.application.ports import (
-            AudioTransportError,
-            AudioTransportUnavailableError as Canonical,
-        )
         from michi.application.audio_transport_router import (
             AudioTransportRouter,
+        )
+        from michi.application.ports import (
+            AudioTransportError,
+        )
+        from michi.application.ports import (
+            AudioTransportUnavailableError as Canonical,
         )
 
         router = AudioTransportRouter()
