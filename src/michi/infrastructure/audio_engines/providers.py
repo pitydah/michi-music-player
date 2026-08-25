@@ -144,11 +144,13 @@ class QtEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
         backend = self._backend
         if backend is None:
             return
-        try:
-            backend.stop()
-        finally:
-            self._backend = None
-            self._invalidate_runtime_generation()
+        # AR-05: ownership released ONLY on proven success. A failing close
+        # RETAINS the backend handle and the runtime generation so the
+        # still-open runtime stays reachable/diagnosable/retryable — never
+        # discard an ownership handle after a failed close.
+        backend.stop()
+        self._backend = None
+        self._invalidate_runtime_generation()
 
 
 class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
@@ -216,11 +218,10 @@ class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort
         port = self._port
         if port is None:
             return
-        try:
-            port.close()
-        finally:
-            self._port = None
-            self._invalidate_runtime_generation()
+        # AR-05: ownership released ONLY on proven success (see Qt close).
+        port.close()
+        self._port = None
+        self._invalidate_runtime_generation()
 
 
 class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):

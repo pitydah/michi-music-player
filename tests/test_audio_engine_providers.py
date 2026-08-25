@@ -52,7 +52,8 @@ class TestQtProvider:
         provider.close()
 
     def test_close_exception_safety_releases_ownership(self, qapp):
-        """A failing stop() must not leave a phantom owned backend."""
+        """AR-05: a failing stop() RETAINS the backend handle — a failed
+        close never discards the ownership path to a still-open runtime."""
         from michi.application.ports import AudioPort
 
         class BoomBackend(AudioPort):
@@ -93,10 +94,11 @@ class TestQtProvider:
         provider._backend = BoomBackend()
         with pytest.raises(RuntimeError, match="stop failed"):
             provider.close()
-        # ownership released despite the failure: no phantom owned engine
-        assert provider._backend is None
-        # second close: idempotent, no error
-        provider.close()
+        # AR-05: the ownership handle is RETAINED after the failed close
+        assert provider._backend is not None
+        # a retry can still be attempted
+        with pytest.raises(RuntimeError, match="stop failed"):
+            provider.close()
 
     def test_close_idempotent_and_reopen_fresh(self, qapp):
         provider = QtEngineProvider()

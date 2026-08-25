@@ -255,6 +255,13 @@ def _mpd_seconds_to_millis(seconds: str | float) -> int:
 # ---------------------------------------------------------------------------
 
 
+class MpdOwnershipTeardownError(RuntimeError):
+    """Explicit ownership/teardown failure: a Michi-owned child (or owned
+    thread) could not be proven terminated. The ownership handle, runtime
+    directory and diagnostic evidence are RETAINED — never released while
+    the child may still be alive (AR-06/AR-08)."""
+
+
 class MpdOutputPluginDiscoveryError(RuntimeError):
     """MPD output-plugin discovery/selection failed truthfully.
 
@@ -435,6 +442,7 @@ class _ManagedMpdRuntime:
         self.runtime_dir: Path | None = None
         self.socket_path: str | None = None
         self._process: subprocess.Popen | None = None
+        self._stderr_log: object | None = None
         self._closed = True
 
     # -- startup -------------------------------------------------------------
@@ -446,7 +454,14 @@ class _ManagedMpdRuntime:
         try:
             self._start_inner()
         except Exception:
-            self.close()
+            # FIRST ERROR WINS: the startup failure is primary; teardown of
+            # the partial runtime is best-effort (a teardown failure is
+            # logged as secondary diagnostic, never masks the primary).
+            try:
+                self.close()
+            except MpdOwnershipTeardownError as exc:
+                _logger.error("mpd: startup-failure teardown could not prove "
+                              "child death (ownership retained): %s", exc)
             raise
 
     def _start_inner(self) -> None:
@@ -473,11 +488,16 @@ class _ManagedMpdRuntime:
             conf,
             encoding="utf-8",
         )
-        # spawn --no-daemon (nunca shell=True, nunca daemonizar)
+        # spawn --no-daemon (nunca shell=True, nunca daemonizar). AR-07:
+        # stderr NUNCA es un PIPE sin drenar — se redirige a un log privado
+        # del runtime (evita deadlock por saturación del pipe y conserva
+        # diagnósticos; el archivo se limpia con el runtime tras la muerte
+        # del hijo). El log vive en el árbol del runtime (propietario: él).
+        self._stderr_log = open(base / "mpd.stderr.log", "wb")
         self._process = subprocess.Popen(
             [self._executable, "--no-daemon", "--stderr", str(conf_path)],
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
+            stderr=self._stderr_log,
             text=True,
         )
         # bounded wait por el socket + liveness del hijo
@@ -502,11 +522,18 @@ class _ManagedMpdRuntime:
         self._closed = False
 
     def _read_stderr(self) -> str:
-        if self._process is None or self._process.stderr is None:
+        """Diagnóstico del arranque fallido: lee el log privado del runtime
+        (AR-07: ya no hay pipe; el log es el único stderr del hijo)."""
+        if self._stderr_log is None:
             return ""
         try:
-            return self._process.stderr.read()[:2000]
+            self._stderr_log.flush()
         except (OSError, ValueError):
+            pass
+        try:
+            with open(self._stderr_log.name, "r", encoding="utf-8", errors="replace") as fh:
+                return fh.read()[:2000]
+        except OSError:
             return ""
 
     # -- liveness / ownership ------------------------------------------------
@@ -527,14 +554,23 @@ class _ManagedMpdRuntime:
     # -- shutdown ------------------------------------------------------------
 
     def close(self) -> None:
-        """TERM → bounded wait → KILL → reap → remover artefactos.
-        Idempotente; NUNCA deja un proceso huérfano."""
+        """TERM → bounded wait → KILL → bounded wait → PROVE death → release.
+
+        AR-06 (reliability seal): the LIVE CHILD == OWNERSHIP HANDLE RETAINED
+        invariant. The Popen handle and runtime directory are released ONLY
+        after termination is proven. If the child is still alive after
+        KILL + bounded wait, an explicit MpdOwnershipTeardownError is raised
+        and the handle/runtime_dir/socket_path/diagnostic evidence are
+        RETAINED for retry/diagnosis. Idempotent: a successful close can be
+        repeated; a FAILED close leaves a retryable ownership state."""
         if self._closed and self._process is None:
             return
-        self._closed = True
+        if self._process is None:
+            # nothing owned (already released or never started): mark closed
+            self._closed = True
+            return
         process = self._process
-        self._process = None
-        if process is not None and process.poll() is None:
+        if process.poll() is None:
             with contextlib.suppress(OSError, ProcessLookupError):
                 process.send_signal(signal.SIGTERM)
             try:
@@ -545,12 +581,33 @@ class _ManagedMpdRuntime:
                 try:
                     process.wait(timeout=3.0)
                 except subprocess.TimeoutExpired:
-                    _logger.warning("mpd: child no reaped; releasing handle")
+                    # AR-06: child STILL alive — NEVER release the handle,
+                    # NEVER delete the runtime dir, NEVER claim closed.
+                    pid = getattr(process, "pid", None)
+                    raise MpdOwnershipTeardownError(
+                        "MPD child refused termination (TERM+KILL timed out); "
+                        "ownership handle retained: "
+                        f"pid={pid} runtime={self.runtime_dir}"
+                    ) from None
+        # termination PROVEN (poll() is not None) — only now release
+        self._process = None
+        self._close_stderr_log()
         runtime_dir = self.runtime_dir
         self.runtime_dir = None
         self.socket_path = None
         if runtime_dir is not None:
             shutil.rmtree(runtime_dir, ignore_errors=True)
+        self._closed = True
+
+    def _close_stderr_log(self) -> None:
+        """Cierra el descriptor del log privado (tras muerte del hijo)."""
+        if self._stderr_log is None:
+            return
+        try:
+            self._stderr_log.close()
+        except (OSError, ValueError):
+            pass
+        self._stderr_log = None
 
 
 # ---------------------------------------------------------------------------
@@ -704,7 +761,9 @@ class MPDAudioPort(AudioPort):
 
     def close(self) -> None:
         """Idempotente: detiene observer y poller, cierra sockets, termina
-        el hijo, remueve artefactos."""
+        el hijo, remueve artefactos. AR-08: el handle del observer se
+        conserva hasta que su terminación está PROBADA — un join que expira
+        retiene el thread y la evidencia de teardown."""
         if self._closed:
             return
         self._closed = True
@@ -715,10 +774,18 @@ class MPDAudioPort(AudioPort):
         if idle_client is not None:
             with contextlib.suppress(Exception):
                 idle_client.close()
+        self._idle_client = None
         observer = self._observer
-        self._observer = None
-        if observer is not None:
+        if observer is not None and observer.is_alive():
             observer.join(timeout=2.0)
+            if observer.is_alive():
+                # AR-08: nunca borrar el handle de un thread vivo — retener
+                # y reportar; el port NO puede declarar cierre limpio.
+                raise MpdOwnershipTeardownError(
+                    "MPD observer thread refused termination; ownership "
+                    "handle retained for diagnosis"
+                )
+        self._observer = None
         if self._poller is not None:
             self._poller.stop()
             self._poller = None

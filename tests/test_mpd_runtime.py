@@ -190,15 +190,53 @@ class TestShutdown:
     def test_r8_kill_fallback_on_term_timeout(
         self, fake_runtime, tmp_path, monkeypatch
     ):
+        """AR-06: TERM timeout → KILL fallback → proven death → release."""
+        runtime, proc = self._started(fake_runtime, tmp_path)
+
+        real_wait = proc.wait
+        calls = {"n": 0}
+
+        def wait_with_timeout(timeout=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise subprocess.TimeoutExpired("mpd", timeout)
+            return real_wait(timeout)
+
+        monkeypatch.setattr(proc, "wait", wait_with_timeout)
+        runtime_dir = runtime.runtime_dir
+        runtime.close()
+        assert proc.killed() is True  # SIGKILL fallback
+        assert proc.poll() is not None  # death proven → released
+        assert runtime.process is None
+        assert not runtime_dir.exists()  # artifacts removed after death
+
+    def test_r8b_close_retains_handle_when_child_wont_die(
+        self, fake_runtime, tmp_path, monkeypatch
+    ):
+        """AR-06: if the child refuses termination (TERM+KILL timeouts) the
+        handle, runtime dir and socket are RETAINED and close raises an
+        explicit ownership error — never a fabricated clean release."""
+        from michi.infrastructure.audio_engines.mpd import (
+            MpdOwnershipTeardownError,
+        )
+
         runtime, proc = self._started(fake_runtime, tmp_path)
 
         def stuck_wait(timeout=None):
             raise subprocess.TimeoutExpired("mpd", timeout)
 
         monkeypatch.setattr(proc, "wait", stuck_wait)
-        runtime.close()
-        assert proc.killed() is True  # SIGKILL fallback
-        assert proc.poll() is not None
+        runtime_dir = runtime.runtime_dir
+        socket_path = runtime.socket_path
+        with pytest.raises(MpdOwnershipTeardownError, match="ownership handle retained"):
+            runtime.close()
+        # ownership RETAINED: handle, runtime dir, socket, diagnostics
+        assert runtime.process is proc
+        assert runtime.runtime_dir == runtime_dir
+        assert runtime.socket_path == socket_path
+        assert runtime_dir.exists()
+        # a retry can still be attempted (close is not permanently stuck)
+        assert runtime.closed is False
 
     def test_r12_no_external_adoption(self, fake_runtime, tmp_path):
         # el runtime SIEMPRE crea paths privados únicos bajo XDG_RUNTIME_DIR
