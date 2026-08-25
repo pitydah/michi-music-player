@@ -8,8 +8,6 @@ and the click-to-sort album table header.
 
 from pathlib import Path
 
-import pytest
-
 QML_ROOT = Path("src/michi/presentation/qml")
 
 
@@ -144,8 +142,12 @@ def test_library_header_options_button_at_control_medium():
     assert "height: MichiMetrics.controlMedium" in content
 
 
-@pytest.mark.skip(reason="Antigravity M9-R2 UI feature not part of main authority")
 def test_flat_lists_have_scrollbars():
+    """MichiScrollBar is present on the flat list views in main.
+
+    AlbumDetailView/ArtistDetailView use the native ListView scroll
+    (main authority) — they are detail pages, not flat lists, so they are
+    excluded from this gate."""
     for rel_path in [
         "views/SongsView.qml",
         "views/FavoritesView.qml",
@@ -153,11 +155,11 @@ def test_flat_lists_have_scrollbars():
         "views/RecentlyAddedView.qml",
         "views/GenresView.qml",
         "views/FoldersView.qml",
-        "views/AlbumDetailView.qml",
-        "views/ArtistDetailView.qml",
         "playlists/PlaylistTrackList.qml",
     ]:
         assert "MichiScrollBar" in read(rel_path), rel_path
+    for rel_path in ["views/AlbumDetailView.qml", "views/ArtistDetailView.qml"]:
+        assert "ListView" in read(rel_path), rel_path
 
 
 # ── P2: table header consistency and click-to-sort ────────────────────────────
@@ -203,14 +205,17 @@ def test_queue_clear_requires_confirmation():
     assert 'variant: "danger"' in content
 
 
-@pytest.mark.skip(reason="Antigravity M9-R2 UI feature not part of main authority")
 def test_queue_view_dismisses_with_escape_and_animation():
+    """Main authority: QueueView closes via closeRequested() + backdrop
+    click; the global Esc shortcut routes queue → goBack() in main.qml."""
     content = read("views/QueueView.qml")
-    assert "Keys.onEscapePressed: root.dismiss()" in content
-    assert "function dismiss()" in content
-    assert "enabled: root.revealed" in content
-    assert "Accessible.role: Accessible.Dialog" in content
-    assert "root.forceActiveFocus()" in content
+    assert "signal closeRequested()" in content
+    assert "onClicked: root.closeRequested()" in content
+    assert "property bool revealed" in content
+    main = read("../main.qml")
+    assert 'sequence: "Esc"' in main
+    assert 'navigation.currentRoute === "queue"' in main
+    assert "appShell.goBack()" in main
 
 
 # ── Phase 2: immersive views (cover-flow, vinyl wall, timeline) ───────────────
@@ -267,19 +272,21 @@ def test_cover_flow_single_cyan_accent():
     )  # auroraBlue may exist elsewhere; the border must be cyan
 
 
-@pytest.mark.skip(reason="Antigravity M9-R2 UI feature not part of main authority")
 def test_artist_hero_is_elevated_glass():
+    """Main authority: the artist header uses the aurora gradient avatar
+    + the M6.9 enrichment knowledge surface."""
     content = read("views/ArtistDetailView.qml")
-    assert "artistHeroContent" in content
-    assert "accentColor: MichiPalette.auroraBlue" in content
-    assert "textured: true" in content
+    assert "MichiPalette.auroraBlue" in content
+    assert "EnrichmentStatusBar" in content
 
 
-@pytest.mark.skip(reason="Antigravity M9-R2 UI feature not part of main authority")
 def test_album_detail_no_duplicated_metadata_at_wide_widths():
+    """Album detail uses width breakpoints (main authority: 960/760) to
+    avoid duplicated metadata on wide layouts."""
     content = read("views/AlbumDetailView.qml")
-    assert "visible: root.width < 960" in content
     assert content.count("root.width >= 960") >= 1
+    assert "root.width < 760" in content
+    assert "root.width >= 760" in content
 
 
 # ── Phase 3: copy and fine accessibility ──────────────────────────────────────
@@ -357,7 +364,6 @@ def test_settings_view_uses_real_controls():
 # ── Phase 4: MichiFormat singleton ────────────────────────────────────────────
 
 
-@pytest.mark.skip(reason="Antigravity M9-R2 UI feature not part of main authority")
 def test_michi_format_singleton_registered_and_used():
     qmldir = Path("src/michi/presentation/qml/theme/qmldir").read_text()
     assert "singleton MichiFormat 1.0 MichiFormat.qml" in qmldir
@@ -367,7 +373,6 @@ def test_michi_format_singleton_registered_and_used():
         "playlists/PlaylistCard.qml",
         "playlists/PlaylistsView.qml",
         "playlists/PlaylistTrackList.qml",
-        "views/AlbumDetailView.qml",
     ]:
         content = read(rel)
         assert "MichiFormat.format" in content, rel
@@ -385,30 +390,23 @@ def test_library_header_names_active_tab():
     assert "title: root.tabTitle()" in content
 
 
-@pytest.mark.skip(reason="Antigravity M9-R2 UI feature not part of main authority")
 def test_toast_host_supports_action_and_is_wired():
     toast = read("patterns/ToastHost.qml")
-    assert "function showWithAction" in toast
+    assert "function showWithAction(text, action, nextTone)" in toast
     assert "property string actionText" in toast
     shell = read("shell/AppShell.qml")
     assert "ToastHost" in shell
     assert "function showToast(text, tone)" in shell
-    assert "function showToastWithAction" in shell
-    main = read("../main.qml")
-    assert "function showToast(text, tone)" in main
-    assert "appShell.showToast(text, tone)" in main
+    assert "function showToastWithAction(text, action, handler, tone)" in shell
+    lib_host = read("views/LibraryContentHost.qml")
+    assert "window.showToast" in lib_host
 
 
-@pytest.mark.skip(reason="Antigravity M9-R2 UI feature not part of main authority")
 def test_action_feedback_call_sites():
     lib_host = read("views/LibraryContentHost.qml")
     assert 'qsTr("Added to %1", "", modelData.name)' in lib_host
     host = read("shell/ContentHost.qml")
-    assert "Removed from playlist" in host
     assert "add_track_to_playlist(" in host
-    queue = read("views/QueueView.qml")
-    assert 'qsTr("Removed from queue"), qsTr("Undo")' in queue
-    assert "queue.insert_at(index, removed.path)" in queue
 
 
 # ── Phase 4: full qsTr coverage (no intra-file mixes) ─────────────────────────

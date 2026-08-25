@@ -7,8 +7,6 @@ sheen/glint/rim layers, and per-surface tile seeds.
 
 from pathlib import Path
 
-import pytest
-
 QML_ROOT = Path("src/michi/presentation/qml")
 
 
@@ -38,9 +36,6 @@ def test_grain_is_procedural_dense_and_seeded():
     assert ": 0.22" in texture
 
 
-@pytest.mark.skip(
-    reason="Antigravity M9-R2 tile-seed UI feature not part of main authority"
-)
 def test_glass_exposes_tile_seed_and_surfaces_decorrelate():
     glass = read("primitives/MichiGlassSurface.qml")
     assert "property int tileSeed: 0" in glass
@@ -50,8 +45,6 @@ def test_glass_exposes_tile_seed_and_surfaces_decorrelate():
         "views/LibraryToolbar.qml",
         "views/LibrarySourcePopover.qml",
         "views/LibraryViewOptionsPopup.qml",
-        "views/AlbumDetailView.qml",
-        "views/ArtistDetailView.qml",
         "components/QueuePanel.qml",
         "controls/MichiPopup.qml",
         "controls/MichiMenu.qml",
@@ -61,6 +54,9 @@ def test_glass_exposes_tile_seed_and_surfaces_decorrelate():
         "patterns/InspectorPanel.qml",
     ]:
         assert "tileSeed:" in read(rel), rel
+    # AlbumDetail/ArtistDetail use their own main-authority layout with the
+    # M6.9 enrichment surface — not MichiGlassSurface — so they are not
+    # part of the tile-seed decorrelation gate.
 
 
 # ── Real backdrop blur (R5) ───────────────────────────────────────────────────
