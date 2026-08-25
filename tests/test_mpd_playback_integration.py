@@ -92,7 +92,7 @@ class _FakeClient:
     def playid(self, song_id):
         self.commands.append(f"playid {song_id}")
         if self.playid_ack:
-            raise MpdProtocolError(self.playid_ack)
+            raise MpdProtocolError(self.playid_ack, is_ack=True)
         self.state = "play"
 
     def pause(self, enabled):
@@ -212,10 +212,12 @@ class TestFullStack:
         assert svc.state.status == PlaybackStatus.STOPPED
 
     def test_f4_play_failure_no_ghost(self, mpd_stack):
+        from michi.application.ports import AudioTransportCommandError
+
         port, svc, fake = mpd_stack
         svc.load_and_play(Path("/m/a.flac"))
         fake.playid_ack = "ACK [1@0] {playid} rejected"
-        with pytest.raises(RuntimeError, match="MPD play failed"):
+        with pytest.raises(AudioTransportCommandError, match="play rejected"):
             svc.load_and_play(Path("/m/b.flac"))
         _drain()
         # sin ghost backend aceptado para B

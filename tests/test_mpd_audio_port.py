@@ -100,23 +100,35 @@ class _FakeClient:
     def playid(self, song_id):
         self._record(f"playid {song_id}")
         if self.playid_ack:
-            raise MpdProtocolError(self.playid_ack)
+            raise MpdProtocolError(self.playid_ack, is_ack=True)
+        if getattr(self, "fatal_error", None):
+            raise MpdProtocolError(self.fatal_error, is_ack=False)
         self.state = "play"
 
     def pause(self, enabled):
         self._record(f"pause {enabled}")
+        if getattr(self, "pause_ack", None):
+            raise MpdProtocolError(self.pause_ack, is_ack=True)
+        if getattr(self, "fatal_error", None):
+            raise MpdProtocolError(self.fatal_error, is_ack=False)
         self.state = "pause" if enabled else "play"
 
     def stop(self):
         self._record("stop")
+        if getattr(self, "fatal_error", None):
+            raise MpdProtocolError(self.fatal_error, is_ack=False)
         self.state = "stop"
 
     def seekid(self, song_id, seconds):
         self._record(f"seekid {song_id} {seconds}")
+        if getattr(self, "fatal_error", None):
+            raise MpdProtocolError(self.fatal_error, is_ack=False)
         self.elapsed = f"{seconds:.3f}"
 
     def setvol(self, volume):
         self._record(f"setvol {volume}")
+        if getattr(self, "fatal_error", None):
+            raise MpdProtocolError(self.fatal_error, is_ack=False)
         self.volume = str(volume)
 
     def currentsong(self):
@@ -289,7 +301,9 @@ class TestPlaybackState:
         states = []
         port.subscribe_playback_state_changed(lambda s: states.append(s))
         port.load(Path("/m/a.flac"))
-        with pytest.raises(RuntimeError, match="MPD play failed"):
+        from michi.application.ports import AudioTransportCommandError
+
+        with pytest.raises(AudioTransportCommandError, match="MPD play rejected"):
             port.play()
         assert PlaybackStatus.PLAYING not in states  # sin PLAYING optimista
 
@@ -351,7 +365,9 @@ class TestPlaybackState:
         fake.playid_ack = "ACK [1@0] {playid} rejected"
         states = []
         port.subscribe_playback_state_changed(lambda s: states.append(s))
-        with pytest.raises(RuntimeError, match="MPD play failed"):
+        from michi.application.ports import AudioTransportCommandError
+
+        with pytest.raises(AudioTransportCommandError, match="MPD play rejected"):
             port.play()
         _drain()
         assert PlaybackStatus.PLAYING not in states
@@ -425,10 +441,10 @@ class TestSeek:
         port, fake = mpd_env
         positions = []
         port.subscribe_position_changed(lambda ms: positions.append(ms))
-        # AR-20: sin source aceptado NO hay posición fabricada — el acceso
-        # es un error de transporte explícito (0 real solo desde el backend)
-        with pytest.raises(AudioTransportError):
-            port.position()
+        # R1-07 table: LIVE TRANSPORT + NO SOURCE → real 0 (not fabricated,
+        # not an error); CLOSED transport → typed unavailable error
+        assert port.position() == 0
+        assert port.duration() == 0
         port._poll_position()  # tick: sin accepted → sin publicación
         _drain()
         assert positions == []
@@ -820,3 +836,70 @@ class TestGate3OpenFailureAfterObserver:
         assert port._poller is None
         assert closed == [1]  # runtime cerrado exactamente una vez
         assert port._closed is True
+
+
+class TestTypedCommandContract:
+    """R1-07: one semantic table — closed → UnavailableError, ACK →
+    CommandError, no-source source-required → CommandError, no-source stop
+    → successful no-op, live no-source position/duration → 0, socket loss
+    → UnavailableError."""
+
+    def _closed_port(self, mpd_env):
+        port, fake = mpd_env
+        port._closed = True
+        return port
+
+    def test_closed_transport_all_commands_unavailable(self, mpd_env):
+        from michi.application.ports import AudioTransportUnavailableError
+
+        port, fake = mpd_env
+        port._closed = True
+        for call in (
+            lambda: port.play(),
+            lambda: port.pause(),
+            lambda: port.resume(),
+            lambda: port.stop(),
+            lambda: port.seek(1000),
+            lambda: port.set_volume(50),
+            lambda: port.set_muted(True),
+            lambda: port.position(),
+            lambda: port.duration(),
+        ):
+            with pytest.raises(AudioTransportUnavailableError):
+                call()
+
+    def test_no_source_play_seek_command_error(self, mpd_env):
+        from michi.application.ports import AudioTransportCommandError
+
+        port, fake = mpd_env  # no load()
+        with pytest.raises(AudioTransportCommandError, match="loaded source"):
+            port.play()
+        with pytest.raises(AudioTransportCommandError, match="loaded source"):
+            port.seek(1000)
+
+    def test_no_source_stop_successful_noop(self, mpd_env):
+        port, fake = mpd_env  # no load()
+        port.stop()  # must NOT raise
+
+    def test_no_source_position_duration_zero(self, mpd_env):
+        port, fake = mpd_env  # no load()
+        assert port.position() == 0
+        assert port.duration() == 0
+
+    def test_ack_is_command_error(self, mpd_env):
+        from michi.application.ports import AudioTransportCommandError
+
+        port, fake = mpd_env
+        port.load(Path("/m/a.flac"))
+        fake.pause_ack = "ACK [2@0] {pause} rejected"
+        with pytest.raises(AudioTransportCommandError, match="pause rejected"):
+            port.pause()
+
+    def test_socket_loss_is_unavailable_error(self, mpd_env):
+        from michi.application.ports import AudioTransportUnavailableError
+
+        port, fake = mpd_env
+        port.load(Path("/m/a.flac"))
+        fake.fatal_error = "socket closed mid-command"
+        with pytest.raises(AudioTransportUnavailableError, match="transport lost"):
+            port.play()

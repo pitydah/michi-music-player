@@ -52,11 +52,29 @@ from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from michi.application.ports import (
     AudioLoadError,
     AudioPort,
+    AudioTransportCommandError,
     AudioTransportError,
+    AudioTransportUnavailableError,
 )
+
+
 from michi.domain.playback import PlaybackStatus
 
 _logger = logging.getLogger(__name__)
+
+
+def _translate_protocol_error(exc: "MpdProtocolError", command: str) -> None:
+    """R1-07: ONE translation for protocol failures (raises). ACK
+    (deterministic daemon rejection) → AudioTransportCommandError; socket
+    EOF / connection loss → AudioTransportUnavailableError. Diagnostic
+    truth is chained with `from exc`."""
+    if exc.is_ack:
+        raise AudioTransportCommandError(
+            f"MPD {command} rejected: {exc}"
+        ) from exc
+    raise AudioTransportUnavailableError(
+        f"MPD {command} transport lost: {exc}"
+    ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -1075,78 +1093,103 @@ class MPDAudioPort(AudioPort):
         self._deliver_acc(file_path)
 
     def play(self) -> None:
-        if self._closed or self._client is None:
-            return
+        # R1-07 table: closed → UnavailableError; live+no-source →
+        # CommandError; ACK → CommandError; socket loss → UnavailableError.
+        self._require_live_transport("play")
         if self._song_id is None:
-            return
+            raise AudioTransportCommandError(
+                "MPD play requires a loaded source"
+            )
         try:
             self._client.playid(self._song_id)
         except MpdProtocolError as exc:
             # sin ghost accepted: converger honesto
             self._converge_transport_error(str(exc))
-            raise RuntimeError(f"MPD play failed: {exc}") from exc
+            _translate_protocol_error(exc, "play")
         self._pending_play = True
         # PLAYING NUNCA es optimista: espera la verdad del daemon
 
     def pause(self) -> None:
-        if self._closed or self._client is None:
-            return
+        self._require_live_transport("pause")
         try:
             self._client.pause(True)
         except MpdProtocolError as exc:
-            raise RuntimeError(f"MPD pause failed: {exc}") from exc
+            _translate_protocol_error(exc, "pause")
         self._pending_play = False
 
     def resume(self) -> None:
-        if self._closed or self._client is None:
-            return
+        self._require_live_transport("resume")
         try:
             self._client.pause(False)
         except MpdProtocolError as exc:
-            raise RuntimeError(f"MPD resume failed: {exc}") from exc
+            _translate_protocol_error(exc, "resume")
         self._pending_play = True
 
     def stop(self) -> None:
-        if self._closed or self._client is None:
+        self._require_live_transport("stop")
+        if self._song_id is None:
+            # R1-07 table: live + no loaded source → SUCCESSFUL IDEMPOTENT
+            # NO-OP (reentrancy-safe: a stop arriving during a load
+            # transition has no source yet; stopping nothing IS stopping).
             return
         self._pending_play = False
         try:
             self._client.stop()
         except MpdProtocolError as exc:
-            raise RuntimeError(f"MPD stop failed: {exc}") from exc
+            _translate_protocol_error(exc, "stop")
         # STOPPED solo cuando el daemon confirma state=stop (refresh)
         self._refresh_status()
 
     def seek(self, position_ms: int) -> None:
-        if self._closed or self._client is None:
-            return
+        self._require_live_transport("seek")
         if self._song_id is None:
-            return
+            raise AudioTransportCommandError(
+                "MPD seek requires a loaded source"
+            )
         try:
             self._client.seekid(self._song_id, position_ms / 1000.0)
         except MpdProtocolError as exc:
-            raise RuntimeError(f"MPD seek failed: {exc}") from exc
+            _translate_protocol_error(exc, "seek")
+
+    def _require_live_transport(self, command: str) -> None:
+        """R1-07: closed/unavailable transport → AudioTransportUnavailableError
+        (never a silent return)."""
+        if self._closed or self._client is None:
+            raise AudioTransportUnavailableError(
+                f"MPD {command} on closed/unavailable transport"
+            )
 
     def position(self) -> int:
-        # AR-20: transport query failure is NEVER collapsed into a
-        # fabricated 0 — the poller already converges transport loss via
-        # _converge_transport_error; this accessor raises truthfully for
-        # direct consumers.
-        if self._closed or self._client is None or self._current_path is None:
-            raise AudioTransportError("MPD position unavailable (transport closed)")
-        status = self._client.status()
+        # R1-07 table: closed → UnavailableError; LIVE + NO SOURCE → 0
+        # (real zero, allowed); transport query failure → UnavailableError
+        # (never fabricated 0).
+        if self._closed or self._client is None:
+            raise AudioTransportUnavailableError(
+                "MPD position unavailable (transport closed)"
+            )
+        if self._current_path is None:
+            return 0
+        try:
+            status = self._client.status()
+        except MpdProtocolError as exc:
+            _translate_protocol_error(exc, "position")
         return _mpd_seconds_to_millis(status.get("elapsed", "0"))
 
     def duration(self) -> int:
-        # AR-20: same truth rule as position().
-        if self._closed or self._client is None or self._current_path is None:
-            raise AudioTransportError("MPD duration unavailable (transport closed)")
-        song = self._client.currentsong()
+        if self._closed or self._client is None:
+            raise AudioTransportUnavailableError(
+                "MPD duration unavailable (transport closed)"
+            )
+        if self._current_path is None:
+            return 0
+        try:
+            song = self._client.currentsong()
+        except MpdProtocolError as exc:
+            _translate_protocol_error(exc, "duration")
         return _mpd_seconds_to_millis(song.get("duration", song.get("Time", "0")))
 
     def set_volume(self, value: int) -> None:
-        if self._closed or self._client is None:
-            return
+        self._require_live_transport("set_volume")
         candidate = max(0, min(100, value))
         # AR-15: el estado interno NUNCA commitea antes del éxito del
         # protocolo — setvol primero, commit después.
@@ -1154,17 +1197,16 @@ class MPDAudioPort(AudioPort):
             try:
                 self._client.setvol(candidate)
             except MpdProtocolError as exc:
-                raise RuntimeError(f"MPD setvol failed: {exc}") from exc
+                _translate_protocol_error(exc, "setvol")
         self._volume = candidate
 
     def set_muted(self, muted: bool) -> None:
-        if self._closed or self._client is None:
-            return
+        self._require_live_transport("set_muted")
         effective = 0 if muted else self._volume
         try:
             self._client.setvol(effective)
         except MpdProtocolError as exc:
-            raise RuntimeError(f"MPD setvol failed: {exc}") from exc
+            raise _translate_protocol_error(exc, "setvol") from exc
         # AR-15: commit solo tras el éxito del protocolo.
         self._muted = muted
 

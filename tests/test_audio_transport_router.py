@@ -476,3 +476,46 @@ class TestRouterTransactionSafety:
         # remaining wrappers dropped from the router even though one
         # unsubscribe raised (provenance guard covers the stale one)
         assert router._wrappers == []
+
+
+class TestCanonicalErrorIdentity:
+    """R1-06: ONE canonical AudioTransportUnavailableError in ports.py —
+    the router imports it; both subclasses derive from AudioTransportError."""
+
+    def test_router_unavailable_is_canonical_class(self):
+        from michi.application.ports import (
+            AudioTransportError,
+            AudioTransportUnavailableError as Canonical,
+        )
+        from michi.application.audio_transport_router import (
+            AudioTransportRouter,
+        )
+
+        router = AudioTransportRouter()
+        with pytest.raises(Canonical):
+            router.play()
+        # hierarchy identity: the raised class IS the canonical one
+        try:
+            router.play()
+        except AudioTransportError:
+            captured = True
+        else:
+            captured = False
+        assert captured
+
+    def test_command_error_derives_from_transport_error(self):
+        from michi.application.ports import (
+            AudioTransportCommandError,
+            AudioTransportError,
+        )
+
+        assert issubclass(AudioTransportCommandError, AudioTransportError)
+        assert issubclass(AudioTransportUnavailableError, AudioTransportError)
+
+    def test_no_duplicate_class_in_router(self):
+        import inspect
+
+        import michi.application.audio_transport_router as mod
+
+        src = inspect.getsource(mod)
+        assert "class AudioTransportUnavailableError" not in src

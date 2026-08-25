@@ -21,14 +21,12 @@ a clean new binding.
 from collections.abc import Callable
 from pathlib import Path
 
-from michi.application.ports import AudioPort
+from michi.application.ports import (
+    AudioPort,
+    AudioTransportUnavailableError,  # R1-06: canonical class from ports.py
+)
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.playback import PlaybackStatus
-
-
-class AudioTransportUnavailableError(RuntimeError):
-    """Raised when a transport command requires a bound backend and none is
-    bound. Never silently no-op play/load/seek; never fabricate 0."""
 
 
 class AudioTransportBindingPort:
