@@ -286,6 +286,24 @@ class ScanCancelToken:
         self.cancelled: bool = False
 
 
+class AudioTransportError(RuntimeError):
+    """Transport command failure (reliability seal, AR-02/AR-13).
+
+    Every AudioPort command either succeeds or raises an explicit typed
+    failure — silent command failure is forbidden. Subclasses distinguish
+    the failure class; the raised exception is the CONTRACT."""
+
+
+class AudioTransportCommandError(AudioTransportError):
+    """The backend actively rejected a command (e.g. GStreamer returned
+    StateChangeReturn.FAILURE, an MPD ACK, a Qt error)."""
+
+
+class AudioTransportUnavailableError(AudioTransportError):
+    """The command requires a live transport that is closed/unbound/
+    uninitialized — never silently no-op."""
+
+
 class AudioLoadError(RuntimeError):
     """Fallo sincrónico de AudioPort.load con disposición de la fuente previa.
 

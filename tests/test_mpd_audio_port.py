@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from PySide6.QtCore import QCoreApplication
 
-from michi.application.ports import AudioLoadError
+from michi.application.ports import AudioLoadError, AudioTransportError
 from michi.domain.playback import PlaybackStatus
 from michi.infrastructure.audio_engines.mpd import (
     MPDAudioPort,
@@ -425,7 +425,10 @@ class TestSeek:
         port, fake = mpd_env
         positions = []
         port.subscribe_position_changed(lambda ms: positions.append(ms))
-        assert port.position() == 0  # sin source aceptado
+        # AR-20: sin source aceptado NO hay posición fabricada — el acceso
+        # es un error de transporte explícito (0 real solo desde el backend)
+        with pytest.raises(AudioTransportError):
+            port.position()
         port._poll_position()  # tick: sin accepted → sin publicación
         _drain()
         assert positions == []

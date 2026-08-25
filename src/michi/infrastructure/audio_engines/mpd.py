@@ -49,7 +49,11 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 
-from michi.application.ports import AudioLoadError, AudioPort
+from michi.application.ports import (
+    AudioLoadError,
+    AudioPort,
+    AudioTransportError,
+)
 from michi.domain.playback import PlaybackStatus
 
 _logger = logging.getLogger(__name__)
@@ -1099,42 +1103,45 @@ class MPDAudioPort(AudioPort):
             raise RuntimeError(f"MPD seek failed: {exc}") from exc
 
     def position(self) -> int:
+        # AR-20: transport query failure is NEVER collapsed into a
+        # fabricated 0 — the poller already converges transport loss via
+        # _converge_transport_error; this accessor raises truthfully for
+        # direct consumers.
         if self._closed or self._client is None or self._current_path is None:
-            return 0
-        try:
-            status = self._client.status()
-        except MpdProtocolError:
-            return 0
+            raise AudioTransportError("MPD position unavailable (transport closed)")
+        status = self._client.status()
         return _mpd_seconds_to_millis(status.get("elapsed", "0"))
 
     def duration(self) -> int:
+        # AR-20: same truth rule as position().
         if self._closed or self._client is None or self._current_path is None:
-            return 0
-        try:
-            song = self._client.currentsong()
-        except MpdProtocolError:
-            return 0
+            raise AudioTransportError("MPD duration unavailable (transport closed)")
+        song = self._client.currentsong()
         return _mpd_seconds_to_millis(song.get("duration", song.get("Time", "0")))
 
     def set_volume(self, value: int) -> None:
         if self._closed or self._client is None:
             return
-        self._volume = max(0, min(100, value))
+        candidate = max(0, min(100, value))
+        # AR-15: el estado interno NUNCA commitea antes del éxito del
+        # protocolo — setvol primero, commit después.
         if not self._muted:
             try:
-                self._client.setvol(self._volume)
+                self._client.setvol(candidate)
             except MpdProtocolError as exc:
                 raise RuntimeError(f"MPD setvol failed: {exc}") from exc
+        self._volume = candidate
 
     def set_muted(self, muted: bool) -> None:
         if self._closed or self._client is None:
             return
-        self._muted = muted
         effective = 0 if muted else self._volume
         try:
             self._client.setvol(effective)
         except MpdProtocolError as exc:
             raise RuntimeError(f"MPD setvol failed: {exc}") from exc
+        # AR-15: commit solo tras el éxito del protocolo.
+        self._muted = muted
 
     # ------------------------------------------------------------------
     # publication (owner thread, DIRECT)

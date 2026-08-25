@@ -459,8 +459,15 @@ class PlaybackService:
             raise
 
     def stop(self) -> None:
+        # AR-17 (reliability seal): capture the pending identity FIRST, then
+        # attempt the backend safety command; the local intent is cleared
+        # ONLY after the backend accepted the stop. A backend stop failure
+        # propagates with the pending identity preserved (truthful retry/
+        # diagnosis) — STOPPED is never fabricated from a failed stop.
         on_cancelled = self._pending_on_cancelled
         cancelled_path = self._pending_path
+        self._audio.stop()
+        # SUCCESS COMMIT — backend accepted the safety command
         self._pending_path = None
         self._pending_on_accepted = None
         self._pending_on_rejected = None
@@ -468,7 +475,6 @@ class PlaybackService:
         self._pending_resume_position_ms = None
         self._resume_prepared_pending = False
         self._intent = False
-        self._audio.stop()
         self._state.status = PlaybackStatus.STOPPED
         self._state.position_ms = 0
         self._notify()
@@ -524,9 +530,11 @@ class PlaybackService:
             on_rejected(pending_path, reason)
 
     def seek(self, position_ms: int) -> None:
+        # AR-16 (reliability seal): seek is INTENT ONLY. A requested position
+        # is not a confirmed position — canonical position changes arrive
+        # exclusively through backend observation (update_position) or an
+        # explicitly confirmed backend truth seam. No fabricated position.
         self._audio.seek(position_ms)
-        self._state.position_ms = position_ms
-        self._notify()
 
     def set_volume(self, value: int) -> None:
         clamped = max(0, min(100, value))

@@ -1219,17 +1219,29 @@ class TestF42AdapterContract:
     # the implicit MPD output autodetection that failed on the local runtime
     # (ACK [5@0] {setvol} no such mixer control: PCM). Transport semantics
     # unchanged; volume/mute guaranteed by the software mixer.
+    # AUDIO RUNTIME RELIABILITY SEAL (extraordinary authorized reopening):
+    # mpd.py gained ownership/teardown hardening (MpdOwnershipTeardownError,
+    # stderr→runtime log, observer termination proof) and command truth
+    # (setvol commit-after-success, position/duration raise instead of
+    # fabricating 0). Transport semantics otherwise unchanged.
     # M4-R1 GOVERNANCE CORRECTION: QueueService was REMOVED from the frozen
     # adapter hash ownership — M11.3 freezes engine/runtime transport
     # semantics, it does NOT own Queue implementation (queue_service.py is
     # legitimately refactored by M4-R1).
     _BASELINE_HASHES = {
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "1ee9e1d5fc493797",
-        "src/michi/infrastructure/audio_engines/mpd.py": "ceaa2ec4c6d283ce",
+        # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: gstreamer.py
+        # gained explicit typed command failures (play/pause/stop/seek raise
+        # AudioTransportCommandError/UnavailableError instead of silent
+        # returns). Transport semantics otherwise unchanged.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "0597a09aafb9dcff",
+        "src/michi/infrastructure/audio_engines/mpd.py": "5a3206e13b1bdfda",
         "src/michi/infrastructure/qt_backend.py": "88614638da12acd8",
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).
-        "src/michi/application/ports.py": "141926bd096ec714",
+        # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py
+        # gained the typed AudioTransportError hierarchy (CommandError /
+        # UnavailableError) — additive error surface, AudioPort unchanged.
+        "src/michi/application/ports.py": "776c46628ba9f85d",
         "src/michi/application/audio_transport_router.py": "d27e9dca6304722c",
     }
 

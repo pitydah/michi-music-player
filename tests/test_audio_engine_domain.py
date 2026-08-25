@@ -228,3 +228,44 @@ class TestDomainPurity:
             "unbind",
         ):
             assert not hasattr(AudioPort, name), f"AudioPort ganó {name}"
+
+
+class TestObserverIsolation:
+    """AR-18: a failing state observer must not corrupt engine transactions."""
+
+    def test_failing_subscriber_does_not_break_transaction(self):
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_service import AudioEngineService
+
+        service = AudioEngineService(AudioEngineRegistry([]))
+        seen = []
+
+        def boom():
+            raise RuntimeError("qml bridge hiccup")
+
+        service.subscribe_changed(boom)
+        service.subscribe_changed(lambda: seen.append(1))
+        # commit must succeed and remaining observers still run
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        assert seen == [1]
+        assert service.state.lifecycle == AudioEngineLifecycle.READY
+        assert service.state.active_engine_id == AudioEngineId.QT_MULTIMEDIA
+
+    def test_multiple_failing_subscribers_all_isolated(self):
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_service import AudioEngineService
+
+        service = AudioEngineService(AudioEngineRegistry([]))
+
+        def boom1():
+            raise RuntimeError("boom1")
+
+        def boom2():
+            raise RuntimeError("boom2")
+
+        seen = []
+        service.subscribe_changed(boom1)
+        service.subscribe_changed(boom2)
+        service.subscribe_changed(lambda: seen.append("ok"))
+        service.mark_initializing(AudioEngineId.MPD)
+        assert seen == ["ok"]

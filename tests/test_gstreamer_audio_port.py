@@ -15,6 +15,11 @@ import threading
 from pathlib import Path
 
 import pytest
+
+from michi.application.ports import (
+    AudioTransportCommandError,
+    AudioTransportUnavailableError,
+)
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QGuiApplication
 
@@ -912,7 +917,8 @@ class TestStateRequestFailureAtomicity:
         msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
         _deliver(port, msg, gen)
         bindings.failed_states.add(_FakeState.PLAYING)
-        port.play()
+        with pytest.raises(AudioTransportCommandError, match="PLAYING"):
+            port.play()
         assert states == []  # sin PLAYING falso
         assert port._pending_play is False  # intención NO commiteada
         # retry con éxito
@@ -933,9 +939,10 @@ class TestStateRequestFailureAtomicity:
         port.play()
         msg2, gen2 = msg_state(port, pipeline, _FakeState.PLAYING)
         _deliver(port, msg2, gen2)
-        # fallo de PAUSED → intención de play preservada
+        # fallo de PAUSED → intención de play preservada + error explícito
         bindings.failed_states.add(_FakeState.PAUSED)
-        port.pause()
+        with pytest.raises(AudioTransportCommandError, match="PAUSED"):
+            port.pause()
         assert port._pending_play is True  # rollback
         # retry con éxito
         bindings.failed_states.clear()
@@ -957,9 +964,10 @@ class TestStateRequestFailureAtomicity:
         msg2, gen2 = msg_state(port, pipeline, _FakeState.PLAYING)
         _deliver(port, msg2, gen2)
         assert states[-1] == PlaybackStatus.PLAYING
-        # NULL falla → sin STOPPED, source intacto
+        # NULL falla → sin STOPPED, source intacto, error EXPLÍCITO (AR-02)
         bindings.failed_states.add(_FakeState.NULL)
-        port.stop()
+        with pytest.raises(AudioTransportCommandError, match="NULL"):
+            port.stop()
         assert PlaybackStatus.STOPPED not in states
         assert port._current_path == Path("/m/a.flac")
         # retry con éxito
@@ -1745,7 +1753,8 @@ class TestAcceptedStopReplay:
         states = []
         port.subscribe_playback_state_changed(lambda s: states.append(s))
         bindings.failed_states.add(_FakeState.NULL)
-        port.stop()
+        with pytest.raises(AudioTransportCommandError, match="NULL"):
+            port.stop()
         assert PlaybackStatus.STOPPED not in states  # sin claim falso
         assert port._current_path == Path("/m/a.flac")
         assert port._generation == generation_before
@@ -1785,7 +1794,10 @@ class TestPendingStopCancellation:
         port.stop()
         states = []
         port.subscribe_playback_state_changed(lambda s: states.append(s))
-        port.play()  # sin pipeline: no-op, no resucita B
+        # AR-13: play sobre transporte sin pipeline es EXPLÍCITO (nunca
+        # no-op silencioso); B no resucita de todos modos
+        with pytest.raises(AudioTransportUnavailableError):
+            port.play()
         assert port._pipeline is None
         assert states == []
         assert port._current_path is None
@@ -1917,7 +1929,7 @@ class TestArmTransaction:
 
     @pytest.mark.parametrize("stage", ARM_STAGES)
     def test_arm_exception_leaves_adapter_coherent(self, qapp, stage):
-        from michi.application.ports import AudioLoadError
+        from michi.application.ports import AudioLoadError, AudioTransportCommandError
 
         bindings = FakeBindings()
         bindings.arm_exception_stage = stage
@@ -1948,7 +1960,7 @@ class TestArmTransaction:
         bindings = FakeBindings()
         bindings.arm_exception_stage = "attach_source"
         port = _port(bindings)
-        from michi.application.ports import AudioLoadError
+        from michi.application.ports import AudioLoadError, AudioTransportCommandError
 
         with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
@@ -1969,7 +1981,7 @@ class TestArmTransaction:
         bindings = FakeBindings()
         bindings.arm_exception_stage = "set_uri"
         port = _port(bindings)
-        from michi.application.ports import AudioLoadError
+        from michi.application.ports import AudioLoadError, AudioTransportCommandError
 
         with pytest.raises(AudioLoadError):
             port.load(Path("/m/b.flac"))
@@ -2002,7 +2014,7 @@ class TestArmTransaction:
         port.subscribe_playback_state_changed(lambda s: states.append(s))
         # B arma falla en set_uri (después del teardown de A)
         bindings.arm_exception_stage = "set_uri"
-        from michi.application.ports import AudioLoadError
+        from michi.application.ports import AudioLoadError, AudioTransportCommandError
 
         with pytest.raises(AudioLoadError):
             port.load(Path("/m/b.flac"))
@@ -2018,7 +2030,7 @@ class TestArmTransaction:
         bindings = FakeBindings()
         bindings.arm_exception_stage = "attach_source"  # timer creado y falla
         port = _port(bindings)
-        from michi.application.ports import AudioLoadError
+        from michi.application.ports import AudioLoadError, AudioTransportCommandError
 
         with pytest.raises(AudioLoadError):
             port.load(Path("/m/b.flac"))
@@ -2037,7 +2049,7 @@ class TestArmTransaction:
         bindings.failed_states.add(_FakeState.NULL)  # cleanup NULL falla
         bindings.fail_remove_watch = True  # y el remove del watch falla
         port = _port(bindings)
-        from michi.application.ports import AudioLoadError
+        from michi.application.ports import AudioLoadError, AudioTransportCommandError
 
         with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
@@ -2150,7 +2162,7 @@ class TestFailedArmOwnership:
         states = []
         port.subscribe_media_accepted(lambda p: accepted.append(p))
         port.subscribe_playback_state_changed(lambda s: states.append(s))
-        from michi.application.ports import AudioLoadError
+        from michi.application.ports import AudioLoadError, AudioTransportCommandError
 
         with pytest.raises(AudioLoadError) as caught:
             port.load(Path("/m/b.flac"))
@@ -2216,7 +2228,7 @@ class TestGStreamerPlaybackDisposition:
 
     def test_destructive_arm_failure_converges_playback(self, qapp):
         from michi.application.playback_service import PlaybackService
-        from michi.application.ports import AudioLoadError
+        from michi.application.ports import AudioLoadError, AudioTransportCommandError
 
         bindings = FakeBindings()
         port = GStreamerAudioPort(bindings)
@@ -2250,7 +2262,7 @@ class TestGStreamerPlaybackDisposition:
 
     def test_play_recovers_logical_track_after_destructive_failure(self, qapp):
         from michi.application.playback_service import PlaybackService
-        from michi.application.ports import AudioLoadError
+        from michi.application.ports import AudioLoadError, AudioTransportCommandError
 
         bindings = FakeBindings()
         port = GStreamerAudioPort(bindings)
@@ -2741,9 +2753,11 @@ class TestStateFailureReturnConvergence:
         m2, g2 = msg_state(port, pipeline_a, _FakeState.PLAYING)
         _deliver(port, m2, g2)
         generation_before = port._generation
-        # PLAYING → False sobre la fuente ACEPTADA: sin cancelación
+        # PLAYING → False sobre la fuente ACEPTADA: sin cancelación y con
+        # fallo EXPLÍCITO (AR-13)
         bindings.failed_states.add(_FakeState.PLAYING)
-        port.play()
+        with pytest.raises(AudioTransportCommandError, match="PLAYING"):
+            port.play()
         assert port._current_path == Path("/m/a.flac")  # A retenida
         assert port._pipeline is pipeline_a
         assert port._generation == generation_before  # sin invalidación

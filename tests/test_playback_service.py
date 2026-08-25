@@ -140,9 +140,14 @@ class TestPlaybackService:
         assert playback_service.state.status == PlaybackStatus.STOPPED
         assert playback_service.state.position_ms == 0
 
-    def test_seek(self, playback_service):
+    def test_seek(self, playback_service, fake_audio):
+        """AR-16: seek is intent only — no fabricated position. The
+        confirmed position arrives via backend observation."""
         playback_service.seek(30000)
-        assert playback_service.state.position_ms == 30000
+        assert fake_audio.seek_calls == [30000]  # command issued
+        assert playback_service.state.position_ms == 0  # NOT fabricated
+        playback_service.update_position(30100)  # backend observation
+        assert playback_service.state.position_ms == 30100
 
     def test_volume_clamping(self, playback_service, fake_audio):
         playback_service.set_volume(150)

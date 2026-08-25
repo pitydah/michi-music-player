@@ -21,7 +21,11 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, Signal
 
-from michi.application.ports import AudioPort
+from michi.application.ports import (
+    AudioPort,
+    AudioTransportCommandError,
+    AudioTransportUnavailableError,
+)
 from michi.domain.playback import PlaybackStatus
 
 _logger = logging.getLogger(__name__)
@@ -532,7 +536,9 @@ class GStreamerAudioPort(AudioPort):
 
     def play(self) -> None:
         if self._closed or self._pipeline is None:
-            return
+            raise AudioTransportUnavailableError(
+                "GStreamer play on closed/uninitialized transport"
+            )
         if self._eos_emitted:
             # REPLAY desde EOS (M11.3C-R6 P1-02): un pipeline en EOS no
             # reinicia solo con PLAYING — restart controlado NULL → PLAYING,
@@ -572,10 +578,14 @@ class GStreamerAudioPort(AudioPort):
             return
         # CASO B — ACCEPTED SOURCE: un fallo de play() sobre la fuente
         # aceptada NO cancela el candidato (no existe) ni descarga la
-        # fuente (semánticas R6 stop/replay/EOS retryable intactas)
-        if self._request_state(self._bindings.STATE.PLAYING):
-            self._pending_play = True
-        # si falla: la intención NO se commitea; sin estado falso
+        # fuente (semánticas R6 stop/replay/EOS retryable intactas). La
+        # intención NO se commitea sin éxito; y el fallo es EXPLÍCITO
+        # (AR-13): el caller nunca ve un play() "exitoso" que no lo fue.
+        if not self._request_state(self._bindings.STATE.PLAYING):
+            raise AudioTransportCommandError(
+                "GStreamer failed to enter PLAYING (accepted source)"
+            )
+        self._pending_play = True
 
     def _cancel_pending_candidate_after_failure(self) -> None:
         """Terminaliza un candidato pendiente tras un fallo del comando
@@ -612,26 +622,42 @@ class GStreamerAudioPort(AudioPort):
 
     def pause(self) -> None:
         if self._closed or self._pipeline is None:
-            return
+            raise AudioTransportUnavailableError(
+                "GStreamer pause on closed/uninitialized transport"
+            )
         previous_intent = self._pending_play
-        if self._request_state(self._bindings.STATE.PAUSED):
-            self._pending_play = False
-        else:
+        if not self._request_state(self._bindings.STATE.PAUSED):
             self._pending_play = previous_intent  # rollback de intención
+            raise AudioTransportCommandError(
+                "GStreamer failed to enter PAUSED"
+            )
+        self._pending_play = False
 
     def resume(self) -> None:
         self.play()
 
     def stop(self) -> None:
         self._load_epoch += 1
-        if self._closed or self._pipeline is None:
+        if self._closed:
+            raise AudioTransportUnavailableError(
+                "GStreamer stop on closed transport"
+            )
+        if self._pipeline is None:
+            # Vacuously stopped: nothing owned to stop (reentrancy-safe —
+            # a stop arriving during a load transition has no pipeline yet;
+            # stopping nothing IS stopping). AR-02 applies to an ACTIVE
+            # pipeline whose NULL request fails.
             return
         if self._pending_path is not None and self._current_path is None:
             # CASE A — PENDING CANDIDATE (M11.3C-R6): stop = CANCEL del
             # candidato no aceptado. El pipeline candidato se libera y la
-            # generación se invalida (mata aceptaciones tardías).
+            # generación se invalida (mata aceptaciones tardías). Un fallo
+            # del teardown es EXPLÍCITO (AR-02): stop() es safety-critical;
+            # el caller debe poder distinguir "detenido" de "no pude".
             if not self._try_stop_pipeline():
-                return  # teardown del candidato falló: no fingir cancelación
+                raise AudioTransportCommandError(
+                    "GStreamer stop could not tear down the pending candidate"
+                )
             self._invalidate_generation()
             self._pending_path = None
             self._pending_play = False
@@ -642,10 +668,12 @@ class GStreamerAudioPort(AudioPort):
             # permanece cargada: current_path/generación/pipeline/bus watch
             # intactos → play()/resume() funcionan sin un nuevo load.
             if not self._request_state(self._bindings.STATE.NULL):
-                # NULL falló: no publicar STOPPED, no limpiar el source como
-                # si el stop hubiera tenido éxito; el estado sigue
-                # diagnosticable (R2 failure atomicity)
-                return
+                # NULL falló: NO publicar STOPPED, NO limpiar el source como
+                # si el stop hubiera tenido éxito; el fallo es EXPLÍCITO
+                # (AR-02): el estado físico es incierto → fail closed.
+                raise AudioTransportCommandError(
+                    "GStreamer stop could not reach NULL"
+                )
             self._pending_play = False
             self._eos_emitted = False  # stop explícito resetea el marcador EOS
         self._deliver_state_if(PlaybackStatus.STOPPED)
@@ -662,9 +690,16 @@ class GStreamerAudioPort(AudioPort):
 
     def seek(self, position_ms: int) -> None:
         if self._closed or self._pipeline is None:
-            return
-        # failure no commitea éxito falso (sin evento de posición inventado)
-        self._bindings.seek(self._pipeline, millis_to_gst_time(position_ms))
+            raise AudioTransportUnavailableError(
+                "GStreamer seek on closed/uninitialized transport"
+            )
+        # AR-13: seek que el backend rechaza es un fallo EXPLÍCITO (nunca
+        # éxito silencioso); la posición confirmada llega por observación.
+        ok = self._bindings.seek(self._pipeline, millis_to_gst_time(position_ms))
+        if not ok:
+            raise AudioTransportCommandError(
+                "GStreamer seek rejected by the pipeline"
+            )
 
     def position(self) -> int:
         if self._closed or self._pipeline is None:

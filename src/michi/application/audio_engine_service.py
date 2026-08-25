@@ -3,7 +3,10 @@
 State ownership + observation only. Framework-free: no PySide6, no gi, no
 subprocess, no socket, no SQLite. Runtime switching belongs to M11.3F."""
 
+import logging
 from collections.abc import Callable
+
+_logger = logging.getLogger(__name__)
 
 from michi.application.audio_engine_registry import AudioEngineRegistry
 from michi.domain.audio_engine import (
@@ -52,8 +55,17 @@ class AudioEngineService:
 
     def _replace(self, state: AudioEngineState) -> None:
         self._state = state
+        # AR-18 (reliability seal): STATE COMMIT happens FIRST; observer
+        # publication is isolated — a failing subscriber (e.g. a QML bridge
+        # hiccup) must never make the committed state mutation look like a
+        # failed engine transaction. Each callback is guarded; the failure
+        # is logged as a secondary diagnostic and the remaining observers
+        # still run.
         for cb in list(self._subscribers):
-            cb()
+            try:
+                cb()
+            except Exception:  # noqa: BLE001 — observer isolation boundary
+                _logger.exception("audio engine state observer failed")
 
     def mark_initializing(self, engine_id: AudioEngineId) -> None:
         """INITIALIZING: target activation underway."""
