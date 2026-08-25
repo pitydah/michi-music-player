@@ -540,7 +540,7 @@ class TestG2SwitchFailure:
                 # target bind commits a WRONG identity → validation fails
                 h.router._bound = port
                 h.router._bound_engine_id = MPD
-                h.router._attach()
+                h.router._attach(h.router.binding_generation + 1)
                 return
             return original_bind(engine_id, port)  # Qt fallback binds fine
 

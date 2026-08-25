@@ -304,3 +304,167 @@ class TestRouterArchitecture:
         src = inspect.getsource(mod)
         for forbidden in ("PySide6", "gi.", "sqlite3", "subprocess", "socket"):
             assert forbidden not in src
+
+
+class _StubPort:
+    """Deterministic AudioPort stub with injectable subscribe failures."""
+
+    def __init__(self, fail_subscribe: set[int] | None = None,
+                 fail_unsubscribe: set[int] | None = None):
+        self.fail_subscribe = fail_subscribe or set()
+        self.fail_unsubscribe = fail_unsubscribe or set()
+        self.subscribed: list = []
+        self.unsubscribed: list = []
+        self._count = 0
+        self.events: list = []
+        self._listeners = {
+            "end_of_media": [], "position_changed": [], "duration_changed": [],
+            "media_accepted": [], "media_rejected": [], "playback_state_changed": [],
+        }
+
+    def _track(self, name, wrapper):
+        self._count += 1
+        if (self._count - 1) in self.fail_subscribe:
+            raise RuntimeError(f"subscribe fail at #{self._count}")
+        self.subscribed.append(name)
+        self._listeners[name].append(wrapper)
+
+    def subscribe_end_of_media(self, cb):
+        self._track("end_of_media", cb)
+
+    def subscribe_position_changed(self, cb):
+        self._track("position_changed", cb)
+
+    def subscribe_duration_changed(self, cb):
+        self._track("duration_changed", cb)
+
+    def subscribe_media_accepted(self, cb):
+        self._track("media_accepted", cb)
+
+    def subscribe_media_rejected(self, cb):
+        self._track("media_rejected", cb)
+
+    def subscribe_playback_state_changed(self, cb):
+        self._track("playback_state_changed", cb)
+
+    def _untrack(self, name, wrapper):
+        self._count += 1
+        if (self._count - 1) in self.fail_unsubscribe:
+            raise RuntimeError(f"unsubscribe fail at #{self._count}")
+        if wrapper in self._listeners[name]:
+            self._listeners[name].remove(wrapper)
+        self.unsubscribed.append(name)
+
+    def unsubscribe_end_of_media(self, cb):
+        self._untrack("end_of_media", cb)
+
+    def unsubscribe_position_changed(self, cb):
+        self._untrack("position_changed", cb)
+
+    def unsubscribe_duration_changed(self, cb):
+        self._untrack("duration_changed", cb)
+
+    def unsubscribe_media_accepted(self, cb):
+        self._untrack("media_accepted", cb)
+
+    def unsubscribe_media_rejected(self, cb):
+        self._untrack("media_rejected", cb)
+
+    def unsubscribe_playback_state_changed(self, cb):
+        self._untrack("playback_state_changed", cb)
+
+    def emit(self, name, *args):
+        for cb in list(self._listeners[name]):
+            cb(*args)
+
+    def load(self, path): ...
+    def play(self): ...
+    def pause(self): ...
+    def resume(self): ...
+    def stop(self): ...
+    def seek(self, ms): ...
+    def set_volume(self, v): ...
+    def set_muted(self, m): ...
+    def position(self):
+        return 0
+    def duration(self):
+        return 0
+
+
+class TestRouterTransactionSafety:
+    """AR-10/AR-31/AR-32: binding is transactional and provenance-protected."""
+
+    def test_attach_failure_at_every_index_rolls_back_and_stays_unbound(self):
+        from michi.domain.audio_engine import AudioEngineId
+
+        for fail_at in range(6):
+            router = AudioTransportRouter()
+            port = _StubPort(fail_subscribe={fail_at})
+            try:
+                router.bind(AudioEngineId.MPD, port)
+            except RuntimeError as exc:
+                assert "subscribe fail" in str(exc)
+            else:
+                raise AssertionError(f"bind must fail when subscribe #{fail_at} fails")
+            # no clean binding reported; nothing forwarded
+            assert router.bound_engine_id is None
+            assert router._bound is None
+            assert router._wrappers == []
+            # rollback unsubscribed everything that registered
+            assert len(port.subscribed) == len(port.unsubscribed)
+            assert port.subscribed == port.unsubscribed
+
+    def test_bind_success_forwards_and_detach_drops_old_events(self):
+        from michi.domain.audio_engine import AudioEngineId
+        from michi.domain.playback import PlaybackStatus
+
+        router = AudioTransportRouter()
+        port = _StubPort()
+        states = []
+        router.subscribe_playback_state_changed(lambda s: states.append(s))
+        router.bind(AudioEngineId.MPD, port)
+        port.emit("playback_state_changed", PlaybackStatus.PLAYING)
+        assert states == [PlaybackStatus.PLAYING]
+        router.unbind()
+        # late event from the detached backend is dropped (wrapper gen stale)
+        port.emit("playback_state_changed", PlaybackStatus.STOPPED)
+        assert states == [PlaybackStatus.PLAYING]
+
+    def test_stale_events_from_superseded_binding_dropped(self):
+        """AR-31: an event the OLD backend could still deliver after a
+        failed detach must be dropped — never forwarded twice."""
+        from michi.domain.audio_engine import AudioEngineId
+        from michi.domain.playback import PlaybackStatus
+
+        router = AudioTransportRouter()
+        port_a = _StubPort(fail_unsubscribe={5})  # last unsubscribe fails
+        port_b = _StubPort()
+        states = []
+        router.subscribe_playback_state_changed(lambda s: states.append(s))
+        router.bind(AudioEngineId.GSTREAMER, port_a)
+        port_a.emit("playback_state_changed", PlaybackStatus.PLAYING)
+        assert states == [PlaybackStatus.PLAYING]
+        # rebind: detach of A partially fails (unsubscribe #5 raises) — the
+        # stale wrapper remains registered on A but generation changes
+        router.bind(AudioEngineId.MPD, port_b)
+        assert router.bound_engine_id == AudioEngineId.MPD
+        assert router.binding_generation == 2
+        # stale delivery attempt from A: wrapper sees generation mismatch
+        port_a.emit("playback_state_changed", PlaybackStatus.STOPPED)
+        assert states == [PlaybackStatus.PLAYING]  # not forwarded
+        # B's events flow normally
+        port_b.emit("playback_state_changed", PlaybackStatus.PAUSED)
+        assert states == [PlaybackStatus.PLAYING, PlaybackStatus.PAUSED]
+
+    def test_unbind_with_partial_unsubscribe_failure_still_clean(self):
+        from michi.domain.audio_engine import AudioEngineId
+
+        router = AudioTransportRouter()
+        port = _StubPort(fail_unsubscribe={2})
+        router.bind(AudioEngineId.QT_MULTIMEDIA, port)
+        router.unbind()
+        assert router.bound_engine_id is None
+        assert router._bound is None
+        # remaining wrappers dropped from the router even though one
+        # unsubscribe raised (provenance guard covers the stale one)
+        assert router._wrappers == []

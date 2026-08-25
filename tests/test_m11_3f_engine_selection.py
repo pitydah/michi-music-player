@@ -979,7 +979,7 @@ class TestF8FailureAtomicity:
             # bind succeeds but validation must fail: bind wrong identity
             h.router._bound = port
             h.router._bound_engine_id = AudioEngineId.MPD  # wrong!
-            h.router._attach()
+            h.router._attach(h.router.binding_generation + 1)
 
         h.router.bind = broken_bind  # type: ignore[method-assign]
         with pytest.raises(AudioEngineSwitchError, match="bind validation failed"):
@@ -1242,7 +1242,10 @@ class TestF42AdapterContract:
         # gained the typed AudioTransportError hierarchy (CommandError /
         # UnavailableError) — additive error surface, AudioPort unchanged.
         "src/michi/application/ports.py": "776c46628ba9f85d",
-        "src/michi/application/audio_transport_router.py": "d27e9dca6304722c",
+        # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
+        # transactional binding (per-binding generation provenance + attach
+        # rollback). Forwarding semantics unchanged.
+        "src/michi/application/audio_transport_router.py": "4f579755974d72f4",
     }
 
     def test_f42_no_adapter_source_changes(self):
