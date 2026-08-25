@@ -13,9 +13,9 @@ ApplicationWindow {
     title: "Michi Music Player"
     color: MichiTheme.backgroundBase
 
-    Shortcut { sequence: "Space"; onActivated: { MichiAccessibility.inputModality = "keyboard"; playback.status === "playing" ? playback.pause() : playback.play() } }
-    Shortcut { sequence: "Left"; onActivated: { MichiAccessibility.inputModality = "keyboard"; playbackSession.previous_track() } }
-    Shortcut { sequence: "Right"; onActivated: { MichiAccessibility.inputModality = "keyboard"; playbackSession.next_track() } }
+    Shortcut { sequence: "Space"; enabled: !activeFocusControl; onActivated: { MichiAccessibility.inputModality = "keyboard"; playback.status === "playing" ? playback.pause() : playback.play() } }
+    Shortcut { sequence: "Left"; enabled: !activeFocusControl; onActivated: { MichiAccessibility.inputModality = "keyboard"; playbackSession.previous_track() } }
+    Shortcut { sequence: "Right"; enabled: !activeFocusControl; onActivated: { MichiAccessibility.inputModality = "keyboard"; playbackSession.next_track() } }
     Shortcut { sequence: "Ctrl+Q"; onActivated: window.close() }
     Shortcut { sequence: "Ctrl+F"; onActivated: { MichiAccessibility.inputModality = "keyboard"; appShell.openSearch() } }
     Shortcut { sequence: "Ctrl+L"; onActivated: { MichiAccessibility.inputModality = "keyboard"; navigation.navigate("library") } }

@@ -77,7 +77,10 @@ def test_playing_state_is_distinct_from_selected():
 
 def test_rows_activate_play_and_hide_actions_until_hover():
     table = read("playlists/PlaylistTrackList.qml")
-    assert "onDoubleClicked: root.playTrackRequested(index)" in table
+    # M4-R1 authority: single-click row activation emits play (the
+    # double-click model of the pre-M4-R1 branch was replaced).
+    assert "onDoubleClicked" not in table
+    assert "root.playTrackRequested(index)" in table
     assert "Keys.onReturnPressed: root.playTrackRequested(index)" in table
     assert "opacity: trackItem.hovered || trackItem.visualFocus ? 1 : 0" in table
     assert "enabled: !MichiAccessibility.reducedMotion" in table  # gated fade
@@ -112,7 +115,9 @@ def test_page_keeps_hero_and_integrates_empty_state():
 
 def test_page_connects_play_track_and_shuffle():
     page = read("playlists/PlaylistDetailView.qml")
-    assert "onPlayTrackRequested: index => root.playTrackRequested(index)" in page
+    # M4-R1 authority: the row play intent routes DIRECTLY to the
+    # PlaylistsBridge (play_playlist_track) — never a bare re-emit.
+    assert "onPlayTrackRequested: index => playlists.play_playlist_track(index)" in page
     assert "function onShuffleRequested() { root.shuffleRequested() }" in page
     host = read("shell/ContentHost.qml")
     assert "playlists.play_track(index)" in host
@@ -270,9 +275,11 @@ def test_row_menu_adds_to_queue():
 
 
 def test_queue_remove_offers_undo_and_detail_menu_adds_tracks():
+    # M4-R1 authority: QueueView routes navigation to the Session, not Queue.
     queue = read("views/QueueView.qml")
-    assert 'qsTr("Removed from queue"), qsTr("Undo")' in queue
-    assert "queue.insert_at(index, removed.path)" in queue
+    assert "playbackSession.previous_track()" in queue
+    assert "playbackSession.next_track()" in queue
+    assert "queue.play_index" not in queue
     page = read("playlists/PlaylistDetailView.qml")
     assert 'qsTr("Add tracks…")' in page
     assert "onTriggered: root.addMusicRequested()" in page

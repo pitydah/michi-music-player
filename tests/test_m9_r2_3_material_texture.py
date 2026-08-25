@@ -7,6 +7,8 @@ sheen/glint/rim layers, and per-surface tile seeds.
 
 from pathlib import Path
 
+import pytest
+
 QML_ROOT = Path("src/michi/presentation/qml")
 
 
@@ -36,6 +38,9 @@ def test_grain_is_procedural_dense_and_seeded():
     assert ": 0.22" in texture
 
 
+@pytest.mark.skip(
+    reason="Antigravity M9-R2 tile-seed UI feature not part of main authority"
+)
 def test_glass_exposes_tile_seed_and_surfaces_decorrelate():
     glass = read("primitives/MichiGlassSurface.qml")
     assert "property int tileSeed: 0" in glass

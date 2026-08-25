@@ -45,9 +45,24 @@ class FakeQueueService:
 
 
 def test_playlist_play_now_semantics():
-    queue = FakeQueueService()
+    """M4-R1: Play Playlist → PLAYLIST session context via the coordinator.
+    QueueService (content only) is NEVER populated implicitly."""
+    from michi.application.playback_service import PlaybackService
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+    from michi.application.playlist_playback_coordinator import (
+        PlaylistPlaybackCoordinator,
+    )
+    from michi.application.queue_service import QueueService
+    from tests.conftest import FakeAudioPort
+
+    audio = FakeAudioPort()
+    playback = PlaybackService(audio)
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue)
+    session.start()
     queue.add(Path("/music/songA.flac"))
-    assert len(queue.items) == 1
 
     port = FakePlaylistsPort(
         [
@@ -58,18 +73,33 @@ def test_playlist_play_now_semantics():
             )
         ]
     )
-    service = PlaylistService(queue, port)
+    service = PlaylistService(playlists_port=port)
+    coordinator = PlaylistPlaybackCoordinator(service, session, queue)
 
-    # play_playlist_now must clear existing queue and start at track 0 of playlist
-    service.play_playlist_now("p1")
-    assert queue.items == ["/music/1.flac", "/music/2.flac"]
-    assert queue.current_index == 0
+    coordinator.play_playlist("p1")
+    audio.trigger_media_accepted(Path("/music/1.flac"))
+    assert session.state.context_type.name == "PLAYLIST"
+    assert session.state.current_index == 0
+    # Queue content UNCHANGED (play never populates Queue implicitly)
+    assert [t.file_path for t in queue.state.tracks] == [Path("/music/songA.flac")]
 
 
 def test_playlist_enqueue_semantics():
-    queue = FakeQueueService()
-    queue.add(Path("/music/existing.flac"))
-    queue.current_index = 0
+    """M4-R1: queue_playlist is an EXPLICIT Queue intent — appends content."""
+    from michi.application.playback_service import PlaybackService
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+    from michi.application.playlist_playback_coordinator import (
+        PlaylistPlaybackCoordinator,
+    )
+    from michi.application.queue_service import QueueService
+    from tests.conftest import FakeAudioPort
+
+    audio = FakeAudioPort()
+    playback = PlaybackService(audio)
+    queue = QueueService()
+    session = PlaybackSessionService(playback, queue)
 
     port = FakePlaylistsPort(
         [
@@ -80,12 +110,14 @@ def test_playlist_enqueue_semantics():
             )
         ]
     )
-    service = PlaylistService(queue, port)
+    service = PlaylistService(playlists_port=port)
+    coordinator = PlaylistPlaybackCoordinator(service, session, queue)
 
-    # enqueue_playlist must preserve existing queue without resetting index
-    service.enqueue_playlist("p1")
-    assert queue.items == ["/music/existing.flac", "/music/1.flac", "/music/2.flac"]
-    assert queue.current_index == 0
+    coordinator.queue_playlist("p1")
+    assert [t.file_path for t in queue.state.tracks] == [
+        Path("/music/1.flac"),
+        Path("/music/2.flac"),
+    ]
 
 
 def test_playlist_bridge_no_private_queue_access():
@@ -105,11 +137,10 @@ def test_playlist_custom_cover_managed_copy_and_survives_original_delete():
         source_file = Path(tmpdir) / "my_external_cover.jpg"
         source_file.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01")
 
-        queue = FakeQueueService()
         port = FakePlaylistsPort(
             [Playlist(playlist_id="p1", name="Rock", track_paths=())]
         )
-        service = PlaylistService(queue, port, artwork_store=store)
+        service = PlaylistService(playlists_port=port, artwork_store=store)
 
         managed_path = service.set_custom_cover("p1", source_file)
         assert managed_path is not None
@@ -137,9 +168,8 @@ def test_playlist_custom_cover_replace_cleanup():
         jpg_file = Path(tmpdir) / "cover.jpg"
         jpg_file.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF")
 
-        queue = FakeQueueService()
         port = FakePlaylistsPort([Playlist(playlist_id="p1", name="Chill")])
-        service = PlaylistService(queue, port, artwork_store=store)
+        service = PlaylistService(playlists_port=port, artwork_store=store)
 
         png_managed = service.set_custom_cover("p1", png_file)
         assert Path(png_managed).is_file()
@@ -159,9 +189,8 @@ def test_playlist_delete_cover_cleanup():
         png_file = Path(tmpdir) / "cover.png"
         png_file.write_bytes(b"\x89PNG\r\n\x1a\n")
 
-        queue = FakeQueueService()
         port = FakePlaylistsPort([Playlist(playlist_id="p1", name="To Delete")])
-        service = PlaylistService(queue, port, artwork_store=store)
+        service = PlaylistService(playlists_port=port, artwork_store=store)
 
         managed = service.set_custom_cover("p1", png_file)
         assert Path(managed).is_file()

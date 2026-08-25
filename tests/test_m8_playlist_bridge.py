@@ -31,21 +31,30 @@ def _tracks(tmp_path, names=("one.mp3", "two.mp3")):
     return library, queue, audio, paths
 
 
-def _make_bridge(service, library=None):
+def _make_bridge(service, library=None, session=None, queue=None):
     """M9-R1I: selection IS navigation — bridge projects NavigationState."""
     from michi.application.navigation_service import NavigationService
     from michi.application.playlist_navigation_coordinator import (
         PlaylistNavigationCoordinator,
     )
+    from michi.application.playlist_playback_coordinator import (
+        PlaylistPlaybackCoordinator,
+    )
 
     nav = NavigationService()
     service.set_on_playlist_deleted(nav.forget_playlist)
     coord = PlaylistNavigationCoordinator(service, nav)
+    pcoord = (
+        PlaylistPlaybackCoordinator(service, session, queue)
+        if session is not None and queue is not None
+        else None
+    )
     bridge = PlaylistsBridge(
         service,
         playlist_navigation=coord,
         navigation_service=nav,
         library=library,
+        playback_coordinator=pcoord,
     )
     return bridge, coord, nav
 
@@ -205,50 +214,71 @@ class TestNavigationBridge:
 
 
 def test_play_track_plays_playlist_from_index(tmp_path):
-    """Editorial playlist page: selecting and playing a track must not
-    require queue operations — the queue is a consequence of playback."""
+    """M4-R1: editorial playlist page — selecting a track routes through
+    the PlaybackSession (PLAYLIST context); Queue stays content-only."""
+    from michi.application.playback_service import PlaybackService
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+
     library, queue, audio, paths = _tracks(tmp_path, ("a.mp3", "b.mp3", "c.mp3"))
-    service = PlaylistService(queue, FakePlaylistsPort())
-    bridge, coord, _ = _make_bridge(service, library=library)
+    session = PlaybackSessionService(PlaybackService(audio), queue)
+    session.start()
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
+    bridge, coord, _ = _make_bridge(
+        service, library=library, session=session, queue=queue
+    )
     pid = service.create_playlist("Road").playlist_id
     for p in paths:
         service.add_track(pid, p)
     coord.open_playlist(pid)
 
-    bridge.play_track(1)  # start from the second track
+    bridge.play_playlist_track(1)  # start from the second track
 
-    assert queue.state.count == 3
-    # current_index commits only on media acceptance (canonical queue gate)
     audio.trigger_media_accepted(paths[1])
-    assert queue.state.current_index == 1
-    assert queue.state.tracks[queue.state.current_index].file_path.name == "b.mp3"
+    assert session.state.context_type.name == "PLAYLIST"
+    assert session.state.current_index == 1
+    assert queue.state.count == 0  # Queue never populated implicitly
 
 
 def test_play_track_clamps_out_of_range_index(tmp_path):
+    from michi.application.playback_service import PlaybackService
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+
     library, queue, audio, paths = _tracks(tmp_path, ("a.mp3", "b.mp3"))
-    service = PlaylistService(queue, FakePlaylistsPort())
-    bridge, coord, _ = _make_bridge(service, library=library)
+    session = PlaybackSessionService(PlaybackService(audio), queue)
+    session.start()
+    service = PlaylistService(playlists_port=FakePlaylistsPort())
+    bridge, coord, _ = _make_bridge(
+        service, library=library, session=session, queue=queue
+    )
     pid = service.create_playlist("Road").playlist_id
     for p in paths:
         service.add_track(pid, p)
     coord.open_playlist(pid)
 
-    bridge.play_track(99)
+    bridge.play_playlist_track(99)  # out of range
 
-    assert queue.state.count == 2
-    audio.trigger_media_accepted(paths[1])
-    assert queue.state.current_index == 1  # clamped to last track
+    audio.trigger_media_accepted(paths[0])
+    assert session.state.context_type.name == "PLAYLIST"
+    assert session.state.current_index == 0  # canonical clamp to first
+    assert queue.state.count == 0
 
 
-def test_queue_insert_at_restores_removed_position(tmp_path):
-    """Undo support: insert_at puts a removed track back where it was."""
+def test_queue_remove_then_add_restores_content(tmp_path):
+    """M4-R1: QueueService is content-only — remove + add restores content
+    (undo re-adds through the explicit Queue intent path)."""
     library, queue, audio, paths = _tracks(tmp_path, ("a.mp3", "b.mp3", "c.mp3"))
     for p in paths:
         queue.add(p)
     queue.remove(1)  # b removed
     assert [t.file_path.name for t in queue.state.tracks] == ["a.mp3", "c.mp3"]
-    queue.insert_at(1, paths[1])
-    assert [t.file_path.name for t in queue.state.tracks] == ["a.mp3", "b.mp3", "c.mp3"]
-    # clamping: beyond the end appends
-    queue.insert_at(99, paths[0])
-    assert queue.state.count == 4
+    queue.add(paths[1])  # re-add (explicit intent) — appended
+    assert [t.file_path.name for t in queue.state.tracks] == [
+        "a.mp3",
+        "c.mp3",
+        "b.mp3",
+    ]
+    assert queue.state.count == 3
