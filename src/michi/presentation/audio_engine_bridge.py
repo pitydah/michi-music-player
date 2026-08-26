@@ -14,8 +14,8 @@ polling, no timers: state flows through AudioEngineService notifications
 and explicit refresh_engines() calls.
 """
 
-import contextlib
 import logging
+from collections.abc import Callable
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
@@ -93,11 +93,16 @@ class AudioEngineBridge(QObject):
         engine_service: AudioEngineService,
         registry: AudioEngineRegistry,
         selection_coordinator: AudioEngineSelectionCoordinator,
+        playback_quiescent: Callable[[], bool] | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._service = engine_service
         self._registry = registry
+        # P1-02: READ-ONLY quiescence query (never an authority — the query
+        # reuses PlaybackService.is_engine_switch_quiescent through the
+        # composition root; the bridge never duplicates the logic).
+        self._playback_quiescent = playback_quiescent
         self._coordinator = selection_coordinator
         self._disposed = False
         # Controlled availability snapshot — probed on demand, never on
@@ -172,6 +177,23 @@ class AudioEngineBridge(QObject):
     # ------------------------------------------------------------------
     # Projections
     # ------------------------------------------------------------------
+
+    def _get_engine_switch_ready(self) -> bool:
+        """P1-02: truthful selector readiness — the UI must never show a
+        selectable row when Playback cannot switch."""
+        if self._service.state.switching_to is not None:
+            return False
+        if self._playback_quiescent is not None:
+            return self._playback_quiescent()
+        return True  # no query wired (tests/legacy): coordinator gates anyway
+
+    def _get_engine_switch_blocker(self) -> str:
+        """Semantic blocker copy for the user — never backend internals."""
+        if self._service.state.switching_to is not None:
+            return "Audio engine change is already in progress."
+        if self._playback_quiescent is not None and not self._playback_quiescent():
+            return "Stop playback before changing the audio engine."
+        return ""
 
     def _get_selected_engine_id(self) -> str:
         return self._service.state.selected_engine_id.value
@@ -287,8 +309,15 @@ class AudioEngineBridge(QObject):
             # facts — refresh the availability projection so the row stops
             # showing canActivate=true. Diagnostic only; the primary switch
             # exception is never replaced (a refresh failure keeps it).
-            with contextlib.suppress(Exception):  # diagnostics must not mask
+            try:
                 self.refresh_engines()
+            except Exception:  # noqa: BLE001 — primary error wins; the
+                # refresh failure is a logged SECONDARY diagnostic
+                logger.warning(
+                    "engine availability refresh failed after switch "
+                    "unavailable (primary error preserved)",
+                    exc_info=True,
+                )
             self.switch_failed.emit(
                 engine_id, "This audio engine is not available on this system."
             )
@@ -343,6 +372,10 @@ class AudioEngineBridge(QObject):
         str, _get_last_switch_technical_error, notify=technical_error_changed
     )
     engines = Property(list, _get_engines, notify=engines_changed)
+    engineSwitchReady = Property(bool, _get_engine_switch_ready, notify=state_changed)
+    engineSwitchBlocker = Property(
+        str, _get_engine_switch_blocker, notify=state_changed
+    )
     statusSummary = Property(str, _get_status_summary, notify=state_changed)
 
 

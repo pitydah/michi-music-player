@@ -1,3 +1,25 @@
+"""AudioTransportRouter — stable AudioPort identity across engine switches.
+
+PlaybackService and PlaybackCoordinator subscribe ONCE to the router. When
+the concrete engine changes, the router object stays the same; only its
+bound concrete AudioPort changes (attach/detach with full event
+re-routing). No duplicate delivery; no old-engine callbacks after detach;
+no callback loss after attach.
+
+The router owns ONLY forwarding; engine choice/persistence/availability/
+spawning/DAC selection belong to other authorities (AudioEngineService and
+later M11.4 components). The router never closes providers and never owns
+provider lifecycle.
+
+Reliability sealing:
+- transactional binding with per-binding generation provenance;
+- stale callbacks from superseded backends are dropped even after a
+  failed detach (binding-generation guard);
+- partial attach failures roll back the already-registered subscriptions;
+- lifecycle ownership stays OUTSIDE the router (providers own runtimes;
+  the coordinator composes the transaction).
+"""
+
 import logging
 from collections.abc import Callable
 from pathlib import Path

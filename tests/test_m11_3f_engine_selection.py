@@ -1251,10 +1251,10 @@ class TestF42AdapterContract:
         # provenance + atomicity, coordinator quiescent-switch rehydration
         # (KCR-021), PlaybackService snapshot/transfer APIs.
         "src/michi/infrastructure/audio_engines/mpd.py": "c1a0b47f5e2da0fa",
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "f4c9a51013901607",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "87a7760701a28167",
         "src/michi/infrastructure/qt_backend.py": "4b005d149c4b8fd1",
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
-        "src/michi/application/audio_transport_router.py": "7582f0149b3bba27",
+        "src/michi/application/audio_transport_router.py": "a02c67e2b0dbaf75",
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py
@@ -1638,7 +1638,6 @@ class TestEngineSwitchLease:
     def test_lease_released_on_every_outcome(self):
         """Persistence failure, source unbind/close failure, target open
         failure and success all release the lease (play works after)."""
-        from michi.application.playback_service import EngineSwitchLeaseHeldError
 
         # success path
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)

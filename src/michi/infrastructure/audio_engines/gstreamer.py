@@ -771,7 +771,10 @@ class GStreamerAudioPort(AudioPort):
             return 0
         ok, ns = self._bindings.query_position(self._pipeline)
         if not ok or ns < 0:
-            return 0
+            # P2-03: a LIVE query failure is NOT a real 0 — typed failure
+            raise AudioTransportUnavailableError(
+                "GStreamer position query failed on a live pipeline"
+            )
         return gst_time_to_millis(ns)
 
     def duration(self) -> int:
@@ -783,7 +786,9 @@ class GStreamerAudioPort(AudioPort):
             return 0
         ok, ns = self._bindings.query_duration(self._pipeline)
         if not ok or ns < 0:
-            return 0
+            raise AudioTransportUnavailableError(
+                "GStreamer duration query failed on a live pipeline"
+            )
         return gst_time_to_millis(ns)
 
     # ------------------------------------------------------------------

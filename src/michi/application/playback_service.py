@@ -162,7 +162,7 @@ class PlaybackService:
             self._subscribers.remove(callback)
 
     def _notify(self) -> None:
-        for cb in self._subscribers:
+        for cb in list(self._subscribers):
             cb()
 
     def subscribe_end_of_media(self, callback: Callable[[], None]) -> None:
@@ -326,9 +326,7 @@ class PlaybackService:
             file_path, position_ms, _PreparePurpose.STARTUP_RESTORE
         )
 
-    def prepare_after_engine_switch(
-        self, snapshot: EngineSwitchMediaSnapshot
-    ) -> None:
+    def prepare_after_engine_switch(self, snapshot: EngineSwitchMediaSnapshot) -> None:
         """ENGINE-SWITCH rehydration (P2-01): LOAD + deferred seek allowed,
         NO autoplay, NO M5 resume_prepared, NOT gated by the lease (the
         coordinator holds it — this is the internal rehydration path)."""
@@ -547,7 +545,10 @@ class PlaybackService:
             if confirmed == resume_position and confirmed == before:
                 # seek-to-0 / unchanged: backend already reports the value
                 self._resume_prepared_pending = False
-                if getattr(self, "_prepare_purpose", None) is not _PreparePurpose.ENGINE_SWITCH:
+                if (
+                    getattr(self, "_prepare_purpose", None)
+                    is not _PreparePurpose.ENGINE_SWITCH
+                ):
                     for cb in list(self._resume_prepared_subscribers):
                         cb(self._state.file_path, confirmed)
             elif confirmed == before and confirmed != resume_position:

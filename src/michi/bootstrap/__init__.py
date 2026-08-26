@@ -663,6 +663,11 @@ class ApplicationContainer:
             engine_service=graph.audio_engine_service,
             registry=graph.audio_engine_registry,
             selection_coordinator=self._engine_selection_coordinator,
+            # P1-02: read-only quiescence query — the SAME truth Playback
+            # uses to allow the switch lease (never duplicated in QML).
+            playback_quiescent=lambda: (
+                playback.is_engine_switch_quiescent() if playback is not None else True
+            ),
         )
         lb = graph.bridge
         # M8-R1F: application-level coordination for the OPEN PLAYLIST

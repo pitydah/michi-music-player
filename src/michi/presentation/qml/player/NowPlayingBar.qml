@@ -36,6 +36,8 @@ Item {
     property string audioEngineSwitchingTo: ""
     property string audioEngineFallbackFrom: ""
     property string audioEngineStatusSummary: ""
+    property bool audioEngineSwitchReady: true
+    property string audioEngineSwitchBlocker: ""
 
     readonly property bool hasTrack: trackTitle.length > 0
     readonly property bool compact: width < 1320
@@ -628,6 +630,8 @@ Item {
                 hasFallback: root.audioEngineFallbackFrom !== ""
                     && root.selectedEngineId !== root.activeEngineId
                 statusSummary: root.audioEngineStatusSummary
+                engineSwitchReady: root.audioEngineSwitchReady
+                engineSwitchBlocker: root.audioEngineSwitchBlocker
                 onEngineSwitchRequested: (engineId) =>
                     root.audioEngineSwitchRequested(engineId)
             }

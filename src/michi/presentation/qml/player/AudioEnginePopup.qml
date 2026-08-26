@@ -15,6 +15,9 @@ import "../theme"
 // snapshot), and competing rows are disabled while a switch is in flight.
 Popup {
     id: root
+    // P1-03: explicit stable objectName for gate lookups (QML id is not
+    // QObject.objectName).
+    objectName: "AudioEnginePopup"
 
     property var engines: []
     property string selectedEngineId: ""
@@ -23,6 +26,10 @@ Popup {
     property string fallbackFrom: ""
     property bool hasFallback: false
     property string statusSummary: ""
+    // P1-02: truthful readiness — the SAME truth Playback uses to allow
+    // the engine-switch lease (populated from the bridge projection).
+    property bool engineSwitchReady: true
+    property string engineSwitchBlocker: ""
 
     signal engineSwitchRequested(string engineId)
 
@@ -106,12 +113,17 @@ Popup {
                 Layout.preferredHeight: 38
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
-                // P2-05: while a switch is in flight NO row is a competing
-                // intent (the coordinator is the real protection; the UI
-                // avoids needless duplicate clicks / rejections).
+                // P1-02: a row is selectable ONLY when the engine is truly
+                // switchable — canActivate AND playback quiescent AND no
+                // switch in flight AND not already Active+Preferred.
                 enabled: row.modelData.canActivate
+                    && root.engineSwitchReady
                     && !row.isSwitching
                     && root.switchingTo === ""
+                    && !(
+                        row.modelData.id === root.activeEngineId
+                        && row.modelData.id === root.selectedEngineId
+                    )
 
                 property bool isActive: row.modelData.id === root.activeEngineId
                 property bool isSelected: row.modelData.id === root.selectedEngineId
@@ -140,9 +152,17 @@ Popup {
                 KeyNavigation.down: root._navigate(index, 1)
 
                 Accessible.name: row.modelData.displayName + " — " + row.statusLabel()
-                Accessible.description: row.modelData.canActivate
-                    ? qsTr("Select ") + row.modelData.displayName
-                    : qsTr("Not available on this system")
+                Accessible.description: {
+                    if (!row.modelData.canActivate)
+                        return qsTr("Not available on this system")
+                    if (!root.engineSwitchReady && root.engineSwitchBlocker !== "")
+                        return qsTr("Select ") + row.modelData.displayName
+                            + " — " + root.engineSwitchBlocker
+                    if (root.switchingTo !== "" || row.isSwitching)
+                        return qsTr("Select ") + row.modelData.displayName
+                            + " — " + qsTr("Audio engine change is already in progress.")
+                    return qsTr("Select ") + row.modelData.displayName
+                }
 
                 contentItem: RowLayout {
                     spacing: MichiSpacing.md

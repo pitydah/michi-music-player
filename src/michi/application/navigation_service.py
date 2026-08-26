@@ -32,7 +32,7 @@ class NavigationService:
             self._subscribers.remove(callback)
 
     def _notify(self) -> None:
-        for cb in self._subscribers:
+        for cb in list(self._subscribers):
             cb()
 
     def navigate(self, route_id: str) -> None:

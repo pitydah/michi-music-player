@@ -604,3 +604,95 @@ def _collect_text(item) -> str:
                     parts.append(text)
                 stack.append(child)
     return " | ".join(parts)
+
+
+class TestSelectorClickPathGolden:
+    """P1-03 GATE A (always-on CI, deterministic fakes): the REAL popup
+    row click flows through the REAL QML wiring → AudioEngineBridge →
+    SelectionCoordinator — no direct bridge call."""
+
+    def test_row_click_reaches_coordinator_and_switches(self, qapp):
+        import time
+
+        from PySide6.QtCore import QEventLoop, Qt, QUrl
+        from PySide6.QtQml import QQmlComponent, QQmlEngine
+        from PySide6.QtTest import QTest
+        from PySide6.QtWidgets import QApplication
+
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_selection_coordinator import (
+            AudioEngineSelectionCoordinator,
+        )
+        from michi.application.audio_engine_service import AudioEngineService
+        from michi.application.audio_transport_router import AudioTransportRouter
+        from michi.application.playback_service import PlaybackService
+        from michi.application.settings_service import SettingsService
+        from michi.domain.audio_engine import AudioEngineId
+        from michi.presentation.audio_engine_bridge import AudioEngineBridge
+        from tests.test_m11_3f_engine_selection import (
+            FakeProvider,
+            FakeSettingsRepository,
+        )
+
+        qt = FakeProvider(AudioEngineId.QT_MULTIMEDIA)
+        gst = FakeProvider(AudioEngineId.GSTREAMER)
+        mpd = FakeProvider(AudioEngineId.MPD)
+        registry = AudioEngineRegistry([qt, gst, mpd])
+        service = AudioEngineService(registry)
+        router = AudioTransportRouter()
+        playback = PlaybackService(router)
+        settings = SettingsService(FakeSettingsRepository())
+        coordinator = AudioEngineSelectionCoordinator(
+            engine_service=service,
+            registry=registry,
+            router=router,
+            playback=playback,
+            settings=settings,
+        )
+        bridge = AudioEngineBridge(
+            service,
+            registry,
+            coordinator,
+            playback_quiescent=lambda: playback.is_engine_switch_quiescent(),
+        )
+        qt_port = qt.open()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+
+        # the REAL popup, wired EXACTLY like production: the row click
+        # emits engineSwitchRequested → bridge.switch_engine (the AppShell
+        # route) — no direct coordinator/bridge call in the test body.
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML_DIR))
+        engine.rootContext().setContextProperty("audioEngine", bridge)
+        comp = QQmlComponent(engine)
+        comp.setData(
+            POPUP_HARNESS.replace(
+                "onEngineSwitchRequested: (engineId) => harness.switchRequested(engineId)",  # noqa: E501
+                "onEngineSwitchRequested: (engineId) => audioEngine.switch_engine(engineId)",  # noqa: E501
+            ).encode(),
+            QUrl.fromLocalFile(str(QML_DIR / "player/harness.qml")),
+        )
+        window = comp.create()
+        window.show()
+        for _ in range(20):
+            QApplication.processEvents(QEventLoop.AllEvents, 20)
+        popup = _by_name(window, "enginePopup")
+        assert popup is not None, "popup MISSING"
+        popup.open()
+        QTest.qWait(300)
+        gst_row = _by_name(window, "enginePopupRow_gstreamer")
+        assert gst_row is not None, "GStreamer row MISSING"
+        # REAL keyboard activation of the real Button (Enter)
+        gst_row.forceActiveFocus()
+        QTest.keyClick(window, Qt.Key_Return)
+        for _ in range(30):
+            QApplication.processEvents(QEventLoop.AllEvents, 20)
+            time.sleep(0.01)
+        # THE SAME TRUTH across every authority (the click path did it)
+        assert service.state.selected_engine_id == AudioEngineId.GSTREAMER
+        assert service.state.active_engine_id == AudioEngineId.GSTREAMER
+        assert router.bound_engine_id == AudioEngineId.GSTREAMER
+        assert settings.load().audio_engine_id == AudioEngineId.GSTREAMER
+        # QML live state reflects it
+        assert service.state.switching_to is None

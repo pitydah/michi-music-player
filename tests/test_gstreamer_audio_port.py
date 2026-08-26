@@ -623,11 +623,16 @@ class TestSeekPositionDuration:
         port.load(Path("/m/a.flac"))
         assert port.position() == 1234
         assert port.duration() == 5000
-        # fallo de query → valor seguro 0 (nunca clock_time_none/negativo)
+        # P2-03: a LIVE query failure is a typed failure, never a
+        # fabricated 0 (0 is only allowed for LIVE+NO-SOURCE or real 0)
         bindings.pipelines[-1] = NoQueryPipeline()
         port._pipeline = NoQueryPipeline()
-        assert port.position() == 0
-        assert port.duration() == 0
+        from michi.application.ports import AudioTransportUnavailableError
+
+        with pytest.raises(AudioTransportUnavailableError):
+            port.position()
+        with pytest.raises(AudioTransportUnavailableError):
+            port.duration()
         port.close()
 
 

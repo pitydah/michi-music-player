@@ -21,15 +21,14 @@ import logging
 from collections.abc import Callable
 from enum import Enum
 
-from michi.application.playback_service import (
-    EngineSwitchLeaseHeldError,
-    PlaybackNotQuiescentError,
-)
-
 from michi.application.audio_engine_registry import AudioEngineRegistry
 from michi.application.audio_engine_service import AudioEngineService
 from michi.application.audio_transport_router import AudioTransportRouter
-from michi.application.playback_service import PlaybackService
+from michi.application.playback_service import (
+    EngineSwitchLeaseHeldError,
+    PlaybackNotQuiescentError,
+    PlaybackService,
+)
 from michi.application.settings_service import SettingsService
 from michi.domain.audio_engine import AudioEngineId, AudioEngineLifecycle
 
@@ -205,8 +204,8 @@ class AudioEngineSelectionCoordinator:
             raise AudioEngineSwitchInProgressError(str(exc)) from exc
 
         try:  # P1-01: lease held across the WHOLE transaction, released in
-                # finally on every outcome (success, persistence failure, source
-                # unbind/close failure, target open/bind/restore failure).
+            # finally on every outcome (success, persistence failure, source
+            # unbind/close failure, target open/bind/restore failure).
             # 6. PERSIST SELECTION — durable BEFORE the destructive boundary.
             #    On save failure: preference restored, old runtime untouched
             #    (SettingsService.set_audio_engine restores and re-raises).
@@ -235,7 +234,9 @@ class AudioEngineSelectionCoordinator:
                 try:
                     self._router.unbind()
                 except Exception as original:
-                    self.last_failure_stage = AudioEngineSwitchFailureStage.SOURCE_UNBIND
+                    self.last_failure_stage = (
+                        AudioEngineSwitchFailureStage.SOURCE_UNBIND
+                    )
                     bound = self._router.bound_engine_id
                     if bound == active:
                         self._engine_service.mark_bound_failed(active, str(original))
@@ -320,9 +321,7 @@ class AudioEngineSelectionCoordinator:
                     # M11.3G seam: SAFE for fallback ONLY because detach AND
                     # release both succeeded. The original error still
                     # propagates afterwards.
-                    self.last_failure_stage = (
-                        AudioEngineSwitchFailureStage.TARGET_ACTIVATION_DETACHED_RELEASED
-                    )
+                    self.last_failure_stage = AudioEngineSwitchFailureStage.TARGET_ACTIVATION_DETACHED_RELEASED
                     if self._recover_callback is not None:
                         self._recover_callback(target, str(original))
                 else:

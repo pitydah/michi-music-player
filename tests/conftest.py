@@ -33,13 +33,6 @@ class FakeAudioPort:
             raise AudioLoadError(p, "load failed", previous_source_preserved=False)
         self.loaded = p
 
-    def seek(self, ms):
-        self.seek_calls = getattr(self, "seek_calls", []) + [ms]
-        self.position_ms = ms
-
-    def position(self):
-        return getattr(self, "position_ms", 0)
-
     def emit_position_changed(self, ms):
         for cb in list(self._pos):
             cb(ms)
