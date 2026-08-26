@@ -1239,7 +1239,10 @@ class TestF42AdapterContract:
         # R1 CORRECTIVE SEAL authorized reopenings: retryable teardown
         # (provider/port close), typed MPD command semantics, partial
         # startup cleanup, orphan recovery. Transport semantics unchanged.
-        "src/michi/infrastructure/audio_engines/mpd.py": "38a6aa11988b00d8",
+        # R2 PRODUCTION REALITY authorized reopening: mpd.py defers the
+        # resume seek to the explicit play (seekid on a stopped song starts
+        # playback — verified on real MPD 0.24.14). Transport unchanged.
+        "src/michi/infrastructure/audio_engines/mpd.py": "ccde1f8d8806a50d",
         "src/michi/infrastructure/audio_engines/gstreamer.py": "8b1f4966c4a87ec1",
         "src/michi/infrastructure/qt_backend.py": "f161bc988508a91e",
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",

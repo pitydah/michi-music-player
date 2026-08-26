@@ -7,9 +7,17 @@ import QtQuick
 // arabic-style locales) and unit words are translatable via qsTr.
 QtObject {
     function _digit(n) {
-        // Locale-aware digits (western, arabic-indic, etc.) with
-        // zero-padding where the caller needs it.
+        // Locale-aware digits (western, arabic-indic, etc.). n MUST be a
+        // number: Qt.locale().toString(string) tries QDateTime conversion
+        // ("Could not convert argument 0 from 01 to QDateTime"). Zero-
+        // padding is done numerically by the callers before formatting.
         return Qt.locale().toString(n)
+    }
+
+    function _pad2(n) {
+        // numeric zero-padding (10 -> "10", 5 -> "05") — never a string
+        // fed to the locale formatter
+        return n < 10 ? "0" + n : "" + n
     }
 
     // m:ss for <1h, h:mm:ss for ≥1h. Empty string for non-positive input.
@@ -22,9 +30,9 @@ QtObject {
         var minutes = Math.floor((totalSeconds % 3600) / 60)
         var seconds = totalSeconds % 60
         if (hours > 0)
-            return _digit(hours) + ":" + _digit(minutes < 10 ? "0" + minutes : minutes)
-                + ":" + _digit(seconds < 10 ? "0" + seconds : seconds)
-        return _digit(minutes) + ":" + _digit(seconds < 10 ? "0" + seconds : seconds)
+            return _digit(hours) + ":" + _pad2(minutes)
+                + ":" + _pad2(seconds)
+        return _digit(minutes) + ":" + _pad2(seconds)
     }
 
     // "N hr N min" / "N min" (album-level durations). Units translatable.

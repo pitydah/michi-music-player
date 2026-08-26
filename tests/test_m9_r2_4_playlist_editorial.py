@@ -236,8 +236,11 @@ def test_michi_format_is_locale_aware():
     assert 'qsTr("hr")' in fmt
     assert 'qsTr("min")' in fmt
     assert 'qsTr("Unknown")' in fmt
-    # zero-padding happens before the locale digits
-    assert '_digit(minutes < 10 ? "0" + minutes : minutes)' in fmt
+    # R2: zero-padding is NUMERIC (_pad2) — a string fed to
+    # Qt.locale().toString would raise "Could not convert argument 0 from
+    # 01 to QDateTime"
+    assert "_pad2(minutes)" in fmt
+    assert "_pad2(seconds)" in fmt
 
 
 def test_reorder_keeps_keyboard_cursor_on_moved_row():
@@ -301,7 +304,8 @@ def test_sidebar_dead_signal_removed_and_active_state_announced():
 def test_now_playing_bar_repeat_has_non_chromatic_state():
     bar = read("player/NowPlayingBar.qml")
     assert 'opacity: root.repeatMode === "NONE" ? 0.45 : 1' in bar
-    assert 'qsTr("Repeat: %1", "", root.repeatMode.toLowerCase())' in bar
+    assert 'qsTr("Repeat: %1")' in bar  # R2: .arg() substitution
+    assert "root.repeatMode.toLowerCase())" in bar
     # the album line is readable secondary text now, not caption-muted
     assert '"Unknown album")' in bar
     assert 'role: "secondary"' in bar
@@ -319,4 +323,5 @@ def test_now_playing_bar_accessibles_are_translated():
         "Output selection unavailable",
     ]:
         assert f'qsTr("{string}")' in bar, string
-    assert 'qsTr("%1 percent", "", Math.round(value))' in bar
+    assert 'qsTr("%1 percent")' in bar  # R2: .arg() substitution
+    assert "Math.round(value))" in bar

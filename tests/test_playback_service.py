@@ -1114,3 +1114,29 @@ class TestTwoPhaseLoadAndPlay:
         fake_audio.trigger_media_accepted(Path("/m/a.flac"))
         assert playback_service._accepted is True
         assert playback_service.state.file_path == Path("/m/a.flac")
+
+
+class TestGhostPlaybackInvariant:
+    """INV-AUDIO-NO-GHOST-PLAYBACK (R2): an unexpected backend PLAYING/
+    PAUSED without a valid intent is never silently discarded — the model
+    converges actively to STOPPED and never publishes the ghost state."""
+
+    def test_unexpected_playing_converges_to_stop(self, playback_service, fake_audio):
+        playback_service._on_playback_state_changed(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert fake_audio.state == "stopped"  # safety stop issued
+        assert playback_service._intent is False
+
+    def test_unexpected_playing_never_published(self, playback_service, fake_audio):
+        seen = []
+        playback_service.subscribe_changed(
+            lambda: seen.append(playback_service.state.status)
+        )
+        playback_service._on_playback_state_changed(PlaybackStatus.PLAYING)
+        assert PlaybackStatus.PLAYING not in seen
+
+    def test_stop_failure_surfaces_error(self, playback_service, fake_audio):
+        fake_audio.fail_stop = True
+        playback_service._on_playback_state_changed(PlaybackStatus.PLAYING)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert "could not be stopped" in (playback_service.state.error_message or "")

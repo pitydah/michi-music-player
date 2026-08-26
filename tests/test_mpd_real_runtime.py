@@ -609,3 +609,110 @@ def test_real_mixer_failure_still_fatal(qapp, monkeypatch):
         assert runtime.process is None or runtime.process.poll() is not None
         if runtime.process is not None:
             runtime.process.kill()
+
+
+class TestProductionRestoreGolden:
+    """R2 PRODUCTION REALITY golden gate: the exact production restore
+    sequence (persisted MPD selected -> activate -> prepare_for_resume)
+    against the REAL private MPD must NEVER autoplay — verified at THREE
+    levels: PlaybackState, daemon status, elapsed progress."""
+
+    def _graph(self):
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_selection_coordinator import (
+            AudioEngineSelectionCoordinator,
+        )
+        from michi.application.audio_engine_service import AudioEngineService
+        from michi.application.audio_transport_router import AudioTransportRouter
+        from michi.application.playback_service import PlaybackService
+        from michi.application.settings_service import SettingsService
+        from michi.domain.audio_engine import AudioEngineId
+        from michi.infrastructure.audio_engines.providers import MpdEngineProvider
+        from tests.test_m11_3f_engine_selection import (
+            FakeProvider,
+            FakeSettingsRepository,
+        )
+
+        qt = FakeProvider(AudioEngineId.QT_MULTIMEDIA)
+        mpd = MpdEngineProvider()
+        registry = AudioEngineRegistry([qt, mpd])
+        service = AudioEngineService(registry)
+        router = AudioTransportRouter()
+        playback = PlaybackService(router)
+        settings = SettingsService(FakeSettingsRepository())
+        coordinator = AudioEngineSelectionCoordinator(
+            engine_service=service,
+            registry=registry,
+            router=router,
+            playback=playback,
+            settings=settings,
+        )
+        qt_port = qt.open()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        return qt, mpd, service, router, playback, coordinator
+
+    def test_real_restore_prepare_never_autoplays(self, qapp, tmp_path):
+        import time
+
+        from PySide6.QtTest import QTest
+
+        def _drain():
+            from PySide6.QtWidgets import QApplication
+
+            for _ in range(20):
+                QApplication.processEvents()
+
+        def _pump(ms):
+            QTest.qWait(ms)
+
+        _require_mpd()
+        from michi.domain.audio_engine import AudioEngineId
+        from michi.domain.playback import PlaybackStatus
+        from tests.test_audio_engine_conformance import _write_wav
+
+        wav = _write_wav(tmp_path / "tone.wav")
+        qt, mpd, service, router, playback, coordinator = self._graph()
+        qt_port = qt.open()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        try:
+            # PRODUCTION SEQUENCE: persisted preferred engine = MPD
+            coordinator.switch_to(AudioEngineId.MPD)
+            assert service.state.active_engine_id == AudioEngineId.MPD
+            # persisted session restore → prepare_for_resume
+            playback.prepare_for_resume(wav, 1000)
+            _drain()
+            # LEVEL 1: model state
+            assert playback.state.status == PlaybackStatus.STOPPED
+            assert playback._intent is False
+            # LEVEL 2: DAEMON truth — must be stop, NOT play
+            port = mpd._port
+            daemon_state = port._client.status().get("state")
+            assert daemon_state == "stop", (
+                f"AUTOPLAY: daemon state={daemon_state} after prepare_for_resume"
+            )
+            # LEVEL 3: elapsed must NOT advance (no playback progress)
+            elapsed_before = port._client.status().get("elapsed", "0")
+            time.sleep(1.2)
+            elapsed_after = port._client.status().get("elapsed", "0")
+            assert elapsed_before == elapsed_after == "0", (
+                f"AUTOPLAY: elapsed advanced {elapsed_before} -> {elapsed_after}"
+            )
+            # EXPLICIT user play starts playback with the deferred position
+            playback.play()
+            _pump(600)
+            assert playback.state.status == PlaybackStatus.PLAYING
+            daemon_state = port._client.status().get("state")
+            assert daemon_state == "play"
+            elapsed = port._client.status().get("elapsed", "0")
+            assert float(elapsed) >= 1.0  # resumed near the persisted position
+            playback.stop()
+            coordinator.switch_to(AudioEngineId.QT_MULTIMEDIA)
+        finally:
+            try:
+                router.unbind()
+                qt.close()
+                mpd.close()
+            except Exception:  # noqa: BLE001 — teardown must not mask
+                pass

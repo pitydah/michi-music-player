@@ -404,7 +404,8 @@ def test_toast_host_supports_action_and_is_wired():
 
 def test_action_feedback_call_sites():
     lib_host = read("views/LibraryContentHost.qml")
-    assert 'qsTr("Added to %1", "", modelData.name)' in lib_host
+    assert 'qsTr("Added to %1")' in lib_host  # R2: .arg() substitution
+    assert "modelData.name)" in lib_host
     host = read("shell/ContentHost.qml")
     assert "add_track_to_playlist(" in host
 
@@ -415,7 +416,8 @@ def test_action_feedback_call_sites():
 def test_no_hardcoded_visible_strings_in_mixed_files():
     magazine = read("views/MagazineView.qml")
     assert 'text: qsTr("SPOTLIGHT")' in magazine
-    assert '"0%1", "", index + 2' in magazine
+    assert '"0%1"' in magazine  # R2: .arg() substitution
+    assert "index + 2)" in magazine
     card = read("playlists/PlaylistCard.qml")
     assert "Pinned playlist" in card  # accessible name stays (decorative dot)
     toolbar = read("views/LibraryToolbar.qml")

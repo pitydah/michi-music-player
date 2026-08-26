@@ -51,7 +51,7 @@ Image {
         onPaint: {
             var ctx = getContext("2d")
             ctx.clearRect(0, 0, width, height)
-            var rng = root.makeRandom(0x9E3779B9 ^ root.tileSeed)
+            var rng = grainCanvas.makeRandom(0x9E3779B9 ^ root.tileSeed)
             for (var i = 0; i < 260; i++) {
                 var x = rng() * width
                 var y = rng() * height

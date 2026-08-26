@@ -386,6 +386,48 @@ No new milestone. The R1 seal closed:
   in the stress (25 Qt↔MPD + 25 Qt↔GStreamer real cycles; 230 total
   switches).
 
+## M11.3 R2 PRODUCTION REALITY SEAL (extraordinary corrective reopening)
+
+Reopened again after a HUMAN audit falsated the prior SEALED verdict: the
+real runtime autoplayed after startup restore while the model kept showing
+STOPPED. Root cause DEMONSTRATED on the real MPD 0.24.14 private runtime:
+
+    clear -> addid -> status(stop) -> seekid -> status(play) + elapsed advances
+
+`seekid` on a stopped song STARTS playback in MPD 0.24 (seekcur fails with
+ACK "Not playing" for a non-current song — verified). The production
+restore sequence (persisted MPD selected -> prepare_for_resume -> AudioPort
+seek -> seekid) therefore made the private MPD autoplay; PlaybackService
+discarded the unexpected PLAYING (`_intent == False`), so the UI stayed
+STOPPED, the Play button kept issuing play(), and pause was unreachable.
+
+Fixes (all evidence-backed):
+
+- **MPD deferred resume seek**: MPDAudioPort.seek() issues seekid only when
+  the daemon is play/pause; while stopped the position is DEFERRED and
+  applied right after the NEXT EXPLICIT play (playid -> seekid). prepare_
+  for_resume never autoplays and never seeks a stopped daemon.
+- **INV-AUDIO-NO-GHOST-PLAYBACK**: PlaybackService no longer silently
+  discards unexpected non-STOPPED backend states — a PLAYING/PAUSED without
+  a valid intent is an authority violation that converges ACTIVELY to
+  STOPPED (safety stop + diagnosis; stop failure surfaces on the state).
+  The model never publishes the ghost state.
+- **Three-level golden gate**: real MPD restore test asserts PlaybackState
+  == STOPPED AND daemon status == "stop" AND elapsed does not advance;
+  explicit play then resumes at the persisted position.
+- **QML runtime fixes** (objective defects confirmed in main): Michi-
+  MaterialTexture makeRandom wrong-scope call; MichiFormat feeding strings
+  to Qt.locale().toString (QDateTime conversion error — numeric _pad2);
+  seven qsTr("%1", "", arg) pluralization misuses replaced with .arg()
+  chaining; MichiGlassSurface assigning a QQuickWindow to a QQuickItem*
+  property (backdrop source now the window contentItem).
+- **QML runtime warning gate**: boots the REAL ApplicationContainer
+  offscreen in CI and fails on the warning families (null context
+  properties, undefined assigns, not-a-function, QDateTime, qsTr misuse,
+  signal-handler mismatches). Real boot: zero warnings.
+
+M11.3 and M11.3-UI remain DONE / TESTED / FROZEN after this re-seal.
+
 ## Non-goals
 
 - No UI (M9-R2 owns presentation).

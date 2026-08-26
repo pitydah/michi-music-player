@@ -243,13 +243,23 @@ class TestFullStack:
 
 class TestPrepareForResume:
     def test_pr1_sync_acceptance_seeks_no_autoplay(self, mpd_stack):
+        """R2 PRODUCTION REALITY: seekid on a stopped song STARTS playback
+        (verified on real MPD 0.24.14) — the prepare seek is now DEFERRED to
+        the explicit play, so prepare NEVER autoplays and NEVER issues a
+        seekid against a stopped daemon."""
         port, svc, fake = mpd_stack
         svc.prepare_for_resume(Path("/m/b.flac"), 42000)
         assert svc._accepted is True
         assert svc.state.file_path == Path("/m/b.flac")
-        assert "seekid 1 42.000" in fake.commands  # el seek SÍ se aplicó
+        assert "seekid" not in fake.commands  # R2: deferred, no autoplay
+        assert "playid" not in fake.commands  # nunca un play implícito
         assert svc._intent is False  # prepare nunca autoplay
         assert svc.state.status == PlaybackStatus.STOPPED
+        # el seek diferido se aplica tras el PLAY explícito
+        fake.state = "play"
+        svc.play()
+        assert "playid 1" in fake.commands
+        assert fake.commands[-1] == "seekid 1 42.000"
 
     def test_pr2_sync_rejection_terminal_no_seek(self, mpd_stack):
         port, svc, fake = mpd_stack

@@ -1,10 +1,13 @@
 """Playback use case — the single mutation authority for PlaybackState."""
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
 from michi.application.ports import AudioLoadError, AudioPort
 from michi.domain.playback import PlaybackState, PlaybackStatus
+
+logger = logging.getLogger(__name__)
 
 
 class PlaybackService:
@@ -77,6 +80,7 @@ class PlaybackService:
         self._resume_prepared_pending: bool = False
         self._intent = False
         self._accepted = False
+        self._converging_unexpected = False  # R2 ghost-playback guard
         # M11.3C-R6.5.2: token privado de transacción de request — los
         # callbacks públicos son DIRECTOS (pueden rechazar/aceptar/superseder
         # sincrónicamente DENTRO de load()); el epoch permite al request
@@ -416,14 +420,49 @@ class PlaybackService:
         # Anything else is a stale, unknown, or duplicate callback: ignored.
 
     def _on_playback_state_changed(self, status: PlaybackStatus) -> None:
+        # INV-AUDIO-NO-GHOST-PLAYBACK (R2 PRODUCTION REALITY): a backend
+        # reporting non-STOPPED (PLAYING/PAUSED) WITHOUT a valid playback
+        # intent is an observable authority violation — never silently
+        # discarded. The model converges actively to STOPPED (safety stop +
+        # diagnosis) and NEVER publishes the unexpected state. This closes
+        # the production failure where MPD autoplayed after prepare_for_resume
+        # (seekid on a stopped song starts playback) while the model kept
+        # showing STOPPED and the Play button kept issuing play().
         if not self._intent and status != PlaybackStatus.STOPPED:
+            self._converge_unexpected_backend_state(status)
             return
         if status == PlaybackStatus.PLAYING and not self._accepted:
+            # acceptance pending: PLAYING before media acceptance is not a
+            # legitimate model state either — converge (safety) instead of
+            # silently dropping the audio the backend may be producing.
+            self._converge_unexpected_backend_state(status)
             return
         if self._state.status == status:
             return
         self._state.status = status
         self._notify()
+
+    def _converge_unexpected_backend_state(self, status: PlaybackStatus) -> None:
+        """Safety convergence for an unexpected backend state. Issues a
+        backend stop (idempotent), records a diagnostic and, when the stop
+        itself fails, surfaces the error on the model state. Re-entrant
+        violation events during convergence do not loop (one attempt per
+        event; the backend's own STOPPED event converges the model)."""
+        if self._converging_unexpected:
+            return
+        self._converging_unexpected = True
+        try:
+            self._audio.stop()
+        except Exception as exc:  # noqa: BLE001 — safety boundary
+            self._state.error_message = (
+                f"unexpected backend state {status.value} could not be stopped: {exc}"
+            )
+            self._notify()
+            logger.exception(
+                "unexpected backend state %s could not be stopped", status.value
+            )
+        finally:
+            self._converging_unexpected = False
 
     def play(self) -> None:
         # M11.3C-R6.1: si no hay media aceptada en el backend pero existe un
@@ -517,6 +556,7 @@ class PlaybackService:
         self._resume_prepared_pending = False
         self._intent = False
         self._accepted = False
+        self._converging_unexpected = False  # R2 ghost-playback guard
         self._state.status = PlaybackStatus.STOPPED
         # file_path / position_ms / volume / muted preserved on purpose.
         self._state.error_message = reason
@@ -615,6 +655,7 @@ class PlaybackService:
         self._resume_prepared_pending = False
         self._intent = False
         self._accepted = False
+        self._converging_unexpected = False  # R2 ghost-playback guard
         # file_path / status / volume / muted / position / duration preserved.
 
     def switch_track(self, file_path: Path) -> None:

@@ -215,8 +215,9 @@ Item {
                     hoverEnabled: true
                     Accessible.role: Accessible.Slider
                     Accessible.name: qsTr("Playback position")
-                    Accessible.description: qsTr("%1 of %2", "",
-                        formatTime(value), formatTime(root.duration))
+                    Accessible.description: qsTr("%1 of %2")
+                        .arg(formatTime(value))
+                        .arg(formatTime(root.duration))
                     onMoved: root.seekRequested(Math.round(value))
 
                     background: Rectangle {
@@ -432,7 +433,8 @@ Item {
                     MichiIconButton {
                         objectName: "repeatButton"
                         iconName: root.repeatMode === "ONE" ? "repeat-one" : "repeat"
-                        accessibleName: qsTr("Repeat: %1", "", root.repeatMode.toLowerCase())
+                        accessibleName: qsTr("Repeat: %1")
+                            .arg(root.repeatMode.toLowerCase())
                         selected: root.repeatMode !== "NONE"
                         // Repeat ALL vs NONE share the same glyph — the
                         // dimmed opacity adds a non-chromatic differentiator
@@ -494,7 +496,8 @@ Item {
                     hoverEnabled: true
                     Accessible.role: Accessible.Slider
                     Accessible.name: qsTr("Volume")
-                    Accessible.description: qsTr("%1 percent", "", Math.round(value))
+                    Accessible.description: qsTr("%1 percent")
+                        .arg(Math.round(value))
                     onMoved: root.volumeRequested(Math.round(value))
 
                     background: Rectangle {

@@ -185,7 +185,7 @@ Item {
                                 spacing: MichiSpacing.xxs
 
                                 MichiText {
-                                    text: qsTr("0%1", "", index + 2)
+                                    text: qsTr("0%1").arg(index + 2)
                                     role: "technical"
                                     technical: true
                                     color: MichiPalette.auroraPurple
@@ -267,7 +267,7 @@ Item {
                             }
 
                             MichiText {
-                                text: qsTr("0%1", "", index + 4)
+                                text: qsTr("0%1").arg(index + 4)
                                 role: "technical"
                                 technical: true
                                 color: MichiPalette.textMuted

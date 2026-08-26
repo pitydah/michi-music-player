@@ -879,6 +879,7 @@ class MPDAudioPort(AudioPort):
         self._song_id: int | None = None
         # semántica
         self._pending_play = False
+        self._pending_resume_position_ms: int | None = None  # R2 deferred seek
         self._current_state = PlaybackStatus.STOPPED
         self._eos_emitted = False
         self._volume = 80
@@ -1008,6 +1009,7 @@ class MPDAudioPort(AudioPort):
         self._current_path = None
         self._song_id = None
         self._pending_play = False
+        self._pending_resume_position_ms: int | None = None  # R2 deferred seek
         self._eos_emitted = False
         self._eom = []
         self._pos = []
@@ -1292,6 +1294,9 @@ class MPDAudioPort(AudioPort):
             # sin ghost accepted: converger honesto
             self._converge_transport_error(str(exc))
             _translate_protocol_error(exc, "play")
+        # R2: a deferred resume position (seek issued while the daemon was
+        # stopped) is applied right after the EXPLICIT play request.
+        self._apply_deferred_seek()
         self._pending_play = True
         # PLAYING NUNCA es optimista: espera la verdad del daemon
 
@@ -1330,6 +1335,35 @@ class MPDAudioPort(AudioPort):
         self._require_live_transport("seek")
         if self._song_id is None:
             raise AudioTransportCommandError("MPD seek requires a loaded source")
+        # R2 PRODUCTION REALITY: verified on the real runtime (MPD 0.24.14)
+        # that `seekid` on a STOPPED song STARTS playback (state stop -> play
+        # with elapsed advancing) — the prepare_for_resume seek was making
+        # the private MPD autoplay. When the daemon is stopped the seek is
+        # DEFERRED to the next explicit play (playid -> seekid); a seek while
+        # the daemon is play/pause is issued directly (normal UI seeking).
+        try:
+            daemon_state = self._client.status().get("state", "stop")
+        except MpdProtocolError as exc:
+            _translate_protocol_error(exc, "status")
+            return  # pragma: no cover - _translate always raises
+        if daemon_state == "stop":
+            self._pending_resume_position_ms = position_ms
+            return
+        # direct seek while play/pause supersedes any deferred position
+        self._pending_resume_position_ms = None
+        try:
+            self._client.seekid(self._song_id, position_ms / 1000.0)
+        except MpdProtocolError as exc:
+            _translate_protocol_error(exc, "seek")
+
+    def _apply_deferred_seek(self) -> None:
+        """R2: apply a deferred resume position AFTER an explicit play."""
+        if self._pending_resume_position_ms is None:
+            return
+        position_ms = self._pending_resume_position_ms
+        self._pending_resume_position_ms = None
+        if self._song_id is None:
+            return
         try:
             self._client.seekid(self._song_id, position_ms / 1000.0)
         except MpdProtocolError as exc:

@@ -245,8 +245,8 @@ Item {
                     onPinToggled: {
                         root.pinPlaylistRequested(playlistCell.modelData.playlistId, !playlistCell.modelData.pinned)
                         window.showToast(playlistCell.modelData.pinned
-                            ? qsTr("Unpinned %1", "", playlistCell.modelData.name)
-                            : qsTr("Pinned %1", "", playlistCell.modelData.name))
+                            ? qsTr("Unpinned %1").arg(playlistCell.modelData.name)
+                            : qsTr("Pinned %1").arg(playlistCell.modelData.name))
                     }
                     onChangeCoverRequested: {
                         root.pendingCoverPlaylistId = playlistCell.modelData.playlistId

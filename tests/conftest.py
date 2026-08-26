@@ -39,6 +39,8 @@ class FakeAudioPort:
         self.state = "playing"
 
     def stop(self):
+        if getattr(self, "fail_stop", False):
+            raise RuntimeError("stop failed")
         self.state = "stopped"
 
     def set_volume(self, v):

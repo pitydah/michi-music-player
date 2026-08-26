@@ -81,7 +81,7 @@ Item {
             id: blurSource
             anchors.fill: parent
             visible: root.blurEnabled
-            sourceItem: root.window
+            sourceItem: root.window ? root.window.contentItem : null
             sourceRect: Qt.rect(
                 root.mapToItem(root.window, 0, 0).x,
                 root.mapToItem(root.window, 0, 0).y,

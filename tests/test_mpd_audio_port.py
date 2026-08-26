@@ -426,10 +426,37 @@ class TestEos:
 
 class TestSeek:
     def test_t6_seek_millis_to_fractional_seconds(self, mpd_env):
+        """R2: while the daemon is STOPPED the seek is DEFERRED (seekid on a
+        stopped song starts playback — verified on the real runtime); while
+        PLAYING/PAUSED it is issued with fractional seconds."""
         port, fake = mpd_env
         port.load(Path("/m/a.flac"))
+        # daemon stopped → deferred, no seekid, no playback
+        port.seek(1234)
+        assert "seekid" not in fake.commands
+        assert port._pending_resume_position_ms == 1234
+        # daemon playing → direct seekid with fractional seconds
+        fake.state = "play"
         port.seek(1234)
         assert fake.commands[-1] == "seekid 1 1.234"
+        assert port._pending_resume_position_ms is None
+
+    def test_t6b_deferred_seek_applied_after_explicit_play(self, mpd_env):
+        """R2 golden: prepare (seek while stopped) never autoplays; the
+        deferred position is applied right after the EXPLICIT play."""
+        port, fake = mpd_env
+        states = []
+        port.subscribe_playback_state_changed(lambda s: states.append(s))
+        port.load(Path("/m/a.flac"))
+        port.seek(1500)  # daemon stopped → deferred
+        assert "seekid" not in fake.commands
+        assert states == []  # NO PLAYING emitted during prepare
+        # explicit play: playid then deferred seekid
+        fake.state = "play"  # daemon truth after playid
+        port.play()
+        assert "playid 1" in fake.commands
+        assert fake.commands[-1] == "seekid 1 1.5"
+        assert port._pending_resume_position_ms is None
 
     def test_t7_confirmed_position(self, mpd_env):
         port, fake = mpd_env
