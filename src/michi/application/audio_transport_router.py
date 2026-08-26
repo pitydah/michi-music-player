@@ -18,7 +18,10 @@ failure rolls back the already-registered subscriptions and never reports
 a clean new binding.
 """
 
+import logging
 from collections.abc import Callable
+
+logger = logging.getLogger(__name__)
 from pathlib import Path
 
 from michi.application.ports import (
@@ -153,7 +156,11 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
             try:
                 self._unsubscribe_wrapper(backend, wrapper)
             except Exception:  # noqa: BLE001 — cleanup is best-effort
-                continue
+                logger.warning(
+                    "audio router unsubscribe failed; generation guard "
+                    "remains active",
+                    exc_info=True,
+                )
         self._wrappers = []
 
     def _unsubscribe_wrapper(self, backend: AudioPort, wrapper: Callable) -> None:
@@ -181,8 +188,13 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
             except Exception:  # noqa: BLE001 — best-effort detach
                 # AR-31: an unsubscribe that fails is NOT fatal — the
                 # binding-generation provenance in the wrappers drops any
-                # late event it could still deliver.
-                continue
+                # late event it could still deliver. KCR-006: the cleanup
+                # failure is LOGGED, never a silent continue.
+                logger.warning(
+                    "audio router detach unsubscribe failed; generation "
+                    "guard remains active",
+                    exc_info=True,
+                )
         self._wrappers = []
         self._bound = None
         self._bound_engine_id = None

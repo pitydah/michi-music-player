@@ -469,8 +469,12 @@ class GStreamerAudioPort(AudioPort):
     # ------------------------------------------------------------------
 
     def load(self, file_path: Path) -> None:
+        # KCR-008: a closed runtime rejects the command — never a silent
+        # no-op return.
         if self._closed:
-            return
+            raise AudioTransportUnavailableError(
+                "GStreamer load on closed transport"
+            )
         self._bindings.ensure_loaded()
         if not self._bindings.playbin3_available():
             raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
@@ -730,11 +734,20 @@ class GStreamerAudioPort(AudioPort):
         self._deliver_state_if(PlaybackStatus.STOPPED)
 
     def set_volume(self, value: int) -> None:
+        # KCR-008: closed runtime → typed error (never a silent commit)
+        if self._closed:
+            raise AudioTransportUnavailableError(
+                "GStreamer set_volume on closed transport"
+            )
         self._volume = value / 100.0
         if self._pipeline is not None:
             self._bindings.set_volume(self._pipeline, self._volume)
 
     def set_muted(self, muted: bool) -> None:
+        if self._closed:
+            raise AudioTransportUnavailableError(
+                "GStreamer set_muted on closed transport"
+            )
         self._muted = muted
         if self._pipeline is not None:
             self._bindings.set_muted(self._pipeline, muted)
@@ -751,7 +764,12 @@ class GStreamerAudioPort(AudioPort):
             raise AudioTransportCommandError("GStreamer seek rejected by the pipeline")
 
     def position(self) -> int:
-        if self._closed or self._pipeline is None:
+        # KCR-008 table: CLOSED → UnavailableError; LIVE + NO SOURCE → real 0
+        if self._closed:
+            raise AudioTransportUnavailableError(
+                "GStreamer position on closed transport"
+            )
+        if self._pipeline is None:
             return 0
         ok, ns = self._bindings.query_position(self._pipeline)
         if not ok or ns < 0:
@@ -759,7 +777,11 @@ class GStreamerAudioPort(AudioPort):
         return gst_time_to_millis(ns)
 
     def duration(self) -> int:
-        if self._closed or self._pipeline is None:
+        if self._closed:
+            raise AudioTransportUnavailableError(
+                "GStreamer duration on closed transport"
+            )
+        if self._pipeline is None:
             return 0
         ok, ns = self._bindings.query_duration(self._pipeline)
         if not ok or ns < 0:

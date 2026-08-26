@@ -7,7 +7,10 @@ from pathlib import Path
 from PySide6.QtCore import QUrl
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 
-from michi.application.ports import AudioPort
+from michi.application.ports import (
+    AudioPort,
+    AudioTransportUnavailableError,
+)
 from michi.domain.playback import PlaybackStatus
 
 logger = logging.getLogger(__name__)
@@ -43,20 +46,33 @@ class QtMultimediaBackend(AudioPort):
         # source identity against the player's ACTUAL current source.
         self._closed = False
 
+    def _require_open(self) -> None:
+        """KCR-008: a closed Qt runtime rejects every command/query with a
+        typed AudioTransportUnavailableError — never silent success."""
+        if self._closed:
+            raise AudioTransportUnavailableError(
+                "Qt multimedia backend is closed"
+            )
+
     def load(self, file_path: Path) -> None:
+        self._require_open()
         self._current_source = file_path
         self._player.setSource(QUrl.fromLocalFile(str(file_path)))
 
     def play(self) -> None:
+        self._require_open()
         self._player.play()
 
     def pause(self) -> None:
+        self._require_open()
         self._player.pause()
 
     def resume(self) -> None:
+        self._require_open()
         self._player.play()
 
     def stop(self) -> None:
+        self._require_open()
         if self._player.playbackState() != QMediaPlayer.StoppedState:
             self._player.stop()
 
@@ -91,18 +107,23 @@ class QtMultimediaBackend(AudioPort):
         self._closing = False
 
     def set_volume(self, value: int) -> None:
+        self._require_open()
         self._audio_output.setVolume(value / 100.0)
 
     def set_muted(self, muted: bool) -> None:
+        self._require_open()
         self._audio_output.setMuted(muted)
 
     def seek(self, position_ms: int) -> None:
+        self._require_open()
         self._player.setPosition(position_ms)
 
     def position(self) -> int:
+        self._require_open()
         return self._player.position()
 
     def duration(self) -> int:
+        self._require_open()
         return self._player.duration()
 
     # ── media status wiring (shared by eom/accepted/rejected) ─────

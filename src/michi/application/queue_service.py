@@ -47,7 +47,12 @@ class QueueService:
             self._subscribers.remove(callback)
 
     def _notify(self) -> None:
-        for cb in self._subscribers:
+        # KCR-006: iterate a SNAPSHOT (self-unsubscribe during iteration
+        # must not skip remaining callbacks). Queue → Session is a
+        # COORDINATION delivery: exceptions propagate (never swallowed) —
+        # silencing a failed coordination callback would leave QueueState
+        # new while PlaybackSessionState stays old with a "success" caller.
+        for cb in list(self._subscribers):
             cb()
 
     def add(self, file_path: Path, title: str = "") -> None:

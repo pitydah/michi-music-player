@@ -1242,8 +1242,11 @@ class MPDAudioPort(AudioPort):
     # ------------------------------------------------------------------
 
     def load(self, file_path: Path) -> None:
+        # KCR-008: closed/unavailable transport → typed unavailable error
         if self._closed or self._client is None:
-            raise RuntimeError("MPD port cerrado")
+            raise AudioTransportUnavailableError(
+                "MPD load on closed/unavailable transport"
+            )
         self._load_epoch += 1
         my_load_epoch = self._load_epoch
         # R2.1-01: a deferred position bound to the PREVIOUS source must not

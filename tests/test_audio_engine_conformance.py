@@ -528,3 +528,79 @@ class TestCallbackLifecycle:
             assert sum(len(getattr(port, f"_{k}")) for k in kinds) == 0
         final = sum(len(getattr(port, f"_{k}")) for k in kinds)
         assert final == 0, f"callback leak: {final} callbacks remain"
+
+
+class TestCommandsAfterClose:
+    """KCR-009: after a successful close(), every runtime-requiring command
+    fails with AudioTransportUnavailableError on ALL engines — never a
+    silent success."""
+
+    def _assert_all_closed_commands_raise(self, port):
+        from michi.application.ports import AudioTransportUnavailableError
+
+        for call in (
+            lambda: port.load(self.wav),
+            lambda: port.play(),
+            lambda: port.pause(),
+            lambda: port.resume(),
+            lambda: port.seek(1000),
+            lambda: port.set_volume(50),
+            lambda: port.set_muted(True),
+            lambda: port.position(),
+            lambda: port.duration(),
+        ):
+            try:
+                call()
+            except AudioTransportUnavailableError:
+                continue
+            except Exception as exc:  # wrong type
+                raise AssertionError(
+                    f"closed-command raised {type(exc).__name__} instead of "
+                    f"AudioTransportUnavailableError"
+                ) from exc
+            raise AssertionError("closed-command silently succeeded")
+        # stop after close is also rejected (closed runtime)
+        with pytest.raises(AudioTransportUnavailableError):
+            port.stop()
+
+    def test_qt_commands_after_close(self, qapp, tmp_path):
+        from michi.infrastructure.qt_backend import QtMultimediaBackend
+
+        self.wav = _write_wav(tmp_path / "tone.wav")
+        port = QtMultimediaBackend()
+        port.close()
+        self._assert_all_closed_commands_raise(port)
+        port.close()  # idempotent
+
+    def test_gst_commands_after_close(self, qapp, tmp_path):
+        from michi.infrastructure.audio_engines.gstreamer import (
+            GStreamerBindings,
+            GStreamerAudioPort,
+        )
+
+        try:
+            b = GStreamerBindings()
+            b.ensure_loaded()
+            if not b.playbin3_available():
+                pytest.skip("dependency absent: GStreamer playbin3 factory")
+        except (ImportError, ValueError) as exc:
+            pytest.skip(f"dependency absent: PyGObject/GStreamer: {exc}")
+        self.wav = _write_wav(tmp_path / "tone.wav")
+        port = GStreamerAudioPort(b)
+        port.activate()
+        port.close()
+        self._assert_all_closed_commands_raise(port)
+        port.close()  # idempotent
+
+    def test_mpd_commands_after_close(self, qapp, tmp_path):
+        if shutil.which("mpd") is None:
+            pytest.skip("dependency absent: mpd executable not found in PATH")
+        from michi.infrastructure.audio_engines.providers import (
+            MpdEngineProvider,
+        )
+
+        self.wav = _write_wav(tmp_path / "tone.wav")
+        provider = MpdEngineProvider()
+        port = provider.open()
+        provider.close()
+        self._assert_all_closed_commands_raise(port)
