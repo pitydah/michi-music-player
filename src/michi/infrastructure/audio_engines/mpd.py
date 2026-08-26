@@ -53,11 +53,22 @@ from michi.application.ports import (
     AudioLoadError,
     AudioPort,
     AudioTransportCommandError,
+    AudioTransportError,
     AudioTransportUnavailableError,
 )
 from michi.domain.playback import PlaybackStatus
 
 _logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _DeferredSeek:
+    """R2.1-01: deferred resume position with SOURCE PROVENANCE — may only
+    be applied to the exact song_id/source for which it was created."""
+
+    song_id: int
+    source_path: Path
+    position_ms: int
 
 
 def _translate_protocol_error(exc: MpdProtocolError, command: str) -> None:
@@ -879,7 +890,8 @@ class MPDAudioPort(AudioPort):
         self._song_id: int | None = None
         # semántica
         self._pending_play = False
-        self._pending_resume_position_ms: int | None = None  # R2 deferred seek
+        # R2.1-01: deferred resume position with SOURCE PROVENANCE
+        self._deferred_seek: _DeferredSeek | None = None
         self._current_state = PlaybackStatus.STOPPED
         self._eos_emitted = False
         self._volume = 80
@@ -1009,7 +1021,7 @@ class MPDAudioPort(AudioPort):
         self._current_path = None
         self._song_id = None
         self._pending_play = False
-        self._pending_resume_position_ms: int | None = None  # R2 deferred seek
+        self._deferred_seek = None  # R2.1-01: transport closed → invalidated
         self._eos_emitted = False
         self._eom = []
         self._pos = []
@@ -1147,6 +1159,7 @@ class MPDAudioPort(AudioPort):
         path perdido, limpia autoridad backend, STOPPED, y media_rejected
         (PlaybackService terminaliza accepted/intent). NUNCA EOM."""
         lost = self._current_path or self._pending_path
+        self._deferred_seek = None  # R2.1-01: source lost → deferred invalid
         self._pending_path = None
         self._current_path = None
         self._song_id = None
@@ -1233,6 +1246,19 @@ class MPDAudioPort(AudioPort):
             raise RuntimeError("MPD port cerrado")
         self._load_epoch += 1
         my_load_epoch = self._load_epoch
+        # R2.1-01: a deferred position bound to the PREVIOUS source must not
+        # survive a load that crosses source identity — invalidated at the
+        # destructive commit (clear confirmed). If clear is REJECTED (ACK),
+        # the previous source stays current and its deferred seek stays
+        # valid (handled below, before this point nothing is touched).
+        # R2.1-01: a deferred position bound to the PREVIOUS source must
+        # not survive a load crossing source identity. Invalidation points:
+        #  - clear CONFIRMED (destructive commit): the previous source is
+        #    no longer guaranteed → deferred invalidated below;
+        #  - clear ACK-REJECTED: previous source stays current → deferred
+        #    stays VALID (nothing touched before this point);
+        #  - clear outcome UNKNOWN (GATE 2, fail closed): deferred
+        #    invalidated (source ownership uncertain).
         # COMMIT POINT DESTRUCTIVO: clear() — tras confirmarse, la fuente
         # previa ya no está garantizada (AudioLoadError=False)
         try:
@@ -1240,7 +1266,8 @@ class MPDAudioPort(AudioPort):
         except MpdProtocolError as exc:
             if exc.is_ack:
                 # ACK DETERMINISTA: clear rechazado → la fuente previa sigue
-                # (current_path/song_id intactos)
+                # (current_path/song_id intactos) → el deferred de la fuente
+                # previa sigue VÁLIDO
                 raise AudioLoadError(
                     file_path, str(exc), previous_source_preserved=True
                 ) from exc
@@ -1248,6 +1275,7 @@ class MPDAudioPort(AudioPort):
             # ejecutar clear → FAIL CLOSED: la fuente previa NO está
             # garantizada Y la autoridad backend vieja se abandona (nunca
             # un ghost song_id tras un clear incierto)
+            self._deferred_seek = None  # R2.1-01: source ownership uncertain
             self._pending_path = None
             self._current_path = None
             self._song_id = None
@@ -1255,6 +1283,9 @@ class MPDAudioPort(AudioPort):
             raise AudioLoadError(
                 file_path, str(exc), previous_source_preserved=False
             ) from exc
+        # R2.1-01: the destructive commit succeeded — the previous source
+        # (and any deferred position bound to it) is no longer current
+        self._deferred_seek = None
         try:
             song_id = self._client.addid(str(file_path.resolve()))
         except MpdProtocolError as exc:
@@ -1296,7 +1327,17 @@ class MPDAudioPort(AudioPort):
             _translate_protocol_error(exc, "play")
         # R2: a deferred resume position (seek issued while the daemon was
         # stopped) is applied right after the EXPLICIT play request.
-        self._apply_deferred_seek()
+        # R2.1-03 ATOMICITY: playid may already have started audio — a
+        # deferred-seek failure must NOT leave an unowned PLAYING transport:
+        # safety compensation (stop) + first-error-wins (the seek failure is
+        # primary; a stop failure is a logged secondary, never masks it).
+        try:
+            self._apply_deferred_seek()
+        except AudioTransportError:
+            with contextlib.suppress(MpdProtocolError):
+                self._client.stop()  # safety compensation
+            self._pending_play = False
+            raise
         self._pending_play = True
         # PLAYING NUNCA es optimista: espera la verdad del daemon
 
@@ -1347,25 +1388,35 @@ class MPDAudioPort(AudioPort):
             _translate_protocol_error(exc, "status")
             return  # pragma: no cover - _translate always raises
         if daemon_state == "stop":
-            self._pending_resume_position_ms = position_ms
+            # R2.1-01: the deferred position is bound to THIS song/source
+            self._deferred_seek = _DeferredSeek(
+                song_id=self._song_id,
+                source_path=self._current_path,
+                position_ms=position_ms,
+            )
             return
         # direct seek while play/pause supersedes any deferred position
-        self._pending_resume_position_ms = None
+        self._deferred_seek = None
         try:
             self._client.seekid(self._song_id, position_ms / 1000.0)
         except MpdProtocolError as exc:
             _translate_protocol_error(exc, "seek")
 
     def _apply_deferred_seek(self) -> None:
-        """R2: apply a deferred resume position AFTER an explicit play."""
-        if self._pending_resume_position_ms is None:
+        """R2.1-01/03: apply a deferred resume position AFTER an explicit
+        play, ONLY when the source identity matches (provenance). The
+        deferred state is consumed on EVERY path (applied / superseded /
+        failed)."""
+        deferred = self._deferred_seek
+        self._deferred_seek = None
+        if deferred is None:
             return
-        position_ms = self._pending_resume_position_ms
-        self._pending_resume_position_ms = None
-        if self._song_id is None:
+        if self._song_id is None or deferred.song_id != self._song_id:
+            # INV-MPD-DEFERRED-SEEK-PROVENANCE: a different source became
+            # current — the old deferred position is DROPPED, never applied
             return
         try:
-            self._client.seekid(self._song_id, position_ms / 1000.0)
+            self._client.seekid(self._song_id, deferred.position_ms / 1000.0)
         except MpdProtocolError as exc:
             _translate_protocol_error(exc, "seek")
 

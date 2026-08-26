@@ -194,7 +194,10 @@ Item {
     // engine state (Active/Preferred/In use) already confirms it.
     Connections {
         target: audioEngine
-        function onSwitchFailed(engineId, message) {
+        // R2.1-06: PySide6 exposes the signal with its PYTHON name in the
+        // metaobject (verified: switch_failed) — the QML handler must use
+        // onSwitch_failed, not onSwitchFailed (camelCase never matches).
+        function onSwitch_failed(engineId, message) {
             root.showToast(message, "error")
         }
     }

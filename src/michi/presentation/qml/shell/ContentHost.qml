@@ -199,7 +199,7 @@ Item {
     MichiDialog {
         id: deleteDialog
         objectName: "deletePlaylistDialog"
-        title: qsTr("Delete \"%1\"?", "", deleteDialog.targetPlaylistName)
+        title: qsTr("Delete \"%1\"?").arg(deleteDialog.targetPlaylistName)
         width: 440
         property string targetPlaylistId: ""
         property string targetPlaylistName: ""

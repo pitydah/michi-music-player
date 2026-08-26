@@ -428,6 +428,44 @@ Fixes (all evidence-backed):
 
 M11.3 and M11.3-UI remain DONE / TESTED / FROZEN after this re-seal.
 
+## M11.3 R2.1 PRODUCTION REALITY CORRECTIVE CLOSURE
+
+Third corrective reopening (R2.1), driven by an independent audit of the
+R2 fix. Sealed only after falsification attempts:
+
+- Deferred seek SOURCE PROVENANCE (INV-MPD-DEFERRED-SEEK-PROVENANCE): the
+  deferred position carries song_id + source_path and is invalidated at
+  every source-identity boundary (destructive load commit, GATE-2 fail-
+  closed, media loss, close); it can never be applied to a different track.
+- Deferred restore lifecycle: preparation SETTLES when the transport
+  defers the seek (deferred_resume_target_ms is distinct from a confirmed
+  backend position and never blocks engine switching); targets cleared on
+  stop/supersession/switch.
+- playid->seekid failure atomicity: a deferred-seek failure after a
+  successful playid triggers a safety stop (first-error-wins; never leaves
+  an unowned PLAYING transport).
+- TRUE production startup golden gate: ApplicationContainer + persisted
+  SQLite (MPD selected + coherent session) + real private MPD; asserts
+  model/daemon/temporal truth, process ownership, and the full
+  play/pause/resume/stop + engine-switch cycle.
+- QML "real runtime" gate rebuilt: production main.qml is loaded through
+  the same engine path as run() (testable load_qml() seam), positive
+  presence is asserted (root, AppShell tree, NowPlayingBar), routes are
+  exercised, and the gate fails on ten warning families. Teardown order
+  fixed: the QML tree is actually destroyed (sendPostedEvents
+  DeferredDelete) before the bridges are released — zero null-property
+  warnings at boot AND shutdown (was 69).
+- QML source defects sealed: AppShell onSwitch_failed (PySide exposes
+  snake_case signal names — metaobject proven), PlaylistDetailView hero
+  signals wired inline (headerItem is the wrapper, not the hero),
+  QueuePanel ListView.isCurrentItem attached property, MichiGlassSurface
+  mapToItem window.contentItem, ContentHost qsTr third-arg misuse.
+- Obsolete "stray PLAYING is ignored" documentation replaced with the
+  actual INV-AUDIO-NO-GHOST-PLAYBACK semantics.
+
+M11.3 and M11.3-UI: DONE / TESTED / HUMAN-ACCEPTED / FROZEN (subject to
+human audit of this closure).
+
 ## Non-goals
 
 - No UI (M9-R2 owns presentation).

@@ -434,12 +434,13 @@ class TestSeek:
         # daemon stopped → deferred, no seekid, no playback
         port.seek(1234)
         assert "seekid" not in fake.commands
-        assert port._pending_resume_position_ms == 1234
+        assert port._deferred_seek is not None
+        assert port._deferred_seek.position_ms == 1234
         # daemon playing → direct seekid with fractional seconds
         fake.state = "play"
         port.seek(1234)
         assert fake.commands[-1] == "seekid 1 1.234"
-        assert port._pending_resume_position_ms is None
+        assert port._deferred_seek is None
 
     def test_t6b_deferred_seek_applied_after_explicit_play(self, mpd_env):
         """R2 golden: prepare (seek while stopped) never autoplays; the
@@ -456,7 +457,7 @@ class TestSeek:
         port.play()
         assert "playid 1" in fake.commands
         assert fake.commands[-1] == "seekid 1 1.5"
-        assert port._pending_resume_position_ms is None
+        assert port._deferred_seek is None
 
     def test_t7_confirmed_position(self, mpd_env):
         port, fake = mpd_env
@@ -930,3 +931,33 @@ class TestTypedCommandContract:
         fake.fatal_error = "socket closed mid-command"
         with pytest.raises(AudioTransportUnavailableError, match="transport lost"):
             port.play()
+
+
+class TestDeferredSeekProvenance:
+    """R2.1-01: a deferred seek must NEVER cross source identity — defer
+    A@60s, load B before Play, and B must not receive A's position."""
+
+    def test_deferred_seek_does_not_cross_source_identity(self, mpd_env):
+        port, fake = mpd_env
+        # restore A with a deferred position
+        port.load(Path("/m/a.flac"))
+        port.seek(60000)  # daemon stopped -> deferred for A
+        assert port._deferred_seek is not None
+        assert port._deferred_seek.position_ms == 60000
+        assert port._deferred_seek.song_id == 1  # A's song id (provenance)
+        # user selects B BEFORE pressing Play
+        fake.clear_ok = True
+        port.load(Path("/m/b.flac"))
+        assert port._current_path == Path("/m/b.flac")
+        # INV-MPD-DEFERRED-SEEK-PROVENANCE: the old deferred position must
+        # be GONE once the source identity changed
+        assert port._deferred_seek is None, (
+            "deferred seek leaked across source identity"
+        )
+        fake.state = "play"
+        port.play()
+        assert "playid 2" in fake.commands  # B's song id
+        assert not any("seekid 2 60.000" in c for c in fake.commands), (
+            "B received A's deferred position"
+        )
+        assert not any("seekid" in c for c in fake.commands)

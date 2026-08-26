@@ -99,7 +99,9 @@ MichiGlassSurface {
                     album: modelData.album || ""
                     durationMs: modelData.durationMs || 0
                     playing: index === root.currentIndex
-                    selected: queueList.isCurrentItem
+                    // R2.1-08: attached property, not a ListView member —
+                    // queueList.isCurrentItem is undefined -> bool warning
+                    selected: ListView.isCurrentItem
                     showRemove: true
                     showArtistColumn: root.width >= 460
                     showAlbumColumn: false
@@ -118,14 +120,14 @@ MichiGlassSurface {
                     iconName: "up"
                     accessibleName: qsTr("Move track up")
                     enabled: index > 0
-                    opacity: queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18
+                    opacity: queueRow.hovered || ListView.isCurrentItem ? 1 : 0.18
                     onClicked: root.moveRequested(index, index - 1)
                 }
                 MichiIconButton {
                     iconName: "down"
                     accessibleName: qsTr("Move track down")
                     enabled: index + 1 < root.count
-                    opacity: queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18
+                    opacity: queueRow.hovered || ListView.isCurrentItem ? 1 : 0.18
                     onClicked: root.moveRequested(index, index + 1)
                 }
                 HoverHandler { id: queueRow }

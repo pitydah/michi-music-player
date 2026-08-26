@@ -193,7 +193,7 @@ def test_queue_list_keyboard_navigation_and_selection_feedback():
     content = read("components/QueuePanel.qml")
     assert "keyNavigationEnabled: true" in content
     assert "activeFocusOnTab: true" in content
-    assert "selected: queueList.isCurrentItem" in content
+    assert "selected: ListView.isCurrentItem" in content  # R2.1-08
     assert "onActiveFocusChanged" in content
     assert "MichiScrollBar" in content
 
@@ -337,7 +337,7 @@ def test_immersive_delegates_expose_selected_state():
 
 def test_queue_reorder_buttons_reveal_on_hover():
     content = read("components/QueuePanel.qml")
-    assert "queueRow.hovered || queueList.isCurrentItem ? 1 : 0.18" in content
+    assert "queueRow.hovered || ListView.isCurrentItem ? 1 : 0.18" in content  # R2.1-08
     assert 'elevation: "subtle"' in content
 
 

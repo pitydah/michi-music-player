@@ -75,6 +75,15 @@ Item {
                 customCoverPath: playlists ? (playlists.selectedPlaylistCustomCoverPath || "") : ""
                 mosaicArtworkPaths: playlists ? (playlists.selectedPlaylistMosaicArtworkPaths || []) : []
                 pinned: playlists ? playlists.selectedPlaylistPinned : false
+                // R2.1-07: signals wired INLINE (the ListView headerItem is
+                // this wrapper Item, NOT the hero — a Connections on
+                // headerItem never matches the hero's signals)
+                onPlayRequested: root.playRequested()
+                onShuffleRequested: root.shuffleRequested()
+                onMoreRequested: detailMenu.popup()
+                onChangeCoverRequested: coverDialog.open()
+                onTogglePinRequested: root.togglePinRequested()
+                onAddTracksRequested: root.addMusicRequested()
             }
 
             PlaylistColumnHeader {
@@ -154,19 +163,6 @@ Item {
                 onRemoveTrackRequested: index => root.removeTrackRequested(index)
                 onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
             }
-
-            // Hero signal wiring (created lazily inside the ListView)
-            Connections {
-                target: trackList.headerItem
-                enabled: trackList.headerItem !== null
-                function onPlayRequested() { root.playRequested() }
-                function onShuffleRequested() { root.shuffleRequested() }
-                function onMoreRequested() { detailMenu.popup() }
-                function onChangeCoverRequested() { coverDialog.open() }
-                function onTogglePinRequested() { root.togglePinRequested() }
-                function onAddTracksRequested() { root.addMusicRequested() }
-            }
-
             // Empty state — hero stays, tracks area shows a quiet prompt
             ColumnLayout {
                 anchors.fill: parent

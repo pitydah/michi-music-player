@@ -1242,7 +1242,10 @@ class TestF42AdapterContract:
         # R2 PRODUCTION REALITY authorized reopening: mpd.py defers the
         # resume seek to the explicit play (seekid on a stopped song starts
         # playback — verified on real MPD 0.24.14). Transport unchanged.
-        "src/michi/infrastructure/audio_engines/mpd.py": "ccde1f8d8806a50d",
+        # R2.1 PRODUCTION REALITY authorized reopening: mpd.py deferred-seek
+        # provenance (_DeferredSeek song_id/path) + playid->seekid failure
+        # atomicity (safety stop compensation). Transport unchanged.
+        "src/michi/infrastructure/audio_engines/mpd.py": "efdf9621d1a005a1",
         "src/michi/infrastructure/audio_engines/gstreamer.py": "8b1f4966c4a87ec1",
         "src/michi/infrastructure/qt_backend.py": "f161bc988508a91e",
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",

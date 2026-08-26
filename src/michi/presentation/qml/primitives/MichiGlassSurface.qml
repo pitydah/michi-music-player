@@ -82,9 +82,12 @@ Item {
             anchors.fill: parent
             visible: root.blurEnabled
             sourceItem: root.window ? root.window.contentItem : null
+            // R2.1-09: mapToItem requires a QQuickItem target — root.window
+            // is a QQuickWindow (type mismatch); the window CONTENT item is
+            // the valid coordinate space for the backdrop source.
             sourceRect: Qt.rect(
-                root.mapToItem(root.window, 0, 0).x,
-                root.mapToItem(root.window, 0, 0).y,
+                root.mapToItem(root.window ? root.window.contentItem : null, 0, 0).x,
+                root.mapToItem(root.window ? root.window.contentItem : null, 0, 0).y,
                 root.width, root.height)
             live: true
         }

@@ -8,7 +8,7 @@ import pytest
 from PySide6.QtCore import QCoreApplication
 
 from michi.application.playback_service import PlaybackService
-from michi.application.ports import AudioLoadError
+from michi.application.ports import AudioLoadError, AudioTransportCommandError
 from michi.domain.playback import PlaybackStatus
 from michi.infrastructure.audio_engines.mpd import (
     MPDAudioPort,
@@ -105,6 +105,8 @@ class _FakeClient:
 
     def seekid(self, song_id, seconds):
         self.commands.append(f"seekid {song_id} {seconds:.3f}")
+        if getattr(self, "seekid_ack", None):
+            raise MpdProtocolError(self.seekid_ack, is_ack=True)
         self.elapsed = f"{seconds:.3f}"
 
     def setvol(self, volume):
@@ -416,3 +418,61 @@ class TestGate2ClearUnknownFullStack:
         # MPDAudioPort: sin ghost A
         assert port._current_path is None
         assert port._song_id is None
+
+
+class TestDeferredRestoreLifecycle:
+    """R2.1-02: with the MPD deferred seek, the restore preparation must
+    reach a deterministic SETTLED state — engine switch while stopped must
+    be allowed, and the deferred position must not leak."""
+
+    def test_restore_is_settled_and_switch_allowed(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.prepare_for_resume(Path("/m/a.flac"), 60000)
+        _drain()
+        # daemon stays stopped (deferred seek), no audio
+        assert fake.state == "stop"
+        assert svc.state.status == PlaybackStatus.STOPPED
+        # R2.1-02: the restore preparation must be SETTLED — not latched
+        # forever waiting for a backend position event that (with the
+        # deferred seek) never arrives while stopped
+        assert svc._resume_prepared_pending is False, (
+            "resume preparation latched forever (engine switch blocked)"
+        )
+        # engine switch while stopped is allowed
+        assert svc.is_engine_switch_quiescent() is True
+
+    def test_shutdown_before_explicit_play(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.prepare_for_resume(Path("/m/a.flac"), 60000)
+        _drain()
+        # shutdown without Play: nothing playing, nothing pending
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert fake.state == "stop"
+        assert svc._resume_prepared_pending is False
+        assert svc._pending_resume_position_ms is None
+        svc.stop()
+        assert svc.state.status == PlaybackStatus.STOPPED
+
+
+class TestDeferredSeekFailureAtomicity:
+    """R2.1-03: playid SUCCESS + deferred seekid FAILURE must not leave an
+    unowned PLAYING transport — safety compensation + first-error-wins."""
+
+    def test_seekid_ack_failure_after_playid_compensates(self, mpd_stack):
+        port, svc, fake = mpd_stack
+        svc.prepare_for_resume(Path("/m/a.flac"), 60000)
+        _drain()
+        assert fake.state == "stop"
+        # daemon truth after playid: play; seekid then fails with an ACK
+        fake.seekid_ack = "ACK [2@0] {seekid} rejected"
+        fake.state = "play"
+        with pytest.raises(AudioTransportCommandError, match="seek rejected"):
+            svc.play()
+        _drain()
+        # first-error-wins: primary failure = deferred seek failure; the
+        # transport must be compensated (safety stop) — NEVER left PLAYING
+        # without intent (INV-AUDIO-NO-GHOST-PLAYBACK)
+        assert svc.state.status == PlaybackStatus.STOPPED
+        assert "stop" in fake.commands  # safety compensation issued
+        # the model never published PLAYING
+        assert svc._intent is False

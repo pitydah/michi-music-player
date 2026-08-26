@@ -118,7 +118,7 @@ def test_page_connects_play_track_and_shuffle():
     # M4-R1 authority: the row play intent routes DIRECTLY to the
     # PlaylistsBridge (play_playlist_track) — never a bare re-emit.
     assert "onPlayTrackRequested: index => playlists.play_playlist_track(index)" in page
-    assert "function onShuffleRequested() { root.shuffleRequested() }" in page
+    assert "onShuffleRequested: root.shuffleRequested()" in page  # R2.1-07 inline
     host = read("shell/ContentHost.qml")
     assert "playlists.play_track(index)" in host
     assert "onShuffleRequested" in host
@@ -193,7 +193,7 @@ def test_add_tracks_action_in_hero():
     hero = read("playlists/PlaylistHero.qml")
     page = read("playlists/PlaylistDetailView.qml")
     assert 'qsTr("Add tracks")' in hero
-    assert "function onAddTracksRequested() { root.addMusicRequested() }" in page
+    assert "onAddTracksRequested: root.addMusicRequested()" in page  # R2.1-07 inline
 
 
 def test_row_favorite_and_pressed_state():

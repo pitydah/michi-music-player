@@ -37,15 +37,22 @@ class PlaybackService:
       resurrect playback after stop/rejection.
     - `_accepted`: True only once the current candidate has been accepted,
       reset on each new request and on rejection. PLAYING is never published
-      for a track whose identity was not committed — stale PlayingState
-      events from superseded candidates are ignored.
+      for a track whose identity was not committed.
+
+    INV-AUDIO-NO-GHOST-PLAYBACK (R2/R2.1): a backend reporting non-STOPPED
+    (PLAYING/PAUSED) WITHOUT a valid intent is an AUTHORITY VIOLATION — it
+    is NEVER silently discarded. The service converges ACTIVELY to STOPPED
+    (safety stop + diagnosis; a failed stop surfaces on the model state)
+    and never publishes the ghost state. This closes the production
+    failure where MPD autoplayed after startup restore (seekid on a stopped
+    song starts playback) while the model kept showing STOPPED.
 
     `prepare_for_resume` is the startup resume path: it requests a backend
     LOAD and, only after acceptance, seeks the backend to the persisted
     position — it loads and seeks, never autoplays. Intent stays unarmed
-    during preparation (the user has not pressed play), so a stray backend
-    PLAYING state is ignored; the user's later `play()` resumes from the
-    sought position.
+    during preparation; an unexpected backend PLAYING during preparation is
+    an authority violation and converges actively to STOPPED (it is never
+    ignored). The user's later `play()` resumes from the sought position.
 
     `subscribe_resume_prepared` is the public resume-confirmation signal
     (M5-LAST-GATE-2): it fires exactly ONCE — on the first backend position
@@ -78,6 +85,9 @@ class PlaybackService:
         # that clears the resume slot (rejection/stop/supersession).
         self._resume_prepared_subscribers: list[Callable[[Path, int], None]] = []
         self._resume_prepared_pending: bool = False
+        # R2.1-02: a registered (not yet confirmed) resume target — distinct
+        # from a confirmed backend position; never blocks quiescence.
+        self._deferred_resume_target_ms: int | None = None
         self._intent = False
         self._accepted = False
         self._converging_unexpected = False  # R2 ghost-playback guard
@@ -189,7 +199,8 @@ class PlaybackService:
         self._pending_on_rejected = on_rejected
         self._pending_on_cancelled = on_cancelled
         self._pending_resume_position_ms = None  # supersedes any prepare
-        self._resume_prepared_pending = False  # supersedes any pending confirm
+        self._resume_prepared_pending = False
+        self._deferred_resume_target_ms = None  # R2.1-02: supersedes target
         self._accepted = False
         self._intent = True
         # PHASE 1 — LOAD (M11.3C-R6.2): la disposición de AudioLoadError
@@ -264,9 +275,11 @@ class PlaybackService:
         The startup resume path (M5.C4): requests the backend LOAD of the
         persisted track so acceptance/rejection routing and the pending
         identity guards apply exactly as for any other candidate. Unlike
-        ``load_and_play`` it NEVER calls ``play()`` and never arms intent
-        — the user has not pressed play, so a stray backend PLAYING state
-        is ignored. On acceptance the track identity is committed and the
+        ``load_and_play`` it NEVER calls ``play()`` and never arms intent —
+        the user has not pressed play; an unexpected backend PLAYING state
+        during preparation is an authority violation and converges actively
+        to STOPPED (never ignored). On acceptance the track identity is
+        committed and the
         backend is then asked to seek to the persisted position (the
         backend clamps; PlaybackState never shows a position the backend
         did not accept — the UI position arrives from the backend's own
@@ -376,17 +389,29 @@ class PlaybackService:
             self._notify()
             return
         if self._resume_prepared_pending and self._state.file_path is not None:
-            # Non-reentrant path: only when the seek left the position
-            # UNCHANGED does the backend ALREADY report the requested value
-            # (Qt skips positionChanged for an unchanged value) — the
-            # confirmation is real (backend truth, never fabricated) and
-            # fires now instead of waiting for a signal that never comes. A
-            # clamped or changed position stays latched for the async event.
+            # R2.1-02: distinct truth — backend_current_position vs
+            # deferred_resume_target. With the MPD deferred seek (daemon
+            # stopped) the backend position does NOT move: the seek was
+            # REGISTERED on the transport, not applied. The preparation is
+            # then SETTLED (latch closed) and the target is tracked
+            # explicitly; it is NOT a confirmed backend position and does
+            # NOT block engine switching (quiescence). The confirmation
+            # fires when the backend reports the position after the
+            # explicit Play (positionChanged event).
             confirmed = self._audio.position()
             if confirmed == resume_position and confirmed == before:
+                # seek-to-0 / unchanged: backend already reports the value
                 self._resume_prepared_pending = False
                 for cb in list(self._resume_prepared_subscribers):
                     cb(self._state.file_path, confirmed)
+            elif confirmed == before and confirmed != resume_position:
+                # R2.1-02: deferred target registered (MPD stopped) — the
+                # preparation is SETTLED; the target is tracked explicitly
+                # and applied by the transport at the explicit play.
+                self._resume_prepared_pending = False
+                self._deferred_resume_target_ms = resume_position
+            # else (position CHANGED): the async positionChanged confirms;
+            # the latch stays armed (normal path).
 
     def _on_media_rejected(self, file_path: Path, message: str) -> None:
         if self._pending_path is not None and file_path == self._pending_path:
@@ -513,6 +538,7 @@ class PlaybackService:
         self._pending_on_cancelled = None
         self._pending_resume_position_ms = None
         self._resume_prepared_pending = False
+        self._deferred_resume_target_ms = None  # R2.1-02: stop supersedes
         self._intent = False
         self._state.status = PlaybackStatus.STOPPED
         self._state.position_ms = 0
@@ -554,6 +580,7 @@ class PlaybackService:
         self._pending_on_cancelled = None
         self._pending_resume_position_ms = None
         self._resume_prepared_pending = False
+        self._deferred_resume_target_ms = None  # R2.1-02: never leaks engines
         self._intent = False
         self._accepted = False
         self._converging_unexpected = False  # R2 ghost-playback guard
@@ -653,6 +680,7 @@ class PlaybackService:
         self._pending_on_cancelled = None
         self._pending_resume_position_ms = None
         self._resume_prepared_pending = False
+        self._deferred_resume_target_ms = None  # R2.1-02: never leaks engines
         self._intent = False
         self._accepted = False
         self._converging_unexpected = False  # R2 ghost-playback guard

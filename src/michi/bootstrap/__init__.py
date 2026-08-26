@@ -12,7 +12,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QStandardPaths, Qt, QUrl
+from PySide6.QtCore import QEvent, QStandardPaths, Qt, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -726,15 +726,25 @@ class ApplicationContainer:
         self._sb = sb
         self._engine = engine
 
-    def run(self) -> int:
+    def load_qml(self) -> bool:
+        """R2.1-05: TESTABLE PRODUCTION SEAM — loads the real production
+        main.qml through the SAME engine path run() uses. run() =
+        load_qml() + exec(); tests call load_qml() + bounded pumping so the
+        real QML tree (AppShell, NowPlayingBar, views, loaders, Connections)
+        actually instantiates instead of a synthetic empty gate."""
         qml_dir = Path(__file__).parent.parent / "presentation"
         main_qml = qml_dir / "main.qml"
         if not main_qml.exists():
             print(f"FATAL: QML entry not found at {main_qml}", file=sys.stderr)
-            return 1
+            return False
         self._engine.load(QUrl.fromLocalFile(str(main_qml)))
         if not self._engine.rootObjects():
             print("FATAL: QML engine failed to load any root object", file=sys.stderr)
+            return False
+        return True
+
+    def run(self) -> int:
+        if not self.load_qml():
             return 1
         return self._app.exec()
 
@@ -862,7 +872,29 @@ class ApplicationContainer:
 
         try:
             if self._engine:
+                # R2.1-05 teardown order: destroy the QML tree NOW (before
+                # the bridges are released) — otherwise live bindings
+                # re-evaluate against destroyed context objects and emit the
+                # "Cannot read property X of null" storm observed at
+                # shutdown. Verified: QApplication.processEvents() does NOT
+                # deliver DeferredDelete events at the same loop level —
+                # sendPostedEvents(QEvent.DeferredDelete) is required to
+                # actually tear the tree down before the bridges die.
+                # a test-double engine may expose no rootObjects()
+                roots = (
+                    self._engine.rootObjects()
+                    if hasattr(self._engine, "rootObjects")
+                    else []
+                )
+                for root_obj in roots:
+                    if hasattr(root_obj, "close"):
+                        root_obj.close()
+                    root_obj.deleteLater()
+                if self._app is not None:  # partial container (tests)
+                    self._app.sendPostedEvents(None, QEvent.DeferredDelete)
                 self._engine.deleteLater()
+                if self._app is not None:
+                    self._app.sendPostedEvents(None, QEvent.DeferredDelete)
         except Exception as exc:
             error = error or exc
 
