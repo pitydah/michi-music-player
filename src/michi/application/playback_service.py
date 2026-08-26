@@ -3,12 +3,47 @@
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from michi.application.ports import AudioLoadError, AudioPort
 from michi.domain.playback import PlaybackState, PlaybackStatus
 
 logger = logging.getLogger(__name__)
+
+
+class _PreparePurpose(Enum):
+    """P2-01: typed purpose of stopped-media preparation."""
+
+    STARTUP_RESTORE = "startup_restore"
+    ENGINE_SWITCH = "engine_switch"
+
+
+class EngineSwitchLeaseHeldError(RuntimeError):
+    """A playback intent was rejected because an engine switch is holding
+    the exclusive quiescence lease (P1-01). Deterministic, explicit."""
+
+
+class EngineSwitchLease:
+    """P1-01: exclusive quiescence lease for engine switching. While held,
+    playback intents that would break quiescence are rejected explicitly.
+    Released exactly once via release() (idempotent)."""
+
+    __slots__ = ("_service", "_released")
+
+    def __init__(self, service: "PlaybackService") -> None:
+        self._service = service
+        self._released = False
+
+    def release(self) -> None:
+        if not self._released:
+            self._released = True
+            self._service._release_engine_switch_lease()
+
+
+class PlaybackNotQuiescentError(RuntimeError):
+    """The engine-switch lease could not be acquired: playback is not in a
+    switchable (quiescent) state."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +138,7 @@ class PlaybackService:
         self._intent = False
         self._accepted = False
         self._converging_unexpected = False  # R2 ghost-playback guard
+        self._engine_switch_lease_active = False  # P1-01 exclusive lease
         # M11.3C-R6.5.2: token privado de transacción de request — los
         # callbacks públicos son DIRECTOS (pueden rechazar/aceptar/superseder
         # sincrónicamente DENTRO de load()); el epoch permite al request
@@ -177,6 +213,7 @@ class PlaybackService:
         on_rejected: Callable[[Path, str], None] | None = None,
         on_cancelled: Callable[[Path], None] | None = None,
     ) -> None:
+        self._ensure_no_engine_switch_lease("load_and_play")
         """Request playback of a candidate. Commits nothing synchronously.
 
         The candidate terminates in exactly one of ACCEPTED / REJECTED /
@@ -282,7 +319,42 @@ class PlaybackService:
         self._resume_prepared_pending = False
 
     def prepare_for_resume(self, file_path: Path, position_ms: int) -> None:
-        """Request a startup resume: LOAD the candidate, never autoplay.
+        """STARTUP RESTORE (P2-01): participates in the M5 two-phase restore
+        and may emit resume_prepared. Gated by the engine-switch lease."""
+        self._ensure_no_engine_switch_lease("prepare_for_resume")
+        self._prepare_stopped_media(
+            file_path, position_ms, _PreparePurpose.STARTUP_RESTORE
+        )
+
+    def prepare_after_engine_switch(
+        self, snapshot: EngineSwitchMediaSnapshot
+    ) -> None:
+        """ENGINE-SWITCH rehydration (P2-01): LOAD + deferred seek allowed,
+        NO autoplay, NO M5 resume_prepared, NOT gated by the lease (the
+        coordinator holds it — this is the internal rehydration path)."""
+        if snapshot.file_path is None:
+            return
+        resume_position = snapshot.deferred_resume_target_ms
+        if resume_position is None:
+            resume_position = snapshot.confirmed_position_ms
+        self._prepare_stopped_media(
+            snapshot.file_path, resume_position, _PreparePurpose.ENGINE_SWITCH
+        )
+
+    def _prepare_stopped_media(
+        self,
+        file_path: Path,
+        position_ms: int,
+        purpose: "_PreparePurpose",
+    ) -> None:
+        """Shared stopped-media preparation (P2-01). Semantics:
+        LOAD (never autoplay) + post-acceptance seek; the deferred resume
+        truth of R2.1 is respected. STARTUP_RESTORE emits resume_prepared
+        (M5 two-phase); ENGINE_SWITCH does NOT (the PersistenceCoordinator
+        state machine must not be opened by an engine switch)."""
+        self._prepare_purpose = purpose
+        """Request stopped-media preparation: LOAD the candidate, never
+        autoplay.
 
         The startup resume path (M5.C4): requests the backend LOAD of the
         persisted track so acceptance/rejection routing and the pending
@@ -313,6 +385,30 @@ class PlaybackService:
         self._accepted = False
         try:
             self._audio.load(file_path)
+        except AudioLoadError as exc:
+            if purpose is _PreparePurpose.ENGINE_SWITCH:
+                # P2-02: a failed load is VISIBLE on the model state (never
+                # only in a log). The engine itself stays READY — this is a
+                # media domain failure, not an engine failure.
+                self._pending_path = None
+                self._pending_resume_position_ms = None
+                self._state.error_message = (
+                    "Audio engine switched, but the current track could not "
+                    f"be prepared: {exc}"
+                )
+                self._notify()
+                return
+            # STARTUP_RESTORE: the original fail-closed disposition —
+            # pending cleared, previous acceptance PRESERVED (same as the
+            # generic destructive path), then AudioLoadError raises
+            self._pending_path = None
+            self._pending_on_accepted = None
+            self._pending_on_rejected = None
+            self._pending_on_cancelled = None
+            self._pending_resume_position_ms = None
+            self._state.status = PlaybackStatus.STOPPED
+            self._notify()
+            raise
         except Exception as exc:
             if my_epoch != self._request_epoch:
                 raise
@@ -369,6 +465,33 @@ class PlaybackService:
             on_accepted(file_path)
         self._apply_prepare_seek()
 
+    def acquire_engine_switch_lease(self) -> EngineSwitchLease:
+        """P1-01: acquire the EXCLUSIVE quiescence lease for an engine
+        switch transaction. Fails deterministically when playback is not
+        switchable or when another switch already holds it."""
+        if not self.is_engine_switch_quiescent():
+            raise PlaybackNotQuiescentError(
+                "engine switch requires quiescent playback (STOPPED, no "
+                "pending load, no play intent, no resume in flight)"
+            )
+        if self._engine_switch_lease_active:
+            raise EngineSwitchLeaseHeldError(
+                "an engine switch transaction is already in progress"
+            )
+        self._engine_switch_lease_active = True
+        return EngineSwitchLease(self)
+
+    def _release_engine_switch_lease(self) -> None:
+        self._engine_switch_lease_active = False
+
+    def _ensure_no_engine_switch_lease(self, operation: str) -> None:
+        """P1-01 gate: while the exclusive switch lease is held, playback
+        intents that would break quiescence are rejected explicitly."""
+        if self._engine_switch_lease_active:
+            raise EngineSwitchLeaseHeldError(
+                f"{operation} rejected while an engine switch is in progress"
+            )
+
     def snapshot_engine_switch_media(self) -> EngineSwitchMediaSnapshot:
         """KCR-021: read-only capture of the stopped-media truth (the
         logical resume target included). Only reads state — the engine
@@ -378,19 +501,6 @@ class PlaybackService:
             confirmed_position_ms=self._state.position_ms,
             deferred_resume_target_ms=self._deferred_resume_target_ms,
         )
-
-    def prepare_after_engine_switch(self, snapshot: EngineSwitchMediaSnapshot) -> None:
-        """KCR-021: rehydrate the stopped media on the NEW backend after an
-        engine switch. LOAD + deferred seek allowed; NO autoplay; NO
-        optimistic position (the visible position reconfirms through
-        backend truth). The deferred target (if any) is the logical resume
-        intent; otherwise the confirmed position is used."""
-        if snapshot.file_path is None:
-            return
-        resume_position = snapshot.deferred_resume_target_ms
-        if resume_position is None:
-            resume_position = snapshot.confirmed_position_ms
-        self.prepare_for_resume(snapshot.file_path, resume_position)
 
     def _apply_prepare_seek(self) -> None:
         """Apply a prepare_for_resume seek, post-acceptance (never autoplay).
@@ -437,8 +547,9 @@ class PlaybackService:
             if confirmed == resume_position and confirmed == before:
                 # seek-to-0 / unchanged: backend already reports the value
                 self._resume_prepared_pending = False
-                for cb in list(self._resume_prepared_subscribers):
-                    cb(self._state.file_path, confirmed)
+                if getattr(self, "_prepare_purpose", None) is not _PreparePurpose.ENGINE_SWITCH:
+                    for cb in list(self._resume_prepared_subscribers):
+                        cb(self._state.file_path, confirmed)
             elif confirmed == before and confirmed != resume_position:
                 # R2.1-02: deferred target registered (MPD stopped) — the
                 # preparation is SETTLED; the target is tracked explicitly
@@ -525,6 +636,7 @@ class PlaybackService:
             self._converging_unexpected = False
 
     def play(self) -> None:
+        self._ensure_no_engine_switch_lease("play")
         # M11.3C-R6.1: si no hay media aceptada en el backend pero existe un
         # track lógico commiteado y no hay candidato pendiente, recargar el
         # track por el camino canónico. load_and_play() ya invoca
@@ -549,6 +661,7 @@ class PlaybackService:
         self._audio.pause()
 
     def resume(self) -> None:
+        self._ensure_no_engine_switch_lease("resume")
         previous_intent = self._intent
         self._intent = True
         try:
@@ -660,7 +773,11 @@ class PlaybackService:
             # position). Fires ONCE, with the committed path and the
             # confirmed position, then disarms.
             self._resume_prepared_pending = False
-            if self._state.file_path is not None:
+            if (
+                self._state.file_path is not None
+                and getattr(self, "_prepare_purpose", None)
+                is not _PreparePurpose.ENGINE_SWITCH
+            ):
                 for cb in list(self._resume_prepared_subscribers):
                     cb(self._state.file_path, position_ms)
 

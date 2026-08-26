@@ -1586,3 +1586,95 @@ class TestF13FirstErrorRetention:
         assert container._audio_engine_registry is h.registry
         assert container._audio_engine_service is h.service
         assert h.providers[AudioEngineId.QT_MULTIMEDIA].close_count == 0
+
+
+class TestEngineSwitchLease:
+    """P1-01: exclusive quiescence lease — atomic check-then-act."""
+
+    def test_lease_rejects_play_during_mark_selected(self):
+        """A synchronous AudioEngineService observer trying play() during
+        mark_selected must be REJECTED; the switch stays consistent."""
+        from michi.application.playback_service import EngineSwitchLeaseHeldError
+
+        h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
+        rejected = []
+
+        def observer():
+            try:
+                h.playback.play()
+            except EngineSwitchLeaseHeldError:
+                rejected.append("play")
+            except Exception as exc:  # noqa: BLE001
+                rejected.append(type(exc).__name__)
+
+        h.service.subscribe_changed(observer)
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        # every synchronous state publication during the transaction is
+        # rejected (mark_selected/closing/initializing/ready)
+        assert rejected and all(r == "play" for r in rejected), rejected
+        # switch consistent
+        assert h.service.state.active_engine_id == AudioEngineId.GSTREAMER
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+
+    def test_lease_rejects_load_and_play_during_mark_selected(self):
+        from michi.application.playback_service import EngineSwitchLeaseHeldError
+
+        h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
+        rejected = []
+
+        def observer():
+            try:
+                h.playback.load_and_play("/music/sneaky.flac")
+            except EngineSwitchLeaseHeldError:
+                rejected.append("load_and_play")
+            except Exception as exc:  # noqa: BLE001
+                rejected.append(type(exc).__name__)
+
+        h.service.subscribe_changed(observer)
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        assert rejected and all(r == "load_and_play" for r in rejected), rejected
+        assert h.service.state.active_engine_id == AudioEngineId.GSTREAMER
+
+    def test_lease_released_on_every_outcome(self):
+        """Persistence failure, source unbind/close failure, target open
+        failure and success all release the lease (play works after)."""
+        from michi.application.playback_service import EngineSwitchLeaseHeldError
+
+        # success path
+        h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        h.playback.load_and_play("/music/a.flac")  # must NOT raise — released
+        h.playback.stop()
+
+        # target open failure path
+        h2 = make_harness(
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.GSTREAMER,
+            open_errors={AudioEngineId.GSTREAMER: RuntimeError("open boom")},
+        )
+        with pytest.raises(RuntimeError, match="open boom"):
+            h2.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        # the lease was released on the failure path — a fresh acquire works
+        lease2 = h2.playback.acquire_engine_switch_lease()
+        lease2.release()
+
+    def test_nested_switch_still_rejected(self):
+        """A second acquire while the first lease is held is rejected with
+        the in-progress error (the lease is exclusive)."""
+        from michi.application.playback_service import (
+            EngineSwitchLeaseHeldError,
+        )
+
+        h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
+        lease = h.playback.acquire_engine_switch_lease()
+        try:
+            with pytest.raises(EngineSwitchLeaseHeldError):
+                h.playback.acquire_engine_switch_lease()
+            # the coordinator conversion also holds
+            with pytest.raises(AudioEngineSwitchInProgressError):
+                h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        finally:
+            lease.release()
+        # after release, switching works normally
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        assert h.service.state.active_engine_id == AudioEngineId.GSTREAMER

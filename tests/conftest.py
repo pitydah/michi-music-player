@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from michi.application.ports import AudioLoadError
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
@@ -27,7 +29,20 @@ class FakeAudioPort:
         self.seek_calls: list[int] = []
 
     def load(self, p):
+        if getattr(self, "fail_load", False):
+            raise AudioLoadError(p, "load failed", previous_source_preserved=False)
         self.loaded = p
+
+    def seek(self, ms):
+        self.seek_calls = getattr(self, "seek_calls", []) + [ms]
+        self.position_ms = ms
+
+    def position(self):
+        return getattr(self, "position_ms", 0)
+
+    def emit_position_changed(self, ms):
+        for cb in list(self._pos):
+            cb(ms)
 
     def play(self):
         self.state = "playing"

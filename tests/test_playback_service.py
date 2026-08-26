@@ -1134,3 +1134,64 @@ class TestGhostPlaybackInvariant:
         playback_service._on_playback_state_changed(PlaybackStatus.PLAYING)
         assert playback_service.state.status == PlaybackStatus.STOPPED
         assert "could not be stopped" in (playback_service.state.error_message or "")
+
+
+class TestPreparePurposeSeparation:
+    """P2-01: STARTUP_RESTORE emits resume_prepared exactly once; an
+    ENGINE_SWITCH rehydration never emits it (PersistenceCoordinator state
+    machine stays closed) — both keep STOPPED and R2.1 deferred truth."""
+
+    def test_startup_restore_emits_resume_prepared_once(
+        self, playback_service, fake_audio
+    ):
+        emitted = []
+        playback_service.subscribe_resume_prepared(
+            lambda path, pos: emitted.append((path, pos))
+        )
+        playback_service.prepare_for_resume(Path("/m/a.flac"), 5000)
+        fake_audio.trigger_media_accepted(Path("/m/a.flac"))
+        playback_service.update_position(5000)
+        assert len(emitted) == 1
+        assert emitted[0] == (Path("/m/a.flac"), 5000)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+
+    def test_engine_switch_rehydration_never_emits_resume_prepared(
+        self, playback_service, fake_audio
+    ):
+        from michi.application.playback_service import (
+            EngineSwitchMediaSnapshot,
+        )
+
+        emitted = []
+        playback_service.subscribe_resume_prepared(
+            lambda path, pos: emitted.append((path, pos))
+        )
+        snapshot = EngineSwitchMediaSnapshot(
+            file_path=Path("/m/a.flac"),
+            confirmed_position_ms=0,
+            deferred_resume_target_ms=5000,
+        )
+        playback_service.prepare_after_engine_switch(snapshot)
+        fake_audio.trigger_media_accepted(Path("/m/a.flac"))
+        playback_service.update_position(5000)
+        assert emitted == []  # NO M5 resume_prepared on engine switch
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        assert fake_audio.state == "stopped"
+
+    def test_rehydration_failure_is_visible(self, playback_service, fake_audio):
+        """P2-02: a media rehydration failure surfaces on the model state —
+        never only in a log, never as an engine failure."""
+        from michi.application.playback_service import (
+            EngineSwitchMediaSnapshot,
+        )
+
+        fake_audio.fail_load = True
+        snapshot = EngineSwitchMediaSnapshot(
+            file_path=Path("/m/broken.flac"),
+            confirmed_position_ms=0,
+            deferred_resume_target_ms=None,
+        )
+        playback_service.prepare_after_engine_switch(snapshot)
+        assert playback_service.state.status == PlaybackStatus.STOPPED
+        # the model exposes the media failure visibly
+        assert "could not be prepared" in (playback_service.state.error_message or "")
