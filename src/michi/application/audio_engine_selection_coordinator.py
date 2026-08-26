@@ -1,9 +1,5 @@
 """M11.3F — quiescent engine selection coordinator (application layer).
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 Transaction/orchestration authority for EXPLICIT engine switching. It does
 NOT own engine state (AudioEngineService does), does NOT own the provider
 set (AudioEngineRegistry does), does NOT own playback semantics
@@ -21,6 +17,7 @@ automatic Qt fallback. F's thrown-exception semantics never change: the
 original target error still propagates after G recovery.
 """
 
+import logging
 from collections.abc import Callable
 from enum import Enum
 
@@ -30,6 +27,8 @@ from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.playback_service import PlaybackService
 from michi.application.settings_service import SettingsService
 from michi.domain.audio_engine import AudioEngineId, AudioEngineLifecycle
+
+logger = logging.getLogger(__name__)
 
 
 class AudioEngineSwitchError(RuntimeError):

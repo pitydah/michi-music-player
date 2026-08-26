@@ -27,6 +27,7 @@ DOES NOT PROVE:
     QML gate), non-MPD engines on this path.
 """
 
+import contextlib
 import os
 import shutil
 import time
@@ -337,7 +338,5 @@ class TestProductionSelectorGolden:
                 container2.shutdown()
             return
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 container.shutdown()
-            except Exception:  # noqa: BLE001
-                pass

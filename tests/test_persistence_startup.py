@@ -1041,7 +1041,8 @@ class TestKCR020FactoryVsPersisted:
             "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)"
         )
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('audio_engine_id', 'not_an_engine')"
+            "INSERT OR REPLACE INTO settings (key, value) VALUES "
+            "('audio_engine_id', 'not_an_engine')"
         )
         conn.commit()
         conn.close()

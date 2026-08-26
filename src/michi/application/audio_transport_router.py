@@ -1,27 +1,5 @@
-"""AudioTransportRouter — stable AudioPort identity across engine switches.
-
-PlaybackService and PlaybackCoordinator subscribe ONCE to the router. When
-the concrete engine changes, the router object stays the same; only its
-bound concrete AudioPort changes (attach/detach with full event
-re-routing). No duplicate delivery; no old-engine callbacks after detach;
-no callback loss after attach.
-
-The router owns ONLY forwarding; engine choice/persistence/availability/
-spawning/DAC selection belong to other authorities (AudioEngineService and
-later M11.4 components).
-
-Reliability seal (AR-10/AR-31/AR-32): binding is transactional. Every
-forwarded callback carries the binding generation + backend identity it
-was captured under; late events from a superseded backend are dropped even
-if its unsubscribe could not be physically completed. A partial attach
-failure rolls back the already-registered subscriptions and never reports
-a clean new binding.
-"""
-
 import logging
 from collections.abc import Callable
-
-logger = logging.getLogger(__name__)
 from pathlib import Path
 
 from michi.application.ports import (
@@ -30,6 +8,8 @@ from michi.application.ports import (
 )
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.playback import PlaybackStatus
+
+logger = logging.getLogger(__name__)
 
 
 class AudioTransportBindingPort:

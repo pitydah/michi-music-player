@@ -132,7 +132,7 @@ class TestKCRGates:
     def test_no_queue_playback_fossils(self):
         import ast
 
-        tree = ast.parse(open("src/michi/application/queue_service.py").read())
+        tree = ast.parse(Path("src/michi/application/queue_service.py").read_text())
         for node in ast.walk(tree):
             if isinstance(node, ast.Attribute):
                 assert node.attr != "_navigator", (
@@ -167,7 +167,7 @@ class TestKCRGates:
             QueueService(object())  # keyword-only too
 
     def test_no_bootstrap_private_integration(self):
-        src = open("src/michi/bootstrap/__init__.py").read()
+        src = Path("src/michi/bootstrap/__init__.py").read_text()
         assert "router._bound" not in src
         assert "_scan_runner._relay" not in src
 

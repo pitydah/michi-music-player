@@ -15,6 +15,7 @@ Production corrections (M6-PRODUCTION-INTEGRATION-AND-ASYNC-CORRECTION):
   generation; the dispatcher drops the late relay emissions.
 """
 
+import contextlib
 import threading
 
 from PySide6.QtCore import QObject, Signal
@@ -99,10 +100,8 @@ class ThreadScanRunner(ScanPipelinePort):
         if self._relay is None:
             return
         for signal in (self._relay.done, self._relay.progress):
-            try:
+            with contextlib.suppress(TypeError, RuntimeError):
                 signal.disconnect()
-            except (TypeError, RuntimeError):
-                pass  # no live connections
 
     def shutdown(self) -> None:
         """Freeze the runner: reject new submits and cancel every active

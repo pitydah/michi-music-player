@@ -14,6 +14,7 @@ polling, no timers: state flows through AudioEngineService notifications
 and explicit refresh_engines() calls.
 """
 
+import contextlib
 import logging
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
@@ -286,10 +287,8 @@ class AudioEngineBridge(QObject):
             # facts — refresh the availability projection so the row stops
             # showing canActivate=true. Diagnostic only; the primary switch
             # exception is never replaced (a refresh failure keeps it).
-            try:
+            with contextlib.suppress(Exception):  # diagnostics must not mask
                 self.refresh_engines()
-            except Exception:  # noqa: BLE001 — diagnostics must not mask
-                pass
             self.switch_failed.emit(
                 engine_id, "This audio engine is not available on this system."
             )
