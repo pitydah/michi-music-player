@@ -65,15 +65,18 @@ class QueueService:
         self._notify()
 
     def insert_at(self, index: int, file_path: Path, title: str = "") -> None:
-        """Insert a track at a specific position (undo support for
-        remove-from-queue: restores the removed track where it was)."""
+        """Insert Queue content at a clamped position.
+
+        Queue owns content only. Shuffle/repeat/navigation are exclusively
+        PlaybackSessionService concerns (KCR-001).
+        """
         if self._state.count >= self._max_tracks:
             raise QueueCapacityError(f"queue capacity {self._max_tracks} exceeded")
         index = max(0, min(index, self._state.count))
-        track = Track(file_path=file_path, title=title)
-        self._state.tracks.insert(index, track)
-        if self._state.shuffle_enabled:
-            self._navigator.add(track)
+        self._state.tracks.insert(
+            index,
+            Track(file_path=file_path, title=title),
+        )
         self._notify()
 
     def remove(self, index: int) -> None:
@@ -104,7 +107,16 @@ class QueueService:
         self._notify()
 
     def replace(self, tracks: list[Track]) -> None:
-        """Atomic content replacement (structural restore path)."""
+        """Atomic Queue content replacement (KCR-002).
+
+        Capacity is a QueueService invariant and therefore applies to every
+        mutation path — overflow raises BEFORE any mutation (no truncation,
+        no silent no-op).
+        """
+        if len(tracks) > self._max_tracks:
+            raise QueueCapacityError(
+                f"queue capacity {self._max_tracks} exceeded"
+            )
         self._state.tracks = list(tracks)
         self._notify()
 

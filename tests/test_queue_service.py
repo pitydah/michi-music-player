@@ -173,3 +173,68 @@ class TestQueueCapacity:
 
         service = QueueService()
         assert service.max_tracks == 10000  # public read-only property
+
+
+class TestInsertAndReplaceAtomicity:
+    """KCR-013: content mutations are atomic and capacity-honest."""
+
+    def test_insert_at_inserts_and_notifies_once(self, queue_service):
+        calls = []
+        queue_service.subscribe_changed(lambda: calls.append(1))
+
+        queue_service.add(Path("/tmp/a.flac"))
+        calls.clear()
+
+        queue_service.insert_at(0, Path("/tmp/b.flac"), title="B")
+
+        assert [t.file_path for t in queue_service.state.tracks] == [
+            Path("/tmp/b.flac"),
+            Path("/tmp/a.flac"),
+        ]
+        assert queue_service.state.tracks[0].title == "B"
+        assert calls == [1]
+
+    def test_insert_at_clamps_index(self, queue_service):
+        queue_service.add(Path("/tmp/a.flac"))
+        queue_service.insert_at(999, Path("/tmp/b.flac"))
+        assert [t.file_path.name for t in queue_service.state.tracks] == [
+            "a.flac",
+            "b.flac",
+        ]
+
+    def test_insert_at_capacity_failure_is_atomic(self):
+        from michi.application.queue_service import (
+            QueueCapacityError,
+            QueueService,
+        )
+
+        service = QueueService(max_tracks=1)
+        service.add(Path("/tmp/a.flac"))
+        before = tuple(service.state.tracks)
+        calls = []
+        service.subscribe_changed(lambda: calls.append(1))
+
+        with pytest.raises(QueueCapacityError):
+            service.insert_at(0, Path("/tmp/b.flac"))
+
+        assert tuple(service.state.tracks) == before
+        assert calls == []
+
+    def test_replace_capacity_failure_is_atomic(self):
+        from michi.application.queue_service import (
+            QueueCapacityError,
+            QueueService,
+        )
+        from michi.domain.playback_session import PlaybackSequenceEntry as Track  # queue content entry
+
+        service = QueueService(max_tracks=1)
+        service.add(Path("/tmp/a.flac"))
+        before = tuple(service.state.tracks)
+
+        with pytest.raises(QueueCapacityError):
+            service.replace([
+                Track(Path("/tmp/b.flac")),
+                Track(Path("/tmp/c.flac")),
+            ])
+
+        assert tuple(service.state.tracks) == before
