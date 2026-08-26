@@ -12,8 +12,6 @@ adapter implementation truth (implemented).
 import logging
 import os
 
-_logger = logging.getLogger(__name__)
-
 from michi.application.audio_engine_registry import AudioEngineProviderPort
 from michi.application.audio_engine_runtime_failure import (
     AudioEngineRuntimeFailureEvent,
@@ -26,6 +24,8 @@ from michi.domain.audio_engine import (
     AudioEngineDescriptor,
     AudioEngineId,
 )
+
+_logger = logging.getLogger(__name__)
 
 _QT_MULTIMEDIA_DISPLAY = "Qt Multimedia"
 _GSTREAMER_DISPLAY = "GStreamer"

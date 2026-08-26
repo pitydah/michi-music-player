@@ -494,7 +494,6 @@ class TestPartialStartupCleanup:
         )
 
         monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
-        real_popen = subprocess.Popen
 
         def exploding_popen(*args, **kwargs):
             raise OSError("spawn failed")
@@ -667,7 +666,6 @@ class TestOrphanRecoveryContract:
 
         monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
         base = self._make_stale_dir(tmp_path)
-        conf = base / "mpd.conf"
         proc = self._spoof_mpd_process(tmp_path)
         try:
             monkeypatch.setattr(
@@ -711,7 +709,7 @@ class TestOrphanRecoveryContract:
         )
 
         monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
-        base = self._make_stale_dir(tmp_path)
+        self._make_stale_dir(tmp_path)
         proc = self._spoof_mpd_process(tmp_path)
         try:
             monkeypatch.setattr(

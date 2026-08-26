@@ -1242,7 +1242,7 @@ class TestF42AdapterContract:
         "src/michi/infrastructure/audio_engines/mpd.py": "38a6aa11988b00d8",
         "src/michi/infrastructure/audio_engines/gstreamer.py": "8b1f4966c4a87ec1",
         "src/michi/infrastructure/qt_backend.py": "f161bc988508a91e",
-        "src/michi/infrastructure/audio_engines/providers.py": "f04004094e89c833",
+        "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
         "src/michi/application/audio_transport_router.py": "2c67d3bbebeb462c",
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).

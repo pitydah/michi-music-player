@@ -225,7 +225,6 @@ class TestSwitchStress:
         from michi.domain.audio_engine import AudioEngineId
 
         graph = _graph(qt_real=True, mpd_real=True, gst_real=False)
-        mpd = graph.registry.provider(AudioEngineId.MPD)
         try:
             for _ in range(25):
                 graph.switch(AudioEngineId.MPD)
