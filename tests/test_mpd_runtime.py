@@ -616,7 +616,7 @@ class TestOrphanRecoveryContract:
         )
         monkeypatch.setattr(
             "michi.infrastructure.audio_engines.mpd._read_proc_uid",
-            lambda pid: 1000,
+            lambda pid: os.getuid(),
         )
         monkeypatch.setattr(
             "michi.infrastructure.audio_engines.mpd._read_proc_ppid",
