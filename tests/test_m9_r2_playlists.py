@@ -17,7 +17,6 @@ def _queue() -> QueueService:
 
 
 def test_playlist_domain_and_service_custom_cover() -> None:
-    queue = _queue()
     service = PlaylistService()
     p = service.create_playlist("Chill")
     assert p.custom_cover_path == ""
@@ -91,7 +90,6 @@ def test_filesystem_playlist_artwork_store(tmp_path: Path) -> None:
 
 
 def test_playlists_bridge_mosaic_and_duration_projections() -> None:
-    queue = _queue()
     service = PlaylistService()
     bridge = PlaylistsBridge(playlist_service=service)
     p = service.create_playlist("Favorites")
