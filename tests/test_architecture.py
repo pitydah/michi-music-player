@@ -135,26 +135,29 @@ class TestKCRGates:
         tree = ast.parse(open("src/michi/application/queue_service.py").read())
         for node in ast.walk(tree):
             if isinstance(node, ast.Attribute):
-                assert node.attr != "_navigator", "queue_service must not own _navigator"
+                assert node.attr != "_navigator", (
+                    "queue_service must not own _navigator"
+                )
                 if node.attr == "shuffle_enabled":
-                    assert "state" not in ast.unparse(node).replace(" ", "").split(".")[0] \
-                        or "self._state.shuffle_enabled" not in ast.unparse(node)
+                    assert "state" not in ast.unparse(node).replace(" ", "").split(".")[
+                        0
+                    ] or "self._state.shuffle_enabled" not in ast.unparse(node)
 
     def test_no_legacy_constructor_seams(self):
         import inspect
+
+        import pytest  # noqa: F401
 
         from michi.application.library_service import LibraryService
         from michi.application.playlist_service import PlaylistService
         from michi.application.queue_service import QueueService
 
-        import pytest  # noqa: F401
-
         for cls in (QueueService, PlaylistService, LibraryService):
             sig = inspect.signature(cls.__init__)
             params = list(sig.parameters.values())[1:]  # drop self
-            assert not any(
-                p.kind == p.VAR_POSITIONAL for p in params
-            ), f"{cls.__name__} still has a var-positional legacy seam"
+            assert not any(p.kind == p.VAR_POSITIONAL for p in params), (
+                f"{cls.__name__} still has a var-positional legacy seam"
+            )
         # concrete TypeError proofs
         with pytest.raises(TypeError):
             PlaylistService(object())

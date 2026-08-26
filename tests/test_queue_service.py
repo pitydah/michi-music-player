@@ -225,17 +225,21 @@ class TestInsertAndReplaceAtomicity:
             QueueCapacityError,
             QueueService,
         )
-        from michi.domain.playback_session import PlaybackSequenceEntry as Track  # queue content entry
+        from michi.domain.playback_session import (
+            PlaybackSequenceEntry as Track,  # queue content entry
+        )
 
         service = QueueService(max_tracks=1)
         service.add(Path("/tmp/a.flac"))
         before = tuple(service.state.tracks)
 
         with pytest.raises(QueueCapacityError):
-            service.replace([
-                Track(Path("/tmp/b.flac")),
-                Track(Path("/tmp/c.flac")),
-            ])
+            service.replace(
+                [
+                    Track(Path("/tmp/b.flac")),
+                    Track(Path("/tmp/c.flac")),
+                ]
+            )
 
         assert tuple(service.state.tracks) == before
 

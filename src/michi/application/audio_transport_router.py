@@ -165,8 +165,7 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
                 self._unsubscribe_wrapper(backend, wrapper)
             except Exception:  # noqa: BLE001 — cleanup is best-effort
                 logger.warning(
-                    "audio router unsubscribe failed; generation guard "
-                    "remains active",
+                    "audio router unsubscribe failed; generation guard remains active",
                     exc_info=True,
                 )
         self._wrappers = []

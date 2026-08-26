@@ -796,7 +796,7 @@ class ApplicationContainer:
                 self._scan_runner.shutdown()
             if self._scan_dispatcher:
                 self._scan_dispatcher.shutdown()
-            if self._scan_runner:
+            if self._scan_runner and hasattr(self._scan_runner, "disconnect_relay"):
                 # KCR-010: public API only — relay cleanup is the runner's
                 # own responsibility during owner teardown.
                 self._scan_runner.disconnect_relay()

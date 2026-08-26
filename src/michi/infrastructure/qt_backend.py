@@ -50,9 +50,7 @@ class QtMultimediaBackend(AudioPort):
         """KCR-008: a closed Qt runtime rejects every command/query with a
         typed AudioTransportUnavailableError — never silent success."""
         if self._closed:
-            raise AudioTransportUnavailableError(
-                "Qt multimedia backend is closed"
-            )
+            raise AudioTransportUnavailableError("Qt multimedia backend is closed")
 
     def load(self, file_path: Path) -> None:
         self._require_open()

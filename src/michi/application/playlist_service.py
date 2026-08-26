@@ -301,4 +301,3 @@ class PlaylistService:
         )
         self._persist_nav()
         self._notify()
-

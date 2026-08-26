@@ -1,5 +1,9 @@
 """M11.3F — quiescent engine selection coordinator (application layer).
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 Transaction/orchestration authority for EXPLICIT engine switching. It does
 NOT own engine state (AudioEngineService does), does NOT own the provider
 set (AudioEngineRegistry does), does NOT own playback semantics
@@ -189,20 +193,17 @@ class AudioEngineSelectionCoordinator:
                 "pending load, no play intent, no resume in flight)"
             )
 
-        # 4. STOP — transport truth + clean lifecycle residue. Only when a
-        #    source runtime physically exists: with active=None (e.g. a
-        #    previous FAILED transaction left the router unbound) there is
-        #    no backend to stop — quiescence was already verified above.
-        if active is not None:
-            self._playback.stop()
-
-            # 5. REVALIDATE QUIESCENT — stop() notifies subscribers; a
-            #    DIRECT / reentrant subscriber may have requested playback.
-            if not self._playback.is_engine_switch_quiescent():
-                raise AudioEngineSwitchNotQuiescentError(
-                    "quiescence lost after stop (reentrant playback request); "
-                    "switch aborted before the destructive boundary"
-                )
+        # 4/5. (KCR-021) NO redundant stop(): quiescence was verified above
+        #    and a stop() here would DESTROY the deferred resume target of a
+        #    persisted stopped session (R2.1: restore MPD @45s, switch to Qt
+        #    before Play). The provider is released at the destructive
+        #    boundary after router unbind. Revalidate quiescence directly
+        #    to catch a reentrant playback request between check and commit.
+        if not self._playback.is_engine_switch_quiescent():
+            raise AudioEngineSwitchNotQuiescentError(
+                "quiescence lost before commit (reentrant playback request); "
+                "switch aborted before the destructive boundary"
+            )
 
         # 6. PERSIST SELECTION — durable BEFORE the destructive boundary.
         #    On save failure: preference restored, old runtime untouched
@@ -212,6 +213,10 @@ class AudioEngineSelectionCoordinator:
         # 7. SELECTED (old engine may still be active — truthful window).
         self._engine_service.mark_selected(target)
         volume, muted = self._playback.snapshot_volume()
+        # 7.5 (KCR-021): capture the stopped-media truth (logical resume
+        #     target included) BEFORE the destructive boundary — the old
+        #     backend invalidation must never erase what the user restored.
+        media_snapshot = self._playback.snapshot_engine_switch_media()
 
         # 8. DESTRUCTIVE BOUNDARY.
         if active is not None:
@@ -333,3 +338,20 @@ class AudioEngineSelectionCoordinator:
 
         # 12. READY — only after bind validation + transport restore.
         self._engine_service.mark_ready(target)
+
+        # 13. (KCR-021) stopped-media rehydration on the NEW backend —
+        #     LOAD + deferred seek allowed, NO autoplay, NO optimistic
+        #     position (visible position reconfirms through backend truth).
+        #     A media rehydration failure is a SEPARATE domain from the
+        #     engine switch: the target stays READY; the model surfaces the
+        #     rejection/load error through its canonical path.
+        try:
+            self._playback.prepare_after_engine_switch(media_snapshot)
+        except Exception:
+            # engine already READY — the model state carries the media
+            # failure (first-error-wins preserved for the switch itself)
+            logger.warning(
+                "stopped-media rehydration failed after engine switch to %s",
+                target.value,
+                exc_info=True,
+            )

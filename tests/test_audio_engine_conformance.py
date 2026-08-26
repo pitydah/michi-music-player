@@ -574,8 +574,8 @@ class TestCommandsAfterClose:
 
     def test_gst_commands_after_close(self, qapp, tmp_path):
         from michi.infrastructure.audio_engines.gstreamer import (
-            GStreamerBindings,
             GStreamerAudioPort,
+            GStreamerBindings,
         )
 
         try:

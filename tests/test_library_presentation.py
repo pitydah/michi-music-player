@@ -124,7 +124,9 @@ def _make_library(scanner, extractor=None, scan_pipeline=None):
     playback = PlaybackService(audio)
     queue = QueueService()
     _session = PlaybackSessionService(playback, queue)
-    return LibraryService(scanner, metadata_extractor=extractor, scan_pipeline=scan_pipeline)
+    return LibraryService(
+        scanner, metadata_extractor=extractor, scan_pipeline=scan_pipeline
+    )
 
 
 def _load_library_view(tmp_path, paths=(), scan_pipeline=None):

@@ -282,6 +282,14 @@ class AudioEngineBridge(QObject):
             )
         except AudioEngineSwitchUnavailableError as exc:
             self._remember_technical(exc)
+            # KCR-023: the coordinator's FRESH probe disproved the cached
+            # facts — refresh the availability projection so the row stops
+            # showing canActivate=true. Diagnostic only; the primary switch
+            # exception is never replaced (a refresh failure keeps it).
+            try:
+                self.refresh_engines()
+            except Exception:  # noqa: BLE001 — diagnostics must not mask
+                pass
             self.switch_failed.emit(
                 engine_id, "This audio engine is not available on this system."
             )

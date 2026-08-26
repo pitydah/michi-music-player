@@ -2,12 +2,24 @@
 
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from michi.application.ports import AudioLoadError, AudioPort
 from michi.domain.playback import PlaybackState, PlaybackStatus
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class EngineSwitchMediaSnapshot:
+    """KCR-021: read-only stopped-media truth captured BEFORE the engine
+    destructive boundary. A deferred resume target is a LOGICAL intent,
+    never a confirmed backend position."""
+
+    file_path: Path | None
+    confirmed_position_ms: int
+    deferred_resume_target_ms: int | None
 
 
 class PlaybackService:
@@ -357,6 +369,29 @@ class PlaybackService:
             on_accepted(file_path)
         self._apply_prepare_seek()
 
+    def snapshot_engine_switch_media(self) -> EngineSwitchMediaSnapshot:
+        """KCR-021: read-only capture of the stopped-media truth (the
+        logical resume target included). Only reads state — the engine
+        switch uses it to rehydrate the new backend without autoplay."""
+        return EngineSwitchMediaSnapshot(
+            file_path=self._state.file_path,
+            confirmed_position_ms=self._state.position_ms,
+            deferred_resume_target_ms=self._deferred_resume_target_ms,
+        )
+
+    def prepare_after_engine_switch(self, snapshot: EngineSwitchMediaSnapshot) -> None:
+        """KCR-021: rehydrate the stopped media on the NEW backend after an
+        engine switch. LOAD + deferred seek allowed; NO autoplay; NO
+        optimistic position (the visible position reconfirms through
+        backend truth). The deferred target (if any) is the logical resume
+        intent; otherwise the confirmed position is used."""
+        if snapshot.file_path is None:
+            return
+        resume_position = snapshot.deferred_resume_target_ms
+        if resume_position is None:
+            resume_position = snapshot.confirmed_position_ms
+        self.prepare_for_resume(snapshot.file_path, resume_position)
+
     def _apply_prepare_seek(self) -> None:
         """Apply a prepare_for_resume seek, post-acceptance (never autoplay).
 
@@ -685,4 +720,3 @@ class PlaybackService:
         self._accepted = False
         self._converging_unexpected = False  # R2 ghost-playback guard
         # file_path / status / volume / muted / position / duration preserved.
-

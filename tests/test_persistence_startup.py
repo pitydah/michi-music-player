@@ -1005,9 +1005,45 @@ class TestBootstrapStartup:
             backend_calls.append(1)
             return object()
 
-        monkeypatch.setattr(bootstrap, "QtMultimediaBackend", fake_backend)
+        monkeypatch.setattr(
+            "michi.infrastructure.qt_backend.QtMultimediaBackend", fake_backend
+        )
 
         container = ApplicationContainer()
         with pytest.raises(PersistenceStartupError):
             container.initialize()
         assert backend_calls == []
+
+
+class TestKCR020FactoryVsPersisted:
+    """KCR-020: factory default stays QT; persisted selected is the
+    startup authority."""
+
+    def test_fresh_db_factory_default_qt(self, tmp_path, monkeypatch):
+        from michi.application.settings_service import SettingsService
+        from michi.domain.audio_engine import AudioEngineId
+        from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+
+        repo = SQLiteSettingsRepository.open_for_startup(tmp_path / "michi.db")
+        state = SettingsService(repo).load()
+        assert state.audio_engine_id == AudioEngineId.QT_MULTIMEDIA
+
+    def test_malformed_engine_id_falls_back_to_qt(self, tmp_path):
+        import sqlite3
+
+        from michi.application.settings_service import SettingsService
+        from michi.domain.audio_engine import AudioEngineId
+        from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+
+        db = tmp_path / "michi.db"
+        conn = sqlite3.connect(str(db))
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)"
+        )
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('audio_engine_id', 'not_an_engine')"
+        )
+        conn.commit()
+        conn.close()
+        state = SettingsService(SQLiteSettingsRepository.open_for_startup(db)).load()
+        assert state.audio_engine_id == AudioEngineId.QT_MULTIMEDIA

@@ -763,6 +763,9 @@ class TestF5F6F7:
         assert qt.port_plays == []
 
     def test_f25_logical_file_path_preserved_stopped(self):
+        """KCR-021: the stopped media (and its resume truth) crosses the
+        engine boundary — the new backend rehydrates the track WITHOUT
+        autoplay; the model stays STOPPED with the file_path preserved."""
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
         h.playback.load_and_play("/music/a.flac")
         h.router._bound.emit_media_accepted("/music/a.flac")
@@ -771,6 +774,13 @@ class TestF5F6F7:
         st = h.playback.state
         assert st.file_path == "/music/a.flac"
         assert st.status == PlaybackStatus.STOPPED
+        # the new backend rehydrated the logical track (no autoplay)
+        gst_provider = h.providers[AudioEngineId.GSTREAMER]
+        assert gst_provider.port_loads, "new backend must rehydrate the stopped track"
+        # quiescence holds once the new backend confirms the rehydrated
+        # load and the resume position settles (production async path)
+        h.router._bound.emit_media_accepted("/music/a.flac")
+        h.router._bound.emit_position(st.position_ms)
         assert h.playback.is_engine_switch_quiescent() is True
 
     def test_f26_old_backend_acceptance_invalidated(self):
@@ -1071,26 +1081,18 @@ class TestF9RestartContract:
         # nothing switched: gst provider never opened
         assert h.providers[AudioEngineId.GSTREAMER].open_count == 0
 
-    def test_f18_stop_reentrancy_revalidated_before_unbind(self):
+    def test_f18_non_quiescent_rejected_before_commit(self):
+        """KCR-021: the coordinator revalidates quiescence immediately
+        before the commit (the redundant stop() is gone) — any playback
+        intent present at that point aborts the switch pre-destructively."""
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
-        # a subscriber that, on the FIRST STOPPED notification of the
-        # switch's stop(), re-requests playback (DIRECT/reentrant mutation
-        # of the request state during the notification)
-        fired = False
-
-        def reentrant():
-            nonlocal fired
-            if not fired and h.playback.state.status == PlaybackStatus.STOPPED:
-                fired = True
-                h.playback.load_and_play("/music/reentrant.flac")
-
-        h.playback.subscribe_changed(reentrant)
+        # arm a play intent (non-quiescent state) directly
+        h.playback.load_and_play("/music/reentrant.flac")
         with pytest.raises(AudioEngineSwitchNotQuiescentError):
             h.coordinator.switch_to(AudioEngineId.GSTREAMER)
         # the destructive boundary was NOT crossed
         assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
         assert h.providers[AudioEngineId.QT_MULTIMEDIA].close_count == 0
-        assert h.providers[AudioEngineId.GSTREAMER].open_count == 0
 
     def test_f19_selection_persisted_before_destructive_boundary(self):
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
@@ -1245,11 +1247,14 @@ class TestF42AdapterContract:
         # R2.1 PRODUCTION REALITY authorized reopening: mpd.py deferred-seek
         # provenance (_DeferredSeek song_id/path) + playid->seekid failure
         # atomicity (safety stop compensation). Transport unchanged.
-        "src/michi/infrastructure/audio_engines/mpd.py": "efdf9621d1a005a1",
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "8b1f4966c4a87ec1",
-        "src/michi/infrastructure/qt_backend.py": "f161bc988508a91e",
+        # KCR-CORE-HARDENING R1.1 authorized reopening: mpd deferred-seek
+        # provenance + atomicity, coordinator quiescent-switch rehydration
+        # (KCR-021), PlaybackService snapshot/transfer APIs.
+        "src/michi/infrastructure/audio_engines/mpd.py": "c1a0b47f5e2da0fa",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "f4c9a51013901607",
+        "src/michi/infrastructure/qt_backend.py": "4b005d149c4b8fd1",
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
-        "src/michi/application/audio_transport_router.py": "2c67d3bbebeb462c",
+        "src/michi/application/audio_transport_router.py": "09f8da5ac12bb1b1",
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py

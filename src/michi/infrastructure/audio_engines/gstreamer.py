@@ -472,9 +472,7 @@ class GStreamerAudioPort(AudioPort):
         # KCR-008: a closed runtime rejects the command — never a silent
         # no-op return.
         if self._closed:
-            raise AudioTransportUnavailableError(
-                "GStreamer load on closed transport"
-            )
+            raise AudioTransportUnavailableError("GStreamer load on closed transport")
         self._bindings.ensure_loaded()
         if not self._bindings.playbin3_available():
             raise RuntimeError("playbin3 no disponible en el runtime GStreamer")

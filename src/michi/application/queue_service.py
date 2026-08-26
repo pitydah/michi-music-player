@@ -119,9 +119,7 @@ class QueueService:
         no silent no-op).
         """
         if len(tracks) > self._max_tracks:
-            raise QueueCapacityError(
-                f"queue capacity {self._max_tracks} exceeded"
-            )
+            raise QueueCapacityError(f"queue capacity {self._max_tracks} exceeded")
         self._state.tracks = list(tracks)
         self._notify()
 
