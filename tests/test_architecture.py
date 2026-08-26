@@ -124,3 +124,61 @@ def test_m4r1_library_bridge_activate_no_service_fallback():
     src = inspect.getsource(LibraryBridge.activate)
     assert "play_visible_track" in src
     assert "self._service.activate" not in src
+
+
+class TestKCRGates:
+    """KCR-015: architecture invariants sealed by AST/source gates."""
+
+    def test_no_queue_playback_fossils(self):
+        import ast
+
+        tree = ast.parse(open("src/michi/application/queue_service.py").read())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute):
+                assert node.attr != "_navigator", "queue_service must not own _navigator"
+                if node.attr == "shuffle_enabled":
+                    assert "state" not in ast.unparse(node).replace(" ", "").split(".")[0] \
+                        or "self._state.shuffle_enabled" not in ast.unparse(node)
+
+    def test_no_legacy_constructor_seams(self):
+        import inspect
+
+        from michi.application.library_service import LibraryService
+        from michi.application.playlist_service import PlaylistService
+        from michi.application.queue_service import QueueService
+
+        import pytest  # noqa: F401
+
+        for cls in (QueueService, PlaylistService, LibraryService):
+            sig = inspect.signature(cls.__init__)
+            params = list(sig.parameters.values())[1:]  # drop self
+            assert not any(
+                p.kind == p.VAR_POSITIONAL for p in params
+            ), f"{cls.__name__} still has a var-positional legacy seam"
+        # concrete TypeError proofs
+        with pytest.raises(TypeError):
+            PlaylistService(object())
+        with pytest.raises(TypeError):
+            LibraryService(object(), object())  # legacy positional queue
+        with pytest.raises(TypeError):
+            QueueService(object())  # keyword-only too
+
+    def test_no_bootstrap_private_integration(self):
+        src = open("src/michi/bootstrap/__init__.py").read()
+        assert "router._bound" not in src
+        assert "_scan_runner._relay" not in src
+
+    def test_no_obsolete_playback_switch_path(self):
+        import michi.application.playback_service as mod
+
+        assert not hasattr(mod.PlaybackService, "switch_track")
+
+    def test_bootstrap_no_qt_reexport(self):
+        import michi.bootstrap as mod
+
+        assert not hasattr(mod, "QtMultimediaBackend")
+
+    def test_queue_no_repeat_reexport(self):
+        import michi.domain.queue as mod
+
+        assert not hasattr(mod, "RepeatMode")

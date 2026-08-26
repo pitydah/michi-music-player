@@ -34,7 +34,7 @@ from pathlib import Path
 import pytest
 
 from michi.domain.persistence_health import PersistenceHealth
-from michi.domain.queue import RepeatMode
+from michi.domain.playback_session import RepeatMode
 from michi.domain.session import (
     FORMAT_VERSION,
     PersistedQueueEntry,

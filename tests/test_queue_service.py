@@ -238,3 +238,33 @@ class TestInsertAndReplaceAtomicity:
             ])
 
         assert tuple(service.state.tracks) == before
+
+
+class TestCoordinationFailureVisibility:
+    """KCR-014: a Queue→Session coordination callback failure is NEVER
+    converted into a silent success."""
+
+    def test_queue_notify_propagates_coordination_failure(self, queue_service):
+        def failing_observer():
+            raise RuntimeError("session sync failed")
+
+        queue_service.subscribe_changed(failing_observer)
+        with pytest.raises(RuntimeError, match="session sync failed"):
+            queue_service.add(Path("/tmp/a.flac"))
+        # state IS committed (commit-first), the failure is observable
+        assert queue_service.state.count == 1
+
+    def test_snapshot_iteration_self_unsubscribe_safe(self, queue_service):
+        seen = []
+
+        def self_removing():
+            queue_service.unsubscribe_changed(self_removing)
+            seen.append("self")
+
+        def second():
+            seen.append("second")
+
+        queue_service.subscribe_changed(self_removing)
+        queue_service.subscribe_changed(second)
+        queue_service.add(Path("/tmp/a.flac"))
+        assert seen == ["self", "second"]  # self-unsubscribe skipped nothing

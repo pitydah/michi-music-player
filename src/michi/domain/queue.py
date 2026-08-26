@@ -5,15 +5,12 @@ remove/move/clear/replace. It is NOT the playback authority — the active
 sequence, current position, repeat, shuffle and EndOfMedia navigation
 belong to ``michi.domain.playback_session`` (PlaybackSessionState).
 
-This module keeps a compatibility re-export of RepeatMode for callers
-still migrating; canonical ownership is playback_session.
+Canonical ownership of Repeat/Shuffle is ``michi.domain.playback_session``.
 """
 
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-
-from michi.domain.playback_session import RepeatMode  # noqa: F401  (re-export)
 
 
 @dataclass

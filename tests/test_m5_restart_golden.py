@@ -42,7 +42,7 @@ from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.domain.playback import PlaybackStatus
-from michi.domain.queue import RepeatMode
+from michi.domain.playback_session import RepeatMode
 from michi.domain.settings import WindowGeometry
 from michi.infrastructure.session_repository import SqliteSessionRepository
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository

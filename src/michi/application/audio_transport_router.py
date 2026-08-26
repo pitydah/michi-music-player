@@ -101,6 +101,14 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
         return self._bound_engine_id
 
     @property
+    def bound_port(self) -> AudioPort | None:
+        """KCR-010: read-only runtime introspection (no ownership transfer).
+
+        Observability only — the provider remains the lifecycle owner and
+        the router the binding owner."""
+        return self._bound
+
+    @property
     def binding_generation(self) -> int:
         return self._binding_generation
 

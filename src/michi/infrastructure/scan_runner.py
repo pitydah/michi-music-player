@@ -93,6 +93,17 @@ class ThreadScanRunner(ScanPipelinePort):
         if token is not None:
             token.cancelled = True  # cooperative: the worker checks in between
 
+    def disconnect_relay(self) -> None:
+        """KCR-010: disconnect production relay signals during owner
+        teardown (public API — bootstrap never touches the private relay)."""
+        if self._relay is None:
+            return
+        for signal in (self._relay.done, self._relay.progress):
+            try:
+                signal.disconnect()
+            except (TypeError, RuntimeError):
+                pass  # no live connections
+
     def shutdown(self) -> None:
         """Freeze the runner: reject new submits and cancel every active
         generation. The dispatcher drops the late relay emissions."""

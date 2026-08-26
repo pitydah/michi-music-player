@@ -8,7 +8,7 @@ save() is best effort. Rows written by other components coexist untouched.
 
 import sqlite3
 
-from michi.domain.queue import RepeatMode
+from michi.domain.playback_session import RepeatMode
 from michi.domain.session import (
     FORMAT_VERSION,
     PersistedQueueEntry,

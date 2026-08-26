@@ -84,9 +84,6 @@ from michi.infrastructure.playlist_artwork_store import (
     FilesystemPlaylistArtworkStore,
 )
 from michi.infrastructure.playlists import SqlitePlaylistsRepository
-from michi.infrastructure.qt_backend import (
-    QtMultimediaBackend as QtMultimediaBackend,  # noqa: F401 — re-export histórico para tests
-)
 from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
@@ -284,6 +281,7 @@ def _initialize_reference_audio_runtime(
 def _build_services(
     db_path,
     *,
+    cache_root: Path | None = None,
     backend=None,
     startup_selected_engine: AudioEngineId = AudioEngineId.QT_MULTIMEDIA,
     scanner=None,
@@ -349,7 +347,7 @@ def _build_services(
         # (activate selected, safe Qt fallback, honest FAILED when nothing
         # can activate — the router may stay unbound).
         convergence.converge_startup()
-        bound_port = router._bound  # introspection: concrete bound port
+        bound_port = router.bound_port  # KCR-010: public introspection
 
     if scanner is None:
         scanner = FilesystemLibraryScanner()
@@ -357,8 +355,12 @@ def _build_services(
         metadata_extractor = InfrastructureMetadataExtractor()
     if artwork_provider is _MISSING:
         artwork_provider = MutagenArtworkProvider()
+    if cache_root is None:
+        # KCR-011: ONE canonical cache authority — derived from the
+        # database location (never ~/.cache/michi directly)
+        cache_root = Path(db_path).parent / "cache"
     if artwork_cache is _MISSING:
-        artwork_cache = ArtworkCache(Path.home() / ".cache" / "michi" / "artwork")
+        artwork_cache = ArtworkCache(cache_root / "artwork")
 
     queue = QueueService()
 
@@ -545,6 +547,7 @@ class ApplicationContainer:
         settings_state = settings.load()
         graph = _build_services(
             db_path,
+            cache_root=_cache_dir(),
             startup_selected_engine=settings_state.audio_engine_id,
         )
         self._audio_router = graph.audio_router
@@ -793,12 +796,10 @@ class ApplicationContainer:
                 self._scan_runner.shutdown()
             if self._scan_dispatcher:
                 self._scan_dispatcher.shutdown()
-            if self._scan_runner and self._scan_runner._relay is not None:
-                try:
-                    self._scan_runner._relay.done.disconnect()
-                    self._scan_runner._relay.progress.disconnect()
-                except (TypeError, RuntimeError):
-                    pass  # no live connections
+            if self._scan_runner:
+                # KCR-010: public API only — relay cleanup is the runner's
+                # own responsibility during owner teardown.
+                self._scan_runner.disconnect_relay()
         except Exception as exc:
             error = error or exc
 
