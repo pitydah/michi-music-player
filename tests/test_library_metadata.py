@@ -65,7 +65,7 @@ def _make_library(scanner, extractor=None):
     queue = QueueService()
     _session = PlaybackSessionService(playback, queue)
     if extractor is None:
-        library = LibraryService(scanner, queue)
+        library = LibraryService(scanner)
     else:
         library = LibraryService(scanner, metadata_extractor=extractor)
     return library, queue

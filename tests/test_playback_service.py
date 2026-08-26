@@ -175,19 +175,13 @@ class TestPlaybackService:
         assert fake_audio.volume == 42
         assert fake_audio.muted is True
 
-    def test_switch_track(self, playback_service, fake_audio):
-        first = Path("/tmp/first.mp3")
-        second = Path("/tmp/second.mp3")
-        playback_service.load_and_play(first)
-        fake_audio.trigger_media_accepted(first)
-        playback_service.switch_track(second)
-        assert fake_audio.loaded == second
-        # Not accepted yet: honest STOPPED + last committed file.
-        assert playback_service.state.status == PlaybackStatus.STOPPED
-        assert playback_service.state.file_path == first
-        fake_audio.trigger_media_accepted(second)
-        assert playback_service.state.status == PlaybackStatus.STOPPED
-        assert playback_service.state.file_path == second
+    def test_switch_track_path_removed(self):
+        """KCR-003: the secondary switch_track transition path is GONE —
+        track transitions happen through the canonical request/acceptance
+        machinery only."""
+        import michi.application.playback_service as mod
+
+        assert not hasattr(mod.PlaybackService, "switch_track")
 
 
 class TestTruthfulPlaybackStatus:

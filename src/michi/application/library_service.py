@@ -74,7 +74,7 @@ class LibraryService:
     def __init__(
         self,
         scanner: LibraryScannerPort,
-        *legacy_queue_args,
+        *,
         metadata_extractor: MetadataExtractorPort | None = None,
         artwork_provider: ArtworkProviderPort | None = None,
         artwork_cache: ArtworkCachePort | None = None,

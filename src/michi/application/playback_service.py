@@ -686,8 +686,3 @@ class PlaybackService:
         self._converging_unexpected = False  # R2 ghost-playback guard
         # file_path / status / volume / muted / position / duration preserved.
 
-    def switch_track(self, file_path: Path) -> None:
-        self._audio.stop()
-        self._state.status = PlaybackStatus.STOPPED
-        self._state.error_message = None
-        self.load_and_play(file_path)

@@ -36,7 +36,7 @@ class PlaylistService:
 
     def __init__(
         self,
-        *legacy_queue_args,
+        *,
         playlists_port: PlaylistsPort | None = None,
         artwork_store: PlaylistArtworkStorePort | None = None,
     ) -> None:
@@ -302,47 +302,3 @@ class PlaylistService:
         self._persist_nav()
         self._notify()
 
-    # ------------------------------------------------------------------
-    # Temporary compatibility wrappers (DEPRECATED — name is NOT identity).
-    # Presentation migrates to ids in M8-R1E; remove after migration.
-    # ------------------------------------------------------------------
-
-    def _resolve_name_to_id(self, name: str) -> str | None:
-        playlist = next((p for p in self._playlists if p.name == name), None)
-        return playlist.playlist_id if playlist is not None else None
-
-    def delete_playlist_by_name(self, name: str) -> None:
-        """DEPRECATED compatibility: name-based delete delegates to id."""
-        playlist_id = self._resolve_name_to_id(name)
-        if playlist_id is not None:
-            self.delete_playlist(playlist_id)
-
-    def rename_playlist_by_name(self, old_name: str, new_name: str) -> None:
-        """DEPRECATED compatibility: name-based rename delegates to id."""
-        playlist_id = self._resolve_name_to_id(old_name)
-        if playlist_id is not None:
-            self.rename_playlist(playlist_id, new_name)
-
-    def add_track_by_name(self, name: str, file_path) -> None:
-        """DEPRECATED compatibility: name-based add delegates to id."""
-        playlist_id = self._resolve_name_to_id(name)
-        if playlist_id is not None:
-            self.add_track(playlist_id, file_path)
-
-    def remove_track_by_name(self, name: str, index: int) -> None:
-        """DEPRECATED compatibility: name-based remove delegates to id."""
-        playlist_id = self._resolve_name_to_id(name)
-        if playlist_id is not None:
-            self.remove_track(playlist_id, index)
-
-    def move_track_by_name(self, name: str, from_index: int, to_index: int) -> None:
-        """DEPRECATED compatibility: name-based move delegates to id."""
-        playlist_id = self._resolve_name_to_id(name)
-        if playlist_id is not None:
-            self.move_track(playlist_id, from_index, to_index)
-
-    def play_playlist_by_name(self, name: str) -> None:
-        """DEPRECATED compatibility: name-based play delegates to id."""
-        playlist_id = self._resolve_name_to_id(name)
-        if playlist_id is not None:
-            self.play_playlist(playlist_id)
