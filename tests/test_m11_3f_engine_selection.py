@@ -1260,7 +1260,10 @@ class TestF42AdapterContract:
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py
         # gained the typed AudioTransportError hierarchy (CommandError /
         # UnavailableError) — additive error surface, AudioPort unchanged.
-        "src/michi/application/ports.py": "776c46628ba9f85d",
+        # PLAYLIST APPEARANCE authorized additive change: separate optional
+        # managed-hero lifecycle methods and an async palette extractor port;
+        # the frozen AudioPort and transport semantics remain unchanged.
+        "src/michi/application/ports.py": "600b5237ac834e45",
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.
