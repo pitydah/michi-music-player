@@ -321,10 +321,8 @@ class AudioEngineSelectionCoordinator:
                     # M11.3G seam: SAFE for fallback ONLY because detach AND
                     # release both succeeded. The original error still
                     # propagates afterwards.
-                    self.last_failure_stage = (
-                        AudioEngineSwitchFailureStage
-                        .TARGET_ACTIVATION_DETACHED_RELEASED
-                    )
+                    # noqa: E501 — canonical long stage enum on one line
+                    self.last_failure_stage = AudioEngineSwitchFailureStage.TARGET_ACTIVATION_DETACHED_RELEASED  # noqa: E501
                     if self._recover_callback is not None:
                         self._recover_callback(target, str(original))
                 else:
