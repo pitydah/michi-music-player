@@ -24,8 +24,11 @@ def test_hero_uses_low_saturation_atmosphere_tokens():
     assert 'playlistHeroMid: "#13243D"' in palette
     assert 'playlistHeroBottom: "#0A0D14"' in palette
     hero = read("playlists/PlaylistHero.qml")
-    assert "MichiPalette.playlistHeroTop" in hero
-    assert "MichiPalette.playlistHeroBottom" in hero
+    background = read("playlists/PlaylistHeroBackground.qml")
+    assert "PlaylistHeroBackground" in hero
+    assert "autoColors" in hero
+    assert "MichiSemanticColors.scrim" in background
+    assert "MichiPalette.obsidian" in background
 
 
 def test_hero_typography_and_compact_actions():
@@ -42,9 +45,12 @@ def test_hero_typography_and_compact_actions():
 
 def test_hero_cover_is_square_with_faint_shadow():
     hero = read("playlists/PlaylistHero.qml")
-    assert "Layout.preferredWidth: 136" in hero
-    assert "Layout.preferredHeight: 136" in hero
-    assert "radius: 10" in hero
+    assert "readonly property real coverSize:" in hero
+    assert "width >= 960 ? 176" in hero
+    assert "width >= 720 ? 164 : 148" in hero
+    assert "Layout.preferredWidth: root.coverSize" in hero
+    assert "Layout.preferredHeight: root.coverSize" in hero
+    assert "radius: MichiRadius.lg" in hero
     assert "glassShadowFar" in hero
     assert "opacity: 0.55" in hero
 

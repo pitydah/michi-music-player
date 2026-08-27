@@ -151,6 +151,22 @@ Item {
             } else if (root.name === "plus" || root.name === "add") {
                 line(ctx, 12, 5, 12, 19)
                 line(ctx, 5, 12, 19, 12)
+            } else if (root.name === "image") {
+                ctx.rect(3.5, 4.5, 17, 15)
+                ctx.moveTo(6, 16.5)
+                ctx.lineTo(10, 12)
+                ctx.lineTo(13, 14.5)
+                ctx.lineTo(16, 10.5)
+                ctx.lineTo(19, 16.5)
+                ctx.moveTo(9, 8.5)
+                ctx.arc(9, 8.5, 1.4, 0, Math.PI * 2)
+            } else if (root.name === "sparkles") {
+                line(ctx, 8, 3.5, 8, 12.5)
+                line(ctx, 3.5, 8, 12.5, 8)
+                line(ctx, 5, 5, 11, 11)
+                line(ctx, 11, 5, 5, 11)
+                line(ctx, 17, 12, 17, 20.5)
+                line(ctx, 12.5, 16.25, 21.5, 16.25)
             } else if (root.name === "pin") {
                 line(ctx, 8, 4.5, 16, 4.5)
                 line(ctx, 9.5, 4.5, 9.5, 12)

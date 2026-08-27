@@ -47,6 +47,7 @@ QtObject {
     readonly property color scrimStrong: Qt.rgba(0.02, 0.025, 0.04, 0.72)
     readonly property color artworkScrim: Qt.rgba(0, 0, 0, 0.12)
     readonly property color artworkScrimHover: Qt.rgba(0, 0, 0, 0.26)
+    readonly property color playlistHeroBottomScrim: Qt.rgba(0.035, 0.043, 0.067, 0.24)
 
     function statusSurface(toneColor) {
         return Qt.rgba(toneColor.r, toneColor.g, toneColor.b, 0.09)

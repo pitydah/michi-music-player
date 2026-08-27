@@ -1,9 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../controls"
-import "../patterns"
 import "../primitives"
 import "../theme"
 
@@ -29,19 +27,6 @@ Item {
     signal playTrackRequested(int index)
     signal addMusicRequested()
 
-    FileDialog {
-        id: coverDialog
-        title: qsTr("Select Playlist Cover Image")
-        nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp)"]
-        onAccepted: {
-            var path = selectedFile.toString()
-            if (path.indexOf("file://") === 0) {
-                path = path.substring(7)
-            }
-            playlists.set_custom_cover(root.playlistId, path)
-        }
-    }
-
     // Hero occupies ~30-40% of the first visible screen
     readonly property real heroHeight: Math.max(240, Math.min(300, root.height * 0.36))
     // Sticky column header — completely hidden over the hero (the in-flow
@@ -62,6 +47,8 @@ Item {
     Component {
         id: heroComponent
         Item {
+            readonly property var appearance: playlists
+                ? playlists.selectedPlaylistAppearance : ({})
             implicitHeight: heroItem.implicitHeight + MichiMetrics.controlSmall
 
             PlaylistHero {
@@ -74,6 +61,13 @@ Item {
                 description: playlists ? (playlists.selectedPlaylistDescription || "") : ""
                 customCoverPath: playlists ? (playlists.selectedPlaylistCustomCoverPath || "") : ""
                 mosaicArtworkPaths: playlists ? (playlists.selectedPlaylistMosaicArtworkPaths || []) : []
+                heroMode: parent.appearance.heroMode || "auto"
+                heroSolidColor: parent.appearance.heroSolidColor || MichiPalette.playlistHeroTop
+                heroGradientColors: parent.appearance.heroGradientColors || [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid]
+                heroGradientAngle: parent.appearance.heroGradientAngle === undefined
+                    ? 135 : parent.appearance.heroGradientAngle
+                heroImagePath: parent.appearance.heroImagePath || ""
+                autoHeroColors: playlists ? playlists.selectedPlaylistAutoHeroColors : [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
                 pinned: playlists ? playlists.selectedPlaylistPinned : false
                 // R2.1-07: signals wired INLINE (the ListView headerItem is
                 // this wrapper Item, NOT the hero — a Connections on
@@ -81,7 +75,7 @@ Item {
                 onPlayRequested: root.playRequested()
                 onShuffleRequested: root.shuffleRequested()
                 onMoreRequested: detailMenu.popup()
-                onChangeCoverRequested: coverDialog.open()
+                onCustomizeAppearanceRequested: appearancePanel.openForPlaylist()
                 onTogglePinRequested: root.togglePinRequested()
                 onAddTracksRequested: root.addMusicRequested()
             }
@@ -94,6 +88,22 @@ Item {
                 showFormat: width > 1200
             }
         }
+    }
+
+    PlaylistAppearancePanel {
+        id: appearancePanel
+        playlistId: root.playlistId
+        playlistName: playlists ? playlists.selectedPlaylistName : ""
+        customCoverPath: playlists ? playlists.selectedPlaylistCustomCoverPath : ""
+        mosaicArtworkPaths: playlists ? playlists.selectedPlaylistMosaicArtworkPaths : []
+        heroMode: playlists ? playlists.selectedPlaylistAppearance.heroMode : "auto"
+        heroSolidColor: playlists ? playlists.selectedPlaylistAppearance.heroSolidColor : MichiPalette.playlistHeroTopHex
+        heroGradientColors: playlists ? playlists.selectedPlaylistAppearance.heroGradientColors : [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
+        heroGradientAngle: playlists
+            && playlists.selectedPlaylistAppearance.heroGradientAngle !== undefined
+            ? playlists.selectedPlaylistAppearance.heroGradientAngle : 135
+        heroImagePath: playlists ? playlists.selectedPlaylistAppearance.heroImagePath : ""
+        autoHeroColors: playlists ? playlists.selectedPlaylistAutoHeroColors : [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
     }
 
     ColumnLayout {
@@ -174,8 +184,8 @@ Item {
                 Item { Layout.fillHeight: true }
                 MichiIcon {
                     Layout.alignment: Qt.AlignHCenter
-                    width: 34
-                    height: 34
+                    Layout.preferredWidth: 34
+                    Layout.preferredHeight: 34
                     name: "playlist"
                     iconColor: MichiPalette.textMuted
                 }
@@ -217,13 +227,12 @@ Item {
             onTriggered: root.addMusicRequested()
         }
         MenuItem {
-            text: qsTr("Change Cover…")
-            onTriggered: coverDialog.open()
+            text: qsTr("Customize appearance…")
+            onTriggered: appearancePanel.openForPlaylist()
         }
         MenuItem {
-            text: qsTr("Use Automatic Mosaic")
-            visible: (playlists.selectedPlaylistCustomCoverPath || "") !== ""
-            onTriggered: playlists.remove_custom_cover(root.playlistId)
+            text: playlists.selectedPlaylistPinned ? qsTr("Unpin") : qsTr("Pin")
+            onTriggered: root.togglePinRequested()
         }
         MenuItem {
             objectName: "playlistDetailRenameAction"

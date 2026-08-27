@@ -8,17 +8,77 @@ writes back. Playlist navigation metadata (pinned/recent) persists under the
 
 import json
 import logging
+import math
+import re
 import sqlite3
 from pathlib import Path
 
 from michi.application.ports import PlaylistsPort
 from michi.domain.playlist import (
     Playlist,
+    PlaylistAppearance,
+    PlaylistHeroMode,
     PlaylistNavigationState,
     legacy_playlist_id,
 )
 
 logger = logging.getLogger(__name__)
+
+_HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+
+def _decoded_color(value: object, fallback: str) -> str:
+    if isinstance(value, str) and _HEX_COLOR.fullmatch(value.strip()):
+        return value.strip().upper()
+    return fallback
+
+
+def _decode_appearance(value: object) -> PlaylistAppearance:
+    """Tolerant field-by-field decode for optional appearance metadata.
+
+    A missing/malformed appearance never invalidates the authoritative
+    playlist record and never triggers writeback during load.
+    """
+    default = PlaylistAppearance()
+    if not isinstance(value, dict):
+        return default
+
+    raw_mode = value.get("hero_mode")
+    try:
+        mode = PlaylistHeroMode(raw_mode)
+    except (TypeError, ValueError):
+        mode = PlaylistHeroMode.AUTO
+
+    solid = _decoded_color(value.get("hero_solid_color"), default.hero_solid_color)
+
+    raw_colors = value.get("hero_gradient_colors")
+    colors = default.hero_gradient_colors
+    if isinstance(raw_colors, list) and len(raw_colors) in (2, 3):
+        decoded = tuple(_decoded_color(color, "") for color in raw_colors)
+        if all(decoded):
+            colors = decoded
+
+    raw_angle = value.get("hero_gradient_angle")
+    angle = default.hero_gradient_angle
+    if (
+        isinstance(raw_angle, (int, float))
+        and not isinstance(raw_angle, bool)
+        and math.isfinite(float(raw_angle))
+    ):
+        angle = float(raw_angle) % 360.0
+
+    raw_image = value.get("hero_image_path")
+    image_path = raw_image if isinstance(raw_image, str) else ""
+    if mode is PlaylistHeroMode.IMAGE and not image_path:
+        mode = PlaylistHeroMode.AUTO
+
+    return PlaylistAppearance(
+        hero_mode=mode,
+        hero_solid_color=solid,
+        hero_gradient_colors=colors,
+        hero_gradient_angle=angle,
+        hero_image_path=image_path,
+    )
 
 
 def _decode_playlist_entry(entry) -> Playlist | None:
@@ -52,11 +112,13 @@ def _decode_playlist_entry(entry) -> Playlist | None:
         playlist_id = legacy_playlist_id(name)
     raw_cover = entry.get("custom_cover_path")
     custom_cover_path = raw_cover if isinstance(raw_cover, str) else ""
+    appearance = _decode_appearance(entry.get("appearance"))
     return Playlist(
         playlist_id=playlist_id,
         name=name,
         track_paths=tuple(paths),
         custom_cover_path=custom_cover_path,
+        appearance=appearance,
     )
 
 
@@ -170,6 +232,13 @@ class SqlitePlaylistsRepository(PlaylistsPort):
                 "name": p.name,
                 "track_paths": list(p.track_paths),
                 "custom_cover_path": p.custom_cover_path,
+                "appearance": {
+                    "hero_mode": p.appearance.hero_mode.value,
+                    "hero_solid_color": p.appearance.hero_solid_color,
+                    "hero_gradient_colors": list(p.appearance.hero_gradient_colors),
+                    "hero_gradient_angle": p.appearance.hero_gradient_angle,
+                    "hero_image_path": p.appearance.hero_image_path,
+                },
             }
             for p in playlists
         ]

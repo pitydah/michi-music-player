@@ -5,9 +5,8 @@ import "../controls"
 import "../primitives"
 import "../theme"
 
-// PlaylistCard — quiet content surface (glass = controls). Primary click
-// opens the playlist; play affordance routes through PlaylistService →
-// QueueService; pin toggles; overflow opens the context menu.
+// PlaylistCard — a personal musical object. Cover/name open the playlist;
+// the single centered Play action starts playback without navigation.
 Item {
     id: root
 
@@ -19,19 +18,25 @@ Item {
     property var mosaicArtworkPaths: []
     property bool pinned: false
     property bool selected: false
+    readonly property bool interactionActive: hoverHandler.hovered
+        || root.activeFocus || playButton.activeFocus || moreButton.activeFocus
+        || contextMenu.visible
+
     signal openRequested()
     signal playRequested()
     signal pinToggled()
-    signal changeCoverRequested()
+    signal customizeAppearanceRequested()
     signal renameRequested()
     signal deleteRequested()
 
-    implicitHeight: 220
-    implicitWidth: 200
-    focus: false
+    implicitWidth: 288
+    implicitHeight: 318
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
-    Accessible.name: playlistName + ", " + trackCount + " tracks"
+    Accessible.name: root.playlistName + ", "
+        + MichiFormat.formatPlaylistSummary(root.trackCount, root.durationMs)
+    Accessible.description: qsTr("Open playlist")
+    Accessible.selected: root.selected
 
     Keys.onReturnPressed: {
         MichiAccessibility.noteKeyboard()
@@ -46,44 +51,37 @@ Item {
         root.openRequested()
     }
 
-
-    HoverHandler { id: hoverHandler }
+    HoverHandler {
+        id: hoverHandler
+        cursorShape: Qt.PointingHandCursor
+    }
     TapHandler {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onTapped: function(eventPoint, button) {
-            if (button === Qt.RightButton) {
+            if (button === Qt.RightButton)
                 contextMenu.popup()
-            } else {
+            else
                 root.openRequested()
-            }
         }
     }
 
     Rectangle {
         anchors.fill: parent
         radius: MichiRadius.lg
-        color: hoverHandler.hovered
-            ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
-        border.width: root.selected ? 1 : 1
+        color: root.interactionActive
+            ? MichiSemanticColors.surfaceHover : "transparent"
+        border.width: 1
         border.color: root.selected
             ? MichiSemanticColors.auroraCyanBorder
-            : hoverHandler.hovered
+            : root.interactionActive
                 ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
             ColorAnimation { duration: MichiMotion.micro }
         }
-    }
-
-    // Keyboard-current indicator (grid arrow-key navigation)
-    Rectangle {
-        visible: root.selected
-        anchors.top: parent.top
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(parent.width - MichiSpacing.xl * 2, 32)
-        height: 2
-        radius: 1
-        color: MichiPalette.auroraCyan
+        MichiFocusRing {
+            visualFocus: root.activeFocus && MichiAccessibility.keyboardMode
+        }
     }
 
     ColumnLayout {
@@ -92,186 +90,145 @@ Item {
         spacing: MichiSpacing.sm
 
         Item {
-            Layout.fillWidth: true
+            id: artworkStage
+            Layout.preferredWidth: parent.width - MichiSpacing.xxl
             Layout.preferredHeight: width
+            Layout.alignment: Qt.AlignLeft
 
-            // Vinyl Record peeking out to the right on hover
-            Rectangle {
-                id: vinylDisc
+            // Layer order is intentional: background -> cat -> cover ->
+            // controls. The revealed portion is the only part not occluded.
+            MichiPeek {
+                id: michiPeek
+                width: Math.min(72, artworkStage.width * 0.3)
+                height: artworkStage.height * 0.72
+                x: artworkStage.width - width
                 anchors.verticalCenter: parent.verticalCenter
-                x: hoverHandler.hovered ? parent.width * 0.16 : 0
-                width: parent.width * 0.94
-                height: width
-                radius: width / 2
-                color: MichiPalette.obsidianDeep
-                border.width: 1
-                border.color: MichiSemanticColors.borderStrong
+                revealed: root.interactionActive
                 z: 0
+            }
 
-                // Grooves
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: parent.width * 0.72
-                    height: width
-                    radius: width / 2
-                    color: "transparent"
-                    border.width: 1
-                    border.color: MichiPalette.graphite
-                }
-
-                // Center Label
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: parent.width * 0.34
-                    height: width
-                    radius: width / 2
-                    color: MichiPalette.auroraBlue
-                    opacity: 0.85
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 6
-                        height: 6
-                        radius: 3
-                        color: MichiPalette.obsidian
-                    }
-                }
+            Item {
+                id: coverLayer
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: parent.width
+                x: root.interactionActive && !MichiAccessibility.reducedMotion
+                    ? -MichiSpacing.xs : 0
+                z: 1
 
                 Behavior on x {
                     enabled: !MichiAccessibility.reducedMotion
                     NumberAnimation {
-                        duration: MichiMotion.standard
+                        duration: MichiMotion.artwork
                         easing.type: MichiMotion.outCubic
+                    }
+                }
+
+                PlaylistArtwork {
+                    anchors.fill: parent
+                    customCoverPath: root.customCoverPath
+                    mosaicArtworkPaths: root.mosaicArtworkPaths
+                    fallbackText: root.playlistName
+                    radius: MichiRadius.lg
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: MichiRadius.lg
+                    color: root.interactionActive
+                        ? MichiSemanticColors.artworkScrimHover : "transparent"
+                    Behavior on color {
+                        enabled: !MichiAccessibility.reducedMotion
+                        ColorAnimation { duration: MichiMotion.micro }
                     }
                 }
             }
 
-            PlaylistArtwork {
-                anchors.fill: parent
-                customCoverPath: root.customCoverPath
-                mosaicArtworkPaths: root.mosaicArtworkPaths
-                fallbackText: root.playlistName
-                radius: MichiRadius.md
-                z: 1
-            }
-
-            // Quick Play Button Overlay on Hover
-            Rectangle {
-                anchors.centerIn: parent
-                width: 44
-                height: 44
-                radius: 22
-                color: MichiSemanticColors.scrimStrong
-                border.width: 1
-                border.color: MichiSemanticColors.auroraCyanBorder
-                visible: hoverHandler.hovered
+            MichiIconButton {
+                id: playButton
+                anchors.centerIn: coverLayer
+                implicitWidth: MichiMetrics.controlLarge
+                implicitHeight: MichiMetrics.controlLarge
+                iconName: "play"
+                accessibleName: qsTr("Play %1 without opening it").arg(root.playlistName)
+                opacity: root.interactionActive ? 1 : 0
+                scale: root.interactionActive ? 1 : 0.96
                 z: 2
-
-                MichiIcon {
-                    name: "play"
-                    width: 20
-                    height: 20
-                    anchors.centerIn: parent
-                    iconColor: MichiPalette.auroraCyan
+                onClicked: root.playRequested()
+                Behavior on opacity {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
                 }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.playRequested()
+                Behavior on scale {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
                 }
             }
-        }
 
-        MichiText {
-            text: root.playlistName
-            // "section" (18px) — "cardTitle" is not a defined MichiText role
-            // and silently fell back to body 14px
-            role: "section"
-            elide: Text.ElideRight
-            font.weight: Font.DemiBold
-            Layout.fillWidth: true
+            MichiIconButton {
+                id: moreButton
+                anchors.top: coverLayer.top
+                anchors.right: coverLayer.right
+                anchors.margins: MichiSpacing.sm
+                iconName: "more"
+                accessibleName: qsTr("More options for %1").arg(root.playlistName)
+                opacity: root.interactionActive ? 1 : 0
+                z: 2
+                onClicked: contextMenu.popup()
+                Behavior on opacity {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.standard; easing.type: MichiMotion.outCubic }
+                }
+            }
         }
 
         RowLayout {
             Layout.fillWidth: true
             spacing: MichiSpacing.xs
-
             MichiText {
-                text: root.trackCount + (root.trackCount === 1 ? " track" : " tracks")
-                    + (root.durationMs > 0 ? " · " + MichiFormat.formatDuration(root.durationMs) : "")
-                role: "secondary"
-                elide: Text.ElideRight
-                color: MichiPalette.textSecondary
                 Layout.fillWidth: true
+                text: root.playlistName
+                role: "section"
+                elide: Text.ElideRight
+                font.weight: Font.DemiBold
             }
-
-            Rectangle {
+            MichiIcon {
                 visible: root.pinned
-                width: 6
-                height: 6
-                radius: 3
-                color: MichiPalette.auroraCyan
+                Layout.preferredWidth: MichiMetrics.iconSmall
+                Layout.preferredHeight: MichiMetrics.iconSmall
+                name: "pin"
+                iconColor: MichiPalette.auroraCyan
                 Accessible.role: Accessible.StaticText
                 Accessible.name: "Pinned playlist"
             }
         }
-    }
 
-    // Hover quick actions (desktop quietness: only visible on card hover)
-    RowLayout {
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: MichiSpacing.sm
-        spacing: MichiSpacing.xs
-        visible: hoverHandler.hovered
-
-        MichiIconButton {
-            iconName: "play"
-            accessibleName: qsTr("Play ") + root.playlistName
-            onClicked: root.playRequested()
-        }
-
-        MichiIconButton {
-            iconName: "more"
-            accessibleName: qsTr("More options for ") + root.playlistName
-            onClicked: contextMenu.popup()
+        MichiText {
+            Layout.fillWidth: true
+            text: MichiFormat.formatPlaylistSummary(root.trackCount, root.durationMs)
+            role: "technical"
+            color: MichiPalette.textMuted
+            elide: Text.ElideRight
         }
     }
 
     MichiMenu {
         id: contextMenu
+        MenuItem { text: qsTr("Open"); onTriggered: root.openRequested() }
+        MenuItem { text: qsTr("Play now"); onTriggered: root.playRequested() }
         MenuItem {
-            text: qsTr("Open")
-            onTriggered: root.openRequested()
-        }
-        MenuItem {
-            text: qsTr("Play Now")
-            onTriggered: root.playRequested()
-        }
-        MenuItem {
-            text: qsTr("Add to Queue")
-            onTriggered: playlists.enqueue_playlist(root.playlistId)
+            text: qsTr("Add to queue")
+            onTriggered: playlists.queue_playlist(root.playlistId)
         }
         MenuItem {
             text: root.pinned ? qsTr("Unpin") : qsTr("Pin")
             onTriggered: root.pinToggled()
         }
         MenuItem {
-            text: qsTr("Change Cover…")
-            onTriggered: root.changeCoverRequested()
+            text: qsTr("Customize appearance…")
+            onTriggered: root.customizeAppearanceRequested()
         }
-        MenuItem {
-            text: qsTr("Use Automatic Mosaic")
-            visible: (root.customCoverPath || "") !== ""
-            onTriggered: playlists.remove_custom_cover(root.playlistId)
-        }
-        MenuItem {
-            text: qsTr("Rename")
-            onTriggered: root.renameRequested()
-        }
-        MenuItem {
-            text: qsTr("Delete")
-            onTriggered: root.deleteRequested()
-        }
+        MenuItem { text: qsTr("Rename…"); onTriggered: root.renameRequested() }
+        MenuItem { text: qsTr("Delete…"); onTriggered: root.deleteRequested() }
     }
 }

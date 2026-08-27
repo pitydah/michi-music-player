@@ -95,8 +95,12 @@ class PlaylistsPort(ABC):
 
 
 class PlaylistArtworkStorePort(ABC):
-    """Boundary for user-supplied playlist artwork storage (M9-R2.1).
-    Managed copies reside inside application data storage."""
+    """Boundary for user-supplied playlist visual asset storage.
+
+    Cover and hero image assets have separate managed lifecycles. The hero
+    methods remain concrete optional defaults so older test doubles keep
+    working while production storage implements the complete contract.
+    """
 
     @abstractmethod
     def store_cover(self, playlist_id: str, source_path: Path | str) -> str | None:
@@ -107,6 +111,32 @@ class PlaylistArtworkStorePort(ABC):
     def delete_cover(self, playlist_id: str) -> None:
         """Deletes any managed cover file for the given playlist id."""
         ...
+
+    def store_hero(self, playlist_id: str, source_path: Path | str) -> str | None:
+        """Copies a custom hero image into managed storage."""
+        del playlist_id, source_path
+        return None
+
+    def delete_hero(self, playlist_id: str) -> None:
+        """Deletes any managed hero image for the given playlist id."""
+        del playlist_id
+
+
+class PlaylistPaletteExtractorPort(ABC):
+    """Asynchronous, cacheable palette extraction for playlist artwork."""
+
+    @abstractmethod
+    def request_palette(
+        self,
+        source_paths: tuple[str, ...],
+        callback: Callable[[tuple[str, ...]], None],
+    ) -> None:
+        """Return a dark, text-safe palette without blocking the caller."""
+        ...
+
+    def close(self) -> None:
+        """Release worker resources; optional for lightweight test doubles."""
+        return None
 
 
 class AudioPort(ABC):

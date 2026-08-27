@@ -15,7 +15,7 @@ selected* projection derives from navigation.state.playlist_id.
 
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, Qt, QUrl, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
@@ -24,6 +24,35 @@ from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
 from michi.application.playlist_service import PlaylistService
+from michi.application.ports import PlaylistPaletteExtractorPort
+
+_DEFAULT_HERO_PALETTE = ["#152A45", "#13243D", "#0A0D14"]
+
+
+def local_path_from_url(value: QUrl | str) -> Path | None:
+    """Normalize a QML FileDialog URL or an already-local path.
+
+    QUrl owns platform-specific URL decoding (including percent escapes and
+    Windows drive/UNC rules); QML must never strip ``file://`` manually.
+    Non-local URL schemes are rejected because managed artwork storage only
+    accepts local files.
+    """
+    if isinstance(value, QUrl):
+        if not value.isValid() or value.isEmpty() or not value.isLocalFile():
+            return None
+        local = value.toLocalFile()
+        return Path(local) if local else None
+
+    raw = str(value).strip()
+    if not raw:
+        return None
+    parsed = QUrl(raw)
+    if parsed.scheme():
+        if not parsed.isLocalFile():
+            return None
+        local = parsed.toLocalFile()
+        return Path(local) if local else None
+    return Path(raw)
 
 
 class PlaylistsBridge(QObject):
@@ -32,6 +61,7 @@ class PlaylistsBridge(QObject):
     target; name is display-only."""
 
     playlists_changed = Signal()
+    _palette_ready = Signal(str, str, list)
 
     def __init__(
         self,
@@ -41,6 +71,7 @@ class PlaylistsBridge(QObject):
         library: LibraryService | None = None,
         playback_coordinator=None,
         parent: QObject | None = None,
+        palette_extractor: PlaylistPaletteExtractorPort | None = None,
     ) -> None:
         super().__init__(parent)
         self._playlist_service = playlist_service
@@ -48,28 +79,47 @@ class PlaylistsBridge(QObject):
         self._navigation = navigation_service
         self._library = library
         self._playback_coordinator = playback_coordinator
+        self._palette_extractor = palette_extractor
+        self._auto_palettes: dict[str, list[str]] = {}
+        self._palette_sources: dict[str, str] = {}
+        self._palette_epoch = 0
+        self._palette_ready.connect(self._apply_palette, Qt.QueuedConnection)
         if playlist_service is not None:
-            playlist_service.subscribe_changed(self._on_service_changed)
+            playlist_service.subscribe_changed(self._on_playlist_service_changed)
         if navigation_service is not None:
-            navigation_service.subscribe_changed(self._on_service_changed)
+            navigation_service.subscribe_changed(self._on_navigation_changed)
         if library is not None:
             library.subscribe_changed(self._on_library_changed)
 
     def dispose(self) -> None:
         if self._playlist_service is not None:
-            self._playlist_service.unsubscribe_changed(self._on_service_changed)
+            self._playlist_service.unsubscribe_changed(
+                self._on_playlist_service_changed
+            )
         if self._navigation is not None:
-            self._navigation.unsubscribe_changed(self._on_service_changed)
+            self._navigation.unsubscribe_changed(self._on_navigation_changed)
         if self._library is not None:
             self._library.unsubscribe_changed(self._on_library_changed)
+        if self._palette_extractor is not None:
+            self._palette_extractor.close()
 
-    def _on_service_changed(self) -> None:
+    def _on_playlist_service_changed(self) -> None:
+        # A managed cover can be atomically replaced at the SAME path. A
+        # generation token ensures the old in-flight result cannot win and
+        # lets the extractor's mtime-aware cache observe the replacement.
+        self._palette_epoch += 1
+        self._palette_sources.clear()
+        self.playlists_changed.emit()
+
+    def _on_navigation_changed(self) -> None:
         self.playlists_changed.emit()
 
     def _on_library_changed(self) -> None:
         """M9-R1J: playlist search projection reads LibraryService search
         state (query/active) and track metadata — react to library changes
         so searchPlaylists/searchPlaylistCount/playlistTrackRows recompute."""
+        self._palette_epoch += 1
+        self._palette_sources.clear()
         self.playlists_changed.emit()
 
     # ------------------------------------------------------------------
@@ -106,24 +156,85 @@ class PlaylistsBridge(QObject):
                 total += ref.duration_ms
         return total
 
+    @staticmethod
+    def _appearance_row(playlist) -> dict:
+        appearance = playlist.appearance
+        return {
+            "heroMode": appearance.hero_mode.value,
+            "heroSolidColor": appearance.hero_solid_color,
+            "heroGradientColors": list(appearance.hero_gradient_colors),
+            "heroGradientAngle": appearance.hero_gradient_angle,
+            "heroImagePath": appearance.hero_image_path,
+        }
+
+    def _palette_source_key(self, paths: tuple[str, ...]) -> str:
+        return f"{self._palette_epoch}\n" + "\n".join(paths)
+
+    def _palette_sources_for(self, playlist, mosaic: list[str]) -> tuple[str, ...]:
+        if playlist.custom_cover_path:
+            return (playlist.custom_cover_path,)
+        return tuple(mosaic[:4])
+
+    def _auto_palette_for(self, playlist, mosaic: list[str]) -> list[str]:
+        sources = self._palette_sources_for(playlist, mosaic)
+        source_key = self._palette_source_key(sources)
+        current_key = self._palette_sources.get(playlist.playlist_id)
+        if current_key != source_key:
+            self._palette_sources[playlist.playlist_id] = source_key
+            if self._palette_extractor is not None and sources:
+                playlist_id = playlist.playlist_id
+                self._palette_extractor.request_palette(
+                    sources,
+                    lambda colors: self._palette_ready.emit(
+                        playlist_id, source_key, list(colors)
+                    ),
+                )
+        return self._auto_palettes.get(
+            playlist.playlist_id, list(_DEFAULT_HERO_PALETTE)
+        )
+
+    @Slot(str, str, list)
+    def _apply_palette(
+        self, playlist_id: str, source_key: str, colors: list[str]
+    ) -> None:
+        if self._palette_sources.get(playlist_id) != source_key:
+            return  # a newer cover/mosaic already owns this playlist
+        normalized = [str(color) for color in colors[:3]]
+        if len(normalized) < 2:
+            return
+        if normalized == self._auto_palettes.get(playlist_id):
+            return
+        self._auto_palettes[playlist_id] = normalized
+        self.playlists_changed.emit()
+
     def _rows(self) -> list[dict]:
         if self._playlist_service is None:
             return []
         nav = self._playlist_service.navigation
+        valid_ids = {
+            playlist.playlist_id for playlist in self._playlist_service.playlists
+        }
+        for stale_id in set(self._palette_sources) - valid_ids:
+            self._palette_sources.pop(stale_id, None)
+            self._auto_palettes.pop(stale_id, None)
         recent_rank = {pid: rank for rank, pid in enumerate(nav.recent_ids)}
-        return [
-            {
-                "playlistId": p.playlist_id,
-                "name": p.name,
-                "trackCount": len(p.track_paths),
-                "durationMs": self._duration_for_paths(p.track_paths),
-                "customCoverPath": p.custom_cover_path,
-                "mosaicArtworkPaths": self._mosaic_for_paths(p.track_paths),
-                "pinned": p.playlist_id in nav.pinned_ids,
-                "recentRank": recent_rank.get(p.playlist_id, -1),
+        rows = []
+        for playlist in self._playlist_service.playlists:
+            mosaic = self._mosaic_for_paths(playlist.track_paths)
+            row = {
+                "playlistId": playlist.playlist_id,
+                "name": playlist.name,
+                "trackCount": len(playlist.track_paths),
+                "durationMs": self._duration_for_paths(playlist.track_paths),
+                "customCoverPath": playlist.custom_cover_path,
+                "mosaicArtworkPaths": mosaic,
+                "pinned": playlist.playlist_id in nav.pinned_ids,
+                "recentRank": recent_rank.get(playlist.playlist_id, -1),
+                "autoHeroColors": self._auto_palette_for(playlist, mosaic),
             }
-            for p in self._playlist_service.playlists
-        ]
+            row.update(self._appearance_row(playlist))
+            rows.append(row)
+        return rows
 
     def _get_playlists(self) -> list[dict]:
         return self._rows()
@@ -186,6 +297,25 @@ class PlaylistsBridge(QObject):
         if not playlist_id or self._playlist_service is None:
             return False
         return playlist_id in self._playlist_service.navigation.pinned_ids
+
+    def _get_selected_appearance(self) -> dict:
+        playlist = self._selected()
+        if playlist is None:
+            return {
+                "heroMode": "auto",
+                "heroSolidColor": "#152A45",
+                "heroGradientColors": ["#152A45", "#13243D"],
+                "heroGradientAngle": 135.0,
+                "heroImagePath": "",
+            }
+        return self._appearance_row(playlist)
+
+    def _get_selected_auto_hero_colors(self) -> list[str]:
+        playlist = self._selected()
+        if playlist is None:
+            return list(_DEFAULT_HERO_PALETTE)
+        mosaic = self._mosaic_for_paths(playlist.track_paths)
+        return self._auto_palette_for(playlist, mosaic)
 
     def _selected(self):
         playlist_id = self._current_playlist_id()
@@ -302,6 +432,15 @@ class PlaylistsBridge(QObject):
     selectedPlaylistMosaicArtworkPaths = Property(
         list, _get_selected_playlist_mosaic_artworks, notify=playlists_changed
     )
+    selectedPlaylistAppearance = Property(
+        dict, _get_selected_appearance, notify=playlists_changed
+    )
+    selectedPlaylistAutoHeroColors = Property(
+        list, _get_selected_auto_hero_colors, notify=playlists_changed
+    )
+    selectedPlaylistDescription = Property(
+        str, lambda self: "", notify=playlists_changed
+    )
     playlistTracks = Property(list, _get_playlist_tracks, notify=playlists_changed)
     playlistTrackRows = Property(
         list, _get_playlist_track_rows, notify=playlists_changed
@@ -369,15 +508,61 @@ class PlaylistsBridge(QObject):
         if self._playlist_service is not None:
             self._playlist_service.unpin_playlist(playlist_id)
 
-    @Slot(str, str)
-    def set_custom_cover(self, playlist_id: str, path: str) -> None:
-        if self._playlist_service is not None:
-            self._playlist_service.set_custom_cover(playlist_id, path)
+    @Slot(str, str, result=bool)
+    def set_custom_cover(self, playlist_id: str, path: str) -> bool:
+        local_path = local_path_from_url(path)
+        if local_path is None or self._playlist_service is None:
+            return False
+        return (
+            self._playlist_service.set_custom_cover(playlist_id, local_path) is not None
+        )
+
+    @Slot(str, QUrl, result=bool)
+    def set_custom_cover_from_url(self, playlist_id: str, url: QUrl) -> bool:
+        path = local_path_from_url(url)
+        if path is None or self._playlist_service is None:
+            return False
+        return self._playlist_service.set_custom_cover(playlist_id, path) is not None
 
     @Slot(str)
     def remove_custom_cover(self, playlist_id: str) -> None:
         if self._playlist_service is not None:
             self._playlist_service.remove_custom_cover(playlist_id)
+
+    @Slot(str, result=bool)
+    def set_hero_auto(self, playlist_id: str) -> bool:
+        if self._playlist_service is None:
+            return False
+        return self._playlist_service.set_hero_auto(playlist_id)
+
+    @Slot(str, str, result=bool)
+    def set_hero_solid(self, playlist_id: str, color: str) -> bool:
+        if self._playlist_service is None:
+            return False
+        try:
+            return self._playlist_service.set_hero_solid(playlist_id, color)
+        except ValueError:
+            return False
+
+    @Slot(str, list, float, result=bool)
+    def set_hero_gradient(self, playlist_id: str, colors: list, angle: float) -> bool:
+        if self._playlist_service is None:
+            return False
+        try:
+            return self._playlist_service.set_hero_gradient(
+                playlist_id, tuple(str(color) for color in colors), angle
+            )
+        except (TypeError, ValueError):
+            return False
+
+    @Slot(str, QUrl, result=bool)
+    def set_custom_hero_from_url(self, playlist_id: str, url: QUrl) -> bool:
+        path = local_path_from_url(url)
+        if path is None or self._playlist_service is None:
+            return False
+        return (
+            self._playlist_service.set_custom_hero_image(playlist_id, path) is not None
+        )
 
     @Slot(str, str)
     def add_track(self, playlist_id: str, path: str) -> None:

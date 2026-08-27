@@ -83,6 +83,7 @@ from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtrac
 from michi.infrastructure.playlist_artwork_store import (
     FilesystemPlaylistArtworkStore,
 )
+from michi.infrastructure.playlist_palette import QtPlaylistPaletteExtractor
 from michi.infrastructure.playlists import SqlitePlaylistsRepository
 from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
@@ -683,6 +684,7 @@ class ApplicationContainer:
             navigation_service=navigation,
             library=library,
             playback_coordinator=graph.playlist_playback,
+            palette_extractor=QtPlaylistPaletteExtractor(),
         )
         sb = SettingsBridge(settings)
 

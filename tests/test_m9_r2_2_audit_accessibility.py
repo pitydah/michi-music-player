@@ -48,11 +48,11 @@ def test_magazine_cards_are_keyboard_focusable():
     assert content.count("MichiFocusRing") >= 3
 
 
-def test_playlist_cover_change_is_keyboard_accessible():
+def test_playlist_appearance_customization_is_keyboard_accessible():
     content = read("playlists/PlaylistHero.qml")
     assert "Accessible.role: Accessible.Button" in content
-    assert 'Accessible.name: qsTr("Change playlist cover")' in content
-    assert "Keys.onSpacePressed: root.changeCoverRequested()" in content
+    assert 'Accessible.name: qsTr("Customize playlist appearance")' in content
+    assert "Keys.onSpacePressed: root.customizeAppearanceRequested()" in content
     assert "MichiFocusRing" in content
 
 

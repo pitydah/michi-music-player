@@ -18,13 +18,20 @@ Item {
     property string description: ""
     property string customCoverPath: ""
     property var mosaicArtworkPaths: []
+    property string heroMode: "auto"
+    property color heroSolidColor: MichiPalette.playlistHeroTop
+    property var heroGradientColors: [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid]
+    property real heroGradientAngle: 135
+    property string heroImagePath: ""
+    property var autoHeroColors: [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
     property bool pinned: false
     property bool hasTracks: root.trackCount > 0
+    readonly property real coverSize: width >= 960 ? 176 : width >= 720 ? 164 : 148
 
     signal playRequested()
     signal shuffleRequested()
     signal moreRequested()
-    signal changeCoverRequested()
+    signal customizeAppearanceRequested()
     signal togglePinRequested()
     signal addTracksRequested()
 
@@ -43,15 +50,16 @@ Item {
     }
     Component.onCompleted: opacity = 1
 
-    // Atmospheric depth only — never a saturated glow
-    Rectangle {
+    PlaylistHeroBackground {
         anchors.fill: parent
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0; color: MichiPalette.playlistHeroTop }
-            GradientStop { position: 0.55; color: MichiPalette.playlistHeroMid }
-            GradientStop { position: 1; color: MichiPalette.playlistHeroBottom }
-        }
+        heroMode: root.heroMode
+        solidColor: root.heroSolidColor
+        gradientColors: root.heroGradientColors
+        gradientAngle: root.heroGradientAngle
+        heroImagePath: root.heroImagePath
+        coverPath: root.customCoverPath
+        mosaicArtworkPaths: root.mosaicArtworkPaths
+        autoColors: root.autoHeroColors
     }
 
     RowLayout {
@@ -62,16 +70,23 @@ Item {
         anchors.bottomMargin: MichiSpacing.lg
         spacing: MichiSpacing.xl
 
-        // Dominant square cover, 136px, soft rounded corners, faint shadow
+        // Dominant responsive cover: 160–180px when the viewport permits.
         Item {
-            Layout.preferredWidth: 136
-            Layout.preferredHeight: 136
+            id: coverStage
+            Layout.preferredWidth: root.coverSize
+            Layout.preferredHeight: root.coverSize
+            scale: 0.985
+            Behavior on scale {
+                enabled: !MichiAccessibility.reducedMotion
+                NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic }
+            }
+            Component.onCompleted: scale = 1
 
             // Very faint diffuse shadow — separation, not glow
             Rectangle {
                 anchors.fill: parent
                 anchors.margins: -6
-                radius: 16
+                radius: MichiRadius.floating
                 color: MichiSemanticColors.glassShadowFar
                 opacity: 0.55
                 z: -1
@@ -82,7 +97,7 @@ Item {
                 customCoverPath: root.customCoverPath
                 mosaicArtworkPaths: root.mosaicArtworkPaths
                 fallbackText: root.playlistName
-                radius: 10
+                radius: MichiRadius.lg
             }
 
             // Quiet "change cover" affordance (hover / keyboard focus)
@@ -90,11 +105,11 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.changeCoverRequested()
+                onClicked: root.customizeAppearanceRequested()
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: 10
+                    radius: MichiRadius.lg
                     color: MichiPalette.obsidianDeep
                     opacity: parent.containsMouse || coverFocus.activeFocus ? 0.55 : 0
                     Behavior on opacity {
@@ -116,10 +131,10 @@ Item {
                     focusPolicy: Qt.StrongFocus
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Button
-                    Accessible.name: qsTr("Change playlist cover")
-                    Keys.onReturnPressed: root.changeCoverRequested()
-                    Keys.onEnterPressed: root.changeCoverRequested()
-                    Keys.onSpacePressed: root.changeCoverRequested()
+                    Accessible.name: qsTr("Customize playlist appearance")
+                    Keys.onReturnPressed: root.customizeAppearanceRequested()
+                    Keys.onEnterPressed: root.customizeAppearanceRequested()
+                    Keys.onSpacePressed: root.customizeAppearanceRequested()
                 }
                 MichiFocusRing { visualFocus: coverFocus.activeFocus && MichiAccessibility.keyboardMode }
             }
@@ -153,16 +168,7 @@ Item {
             // Compact secondary metadata (11-12px per spec)
             MichiText {
                 Layout.fillWidth: true
-                text: {
-                    var parts = []
-                    if (root.trackCount > 0)
-                        parts.push(root.trackCount + (root.trackCount === 1 ? qsTr(" song") : qsTr(" songs")))
-                    if (root.durationMs > 0)
-                        parts.push(MichiFormat.formatHoursMinutes(root.durationMs))
-                    if (parts.length === 0)
-                        parts.push(qsTr("Empty playlist"))
-                    return parts.join(" · ")
-                }
+                text: MichiFormat.formatPlaylistSummary(root.trackCount, root.durationMs)
                 role: "technical"
                 color: MichiPalette.textSecondary
                 opacity: 0.65
@@ -196,6 +202,15 @@ Item {
                     accessibleName: qsTr("Play playlist now")
                     onClicked: root.playRequested()
                 }
+                MichiButton {
+                    text: parent.width < 820 ? "" : qsTr("Customize")
+                    iconName: "sliders"
+                    iconOnly: parent.width < 820
+                    variant: "ghost"
+                    implicitHeight: MichiMetrics.controlSmall
+                    accessibleName: qsTr("Customize playlist appearance")
+                    onClicked: root.customizeAppearanceRequested()
+                }
                 MichiIconButton {
                     implicitWidth: 28
                     implicitHeight: 28
@@ -205,7 +220,6 @@ Item {
                     onClicked: root.shuffleRequested()
                 }
                 MichiButton {
-                    visible: root.hasTracks
                     // icon-only on narrow windows so the action row never
                     // crowds the title block
                     text: parent.width < 700 ? "" : qsTr("Add tracks")
@@ -215,15 +229,6 @@ Item {
                     implicitWidth: parent.width < 700 ? 30 : undefined
                     accessibleName: qsTr("Add tracks from library")
                     onClicked: root.addTracksRequested()
-                }
-                MichiIconButton {
-                    implicitWidth: 28
-                    implicitHeight: 28
-                    iconName: "pin"
-                    selected: root.pinned
-                    accessibleName: root.pinned
-                        ? qsTr("Unpin playlist") : qsTr("Pin playlist")
-                    onClicked: root.togglePinRequested()
                 }
                 MichiIconButton {
                     implicitWidth: 28

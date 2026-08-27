@@ -13,19 +13,33 @@ by new code.
 """
 
 import logging
+import math
+import re
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 from michi.application.ports import PlaylistArtworkStorePort, PlaylistsPort
 from michi.domain.playlist import (
     MAX_RECENT_PLAYLISTS,
     Playlist,
+    PlaylistAppearance,
+    PlaylistHeroMode,
     PlaylistNavigationState,
     new_playlist_id,
     normalize_navigation_state,
 )
 
 logger = logging.getLogger(__name__)
+
+_HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+
+def _canonical_color(value: str) -> str:
+    color = value.strip()
+    if not _HEX_COLOR.fullmatch(color):
+        raise ValueError("color must use #RRGGBB format")
+    return color.upper()
 
 
 class PlaylistService:
@@ -133,6 +147,7 @@ class PlaylistService:
             return
         if self._artwork_store is not None:
             self._artwork_store.delete_cover(playlist_id)
+            self._artwork_store.delete_hero(playlist_id)
         del self._playlists[index]
         # Prune navigation metadata (never dangling ids).
         self._nav = PlaylistNavigationState(
@@ -157,12 +172,7 @@ class PlaylistService:
         ):
             raise ValueError(f"playlist already exists: {cleaned!r}")
         playlist = self._playlists[index]
-        self._playlists[index] = Playlist(
-            playlist_id=playlist.playlist_id,
-            name=cleaned,
-            track_paths=playlist.track_paths,
-            custom_cover_path=playlist.custom_cover_path,
-        )
+        self._playlists[index] = replace(playlist, name=cleaned)
         self._persist()
         self._notify()
 
@@ -174,11 +184,8 @@ class PlaylistService:
         playlist = self._playlists[index]
         if path in playlist.track_paths:
             return  # dedupe
-        self._playlists[index] = Playlist(
-            playlist_id=playlist.playlist_id,
-            name=playlist.name,
-            track_paths=(*playlist.track_paths, path),
-            custom_cover_path=playlist.custom_cover_path,
+        self._playlists[index] = replace(
+            playlist, track_paths=(*playlist.track_paths, path)
         )
         self._persist()
         self._notify()
@@ -192,12 +199,7 @@ class PlaylistService:
             return
         paths = list(playlist.track_paths)
         del paths[index]
-        self._playlists[playlist_index] = Playlist(
-            playlist_id=playlist.playlist_id,
-            name=playlist.name,
-            track_paths=tuple(paths),
-            custom_cover_path=playlist.custom_cover_path,
-        )
+        self._playlists[playlist_index] = replace(playlist, track_paths=tuple(paths))
         self._persist()
         self._notify()
 
@@ -212,12 +214,7 @@ class PlaylistService:
         to_index = max(0, min(to_index, len(paths) - 1))
         track = paths.pop(from_index)
         paths.insert(to_index, track)
-        self._playlists[playlist_index] = Playlist(
-            playlist_id=playlist.playlist_id,
-            name=playlist.name,
-            track_paths=tuple(paths),
-            custom_cover_path=playlist.custom_cover_path,
-        )
+        self._playlists[playlist_index] = replace(playlist, track_paths=tuple(paths))
         self._persist()
         self._notify()
 
@@ -233,12 +230,7 @@ class PlaylistService:
                 return None
             managed_path = stored
         playlist = self._playlists[index]
-        self._playlists[index] = Playlist(
-            playlist_id=playlist.playlist_id,
-            name=playlist.name,
-            track_paths=playlist.track_paths,
-            custom_cover_path=managed_path,
-        )
+        self._playlists[index] = replace(playlist, custom_cover_path=managed_path)
         self._persist()
         self._notify()
         return managed_path
@@ -251,14 +243,105 @@ class PlaylistService:
         if self._artwork_store is not None:
             self._artwork_store.delete_cover(playlist_id)
         playlist = self._playlists[index]
-        self._playlists[index] = Playlist(
-            playlist_id=playlist.playlist_id,
-            name=playlist.name,
-            track_paths=playlist.track_paths,
-            custom_cover_path="",
-        )
+        self._playlists[index] = replace(playlist, custom_cover_path="")
         self._persist()
         self._notify()
+
+    # ------------------------------------------------------------------
+    # Per-playlist hero appearance. Cover and hero mutations are strictly
+    # independent; every update uses dataclasses.replace so future metadata
+    # cannot disappear during an unrelated playlist mutation.
+    # ------------------------------------------------------------------
+
+    def _replace_appearance(
+        self, playlist_id: str, appearance: PlaylistAppearance
+    ) -> bool:
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return False
+        self._playlists[index] = replace(self._playlists[index], appearance=appearance)
+        self._persist()
+        self._notify()
+        return True
+
+    def _delete_hero_asset(self, playlist_id: str) -> None:
+        if self._artwork_store is not None:
+            self._artwork_store.delete_hero(playlist_id)
+
+    def set_hero_auto(self, playlist_id: str) -> bool:
+        playlist = self.get_playlist(playlist_id)
+        if playlist is None:
+            return False
+        self._delete_hero_asset(playlist_id)
+        return self._replace_appearance(
+            playlist_id,
+            replace(
+                playlist.appearance,
+                hero_mode=PlaylistHeroMode.AUTO,
+                hero_image_path="",
+            ),
+        )
+
+    def set_hero_solid(self, playlist_id: str, color: str) -> bool:
+        playlist = self.get_playlist(playlist_id)
+        if playlist is None:
+            return False
+        canonical = _canonical_color(color)
+        self._delete_hero_asset(playlist_id)
+        return self._replace_appearance(
+            playlist_id,
+            replace(
+                playlist.appearance,
+                hero_mode=PlaylistHeroMode.SOLID,
+                hero_solid_color=canonical,
+                hero_image_path="",
+            ),
+        )
+
+    def set_hero_gradient(
+        self, playlist_id: str, colors: tuple[str, ...], angle: float
+    ) -> bool:
+        playlist = self.get_playlist(playlist_id)
+        if playlist is None:
+            return False
+        if len(colors) not in (2, 3):
+            raise ValueError("hero gradient requires two or three colors")
+        canonical_colors = tuple(_canonical_color(color) for color in colors)
+        numeric_angle = float(angle)
+        if not math.isfinite(numeric_angle):
+            raise ValueError("hero gradient angle must be finite")
+        normalized_angle = numeric_angle % 360.0
+        self._delete_hero_asset(playlist_id)
+        return self._replace_appearance(
+            playlist_id,
+            replace(
+                playlist.appearance,
+                hero_mode=PlaylistHeroMode.GRADIENT,
+                hero_gradient_colors=canonical_colors,
+                hero_gradient_angle=normalized_angle,
+                hero_image_path="",
+            ),
+        )
+
+    def set_custom_hero_image(
+        self, playlist_id: str, image_path: Path | str
+    ) -> str | None:
+        playlist = self.get_playlist(playlist_id)
+        if playlist is None:
+            return None
+        managed_path = str(image_path)
+        if self._artwork_store is not None:
+            stored = self._artwork_store.store_hero(playlist_id, image_path)
+            if stored is None:
+                return None
+            managed_path = stored
+        appearance = replace(
+            playlist.appearance,
+            hero_mode=PlaylistHeroMode.IMAGE,
+            hero_image_path=managed_path,
+        )
+        self._replace_appearance(playlist_id, appearance)
+        return managed_path
 
     def pin_playlist(self, playlist_id: str) -> None:
         if self._find_by_id(playlist_id) < 0:
