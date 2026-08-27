@@ -119,7 +119,8 @@ Item {
         audioEngineStatusSummary: audioEngine.statusSummary
         audioEngineSwitchReady: audioEngine.engineSwitchReady
         audioEngineSwitchBlocker: audioEngine.engineSwitchBlocker
-        onPlayPauseRequested: playback.status === "playing" ? playback.pause() : playback.play()
+        currentPath: playback.currentPath
+        onPlayPauseRequested: playback.toggle_play_pause()
         onPreviousRequested: playbackSession.previous_track()
         onNextRequested: playbackSession.next_track()
         onSeekRequested: seconds => playback.seek_seconds(seconds)
@@ -200,6 +201,14 @@ Item {
         // metaobject (verified: switch_failed) — the QML handler must use
         // onSwitch_failed, not onSwitchFailed (camelCase never matches).
         function onSwitch_failed(engineId, message) {
+            root.showToast(message, "error")
+        }
+    }
+    Connections {
+        target: playback
+        // PLAYBACK-CONTROLS-R1: command failures reach ToastHost — a
+        // click that "does nothing" must never hide the diagnostic.
+        function onCommand_failed(command, message) {
             root.showToast(message, "error")
         }
     }

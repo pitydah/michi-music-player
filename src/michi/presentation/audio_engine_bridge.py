@@ -94,6 +94,8 @@ class AudioEngineBridge(QObject):
         registry: AudioEngineRegistry,
         selection_coordinator: AudioEngineSelectionCoordinator,
         playback_quiescent: Callable[[], bool] | None = None,
+        playback_subscribe: Callable[[Callable[[], None]], None] | None = None,
+        playback_unsubscribe: Callable[[Callable[[], None]], None] | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -102,9 +104,19 @@ class AudioEngineBridge(QObject):
         # P1-02: READ-ONLY quiescence query (never an authority — the query
         # reuses PlaybackService.is_engine_switch_quiescent through the
         # composition root; the bridge never duplicates the logic).
+        # PLAYBACK-CONTROLS-R1 (P2): engineSwitchReady is a PLAYBACK truth —
+        # the projection must re-evaluate when Playback changes, not only
+        # when AudioEngineState changes. The bridge subscribes to the
+        # playback service notifications when the query is wired.
         self._playback_quiescent = playback_quiescent
-        self._coordinator = selection_coordinator
+        self._playback_subscribe = playback_subscribe
+        self._playback_unsubscribe = playback_unsubscribe
+        self._playback_changed_cb = None
         self._disposed = False
+        if playback_subscribe is not None:
+            self._playback_changed_cb = self._on_playback_changed
+            playback_subscribe(self._playback_changed_cb)
+        self._coordinator = selection_coordinator
         # Controlled availability snapshot — probed on demand, never on
         # every QML property evaluation. Contains DESCRIPTOR FACTS ONLY
         # (no selected/active/switching — those are composed live from
@@ -128,6 +140,19 @@ class AudioEngineBridge(QObject):
             return
         self._disposed = True
         self._service.unsubscribe_changed(self._on_state_changed)
+        if (
+            self._playback_changed_cb is not None
+            and self._playback_unsubscribe is not None
+        ):
+            self._playback_unsubscribe(self._playback_changed_cb)
+            self._playback_changed_cb = None
+
+    def _on_playback_changed(self) -> None:
+        """PLAYBACK-CONTROLS-R1: a Playback change can flip
+        engineSwitchReady/engineSwitchBlocker — notify the QML projection
+        (the coordinator lease remains the real authority)."""
+        if not self._disposed:
+            self.state_changed.emit()
 
     def _on_state_changed(self) -> None:
         if not self._disposed:

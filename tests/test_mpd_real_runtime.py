@@ -289,6 +289,34 @@ def _wait_real(port, predicate, timeout=8.0):
     return predicate()
 
 
+def test_real_play_pause_resume_command_sequence(qapp, tmp_path):
+    """PLAYBACK-CONTROLS-R1: the real MPD transport maps the three UI
+    intents to playid, pause 1 and pause 0 exactly once and in order."""
+    _require_mpd()
+
+    port, wav = _real_port_and_wav(tmp_path)
+    try:
+        port.load(wav)
+        assert port._client is not None
+        assert port._song_id is not None
+        commands = []
+        original_command = port._client._command
+
+        def recording_command(*args):
+            if args and args[0] in {"playid", "pause"}:
+                commands.append(" ".join(args))
+            return original_command(*args)
+
+        port._client._command = recording_command
+        port.play()
+        port.pause()
+        port.resume()
+
+        assert commands == [f"playid {port._song_id}", "pause 1", "pause 0"]
+    finally:
+        port.close()
+
+
 def test_real_mpd_audio_port_natural_eos(qapp, tmp_path):
     """MPDAudioPort real: fin natural → callbacks [PLAYING, STOPPED, EOM]."""
     _require_mpd()

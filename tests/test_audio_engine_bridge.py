@@ -16,6 +16,7 @@ from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.playback_service import PlaybackService
 from michi.application.settings_service import SettingsService
 from michi.domain.audio_engine import AudioEngineId
+from michi.domain.playback import PlaybackStatus
 from michi.presentation.audio_engine_bridge import AudioEngineBridge
 from tests.test_m11_3f_engine_selection import FakeProvider, FakeSettingsRepository
 
@@ -37,7 +38,14 @@ def _graph():
         playback=playback,
         settings=settings,
     )
-    bridge = AudioEngineBridge(service, registry, coordinator)
+    bridge = AudioEngineBridge(
+        service,
+        registry,
+        coordinator,
+        playback_quiescent=playback.is_engine_switch_quiescent,
+        playback_subscribe=playback.subscribe_changed,
+        playback_unsubscribe=playback.unsubscribe_changed,
+    )
     return service, registry, coordinator, bridge, qt, gst, mpd, router, playback
 
 
@@ -469,6 +477,28 @@ class TestBridgeLifecycle:
         service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
         assert notified == []  # no callback after dispose
         bridge.dispose()  # idempotent
+
+    def test_playback_notifications_refresh_readiness_and_unsubscribe(self):
+        _, _, _, bridge, _, _, _, _, playback = _graph()
+        notified = []
+        bridge.state_changed.connect(lambda: notified.append(bridge.engineSwitchReady))
+
+        assert bridge.engineSwitchReady is True
+        playback._intent = True
+        playback._accepted = True
+        playback._on_playback_state_changed(PlaybackStatus.PLAYING)
+        assert bridge.engineSwitchReady is False
+        assert notified == [False]
+
+        playback._intent = False
+        playback._on_playback_state_changed(PlaybackStatus.STOPPED)
+        assert bridge.engineSwitchReady is True
+        assert notified == [False, True]
+
+        bridge.dispose()
+        playback._intent = True
+        playback._on_playback_state_changed(PlaybackStatus.PLAYING)
+        assert notified == [False, True]
 
     def test_probe_does_not_open_provider(self):
         _, registry, _, bridge, qt, gst, mpd, *_ = _graph()

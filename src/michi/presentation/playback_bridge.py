@@ -1,12 +1,46 @@
 """QML bridge for playback — observes PlaybackService."""
 
+import logging
+from collections.abc import Callable
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
-from michi.application.playback_service import PlaybackService
+from michi.application.playback_service import (
+    EngineSwitchLeaseHeldError,
+    PlaybackService,
+)
+from michi.application.ports import (
+    AudioLoadError,
+    AudioTransportError,
+    AudioTransportUnavailableError,
+)
 from michi.domain.library import make_album_key, resolve_album_artist
 from michi.domain.playback import PlaybackStatus
+
+logger = logging.getLogger(__name__)
+
+
+def _friendly_command_message(exc: Exception) -> str:
+    """P1-3: semantic user copy for playback command failures — never raw
+    backend internals."""
+    if isinstance(exc, EngineSwitchLeaseHeldError):
+        return "Michi is changing the audio engine. Try again in a moment."
+    if isinstance(exc, AudioTransportUnavailableError):
+        return "Playback is not available right now."
+    if isinstance(exc, AudioTransportError):
+        return "The audio engine rejected the command."
+    if isinstance(exc, AudioLoadError):
+        return "The selected track could not be loaded."
+    return "Playback could not complete the command."
+
+
+_EXPECTED_COMMAND_ERRORS = (
+    EngineSwitchLeaseHeldError,
+    AudioTransportError,
+    AudioLoadError,
+)
 
 
 class PlaybackBridge(QObject):
@@ -19,6 +53,10 @@ class PlaybackBridge(QObject):
     }
 
     state_changed = Signal()
+    # PLAYBACK-CONTROLS-R1: command failures surface to the user (ToastHost
+    # via AppShell) — a click that "does nothing" must never hide the
+    # diagnostic (lease held, transport unavailable, backend rejection).
+    command_failed = Signal(str, str)  # (command, friendlyMessage)
 
     def __init__(
         self,
@@ -39,6 +77,8 @@ class PlaybackBridge(QObject):
             self._library_service.unsubscribe_changed(self._on_service_changed)
 
     def _on_service_changed(self) -> None:
+        # P2-2 telemetry: canonical state transitions (debug)
+        logger.debug("playback state -> %s", self._service.state.status.value)
         self.state_changed.emit()
 
     def _get_status(self) -> str:
@@ -121,33 +161,70 @@ class PlaybackBridge(QObject):
     muted = Property(bool, _get_muted, notify=state_changed)
     errorMessage = Property(str, _get_error, notify=state_changed)
 
+    def _command(self, name: str, fn: Callable[[], None]) -> None:
+        """P1-3: run a playback command; typed failures surface via
+        command_failed (friendly) + logged technical detail. Unexpected
+        exceptions are NEVER swallowed."""
+        # P2-2 telemetry: UI intent → service (debug diagnostics)
+        logger.debug("playback UI intent: %s", name)
+        try:
+            fn()
+        except _EXPECTED_COMMAND_ERRORS as exc:
+            self.command_failed.emit(name, _friendly_command_message(exc))
+            logger.warning("playback command %s failed: %s", name, exc, exc_info=True)
+        except Exception as exc:
+            self.command_failed.emit(name, _friendly_command_message(exc))
+            logger.exception("unexpected playback command %s failure", name)
+            raise
+        else:
+            logger.debug("playback command %s accepted", name)
+
     @Slot()
     def play(self) -> None:
-        self._service.play()
+        self._command("play", self._service.play)
 
     @Slot()
     def pause(self) -> None:
-        self._service.pause()
+        self._command("pause", self._service.pause)
 
     @Slot()
     def resume(self) -> None:
-        self._service.resume()
+        self._command("resume", self._service.resume)
+
+    @Slot()
+    def toggle_play_pause(self) -> None:
+        """PLAYBACK-CONTROLS-R1: canonical three-state toggle — QML never
+        knows transport semantics.
+
+        STOPPED → play()
+        PLAYING → pause()
+        PAUSED  → resume()
+
+        (The previous QML ternary PLAYING ? pause : play sent playid again
+        for a paused MPD instead of pause 0.)"""
+        status = self._service.state.status
+        if status is PlaybackStatus.PLAYING:
+            self.pause()
+        elif status is PlaybackStatus.PAUSED:
+            self.resume()
+        else:
+            self.play()
 
     @Slot()
     def stop(self) -> None:
-        self._service.stop()
+        self._command("stop", self._service.stop)
 
     @Slot(int)
     def seek_seconds(self, seconds: int) -> None:
-        self._service.seek(seconds * 1000)
+        self._command("seek", lambda: self._service.seek(seconds * 1000))
 
     @Slot(int)
     def set_volume(self, value: int) -> None:
-        self._service.set_volume(value)
+        self._command("set_volume", lambda: self._service.set_volume(value))
 
     @Slot(bool)
     def set_muted(self, muted: bool) -> None:
-        self._service.set_muted(muted)
+        self._command("set_muted", lambda: self._service.set_muted(muted))
 
     # M4-R1 final seal: track SELECTION bypass removed — a new track is
     # selected ONLY through PlaybackSessionService (SINGLE context). The

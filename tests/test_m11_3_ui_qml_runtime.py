@@ -59,6 +59,29 @@ def _graph():
     return service, registry, coordinator, bridge, qt, gst, mpd
 
 
+NPB_HARNESS = """
+import QtQuick
+import QtQuick.Controls.Basic
+import "../player"
+import "../theme"
+
+Window {
+    id: harness
+    visible: true
+    width: 900
+    height: 700
+    color: "#000000"
+
+    NowPlayingBar {
+        anchors.fill: parent
+        currentPath: "/m/a.flac"
+        status: playback.status
+        onPlayPauseRequested: playback.toggle_play_pause()
+    }
+}
+"""
+
+
 POPUP_HARNESS = """
 import QtQuick
 import QtQuick.Controls.Basic
@@ -696,3 +719,126 @@ class TestSelectorClickPathGolden:
         assert settings.load().audio_engine_id == AudioEngineId.GSTREAMER
         # QML live state reflects it
         assert service.state.switching_to is None
+
+
+class TestPlayPauseButtonGolden:
+    """PLAYBACK-CONTROLS-R1 P1-2: the REAL playPauseButton click cycles
+    STOPPED→play→PLAYING→pause→PAUSED→resume→PLAYING through the REAL
+    QML wiring (playPauseRequested → playback.toggle_play_pause)."""
+
+    def test_button_cycles_three_states(self, qapp):
+        import time
+
+        from PySide6.QtCore import QEventLoop, QUrl
+        from PySide6.QtGui import QAccessible
+        from PySide6.QtQml import QQmlComponent, QQmlEngine
+        from PySide6.QtTest import QTest
+        from PySide6.QtWidgets import QApplication
+
+        from michi.application.audio_engine_registry import AudioEngineRegistry
+        from michi.application.audio_engine_selection_coordinator import (
+            AudioEngineSelectionCoordinator,
+        )
+        from michi.application.audio_engine_service import AudioEngineService
+        from michi.application.audio_transport_router import AudioTransportRouter
+        from michi.application.playback_service import PlaybackService
+        from michi.application.settings_service import SettingsService
+        from michi.domain.audio_engine import AudioEngineId
+        from michi.domain.playback import PlaybackStatus
+        from michi.presentation.audio_engine_bridge import AudioEngineBridge
+        from michi.presentation.playback_bridge import PlaybackBridge
+        from tests.conftest import FakeAudioPort
+        from tests.test_m11_3f_engine_selection import (
+            FakeProvider,
+            FakeSettingsRepository,
+        )
+
+        audio = FakeAudioPort()
+        commands = []
+        for command_name in ("play", "pause", "resume"):
+            original = getattr(audio, command_name)
+
+            def recording_command(original=original, command_name=command_name):
+                commands.append(command_name)
+                original()
+
+            setattr(audio, command_name, recording_command)
+        qt = FakeProvider(AudioEngineId.QT_MULTIMEDIA)
+        registry = AudioEngineRegistry([qt])
+        service = AudioEngineService(registry)
+        router = AudioTransportRouter()
+        playback = PlaybackService(audio)
+        settings = SettingsService(FakeSettingsRepository())
+        coordinator = AudioEngineSelectionCoordinator(
+            engine_service=service,
+            registry=registry,
+            router=router,
+            playback=playback,
+            settings=settings,
+        )
+        bridge = AudioEngineBridge(service, registry, coordinator)
+        pb = PlaybackBridge(playback)
+        qt_port = qt.open()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        playback.load_and_play(Path("/m/a.flac"))
+        playback._on_media_accepted(Path("/m/a.flac"))
+        commands.clear()
+
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML_DIR))
+        engine.rootContext().setContextProperty("audioEngine", bridge)
+        engine.rootContext().setContextProperty("playback", pb)
+        comp = QQmlComponent(engine)
+        comp.setData(
+            NPB_HARNESS.encode(),
+            QUrl.fromLocalFile(str(QML_DIR / "player/harness.qml")),
+        )
+        window = comp.create()
+        window.show()
+        for _ in range(20):
+            QApplication.processEvents(QEventLoop.AllEvents, 20)
+
+        def click():
+            btn = _by_name(window, "playPauseButton")
+            assert btn is not None, "playPauseButton MISSING"
+            assert btn.property("enabled") is True
+            btn.forceActiveFocus()
+            QTest.keyClick(window, Qt.Key_Space)
+            for _ in range(10):
+                QApplication.processEvents(QEventLoop.AllEvents, 20)
+                time.sleep(0.01)
+
+        # STOPPED → click → play exactly once
+        click()
+        assert audio.state == "playing"
+        assert commands == ["play"]
+        assert playback._intent is True
+        # backend truth → PLAYING → button shows pause (icon)
+        playback._on_playback_state_changed(PlaybackStatus.PLAYING)
+        assert pb.status == "playing"
+        assert _by_name(window, "nowPlayingBar").property("status") == "playing"
+        play_pause_button = _by_name(window, "playPauseButton")
+        accessible = QAccessible.queryAccessibleInterface(play_pause_button)
+        assert accessible.text(QAccessible.Text.Name) == "Pause"
+        # PLAYING → click → pause exactly once
+        click()
+        assert audio.state == "paused"
+        assert commands == ["play", "pause"]
+        playback._on_playback_state_changed(PlaybackStatus.PAUSED)
+        assert pb.status == "paused"
+        assert _by_name(window, "nowPlayingBar").property("status") == "paused"
+        assert accessible.text(QAccessible.Text.Name) == "Play"
+        # PAUSED → click → resume exactly once (NOT play)
+        click()
+        assert audio.state == "playing"
+        assert commands == ["play", "pause", "resume"]
+        playback._on_playback_state_changed(PlaybackStatus.PLAYING)
+        assert pb.status == "playing"
+        # and the cycle continues
+        click()
+        assert audio.state == "paused"
+        assert commands == ["play", "pause", "resume", "pause"]
+        window.close()
+        pb.dispose()
+        bridge.dispose()

@@ -668,6 +668,8 @@ class ApplicationContainer:
             playback_quiescent=lambda: (
                 playback.is_engine_switch_quiescent() if playback is not None else True
             ),
+            playback_subscribe=lambda cb: playback.subscribe_changed(cb),
+            playback_unsubscribe=lambda cb: playback.unsubscribe_changed(cb),
         )
         lb = graph.bridge
         # M8-R1F: application-level coordination for the OPEN PLAYLIST

@@ -38,7 +38,10 @@ Item {
     property string audioEngineStatusSummary: ""
     property bool audioEngineSwitchReady: true
     property string audioEngineSwitchBlocker: ""
-
+    // PLAYBACK-CONTROLS-R1 (P2): the Play affordance derives from MEDIA
+    // truth (committed logical track), not from presentation text.
+    property string currentPath: ""
+    readonly property bool hasPlayableMedia: root.currentPath !== ""
     readonly property bool hasTrack: trackTitle.length > 0
     readonly property bool compact: width < 1320
     readonly property bool narrow: width < 980
@@ -298,7 +301,7 @@ Item {
                         accessibleName: root.shuffleEnabled
                             ? qsTr("Disable shuffle") : qsTr("Enable shuffle")
                         selected: root.shuffleEnabled
-                        enabled: root.hasTrack
+                        enabled: root.hasPlayableMedia
                         onClicked: root.shuffleRequested(!root.shuffleEnabled)
                     }
                     MichiIconButton {
@@ -314,7 +317,7 @@ Item {
                         objectName: "playPauseButton"
                         Layout.preferredWidth: 55
                         Layout.preferredHeight: 54
-                        enabled: root.hasTrack
+                        enabled: root.hasPlayableMedia
                         focusPolicy: Qt.StrongFocus
                         hoverEnabled: true
                         Accessible.role: Accessible.Button
@@ -445,7 +448,7 @@ Item {
                             enabled: !MichiAccessibility.reducedMotion
                             NumberAnimation { duration: MichiMotion.micro }
                         }
-                        enabled: root.hasTrack
+                        enabled: root.hasPlayableMedia
                         onClicked: root.repeatRequested(nextRepeatMode(root.repeatMode))
                     }
                 }
