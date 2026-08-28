@@ -9,7 +9,7 @@ itself has no alternate), fatal runtime engine loss convergence, safe
 explicit-switch recovery, Playback/Queue/resume/restart convergence,
 fallback_from semantics, no silent resume, no background polling, shutdown
 disables recovery before teardown; M11.3F:
-quiescent engine selection + persistence — persisted SELECTED preference,
+semantic engine selection + persistence — persisted SELECTED preference,
 absolute final lifecycle seal: active-provider-aware shutdown (never
 hard-coded Qt) with ownership RETAINED on failed teardown (retry-safe),
 source unbind failure preserves active identity CONSERVATIVELY as FAILED
@@ -18,10 +18,11 @@ unbind exception), synchronous switch reentrancy rejected (single
 transaction guard), still-bound target never closed, router physical
 identity == state active identity, first-error-wins preserved, no fallback;
 (audio_engine_id, strict decode, field-level malformed fallback to Qt), explicit
-switch transaction (preflight can_activate → quiescent → stop → revalidate →
-persist-before-destructive → closing → router unbind → source close → invalidate
-old backend acceptance → initializing → target open → bind+validate → restore
-volume/mute → READY), SELECTED != ACTIVE truthful, no fallback/no reopen/no
+switch transaction (semantic plan → atomic playback snapshot/lease →
+persist-before-destructive → controlled stop when PLAYING/PAUSED → closing →
+router unbind → source close → invalidate old backend acceptance → initializing →
+target open → bind+validate → restore volume/mute → READY → stopped-media
+rehydration), SELECTED != ACTIVE truthful, no fallback/no reopen/no
 auto-select (M11.3G owns recovery); F restart contract: selected restored,
 active stays Qt READY until explicit switching; M11.3E:
 runtime availability truth seal — fresh side-effect-free probes, implemented vs
@@ -52,12 +53,12 @@ the M11.3 contracts and records implementation status for each subphase.
 | M11.3A domain contracts | IMPLEMENTED / TESTED |
 | M11.3A AudioTransportRouter | IMPLEMENTED / TESTED — **PRODUCTIVELY WIRED (M11.3B)** |
 | M11.3A registry | IMPLEMENTED / TESTED |
-| M11.3A AudioEngineService | IMPLEMENTED / TESTED — state authority; selection/switching SEALED in M11.3F (explicit quiescent switch transaction via AudioEngineSelectionCoordinator, SELECTED != ACTIVE, single-transaction reentrancy guard) |
+| M11.3A AudioEngineService | IMPLEMENTED / TESTED — state authority; selection/switching SEALED in M11.3F/R2 (semantic plans and atomic switch transaction via AudioEngineSelectionCoordinator, SELECTED != ACTIVE, single-transaction reentrancy guard) |
 | Qt provider | IMPLEMENTED — **PRODUCTIVE REFERENCE ENGINE (M11.3B + M11.3B-R1)**; single canonical provider (registry identity), transactional startup, backend ownership + exception-safe close |
 | GStreamer provider | **IMPLEMENTED (M11.3C + M11.3C-R1 + M11.3C-R2 + M11.3C-R3 + M11.3C-R4 + M11.3C-R5 + M11.3C-R5.1 + M11.3C-R6)** — R4: bus watch lifecycle seal — Gst.Bus.remove_watch() con contrato real (SIN watch-id; el id de add_watch es bookkeeping only), falla de remoción truthfully observable (sin suppress; load no arma B; close lo compone en first-error-wins), ciclo real repetido A→B→C→close verificado (add 3 / remove 3 / 0 activos). R6: transport lifecycle & arm transaction seal — stop() con dos semánticas (candidato pendiente = cancelación; fuente aceptada = transporte detenido con replay sin load), EOS converge a STOPPED antes de EOM (replay same-source, late-EOS guardado), ARM de pipeline exception-atomic (rollback + excepción original primaria), convergencia STOPPED tras teardown del source activo. R5: terminal cleanup seal — close() best-effort (un fallo del bus watch NUNCA salta el request NULL; pipeline liberado solo con NULL OK; timer/pump siempre continúan), orden de errores en preroll fallido (NULL cleanup PRIMARIO; detach SECUNDARIO que nunca lo reemplaza). R3: load() transactional (old pipeline canonical hasta NULL exitoso; replacement fallido preserva pipeline/bus/generation/intención y nunca crea B), preroll cleanup failure-atomic (NULL fallido retiene ownership + raise), close first-error-wins (teardown antes que pump), bus watch real via bus.add_watch (create_watch+set_callback perdía TODO mensaje real), smoke real truthful (SKIP solo con dependency probada ausente; timeout con deps = FAIL). R2: ASYNC_DONE acepta sin publicar PLAYING (estado solo por STATE_CHANGED), state requests failure-atomic (preroll/play/pause/stop/teardown), pump join-timeout retiene ownership, real adapter smoke (fakesink), probe real ejercitado por monkeypatch.  operational GStreamerAudioPort (playbin3), lazy GI runtime; R1: symbolic Gst.State semantics (no raw ints), ONE GLib MainContext/MainLoop/pump per port; position timer as explicit GSource, bus watch via Gst.Bus.add_watch()/remove_watch(), generation-aware TYPE-BASED provenance (child-element errors accepted; stale generations ignored), truthful probe (GI + Gst + playbin3 factory); availability runtime-dependent; NOT default |
 | MPD provider | **IMPLEMENTED / TESTED / REAL-RUNTIME VERIFIED / FROZEN (M11.3D)** — managed private child process, private Unix socket, in-repo protocol client, MPDAudioPort transport adapter, synchronous acceptance, honest crash/transport/status.error convergence, real MPD 0.24.14 startup + natural EOS + explicit stop verified. No engine switching/persistence/fallback (M11.3E/F/G). |
 | Engine availability runtime | DONE / TESTED / FROZEN (M11.3E) — fresh side-effect-free probes, canonical three-engine snapshot, available != implemented, activation blocker priority, no state mutation |
-| Selection / persistence | DONE / TESTED / FROZEN (M11.3F) — persisted SELECTED preference, quiescent switching, backend acceptance invalidation, volume/mute continuity, no fallback |
+| Selection / persistence | DONE / TESTED / FROZEN (M11.3F + Audio Engine Selector Corrective Seal R2) — semantic plans, preference-only updates without runtime churn, atomic PLAYING/PAUSED/STOPPED switching, bounded stopped-media rehydration, backend acceptance invalidation, volume/mute continuity, no fallback |
 | Failure convergence | DONE / TESTED / FROZEN (M11.3G) |
 | M11.3-UI presentation | DONE / TESTED / FROZEN (M11.3-UI + R1) — AudioEngineBridge (single UI authority over the sealed coordinator; no infra imports), NowPlayingBar quick selector + AudioEnginePopup (quick surface only, live-bound, real keyboard focus, reduced-motion gated), Settings > Audio Engine section (Preferred vs In use truth, fallback explanation, availability honesty, progressive technical details, no fake audiophile knobs), output device button preserved + disabled (DAC deferred to M11.4). R2 authorized reopening (MPD mixer compatibility correction): see below. |
 
@@ -75,15 +76,17 @@ PlaybackService         PlaybackCoordinator
 
 The SAME router instance is injected into both consumers; the provider owns
 the concrete backend. Since M11.3F the router may be productively bound to
-Qt, GStreamer or MPD: explicit quiescent switching (AudioEngineSelectionCoordinator)
+Qt, GStreamer or MPD: explicit semantic switching (AudioEngineSelectionCoordinator)
 transfers ownership, invalidates old-backend acceptance and restores
 volume/mute; shutdown releases the ACTUALLY active provider (ownership
 retained on failed teardown). All three adapters DONE / TESTED / FROZEN.
 
-**SWITCH ORDER (recorded for M11.3F, validated for Qt in M11.3B):**
-STOP → router detach/unbind → provider close → target provider open →
-router bind → validation. The router MUST detach BEFORE the provider closes;
-never close a provider while the router remains intentionally attached.
+**SWITCH ORDER (M11.3F + selector corrective seal R2):**
+PLAN → atomic snapshot/lease → persist preference → controlled STOP when needed →
+router detach/unbind → provider close → target provider open → router bind →
+validation → READY → stopped-media LOAD/seek rehydration. The router MUST detach
+BEFORE the provider closes; never close a provider while the router remains
+intentionally attached. Rehydration never autoplays.
 
 ## Canonical Qt reference startup (M11.3B-R1)
 
@@ -202,7 +205,7 @@ acceptance/error callbacks. M11.3 does NOT add "engine-capability" or
 
 - **M11.3A — Audio Runtime Contracts + ADR**: `AudioEngineId`, engine
   availability, lifecycle contract, capability contract, selection contract,
-  failure contract, quiescent switch contract; AudioPort stays transport-only
+  failure contract, semantic/atomic switch contract; AudioPort stays transport-only
   (see AudioPort boundary rule); resolves the GStreamer binding (PyGObject/GI
   vs alternatives) and the MPD client binding (own minimal protocol client vs
   dependency) with M13 packaging impact. No UI.
@@ -243,12 +246,14 @@ acceptance/error callbacks. M11.3 does NOT add "engine-capability" or
   in-repo minimal MPD protocol client (own implementation over the private
   socket) vs external dependency — the decision considers packaging surface
   and protocol stability; M11.3A fixes it before adapter code.
-- **M11.3F — Engine Selection + Persistence**: 1.0 switches from
-  QUIESCENT/STOPPED with the canonical sequence:
-  VERIFY QUIESCENT → STOP → router UNBIND/DETACH → close active provider →
-  open target provider → bind target AudioPort into router → validate
-  transport → READY. There is NO "bind output": output/device binding
-  belongs to M11.4. No seamless handover while playing. Selection persisted.
+- **M11.3F — Engine Selection + Persistence**: explicit selection uses an
+  Application-owned semantic plan. `NOOP` and `PREFERENCE_ONLY` never touch the
+  runtime. `RUNTIME_SWITCH` and `RETRY_PREFERRED` accept canonical STOPPED,
+  PAUSED, or PLAYING state, capture an immutable playback snapshot, hold an
+  exclusive transition lease, persist the preference, stop without resetting
+  the captured position, transfer provider ownership, and rehydrate the media
+  on the target without autoplay. There is NO "bind output": output/device
+  binding belongs to M11.4.
 - **M11.3G — Lifecycle / Failure / Convergence**: pending media, rejection,
   stop, resume preparation, Queue convergence, engine startup failure, engine
   unavailable, target init failure, clean fallback, shutdown,
@@ -267,6 +272,47 @@ acceptance/error callbacks. M11.3 does NOT add "engine-capability" or
   tunables exist (audiophile audit: 0 truthful P1 knobs; DSD/DoP/bit-perfect/
   exclusive are M11.4/M11.5 scope). Output device selection stays visible but
   disabled (DAC work deferred).
+
+## Audio Engine Selector Corrective Seal R2
+
+The selector exposes one semantic plan per target:
+
+| Action | Meaning |
+| --- | --- |
+| `NOOP` | Target is already preferred, active, and READY. |
+| `PREFERENCE_ONLY` | Target is already active; persist it as preferred with no stop, bind, close, open, load, seek, or position change. |
+| `RUNTIME_SWITCH` | Transfer the active runtime to another activatable target. |
+| `RETRY_PREFERRED` | Retry the preferred target while another engine is active. |
+| `UNAVAILABLE` | A fresh probe says the target cannot activate or the probe failed. |
+
+Runtime-switch authority belongs to `PlaybackService`:
+
+- `begin_engine_switch()` captures file identity, confirmed position, deferred
+  resume target, playback status, volume, and mute before any synchronous state
+  publication can invoke reentrant observers.
+- While the transition lease is held, external play, pause, resume, stop, seek,
+  load, volume, and mute commands fail explicitly. The lease exposes only the
+  privileged controlled stop, acceptance invalidation, and target rehydration
+  operations used by the coordinator.
+- PLAYING and PAUSED are valid switch origins. The controlled stop preserves the
+  captured position, and the target always ends STOPPED. Rehydration performs
+  LOAD and a post-acceptance seek; it never calls play.
+- A pending user media request or startup restore remains a typed blocker. A
+  newer explicit engine selection may supersede only an engine-switch
+  rehydration request.
+- Rehydration terminates as `ACCEPTED`, `REJECTED`, `CANCELLED`, or `TIMEOUT`.
+  Production injects a Qt single-shot deadline; no polling or arbitrary sleeps
+  are used. Runtime loss also rejects the request and releases the lease.
+- Router detach still precedes provider close. Existing generation guards reject
+  callbacks from detached providers, and first-error-wins remains intact.
+
+Presentation consumes plan roles rather than rebuilding policy. Popup and
+Settings rows share `selectionAction`, `selectionAllowed`, and
+`selectionBlocker`. `AudioEngineBridge` publishes
+`switchRequestPendingTarget` before scheduling heavy switch work on the next Qt
+event-loop turn. The popup opens immediately with cached facts, while provider
+probes run independently in the global Qt thread pool; one failed probe cannot
+hide the other engines.
 
 ## M11.3-UI-R2 authorized reopening — MPD mixer compatibility correction
 
@@ -471,7 +517,8 @@ human audit of this closure).
 - No UI (M9-R2 owns presentation).
 - No DAC/output-profile management (M11.4).
 - No bit-perfect verification runtime (M11.5).
-- No seamless mid-track engine handover in 1.0.
+- No seamless/autoplaying mid-track handover. An explicit PLAYING/PAUSED switch
+  is a controlled stop-and-rehydrate transition and ends STOPPED.
 - No MPD queue/playlist semantics adoption.
 
 ## Exit criteria (DoD)
@@ -479,7 +526,9 @@ human audit of this closure).
 - All three engines play the same fixture set behind AudioPort with identical
   service-level semantics.
 - Engine registry reports availability truthfully.
-- Quiescent switching converges (queue/playback state preserved per contract).
+- Semantic selection converges from STOPPED/PAUSED/PLAYING; preference-only
+  selection causes zero runtime churn, and runtime switching preserves logical
+  media/position while ending STOPPED.
 - Failure injection (startup failure, unavailable engine, device loss) routes
   to clean fallback or honest error state.
 - Full pytest suite green; M11.3 TESTED / FROZEN.
