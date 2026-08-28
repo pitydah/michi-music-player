@@ -16,6 +16,9 @@ QtObject {
     readonly property color playlistHeroTop: "#152A45"
     readonly property color playlistHeroMid: "#13243D"
     readonly property color playlistHeroBottom: "#0A0D14"
+    readonly property string playlistHeroTopHex: "#152A45"
+    readonly property string playlistHeroMidHex: "#13243D"
+    readonly property string playlistHeroBottomHex: "#0A0D14"
     readonly property color textPrimary: "#ECEEF3"
     // High-contrast mode lifts the secondary tiers so all functional text
     // exceeds 7:1 on obsidian (borders/opacity alone are not enough).

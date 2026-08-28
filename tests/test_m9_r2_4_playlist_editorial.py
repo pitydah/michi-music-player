@@ -24,29 +24,36 @@ def test_hero_uses_low_saturation_atmosphere_tokens():
     assert 'playlistHeroMid: "#13243D"' in palette
     assert 'playlistHeroBottom: "#0A0D14"' in palette
     hero = read("playlists/PlaylistHero.qml")
-    assert "MichiPalette.playlistHeroTop" in hero
-    assert "MichiPalette.playlistHeroBottom" in hero
+    background = read("playlists/PlaylistHeroBackground.qml")
+    assert "PlaylistHeroBackground" in hero
+    assert "autoColors" in hero
+    assert "MichiSemanticColors.scrim" in background
+    assert "MichiPalette.obsidian" in background
 
 
 def test_hero_typography_and_compact_actions():
     hero = read("playlists/PlaylistHero.qml")
     assert 'qsTr("PLAYLIST")' in hero  # eyebrow
-    assert "font.letterSpacing: 1.4" in hero
+    assert "font.letterSpacing: 1.35" in hero
     assert 'role: "display"' in hero  # dominant title
     assert "font.weight: Font.DemiBold" in hero
     assert "maximumLineCount: 2" in hero  # description cap
-    assert "implicitWidth: 28" in hero  # compact secondary actions
+    assert "iconOnly: root.width < 920" in hero
     assert "implicitHeight: MichiMetrics.controlMedium" in hero  # Play 36px
     assert "pinned" in hero  # pin toggle kept in hero
 
 
 def test_hero_cover_is_square_with_faint_shadow():
     hero = read("playlists/PlaylistHero.qml")
-    assert "Layout.preferredWidth: 136" in hero
-    assert "Layout.preferredHeight: 136" in hero
-    assert "radius: 10" in hero
-    assert "glassShadowFar" in hero
-    assert "opacity: 0.55" in hero
+    assert "readonly property real coverSize:" in hero
+    assert "width >= 1120 ? 180" in hero
+    assert "width >= 820 ? 172 : width >= 620 ? 156 : 144" in hero
+    assert "Layout.preferredWidth: root.coverSize" in hero
+    assert "Layout.preferredHeight: root.coverSize" in hero
+    assert "radius: MichiRadius.lg" in hero
+    assert "glassShadow" in hero
+    assert "opacity: 0.46" in hero
+    assert "glassShadowNear" in hero
 
 
 # ── PlaylistTrackList (dense table) ───────────────────────────────────────────
@@ -131,13 +138,16 @@ def test_hero_self_sizes_and_page_never_collapses_it():
     # page-side `implicitHeight: root.heroHeight` binding would resolve
     # `root` to the hero (component scope wins in property bindings) and
     # collapse the ListView header to zero — regression guard.
-    assert "implicitHeight: Math.max(240, Math.min(300," in hero
-    assert "(parent ? parent.height : 600) * 0.36)" in hero
+    assert "implicitHeight: Math.max(248, Math.min(300," in hero
+    assert "(parent ? parent.height : 760) * 0.36))" in hero
     page = read("playlists/PlaylistDetailView.qml")
     # the hero is instantiated inside a Component (ListView.header requires
     # QQmlComponent) with null-safe bridge bindings that re-evaluate on
     # playlists_changed — regression guard for the collapsed header
     assert "heroComponent: heroComponent" in page
+    assert 'objectName: "playlistHeroHeader"' in page
+    assert "width: root.width" in page
+    assert "height: root.heroHeight" in page
     assert 'playlistName: playlists ? playlists.selectedPlaylistName : ""' in page
 
 
@@ -155,10 +165,10 @@ def test_micro_type_role_exists_for_10px_labels():
 def test_hero_type_scale_matches_spec():
     hero = read("playlists/PlaylistHero.qml")
     # eyebrow 10-11px (caption), metadata 11-12px (technical)
-    assert 'role: "caption"' in hero
-    assert "font.letterSpacing: 1.4" in hero
+    assert 'role: "micro"' in hero
+    assert "font.letterSpacing: 1.35" in hero
     assert 'role: "technical"' in hero
-    assert "opacity: 0.65" in hero
+    assert "opacity: 0.78" in hero
 
 
 def test_row_metadata_uses_technical_scale():
@@ -253,8 +263,9 @@ def test_reorder_keeps_keyboard_cursor_on_moved_row():
 
 def test_add_tracks_becomes_icon_only_on_narrow_windows():
     hero = read("playlists/PlaylistHero.qml")
-    assert 'text: parent.width < 700 ? "" : qsTr("Add tracks")' in hero
-    assert "implicitWidth: parent.width < 700 ? 30 : undefined" in hero
+    assert 'text: root.width >= 920 ? qsTr("Add tracks") : ""' in hero
+    assert "iconOnly: root.width < 920" in hero
+    assert "parent.width <" not in hero
 
 
 # ── Pending-feature block (drag reorder, queue undo, queue row action) ───────

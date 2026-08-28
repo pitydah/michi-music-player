@@ -50,7 +50,24 @@ Item {
                 id: allPlaylistsView
                 objectName: "allPlaylistsView"
                 anchors.fill: parent
-                visible: !root._playlistDetail
+                // Incoming page is interactive immediately; outgoing page
+                // remains renderable only while its fade still has alpha.
+                visible: !root._playlistDetail || opacity > 0
+                enabled: !root._playlistDetail
+                opacity: root._playlistDetail ? 0 : 1
+                z: root._playlistDetail ? 0 : 1
+                transform: Translate {
+                    y: root._playlistDetail && !MichiAccessibility.reducedMotion
+                        ? -MichiSpacing.sm : 0
+                    Behavior on y {
+                        enabled: !MichiAccessibility.reducedMotion
+                        NumberAnimation { duration: MichiMotion.page; easing.type: MichiMotion.outCubic }
+                    }
+                }
+                Behavior on opacity {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.page; easing.type: MichiMotion.outCubic }
+                }
                 onCreatePlaylistRequested: root.createPlaylistRequested()
                 onOpenPlaylistRequested: playlistId => playlists.open_playlist(playlistId)
                 onPlayPlaylistRequested: playlistId => playlists.play_playlist(playlistId)
@@ -77,7 +94,22 @@ Item {
                 id: playlistDetail
                 objectName: "playlistDetailView"
                 anchors.fill: parent
-                visible: root._playlistDetail
+                visible: root._playlistDetail || opacity > 0
+                enabled: root._playlistDetail
+                opacity: root._playlistDetail ? 1 : 0
+                z: root._playlistDetail ? 1 : 0
+                transform: Translate {
+                    y: root._playlistDetail || MichiAccessibility.reducedMotion
+                        ? 0 : MichiSpacing.sm
+                    Behavior on y {
+                        enabled: !MichiAccessibility.reducedMotion
+                        NumberAnimation { duration: MichiMotion.page; easing.type: MichiMotion.outCubic }
+                    }
+                }
+                Behavior on opacity {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation { duration: MichiMotion.page; easing.type: MichiMotion.outCubic }
+                }
                 playlistId: navigation.playlistId
                 onBackRequested: playlists.open_all_playlists()
                 onPlayRequested: playlists.play_selected_playlist()

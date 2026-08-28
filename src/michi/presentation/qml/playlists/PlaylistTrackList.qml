@@ -27,6 +27,7 @@ Item {
     property bool showAlbumColumn: true
     property bool showFormatColumn: false
     property bool narrow: false            // <700px: title/artist grouped
+    readonly property real contentY: trackList.contentY
 
     signal playTrackRequested(int index)
     signal trackSelected(int index)
@@ -288,7 +289,7 @@ Item {
                 }
             }
 
-            // Selection on click; playback on double-click / Enter
+            // Canonical product contract: one click both selects and plays.
             onClicked: {
                 root.trackSelected(index)
                 root.playTrackRequested(index)
