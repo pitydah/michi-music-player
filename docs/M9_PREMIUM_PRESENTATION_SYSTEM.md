@@ -358,3 +358,26 @@ server.
   `albumKey`, `artistKey`, and `playlistId`.
 - The removed global Precision Mode has no replacement. Technical facts remain
   visible where useful without becoming an output-quality claim.
+
+### M9-R3-R1 correction and hardening
+
+- Playlist targeting uses semantic payloads (`trackIds`, `albumKey`, or
+  `artistKey`) and one shell-owned picker. The picker presents deduplicated
+  Pinned, Recent, and All sections, supports search, and can create a playlist
+  while adding the original selection in one application publication.
+- Queue and Playlist rows use specialized context menus. Track, album, artist,
+  and genre targets acquire focus before pointer or keyboard context-menu
+  actions; Menu and Shift+F10 invoke the same target-specific commands.
+- Track Properties reports identity, audio, and file facts. Album Properties
+  derives its format, sample-rate, bit-depth, and DSD-rate summary only when
+  requested, avoiding an eager per-album scan in the normal projection.
+- Genre activation resolves a canonical `genreKey` and opens the shared Songs
+  projection with an application-owned filter. Selecting Songs again clears
+  that filter; search and entity navigation also clear incompatible selection.
+- The Library toolbar uses a responsive grid rather than a user-resizable
+  navigation split. All six album projections preserve Open and context-menu
+  behavior and expose a real album Play action; no view redirects album Play to
+  the whole visible Library projection.
+- The shared mini-Library picker reuses `MichiTrackTable` selection and column
+  behavior. Missing Library metadata still does not disable Queue or Playlist
+  playback; only Library-dependent actions are withheld.
