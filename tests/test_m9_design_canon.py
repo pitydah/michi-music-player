@@ -221,7 +221,7 @@ def test_library_delegates_use_shared_media_rows() -> None:
     assert "delegate: MichiAlbumRow" in _text("views/AlbumListView.qml")
 
 
-def test_density_precision_and_inspector_are_real_surfaces() -> None:
+def test_density_columns_and_inspector_are_real_surfaces() -> None:
     header = _text("views/LibraryHeader.qml")
     popup = _text("views/LibraryViewOptionsPopup.qml")
     toolbar = _text("views/LibraryToolbar.qml")
@@ -230,9 +230,9 @@ def test_density_precision_and_inspector_are_real_surfaces() -> None:
     assert 'objectName: "libraryDensityControl"' in popup
     assert "MichiThemeState.density" in popup
     assert "compact: true" in popup
-    assert "MichiThemeState.precisionMode" in popup
+    assert "Precision metadata" not in popup
     assert "MichiThemeState.density" not in toolbar
-    assert "MichiThemeState.precisionMode" not in toolbar
+    assert "precisionMode" not in toolbar
     assert "InspectorPanel" in album_detail
     assert "library.albumTechnicalSummary" in album_detail
     assert 'text: "Add to queue"' not in album_detail

@@ -35,7 +35,6 @@ PageHeader {
     ]
 
     readonly property bool hasNonDefaultOptions: MichiThemeState.density !== "standard"
-        || MichiThemeState.precisionMode
         || (root.currentTab === "albums" && (
             root.albumZoom !== 1.0
             || root.albumSortMode !== "title"

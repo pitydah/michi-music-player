@@ -86,7 +86,7 @@ Rectangle {
             text: root.technical
             role: "technical"
             technical: true
-            color: MichiThemeState.precisionMode ? MichiPalette.auroraCyan : MichiPalette.textMuted
+            color: MichiPalette.textMuted
         }
     }
 

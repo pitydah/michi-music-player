@@ -55,17 +55,9 @@ Rectangle {
             color: MichiPalette.textMuted
         }
         MichiText {
-            visible: root.showAlbumColumn && !MichiThemeState.precisionMode
+            visible: root.showAlbumColumn
             Layout.preferredWidth: 180
             text: qsTr("ALBUM")
-            role: "technical"
-            technical: true
-            color: MichiPalette.textMuted
-        }
-        MichiText {
-            visible: MichiThemeState.precisionMode
-            Layout.preferredWidth: 150
-            text: qsTr("QUALITY")
             role: "technical"
             technical: true
             color: MichiPalette.textMuted

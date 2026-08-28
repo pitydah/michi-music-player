@@ -24,7 +24,7 @@ Rectangle {
     property bool showRemove: false
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
-    property bool showQualityColumn: MichiThemeState.precisionMode
+    property bool showQualityColumn: false
     property bool showDurationColumn: true
     property string artworkPath: ""
     property bool showArtwork: true
@@ -126,7 +126,7 @@ Rectangle {
             Layout.preferredWidth: 180
             text: root.album
             role: "secondary"
-            visible: root.showAlbumColumn && !MichiThemeState.precisionMode
+            visible: root.showAlbumColumn
             elide: Text.ElideRight
         }
         MichiText { Layout.preferredWidth: 150; text: root.quality; role: "technical"; technical: true; visible: root.showQualityColumn; elide: Text.ElideRight }

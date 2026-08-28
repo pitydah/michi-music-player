@@ -16,8 +16,7 @@ ListView {
     readonly property bool showYearColumn: width >= 500
     readonly property bool showTrackCountColumn: width >= 760
     readonly property bool showDurationColumn: width >= 680
-    readonly property bool showTechnicalColumn: width >= 1040
-        && MichiThemeState.precisionMode
+    readonly property bool showTechnicalColumn: false
 
     Layout.fillWidth: true
     Layout.fillHeight: true

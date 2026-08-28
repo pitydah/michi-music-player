@@ -9,7 +9,7 @@ Rectangle {
     property bool showYear: true
     property bool showTrackCount: true
     property bool showDuration: true
-    property bool showTechnical: MichiThemeState.precisionMode
+    property bool showTechnical: false
     property string sortMode: "title"
     property bool sortDescending: false
     signal sortRequested(string mode)

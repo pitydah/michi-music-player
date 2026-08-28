@@ -12,7 +12,7 @@ Rectangle {
     property bool showYear: true
     property bool showTrackCount: true
     property bool showDuration: true
-    property bool showTechnical: MichiThemeState.precisionMode
+    property bool showTechnical: false
     signal activated()
 
     readonly property real titleColumnRatio: root.showTechnical ? 0.34 : 0.45

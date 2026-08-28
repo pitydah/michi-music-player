@@ -68,20 +68,6 @@ Popup {
             }
         }
 
-        // Section: Precision Mode
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: MichiSpacing.sm
-
-            MichiSwitch {
-                id: precisionSwitch
-                Layout.fillWidth: true
-                text: qsTr("Precision metadata")
-                checked: MichiThemeState.precisionMode
-                onToggled: MichiThemeState.precisionMode = checked
-            }
-        }
-
         // Section: Artwork Size (only for Grid / PathView / Vinyl)
         ColumnLayout {
             Layout.fillWidth: true

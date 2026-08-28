@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../controls"
 import "../primitives"
@@ -43,7 +44,17 @@ MichiGlassSurface {
         if (library.currentDir.length > 0)
             library.scan(library.currentDir)
         else
-            sourcePopover.open()
+            folderDialog.open()
+    }
+
+    FolderDialog {
+        id: folderDialog
+        objectName: "libraryFolderDialog"
+        title: qsTr("Choose music folder")
+        onAccepted: {
+            if (typeof library !== "undefined" && library)
+                library.scan_url(selectedFolder)
+        }
     }
 
     ColumnLayout {
@@ -129,21 +140,10 @@ MichiGlassSurface {
                             id: sourceBtn
                             anchors.fill: parent
                             iconName: "folder"
-                            selected: sourcePopover.visible
-                            accessibleName: qsTr("Music folder source")
-                            onClicked: {
-                                if (sourcePopover.visible)
-                                    sourcePopover.close()
-                                else
-                                    sourcePopover.open()
-                            }
-                        }
-
-                        LibrarySourcePopover {
-                            id: sourcePopover
-                            x: -326
-                            y: parent.height + MichiSpacing.xs
-                        }
+                        selected: folderDialog.visible
+                        accessibleName: qsTr("Music folder source")
+                        onClicked: folderDialog.open()
+                    }
                     }
 
                     MichiButton {
@@ -154,7 +154,6 @@ MichiGlassSurface {
                         accessibleName: qsTr("Scan library")
                         enabled: !root.scanning
                             && typeof library !== "undefined" && library
-                            && library.currentDir.length > 0
                         onClicked: root.performScan()
                     }
                 }

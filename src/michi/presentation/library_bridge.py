@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
@@ -564,6 +564,15 @@ class LibraryBridge(QObject):
     @Slot(str)
     def scan(self, directory: str) -> None:
         self._service.start_scan(directory)
+
+    @Slot(QUrl)
+    def scan_url(self, directory: QUrl) -> None:
+        """Adapt a native folder-picker URL to the application path contract."""
+        if not directory.isLocalFile():
+            return
+        local_path = directory.toLocalFile()
+        if local_path:
+            self._service.start_scan(local_path)
 
     @Slot()
     def cancel_scan(self) -> None:

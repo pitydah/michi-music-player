@@ -65,6 +65,7 @@ Item {
         }
 
         LibraryToolbar {
+            id: libraryToolbar
             Layout.fillWidth: true
             currentTab: root.currentTab
             onCurrentTabRequested: tab => root.currentTab = tab
