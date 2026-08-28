@@ -2,7 +2,7 @@
 
 Audio-only desktop music player rebuilt from scratch.
 
-**Status:** advanced pre-alpha clean rebuild. M1–M11 Required-1.0 contracts are tested; the M9 Premium Presentation System baseline is delivered (CLOSED / TESTED / FROZEN, PR #204) and the current development direction is M11.3 Multi-Engine Audio Runtime (Qt Multimedia + GStreamer + MPD) after the completed playlists milestones. Component states: `docs/STATUS_MATRIX.md`.
+**Status:** advanced pre-alpha clean rebuild. M1–M11 Required-1.0 contracts are tested; the M9 Premium Presentation System baseline is delivered (CLOSED / TESTED / FROZEN, PR #204) and is currently reopened in a scoped M9-R3 Library/collection convergence pass. Component states: `docs/STATUS_MATRIX.md`.
 
 **Platform:** Linux is the 1.0 target (AppImage/Flatpak/deb at M13). Windows and macOS are Post-1.0 — see `docs/POST_1_0_BACKLOG.md`.
 
@@ -47,8 +47,11 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
 ## What works
 
 - Play, pause, resume, stop; seek, volume, mute; position/duration events
-- Queue: add/remove/clear, play by index, next/previous, auto-advance
-- Library: recursive directory scan with extension filter, substring search
+- Queue: add/remove/reorder/clear, play by index, next/previous, auto-advance
+- Library: recursive folder scan, application-owned sorting, local search,
+  shared technical track tables, and contextual Track/Album/Artist actions
+- Playlists: first-class Shell hierarchy, batch Library picker, identity-based
+  collection mutations, reorder/remove, and truthful unavailable metadata
 - Navigation: now playing / library / queue / settings screens
 - UI foundation: Aurora semantic tokens, smoked-glass control surfaces, desktop controls, accessibility/motion contracts, shared artwork and UI gallery
 - Settings persistence (SQLite, WAL): volume, muted, last_directory, recent_files — with restart gate and read-only health detection
@@ -56,8 +59,10 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
 
 ## Current implementation focus
 
-- M9 Premium Presentation System: CLOSED / TESTED / FROZEN baseline (PR #204) + M9-R1 playlists shell (DONE, refrozen) — Playlists is a first-class Shell feature
-- M11.3 Multi-Engine Audio Runtime: next authorized WP (Qt Multimedia + GStreamer + MPD)
+- M9 Premium Presentation System: FROZEN baseline (PR #204), M9-R1 playlists
+  shell DONE, and scoped M9-R3 Library/collection convergence in progress
+- M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
+  (Qt Multimedia + GStreamer + managed MPD)
 - M11.4–M11.5: audiophile output/DAC management, playback guarantees (incl. Required-1.0 gapless)
 - M12 Performance, M13 Packaging, M14 Beta, M15 RC, M16 Stable
 
@@ -83,7 +88,7 @@ See `docs/MASTER_ROADMAP_1.0.md` for the canonical 1.0 contract and current stat
 ## Development
 
 ```bash
-pytest -q
+python -m pytest -q
 ruff check src tests
 ruff format --check src tests
 python -m build

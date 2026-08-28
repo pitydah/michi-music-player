@@ -86,6 +86,13 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   unavailable/error state. The canonical NowPlayingBar geometry stays
   protected (reserved `audioEngineIndicator`/`outputZone`/`outputDeviceButton`
   are activated; transport controls are not moved). Refreeze: M9-R2 accepted.
+- **M9-R3 — Library Hierarchy, Contextual Actions & Playlist Convergence**
+  (trigger: Required-1.0 Library and Playlist workflows): one responsive Library
+  toolbar, application-owned sorting, shared technical track projections,
+  capability-driven Track/Album/Artist context actions, batch playlist
+  targeting, and converged Library/Queue/Playlist track presentation. The
+  canonical material tokens and NowPlayingBar remain protected. **STATUS:
+  IMPLEMENTED LOCALLY — acceptance gates pending publication.**
 
 Every reopening MUST be scoped and MUST declare:
 
@@ -158,7 +165,7 @@ open review items.
 | M9.2 Desktop controls | DONE | Keyboard/focus-aware buttons, fields, segmented controls, menus, dialogs, scrolling |
 | M9.3 UI Gallery | DONE | `dev/MichiUIGallery.qml` |
 | M9.4 Application Shell | DONE | Floating sidebar/content islands and global search overlay |
-| M9.5 Library premium UX | DONE | Shared media rows, runtime density/Precision Mode, six canonical views, common playing state and desktop context actions |
+| M9.5 Library premium UX | DONE | Shared media rows, runtime density, six canonical views, common playing state and desktop context actions |
 | M9.6 Album/Artist UX | DONE | Responsive album detail, technical inspector, canonical artist detail projection, artist albums/tracks and activation |
 | M9.7 Playback UX | DONE | Canonical persistent NowPlayingBar with real metadata/artwork, seek, volume, mute, shuffle, repeat, queue and transport; Artwork Focus Mode remains available |
 | M9.8 Search UX | DONE | `Ctrl+F`, Escape, Up/Down/Enter and actionable grouped Tracks/Albums/Artists/Playlists; M7 ranking remains frozen |
@@ -324,3 +331,30 @@ server.
 - Album list title and artist columns use matched responsive proportions in
   both header and rows, avoiding the previous oversized empty title span while
   keeping year, track count, duration and precision metadata aligned.
+
+## M9-R3 Library and collection convergence
+
+- Library scanning has one `performScan()` intent. Folder selection supplies a
+  `QUrl`, which `LibraryBridge` adapts before invoking the existing application
+  flow. Scan remains available before a directory has been selected.
+- `LibraryTrackQueryService` and `LibraryAlbumQueryService` own sorting and
+  query policy. QML renders their projections and never sorts domain data.
+- `LibraryTrackColumnState` is the session authority for shared track-column
+  widths, minimums, and visibility. `MichiTrackTable` is used by Songs,
+  Favorites, History, Recently Added, Album Detail, and Artist Detail.
+- Format badges report file facts only: normalized container/codec labels and
+  explicit DSD rates. They never infer Hi-Res, lossless, bit-perfect, selected
+  output, or active output state.
+- `LibraryQueueCoordinator` and `LibraryPlaylistCoordinator` resolve canonical
+  track, album, and artist identities before mutating Queue or Playlist owners.
+  Batch playlist additions preserve source order, deduplicate paths, persist at
+  most once, and publish at most one notification.
+- Track, album, and artist menus are capability-driven. They expose only wired
+  intents. Queue adds move/remove actions; Playlist adds move/remove and a
+  real playlist-target picker; unavailable persisted tracks retain truthful
+  fallback metadata and disable actions that require Library membership.
+- Search, Queue, and Playlist rows reuse the same technical projection as
+  Library surfaces. `trackId` is the canonical path; navigation uses
+  `albumKey`, `artistKey`, and `playlistId`.
+- The removed global Precision Mode has no replacement. Technical facts remain
+  visible where useful without becoming an output-quality claim.

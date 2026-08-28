@@ -33,7 +33,7 @@ Python 3.11+, PySide6 (Qt 6, Qt Multimedia with FFmpeg backend), QML, SQLite (WA
 | Layer             | Contents                                                                                                                                                                                                                                                                                             | May import                                               | Forbidden                        |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------- |
 | `domain/`         | `PlaybackState` (+`PlaybackStatus`), `QueueState`, `LibraryState` (+`TrackRef`), `SettingsState`, `AppRoute`/`NavigationState`, `PersistenceHealth`/`PersistenceDiagnostic`                                                                                                                          | Python stdlib only                                       | Qt, I/O, application             |
-| `application/`    | Ports: `AudioPort`, `SettingsRepository`, `LibraryScannerPort`. Services: `PlaybackService`, `QueueService`, `LibraryService`, `NavigationService`, `SettingsService`. Coordinators: `PlaybackCoordinator`, `LibraryPreferencesCoordinator`                                                          | domain                                                   | Qt, infrastructure, presentation |
+| `application/`    | Ports: `AudioPort`, `SettingsRepository`, `LibraryScannerPort`. Services own domain state and query services own deterministic presentation policy. Coordinators compose owner APIs for playback, preferences, navigation, Queue, and Playlist workflows.                                                          | domain                                                   | Qt, infrastructure, presentation |
 | `infrastructure/` | `QtMultimediaBackend`, `FilesystemLibraryScanner`, `SQLiteSettingsRepository` (+ `inspect_path` health detection)                                                                                                                                                                                    | application (ports), domain, PySide6, SQLite, filesystem | presentation                     |
 | `presentation/`   | `PlaybackBridge`, `QueueBridge`, `LibraryBridge`, `NavigationBridge`, `SettingsBridge` (read-only); QML: `main.qml`, `qml/theme/` tokens, `qml/ui/` compatibility controls, `qml/player/` canonical NowPlayingBar, `qml/shell/` AppShell/Sidebar/ContentHost, `qml/views/` routed content | application (services), domain (observed state), PySide6 | infrastructure                   |
 | `bootstrap/`      | `ApplicationContainer` composition root                                                                                                                                                                                                                                                              | everything (the only layer allowed to)                   | —                                |
@@ -61,7 +61,11 @@ Exactly one service owns each state model. Every mutation routes through the own
 | `PersistenceHealth` (diagnostic, read-only) | produced by `SQLiteSettingsRepository.inspect_path()`; current production consumer: `SQLiteSettingsRepository.open_for_startup()` (M11.2D routing + M11.2E automatic recovery, TESTED) | `domain/persistence_health.py` |
 
 - **Ingress rule**: no subsystem writes to a state model directly; all mutations are owner method calls.
-- **Coordinator rule**: `PlaybackCoordinator` composes `PlaybackService` + `QueueService` for cross-cutting flows (auto-advance, play_index) and `LibraryPreferencesCoordinator` composes `LibraryService` + `SettingsService` (`last_directory`). Coordinators drive owners through public APIs; they never mutate state directly.
+- **Coordinator rule**: coordinators compose owners through public APIs and
+  never mutate state directly. `PlaybackCoordinator` combines playback and
+  Queue flows; `LibraryPreferencesCoordinator` combines Library and Settings;
+  `LibraryQueueCoordinator` and `LibraryPlaylistCoordinator` resolve canonical
+  Library identities before invoking Queue or Playlist mutations.
 - **Projection rule**: owners expose state for observation via `.state`; mutation authority remains exclusively with the owner service. Presentation bridges treat exposed state as read-only by convention. State objects are mutable references, NOT immutable snapshots. Projections are never written back.
 - Bootstrap configures owners through public APIs only; it never mutates domain state.
 
@@ -80,6 +84,10 @@ Label text           ←  bridge.title (property)       ←  PlaybackState (obse
 - **Projections**: bridges expose state to QML as properties read from owner `.state` objects, treated read-only by convention. State objects are mutable references, not immutable snapshots.
 - **Read-only settings**: `SettingsBridge` exposes state for display only; settings mutations go through `SettingsService` (bootstrap/coordinators), never through QML.
 - Bridges are the only place Qt types and application concepts meet.
+- Deterministic sorting and collection resolution belong to framework-free
+  application query services/coordinators. QML emits sort/action intents and
+  renders the resulting projections; it does not call QueueService or
+  PlaylistService directly.
 ## Playlists hierarchy (M9-R1, sealed)
 
 - **PLAYLIST-HIERARCHY-01**: Playlists is a first-class Shell feature — it is
