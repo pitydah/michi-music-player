@@ -12,7 +12,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QStandardPaths, Qt, QUrl
+from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -88,7 +88,10 @@ from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
-from michi.presentation.audio_engine_bridge import AudioEngineBridge
+from michi.presentation.audio_engine_bridge import (
+    AudioEngineBridge,
+    submit_audio_engine_probe,
+)
 from michi.presentation.enrichment_bridge import EnrichmentBridge
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
@@ -557,6 +560,9 @@ class ApplicationContainer:
         self._qt_engine_provider = graph.qt_engine_provider
 
         playback = graph.playback
+        playback.set_engine_switch_timeout_scheduler(
+            lambda timeout_ms, callback: QTimer.singleShot(timeout_ms, callback)
+        )
         queue = graph.queue
         library = graph.library
         scan_runner = graph.runner
@@ -670,6 +676,7 @@ class ApplicationContainer:
             ),
             playback_subscribe=lambda cb: playback.subscribe_changed(cb),
             playback_unsubscribe=lambda cb: playback.unsubscribe_changed(cb),
+            probe_submit=submit_audio_engine_probe,
         )
         lb = graph.bridge
         # M8-R1F: application-level coordination for the OPEN PLAYLIST

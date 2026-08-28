@@ -609,11 +609,10 @@ Item {
                 checkable: true
                 checked: enginePopup.opened
                 onClicked: {
-                    // Controlled explicit availability refresh, then open.
-                    // The popup re-renders live from the refreshed model
-                    // (no stale snapshot: rows stay bound to root.*).
-                    root.audioEngineRefreshRequested()
+                    // Paint cached facts immediately. The isolated refresh
+                    // updates the live-bound rows after the popup is visible.
                     enginePopup.open()
+                    root.audioEngineRefreshRequested()
                 }
                 Accessible.name: root.audioEngineTooltip()
             }

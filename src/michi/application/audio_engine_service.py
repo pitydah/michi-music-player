@@ -150,6 +150,24 @@ class AudioEngineService:
             )
         )
 
+    def mark_selection_aborted(self, engine_id: AudioEngineId) -> None:
+        """Clear transient switch intent after a pre-detach abort.
+
+        The existing active runtime and lifecycle remain truthful; ``engine_id``
+        is the preference that SettingsService could durably retain after any
+        best-effort rollback.
+        """
+        self._replace(
+            AudioEngineState(
+                selected_engine_id=engine_id,
+                active_engine_id=self._state.active_engine_id,
+                lifecycle=self._state.lifecycle,
+                switching_to=None,
+                error_message=self._state.error_message,
+                fallback_from=self._state.fallback_from,
+            )
+        )
+
     def mark_closing(self, engine_id: AudioEngineId) -> None:
         """CLOSING: source teardown in progress (still active/bound until
         the router unbind + provider close complete)."""

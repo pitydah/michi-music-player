@@ -168,9 +168,11 @@ Item {
                     Layout.topMargin: MichiTheme.space4
                     focusPolicy: Qt.StrongFocus
                     hoverEnabled: true
-                    // P2-05: no competing switch intents while switching.
-                    enabled: card.modelData.canActivate
-                        && root.switchingTo === ""
+                    // Application owns the semantic plan; Settings and the
+                    // popup consume the exact same readiness/action roles.
+                    enabled: card.modelData.selectionAllowed
+                        && card.modelData.selectionAction !== "noop"
+                        && !card.modelData.switching
                     padding: 0
                     leftPadding: MichiTheme.space12
                     rightPadding: MichiTheme.space12
@@ -181,6 +183,8 @@ Item {
                     property bool isSelected: card.modelData.id === root.selectedEngineId
 
                     function statusText() {
+                        if (card.modelData.switching)
+                            return qsTr("Switching…")
                         if (card.isActive && card.isSelected)
                             return qsTr("Preferred · In use")
                         if (card.isActive)
@@ -199,9 +203,9 @@ Item {
                     KeyNavigation.down: root._navigate(index, 1)
 
                     Accessible.name: card.modelData.displayName + " — " + card.statusText()
-                    Accessible.description: card.modelData.canActivate
+                    Accessible.description: card.modelData.selectionAllowed
                         ? qsTr("Select ") + card.modelData.displayName
-                        : qsTr("Not available on this system")
+                        : card.modelData.selectionBlocker
 
                     // P1-06: Button derives implicitHeight from the content
                     // column + padding — real positive geometry, wrapping

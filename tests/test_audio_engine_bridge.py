@@ -21,7 +21,7 @@ from michi.presentation.audio_engine_bridge import AudioEngineBridge
 from tests.test_m11_3f_engine_selection import FakeProvider, FakeSettingsRepository
 
 
-def _graph():
+def _graph(*, switch_submit=None, probe_submit=None):
     """Deterministic engine graph + bridge (registry order Qt/Gst/MPD)."""
     qt = FakeProvider(AudioEngineId.QT_MULTIMEDIA)
     gst = FakeProvider(AudioEngineId.GSTREAMER)
@@ -45,6 +45,8 @@ def _graph():
         playback_quiescent=playback.is_engine_switch_quiescent,
         playback_subscribe=playback.subscribe_changed,
         playback_unsubscribe=playback.unsubscribe_changed,
+        switch_submit=switch_submit or (lambda callback: callback()),
+        probe_submit=probe_submit,
     )
     return service, registry, coordinator, bridge, qt, gst, mpd, router, playback
 
@@ -357,6 +359,28 @@ class TestTransientDiagnosticLifecycle:
 
 
 class TestBridgeSwitch:
+    def test_pending_target_is_published_before_switch_work(self):
+        scheduled = []
+        service, _, coordinator, bridge, *_ = _graph(switch_submit=scheduled.append)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        calls = []
+        terminal_pending = []
+        coordinator.switch_to = lambda target: calls.append(target)  # type: ignore[method-assign]
+        bridge.switch_succeeded.connect(
+            lambda _engine_id: terminal_pending.append(
+                bridge.switchRequestPendingTarget
+            )
+        )
+
+        bridge.switch_engine("gstreamer")
+
+        assert bridge.switchRequestPendingTarget == "gstreamer"
+        assert calls == []
+        scheduled.pop()()
+        assert calls == [AudioEngineId.GSTREAMER]
+        assert bridge.switchRequestPendingTarget == ""
+        assert terminal_pending == [""]
+
     def test_switch_delegates_exactly_once(self):
         service, registry, coordinator, bridge, qt, gst, *_ = _graph()
         # arm the graph: Qt active, quiescent
@@ -405,7 +429,7 @@ class TestBridgeSwitch:
         coordinator.switch_to = rejecting  # type: ignore[method-assign]
         bridge.switch_engine("gstreamer")
         assert len(failures) == 1
-        assert failures[0][1] == ("Stop playback before changing the audio engine.")
+        assert failures[0][1] == "not quiescent"
 
     def test_unavailable_friendly_message(self):
         from michi.application.audio_engine_selection_coordinator import (
@@ -461,6 +485,25 @@ class TestBridgeSwitch:
 
 
 class TestBridgeLifecycle:
+    def test_probe_failure_isolated_and_refresh_can_be_deferred(self):
+        jobs = []
+        _, registry, _, bridge, *_ = _graph(probe_submit=jobs.append)
+        assert all(row["probePending"] for row in bridge.engines)
+        mpd = registry.provider(AudioEngineId.MPD)
+
+        def broken_probe():
+            raise RuntimeError("probe exploded")
+
+        mpd.probe = broken_probe  # type: ignore[method-assign]
+        for job in list(jobs):
+            job()
+
+        rows = {row["id"]: row for row in bridge.engines}
+        assert rows["qt_multimedia"]["canActivate"] is True
+        assert rows["gstreamer"]["canActivate"] is True
+        assert rows["mpd"]["canActivate"] is False
+        assert rows["mpd"]["probeError"] == "probe exploded"
+
     def test_state_notification_reaches_bridge(self):
         service, registry, coordinator, *_ = _graph()
         notified = []
@@ -478,7 +521,7 @@ class TestBridgeLifecycle:
         assert notified == []  # no callback after dispose
         bridge.dispose()  # idempotent
 
-    def test_playback_notifications_refresh_readiness_and_unsubscribe(self):
+    def test_playing_keeps_selector_ready_and_unsubscribe_is_deterministic(self):
         _, _, _, bridge, _, _, _, _, playback = _graph()
         notified = []
         bridge.state_changed.connect(lambda: notified.append(bridge.engineSwitchReady))
@@ -487,18 +530,18 @@ class TestBridgeLifecycle:
         playback._intent = True
         playback._accepted = True
         playback._on_playback_state_changed(PlaybackStatus.PLAYING)
-        assert bridge.engineSwitchReady is False
-        assert notified == [False]
+        assert bridge.engineSwitchReady is True
+        assert notified == [True]
 
         playback._intent = False
         playback._on_playback_state_changed(PlaybackStatus.STOPPED)
         assert bridge.engineSwitchReady is True
-        assert notified == [False, True]
+        assert notified == [True, True]
 
         bridge.dispose()
         playback._intent = True
         playback._on_playback_state_changed(PlaybackStatus.PLAYING)
-        assert notified == [False, True]
+        assert notified == [True, True]
 
     def test_probe_does_not_open_provider(self):
         _, registry, _, bridge, qt, gst, mpd, *_ = _graph()
