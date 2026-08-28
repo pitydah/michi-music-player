@@ -5,7 +5,7 @@ class TestTogglePlayPause:
     """PLAYBACK-CONTROLS-R1: the canonical three-state toggle lives in the
     bridge — QML never knows transport semantics."""
 
-    def test_toggle_maps_all_three_states(self, qapp):
+    def test_toggle_maps_all_three_states(self):
         from pathlib import Path
 
         from michi.application.playback_service import PlaybackService
@@ -38,7 +38,7 @@ class TestTogglePlayPause:
         bridge.toggle_play_pause()
         assert audio.state == "paused"
 
-    def test_command_failure_surfaces_signal(self, qapp):
+    def test_command_failure_surfaces_signal(self):
         from michi.application.playback_service import PlaybackService
         from michi.presentation.playback_bridge import PlaybackBridge
         from tests.conftest import FakeAudioPort
@@ -61,7 +61,7 @@ class TestTogglePlayPause:
         bridge.play()
         assert failed == []
 
-    def test_unexpected_failure_is_signalled_and_reraised(self, qapp):
+    def test_unexpected_failure_is_signalled_and_reraised(self):
         from michi.application.playback_service import PlaybackService
         from michi.presentation.playback_bridge import PlaybackBridge
         from tests.conftest import FakeAudioPort
