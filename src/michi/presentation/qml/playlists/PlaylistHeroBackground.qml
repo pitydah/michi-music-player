@@ -20,6 +20,8 @@ Item {
         ? root.coverPath
         : root.mosaicArtworkPaths && root.mosaicArtworkPaths.length > 0
             ? root.mosaicArtworkPaths[0] : ""
+    readonly property real readingScrimOpacity:
+        root.heroMode === "image" || root.heroMode === "solid" ? 0.88 : 0.64
 
     Rectangle {
         anchors.fill: parent
@@ -73,7 +75,7 @@ Item {
         asynchronous: true
         cache: true
         fillMode: Image.PreserveAspectCrop
-        opacity: 0.32
+        opacity: 0.28
     }
 
     Image {
@@ -100,13 +102,13 @@ Item {
             GradientStop { position: 0.78; color: MichiSemanticColors.playlistHeroBottomScrim }
             GradientStop { position: 1; color: MichiSemanticColors.borderSubtle }
         }
-        opacity: root.heroMode === "image" ? 0.92 : 0.58
+        opacity: root.readingScrimOpacity
     }
 
     Rectangle {
         anchors.fill: parent
         color: MichiPalette.obsidianDeep
-        opacity: root.heroMode === "image" ? 0.22 : 0.08
+        opacity: root.heroMode === "image" ? 0.12 : 0.06
     }
 
     Rectangle {
@@ -114,9 +116,40 @@ Item {
         gradient: Gradient {
             orientation: Gradient.Vertical
             GradientStop { position: 0; color: "transparent" }
-            GradientStop { position: 0.72; color: MichiSemanticColors.playlistHeroBottomScrim }
+            GradientStop { position: 0.62; color: MichiSemanticColors.playlistHeroBottomScrim }
             GradientStop { position: 1; color: MichiPalette.obsidian }
         }
+    }
+
+    // A single low-energy contour gives generated/solid heroes a little
+    // musical cadence. It stays out of custom images and remains below 6%
+    // effective opacity, so it reads as material rather than decoration.
+    Canvas {
+        id: signalContour
+        anchors.fill: parent
+        visible: root.heroMode !== "image" && width >= 720
+        opacity: 0.28
+        renderTarget: Canvas.Image
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        onPaint: {
+            var context = getContext("2d")
+            context.clearRect(0, 0, width, height)
+            context.beginPath()
+            context.moveTo(width * 0.52, height * 0.32)
+            context.bezierCurveTo(
+                width * 0.64, height * 0.20,
+                width * 0.74, height * 0.44,
+                width * 0.84, height * 0.30)
+            context.bezierCurveTo(
+                width * 0.89, height * 0.23,
+                width * 0.93, height * 0.28,
+                width * 0.97, height * 0.24)
+            context.strokeStyle = MichiSemanticColors.auroraCyanBorderSubtle
+            context.lineWidth = 1
+            context.stroke()
+        }
+        Component.onCompleted: requestPaint()
     }
 
     // One inexpensive texture per hero prevents large flat gradients from
@@ -124,8 +157,8 @@ Item {
     MichiMaterialTexture {
         anchors.fill: parent
         tileSeed: 222
-        textureOpacity: Math.min(0.13,
-            MichiThemeState.glassQuality === "low" ? 0 : 0.13)
+        textureOpacity: Math.min(0.10,
+            MichiThemeState.glassQuality === "low" ? 0 : 0.10)
     }
 
     Rectangle {

@@ -301,13 +301,14 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     assert "contextMenu.visible" in card
     assert "!MichiAccessibility.reducedMotion" in card
     assert "Layout.preferredWidth: 240" in card
-    assert "implicitWidth: 52" in card
+    assert "implicitWidth: 48" in card
     assert 'variant: "primary"' in card
     assert "root.selected && MichiAccessibility.keyboardMode" in card
-    assert "implicitWidth: 96" in peek
-    assert "implicitHeight: 176" in peek
-    assert "Math.min(40, width * 0.42)" in peek
-    assert 'viewBox="0 0 96 156"' in peek_svg
+    assert "implicitWidth: 92" in peek
+    assert "implicitHeight: 168" in peek
+    assert "Math.min(36, width * 0.37)" in peek
+    assert "SequentialAnimation" in peek
+    assert 'viewBox="0 0 92 160"' in peek_svg
     assert "<image" not in peek_svg
     assert "metadata" not in peek_svg.lower()
     for mode in ('"auto"', '"solid"', '"gradient"', '"image"'):
@@ -315,6 +316,8 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
         assert mode in hero
     assert "Gradient.Horizontal" in hero
     assert "MichiMaterialTexture" in hero
+    assert "signalContour" in hero
+    assert 'root.heroMode !== "image"' in hero
     assert "cache: false" in hero
     assert panel.count("set_custom_hero_from_url") == 1
     assert "root.draftHeroImageUrl = selectedFile" in panel

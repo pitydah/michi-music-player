@@ -99,8 +99,8 @@ Item {
             // controls. The revealed portion is the only part not occluded.
             MichiPeek {
                 id: michiPeek
-                width: 96
-                height: 176
+                width: 92
+                height: 168
                 x: artworkStage.width - width
                 anchors.verticalCenter: parent.verticalCenter
                 revealed: root.interactionActive
@@ -147,8 +147,8 @@ Item {
             MichiButton {
                 id: playButton
                 anchors.centerIn: coverLayer
-                implicitWidth: 52
-                implicitHeight: 52
+                implicitWidth: 48
+                implicitHeight: 48
                 iconName: "play"
                 iconOnly: true
                 variant: "primary"

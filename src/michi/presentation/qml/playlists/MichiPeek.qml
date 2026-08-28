@@ -7,30 +7,44 @@ Item {
     id: root
 
     property bool revealed: false
-    // The cover occludes most of the body. Only 32–40 px of profile,
-    // eye, whiskers and paw clear its right edge on hover/focus.
-    readonly property real revealDistance: Math.max(32, Math.min(40, width * 0.42))
+    // The cover occludes most of the body. Only 30–36 px of profile clear
+    // its right edge, so the eye never competes with the artwork.
+    readonly property real revealDistance: Math.max(30,
+        Math.min(36, width * 0.37))
 
-    implicitWidth: 96
-    implicitHeight: 176
-    opacity: root.revealed ? 1 : 0
+    implicitWidth: 92
+    implicitHeight: 168
+    opacity: root.revealed ? 0.94 : 0
     transform: Translate {
         id: revealTranslate
         x: root.revealed ? root.revealDistance : MichiSpacing.xs
         Behavior on x {
             enabled: !MichiAccessibility.reducedMotion
-            NumberAnimation {
-                duration: MichiMotion.artwork
-                easing.type: MichiMotion.outCubic
+            SequentialAnimation {
+                PauseAnimation {
+                    duration: root.revealed
+                        ? Math.round(MichiMotion.micro / 3) : 0
+                }
+                NumberAnimation {
+                    duration: MichiMotion.artwork
+                    easing.type: MichiMotion.outCubic
+                }
             }
         }
     }
 
     Behavior on opacity {
         enabled: !MichiAccessibility.reducedMotion
-        NumberAnimation {
-            duration: root.revealed ? MichiMotion.artwork : MichiMotion.standard
-            easing.type: MichiMotion.outCubic
+        SequentialAnimation {
+            PauseAnimation {
+                duration: root.revealed
+                    ? Math.round(MichiMotion.micro / 3) : 0
+            }
+            NumberAnimation {
+                duration: root.revealed
+                    ? MichiMotion.artwork : MichiMotion.standard
+                easing.type: MichiMotion.outCubic
+            }
         }
     }
 

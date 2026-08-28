@@ -40,21 +40,9 @@ Item {
         (parent ? parent.height : 760) * 0.36))
     clip: true
 
-    // Safe route entrance. ContentHost owns the page cross-fade; this is a
-    // small material settling motion inside the hero itself.
+    // ContentHost owns the route translation; the hero only fades so the
+    // two layers never accumulate into a conspicuous double movement.
     opacity: 0
-    transform: Translate {
-        id: entranceTranslate
-        y: root.opacity < 1 && !MichiAccessibility.reducedMotion
-            ? MichiSpacing.sm : 0
-        Behavior on y {
-            enabled: !MichiAccessibility.reducedMotion
-            NumberAnimation {
-                duration: MichiMotion.panel
-                easing.type: MichiMotion.outCubic
-            }
-        }
-    }
     Behavior on opacity {
         enabled: !MichiAccessibility.reducedMotion
         NumberAnimation {
@@ -96,10 +84,21 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                anchors.margins: -MichiSpacing.sm
+                anchors.margins: -MichiSpacing.xs
                 radius: MichiRadius.floating
                 color: MichiSemanticColors.glassShadow
-                opacity: 0.55
+                opacity: 0.46
+                transform: Translate { y: MichiSpacing.xs }
+                z: -1
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -1
+                radius: MichiRadius.lg
+                color: MichiSemanticColors.glassShadowNear
+                opacity: 0.34
+                transform: Translate { y: 2 }
                 z: -1
             }
 
@@ -124,7 +123,7 @@ Item {
                     anchors.fill: parent
                     radius: MichiRadius.lg
                     color: MichiSemanticColors.scrim
-                    opacity: coverMouse.containsMouse || coverFocus.activeFocus ? 0.62 : 0
+                    opacity: coverMouse.containsMouse || coverFocus.activeFocus ? 0.54 : 0
                     Behavior on opacity {
                         enabled: !MichiAccessibility.reducedMotion
                         NumberAnimation {
@@ -173,6 +172,7 @@ Item {
 
         ColumnLayout {
             Layout.fillWidth: true
+            Layout.maximumWidth: root.width >= 1200 ? 760 : 100000
             Layout.alignment: Qt.AlignVCenter
             spacing: MichiSpacing.sm
 
@@ -257,7 +257,7 @@ Item {
                         ? qsTr("Customize appearance") : ""
                     iconName: "sliders"
                     iconOnly: root.width < 760
-                    variant: "secondary"
+                    variant: "ghost"
                     implicitHeight: MichiMetrics.controlMedium
                     accessibleName: qsTr("Customize playlist appearance")
                     onClicked: root.customizeAppearanceRequested()
@@ -273,6 +273,11 @@ Item {
 
                 Item { Layout.fillWidth: true }
             }
+        }
+
+        Item {
+            visible: root.width >= 1200
+            Layout.fillWidth: true
         }
     }
 }

@@ -52,7 +52,8 @@ def test_hero_cover_is_square_with_faint_shadow():
     assert "Layout.preferredHeight: root.coverSize" in hero
     assert "radius: MichiRadius.lg" in hero
     assert "glassShadow" in hero
-    assert "opacity: 0.55" in hero
+    assert "opacity: 0.46" in hero
+    assert "glassShadowNear" in hero
 
 
 # ── PlaylistTrackList (dense table) ───────────────────────────────────────────
