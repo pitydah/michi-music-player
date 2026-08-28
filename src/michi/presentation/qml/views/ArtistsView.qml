@@ -34,12 +34,6 @@ Item {
                 tone: "neutral"
             }
             Item { Layout.fillWidth: true }
-            MichiText {
-                visible: library.artists.length > 0
-                text: qsTr("Select an artist to explore albums and tracks")
-                role: "caption"
-                color: MichiPalette.textMuted
-            }
         }
 
         GridView {
@@ -62,8 +56,8 @@ Item {
             visible: library.artists.length > 0
             model: library.artists
             cellWidth: width / columnCount
-            cellHeight: MichiThemeState.density === "compact" ? 210
-                : MichiThemeState.density === "comfortable" ? 258 : 232
+            cellHeight: Math.round(resolvedCardWidth + cardGap
+                + MichiSpacing.xxxl + MichiSpacing.md)
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             keyNavigationEnabled: true
@@ -97,12 +91,28 @@ Item {
                 width: artistGrid.cellWidth
                 height: artistGrid.cellHeight
 
-                ArtistCard {
+                Component.onCompleted: enrichment.prefetch_artist_portrait(
+                    artistCell.modelData.key)
+                onModelDataChanged: enrichment.prefetch_artist_portrait(
+                    artistCell.modelData.key)
+
+                Connections {
+                    target: enrichment
+                    function onOnlineEnabledChanged() {
+                        if (enrichment.onlineEnabled)
+                            enrichment.prefetch_artist_portrait(
+                                artistCell.modelData.key)
+                    }
+                }
+
+                ArtistPortraitCard {
                     anchors.top: parent.top
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: artistGrid.resolvedCardWidth
                     height: parent.height - artistGrid.cardGap
                     artist: artistCell.modelData
+                    portraitPath: enrichment.artistPortraits[
+                        artistCell.modelData.key] || artistCell.modelData.artworkPath
                     selected: artistCell.current
                     onActiveFocusChanged: {
                         if (activeFocus)

@@ -52,6 +52,7 @@ class _EnrichmentRelay(QObject):
     search_error = Signal(
         object, object, object, int, object
     )  # (kind, key, session, epoch, error)
+    portrait_event_received = Signal(object)
 
 
 _STATE_MESSAGES = {
@@ -79,18 +80,24 @@ _TERMINAL_STATES = {
     EnrichmentOperationState.DISABLED,
 }
 
+_MAX_PORTRAIT_PREFETCH_INFLIGHT = 2
+_MAX_PORTRAIT_PREFETCH_QUEUE = 12
+
 
 class EnrichmentBridge(QObject):
     """One production bridge exposing a stable QML projection.
 
-    Activation semantics (never trigger network from lists/search/scan):
+    Detail activation semantics (never trigger network from search/scan):
     - activate_artist/activate_album: cached knowledge is projected
       immediately; network starts ONLY when Online Library Enrichment is
       ON and no cached knowledge exists (exactly once per activation).
+    - Artist gallery delegates may request a missing portrait through the
+      separate bounded prefetch slot. That workflow never activates an entity.
     - Manual review, clear and reset are explicit user actions.
     """
 
     changed = Signal()
+    onlineEnabledChanged = Signal()
 
     def __init__(
         self,
@@ -112,6 +119,9 @@ class EnrichmentBridge(QObject):
             self._apply_candidates, Qt.QueuedConnection
         )
         self._relay.search_error.connect(self._apply_search_error, Qt.QueuedConnection)
+        self._relay.portrait_event_received.connect(
+            self._apply_portrait_event, Qt.QueuedConnection
+        )
 
         self._disposed = False
         self._presentation_intent_id = 0
@@ -139,6 +149,10 @@ class EnrichmentBridge(QObject):
         self._album_has_knowledge = False
         self._album_artwork_path = ""
         self._album_attributions: list = []
+        self._artist_portraits: dict[str, str] = {}
+        self._portrait_prefetch_queue: list[str] = []
+        self._portrait_prefetch_inflight: set[str] = set()
+        self._portrait_prefetch_attempted: set[str] = set()
 
         # manual review
         self._review_open = False
@@ -152,7 +166,9 @@ class EnrichmentBridge(QObject):
     # QML properties
     # ------------------------------------------------------------------
 
-    onlineEnabled = Property(bool, lambda self: self._online_enabled, notify=changed)
+    onlineEnabled = Property(
+        bool, lambda self: self._online_enabled, notify=onlineEnabledChanged
+    )
     busy = Property(
         bool,
         lambda self: self._state in ("RESOLVING_IDENTITY", "FETCHING_KNOWLEDGE"),
@@ -188,6 +204,9 @@ class EnrichmentBridge(QObject):
     albumAttributions = Property(
         "QVariantList", lambda self: self._album_attributions, notify=changed
     )
+    artistPortraits = Property(
+        "QVariantMap", lambda self: self._artist_portraits, notify=changed
+    )
 
     reviewOpen = Property(bool, lambda self: self._review_open, notify=changed)
     reviewKind = Property(str, lambda self: self._review_kind, notify=changed)
@@ -203,6 +222,35 @@ class EnrichmentBridge(QObject):
     # ------------------------------------------------------------------
     # activation (explicit detail only — never lists/scan/search)
     # ------------------------------------------------------------------
+
+    @Slot(str)
+    def prefetch_artist_portrait(self, local_artist_key: str) -> None:
+        """Cache-first, bounded portrait intent for one instantiated tile.
+
+        GridView delegate creation supplies the viewport bound; this bridge
+        owns dedupe, network policy and concurrency. Detail activation state
+        is never changed by this workflow.
+        """
+        if self._disposed or not local_artist_key:
+            return
+        profile = self._service.get_artist_knowledge(local_artist_key)
+        if profile is not None:
+            path = self._artwork_path_for(profile.artwork_asset_id)
+            if path:
+                self._set_artist_portrait(local_artist_key, path)
+                return
+        if (
+            not self._online_enabled
+            or (self._active_kind == "artist" and self._active_key == local_artist_key)
+            or local_artist_key in self._portrait_prefetch_attempted
+            or local_artist_key in self._portrait_prefetch_inflight
+            or local_artist_key in self._portrait_prefetch_queue
+        ):
+            return
+        if len(self._portrait_prefetch_queue) >= _MAX_PORTRAIT_PREFETCH_QUEUE:
+            return
+        self._portrait_prefetch_queue.append(local_artist_key)
+        self._pump_portrait_prefetch()
 
     @Slot(str)
     def activate_artist(self, local_artist_key: str) -> None:
@@ -472,11 +520,18 @@ class EnrichmentBridge(QObject):
             # the worker's late CANCELLED/FAILED/READY carries the OLD
             # intent and becomes stale; the UI stays READY/DISABLED.
             self._presentation_intent_id += 1
+        was_enabled = self._online_enabled
         self._online_enabled = enabled
+        if enabled and not was_enabled:
+            self._portrait_prefetch_attempted.clear()
+        if enabled != was_enabled:
+            self.onlineEnabledChanged.emit()
         if not enabled:
             # Persist OFF, cancel live operations: workers lose authority;
             # the UI converges to cached data (READY) or DISABLED.
             self._coordinator.cancel_all()
+            self._portrait_prefetch_queue.clear()
+            self._portrait_prefetch_inflight.clear()
             if self._active_kind == "artist":
                 self._load_cached_artist()
                 self._state = "READY" if self._artist_has_knowledge else "DISABLED"
@@ -502,6 +557,8 @@ class EnrichmentBridge(QObject):
         if self._disposed:
             return
         self._disposed = True
+        self._portrait_prefetch_queue.clear()
+        self._portrait_prefetch_inflight.clear()
         self._presentation_intent_id += 1
         self._manual_search_epoch += 1
         self._review_session_id += 1
@@ -509,6 +566,7 @@ class EnrichmentBridge(QObject):
             self._relay.event_received.disconnect(self._apply_event)
             self._relay.candidates_received.disconnect(self._apply_candidates)
             self._relay.search_error.disconnect(self._apply_search_error)
+            self._relay.portrait_event_received.disconnect(self._apply_portrait_event)
         except RuntimeError:
             pass  # already disconnected
 
@@ -604,6 +662,31 @@ class EnrichmentBridge(QObject):
         self._review_error = "Could not search — please try again later"
         self.changed.emit()
 
+    def _apply_portrait_event(self, event: EnrichmentOperationEvent) -> None:
+        """Owner-thread completion for gallery prefetch only.
+
+        It deliberately does not touch activeKind, activeKey, detail state,
+        review state or the active knowledge projections.
+        """
+        if self._disposed:
+            return
+        key = event.local_entity_key
+        if key not in self._portrait_prefetch_inflight:
+            return
+        if event.state not in _TERMINAL_STATES:
+            return
+        self._portrait_prefetch_inflight.discard(key)
+        if event.state in (
+            EnrichmentOperationState.READY,
+            EnrichmentOperationState.PARTIAL,
+        ):
+            profile = self._service.get_artist_knowledge(key)
+            if profile is not None:
+                self._set_artist_portrait(
+                    key, self._artwork_path_for(profile.artwork_asset_id)
+                )
+        self._pump_portrait_prefetch()
+
     # ------------------------------------------------------------------
     # internals
     # ------------------------------------------------------------------
@@ -627,6 +710,39 @@ class EnrichmentBridge(QObject):
         self._state = "IDLE"
         self._state_message = ""
         self._knowledge_stale = False
+
+    def _set_artist_portrait(self, key: str, path: str) -> None:
+        if not path or self._artist_portraits.get(key) == path:
+            return
+        self._artist_portraits = {**self._artist_portraits, key: path}
+        self.changed.emit()
+
+    def _pump_portrait_prefetch(self) -> None:
+        while (
+            not self._disposed
+            and self._online_enabled
+            and self._portrait_prefetch_queue
+            and len(self._portrait_prefetch_inflight) < _MAX_PORTRAIT_PREFETCH_INFLIGHT
+        ):
+            key = self._portrait_prefetch_queue.pop(0)
+            profile = self._service.get_artist_knowledge(key)
+            if profile is not None:
+                path = self._artwork_path_for(profile.artwork_asset_id)
+                if path:
+                    self._set_artist_portrait(key, path)
+                    continue
+            if self._active_kind == "artist" and self._active_key == key:
+                continue
+            artist, albums, tracks = self._artist_refs(key)
+            self._portrait_prefetch_attempted.add(key)
+            if artist is None:
+                continue
+            self._portrait_prefetch_inflight.add(key)
+
+            def on_state(event):
+                self._relay.portrait_event_received.emit(event)
+
+            self._coordinator.enrich_artist(artist, albums, tracks, on_state)
 
     def _clear_projection(self) -> None:
         self._artist_knowledge = {}

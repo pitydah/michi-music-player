@@ -10,6 +10,7 @@ MichiGlassSurface {
     id: root
 
     property string currentTab: "songs"
+    property real searchPanePreferredWidth: width >= 1480 ? 640 : 520
     signal currentTabRequested(string tab)
 
     readonly property bool scanning: (typeof library !== "undefined" && library)
@@ -34,6 +35,12 @@ MichiGlassSurface {
         if (currentTab === "genres") return "Search genres…"
         if (currentTab === "playlists") return "Search tracks or playlists…"
         return "Search title, artist, album, genre or composer…"
+    }
+
+    function clampSearchWidth(candidate) {
+        var minimum = root.width < 980 ? 300 : 430
+        var maximum = root.width < 900 ? root.width : 760
+        return Math.max(Math.min(minimum, maximum), Math.min(maximum, candidate))
     }
 
     // Shared scan entry point (toolbar button + empty-library CTA): scans the
@@ -81,8 +88,8 @@ MichiGlassSurface {
             Item {
                 id: searchPane
                 objectName: "resizableLibrarySearchPane"
-                Layout.fillWidth: true
-                Layout.preferredWidth: root.width >= 1480 ? 640 : 520
+                Layout.fillWidth: root.width < 900
+                Layout.preferredWidth: root.clampSearchWidth(root.searchPanePreferredWidth)
                 Layout.minimumWidth: Math.min(root.width,
                     root.width < 980 ? 300 : 430)
                 Layout.maximumWidth: root.width < 900 ? root.width : 760
@@ -91,6 +98,49 @@ MichiGlassSurface {
                 RowLayout {
                     anchors.fill: parent
                     spacing: MichiSpacing.sm
+
+                    Rectangle {
+                        id: searchResizeHandle
+                        objectName: "librarySearchResizeHandle"
+                        Layout.preferredWidth: visible ? MichiSpacing.sm : 0
+                        Layout.fillHeight: true
+                        visible: root.width >= 900
+                        activeFocusOnTab: visible
+                        color: resizeHover.hovered || activeFocus
+                            ? MichiSemanticColors.borderStrong
+                            : "transparent"
+                        Accessible.role: Accessible.Separator
+                        Accessible.name: qsTr("Resize library search")
+
+                        property real widthAtDragStart: root.searchPanePreferredWidth
+
+                        HoverHandler {
+                            id: resizeHover
+                            cursorShape: Qt.SizeHorCursor
+                        }
+                        DragHandler {
+                            id: searchResizeDrag
+                            target: null
+                            xAxis.enabled: true
+                            yAxis.enabled: false
+                            onActiveChanged: {
+                                if (active)
+                                    searchResizeHandle.widthAtDragStart = root.searchPanePreferredWidth
+                            }
+                            onActiveTranslationChanged: {
+                                root.searchPanePreferredWidth = root.clampSearchWidth(
+                                    searchResizeHandle.widthAtDragStart - activeTranslation.x)
+                            }
+                        }
+                        Keys.onLeftPressed: root.searchPanePreferredWidth =
+                            root.clampSearchWidth(root.searchPanePreferredWidth + 16)
+                        Keys.onRightPressed: root.searchPanePreferredWidth =
+                            root.clampSearchWidth(root.searchPanePreferredWidth - 16)
+                        MichiFocusRing {
+                            visualFocus: searchResizeHandle.activeFocus
+                                && MichiAccessibility.keyboardMode
+                        }
+                    }
 
                     MichiStatusChip {
                         objectName: "searchNoResultsText"
@@ -119,29 +169,18 @@ MichiGlassSurface {
                         onClearRequested: { if (typeof library !== "undefined" && library) library.clear_search() }
                     }
 
-                    Item {
-                        Layout.preferredWidth: MichiMetrics.controlMedium
-                        Layout.preferredHeight: MichiMetrics.controlMedium
-
-                        MichiIconButton {
-                            id: sourceBtn
-                            anchors.fill: parent
-                            iconName: "folder"
-                            selected: folderDialog.visible
-                            accessibleName: qsTr("Music folder source")
-                            onClicked: folderDialog.open()
-                        }
-                    }
-
-                    MichiButton {
+                    MichiSplitButton {
+                        objectName: "libraryScanSplitButton"
                         text: root.width < 760 ? "Scan" : "Scan library"
                         iconName: "library"
-                        variant: "secondary"
+                        secondaryIconName: "folder"
                         iconOnly: root.width < 980
                         accessibleName: qsTr("Scan library")
+                        secondaryAccessibleName: qsTr("Choose music folder")
                         enabled: !root.scanning
                             && typeof library !== "undefined" && library
-                        onClicked: root.performScan()
+                        onPrimaryClicked: root.performScan()
+                        onSecondaryClicked: folderDialog.open()
                     }
                 }
             }

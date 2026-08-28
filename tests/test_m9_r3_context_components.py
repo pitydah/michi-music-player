@@ -94,8 +94,9 @@ def test_toolbar_stacks_at_narrow_width_without_hiding_actions() -> None:
     toolbar = _qml("views/LibraryToolbar.qml")
     assert "root.width < 900 ? 1 : 2" in toolbar
     assert "GridLayout" in toolbar
-    assert 'iconName: "folder"' in toolbar
+    assert 'secondaryIconName: "folder"' in toolbar
     assert 'iconName: "library"' in toolbar
+    assert "MichiSplitButton" in toolbar
     assert "Math.min(root.width" in toolbar
 
 

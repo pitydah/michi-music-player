@@ -85,60 +85,15 @@ GridView {
             width: vinylTile.stageSize
             height: vinylTile.stageSize
 
-            Rectangle {
+            VinylDisc {
                 id: vinylDisc
                 width: vinylTile.sleeveSize
                 height: width
-                radius: width / 2
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.horizontalCenterOffset: hover.hovered || vinylTile.selected
                     ? width * 0.16 : width * 0.04
-                color: MichiPalette.graphiteRaised
-                border.width: 1
-                border.color: MichiSemanticColors.borderStrong
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    radius: width / 2
-                    color: "transparent"
-                    border.width: 1
-                    border.color: MichiSemanticColors.innerHighlight
-                    opacity: 0.5
-                }
-
-                Repeater {
-                    model: 3
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: vinylDisc.width - MichiSpacing.md - index * vinylDisc.width * 0.18
-                        height: width
-                        radius: width / 2
-                        color: "transparent"
-                        border.width: 1
-                        border.color: MichiSemanticColors.borderSubtle
-                        opacity: 0.7
-                    }
-                }
-
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: parent.width * 0.32
-                    height: width
-                    radius: width / 2
-                    color: vinylTile.selected
-                        ? MichiPalette.auroraCyan : MichiPalette.graphiteRaised
-                    border.width: 1
-                    border.color: MichiSemanticColors.innerHighlight
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: MichiSpacing.xs
-                        height: width
-                        radius: width / 2
-                        color: MichiPalette.obsidian
-                    }
-                }
+                selected: vinylTile.selected
 
                 Behavior on anchors.horizontalCenterOffset {
                     enabled: !MichiAccessibility.reducedMotion
@@ -202,14 +157,10 @@ GridView {
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
         TapHandler {
             id: vinylTap
-            // First tap selects (showing the rich selected state: disc
-            // offset, cyan label); tapping the already-selected tile opens.
             onTapped: {
-                var wasCurrent = albumVinyl.currentIndex === vinylTile.index
                 albumVinyl.currentIndex = vinylTile.index
                 vinylTile.forceActiveFocus()
-                if (wasCurrent)
-                    library.select_album(modelData.key)
+                library.select_album(modelData.key)
             }
         }
         AlbumContextArea {

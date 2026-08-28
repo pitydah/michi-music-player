@@ -242,10 +242,11 @@ def test_cover_flow_tap_preserves_drag_and_focus():
     assert "MouseArea {" not in content
 
 
-def test_vinyl_wall_first_tap_selects_second_opens():
+def test_vinyl_wall_single_tap_selects_and_opens():
     content = read("views/VinylWallView.qml")
-    assert "var wasCurrent = albumVinyl.currentIndex === vinylTile.index" in content
-    assert "if (wasCurrent)" in content
+    assert "albumVinyl.currentIndex = vinylTile.index" in content
+    assert "library.select_album(modelData.key)" in content
+    assert "var wasCurrent" not in content
 
 
 def test_timeline_reuses_items_and_aligns_to_grid():
@@ -268,9 +269,9 @@ def test_timeline_year_uses_neutral_accent():
 
 
 def test_vinyl_label_neutral_when_unselected():
-    content = read("views/VinylWallView.qml")
-    assert "? MichiPalette.auroraCyan : MichiPalette.graphiteRaised" in content
-    assert "MichiScrollBar" in content
+    content = read("media/VinylDisc.qml")
+    assert "? MichiPalette.auroraCyan : MichiPalette.graphite" in content
+    assert "MichiScrollBar" in read("views/VinylWallView.qml")
 
 
 def test_cover_flow_single_cyan_accent():

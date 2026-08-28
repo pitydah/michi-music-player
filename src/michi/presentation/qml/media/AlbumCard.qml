@@ -14,7 +14,6 @@ Item {
     implicitHeight: 286
     focus: false
     activeFocusOnTab: true
-    scale: hover.hovered ? 1.015 : 1
     Accessible.role: Accessible.ListItem
     Accessible.name: album ? album.title + " by " + album.artist : "Album"
     Accessible.description: album ? root.albumDescription() : ""
@@ -42,6 +41,8 @@ Item {
             : hover.hovered
                 ? MichiSemanticColors.surfaceHover
                 : root.selected
+                    ? MichiSemanticColors.surfaceSelected
+                    : MichiSemanticColors.contentSurface
         border.width: 1
         border.color: root.selected
             ? MichiSemanticColors.auroraCyanBorderSubtle
@@ -155,10 +156,6 @@ Item {
         visualFocus: root.activeFocus && MichiAccessibility.keyboardMode
     }
 
-    Behavior on scale {
-        enabled: !MichiAccessibility.reducedMotion
-        NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic }
-    }
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
     TapHandler {
         id: tap

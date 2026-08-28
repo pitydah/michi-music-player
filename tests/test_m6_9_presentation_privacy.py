@@ -1,7 +1,8 @@
 """M6.9-PRESENTATION — privacy gates.
 
-Library Enrichment must never touch the network unless the user opens a
-detail view with Online Library Enrichment ON and no cached knowledge.
+Library Enrichment must never touch the network unless Online Library
+Enrichment is ON and the user opens a detail or an instantiated Artists
+gallery delegate requests a missing portrait.
 All counts come from fake providers (CountingResolver calls) — no live
 network anywhere.
 """
@@ -84,6 +85,14 @@ class TestPrivacyGates:
         assert bridge._service._resolver.calls > 0
         assert len(bridge.property("artistCandidates")) == 1
 
+    def test_visible_artist_portrait_prefetch_on_is_allowed_but_not_activation(self):
+        bridge, _, _, _, _, _, _ = make_bridge(online=True)
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        process_events(12)
+        assert bridge._service._resolver.calls > 0
+        assert bridge.property("activeKind") == ""
+        assert bridge.property("activeKey") == ""
+
     def test_album_off_no_network(self):
         bridge, _, _, _, _, _, _ = make_bridge(online=False)
         bridge.activate_album(ALBUM_X_KEY)
@@ -104,9 +113,9 @@ class TestPrivacyGates:
         process_events(12)
         assert bridge._service._resolver.calls == calls_before
 
-    def test_scan_and_list_never_trigger(self):
-        """LibraryService operations (scan/build) do not touch the
-        enrichment graph at all — the bridge only reacts to activate_*."""
+    def test_scan_search_and_generic_list_population_never_trigger(self):
+        """Scan/build/search do not touch enrichment. Portrait network is
+        admitted only through the explicit delegate prefetch slot."""
         bridge, _, _, _, _, _, _ = make_bridge(online=True)
         # Simulated list population / scan lifecycle: nothing to do.
         process_events(8)

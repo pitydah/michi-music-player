@@ -12,7 +12,6 @@ Item {
 
     implicitWidth: 184
     implicitHeight: 240
-    scale: hover.hovered ? 1.015 : 1
     activeFocusOnTab: true
     Accessible.role: Accessible.ListItem
     Accessible.name: artist ? artist.name : "Artist"
@@ -29,6 +28,8 @@ Item {
             : hover.hovered
                 ? MichiSemanticColors.surfaceHover
                 : root.selected
+                    ? MichiSemanticColors.surfaceSelected
+                    : MichiSemanticColors.contentSurface
         border.width: 1
         border.color: root.selected
             ? MichiSemanticColors.auroraCyanBorderSubtle
@@ -102,11 +103,6 @@ Item {
     MichiFocusRing {
         anchors.fill: parent
         visualFocus: root.activeFocus && MichiAccessibility.keyboardMode
-    }
-
-    Behavior on scale {
-        enabled: !MichiAccessibility.reducedMotion
-        NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic }
     }
 
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }

@@ -6,6 +6,8 @@ double anti-stale filter (presentation intent + backend generation),
 clear vs reset, refresh, policy OFF cancellation and dispose.
 """
 
+from dataclasses import replace
+
 import pytest
 from enrichment_presentation_fakes import (
     ALBUM_X_KEY,
@@ -19,6 +21,8 @@ from enrichment_presentation_fakes import (
 
 from michi.domain.enrichment import (
     ArtistKnowledgeProfile,
+    EnrichmentAssetRecord,
+    EnrichmentEntityKind,
     KnowledgeProvenance,
 )
 
@@ -149,6 +153,81 @@ class TestActivationSemantics:
             bridge.property("artistKnowledge")["biography"] == "Biography of Artist A."
         )
         assert bridge.property("stateMessage") == "Offline — showing saved information"
+
+
+class TestArtistPortraitPrefetch:
+    def test_cached_portrait_projects_without_network_or_active_entity_change(self):
+        bridge, service, _, repo, store, _, _ = make_bridge(online=True)
+        _populate_artist(service, ARTIST_A_KEY, "Artist A", "mb-a")
+        profile = service.get_artist_knowledge(ARTIST_A_KEY)
+        assert profile is not None
+        store.store(
+            EnrichmentAssetRecord(
+                asset_id="artist-mb-a",
+                entity_kind=EnrichmentEntityKind.ARTIST,
+                external_entity_id="mb-a",
+                mime_type="image/jpeg",
+                provider="wikimedia-commons",
+            ),
+            b"portrait",
+        )
+        repo.save_artist_profile(replace(profile, artwork_asset_id="artist-mb-a"))
+        calls_before = bridge._service._resolver.calls
+
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        process_events(4)
+
+        assert bridge.property("artistPortraits") == {
+            ARTIST_A_KEY: "/enrichment/assets/artist-mb-a"
+        }
+        assert bridge.property("activeKind") == ""
+        assert bridge.property("activeKey") == ""
+        assert bridge._service._resolver.calls == calls_before
+
+    def test_uncached_portrait_prefetch_is_online_only_and_deduplicated(self):
+        class HoldingCoordinator:
+            def __init__(self, inner):
+                self.inner = inner
+                self.artist_calls = []
+
+            def __getattr__(self, name):
+                return getattr(self.inner, name)
+
+            def enrich_artist(self, artist, albums, tracks, on_state=None):
+                self.artist_calls.append((artist.key, on_state))
+
+        online, _, _, _, _, coordinator, _ = make_bridge(online=True)
+        holding = HoldingCoordinator(coordinator)
+        online._coordinator = holding
+
+        online.prefetch_artist_portrait(ARTIST_A_KEY)
+        online.prefetch_artist_portrait(ARTIST_A_KEY)
+        online.prefetch_artist_portrait(ARTIST_B_KEY)
+        online.prefetch_artist_portrait(ARTIST_B_KEY)
+
+        assert [key for key, _ in holding.artist_calls] == [
+            ARTIST_A_KEY,
+            ARTIST_B_KEY,
+        ]
+        assert online.property("activeKind") == ""
+        assert online.property("activeKey") == ""
+
+        offline, _, _, _, _, offline_coordinator, _ = make_bridge(online=False)
+        offline_holding = HoldingCoordinator(offline_coordinator)
+        offline._coordinator = offline_holding
+        offline.prefetch_artist_portrait(ARTIST_A_KEY)
+        assert offline_holding.artist_calls == []
+
+    def test_portrait_queue_allows_twelve_pending_beside_two_inflight(self):
+        bridge, _, _, _, _, _, _ = make_bridge(online=True)
+        bridge._portrait_prefetch_inflight = {"inflight-a", "inflight-b"}
+
+        for index in range(13):
+            bridge.prefetch_artist_portrait(f"pending-{index}")
+
+        assert bridge._portrait_prefetch_queue == [
+            f"pending-{index}" for index in range(12)
+        ]
 
 
 class TestSelectionChangesAndStaleFiltering:

@@ -56,7 +56,7 @@ test fix). CI green at head `bf329df`, 1575 tests + 13 structural tests in
 | 2 | **Queue unusable by keyboard** — ListView lacks `keyNavigationEnabled`; Up/Down dead; global Left/Right shortcuts skip tracks while focused in queue | `components/QueuePanel.qml:68-114` | `keyNavigationEnabled` + Up/Down keys + visual currentIndex feedback | 1 h |
 | 3 | **QueueView no close/focus** — no Esc, no focus grab, no exit animation; scrim MouseArea at opacity 0 still swallows input | `views/QueueView.qml:12-21` | Esc + `onOpened` focus + animated exit + `enabled` gate on scrim | 30 min |
 | 4 | **Cover-flow: click breaks drag** — full-delegate MouseArea swallows press; PathView flick dies when gesture starts on a cover; click has no pressed state or `forceActiveFocus` | `views/AlbumPathView.qml:171-176` | TapHandler + pressed + focus retention | 1 h |
-| 5 | **Vinyl wall: selected state unreachable by mouse** — tap opens instantly; rich selected visual (disc offset, cyan label) only via keyboard | `views/VinylWallView.qml:204-210` | Tap 1 = select, Tap 2 / Enter = open | 30 min |
+| 5 | **Vinyl wall selection contract** — the original audit preferred two taps, but M9-R3-R4 supersedes that behavior for cross-view consistency | `views/VinylWallView.qml` | Primary tap selects and opens; Enter opens; context remains exact-target | Superseded by R4 |
 
 **Commit A (done):** items 1 + scan-retry portion of item 6 — `LibraryContentHost`
 ErrorState gains "Retry scan" action; LoadingState excludes FAILED/CANCELLED.
@@ -69,7 +69,8 @@ ErrorState gains "Retry scan" action; LoadingState excludes FAILED/CANCELLED.
 
 **Commit C (done):** items 4 + 5 + 22 — cover-flow covers use TapHandler
 (keeps PathView drag, pressed feedback, focus retention, double-click opens);
-vinyl wall first tap selects / second tap opens; timeline adds `reuseItems`,
+vinyl wall historically used first-tap select / second-tap open (superseded by
+M9-R3-R4 first-tap open); timeline adds `reuseItems`,
 4px-grid margins (20/28/48), an opaque floating section header, and animated
 row background.
 

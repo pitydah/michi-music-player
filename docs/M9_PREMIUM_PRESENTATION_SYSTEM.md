@@ -381,3 +381,29 @@ server.
 - The shared mini-Library picker reuses `MichiTrackTable` selection and column
   behavior. Missing Library metadata still does not disable Queue or Playlist
   playback; only Library-dependent actions are withheld.
+
+### M9-R3-R4 hierarchy, interaction, and visual hardening
+
+- Album and artist delegates always resolve selected and default backgrounds
+  to semantic colors. Library cards no longer scale on hover.
+- The Library toolbar keeps responsive navigation in `GridLayout`. Search has
+  a clamped mouse and keyboard resize handle on desktop widths. Scan and source
+  selection share one `MichiSplitButton`: the primary segment scans the current
+  source or opens the native picker when no source exists; the secondary
+  segment always opens the picker.
+- Vinyl Wall reuses `VinylDisc`, preserves the sleeve/disc hierarchy without
+  groove repeaters or infinite rotation, and opens the canonical `albumKey` on
+  the first primary tap. Keyboard and exact-target context actions remain.
+- Artists use circular `ArtistPortraitCard` delegates with local representative
+  artwork as fallback. Instantiated gallery delegates may request external
+  portraits only when Online Library Enrichment is enabled.
+- `EnrichmentBridge.artistPortraits` is separate from detail knowledge state.
+  Portrait requests are cache-first, deduplicated, capped at 12 pending items,
+  limited to two concurrent operations, and delivered through the Qt owner-
+  thread relay. They never change `activeKind`, `activeKey`, review state, or
+  scan/search behavior. Cached portraits remain available while offline.
+- Artist context menus now include an identity header and only wired actions.
+  No synthetic Play Artist or Artist Properties command was introduced.
+- Michi Legacy informed the sleeve/disc offset and circular portrait hierarchy;
+  its hover scaling, groove decoration, and infinite spin were intentionally
+  rejected by the current motion and material canon.
