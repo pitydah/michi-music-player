@@ -125,25 +125,41 @@ Item {
             border.width: 1
             border.color: MichiSemanticColors.borderSubtle
 
-            // Large subtle initial monogram in background
+            // The fallback is artwork, not an empty-state icon: restrained
+            // navy depth, an offset monogram and a small categorical mark.
+            Rectangle {
+                width: parent.width * 0.78
+                height: width
+                radius: width / 2
+                x: parent.width * 0.48
+                y: -height * 0.34
+                color: MichiSemanticColors.auroraCyanSurface
+                opacity: 0.72
+            }
+
             MichiText {
-                anchors.centerIn: parent
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: Math.round(parent.width * 0.08)
+                anchors.bottomMargin: -Math.round(parent.height * 0.08)
                 text: root.fallbackText.length > 0 ? root.fallbackText.charAt(0).toUpperCase() : "P"
-                font.pixelSize: Math.round(root.width * 0.48)
-                font.weight: Font.Bold
-                color: MichiSemanticColors.innerHighlight
-                opacity: 0.25
+                font.pixelSize: Math.round(root.width * 0.54)
+                font.weight: Font.DemiBold
+                color: MichiPalette.textPrimary
+                opacity: 0.075
                 visible: root.width >= 80
             }
 
-            // Clean playlist icon in center
             MichiIcon {
-                anchors.centerIn: parent
-                width: Math.min(root.width * 0.36, 40)
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.margins: Math.max(MichiSpacing.md, root.width * 0.075)
+                width: Math.min(root.width * 0.14, 28)
                 height: width
                 name: "playlist"
-                strokeWidth: 1.5
-                iconColor: MichiPalette.auroraCyan
+                strokeWidth: 1.35
+                iconColor: MichiPalette.textSecondary
+                opacity: 0.72
             }
         }
 

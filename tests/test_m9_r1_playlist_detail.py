@@ -220,9 +220,20 @@ class TestEditorialHeroRuntime:
         assert track_list is not None, "track list not found"
         header = track_list.property("headerItem")
         assert header is not None, "hero header was never instantiated"
-        assert header.property("height") > 0, "hero collapsed to zero height"
+        assert header.property("height") >= 240, "hero collapsed to zero height"
+        assert header.property("width") >= 1100, "hero header lost viewport width"
         hero = page.findChild(type(page), "playlistHero")
         assert hero is not None, "playlist hero missing inside the header"
+        assert hero.property("width") >= 1100, "hero did not fill its header"
+        assert hero.property("height") >= 240, "hero has no explicit geometry"
+        cover = page.findChild(type(page), "playlistHeroCoverStage")
+        assert cover is not None, "editorial cover stage missing"
+        assert cover.property("width") >= 144
+        assert cover.property("height") >= 144
+        background = page.findChild(type(page), "playlistHeroBackground")
+        assert background is not None, "hero background missing"
+        assert background.property("width") >= 1100
+        assert background.property("height") >= 240
         # live data via the null-safe Component bindings
         assert hero.property("playlistName") == "Jazz"
         # fade-in (MichiMotion.panel = 220ms) must have completed

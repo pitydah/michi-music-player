@@ -29,8 +29,8 @@ Item {
     signal renameRequested()
     signal deleteRequested()
 
-    implicitWidth: 288
-    implicitHeight: 318
+    implicitWidth: 304
+    implicitHeight: 332
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: root.playlistName + ", "
@@ -71,7 +71,7 @@ Item {
         color: root.interactionActive
             ? MichiSemanticColors.surfaceHover : "transparent"
         border.width: 1
-        border.color: root.selected
+        border.color: root.selected && MichiAccessibility.keyboardMode
             ? MichiSemanticColors.auroraCyanBorder
             : root.interactionActive
                 ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
@@ -91,7 +91,7 @@ Item {
 
         Item {
             id: artworkStage
-            Layout.preferredWidth: parent.width - MichiSpacing.xxl
+            Layout.preferredWidth: 240
             Layout.preferredHeight: width
             Layout.alignment: Qt.AlignLeft
 
@@ -99,8 +99,8 @@ Item {
             // controls. The revealed portion is the only part not occluded.
             MichiPeek {
                 id: michiPeek
-                width: Math.min(72, artworkStage.width * 0.3)
-                height: artworkStage.height * 0.72
+                width: 96
+                height: 176
                 x: artworkStage.width - width
                 anchors.verticalCenter: parent.verticalCenter
                 revealed: root.interactionActive
@@ -144,12 +144,15 @@ Item {
                 }
             }
 
-            MichiIconButton {
+            MichiButton {
                 id: playButton
                 anchors.centerIn: coverLayer
-                implicitWidth: MichiMetrics.controlLarge
-                implicitHeight: MichiMetrics.controlLarge
+                implicitWidth: 52
+                implicitHeight: 52
                 iconName: "play"
+                iconOnly: true
+                variant: "primary"
+                iconSize: MichiMetrics.iconMedium
                 accessibleName: qsTr("Play %1 without opening it").arg(root.playlistName)
                 opacity: root.interactionActive ? 1 : 0
                 scale: root.interactionActive ? 1 : 0.96

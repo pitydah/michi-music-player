@@ -181,7 +181,12 @@ class PlaylistsBridge(QObject):
         current_key = self._palette_sources.get(playlist.playlist_id)
         if current_key != source_key:
             self._palette_sources[playlist.playlist_id] = source_key
-            if self._palette_extractor is not None and sources:
+            if not sources:
+                # An empty source set owns the canonical default palette.
+                # Never retain colors extracted from artwork that has just
+                # been removed from the playlist.
+                self._auto_palettes.pop(playlist.playlist_id, None)
+            elif self._palette_extractor is not None:
                 playlist_id = playlist.playlist_id
                 self._palette_extractor.request_palette(
                     sources,

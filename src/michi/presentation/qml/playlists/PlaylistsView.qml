@@ -143,9 +143,8 @@ Item {
                     MichiSearchField {
                         id: searchField
                         placeholderText: qsTr("Search playlists…")
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 120
-                        Layout.preferredWidth: Math.min(340, Math.max(180, root.width * 0.36))
+                        Layout.minimumWidth: 220
+                        Layout.preferredWidth: Math.min(420, Math.max(280, root.width * 0.34))
                         text: root.searchQuery
                         onTextChanged: root.searchQuery = text
                     }
@@ -175,6 +174,8 @@ Item {
                         ]
                         onSelected: value => root.displayMode = value
                     }
+
+                    Item { Layout.fillWidth: true }
                 }
             }
         }
@@ -208,10 +209,10 @@ Item {
             Layout.fillHeight: true
             visible: root.filteredPlaylists.length > 0 && root.displayMode === "grid"
             clip: true
-            readonly property int targetCellWidth: MichiThemeState.density === "compact" ? 280 : 304
+            readonly property int targetCellWidth: MichiThemeState.density === "compact" ? 296 : 328
             readonly property int columnCount: Math.max(1, Math.floor(width / targetCellWidth))
             cellWidth: width / columnCount
-            cellHeight: 338
+            cellHeight: 352
             model: root.filteredPlaylists
             keyNavigationEnabled: true
             keyNavigationWraps: false
@@ -251,12 +252,12 @@ Item {
                 height: gridView.cellHeight
 
                 PlaylistCard {
-                    width: Math.min(288, parent.width - MichiSpacing.lg)
-                    height: 318
+                    width: Math.min(304, parent.width - MichiSpacing.lg)
+                    height: 332
                     anchors.top: parent.top
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.topMargin: MichiSpacing.sm
-                    selected: playlistCell.current
+                    selected: playlistCell.current && gridView.activeFocus
                     playlistId: playlistCell.modelData.playlistId
                     playlistName: playlistCell.modelData.name
                     trackCount: playlistCell.modelData.trackCount

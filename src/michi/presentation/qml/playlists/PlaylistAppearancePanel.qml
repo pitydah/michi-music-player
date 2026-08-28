@@ -30,6 +30,7 @@ MichiDialog {
 
     property string draftMode: "auto"
     property bool draftThirdColor: false
+    property url draftHeroImageUrl: ""
     property string errorText: ""
 
     function openForPlaylist() {
@@ -49,6 +50,7 @@ MichiDialog {
         gradientTwo.text = colors.length > 1 ? colors[1] : MichiPalette.playlistHeroMidHex
         gradientThree.text = colors.length > 2 ? colors[2] : MichiPalette.playlistHeroBottomHex
         root.draftThirdColor = colors.length > 2
+        root.draftHeroImageUrl = ""
         angleSlider.value = root.heroGradientAngle
         root.errorText = ""
     }
@@ -66,7 +68,10 @@ MichiDialog {
             success = playlists.set_hero_gradient(
                 root.playlistId, colors, angleSlider.value)
         } else if (root.draftMode === "image") {
-            if (root.heroImagePath.length > 0) {
+            if (root.draftHeroImageUrl.toString().length > 0) {
+                success = playlists.set_custom_hero_from_url(
+                    root.playlistId, root.draftHeroImageUrl)
+            } else if (root.heroImagePath.length > 0) {
                 success = true
             } else {
                 heroDialog.open()
@@ -96,12 +101,11 @@ MichiDialog {
         title: qsTr("Choose a custom hero image")
         nameFilters: [qsTr("Image files (*.png *.jpg *.jpeg *.webp)")]
         onAccepted: {
-            if (playlists.set_custom_hero_from_url(root.playlistId, selectedFile)) {
-                root.errorText = ""
-                root.draftMode = "image"
-            } else {
-                root.errorText = qsTr("The selected hero image could not be imported.")
-            }
+            // File selection is a draft. Copying and persistence happen
+            // only in _applyHero(), so Close is a real cancellation path.
+            root.draftHeroImageUrl = selectedFile
+            root.errorText = ""
+            root.draftMode = "image"
         }
     }
 
@@ -153,7 +157,8 @@ MichiDialog {
                                     root._previewColor(gradientTwo.text, MichiPalette.playlistHeroMidHex)
                                 ]
                             gradientAngle: angleSlider.value
-                            heroImagePath: root.heroImagePath
+                            heroImagePath: root.draftHeroImageUrl.toString().length > 0
+                                ? root.draftHeroImageUrl.toString() : root.heroImagePath
                             coverPath: root.customCoverPath
                             mosaicArtworkPaths: root.mosaicArtworkPaths
                             autoColors: root.autoHeroColors
@@ -331,7 +336,8 @@ MichiDialog {
                         Layout.fillWidth: true
                         visible: root.draftMode === "image"
                         MichiButton {
-                            text: root.heroImagePath.length > 0
+                            text: root.draftHeroImageUrl.toString().length > 0
+                                || root.heroImagePath.length > 0
                                 ? qsTr("Replace image") : qsTr("Choose image")
                             iconName: "image"
                             accessibleName: qsTr("Choose a custom hero image")
@@ -340,11 +346,13 @@ MichiDialog {
                         MichiButton {
                             text: qsTr("Reset to automatic")
                             variant: "ghost"
-                            enabled: root.heroMode !== "auto" || root.heroImagePath.length > 0
+                            enabled: root.draftMode !== "auto"
+                                || root.draftHeroImageUrl.toString().length > 0
+                                || root.heroImagePath.length > 0
                             accessibleName: qsTr("Reset hero background to automatic")
                             onClicked: {
-                                if (playlists.set_hero_auto(root.playlistId))
-                                    root.draftMode = "auto"
+                                root.draftHeroImageUrl = ""
+                                root.draftMode = "auto"
                             }
                         }
                     }

@@ -7,10 +7,12 @@ Item {
     id: root
 
     property bool revealed: false
-    readonly property real revealDistance: Math.max(28, Math.min(40, width * 0.55))
+    // The cover occludes most of the body. Only 32–40 px of profile,
+    // eye, whiskers and paw clear its right edge on hover/focus.
+    readonly property real revealDistance: Math.max(32, Math.min(40, width * 0.42))
 
-    implicitWidth: 68
-    implicitHeight: 136
+    implicitWidth: 96
+    implicitHeight: 176
     opacity: root.revealed ? 1 : 0
     transform: Translate {
         id: revealTranslate

@@ -264,6 +264,25 @@ def test_bridge_projects_and_mutates_appearance_without_owning_selection() -> No
         bridge.dispose()
 
 
+def test_auto_palette_resets_when_all_artwork_sources_disappear() -> None:
+    playlist = Playlist(
+        playlist_id="p1", name="Palette", custom_cover_path="/cover.jpg"
+    )
+    service = PlaylistService(playlists_port=MemoryPlaylistsPort([playlist]))
+    bridge = PlaylistsBridge(service)
+    try:
+        bridge._auto_palettes["p1"] = ["#112233", "#445566", "#778899"]
+        bridge._auto_palette_for(playlist, [])
+        service.remove_custom_cover("p1")
+
+        colors = bridge._auto_palette_for(service.get_playlist("p1"), [])
+
+        assert "p1" not in bridge._auto_palettes
+        assert colors == ["#152A45", "#13243D", "#0A0D14"]
+    finally:
+        bridge.dispose()
+
+
 def test_qml_appearance_and_michipeek_contracts() -> None:
     qml = Path("src/michi/presentation/qml")
     card = (qml / "playlists/PlaylistCard.qml").read_text(encoding="utf-8")
@@ -272,6 +291,8 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     hero = (qml / "playlists/PlaylistHeroBackground.qml").read_text(encoding="utf-8")
     detail = (qml / "playlists/PlaylistDetailView.qml").read_text(encoding="utf-8")
     overview = (qml / "playlists/PlaylistsView.qml").read_text(encoding="utf-8")
+    peek = (qml / "playlists/MichiPeek.qml").read_text(encoding="utf-8")
+    peek_svg = (qml / "assets/michi-peek.svg").read_text(encoding="utf-8")
 
     assert "MichiPeek" in card
     assert "vinylDisc" not in card
@@ -279,9 +300,25 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     assert card.count('iconName: "play"') == 1
     assert "contextMenu.visible" in card
     assert "!MichiAccessibility.reducedMotion" in card
+    assert "Layout.preferredWidth: 240" in card
+    assert "implicitWidth: 52" in card
+    assert 'variant: "primary"' in card
+    assert "root.selected && MichiAccessibility.keyboardMode" in card
+    assert "implicitWidth: 96" in peek
+    assert "implicitHeight: 176" in peek
+    assert "Math.min(40, width * 0.42)" in peek
+    assert 'viewBox="0 0 96 156"' in peek_svg
+    assert "<image" not in peek_svg
+    assert "metadata" not in peek_svg.lower()
     for mode in ('"auto"', '"solid"', '"gradient"', '"image"'):
         assert mode in panel
         assert mode in hero
+    assert "Gradient.Horizontal" in hero
+    assert "MichiMaterialTexture" in hero
+    assert "cache: false" in hero
+    assert panel.count("set_custom_hero_from_url") == 1
+    assert "root.draftHeroImageUrl = selectedFile" in panel
+    assert "Copying and persistence happen" in panel
     assert "PlaylistAppearancePanel" in detail
     assert "PlaylistAppearancePanel" in overview
     assert "substring(7)" not in detail + overview + panel

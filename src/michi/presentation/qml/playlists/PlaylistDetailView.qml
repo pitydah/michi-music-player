@@ -47,14 +47,25 @@ Item {
     Component {
         id: heroComponent
         Item {
+            id: heroHeader
+            objectName: "playlistHeroHeader"
             readonly property var appearance: playlists
                 ? playlists.selectedPlaylistAppearance : ({})
-            implicitHeight: heroItem.implicitHeight + MichiMetrics.controlSmall
+            // ListView does not guarantee the implicit dimensions of an
+            // arbitrary Item header. Explicit geometry is mandatory: the
+            // previous implicit-only wrapper produced a zero-width/height
+            // hero whose children leaked into the page without its cover or
+            // background.
+            width: root.width
+            height: root.heroHeight + MichiMetrics.controlSmall
+            implicitWidth: width
+            implicitHeight: height
 
             PlaylistHero {
                 id: heroItem
                 objectName: "playlistHero"
                 width: parent.width
+                height: root.heroHeight
                 playlistName: playlists ? playlists.selectedPlaylistName : ""
                 trackCount: playlists ? playlists.playlistTracks.length : 0
                 durationMs: playlists ? playlists.selectedPlaylistDurationMs : 0

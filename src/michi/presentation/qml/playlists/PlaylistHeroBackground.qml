@@ -1,4 +1,5 @@
 import QtQuick
+import "../primitives"
 import "../theme"
 
 // One hero-only renderer: no per-card shader or blur. User colors/images
@@ -72,7 +73,7 @@ Item {
         asynchronous: true
         cache: true
         fillMode: Image.PreserveAspectCrop
-        opacity: 0.24
+        opacity: 0.32
     }
 
     Image {
@@ -82,14 +83,30 @@ Item {
         sourceSize.width: Math.min(1600, Math.round(width * Screen.devicePixelRatio))
         sourceSize.height: Math.min(600, Math.round(height * Screen.devicePixelRatio))
         asynchronous: true
-        cache: true
+        // Managed hero files are mutable at a stable path. Caching would
+        // keep the previous bytes visible after a same-extension replace.
+        cache: false
         fillMode: Image.PreserveAspectCrop
+    }
+
+    // A horizontal editorial scrim reserves a reliably calm reading field
+    // at the left without flattening the user's artwork on the right.
+    Rectangle {
+        anchors.fill: parent
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: MichiSemanticColors.scrimStrong }
+            GradientStop { position: 0.46; color: MichiSemanticColors.scrim }
+            GradientStop { position: 0.78; color: Qt.rgba(0.02, 0.025, 0.04, 0.25) }
+            GradientStop { position: 1; color: Qt.rgba(0.02, 0.025, 0.04, 0.08) }
+        }
+        opacity: root.heroMode === "image" ? 0.92 : 0.58
     }
 
     Rectangle {
         anchors.fill: parent
-        color: MichiSemanticColors.scrim
-        opacity: root.heroMode === "image" ? 0.72 : 0.46
+        color: MichiPalette.obsidianDeep
+        opacity: root.heroMode === "image" ? 0.22 : 0.08
     }
 
     Rectangle {
@@ -100,5 +117,23 @@ Item {
             GradientStop { position: 0.72; color: MichiSemanticColors.playlistHeroBottomScrim }
             GradientStop { position: 1; color: MichiPalette.obsidian }
         }
+    }
+
+    // One inexpensive texture per hero prevents large flat gradients from
+    // reading as unfinished while preserving the no-per-card-effects rule.
+    MichiMaterialTexture {
+        anchors.fill: parent
+        tileSeed: 222
+        textureOpacity: Math.min(0.13,
+            MichiThemeState.glassQuality === "low" ? 0 : 0.13)
+    }
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 1
+        color: MichiSemanticColors.innerHighlight
+        opacity: 0.7
     }
 }
