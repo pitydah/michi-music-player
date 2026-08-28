@@ -50,7 +50,9 @@ Item {
                 id: allPlaylistsView
                 objectName: "allPlaylistsView"
                 anchors.fill: parent
-                visible: opacity > 0
+                // Incoming page is interactive immediately; outgoing page
+                // remains renderable only while its fade still has alpha.
+                visible: !root._playlistDetail || opacity > 0
                 enabled: !root._playlistDetail
                 opacity: root._playlistDetail ? 0 : 1
                 z: root._playlistDetail ? 0 : 1
@@ -92,7 +94,7 @@ Item {
                 id: playlistDetail
                 objectName: "playlistDetailView"
                 anchors.fill: parent
-                visible: opacity > 0
+                visible: root._playlistDetail || opacity > 0
                 enabled: root._playlistDetail
                 opacity: root._playlistDetail ? 1 : 0
                 z: root._playlistDetail ? 1 : 0

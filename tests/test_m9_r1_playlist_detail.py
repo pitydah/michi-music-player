@@ -200,6 +200,11 @@ class TestEditorialHeroRuntime:
         win = QQuickWindow()
         win.resize(1200, 800)
         page.setParentItem(win.contentItem())
+        # A bare QQuickItem does not inherit its visual parent's geometry.
+        # Production anchors provide this; the isolated fixture must model
+        # that contract explicitly before asserting viewport-sized content.
+        page.setWidth(win.width())
+        page.setHeight(win.height())
         win.show()
 
         # let the scene graph run real frames (offscreen still animates)

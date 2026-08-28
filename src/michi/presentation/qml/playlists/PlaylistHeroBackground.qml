@@ -97,8 +97,8 @@ Item {
             orientation: Gradient.Horizontal
             GradientStop { position: 0; color: MichiSemanticColors.scrimStrong }
             GradientStop { position: 0.46; color: MichiSemanticColors.scrim }
-            GradientStop { position: 0.78; color: Qt.rgba(0.02, 0.025, 0.04, 0.25) }
-            GradientStop { position: 1; color: Qt.rgba(0.02, 0.025, 0.04, 0.08) }
+            GradientStop { position: 0.78; color: MichiSemanticColors.playlistHeroBottomScrim }
+            GradientStop { position: 1; color: MichiSemanticColors.borderSubtle }
         }
         opacity: root.heroMode === "image" ? 0.92 : 0.58
     }
