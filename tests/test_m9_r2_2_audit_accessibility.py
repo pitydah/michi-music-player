@@ -111,9 +111,15 @@ def test_flat_views_have_empty_states():
         ("views/FoldersView.qml", "folder"),
     ]:
         content = read(rel_path)
-        assert "EmptyState" in content, rel_path
-        assert f'iconName: "{icon}"' in content, rel_path
-        assert "visible: root.count === 0" in content, rel_path
+        if "MichiTrackTable" in content:
+            shared_table = read("media/MichiTrackTable.qml")
+            assert "EmptyState" in shared_table, rel_path
+            assert f'emptyIcon: "{icon}"' in content, rel_path
+            assert "visible: root.rows.length === 0" in shared_table, rel_path
+        else:
+            assert "EmptyState" in content, rel_path
+            assert f'iconName: "{icon}"' in content, rel_path
+            assert "visible: root.count === 0" in content, rel_path
 
 
 def test_empty_library_has_scan_cta():
@@ -157,9 +163,13 @@ def test_flat_lists_have_scrollbars():
         "views/FoldersView.qml",
         "playlists/PlaylistTrackList.qml",
     ]:
-        assert "MichiScrollBar" in read(rel_path), rel_path
+        content = read(rel_path)
+        assert "MichiScrollBar" in content or (
+            "MichiTrackTable" in content
+            and "MichiScrollBar" in read("media/MichiTrackTable.qml")
+        ), rel_path
     for rel_path in ["views/AlbumDetailView.qml", "views/ArtistDetailView.qml"]:
-        assert "ListView" in read(rel_path), rel_path
+        assert "MichiTrackTable" in read(rel_path), rel_path
 
 
 # ── P2: table header consistency and click-to-sort ────────────────────────────
@@ -183,7 +193,9 @@ def test_album_table_header_click_to_sort_wired():
     host = read("views/LibraryContentHost.qml")
     assert "signal sortModeRequested(string mode)" in host
     library_view = read("views/LibraryView.qml")
-    assert "onSortModeRequested: mode => root.albumSortMode = mode" in library_view
+    assert (
+        "onSortModeRequested: mode => library.set_album_sort_mode(mode)" in library_view
+    )
 
 
 # ── Phase 2: queue keyboard navigation and dismissal ──────────────────────────
@@ -405,9 +417,9 @@ def test_toast_host_supports_action_and_is_wired():
 def test_action_feedback_call_sites():
     lib_host = read("views/LibraryContentHost.qml")
     assert 'qsTr("Added to %1")' in lib_host  # R2: .arg() substitution
-    assert "modelData.name)" in lib_host
+    assert ".arg(playlistName)" in lib_host
     host = read("shell/ContentHost.qml")
-    assert "add_track_to_playlist(" in host
+    assert "add_tracks_to_playlist(" in host
 
 
 # ── Phase 4: full qsTr coverage (no intra-file mixes) ─────────────────────────

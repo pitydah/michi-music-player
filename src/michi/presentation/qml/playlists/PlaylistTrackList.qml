@@ -33,6 +33,9 @@ Item {
     signal trackSelected(int index)
     signal removeTrackRequested(int index)
     signal moveTrackRequested(int fromIndex, int toIndex)
+    signal addToPlaylistRequested(string trackId)
+    signal goToAlbumRequested(string albumKey)
+    signal goToArtistRequested(string artistKey)
 
     implicitHeight: 420
     clip: true
@@ -236,14 +239,11 @@ Item {
                     elide: Text.ElideRight
                 }
 
-                MichiText {
+                MichiFormatBadge {
                     visible: root.showFormatColumn
-                    Layout.preferredWidth: 72
-                    text: (modelData.qualityLabel && modelData.qualityLabel !== "")
-                        ? modelData.qualityLabel : ""
-                    role: "technical"
-                    color: MichiPalette.textMuted
-                    elide: Text.ElideRight
+                    Layout.preferredWidth: LibraryTrackColumnState.formatWidth
+                    formatKey: modelData.formatKey || "unknown"
+                    displayLabel: modelData.formatLabel || "UNKNOWN"
                 }
 
                 MichiText {
@@ -293,6 +293,13 @@ Item {
             onClicked: {
                 root.trackSelected(index)
                 root.playTrackRequested(index)
+            }
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: {
+                    root.trackSelected(index)
+                    trackMenu.popup()
+                }
             }
             // Keyboard navigation feedback: arrow keys move the ListView
             // currentIndex, so the focused row must also become the visible
@@ -358,32 +365,46 @@ Item {
                 visible: !trackItem.isSelected
             }
 
-            MichiMenu {
+            TrackContextMenu {
                 id: trackMenu
-                MenuItem {
-                    text: qsTr("Play")
-                    onTriggered: root.playTrackRequested(index)
-                }
-                MenuItem {
-                    text: qsTr("Add to Queue")
-                    onTriggered: queue.add_file(modelData.path)
-                }
-                MichiSeparator { }
-                MenuItem {
-                    text: qsTr("Remove from playlist")
-                    onTriggered: root.removeTrackRequested(index)
-                }
-                MenuItem {
-                    text: qsTr("Move Up")
-                    enabled: index > 0
-                    onTriggered: root.moveTrackRequested(index, index - 1)
-                }
-                MenuItem {
-                    text: qsTr("Move Down")
-                    enabled: index < root.rows.length - 1
-                    onTriggered: root.moveTrackRequested(index, index + 1)
-                }
+                titleText: modelData.title
+                artistText: modelData.artist || ""
+                albumText: modelData.album || ""
+                artworkPath: modelData.artworkPath || ""
+                formatKey: modelData.formatKey || "unknown"
+                formatLabel: modelData.formatLabel || "UNKNOWN"
+                canPlayNow: true
+                canQueue: typeof library !== "undefined" && library
+                    && library.canQueueTracks && !modelData.unavailable
+                canAddToPlaylist: typeof library !== "undefined" && library
+                    && library.canAddTracksToPlaylists
+                    && !modelData.unavailable
+                canFavorite: !modelData.unavailable
+                favorite: typeof library !== "undefined" && library
+                    && library.favoritePaths.indexOf(modelData.path) !== -1
+                canGoToAlbum: Boolean(modelData.albumKey)
+                canGoToArtist: Boolean(modelData.artistKey)
+                canShowProperties: true
+                canRemove: true
+                removeText: qsTr("Remove from playlist")
+                canMoveUp: index > 0
+                canMoveDown: index < root.rows.length - 1
+                onPlayNowRequested: root.playTrackRequested(index)
+                onQueueRequested: library.queue_track(modelData.trackId)
+                onAddToPlaylistRequested:
+                    root.addToPlaylistRequested(modelData.trackId)
+                onFavoriteRequested: library.toggle_favorite(modelData.path)
+                onGoToAlbumRequested:
+                    root.goToAlbumRequested(modelData.albumKey)
+                onGoToArtistRequested:
+                    root.goToArtistRequested(modelData.artistKey)
+                onPropertiesRequested: propertiesView.inspect(modelData)
+                onRemoveRequested: root.removeTrackRequested(index)
+                onMoveUpRequested: root.moveTrackRequested(index, index - 1)
+                onMoveDownRequested: root.moveTrackRequested(index, index + 1)
             }
         }
     }
+
+    TrackPropertiesView { id: propertiesView }
 }

@@ -16,71 +16,8 @@ ColumnLayout {
     property real albumZoom: 1.0
     signal sortModeRequested(string mode)
     signal sortDirectionRequested(bool descending)
-    readonly property var presentationAlbums: buildPresentationAlbums(library.albums)
-    readonly property var presentationTimelineAlbums: buildTimelineAlbums(
-        library.timelineAlbums, presentationAlbums)
-
-    function normalized(value) {
-        return String(value || "").toLocaleLowerCase()
-    }
-
-    function albumMatchesFilter(album) {
-        switch (albumFilterMode) {
-            case "artwork": return Boolean(album.hasArtwork)
-            case "missingArtwork": return !album.hasArtwork
-            case "dated": return Number(album.year || 0) > 0
-            case "undated": return Number(album.year || 0) <= 0
-            case "hires": {
-                var summary = normalized(album.technicalSummary)
-                return summary.indexOf("24-bit") !== -1
-                    || summary.indexOf("dsd") !== -1
-                    || summary.indexOf("192 khz") !== -1
-                    || summary.indexOf("96 khz") !== -1
-            }
-            default: return true
-        }
-    }
-
-    function compareAlbums(left, right) {
-        var result = 0
-        if (albumSortMode === "artist")
-            result = normalized(left.artist).localeCompare(normalized(right.artist))
-        else if (albumSortMode === "year")
-            result = Number(left.year || 0) - Number(right.year || 0)
-        else if (albumSortMode === "tracks")
-            result = Number(left.trackCount || 0) - Number(right.trackCount || 0)
-        else if (albumSortMode === "duration")
-            result = Number(left.durationMs || 0) - Number(right.durationMs || 0)
-        else
-            result = normalized(left.title).localeCompare(normalized(right.title))
-        if (result === 0)
-            result = normalized(left.title).localeCompare(normalized(right.title))
-        if (result === 0)
-            result = normalized(left.key).localeCompare(normalized(right.key))
-        return albumSortDescending ? -result : result
-    }
-
-    function buildPresentationAlbums(source) {
-        var rows = source ? source.slice() : []
-        rows = rows.filter(albumMatchesFilter)
-        rows.sort(compareAlbums)
-        return rows
-    }
-
-    function buildTimelineAlbums(source, visibleAlbums) {
-        var visibleKeys = {}
-        for (var i = 0; i < visibleAlbums.length; ++i)
-            visibleKeys[visibleAlbums[i].key] = true
-        var rows = (source ? source.slice() : []).filter(function(album) {
-            return Boolean(visibleKeys[album.key])
-        })
-        rows.sort(function(left, right) {
-            var yearOrder = Number(right.year || 0) - Number(left.year || 0)
-            return yearOrder !== 0 ? yearOrder
-                : root.normalized(left.title).localeCompare(root.normalized(right.title))
-        })
-        return rows
-    }
+    readonly property var presentationAlbums: library.albums
+    readonly property var presentationTimelineAlbums: library.timelineAlbums
 
     // Header click-to-sort entry point: same mode toggles direction.
     function requestAlbumSort(mode) {

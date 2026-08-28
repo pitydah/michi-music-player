@@ -168,8 +168,8 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "Behavior on scale" in button
     assert "MichiStatusChip" in toolbar
     assert 'import "../controls"' in content
-    assert 'text: qsTr("ADD TRACK TO")' in content
-    assert "MichiIconButton" in content
+    assert "PlaylistTargetPicker" in content
+    assert "Dialog.Cancel" in _text("playlists/PlaylistTargetPicker.qml")
     assert "property bool revealed" in queue
     assert "Gradient.Horizontal" in now_playing
     assert 'objectName: "qualityBadge"' in now_playing
@@ -213,7 +213,7 @@ def test_library_delegates_use_shared_media_rows() -> None:
         "views/RecentlyAddedView.qml",
     )
     for view in track_views:
-        assert "delegate: TrackRow" in _text(view)
+        assert "MichiTrackTable" in _text(view)
     assert "ArtistCard {" in _text("views/ArtistsView.qml")
     assert 'objectName: "artistGridView"' in _text("views/ArtistsView.qml")
     for view in ("views/GenresView.qml", "views/FoldersView.qml"):
@@ -356,7 +356,7 @@ def test_artist_detail_focus_mode_and_contextual_queue_are_real() -> None:
     assert "ArtworkFocusMode" in now_playing
     assert 'active: root.currentRoute === "queue"' in shell
     assert "Qt.RightButton" in track_row
-    assert "MichiContextMenu" in track_row
+    assert "TrackContextMenu" in track_row
 
 
 def test_now_playing_page_never_duplicates_the_persistent_transport() -> None:
@@ -470,7 +470,8 @@ def test_audio_surfaces_share_a_semantic_table_header() -> None:
         "views/AlbumDetailView.qml",
         "views/ArtistDetailView.qml",
     ):
-        assert "TrackTableHeader" in _text(view)
+        source = _text(view)
+        assert "MichiTrackTable" in source or "TrackTableHeader" in source
     row = _text("media/TrackRow.qml")
     assert "showArtistColumn" in row
     assert "showAlbumColumn" in row

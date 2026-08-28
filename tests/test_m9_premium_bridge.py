@@ -39,13 +39,19 @@ def test_queue_bridge_exposes_rows_and_existing_remove_intent() -> None:
     service.add(Path("/music/one.flac"), "One")
     service.add(Path("/music/two.flac"), "Two")
 
-    assert bridge.property("trackRows") == [
-        {"title": "One", "path": "/music/one.flac"},
-        {"title": "Two", "path": "/music/two.flac"},
+    rows = bridge.property("trackRows")
+    assert [(row["title"], row["path"]) for row in rows] == [
+        ("One", "/music/one.flac"),
+        ("Two", "/music/two.flac"),
     ]
+    assert all(row["formatLabel"] == "UNKNOWN" for row in rows)
+    assert all(row["unavailable"] is True for row in rows)
 
     bridge.remove_track(0)
-    assert bridge.property("trackRows") == [{"title": "Two", "path": "/music/two.flac"}]
+    remaining = bridge.property("trackRows")
+    assert len(remaining) == 1
+    assert remaining[0]["title"] == "Two"
+    assert remaining[0]["path"] == "/music/two.flac"
     bridge.dispose()
 
 

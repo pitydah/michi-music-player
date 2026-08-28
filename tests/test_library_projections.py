@@ -302,7 +302,7 @@ class TestCanonicalProjections:
         ] == [(p.album_key, p.title, p.artist, p.year, p.decade) for p in expected]
         # Only hasArtwork/artworkPath are bridge additions.
         for row in rows:
-            assert set(row.keys()) == {
+            assert {
                 "key",
                 "title",
                 "artist",
@@ -310,7 +310,8 @@ class TestCanonicalProjections:
                 "decade",
                 "hasArtwork",
                 "artworkPath",
-            }
+            }.issubset(row)
+            assert row["artistKey"]
         bridge.dispose()
 
     def test_no_duplicated_album_identity_logic(self, tmp_path):

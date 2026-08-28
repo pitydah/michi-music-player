@@ -26,6 +26,9 @@ Item {
     signal moveTrackRequested(int fromIndex, int toIndex)
     signal playTrackRequested(int index)
     signal addMusicRequested()
+    signal addToPlaylistRequested(string trackId)
+    signal goToAlbumRequested(string albumKey)
+    signal goToArtistRequested(string artistKey)
 
     // Hero occupies ~30-40% of the first visible screen
     readonly property real heroHeight: Math.max(240, Math.min(300, root.height * 0.36))
@@ -183,6 +186,8 @@ Item {
                 onPlayTrackRequested: index => playlists.play_playlist_track(index)
                 onRemoveTrackRequested: index => root.removeTrackRequested(index)
                 onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
+                onAddToPlaylistRequested: trackId =>
+                    root.addToPlaylistRequested(trackId)
             }
             // Empty state — hero stays, tracks area shows a quiet prompt
             ColumnLayout {

@@ -94,10 +94,28 @@ MichiGlassSurface {
                 TrackRow {
                     Layout.fillWidth: true
                     numberText: String(index + 1)
+                    trackId: modelData.trackId || modelData.path
+                    filePath: modelData.path
                     title: modelData.title
                     artist: modelData.artist || ""
                     album: modelData.album || ""
                     durationMs: modelData.durationMs || 0
+                    formatKey: modelData.formatKey || "unknown"
+                    formatLabel: modelData.formatLabel || "UNKNOWN"
+                    codec: modelData.codec || ""
+                    container: modelData.container || ""
+                    dsdRate: modelData.dsdRate || ""
+                    sampleRateHz: modelData.sampleRateHz || 0
+                    bitDepth: modelData.bitDepth || 0
+                    bitrateBps: modelData.bitrateBps || 0
+                    channels: modelData.channels || 0
+                    fileSize: modelData.fileSize || 0
+                    genre: modelData.genre || ""
+                    composer: modelData.composer || ""
+                    year: modelData.year || 0
+                    // Missing Library metadata is not proof that a Queue path
+                    // is unavailable. Playback remains the validating owner.
+                    unavailable: false
                     playing: index === root.currentIndex
                     // R2.1-08: attached property, not a ListView member —
                     // queueList.isCurrentItem is undefined -> bool warning
@@ -107,12 +125,16 @@ MichiGlassSurface {
                     showAlbumColumn: false
                     showQualityColumn: false
                     showDurationColumn: root.width >= 390
+                    canMoveUp: index > 0
+                    canMoveDown: index + 1 < root.count
                     onActiveFocusChanged: {
                         if (activeFocus)
                             queueList.currentIndex = index
                     }
                     onActivated: root.trackClicked(index)
                     onRemoveRequested: root.removeRequested(index)
+                    onMoveUpRequested: root.moveRequested(index, index - 1)
+                    onMoveDownRequested: root.moveRequested(index, index + 1)
                 }
                 // Reorder affordances reveal on row hover, matching the
                 // row's own hover-reveal trash (TrackRow opacity pattern).

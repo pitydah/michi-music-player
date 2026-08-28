@@ -119,7 +119,7 @@ Item {
                     playlists.play_selected_playlist()
                 }
                 onPlayTrackRequested: index => playlists.play_track(index)
-                onAddMusicRequested: navigation.navigate("library")
+                onAddMusicRequested: libraryTrackPicker.begin()
                 onTogglePinRequested: {
                     if (playlists.selectedPlaylistPinned)
                         playlists.unpin_playlist(playlists.selectedPlaylistId)
@@ -147,15 +147,48 @@ Item {
                         window.showToastWithAction(
                             qsTr("Removed from playlist"), qsTr("Undo"),
                             function() {
-                                playlists.add_track_to_playlist(
-                                    playlists.selectedPlaylistId, removed.path)
+                                library.add_tracks_to_playlist(
+                                    playlists.selectedPlaylistId, [removed.path])
                             })
                     }
                 }
                 onMoveTrackRequested: (fromIndex, toIndex) => {
                     playlists.move_track(fromIndex, toIndex)
                 }
+                onAddToPlaylistRequested: trackId => {
+                    playlistTargetPicker.trackIds = [trackId]
+                    playlistTargetPicker.open()
+                }
+                onGoToAlbumRequested: albumKey => {
+                    navigation.navigate("library")
+                    library.select_album(albumKey)
+                }
+                onGoToArtistRequested: artistKey => {
+                    navigation.navigate("library")
+                    library.select_artist(artistKey)
+                }
             }
+        }
+    }
+
+    LibraryTrackPicker {
+        id: libraryTrackPicker
+        trackRows: library.songRows
+        onTracksRequested: trackIds => {
+            var added = library.add_tracks_to_playlist(
+                playlists.selectedPlaylistId, trackIds)
+            if (added > 0 && typeof window !== "undefined" && window)
+                window.showToast(qsTr("Added %1 tracks").arg(added))
+        }
+    }
+
+    PlaylistTargetPicker {
+        id: playlistTargetPicker
+        playlistRows: playlists.playlists
+        onTargetRequested: (playlistId, playlistName, trackIds) => {
+            var added = library.add_tracks_to_playlist(playlistId, trackIds)
+            if (added > 0 && typeof window !== "undefined" && window)
+                window.showToast(qsTr("Added to %1").arg(playlistName))
         }
     }
 

@@ -66,8 +66,10 @@ MichiGlassSurface {
             id: navigationSplit
             objectName: "libraryNavigationSplitView"
             Layout.fillWidth: true
-            Layout.preferredHeight: MichiMetrics.controlLarge
-            orientation: Qt.Horizontal
+            Layout.preferredHeight: root.width < 900
+                ? MichiMetrics.controlLarge * 2 + MichiSpacing.sm
+                : MichiMetrics.controlLarge
+            orientation: root.width < 900 ? Qt.Vertical : Qt.Horizontal
 
             handle: Item {
                 implicitWidth: 16
@@ -89,7 +91,8 @@ MichiGlassSurface {
             LibraryTabs {
                 id: libraryNavigation
                 SplitView.fillWidth: true
-                SplitView.minimumWidth: 300
+                SplitView.minimumWidth: Math.min(300, root.width)
+                SplitView.preferredHeight: MichiMetrics.controlLarge
                 currentTab: root.currentTab
                 onTabRequested: tab => root.currentTabRequested(tab)
             }
@@ -98,8 +101,10 @@ MichiGlassSurface {
                 id: searchPane
                 objectName: "resizableLibrarySearchPane"
                 SplitView.preferredWidth: root.width >= 1480 ? 640 : 520
-                SplitView.minimumWidth: root.width < 980 ? 360 : 430
+                SplitView.minimumWidth: Math.min(root.width,
+                    root.width < 980 ? 300 : 430)
                 SplitView.maximumWidth: 760
+                SplitView.preferredHeight: MichiMetrics.controlLarge
 
                 RowLayout {
                     anchors.fill: parent
@@ -140,10 +145,10 @@ MichiGlassSurface {
                             id: sourceBtn
                             anchors.fill: parent
                             iconName: "folder"
-                        selected: folderDialog.visible
-                        accessibleName: qsTr("Music folder source")
-                        onClicked: folderDialog.open()
-                    }
+                            selected: folderDialog.visible
+                            accessibleName: qsTr("Music folder source")
+                            onClicked: folderDialog.open()
+                        }
                     }
 
                     MichiButton {

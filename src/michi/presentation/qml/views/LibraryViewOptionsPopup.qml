@@ -181,13 +181,13 @@ Popup {
             MichiComboBox {
                 id: filterCombo
                 Layout.fillWidth: true
-                model: ["All albums", "With artwork", "Missing artwork", "With release year", "Unknown release year", "Hi-Res"]
+                model: ["All albums", "With artwork", "Missing artwork", "With release year", "Unknown release year"]
                 currentIndex: {
-                    var map = { all: 0, artwork: 1, missingArtwork: 2, dated: 3, undated: 4, hires: 5 }
+                    var map = { all: 0, artwork: 1, missingArtwork: 2, dated: 3, undated: 4 }
                     return map[root.albumFilterMode] || 0
                 }
                 onActivated: {
-                    var keys = ["all", "artwork", "missingArtwork", "dated", "undated", "hires"]
+                    var keys = ["all", "artwork", "missingArtwork", "dated", "undated"]
                     root.albumFilterRequested(keys[currentIndex])
                 }
             }

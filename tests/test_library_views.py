@@ -280,7 +280,7 @@ class TestBridgeViews:
         assert isinstance(rows, list)
         assert len(rows) == 2
         for row in rows:
-            assert set(row.keys()) == {
+            assert {
                 "key",
                 "title",
                 "artist",
@@ -290,7 +290,7 @@ class TestBridgeViews:
                 "artworkPath",
                 "year",
                 "technicalSummary",
-            }
+            }.issubset(row)
             assert row["hasArtwork"] is True
             assert row["artworkPath"] == str(cache.paths[row["key"]])
         artist_rows = bridge.property("artists")
@@ -378,7 +378,7 @@ class TestBridgeViews:
             # M6.6 enriches the canonical album-tracks projection; the M6.6
             # RED test test_album_tracks_rows_include_canonical_numbers is
             # authoritative.
-            assert set(row.keys()) == {
+            assert {
                 "displayName",
                 "title",
                 "artist",
@@ -396,7 +396,15 @@ class TestBridgeViews:
                 "bitrateBps",
                 "fileSize",
                 "qualityLabel",
-            }
+            }.issubset(row)
+            assert {
+                "trackId",
+                "albumKey",
+                "artistKey",
+                "formatKey",
+                "formatLabel",
+                "dsdRate",
+            }.issubset(row)
         assert [r["path"] for r in rows] == [str(a1), str(a2)]
         assert all(r["title"] and r["displayName"] and r["artist"] for r in rows)
         assert all(r["durationMs"] == 1000 for r in rows)

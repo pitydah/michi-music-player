@@ -130,6 +130,7 @@ Item {
 
                 HoverHandler { id: heroHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { id: heroTap; onTapped: { if (root.heroAlbum) library.select_album(root.heroAlbum.key) } }
+                AlbumContextArea { anchors.fill: parent; album: root.heroAlbum }
                 MichiFocusRing { visualFocus: heroCard.activeFocus && MichiAccessibility.keyboardMode }
             }
 
@@ -212,6 +213,7 @@ Item {
 
                         HoverHandler { id: medHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { id: medTap; onTapped: library.select_album(modelData.key) }
+                        AlbumContextArea { anchors.fill: parent; album: modelData }
                         MichiFocusRing { visualFocus: medFeature.activeFocus && MichiAccessibility.keyboardMode }
                     }
                 }
@@ -298,6 +300,7 @@ Item {
 
                         HoverHandler { id: compHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { id: compTap; onTapped: library.select_album(modelData.key) }
+                        AlbumContextArea { anchors.fill: parent; album: modelData }
                         MichiFocusRing { visualFocus: compactFeature.activeFocus && MichiAccessibility.keyboardMode }
                     }
                 }

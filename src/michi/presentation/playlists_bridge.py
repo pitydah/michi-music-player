@@ -17,7 +17,6 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Qt, QUrl, Signal, Slot
 
-from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.playlist_navigation_coordinator import (
@@ -25,6 +24,10 @@ from michi.application.playlist_navigation_coordinator import (
 )
 from michi.application.playlist_service import PlaylistService
 from michi.application.ports import PlaylistPaletteExtractorPort
+from michi.presentation.track_projection import (
+    project_track_row,
+    project_unavailable_track,
+)
 
 _DEFAULT_HERO_PALETTE = ["#152A45", "#13243D", "#0A0D14"]
 
@@ -361,41 +364,14 @@ class PlaylistsBridge(QObject):
                 else None
             )
             if ref is not None:
-                rows.append(self._track_row(ref))
+                rows.append(
+                    project_track_row(
+                        ref, artwork_path=self._artwork_for_path(str(ref.file_path))
+                    )
+                )
                 continue
-            rows.append(
-                {
-                    "displayName": Path(path).stem,
-                    "title": Path(path).stem,
-                    "artist": "",
-                    "album": "",
-                    "durationMs": 0,
-                    "path": path,
-                    "qualityLabel": "",
-                    "codec": "",
-                    "sampleRateHz": 0,
-                    "bitDepth": 0,
-                    "channels": 0,
-                    "fileSize": 0,
-                }
-            )
+            rows.append(project_unavailable_track(path))
         return rows
-
-    def _track_row(self, ref) -> dict:
-        return {
-            "displayName": ref.display_name,
-            "title": ref.title or ref.display_name,
-            "artist": ref.artist,
-            "album": ref.album,
-            "durationMs": ref.duration_ms,
-            "path": str(ref.file_path),
-            "qualityLabel": make_track_quality_label(ref),
-            "codec": ref.codec,
-            "sampleRateHz": ref.sample_rate_hz,
-            "bitDepth": ref.bit_depth,
-            "channels": ref.channels,
-            "fileSize": ref.file_size,
-        }
 
     def _get_search_playlists(self) -> list[dict]:
         """Local playlist-name matches kept separate from the frozen M7

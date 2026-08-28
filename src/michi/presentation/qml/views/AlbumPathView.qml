@@ -184,6 +184,7 @@ PathView {
             }
             onDoubleTapped: library.select_album(modelData.key)
         }
+        AlbumContextArea { anchors.fill: parent; album: modelData }
 
         Behavior on scale {
             enabled: !MichiAccessibility.reducedMotion

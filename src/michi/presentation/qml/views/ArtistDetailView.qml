@@ -132,43 +132,28 @@ ColumnLayout {
 
     MichiText { text: "Tracks"; role: "section" }
 
-    ListView {
-        id: artistTracksList
+    MichiTrackTable {
+        id: artistTracksTable
         Layout.fillWidth: true
         Layout.fillHeight: true
-        model: library.artistTracks
-        clip: true
-        spacing: MichiSpacing.xs
-        boundsBehavior: Flickable.StopAtBounds
-        keyNavigationEnabled: true
-        headerPositioning: ListView.InlineHeader
-
-        header: TrackTableHeader {
-            width: artistTracksList.width
-            showArtistColumn: false
-            actionColumnWidth: 76
-        }
-
-        delegate: TrackRow {
-            required property int index
-            required property var modelData
-            width: artistTracksList.width
-            numberText: String(index + 1)
-            title: modelData.title
-            artist: modelData.artist
-            showArtistColumn: false
-            album: modelData.album
-            durationMs: modelData.durationMs
-            quality: modelData.qualityLabel
-            playing: playback.currentPath === modelData.path
-            favorite: library.favoritePaths.indexOf(modelData.path) !== -1
-            showFavorite: true
-            showAddToPlaylist: true
-            onActivated: library.activate_artist_track(index)
-            onFavoriteToggled: library.toggle_favorite(modelData.path)
-            onAddToPlaylistRequested: root.addTargetPath = modelData.path
-        }
+        rows: library.artistTracks
+        playingPath: playback.currentPath
+        favoritePaths: library.favoritePaths
+        showArtistColumn: false
+        canFavorite: true
+        canQueue: library.canQueueTracks
+        canAddToPlaylist: library.canAddTracksToPlaylists
+        canInspect: true
+        canNavigateEntities: true
+        onTrackActivated: (path, _index) => library.activate_path(path)
+        onFavoriteRequested: path => library.toggle_favorite(path)
+        onQueueRequested: path => library.queue_track(path)
+        onAddToPlaylistRequested: path => root.addTargetPath = path
+        onPropertiesRequested: track => trackPropertiesView.inspect(track)
+        onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     }
+
+    TrackPropertiesView { id: trackPropertiesView }
 
     /* M6.9 — manual review dialog */
     ReviewMatchesDialog {

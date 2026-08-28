@@ -177,18 +177,34 @@ class PlaylistService:
         self._notify()
 
     def add_track(self, playlist_id: str, file_path) -> None:
+        self.add_tracks(playlist_id, (file_path,))
+
+    def add_tracks(self, playlist_id: str, file_paths) -> int:
+        """Append a batch once, preserving order and suppressing duplicates.
+
+        The mutation persists and notifies at most once so a QML collection
+        intent never expands into presentation-owned service loops.
+        """
         index = self._find_by_id(playlist_id)
         if index < 0:
-            return
-        path = str(Path(file_path))
+            return 0
         playlist = self._playlists[index]
-        if path in playlist.track_paths:
-            return  # dedupe
-        self._playlists[index] = replace(
-            playlist, track_paths=(*playlist.track_paths, path)
-        )
+        paths = list(playlist.track_paths)
+        seen = set(paths)
+        added = 0
+        for file_path in file_paths:
+            path = str(Path(file_path))
+            if path in seen:
+                continue
+            seen.add(path)
+            paths.append(path)
+            added += 1
+        if added == 0:
+            return 0
+        self._playlists[index] = replace(playlist, track_paths=tuple(paths))
         self._persist()
         self._notify()
+        return added
 
     def remove_track(self, playlist_id: str, index: int) -> None:
         playlist_index = self._find_by_id(playlist_id)

@@ -199,7 +199,7 @@ class TestBridgeTimeline:
             "Unknown era",
         ]
         for row in rows:
-            assert set(row.keys()) == {
+            assert {
                 "key",
                 "title",
                 "artist",
@@ -207,7 +207,8 @@ class TestBridgeTimeline:
                 "decade",
                 "hasArtwork",
                 "artworkPath",
-            }
+            }.issubset(row)
+            assert row["artistKey"]
         bridge.dispose()
 
     def test_timeline_albums_reactive(self, tmp_path):

@@ -283,46 +283,25 @@ ColumnLayout {
             shadowed: false
             textured: false
 
-            ListView {
-                id: albumTracksList
+            MichiTrackTable {
+                id: albumTracksTable
                 anchors.fill: parent
-                model: library.albumTracks
-                clip: true
-                spacing: MichiSpacing.xs
-                boundsBehavior: Flickable.StopAtBounds
-                headerPositioning: ListView.InlineHeader
-
-                header: TrackTableHeader {
-                    width: albumTracksList.width
-                    showAlbumColumn: false
-                    actionColumnWidth: 116
-                }
-
-                delegate: TrackRow {
-                    required property int index
-                    required property var modelData
-                    width: albumTracksList.width
-                    numberText: modelData.discNumber > 1
-                        ? modelData.discNumber + "." + modelData.trackNumber
-                        : String(modelData.trackNumber > 0
-                            ? modelData.trackNumber : index + 1)
-                    title: modelData.title || modelData.displayName
-                    artist: modelData.artist
-                    showAlbumColumn: false
-                    durationMs: modelData.durationMs
-                    quality: modelData.qualityLabel
-                    playing: playback.currentPath === modelData.path
-                    favorite: library.favoritePaths.indexOf(modelData.path) !== -1
-                    showFavorite: true
-                    showAddToPlaylist: true
-                    showInspector: true
-                    selected: root.inspectedTrack
-                        && root.inspectedTrack.path === modelData.path
-                    onActivated: library.activate_album_track(index)
-                    onFavoriteToggled: library.toggle_favorite(modelData.path)
-                    onAddToPlaylistRequested: root.addTargetPath = modelData.path
-                    onInspectorRequested: root.inspectedTrack = modelData
-                }
+                rows: library.albumTracks
+                playingPath: playback.currentPath
+                favoritePaths: library.favoritePaths
+                showAlbumColumn: false
+                numberingMode: "disc-track"
+                canFavorite: true
+                canQueue: library.canQueueTracks
+                canAddToPlaylist: library.canAddTracksToPlaylists
+                canInspect: true
+                canNavigateEntities: true
+                onTrackActivated: (_path, index) => library.activate_album_track(index)
+                onFavoriteRequested: path => library.toggle_favorite(path)
+                onQueueRequested: path => library.queue_track(path)
+                onAddToPlaylistRequested: path => root.addTargetPath = path
+                onPropertiesRequested: track => root.inspectedTrack = track
+                onGoToArtistRequested: artistKey => library.select_artist(artistKey)
             }
         }
 

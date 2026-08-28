@@ -10,6 +10,10 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.library_service import LibraryService
 from michi.application.queue_service import QueueService
+from michi.presentation.track_projection import (
+    project_track_row,
+    project_unavailable_track,
+)
 
 
 class QueueBridge(QObject):
@@ -51,18 +55,13 @@ class QueueBridge(QObject):
         """
         rows = []
         for track in self._service.state.tracks:
-            row = {
-                "title": track.title or track.file_path.stem,
-                "path": str(track.file_path),
-            }
+            row = project_unavailable_track(track.file_path)
+            if track.title:
+                row["title"] = track.title
             if self._library_service is not None:
                 ref = self._library_service.resolve_trackref(track.file_path)
                 if ref is not None:
-                    row.update(
-                        artist=ref.artist,
-                        album=ref.album,
-                        durationMs=ref.duration_ms,
-                    )
+                    row = project_track_row(ref)
             rows.append(row)
         return rows
 

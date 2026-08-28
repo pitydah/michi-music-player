@@ -116,4 +116,5 @@ Item {
             root.activated()
         }
     }
+    ArtistContextArea { anchors.fill: parent; artist: root.artist }
 }

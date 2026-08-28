@@ -4,8 +4,15 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 
-from michi.application.audio_quality import make_track_quality_label
+from michi.application.library_collection_coordinators import (
+    LibraryPlaylistCoordinator,
+    LibraryQueueCoordinator,
+)
 from michi.application.library_service import LibraryService
+from michi.application.library_track_query import (
+    LibraryAlbumQueryService,
+    LibraryTrackQueryService,
+)
 from michi.domain.library import (
     AlbumRef,
     ArtistRef,
@@ -14,22 +21,32 @@ from michi.domain.library import (
     build_timeline_projection,
     make_artist_key,
 )
+from michi.presentation.track_projection import project_track_row
 
 
 class LibraryBridge(QObject):
     """Thin adapter: LibraryService state → QML properties, QML intent → service."""
 
     library_changed = Signal()
+    playlist_target_requested = Signal(str, str)
 
     def __init__(
         self,
         service: LibraryService,
         playback_coordinator=None,
+        track_query: LibraryTrackQueryService | None = None,
+        album_query: LibraryAlbumQueryService | None = None,
+        queue_coordinator: LibraryQueueCoordinator | None = None,
+        playlist_coordinator: LibraryPlaylistCoordinator | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._service = service
         self._playback_coordinator = playback_coordinator
+        self._track_query = track_query or LibraryTrackQueryService()
+        self._album_query = album_query or LibraryAlbumQueryService()
+        self._queue_coordinator = queue_coordinator
+        self._playlist_coordinator = playlist_coordinator
         self._selected_album_key: str = ""
         self._selected_album: AlbumRef | None = None
         self._album_track_refs: list[TrackRef] = []
@@ -171,7 +188,7 @@ class LibraryBridge(QObject):
     def _album_rows(self) -> list[dict]:
         # M7: the unified search projection filters the album surface; the
         # canonical collections are the passthrough when search is inactive.
-        albums = (
+        albums = self._album_query.project(
             self._service.state.search_projection.albums
             if self._service.state.search_active
             else self._service.state.albums
@@ -183,6 +200,9 @@ class LibraryBridge(QObject):
                     "key": album.key,
                     "title": album.title,
                     "artist": album.artist,
+                    "artistKey": make_artist_key(
+                        album.artist.strip() or "Unknown Artist"
+                    ),
                     "trackCount": album.track_count,
                     "durationMs": album.duration_ms,
                     "hasArtwork": album.has_artwork,
@@ -196,7 +216,7 @@ class LibraryBridge(QObject):
     def _get_timeline_albums(self) -> list[dict]:
         # M7: the timeline receives the SAME filtered album set as the other
         # five views — it never recomputes matching itself.
-        albums = (
+        albums = self._album_query.project(
             self._service.state.search_projection.albums
             if self._service.state.search_active
             else self._service.state.albums
@@ -210,6 +230,9 @@ class LibraryBridge(QObject):
                     "key": projection.album_key,
                     "title": projection.title,
                     "artist": projection.artist,
+                    "artistKey": make_artist_key(
+                        projection.artist.strip() or "Unknown Artist"
+                    ),
                     "year": projection.year,
                     "decade": projection.decade,
                     "hasArtwork": album.has_artwork if album is not None else False,
@@ -327,29 +350,7 @@ class LibraryBridge(QObject):
         return self._service.artwork_path_for(self._selected_album_key) or ""
 
     def _get_album_tracks(self) -> list[dict]:
-        return [
-            {
-                "displayName": ref.display_name,
-                "title": ref.title,
-                "artist": ref.artist,
-                "durationMs": ref.duration_ms,
-                "path": str(ref.file_path),
-                "trackNumber": ref.track_number,
-                "discNumber": ref.disc_number,
-                # M6-PRODUCTION-INTEGRATION: the canonical TrackRef retains
-                # the technical carrier; facts-only quality label (never
-                # "Hi-Res"/"Lossless").
-                "codec": ref.codec,
-                "container": ref.container,
-                "sampleRateHz": ref.sample_rate_hz,
-                "bitDepth": ref.bit_depth,
-                "channels": ref.channels,
-                "bitrateBps": ref.bitrate_bps,
-                "fileSize": ref.file_size,
-                "qualityLabel": make_track_quality_label(ref),
-            }
-            for ref in self._album_track_refs
-        ]
+        return [project_track_row(ref) for ref in self._album_track_refs]
 
     def _get_selected_artist_key(self) -> str:
         return self._selected_artist_key
@@ -420,37 +421,37 @@ class LibraryBridge(QObject):
     @staticmethod
     def _track_row(ref: TrackRef) -> dict:
         """Map one canonical TrackRef to display facts without UI inference."""
-        return {
-            "displayName": ref.display_name,
-            "title": ref.title or ref.display_name,
-            "artist": ref.artist,
-            "album": ref.album,
-            "durationMs": ref.duration_ms,
-            "path": str(ref.file_path),
-            "qualityLabel": make_track_quality_label(ref),
-            "codec": ref.codec,
-            "sampleRateHz": ref.sample_rate_hz,
-            "bitDepth": ref.bit_depth,
-            "channels": ref.channels,
-            "fileSize": ref.file_size,
-        }
+        return project_track_row(ref)
 
     def _track_row_with_artwork(self, ref: TrackRef) -> dict:
-        row = self._track_row(ref)
         path = ref.file_path
         artwork_path = ""
         for album in self._service.state.albums:
             if path in album.track_paths:
                 artwork_path = self._service.artwork_path_for(album.key) or ""
                 break
-        row["artworkPath"] = artwork_path
-        return row
+        return project_track_row(ref, artwork_path=artwork_path)
 
     def _get_song_rows(self) -> list[dict]:
         return [
             self._track_row_with_artwork(ref)
-            for ref in self._service.state.visible_tracks
+            for ref in self._track_query.sort_tracks(self._service.state.visible_tracks)
         ]
+
+    def _get_track_sort_column(self) -> str:
+        return self._track_query.state.column
+
+    def _get_track_sort_descending(self) -> bool:
+        return self._track_query.state.descending
+
+    def _get_album_sort_mode(self) -> str:
+        return self._album_query.state.sort_mode
+
+    def _get_album_sort_descending(self) -> bool:
+        return self._album_query.state.descending
+
+    def _get_album_filter_mode(self) -> str:
+        return self._album_query.state.filter_mode
 
     def _get_favorite_rows(self) -> list[dict]:
         return self._rows_for(self._reference_paths(self._service.state.favorite_paths))
@@ -552,6 +553,21 @@ class LibraryBridge(QObject):
     )
     songPaths = Property(list, _get_song_paths, notify=library_changed)
     songRows = Property(list, _get_song_rows, notify=library_changed)
+    trackSortColumn = Property(str, _get_track_sort_column, notify=library_changed)
+    trackSortDescending = Property(
+        bool, _get_track_sort_descending, notify=library_changed
+    )
+    albumSortMode = Property(str, _get_album_sort_mode, notify=library_changed)
+    albumSortDescending = Property(
+        bool, _get_album_sort_descending, notify=library_changed
+    )
+    albumFilterMode = Property(str, _get_album_filter_mode, notify=library_changed)
+    canQueueTracks = Property(
+        bool, lambda self: self._queue_coordinator is not None, constant=True
+    )
+    canAddTracksToPlaylists = Property(
+        bool, lambda self: self._playlist_coordinator is not None, constant=True
+    )
     favoriteRows = Property(list, _get_favorite_rows, notify=library_changed)
     historyRows = Property(list, _get_history_rows, notify=library_changed)
     recentlyAddedRows = Property(list, _get_recently_added_rows, notify=library_changed)
@@ -621,6 +637,86 @@ class LibraryBridge(QObject):
     @Slot(str)
     def toggle_favorite(self, path: str) -> None:
         self._service.toggle_favorite(path)
+
+    @Slot(str)
+    def sort_tracks(self, column: str) -> None:
+        previous = self._track_query.state
+        self._track_query.set_sort(column)
+        if self._track_query.state != previous:
+            self.library_changed.emit()
+
+    @Slot(str)
+    def set_album_sort_mode(self, mode: str) -> None:
+        if self._album_query.set_sort_mode(mode):
+            self.library_changed.emit()
+
+    @Slot(bool)
+    def set_album_sort_descending(self, descending: bool) -> None:
+        if self._album_query.set_sort_descending(descending):
+            self.library_changed.emit()
+
+    @Slot(str)
+    def set_album_filter_mode(self, mode: str) -> None:
+        if self._album_query.set_filter_mode(mode):
+            self.library_changed.emit()
+
+    @Slot(str, result=int)
+    def queue_track(self, track_id: str) -> int:
+        if self._queue_coordinator is None:
+            return 0
+        return self._queue_coordinator.queue_tracks((track_id,))
+
+    @Slot(list, result=int)
+    def queue_tracks(self, track_ids: list) -> int:
+        if self._queue_coordinator is None:
+            return 0
+        return self._queue_coordinator.queue_tracks(str(item) for item in track_ids)
+
+    @Slot(str, result=int)
+    def queue_album(self, album_key: str) -> int:
+        if self._queue_coordinator is None:
+            return 0
+        return self._queue_coordinator.queue_album(album_key)
+
+    @Slot(str, result=int)
+    def queue_artist(self, artist_key: str) -> int:
+        if self._queue_coordinator is None:
+            return 0
+        return self._queue_coordinator.queue_artist(artist_key)
+
+    @Slot(str, list, result=int)
+    def add_tracks_to_playlist(self, playlist_id: str, track_ids: list) -> int:
+        if self._playlist_coordinator is None:
+            return 0
+        return self._playlist_coordinator.add_tracks(
+            playlist_id, (str(item) for item in track_ids)
+        )
+
+    @Slot(str, str, result=int)
+    def add_album_to_playlist(self, playlist_id: str, album_key: str) -> int:
+        if self._playlist_coordinator is None:
+            return 0
+        return self._playlist_coordinator.add_album(playlist_id, album_key)
+
+    @Slot(str, str, result=int)
+    def add_artist_to_playlist(self, playlist_id: str, artist_key: str) -> int:
+        if self._playlist_coordinator is None:
+            return 0
+        return self._playlist_coordinator.add_artist(playlist_id, artist_key)
+
+    @Slot(str)
+    def request_album_playlist_target(self, album_key: str) -> None:
+        if self._playlist_coordinator is None:
+            return
+        if any(album.key == album_key for album in self._service.state.albums):
+            self.playlist_target_requested.emit("album", album_key)
+
+    @Slot(str)
+    def request_artist_playlist_target(self, artist_key: str) -> None:
+        if self._playlist_coordinator is None:
+            return
+        if any(artist.key == artist_key for artist in self._service.state.artists):
+            self.playlist_target_requested.emit("artist", artist_key)
 
     @Slot(str)
     def select_album(self, key: str) -> None:

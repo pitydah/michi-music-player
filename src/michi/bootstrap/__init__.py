@@ -30,6 +30,10 @@ from michi.application.enrichment_coordinator import EnrichmentCoordinator
 from michi.application.enrichment_evidence import LibraryEnrichmentEvidenceBuilder
 from michi.application.enrichment_executor import ThreadPoolEnrichmentExecutor
 from michi.application.enrichment_service import EnrichmentService
+from michi.application.library_collection_coordinators import (
+    LibraryPlaylistCoordinator,
+    LibraryQueueCoordinator,
+)
 from michi.application.library_playback_coordinator import (
     LibraryPlaybackCoordinator,
 )
@@ -138,6 +142,8 @@ class ServiceGraph:
     playback_session: PlaybackSessionService
     library_playback: LibraryPlaybackCoordinator
     playlist_playback: PlaylistPlaybackCoordinator
+    library_queue: LibraryQueueCoordinator
+    library_playlist: LibraryPlaylistCoordinator
     history_coordinator: PlaybackHistoryCoordinator
     # NON-AUTHORITY / OBSERVABILITY ONLY: the concrete port bound inside the
     # router (test handle / introspection). Ownership lives in the provider.
@@ -396,6 +402,8 @@ def _build_services(
     playlist_playback = PlaylistPlaybackCoordinator(
         playlist_service, playback_session, queue
     )
+    library_queue = LibraryQueueCoordinator(library, queue)
+    library_playlist = LibraryPlaylistCoordinator(library, playlist_service)
     history_coordinator = PlaybackHistoryCoordinator(playback_session, library)
 
     # Owner-thread async dispatch (M6-PRODUCTION-INTEGRATION): the runner
@@ -406,7 +414,12 @@ def _build_services(
     scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
     scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
 
-    lb = LibraryBridge(library, playback_coordinator=library_playback)
+    lb = LibraryBridge(
+        library,
+        playback_coordinator=library_playback,
+        queue_coordinator=library_queue,
+        playlist_coordinator=library_playlist,
+    )
 
     return ServiceGraph(
         db_path=db_path,
@@ -424,6 +437,8 @@ def _build_services(
         playback_session=playback_session,
         library_playback=library_playback,
         playlist_playback=playlist_playback,
+        library_queue=library_queue,
+        library_playlist=library_playlist,
         history_coordinator=history_coordinator,
         bound_audio_port=bound_port,
         audio_engine_convergence=convergence,

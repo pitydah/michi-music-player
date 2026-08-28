@@ -1,7 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
+import "../media"
 import "../patterns"
+import "../playlists"
 import "../primitives"
 import "../theme"
 
@@ -10,6 +12,8 @@ ColumnLayout {
 
     property string currentTab: "songs"
     property string addTargetPath: ""
+    property string collectionTargetKind: ""
+    property string collectionTargetId: ""
     // LibraryView owns presentation preferences; recreated tab content only
     // receives their current projection so controls cannot break bindings.
     property string albumMode: "grid"
@@ -73,50 +77,6 @@ ColumnLayout {
         Layout.preferredHeight: visible ? implicitHeight : 0
     }
 
-    MichiGlassSurface {
-        Layout.fillWidth: true
-        Layout.preferredHeight: visible ? 48 : 0
-        visible: addTargetPath !== ""
-        elevation: "subtle"
-        contentPadding: MichiSpacing.sm
-        accented: true
-        accentColor: MichiPalette.auroraPurple
-
-        RowLayout {
-            anchors.fill: parent
-            spacing: MichiSpacing.sm
-            MichiText {
-                text: qsTr("ADD TRACK TO")
-                role: "technical"
-                technical: true
-                color: MichiPalette.auroraPurple
-                font.weight: Font.DemiBold
-            }
-
-            Repeater {
-                model: playlists.playlists
-                delegate: MichiButton {
-                    text: modelData.name
-                    variant: "secondary"
-                    onClicked: {
-                        // M9-R1 cross-feature: Library sends tracks to
-                        // Playlists by canonical id (PLAINTLIST-HIERARCHY-02).
-                        playlists.add_track_to_playlist(modelData.playlistId, addTargetPath)
-                        addTargetPath = ""
-                        window.showToast(qsTr("Added to %1").arg(modelData.name))
-                    }
-                }
-            }
-
-            Item { Layout.fillWidth: true }
-            MichiIconButton {
-                iconName: "close"
-                accessibleName: qsTr("Cancel playlist selection")
-                onClicked: addTargetPath = ""
-            }
-        }
-    }
-
     Item {
         id: contentArea
         Layout.fillWidth: true
@@ -148,12 +108,56 @@ ColumnLayout {
         message: qsTr("Building your library…")
     }
 
+    PlaylistTargetPicker {
+        id: playlistTargetPicker
+        playlistRows: typeof playlists !== "undefined" && playlists
+            ? playlists.playlists : []
+        trackIds: root.addTargetPath === "" ? [] : [root.addTargetPath]
+        selectionDescription: root.collectionTargetKind === "album"
+            ? qsTr("Choose a playlist for this album.")
+            : root.collectionTargetKind === "artist"
+                ? qsTr("Choose a playlist for this artist.") : ""
+        onTargetRequested: (playlistId, playlistName, trackIds) => {
+            var added = root.collectionTargetKind === "album"
+                ? library.add_album_to_playlist(playlistId, root.collectionTargetId)
+                : root.collectionTargetKind === "artist"
+                    ? library.add_artist_to_playlist(
+                        playlistId, root.collectionTargetId)
+                    : library.add_tracks_to_playlist(playlistId, trackIds)
+            root.addTargetPath = ""
+            root.collectionTargetKind = ""
+            root.collectionTargetId = ""
+            if (added > 0 && typeof window !== "undefined" && window)
+                window.showToast(qsTr("Added to %1").arg(playlistName))
+        }
+        onClosed: {
+            root.addTargetPath = ""
+            root.collectionTargetKind = ""
+            root.collectionTargetId = ""
+        }
+    }
+
+    Connections {
+        target: library
+        function onPlaylist_target_requested(kind, targetId) {
+            root.addTargetPath = ""
+            root.collectionTargetKind = kind
+            root.collectionTargetId = targetId
+            playlistTargetPicker.open()
+        }
+    }
+
+    TrackPropertiesView {
+        id: trackPropertiesView
+    }
+
     Component {
         id: songsViewComponent
         SongsView {
             anchors.fill: parent
             addTargetPath: root.addTargetPath
             onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
     }
 
@@ -201,6 +205,9 @@ ColumnLayout {
         id: favoritesViewComponent
         FavoritesView {
             anchors.fill: parent
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
     }
 
@@ -208,6 +215,9 @@ ColumnLayout {
         id: historyViewComponent
         HistoryView {
             anchors.fill: parent
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
     }
 
@@ -215,6 +225,14 @@ ColumnLayout {
         id: recentlyViewComponent
         RecentlyAddedView {
             anchors.fill: parent
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
+    }
+
+    onAddTargetPathChanged: {
+        if (addTargetPath !== "")
+            playlistTargetPicker.open()
     }
 }

@@ -156,18 +156,51 @@ Item {
                             required property int index
                             Layout.fillWidth: true
                             title: library.songRows[index].title
+                            trackId: library.songRows[index].trackId
+                            filePath: library.songRows[index].path
                             artist: library.songRows[index].artist
+                            artistKey: library.songRows[index].artistKey
                             album: library.songRows[index].album
+                            albumKey: library.songRows[index].albumKey
                             durationMs: library.songRows[index].durationMs
-                            quality: library.songRows[index].qualityLabel
+                            formatKey: library.songRows[index].formatKey
+                            formatLabel: library.songRows[index].formatLabel
+                            codec: library.songRows[index].codec
+                            container: library.songRows[index].container
+                            dsdRate: library.songRows[index].dsdRate
+                            sampleRateHz: library.songRows[index].sampleRateHz
+                            bitDepth: library.songRows[index].bitDepth
+                            bitrateBps: library.songRows[index].bitrateBps
+                            channels: library.songRows[index].channels
+                            fileSize: library.songRows[index].fileSize
+                            genre: library.songRows[index].genre
+                            composer: library.songRows[index].composer
+                            year: library.songRows[index].year
                             artworkPath: library.songRows[index].artworkPath || ""
                             showArtwork: true
+                            showFavorite: true
+                            canQueue: library.canQueueTracks
+                            canGoToAlbum: albumKey.length > 0
+                            canGoToArtist: artistKey.length > 0
+                            favorite: library.favoritePaths.indexOf(filePath) !== -1
                             playing: playback.currentPath === library.songRows[index].path
                             selected: searchOverlay.resultIndex === index
                             onActivated: {
-                                library.activate(index)
+                                library.activate_path(filePath)
                                 searchOverlay.closeRequested()
                                 searchOverlay.navigationRequested("now_playing")
+                            }
+                            onFavoriteToggled: library.toggle_favorite(filePath)
+                            onQueueRequested: library.queue_track(trackId)
+                            onGoToAlbumRequested: {
+                                library.select_album(albumKey)
+                                searchOverlay.closeRequested()
+                                searchOverlay.navigationRequested("library")
+                            }
+                            onGoToArtistRequested: {
+                                library.select_artist(artistKey)
+                                searchOverlay.closeRequested()
+                                searchOverlay.navigationRequested("library")
                             }
                         }
                     }

@@ -175,4 +175,5 @@ Item {
             root.activated()
         }
     }
+    AlbumContextArea { anchors.fill: parent; album: root.album }
 }

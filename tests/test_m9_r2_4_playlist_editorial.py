@@ -129,7 +129,7 @@ def test_page_connects_play_track_and_shuffle():
     host = read("shell/ContentHost.qml")
     assert "playlists.play_track(index)" in host
     assert "onShuffleRequested" in host
-    assert 'navigation.navigate("library")' in host
+    assert "onAddMusicRequested: libraryTrackPicker.begin()" in host
 
 
 def test_hero_self_sizes_and_page_never_collapses_it():
@@ -196,7 +196,8 @@ def test_format_column_beyond_1200():
     assert "readonly property bool showFormat: root.width > 1200" in page
     assert "showFormatColumn: root.width > 1200" in page
     assert "property bool showFormatColumn: false" in table
-    assert "modelData.qualityLabel" in table
+    assert "modelData.formatLabel" in table
+    assert "MichiFormatBadge" in table
 
 
 def test_add_tracks_action_in_hero():
@@ -284,8 +285,9 @@ def test_drag_reorder_handle_and_drop_line():
 
 def test_row_menu_adds_to_queue():
     table = read("playlists/PlaylistTrackList.qml")
-    assert 'qsTr("Add to Queue")' in table
-    assert "queue.add_file(modelData.path)" in table
+    menu = read("media/TrackContextMenu.qml")
+    assert 'qsTr("Add to Queue")' in menu
+    assert "library.queue_track(modelData.trackId)" in table
 
 
 def test_queue_remove_offers_undo_and_detail_menu_adds_tracks():

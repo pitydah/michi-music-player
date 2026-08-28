@@ -12,6 +12,23 @@ Rectangle {
     property string duration: ""
     property int durationMs: 0
     property string quality: ""
+    property string trackId: ""
+    property string filePath: ""
+    property string albumKey: ""
+    property string artistKey: ""
+    property string formatKey: "unknown"
+    property string formatLabel: "UNKNOWN"
+    property string codec: ""
+    property string container: ""
+    property string dsdRate: ""
+    property int sampleRateHz: 0
+    property int bitDepth: 0
+    property int bitrateBps: 0
+    property int channels: 0
+    property int fileSize: 0
+    property string genre: ""
+    property string composer: ""
+    property int year: 0
     property string numberText: ""
     property bool playing: false
     property bool selected: false
@@ -22,6 +39,17 @@ Rectangle {
     property bool showAddToPlaylist: false
     property bool showInspector: false
     property bool showRemove: false
+    property bool canQueue: false
+    property bool canGoToAlbum: albumKey.length > 0
+    property bool canGoToArtist: artistKey.length > 0
+    property bool canMoveUp: false
+    property bool canMoveDown: false
+    // Legacy surfaces keep their existing geometry/actions until they migrate
+    // to MichiTrackTable. Shared tables opt into the session-wide authority.
+    property bool sharedGeometry: false
+    property bool showTechnicalColumns: false
+    property bool showActions: true
+    property real titleColumnWidth: LibraryTrackColumnState.titleWidth
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
     property bool showQualityColumn: false
@@ -33,6 +61,12 @@ Rectangle {
     signal addToPlaylistRequested()
     signal inspectorRequested()
     signal removeRequested()
+    signal queueRequested()
+    signal goToAlbumRequested()
+    signal goToArtistRequested()
+    signal selectedRequested()
+    signal moveUpRequested()
+    signal moveDownRequested()
     readonly property string durationText: duration.length > 0
         ? duration : MichiFormat.formatDuration(durationMs)
     // Minimum height keeps action icon-buttons (controlMedium = 36px)
@@ -82,7 +116,8 @@ Rectangle {
         anchors.rightMargin: MichiSpacing.sm
         spacing: MichiSpacing.md
         Item {
-            Layout.preferredWidth: 20
+            Layout.preferredWidth: root.sharedGeometry
+                ? LibraryTrackColumnState.numberWidth : 20
             Layout.fillHeight: true
             MichiPlayingIndicator {
                 anchors.centerIn: parent
@@ -99,52 +134,126 @@ Rectangle {
             }
         }
         Artwork {
-            visible: root.showArtwork
-            Layout.preferredWidth: MichiThemeState.density === "comfortable" ? 36 : 30
+            visible: root.showArtwork && (!root.sharedGeometry
+                || LibraryTrackColumnState.artworkVisible)
+            Layout.preferredWidth: root.sharedGeometry
+                ? LibraryTrackColumnState.artworkWidth
+                : (MichiThemeState.density === "comfortable" ? 36 : 30)
             Layout.preferredHeight: Layout.preferredWidth
             Layout.alignment: Qt.AlignVCenter
             sourcePath: root.artworkPath
             fallbackText: root.album || root.title || "T"
             radius: MichiRadius.xs
-            requestedSize: Math.round((MichiThemeState.density === "comfortable" ? 36 : 30) * Screen.devicePixelRatio)
+            requestedSize: Math.round(Layout.preferredWidth * Screen.devicePixelRatio)
         }
         MichiText {
-            Layout.fillWidth: true
+            visible: !root.sharedGeometry || LibraryTrackColumnState.titleVisible
+            Layout.fillWidth: !root.sharedGeometry
+            Layout.preferredWidth: root.sharedGeometry ? root.titleColumnWidth : -1
             text: root.title
             role: "body"
             font.weight: root.playing || root.selected ? Font.DemiBold : Font.Normal
             elide: Text.ElideRight
         }
         MichiText {
-            visible: root.showArtistColumn
-            Layout.preferredWidth: 160
+            visible: root.showArtistColumn && (!root.sharedGeometry
+                || LibraryTrackColumnState.artistVisible)
+            Layout.preferredWidth: root.sharedGeometry
+                ? LibraryTrackColumnState.artistWidth : 160
             text: root.artist
             role: "secondary"
             elide: Text.ElideRight
         }
         MichiText {
-            Layout.preferredWidth: 180
+            Layout.preferredWidth: root.sharedGeometry
+                ? LibraryTrackColumnState.albumWidth : 180
             text: root.album
             role: "secondary"
-            visible: root.showAlbumColumn
+            visible: root.showAlbumColumn && (!root.sharedGeometry
+                || LibraryTrackColumnState.albumVisible)
             elide: Text.ElideRight
         }
-        MichiText { Layout.preferredWidth: 150; text: root.quality; role: "technical"; technical: true; visible: root.showQualityColumn; elide: Text.ElideRight }
-        MichiText { Layout.preferredWidth: 48; text: root.durationText; role: "technical"; technical: true; visible: root.showDurationColumn; horizontalAlignment: Text.AlignRight }
+        MichiText { Layout.preferredWidth: 150; text: root.quality; role: "technical"; technical: true; visible: !root.sharedGeometry && root.showQualityColumn; elide: Text.ElideRight }
+        Item {
+            visible: root.showTechnicalColumns && LibraryTrackColumnState.formatVisible
+            Layout.preferredWidth: LibraryTrackColumnState.formatWidth
+            Layout.fillHeight: true
+            MichiFormatBadge {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                formatKey: root.formatKey
+                displayLabel: root.formatLabel
+            }
+        }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.sampleRateVisible; Layout.preferredWidth: LibraryTrackColumnState.sampleRateWidth; text: root.sampleRateHz > 0 ? (root.sampleRateHz / 1000) + " kHz" : ""; role: "technical"; technical: true; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.bitDepthVisible; Layout.preferredWidth: LibraryTrackColumnState.bitDepthWidth; text: root.bitDepth > 0 ? root.bitDepth + "-bit" : ""; role: "technical"; technical: true; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.dsdRateVisible; Layout.preferredWidth: LibraryTrackColumnState.dsdRateWidth; text: root.dsdRate; role: "technical"; technical: true; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.bitrateVisible; Layout.preferredWidth: LibraryTrackColumnState.bitrateWidth; text: root.bitrateBps > 0 ? Math.round(root.bitrateBps / 1000) + " kbps" : ""; role: "technical"; technical: true; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.channelsVisible; Layout.preferredWidth: LibraryTrackColumnState.channelsWidth; text: root.channels > 0 ? root.channels + " ch" : ""; role: "technical"; technical: true; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.fileSizeVisible; Layout.preferredWidth: LibraryTrackColumnState.fileSizeWidth; text: root.fileSize > 0 ? MichiFormat.formatFileSize(root.fileSize) : ""; role: "technical"; technical: true; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.genreVisible; Layout.preferredWidth: LibraryTrackColumnState.genreWidth; text: root.genre; role: "secondary"; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.composerVisible; Layout.preferredWidth: LibraryTrackColumnState.composerWidth; text: root.composer; role: "secondary"; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.yearVisible; Layout.preferredWidth: LibraryTrackColumnState.yearWidth; text: root.year > 0 ? root.year : ""; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight }
+        MichiText { Layout.preferredWidth: root.sharedGeometry ? LibraryTrackColumnState.durationWidth : 48; text: root.durationText; role: "technical"; technical: true; visible: root.showDurationColumn && (!root.sharedGeometry || LibraryTrackColumnState.durationVisible); horizontalAlignment: Text.AlignRight }
 
+        Item {
+            visible: root.sharedGeometry && root.showActions
+                && LibraryTrackColumnState.actionsVisible
+            Layout.preferredWidth: LibraryTrackColumnState.actionsWidth
+            Layout.fillHeight: true
+            RowLayout {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: MichiSpacing.xxs
+                MichiIconButton {
+                    visible: root.showFavorite
+                    opacity: hover.hovered || root.activeFocus || activeFocus
+                        || root.selected || root.favorite ? 1 : 0.18
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    iconName: "heart"
+                    selected: root.favorite
+                    accessibleName: root.favorite ? qsTr("Remove from favorites") : qsTr("Add to favorites")
+                    onClicked: root.favoriteToggled()
+                }
+                MichiIconButton {
+                    visible: root.showRemove
+                    opacity: hover.hovered || root.activeFocus || activeFocus
+                        || root.selected ? 1 : 0.18
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    iconName: "trash"
+                    accessibleName: qsTr("Remove")
+                    onClicked: root.removeRequested()
+                }
+                MichiIconButton {
+                    visible: root.showFavorite || root.showAddToPlaylist
+                         || root.showInspector || root.canQueue || root.showRemove
+                        || root.canGoToAlbum || root.canGoToArtist
+                        || root.canMoveUp || root.canMoveDown
+                    opacity: hover.hovered || root.activeFocus || activeFocus
+                        || root.selected ? 1 : 0.18
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    iconName: "more"
+                    accessibleName: qsTr("More options for %1").arg(root.title)
+                    onClicked: contextMenu.popup()
+                }
+            }
+        }
         MichiIconButton {
-            visible: root.showFavorite
+            visible: !root.sharedGeometry && root.showFavorite
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected || root.favorite ? 1 : 0.18
             Layout.preferredWidth: MichiMetrics.controlMedium
             Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "heart"
             selected: root.favorite
-            accessibleName: root.favorite ? "Remove from favorites" : "Add to favorites"
+            accessibleName: root.favorite ? qsTr("Remove from favorites") : qsTr("Add to favorites")
             onClicked: root.favoriteToggled()
         }
         MichiIconButton {
-            visible: root.showAddToPlaylist
+            visible: !root.sharedGeometry && root.showAddToPlaylist
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected ? 1 : 0.18
             Layout.preferredWidth: MichiMetrics.controlMedium
@@ -154,7 +263,7 @@ Rectangle {
             onClicked: root.addToPlaylistRequested()
         }
         MichiIconButton {
-            visible: root.showInspector
+            visible: !root.sharedGeometry && root.showInspector
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected ? 1 : 0.18
             Layout.preferredWidth: MichiMetrics.controlMedium
@@ -164,13 +273,13 @@ Rectangle {
             onClicked: root.inspectorRequested()
         }
         MichiIconButton {
-            visible: root.showRemove
+            visible: !root.sharedGeometry && root.showRemove
             opacity: hover.hovered || root.activeFocus || activeFocus
                 || root.selected ? 1 : 0.18
             Layout.preferredWidth: MichiMetrics.controlMedium
             Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "trash"
-            accessibleName: qsTr("Remove from queue")
+            accessibleName: qsTr("Remove")
             onClicked: root.removeRequested()
         }
     }
@@ -207,21 +316,42 @@ Rectangle {
     TapHandler {
         acceptedButtons: Qt.RightButton
         enabled: root.interactive && !root.unavailable
-        onTapped: { MichiAccessibility.notePointer(); contextMenu.popup() }
+        onTapped: {
+            MichiAccessibility.notePointer()
+            root.forceActiveFocus()
+            root.selectedRequested()
+            contextMenu.popup()
+        }
     }
-    MichiContextMenu {
+    TrackContextMenu {
         id: contextMenu
-        canPlay: root.interactive && !root.unavailable
-        canFavorite: root.showFavorite
+        titleText: root.title
+        artistText: root.artist
+        albumText: root.album
+        artworkPath: root.artworkPath
+        formatKey: root.formatKey
+        formatLabel: root.formatLabel
+        canPlayNow: root.interactive && !root.unavailable
+        canQueue: root.canQueue
         favorite: root.favorite
+        canFavorite: root.showFavorite
         canAddToPlaylist: root.showAddToPlaylist
-        canInspect: root.showInspector
+        canGoToAlbum: root.canGoToAlbum
+        canGoToArtist: root.canGoToArtist
+        canShowProperties: root.showInspector
         canRemove: root.showRemove
-        onPlayRequested: root.activated()
+        canMoveUp: root.canMoveUp
+        canMoveDown: root.canMoveDown
+        onPlayNowRequested: root.activated()
+        onQueueRequested: root.queueRequested()
         onFavoriteRequested: root.favoriteToggled()
         onAddToPlaylistRequested: root.addToPlaylistRequested()
-        onInspectRequested: root.inspectorRequested()
+        onGoToAlbumRequested: root.goToAlbumRequested()
+        onGoToArtistRequested: root.goToArtistRequested()
+        onPropertiesRequested: root.inspectorRequested()
         onRemoveRequested: root.removeRequested()
+        onMoveUpRequested: root.moveUpRequested()
+        onMoveDownRequested: root.moveDownRequested()
     }
     MichiFocusRing { visualFocus: root.activeFocus && MichiAccessibility.keyboardMode }
 }

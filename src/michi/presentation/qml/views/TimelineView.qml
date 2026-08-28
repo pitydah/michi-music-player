@@ -219,6 +219,7 @@ ListView {
                 library.select_album(modelData.key)
             }
         }
+        AlbumContextArea { anchors.fill: parent; album: modelData }
         Keys.onReturnPressed: library.select_album(modelData.key)
         Keys.onEnterPressed: library.select_album(modelData.key)
     }
