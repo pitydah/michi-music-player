@@ -57,12 +57,12 @@ def test_collection_actions_never_call_queue_service_bridge_directly() -> None:
 def test_picker_and_properties_components_are_real_and_wired() -> None:
     library_host = _qml("views/LibraryContentHost.qml")
     shell_host = _qml("shell/ContentHost.qml")
-    assert "PlaylistTargetPicker" in library_host
+    assert "PlaylistTargetPicker" in shell_host
     assert "TrackPropertiesView" in library_host
     assert "LibraryTrackPicker" in shell_host
-    assert "library.add_tracks_to_playlist" in library_host
-    assert "library.add_album_to_playlist" in library_host
-    assert "library.add_artist_to_playlist" in library_host
+    assert "library.add_tracks_to_playlist" in shell_host
+    assert "library.add_album_to_playlist" in shell_host
+    assert "library.add_artist_to_playlist" in shell_host
     assert "library.add_tracks_to_playlist" in shell_host
     properties = _qml("media/TrackPropertiesView.qml")
     for fact in (
@@ -92,7 +92,8 @@ def test_metadata_fallback_does_not_disable_collection_playback() -> None:
 
 def test_toolbar_stacks_at_narrow_width_without_hiding_actions() -> None:
     toolbar = _qml("views/LibraryToolbar.qml")
-    assert "root.width < 900 ? Qt.Vertical : Qt.Horizontal" in toolbar
+    assert "root.width < 900 ? 1 : 2" in toolbar
+    assert "GridLayout" in toolbar
     assert 'iconName: "folder"' in toolbar
     assert 'iconName: "library"' in toolbar
     assert "Math.min(root.width" in toolbar

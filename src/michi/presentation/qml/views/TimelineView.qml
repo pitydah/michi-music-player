@@ -209,6 +209,12 @@ ListView {
                 technical: true
                 color: MichiPalette.textMuted
             }
+            MichiIconButton {
+                visible: hover.hovered || timelineRow.activeFocus
+                iconName: "play"
+                accessibleName: qsTr("Play album")
+                onClicked: library.play_album(modelData.key)
+            }
         }
 
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
@@ -219,8 +225,14 @@ ListView {
                 library.select_album(modelData.key)
             }
         }
-        AlbumContextArea { anchors.fill: parent; album: modelData }
+        AlbumContextArea {
+            id: albumContext
+            anchors.fill: parent
+            album: modelData
+            onContextRequested: albumTimeline.currentIndex = timelineRow.index
+        }
         Keys.onReturnPressed: library.select_album(modelData.key)
         Keys.onEnterPressed: library.select_album(modelData.key)
+        Keys.onPressed: event => albumContext.handleContextKey(event)
     }
 }

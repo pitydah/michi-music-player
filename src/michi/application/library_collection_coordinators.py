@@ -7,6 +7,7 @@ from michi.application.library_service import LibraryService
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 from michi.domain.library import make_artist_key
+from michi.domain.playlist import Playlist
 
 
 class _LibrarySelectionResolver:
@@ -92,3 +93,23 @@ class LibraryPlaylistCoordinator:
         return self._playlists.add_tracks(
             playlist_id, self._selection.artist(artist_key)
         )
+
+    def create_from_tracks(
+        self, name: str, track_ids: Iterable[str]
+    ) -> Playlist | None:
+        paths = self._selection.tracks(track_ids)
+        if not paths:
+            return None
+        return self._playlists.create_playlist_with_tracks(name, paths)
+
+    def create_from_album(self, name: str, album_key: str) -> Playlist | None:
+        paths = self._selection.album(album_key)
+        if not paths:
+            return None
+        return self._playlists.create_playlist_with_tracks(name, paths)
+
+    def create_from_artist(self, name: str, artist_key: str) -> Playlist | None:
+        paths = self._selection.artist(artist_key)
+        if not paths:
+            return None
+        return self._playlists.create_playlist_with_tracks(name, paths)

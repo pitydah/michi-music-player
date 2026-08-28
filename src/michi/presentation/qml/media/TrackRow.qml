@@ -49,6 +49,7 @@ Rectangle {
     property bool sharedGeometry: false
     property bool showTechnicalColumns: false
     property bool showActions: true
+    property bool useDefaultContextMenu: true
     property real titleColumnWidth: LibraryTrackColumnState.titleWidth
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
@@ -67,6 +68,7 @@ Rectangle {
     signal selectedRequested()
     signal moveUpRequested()
     signal moveDownRequested()
+    signal contextMenuRequested()
     readonly property string durationText: duration.length > 0
         ? duration : MichiFormat.formatDuration(durationMs)
     // Minimum height keeps action icon-buttons (controlMedium = 36px)
@@ -88,7 +90,13 @@ Rectangle {
     Keys.onReturnPressed: if (root.interactive && !root.unavailable) { MichiAccessibility.noteKeyboard(); activated() }
     Keys.onSpacePressed: if (root.interactive && !root.unavailable) { MichiAccessibility.noteKeyboard(); activated() }
     Keys.onPressed: event => {
-        if (event.key === Qt.Key_PageDown) {
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            MichiAccessibility.noteKeyboard()
+            root.openContextMenu()
+            event.accepted = true
+        } else if (event.key === Qt.Key_PageDown) {
             MichiAccessibility.noteKeyboard()
             root.moveByPage(1)
             event.accepted = true
@@ -108,6 +116,14 @@ Rectangle {
         view.currentIndex = Math.max(0, Math.min(view.count - 1,
             view.currentIndex + direction * pageSize))
         view.positionViewAtIndex(view.currentIndex, ListView.Contain)
+    }
+
+    function openContextMenu() {
+        root.selectedRequested()
+        if (root.useDefaultContextMenu)
+            contextMenu.popup()
+        else
+            root.contextMenuRequested()
     }
 
     RowLayout {
@@ -237,7 +253,7 @@ Rectangle {
                     Layout.preferredHeight: 32
                     iconName: "more"
                     accessibleName: qsTr("More options for %1").arg(root.title)
-                    onClicked: contextMenu.popup()
+                    onClicked: root.openContextMenu()
                 }
             }
         }
@@ -319,8 +335,7 @@ Rectangle {
         onTapped: {
             MichiAccessibility.notePointer()
             root.forceActiveFocus()
-            root.selectedRequested()
-            contextMenu.popup()
+            root.openContextMenu()
         }
     }
     TrackContextMenu {
@@ -346,6 +361,10 @@ Rectangle {
         onQueueRequested: root.queueRequested()
         onFavoriteRequested: root.favoriteToggled()
         onAddToPlaylistRequested: root.addToPlaylistRequested()
+        onAddToNewPlaylistRequested: {
+            if (typeof library !== "undefined" && library)
+                library.request_new_playlist_for_tracks([root.trackId])
+        }
         onGoToAlbumRequested: root.goToAlbumRequested()
         onGoToArtistRequested: root.goToArtistRequested()
         onPropertiesRequested: root.inspectorRequested()

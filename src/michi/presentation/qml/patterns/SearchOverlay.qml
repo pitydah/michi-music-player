@@ -13,12 +13,14 @@ Item {
     readonly property int visibleAlbumCount: Math.min(6, library.searchAlbumCount)
     readonly property int visibleArtistCount: Math.min(6, library.searchArtistCount)
     readonly property int visiblePlaylistCount: Math.min(6, playlists.searchPlaylistCount)
+    readonly property int visibleGenreCount: Math.min(6, library.searchGenreCount)
     // M9-R1J: M7 total + playlist local projection = the UI total. This is
     // PRESENTATION AGGREGATION — LibraryBridge total stays M7-only.
     readonly property int combinedResultCount:
         library.searchDisplayTotalCount + playlists.searchPlaylistCount
     readonly property int actionableResultCount: visibleTrackCount + visibleAlbumCount
         + visibleArtistCount + visiblePlaylistCount
+        + visibleGenreCount
     signal closeRequested()
     signal navigationRequested(string routeId)
     // Qt 6 lazy bindings: `visible: opacity > 0` en el root dejaba el
@@ -68,6 +70,12 @@ Item {
             playlists.open_playlist(playlists.searchPlaylists[playlistIndex].playlistId)
             closeRequested()
             return
+        }
+        var genreIndex = playlistIndex - visiblePlaylistCount
+        if (genreIndex >= 0 && genreIndex < visibleGenreCount) {
+            library.select_genre(library.genres[genreIndex].key)
+            closeRequested()
+            navigationRequested("library")
         }
     }
 
@@ -179,6 +187,8 @@ Item {
                             artworkPath: library.songRows[index].artworkPath || ""
                             showArtwork: true
                             showFavorite: true
+                            showAddToPlaylist: library.canAddTracksToPlaylists
+                            showInspector: true
                             canQueue: library.canQueueTracks
                             canGoToAlbum: albumKey.length > 0
                             canGoToArtist: artistKey.length > 0
@@ -192,6 +202,11 @@ Item {
                             }
                             onFavoriteToggled: library.toggle_favorite(filePath)
                             onQueueRequested: library.queue_track(trackId)
+                            onAddToPlaylistRequested:
+                                library.request_tracks_playlist_target([trackId])
+                            onInspectorRequested:
+                                searchTrackProperties.inspect(library.songRows[index])
+                            onSelectedRequested: searchOverlay.resultIndex = index
                             onGoToAlbumRequested: {
                                 library.select_album(albumKey)
                                 searchOverlay.closeRequested()
@@ -208,16 +223,26 @@ Item {
                     MichiText { text: "Albums"; role: "section"; visible: library.searchAlbumCount > 0 }
                     Repeater {
                         model: searchOverlay.visibleAlbumCount
-                        delegate: MichiButton {
+                        delegate: MichiEntityRow {
+                            id: searchAlbumRow
                             required property int index
                             Layout.fillWidth: true
-                            text: library.albums[index].title + " · " + library.albums[index].artist
-                            variant: "ghost"
+                            iconName: "album"
+                            title: library.albums[index].title
+                            subtitle: library.albums[index].artist
                             selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount + index
-                            onClicked: {
+                            onActivated: {
                                 library.select_album(library.albums[index].key)
                                 searchOverlay.closeRequested()
                                 searchOverlay.navigationRequested("library")
+                            }
+                            Keys.onPressed: event => searchAlbumContext.handleContextKey(event)
+                            AlbumContextArea {
+                                id: searchAlbumContext
+                                anchors.fill: parent
+                                album: library.albums[index]
+                                onContextRequested: searchOverlay.resultIndex
+                                    = searchOverlay.visibleTrackCount + index
                             }
                         }
                     }
@@ -226,6 +251,7 @@ Item {
                     Repeater {
                         model: searchOverlay.visibleArtistCount
                         delegate: MichiEntityRow {
+                            id: searchArtistRow
                             required property int index
                             Layout.fillWidth: true
                             iconName: "artist"
@@ -237,6 +263,15 @@ Item {
                                 library.select_artist(library.artists[index].key)
                                 searchOverlay.closeRequested()
                                 searchOverlay.navigationRequested("library")
+                            }
+                            Keys.onPressed: event => searchArtistContext.handleContextKey(event)
+                            ArtistContextArea {
+                                id: searchArtistContext
+                                anchors.fill: parent
+                                artist: library.artists[index]
+                                onContextRequested: searchOverlay.resultIndex
+                                    = searchOverlay.visibleTrackCount
+                                    + searchOverlay.visibleAlbumCount + index
                             }
                         }
                     }
@@ -270,12 +305,33 @@ Item {
                     Repeater {
                         model: Math.min(6, library.searchGenreCount)
                         delegate: MichiEntityRow {
+                            id: searchGenreRow
                             required property int index
                             Layout.fillWidth: true
                             iconName: "genre"
                             title: library.genres[index].name
                             technical: library.genres[index].trackCount + (library.genres[index].trackCount === 1 ? " track" : " tracks")
-                            interactive: false
+                            selected: searchOverlay.resultIndex
+                                === searchOverlay.visibleTrackCount
+                                + searchOverlay.visibleAlbumCount
+                                + searchOverlay.visibleArtistCount
+                                + searchOverlay.visiblePlaylistCount + index
+                            onActivated: {
+                                library.select_genre(library.genres[index].key)
+                                searchOverlay.closeRequested()
+                                searchOverlay.navigationRequested("library")
+                            }
+                            Keys.onPressed: event => searchGenreContext.handleContextKey(event)
+                            GenreContextArea {
+                                id: searchGenreContext
+                                anchors.fill: parent
+                                genre: library.genres[index]
+                                onContextRequested: searchOverlay.resultIndex
+                                    = searchOverlay.visibleTrackCount
+                                    + searchOverlay.visibleAlbumCount
+                                    + searchOverlay.visibleArtistCount
+                                    + searchOverlay.visiblePlaylistCount + index
+                            }
                         }
                     }
                 }
@@ -288,4 +344,5 @@ Item {
         forceActiveFocus()
         searchInput.forceInputFocus()
     }
+    TrackPropertiesView { id: searchTrackProperties }
 }

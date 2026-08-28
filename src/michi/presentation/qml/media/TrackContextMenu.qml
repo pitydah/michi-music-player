@@ -30,6 +30,7 @@ MichiMenu {
     signal playNowRequested()
     signal queueRequested()
     signal addToPlaylistRequested()
+    signal addToNewPlaylistRequested()
     signal favoriteRequested()
     signal goToAlbumRequested()
     signal goToArtistRequested()
@@ -100,6 +101,12 @@ MichiMenu {
         icon.name: "add"
         visible: root.canAddToPlaylist
         onTriggered: root.addToPlaylistRequested()
+    }
+    MenuItem {
+        text: qsTr("Add to New Playlist…")
+        icon.name: "plus"
+        visible: root.canAddToPlaylist
+        onTriggered: root.addToNewPlaylistRequested()
     }
     MenuItem {
         text: root.favorite ? qsTr("Remove from Favorites") : qsTr("Add to Favorites")

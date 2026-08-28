@@ -162,13 +162,14 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     button = _text("controls/MichiButton.qml")
     toolbar = _text("views/LibraryToolbar.qml")
     content = _text("views/LibraryContentHost.qml")
+    shell_content = _text("shell/ContentHost.qml")
     queue = _text("views/QueueView.qml")
     now_playing = _text("player/NowPlayingBar.qml")
     assert "property bool accented" in glass
     assert "Behavior on scale" in button
     assert "MichiStatusChip" in toolbar
     assert 'import "../controls"' in content
-    assert "PlaylistTargetPicker" in content
+    assert "PlaylistTargetPicker" in shell_content
     assert "Dialog.Cancel" in _text("playlists/PlaylistTargetPicker.qml")
     assert "property bool revealed" in queue
     assert "Gradient.Horizontal" in now_playing
@@ -399,9 +400,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert "albumViewsVisible" in header
     assert 'currentTab === "albums"' in header
     assert 'objectName: "albumViewSwitcher"' not in toolbar
-    assert 'objectName: "libraryNavigationSplitView"' in toolbar
+    assert 'objectName: "libraryNavigationGrid"' in toolbar
     assert 'objectName: "resizableLibrarySearchPane"' in toolbar
-    assert "SplitView.fillWidth: true" in toolbar
+    assert "Layout.fillWidth: true" in toolbar
     assert toolbar.index("LibraryTabs {") < toolbar.index("MichiSearchField {")
     assert "compact: true" in header
     for icon in (

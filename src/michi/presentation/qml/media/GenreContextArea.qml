@@ -3,18 +3,16 @@ import "../theme"
 
 Item {
     id: root
-    property var album: null
+    property var genre: null
     signal contextRequested()
-
     function openMenu() {
-        if (!root.album)
+        if (!root.genre)
             return
         if (root.parent && root.parent.forceActiveFocus)
             root.parent.forceActiveFocus()
         root.contextRequested()
         menu.popup()
     }
-
     function handleContextKey(event) {
         if (event.key === Qt.Key_Menu
                 || (event.key === Qt.Key_F10
@@ -25,7 +23,6 @@ Item {
         }
         return false
     }
-
     TapHandler {
         acceptedButtons: Qt.RightButton
         onTapped: {
@@ -33,5 +30,5 @@ Item {
             root.openMenu()
         }
     }
-    AlbumContextMenu { id: menu; album: root.album }
+    GenreContextMenu { id: menu; genre: root.genre }
 }

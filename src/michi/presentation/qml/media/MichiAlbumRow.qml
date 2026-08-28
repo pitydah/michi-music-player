@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
 import "../primitives"
 import "../theme"
 
@@ -14,6 +15,7 @@ Rectangle {
     property bool showDuration: true
     property bool showTechnical: false
     signal activated()
+    signal selectedRequested()
 
     readonly property real titleColumnRatio: root.showTechnical ? 0.34 : 0.45
     readonly property int titleColumnWidth: Math.min(
@@ -39,6 +41,7 @@ Rectangle {
     Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
     Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
     Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); root.activated() }
+    Keys.onPressed: event => albumContext.handleContextKey(event)
 
 
     RowLayout {
@@ -107,6 +110,14 @@ Rectangle {
             color: MichiPalette.auroraCyan
             elide: Text.ElideRight
         }
+        MichiIconButton {
+            visible: hover.hovered || root.activeFocus
+            Layout.preferredWidth: MichiMetrics.controlMedium
+            Layout.preferredHeight: MichiMetrics.controlMedium
+            iconName: "play"
+            accessibleName: qsTr("Play album")
+            onClicked: if (root.album) library.play_album(root.album.key)
+        }
     }
 
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
@@ -117,7 +128,12 @@ Rectangle {
             root.activated()
         }
     }
-    AlbumContextArea { anchors.fill: parent; album: root.album }
+    AlbumContextArea {
+        id: albumContext
+        anchors.fill: parent
+        album: root.album
+        onContextRequested: root.selectedRequested()
+    }
     MichiFocusRing {
         visualFocus: root.activeFocus && MichiAccessibility.keyboardMode
     }

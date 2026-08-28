@@ -262,5 +262,8 @@ class TestM4R1FinalSealPlaylistTrack:
         qml = Path(
             "src/michi/presentation/qml/playlists/PlaylistTrackList.qml"
         ).read_text()
-        # the options button calls trackMenu.popup() — not playTrackRequested
-        assert "onClicked: trackMenu.popup()" in qml
+        # The options button first targets the row, then opens the menu. It
+        # never emits the playback intent.
+        assert "root.trackSelected(index)" in qml
+        assert "trackItem.forceActiveFocus()" in qml
+        assert "trackMenu.popup()" in qml

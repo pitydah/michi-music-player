@@ -11,16 +11,20 @@ MichiDialog {
 
     property var trackRows: []
     property var selectedTrackIds: []
+    property string query: ""
+    readonly property var filteredRows: (trackRows || []).filter(function(row) {
+        var needle = root.query.trim().toLocaleLowerCase()
+        if (needle.length === 0)
+            return true
+        return [row.title, row.artist, row.album, row.formatLabel]
+            .join(" ").toLocaleLowerCase().indexOf(needle) !== -1
+    })
     signal tracksRequested(var trackIds)
 
     title: qsTr("Add music")
-    width: 640
-    height: 560
+    width: 920
+    height: 620
     standardButtons: Dialog.Cancel
-
-    function isSelected(trackId) {
-        return selectedTrackIds.indexOf(trackId) !== -1
-    }
 
     function toggleTrack(trackId) {
         var next = selectedTrackIds.slice()
@@ -34,33 +38,36 @@ MichiDialog {
 
     function begin() {
         selectedTrackIds = []
+        query = ""
         open()
     }
 
     contentItem: ColumnLayout {
         spacing: MichiSpacing.md
 
-        ListView {
+        MichiSearchField {
+            Layout.fillWidth: true
+            placeholderText: qsTr("Search title, artist, album or format…")
+            text: root.query
+            onEdited: value => root.query = value
+            onClearRequested: root.query = ""
+        }
+
+        MichiTrackTable {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            model: root.trackRows
-            clip: true
-            activeFocusOnTab: true
-            keyNavigationEnabled: true
-            boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: MichiScrollBar { }
-
-            delegate: MichiEntityRow {
-                required property var modelData
-                width: ListView.view.width
-                iconName: "track"
-                title: modelData.title
-                subtitle: [modelData.artist, modelData.album]
-                    .filter(value => value.length > 0).join(" · ")
-                technical: modelData.formatLabel
-                selected: root.isSelected(modelData.trackId)
-                onActivated: root.toggleTrack(modelData.trackId)
-            }
+            rows: root.filteredRows
+            selectionEnabled: true
+            selectedTrackIds: root.selectedTrackIds
+            showArtwork: false
+            showActions: false
+            canFavorite: false
+            canQueue: false
+            canAddToPlaylist: false
+            canInspect: false
+            canNavigateEntities: false
+            emptyTitle: qsTr("No matching tracks")
+            onSelectionToggleRequested: trackId => root.toggleTrack(trackId)
         }
 
         RowLayout {

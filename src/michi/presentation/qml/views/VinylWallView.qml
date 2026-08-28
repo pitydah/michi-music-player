@@ -212,8 +212,23 @@ GridView {
                     library.select_album(modelData.key)
             }
         }
-        AlbumContextArea { anchors.fill: parent; album: modelData }
+        AlbumContextArea {
+            id: albumContext
+            anchors.fill: parent
+            album: modelData
+            onContextRequested: albumVinyl.currentIndex = vinylTile.index
+        }
+        MichiIconButton {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: MichiSpacing.sm
+            visible: hover.hovered || vinylTile.activeFocus
+            iconName: "play"
+            accessibleName: qsTr("Play album")
+            onClicked: library.play_album(modelData.key)
+        }
         Keys.onReturnPressed: library.select_album(modelData.key)
         Keys.onEnterPressed: library.select_album(modelData.key)
+        Keys.onPressed: event => albumContext.handleContextKey(event)
     }
 }

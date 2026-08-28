@@ -112,6 +112,7 @@ Item {
                         artistGrid.currentIndex = artistCell.index
                         library.select_artist(artistCell.modelData.key)
                     }
+                    onSelectedRequested: artistGrid.currentIndex = artistCell.index
                 }
             }
         }

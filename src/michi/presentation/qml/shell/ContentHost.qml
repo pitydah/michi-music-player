@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
+import "../media"
 import "../playlists"
 import "../primitives"
 import "../theme"
@@ -10,6 +11,7 @@ import "../views"
 Item {
     id: root
     property string currentRoute: ""
+    property var pendingPlaylistSelection: ({})
     signal createPlaylistRequested()
 
     function routeIndex(route) {
@@ -21,6 +23,39 @@ Item {
         case "playlists":   return 4
         default:            return 1
         }
+    }
+
+    function selectionDescription(payload) {
+        if (!payload)
+            return ""
+        if (payload.kind === "album")
+            return qsTr("Choose a playlist for this album.")
+        if (payload.kind === "artist")
+            return qsTr("Choose a playlist for this artist.")
+        var count = (payload.trackIds || []).length
+        return count === 1
+            ? qsTr("Choose a playlist for this track.")
+            : qsTr("Choose a playlist for %1 tracks.").arg(count)
+    }
+
+    function addSelectionToPlaylist(playlistId, payload) {
+        if (!payload)
+            return 0
+        if (payload.kind === "album")
+            return library.add_album_to_playlist(playlistId, payload.albumKey)
+        if (payload.kind === "artist")
+            return library.add_artist_to_playlist(playlistId, payload.artistKey)
+        return library.add_tracks_to_playlist(playlistId, payload.trackIds || [])
+    }
+
+    function createPlaylistForSelection(name, payload) {
+        if (!payload)
+            return ""
+        if (payload.kind === "album")
+            return library.create_playlist_from_album(name, payload.albumKey)
+        if (payload.kind === "artist")
+            return library.create_playlist_from_artist(name, payload.artistKey)
+        return library.create_playlist_from_tracks(name, payload.trackIds || [])
     }
 
     // PLAYLIST-HIERARCHY-04: detail = PLAYLISTS + playlist_id; All
@@ -156,8 +191,7 @@ Item {
                     playlists.move_track(fromIndex, toIndex)
                 }
                 onAddToPlaylistRequested: trackId => {
-                    playlistTargetPicker.trackIds = [trackId]
-                    playlistTargetPicker.open()
+                    library.request_tracks_playlist_target([trackId])
                 }
                 onGoToAlbumRequested: albumKey => {
                     navigation.navigate("library")
@@ -185,10 +219,41 @@ Item {
     PlaylistTargetPicker {
         id: playlistTargetPicker
         playlistRows: playlists.playlists
-        onTargetRequested: (playlistId, playlistName, trackIds) => {
-            var added = library.add_tracks_to_playlist(playlistId, trackIds)
+        pinnedRows: playlists.pinnedPlaylists
+        recentRows: playlists.recentPlaylists
+        selectionPayload: root.pendingPlaylistSelection
+        selectionDescription: root.selectionDescription(selectionPayload)
+        onTargetRequested: (playlistId, playlistName, payload) => {
+            var added = root.addSelectionToPlaylist(playlistId, payload)
             if (added > 0 && typeof window !== "undefined" && window)
                 window.showToast(qsTr("Added to %1").arg(playlistName))
+        }
+        onNewPlaylistRequested: payload => selectionCreateDialog.begin(payload)
+    }
+
+    SelectionPlaylistCreateDialog {
+        id: selectionCreateDialog
+        onCreateRequested: (name, payload) => {
+            var playlistId = root.createPlaylistForSelection(name, payload)
+            complete(playlistId.length > 0)
+            if (playlistId.length > 0 && typeof window !== "undefined" && window)
+                window.showToast(qsTr("Created playlist and added selection"))
+        }
+    }
+
+    AlbumPropertiesView { id: albumPropertiesView }
+
+    Connections {
+        target: library
+        function onPlaylist_target_requested(payload) {
+            root.pendingPlaylistSelection = payload
+            playlistTargetPicker.open()
+        }
+        function onNew_playlist_target_requested(payload) {
+            selectionCreateDialog.begin(payload)
+        }
+        function onAlbum_properties_requested(album) {
+            albumPropertiesView.inspect(album)
         }
     }
 

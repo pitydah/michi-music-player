@@ -62,37 +62,18 @@ MichiGlassSurface {
         anchors.fill: parent
         spacing: MichiSpacing.sm
 
-        SplitView {
-            id: navigationSplit
-            objectName: "libraryNavigationSplitView"
+        GridLayout {
+            objectName: "libraryNavigationGrid"
             Layout.fillWidth: true
-            Layout.preferredHeight: root.width < 900
-                ? MichiMetrics.controlLarge * 2 + MichiSpacing.sm
-                : MichiMetrics.controlLarge
-            orientation: root.width < 900 ? Qt.Vertical : Qt.Horizontal
-
-            handle: Item {
-                implicitWidth: 16
-                implicitHeight: navigationSplit.height
-                HoverHandler {
-                    id: navigationHandleHover
-                    cursorShape: Qt.SplitHCursor
-                }
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 1
-                    height: 20
-                    color: navigationHandleHover.hovered
-                        ? MichiSemanticColors.auroraCyanBorder
-                        : MichiSemanticColors.borderSubtle
-                }
-            }
+            columns: root.width < 900 ? 1 : 2
+            columnSpacing: MichiSpacing.md
+            rowSpacing: MichiSpacing.sm
 
             LibraryTabs {
                 id: libraryNavigation
-                SplitView.fillWidth: true
-                SplitView.minimumWidth: Math.min(300, root.width)
-                SplitView.preferredHeight: MichiMetrics.controlLarge
+                Layout.fillWidth: true
+                Layout.minimumWidth: Math.min(300, root.width)
+                Layout.preferredHeight: MichiMetrics.controlLarge
                 currentTab: root.currentTab
                 onTabRequested: tab => root.currentTabRequested(tab)
             }
@@ -100,11 +81,12 @@ MichiGlassSurface {
             Item {
                 id: searchPane
                 objectName: "resizableLibrarySearchPane"
-                SplitView.preferredWidth: root.width >= 1480 ? 640 : 520
-                SplitView.minimumWidth: Math.min(root.width,
+                Layout.fillWidth: true
+                Layout.preferredWidth: root.width >= 1480 ? 640 : 520
+                Layout.minimumWidth: Math.min(root.width,
                     root.width < 980 ? 300 : 430)
-                SplitView.maximumWidth: 760
-                SplitView.preferredHeight: MichiMetrics.controlLarge
+                Layout.maximumWidth: root.width < 900 ? root.width : 760
+                Layout.preferredHeight: MichiMetrics.controlLarge
 
                 RowLayout {
                     anchors.fill: parent

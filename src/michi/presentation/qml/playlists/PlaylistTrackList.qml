@@ -285,7 +285,11 @@ Item {
                         enabled: !MichiAccessibility.reducedMotion
                         NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
                     }
-                    onClicked: trackMenu.popup()
+                    onClicked: {
+                        root.trackSelected(index)
+                        trackItem.forceActiveFocus()
+                        trackMenu.popup()
+                    }
                 }
             }
 
@@ -310,6 +314,16 @@ Item {
             }
             Keys.onReturnPressed: root.playTrackRequested(index)
             Keys.onEnterPressed: root.playTrackRequested(index)
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Menu
+                        || (event.key === Qt.Key_F10
+                            && (event.modifiers & Qt.ShiftModifier))) {
+                    MichiAccessibility.noteKeyboard()
+                    root.trackSelected(index)
+                    trackMenu.popup()
+                    event.accepted = true
+                }
+            }
             Keys.onUpPressed: event => {
                 if (event.modifiers & Qt.AltModifier) {
                     if (index > 0) {
@@ -365,7 +379,7 @@ Item {
                 visible: !trackItem.isSelected
             }
 
-            TrackContextMenu {
+            PlaylistTrackContextMenu {
                 id: trackMenu
                 titleText: modelData.title
                 artistText: modelData.artist || ""
@@ -393,6 +407,8 @@ Item {
                 onQueueRequested: library.queue_track(modelData.trackId)
                 onAddToPlaylistRequested:
                     root.addToPlaylistRequested(modelData.trackId)
+                onAddToNewPlaylistRequested:
+                    library.request_new_playlist_for_tracks([modelData.trackId])
                 onFavoriteRequested: library.toggle_favorite(modelData.path)
                 onGoToAlbumRequested:
                     root.goToAlbumRequested(modelData.albumKey)

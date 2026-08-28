@@ -15,7 +15,7 @@ by new code.
 import logging
 import math
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import replace
 from pathlib import Path
 
@@ -130,12 +130,30 @@ class PlaylistService:
     # ------------------------------------------------------------------
 
     def create_playlist(self, name: str) -> Playlist:
+        return self.create_playlist_with_tracks(name, ())
+
+    def create_playlist_with_tracks(
+        self, name: str, file_paths: Iterable[str | Path]
+    ) -> Playlist:
+        """Create one playlist and publish its initial ordered tracks once."""
         cleaned = name.strip()
         if not cleaned:
             raise ValueError("playlist name must not be empty")
         if any(p.name == cleaned for p in self._playlists):
             raise ValueError(f"playlist already exists: {cleaned!r}")
-        playlist = Playlist(playlist_id=new_playlist_id(), name=cleaned)
+        paths: list[str] = []
+        seen: set[str] = set()
+        for file_path in file_paths:
+            path = str(Path(file_path))
+            if path in seen:
+                continue
+            seen.add(path)
+            paths.append(path)
+        playlist = Playlist(
+            playlist_id=new_playlist_id(),
+            name=cleaned,
+            track_paths=tuple(paths),
+        )
         self._playlists.append(playlist)
         self._persist()
         self._notify()

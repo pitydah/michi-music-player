@@ -1,12 +1,13 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../primitives"
 import "../theme"
 
 // MagazineView — Editorial magazine layout as a single vertical scrollable surface.
-// The scrollbar covers the entire page: Spotlight Hero → Medium Features →
+// The scrollbar covers the entire page: Catalog Feature → Medium Features →
 // Compact Features → Archive rows.
 Item {
     id: root
@@ -42,7 +43,7 @@ Item {
             width: albumMagazine.width
             spacing: MichiThemeState.contentGap
 
-            // 1. Spotlight Hero (horizontal square artwork + typography, no stretched wallpaper)
+            // 1. Catalog Feature (horizontal square artwork + typography, no stretched wallpaper)
             Rectangle {
                 id: heroCard
                 Layout.fillWidth: true
@@ -65,6 +66,7 @@ Item {
                 Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); if (root.heroAlbum) library.select_album(root.heroAlbum.key) }
                 Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); if (root.heroAlbum) library.select_album(root.heroAlbum.key) }
                 Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); if (root.heroAlbum) library.select_album(root.heroAlbum.key) }
+                Keys.onPressed: event => heroContext.handleContextKey(event)
 
                 RowLayout {
                     anchors.fill: parent
@@ -87,7 +89,7 @@ Item {
                         spacing: MichiSpacing.xs
 
                         MichiText {
-                            text: qsTr("SPOTLIGHT")
+                            text: qsTr("CATALOG FEATURE")
                             role: "technical"
                             technical: true
                             color: MichiPalette.auroraCyan
@@ -113,6 +115,13 @@ Item {
                             color: MichiPalette.textSecondary
                             elide: Text.ElideRight
                         }
+                        MichiButton {
+                            text: qsTr("Play")
+                            iconName: "play"
+                            variant: "primary"
+                            onClicked: if (root.heroAlbum)
+                                library.play_album(root.heroAlbum.key)
+                        }
 
                         Item { Layout.fillHeight: true }
 
@@ -130,7 +139,7 @@ Item {
 
                 HoverHandler { id: heroHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { id: heroTap; onTapped: { if (root.heroAlbum) library.select_album(root.heroAlbum.key) } }
-                AlbumContextArea { anchors.fill: parent; album: root.heroAlbum }
+                AlbumContextArea { id: heroContext; anchors.fill: parent; album: root.heroAlbum }
                 MichiFocusRing { visualFocus: heroCard.activeFocus && MichiAccessibility.keyboardMode }
             }
 
@@ -166,6 +175,7 @@ Item {
                         Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
                         Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
                         Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
+                        Keys.onPressed: event => mediumContext.handleContextKey(event)
 
                         RowLayout {
                             anchors.fill: parent
@@ -213,7 +223,7 @@ Item {
 
                         HoverHandler { id: medHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { id: medTap; onTapped: library.select_album(modelData.key) }
-                        AlbumContextArea { anchors.fill: parent; album: modelData }
+                        AlbumContextArea { id: mediumContext; anchors.fill: parent; album: modelData }
                         MichiFocusRing { visualFocus: medFeature.activeFocus && MichiAccessibility.keyboardMode }
                     }
                 }
@@ -251,6 +261,7 @@ Item {
                         Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
                         Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
                         Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
+                        Keys.onPressed: event => compactContext.handleContextKey(event)
 
                         RowLayout {
                             anchors.fill: parent
@@ -300,7 +311,7 @@ Item {
 
                         HoverHandler { id: compHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { id: compTap; onTapped: library.select_album(modelData.key) }
-                        AlbumContextArea { anchors.fill: parent; album: modelData }
+                        AlbumContextArea { id: compactContext; anchors.fill: parent; album: modelData }
                         MichiFocusRing { visualFocus: compactFeature.activeFocus && MichiAccessibility.keyboardMode }
                     }
                 }

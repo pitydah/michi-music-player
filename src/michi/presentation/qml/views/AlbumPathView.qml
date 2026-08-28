@@ -184,7 +184,13 @@ PathView {
             }
             onDoubleTapped: library.select_album(modelData.key)
         }
-        AlbumContextArea { anchors.fill: parent; album: modelData }
+        AlbumContextArea {
+            id: albumContext
+            anchors.fill: parent
+            album: modelData
+            onContextRequested: albumsPath.currentIndex = pathAlbum.index
+        }
+        Keys.onPressed: event => albumContext.handleContextKey(event)
 
         Behavior on scale {
             enabled: !MichiAccessibility.reducedMotion
@@ -270,8 +276,7 @@ PathView {
                 accessibleName: qsTr("Play selected album")
                 onClicked: {
                     if (albumsPath.currentAlbum) {
-                        library.select_album(albumsPath.currentAlbum.key)
-                        library.play_all()
+                        library.play_album(albumsPath.currentAlbum.key)
                     }
                 }
             }

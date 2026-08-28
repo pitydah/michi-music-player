@@ -12,8 +12,6 @@ ColumnLayout {
 
     property string currentTab: "songs"
     property string addTargetPath: ""
-    property string collectionTargetKind: ""
-    property string collectionTargetId: ""
     // LibraryView owns presentation preferences; recreated tab content only
     // receives their current projection so controls cannot break bindings.
     property string albumMode: "grid"
@@ -108,45 +106,6 @@ ColumnLayout {
         message: qsTr("Building your library…")
     }
 
-    PlaylistTargetPicker {
-        id: playlistTargetPicker
-        playlistRows: typeof playlists !== "undefined" && playlists
-            ? playlists.playlists : []
-        trackIds: root.addTargetPath === "" ? [] : [root.addTargetPath]
-        selectionDescription: root.collectionTargetKind === "album"
-            ? qsTr("Choose a playlist for this album.")
-            : root.collectionTargetKind === "artist"
-                ? qsTr("Choose a playlist for this artist.") : ""
-        onTargetRequested: (playlistId, playlistName, trackIds) => {
-            var added = root.collectionTargetKind === "album"
-                ? library.add_album_to_playlist(playlistId, root.collectionTargetId)
-                : root.collectionTargetKind === "artist"
-                    ? library.add_artist_to_playlist(
-                        playlistId, root.collectionTargetId)
-                    : library.add_tracks_to_playlist(playlistId, trackIds)
-            root.addTargetPath = ""
-            root.collectionTargetKind = ""
-            root.collectionTargetId = ""
-            if (added > 0 && typeof window !== "undefined" && window)
-                window.showToast(qsTr("Added to %1").arg(playlistName))
-        }
-        onClosed: {
-            root.addTargetPath = ""
-            root.collectionTargetKind = ""
-            root.collectionTargetId = ""
-        }
-    }
-
-    Connections {
-        target: library
-        function onPlaylist_target_requested(kind, targetId) {
-            root.addTargetPath = ""
-            root.collectionTargetKind = kind
-            root.collectionTargetId = targetId
-            playlistTargetPicker.open()
-        }
-    }
-
     TrackPropertiesView {
         id: trackPropertiesView
     }
@@ -232,7 +191,9 @@ ColumnLayout {
     }
 
     onAddTargetPathChanged: {
-        if (addTargetPath !== "")
-            playlistTargetPicker.open()
+        if (addTargetPath !== "") {
+            library.request_tracks_playlist_target([addTargetPath])
+            addTargetPath = ""
+        }
     }
 }

@@ -79,5 +79,6 @@ ListView {
             root.currentIndex = index
             library.select_album(modelData.key)
         }
+        onSelectedRequested: root.currentIndex = index
     }
 }

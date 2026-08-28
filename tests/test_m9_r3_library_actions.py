@@ -9,9 +9,16 @@ from michi.application.library_collection_coordinators import (
     LibraryPlaylistCoordinator,
     LibraryQueueCoordinator,
 )
+from michi.application.library_track_query import LibraryTrackQueryService
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
-from michi.domain.library import AlbumRef, ArtistRef, TrackRef, make_artist_key
+from michi.domain.library import (
+    AlbumRef,
+    ArtistRef,
+    TrackRef,
+    make_artist_key,
+    make_genre_key,
+)
 from michi.presentation.library_bridge import LibraryBridge
 
 
@@ -95,6 +102,24 @@ def test_playlist_batch_add_persists_and_notifies_once() -> None:
     assert changes == [True]
 
 
+def test_create_playlist_with_tracks_is_one_atomic_publication() -> None:
+    port = _PlaylistPort()
+    service = PlaylistService(playlists_port=port)
+    changes = []
+    service.subscribe_changed(lambda: changes.append(True))
+
+    playlist = service.create_playlist_with_tracks(
+        "Album Set",
+        [Path("/music/a.flac"), Path("/music/a.flac"), Path("/music/b.flac")],
+    )
+
+    assert playlist.name == "Album Set"
+    assert playlist.track_paths == ("/music/a.flac", "/music/b.flac")
+    assert service.get_playlist(playlist.playlist_id) == playlist
+    assert len(port.saved) == 1
+    assert changes == [True]
+
+
 def test_queue_coordinator_resolves_and_appends_selection_atomically() -> None:
     library, tracks = _library()
     queue = QueueService()
@@ -108,6 +133,21 @@ def test_queue_coordinator_resolves_and_appends_selection_atomically() -> None:
     assert [track.file_path for track in queue.state.tracks] == [
         tracks[1].file_path,
         tracks[0].file_path,
+    ]
+
+
+def test_genre_query_uses_canonical_key_and_preserves_source_order() -> None:
+    tracks = [
+        TrackRef(Path("/music/a.flac"), genre="Ambient"),
+        TrackRef(Path("/music/b.flac"), genre="Rock"),
+        TrackRef(Path("/music/c.flac"), genre=" ambient  "),
+    ]
+
+    filtered = LibraryTrackQueryService.filter_genre(tracks, make_genre_key("AMBIENT"))
+
+    assert [track.file_path for track in filtered] == [
+        Path("/music/a.flac"),
+        Path("/music/c.flac"),
     ]
 
 
@@ -127,6 +167,20 @@ def test_collection_coordinators_resolve_album_and_artist_ids() -> None:
     assert playlists.get_playlist(playlist.playlist_id).track_paths == (
         str(tracks[2].file_path),
     )
+
+
+def test_playlist_coordinator_creates_from_canonical_album_atomically() -> None:
+    library, tracks = _library()
+    port = _PlaylistPort()
+    playlists = PlaylistService(playlists_port=port)
+    coordinator = LibraryPlaylistCoordinator(library, playlists)
+
+    playlist = coordinator.create_from_album("First Set", "album-first")
+
+    assert playlist is not None
+    assert playlist.track_paths == tuple(str(track.file_path) for track in tracks[:2])
+    assert len(port.saved) == 1
+    assert coordinator.create_from_album("Missing", "missing") is None
 
 
 def test_unknown_identities_are_truthful_no_ops() -> None:
@@ -149,7 +203,23 @@ def test_bridge_requests_picker_only_for_known_collection_identities() -> None:
     bridge.request_album_playlist_target("missing")
     bridge.request_album_playlist_target("album-first")
     bridge.request_artist_playlist_target(make_artist_key("Beta"))
+    bridge.request_tracks_playlist_target(["/music/a.flac"])
 
-    assert spy.count() == 2
-    assert list(spy.at(0)) == ["album", "album-first"]
-    assert list(spy.at(1)) == ["artist", make_artist_key("Beta")]
+    assert spy.count() == 3
+    assert list(spy.at(0)) == [{"kind": "album", "albumKey": "album-first"}]
+    assert list(spy.at(1)) == [{"kind": "artist", "artistKey": make_artist_key("Beta")}]
+    assert list(spy.at(2)) == [{"kind": "tracks", "trackIds": ["/music/a.flac"]}]
+
+
+def test_bridge_creates_playlist_from_semantic_selection() -> None:
+    library, tracks = _library()
+    playlists = PlaylistService()
+    coordinator = LibraryPlaylistCoordinator(library, playlists)
+    bridge = LibraryBridge(library, playlist_coordinator=coordinator)
+
+    playlist_id = bridge.create_playlist_from_album("First Set", "album-first")
+
+    playlist = playlists.get_playlist(playlist_id)
+    assert playlist is not None
+    assert playlist.track_paths == tuple(str(track.file_path) for track in tracks[:2])
+    assert bridge.create_playlist_from_album("Missing", "missing") == ""

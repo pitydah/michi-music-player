@@ -28,7 +28,10 @@ class LibraryBridge(QObject):
     """Thin adapter: LibraryService state → QML properties, QML intent → service."""
 
     library_changed = Signal()
-    playlist_target_requested = Signal(str, str)
+    playlist_target_requested = Signal(dict)
+    new_playlist_target_requested = Signal(dict)
+    album_properties_requested = Signal(dict)
+    genre_selected = Signal(str)
 
     def __init__(
         self,
@@ -53,6 +56,7 @@ class LibraryBridge(QObject):
         self._selected_artist_key: str = ""
         self._selected_artist: ArtistRef | None = None
         self._artist_track_refs: list[TrackRef] = []
+        self._selected_genre_key = ""
         service.subscribe_changed(self._on_service_changed)
 
     def dispose(self) -> None:
@@ -105,10 +109,15 @@ class LibraryBridge(QObject):
         self.library_changed.emit()
 
     def _get_files(self) -> list[str]:
-        return [t.display_name for t in self._service.state.visible_tracks]
+        return [t.display_name for t in self._visible_track_refs()]
 
     def _get_count(self) -> int:
-        return len(self._service.state.visible_tracks)
+        return len(self._visible_track_refs())
+
+    def _visible_track_refs(self) -> list[TrackRef]:
+        return self._track_query.filter_genre(
+            self._service.state.visible_tracks, self._selected_genre_key
+        )
 
     def _get_current_dir(self) -> str:
         return self._service.state.current_directory
@@ -185,6 +194,54 @@ class LibraryBridge(QObject):
     def _get_artist_count(self) -> int:
         return len(self._service.state.artists)
 
+    def _album_row(self, album: AlbumRef) -> dict:
+        return {
+            "key": album.key,
+            "albumKey": album.key,
+            "title": album.title,
+            "artist": album.artist,
+            "artistKey": make_artist_key(album.artist.strip() or "Unknown Artist"),
+            "trackCount": album.track_count,
+            "durationMs": album.duration_ms,
+            "hasArtwork": album.has_artwork,
+            "artworkPath": self._service.artwork_path_for(album.key) or "",
+            "year": album.year,
+            "genres": list(album.genres),
+            "technicalSummary": album.technical_summary,
+        }
+
+    def _album_properties_row(self, album: AlbumRef) -> dict:
+        refs = [
+            ref
+            for path in album.track_paths
+            if (ref := self._service.resolve_trackref(path)) is not None
+        ]
+        formats = []
+        sample_rates = set()
+        bit_depths = set()
+        dsd_rates = set()
+        for ref in refs:
+            row = project_track_row(ref)
+            label = row["formatLabel"]
+            if label not in formats:
+                formats.append(label)
+            if ref.sample_rate_hz > 0:
+                sample_rates.add(ref.sample_rate_hz)
+            if ref.bit_depth > 0:
+                bit_depths.add(ref.bit_depth)
+            if row["dsdRate"]:
+                dsd_rates.add(row["dsdRate"])
+        row = self._album_row(album)
+        row.update(
+            {
+                "formatsPresent": formats,
+                "sampleRatesPresent": sorted(sample_rates),
+                "bitDepthsPresent": sorted(bit_depths),
+                "dsdRatesPresent": sorted(dsd_rates),
+            }
+        )
+        return row
+
     def _album_rows(self) -> list[dict]:
         # M7: the unified search projection filters the album surface; the
         # canonical collections are the passthrough when search is inactive.
@@ -193,25 +250,7 @@ class LibraryBridge(QObject):
             if self._service.state.search_active
             else self._service.state.albums
         )
-        rows = []
-        for album in albums:
-            rows.append(
-                {
-                    "key": album.key,
-                    "title": album.title,
-                    "artist": album.artist,
-                    "artistKey": make_artist_key(
-                        album.artist.strip() or "Unknown Artist"
-                    ),
-                    "trackCount": album.track_count,
-                    "durationMs": album.duration_ms,
-                    "hasArtwork": album.has_artwork,
-                    "artworkPath": self._service.artwork_path_for(album.key) or "",
-                    "year": album.year,
-                    "technicalSummary": album.technical_summary,
-                }
-            )
-        return rows
+        return [self._album_row(album) for album in albums]
 
     def _get_timeline_albums(self) -> list[dict]:
         # M7: the timeline receives the SAME filtered album set as the other
@@ -416,7 +455,7 @@ class LibraryBridge(QObject):
         return tuple(p for p in paths if p in matched)
 
     def _get_song_paths(self) -> list[str]:
-        return [str(t.file_path) for t in self._service.state.visible_tracks]
+        return [str(t.file_path) for t in self._visible_track_refs()]
 
     @staticmethod
     def _track_row(ref: TrackRef) -> dict:
@@ -435,7 +474,7 @@ class LibraryBridge(QObject):
     def _get_song_rows(self) -> list[dict]:
         return [
             self._track_row_with_artwork(ref)
-            for ref in self._track_query.sort_tracks(self._service.state.visible_tracks)
+            for ref in self._track_query.sort_tracks(self._visible_track_refs())
         ]
 
     def _get_track_sort_column(self) -> str:
@@ -598,12 +637,41 @@ class LibraryBridge(QObject):
 
     @Slot(str)
     def search(self, query: str) -> None:
+        self._selected_genre_key = ""
         self._service.search(query)
 
     @Slot()
     def clear_search(self) -> None:
         """M7: deactivate search; the canonical collections are restored."""
         self._service.clear_search()
+
+    @Slot(str)
+    def select_genre(self, genre_key: str) -> None:
+        genre = next(
+            (item for item in self._service.state.genres if item.key == genre_key), None
+        )
+        if genre is None:
+            return
+        search_was_active = self._service.state.search_active
+        self._selected_album_key = ""
+        self._selected_album = None
+        self._album_track_refs = []
+        self._selected_artist_key = ""
+        self._selected_artist = None
+        self._artist_track_refs = []
+        self._selected_genre_key = genre_key
+        if search_was_active:
+            self._service.clear_search()
+        else:
+            self.library_changed.emit()
+        self.genre_selected.emit(genre_key)
+
+    @Slot()
+    def clear_genre_selection(self) -> None:
+        if not self._selected_genre_key:
+            return
+        self._selected_genre_key = ""
+        self.library_changed.emit()
 
     @Slot(int)
     def activate(self, visible_index: int) -> None:
@@ -709,14 +777,93 @@ class LibraryBridge(QObject):
         if self._playlist_coordinator is None:
             return
         if any(album.key == album_key for album in self._service.state.albums):
-            self.playlist_target_requested.emit("album", album_key)
+            self.playlist_target_requested.emit(
+                {"kind": "album", "albumKey": album_key}
+            )
 
     @Slot(str)
     def request_artist_playlist_target(self, artist_key: str) -> None:
         if self._playlist_coordinator is None:
             return
         if any(artist.key == artist_key for artist in self._service.state.artists):
-            self.playlist_target_requested.emit("artist", artist_key)
+            self.playlist_target_requested.emit(
+                {"kind": "artist", "artistKey": artist_key}
+            )
+
+    @Slot(list)
+    def request_tracks_playlist_target(self, track_ids: list) -> None:
+        if self._playlist_coordinator is None:
+            return
+        valid = [
+            str(item)
+            for item in track_ids
+            if self._service.resolve_trackref(Path(str(item))) is not None
+        ]
+        if valid:
+            self.playlist_target_requested.emit({"kind": "tracks", "trackIds": valid})
+
+    @Slot(str)
+    def request_new_playlist_for_album(self, album_key: str) -> None:
+        if self._playlist_coordinator is None:
+            return
+        if any(album.key == album_key for album in self._service.state.albums):
+            self.new_playlist_target_requested.emit(
+                {"kind": "album", "albumKey": album_key}
+            )
+
+    @Slot(list)
+    def request_new_playlist_for_tracks(self, track_ids: list) -> None:
+        if self._playlist_coordinator is None:
+            return
+        valid = [
+            str(item)
+            for item in track_ids
+            if self._service.resolve_trackref(Path(str(item))) is not None
+        ]
+        if valid:
+            self.new_playlist_target_requested.emit(
+                {"kind": "tracks", "trackIds": valid}
+            )
+
+    @Slot(str, str, result=str)
+    def create_playlist_from_album(self, name: str, album_key: str) -> str:
+        if self._playlist_coordinator is None:
+            return ""
+        try:
+            playlist = self._playlist_coordinator.create_from_album(name, album_key)
+        except ValueError:
+            return ""
+        return playlist.playlist_id if playlist is not None else ""
+
+    @Slot(str, list, result=str)
+    def create_playlist_from_tracks(self, name: str, track_ids: list) -> str:
+        if self._playlist_coordinator is None:
+            return ""
+        try:
+            playlist = self._playlist_coordinator.create_from_tracks(
+                name, (str(item) for item in track_ids)
+            )
+        except ValueError:
+            return ""
+        return playlist.playlist_id if playlist is not None else ""
+
+    @Slot(str, str, result=str)
+    def create_playlist_from_artist(self, name: str, artist_key: str) -> str:
+        if self._playlist_coordinator is None:
+            return ""
+        try:
+            playlist = self._playlist_coordinator.create_from_artist(name, artist_key)
+        except ValueError:
+            return ""
+        return playlist.playlist_id if playlist is not None else ""
+
+    @Slot(str)
+    def request_album_properties(self, album_key: str) -> None:
+        album = next(
+            (item for item in self._service.state.albums if item.key == album_key), None
+        )
+        if album is not None:
+            self.album_properties_requested.emit(self._album_properties_row(album))
 
     @Slot(str)
     def select_album(self, key: str) -> None:
@@ -725,6 +872,7 @@ class LibraryBridge(QObject):
             return
         self._selected_album_key = key
         self._selected_album = album
+        self._selected_genre_key = ""
         self._selected_artist_key = ""
         self._selected_artist = None
         self._artist_track_refs = []
@@ -749,6 +897,7 @@ class LibraryBridge(QObject):
             return
         self._selected_artist_key = key
         self._selected_artist = artist
+        self._selected_genre_key = ""
         self._selected_album_key = ""
         self._selected_album = None
         self._album_track_refs = []

@@ -8,6 +8,7 @@ Item {
     property var artist: null
     property bool selected: false
     signal activated()
+    signal selectedRequested()
 
     implicitWidth: 184
     implicitHeight: 240
@@ -18,6 +19,7 @@ Item {
     Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); activated() }
     Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); activated() }
     Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); activated() }
+    Keys.onPressed: event => artistContext.handleContextKey(event)
 
     Rectangle {
         anchors.fill: parent
@@ -116,5 +118,10 @@ Item {
             root.activated()
         }
     }
-    ArtistContextArea { anchors.fill: parent; artist: root.artist }
+    ArtistContextArea {
+        id: artistContext
+        anchors.fill: parent
+        artist: root.artist
+        onContextRequested: root.selectedRequested()
+    }
 }

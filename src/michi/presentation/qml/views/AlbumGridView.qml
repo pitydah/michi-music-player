@@ -91,6 +91,7 @@ GridView {
                 albumGrid.currentIndex = albumCell.index
                 library.select_album(albumCell.modelData.key)
             }
+            onSelectedRequested: albumGrid.currentIndex = albumCell.index
         }
     }
 }

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "../controls"
 import "../primitives"
 import "../theme"
 
@@ -8,6 +9,7 @@ Item {
     property var album: null
     property bool selected: false
     signal activated()
+    signal selectedRequested()
     implicitWidth: 196
     implicitHeight: 286
     focus: false
@@ -19,6 +21,7 @@ Item {
     Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); activated() }
     Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); activated() }
     Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); activated() }
+    Keys.onPressed: event => albumContext.handleContextKey(event)
 
     function albumDescription() {
         var details = []
@@ -78,29 +81,19 @@ Item {
                     }
                 }
 
-                Rectangle {
+                MichiIconButton {
                     anchors.centerIn: parent
                     width: MichiMetrics.controlLarge
                     height: MichiMetrics.controlLarge
-                    radius: MichiMetrics.controlLarge / 2
                     visible: hover.hovered || root.activeFocus
-                    color: MichiSemanticColors.scrimStrong
-                    border.width: 1
-                    border.color: MichiSemanticColors.auroraCyanBorder
-                    scale: tap.pressed ? 0.94 : 1
                     opacity: hover.hovered || root.activeFocus ? 1 : 0
+                    iconName: "play"
+                    accessibleName: qsTr("Play album")
+                    onClicked: if (root.album) library.play_album(root.album.key)
 
                     Behavior on opacity {
                         enabled: !MichiAccessibility.reducedMotion
                         NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
-                    }
-
-                    MichiIcon {
-                        anchors.centerIn: parent
-                        width: MichiMetrics.iconMedium
-                        height: width
-                        name: "play"
-                        iconColor: MichiPalette.auroraCyan
                     }
                 }
             }
@@ -175,5 +168,10 @@ Item {
             root.activated()
         }
     }
-    AlbumContextArea { anchors.fill: parent; album: root.album }
+    AlbumContextArea {
+        id: albumContext
+        anchors.fill: parent
+        album: root.album
+        onContextRequested: root.selectedRequested()
+    }
 }

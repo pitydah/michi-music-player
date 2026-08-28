@@ -27,6 +27,7 @@ def project_track_row(ref: TrackRef, *, artwork_path: str = "") -> dict:
         "artist": ref.artist,
         "artistKey": make_artist_key(ref.artist.strip() or "Unknown Artist"),
         "album": ref.album,
+        "albumArtist": album_artist,
         "albumKey": make_album_key(album_title, album_artist),
         "durationMs": ref.duration_ms,
         "path": str(ref.file_path),

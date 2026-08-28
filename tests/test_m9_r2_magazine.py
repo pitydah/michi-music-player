@@ -21,8 +21,9 @@ def test_magazine_view_is_single_scroller_listview() -> None:
     assert "ScrollBar.vertical:" in content
     assert "header: ColumnLayout" in content
 
-    # Spotlight Hero: no fake "FEATURED ALBUM" text, square artwork layout
-    assert "SPOTLIGHT" in content
+    # Catalog feature: no positional "SPOTLIGHT" claim, square artwork layout
+    assert "CATALOG FEATURE" in content
+    assert "SPOTLIGHT" not in content
     assert "FEATURED ALBUM" not in content
     assert "CATALOG ARCHIVE" in content
 

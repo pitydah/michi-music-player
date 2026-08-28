@@ -354,5 +354,7 @@ class TestPlaylistTrackInteraction:
         import re
 
         assert not re.search(r"\bMouseArea\s*\{", text)
-        assert "onClicked: trackMenu.popup()" in text  # button keeps its own
+        assert "root.trackSelected(index)" in text
+        assert "trackItem.forceActiveFocus()" in text
+        assert "trackMenu.popup()" in text  # button keeps its own target
         assert "onClicked: {" in text  # delegate own click → play

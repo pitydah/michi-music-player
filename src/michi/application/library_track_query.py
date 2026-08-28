@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from michi.application.library_format import normalize_track_format
-from michi.domain.library import AlbumRef, TrackRef
+from michi.domain.library import AlbumRef, TrackRef, make_genre_key
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +54,16 @@ class LibraryTrackQueryService:
             return (value.casefold(), str(ref.file_path))
 
         return sorted(rows, key=key, reverse=self._state.descending)
+
+    @staticmethod
+    def filter_genre(tracks: Iterable[TrackRef], genre_key: str) -> list[TrackRef]:
+        if not genre_key:
+            return list(tracks)
+        return [
+            ref
+            for ref in tracks
+            if make_genre_key(ref.genre.strip() or "Unknown Genre") == genre_key
+        ]
 
 
 @dataclass(frozen=True, slots=True)

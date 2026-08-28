@@ -51,6 +51,14 @@ Item {
                 onRepeatModeRequested: mode => playbackSession.set_repeat_mode(mode)
                 onShuffleRequested: enabled => playbackSession.set_shuffle_enabled(enabled)
                 onCloseRequested: root.closeRequested()
+                onGoToAlbumRequested: albumKey => {
+                    navigation.navigate("library")
+                    library.select_album(albumKey)
+                }
+                onGoToArtistRequested: artistKey => {
+                    navigation.navigate("library")
+                    library.select_artist(artistKey)
+                }
                 Behavior on x {
                     enabled: !MichiAccessibility.reducedMotion
                     NumberAnimation { duration: MichiMotion.panel; easing.type: MichiMotion.outQuart }

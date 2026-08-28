@@ -39,6 +39,12 @@ Item {
     Connections {
         target: library
         function onLibrary_changed() { root.syncEntitySelection() }
+        function onGenre_selected(_genreKey) { root.currentTab = "songs" }
+    }
+
+    onCurrentTabChanged: {
+        if (currentTab !== "songs")
+            library.clear_genre_selection()
     }
 
     Component.onCompleted: syncEntitySelection()
@@ -68,7 +74,11 @@ Item {
             id: libraryToolbar
             Layout.fillWidth: true
             currentTab: root.currentTab
-            onCurrentTabRequested: tab => root.currentTab = tab
+            onCurrentTabRequested: tab => {
+                if (tab === "songs")
+                    library.clear_genre_selection()
+                root.currentTab = tab
+            }
         }
 
         LibraryContentHost {

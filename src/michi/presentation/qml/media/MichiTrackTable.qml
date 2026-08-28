@@ -28,6 +28,8 @@ Item {
     property string emptyIcon: "track"
     property int selectedIndex: -1
     property string numberingMode: "index"
+    property bool selectionEnabled: false
+    property var selectedTrackIds: []
 
     signal trackActivated(string path, int index)
     signal favoriteRequested(string path)
@@ -37,6 +39,7 @@ Item {
     signal goToAlbumRequested(string albumKey)
     signal goToArtistRequested(string artistKey)
     signal sortRequested(string column)
+    signal selectionToggleRequested(string trackId)
 
     function numberText(row, index) {
         if (numberingMode === "disc-track") {
@@ -159,7 +162,9 @@ Item {
             showAlbumColumn: root.showAlbumColumn
             showArtwork: root.showArtwork
             playing: root.playingPath === modelData.path
-            selected: root.selectedIndex === index
+            selected: root.selectionEnabled
+                ? root.selectedTrackIds.indexOf(modelData.trackId) !== -1
+                : root.selectedIndex === index
             favorite: root.favoritePaths.indexOf(modelData.path) !== -1
             showFavorite: root.canFavorite
             showAddToPlaylist: root.canAddToPlaylist
@@ -171,7 +176,12 @@ Item {
                 root.selectedIndex = index
                 trackList.currentIndex = index
             }
-            onActivated: root.trackActivated(modelData.path, index)
+            onActivated: {
+                if (root.selectionEnabled)
+                    root.selectionToggleRequested(modelData.trackId)
+                else
+                    root.trackActivated(modelData.path, index)
+            }
             onFavoriteToggled: root.favoriteRequested(modelData.path)
             onQueueRequested: root.queueRequested(modelData.path)
             onAddToPlaylistRequested: root.addToPlaylistRequested(modelData.path)

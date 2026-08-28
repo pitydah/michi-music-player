@@ -13,6 +13,14 @@ MichiDialog {
         [qsTr("Title"), track.title || track.displayName || ""],
         [qsTr("Artist"), track.artist || ""],
         [qsTr("Album"), track.album || ""],
+        [qsTr("Album artist"), track.albumArtist || qsTr("Unknown")],
+        [qsTr("Track"), track.trackNumber > 0
+            ? String(track.trackNumber) : qsTr("Unknown")],
+        [qsTr("Disc"), track.discNumber > 0
+            ? String(track.discNumber) : qsTr("Unknown")],
+        [qsTr("Genre"), track.genre || qsTr("Unknown")],
+        [qsTr("Composer"), track.composer || qsTr("Unknown")],
+        [qsTr("Year"), track.year > 0 ? String(track.year) : qsTr("Unknown")],
         [qsTr("Format"), track.formatLabel || "UNKNOWN"],
         [qsTr("Codec"), track.codec || qsTr("Unknown")],
         [qsTr("Container"), track.container || qsTr("Unknown")],
@@ -25,12 +33,11 @@ MichiDialog {
             ? Math.round(track.bitrateBps / 1000) + " kbps" : qsTr("Unknown")],
         [qsTr("Channels"), track.channels > 0
             ? String(track.channels) : qsTr("Unknown")],
+        [qsTr("Duration"), track.durationMs > 0
+            ? MichiFormat.formatDuration(track.durationMs) : qsTr("Unknown")],
         [qsTr("File size"), track.fileSize > 0
             ? MichiFormat.formatFileSize(track.fileSize) : qsTr("Unknown")],
-        [qsTr("Genre"), track.genre || qsTr("Unknown")],
-        [qsTr("Composer"), track.composer || qsTr("Unknown")],
-        [qsTr("Year"), track.year > 0 ? String(track.year) : qsTr("Unknown")],
-        [qsTr("Path"), track.path || ""]
+        [qsTr("Location"), track.path || ""]
     ] : []
 
     title: qsTr("Track properties")
