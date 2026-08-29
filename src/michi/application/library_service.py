@@ -6,8 +6,10 @@ from dataclasses import replace
 from pathlib import Path
 
 from michi.application.library_port import (
+    LibraryCatalogError,
     LibraryFilesystemError,
     LibraryScannerPort,
+    LibraryUserStatePort,
 )
 from michi.application.ports import (
     ArtworkCachePort,
@@ -36,6 +38,7 @@ from michi.domain.library import (
     build_music_model,
     make_artist_key,
     merge_recently_added,
+    merge_recently_added_ids,
 )
 from michi.domain.library_index import (
     LibraryIndexEntry,
@@ -81,6 +84,7 @@ class LibraryService:
         library_prefs: LibraryPrefsPort | None = None,
         library_index: LibraryIndexRepository | None = None,
         scan_pipeline: ScanPipelinePort | None = None,
+        user_state: LibraryUserStatePort | None = None,
     ) -> None:
         self._scanner = scanner
         self._metadata_extractor = metadata_extractor
@@ -93,6 +97,17 @@ class LibraryService:
         self._library_prefs = library_prefs
         self._library_index = library_index
         self._scan_pipeline = scan_pipeline
+        # M6-EXT-R4 freeze gate: CANONICAL user state is TrackId-based
+        # (LibraryUserStatePort); legacy path collections load only as the
+        # derived compatibility projection.
+        self._user_state = user_state
+        if user_state is not None:
+            try:
+                self._state.favorite_track_ids = user_state.load_favorites()
+                self._state.history_track_ids = user_state.load_history()
+                self._state.recently_added_track_ids = user_state.load_recently_added()
+            except LibraryCatalogError as exc:
+                logger.warning("user-state load failed; starting empty: %s", exc)
         if library_prefs is not None:
             prefs = library_prefs.load()
             self._state.favorite_paths = prefs.favorite_paths
@@ -605,6 +620,7 @@ class LibraryService:
         self._apply_query_projection()
 
     def _persist_prefs(self) -> None:
+        """LEGACY path-surface persistence (derived compatibility only)."""
         if self._library_prefs is not None:
             self._library_prefs.save(
                 LibraryPrefs(
@@ -614,7 +630,62 @@ class LibraryService:
                 )
             )
 
+    def _persist_user_state(self) -> bool:
+        """TRUTHFUL canonical user-state persistence (M6-EXT-R4 freeze gate).
+
+        Candidate-first: the ID collections are persisted BEFORE any state
+        publication; a storage failure returns False and the caller keeps
+        the previous in-memory state (no false success)."""
+        if self._user_state is None:
+            return True
+        try:
+            self._user_state.set_favorites(self._state.favorite_track_ids)
+            self._user_state.set_history(self._state.history_track_ids)
+            self._user_state.set_recently_added(self._state.recently_added_track_ids)
+        except LibraryCatalogError as exc:
+            logger.warning("user-state persistence failed; state unchanged: %s", exc)
+            return False
+        return True
+
+    # ------------------------------------------------------------------
+    # FAVORITES — canonical identity, truthful persistence
+    # ------------------------------------------------------------------
+
+    def toggle_favorite_by_id(self, track_id: str) -> None:
+        """CANONICAL favorite intent (stable TrackId)."""
+        ref = self.trackref_by_id(track_id)
+        if ref is None:
+            return  # unknown library identity: nothing to favorite
+        updated = set(self._state.favorite_track_ids)
+        if track_id in updated:
+            updated.discard(track_id)
+        else:
+            updated.add(track_id)
+        new_tuple = tuple(sorted(updated))
+        if new_tuple == self._state.favorite_track_ids:
+            return
+        candidate_ids = new_tuple
+        candidate_paths = tuple(
+            sorted(
+                p for p in (self._resolve_path_for_id(i) for i in candidate_ids) if p
+            )
+        )
+        if not self._persist_candidate_state(
+            candidate_ids, candidate_paths, "favorites"
+        ):
+            return
+        self._state.favorite_track_ids = candidate_ids
+        self._state.favorite_paths = candidate_paths
+        self._persist_prefs()
+        self._notify()
+
     def toggle_favorite(self, file_path) -> None:
+        """LEGACY path intent → resolved TrackId (compatibility wrapper)."""
+        ref = self.resolve_trackref(Path(file_path))
+        if ref is not None and ref.track_id:
+            self.toggle_favorite_by_id(ref.track_id)
+            return
+        # Non-library track: legacy path surface only.
         key = str(Path(file_path))
         updated = set(self._state.favorite_paths)
         if key in updated:
@@ -628,7 +699,38 @@ class LibraryService:
         self._persist_prefs()
         self._notify()
 
+    def set_favorite_by_id(self, track_id: str, favorite: bool) -> None:
+        ref = self.trackref_by_id(track_id)
+        if ref is None:
+            return
+        updated = set(self._state.favorite_track_ids)
+        if favorite:
+            updated.add(track_id)
+        else:
+            updated.discard(track_id)
+        candidate_ids = tuple(sorted(updated))
+        if candidate_ids == self._state.favorite_track_ids:
+            return
+        candidate_paths = tuple(
+            sorted(
+                p for p in (self._resolve_path_for_id(i) for i in candidate_ids) if p
+            )
+        )
+        if not self._persist_candidate_state(
+            candidate_ids, candidate_paths, "favorites"
+        ):
+            return
+        self._state.favorite_track_ids = candidate_ids
+        self._state.favorite_paths = candidate_paths
+        self._persist_prefs()
+        self._notify()
+
     def set_favorite(self, file_path, favorite: bool) -> None:
+        """LEGACY path intent → canonical TrackId when resolvable."""
+        ref = self.resolve_trackref(Path(file_path))
+        if ref is not None and ref.track_id:
+            self.set_favorite_by_id(ref.track_id, favorite)
+            return
         key = str(Path(file_path))
         updated = set(self._state.favorite_paths)
         if favorite:
@@ -642,14 +744,17 @@ class LibraryService:
         self._persist_prefs()
         self._notify()
 
-    def record_history(self, path: Path) -> None:
-        """Record a HISTORY entry for a path that was ACCEPTED as a new
-        playback session commit. Owns history_paths, consecutive dedupe,
-        HISTORY_CAP, persistence and notification. It does NOT decide WHEN
-        playback happened (PlaybackHistoryCoordinator owns that).
+    # ------------------------------------------------------------------
+    # HISTORY — canonical identity, truthful persistence
+    # ------------------------------------------------------------------
 
-        LEGACY path surface: new code prefers ``record_history_for_track``
-        so History is keyed by stable TrackId (M6-EXT-R4-J)."""
+    def record_history(self, path: Path) -> None:
+        """LEGACY path surface: routes Library tracks through the canonical
+        TrackId history; non-library tracks keep the path surface."""
+        ref = self.resolve_trackref(path)
+        if ref is not None and ref.track_id:
+            self.record_history_for_track(ref.track_id)
+            return
         key = str(Path(path))
         if self._state.history_paths and self._state.history_paths[0] == key:
             return  # consecutive dedupe
@@ -658,14 +763,85 @@ class LibraryService:
         self._notify()
 
     def record_history_for_track(self, track_id: str) -> None:
-        """Record HISTORY by stable TrackId (M6-EXT-R4-J canonical).
-
-        Resolves the current path projection; a track that is not in the
-        library records nothing (no invented library history identity)."""
+        """CANONICAL history by stable TrackId (consecutive dedupe, cap,
+        truthful persistence)."""
         ref = self.trackref_by_id(track_id)
         if ref is None:
+            return  # no invented library history identity
+        if (
+            self._state.history_track_ids
+            and self._state.history_track_ids[0] == track_id
+        ):
+            return  # consecutive dedupe
+        candidate_ids = (track_id, *self._state.history_track_ids)[:HISTORY_CAP]
+        candidate_paths = tuple(
+            p for p in (self._resolve_path_for_id(i) for i in candidate_ids) if p
+        )
+        if not self._persist_candidate_state(candidate_ids, candidate_paths, "history"):
             return
-        self.record_history(ref.file_path)
+        self._state.history_track_ids = candidate_ids
+        self._state.history_paths = candidate_paths
+        self._persist_prefs()
+        self._notify()
+
+    # ------------------------------------------------------------------
+    # RECENTLY ADDED — canonical identity
+    # ------------------------------------------------------------------
+
+    def note_new_track_ids(self, track_ids: tuple[str, ...]) -> None:
+        """M6-EXT-R4-K freeze gate: ONLY new TrackId allocations enter
+        Recently Added (never moves/relinks/modifies/rescans). Canonical
+        state is TrackId-based; the path collection is the derived
+        projection."""
+        if not track_ids:
+            return
+        merged_ids = merge_recently_added_ids(
+            track_ids,
+            self._state.recently_added_track_ids,
+            current_library_ids={t.track_id for t in self._state.tracks},
+            cap=RECENT_CAP,
+        )
+        candidate_paths = tuple(
+            p for p in (self._resolve_path_for_id(i) for i in merged_ids) if p
+        )
+        if not self._persist_candidate_state(
+            merged_ids, candidate_paths, "recently_added"
+        ):
+            return
+        self._state.recently_added_track_ids = merged_ids
+        self._state.recently_added_paths = candidate_paths
+        self._persist_prefs()
+        self._notify()
+
+    def _persist_candidate_state(
+        self, ids: tuple[str, ...], paths: tuple[str, ...], kind: str
+    ) -> bool:
+        """Candidate-first truthful persistence for one collection.
+
+        Writes the candidate ID collection through the authoritative repo;
+        returns False (state stays unchanged) on storage failure. ``paths``
+        is the derived projection written alongside for legacy surfaces."""
+        if self._user_state is None:
+            return True
+        try:
+            if kind == "favorites":
+                self._user_state.set_favorites(ids)
+            elif kind == "history":
+                self._user_state.set_history(ids)
+            else:
+                self._user_state.set_recently_added(ids)
+        except LibraryCatalogError as exc:
+            logger.warning(
+                "user-state %s persistence failed; previous state kept: %s",
+                kind,
+                exc,
+            )
+            return False
+        return True
+
+    def _resolve_path_for_id(self, track_id: str) -> str | None:
+        ref = self.trackref_by_id(track_id)
+        return str(ref.file_path) if ref is not None else None
 
     def trackref_by_id(self, track_id: str) -> TrackRef | None:
         """Canonical TrackRef by stable identity, or None (M6-EXT-R4-J)."""
@@ -675,32 +851,6 @@ class LibraryService:
             if ref.track_id == track_id:
                 return ref
         return None
-
-    def note_new_track_ids(self, track_ids: tuple[str, ...]) -> None:
-        """M6-EXT-R4-K: recently-added semantics — ONLY new TrackId
-        allocations enter Recently Added (never moves/relinks/modifies).
-        Persists through the existing prefs surface (id-keyed upgrade lands
-        with R4-G wiring)."""
-        if not track_ids:
-            return
-        # The legacy prefs surface is path-keyed; new ids are recorded via
-        # the recently-added path projection until the user-state
-        # integration replaces it. Each new id maps to its current path.
-        new_paths = []
-        for track_id in track_ids:
-            ref = self.trackref_by_id(track_id)
-            if ref is not None:
-                new_paths.append(str(ref.file_path))
-        if not new_paths:
-            return
-        self._state.recently_added_paths = merge_recently_added(
-            new_paths,
-            self._state.recently_added_paths,
-            current_library_paths={str(t.file_path) for t in self._state.tracks},
-            cap=RECENT_CAP,
-        )
-        self._persist_prefs()
-        self._notify()
 
     def apply_source_tracks(self, source_id: str, refs: list[TrackRef]) -> None:
         """M6-EXT-R4-K: replace ONLY this source's canonical TrackRefs and

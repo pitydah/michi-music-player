@@ -440,28 +440,81 @@ class LibraryBridge(QObject):
             for album in albums
         ]
 
+    def _get_favorite_track_ids(self) -> list[str]:
+        state = self._service.state
+        if state.favorite_track_ids:
+            return list(self._reference_ids(state.favorite_track_ids))
+        return [
+            f"legacy-path::{p}" for p in self._reference_paths(state.favorite_paths)
+        ]
+
+    def _get_history_track_ids(self) -> list[str]:
+        state = self._service.state
+        if state.history_track_ids:
+            return list(self._reference_ids(state.history_track_ids))
+        return [f"legacy-path::{p}" for p in self._reference_paths(state.history_paths)]
+
+    def _get_recently_added_track_ids(self) -> list[str]:
+        state = self._service.state
+        if state.recently_added_track_ids:
+            return list(self._reference_ids(state.recently_added_track_ids))
+        return [
+            f"legacy-path::{p}"
+            for p in self._reference_paths(state.recently_added_paths)
+        ]
+
     def _get_favorite_paths(self) -> list[str]:
-        return list(self._reference_paths(self._service.state.favorite_paths))
+        state = self._service.state
+        if state.favorite_track_ids:
+            return list(
+                self._paths_for_ids(self._reference_ids(state.favorite_track_ids))
+            )
+        return list(self._reference_paths(state.favorite_paths))
 
     def _get_history_paths(self) -> list[str]:
-        return list(self._reference_paths(self._service.state.history_paths))
+        state = self._service.state
+        if state.history_track_ids:
+            return list(
+                self._paths_for_ids(self._reference_ids(state.history_track_ids))
+            )
+        return list(self._reference_paths(state.history_paths))
 
     def _get_recently_added_paths(self) -> list[str]:
-        return list(self._reference_paths(self._service.state.recently_added_paths))
+        state = self._service.state
+        if state.recently_added_track_ids:
+            return list(
+                self._paths_for_ids(self._reference_ids(state.recently_added_track_ids))
+            )
+        return list(self._reference_paths(state.recently_added_paths))
 
     def _reference_paths(self, paths) -> tuple[str, ...]:
-        """M7: reference surfaces (favorites/history/recently-added) are
-        filtered by the SAME matched track ids when search is active.
-
-        Reference surfaces are still path-keyed (legacy state); the matched
-        set carries stable ids with the documented ``legacy-path::``
-        fallback for pre-catalog records — both are honored here (M6-EXT-
-        R4-F compatibility projection)."""
+        """LEGACY path surface filter (M6-EXT-R4 freeze gate): pre-migration
+        libraries with empty ID state keep the path-filtered behavior. New
+        canonical filtering goes through ``_reference_ids``."""
         state = self._service.state
         if not state.search_active:
             return tuple(paths)
         matched = state.search_projection.matched_track_ids
         return tuple(p for p in paths if p in matched or f"legacy-path::{p}" in matched)
+
+    def _reference_ids(self, ids) -> tuple[str, ...]:
+        """CANONICAL user-state filter: stable TrackIds vs the matched set
+        (M6-EXT-R4 freeze gate — UUID search within Favorites/History/
+        Recent works)."""
+        state = self._service.state
+        if not state.search_active:
+            return tuple(ids)
+        matched = state.search_projection.matched_track_ids
+        return tuple(track_id for track_id in ids if track_id in matched)
+
+    def _paths_for_ids(self, ids) -> tuple[str, ...]:
+        """DERIVED path projection of stable IDs (current resolved paths)."""
+        paths = []
+        for track_id in ids:
+            ref = self._service.trackref_by_id(track_id)
+            if ref is not None:
+                paths.append(str(ref.file_path))
+        return tuple(paths)
 
     def _get_song_paths(self) -> list[str]:
         return [str(t.file_path) for t in self._visible_track_refs()]
@@ -614,6 +667,11 @@ class LibraryBridge(QObject):
     artistAlbumCount = Property(int, _get_artist_album_count, notify=library_changed)
     artistTracks = Property(list, _get_artist_tracks, notify=library_changed)
     artistAlbums = Property(list, _get_artist_albums, notify=library_changed)
+    favoriteTrackIds = Property(list, _get_favorite_track_ids, notify=library_changed)
+    historyTrackIds = Property(list, _get_history_track_ids, notify=library_changed)
+    recentlyAddedTrackIds = Property(
+        list, _get_recently_added_track_ids, notify=library_changed
+    )
     favoritePaths = Property(list, _get_favorite_paths, notify=library_changed)
     historyPaths = Property(list, _get_history_paths, notify=library_changed)
     recentlyAddedPaths = Property(

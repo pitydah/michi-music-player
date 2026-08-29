@@ -186,11 +186,13 @@ class TestGoldenRecentlyAdded:
         # A genuinely NEW unknown file → new TrackId → recently added.
         (root / "brand-new.flac").write_bytes(b"x")
         coordinator.scan_source(source)
-        # The moved track did NOT re-enter recently added (its old-path
-        # legacy entry falls out when the path moves — the TrackId-keyed
-        # user state preserves it); the brand-new file IS recent.
-        assert str(root / "brand-new.flac") in library.state.recently_added_paths
-        assert str(target_dir / "song.flac") not in library.state.recently_added_paths
+        # The moved track is NOT newly added again: its original entry
+        # survives BY IDENTITY (path projection updated), exactly once —
+        # no duplicate, no re-entry. The brand-new file IS recent.
+        recent = library.state.recently_added_paths
+        assert str(root / "brand-new.flac") in recent
+        assert recent.count(str(target_dir / "song.flac")) == 1
+        assert len(recent) == 2
 
 
 class TestGoldenSessionV3Restore:

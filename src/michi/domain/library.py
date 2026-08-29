@@ -632,6 +632,35 @@ def merge_recently_added(
     return tuple(merged[:cap])
 
 
+def merge_recently_added_ids(
+    new_ids: tuple[str, ...],
+    previous_ids: tuple[str, ...],
+    *,
+    current_library_ids: set[str],
+    cap: int,
+) -> tuple[str, ...]:
+    """Canonical recently-added merge keyed by TrackId (M6-EXT-R4 freeze
+    gate). New TrackId allocations come first (most recent order, reversed);
+    previous entries survive while their identity remains in the library.
+    Moves/relinks/modifications never re-enter (they are not new ids)."""
+    seen: set[str] = set()
+    merged: list[str] = []
+    for track_id in reversed(new_ids):
+        if track_id not in seen:
+            seen.add(track_id)
+            merged.append(track_id)
+    for track_id in previous_ids:
+        if track_id in seen:
+            continue
+        if track_id not in current_library_ids:
+            continue
+        seen.add(track_id)
+        merged.append(track_id)
+        if len(merged) >= cap:
+            break
+    return tuple(merged[:cap])
+
+
 @dataclass(frozen=True)
 class LibraryPrefs:
     """Persisted library preferences: favorites, play history, recently added.
@@ -659,6 +688,11 @@ class LibraryState:
     favorite_paths: tuple[str, ...] = ()
     history_paths: tuple[str, ...] = ()
     recently_added_paths: tuple[str, ...] = ()
+    # M6-EXT-R4 freeze gate: CANONICAL user state is TrackId-based; the
+    # path fields above are the DERIVED compatibility projection.
+    favorite_track_ids: tuple[str, ...] = ()
+    history_track_ids: tuple[str, ...] = ()
+    recently_added_track_ids: tuple[str, ...] = ()
     scan_status: LibraryScanStatus = LibraryScanStatus.IDLE
     scan_generation: int = 0
     scan_processed: int = 0
