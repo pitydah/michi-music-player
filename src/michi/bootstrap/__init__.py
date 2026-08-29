@@ -84,6 +84,7 @@ from michi.infrastructure.enrichment_repository import SqliteEnrichmentRepositor
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
 from michi.infrastructure.library_index import SqliteLibraryIndexRepository
 from michi.infrastructure.library_prefs import SqliteLibraryPrefsRepository
+from michi.infrastructure.library_user_state import SqliteLibraryUserStateRepository
 from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtractor
 from michi.infrastructure.playlist_artwork_store import (
     FilesystemPlaylistArtworkStore,
@@ -406,6 +407,10 @@ def _build_services(
         library_prefs=library_prefs_repo,
         library_index=library_index,
         scan_pipeline=scan_runner,
+        # M6-EXT-R4 freeze gate: CANONICAL user state (favorites/history/
+        # recent) lives in the TrackId repository; path prefs remain the
+        # derived compatibility projection.
+        user_state=SqliteLibraryUserStateRepository(db_path),
     )
     # M4-R1: the active playback session sits ABOVE PlaybackService and
     # reads Queue content (one-way dependency; Queue never commands
