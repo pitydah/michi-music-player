@@ -136,6 +136,7 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
         """Atomically promotes the staged file to the committed asset and
         retires superseded old-extension variants (post-commit only)."""
         stem = f"playlist_{playlist_id}{suffix}"
+        promoted_ext = None
         for ext in _ALLOWED_EXTENSIONS:
             stage = self._storage_dir / f"{stem}{ext}.stage"
             final = self._storage_dir / f"{stem}{ext}"
@@ -145,13 +146,13 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
                 except OSError as exc:
                     logger.warning("Promote failed for %s: %s", stage, exc)
                     return
-                break
-        # Retire superseded old-extension variants (post-commit cleanup).
-        promoted_ext = None
-        for ext in _ALLOWED_EXTENSIONS:
-            if (self._storage_dir / f"{stem}{ext}").is_file():
                 promoted_ext = ext
                 break
+        # Retire superseded old-extension variants (post-commit cleanup).
+        # ``promoted_ext`` is the EXTENSION THAT WAS PROMOTED — never a
+        # re-scan (set iteration order is not an ordering contract).
+        if promoted_ext is None:
+            return
         for other_ext in _ALLOWED_EXTENSIONS:
             if other_ext == promoted_ext:
                 continue

@@ -48,7 +48,10 @@ def test_collection_actions_never_call_queue_service_bridge_directly() -> None:
     ):
         source = _qml(view)
         assert "canQueue: library.canQueueTracks" in source
-        assert "onQueueRequested: path => library.queue_track(path)" in source
+        # CORRECTIVE SEAL §11: queue intent is TrackId-first.
+        assert (
+            "onQueueRequested: trackId => library.queue_track_by_id(trackId)" in source
+        )
     queue_panel = _qml("components/QueuePanel.qml")
     assert "canMoveUp: index > 0" in queue_panel
     assert "onMoveUpRequested: root.moveRequested" in queue_panel
