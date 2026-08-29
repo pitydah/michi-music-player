@@ -122,3 +122,39 @@ class TestSourceManagement:
             assert "overlap" in str(exc)
         else:  # pragma: no cover
             raise AssertionError("SourceOverlapError not raised")
+
+
+class TestSourcesDialogRuntime:
+    def test_sources_dialog_opens_with_production_bridge(self, tmp_path) -> None:
+        """§36 runtime: the Music Sources dialog opens against the REAL
+        bridge surface and lists configured sources."""
+        import os
+
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        app = QApplication.instance() or QApplication([])
+        bridge, catalog, coordinator, tmp = _graph(tmp_path)
+        root = tmp_path / "music"
+        root.mkdir()
+        source = coordinator.add_source("Local Music", str(root))
+        (root / "song.flac").write_bytes(b"x")
+        coordinator.scan_source(source)
+
+        from PySide6.QtCore import QEventLoop
+        from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+        engine = QQmlEngine()
+        engine.addImportPath("src/michi/presentation/qml")
+        engine.rootContext().setContextProperty("library", bridge)
+        component = QQmlComponent(
+            engine, "src/michi/presentation/qml/views/MusicSourcesDialog.qml"
+        )
+        dialog = component.create()
+        assert dialog is not None, component.errorString()
+        dialog.open()
+        for _ in range(5):
+            app.processEvents(QEventLoop.AllEvents, 20)
+        assert dialog.visible is True
+        dialog.close()
+        app.processEvents()

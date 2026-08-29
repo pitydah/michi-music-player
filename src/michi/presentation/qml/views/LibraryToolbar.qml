@@ -59,13 +59,18 @@ MichiGlassSurface {
             sourceDialog.open()
     }
 
+    // LEGACY COMPATIBILITY surface: the folder picker adds a source
+    // (multi-source authority lives in the source manager).
     FolderDialog {
         id: folderDialog
         objectName: "libraryFolderDialog"
-        title: qsTr("Choose music folder")
+        title: qsTr("Add music source")
         onAccepted: {
-            if (typeof library !== "undefined" && library)
-                library.scan_url(selectedFolder)
+            if (typeof library !== "undefined" && library && folderDialog.selectedFolder) {
+                var result = library.add_music_source(
+                    "Music",
+                    folderDialog.selectedFolder.toString().replace("file://", ""))
+            }
         }
     }
 
@@ -214,6 +219,20 @@ MichiGlassSurface {
                         && typeof library !== "undefined" && library
                     onPrimaryClicked: root.performScan()
                     onSecondaryClicked: sourceMenu.popup()
+        // M6-EXT-R4 freeze gate §36: lazy Music Sources manager (heavy
+        // dialog stays uninstantiated until opened).
+        Loader {
+            id: sourcesDialogLoader
+            active: false
+            sourceComponent: MusicSourcesDialog {
+                library: typeof library !== "undefined" ? library : null
+                onClosed: sourcesDialogLoader.active = false
+            }
+        }
+        function openSourcesDialog() {
+            sourcesDialogLoader.active = true
+            sourcesDialogLoader.item.open()
+        }
 
                     MichiMenu {
                         id: sourceMenu
@@ -244,9 +263,9 @@ MichiGlassSurface {
                         }
                         MichiSeparator { }
                         MichiMenuItem {
-                            text: qsTr("Change music folder…")
-                            icon.name: "folder"
-                            onTriggered: folderDialog.open()
+                            text: qsTr("Music sources…")
+                            icon.name: "library"
+                            onTriggered: root.openSourcesDialog()
                         }
                     }
             }

@@ -97,6 +97,10 @@ def test_toolbar_stacks_at_narrow_width_without_hiding_actions() -> None:
     assert 'secondaryIconName: "chevron-down"' in toolbar
     # R5.1.1: the scan split button is icon-less by default (compact).
     assert 'iconName: ""' in toolbar
+    # M6-EXT-R4 freeze gate §13: the primary scan action drives the
+    # multi-source workflow — never the deprecated currentDir authority.
+    assert "performScan" in toolbar
+    assert "scanAllSources" in toolbar
     assert "MichiSplitButton" in toolbar
     assert "Math.min(root.width" in toolbar
 
