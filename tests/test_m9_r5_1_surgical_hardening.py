@@ -63,8 +63,9 @@ def test_detail_actions_are_signals_not_writable_binding_relays() -> None:
     albums = _qml("views/AlbumsView.qml")
     artists = _qml("views/ArtistsView.qml")
 
-    assert "signal addToPlaylistRequested(string path)" in album
-    assert "signal addToPlaylistRequested(string path)" in artist
+    # P1-A: detail playlist intents are TrackId-native.
+    assert "signal addToPlaylistRequested(string trackId)" in album
+    assert "signal addToPlaylistRequested(string trackId)" in artist
     assert "onAddTargetPathChanged" not in albums
     assert "onAddTargetPathChanged" not in artists
     assert "function formatDuration" not in album
