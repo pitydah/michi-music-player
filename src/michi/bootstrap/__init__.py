@@ -82,7 +82,9 @@ from michi.infrastructure.enrichment_musicbrainz import MusicBrainzIdentityResol
 from michi.infrastructure.enrichment_provider_cache import FilesystemProviderCache
 from michi.infrastructure.enrichment_repository import SqliteEnrichmentRepository
 from michi.infrastructure.filesystem_scanner import FilesystemLibraryScanner
+from michi.infrastructure.library_catalog import SqliteLibraryCatalogRepository
 from michi.infrastructure.library_index import SqliteLibraryIndexRepository
+from michi.infrastructure.library_media_cache import SqliteLibraryMediaCache
 from michi.infrastructure.library_prefs import SqliteLibraryPrefsRepository
 from michi.infrastructure.library_user_state import SqliteLibraryUserStateRepository
 from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtractor
@@ -399,6 +401,7 @@ def _build_services(
     scan_relay = ScanRelay()
     scan_runner = ThreadScanRunner(scan_relay)
 
+    catalog_repo = SqliteLibraryCatalogRepository(db_path)
     library = LibraryService(
         scanner,
         metadata_extractor=metadata_extractor,
@@ -411,13 +414,36 @@ def _build_services(
         # recent) lives in the TrackId repository; path prefs remain the
         # derived compatibility projection.
         user_state=SqliteLibraryUserStateRepository(db_path),
+        catalog=catalog_repo,
     )
+    # M6-EXT-R4-K/N: the source-aware scan coordinator is the canonical
+    # per-source scan authority; the SAME instance backs the bridge. ONE
+    # catalog repository instance is shared by the coordinator, the
+    # resolver and the library service (single authority, no drift).
+    from michi.application.source_scan_coordinator import SourceScanCoordinator
+    from michi.infrastructure.filesystem_source_scanner import (
+        FilesystemLibrarySourceScanner,
+    )
+
+    source_coordinator = SourceScanCoordinator(
+        library,
+        catalog_repo,
+        FilesystemLibrarySourceScanner(),
+        media_cache=SqliteLibraryMediaCache(db_path),
+        metadata_extractor=metadata_extractor,
+        index=library_index,
+    )
+
     # M4-R1: the active playback session sits ABOVE PlaybackService and
     # reads Queue content (one-way dependency; Queue never commands
     # playback). Intent coordinators translate Library/Playlist user
     # intents into session requests.
     playback_session = PlaybackSessionService(playback, queue)
-    track_resolver = LibraryTrackResolver(library)
+    track_resolver = LibraryTrackResolver(
+        library,
+        catalog=catalog_repo,
+        source_availability_provider=source_coordinator.observed_availability,
+    )
     library_playback = LibraryPlaybackCoordinator(
         library, playback_session, resolver=track_resolver
     )
@@ -437,24 +463,6 @@ def _build_services(
     scan_dispatcher = LibraryScanDispatcher(library)
     scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
     scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
-
-    # M6-EXT-R4-K/N: the source-aware scan coordinator is the canonical
-    # per-source scan authority; the SAME instance backs the bridge.
-    from michi.application.source_scan_coordinator import SourceScanCoordinator
-    from michi.infrastructure.filesystem_source_scanner import (
-        FilesystemLibrarySourceScanner,
-    )
-    from michi.infrastructure.library_catalog import SqliteLibraryCatalogRepository
-    from michi.infrastructure.library_media_cache import SqliteLibraryMediaCache
-
-    source_coordinator = SourceScanCoordinator(
-        library,
-        SqliteLibraryCatalogRepository(db_path),
-        FilesystemLibrarySourceScanner(),
-        media_cache=SqliteLibraryMediaCache(db_path),
-        metadata_extractor=metadata_extractor,
-        index=library_index,
-    )
 
     lb = LibraryBridge(
         library,

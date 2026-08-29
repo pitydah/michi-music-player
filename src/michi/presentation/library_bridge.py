@@ -520,9 +520,24 @@ class LibraryBridge(QObject):
         return [str(t.file_path) for t in self._visible_track_refs()]
 
     @staticmethod
-    def _track_row(ref: TrackRef) -> dict:
+    def _effective_availability(self, ref: TrackRef) -> str:
+        """Composed playability (M6-EXT-R4 freeze gate §11): source
+        observation dominates the media observation — ONE authority via
+        the shared domain composition."""
+        if self._source_coordinator is not None and ref.library_source_id:
+            from michi.domain.library_catalog import effective_availability
+
+            return effective_availability(
+                ref.availability,
+                self._source_coordinator.observed_availability(ref.library_source_id),
+            ).value
+        return ref.availability.value
+
+    def _track_row(self, ref: TrackRef) -> dict:
         """Map one canonical TrackRef to display facts without UI inference."""
-        return project_track_row(ref)
+        row = project_track_row(ref)
+        row["availability"] = self._effective_availability(ref)
+        return row
 
     def _track_row_with_artwork(self, ref: TrackRef) -> dict:
         path = ref.file_path
@@ -531,7 +546,9 @@ class LibraryBridge(QObject):
             if path in album.track_paths:
                 artwork_path = self._service.artwork_path_for(album.key) or ""
                 break
-        return project_track_row(ref, artwork_path=artwork_path)
+        row = project_track_row(ref, artwork_path=artwork_path)
+        row["availability"] = self._effective_availability(ref)
+        return row
 
     def _track_rows_with_artwork(self, refs) -> list[dict]:
         """Project canonical album artwork once per represented album."""

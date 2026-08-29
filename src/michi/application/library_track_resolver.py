@@ -8,12 +8,17 @@ Path lookup answers remain DERIVED: the catalog TrackId is the identity;
 """
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 from michi.application.library_port import LibraryCatalogPort
 from michi.application.library_service import LibraryService
 from michi.domain.library import TrackRef
-from michi.domain.library_catalog import MediaAvailability, MediaFileRecord
+from michi.domain.library_catalog import (
+    MediaAvailability,
+    MediaFileRecord,
+    effective_availability,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +34,20 @@ class LibraryTrackResolver:
         self,
         library: LibraryService,
         catalog: LibraryCatalogPort | None = None,
+        source_availability_provider: "Callable[[str], object] | None" = None,
     ) -> None:
         self._library = library
         self._catalog = catalog
+        self._source_availability_provider = source_availability_provider
+
+    def effective_availability(self, ref: TrackRef) -> MediaAvailability:
+        """Composed playability authority (M6-EXT-R4 freeze gate §11):
+        source observation dominates, media observation otherwise — ONE
+        composition, never duplicated in QML/Service."""
+        if ref.library_source_id and self._source_availability_provider is not None:
+            source = self._source_availability_provider(ref.library_source_id)
+            return effective_availability(ref.availability, source)
+        return ref.availability
 
     # ------------------------------------------------------------- by TrackId
 
@@ -68,15 +84,16 @@ class LibraryTrackResolver:
         return ref.file_path if ref is not None else None
 
     def resolve_playable_path(self, track_id: str) -> Path | None:
-        """Path only when availability does not forbid playback.
+        """Path only when the EFFECTIVE availability does not forbid
+        playback (source observation + media observation composed).
 
-        UNKNOWN (legacy records) remains playable-eligible — the
-        filesystem gate (TD-013) still validates existence; explicit
-        MISSING / SOURCE_OFFLINE / ACCESS_DENIED / IO_ERROR are not."""
+        UNKNOWN (legacy records) remains playable-eligible — the filesystem
+        gate (TD-013) still validates existence; explicit MISSING /
+        SOURCE_OFFLINE / ACCESS_DENIED / IO_ERROR are not."""
         ref = self.resolve_ref(track_id)
         if ref is None:
             return None
-        if ref.availability in (
+        if self.effective_availability(ref) in (
             MediaAvailability.MISSING,
             MediaAvailability.SOURCE_OFFLINE,
             MediaAvailability.ACCESS_DENIED,

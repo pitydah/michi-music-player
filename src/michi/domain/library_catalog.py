@@ -119,6 +119,31 @@ class MediaAvailability(StrEnum):
     IO_ERROR = "io_error"
 
 
+def effective_availability(
+    media: MediaAvailability, source: SourceAvailability
+) -> MediaAvailability:
+    """THE single composition authority for effective playability
+    (M6-EXT-R4 freeze gate §11).
+
+    A source-level observation (offline / missing root / access denied /
+    I/O error / disabled) dominates the per-media observation WITHOUT any
+    per-child write storm: an offline NAS makes every child effectively
+    unplayable while their stored media availability stays untouched. An
+    available source defers to the media observation.
+    """
+    if source in (
+        SourceAvailability.OFFLINE,
+        SourceAvailability.MISSING_ROOT,
+        SourceAvailability.DISABLED,
+    ):
+        return MediaAvailability.SOURCE_OFFLINE
+    if source is SourceAvailability.ACCESS_DENIED:
+        return MediaAvailability.ACCESS_DENIED
+    if source is SourceAvailability.IO_ERROR:
+        return MediaAvailability.IO_ERROR
+    return media
+
+
 @dataclass(frozen=True)
 class LibrarySource:
     """A user-configured storage root (authoritative catalog record)."""

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from michi.application.library_port import (
     LibraryCatalogError,
+    LibraryCatalogPort,
     LibraryFilesystemError,
     LibraryScannerPort,
     LibraryUserStatePort,
@@ -40,6 +41,7 @@ from michi.domain.library import (
     merge_recently_added,
     merge_recently_added_ids,
 )
+from michi.domain.library_catalog import MediaAvailability
 from michi.domain.library_index import (
     LibraryIndexEntry,
     ScanResult,
@@ -85,6 +87,7 @@ class LibraryService:
         library_index: LibraryIndexRepository | None = None,
         scan_pipeline: ScanPipelinePort | None = None,
         user_state: LibraryUserStatePort | None = None,
+        catalog: LibraryCatalogPort | None = None,
     ) -> None:
         self._scanner = scanner
         self._metadata_extractor = metadata_extractor
@@ -101,6 +104,8 @@ class LibraryService:
         # (LibraryUserStatePort); legacy path collections load only as the
         # derived compatibility projection.
         self._user_state = user_state
+        # Optional authoritative catalog (missing-mark on playback failure).
+        self._catalog = catalog
         if user_state is not None:
             try:
                 self._state.favorite_track_ids = user_state.load_favorites()
@@ -869,16 +874,34 @@ class LibraryService:
         return None
 
     def validate_track_for_playback(self, track: TrackRef) -> bool:
-        """TD-013 filesystem validation (kept in LibraryService): TRACK_MISSING
-        removes the exact stale reference / diagnostic; ACCESS/IO/UNKNOWN
-        preserve the reference / diagnostic. Returns True only when the file
-        is playable. The coordinator never becomes a filesystem service."""
+        """TD-013 filesystem validation (kept in LibraryService).
+
+        M6-EXT-R4 freeze gate: a missing track NEVER removes the identity.
+        The TrackRef is preserved (marked MISSING), the catalog observation
+        is updated failure-safely, a diagnostic is set, and the playback
+        request is rejected. Relink remains possible on the next scan."""
         try:
             self._scanner.validate_file(track.file_path)
         except LibraryFilesystemError as exc:
             if exc.code is LibraryDiagnosticCode.TRACK_MISSING:
-                self._state.tracks = [t for t in self._state.tracks if t is not track]
-                self._rebuild_derived_library_state()
+                # Preserve identity: replace the ref's availability, never
+                # delete it from the library.
+                preserved = replace(track, availability=MediaAvailability.MISSING)
+                self._state.tracks = [
+                    preserved if t is track else t for t in self._state.tracks
+                ]
+                if track.media_file_id and self._catalog is not None:
+                    try:
+                        self._catalog.mark_media_availability(
+                            track.media_file_id, MediaAvailability.MISSING
+                        )
+                    except LibraryCatalogError as exc2:
+                        # Failure-safe: the in-memory observation stands.
+                        logger.warning(
+                            "catalog missing-mark failed for %s: %s",
+                            track.media_file_id,
+                            exc2,
+                        )
                 self._state.diagnostic = LibraryDiagnostic(
                     code=LibraryDiagnosticCode.TRACK_MISSING,
                     message=_user_message(
