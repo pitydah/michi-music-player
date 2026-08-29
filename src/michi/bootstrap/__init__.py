@@ -41,6 +41,7 @@ from michi.application.library_preferences_coordinator import (
     LibraryPreferencesCoordinator,
 )
 from michi.application.library_service import LibraryService
+from michi.application.library_track_resolver import LibraryTrackResolver
 from michi.application.navigation_service import NavigationService
 from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_history_coordinator import (
@@ -145,6 +146,7 @@ class ServiceGraph:
     library_queue: LibraryQueueCoordinator
     library_playlist: LibraryPlaylistCoordinator
     history_coordinator: PlaybackHistoryCoordinator
+    track_resolver: LibraryTrackResolver
     # NON-AUTHORITY / OBSERVABILITY ONLY: the concrete port bound inside the
     # router (test handle / introspection). Ownership lives in the provider.
     bound_audio_port: object
@@ -398,13 +400,18 @@ def _build_services(
     # playback). Intent coordinators translate Library/Playlist user
     # intents into session requests.
     playback_session = PlaybackSessionService(playback, queue)
-    library_playback = LibraryPlaybackCoordinator(library, playback_session)
+    track_resolver = LibraryTrackResolver(library)
+    library_playback = LibraryPlaybackCoordinator(
+        library, playback_session, resolver=track_resolver
+    )
     playlist_playback = PlaylistPlaybackCoordinator(
         playlist_service, playback_session, queue
     )
     library_queue = LibraryQueueCoordinator(library, queue)
     library_playlist = LibraryPlaylistCoordinator(library, playlist_service)
-    history_coordinator = PlaybackHistoryCoordinator(playback_session, library)
+    history_coordinator = PlaybackHistoryCoordinator(
+        playback_session, library, resolver=track_resolver
+    )
 
     # Owner-thread async dispatch (M6-PRODUCTION-INTEGRATION): the runner
     # emits on the worker thread; the EXPLICIT QueuedConnection delivers
@@ -440,6 +447,7 @@ def _build_services(
         library_queue=library_queue,
         library_playlist=library_playlist,
         history_coordinator=history_coordinator,
+        track_resolver=track_resolver,
         bound_audio_port=bound_port,
         audio_engine_convergence=convergence,
         audio_router=router,

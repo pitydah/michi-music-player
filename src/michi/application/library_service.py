@@ -622,13 +622,42 @@ class LibraryService:
         """Record a HISTORY entry for a path that was ACCEPTED as a new
         playback session commit. Owns history_paths, consecutive dedupe,
         HISTORY_CAP, persistence and notification. It does NOT decide WHEN
-        playback happened (PlaybackHistoryCoordinator owns that)."""
+        playback happened (PlaybackHistoryCoordinator owns that).
+
+        LEGACY path surface: new code prefers ``record_history_for_track``
+        so History is keyed by stable TrackId (M6-EXT-R4-J)."""
         key = str(Path(path))
         if self._state.history_paths and self._state.history_paths[0] == key:
             return  # consecutive dedupe
         self._state.history_paths = (key, *self._state.history_paths)[:HISTORY_CAP]
         self._persist_prefs()
         self._notify()
+
+    def record_history_for_track(self, track_id: str) -> None:
+        """Record HISTORY by stable TrackId (M6-EXT-R4-J canonical).
+
+        Resolves the current path projection; a track that is not in the
+        library records nothing (no invented library history identity)."""
+        ref = self.trackref_by_id(track_id)
+        if ref is None:
+            return
+        self.record_history(ref.file_path)
+
+    def trackref_by_id(self, track_id: str) -> TrackRef | None:
+        """Canonical TrackRef by stable identity, or None (M6-EXT-R4-J)."""
+        if not track_id:
+            return None
+        for ref in self._state.tracks:
+            if ref.track_id == track_id:
+                return ref
+        return None
+
+    def resolve_trackref(self, file_path: Path) -> TrackRef | None:
+        """Canonical TrackRef by current path, or None."""
+        for ref in self._state.tracks:
+            if ref.file_path == file_path:
+                return ref
+        return None
 
     def validate_track_for_playback(self, track: TrackRef) -> bool:
         """TD-013 filesystem validation (kept in LibraryService): TRACK_MISSING
@@ -699,10 +728,3 @@ class LibraryService:
         """Cached artwork path for an album key, or None when unavailable."""
         path = self._artwork_paths.get(album_key)
         return str(path) if path is not None else None
-
-    def resolve_trackref(self, file_path: Path) -> TrackRef | None:
-        """First TrackRef whose file_path equals ``file_path``, else None."""
-        for t in self._state.tracks:
-            if t.file_path == file_path:
-                return t
-        return None

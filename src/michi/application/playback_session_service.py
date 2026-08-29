@@ -72,6 +72,9 @@ class PlaybackSessionService:
         self._request_epoch = 0
         self._subscribers: list[Callable[[], None]] = []
         self._committed_subscribers: list[Callable[[Path], None]] = []
+        self._entry_committed_subscribers: list[
+            Callable[[PlaybackSequenceEntry], None]
+        ] = []
         # M4-R1 final seal: exact Queue runtime identity of the committed
         # QUEUE current and of the pending QUEUE candidate. NEVER derived
         # from file_path (duplicates are first-class).
@@ -143,6 +146,25 @@ class PlaybackSessionService:
     def _notify_committed(self, path: Path) -> None:
         for cb in list(self._committed_subscribers):
             cb(path)
+
+    def subscribe_entry_committed(
+        self, callback: Callable[[PlaybackSequenceEntry], None]
+    ) -> None:
+        """RICH history event (M6-EXT-R4-I/J): the committed sequence entry
+        with its stable ``library_track_id`` when known. Emitted in parallel
+        with the legacy path event; new Library History consumes this."""
+        if callback not in self._entry_committed_subscribers:
+            self._entry_committed_subscribers.append(callback)
+
+    def unsubscribe_entry_committed(
+        self, callback: Callable[[PlaybackSequenceEntry], None]
+    ) -> None:
+        if callback in self._entry_committed_subscribers:
+            self._entry_committed_subscribers.remove(callback)
+
+    def _notify_entry_committed(self, entry: PlaybackSequenceEntry) -> None:
+        for cb in list(self._entry_committed_subscribers):
+            cb(entry)
 
     # ------------------------------------------------------------------
     # Navigation capability (P1-05 final seal): "would next()/previous()
@@ -346,6 +368,7 @@ class PlaybackSessionService:
             self._navigator.record_commit(commit_entry)
         self._notify()
         self._notify_committed(path)
+        self._notify_entry_committed(commit_entry)
 
     def _reject(self, candidate: PlaybackSequenceEntry, path: Path, epoch: int) -> None:
         if epoch != self._request_epoch:

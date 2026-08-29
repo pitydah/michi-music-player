@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 
 from michi.application.library_service import LibraryService
+from michi.application.library_track_resolver import LibraryTrackResolver
 from michi.application.playback_session_service import PlaybackSessionService
 from michi.domain.playback_session import (
     PlaybackContextType,
@@ -26,40 +27,70 @@ class LibraryPlaybackCoordinator:
         self,
         library_service: LibraryService,
         playback_session: PlaybackSessionService,
+        resolver: "LibraryTrackResolver | None" = None,
     ) -> None:
         self._library = library_service
         self._session = playback_session
+        self._resolver = resolver or LibraryTrackResolver(library_service)
 
     def play_track(self, file_path: Path, title: str = "") -> None:
-        """Generic track intent → SINGLE (never mutates Queue).
+        """LEGACY path intent → SINGLE (never mutates Queue).
 
-        TD-013 (M4-R1 final seal): every Library-origin playback intent
-        resolves the TrackRef and validates the filesystem through the
-        LibraryService gate BEFORE requesting the session. A missing track
-        removes the exact stale reference / sets the diagnostic; ACCESS/IO/
-        UNKNOWN preserve the reference. No validation → no playback request.
+        New callers prefer ``play_track_by_id`` (M6-EXT-R4-J canonical
+        intent). TD-013 (M4-R1 final seal): every Library-origin playback
+        intent resolves the TrackRef and validates the filesystem through
+        the LibraryService gate BEFORE requesting the session. A missing
+        track removes the exact stale reference / sets the diagnostic;
+        ACCESS/IO/UNKNOWN preserve the reference. No validation → no
+        playback request.
         """
         ref = self._library.resolve_trackref(file_path)
         if ref is None:
             return  # not a library track: no playback request
+        self.play_track_by_id(
+            ref.track_id or f"legacy-path::{ref.file_path}", title=title
+        )
+
+    def play_track_by_id(self, track_id: str, title: str = "") -> None:
+        """CANONICAL intent (M6-EXT-R4-J): play a stable TrackId.
+
+        The current path is resolved from the catalog projection; the
+        sequence entry carries the stable library identity so History and
+        session V3 never depend on the filesystem location."""
+        ref = self._resolver.resolve_ref(track_id)
+        if ref is None:
+            return
         if not self._library.validate_track_for_playback(ref):
             return
-        entry = PlaybackSequenceEntry(file_path=ref.file_path, title=ref.title or title)
+        entry = PlaybackSequenceEntry(
+            file_path=ref.file_path,
+            title=ref.title or title,
+            library_track_id=ref.track_id or None,
+        )
         self._session.play_single(entry)
 
     def play_album(self, album_key: str, start_index: int = 0) -> None:
         """Album context from the canonical AlbumRef ordering (M6 owns the
         order — the coordinator never re-sorts). TD-013 filesystem
         validation stays LibraryService-owned: a missing track removes the
-        exact reference BEFORE any playback request."""
+        exact reference BEFORE any playback request.
+
+        Membership is TrackId-based (M6-EXT-R4-J): paths are the derived
+        current projection, identity rides on every entry."""
         album = self._library.album_by_key(album_key)
         if album is None:
             logger.warning("album no encontrado: %s", album_key)
             return
-        entries = [
-            PlaybackSequenceEntry(file_path=Path(path), title="")
-            for path in album.track_paths
-        ]
+        entries = []
+        for path in album.track_paths:
+            ref = self._library.resolve_trackref(path)
+            entries.append(
+                PlaybackSequenceEntry(
+                    file_path=Path(path),
+                    title=ref.title if ref is not None else "",
+                    library_track_id=ref.track_id if ref is not None else None,
+                )
+            )
         if not entries:
             return
         if not (0 <= start_index < len(entries)):
