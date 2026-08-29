@@ -328,7 +328,6 @@ class TestActivationValidation:
         library, queue, session, playback, audio = _make_library(scanner)
         coordinator = _coordinator_for(library, session)
         library.scan("/m")
-        tracks_before = list(library.state.tracks)
         missing = Path("/m/a.mp3")
         scanner.validate_errors = {
             missing: LibraryFilesystemError(
