@@ -15,7 +15,12 @@ from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 from michi.domain.library import TrackRef
 from michi.domain.library_catalog import MediaAvailability
-from michi.domain.playlist import PlaylistPersistenceError, PlaylistTrackReference
+from michi.domain.playlist import (
+    Playlist,
+    PlaylistAppearance,
+    PlaylistPersistenceError,
+    PlaylistTrackReference,
+)
 
 
 class _StubScanner:
@@ -339,3 +344,174 @@ class TestPlaylistMembershipIdentityMapping:
         coordinator.play_playlist_track(playlist.playlist_id, 0)
         assert coordinator._session._pending.file_path == Path("/new/B.flac")
         assert coordinator._session._pending.library_track_id == "T1"
+
+
+class TestPlaylistAssetDurableOrdering:
+    """P1-06: irreversible asset destruction happens ONLY after the durable
+    authority commit succeeded."""
+
+    def _failing_port(self):
+        class _Failing:
+            def load(self):
+                return ()
+
+            def load_navigation(self):
+                from michi.domain.playlist import PlaylistNavigationState
+
+                return PlaylistNavigationState()
+
+            def save(self, playlists):
+                raise PlaylistPersistenceError("injected DB failure")
+
+            def save_navigation(self, state):
+                del state
+
+        return _Failing()
+
+    class _AssetStore:
+        def __init__(self):
+            self.deleted_cover = []
+            self.deleted_hero = []
+            self.stored = []
+
+        def store_cover(self, playlist_id, source):
+            self.stored.append(("cover", playlist_id))
+            return f"/assets/{playlist_id}.jpg"
+
+        def store_hero(self, playlist_id, source):
+            self.stored.append(("hero", playlist_id))
+            return f"/assets/{playlist_id}_hero.jpg"
+
+        def delete_cover(self, playlist_id):
+            self.deleted_cover.append(playlist_id)
+
+        def delete_hero(self, playlist_id):
+            self.deleted_hero.append(playlist_id)
+
+    def test_delete_failure_keeps_assets(self) -> None:
+        store = self._AssetStore()
+        service = PlaylistService(
+            playlists_port=self._failing_port(),
+            artwork_store=store,  # type: ignore[arg-type]
+        )
+        # Simulate an existing playlist with managed assets.
+        service._playlists = [
+            Playlist(
+                playlist_id="p1",
+                name="Mix",
+                custom_cover_path="/assets/p1.jpg",
+            )
+        ]
+        service._persisted = tuple(service._playlists)
+        with pytest.raises(PlaylistPersistenceError):
+            service.delete_playlist("p1")
+        # Assets were NEVER deleted (no commit happened).
+        assert store.deleted_cover == []
+        assert store.deleted_hero == []
+        # Logical state rolled back: the playlist still exists.
+        assert service.get_playlist("p1") is not None
+
+    def test_hero_solid_failure_keeps_asset(self) -> None:
+        store = self._AssetStore()
+        service = PlaylistService(
+            playlists_port=self._failing_port(),
+            artwork_store=store,  # type: ignore[arg-type]
+        )
+        from michi.domain.playlist import PlaylistHeroMode
+
+        service._playlists = [
+            Playlist(
+                playlist_id="p1",
+                name="Mix",
+                appearance=PlaylistAppearance(
+                    hero_mode=PlaylistHeroMode.IMAGE,
+                    hero_image_path="/assets/p1_hero.jpg",
+                ),
+            )
+        ]
+        service._persisted = tuple(service._playlists)
+        with pytest.raises(PlaylistPersistenceError):
+            service.set_hero_solid("p1", "#112233")
+        # The old hero asset survived the failed commit.
+        assert store.deleted_hero == []
+        assert (
+            service.get_playlist("p1").appearance.hero_image_path
+            == "/assets/p1_hero.jpg"
+        )
+
+    def test_remove_cover_failure_keeps_asset(self) -> None:
+        store = self._AssetStore()
+        service = PlaylistService(
+            playlists_port=self._failing_port(),
+            artwork_store=store,  # type: ignore[arg-type]
+        )
+        service._playlists = [
+            Playlist(playlist_id="p1", name="Mix", custom_cover_path="/assets/p1.jpg")
+        ]
+        service._persisted = tuple(service._playlists)
+        with pytest.raises(PlaylistPersistenceError):
+            service.remove_custom_cover("p1")
+        assert store.deleted_cover == []
+        assert service.get_playlist("p1").custom_cover_path == "/assets/p1.jpg"
+
+    def test_hero_auto_failure_keeps_asset(self) -> None:
+        store = self._AssetStore()
+        service = PlaylistService(
+            playlists_port=self._failing_port(),
+            artwork_store=store,  # type: ignore[arg-type]
+        )
+        from michi.domain.playlist import PlaylistHeroMode
+
+        service._playlists = [
+            Playlist(
+                playlist_id="p1",
+                name="Mix",
+                appearance=PlaylistAppearance(
+                    hero_mode=PlaylistHeroMode.IMAGE,
+                    hero_image_path="/assets/p1_hero.jpg",
+                ),
+            )
+        ]
+        service._persisted = tuple(service._playlists)
+        with pytest.raises(PlaylistPersistenceError):
+            service.set_hero_auto("p1")
+        assert store.deleted_hero == []
+
+    def test_success_deletes_asset_after_commit(self) -> None:
+        class _OkPort:
+            def __init__(self):
+                self.saved = 0
+
+            def load(self):
+                return ()
+
+            def load_navigation(self):
+                from michi.domain.playlist import PlaylistNavigationState
+
+                return PlaylistNavigationState()
+
+            def save(self, playlists):
+                self.saved += 1
+
+            def save_navigation(self, state):
+                del state
+
+        store = self._AssetStore()
+        service = PlaylistService(playlists_port=_OkPort(), artwork_store=store)  # type: ignore[arg-type]
+        from michi.domain.playlist import PlaylistHeroMode
+
+        service._playlists = [
+            Playlist(
+                playlist_id="p1",
+                name="Mix",
+                appearance=PlaylistAppearance(
+                    hero_mode=PlaylistHeroMode.IMAGE,
+                    hero_image_path="/assets/p1_hero.jpg",
+                ),
+            )
+        ]
+        service._persisted = tuple(service._playlists)
+        assert service.set_hero_solid("p1", "#112233") is True
+        # Commit succeeded → the superseded hero asset is cleaned up.
+        assert store.deleted_hero == ["p1"]
+        assert service.get_playlist("p1").appearance.hero_image_path == ""
