@@ -169,6 +169,10 @@ class AlbumRef:
     artist: str
     track_count: int
     duration_ms: int
+    # M6-EXT-R4-F: CANONICAL membership is stable TrackIds. ``track_paths``
+    # is the DERIVED current-location projection (legacy consumers) — never
+    # a second authority.
+    track_ids: tuple[str, ...] = ()
     track_paths: tuple[Path, ...] = ()
     has_artwork: bool = False
     year: int = 0
@@ -437,6 +441,9 @@ def build_music_model(tracks) -> MusicModel:
 
     for entry in album_entries.values():
         tracks_sorted = sorted(entry["tracks"], key=_canonical_track_sort_key)
+        # M6-EXT-R4-F: canonical membership is TrackIds; paths remain the
+        # DERIVED current-location projection (legacy consumers).
+        entry["track_ids"] = tuple(_stable_track_tiebreak(t) for t in tracks_sorted)
         entry["paths"] = tuple(t.file_path for t in tracks_sorted)
         # M6-PRODUCTION-INTEGRATION: the canonical album year is the first
         # canonical-sorted track with a known year; 0 when none. NEVER the
@@ -468,6 +475,7 @@ def build_music_model(tracks) -> MusicModel:
                     artist=entry["album_artist"],
                     track_count=len(entry["paths"]),
                     duration_ms=entry["duration_ms"],
+                    track_ids=entry["track_ids"],
                     track_paths=entry["paths"],
                     year=entry["year"],
                     disc_count=entry["disc_count"],

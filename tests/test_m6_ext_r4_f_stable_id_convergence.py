@@ -150,6 +150,61 @@ class TestProjectionStableIds:
         assert "make_track_id" not in source
 
 
+class TestAlbumMembershipStableIds:
+    def test_album_canonical_membership_is_track_ids(self) -> None:
+        from michi.domain.library import build_music_model
+
+        tracks = (
+            TrackRef(
+                Path("/a/song1.flac"),
+                title="One",
+                artist="A",
+                album="Album",
+                track_id="T1",
+            ),
+            TrackRef(
+                Path("/b/song2.flac"),
+                title="Two",
+                artist="A",
+                album="Album",
+                track_id="T2",
+            ),
+        )
+        model = build_music_model(tracks)
+        album = model.albums[0]
+        # Canonical membership is stable TrackIds…
+        assert album.track_ids == ("T1", "T2")
+        # …and the paths remain the DERIVED location projection.
+        assert album.track_paths == (Path("/a/song1.flac"), Path("/b/song2.flac"))
+
+    def test_album_membership_ignores_path_move(self) -> None:
+        from michi.domain.library import build_music_model
+
+        before = build_music_model(
+            (
+                TrackRef(
+                    Path("/old/A/song.flac"),
+                    title="S",
+                    artist="A",
+                    album="Al",
+                    track_id="T1",
+                ),
+            )
+        )
+        after = build_music_model(
+            (
+                TrackRef(
+                    Path("/new/B/song.flac"),
+                    title="S",
+                    artist="A",
+                    album="Al",
+                    track_id="T1",
+                ),
+            )
+        )
+        assert before.albums[0].track_ids == after.albums[0].track_ids == ("T1",)
+
+
 class TestStructuralAntiRegression:
     """Prompt §99: NEW production identity flows must not be path-based."""
 
