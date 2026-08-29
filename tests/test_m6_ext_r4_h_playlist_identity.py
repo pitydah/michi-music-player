@@ -88,7 +88,8 @@ class TestV3Persistence:
             {"track_id": "T1", "fallback_path": "/a.flac"},
             {"track_id": "T2", "fallback_path": "/b.flac"},
         ]
-        assert "track_paths" not in raw[0]
+        # Derived compatibility projection of the SAME membership.
+        assert raw[0]["track_paths"] == ["/a.flac", "/b.flac"]
 
     def test_v3_load_restores_ids_and_paths(self, tmp_path) -> None:
         repo = SqlitePlaylistsRepository(tmp_path / "michi.db")
