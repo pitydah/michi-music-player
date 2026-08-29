@@ -22,7 +22,7 @@ PathView {
     model: albumModel
     clip: true
     interactive: count > 1
-    pathItemCount: width >= 1500 ? 9 : width >= 1050 ? 7 : 5
+    pathItemCount: width >= 1500 ? 7 : width >= 1050 ? 5 : 3
     cacheItemCount: pathItemCount + 2
     preferredHighlightBegin: 0.5
     preferredHighlightEnd: 0.5
@@ -31,7 +31,7 @@ PathView {
     activeFocusOnTab: true
     focus: true
     Accessible.role: Accessible.List
-    Accessible.name: qsTr("Albums in PathView")
+    Accessible.name: qsTr("Albums in Cover Flow")
     Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
 
     Keys.onLeftPressed: decrementCurrentIndex()
@@ -57,8 +57,8 @@ PathView {
     path: Path {
         startX: -albumsPath.coverSize * 0.25
         startY: albumsPath.height * 0.48
-        PathAttribute { name: "itemScale"; value: 0.58 }
-        PathAttribute { name: "itemOpacity"; value: 0.22 }
+        PathAttribute { name: "itemScale"; value: 0.66 }
+        PathAttribute { name: "itemOpacity"; value: 0.36 }
         PathAttribute { name: "itemDepth"; value: 0 }
 
         PathQuad {
@@ -67,8 +67,8 @@ PathView {
             controlX: albumsPath.width * 0.12
             controlY: albumsPath.height * 0.46
         }
-        PathAttribute { name: "itemScale"; value: 0.76 }
-        PathAttribute { name: "itemOpacity"; value: 0.68 }
+        PathAttribute { name: "itemScale"; value: 0.82 }
+        PathAttribute { name: "itemOpacity"; value: 0.74 }
         PathAttribute { name: "itemDepth"; value: 30 }
 
         PathQuad {
@@ -87,8 +87,8 @@ PathView {
             controlX: albumsPath.width * 0.60
             controlY: albumsPath.height * 0.38
         }
-        PathAttribute { name: "itemScale"; value: 0.76 }
-        PathAttribute { name: "itemOpacity"; value: 0.68 }
+        PathAttribute { name: "itemScale"; value: 0.82 }
+        PathAttribute { name: "itemOpacity"; value: 0.74 }
         PathAttribute { name: "itemDepth"; value: 30 }
 
         PathQuad {
@@ -97,8 +97,8 @@ PathView {
             controlX: albumsPath.width * 0.88
             controlY: albumsPath.height * 0.46
         }
-        PathAttribute { name: "itemScale"; value: 0.58 }
-        PathAttribute { name: "itemOpacity"; value: 0.22 }
+        PathAttribute { name: "itemScale"; value: 0.66 }
+        PathAttribute { name: "itemOpacity"; value: 0.36 }
         PathAttribute { name: "itemDepth"; value: 0 }
     }
 
@@ -109,7 +109,7 @@ PathView {
         property var album: modelData
         width: albumsPath.coverSize
         height: albumsPath.coverSize + 48
-        scale: PathView.isCurrentItem ? 1.0 : (PathView.itemScale || 0.58)
+        scale: PathView.isCurrentItem ? 1.0 : (PathView.itemScale || 0.66)
         opacity: PathView.itemOpacity === undefined ? 1 : PathView.itemOpacity
         z: PathView.isCurrentItem ? 100 : Math.round(PathView.itemDepth || 0)
         Accessible.role: Accessible.Button
@@ -244,9 +244,8 @@ PathView {
                     ? albumsPath.currentAlbum.trackCount
                         + (albumsPath.currentAlbum.trackCount === 1 ? " track" : " tracks")
                     : ""
-                role: "technical"
-                technical: true
-                color: MichiPalette.auroraCyan
+                role: "caption"
+                color: MichiPalette.textSecondary
             }
             Rectangle {
                 Layout.preferredWidth: 1

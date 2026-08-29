@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../enrichment"
@@ -24,20 +25,17 @@ ColumnLayout {
         { label: "File size", value: root.formatFileSize(inspectedTrack.fileSize) },
         { label: "Path", value: inspectedTrack.path }
     ] : []
+    readonly property string selectedAlbumKey: library.selectedAlbumKey
 
     visible: library.selectedAlbumKey !== ""
     Layout.fillWidth: true
     Layout.fillHeight: true
     spacing: MichiThemeState.contentGap
 
-    /* M6.9: explicit detail activation drives enrichment for the
-     * selected album — never lists/search/scan. */
-    readonly property string selectedAlbumKey: library.selectedAlbumKey
     onSelectedAlbumKeyChanged: {
         if (root.selectedAlbumKey.length > 0)
             enrichment.activate_album(root.selectedAlbumKey)
     }
-
     onVisibleChanged: if (!visible) inspectedTrack = null
 
     function formatFileSize(bytes) {
@@ -53,218 +51,150 @@ ColumnLayout {
         var minutes = Math.floor(seconds / 60)
         var hours = Math.floor(minutes / 60)
         var remainingMinutes = minutes % 60
-        if (hours > 0)
-            return hours + " hr " + remainingMinutes + " min"
-        return minutes + " min"
+        return hours > 0 ? hours + " hr " + remainingMinutes + " min"
+            : minutes + " min"
     }
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: MichiSpacing.sm
-
-        MichiButton {
-            text: "Back"
-            iconName: "back"
-            variant: "ghost"
-            onClicked: library.clear_album_selection()
-        }
-        MichiText {
-            text: "Library"
-            role: "secondary"
-            color: MichiPalette.textMuted
-        }
-        MichiText {
-            text: "›"
-            role: "secondary"
-            color: MichiPalette.textMuted
-        }
-        MichiText {
-            Layout.fillWidth: true
-            text: library.albumTitle
-            role: "secondary"
-            color: MichiPalette.textSecondary
-            elide: Text.ElideRight
-        }
+    MichiButton {
+        text: qsTr("Albums")
+        iconName: "back"
+        variant: "ghost"
+        Layout.alignment: Qt.AlignLeft
+        accessibleName: qsTr("Back to Albums")
+        onClicked: library.clear_album_selection()
     }
 
-    MichiGlassSurface {
-        objectName: "albumHeroSurface"
+    Flickable {
+        id: summaryFlick
         Layout.fillWidth: true
-        Layout.preferredHeight: heroContent.implicitHeight + MichiSpacing.xl * 2
-        elevation: "elevated"
-        contentPadding: MichiSpacing.xl
-        accented: true
-        accentColor: MichiPalette.auroraBlue
-        textured: true
+        Layout.preferredHeight: Math.min(summaryColumn.implicitHeight,
+            Math.max(220, Math.min(root.height - 180, root.height * 0.54)))
+        contentWidth: width
+        contentHeight: summaryColumn.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: MichiScrollBar { }
 
-        RowLayout {
-            id: heroContent
-            anchors.fill: parent
-            spacing: MichiSpacing.xl
+        Column {
+            id: summaryColumn
+            width: summaryFlick.width
+            spacing: MichiThemeState.contentGap
 
-            Artwork {
-                sourcePath: library.albumArtwork.length > 0
-                    ? library.albumArtwork : enrichment.albumArtworkPath
-                fallbackText: library.albumTitle
-                Layout.preferredWidth: Math.min(232, Math.max(164, root.width * .19))
-                Layout.preferredHeight: Layout.preferredWidth
-                Layout.alignment: Qt.AlignTop
-                requestedSize: 512
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: MichiSpacing.sm
-
-                MichiText {
-                    Layout.fillWidth: true
-                    text: library.albumTitle
-                    role: "display"
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                }
-                MichiText {
-                    Layout.fillWidth: true
-                    text: library.albumArtist
-                    role: "section"
-                    color: MichiPalette.textSecondary
-                    elide: Text.ElideRight
-                }
-                MichiText {
-                    Layout.fillWidth: true
-                    text: [library.albumGenres, library.albumYear > 0
-                        ? library.albumYear : ""].filter(value => value !== "").join(" · ")
-                    role: "secondary"
-                    visible: text.length > 0
-                }
+            MichiGlassSurface {
+                objectName: "albumHeroSurface"
+                width: parent.width
+                implicitHeight: heroContent.implicitHeight + MichiSpacing.xl * 2
+                elevation: "elevated"
+                contentPadding: MichiSpacing.xl
+                accented: true
+                accentColor: MichiPalette.auroraBlue
+                textured: true
 
                 RowLayout {
-                    spacing: MichiSpacing.sm
-                    AudioQualityBadge { label: library.albumTechnicalSummary }
-                    MichiStatusChip {
-                        text: library.albumTracks.length
-                            + (library.albumTracks.length === 1 ? " track" : " tracks")
-                        tone: "neutral"
-                        dotVisible: false
-                    }
-                    MichiStatusChip {
-                        text: root.formatDuration(library.albumDurationMs)
-                        tone: "neutral"
-                        dotVisible: false
-                        visible: library.albumDurationMs > 0
-                    }
-                }
+                    id: heroContent
+                    anchors.fill: parent
+                    spacing: MichiSpacing.xl
 
-                Item { Layout.fillHeight: true }
+                    Artwork {
+                        sourcePath: library.albumArtwork.length > 0
+                            ? library.albumArtwork : enrichment.albumArtworkPath
+                        fallbackText: library.albumTitle
+                        Layout.preferredWidth: Math.min(220,
+                            Math.max(156, root.width * 0.18))
+                        Layout.preferredHeight: Layout.preferredWidth
+                        Layout.alignment: Qt.AlignTop
+                        requestedSize: 512
+                    }
 
-                RowLayout {
-                    spacing: MichiSpacing.sm
-                    MichiButton {
-                        text: "Play album"
-                        iconName: "play"
-                        enabled: library.albumTracks.length > 0
-                        onClicked: library.activate_album_track(0)
-                    }
-                }
-            }
-
-            Rectangle {
-                visible: root.width >= 960
-                Layout.preferredWidth: 1
-                Layout.fillHeight: true
-                Layout.topMargin: MichiSpacing.sm
-                Layout.bottomMargin: MichiSpacing.sm
-                color: MichiSemanticColors.borderSubtle
-            }
-
-            ColumnLayout {
-                visible: root.width >= 960
-                Layout.preferredWidth: 178
-                Layout.alignment: Qt.AlignTop
-                spacing: MichiSpacing.md
-
-                ColumnLayout {
-                    spacing: MichiSpacing.xxs
-                    MichiText {
-                        text: "DURATION"
-                        role: "technical"
-                        technical: true
-                        color: MichiPalette.textMuted
-                    }
-                    MichiText {
-                        text: root.formatDuration(library.albumDurationMs)
-                        role: "secondary"
-                    }
-                }
-                ColumnLayout {
-                    spacing: MichiSpacing.xxs
-                    MichiText {
-                        text: "TRACKS"
-                        role: "technical"
-                        technical: true
-                        color: MichiPalette.textMuted
-                    }
-                    MichiText {
-                        text: library.albumTracks.length
-                        role: "secondary"
-                    }
-                }
-                ColumnLayout {
-                    spacing: MichiSpacing.xxs
-                    MichiText {
-                        text: "LIBRARY QUALITY"
-                        role: "technical"
-                        technical: true
-                        color: MichiPalette.textMuted
-                    }
-                    MichiText {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: library.albumTechnicalSummary || "Standard"
-                        role: "secondary"
-                        wrapMode: Text.Wrap
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: MichiSpacing.sm
+
+                        MichiText {
+                            Layout.fillWidth: true
+                            text: library.albumTitle
+                            role: "display"
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                        }
+                        MichiText {
+                            Layout.fillWidth: true
+                            text: library.albumArtist
+                            role: "section"
+                            color: MichiPalette.textSecondary
+                            elide: Text.ElideRight
+                        }
+                        MichiText {
+                            Layout.fillWidth: true
+                            text: [library.albumGenres, library.albumYear > 0
+                                ? library.albumYear : ""].filter(
+                                    value => value !== "").join(" · ")
+                            role: "secondary"
+                            visible: text.length > 0
+                        }
+
+                        RowLayout {
+                            spacing: MichiSpacing.sm
+                            AudioQualityBadge {
+                                label: library.albumTechnicalSummary
+                                visible: label.length > 0
+                            }
+                            MichiText {
+                                text: library.albumTracks.length
+                                    + (library.albumTracks.length === 1
+                                        ? qsTr(" track") : qsTr(" tracks"))
+                                    + (library.albumDurationMs > 0
+                                        ? " · " + root.formatDuration(
+                                            library.albumDurationMs) : "")
+                                role: "secondary"
+                                color: MichiPalette.textMuted
+                            }
+                        }
+
+                        Item { Layout.fillHeight: true }
+
+                        MichiButton {
+                            text: qsTr("Play album")
+                            iconName: "play"
+                            enabled: library.albumTracks.length > 0
+                            onClicked: library.activate_album_track(0)
+                        }
                     }
                 }
             }
+
+            EnrichmentInlineState {
+                width: parent.width
+                kind: "album"
+                state: enrichment.state
+                message: enrichment.stateMessage
+                busy: enrichment.busy
+                onlineEnabled: enrichment.onlineEnabled
+                hasKnowledge: enrichment.albumHasKnowledge
+                active: enrichment.activeKind === "album"
+                onRefreshRequested: enrichment.refresh_album()
+                onReviewRequested: enrichment.open_review("album")
+                onClearRequested: enrichment.clear_knowledge()
+                onResetRequested: enrichment.reset_identity()
+            }
+
+            EnrichmentKnowledgeCard {
+                width: parent.width
+                title: qsTr("About this album")
+                knowledge: enrichment.albumKnowledge
+                hasKnowledge: enrichment.albumHasKnowledge
+                sources: enrichment.albumAttributions
+                visible: enrichment.activeKind === "album" && enrichment.albumHasKnowledge
+            }
         }
-    }
-
-    /* M6.9 — online knowledge surface (complementary to the canonical
-     * local metadata; local album facts stay authoritative). */
-    EnrichmentStatusBar {
-        Layout.fillWidth: true
-        state: enrichment.state
-        message: enrichment.stateMessage
-        busy: enrichment.busy
-        visible: enrichment.activeKind === "album"
-    }
-
-    EnrichmentKnowledgeCard {
-        Layout.fillWidth: true
-        title: "About this album"
-        knowledge: enrichment.albumKnowledge
-        hasKnowledge: enrichment.albumHasKnowledge
-        sources: enrichment.albumAttributions
-        visible: enrichment.activeKind === "album"
-    }
-
-    EnrichmentActions {
-        Layout.fillWidth: true
-        kind: "album"
-        state: enrichment.state
-        onlineEnabled: enrichment.onlineEnabled
-        hasKnowledge: enrichment.albumHasKnowledge
-        visible: enrichment.activeKind === "album"
-        onRefreshRequested: enrichment.refresh_album()
-        onReviewRequested: enrichment.open_review("album")
-        onClearRequested: enrichment.clear_knowledge()
-        onResetRequested: enrichment.reset_identity()
     }
 
     InspectorPanel {
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? 210 : 0
         visible: root.inspectedTrack !== null && root.width < 760
-        title: root.inspectedTrack ? root.inspectedTrack.title : "Track information"
+        title: root.inspectedTrack ? root.inspectedTrack.title : qsTr("Track information")
         rows: root.inspectorRows
         onCloseRequested: root.inspectedTrack = null
     }
@@ -289,7 +219,9 @@ ColumnLayout {
                 rows: library.albumTracks
                 playingPath: playback.currentPath
                 favoritePaths: library.favoritePaths
+                columnProfile: "album"
                 showAlbumColumn: false
+                showArtwork: false
                 numberingMode: "disc-track"
                 canFavorite: true
                 canQueue: library.canQueueTracks
@@ -309,13 +241,12 @@ ColumnLayout {
             Layout.preferredWidth: 320
             Layout.fillHeight: true
             visible: root.inspectedTrack !== null && root.width >= 760
-            title: root.inspectedTrack ? root.inspectedTrack.title : "Track information"
+            title: root.inspectedTrack ? root.inspectedTrack.title : qsTr("Track information")
             rows: root.inspectorRows
             onCloseRequested: root.inspectedTrack = null
         }
     }
 
-    /* M6.9 — manual review dialog */
     ReviewMatchesDialog {
         id: reviewDialog
         visible: enrichment.reviewOpen && enrichment.reviewKind === "album"

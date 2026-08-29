@@ -124,6 +124,11 @@ def test_artist_detail_projection_is_canonical_and_activatable(tmp_path) -> None
 
     bridge.select_artist(artist["key"])
 
+    album_key = bridge.property("artistAlbums")[0]["key"]
+    library.artwork_path_for = lambda key: (
+        "/cache/michi-album.jpg" if key == album_key else None
+    )
+
     assert bridge.property("artistName") == "Michi Artist"
     assert bridge.property("artistAlbumCount") == 1
     assert len(bridge.property("artistAlbums")) == 1
@@ -131,6 +136,9 @@ def test_artist_detail_projection_is_canonical_and_activatable(tmp_path) -> None
         "One",
         "Two",
     ]
+    assert {row["artworkPath"] for row in bridge.property("artistTracks")} == {
+        "/cache/michi-album.jpg"
+    }
     bridge.activate_artist_track(1)
     audio.trigger_media_accepted(audio.loaded)
     # M4-R1: artist track → SINGLE context (Queue untouched)

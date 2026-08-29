@@ -15,6 +15,7 @@ Item {
     property bool showAlbumColumn: true
     property bool showArtwork: true
     property bool showActions: true
+    property string columnProfile: "songs"
     property bool canFavorite: true
     property bool canQueue: true
     property bool canAddToPlaylist: true
@@ -30,6 +31,12 @@ Item {
     property string numberingMode: "index"
     property bool selectionEnabled: false
     property var selectedTrackIds: []
+    readonly property bool profileShowsArtwork: showArtwork
+        && columnProfile !== "album"
+    readonly property bool profileShowsArtist: showArtistColumn
+        && columnProfile !== "artist"
+    readonly property bool profileShowsAlbum: showAlbumColumn
+        && columnProfile !== "album"
 
     signal trackActivated(string path, int index)
     signal favoriteRequested(string path)
@@ -55,10 +62,10 @@ Item {
 
     readonly property real horizontalPadding: MichiSpacing.sm * 2
     readonly property int visibleColumnCount: 1
-        + (showArtwork && LibraryTrackColumnState.artworkVisible ? 1 : 0)
+        + (profileShowsArtwork && LibraryTrackColumnState.artworkVisible ? 1 : 0)
         + (LibraryTrackColumnState.titleVisible ? 1 : 0)
-        + (showArtistColumn && LibraryTrackColumnState.artistVisible ? 1 : 0)
-        + (showAlbumColumn && LibraryTrackColumnState.albumVisible ? 1 : 0)
+        + (profileShowsArtist && LibraryTrackColumnState.artistVisible ? 1 : 0)
+        + (profileShowsAlbum && LibraryTrackColumnState.albumVisible ? 1 : 0)
         + (LibraryTrackColumnState.formatVisible ? 1 : 0)
         + (LibraryTrackColumnState.sampleRateVisible ? 1 : 0)
         + (LibraryTrackColumnState.bitDepthVisible ? 1 : 0)
@@ -72,9 +79,9 @@ Item {
         + (LibraryTrackColumnState.durationVisible ? 1 : 0)
         + (showActions && LibraryTrackColumnState.actionsVisible ? 1 : 0)
     readonly property real nonTitleWidth: LibraryTrackColumnState.numberWidth
-        + (showArtwork && LibraryTrackColumnState.artworkVisible ? LibraryTrackColumnState.artworkWidth : 0)
-        + (showArtistColumn && LibraryTrackColumnState.artistVisible ? LibraryTrackColumnState.artistWidth : 0)
-        + (showAlbumColumn && LibraryTrackColumnState.albumVisible ? LibraryTrackColumnState.albumWidth : 0)
+        + (profileShowsArtwork && LibraryTrackColumnState.artworkVisible ? LibraryTrackColumnState.artworkWidth : 0)
+        + (profileShowsArtist && LibraryTrackColumnState.artistVisible ? LibraryTrackColumnState.artistWidth : 0)
+        + (profileShowsAlbum && LibraryTrackColumnState.albumVisible ? LibraryTrackColumnState.albumWidth : 0)
         + (LibraryTrackColumnState.formatVisible ? LibraryTrackColumnState.formatWidth : 0)
         + (LibraryTrackColumnState.sampleRateVisible ? LibraryTrackColumnState.sampleRateWidth : 0)
         + (LibraryTrackColumnState.bitDepthVisible ? LibraryTrackColumnState.bitDepthWidth : 0)
@@ -106,7 +113,7 @@ Item {
         keyNavigationWraps: false
         activeFocusOnTab: true
         reuseItems: true
-        cacheBuffer: height
+        cacheBuffer: Math.max(0, height)
         contentWidth: Math.max(width, root.tableContentWidth)
         headerPositioning: ListView.OverlayHeader
         Accessible.role: Accessible.Table
@@ -117,9 +124,9 @@ Item {
         header: ResizableTrackHeader {
             width: Math.max(trackList.width, root.tableContentWidth)
             titleColumnWidth: root.titleColumnWidth
-            showArtistColumn: root.showArtistColumn
-            showAlbumColumn: root.showAlbumColumn
-            showArtwork: root.showArtwork
+            showArtistColumn: root.profileShowsArtist
+            showAlbumColumn: root.profileShowsAlbum
+            showArtwork: root.profileShowsArtwork
             showActions: root.showActions
             sortingEnabled: root.sortingEnabled
             sortColumn: root.sortColumn
@@ -158,9 +165,9 @@ Item {
             genre: modelData.genre || ""
             composer: modelData.composer || ""
             year: modelData.year || 0
-            showArtistColumn: root.showArtistColumn
-            showAlbumColumn: root.showAlbumColumn
-            showArtwork: root.showArtwork
+            showArtistColumn: root.profileShowsArtist
+            showAlbumColumn: root.profileShowsAlbum
+            showArtwork: root.profileShowsArtwork
             playing: root.playingPath === modelData.path
             selected: root.selectionEnabled
                 ? root.selectedTrackIds.indexOf(modelData.trackId) !== -1

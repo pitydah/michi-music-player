@@ -18,6 +18,10 @@ redesigned separately. Do not touch it in these phases.
 | 4 — Opportunity (larger scope) | 6 items | ⬜ Pending |
 | 5 — Final polish | 4 items | ⬜ Pending |
 
+The table above records the original PR #207 plan. The scoped M9-R5 Library
+refinement below supersedes its Library-specific visual assumptions without
+reopening the protected Now Playing surface.
+
 ---
 
 ## Phase 1 — ✅ COMPLETED (PR #207)
@@ -254,6 +258,32 @@ Audit finding: the grain was mathematically invisible (18 sub-pixel SVG dots,
   gradient material with a pressed/hover overlay; timeline and volume
   handles react to hover (scale + aurora border); bar time formatting
   delegates to `MichiFormat`
+
+## M9-R5 Library premium refinement (local verification complete)
+
+The R5 pass used `ui-ux-pro-max`, a pre/post killcritic review, production QML
+runtime, and responsive fixture captures. It keeps the canonical palette,
+semantic colors, material texture, glass primitive, and NowPlayingBar unchanged.
+
+- **Hierarchy:** factual per-tab subtitles replace generic copy; the duplicate
+  `VIEWS` eyebrow is removed; Search and Scan no longer compete inside one
+  resizable pane.
+- **Artists:** true circular masks replace radius-only square crops; gallery
+  density is bounded by mode; portrait prefetch batches visible rows plus one
+  row of overscan after a 180 ms debounce.
+- **Details:** Album and Artist pages use back intent → identity → concise facts
+  → contextual enrichment → albums/tracks. Empty knowledge cards stay absent,
+  and upper detail content scrolls independently without hiding track access.
+- **Albums:** cards prioritize title, artist, year, and track count. Vinyl has a
+  real artwork label, restrained grooves, and a physical reveal; Cover Flow
+  reduces peripheral items and technical emphasis.
+- **Tables and menus:** contextual table profiles remove redundant columns;
+  fixed Actions and bounded Artwork/Duration geometry prevent unsafe resizing;
+  shared 36 px menu rows stabilize icon/text alignment and semantics.
+- **Verification:** 3036 tests passed with 1 skipped under isolated XDG state;
+  Ruff, formatting, qmllint, compileall, wheel build, production runtime, and
+  canonical firewalls are green. Captures cover 1920, 1646, 1440, 1200, and the
+  800 px minimum width. Publication and PR CI remain pending.
 
 ## Management notes
 

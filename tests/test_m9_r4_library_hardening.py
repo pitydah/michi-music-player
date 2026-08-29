@@ -31,10 +31,10 @@ def test_library_toolbar_has_resizable_search_and_one_split_scan_control() -> No
     assert "property real searchPanePreferredWidth" in toolbar
     assert 'objectName: "librarySearchResizeHandle"' in toolbar
     assert "DragHandler" in toolbar
-    assert "Layout.fillWidth: root.width < 900" in toolbar
+    assert "Layout.fillWidth: root.width < 1100" in toolbar
     assert "MichiSplitButton" in toolbar
     assert "onPrimaryClicked: root.performScan()" in toolbar
-    assert "onSecondaryClicked: folderDialog.open()" in toolbar
+    assert "onSecondaryClicked: sourceMenu.popup()" in toolbar
     assert "id: sourceBtn" not in toolbar
     assert "signal primaryClicked()" in split_button
     assert "signal secondaryClicked()" in split_button
@@ -59,8 +59,8 @@ def test_artists_gallery_uses_circular_portrait_cards_without_copy() -> None:
 
     assert "ArtistPortraitCard {" in view
     assert "Select an artist to explore albums and tracks" not in view
-    assert "resolvedCardWidth + cardGap" in view
-    assert "radius: width / 2" in portrait
+    assert "cellWidth - cardGap" in view
+    assert "ArtistPortraitArtwork" in portrait
     assert "ArtistContextArea" in portrait
     assert "scale: hover.hovered" not in portrait
 
@@ -71,7 +71,9 @@ def test_artist_portrait_prefetch_is_bounded_and_separate() -> None:
         encoding="utf-8"
     )
 
-    assert "Component.onCompleted: enrichment.prefetch_artist_portrait" in view
+    assert "Component.onCompleted: schedulePortraitPrefetch()" in view
+    assert "prefetch_artist_portraits" in view
+    assert "interval: 180" in view
     assert "enrichment.artistPortraits" in view
     assert "_MAX_PORTRAIT_PREFETCH_INFLIGHT = 2" in bridge
     assert "artistPortraits = Property" in bridge

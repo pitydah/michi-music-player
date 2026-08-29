@@ -10,7 +10,8 @@ MichiGlassSurface {
     id: root
 
     property string currentTab: "songs"
-    property real searchPanePreferredWidth: width >= 1480 ? 640 : 520
+    readonly property real defaultSearchWidth: width >= 1480 ? 480 : 420
+    property real searchPanePreferredWidth: defaultSearchWidth
     signal currentTabRequested(string tab)
 
     readonly property bool scanning: (typeof library !== "undefined" && library)
@@ -38,8 +39,8 @@ MichiGlassSurface {
     }
 
     function clampSearchWidth(candidate) {
-        var minimum = root.width < 980 ? 300 : 430
-        var maximum = root.width < 900 ? root.width : 760
+        var minimum = 300
+        var maximum = Math.min(560, root.width * 0.46)
         return Math.max(Math.min(minimum, maximum), Math.min(maximum, candidate))
     }
 
@@ -72,7 +73,7 @@ MichiGlassSurface {
         GridLayout {
             objectName: "libraryNavigationGrid"
             Layout.fillWidth: true
-            columns: root.width < 900 ? 1 : 2
+            columns: root.width < 1100 ? 1 : 2
             columnSpacing: MichiSpacing.md
             rowSpacing: MichiSpacing.sm
 
@@ -85,102 +86,160 @@ MichiGlassSurface {
                 onTabRequested: tab => root.currentTabRequested(tab)
             }
 
-            Item {
-                id: searchPane
-                objectName: "resizableLibrarySearchPane"
-                Layout.fillWidth: root.width < 900
-                Layout.preferredWidth: root.clampSearchWidth(root.searchPanePreferredWidth)
-                Layout.minimumWidth: Math.min(root.width,
-                    root.width < 980 ? 300 : 430)
-                Layout.maximumWidth: root.width < 900 ? root.width : 760
+            RowLayout {
+                id: utilityPane
+                Layout.fillWidth: root.width < 1100
+                Layout.preferredWidth: root.width < 1100
+                    ? root.width : root.clampSearchWidth(root.searchPanePreferredWidth)
+                        + scanButton.implicitWidth + MichiSpacing.md
                 Layout.preferredHeight: MichiMetrics.controlLarge
+                spacing: MichiSpacing.md
 
-                RowLayout {
-                    anchors.fill: parent
-                    spacing: MichiSpacing.sm
+                Item {
+                    id: searchResizeHandle
+                    objectName: "librarySearchResizeHandle"
+                    Layout.preferredWidth: visible ? 10 : 0
+                    Layout.fillHeight: true
+                    visible: root.width >= 1100
+                    activeFocusOnTab: visible
+                    Accessible.role: Accessible.Slider
+                    Accessible.name: qsTr("Resize library search")
+                    Accessible.description: qsTr("Use Left and Right arrows; double-click to reset")
+
+                    property real widthAtDragStart: root.searchPanePreferredWidth
 
                     Rectangle {
-                        id: searchResizeHandle
-                        objectName: "librarySearchResizeHandle"
-                        Layout.preferredWidth: visible ? MichiSpacing.sm : 0
-                        Layout.fillHeight: true
-                        visible: root.width >= 900
-                        activeFocusOnTab: visible
-                        color: resizeHover.hovered || activeFocus
+                        anchors.centerIn: parent
+                        width: 1
+                        height: parent.height - MichiSpacing.sm
+                        color: resizeHover.hovered || parent.activeFocus
                             ? MichiSemanticColors.borderStrong
-                            : "transparent"
-                        Accessible.role: Accessible.Separator
-                        Accessible.name: qsTr("Resize library search")
-
-                        property real widthAtDragStart: root.searchPanePreferredWidth
-
-                        HoverHandler {
-                            id: resizeHover
-                            cursorShape: Qt.SizeHorCursor
+                            : MichiSemanticColors.borderSubtle
+                    }
+                    HoverHandler {
+                        id: resizeHover
+                        cursorShape: Qt.SplitHCursor
+                    }
+                    DragHandler {
+                        id: searchResizeDrag
+                        target: null
+                        xAxis.enabled: true
+                        yAxis.enabled: false
+                        onActiveChanged: {
+                            if (active)
+                                searchResizeHandle.widthAtDragStart = root.searchPanePreferredWidth
                         }
-                        DragHandler {
-                            id: searchResizeDrag
-                            target: null
-                            xAxis.enabled: true
-                            yAxis.enabled: false
-                            onActiveChanged: {
-                                if (active)
-                                    searchResizeHandle.widthAtDragStart = root.searchPanePreferredWidth
+                        onActiveTranslationChanged: {
+                            root.searchPanePreferredWidth = root.clampSearchWidth(
+                                searchResizeHandle.widthAtDragStart - activeTranslation.x)
+                        }
+                    }
+                    TapHandler {
+                        acceptedButtons: Qt.LeftButton
+                        onDoubleTapped: root.searchPanePreferredWidth = root.defaultSearchWidth
+                    }
+                    Keys.onLeftPressed: root.searchPanePreferredWidth =
+                        root.clampSearchWidth(root.searchPanePreferredWidth + 16)
+                    Keys.onRightPressed: root.searchPanePreferredWidth =
+                        root.clampSearchWidth(root.searchPanePreferredWidth - 16)
+                    MichiFocusRing {
+                        visualFocus: searchResizeHandle.activeFocus
+                            && MichiAccessibility.keyboardMode
+                    }
+                }
+
+                Item {
+                    id: searchPane
+                    objectName: "resizableLibrarySearchPane"
+                    Layout.fillWidth: root.width < 1100
+                    Layout.preferredWidth: root.width < 1100
+                        ? -1 : root.clampSearchWidth(root.searchPanePreferredWidth)
+                    Layout.minimumWidth: Math.min(root.width, 300)
+                    Layout.maximumWidth: root.width < 1100 ? root.width : 560
+                    Layout.fillHeight: true
+
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: MichiSpacing.sm
+
+                        MichiStatusChip {
+                            objectName: "searchNoResultsText"
+                            visible: typeof library !== "undefined" && library
+                                && library.searchActive
+                                && library.searchTotalCount === 0
+                            text: qsTr("No results")
+                            tone: "warning"
+                        }
+
+                        MichiStatusChip {
+                            visible: typeof library !== "undefined" && library
+                                && library.searchActive
+                                && library.searchTotalCount > 0
+                            text: qsTr("%1 results").arg(
+                                typeof library !== "undefined" && library
+                                    ? library.searchTotalCount : 0)
+                            tone: "active"
+                        }
+
+                        MichiSearchField {
+                            id: searchInput
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 210
+                            text: typeof library !== "undefined" && library ? library.searchQuery : ""
+                            placeholderText: root.searchPlaceholder()
+                            onEdited: query => { if (typeof library !== "undefined" && library) library.search(query) }
+                            onClearRequested: { if (typeof library !== "undefined" && library) library.clear_search() }
+                        }
+                    }
+                }
+
+                MichiSplitButton {
+                    id: scanButton
+                    objectName: "libraryScanSplitButton"
+                    text: root.width < 760 ? qsTr("Scan") : qsTr("Scan library")
+                    iconName: "library"
+                    secondaryIconName: "chevron-down"
+                    iconOnly: root.width < 980
+                    accessibleName: qsTr("Scan library")
+                    secondaryAccessibleName: qsTr("Music source options")
+                    enabled: !root.scanning
+                        && typeof library !== "undefined" && library
+                    onPrimaryClicked: root.performScan()
+                    onSecondaryClicked: sourceMenu.popup()
+
+                    MichiMenu {
+                        id: sourceMenu
+                        x: Math.max(0, parent.width - width)
+                        y: parent.height + MichiSpacing.xs
+
+                        Item {
+                            implicitWidth: 284
+                            implicitHeight: 56
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: MichiSpacing.sm
+                                spacing: MichiSpacing.xxs
+                                MichiText {
+                                    text: qsTr("Music source")
+                                    role: "caption"
+                                    color: MichiPalette.textSecondary
+                                }
+                                MichiText {
+                                    Layout.fillWidth: true
+                                    text: typeof library !== "undefined" && library
+                                        && library.currentDir.length > 0
+                                        ? library.currentDir : qsTr("No folder selected")
+                                    role: "caption"
+                                    elide: Text.ElideMiddle
+                                }
                             }
-                            onActiveTranslationChanged: {
-                                root.searchPanePreferredWidth = root.clampSearchWidth(
-                                    searchResizeHandle.widthAtDragStart - activeTranslation.x)
-                            }
                         }
-                        Keys.onLeftPressed: root.searchPanePreferredWidth =
-                            root.clampSearchWidth(root.searchPanePreferredWidth + 16)
-                        Keys.onRightPressed: root.searchPanePreferredWidth =
-                            root.clampSearchWidth(root.searchPanePreferredWidth - 16)
-                        MichiFocusRing {
-                            visualFocus: searchResizeHandle.activeFocus
-                                && MichiAccessibility.keyboardMode
+                        MichiSeparator { }
+                        MichiMenuItem {
+                            text: qsTr("Change music folder…")
+                            icon.name: "folder"
+                            onTriggered: folderDialog.open()
                         }
-                    }
-
-                    MichiStatusChip {
-                        objectName: "searchNoResultsText"
-                        visible: typeof library !== "undefined" && library
-                            && library.searchActive
-                            && library.searchTotalCount === 0
-                        text: qsTr("No results")
-                        tone: "warning"
-                    }
-
-                    MichiStatusChip {
-                        visible: typeof library !== "undefined" && library
-                            && library.searchActive
-                            && library.searchTotalCount > 0
-                        text: (typeof library !== "undefined" && library ? library.searchTotalCount : 0) + " results"
-                        tone: "active"
-                    }
-
-                    MichiSearchField {
-                        id: searchInput
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 210
-                        text: typeof library !== "undefined" && library ? library.searchQuery : ""
-                        placeholderText: root.searchPlaceholder()
-                        onEdited: query => { if (typeof library !== "undefined" && library) library.search(query) }
-                        onClearRequested: { if (typeof library !== "undefined" && library) library.clear_search() }
-                    }
-
-                    MichiSplitButton {
-                        objectName: "libraryScanSplitButton"
-                        text: root.width < 760 ? "Scan" : "Scan library"
-                        iconName: "library"
-                        secondaryIconName: "folder"
-                        iconOnly: root.width < 980
-                        accessibleName: qsTr("Scan library")
-                        secondaryAccessibleName: qsTr("Choose music folder")
-                        enabled: !root.scanning
-                            && typeof library !== "undefined" && library
-                        onPrimaryClicked: root.performScan()
-                        onSecondaryClicked: folderDialog.open()
                     }
                 }
             }

@@ -28,8 +28,6 @@ Item {
             details.push(String(album.year))
         if (album.trackCount > 0)
             details.push(album.trackCount + (album.trackCount === 1 ? " track" : " tracks"))
-        if (album.technicalSummary)
-            details.push(album.technicalSummary)
         return details.join(" · ")
     }
 
@@ -129,22 +127,13 @@ Item {
                 }
                 MichiText {
                     Layout.fillWidth: true
-                    visible: root.album && root.album.technicalSummary ? (root.album.technicalSummary.length > 0) : false
-                    text: root.album && root.album.technicalSummary ? root.album.technicalSummary : ""
-                    role: "technical"
-                    technical: true
-                    color: root.selected ? MichiPalette.auroraCyan : MichiPalette.textMuted
-                    elide: Text.ElideRight
-                }
-                MichiText {
-                    Layout.fillWidth: true
-                    visible: MichiThemeState.density === "comfortable"
                     text: root.album
                         ? root.album.trackCount
                             + (root.album.trackCount === 1 ? " track" : " tracks")
                         : ""
                     role: "caption"
-                    color: MichiPalette.textMuted
+                    color: root.selected
+                        ? MichiPalette.textSecondary : MichiPalette.textMuted
                     elide: Text.ElideRight
                 }
             }

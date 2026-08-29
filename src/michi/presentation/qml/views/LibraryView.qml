@@ -4,6 +4,7 @@ import "../theme"
 
 Item {
     id: root
+    objectName: "libraryView"
 
     property string currentTab: "songs"
     // M6-PRODUCTION-INTEGRATION: albumMode lives HERE (the root survives

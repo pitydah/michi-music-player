@@ -270,7 +270,9 @@ def test_timeline_year_uses_neutral_accent():
 
 def test_vinyl_label_neutral_when_unselected():
     content = read("media/VinylDisc.qml")
-    assert "? MichiPalette.auroraCyan : MichiPalette.graphite" in content
+    assert "sourcePath: root.labelArtworkPath" in content
+    assert "color: MichiPalette.obsidian" in content
+    assert "MichiPalette.auroraCyan" not in content
     assert "MichiScrollBar" in read("views/VinylWallView.qml")
 
 
@@ -285,19 +287,19 @@ def test_cover_flow_single_cyan_accent():
     )  # auroraBlue may exist elsewhere; the border must be cyan
 
 
-def test_artist_hero_is_elevated_glass():
-    """Main authority: the artist header uses the aurora gradient avatar
-    + the M6.9 enrichment knowledge surface."""
+def test_artist_hero_uses_true_portrait_and_contextual_enrichment():
+    """Artist identity uses a true portrait without a decorative gradient."""
     content = read("views/ArtistDetailView.qml")
-    assert "MichiPalette.auroraBlue" in content
-    assert "EnrichmentStatusBar" in content
+    assert "ArtistPortraitArtwork" in content
+    assert "EnrichmentInlineState" in content
+    assert "MichiPalette.auroraBlue" not in content
 
 
 def test_album_detail_no_duplicated_metadata_at_wide_widths():
-    """Album detail uses width breakpoints (main authority: 960/760) to
-    avoid duplicated metadata on wide layouts."""
+    """Album detail removes the duplicated fact rail at every width."""
     content = read("views/AlbumDetailView.qml")
-    assert content.count("root.width >= 960") >= 1
+    assert 'objectName: "albumFactRail"' not in content
+    assert "LIBRARY QUALITY" not in content
     assert "root.width < 760" in content
     assert "root.width >= 760" in content
 
@@ -438,7 +440,7 @@ def test_no_hardcoded_visible_strings_in_mixed_files():
     assert 'text: qsTr("Cancel")' in toolbar
     header = read("views/LibraryHeader.qml")
     assert 'label: qsTr("Grid")' in header
-    assert 'text: qsTr("VIEWS")' in header
+    assert 'text: qsTr("VIEWS")' not in header
     settings = read("views/SettingsView.qml")
     assert 'title: qsTr("Settings")' in settings
     assert 'text: qsTr("High contrast")' in settings

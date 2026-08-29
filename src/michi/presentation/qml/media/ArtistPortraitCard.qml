@@ -14,7 +14,7 @@ Item {
     signal selectedRequested()
 
     implicitWidth: 184
-    implicitHeight: 224
+    implicitHeight: 190
     activeFocusOnTab: true
     Accessible.role: Accessible.ListItem
     Accessible.name: artist ? artist.name : qsTr("Artist")
@@ -30,39 +30,21 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: MichiSpacing.sm
+        spacing: MichiSpacing.xs
 
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: width
-
-            Artwork {
-                id: portrait
-                anchors.centerIn: parent
-                width: Math.min(parent.width, parent.height)
-                height: width
-                radius: width / 2
-                requestedSize: Math.round(width * Screen.devicePixelRatio)
-                sourcePath: root.portraitPath
-                fallbackText: root.artist ? root.artist.name : "A"
-            }
-
-            Rectangle {
-                anchors.fill: portrait
-                radius: width / 2
-                color: "transparent"
-                border.width: root.selected ? 2 : 1
-                border.color: root.selected
-                    ? MichiPalette.auroraCyan
-                    : hover.hovered
-                        ? MichiSemanticColors.borderStrong
-                        : MichiSemanticColors.borderSubtle
-
-                Behavior on border.color {
-                    enabled: !MichiAccessibility.reducedMotion
-                    ColorAnimation { duration: MichiMotion.micro }
-                }
-            }
+        ArtistPortraitArtwork {
+            id: portrait
+            readonly property real resolvedSize:
+                MichiThemeState.density === "compact" ? 98
+                : MichiThemeState.density === "comfortable" ? 136 : 120
+            Layout.preferredWidth: Math.min(parent.width, resolvedSize)
+            Layout.preferredHeight: Layout.preferredWidth
+            Layout.alignment: Qt.AlignHCenter
+            requestedSize: Math.round(width * Screen.devicePixelRatio)
+            sourcePath: root.portraitPath
+            fallbackText: root.artist ? root.artist.name : "A"
+            selected: root.selected
+            hovered: hover.hovered
         }
 
         MichiText {
@@ -83,7 +65,9 @@ Item {
                     + (root.artist.trackCount === 1 ? " track" : " tracks")
                 : ""
             role: "caption"
-            color: root.selected ? MichiPalette.auroraCyan : MichiPalette.textMuted
+            visible: MichiThemeState.density !== "compact"
+            color: root.selected
+                ? MichiPalette.textSecondary : MichiPalette.textMuted
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
         }

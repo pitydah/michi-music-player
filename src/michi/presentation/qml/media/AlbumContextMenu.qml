@@ -46,14 +46,14 @@ MichiMenu {
         }
     }
     MichiSeparator { }
-    MenuItem { text: qsTr("Open Album"); icon.name: "album"; visible: root.album !== null; onTriggered: library.select_album(root.album.key) }
-    MenuItem { text: qsTr("Play Album"); icon.name: "play"; visible: root.album !== null; onTriggered: library.play_album(root.album.key) }
-    MenuItem { text: qsTr("Add Album to Queue"); icon.name: "queue"; visible: root.album !== null && library.canQueueTracks; onTriggered: library.queue_album(root.album.key) }
-    MichiSeparator { }
-    MenuItem { text: qsTr("Add Album to Playlist"); icon.name: "add"; visible: root.album !== null && library.canAddTracksToPlaylists; onTriggered: library.request_album_playlist_target(root.album.key) }
-    MenuItem { text: qsTr("Create Playlist from Album…"); icon.name: "plus"; visible: root.album !== null && library.canAddTracksToPlaylists; onTriggered: library.request_new_playlist_for_album(root.album.key) }
+    MichiMenuItem { text: qsTr("Open Album"); icon.name: "album"; visible: root.album !== null; onTriggered: library.select_album(root.album.key) }
+    MichiMenuItem { text: qsTr("Play Album"); icon.name: "play"; visible: root.album !== null; onTriggered: library.play_album(root.album.key) }
+    MichiMenuItem { text: qsTr("Add Album to Queue"); icon.name: "queue"; visible: root.album !== null && library.canQueueTracks; onTriggered: library.queue_album(root.album.key) }
+    MichiSeparator { visible: root.album !== null && library.canAddTracksToPlaylists }
+    MichiMenuItem { text: qsTr("Add Album to Playlist"); icon.name: "add"; visible: root.album !== null && library.canAddTracksToPlaylists; onTriggered: library.request_album_playlist_target(root.album.key) }
+    MichiMenuItem { text: qsTr("Create Playlist from Album…"); icon.name: "plus"; visible: root.album !== null && library.canAddTracksToPlaylists; onTriggered: library.request_new_playlist_for_album(root.album.key) }
     MichiSeparator { visible: root.album !== null && Boolean(root.album.artistKey) }
-    MenuItem { text: qsTr("Go to Artist"); icon.name: "artist"; visible: root.album !== null && Boolean(root.album.artistKey); onTriggered: library.select_artist(root.album.artistKey) }
+    MichiMenuItem { text: qsTr("Go to Artist"); icon.name: "artist"; visible: root.album !== null && Boolean(root.album.artistKey); onTriggered: library.select_artist(root.album.artistKey) }
     MichiSeparator { }
-    MenuItem { text: qsTr("Album Properties"); icon.name: "info"; visible: root.album !== null; onTriggered: library.request_album_properties(root.album.key) }
+    MichiMenuItem { text: qsTr("Album Properties"); icon.name: "info"; visible: root.album !== null; onTriggered: library.request_album_properties(root.album.key) }
 }

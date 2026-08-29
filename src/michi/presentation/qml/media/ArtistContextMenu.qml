@@ -17,10 +17,9 @@ MichiMenu {
             anchors.leftMargin: MichiSpacing.sm
             anchors.rightMargin: MichiSpacing.sm
             spacing: MichiSpacing.sm
-            Artwork {
+            ArtistPortraitArtwork {
                 Layout.preferredWidth: 36
                 Layout.preferredHeight: 36
-                radius: width / 2
                 sourcePath: root.artist ? root.artist.artworkPath : ""
                 fallbackText: root.artist ? root.artist.name : "A"
                 requestedSize: 72
@@ -50,8 +49,8 @@ MichiMenu {
         }
     }
     MichiSeparator { }
-    MenuItem { text: qsTr("Open Artist"); icon.name: "artist"; visible: root.artist !== null; onTriggered: library.select_artist(root.artist.key) }
-    MenuItem { text: qsTr("Add Artist to Queue"); icon.name: "queue"; visible: root.artist !== null && library.canQueueTracks; onTriggered: library.queue_artist(root.artist.key) }
-    MichiSeparator { }
-    MenuItem { text: qsTr("Add Artist to Playlist"); icon.name: "add"; visible: root.artist !== null && library.canAddTracksToPlaylists; onTriggered: library.request_artist_playlist_target(root.artist.key) }
+    MichiMenuItem { text: qsTr("Open Artist"); icon.name: "artist"; visible: root.artist !== null; onTriggered: library.select_artist(root.artist.key) }
+    MichiMenuItem { text: qsTr("Add Artist to Queue"); icon.name: "queue"; visible: root.artist !== null && library.canQueueTracks; onTriggered: library.queue_artist(root.artist.key) }
+    MichiSeparator { visible: root.artist !== null && library.canAddTracksToPlaylists }
+    MichiMenuItem { text: qsTr("Add Artist to Playlist"); icon.name: "add"; visible: root.artist !== null && library.canAddTracksToPlaylists; onTriggered: library.request_artist_playlist_target(root.artist.key) }
 }

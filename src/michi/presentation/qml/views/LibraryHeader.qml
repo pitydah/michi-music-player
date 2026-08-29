@@ -27,7 +27,7 @@ PageHeader {
         && (typeof library === "undefined" || !library || library.selectedAlbumKey === "")
     readonly property var albumViewModes: [
         { value: "grid", label: qsTr("Grid"), icon: "view-grid" },
-        { value: "cover", label: qsTr("PathView"), icon: "view-path" },
+        { value: "cover", label: qsTr("Cover Flow"), icon: "view-path" },
         { value: "vinyl", label: qsTr("Vinyl Wall"), icon: "view-vinyl" },
         { value: "timeline", label: qsTr("Timeline"), icon: "view-timeline" },
         { value: "magazine", label: qsTr("Magazine"), icon: "view-magazine" },
@@ -59,19 +59,39 @@ PageHeader {
         }
     }
 
-    title: root.tabTitle()
-    subtitle: (typeof library !== "undefined" && library && library.fileCount > 0)
-        ? library.fileCount + " tracks · " + library.albumCount + " albums · "
-            + library.artistCount + " artists"
-        : "Your local music collection"
-
-    MichiText {
-        visible: root.albumViewsVisible && root.width >= 1120
-        text: qsTr("VIEWS")
-        role: "technical"
-        technical: true
-        color: MichiPalette.textMuted
+    function contextualSubtitle() {
+        if (typeof library === "undefined" || !library)
+            return qsTr("Your local music collection")
+        switch (root.currentTab) {
+        case "albums":
+            return library.albumCount === 1
+                ? qsTr("1 album") : qsTr("%1 albums").arg(library.albumCount)
+        case "artists":
+            return library.artistCount === 1
+                ? qsTr("1 artist") : qsTr("%1 artists").arg(library.artistCount)
+        case "genres":
+            return library.genres.length === 1
+                ? qsTr("1 genre") : qsTr("%1 genres").arg(library.genres.length)
+        case "favorites":
+            return library.favoriteTrackRows.length === 1
+                ? qsTr("1 favorite")
+                : qsTr("%1 favorites").arg(library.favoriteTrackRows.length)
+        case "history":
+            return library.historyTrackRows.length === 1
+                ? qsTr("1 track")
+                : qsTr("%1 tracks").arg(library.historyTrackRows.length)
+        case "recently":
+            return library.recentlyAddedTrackRows.length === 1
+                ? qsTr("1 track")
+                : qsTr("%1 tracks").arg(library.recentlyAddedTrackRows.length)
+        default:
+            return library.fileCount === 1
+                ? qsTr("1 track") : qsTr("%1 tracks").arg(library.fileCount)
+        }
     }
+
+    title: root.tabTitle()
+    subtitle: root.contextualSubtitle()
 
     MichiSegmentedControl {
         objectName: "albumViewSwitcher"

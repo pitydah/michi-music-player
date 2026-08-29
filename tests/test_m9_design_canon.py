@@ -296,7 +296,7 @@ def test_album_grid_and_detail_have_premium_information_hierarchy() -> None:
     assert "minimumCardWidth" in grid
     assert "maximumCardWidth" in grid
     assert "resolvedCardWidth" in grid
-    assert "root.album.technicalSummary" in card
+    assert "root.album.technicalSummary" not in card
     assert "root.album.trackCount" in card
     assert 'objectName: "albumHeroSurface"' in detail
     assert 'objectName: "albumTrackTableSurface"' in detail

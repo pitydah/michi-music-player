@@ -92,8 +92,10 @@ GridView {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.horizontalCenterOffset: hover.hovered || vinylTile.selected
-                    ? width * 0.16 : width * 0.04
+                    ? width * 0.34 : width * 0.14
                 selected: vinylTile.selected
+                labelArtworkPath: modelData.artworkPath
+                fallbackText: modelData.title
 
                 Behavior on anchors.horizontalCenterOffset {
                     enabled: !MichiAccessibility.reducedMotion
@@ -135,20 +137,20 @@ GridView {
             }
             MichiText {
                 Layout.fillWidth: true
-                text: modelData.technicalSummary || (modelData.trackCount
-                    + (modelData.trackCount === 1 ? " track" : " tracks"))
-                role: "technical"
-                technical: true
+                text: modelData.artist + (modelData.year > 0
+                    ? " · " + modelData.year : "")
+                role: "secondary"
                 color: vinylTile.selected
-                    ? MichiPalette.auroraCyan : MichiPalette.textMuted
+                    ? MichiPalette.textSecondary : MichiPalette.textMuted
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
             }
             MichiText {
                 Layout.fillWidth: true
-                text: modelData.artist + (modelData.year > 0
-                    ? " · " + modelData.year : "")
-                role: "secondary"
+                text: modelData.trackCount
+                    + (modelData.trackCount === 1 ? " track" : " tracks")
+                role: "caption"
+                color: MichiPalette.textMuted
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
             }

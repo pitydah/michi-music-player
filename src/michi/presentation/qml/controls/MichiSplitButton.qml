@@ -13,6 +13,7 @@ FocusScope {
     property string accessibleName: text
     property string secondaryAccessibleName: qsTr("More options")
     property bool iconOnly: false
+    readonly property real secondaryWidth: 28
     signal primaryClicked()
     signal secondaryClicked()
 
@@ -25,8 +26,8 @@ FocusScope {
         radius: MichiRadius.md
         color: MichiPalette.smoke
         border.width: 1
-        border.color: primaryButton.hovered || secondaryButton.hovered
-            ? MichiSemanticColors.borderStrong
+        border.color: root.activeFocus
+            ? MichiSemanticColors.auroraCyanBorderSubtle
             : MichiSemanticColors.borderSubtle
         clip: true
 
@@ -83,7 +84,7 @@ FocusScope {
             Button {
                 id: secondaryButton
                 Layout.fillHeight: true
-                Layout.preferredWidth: MichiMetrics.controlMedium
+                Layout.preferredWidth: 28
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
                 Accessible.role: Accessible.Button
@@ -93,7 +94,7 @@ FocusScope {
                 contentItem: MichiIcon {
                     anchors.centerIn: parent
                     name: root.secondaryIconName
-                    width: MichiMetrics.iconSmall
+                    width: 12
                     height: width
                     iconColor: root.enabled
                         ? MichiPalette.textSecondary : MichiPalette.textDisabled

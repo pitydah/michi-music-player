@@ -2,5 +2,5 @@ import QtQuick
 
 TrackContextMenu {
     canRemove: true
-    removeText: qsTr("Remove from This Playlist")
+    removeText: qsTr("Remove from this Playlist")
 }

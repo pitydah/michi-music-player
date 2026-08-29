@@ -218,7 +218,9 @@ class TestEnrichmentComponents:
         assert root.property("state") == "IDLE"
         root.setProperty("state", "OFFLINE")
         root.setProperty("message", "Offline — showing saved information")
-        assert root.property("visible") is True
+        # A standalone QQuickItem has no visible scene parent. Assert the
+        # declarative visibility authority rather than mutating `visible`.
+        assert root.property("shouldShow") is True
         engine.deleteLater()
 
     def test_knowledge_card_loads(self, qapp):

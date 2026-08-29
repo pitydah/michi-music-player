@@ -26,7 +26,8 @@ def test_scan_and_folder_actions_share_native_folder_picker_contract() -> None:
     assert "library.scan(library.currentDir)" in toolbar
     assert "folderDialog.open()" in toolbar
     assert "LibrarySourcePopover" not in toolbar
-    assert "&& library.currentDir.length > 0" not in toolbar
+    assert "enabled: !root.scanning" in toolbar
+    assert "onPrimaryClicked: root.performScan()" in toolbar
 
 
 def test_precision_mode_is_completely_removed_from_production_qml() -> None:

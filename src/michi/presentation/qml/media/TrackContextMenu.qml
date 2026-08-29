@@ -81,13 +81,13 @@ MichiMenu {
         }
     }
     MichiSeparator { }
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Play Now")
         icon.name: "play"
         visible: root.canPlayNow
         onTriggered: root.playNowRequested()
     }
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Add to Queue")
         icon.name: "queue"
         visible: root.canQueue
@@ -96,19 +96,19 @@ MichiMenu {
     MichiSeparator {
         visible: root.canAddToPlaylist || root.canFavorite
     }
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Add to Playlist")
         icon.name: "add"
         visible: root.canAddToPlaylist
         onTriggered: root.addToPlaylistRequested()
     }
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Add to New Playlist…")
         icon.name: "plus"
         visible: root.canAddToPlaylist
         onTriggered: root.addToNewPlaylistRequested()
     }
-    MenuItem {
+    MichiMenuItem {
         text: root.favorite ? qsTr("Remove from Favorites") : qsTr("Add to Favorites")
         icon.name: "heart"
         visible: root.canFavorite
@@ -117,39 +117,39 @@ MichiMenu {
     MichiSeparator {
         visible: root.canGoToAlbum || root.canGoToArtist
     }
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Go to Album")
         icon.name: "album"
         visible: root.canGoToAlbum
         onTriggered: root.goToAlbumRequested()
     }
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Go to Artist")
         icon.name: "artist"
         visible: root.canGoToArtist
         onTriggered: root.goToArtistRequested()
     }
     MichiSeparator { visible: root.canShowProperties }
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Properties")
         icon.name: "info"
         visible: root.canShowProperties
         onTriggered: root.propertiesRequested()
     }
     MichiSeparator { visible: root.canRemove }
-    MenuItem {
+    MichiMenuItem {
         text: root.removeText
         icon.name: "trash"
         visible: root.canRemove
         onTriggered: root.removeRequested()
     }
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Move Up")
         icon.name: "up"
         visible: root.canMoveUp
         onTriggered: root.moveUpRequested()
     }
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Move Down")
         icon.name: "down"
         visible: root.canMoveDown

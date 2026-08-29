@@ -390,7 +390,8 @@ server.
   a clamped mouse and keyboard resize handle on desktop widths. Scan and source
   selection share one `MichiSplitButton`: the primary segment scans the current
   source or opens the native picker when no source exists; the secondary
-  segment always opens the picker.
+  segment opens the source menu, where the current folder is visible and can be
+  changed through the native picker.
 - Vinyl Wall reuses `VinylDisc`, preserves the sleeve/disc hierarchy without
   groove repeaters or infinite rotation, and opens the canonical `albumKey` on
   the first primary tap. Keyboard and exact-target context actions remain.
@@ -407,3 +408,38 @@ server.
 - Michi Legacy informed the sleeve/disc offset and circular portrait hierarchy;
   its hover scaling, groove decoration, and infinite spin were intentionally
   rejected by the current motion and material canon.
+
+### M9-R5 Library premium UI/UX refinement
+
+- Library headings now pair the active section with factual collection counts.
+  The redundant `VIEWS` label is removed, and PathView is presented to users as
+  **Cover Flow** without changing the canonical six-view model.
+- Search and Scan have independent geometry. Search keeps a bounded,
+  keyboard-operable desktop resize handle; Scan uses one compact split-button
+  silhouette with a dedicated source menu.
+- Artist galleries and details use `ArtistPortraitArtwork`, which applies a
+  true circular `MultiEffect` mask. Gallery prefetch is debounced to the visible
+  rows plus one row of overscan and remains cache-first, online-gated,
+  deduplicated, and bounded to 12 pending requests and two inflight requests.
+- Album and artist details follow a music-first order: back intent, identity,
+  concise local facts, contextual enrichment, related albums, then tracks.
+  Empty knowledge surfaces do not render, and one inline component owns status
+  and enrichment actions.
+- Album cards no longer promote technical summaries. Vinyl Wall uses restrained
+  grooves, a real artwork center label, and a physical sleeve reveal without
+  infinite rotation. Cover Flow reduces peripheral fragmentation and keeps one
+  focal selection surface.
+- `MichiTrackTable` supports `songs`, `album`, and `artist` profiles while
+  preserving the shared column authority. Artwork is capped at 52 px, Duration
+  remains at least 76 px, Actions is fixed, and cache buffering is never
+  negative during layout transitions.
+- Context menus use `MichiMenuItem` for deterministic 36 px rows. Artist menu
+  identity uses the same true portrait treatment; Queue and Playlist removal
+  copy remains context-specific.
+- Track artwork is projected in `LibraryBridge` once per represented canonical
+  album, so artist and album track tables do not perform QML-side album scans.
+- Local acceptance evidence: **3036 passed, 1 skipped** under isolated XDG
+  state; Ruff, formatting, qmllint, compileall, wheel build, production QML
+  runtime, responsive captures at 1920/1646/1440/1200/800, and all canonical
+  palette/material/glass/NowPlaying firewalls pass. Publication and PR CI remain
+  pending, so the work package stays in `VERIFY`.

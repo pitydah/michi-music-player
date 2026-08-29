@@ -252,6 +252,15 @@ class EnrichmentBridge(QObject):
         self._portrait_prefetch_queue.append(local_artist_key)
         self._pump_portrait_prefetch()
 
+    @Slot("QVariantList")
+    def prefetch_artist_portraits(self, local_artist_keys: list) -> None:
+        """Admit one debounced viewport batch through the same bounded queue."""
+        if self._disposed or not self._online_enabled:
+            return
+        for key in local_artist_keys[:_MAX_PORTRAIT_PREFETCH_QUEUE]:
+            if isinstance(key, str):
+                self.prefetch_artist_portrait(key)
+
     @Slot(str)
     def activate_artist(self, local_artist_key: str) -> None:
         if self._disposed or not local_artist_key:

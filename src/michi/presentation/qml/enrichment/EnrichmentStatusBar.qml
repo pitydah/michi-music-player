@@ -12,10 +12,11 @@ RowLayout {
     property string state: "IDLE"
     property string message: ""
     property bool busy: false
+    readonly property bool shouldShow: root.state !== "IDLE"
+        && root.state !== "READY"
 
     spacing: MichiSpacing.md
-    onStateChanged: root.visible = root.state !== "IDLE" && root.state !== "READY"
-    onMessageChanged: root.visible = root.state !== "IDLE" && root.state !== "READY"
+    visible: root.shouldShow
 
     function _tone() {
         switch (root.state) {

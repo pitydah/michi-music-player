@@ -5,7 +5,7 @@ QtObject {
     id: root
     readonly property real numberWidth: 28
 
-    property real artworkWidth: 40
+    property real artworkWidth: 44
     property real titleWidth: 300
     property real artistWidth: 190
     property real albumWidth: 230
@@ -19,10 +19,11 @@ QtObject {
     property real genreWidth: 150
     property real composerWidth: 180
     property real yearWidth: 68
-    property real durationWidth: 64
-    property real actionsWidth: 74
+    property real durationWidth: 80
+    readonly property real actionsWidth: 74
 
     readonly property real artworkMinWidth: 30
+    readonly property real artworkMaxWidth: 52
     readonly property real titleMinWidth: 220
     readonly property real artistMinWidth: 120
     readonly property real albumMinWidth: 140
@@ -36,8 +37,8 @@ QtObject {
     readonly property real genreMinWidth: 100
     readonly property real composerMinWidth: 120
     readonly property real yearMinWidth: 58
-    readonly property real durationMinWidth: 56
-    readonly property real actionsMinWidth: 40
+    readonly property real durationMinWidth: 76
+    readonly property real actionsMinWidth: 74
 
     property bool artworkVisible: true
     property bool titleVisible: true
@@ -67,17 +68,22 @@ QtObject {
     function setWidth(column, value) {
         if (root[column + "Width"] === undefined)
             return
-        root[column + "Width"] = Math.max(minimumWidthFor(column), value)
+        if (column === "actions")
+            return
+        var bounded = Math.max(minimumWidthFor(column), value)
+        if (column === "artwork")
+            bounded = Math.min(root.artworkMaxWidth, bounded)
+        root[column + "Width"] = bounded
     }
 
     function resetWidth(column) {
         var defaults = {
-            artwork: 40, title: 300, artist: 190, album: 230, format: 88,
+            artwork: 44, title: 300, artist: 190, album: 230, format: 88,
             sampleRate: 100, bitDepth: 82, dsdRate: 92, bitrate: 90, channels: 82,
             fileSize: 90, genre: 150, composer: 180, year: 68,
-            duration: 64, actions: 74
+            duration: 80, actions: 74
         }
-        if (defaults[column] !== undefined)
+        if (defaults[column] !== undefined && column !== "actions")
             root[column + "Width"] = defaults[column]
     }
 

@@ -19,7 +19,9 @@ from michi.domain.library import (
     LibraryScanStatus,
     TrackRef,
     build_timeline_projection,
+    make_album_key,
     make_artist_key,
+    resolve_album_artist,
 )
 from michi.presentation.track_projection import project_track_row
 
@@ -389,7 +391,7 @@ class LibraryBridge(QObject):
         return self._service.artwork_path_for(self._selected_album_key) or ""
 
     def _get_album_tracks(self) -> list[dict]:
-        return [project_track_row(ref) for ref in self._album_track_refs]
+        return self._track_rows_with_artwork(self._album_track_refs)
 
     def _get_selected_artist_key(self) -> str:
         return self._selected_artist_key
@@ -412,7 +414,7 @@ class LibraryBridge(QObject):
         )
 
     def _get_artist_tracks(self) -> list[dict]:
-        return [self._track_row(ref) for ref in self._artist_track_refs]
+        return self._track_rows_with_artwork(self._artist_track_refs)
 
     def _get_artist_albums(self) -> list[dict]:
         artist_paths = {ref.file_path for ref in self._artist_track_refs}
@@ -471,11 +473,31 @@ class LibraryBridge(QObject):
                 break
         return project_track_row(ref, artwork_path=artwork_path)
 
-    def _get_song_rows(self) -> list[dict]:
+    def _track_rows_with_artwork(self, refs) -> list[dict]:
+        """Project canonical album artwork once per represented album."""
+        track_refs = list(refs)
+        album_key_by_path = {
+            ref.file_path: make_album_key(ref.album, resolve_album_artist(ref))
+            for ref in track_refs
+        }
+        artwork_by_album_key = {
+            album_key: self._service.artwork_path_for(album_key) or ""
+            for album_key in set(album_key_by_path.values())
+        }
         return [
-            self._track_row_with_artwork(ref)
-            for ref in self._track_query.sort_tracks(self._visible_track_refs())
+            project_track_row(
+                ref,
+                artwork_path=artwork_by_album_key.get(
+                    album_key_by_path[ref.file_path], ""
+                ),
+            )
+            for ref in track_refs
         ]
+
+    def _get_song_rows(self) -> list[dict]:
+        return self._track_rows_with_artwork(
+            self._track_query.sort_tracks(self._visible_track_refs())
+        )
 
     def _get_track_sort_column(self) -> str:
         return self._track_query.state.column
