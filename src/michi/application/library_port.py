@@ -1,9 +1,15 @@
-"""Application ports — library scanner interface."""
+"""Application ports — library scanner interface and catalog boundary."""
 
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 from michi.domain.library import LibraryDiagnosticCode
+from michi.domain.library_catalog import (
+    LibrarySource,
+    MediaAvailability,
+    MediaFileRecord,
+    TrackRecord,
+)
 
 
 class LibraryFilesystemError(RuntimeError):
@@ -20,6 +26,73 @@ class LibraryFilesystemError(RuntimeError):
         self.path = path
         self.detail = detail
         super().__init__(detail or str(path))
+
+
+class LibraryCatalogError(RuntimeError):
+    """Base class for authoritative catalog failures (M6-EXT-R4).
+
+    Authoritative operations either commit or raise — never log-and-succeed.
+    """
+
+
+class LibraryCatalogStorageError(LibraryCatalogError):
+    """A catalog write/read failed at the storage level.
+
+    Authoritative operation success means the write committed; storage
+    failures surface here instead of being swallowed.
+    """
+
+
+class LibraryCatalogSchemaError(LibraryCatalogError):
+    """The catalog database shape is unusable: future version, malformed
+    version, or missing authoritative tables. Fail closed — never recreate
+    missing authoritative tables empty."""
+
+
+class LibraryCatalogPort(ABC):
+    """Authoritative catalog boundary (M6-EXT-R4).
+
+    The catalog (sources / media files / tracks / stable identities) is USER
+    AUTHORITY and is deliberately separate from the rebuildable library
+    index cache. Implementations MUST fail closed on schema problems and MUST
+    surface storage failures as ``LibraryCatalogStorageError`` (never
+    log-and-return-success).
+    """
+
+    @abstractmethod
+    def schema_version(self) -> int: ...
+
+    @abstractmethod
+    def load_sources(self) -> tuple[LibrarySource, ...]: ...
+
+    @abstractmethod
+    def load_media(self) -> tuple[MediaFileRecord, ...]: ...
+
+    @abstractmethod
+    def load_tracks(self) -> tuple[TrackRecord, ...]: ...
+
+    @abstractmethod
+    def media_for_source(self, source_id: str) -> tuple[MediaFileRecord, ...]: ...
+
+    @abstractmethod
+    def upsert_source(self, source: LibrarySource) -> None: ...
+
+    @abstractmethod
+    def set_source_enabled(self, source_id: str, enabled: bool) -> None: ...
+
+    @abstractmethod
+    def retire_source(self, source_id: str) -> None: ...
+
+    @abstractmethod
+    def upsert_media(self, records: tuple[MediaFileRecord, ...]) -> None: ...
+
+    @abstractmethod
+    def mark_media_availability(
+        self, media_id: str, availability: MediaAvailability
+    ) -> None: ...
+
+    @abstractmethod
+    def upsert_tracks(self, tracks: tuple[TrackRecord, ...]) -> None: ...
 
 
 class LibraryScannerPort(ABC):
