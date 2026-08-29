@@ -836,10 +836,12 @@ class LibraryBridge(QObject):
     )
 
     def _track_id_resolvable(self, value: str) -> bool:
-        """Stable identity first; the EXPLICIT legacy discriminator
-        (legacy-path::<path>) is the only path fallback — a raw TrackId is
-        never converted into a filesystem path."""
-        if self._service.trackref_by_id(value) is not None:
+        """Stable identity first (CORRECTIVE SEAL §12/§13). A raw path is
+        accepted ONLY when the library genuinely resolves that exact value
+        as one of its known paths (option B §13) — a UUID is never inferred
+        to be a path via Path(string) type guessing."""
+        trackref_by_id = getattr(self._service, "trackref_by_id", None)
+        if trackref_by_id is not None and trackref_by_id(value) is not None:
             return True
         if value.startswith("legacy-path::"):
             return (
@@ -848,7 +850,9 @@ class LibraryBridge(QObject):
                 )
                 is not None
             )
-        return False
+        # Known-path fallback: only when the exact value is a real library
+        # path today (never Path(uuid) type inference).
+        return self._service.resolve_trackref(Path(value)) is not None
 
     def _get_music_sources(self) -> list[dict]:
         """THIN adapter (M6-EXT-R4 freeze gate §21): presentation consumes

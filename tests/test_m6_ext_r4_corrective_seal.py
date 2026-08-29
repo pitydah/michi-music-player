@@ -518,7 +518,7 @@ class TestTrackIdFirstIntents:
             PlaybackSessionService,
         )
         from michi.application.queue_service import QueueService
-        from michi.domain.library import TrackRef as TR
+        from michi.domain.library import TrackRef as TrackRefModel
         from michi.domain.library_catalog import (
             LibrarySource,
             MediaAvailability,
@@ -546,7 +546,7 @@ class TestTrackIdFirstIntents:
         catalog.apply_source_reconciliation((media,), (track,))
         library = LibraryService(self._ValidatingScanner(), library_prefs=_StubPrefs())
         library._state.tracks = [
-            TR(
+            TrackRefModel(
                 Path("/New/a.flac"),
                 title="a",
                 track_id=track.track_id,
