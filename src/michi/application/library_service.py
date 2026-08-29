@@ -463,58 +463,61 @@ class LibraryService:
         )
 
     def _enrich_albums(self, albums: tuple[AlbumRef, ...]) -> tuple[AlbumRef, ...]:
-        """Mark albums with artwork (M6.5 + M6-PRODUCTION-INTEGRATION):
-        PASS 1 — explicit FRONT cover from ANY album track (two-pass: a
-        back cover on track 1 must never win over a front cover on track 2);
+        """Mark albums with artwork (M6.5 + M6-PRODUCTION-INTEGRATION +
+        M6-EXT-R4-M):
+        PASS 0 — persisted cache lookup: PROVISIONAL cached cover renders
+        immediately (an offline source must NOT blank a valid cached cover);
+        PASS 1 — explicit FRONT cover from ANY album track;
         PASS 2 — first embedded fallback in canonical track order;
         PASS 3 — local artwork from the first track's parent directory;
         PASS 4 — none (has_artwork stays False; the Michi fallback asset is
         RECLASSIFIED to M9 — documented, not silently dropped).
 
-        ``_artwork_paths`` is REBUILT from scratch (atomic replace after the
-        loop) so stale mappings are pruned when albums or their artwork
-        disappear. The cache store + mapping happen exactly once, for
-        whichever source resolved first. Without a provider or cache the
-        albums are returned unchanged, i.e. has_artwork stays False
-        (artwork absence is never an error)."""
-        if self._artwork_provider is None or self._artwork_cache is None:
+        When the source is AVAILABLE the provider passes still run and a
+        CHANGED artwork updates the cache (new content digest → new file →
+        manifest updated → the fresh cover wins). Without any provider the
+        cache-only pass still resolves (offline browse). ``_artwork_paths``
+        is REBUILT from scratch (atomic replace after the loop) so stale
+        mappings are pruned when albums or their artwork disappear."""
+        if self._artwork_cache is None:
             return albums
+        cache_lookup = getattr(self._artwork_cache, "lookup", None)
         next_artwork_paths: dict[str, Path] = {}
         enriched = []
         for album in albums:
-            artwork = None
-            # PASS 0 (M6-EXT-R4-M): the persisted cache mapping resolves
-            # FIRST — an offline source must NOT blank a valid cached cover.
-            cached = None
-            cache_lookup = getattr(self._artwork_cache, "lookup", None)
-            if cache_lookup is not None:
-                cached = cache_lookup(album.key)
+            # PASS 0: provisional cached cover (renders instantly).
+            cached = cache_lookup(album.key) if cache_lookup is not None else None
             if cached is not None:
                 next_artwork_paths[album.key] = cached
-                enriched.append(replace(album, has_artwork=True))
-                continue
-            # PASS 1: explicit FRONT cover anywhere in the album.
-            front_getter = getattr(
-                self._artwork_provider, "get_embedded_front_artwork", None
-            )
-            if front_getter is not None:
-                for track_path in album.track_paths:
-                    artwork = front_getter(track_path)
-                    if artwork is not None:
-                        break
-            # PASS 2: first embedded fallback in canonical track order.
-            if artwork is None:
-                for track_path in album.track_paths:
-                    artwork = self._artwork_provider.get_embedded_artwork(track_path)
-                    if artwork is not None:
-                        break
-            # PASS 3: local artwork from the first track's parent directory.
-            if artwork is None and album.track_paths:
-                artwork = self._artwork_provider.get_local_artwork(
-                    album.track_paths[0].parent
+            artwork = None
+            # Provider passes only when the source is reachable; the
+            # extractor never raises (returns None honestly on failure).
+            if self._artwork_provider is not None:
+                # PASS 1: explicit FRONT cover anywhere in the album.
+                front_getter = getattr(
+                    self._artwork_provider, "get_embedded_front_artwork", None
                 )
-            # PASS 4: none (Michi fallback reclassified to M9).
-            has_artwork = False
+                if front_getter is not None:
+                    for track_path in album.track_paths:
+                        artwork = front_getter(track_path)
+                        if artwork is not None:
+                            break
+                # PASS 2: first embedded fallback in canonical track order.
+                if artwork is None:
+                    for track_path in album.track_paths:
+                        artwork = self._artwork_provider.get_embedded_artwork(
+                            track_path
+                        )
+                        if artwork is not None:
+                            break
+                # PASS 3: local artwork from the first track's parent dir.
+                if artwork is None and album.track_paths:
+                    artwork = self._artwork_provider.get_local_artwork(
+                        album.track_paths[0].parent
+                    )
+            # PASS 4: fresh artwork wins; otherwise the cached cover (if
+            # any) stays — never blank a valid cached cover.
+            has_artwork = cached is not None
             if artwork is not None:
                 stored_path = self._artwork_cache.store(album.key, artwork)
                 if stored_path is not None:
