@@ -80,7 +80,11 @@ class TestEnrichmentCachedFirst:
         )
         albums = (
             AlbumRef(
-                key="k1", title="K", artist="A", track_count=1, duration_ms=1000,
+                key="k1",
+                title="K",
+                artist="A",
+                track_count=1,
+                duration_ms=1000,
                 track_paths=(Path("/a.flac"),),
             ),
         )
@@ -115,7 +119,11 @@ class TestEnrichmentCachedFirst:
         )
         albums = (
             AlbumRef(
-                key="k1", title="K", artist="A", track_count=1, duration_ms=1000,
+                key="k1",
+                title="K",
+                artist="A",
+                track_count=1,
+                duration_ms=1000,
                 track_paths=(Path("/a.flac"),),
             ),
         )

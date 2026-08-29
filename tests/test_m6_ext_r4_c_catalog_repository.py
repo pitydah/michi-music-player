@@ -187,9 +187,7 @@ class TestAuthoritativeWrites:
             repo.upsert_media((orphan,))
 
     def test_fk_restrict_prevents_orphan_track(self, repo) -> None:
-        track = TrackRecord(
-            track_id=new_track_id(), media_file_id="no-such-media"
-        )
+        track = TrackRecord(track_id=new_track_id(), media_file_id="no-such-media")
         with pytest.raises(LibraryCatalogStorageError):
             repo.upsert_tracks((track,))
 
