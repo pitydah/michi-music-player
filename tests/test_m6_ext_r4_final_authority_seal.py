@@ -856,7 +856,6 @@ class TestSourceConfigurationRaces:
             self._held_scan_retired(tmp_path)
         )
         source_id = coordinator.list_sources()[0].library_source_id
-        old_root = coordinator.list_sources()[0].root_path
         new_root = tmp_path / "newroot"
         new_root.mkdir()
         (new_root / "song-new.flac").write_bytes(b"x")
