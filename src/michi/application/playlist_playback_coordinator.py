@@ -94,9 +94,55 @@ class PlaylistPlaybackCoordinator:
         )
 
     def play_playlist_track(self, playlist_id: str, index: int) -> None:
-        """Playlist Detail track click → PLAYLIST context at the clicked
-        index (NOT SINGLE, NOT Queue)."""
-        self.play_playlist(playlist_id, start_index=index)
+        """Playlist Detail track click → PLAYLIST context (P1-04).
+
+        ``index`` is the PLAYLIST MEMBERSHIP index. The resolved playback
+        sequence may be SHORTER (unavailable members are filtered out), so
+        the membership index is mapped to the playback entry BY IDENTITY —
+        never by accidental positional coincidence. An unavailable selected
+        member produces an explicit no-play (nothing else starts)."""
+        playlist = self._playlists.get_playlist(playlist_id)
+        if playlist is None:
+            logger.warning("playlist no encontrada: %s", playlist_id)
+            return
+        refs = playlist.references()
+        if not (0 <= index < len(refs)):
+            return
+        selected = refs[index]
+        entries = self._resolve_entries(playlist_id)
+        if not entries:
+            return
+        entry_index = self._entry_index_for(selected, entries)
+        if entry_index is None:
+            # Explicit no-play for an unavailable member: never a silent
+            # substitution of another track.
+            logger.info(
+                "playlist member %s (index %d) is unavailable; no playback",
+                selected.track_id or selected.fallback_path,
+                index,
+            )
+            return
+        self._session.play_context(
+            PlaybackContextType.PLAYLIST, playlist_id, entries, entry_index
+        )
+
+    @staticmethod
+    def _entry_index_for(selected, entries) -> int | None:
+        """Membership reference → playback entry index by IDENTITY.
+
+        Stable TrackId equality wins when both sides carry it; the path is
+        the fallback ONLY for legacy/path-only members."""
+        for position, entry in enumerate(entries):
+            if selected.track_id and entry.library_track_id:
+                if selected.track_id == entry.library_track_id:
+                    return position
+            elif (
+                not selected.track_id
+                and selected.fallback_path
+                and str(entry.file_path) == selected.fallback_path
+            ):
+                return position
+        return None
 
     def queue_playlist(self, playlist_id: str) -> None:
         """EXPLICIT Queue intent: append playlist tracks to the Queue.

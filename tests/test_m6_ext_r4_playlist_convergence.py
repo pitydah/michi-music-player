@@ -240,3 +240,102 @@ class _FakeBackend:
     def subscribe_playback_state_changed(self, cb): ...
 
     def unsubscribe_playback_state_changed(self, cb): ...
+
+
+class TestPlaylistMembershipIdentityMapping:
+    """P1-04 golden: membership index → playback entry BY IDENTITY."""
+
+    def _harness_with_unavailable(self, library, playlists, coordinator, resolver):
+        """[A available, B missing, C available] playlist."""
+        t1 = _track("/a.flac", "T1")
+        t3 = _track("/c.flac", "T3")
+        missing = TrackRef(
+            Path("/b.flac"),
+            title="b",
+            track_id="T2",
+            availability=MediaAvailability.MISSING,
+        )
+        library._state.tracks = [t1, missing, t3]
+        library._rebuild_derived_library_state()
+        playlist = playlists.create_playlist_with_references(
+            "Mix",
+            [
+                PlaylistTrackReference(track_id="T1", fallback_path="/a.flac"),
+                PlaylistTrackReference(track_id="T2", fallback_path="/b.flac"),
+                PlaylistTrackReference(track_id="T3", fallback_path="/c.flac"),
+            ],
+        )
+        return playlist
+
+    def test_click_c_after_filtered_b_reproduces_c(self) -> None:
+        """[A ✓, B ✗, C ✓] — click membership index 2 → backend C, never A."""
+        t1 = _track("/a.flac", "T1")
+        library, playlists, coordinator, resolver = _harness([t1])
+        playlist = self._harness_with_unavailable(
+            library, playlists, coordinator, resolver
+        )
+
+        coordinator.play_playlist_track(playlist.playlist_id, 2)
+        pending = coordinator._session._pending
+        assert pending is not None
+        assert pending.file_path == Path("/c.flac")
+        assert pending.library_track_id == "T3"
+
+    def test_click_unavailable_member_plays_nothing(self) -> None:
+        """Click B (unavailable): explicit no-play — NOT A, NOT C."""
+        t1 = _track("/a.flac", "T1")
+        library, playlists, coordinator, resolver = _harness([t1])
+        playlist = self._harness_with_unavailable(
+            library, playlists, coordinator, resolver
+        )
+
+        coordinator.play_playlist_track(playlist.playlist_id, 1)
+        assert coordinator._session._pending is None  # nothing started
+
+    def test_first_unavailable_click_last_member(self) -> None:
+        """[A ✗, B ✓, C ✓] — click index 2 → C (not shifted to B)."""
+        t2 = _track("/b.flac", "T2")
+        library, playlists, coordinator, resolver = _harness([t2])
+        missing = TrackRef(
+            Path("/a.flac"),
+            title="a",
+            track_id="T1",
+            availability=MediaAvailability.MISSING,
+        )
+        library._state.tracks = [missing, t2, _track("/c.flac", "T3")]
+        library._rebuild_derived_library_state()
+        playlist = playlists.create_playlist_with_references(
+            "Mix",
+            [
+                PlaylistTrackReference(track_id="T1", fallback_path="/a.flac"),
+                PlaylistTrackReference(track_id="T2", fallback_path="/b.flac"),
+                PlaylistTrackReference(track_id="T3", fallback_path="/c.flac"),
+            ],
+        )
+        coordinator.play_playlist_track(playlist.playlist_id, 2)
+        assert coordinator._session._pending.library_track_id == "T3"
+
+    def test_legacy_path_only_member_maps_by_path(self) -> None:
+        library, playlists, coordinator, resolver = _harness([])
+        playlist = playlists.create_playlist_with_references(
+            "Legacy",
+            [
+                PlaylistTrackReference(track_id="", fallback_path="/x.flac"),
+                PlaylistTrackReference(track_id="", fallback_path="/y.flac"),
+            ],
+        )
+        coordinator.play_playlist_track(playlist.playlist_id, 1)
+        assert coordinator._session._pending.file_path == Path("/y.flac")
+
+    def test_moved_track_id_maps_by_identity_not_path(self) -> None:
+        t1 = _track("/old/A.flac", "T1")
+        library, playlists, coordinator, resolver = _harness([t1])
+        playlist = playlists.create_playlist_with_references(
+            "Mix", [PlaylistTrackReference(track_id="T1", fallback_path="/old/A.flac")]
+        )
+        # Move: resolved current path is NEW; identity T1 maps the click.
+        library._state.tracks = [_track("/new/B.flac", "T1")]
+        library._rebuild_derived_library_state()
+        coordinator.play_playlist_track(playlist.playlist_id, 0)
+        assert coordinator._session._pending.file_path == Path("/new/B.flac")
+        assert coordinator._session._pending.library_track_id == "T1"
