@@ -62,6 +62,10 @@ class _PlaylistPort:
     def save_navigation(self, navigation):
         pass
 
+    def save_playlists_with_navigation(self, playlists, navigation):
+        self.save(playlists)
+        self.save_navigation(navigation)
+
 
 def _library():
     tracks = [

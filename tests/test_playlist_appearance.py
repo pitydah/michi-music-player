@@ -38,6 +38,10 @@ class MemoryPlaylistsPort:
     def save_navigation(self, state):
         self.navigation = state
 
+    def save_playlists_with_navigation(self, playlists, navigation):
+        self.save(playlists)
+        self.save_navigation(navigation)
+
 
 def test_playlist_appearance_defaults_to_auto() -> None:
     playlist = Playlist(playlist_id="p1", name="Legacy-safe")
@@ -213,8 +217,12 @@ def test_cover_and_hero_assets_are_independent_and_cleaned(tmp_path: Path) -> No
 
     cover_path = Path(service.set_custom_cover("p1", cover_source))
     hero_path = Path(service.set_custom_hero_image("p1", hero_source))
-    assert cover_path.name == "playlist_p1.png"
-    assert hero_path.name == "playlist_p1_hero.webp"
+    assert cover_path.name.startswith("playlist_p1_") and cover_path.name.endswith(
+        ".png"
+    )
+    assert hero_path.name.startswith("playlist_p1_hero_") and hero_path.name.endswith(
+        ".webp"
+    )
 
     service.remove_custom_cover("p1")
     current = service.get_playlist("p1")
@@ -327,3 +335,9 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     assert "substring(7)" not in detail + overview + panel
     assert "set_custom_cover_from_url" in panel
     assert "formatPlaylistSummary" in card + detail + overview
+
+    def save_playlists_with_navigation(self, playlists, navigation):
+
+        self.save(playlists)
+
+        self.save_navigation(navigation)

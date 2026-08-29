@@ -391,6 +391,20 @@ class TestPlaylistAssetDurableOrdering:
         def delete_hero(self, playlist_id):
             self.deleted_hero.append(playlist_id)
 
+        def prepare_cover(self, playlist_id, source):
+            self.stored.append(("cover", playlist_id))
+            return f"/assets/{playlist_id}.jpg"
+
+        def prepare_hero(self, playlist_id, source):
+            self.stored.append(("hero", playlist_id))
+            return f"/assets/{playlist_id}_hero.jpg"
+
+        def delete_managed_asset(self, managed_path):
+            if managed_path.endswith(".jpg"):
+                self.deleted_cover.append("p1")
+            if managed_path.endswith("_hero.jpg"):
+                self.deleted_hero.append("p1")
+
     def test_delete_failure_keeps_assets(self) -> None:
         store = self._AssetStore()
         service = PlaylistService(

@@ -26,6 +26,12 @@ class FakePlaylistsPort(PlaylistsPort):
     def save_navigation(self, state):
         self.nav = state
 
+    def save_playlists_with_navigation(self, playlists, navigation):
+
+        self.save(playlists)
+
+        self.save_navigation(navigation)
+
 
 class FakeQueueService:
     def __init__(self):

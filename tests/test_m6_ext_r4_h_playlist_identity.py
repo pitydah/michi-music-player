@@ -50,6 +50,12 @@ class _MemoryPlaylistsPort:
     def save_navigation(self, state) -> None:
         self.nav = state
 
+    def save_playlists_with_navigation(self, playlists, navigation):
+
+        self.save(playlists)
+
+        self.save_navigation(navigation)
+
 
 class TestPlaylistDomain:
     def test_playlist_references_align_both_collections(self) -> None:

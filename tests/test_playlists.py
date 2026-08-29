@@ -92,6 +92,10 @@ class FakePlaylistsPort:
         self._nav_stored = state
         self.saved_nav.append(state)
 
+    def save_playlists_with_navigation(self, playlists, navigation) -> None:
+        self.save(playlists)
+        self.save_navigation(navigation)
+
 
 def _make_queue():
     """Build QueueService + PlaybackSessionService over FakeAudioPort."""

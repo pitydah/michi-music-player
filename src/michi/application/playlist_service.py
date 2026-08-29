@@ -213,6 +213,13 @@ class PlaylistService:
         index = self._find_by_id(playlist_id)
         if index < 0:
             return
+        # P1-06: capture the managed refs BEFORE the record is removed.
+        doomed = self._playlists[index]
+        doomed_refs = []
+        if doomed.custom_cover_path:
+            doomed_refs.append(doomed.custom_cover_path)
+        if doomed.appearance.hero_image_path:
+            doomed_refs.append(doomed.appearance.hero_image_path)
         del self._playlists[index]
         # Prune navigation metadata (never dangling ids).
         self._nav = PlaylistNavigationState(
@@ -231,8 +238,17 @@ class PlaylistService:
                 raise
             self._persisted = candidate
             self._persisted_nav = self._nav
-        # COMMIT CONFIRMED: cleanup the managed assets (best effort).
+        # COMMIT CONFIRMED: cleanup the managed assets by reference
+        # (immutable digest names) with legacy fallback for old records.
         if self._artwork_store is not None:
+            refs = doomed_refs
+            for ref in refs:
+                try:
+                    self._artwork_store.delete_managed_asset(ref)
+                except OSError as exc:
+                    logger.warning(
+                        "post-commit asset cleanup debt for %s: %s", playlist_id, exc
+                    )
             try:
                 self._artwork_store.delete_cover(playlist_id)
                 self._artwork_store.delete_hero(playlist_id)
@@ -408,9 +424,11 @@ class PlaylistService:
         playlist = self._playlists[index]
         self._playlists[index] = replace(playlist, custom_cover_path="")
         self._persist()  # may raise; state rolls back, asset intact
-        if self._artwork_store is not None:
+        # P1-06: delete by the persisted REFERENCE (immutable digest names
+        # are not enumerable by playlist id alone).
+        if self._artwork_store is not None and playlist.custom_cover_path:
             try:
-                self._artwork_store.delete_cover(playlist_id)
+                self._artwork_store.delete_managed_asset(playlist.custom_cover_path)
             except OSError as exc:
                 logger.warning(
                     "post-commit cover cleanup debt for %s: %s", playlist_id, exc
@@ -434,14 +452,25 @@ class PlaylistService:
         self._notify()
         return True
 
-    def _delete_hero_asset(self, playlist_id: str) -> None:
-        if self._artwork_store is not None:
-            self._artwork_store.delete_hero(playlist_id)
+    def _delete_hero_asset(self, playlist_id: str, ref: str | None = None) -> None:
+        if self._artwork_store is None:
+            return
+        if ref is None:
+            playlist = self.get_playlist(playlist_id)
+            if playlist is None:
+                return
+            ref = playlist.appearance.hero_image_path
+        if ref:
+            try:
+                self._artwork_store.delete_managed_asset(ref)
+            except OSError as exc:
+                logger.warning("post-commit hero cleanup debt: %s", exc)
 
     def set_hero_auto(self, playlist_id: str) -> bool:
         playlist = self.get_playlist(playlist_id)
         if playlist is None:
             return False
+        old_ref = playlist.appearance.hero_image_path
         committed = self._replace_appearance(
             playlist_id,
             replace(
@@ -452,7 +481,7 @@ class PlaylistService:
         )
         # P1-06: only after the commit succeeded does the old asset go away.
         if committed:
-            self._delete_hero_asset(playlist_id)
+            self._delete_hero_asset(playlist_id, ref=old_ref)
         return committed
 
     def set_hero_solid(self, playlist_id: str, color: str) -> bool:
@@ -460,6 +489,7 @@ class PlaylistService:
         if playlist is None:
             return False
         canonical = _canonical_color(color)
+        old_ref = playlist.appearance.hero_image_path
         committed = self._replace_appearance(
             playlist_id,
             replace(
@@ -471,7 +501,7 @@ class PlaylistService:
         )
         # P1-06: commit first, then retire the superseded asset.
         if committed:
-            self._delete_hero_asset(playlist_id)
+            self._delete_hero_asset(playlist_id, ref=old_ref)
         return committed
 
     def set_hero_gradient(
@@ -487,6 +517,7 @@ class PlaylistService:
         if not math.isfinite(numeric_angle):
             raise ValueError("hero gradient angle must be finite")
         normalized_angle = numeric_angle % 360.0
+        old_ref = playlist.appearance.hero_image_path
         committed = self._replace_appearance(
             playlist_id,
             replace(
@@ -499,7 +530,7 @@ class PlaylistService:
         )
         # P1-06: commit first, then retire the superseded asset.
         if committed:
-            self._delete_hero_asset(playlist_id)
+            self._delete_hero_asset(playlist_id, ref=old_ref)
         return committed
 
     def set_custom_hero_image(
