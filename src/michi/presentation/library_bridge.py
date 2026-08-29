@@ -44,6 +44,7 @@ class LibraryBridge(QObject):
         queue_coordinator: LibraryQueueCoordinator | None = None,
         playlist_coordinator: LibraryPlaylistCoordinator | None = None,
         source_coordinator=None,
+        source_scan_lifecycle=None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -54,6 +55,9 @@ class LibraryBridge(QObject):
         self._queue_coordinator = queue_coordinator
         self._playlist_coordinator = playlist_coordinator
         self._source_coordinator = source_coordinator
+        self._source_scan_lifecycle = source_scan_lifecycle
+        if source_scan_lifecycle is not None:
+            source_scan_lifecycle.subscribe_state(self._on_source_scan_state)
         self._selected_album_key: str = ""
         self._selected_album: AlbumRef | None = None
         self._album_track_refs: list[TrackRef] = []
@@ -729,6 +733,44 @@ class LibraryBridge(QObject):
     # QML renders the projection; all intents land here.
     # ------------------------------------------------------------------
 
+    def _on_source_scan_state(self, state) -> None:
+        """Owner-thread lifecycle truth → presentation (scanning/progress)."""
+        self.library_changed.emit()
+
+    def _get_source_scan_status(self) -> str:
+        if self._source_scan_lifecycle is None:
+            return "IDLE"
+        return self._source_scan_lifecycle.state.status
+
+    def _get_source_scan_active(self) -> bool:
+        if self._source_scan_lifecycle is None:
+            return False
+        return self._source_scan_lifecycle.state.active
+
+    def _get_source_scan_progress(self) -> dict:
+        if self._source_scan_lifecycle is None:
+            return {}
+        state = self._source_scan_lifecycle.state
+        return {
+            "generation": state.generation,
+            "sourceId": state.current_source_id,
+            "phase": state.phase,
+            "processed": state.processed,
+            "total": state.total,
+            "currentPath": state.current_path,
+            "diagnostic": state.diagnostic,
+        }
+
+    sourceScanStatus = Property(
+        str, _get_source_scan_status, notify=library_changed
+    )
+    sourceScanActive = Property(
+        bool, _get_source_scan_active, notify=library_changed
+    )
+    sourceScanProgress = Property(
+        dict, _get_source_scan_progress, notify=library_changed
+    )
+
     def _get_music_sources(self) -> list[dict]:
         """THIN adapter (M6-EXT-R4 freeze gate §21): presentation consumes
         the coordinator's PUBLIC surface — never a private repository."""
@@ -767,25 +809,17 @@ class LibraryBridge(QObject):
 
     @Slot(str)
     def scan_source(self, source_id: str) -> None:
-        """Reconcile ONE source (serialized per-source scan)."""
-        if self._source_coordinator is None:
-            return
-        for source in self._source_coordinator.list_sources():
-            if source.library_source_id == source_id:
-                self._source_coordinator.scan_source(source)
-                self.library_changed.emit()
-                return
+        """P1-01: reconcile ONE source ASYNC (worker compute, owner commit)
+        — the GUI thread never touches the filesystem or SQLite here."""
+        if self._source_scan_lifecycle is not None:
+            self._source_scan_lifecycle.request_scan_source(source_id)
 
     @Slot()
     def scan_all_sources(self) -> None:
-        """CANONICAL 'Scan library' intent (§13): scan ALL active + enabled
-        sources, serialized. With zero sources the caller opens the Add
-        Music Source surface."""
-        if self._source_coordinator is None:
-            return
-        outcomes = self._source_coordinator.scan_all_sources()
-        if outcomes:
-            self.library_changed.emit()
+        """CANONICAL 'Scan library' intent: ALL active + enabled sources,
+        serialized ASYNC through the one scan lifecycle."""
+        if self._source_scan_lifecycle is not None:
+            self._source_scan_lifecycle.request_scan_all()
 
     @Slot()
     def has_sources(self) -> bool:
@@ -798,16 +832,11 @@ class LibraryBridge(QObject):
 
     @Slot(str, str)
     def relocate_source(self, source_id: str, new_root: str) -> str:
-        """Locate Source… (M6-EXT-R4 §24): remap ONE source root, keeping
-        every identity. Returns "" on success or the typed error message."""
-        if self._source_coordinator is None:
+        """Locate Source… (P1-01): remap the root synchronously (single
+        cheap upsert) and reconcile ASYNC via the scan lifecycle."""
+        if self._source_scan_lifecycle is None:
             return "Source management is not available."
-        try:
-            self._source_coordinator.relocate_source(source_id, new_root)
-        except ValueError as exc:
-            return str(exc)
-        self.library_changed.emit()
-        return ""
+        return self._source_scan_lifecycle.request_relocate(source_id, new_root)
 
     @Slot(str)
     def retire_source(self, source_id: str) -> None:

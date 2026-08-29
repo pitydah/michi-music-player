@@ -100,7 +100,34 @@ class TestSourceManagement:
         assert outcome.total == 0
 
     def test_scan_source_slot_reconciles_one_source(self, tmp_path) -> None:
+        """P1-01: the slot routes through the ASYNC lifecycle (deterministic
+        pipeline here); the GUI thread never scans synchronously."""
+        from michi.application.source_scan_lifecycle import SourceScanLifecycle
+
+        class _SyncPipeline:
+            def __init__(self, coordinator, lifecycle):
+                self._coordinator = coordinator
+                self._lifecycle = lifecycle
+
+            def submit(self, generation, work, on_progress, on_done) -> None:
+                from michi.application.ports import ScanCancelToken, ScanProgress
+
+                progress = ScanProgress()
+                token = ScanCancelToken()
+                try:
+                    plan = work(progress, token, lambda: None)
+                except BaseException as exc:  # noqa: BLE001
+                    on_done(generation, None, exc)
+                    return
+                on_done(generation, plan, None)
+
+            def cancel(self, generation: int) -> None:
+                del generation
+
         bridge, catalog, coordinator, tmp = _graph(tmp_path)
+        lifecycle = SourceScanLifecycle(coordinator, _SyncPipeline(None, None))
+        bridge._source_scan_lifecycle = lifecycle
+        lifecycle.subscribe_state(bridge._on_source_scan_state)
         root = tmp_path / "music"
         root.mkdir()
         source = coordinator.add_source("Local", str(root))
@@ -108,6 +135,8 @@ class TestSourceManagement:
         bridge.scan_source(source.library_source_id)
         rows = bridge.property("musicSources")
         assert rows[0]["trackCount"] == 1
+        # The lifecycle reported a completed scan.
+        assert bridge.property("sourceScanStatus") == "IDLE"
 
     def test_source_overlap_error_is_typed(self, tmp_path) -> None:
         bridge, catalog, coordinator, tmp = _graph(tmp_path)

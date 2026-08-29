@@ -58,6 +58,8 @@ from michi.application.playlist_playback_coordinator import (
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
+from michi.application.source_scan_coordinator import SourceScanCoordinator
+from michi.application.source_scan_lifecycle import SourceScanLifecycle
 from michi.domain.audio_engine import AudioEngineId
 from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
 from michi.infrastructure.audio_engines.providers import (
@@ -150,6 +152,7 @@ class ServiceGraph:
     library_playlist: LibraryPlaylistCoordinator
     history_coordinator: PlaybackHistoryCoordinator
     track_resolver: LibraryTrackResolver
+    source_scan_lifecycle: SourceScanLifecycle
     # NON-AUTHORITY / OBSERVABILITY ONLY: the concrete port bound inside the
     # router (test handle / introspection). Ownership lives in the provider.
     bound_audio_port: object
@@ -420,7 +423,6 @@ def _build_services(
     # per-source scan authority; the SAME instance backs the bridge. ONE
     # catalog repository instance is shared by the coordinator, the
     # resolver and the library service (single authority, no drift).
-    from michi.application.source_scan_coordinator import SourceScanCoordinator
     from michi.infrastructure.filesystem_source_scanner import (
         FilesystemLibrarySourceScanner,
     )
@@ -440,6 +442,18 @@ def _build_services(
     # on an empty catalog is a cheap no-op. Source probing happens later on
     # user intent (scan source / scan all).
     source_coordinator.hydrate_catalog()
+    # M6-EXT-R4 FINAL SEAL P1-01: ALL productive source scans go through
+    # ONE async lifecycle (worker compute via the M6.4 pipeline; owner
+    # commit after the generation gate; sources serialized). The bridge
+    # only translates intents — it can never run a heavy scan on the GUI
+    # thread.
+    source_scan_lifecycle = SourceScanLifecycle(source_coordinator, scan_runner)
+    scan_relay.done.connect(
+        source_scan_lifecycle.handle_done, Qt.QueuedConnection
+    )
+    scan_relay.progress.connect(
+        source_scan_lifecycle.handle_progress, Qt.QueuedConnection
+    )
 
     # M4-R1: the active playback session sits ABOVE PlaybackService and
     # reads Queue content (one-way dependency; Queue never commands
@@ -477,6 +491,7 @@ def _build_services(
         queue_coordinator=library_queue,
         playlist_coordinator=library_playlist,
         source_coordinator=source_coordinator,
+        source_scan_lifecycle=source_scan_lifecycle,
     )
 
     return ServiceGraph(
@@ -499,6 +514,7 @@ def _build_services(
         library_playlist=library_playlist,
         history_coordinator=history_coordinator,
         track_resolver=track_resolver,
+        source_scan_lifecycle=source_scan_lifecycle,
         bound_audio_port=bound_port,
         audio_engine_convergence=convergence,
         audio_router=router,
