@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-
 QML = Path("src/michi/presentation/qml")
 
 

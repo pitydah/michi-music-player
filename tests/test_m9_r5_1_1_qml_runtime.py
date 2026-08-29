@@ -11,7 +11,6 @@ from PySide6.QtQuick import QQuickItem
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
-
 QML_DIR = Path("src/michi/presentation/qml").resolve()
 
 HARNESS = """

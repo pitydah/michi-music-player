@@ -308,7 +308,7 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     assert "implicitHeight: 168" in peek
     assert "Math.min(36, width * 0.37)" in peek
     assert "SequentialAnimation" in peek
-    assert 'viewBox="0 0 92 160"' in peek_svg
+    assert 'viewBox="0 0 849 1600"' in peek_svg
     assert "<image" not in peek_svg
     assert "metadata" not in peek_svg.lower()
     for mode in ('"auto"', '"solid"', '"gradient"', '"image"'):

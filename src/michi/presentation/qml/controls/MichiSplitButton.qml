@@ -19,7 +19,21 @@ FocusScope {
     signal primaryClicked()
     signal secondaryClicked()
 
-    implicitWidth: primaryButton.implicitWidth + secondaryWidth + 1
+    // Explicit segment math: the icon (16 px) + its spacing (8 px) must
+    // always widen the primary segment — positioner implicit sizes never
+    // drive this (a hidden→visible icon must never be a ghost reservation
+    // nor silently collapse the segment).
+    readonly property real textWidth: primaryLabel.contentWidth
+    readonly property real primarySegmentImplicitWidth:
+        root.iconOnly && root.hasPrimaryIcon
+            ? MichiMetrics.controlMedium
+            : Math.max(82,
+                root.textWidth
+                    + (root.hasPrimaryIcon
+                        ? MichiMetrics.iconSmall + MichiSpacing.sm : 0)
+                    + MichiSpacing.md * 2)
+
+    implicitWidth: root.primarySegmentImplicitWidth + root.secondaryWidth + 1
     implicitHeight: MichiMetrics.controlMedium
     activeFocusOnTab: false
 
@@ -39,10 +53,7 @@ FocusScope {
                 id: primaryButton
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                implicitWidth: root.iconOnly && root.hasPrimaryIcon
-                    ? MichiMetrics.controlMedium
-                    : Math.max(82,
-                        primaryContent.implicitWidth + MichiSpacing.md * 2)
+                implicitWidth: root.primarySegmentImplicitWidth
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
                 Accessible.role: Accessible.Button
@@ -62,6 +73,7 @@ FocusScope {
                             ? MichiPalette.textSecondary : MichiPalette.textDisabled
                     }
                     MichiText {
+                        id: primaryLabel
                         // An icon-less instance must never collapse to a
                         // blank primary segment when a responsive caller
                         // requests icon-only presentation.
