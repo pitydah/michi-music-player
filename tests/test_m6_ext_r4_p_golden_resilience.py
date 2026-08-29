@@ -285,7 +285,7 @@ class TestGoldenSessionV3Restore:
         from michi.application.library_track_resolver import LibraryTrackResolver
 
         persistence = PersistenceCoordinator(
-            _Repo(db_path),
+            _SessionRepo(db_path),
             queue,
             session,
             playback,
@@ -302,6 +302,23 @@ class TestGoldenSessionV3Restore:
         assert current is not None
         assert current.library_track_id == track_id
         assert current.file_path == new_path  # resolved CURRENT path, not old
+
+
+class _SessionRepo(SessionRepository):
+    """Real SQLite-backed snapshot repository for restore tests."""
+
+    def __init__(self, db_path) -> None:
+        self._db_path = db_path
+
+    def load(self):
+        from michi.infrastructure.session_repository import (
+            SqliteSessionRepository,
+        )
+
+        return SqliteSessionRepository(self._db_path).load()
+
+    def save(self, snapshot) -> bool:
+        return True
 
 
 class _NoopSettingsRepo:
@@ -363,3 +380,142 @@ class _FakeBackend:
     def subscribe_playback_state_changed(self, cb): ...
 
     def unsubscribe_playback_state_changed(self, cb): ...
+
+
+class TestGoldenResumeMovedTrack:
+    def test_resume_backend_receives_current_path_for_moved_track(
+        self, tmp_path
+    ) -> None:
+        """§18 golden: persist session at /A/song.flac + TrackId T; file
+        moves to /B; restart → backend prepare_for_resume receives /B,
+        TrackId preserved, position preserved, no autoplay."""
+
+        from michi.domain.library_catalog import (
+            LibrarySource,
+            MediaAvailability,
+            MediaFileRecord,
+            TrackRecord,
+            new_library_source_id,
+            new_media_file_id,
+            new_track_id,
+        )
+        from michi.infrastructure.library_catalog import SqliteLibraryCatalogRepository
+
+        db_path = tmp_path / "michi.db"
+        catalog = SqliteLibraryCatalogRepository(db_path)
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path=str(tmp_path / "music"),
+        )
+        catalog.upsert_source(source)
+        media = MediaFileRecord(
+            media_file_id=new_media_file_id(),
+            library_source_id=source.library_source_id,
+            relative_path="A/song.flac",
+            last_known_path=str(tmp_path / "music" / "A" / "song.flac"),
+            availability=MediaAvailability.AVAILABLE,
+        )
+        track = TrackRecord(track_id=new_track_id(), media_file_id=media.media_file_id)
+        catalog.apply_source_reconciliation((media,), (track,))
+
+        # Persist a V3 snapshot referencing the id at the OLD path.
+        old_path = tmp_path / "music" / "A" / "song.flac"
+        snapshot = PlaybackSessionSnapshot(
+            format_version=3,
+            queue_entries=(PersistedQueueEntry(str(old_path), "song", track.track_id),),
+            context=PersistedSessionContext(
+                context_type="queue",
+                source_id=None,
+                entries=(PersistedQueueEntry(str(old_path), "song", track.track_id),),
+                current_index=0,
+            ),
+            playback_path=str(old_path),
+            position_ms=4242,
+            repeat_mode=RepeatMode.NONE,
+            shuffle_enabled=False,
+            shuffle_seed=0,
+        )
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO settings(key, value) VALUES('session_snapshot', ?)",
+            (encode_snapshot(snapshot),),
+        )
+        conn.commit()
+        conn.close()
+
+        # The file MOVES before restart; the catalog reconciles the new path.
+        new_path = tmp_path / "music" / "B" / "song.flac"
+        new_path.parent.mkdir(parents=True)
+        old_path.parent.mkdir(parents=True)
+        old_path.write_bytes(b"x")
+        catalog.apply_source_reconciliation(
+            (
+                MediaFileRecord(
+                    media_file_id=media.media_file_id,
+                    library_source_id=source.library_source_id,
+                    relative_path="B/song.flac",
+                    last_known_path=str(new_path),
+                    availability=MediaAvailability.AVAILABLE,
+                ),
+            ),
+            (),
+        )
+
+        # Restart: hydrated library + restore with a backend spy.
+        from michi.application.persistence_coordinator import PersistenceCoordinator
+        from michi.application.playback_service import PlaybackService
+        from michi.application.playback_session_service import PlaybackSessionService
+        from michi.application.queue_service import QueueService
+        from michi.application.settings_service import SettingsService
+
+        fresh_library = LibraryService(
+            FilesystemLibrarySourceScanner(), library_prefs=_StubPrefs()
+        )
+        fresh_catalog = SqliteLibraryCatalogRepository(db_path)
+        fresh_coordinator = SourceScanCoordinator(
+            fresh_library,
+            fresh_catalog,
+            FilesystemLibrarySourceScanner(),
+            media_cache=SqliteLibraryMediaCache(db_path),
+            metadata_extractor=_StubMetadata(),
+            index=SqliteLibraryIndexRepository(db_path),
+        )
+        fresh_coordinator.hydrate_catalog()
+
+        class _ResumeSpyBackend(_FakeBackend):
+            def __init__(self) -> None:
+                self.loaded: list[Path] = []
+                self.played = False
+
+            def load(self, file_path: Path) -> None:
+                self.loaded.append(file_path)
+
+            def play(self) -> None:
+                self.played = True
+
+        backend = _ResumeSpyBackend()
+        queue = QueueService()
+        playback = PlaybackService(backend)
+        session = PlaybackSessionService(playback, queue)
+        from michi.application.library_track_resolver import LibraryTrackResolver
+
+        persistence = PersistenceCoordinator(
+            _SessionRepo(db_path),
+            queue,
+            session,
+            playback,
+            SettingsService(_NoopSettingsRepo()),
+            track_resolver=LibraryTrackResolver(fresh_library),
+        )
+        persistence.restore(engine_available=True)
+
+        # The backend received the CURRENT resolved path.
+        assert backend.loaded and backend.loaded[-1] == new_path
+        # No autoplay; identity + position preserved.
+        assert backend.played is False
+        assert session.state.current_entry.library_track_id == track.track_id
+        assert persistence._last_persisted_position_ms == 4242

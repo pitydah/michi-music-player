@@ -559,28 +559,44 @@ class PersistenceCoordinator:
             # M4-R1: PlaybackSession logical context restoration — no backend
             # command, no autoplay, no History event.
             context = snapshot.context
+            resolved_entries = [
+                PlaybackSequenceEntry(
+                    self._restore_path(e),
+                    e.title,
+                    library_track_id=e.library_track_id,
+                )
+                for e in context.entries
+            ]
             self._session.restore_session(
                 context_type=_CONTEXT_TYPE[context.context_type],
                 source_id=context.source_id,
-                entries=[
-                    PlaybackSequenceEntry(
-                        self._restore_path(e),
-                        e.title,
-                        library_track_id=e.library_track_id,
-                    )
-                    for e in context.entries
-                ],
+                entries=resolved_entries,
                 current_index=context.current_index,
                 repeat_mode=snapshot.repeat_mode,
                 shuffle_enabled=snapshot.shuffle_enabled,
                 shuffle_seed=snapshot.shuffle_seed,
             )
-            entries = context.entries
             idx = context.current_index
+            # M6-EXT-R4 freeze gate §18: the resume target derives from the
+            # CURRENT resolved entry when the entry carries a stable Library
+            # identity (a moved track resumes from its NEW path). The
+            # persisted playback_path is the fallback ONLY when no stable
+            # identity is available.
+            resolved_current = (
+                resolved_entries[idx] if 0 <= idx < len(resolved_entries) else None
+            )
+            if resolved_current is not None and resolved_current.library_track_id:
+                resume_target = resolved_current.file_path
+            else:
+                resume_target = (
+                    Path(snapshot.playback_path)
+                    if snapshot.playback_path is not None
+                    else None
+                )
             coherent = (
                 snapshot.playback_path is not None
-                and 0 <= idx < len(entries)
-                and entries[idx].file_path == snapshot.playback_path
+                and resume_target is not None
+                and 0 <= idx < len(resolved_entries)
                 and engine_available  # M11.3G §66: never resume unbound
             )
             if coherent:
@@ -590,10 +606,10 @@ class PersistenceCoordinator:
                 # overwrite it with the incomplete runtime Playback.
                 self._restored_snapshot = snapshot
                 self._resume_phase = _ResumePhase.WAITING_MEDIA
-                # C4: load + seek after acceptance; never autoplay.
-                self._playback.prepare_for_resume(
-                    Path(snapshot.playback_path), snapshot.position_ms
-                )
+                # C4: load + seek after acceptance; never autoplay. The
+                # CURRENT resolved path reaches the backend (moved tracks
+                # resume from their new location).
+                self._playback.prepare_for_resume(resume_target, snapshot.position_ms)
                 # The restore window stays open (WAITING_MEDIA) until the
                 # backend confirms the position (resume_prepared), rejects
                 # it, or the session coherence breaks.
