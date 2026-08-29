@@ -659,7 +659,7 @@ class TestResumeCoherenceTrackIdFirst:
         assert persistence._hybrid_coherent() is True
         # A session-change event for the SAME TrackId is NOT a supersession.
         persistence._on_session_changed()
-        assert persistence._resume_phase is not None or True
+        assert persistence._restored_snapshot is not None  # authority held
         # The next coherent checkpoint persists the NEW path.
         persistence._last_persisted_position_ms = 62_000
         persistence.checkpoint()
