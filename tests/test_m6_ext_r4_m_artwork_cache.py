@@ -54,42 +54,75 @@ class TestArtworkCacheLookup:
 
 
 class TestEnrichmentCachedFirst:
-    def test_enrich_uses_cached_artwork_before_provider(self, tmp_path) -> None:
+    def test_enrich_keeps_cached_cover_when_provider_finds_none(self, tmp_path) -> None:
+        # Golden: source offline (provider returns None) → the cached cover
+        # still renders; never blank.
         from michi.application.library_service import LibraryService
         from michi.domain.library import AlbumRef
 
         cache = ArtworkCache(tmp_path / "cache")
-        artwork = Artwork(data=b"\x89PNG fake", mime_type="image/png")
-        cache.store("4::kind of blue::miles davis", artwork)
+        cache.store("k1", Artwork(data=b"\x89PNG fake", mime_type="image/png"))
 
-        class _NoProvider:
+        class _EmptyProvider:
             def get_embedded_artwork(self, path):
-                raise AssertionError("provider must not run when cached")
+                return None
 
             def get_embedded_front_artwork(self, path):
-                raise AssertionError("provider must not run when cached")
+                return None
 
             def get_local_artwork(self, album_dir):
-                raise AssertionError("provider must not run when cached")
+                return None
 
         service = LibraryService(
             scanner=None,  # type: ignore[arg-type]
-            artwork_provider=_NoProvider(),  # type: ignore[arg-type]
+            artwork_provider=_EmptyProvider(),  # type: ignore[arg-type]
             artwork_cache=cache,
         )
         albums = (
             AlbumRef(
-                key="4::kind of blue::miles davis",
-                title="Kind of Blue",
-                artist="Miles Davis",
-                track_count=1,
-                duration_ms=1000,
+                key="k1", title="K", artist="A", track_count=1, duration_ms=1000,
                 track_paths=(Path("/a.flac"),),
             ),
         )
         enriched = service._enrich_albums(albums)
         assert enriched[0].has_artwork is True
-        assert service.artwork_path_for(enriched[0].key) is not None
+        assert service.artwork_path_for("k1") is not None
+
+    def test_enrich_updated_artwork_replaces_cached(self, tmp_path) -> None:
+        # Digest invalidation: NEW provider artwork stores a NEW file that
+        # wins over the stale cached cover.
+        from michi.application.library_service import LibraryService
+        from michi.domain.library import AlbumRef
+
+        cache = ArtworkCache(tmp_path / "cache")
+        cache.store("k1", Artwork(data=b"old-cover", mime_type="image/png"))
+        old_path = cache.lookup("k1")
+
+        class _FreshProvider:
+            def get_embedded_artwork(self, path):
+                return Artwork(data=b"new-cover", mime_type="image/png")
+
+            def get_embedded_front_artwork(self, path):
+                return None
+
+            def get_local_artwork(self, album_dir):
+                return None
+
+        service = LibraryService(
+            scanner=None,  # type: ignore[arg-type]
+            artwork_provider=_FreshProvider(),  # type: ignore[arg-type]
+            artwork_cache=cache,
+        )
+        albums = (
+            AlbumRef(
+                key="k1", title="K", artist="A", track_count=1, duration_ms=1000,
+                track_paths=(Path("/a.flac"),),
+            ),
+        )
+        enriched = service._enrich_albums(albums)
+        assert enriched[0].has_artwork is True
+        fresh = service.artwork_path_for("k1")
+        assert fresh is not None and fresh != str(old_path)
 
     def test_offline_cached_cover_survives_rebuild(self, tmp_path) -> None:
         # Golden: cached artwork still displays after restart with the
