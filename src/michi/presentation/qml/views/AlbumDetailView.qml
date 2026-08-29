@@ -211,9 +211,9 @@ ColumnLayout {
                 canAddToPlaylist: library.canAddTracksToPlaylists
                 canInspect: true
                 canNavigateEntities: true
-                onTrackActivated: (_path, index) => library.activate_album_track(index)
-                onFavoriteRequested: path => library.toggle_favorite(path)
-                onQueueRequested: path => library.queue_track(path)
+                onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
+                onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
+                onQueueRequested: trackId => library.queue_track_by_id(trackId)
                 onAddToPlaylistRequested: path => root.addToPlaylistRequested(path)
                 onPropertiesRequested: track => root.inspectedTrack = track
                 onGoToArtistRequested: artistKey => library.select_artist(artistKey)

@@ -71,32 +71,47 @@ class LibraryPlaybackCoordinator:
 
     def play_album(self, album_key: str, start_index: int = 0) -> None:
         """Album context from the canonical AlbumRef ordering (M6 owns the
-        order — the coordinator never re-sorts). TD-013 filesystem
-        validation stays LibraryService-owned: a missing track removes the
-        exact reference BEFORE any playback request.
-
-        Membership is TrackId-based (M6-EXT-R4-J): paths are the derived
-        current projection, identity rides on every entry."""
+        order — the coordinator never re-sorts). CORRECTIVE SEAL §14:
+        modern membership resolves from TrackIds through the resolver
+        (current resolved paths; identity on every entry); the legacy path
+        projection is the explicit pre-migration fallback. Unavailable
+        members are skipped without removal — membership stays intact."""
         album = self._library.album_by_key(album_key)
         if album is None:
             logger.warning("album no encontrado: %s", album_key)
             return
         entries = []
-        for path in album.track_paths:
-            ref = self._library.resolve_trackref(path)
-            entries.append(
-                PlaybackSequenceEntry(
-                    file_path=Path(path),
-                    title=ref.title if ref is not None else "",
-                    library_track_id=ref.track_id if ref is not None else None,
+        # CORRECTIVE SEAL §14: modern membership resolves from TrackIds
+        # through the resolver (current paths); the legacy path projection
+        # is the explicit fallback for pre-migration albums.
+        if album.track_ids:
+            for track_id in album.track_ids:
+                ref = self._resolver.resolve_ref(track_id)
+                if ref is None:
+                    continue  # identity unresolved: membership stays intact
+                entries.append(
+                    PlaybackSequenceEntry(
+                        file_path=ref.file_path,
+                        title=ref.title,
+                        library_track_id=ref.track_id or None,
+                    )
                 )
-            )
+        else:
+            for path in album.track_paths:
+                ref = self._library.resolve_trackref(path)
+                entries.append(
+                    PlaybackSequenceEntry(
+                        file_path=Path(path),
+                        title=ref.title if ref is not None else "",
+                        library_track_id=ref.track_id if ref is not None else None,
+                    )
+                )
         if not entries:
             return
         if not (0 <= start_index < len(entries)):
             start_index = 0
         # TD-013: validate the clicked track through the library filesystem
-        # gate (removes stale references / sets diagnostics).
+        # gate (never removes identity — availability is marked instead).
         clicked = entries[start_index]
         ref = self._library.resolve_trackref(clicked.file_path)
         if ref is None or not self._library.validate_track_for_playback(ref):

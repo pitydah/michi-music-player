@@ -423,3 +423,180 @@ class TestTerminalFailureObservable:
         assert lifecycle.state.last_terminal_status == "FAILED"
         assert "root gone" in lifecycle.state.last_diagnostic
         assert lifecycle.state.last_source_id == source.library_source_id
+
+
+class TestTrackIdFirstIntents:
+    """CORRECTIVE SEAL §11/§12: identity-sensitive intents send TrackId and
+    never infer a TrackId to be a path."""
+
+    def test_track_id_validation_accepts_moved_track(self, tmp_path) -> None:
+        from michi.application.library_collection_coordinators import (
+            LibraryPlaylistCoordinator,
+            LibraryQueueCoordinator,
+        )
+        from michi.application.library_playback_coordinator import (
+            LibraryPlaybackCoordinator,
+        )
+        from michi.application.playback_service import PlaybackService
+        from michi.application.playback_session_service import (
+            PlaybackSessionService,
+        )
+        from michi.application.playlist_service import PlaylistService
+        from michi.application.queue_service import QueueService
+        from michi.domain.library_catalog import (
+            LibrarySource,
+            MediaAvailability,
+            MediaFileRecord,
+            TrackRecord,
+            new_library_source_id,
+            new_media_file_id,
+            new_track_id,
+        )
+        from michi.presentation.library_bridge import LibraryBridge
+
+        db_path = tmp_path / "michi.db"
+        catalog = SqliteLibraryCatalogRepository(db_path)
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path="/Music",
+        )
+        catalog.upsert_source(source)
+        media = MediaFileRecord(
+            media_file_id=new_media_file_id(),
+            library_source_id=source.library_source_id,
+            relative_path="A.flac",
+            last_known_path="/Music/A.flac",
+            availability=MediaAvailability.AVAILABLE,
+        )
+        track = TrackRecord(track_id=new_track_id(), media_file_id=media.media_file_id)
+        catalog.apply_source_reconciliation((media,), (track,))
+        library = LibraryService(
+            _StubPrefs() if False else FilesystemLibrarySourceScanner(),
+            library_prefs=_StubPrefs(),
+        )
+        library._state.tracks = [
+            __import__("michi.domain.library", fromlist=["TrackRef"]).TrackRef(
+                Path("/Music/NEW/A.flac"),  # moved path
+                title="A",
+                track_id=track.track_id,
+                media_file_id=media.media_file_id,
+                library_source_id=source.library_source_id,
+                availability=MediaAvailability.AVAILABLE,
+            )
+        ]
+        library._rebuild_derived_library_state()
+        queue = QueueService()
+        playlists = PlaylistService()
+        session = PlaybackSessionService(PlaybackService(_FakeAudio()), queue)
+        bridge = LibraryBridge(
+            library,
+            playback_coordinator=LibraryPlaybackCoordinator(library, session),
+            queue_coordinator=LibraryQueueCoordinator(library, queue),
+            playlist_coordinator=LibraryPlaylistCoordinator(library, playlists),
+        )
+        # The moved TrackId is ACCEPTED by the TrackId-first validation.
+        bridge.request_tracks_playlist_target([track.track_id])
+        # A UUID-string that looks nothing like a path still validates.
+        assert bridge._track_id_resolvable(track.track_id) is True
+        # An unknown id is rejected; a raw path is NOT inferred from ids.
+        assert bridge._track_id_resolvable("no-such-id") is False
+
+    class _ValidatingScanner(FilesystemLibrarySourceScanner):
+        def validate_file(self, path: Path) -> None:
+            return None
+
+    def test_playlist_playback_resolves_current_path_for_moved_track(
+        self, tmp_path
+    ) -> None:
+        from michi.application.library_playback_coordinator import (
+            LibraryPlaybackCoordinator,
+        )
+        from michi.application.library_track_resolver import LibraryTrackResolver
+        from michi.application.playback_service import PlaybackService
+        from michi.application.playback_session_service import (
+            PlaybackSessionService,
+        )
+        from michi.application.queue_service import QueueService
+        from michi.domain.library import TrackRef as TR
+        from michi.domain.library_catalog import (
+            LibrarySource,
+            MediaAvailability,
+            MediaFileRecord,
+            TrackRecord,
+            new_library_source_id,
+            new_media_file_id,
+            new_track_id,
+        )
+
+        db_path = tmp_path / "michi.db"
+        catalog = SqliteLibraryCatalogRepository(db_path)
+        source = LibrarySource(
+            library_source_id=new_library_source_id(), display_name="S", root_path="/"
+        )
+        catalog.upsert_source(source)
+        media = MediaFileRecord(
+            media_file_id=new_media_file_id(),
+            library_source_id=source.library_source_id,
+            relative_path="a.flac",
+            last_known_path="/Old/a.flac",
+            availability=MediaAvailability.AVAILABLE,
+        )
+        track = TrackRecord(track_id=new_track_id(), media_file_id=media.media_file_id)
+        catalog.apply_source_reconciliation((media,), (track,))
+        library = LibraryService(self._ValidatingScanner(), library_prefs=_StubPrefs())
+        library._state.tracks = [
+            TR(
+                Path("/New/a.flac"),
+                title="a",
+                track_id=track.track_id,
+                media_file_id=media.media_file_id,
+                library_source_id=source.library_source_id,
+                availability=MediaAvailability.AVAILABLE,
+            )
+        ]
+        library._rebuild_derived_library_state()
+        session = PlaybackSessionService(PlaybackService(_FakeAudio()), QueueService())
+        coordinator = LibraryPlaybackCoordinator(
+            library, session, resolver=LibraryTrackResolver(library)
+        )
+        # play_album via TrackId membership (moved album member).
+        from michi.domain.library import build_music_model
+
+        album_key = build_music_model(library.state.tracks).albums[0].key
+        coordinator.play_album(album_key)
+        pending = session._pending
+        assert pending is not None
+        assert pending.file_path == Path("/New/a.flac")
+        assert pending.library_track_id == track.track_id
+
+
+class _FakeAudio:
+    """Minimal AudioPort fake for playback intents."""
+
+    def load(self, file_path): ...
+    def play(self): ...
+    def pause(self): ...
+    def resume(self): ...
+    def stop(self): ...
+    def set_volume(self, value): ...
+    def set_muted(self, muted): ...
+    def seek(self, position_ms): ...
+    def position(self):
+        return 0
+
+    def duration(self):
+        return 0
+
+    def subscribe_end_of_media(self, cb): ...
+    def unsubscribe_end_of_media(self, cb): ...
+    def subscribe_position_changed(self, cb): ...
+    def unsubscribe_position_changed(self, cb): ...
+    def subscribe_duration_changed(self, cb): ...
+    def unsubscribe_duration_changed(self, cb): ...
+    def subscribe_media_accepted(self, cb): ...
+    def unsubscribe_media_accepted(self, cb): ...
+    def subscribe_media_rejected(self, cb): ...
+    def unsubscribe_media_rejected(self, cb): ...
+    def subscribe_playback_state_changed(self, cb): ...
+    def unsubscribe_playback_state_changed(self, cb): ...

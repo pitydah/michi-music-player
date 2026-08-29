@@ -31,22 +31,24 @@ class _LibrarySelectionResolver:
         self._resolver = resolver or LibraryTrackResolver(library)
 
     @staticmethod
-    def _legacy_path_reference(value: str) -> Path | None:
-        """EXPLICIT legacy discriminator (P2 hygiene §9): only a raw
-        filesystem path that actually exists in the library resolves as a
-        path reference. A UUID TrackId is NEVER treated as a path."""
+    def _legacy_path_reference(library, value: str) -> Path | None:
+        """EXPLICIT legacy discriminator (CORRECTIVE SEAL §13): a raw path
+        input is accepted ONLY when the LibraryService already resolves the
+        EXACT value as one of its known current paths. Path(string).parts
+        is never used as type inference — an unknown UUID can never become
+        a path."""
         if not value or value.startswith("legacy-path::"):
             return None
         candidate = Path(value)
-        if any(candidate.parts):  # plain relative/absolute locator
+        if library.resolve_trackref(candidate) is not None:
             return candidate
         return None
 
     def tracks(self, track_ids: Iterable[str]) -> list[TrackRef]:
         """Resolved canonical TrackRefs (stable identity); unresolved ids
         are skipped honestly. LEGACY seam (explicit): a RAW PATH input
-        (pre-R4 callers) resolves through the current path projection —
-        never a UUID converted into a path."""
+        (pre-R4 callers) resolves ONLY when the library knows that exact
+        path — a UUID is never inferred to be a path."""
         refs: list[TrackRef] = []
         seen: set[str] = set()
         for track_id in track_ids:
@@ -55,7 +57,7 @@ class _LibrarySelectionResolver:
             seen.add(track_id)
             ref = self._resolver.resolve_ref(track_id)
             if ref is None:
-                legacy_path = self._legacy_path_reference(track_id)
+                legacy_path = self._legacy_path_reference(self._library, track_id)
                 if legacy_path is not None:
                     ref = self._library.resolve_trackref(legacy_path)
             if ref is not None:

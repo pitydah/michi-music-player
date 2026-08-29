@@ -38,10 +38,12 @@ Item {
     readonly property bool profileShowsAlbum: showAlbumColumn
         && columnProfile !== "album"
 
-    signal trackActivated(string path, int index)
-    signal favoriteRequested(string path)
-    signal queueRequested(string path)
-    signal addToPlaylistRequested(string path)
+    // CORRECTIVE SEAL §11: identity-sensitive intents carry the STABLE
+    // TrackId (path stays as the factual location projection).
+    signal trackActivated(string trackId, string path, int index)
+    signal favoriteRequested(string trackId)
+    signal queueRequested(string trackId)
+    signal addToPlaylistRequested(string trackId)
     signal propertiesRequested(var track)
     signal goToAlbumRequested(string albumKey)
     signal goToArtistRequested(string artistKey)
@@ -186,11 +188,11 @@ Item {
                 if (root.selectionEnabled)
                     root.selectionToggleRequested(modelData.trackId)
                 else
-                    root.trackActivated(modelData.path, index)
+                    root.trackActivated(modelData.trackId, modelData.path, index)
             }
-            onFavoriteToggled: root.favoriteRequested(modelData.path)
-            onQueueRequested: root.queueRequested(modelData.path)
-            onAddToPlaylistRequested: root.addToPlaylistRequested(modelData.path)
+            onFavoriteToggled: root.favoriteRequested(modelData.trackId)
+            onQueueRequested: root.queueRequested(modelData.trackId)
+            onAddToPlaylistRequested: root.addToPlaylistRequested(modelData.trackId)
             onInspectorRequested: root.propertiesRequested(modelData)
             onGoToAlbumRequested: root.goToAlbumRequested(modelData.albumKey)
             onGoToArtistRequested: root.goToArtistRequested(modelData.artistKey)

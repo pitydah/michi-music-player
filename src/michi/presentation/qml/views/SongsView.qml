@@ -25,9 +25,9 @@ MichiTrackTable {
     emptyMessage: qsTr("Scan a music folder from the toolbar to populate your library.")
     emptyIcon: "track"
 
-    onTrackActivated: (path, _index) => library.activate_path(path)
-    onFavoriteRequested: path => library.toggle_favorite(path)
-    onQueueRequested: path => library.queue_track(path)
+    onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
+    onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
+    onQueueRequested: trackId => library.queue_track_by_id(trackId)
     onAddToPlaylistRequested: path => root.addTargetPath = path
     onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     onGoToArtistRequested: artistKey => library.select_artist(artistKey)

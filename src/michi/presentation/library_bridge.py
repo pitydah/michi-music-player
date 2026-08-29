@@ -835,6 +835,21 @@ class LibraryBridge(QObject):
         dict, _get_source_scan_progress, notify=library_changed
     )
 
+    def _track_id_resolvable(self, value: str) -> bool:
+        """Stable identity first; the EXPLICIT legacy discriminator
+        (legacy-path::<path>) is the only path fallback — a raw TrackId is
+        never converted into a filesystem path."""
+        if self._service.trackref_by_id(value) is not None:
+            return True
+        if value.startswith("legacy-path::"):
+            return (
+                self._service.resolve_trackref(
+                    Path(value.removeprefix("legacy-path::"))
+                )
+                is not None
+            )
+        return False
+
     def _get_music_sources(self) -> list[dict]:
         """THIN adapter (M6-EXT-R4 freeze gate §21): presentation consumes
         the coordinator's PUBLIC surface — never a private repository."""
@@ -1036,9 +1051,21 @@ class LibraryBridge(QObject):
 
     @Slot(str, result=int)
     def queue_track(self, track_id: str) -> int:
+        """CANONICAL queue intent by stable TrackId (CORRECTIVE SEAL §11)."""
         if self._queue_coordinator is None:
             return 0
         return self._queue_coordinator.queue_tracks((track_id,))
+
+    @Slot(str)
+    def queue_track_by_id(self, track_id: str) -> None:
+        """Canonical queue intent (explicit alias for QML signal wiring)."""
+        self.queue_track(track_id)
+
+    @Slot(str)
+    def activate_track_by_id(self, track_id: str) -> None:
+        """CORRECTIVE SEAL §11: canonical activation by stable TrackId."""
+        if self._playback_coordinator is not None:
+            self._playback_coordinator.play_track_by_id(track_id)
 
     @Slot(list, result=int)
     def queue_tracks(self, track_ids: list) -> int:
@@ -1098,12 +1125,12 @@ class LibraryBridge(QObject):
 
     @Slot(list)
     def request_tracks_playlist_target(self, track_ids: list) -> None:
+        """CORRECTIVE SEAL §12: validate by STABLE TrackId — a TrackId is
+        NEVER inferred to be a path."""
         if self._playlist_coordinator is None:
             return
         valid = [
-            str(item)
-            for item in track_ids
-            if self._service.resolve_trackref(Path(str(item))) is not None
+            str(item) for item in track_ids if self._track_id_resolvable(str(item))
         ]
         if valid:
             self.playlist_target_requested.emit({"kind": "tracks", "trackIds": valid})
@@ -1119,12 +1146,11 @@ class LibraryBridge(QObject):
 
     @Slot(list)
     def request_new_playlist_for_tracks(self, track_ids: list) -> None:
+        """CORRECTIVE SEAL §12: validate by STABLE TrackId."""
         if self._playlist_coordinator is None:
             return
         valid = [
-            str(item)
-            for item in track_ids
-            if self._service.resolve_trackref(Path(str(item))) is not None
+            str(item) for item in track_ids if self._track_id_resolvable(str(item))
         ]
         if valid:
             self.new_playlist_target_requested.emit(
