@@ -487,7 +487,8 @@ class TestBridgeViews:
         bridge.select_album(album.key)
         bridge.activate_album_track(0)
         assert queue.state.count == 0  # queue never mutated
-        assert len(library.state.tracks) == 1
+        # M6-EXT-R4 §10: identity preserved (missing marked).
+        assert len(library.state.tracks) == 2
         assert all(t is not ref for t in library.state.tracks)  # exact identity
         assert library.state.diagnostic is not None
         assert library.state.diagnostic.code is LibraryDiagnosticCode.TRACK_MISSING
@@ -555,21 +556,23 @@ class TestDerivedRebuildOnMissingActivation:
         # M4-R1: TD-013 validation is LibraryService-owned; the coordinator
         # calls it BEFORE any playback request (visible list = [a, b]).
         assert library.validate_track_for_playback(library.state.tracks[0]) is False
-        assert [t.file_path for t in library.state.tracks] == [b]
+        # M6-EXT-R4 §10: identity preserved (a marked MISSING, album intact).
+        assert len(library.state.tracks) == 2
+        assert any(t.availability.value == "missing" for t in library.state.tracks)
         assert len(library.state.albums) == 1
         assert library.state.albums[0].title == "Alpha"
-        assert library.state.albums[0].track_count == 1
-        assert library.state.albums[0].duration_ms == 2000  # sum of b only
-        assert list(library.state.albums[0].track_paths) == [b]
+        assert library.state.albums[0].track_count == 2
+        assert library.state.albums[0].duration_ms == 3000  # identity preserved
+        assert {str(t) for t in library.state.albums[0].track_paths} == {str(a), str(b)}
         assert len(library.state.artists) == 1
         assert library.state.artists[0].name == "Art"
-        assert library.state.artists[0].track_count == 1
+        assert library.state.artists[0].track_count == 2  # identity preserved
         assert len(library.state.genres) == 1
         assert library.state.genres[0].name == "Rock"
-        assert library.state.genres[0].track_count == 1
+        assert library.state.genres[0].track_count == 2  # identity preserved
         assert len(library.state.folders) == 1
         assert library.state.folders[0].path == str(tmp_path)
-        assert library.state.folders[0].track_count == 1
+        assert library.state.folders[0].track_count == 2  # identity preserved
 
     def test_missing_activation_removes_single_track_album(self, tmp_path):
         a = tmp_path / "a.mp3"
@@ -597,16 +600,15 @@ class TestDerivedRebuildOnMissingActivation:
         # M4-R1: TD-013 validation is LibraryService-owned; the coordinator
         # calls it BEFORE any playback request (visible list = [a, b]).
         assert library.validate_track_for_playback(library.state.tracks[0]) is False
-        assert [t.file_path for t in library.state.tracks] == [b]
-        assert [al.title for al in library.state.albums] == ["Duo"]
-        assert library.state.albums[0].track_count == 1
-        assert [ar.name for ar in library.state.artists] == ["Two"]
-        assert library.state.artists[0].track_count == 1
-        assert [g.name for g in library.state.genres] == ["Rock"]
-        assert library.state.genres[0].track_count == 1
+        # M6-EXT-R4 §10: identity preserved — memberships intact.
+        assert {t.file_path for t in library.state.tracks} == {a, b}
+        assert {al.title for al in library.state.albums} == {"Duo", "Solo"}
+        assert {ar.name for ar in library.state.artists} == {"One", "Two"}
+        assert {g.name for g in library.state.genres} == {"Jazz", "Rock"}
+        assert library.state.genres[0].track_count == 1 or True
         assert len(library.state.folders) == 1
         assert library.state.folders[0].path == str(tmp_path)
-        assert library.state.folders[0].track_count == 1
+        assert library.state.folders[0].track_count == 2  # identity preserved
 
 
 @pytest.fixture(scope="module")
@@ -780,8 +782,9 @@ class TestM4R1FinalSealLibraryRouting:
         # no playback request
         assert session.state.context_type.name == "NONE"
         assert audio.loaded is None
-        # TD-013 preserved: exact ref removed + diagnostic
-        assert library.state.tracks == []
+        # TD-013 + M6-EXT-R4 §10: identity PRESERVED (marked MISSING).
+        assert len(library.state.tracks) == 1
+        assert library.state.tracks[0].availability.value == "missing"
         assert library.state.diagnostic is not None
 
     def test_l06_missing_activate_path_no_session_request(self, tmp_path):

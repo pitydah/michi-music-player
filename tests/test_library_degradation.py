@@ -339,8 +339,10 @@ class TestActivationValidation:
         library.subscribe_changed(lambda: calls.append(1))
         coordinator.play_visible_track(0)
         assert len(calls) == 1  # single notify for the activation transition
-        assert len(library.state.tracks) == 1
-        assert library.state.tracks[0] is tracks_before[1]  # exact ref identity
+        # M6-EXT-R4 §10: identity PRESERVED and marked MISSING.
+        assert len(library.state.tracks) == 2
+        missing_ref = next(t for t in library.state.tracks if t.file_path == missing)
+        assert missing_ref.availability.value == "missing"
         assert library.state.diagnostic is not None
         assert library.state.diagnostic.code is LibraryDiagnosticCode.TRACK_MISSING
         assert library.state.diagnostic.path == missing
@@ -395,7 +397,10 @@ class TestActivationValidation:
             beta: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, beta)
         }
         coordinator.play_visible_track(0)  # visible index 0 == beta under the filter
-        assert [t.file_path for t in library.state.tracks] == [alpha, gamma]
+        # M6-EXT-R4 §10: identity preserved (beta marked MISSING).
+        beta_ref = next(t for t in library.state.tracks if t.file_path == beta)
+        assert beta_ref.availability.value == "missing"
+        assert [t.file_path for t in library.state.tracks] == [alpha, beta, gamma]
         assert queue.state.count == 0
 
     def test_activation_access_failure_preserves_ref_and_queue(self):

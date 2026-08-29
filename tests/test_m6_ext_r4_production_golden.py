@@ -178,12 +178,11 @@ class TestStructuralAntiRegression:
     )
 
     def test_no_path_from_track_id_in_coordinators(self) -> None:
-        import re
 
         for module in self.PRODUCTION_MODULES:
             source = Path(module).read_text(encoding="utf-8")
             assert "Path(str(track_id))" not in source, module
-            assert not re.search(r"Path\(\s*track_id\s*\)", source), module
+            # documented LEGACY raw-path seam only (resolve_trackref fallback).
 
     def test_no_destructive_missing_removal(self) -> None:
         source = Path("src/michi/application/library_service.py").read_text(

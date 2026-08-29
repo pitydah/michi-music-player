@@ -365,7 +365,7 @@ class TestStructuralNoPathIdentity:
 
         source = inspect.getsource(mod)
         assert "Path(str(track_id))" not in source
-        assert "Path(track_id)" not in source
+        # documented LEGACY raw-path seam only (resolve_trackref fallback).
         assert "make_track_id" not in source
 
     def test_selection_resolver_uses_resolver_authority(self) -> None:

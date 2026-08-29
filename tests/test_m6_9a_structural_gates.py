@@ -123,6 +123,7 @@ class TestTrackMetadataSchemaFrozen:
             "artist",
             "track_count",
             "duration_ms",
+            "track_ids",
             "track_paths",
             "has_artwork",
             "year",

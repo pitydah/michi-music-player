@@ -1055,10 +1055,16 @@ class TestGoldenDegradation:
         assert library.state.diagnostic is not None
         assert library.state.diagnostic.code is LibraryDiagnosticCode.TRACK_MISSING
         assert library.state.diagnostic.path == missing_path
-        assert missing_path not in {t.file_path for t in library.state.tracks}
-        assert len(library.state.tracks) == _GOLDEN_TRACK_COUNT - 1
-        # sole track removed
-        assert not any(a.title == "No Art" for a in library.state.albums)
+        # M6-EXT-R4 freeze gate §10: play/scan-missing NEVER removes
+        # identity — the ref is PRESERVED and marked MISSING.
+        assert missing_path in {t.file_path for t in library.state.tracks}
+        assert len(library.state.tracks) == _GOLDEN_TRACK_COUNT
+        missing_ref = next(
+            t for t in library.state.tracks if t.file_path == missing_path
+        )
+        assert missing_ref.availability.value == "missing"
+        # the No Art album survives (identity preserved).
+        assert any(a.title == "No Art" for a in library.state.albums)
         # rest preserved
         assert any(a.title == "Multi Disc" for a in library.state.albums)
         rows_before = repo.load_all()
@@ -1069,6 +1075,6 @@ class TestGoldenDegradation:
 
         assert library.state.diagnostic is not None
         assert library.state.diagnostic.code is LibraryDiagnosticCode.DIRECTORY_MISSING
-        assert len(library.state.tracks) == _GOLDEN_TRACK_COUNT - 1  # preserved
+        assert len(library.state.tracks) == _GOLDEN_TRACK_COUNT  # preserved
         assert any(a.title == "Multi Disc" for a in library.state.albums)
         assert repo.load_all() == rows_before  # no partial index writes
