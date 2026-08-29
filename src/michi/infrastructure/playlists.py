@@ -317,6 +317,58 @@ class SqlitePlaylistsRepository(PlaylistsPort):
     def save_navigation(self, state: PlaylistNavigationState) -> None:
         self._save_raw("playlist_navigation", _encode_navigation_state(state))
 
+    def save_playlists_with_navigation(
+        self, playlists: tuple[Playlist, ...], navigation: PlaylistNavigationState
+    ) -> None:
+        """CORRECTIVE SEAL §10: playlist collection + navigation metadata
+        in ONE transaction — a delete can never half-commit (collection
+        gone but navigation stale, or vice versa). Raises
+        ``PlaylistPersistenceError`` on any failure (full rollback)."""
+        payload = json.dumps(
+            [
+                {
+                    "version": PLAYLIST_PERSISTENCE_VERSION,
+                    "id": p.playlist_id,
+                    "name": p.name,
+                    "tracks": [
+                        {"track_id": ref.track_id, "fallback_path": ref.fallback_path}
+                        for ref in p.references()
+                    ],
+                    "track_paths": [ref.fallback_path for ref in p.references()],
+                    "custom_cover_path": p.custom_cover_path,
+                    "appearance": {
+                        "hero_mode": p.appearance.hero_mode.value,
+                        "hero_solid_color": p.appearance.hero_solid_color,
+                        "hero_gradient_colors": list(p.appearance.hero_gradient_colors),
+                        "hero_gradient_angle": p.appearance.hero_gradient_angle,
+                        "hero_image_path": p.appearance.hero_image_path,
+                    },
+                }
+                for p in playlists
+            ]
+        )
+        nav_payload = _encode_navigation_state(navigation)
+        try:
+            conn = self._connect()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                for key, value in (
+                    ("playlists", payload),
+                    ("playlist_navigation", nav_payload),
+                ):
+                    conn.execute(
+                        "INSERT INTO library_prefs(key, value) VALUES(?, ?) "
+                        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                        (key, value),
+                    )
+                conn.execute("COMMIT")
+            finally:
+                conn.close()
+        except sqlite3.Error as exc:
+            raise PlaylistPersistenceError(
+                f"playlist+navigation persistence failed: {exc}"
+            ) from exc
+
     def _save_raw(self, key: str, payload: str) -> None:
         """TRUTHFUL authoritative write (M6-EXT-R4 freeze gate): a sqlite
         failure raises ``PlaylistPersistenceError`` — never a silent

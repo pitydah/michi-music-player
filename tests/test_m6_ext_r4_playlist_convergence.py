@@ -515,3 +515,180 @@ class TestPlaylistAssetDurableOrdering:
         # Commit succeeded → the superseded hero asset is cleaned up.
         assert store.deleted_hero == ["p1"]
         assert service.get_playlist("p1").appearance.hero_image_path == ""
+
+
+class TestReplacementStagingProtocol:
+    """CORRECTIVE SEAL §9 — byte level: a DB failure after staging must
+    preserve the previously committed image byte-for-byte."""
+
+    def _store_env(self, tmp_path):
+        from michi.infrastructure.playlist_artwork_store import (
+            FilesystemPlaylistArtworkStore,
+        )
+
+        store = FilesystemPlaylistArtworkStore(tmp_path / "covers")
+        return store
+
+    class _FailingPort:
+        def __init__(self, *, fail_after=0):
+            self.saved = 0
+            self.fail_after = fail_after
+
+        def load(self):
+            return ()
+
+        def load_navigation(self):
+            from michi.domain.playlist import PlaylistNavigationState
+
+            return PlaylistNavigationState()
+
+        def save(self, playlists):
+            self.saved += 1
+            if self.saved > self.fail_after:
+                raise PlaylistPersistenceError("injected DB failure")
+
+        def save_navigation(self, state):
+            del state
+
+    def test_cover_db_failure_preserves_old_bytes(self, tmp_path) -> None:
+
+        store = self._store_env(tmp_path)
+        service = PlaylistService(
+            playlists_port=self._FailingPort(fail_after=1), artwork_store=store
+        )  # type: ignore[arg-type]
+        service._playlists = [Playlist(playlist_id="p1", name="Mix")]
+        service._persisted = tuple(service._playlists)
+        # Commit an initial cover (via the successful first save).
+        old_src = tmp_path / "old.jpg"
+        old_src.write_bytes(b"OLD_BYTES")
+        assert service.set_custom_cover("p1", old_src) is not None
+        committed_path = service.get_playlist("p1").custom_cover_path
+        assert Path(committed_path).read_bytes() == b"OLD_BYTES"
+
+        # Replace with NEW bytes; the authoritative persist FAILS.
+        new_src = tmp_path / "new.jpg"
+        new_src.write_bytes(b"NEW_BYTES")
+        with pytest.raises(PlaylistPersistenceError):
+            service.set_custom_cover("p1", new_src)
+
+        # Old committed image byte-for-byte intact; metadata rolled back.
+        assert Path(committed_path).read_bytes() == b"OLD_BYTES"
+        assert service.get_playlist("p1").custom_cover_path == committed_path
+        # No NEW bytes anywhere in the committed asset.
+        assert b"NEW_BYTES" not in Path(committed_path).read_bytes()
+
+    def test_hero_db_failure_preserves_old_bytes(self, tmp_path) -> None:
+        from michi.domain.playlist import PlaylistHeroMode
+
+        store = self._store_env(tmp_path)
+        service = PlaylistService(
+            playlists_port=self._FailingPort(fail_after=1), artwork_store=store
+        )  # type: ignore[arg-type]
+        service._playlists = [
+            Playlist(
+                playlist_id="p1",
+                name="Mix",
+                appearance=PlaylistAppearance(hero_mode=PlaylistHeroMode.AUTO),
+            )
+        ]
+        service._persisted = tuple(service._playlists)
+        old_src = tmp_path / "old_hero.png"
+        old_src.write_bytes(b"OLD_HERO_BYTES")
+        assert service.set_custom_hero_image("p1", old_src) is not None
+        committed = service.get_playlist("p1").appearance.hero_image_path
+        assert Path(committed).read_bytes() == b"OLD_HERO_BYTES"
+
+        new_src = tmp_path / "new_hero.png"
+        new_src.write_bytes(b"NEW_HERO_BYTES")
+        with pytest.raises(PlaylistPersistenceError):
+            service.set_custom_hero_image("p1", new_src)
+        assert Path(committed).read_bytes() == b"OLD_HERO_BYTES"
+        assert service.get_playlist("p1").appearance.hero_image_path == committed
+
+    def test_extension_change_failure_preserves_old(self, tmp_path) -> None:
+
+        store = self._store_env(tmp_path)
+        service = PlaylistService(
+            playlists_port=self._FailingPort(fail_after=1), artwork_store=store
+        )  # type: ignore[arg-type]
+        service._playlists = [Playlist(playlist_id="p1", name="Mix")]
+        service._persisted = tuple(service._playlists)
+        old_src = tmp_path / "old.jpg"
+        old_src.write_bytes(b"OLD_BYTES")
+        assert service.set_custom_cover("p1", old_src) is not None
+        old_committed = Path(service.get_playlist("p1").custom_cover_path)
+
+        # Extension change .jpg → .png fails at persist: the .jpg survives.
+        new_src = tmp_path / "new.png"
+        new_src.write_bytes(b"NEW_BYTES")
+        with pytest.raises(PlaylistPersistenceError):
+            service.set_custom_cover("p1", new_src)
+        assert old_committed.read_bytes() == b"OLD_BYTES"
+        assert service.get_playlist("p1").custom_cover_path == str(old_committed)
+
+    def test_success_promotes_and_retires_old_extension(self, tmp_path) -> None:
+        store = self._store_env(tmp_path)
+        service = PlaylistService(
+            playlists_port=self._FailingPort(fail_after=999), artwork_store=store
+        )  # type: ignore[arg-type]
+        service._playlists = [Playlist(playlist_id="p1", name="Mix")]
+        service._persisted = tuple(service._playlists)
+        old_src = tmp_path / "old.jpg"
+        old_src.write_bytes(b"OLD_BYTES")
+        assert service.set_custom_cover("p1", old_src) is not None
+        old_path = Path(service.get_playlist("p1").custom_cover_path)
+
+        new_src = tmp_path / "new.png"
+        new_src.write_bytes(b"NEW_BYTES")
+        assert service.set_custom_cover("p1", new_src) is not None
+        final_path = Path(service.get_playlist("p1").custom_cover_path)
+        assert final_path.read_bytes() == b"NEW_BYTES"
+        # Superseded .jpg variant retired post-commit.
+        assert not old_path.exists()
+
+
+class TestDeletePlaylistAtomicTransaction:
+    def test_nav_failure_rolls_back_collection(self, tmp_path) -> None:
+        """§10: collection write succeeds, nav write fails → BOTH roll back
+        durably; a restart sees the old coherent state."""
+
+        class _NavFailingPort:
+            def __init__(self):
+                self.saved_collections = []
+
+            def load(self):
+                return tuple(
+                    self.saved_collections[-1] if self.saved_collections else ()
+                )
+
+            def load_navigation(self):
+                from michi.domain.playlist import PlaylistNavigationState
+
+                return PlaylistNavigationState()
+
+            def save(self, playlists):
+                self.saved_collections.append(tuple(playlists))
+
+            def save_navigation(self, state):
+                raise PlaylistPersistenceError("injected nav failure")
+
+            def save_playlists_with_navigation(self, playlists, navigation):
+                # ONE atomic logical operation that FAILS: both must roll
+                # back (the service never half-commits).
+                raise PlaylistPersistenceError("injected atomic failure")
+
+        from michi.application.playlist_service import PlaylistService
+
+        port = _NavFailingPort()
+        service = PlaylistService(playlists_port=port)  # type: ignore[arg-type]
+        keep = service.create_playlist("Keep")
+        target = service.create_playlist("DeleteMe")
+        with pytest.raises(PlaylistPersistenceError):
+            service.delete_playlist(target.playlist_id)
+        # In-memory rolled back to the pre-delete coherent state.
+        assert service.get_playlist(target.playlist_id) is not None
+        assert service.get_playlist(keep.playlist_id) is not None
+        # Restart (new service over the SAME port) sees the coherent state.
+        restarted = PlaylistService(playlists_port=port)  # type: ignore[arg-type]
+        assert restarted.get_playlist(target.playlist_id) is not None
+        assert restarted.get_playlist(keep.playlist_id) is not None
