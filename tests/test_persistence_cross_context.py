@@ -146,7 +146,11 @@ class TestAuthoritativeState:
         db = tmp_path / "michi.db"
         _fabricate_db(db, GOLDEN_SETTINGS, GOLDEN_PREFS)
         state = _read_authoritative_state(db)
-        assert set(state) == {"settings", "library_prefs"}
+        # M6-EXT-R4-O: absent R4-era tables are equivalent to EMPTY (this
+        # pre-R4 database legitimately lacks the identity catalog).
+        assert "settings" in state and "library_prefs" in state
+        assert state["library_sources"] == []
+        assert state["library_tracks"] == []
         assert state["settings"] == [
             (k, v) for k, v in sorted(GOLDEN_SETTINGS, key=lambda r: r[0])
         ]
@@ -155,8 +159,15 @@ class TestAuthoritativeState:
         ]
 
     def test_authoritative_tables_are_centralized(self):
-        assert _AUTHORITATIVE_TABLES == ("settings", "library_prefs")
+        # M6-EXT-R4-O: the library identity catalog + user state joined the
+        # authoritative set (identity loss is P0); cache tables never do.
+        assert "settings" in _AUTHORITATIVE_TABLES
+        assert "library_prefs" in _AUTHORITATIVE_TABLES
+        assert "library_sources" in _AUTHORITATIVE_TABLES
+        assert "library_tracks" in _AUTHORITATIVE_TABLES
+        assert "library_favorites" in _AUTHORITATIVE_TABLES
         assert "library_index" not in _AUTHORITATIVE_TABLES  # rebuildable cache
+        assert "library_meta" not in _AUTHORITATIVE_TABLES  # rebuildable cache
 
 
 class TestProvenance:

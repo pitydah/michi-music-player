@@ -373,6 +373,18 @@ def _build_services(
 
     queue = QueueService()
 
+    # M6-EXT-R4-O: library identity migration runs BEFORE any repository
+    # constructs (startup order: preflight → recovery → identity schema →
+    # legacy migration → repositories). A legacy database is upgraded
+    # transactionally; a current/fresh database is a no-op (or an empty
+    # catalog init). The catalog repositories then validate the schema
+    # fail-closed on every connection.
+    from michi.infrastructure.library_identity_migration import (
+        LibraryIdentityMigration,
+    )
+
+    LibraryIdentityMigration(db_path).migrate()
+
     library_index = SqliteLibraryIndexRepository(db_path)
     library_prefs_repo = SqliteLibraryPrefsRepository(db_path)
     playlists_repo = SqlitePlaylistsRepository(db_path)

@@ -202,50 +202,128 @@ def _remove_sqlite_sidecars_strict(db_path: Path) -> None:
 # Authoritative logical state for recovery provenance
 # (M6-FINAL-CROSS-PERSISTENCE-GATE). These tables carry USER/AUTHORITATIVE
 # durable state: settings holds the application/session rows (including the
-# session_snapshot row) and library_prefs holds favorites/history/
-# recently_added/playlists. REBUILDABLE CACHE tables (library_index,
-# library_meta) are intentionally EXCLUDED: the filesystem is the authority
-# over file existence and the index is cached musical knowledge that can be
-# reconstructed — its divergence must never invalidate provenance. Adding a
-# future authoritative table means adding it HERE (single source, never
+# M6-FINAL-CROSS-PERSISTENCE-GATE provenance set, extended by M6-EXT-R4-O:
+# the library-identity catalog + user state are USER AUTHORITY and MUST be
+# protected by M11 recovery — losing LibrarySource/MediaFile/Track ids,
+# favorites or playlists is P0. REBUILDABLE CACHE tables (library_index,
+# library_meta, library_media_cache) are intentionally EXCLUDED: the
+# filesystem is the authority over file existence and the caches can be
+# reconstructed — their divergence must never invalidate provenance. Adding
+# a future authoritative table means adding it HERE (single source, never
 # scattered hardcodes) — and, if the table is optional (pre-existing
 # databases legitimately lack it), its optionality MUST be declared
 # explicitly in _OPTIONAL_AUTHORITATIVE_TABLES; a required table missing
 # from a database is a provenance failure (fail closed), never an empty one.
-_AUTHORITATIVE_TABLES = ("settings", "library_prefs")
-_OPTIONAL_AUTHORITATIVE_TABLES = frozenset({"library_prefs"})
+_AUTHORITATIVE_TABLES = (
+    "settings",
+    "library_prefs",
+    "library_catalog_meta",
+    "library_sources",
+    "library_media_files",
+    "library_tracks",
+    "library_favorites",
+    "library_history",
+    "library_recently_added",
+)
+# Every table born in M6-EXT-R4 is optional ONLY for PRE-R4 databases
+# (absent == empty); settings stays required (settings-less is never an
+# empty DB). Once the R4-era marker (library_catalog_meta) EXISTS, the
+# whole identity catalog + user state become REQUIRED — a missing table in
+# an R4 database is corruption, never an empty state (fail closed).
+_OPTIONAL_AUTHORITATIVE_TABLES = frozenset(
+    {
+        "library_prefs",
+        "library_catalog_meta",
+        "library_sources",
+        "library_media_files",
+        "library_tracks",
+        "library_favorites",
+        "library_history",
+        "library_recently_added",
+    }
+)
+
+# R4-era identity tables: required once the era marker exists.
+_R4_ERA_MARKER = "library_catalog_meta"
+_R4_ERA_TABLES = frozenset(
+    {
+        "library_catalog_meta",
+        "library_sources",
+        "library_media_files",
+        "library_tracks",
+        "library_favorites",
+        "library_history",
+        "library_recently_added",
+    }
+)
+
+# Row shape per authoritative table (ordered, deterministic). Key/value
+# tables keep (key, value); identity tables compare their full ordered rows.
+_AUTHORITATIVE_QUERIES = {
+    "settings": "SELECT key, value FROM settings ORDER BY key",
+    "library_prefs": "SELECT key, value FROM library_prefs ORDER BY key",
+    "library_catalog_meta": (
+        "SELECT key, value FROM library_catalog_meta ORDER BY key"
+    ),
+    "library_sources": (
+        "SELECT library_source_id, display_name, root_path, enabled, "
+        "lifecycle, created_at_ms, updated_at_ms FROM library_sources "
+        "ORDER BY library_source_id"
+    ),
+    "library_media_files": (
+        "SELECT media_file_id, library_source_id, relative_path, "
+        "last_known_path, availability, created_at_ms, updated_at_ms "
+        "FROM library_media_files ORDER BY media_file_id"
+    ),
+    "library_tracks": (
+        "SELECT track_id, media_file_id, created_at_ms FROM library_tracks "
+        "ORDER BY track_id"
+    ),
+    "library_favorites": "SELECT track_id FROM library_favorites ORDER BY track_id",
+    "library_history": (
+        "SELECT position, track_id FROM library_history ORDER BY position"
+    ),
+    "library_recently_added": (
+        "SELECT position, track_id FROM library_recently_added ORDER BY position"
+    ),
+}
 
 
-def _read_authoritative_state(path: Path) -> dict[str, list[tuple[str, str]]]:
-    """Logical authoritative state of a database: ordered (key, value) rows
-    of every authoritative table, read-only.
+def _read_authoritative_state(path: Path) -> dict[str, list[tuple]]:
+    """Logical authoritative state of a database: ordered rows of every
+    authoritative table, read-only.
 
-    An ABSENT OPTIONAL authoritative table (``library_prefs`` in pre-M6
-    databases) is equivalent to an EMPTY one; a NON-empty table is never
-    equivalent to a missing one. An absent REQUIRED table (``settings``)
-    raises — the candidate provenance FAILS CLOSED; a settings-less
-    database is never silently treated as an empty settings database.
-    Rebuildable cache tables are never part of the provenance identity.
-    Structural/operational errors propagate to the caller (fail closed in
-    _candidate_matches_lkg).
+    An ABSENT OPTIONAL authoritative table is equivalent to an EMPTY one; a
+    NON-empty table is never equivalent to a missing one. An absent REQUIRED
+    table (``settings``) raises — the candidate provenance FAILS CLOSED; a
+    settings-less database is never silently treated as an empty settings
+    database. Rebuildable cache tables are never part of the provenance
+    identity. Structural/operational errors propagate to the caller (fail
+    closed in _candidate_matches_lkg).
     """
     conn = sqlite3.connect(_read_only_uri(path), uri=True, timeout=0.2)
     try:
-        state: dict[str, list[tuple[str, str]]] = {}
+        state: dict[str, list[tuple]] = {}
+        existing = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+        r4_era = _R4_ERA_MARKER in existing
         for table in _AUTHORITATIVE_TABLES:
             try:
-                rows = conn.execute(
-                    f"SELECT key, value FROM {table} ORDER BY key"
-                ).fetchall()
+                rows = conn.execute(_AUTHORITATIVE_QUERIES[table]).fetchall()
             except sqlite3.OperationalError as exc:
                 if (
                     "no such table" in str(exc).lower()
                     and table in _OPTIONAL_AUTHORITATIVE_TABLES
+                    and not (r4_era and table in _R4_ERA_TABLES)
                 ):
                     rows = []  # absent optional authoritative table == empty
                 else:
                     raise  # required table missing: provenance fails closed
-            state[table] = rows
+            state[table] = [tuple(row) for row in rows]
         return state
     finally:
         conn.close()
@@ -485,6 +563,16 @@ class SQLiteSettingsRepository(SettingsRepository):
                         PersistenceHealth.MALFORMED_DATA,
                         "settings table is missing key/value columns",
                     )
+                # M6-EXT-R4-O: an R4-era database (library_catalog_meta
+                # present) REQUIRES the whole identity catalog + user state;
+                # a missing R4 table is corruption — never an empty state.
+                if _R4_ERA_MARKER in table_names:
+                    missing_r4 = sorted(_R4_ERA_TABLES - table_names)
+                    if missing_r4:
+                        return PersistenceDiagnostic(
+                            PersistenceHealth.MALFORMED_DATA,
+                            f"R4 identity tables missing: {missing_r4}",
+                        )
                 rows = conn.execute("SELECT key, value FROM settings").fetchall()
             finally:
                 conn.close()
@@ -665,6 +753,18 @@ class SQLiteSettingsRepository(SettingsRepository):
             conn = sqlite3.connect(_read_only_uri(db_path), uri=True, timeout=0.2)
             try:
                 conn.execute("SELECT key, value FROM settings LIMIT 1")
+                # M6-EXT-R4-O: an R4-era database missing any identity
+                # catalog/user-state table is STRUCTURALLY malformed — the
+                # recovery route (LKG restore) must trigger, never a silent
+                # open of a database that lost user authority.
+                table_names = {
+                    row[0]
+                    for row in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'table'"
+                    ).fetchall()
+                }
+                if _R4_ERA_MARKER in table_names and _R4_ERA_TABLES - table_names:
+                    return False
             finally:
                 conn.close()
         except sqlite3.Error as exc:
