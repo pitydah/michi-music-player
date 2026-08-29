@@ -32,7 +32,9 @@ from michi.domain.library_catalog import (
 CATALOG_SCHEMA_VERSION = 1
 
 # Shared DDL (also consumed by the R4-D transactional migration so the
-# schema shape lives in exactly one place).
+# schema shape lives in exactly one place). Version 1 owns the whole
+# library-identity authority: catalog records + user state references
+# (favorites / history / recently added) all keyed by stable TrackId.
 CATALOG_SCHEMA_DDL = (
     """
     CREATE TABLE library_catalog_meta (
@@ -76,6 +78,32 @@ CATALOG_SCHEMA_DDL = (
             ON DELETE RESTRICT
     )
     """,
+    """
+    CREATE TABLE library_favorites (
+        track_id TEXT PRIMARY KEY,
+        FOREIGN KEY(track_id)
+            REFERENCES library_tracks(track_id)
+            ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE TABLE library_history (
+        position  INTEGER PRIMARY KEY,
+        track_id  TEXT NOT NULL,
+        FOREIGN KEY(track_id)
+            REFERENCES library_tracks(track_id)
+            ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE TABLE library_recently_added (
+        position  INTEGER PRIMARY KEY,
+        track_id  TEXT NOT NULL,
+        FOREIGN KEY(track_id)
+            REFERENCES library_tracks(track_id)
+            ON DELETE RESTRICT
+    )
+    """,
 )
 
 _VERSION_KEY = "schema_version"
@@ -84,6 +112,9 @@ _CATALOG_TABLES = (
     "library_sources",
     "library_media_files",
     "library_tracks",
+    "library_favorites",
+    "library_history",
+    "library_recently_added",
 )
 
 
@@ -91,6 +122,79 @@ def _now_ms() -> int:
     import time
 
     return int(time.time() * 1000)
+
+
+def validate_or_initialize_catalog(conn: sqlite3.Connection) -> None:
+    """Fail-closed schema guard shared by every library-identity repository.
+
+    Brand-new empty database → transactional initialize; current version →
+    validate the full required shape; future/malformed version or missing
+    authoritative tables → ``LibraryCatalogSchemaError``. Missing
+    authoritative tables are NEVER recreated empty.
+    """
+    existing = _table_names(conn)
+    meta_present = "library_catalog_meta" in existing
+
+    if not meta_present:
+        if existing & set(_CATALOG_TABLES):
+            raise LibraryCatalogSchemaError(
+                "library identity tables exist without library_catalog_meta; "
+                "refusing to guess the schema version"
+            )
+        _initialize(conn)
+        return
+
+    version = _read_version(conn)
+    if version != CATALOG_SCHEMA_VERSION:
+        raise LibraryCatalogSchemaError(
+            f"unsupported catalog schema version {version!r} "
+            f"(supported: {CATALOG_SCHEMA_VERSION})"
+        )
+    missing = set(_CATALOG_TABLES) - existing
+    if missing:
+        raise LibraryCatalogSchemaError(
+            "library identity schema is versioned current but missing "
+            f"authoritative tables: {sorted(missing)}"
+        )
+
+
+def _table_names(conn: sqlite3.Connection) -> set[str]:
+    rows = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table'"
+    ).fetchall()
+    return {row[0] for row in rows}
+
+
+def _read_version(conn: sqlite3.Connection) -> int | None:
+    row = conn.execute(
+        "SELECT value FROM library_catalog_meta WHERE key = ?", (_VERSION_KEY,)
+    ).fetchone()
+    if row is None:
+        return None
+    raw = row[0]
+    try:
+        return int(raw)
+    except (TypeError, ValueError) as exc:
+        raise LibraryCatalogSchemaError(
+            f"malformed catalog schema version {raw!r}"
+        ) from exc
+
+
+def _initialize(conn: sqlite3.Connection) -> None:
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        for statement in CATALOG_SCHEMA_DDL:
+            conn.execute(statement)
+        conn.execute(
+            "INSERT INTO library_catalog_meta(key, value) VALUES(?, ?)",
+            (_VERSION_KEY, str(CATALOG_SCHEMA_VERSION)),
+        )
+        conn.execute("COMMIT")
+    except sqlite3.Error as exc:
+        conn.execute("ROLLBACK")
+        raise LibraryCatalogStorageError(
+            f"catalog initialization failed: {exc}"
+        ) from exc
 
 
 class SqliteLibraryCatalogRepository(LibraryCatalogPort):
@@ -108,82 +212,15 @@ class SqliteLibraryCatalogRepository(LibraryCatalogPort):
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self._db_path), isolation_level=None)
         conn.execute("PRAGMA foreign_keys = ON")
-        self._validate_or_initialize(conn)
+        validate_or_initialize_catalog(conn)
         return conn
-
-    def _validate_or_initialize(self, conn: sqlite3.Connection) -> None:
-        existing = self._table_names(conn)
-        meta_present = "library_catalog_meta" in existing
-
-        if not meta_present:
-            if existing & set(_CATALOG_TABLES):
-                # Some catalog tables exist but the version metadata is
-                # missing: malformed authoritative state — fail closed.
-                raise LibraryCatalogSchemaError(
-                    "catalog tables exist without library_catalog_meta; "
-                    "refusing to guess the schema version"
-                )
-            # Brand-new empty catalog: transactionally initialize.
-            self._initialize(conn)
-            return
-
-        version = self._read_version(conn)
-        if version != CATALOG_SCHEMA_VERSION:
-            raise LibraryCatalogSchemaError(
-                f"unsupported catalog schema version {version!r} "
-                f"(supported: {CATALOG_SCHEMA_VERSION})"
-            )
-        missing = set(_CATALOG_TABLES) - existing
-        if missing:
-            raise LibraryCatalogSchemaError(
-                "catalog schema is versioned current but missing "
-                f"authoritative tables: {sorted(missing)}"
-            )
-
-    @staticmethod
-    def _table_names(conn: sqlite3.Connection) -> set[str]:
-        rows = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table'"
-        ).fetchall()
-        return {row[0] for row in rows}
-
-    def _read_version(self, conn: sqlite3.Connection) -> int | None:
-        row = conn.execute(
-            "SELECT value FROM library_catalog_meta WHERE key = ?",
-            (_VERSION_KEY,),
-        ).fetchone()
-        if row is None:
-            return None
-        raw = row[0]
-        try:
-            return int(raw)
-        except (TypeError, ValueError) as exc:
-            raise LibraryCatalogSchemaError(
-                f"malformed catalog schema version {raw!r}"
-            ) from exc
-
-    def _initialize(self, conn: sqlite3.Connection) -> None:
-        try:
-            conn.execute("BEGIN IMMEDIATE")
-            for statement in CATALOG_SCHEMA_DDL:
-                conn.execute(statement)
-            conn.execute(
-                "INSERT INTO library_catalog_meta(key, value) VALUES(?, ?)",
-                (_VERSION_KEY, str(CATALOG_SCHEMA_VERSION)),
-            )
-            conn.execute("COMMIT")
-        except sqlite3.Error as exc:
-            conn.execute("ROLLBACK")
-            raise LibraryCatalogStorageError(
-                f"catalog initialization failed: {exc}"
-            ) from exc
 
     # ------------------------------------------------------------- read paths
 
     def schema_version(self) -> int:
         conn = self._connect()
         try:
-            version = self._read_version(conn)
+            version = _read_version(conn)
         finally:
             conn.close()
         if version != CATALOG_SCHEMA_VERSION:
@@ -314,9 +351,7 @@ class SqliteLibraryCatalogRepository(LibraryCatalogPort):
             conn.close()
 
     def set_source_enabled(self, source_id: str, enabled: bool) -> None:
-        self._update_source_fields(
-            source_id, {"enabled": int(enabled)}
-        )
+        self._update_source_fields(source_id, {"enabled": int(enabled)})
 
     def retire_source(self, source_id: str) -> None:
         self._update_source_fields(
@@ -399,9 +434,7 @@ class SqliteLibraryCatalogRepository(LibraryCatalogPort):
                 (availability.value, now, media_id),
             )
             if cursor.rowcount == 0:
-                raise LibraryCatalogStorageError(
-                    f"catalog media not found: {media_id}"
-                )
+                raise LibraryCatalogStorageError(f"catalog media not found: {media_id}")
             conn.execute("COMMIT")
         except sqlite3.Error as exc:
             conn.execute("ROLLBACK")

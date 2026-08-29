@@ -95,6 +95,35 @@ class LibraryCatalogPort(ABC):
     def upsert_tracks(self, tracks: tuple[TrackRecord, ...]) -> None: ...
 
 
+class LibraryUserStatePort(ABC):
+    """Authoritative favorites/history/recently-added persistence by TrackId
+    (M6-EXT-R4-G). Truthful writes: operations either commit or raise
+    ``LibraryCatalogStorageError`` — never log-and-return-success.
+
+    The application layer owns semantics (sorted favorites, history
+    consecutive-dedupe + cap, recently-added cap); this boundary persists
+    ordered TrackId collections atomically.
+    """
+
+    @abstractmethod
+    def load_favorites(self) -> tuple[str, ...]: ...
+
+    @abstractmethod
+    def set_favorites(self, track_ids: tuple[str, ...]) -> None: ...
+
+    @abstractmethod
+    def load_history(self) -> tuple[str, ...]: ...
+
+    @abstractmethod
+    def set_history(self, track_ids: tuple[str, ...]) -> None: ...
+
+    @abstractmethod
+    def load_recently_added(self) -> tuple[str, ...]: ...
+
+    @abstractmethod
+    def set_recently_added(self, track_ids: tuple[str, ...]) -> None: ...
+
+
 class LibraryScannerPort(ABC):
     """Abstract library scanner. Infrastructure implements filesystem access."""
 
