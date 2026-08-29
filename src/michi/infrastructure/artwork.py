@@ -165,10 +165,67 @@ class ArtworkCache(ArtworkCachePort):
     """Deterministic, idempotent on-disk cache for album artwork.
 
     Implements :class:`michi.application.ports.ArtworkCachePort` — the
-    application layer depends on the port, infrastructure owns the disk."""
+    application layer depends on the port, infrastructure owns the disk.
+
+    M6-EXT-R4-M: a rebuildable MANIFEST (``manifest.json``) persists the
+    album_key → cached-file mapping so a restart can resolve cached artwork
+    while its source is offline. The manifest is CACHE, not user authority:
+    an entry pointing to a missing/corrupt file is invalid (None), never a
+    crash, never a network repair."""
+
+    _MANIFEST_NAME = "manifest.json"
 
     def __init__(self, cache_dir: Path) -> None:
         self._cache_dir = cache_dir
+        self._manifest_path = cache_dir / self._MANIFEST_NAME
+        self._manifest: dict[str, str] = self._load_manifest()
+
+    # ------------------------------------------------------------- manifest
+
+    def _load_manifest(self) -> dict[str, str]:
+        try:
+            raw = self._manifest_path.read_text(encoding="utf-8")
+        except OSError:
+            return {}
+        import json
+
+        try:
+            parsed = json.loads(raw)
+        except (TypeError, ValueError):
+            return {}
+        if not isinstance(parsed, dict):
+            return {}
+        return {
+            k: v for k, v in parsed.items() if isinstance(k, str) and isinstance(v, str)
+        }
+
+    def _persist_manifest(self) -> None:
+        import json
+
+        try:
+            self._manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self._manifest_path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(self._manifest, sort_keys=True), encoding="utf-8")
+            os.replace(tmp, self._manifest_path)
+        except OSError as exc:
+            logger.warning("artwork manifest persist failed (cache only): %s", exc)
+
+    # ------------------------------------------------------------- port API
+
+    def lookup(self, album_key: str) -> Path | None:
+        """Persisted album_key → cached file, validated against the disk.
+
+        A manifest entry whose file is missing is invalid: the entry is
+        dropped from the in-memory manifest (never persisted eagerly) and
+        None is returned — no crash, no fabrication, no network."""
+        name = self._manifest.get(album_key)
+        if not name:
+            return None
+        target = self._cache_dir / name
+        if not target.is_file():
+            self._manifest.pop(album_key, None)
+            return None
+        return target
 
     def store(self, album_key: str, artwork: Artwork) -> Path | None:
         """Deterministic content-digest-aware store (M6.5): the filename
@@ -197,6 +254,8 @@ class ArtworkCache(ArtworkCachePort):
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
             if target.exists():
+                self._manifest[album_key] = target.name
+                self._persist_manifest()
                 return target  # idempotent: no rewrite for unchanged content
             tmp = target.with_suffix(target.suffix + ".tmp")
             tmp.write_bytes(artwork.data)
@@ -204,4 +263,6 @@ class ArtworkCache(ArtworkCachePort):
         except OSError as exc:
             logger.warning("Cannot cache artwork %s: %s", target, exc)
             return None
+        self._manifest[album_key] = target.name
+        self._persist_manifest()
         return target

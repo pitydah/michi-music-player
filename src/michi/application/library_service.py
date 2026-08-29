@@ -483,6 +483,16 @@ class LibraryService:
         enriched = []
         for album in albums:
             artwork = None
+            # PASS 0 (M6-EXT-R4-M): the persisted cache mapping resolves
+            # FIRST — an offline source must NOT blank a valid cached cover.
+            cached = None
+            cache_lookup = getattr(self._artwork_cache, "lookup", None)
+            if cache_lookup is not None:
+                cached = cache_lookup(album.key)
+            if cached is not None:
+                next_artwork_paths[album.key] = cached
+                enriched.append(replace(album, has_artwork=True))
+                continue
             # PASS 1: explicit FRONT cover anywhere in the album.
             front_getter = getattr(
                 self._artwork_provider, "get_embedded_front_artwork", None

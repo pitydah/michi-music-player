@@ -52,10 +52,23 @@ class ArtworkProviderPort(ABC):
 
 
 class ArtworkCachePort(ABC):
-    """Artwork cache boundary (best effort; infrastructure owns the disk)."""
+    """Artwork cache boundary (best effort; infrastructure owns the disk).
+
+    M6-EXT-R4-M: ``lookup`` survives restarts so cached artwork renders even
+    while its source is OFFLINE (the mapping is REBUILDABLE cache, never
+    user authority)."""
 
     @abstractmethod
     def store(self, album_key: str, artwork: "Artwork") -> Path | None: ...
+
+    def lookup(self, album_key: str) -> Path | None:
+        """Persisted album_key → cached file (rebuildable).
+
+        A missing/corrupt cached file invalidates the entry (None, never
+        crash, never network). Concrete default keeps historical test
+        doubles backward compatible."""
+        del album_key
+        return None
 
 
 class LibraryPrefsPort(ABC):
