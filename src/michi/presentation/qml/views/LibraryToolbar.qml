@@ -56,7 +56,7 @@ MichiGlassSurface {
         if (library.hasSources())
             library.scanAllSources()
         else
-            sourceDialog.open()
+            folderDialog.open()
     }
 
     // LEGACY COMPATIBILITY surface: the folder picker adds a source
