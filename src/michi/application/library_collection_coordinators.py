@@ -30,10 +30,23 @@ class _LibrarySelectionResolver:
         self._library = library
         self._resolver = resolver or LibraryTrackResolver(library)
 
+    @staticmethod
+    def _legacy_path_reference(value: str) -> Path | None:
+        """EXPLICIT legacy discriminator (P2 hygiene §9): only a raw
+        filesystem path that actually exists in the library resolves as a
+        path reference. A UUID TrackId is NEVER treated as a path."""
+        if not value or value.startswith("legacy-path::"):
+            return None
+        candidate = Path(value)
+        if any(candidate.parts):  # plain relative/absolute locator
+            return candidate
+        return None
+
     def tracks(self, track_ids: Iterable[str]) -> list[TrackRef]:
         """Resolved canonical TrackRefs (stable identity); unresolved ids
-        are skipped honestly. LEGACY seam: a raw path input (pre-R4
-        callers) resolves through the current path projection."""
+        are skipped honestly. LEGACY seam (explicit): a RAW PATH input
+        (pre-R4 callers) resolves through the current path projection —
+        never a UUID converted into a path."""
         refs: list[TrackRef] = []
         seen: set[str] = set()
         for track_id in track_ids:
@@ -42,7 +55,9 @@ class _LibrarySelectionResolver:
             seen.add(track_id)
             ref = self._resolver.resolve_ref(track_id)
             if ref is None:
-                ref = self._library.resolve_trackref(Path(track_id))
+                legacy_path = self._legacy_path_reference(track_id)
+                if legacy_path is not None:
+                    ref = self._library.resolve_trackref(legacy_path)
             if ref is not None:
                 refs.append(ref)
         return refs

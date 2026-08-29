@@ -9,6 +9,7 @@ KILLCRITIC cases:
 """
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from michi.application.library_service import LibraryService
 from michi.application.ports import LibraryPrefsPort
@@ -260,3 +261,59 @@ class TestEffectiveAvailabilityAuthority:
         rows = bridge.property("favoriteTrackRows")
         assert rows[0]["availability"] == "available"
         assert rows[0]["trackId"] == "T1"
+
+
+class TestPlaylistRowsStableIdentity:
+    def test_moved_member_visible_at_current_path(self, tmp_path) -> None:
+        """P1-02/03 in playlist rows: a moved member resolves by TrackId."""
+        from michi.application.library_track_resolver import LibraryTrackResolver
+        from michi.application.playlist_service import PlaylistService
+        from michi.domain.playlist import PlaylistTrackReference
+        from michi.presentation.playlists_bridge import PlaylistsBridge
+
+        library, catalog, source, user = _harness(tmp_path)
+        service = PlaylistService()
+        playlist = service.create_playlist_with_references(
+            "Mix",
+            [PlaylistTrackReference(track_id="T1", fallback_path="/Music/A.flac")],
+        )
+        bridge = PlaylistsBridge(
+            service, library=library, track_resolver=LibraryTrackResolver(library)
+        )
+        bridge._navigation = SimpleNamespace(
+            state=SimpleNamespace(playlist_id=playlist.playlist_id)
+        )
+
+        # Move: identity stays, current path changes.
+        library._state.tracks = [
+            _track("/Music/New/A.flac", "T1", source.library_source_id),
+            _track("/Music/B.flac", "T2", source.library_source_id),
+        ]
+        library._rebuild_derived_library_state()
+        rows = bridge.property("playlistTrackRows")
+        assert len(rows) == 1  # never lost, never duplicated
+        assert rows[0]["path"] == "/Music/New/A.flac"
+        assert rows[0]["trackId"] == "T1"
+
+    def test_member_row_availability_is_effective(self, tmp_path) -> None:
+        from michi.application.library_track_resolver import LibraryTrackResolver
+        from michi.application.playlist_service import PlaylistService
+        from michi.domain.playlist import PlaylistTrackReference
+        from michi.presentation.playlists_bridge import PlaylistsBridge
+
+        library, catalog, source, user = _harness(tmp_path)
+        service = PlaylistService()
+        playlist = service.create_playlist_with_references(
+            "Mix",
+            [PlaylistTrackReference(track_id="T1", fallback_path="/Music/A.flac")],
+        )
+        resolver = LibraryTrackResolver(
+            library,
+            source_availability_provider=lambda sid: SourceAvailability.OFFLINE,
+        )
+        bridge = PlaylistsBridge(service, library=library, track_resolver=resolver)
+        bridge._navigation = SimpleNamespace(
+            state=SimpleNamespace(playlist_id=playlist.playlist_id)
+        )
+        rows = bridge.property("playlistTrackRows")
+        assert rows[0]["availability"] == "source_offline"

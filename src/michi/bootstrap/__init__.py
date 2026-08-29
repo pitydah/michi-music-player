@@ -448,9 +448,7 @@ def _build_services(
     # only translates intents — it can never run a heavy scan on the GUI
     # thread.
     source_scan_lifecycle = SourceScanLifecycle(source_coordinator, scan_runner)
-    scan_relay.done.connect(
-        source_scan_lifecycle.handle_done, Qt.QueuedConnection
-    )
+    scan_relay.done.connect(source_scan_lifecycle.handle_done, Qt.QueuedConnection)
     scan_relay.progress.connect(
         source_scan_lifecycle.handle_progress, Qt.QueuedConnection
     )
@@ -782,6 +780,7 @@ class ApplicationContainer:
             library=library,
             playback_coordinator=graph.playlist_playback,
             palette_extractor=QtPlaylistPaletteExtractor(),
+            track_resolver=graph.track_resolver,
         )
         sb = SettingsBridge(settings)
 

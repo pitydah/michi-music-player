@@ -75,12 +75,14 @@ class PlaylistsBridge(QObject):
         playback_coordinator=None,
         parent: QObject | None = None,
         palette_extractor: PlaylistPaletteExtractorPort | None = None,
+        track_resolver=None,
     ) -> None:
         super().__init__(parent)
         self._playlist_service = playlist_service
         self._coordinator = playlist_navigation
         self._navigation = navigation_service
         self._library = library
+        self._track_resolver = track_resolver
         self._playback_coordinator = playback_coordinator
         self._palette_extractor = palette_extractor
         self._auto_palettes: dict[str, list[str]] = {}
@@ -353,24 +355,37 @@ class PlaylistsBridge(QObject):
         return rows
 
     def _get_playlist_track_rows(self) -> list[dict]:
+        """P1-02/03: playlist rows resolve by STABLE TrackId first (a moved
+        member stays visible at its CURRENT path); the fallback path is the
+        explicit legacy discriminator. One row per membership reference, so
+        the rendered index IS the membership index (P1-04 alignment)."""
         playlist = self._selected()
         if playlist is None:
             return []
         rows = []
-        for path in playlist.track_paths:
-            ref = (
-                self._library.resolve_trackref(Path(path))
-                if self._library is not None
-                else None
-            )
-            if ref is not None:
-                rows.append(
-                    project_track_row(
-                        ref, artwork_path=self._artwork_for_path(str(ref.file_path))
-                    )
+        for reference in playlist.references():
+            ref = None
+            if reference.track_id and self._library is not None:
+                ref = self._library.trackref_by_id(reference.track_id)
+            if ref is None and reference.fallback_path:
+                ref = (
+                    self._library.resolve_trackref(Path(reference.fallback_path))
+                    if self._library is not None
+                    else None
                 )
+            if ref is not None:
+                row = project_track_row(
+                    ref, artwork_path=self._artwork_for_path(str(ref.file_path))
+                )
+                if self._track_resolver is not None:
+                    row["availability"] = self._track_resolver.effective_availability(
+                        ref
+                    ).value
+                rows.append(row)
                 continue
-            rows.append(project_unavailable_track(path))
+            rows.append(
+                project_unavailable_track(reference.fallback_path or reference.track_id)
+            )
         return rows
 
     def _get_search_playlists(self) -> list[dict]:
