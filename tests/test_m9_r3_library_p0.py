@@ -21,11 +21,12 @@ def test_scan_and_folder_actions_share_native_folder_picker_contract() -> None:
     assert "import QtQuick.Dialogs" in toolbar
     assert "FolderDialog {" in toolbar
     assert 'objectName: "libraryFolderDialog"' in toolbar
-    assert "library.scan_url(selectedFolder)" in toolbar
-    assert "if (library.currentDir.length > 0)" in toolbar
-    assert "library.scan(library.currentDir)" in toolbar
+    # M6-EXT-R4 freeze gate §13: the folder picker ADDS a source; the
+    # multi-source authority drives "Scan library" (never currentDir).
+    assert "add_music_source" in toolbar
+    assert "scanAllSources" in toolbar
+    assert "library.scan(library.currentDir)" not in toolbar
     assert "folderDialog.open()" in toolbar
-    assert "LibrarySourcePopover" not in toolbar
     assert "enabled: !root.scanning" in toolbar
     assert "onPrimaryClicked: root.performScan()" in toolbar
 

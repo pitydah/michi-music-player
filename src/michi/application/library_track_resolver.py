@@ -55,9 +55,11 @@ class LibraryTrackResolver:
         """Canonical TrackRef by stable identity, or None."""
         if not track_id:
             return None
-        ref = self._library.trackref_by_id(track_id)
-        if ref is not None:
-            return ref
+        trackref_by_id = getattr(self._library, "trackref_by_id", None)
+        if trackref_by_id is not None:
+            ref = trackref_by_id(track_id)
+            if ref is not None:
+                return ref
         # LEGACY PATH-IDENTITY COMPATIBILITY: a ``legacy-path::<path>`` id
         # resolves through the current path projection.
         if track_id.startswith("legacy-path::"):

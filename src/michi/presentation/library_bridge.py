@@ -533,11 +533,12 @@ class LibraryBridge(QObject):
             ).value
         return ref.availability.value
 
-    def _track_row(self, ref: TrackRef) -> dict:
-        """Map one canonical TrackRef to display facts without UI inference."""
-        row = project_track_row(ref)
-        row["availability"] = self._effective_availability(ref)
-        return row
+    @staticmethod
+    def _track_row(ref: TrackRef) -> dict:
+        """Map one canonical TrackRef to display facts without UI inference
+        (static for legacy callers; effective availability is applied by
+        the instance row builders)."""
+        return project_track_row(ref)
 
     def _track_row_with_artwork(self, ref: TrackRef) -> dict:
         path = ref.file_path

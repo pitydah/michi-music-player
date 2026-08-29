@@ -32,7 +32,8 @@ class _LibrarySelectionResolver:
 
     def tracks(self, track_ids: Iterable[str]) -> list[TrackRef]:
         """Resolved canonical TrackRefs (stable identity); unresolved ids
-        are skipped honestly."""
+        are skipped honestly. LEGACY seam: a raw path input (pre-R4
+        callers) resolves through the current path projection."""
         refs: list[TrackRef] = []
         seen: set[str] = set()
         for track_id in track_ids:
@@ -40,6 +41,8 @@ class _LibrarySelectionResolver:
                 continue
             seen.add(track_id)
             ref = self._resolver.resolve_ref(track_id)
+            if ref is None:
+                ref = self._library.resolve_trackref(Path(track_id))
             if ref is not None:
                 refs.append(ref)
         return refs
@@ -51,8 +54,15 @@ class _LibrarySelectionResolver:
         )
         if album is None:
             return []
-        # CANONICAL membership is TrackIds (track_paths is derived only).
-        return self.tracks(album.track_ids)
+        # CANONICAL membership is TrackIds; a pre-migration AlbumRef with
+        # empty track_ids falls back to the derived path projection.
+        if album.track_ids:
+            return self.tracks(album.track_ids)
+        return [
+            ref
+            for path in album.track_paths
+            if (ref := self._library.resolve_trackref(path)) is not None
+        ]
 
     def artist(self, artist_key: str) -> list[TrackRef]:
         return [
