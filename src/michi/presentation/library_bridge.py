@@ -730,16 +730,11 @@ class LibraryBridge(QObject):
     # ------------------------------------------------------------------
 
     def _get_music_sources(self) -> list[dict]:
+        """THIN adapter (M6-EXT-R4 freeze gate §21): presentation consumes
+        the coordinator's PUBLIC surface — never a private repository."""
         if self._source_coordinator is None:
             return []
-        sources = self._source_coordinator._catalog.load_sources()
-        state = self._service.state
-        counts: dict[str, int] = {}
-        for track in state.tracks:
-            if track.library_source_id:
-                counts[track.library_source_id] = (
-                    counts.get(track.library_source_id, 0) + 1
-                )
+        counts = self._source_coordinator.source_counts(self._service)
         return [
             {
                 "id": source.library_source_id,
@@ -752,7 +747,7 @@ class LibraryBridge(QObject):
                 ).value,
                 "trackCount": counts.get(source.library_source_id, 0),
             }
-            for source in sources
+            for source in self._source_coordinator.list_sources()
         ]
 
     musicSources = Property(list, _get_music_sources, notify=library_changed)
@@ -775,11 +770,44 @@ class LibraryBridge(QObject):
         """Reconcile ONE source (serialized per-source scan)."""
         if self._source_coordinator is None:
             return
-        for source in self._source_coordinator._catalog.load_sources():
+        for source in self._source_coordinator.list_sources():
             if source.library_source_id == source_id:
                 self._source_coordinator.scan_source(source)
                 self.library_changed.emit()
                 return
+
+    @Slot()
+    def scan_all_sources(self) -> None:
+        """CANONICAL 'Scan library' intent (§13): scan ALL active + enabled
+        sources, serialized. With zero sources the caller opens the Add
+        Music Source surface."""
+        if self._source_coordinator is None:
+            return
+        outcomes = self._source_coordinator.scan_all_sources()
+        if outcomes:
+            self.library_changed.emit()
+
+    @Slot()
+    def has_sources(self) -> bool:
+        if self._source_coordinator is None:
+            return False
+        return any(
+            s.lifecycle.value == "active" and s.enabled
+            for s in self._source_coordinator.list_sources()
+        )
+
+    @Slot(str, str)
+    def relocate_source(self, source_id: str, new_root: str) -> str:
+        """Locate Source… (M6-EXT-R4 §24): remap ONE source root, keeping
+        every identity. Returns "" on success or the typed error message."""
+        if self._source_coordinator is None:
+            return "Source management is not available."
+        try:
+            self._source_coordinator.relocate_source(source_id, new_root)
+        except ValueError as exc:
+            return str(exc)
+        self.library_changed.emit()
+        return ""
 
     @Slot(str)
     def retire_source(self, source_id: str) -> None:
@@ -787,7 +815,9 @@ class LibraryBridge(QObject):
         never a cascade delete of identities)."""
         if self._source_coordinator is None:
             return
-        self._source_coordinator._catalog.retire_source(source_id)
+        from michi.domain.playlist import PlaylistPersistenceError  # noqa: F401
+
+        self._source_coordinator.retire_source(source_id)
         self.library_changed.emit()
 
     @Slot(str)
@@ -795,7 +825,7 @@ class LibraryBridge(QObject):
         """Enable/disable a configured source (source stays configured)."""
         if self._source_coordinator is None:
             return
-        self._source_coordinator._catalog.set_source_enabled(source_id, not disabled)
+        self._source_coordinator.set_source_enabled(source_id, not disabled)
         self.library_changed.emit()
 
     @Slot(QUrl)

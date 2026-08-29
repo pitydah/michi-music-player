@@ -148,6 +148,14 @@ class LibraryUserStatePort(ABC):
     def set_recently_added(self, track_ids: tuple[str, ...]) -> None: ...
 
 
+# ONE supported-media policy (M6-EXT-R4 freeze gate §23): the pre-R4
+# contract set. R4 is Library Resilience — NOT a format expansion program.
+# A file outside this set is never catalogued by the source scanner.
+SUPPORTED_MEDIA_SUFFIXES = frozenset(
+    {".mp3", ".flac", ".ogg", ".wav", ".m4a", ".opus", ".aac", ".wma"}
+)
+
+
 @dataclass(frozen=True)
 class DiscoveredMediaFile:
     """One filesystem discovery fact (M6-EXT-R4-K).

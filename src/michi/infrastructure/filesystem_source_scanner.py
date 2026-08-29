@@ -16,6 +16,7 @@ import stat as stat_module
 from pathlib import Path
 
 from michi.application.library_port import (
+    SUPPORTED_MEDIA_SUFFIXES,
     DiscoveredMediaFile,
     LibraryFilesystemError,
     LibrarySourceScannerPort,
@@ -25,24 +26,9 @@ from michi.domain.library_catalog import LibrarySource, validate_relative_media_
 
 logger = logging.getLogger(__name__)
 
-_MEDIA_SUFFIXES = {
-    ".mp3",
-    ".flac",
-    ".ogg",
-    ".oga",
-    ".opus",
-    ".m4a",
-    ".mp4",
-    ".aac",
-    ".wav",
-    ".wv",
-    ".ape",
-    ".dsf",
-    ".dff",
-    ".aiff",
-    ".aif",
-    ".alac",
-}
+# M6-EXT-R4 freeze gate §23: ONE supported-media policy (the pre-R4
+# contract set). R4 is resilience, not a format expansion program.
+_MEDIA_SUFFIXES = SUPPORTED_MEDIA_SUFFIXES
 
 
 class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):

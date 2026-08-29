@@ -46,13 +46,17 @@ MichiGlassSurface {
 
     // Shared scan entry point (toolbar button + empty-library CTA): scans the
     // configured directory or opens the source picker when none is set.
+    // M6-EXT-R4 freeze gate §13: "Scan library" scans ALL active+enabled
+    // LibrarySources (serialized). With zero sources it opens the Add
+    // Music Source surface. currentDir is a deprecated compatibility
+    // projection and never drives this workflow.
     function performScan() {
         if (typeof library === "undefined" || !library)
             return
-        if (library.currentDir.length > 0)
-            library.scan(library.currentDir)
+        if (library.hasSources())
+            library.scanAllSources()
         else
-            folderDialog.open()
+            sourceDialog.open()
     }
 
     FolderDialog {
@@ -224,7 +228,7 @@ MichiGlassSurface {
                                 anchors.margins: MichiSpacing.sm
                                 spacing: MichiSpacing.xxs
                                 MichiText {
-                                    text: qsTr("Music source")
+                                    text: qsTr("Music sources")
                                     role: "caption"
                                     color: MichiPalette.textSecondary
                                 }

@@ -433,6 +433,13 @@ def _build_services(
         metadata_extractor=metadata_extractor,
         index=library_index,
     )
+    # M6-EXT-R4 freeze gate §12: STARTUP HYDRATION — the cached catalog
+    # renders WITHOUT any filesystem scan (a disconnected NAS stays fully
+    # browsable: albums, artists, M7 search, favorites, playlists, cached
+    # artwork). The migration above already created the schema; hydration
+    # on an empty catalog is a cheap no-op. Source probing happens later on
+    # user intent (scan source / scan all).
+    source_coordinator.hydrate_catalog()
 
     # M4-R1: the active playback session sits ABOVE PlaybackService and
     # reads Queue content (one-way dependency; Queue never commands

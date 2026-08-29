@@ -31,7 +31,7 @@ from michi.application.library_port import (
     LibrarySourceScannerPort,
 )
 from michi.application.library_service import LibraryService
-from michi.application.ports import MetadataExtractorPort
+from michi.application.ports import MetadataExtractorPort, ScanCancelled
 from michi.domain.library import TrackMetadata, TrackRef
 from michi.domain.library_catalog import (
     LibrarySource,
@@ -80,6 +80,24 @@ class SourceScanOutcome:
 class SourceOverlapError(ValueError):
     """Adding a source whose root contains (or is contained by) an existing
     source root — typed conflict; never silently index nested roots."""
+
+
+@dataclass
+class SourceReconciliationPlan:
+    """Worker-produced reconciliation plan (M6-EXT-R4 freeze gate §14).
+
+    The plan is the ONLY thing that crosses the thread boundary: the worker
+    computes it (reads only); the owner thread commits it atomically after
+    the generation gate. Provisional ids inside become authoritative ONLY
+    after the catalog commit."""
+
+    outcome: SourceScanOutcome
+    refs: list[TrackRef]
+    upsert_media: list[MediaFileRecord]
+    upsert_tracks: list[TrackRecord]
+    index_upserts: list
+    cache_upserts: list
+    new_track_ids: list[str]
 
 
 class SourceScanCoordinator:
@@ -201,6 +219,134 @@ class SourceScanCoordinator:
 
     # ------------------------------------------------------------ observables
 
+    def list_sources(self) -> tuple[LibrarySource, ...]:
+        """Public source management surface (M6-EXT-R4 freeze gate §21):
+        presentation consumes THIS, never the repository directly."""
+        return self._catalog.load_sources()
+
+    def source_counts(self, library) -> dict[str, int]:
+        """Track counts per source from the canonical library state."""
+        counts: dict[str, int] = {}
+        for track in library.state.tracks:
+            if track.library_source_id:
+                counts[track.library_source_id] = (
+                    counts.get(track.library_source_id, 0) + 1
+                )
+        return counts
+
+    def scan_all_sources(self) -> list[SourceScanOutcome]:
+        """Scan ALL ACTIVE + ENABLED sources, serialized (M6-EXT-R4 §13).
+        Never parallel; one source at a time."""
+        outcomes: list[SourceScanOutcome] = []
+        for source in self._catalog.load_sources():
+            if source.lifecycle.value == "retired" or not source.enabled:
+                continue
+            outcomes.append(self.scan_source(source))
+        return outcomes
+
+    def relocate_source(self, source_id: str, new_root: str) -> SourceScanOutcome:
+        """ROOT RELOCATION (M6-EXT-R4 §24): the user explicitly locates the
+        source at a new root. ONLY source.root_path changes — every
+        MediaFileId / TrackId / favorite / playlist / history entry survives
+        because relative paths and identities never change. Overlap guard
+        applies against OTHER sources."""
+        for other in self._catalog.load_sources():
+            if other.library_source_id == source_id:
+                continue
+            try:
+                if Path(new_root).is_relative_to(Path(other.root_path)) or Path(
+                    other.root_path
+                ).is_relative_to(Path(new_root)):
+                    raise SourceOverlapError(
+                        f"new root {new_root} overlaps existing source "
+                        f"{other.root_path}"
+                    )
+            except ValueError:
+                continue
+        target = None
+        for source in self._catalog.load_sources():
+            if source.library_source_id == source_id:
+                target = source
+                break
+        if target is None:
+            raise ValueError(f"unknown source: {source_id}")
+        relocated = LibrarySource(
+            library_source_id=target.library_source_id,
+            display_name=target.display_name,
+            root_path=new_root,
+            enabled=target.enabled,
+            lifecycle=target.lifecycle,
+        )
+        self._catalog.upsert_source(relocated)
+        return self.scan_source(relocated)
+
+    def retire_source(self, source_id: str) -> None:
+        """Soft retire (Remove from Michi) — never a filesystem delete."""
+        self._catalog.retire_source(source_id)
+
+    def set_source_enabled(self, source_id: str, enabled: bool) -> None:
+        """Enable/disable a configured source (stays configured)."""
+        self._catalog.set_source_enabled(source_id, enabled)
+
+    def submit_source_scan(
+        self,
+        source: LibrarySource,
+        pipeline,
+        generation: int,
+        on_progress=None,
+        on_done=None,
+    ) -> None:
+        """ASYNC source-aware scan (M6-EXT-R4 freeze gate §14): the heavy
+        compute runs on the WORKER via the existing M6.4 pipeline; the
+        authoritative commit + state publication happen on the OWNER thread
+        after the generation gate. A stale/cancelled generation NEVER
+        commits — no partial authoritative state, ever.
+
+        ``pipeline`` is a ScanPipelinePort; ``on_done(generation, plan,
+        error)`` runs on the owner thread and MUST call
+        ``commit_source_reconciliation`` only after validating the
+        generation."""
+
+        def work(progress, token, report):
+            try:
+                discovered = self._scanner.discover(source)
+            except LibraryFilesystemError as exc:
+                self._observations[source.library_source_id] = _availability_from_code(
+                    exc.code
+                )
+                raise
+            self._observations[source.library_source_id] = SourceAvailability.AVAILABLE
+            progress.phase = "RECONCILING"
+            progress.total = len(discovered)
+            progress.processed = 0
+            for item in discovered:
+                if token.cancelled:
+                    raise ScanCancelled()
+                progress.current_path = str(item.absolute_path)
+                progress.processed += 1
+                report()
+            return self.compute_source_reconciliation(source, discovered)
+
+        pipeline.submit(generation, work, on_progress, on_done)
+
+    def commit_source_scan_if_current(
+        self,
+        generation: int,
+        current_generation: int,
+        source: LibrarySource,
+        plan: "SourceReconciliationPlan | None",
+        error: BaseException | None,
+    ) -> SourceScanOutcome | None:
+        """OWNER-THREAD gate: commit ONLY when the generation is current and
+        the worker produced a plan without error. Returns the outcome, or
+        None when the generation is stale / cancelled / failed (nothing was
+        committed)."""
+        if generation != current_generation:
+            return None
+        if error is not None or plan is None:
+            return None
+        return self.commit_source_reconciliation(source, plan)
+
     def observed_availability(self, source_id: str) -> SourceAvailability:
         """Last OBSERVED source availability (UI history, never eternal
         truth — re-probed on every scan)."""
@@ -209,7 +355,8 @@ class SourceScanCoordinator:
     # ------------------------------------------------------------------ scan
 
     def scan_source(self, source: LibrarySource) -> SourceScanOutcome:
-        """Reconcile ONE source against its catalog records.
+        """Reconcile ONE source against its catalog records (synchronous
+        convenience path: compute + commit on the caller thread).
 
         RETIRED/disabled sources are skipped entirely (no writes)."""
         if source.lifecycle.value == "retired" or not source.enabled:
@@ -230,7 +377,55 @@ class SourceScanCoordinator:
             )
 
         self._observations[source.library_source_id] = SourceAvailability.AVAILABLE
+        plan = self.compute_source_reconciliation(source, discovered)
+        return self.commit_source_reconciliation(source, plan)
+
+    # ------------------------------------------------------------------
+    # COMPUTE / COMMIT split (M6-EXT-R4 freeze gate §14): the heavy phase
+    # (enumeration, fingerprints, metadata extraction, candidate
+    # computation) runs on a WORKER; the authoritative catalog commit and
+    # state publication run on the OWNER thread after the generation gate.
+    # The worker never writes SQLite, caches or state.
+    # ------------------------------------------------------------------
+
+    def compute_source_reconciliation(
+        self,
+        source: LibrarySource,
+        discovered: tuple[DiscoveredMediaFile, ...],
+    ) -> "SourceReconciliationPlan":
+        """PURE-ish compute phase: reads catalog/caches, builds the full
+        reconciliation plan. NO durable writes (worker-safe)."""
         return self._reconcile_available(source, discovered)
+
+    def commit_source_reconciliation(
+        self,
+        source: LibrarySource,
+        plan: "SourceReconciliationPlan",
+    ) -> SourceScanOutcome:
+        """OWNER-THREAD commit phase: ONE authoritative catalog transaction,
+        then rebuildable caches, then state publication. Callers must pass
+        the generation gate BEFORE calling (stale plans never commit)."""
+        outcome = plan.outcome
+        try:
+            self._catalog.apply_source_reconciliation(
+                tuple(plan.upsert_media), tuple(plan.upsert_tracks)
+            )
+            if self._index is not None and plan.index_upserts:
+                self._index.upsert_many(tuple(plan.index_upserts))
+            if self._media_cache is not None and plan.cache_upserts:
+                for entry in plan.cache_upserts:
+                    self._media_cache.upsert(*entry)
+        except LibraryCatalogError as exc:
+            return SourceScanOutcome(
+                source_id=source.library_source_id,
+                availability=SourceAvailability.AVAILABLE,
+                failed=True,
+                diagnostic=f"catalog commit failed: {exc}",
+            )
+        self._library.apply_source_tracks(source.library_source_id, plan.refs)
+        if plan.new_track_ids:
+            self._library.note_new_track_ids(tuple(plan.new_track_ids))
+        return outcome
 
     def _reconcile_available(
         self,
@@ -276,23 +471,26 @@ class SourceScanCoordinator:
                     availability=MediaAvailability.MISSING,
                 )
 
-        # PHASE 2 — bounded relink candidates: fresh-MISSING media with a
-        # unique cached (device_id, inode) observation.
-        relink_candidates: dict[tuple[int, int], MediaFileRecord] = {}
+        # PHASE 2 — bounded relink candidates: fresh-MISSING media grouped
+        # by cached (device_id, inode) observation. Auto-relink fires ONLY
+        # when EXACTLY ONE candidate matches; 0 or >1 candidates (hardlink
+        # ambiguity) become a NEW identity and the old media stays MISSING.
+        relink_candidates: dict[tuple[int, int], list[MediaFileRecord]] = {}
         for media in missing_updates.values():
             cached = cache.get(media.media_file_id)
             if cached is None or not cached[2] or not cached[3]:
                 continue  # no usable relocation evidence
             key = (cached[2], cached[3])
-            if key not in relink_candidates:
-                relink_candidates[key] = media
+            relink_candidates.setdefault(key, []).append(media)
 
         # PHASE 3 — discovered items reconcile against known/missing state.
         index_upserts: list[_IndexEntry] = []
+        cache_upserts: list[tuple] = []
         for item in discovered:
             known = known_by_path.get(item.relative_path)
             media_id: str
             track: TrackRecord | None
+            changed = True  # metadata must re-extract unless proven UNCHANGED
 
             if known is not None:
                 # CASE A: same relative location → same identities.
@@ -311,14 +509,20 @@ class SourceScanCoordinator:
                         and cached[1] == item.mtime_ns
                     ):
                         outcome = _bump(outcome, TrackScanDelta.UNCHANGED)
+                        changed = False  # §15: UNCHANGED reuses cached metadata
                     else:
                         outcome = _bump(outcome, TrackScanDelta.MODIFIED)
             else:
                 # CASE B: new relative path → bounded relink candidate.
                 key = (item.device_id, item.inode)
-                candidate = relink_candidates.get(key)
-                if candidate is not None and item.device_id and item.inode:
-                    # EXACT unique same-source move: preserve identities.
+                candidates = (
+                    relink_candidates.get(key)
+                    if item.device_id and item.inode
+                    else None
+                )
+                if candidates is not None and len(candidates) == 1:
+                    # EXACT unique same-source move (§16): preserve ids.
+                    candidate = candidates[0]
                     media_id = candidate.media_file_id
                     track = track_by_media.get(media_id)
                     upsert_media.append(_media_available(candidate, item))
@@ -326,7 +530,9 @@ class SourceScanCoordinator:
                     missing_updates.pop(media_id, None)
                     outcome = _bump(outcome, TrackScanDelta.RELINKED)
                 else:
-                    # NEW identity (authoritative only after catalog commit).
+                    # 0 or >1 candidates (hardlink ambiguity): a NEW identity
+                    # (authoritative only after the catalog commit); the old
+                    # media stays MISSING — never merged.
                     media_id = new_media_file_id()
                     track_id = new_track_id()
                     track = TrackRecord(track_id=track_id, media_file_id=media_id)
@@ -343,9 +549,10 @@ class SourceScanCoordinator:
                     new_track_ids.append(track_id)
                     outcome = _bump(outcome, TrackScanDelta.ADDED)
 
-            # Metadata: reuse the rebuildable index cache for UNCHANGED
-            # (zero extraction); extract otherwise and refresh the cache.
-            meta = index_meta.get(str(item.absolute_path))
+            # §15: MODIFIED/ADDED/RELINKED re-extract metadata (tags changed
+            # → fresh facts); UNCHANGED reuses the rebuildable cache with
+            # ZERO extraction.
+            meta = None if changed else index_meta.get(str(item.absolute_path))
             if meta is None:
                 meta = self._extract_meta(item.absolute_path)
                 index_upserts.append(
@@ -367,14 +574,9 @@ class SourceScanCoordinator:
                     availability=MediaAvailability.AVAILABLE,
                 )
             )
-            if self._media_cache is not None:
-                self._media_cache.upsert(
-                    media_id,
-                    item.file_size,
-                    item.mtime_ns,
-                    item.device_id,
-                    item.inode,
-                )
+            cache_upserts.append(
+                (media_id, item.file_size, item.mtime_ns, item.device_id, item.inode)
+            )
 
         # PHASE 4 — persist the fresh MISSING records and project them.
         for media in missing_updates.values():
@@ -391,31 +593,15 @@ class SourceScanCoordinator:
                 )
             )
 
-        # Authoritative commit BEFORE any state publication: media + track
-        # mutations land in ONE atomic reconciliation — partial identity
-        # state is impossible by construction (P0 freeze gate).
-        try:
-            self._catalog.apply_source_reconciliation(
-                tuple(upsert_media), tuple(upsert_tracks)
-            )
-            if self._index is not None and index_upserts:
-                # Rebuildable cache: refreshed AFTER the authoritative
-                # commit (a failed catalog write never advances the cache).
-                self._index.upsert_many(tuple(index_upserts))
-        except LibraryCatalogError as exc:
-            return SourceScanOutcome(
-                source_id=source.library_source_id,
-                availability=SourceAvailability.AVAILABLE,
-                failed=True,
-                diagnostic=f"catalog commit failed: {exc}",
-            )
-
-        # Publish ONLY after the durable commit succeeded; recently-added is
-        # recorded AFTER publication so the new ids resolve to their paths.
-        self._library.apply_source_tracks(source.library_source_id, refs)
-        if new_track_ids:
-            self._library.note_new_track_ids(tuple(new_track_ids))
-        return outcome
+        return SourceReconciliationPlan(
+            outcome=outcome,
+            refs=refs,
+            upsert_media=upsert_media,
+            upsert_tracks=upsert_tracks,
+            index_upserts=index_upserts,
+            cache_upserts=cache_upserts,
+            new_track_ids=new_track_ids,
+        )
 
     def _extract_meta(self, path: Path) -> TrackMetadata:
         if self._metadata_extractor is None:
