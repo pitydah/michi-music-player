@@ -88,7 +88,12 @@ class LibraryPlaybackCoordinator:
         # TD-013: validate the SELECTED track through the library filesystem
         # gate (never removes identity — availability is marked instead).
         selected = entries[selected_entry_index]
-        ref = self._resolver.resolve_ref(selected.library_track_id or "")
+        ref = None
+        if selected.library_track_id:
+            ref = self._resolver.resolve_ref(selected.library_track_id)
+        if ref is None:
+            # Legacy path-only entry: validate through the path projection.
+            ref = self._library.resolve_trackref(selected.file_path)
         if ref is None or not self._library.validate_track_for_playback(ref):
             return
         self._session.play_context(

@@ -1340,7 +1340,12 @@ class TestF42AdapterContract:
         # LibrarySourceScannerPort / DiscoveredMediaFile) plus the optional
         # ArtworkCachePort.lookup default; the frozen AudioPort and audio
         # transport semantics remain unchanged.
-        "src/michi/application/ports.py": "c711d41f64749faa",
+        # M6-EXT-R4 FINAL AUTHORITY SEAL authorized additive change:
+        # PlaylistArtworkStorePort declares the immutable-candidate contract
+        # (prepare_cover/prepare_hero/delete_managed_asset) and PlaylistsPort
+        # declares the atomic save_playlists_with_navigation capability.
+        # The frozen AudioPort and audio transport semantics remain unchanged.
+        "src/michi/application/ports.py": "644730a22f6aa2cc",
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.
