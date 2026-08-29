@@ -69,7 +69,8 @@ def _seed_legacy_db(db_path: Path) -> None:
     )
     conn.execute("INSERT INTO settings(key, value) VALUES('last_directory', '/Music')")
     conn.execute(
-        "INSERT INTO library_prefs(key, value) VALUES('favorites', '[\"/Music/A.flac\"]')"
+        "INSERT INTO library_prefs(key, value) VALUES('favorites', "
+        "'[\"/Music/A.flac\"]')"
     )
     conn.execute(
         "INSERT INTO library_prefs(key, value) VALUES('playlists', "
