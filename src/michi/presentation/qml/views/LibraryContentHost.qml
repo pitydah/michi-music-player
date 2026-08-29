@@ -124,8 +124,8 @@ ColumnLayout {
         id: albumsViewComponent
         AlbumsView {
             anchors.fill: parent
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            onAddToPlaylistRequested: path =>
+                library.request_tracks_playlist_target([path])
             albumMode: root.albumMode
             albumSortMode: root.albumSortMode
             albumSortDescending: root.albumSortDescending
@@ -141,8 +141,8 @@ ColumnLayout {
         id: artistsViewComponent
         ArtistsView {
             anchors.fill: parent
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            onAddToPlaylistRequested: path =>
+                library.request_tracks_playlist_target([path])
         }
     }
 

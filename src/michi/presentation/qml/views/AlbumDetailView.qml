@@ -12,7 +12,7 @@ ColumnLayout {
     id: root
     objectName: "albumDetailView"
 
-    property string addTargetPath: ""
+    signal addToPlaylistRequested(string path)
     property var inspectedTrack: null
     readonly property var inspectorRows: inspectedTrack ? [
         { label: "Format", value: inspectedTrack.codec || "Unknown" },
@@ -22,7 +22,7 @@ ColumnLayout {
             ? inspectedTrack.bitDepth + "-bit" : "Unknown" },
         { label: "Channels", value: inspectedTrack.channels > 0
             ? String(inspectedTrack.channels) : "Unknown" },
-        { label: "File size", value: root.formatFileSize(inspectedTrack.fileSize) },
+        { label: "File size", value: MichiFormat.formatFileSize(inspectedTrack.fileSize) },
         { label: "Path", value: inspectedTrack.path }
     ] : []
     readonly property string selectedAlbumKey: library.selectedAlbumKey
@@ -37,23 +37,6 @@ ColumnLayout {
             enrichment.activate_album(root.selectedAlbumKey)
     }
     onVisibleChanged: if (!visible) inspectedTrack = null
-
-    function formatFileSize(bytes) {
-        if (!bytes || bytes <= 0)
-            return "Unknown"
-        if (bytes >= 1073741824)
-            return (bytes / 1073741824).toFixed(2) + " GB"
-        return (bytes / 1048576).toFixed(1) + " MB"
-    }
-
-    function formatDuration(milliseconds) {
-        var seconds = Math.max(0, Math.floor(milliseconds / 1000))
-        var minutes = Math.floor(seconds / 60)
-        var hours = Math.floor(minutes / 60)
-        var remainingMinutes = minutes % 60
-        return hours > 0 ? hours + " hr " + remainingMinutes + " min"
-            : minutes + " min"
-    }
 
     MichiButton {
         text: qsTr("Albums")
@@ -145,7 +128,7 @@ ColumnLayout {
                                     + (library.albumTracks.length === 1
                                         ? qsTr(" track") : qsTr(" tracks"))
                                     + (library.albumDurationMs > 0
-                                        ? " · " + root.formatDuration(
+                                        ? " · " + MichiFormat.formatHoursMinutes(
                                             library.albumDurationMs) : "")
                                 role: "secondary"
                                 color: MichiPalette.textMuted
@@ -231,7 +214,7 @@ ColumnLayout {
                 onTrackActivated: (_path, index) => library.activate_album_track(index)
                 onFavoriteRequested: path => library.toggle_favorite(path)
                 onQueueRequested: path => library.queue_track(path)
-                onAddToPlaylistRequested: path => root.addTargetPath = path
+                onAddToPlaylistRequested: path => root.addToPlaylistRequested(path)
                 onPropertiesRequested: track => root.inspectedTrack = track
                 onGoToArtistRequested: artistKey => library.select_artist(artistKey)
             }

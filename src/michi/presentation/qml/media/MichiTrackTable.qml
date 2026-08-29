@@ -96,8 +96,7 @@ Item {
         + (showActions && LibraryTrackColumnState.actionsVisible ? LibraryTrackColumnState.actionsWidth : 0)
     readonly property real gapsWidth: Math.max(0, visibleColumnCount - 1) * MichiSpacing.md
     readonly property real titleColumnWidth: LibraryTrackColumnState.titleVisible
-        ? Math.max(LibraryTrackColumnState.titleWidth,
-            width - horizontalPadding - nonTitleWidth - gapsWidth) : 0
+        ? LibraryTrackColumnState.titleWidth : 0
     readonly property real tableContentWidth: horizontalPadding + nonTitleWidth
         + titleColumnWidth + gapsWidth
 

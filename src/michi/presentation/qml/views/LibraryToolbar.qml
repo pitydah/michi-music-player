@@ -73,33 +73,29 @@ MichiGlassSurface {
         GridLayout {
             objectName: "libraryNavigationGrid"
             Layout.fillWidth: true
-            columns: root.width < 1100 ? 1 : 2
+            columns: root.width < 1100 ? 2 : 4
             columnSpacing: MichiSpacing.md
             rowSpacing: MichiSpacing.sm
 
             LibraryTabs {
                 id: libraryNavigation
                 Layout.fillWidth: true
+                Layout.row: 0
+                Layout.column: 0
+                Layout.columnSpan: root.width < 1100 ? 2 : 1
                 Layout.minimumWidth: Math.min(300, root.width)
                 Layout.preferredHeight: MichiMetrics.controlLarge
                 currentTab: root.currentTab
                 onTabRequested: tab => root.currentTabRequested(tab)
             }
 
-            RowLayout {
-                id: utilityPane
-                Layout.fillWidth: root.width < 1100
-                Layout.preferredWidth: root.width < 1100
-                    ? root.width : root.clampSearchWidth(root.searchPanePreferredWidth)
-                        + scanButton.implicitWidth + MichiSpacing.md
-                Layout.preferredHeight: MichiMetrics.controlLarge
-                spacing: MichiSpacing.md
-
                 Item {
                     id: searchResizeHandle
                     objectName: "librarySearchResizeHandle"
+                    Layout.row: 0
+                    Layout.column: 1
                     Layout.preferredWidth: visible ? 10 : 0
-                    Layout.fillHeight: true
+                    Layout.preferredHeight: MichiMetrics.controlLarge
                     visible: root.width >= 1100
                     activeFocusOnTab: visible
                     Accessible.role: Accessible.Slider
@@ -151,12 +147,14 @@ MichiGlassSurface {
                 Item {
                     id: searchPane
                     objectName: "resizableLibrarySearchPane"
-                    Layout.fillWidth: root.width < 1100
+                    Layout.row: root.width < 1100 ? 1 : 0
+                    Layout.column: root.width < 1100 ? 0 : 2
+                    Layout.fillWidth: true
                     Layout.preferredWidth: root.width < 1100
                         ? -1 : root.clampSearchWidth(root.searchPanePreferredWidth)
                     Layout.minimumWidth: Math.min(root.width, 300)
                     Layout.maximumWidth: root.width < 1100 ? root.width : 560
-                    Layout.fillHeight: true
+                    Layout.preferredHeight: MichiMetrics.controlLarge
 
                     RowLayout {
                         anchors.fill: parent
@@ -196,6 +194,9 @@ MichiGlassSurface {
                 MichiSplitButton {
                     id: scanButton
                     objectName: "libraryScanSplitButton"
+                    Layout.row: root.width < 1100 ? 1 : 0
+                    Layout.column: root.width < 1100 ? 1 : 3
+                    Layout.preferredHeight: MichiMetrics.controlLarge
                     text: root.width < 760 ? qsTr("Scan") : qsTr("Scan library")
                     iconName: "library"
                     secondaryIconName: "chevron-down"
@@ -241,7 +242,6 @@ MichiGlassSurface {
                             onTriggered: folderDialog.open()
                         }
                     }
-                }
             }
         }
 

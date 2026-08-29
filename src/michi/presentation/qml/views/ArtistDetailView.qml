@@ -10,7 +10,7 @@ import "../theme"
 ColumnLayout {
     id: root
     objectName: "artistDetailView"
-    property string addTargetPath: ""
+    signal addToPlaylistRequested(string path)
     readonly property string selectedArtistKey: library.selectedArtistKey
 
     Layout.fillWidth: true
@@ -36,7 +36,7 @@ ColumnLayout {
         id: summaryFlick
         Layout.fillWidth: true
         Layout.preferredHeight: Math.min(summaryColumn.implicitHeight,
-            Math.max(280, root.height * 0.67))
+            Math.max(220, root.height - 300))
         contentWidth: width
         contentHeight: summaryColumn.implicitHeight
         clip: true
@@ -164,7 +164,7 @@ ColumnLayout {
         onTrackActivated: (path, _index) => library.activate_path(path)
         onFavoriteRequested: path => library.toggle_favorite(path)
         onQueueRequested: path => library.queue_track(path)
-        onAddToPlaylistRequested: path => root.addTargetPath = path
+        onAddToPlaylistRequested: path => root.addToPlaylistRequested(path)
         onPropertiesRequested: track => trackPropertiesView.inspect(track)
         onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     }

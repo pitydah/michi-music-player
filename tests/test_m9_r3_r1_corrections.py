@@ -13,7 +13,7 @@ def test_toolbar_uses_responsive_layout_without_navigation_splitview() -> None:
     source = qml("views/LibraryToolbar.qml")
     assert "SplitView" not in source
     assert "GridLayout" in source
-    assert "root.width < 1100 ? 1 : 2" in source
+    assert "columns: root.width < 1100 ? 2 : 4" in source
     assert "root.performScan()" in source
 
 

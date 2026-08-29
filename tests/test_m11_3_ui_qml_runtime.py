@@ -358,6 +358,10 @@ class TestPopupBehavioral:
         # switch completes → rows re-enable
         service.mark_ready(AudioEngineId.GSTREAMER)
         _run(qapp)
+        # The bridge row projection is replaced atomically when service state
+        # changes; reacquire delegates from the live Repeater model.
+        qt_row = _by_name(window, "enginePopupRow_qt_multimedia")
+        mpd_row = _by_name(window, "enginePopupRow_mpd")
         assert qt_row.property("enabled") is True
         assert mpd_row.property("enabled") is True
         popup.close()

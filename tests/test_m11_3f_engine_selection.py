@@ -564,6 +564,78 @@ class TestF2Quiescence:
         assert h.playback.is_engine_switch_quiescent() is True
 
 
+class TestStopAndSwitch:
+    def _playing_harness(self):
+        h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
+        h.playback.load_and_play("/music/a.flac")
+        h.router._bound.emit_media_accepted("/music/a.flac")
+        h.playback.play()
+        h.router._bound.emit_playback_state(PlaybackStatus.PLAYING)
+        return h
+
+    def test_playing_source_is_stopped_then_switched_without_autoplay(self):
+        h = self._playing_harness()
+
+        h.coordinator.stop_and_switch_to(AudioEngineId.GSTREAMER)
+
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+        assert h.playback.state.status == PlaybackStatus.STOPPED
+        assert h.playback.state.file_path == "/music/a.flac"
+        assert h.providers[AudioEngineId.GSTREAMER].port_plays == []
+        assert h.providers[AudioEngineId.GSTREAMER].port_loads == [
+            (AudioEngineId.GSTREAMER, "/music/a.flac")
+        ]
+
+    def test_unavailable_target_does_not_stop_playback(self):
+        h = make_harness(
+            AudioEngineId.QT_MULTIMEDIA,
+            AudioEngineId.GSTREAMER,
+            available={AudioEngineId.GSTREAMER: False},
+        )
+        old_port = h.router._bound
+        h.playback.load_and_play("/music/a.flac")
+        old_port.emit_media_accepted("/music/a.flac")
+        h.playback.play()
+        old_port.emit_playback_state(PlaybackStatus.PLAYING)
+
+        with pytest.raises(AudioEngineSwitchUnavailableError):
+            h.coordinator.stop_and_switch_to(AudioEngineId.GSTREAMER)
+
+        assert h.playback.state.status == PlaybackStatus.PLAYING
+        assert "stop" not in old_port.events
+        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+
+    def test_stop_failure_aborts_before_persistence_and_destructive_boundary(self):
+        h = self._playing_harness()
+        old_port = h.router._bound
+
+        def fail_stop():
+            raise RuntimeError("stop failed")
+
+        old_port.stop = fail_stop
+        with pytest.raises(RuntimeError, match="stop failed"):
+            h.coordinator.stop_and_switch_to(AudioEngineId.GSTREAMER)
+
+        assert h.settings_repo.saved == []
+        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        assert h.providers[AudioEngineId.QT_MULTIMEDIA].close_count == 0
+
+    def test_reentrant_play_after_stop_aborts_before_persistence(self):
+        h = self._playing_harness()
+
+        def rearm():
+            if h.playback.state.status == PlaybackStatus.STOPPED:
+                h.playback._intent = True
+
+        h.playback.subscribe_changed(rearm)
+
+        with pytest.raises(AudioEngineSwitchNotQuiescentError):
+            h.coordinator.stop_and_switch_to(AudioEngineId.GSTREAMER)
+
+        assert h.settings_repo.saved == []
+        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+
+
 # ---------------------------------------------------------------------------
 # F3 — SWITCH ORDER + F4 — SELECTION TRUTH
 # ---------------------------------------------------------------------------

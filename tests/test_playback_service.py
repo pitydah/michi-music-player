@@ -49,6 +49,33 @@ class TestPlaybackService:
         assert playback_service.state.file_path == path
         assert playback_service.state.status != PlaybackStatus.PLAYING
 
+    def test_new_source_acceptance_clears_stale_duration(
+        self, playback_service, fake_audio
+    ):
+        first = Path("/tmp/known.mp3")
+        second = Path("/tmp/unknown.mp3")
+        playback_service.load_and_play(first)
+        fake_audio.trigger_media_accepted(first)
+        playback_service.update_duration(245_000)
+
+        playback_service.load_and_play(second)
+        # The previous accepted source remains authoritative until the
+        # replacement is accepted.
+        assert playback_service.state.duration_ms == 245_000
+        fake_audio.trigger_media_accepted(second)
+
+        assert playback_service.state.file_path == second
+        assert playback_service.state.duration_ms == 0
+
+    def test_acceptance_queries_known_duration(self, playback_service, fake_audio):
+        fake_audio.set_duration(187_500)
+        path = Path("/tmp/known.flac")
+
+        playback_service.load_and_play(path)
+        fake_audio.trigger_media_accepted(path)
+
+        assert playback_service.state.duration_ms == 187_500
+
     def test_rejection_keeps_last_committed_file_and_sets_error(
         self, playback_service, fake_audio
     ):
@@ -167,6 +194,10 @@ class TestPlaybackService:
         assert playback_service.state.position_ms == 5000
         playback_service.update_duration(200000)
         assert playback_service.state.duration_ms == 200000
+        playback_service.update_duration(-1)
+        assert playback_service.state.duration_ms == 0
+        playback_service.update_duration(((1 << 64) - 1) // 1_000_000)
+        assert playback_service.state.duration_ms == 0
 
     def test_restore_volume(self, playback_service, fake_audio):
         playback_service.restore_volume(42, True)

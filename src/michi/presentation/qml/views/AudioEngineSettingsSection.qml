@@ -169,8 +169,7 @@ Item {
                     focusPolicy: Qt.StrongFocus
                     hoverEnabled: true
                     // P2-05: no competing switch intents while switching.
-                    enabled: card.modelData.canActivate
-                        && root.switchingTo === ""
+                    enabled: card.modelData.canSelectNow
                     padding: 0
                     leftPadding: MichiTheme.space12
                     rightPadding: MichiTheme.space12
@@ -199,9 +198,9 @@ Item {
                     KeyNavigation.down: root._navigate(index, 1)
 
                     Accessible.name: card.modelData.displayName + " — " + card.statusText()
-                    Accessible.description: card.modelData.canActivate
-                        ? qsTr("Select ") + card.modelData.displayName
-                        : qsTr("Not available on this system")
+                    Accessible.description: card.modelData.selectionBlocker !== ""
+                        ? card.modelData.selectionBlocker
+                        : qsTr("Select ") + card.modelData.displayName
 
                     // P1-06: Button derives implicitHeight from the content
                     // column + padding — real positive geometry, wrapping

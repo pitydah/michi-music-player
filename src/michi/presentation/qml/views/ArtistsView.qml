@@ -9,7 +9,7 @@ import "../theme"
 Item {
     id: root
     objectName: "artistsView"
-    property string addTargetPath: ""
+    signal addToPlaylistRequested(string path)
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -152,7 +152,14 @@ Item {
 
     ArtistDetailView {
         anchors.fill: parent
-        addTargetPath: root.addTargetPath
-        onAddTargetPathChanged: root.addTargetPath = addTargetPath
+        onAddToPlaylistRequested: path => root.addToPlaylistRequested(path)
+    }
+
+    Connections {
+        target: library
+        function onSelectedArtistKeyChanged() {
+            if (library.selectedArtistKey === "")
+                Qt.callLater(() => artistGrid.forceActiveFocus())
+        }
     }
 }

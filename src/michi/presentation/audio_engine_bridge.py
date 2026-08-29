@@ -153,6 +153,7 @@ class AudioEngineBridge(QObject):
         (the coordinator lease remains the real authority)."""
         if not self._disposed:
             self.state_changed.emit()
+            self.engines_changed.emit()
 
     def _on_state_changed(self) -> None:
         if not self._disposed:
@@ -266,6 +267,7 @@ class AudioEngineBridge(QObject):
         """Live engine rows: cached descriptor facts + CURRENT service state
         overlays (selected/active/switching). No provider re-probe."""
         state = self._service.state
+        switch_ready = self._get_engine_switch_ready()
         rows = []
         for facts in self._engine_facts:
             engine_id = facts["id"]
@@ -274,6 +276,24 @@ class AudioEngineBridge(QObject):
             row["selected"] = engine_id == state.selected_engine_id
             row["active"] = engine_id == state.active_engine_id
             row["switching"] = engine_id == state.switching_to
+            already_current = row["active"] and row["selected"]
+            switch_in_progress = state.switching_to is not None
+            row["canSelectNow"] = bool(
+                row["canActivate"] and not switch_in_progress and not already_current
+            )
+            row["requiresStop"] = bool(row["canSelectNow"] and not switch_ready)
+            if not row["canActivate"]:
+                row["selectionBlocker"] = row["activationBlocker"]
+            elif switch_in_progress:
+                row["selectionBlocker"] = "Audio engine change is already in progress."
+            elif already_current:
+                row["selectionBlocker"] = "This audio engine is already in use."
+            elif row["requiresStop"]:
+                row["selectionBlocker"] = (
+                    "Stop playback and switch to this audio engine."
+                )
+            else:
+                row["selectionBlocker"] = ""
             rows.append(row)
         return rows
 
@@ -322,7 +342,10 @@ class AudioEngineBridge(QObject):
             )
             return
         try:
-            self._coordinator.switch_to(target)
+            if self._get_engine_switch_ready():
+                self._coordinator.switch_to(target)
+            else:
+                self._coordinator.stop_and_switch_to(target)
         except AudioEngineSwitchNotQuiescentError as exc:
             self._remember_technical(exc)
             self.switch_failed.emit(

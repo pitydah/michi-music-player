@@ -76,6 +76,25 @@ QtObject {
         root[column + "Width"] = bounded
     }
 
+    function resizeWithNeighbor(column, value, neighbor) {
+        if (column === "actions" || neighbor === "actions")
+            return
+        if (root[column + "Width"] === undefined
+                || root[neighbor + "Width"] === undefined)
+            return
+        var oldWidth = root[column + "Width"]
+        var requested = Math.max(minimumWidthFor(column), value)
+        if (column === "artwork")
+            requested = Math.min(root.artworkMaxWidth, requested)
+        var delta = requested - oldWidth
+        var neighborWidth = root[neighbor + "Width"]
+        var neighborMinimum = minimumWidthFor(neighbor)
+        var compensation = delta > 0
+            ? Math.min(delta, Math.max(0, neighborWidth - neighborMinimum)) : delta
+        root[column + "Width"] = requested
+        root[neighbor + "Width"] = neighborWidth - compensation
+    }
+
     function resetWidth(column) {
         var defaults = {
             artwork: 44, title: 300, artist: 190, album: 230, format: 88,

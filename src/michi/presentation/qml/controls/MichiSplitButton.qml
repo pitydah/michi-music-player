@@ -9,7 +9,7 @@ FocusScope {
 
     property string text: ""
     property string iconName: ""
-    property string secondaryIconName: "folder"
+    property string secondaryIconName: "chevron-down"
     property string accessibleName: text
     property string secondaryAccessibleName: qsTr("More options")
     property bool iconOnly: false
@@ -24,11 +24,9 @@ FocusScope {
     Rectangle {
         anchors.fill: parent
         radius: MichiRadius.md
-        color: MichiPalette.smoke
+        color: MichiSemanticColors.controlSurface
         border.width: 1
-        border.color: root.activeFocus
-            ? MichiSemanticColors.auroraCyanBorderSubtle
-            : MichiSemanticColors.borderSubtle
+        border.color: MichiSemanticColors.borderSubtle
         clip: true
 
         RowLayout {

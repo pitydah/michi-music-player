@@ -6,10 +6,14 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from michi.application.ports import AudioLoadError, AudioPort
+from michi.application.ports import AudioLoadError, AudioPort, AudioTransportError
 from michi.domain.playback import PlaybackState, PlaybackStatus
 
 logger = logging.getLogger(__name__)
+
+# Gst.CLOCK_TIME_NONE (guint64 max nanoseconds) can cross the backend seam as
+# this millisecond-scale sentinel when duration is unknown.
+_UNKNOWN_DURATION_SENTINEL_MS = ((1 << 64) - 1) // 1_000_000
 
 
 class _PreparePurpose(Enum):
@@ -456,12 +460,25 @@ class PlaybackService:
         self._pending_on_rejected = None
         self._pending_on_cancelled = None
         self._state.file_path = file_path
+        # Duration belongs to the accepted source identity. Keep the previous
+        # value while a replacement is merely pending, but never let it leak
+        # into a newly accepted source whose duration is still unknown.
+        self._state.duration_ms = 0
         self._state.error_message = None
         self._accepted = True
         self._notify()
         if on_accepted is not None:
             on_accepted(file_path)
         self._apply_prepare_seek()
+        # Backends differ in when (or whether) they emit durationChanged.
+        # Query once after acceptance, with source-identity revalidation, so
+        # known durations arrive immediately and live/unknown media remains 0.
+        if self._state.file_path == file_path and self._accepted:
+            try:
+                accepted_duration_ms = self._audio.duration()
+            except AudioTransportError:
+                accepted_duration_ms = 0
+            self.update_duration(accepted_duration_ms)
 
     def acquire_engine_switch_lease(self) -> EngineSwitchLease:
         """P1-01: acquire the EXCLUSIVE quiescence lease for an engine
@@ -783,8 +800,13 @@ class PlaybackService:
                     cb(self._state.file_path, position_ms)
 
     def update_duration(self, duration_ms: int) -> None:
-        if self._state.duration_ms != duration_ms:
-            self._state.duration_ms = duration_ms
+        normalized = (
+            0
+            if duration_ms < 0 or duration_ms >= _UNKNOWN_DURATION_SENTINEL_MS
+            else duration_ms
+        )
+        if self._state.duration_ms != normalized:
+            self._state.duration_ms = normalized
             self._notify()
 
     def snapshot_volume(self) -> tuple[int, bool]:

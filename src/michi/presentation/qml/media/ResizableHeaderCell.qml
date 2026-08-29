@@ -9,6 +9,8 @@ Item {
     property string label: ""
     property string columnKey: ""
     property real columnWidth: 100
+    property real resizeBaseWidth: columnWidth
+    property bool resizable: true
     property bool sortable: false
     property bool sortActive: false
     property bool sortDescending: false
@@ -67,12 +69,13 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.SplitHCursor
         acceptedButtons: Qt.LeftButton
+        enabled: root.resizable
         property real pressGlobalX: 0
         property real pressWidth: 0
 
         onPressed: mouse => {
             pressGlobalX = mapToGlobal(mouse.x, mouse.y).x
-            pressWidth = root.columnWidth
+            pressWidth = root.resizeBaseWidth
             mouse.accepted = true
         }
         onPositionChanged: mouse => {
@@ -88,10 +91,11 @@ Item {
         }
 
         Rectangle {
+            visible: root.resizable
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             width: 1
-            height: parent.height - MichiSpacing.sm
+            height: MichiSpacing.lg
             color: resizeArea.containsMouse || resizeArea.pressed
                 ? MichiSemanticColors.auroraCyanBorder
                 : MichiSemanticColors.borderSubtle

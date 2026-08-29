@@ -17,6 +17,11 @@ Rectangle {
     property string sortColumn: ""
     property bool sortDescending: false
     signal sortRequested(string column)
+    readonly property string titleResizeNeighbor:
+        showArtistColumn && LibraryTrackColumnState.artistVisible ? "artist"
+        : showAlbumColumn && LibraryTrackColumnState.albumVisible ? "album"
+        : LibraryTrackColumnState.formatVisible ? "format"
+        : LibraryTrackColumnState.durationVisible ? "duration" : ""
 
     implicitHeight: MichiMetrics.controlMedium
     color: MichiSemanticColors.controlSurface
@@ -58,11 +63,18 @@ Rectangle {
             label: qsTr("TITLE")
             columnKey: "title"
             columnWidth: root.titleColumnWidth
+            resizeBaseWidth: LibraryTrackColumnState.titleWidth
             sortable: root.sortingEnabled
             sortActive: root.sortColumn === columnKey
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
-            onResizeRequested: (column, width) => root.resizeColumn(column, width)
+            onResizeRequested: (column, width) => {
+                if (root.titleResizeNeighbor.length > 0)
+                    LibraryTrackColumnState.resizeWithNeighbor(
+                        column, width, root.titleResizeNeighbor)
+                else
+                    root.resizeColumn(column, width)
+            }
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
         }
         ResizableHeaderCell {
@@ -200,6 +212,7 @@ Rectangle {
             label: ""
             columnKey: "actions"
             columnWidth: LibraryTrackColumnState.actionsWidth
+            resizable: false
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
         }

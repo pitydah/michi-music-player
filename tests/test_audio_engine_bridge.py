@@ -213,6 +213,39 @@ class TestLiveEngineModel:
         assert rows["mpd"]["available"] is False  # snapshot untouched
         assert rows["mpd"]["canActivate"] is False
 
+    def test_rows_project_one_live_selection_decision(self):
+        service, _, _, bridge, qt, _, _, router, playback = _graph()
+        qt_port = qt.open()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+
+        stopped = {row["id"]: row for row in bridge.engines}
+        assert stopped["qt_multimedia"]["canSelectNow"] is False
+        assert stopped["gstreamer"]["canSelectNow"] is True
+        assert stopped["gstreamer"]["requiresStop"] is False
+
+        playback.load_and_play("/music/a.flac")
+        qt_port.emit_media_accepted("/music/a.flac")
+        playback.play()
+        qt_port.emit_playback_state(PlaybackStatus.PLAYING)
+
+        playing = {row["id"]: row for row in bridge.engines}
+        assert playing["gstreamer"]["canSelectNow"] is True
+        assert playing["gstreamer"]["requiresStop"] is True
+        assert "Stop playback" in playing["gstreamer"]["selectionBlocker"]
+
+    def test_playback_change_notifies_live_engine_rows(self):
+        service, _, _, bridge, qt, _, _, router, playback = _graph()
+        qt_port = qt.open()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, qt_port)
+        service.mark_ready(AudioEngineId.QT_MULTIMEDIA)
+        notifications = []
+        bridge.engines_changed.connect(lambda: notifications.append(1))
+
+        playback.load_and_play("/music/a.flac")
+
+        assert notifications
+
 
 class TestSwitchDiagnostics:
     """P1-07: technical failure evidence never disappears."""

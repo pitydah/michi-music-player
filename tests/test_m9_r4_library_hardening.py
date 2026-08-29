@@ -31,7 +31,8 @@ def test_library_toolbar_has_resizable_search_and_one_split_scan_control() -> No
     assert "property real searchPanePreferredWidth" in toolbar
     assert 'objectName: "librarySearchResizeHandle"' in toolbar
     assert "DragHandler" in toolbar
-    assert "Layout.fillWidth: root.width < 1100" in toolbar
+    assert "columns: root.width < 1100 ? 2 : 4" in toolbar
+    assert "id: utilityPane" not in toolbar
     assert "MichiSplitButton" in toolbar
     assert "onPrimaryClicked: root.performScan()" in toolbar
     assert "onSecondaryClicked: sourceMenu.popup()" in toolbar

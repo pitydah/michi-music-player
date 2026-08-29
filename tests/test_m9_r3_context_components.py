@@ -92,7 +92,7 @@ def test_metadata_fallback_does_not_disable_collection_playback() -> None:
 
 def test_toolbar_stacks_at_narrow_width_without_hiding_actions() -> None:
     toolbar = _qml("views/LibraryToolbar.qml")
-    assert "root.width < 1100 ? 1 : 2" in toolbar
+    assert "columns: root.width < 1100 ? 2 : 4" in toolbar
     assert "GridLayout" in toolbar
     assert 'secondaryIconName: "chevron-down"' in toolbar
     assert 'iconName: "library"' in toolbar

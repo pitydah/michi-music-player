@@ -19,6 +19,7 @@ Item {
     property string status: "stopped"
     property int position: 0
     property int duration: 0
+    readonly property bool durationKnown: root.duration > 0
     property int volume: 100
     property bool muted: false
     property bool hasPrevious: false
@@ -36,8 +37,6 @@ Item {
     property string audioEngineSwitchingTo: ""
     property string audioEngineFallbackFrom: ""
     property string audioEngineStatusSummary: ""
-    property bool audioEngineSwitchReady: true
-    property string audioEngineSwitchBlocker: ""
     // PLAYBACK-CONTROLS-R1 (P2): the Play affordance derives from MEDIA
     // truth (committed logical track), not from presentation text.
     property string currentPath: ""
@@ -213,16 +212,17 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
                     from: 0
-                    to: Math.max(root.duration, 1)
-                    value: Math.min(root.position, to)
-                    enabled: root.duration > 0
+                    to: root.durationKnown ? root.duration : 1
+                    value: root.durationKnown ? Math.min(root.position, to) : 0
+                    enabled: root.durationKnown
                     focusPolicy: Qt.StrongFocus
                     hoverEnabled: true
                     Accessible.role: Accessible.Slider
                     Accessible.name: qsTr("Playback position")
-                    Accessible.description: qsTr("%1 of %2")
-                        .arg(formatTime(value))
-                        .arg(formatTime(root.duration))
+                    Accessible.description: root.durationKnown
+                        ? qsTr("%1 of %2").arg(formatTime(value))
+                            .arg(formatTime(root.duration))
+                        : qsTr("Duration unavailable")
                     onMoved: root.seekRequested(Math.round(value))
 
                     background: Rectangle {
@@ -274,9 +274,9 @@ Item {
                     id: remainingLabel
                     objectName: "remainingLabel"
                     Layout.preferredWidth: 44
-                    text: root.showRemainingTime && root.duration > 0
+                    text: root.showRemainingTime && root.durationKnown
                         ? ("-" + formatTime(Math.max(0, root.duration - root.position)))
-                        : formatTime(root.duration)
+                        : root.durationKnown ? formatTime(root.duration) : qsTr("—")
                     role: "technical"
                     technical: true
                     color: remHover.hovered ? MichiPalette.auroraCyan : MichiPalette.textPrimary
@@ -633,8 +633,6 @@ Item {
                 hasFallback: root.audioEngineFallbackFrom !== ""
                     && root.selectedEngineId !== root.activeEngineId
                 statusSummary: root.audioEngineStatusSummary
-                engineSwitchReady: root.audioEngineSwitchReady
-                engineSwitchBlocker: root.audioEngineSwitchBlocker
                 onEngineSwitchRequested: (engineId) =>
                     root.audioEngineSwitchRequested(engineId)
             }

@@ -78,11 +78,8 @@ class AudioEngineSelectionCoordinator:
     Canonical transaction:
 
         VERIFY TARGET (registered + freshly probed + can_activate)
-        → VERIFY QUIESCENT
-        → STOP
-        → REVALIDATE QUIESCENT (stop() notifies subscribers; a DIRECT /
-          reentrant subscriber may have requested new playback — abort
-          before the destructive boundary if so)
+        → [STOP when explicitly requested by stop_and_switch_to]
+        → VERIFY / REVALIDATE QUIESCENT
         → PERSIST SELECTION (durable save BEFORE any destructive work)
         → mark SELECTED (switching_to exposed truthfully)
         → mark CLOSING
@@ -144,10 +141,10 @@ class AudioEngineSelectionCoordinator:
     def switch_to(self, target: AudioEngineId) -> None:
         """Explicit quiescent switch to ``target``. Deterministic failure.
 
-        Pre-destructive checks (registered / can_activate / quiescent) fail
-        with the OLD runtime untouched: no stop, no persistence mutation, no
-        unbind, no close, no target open. Same-engine idempotence: when
-        selected == active == target and READY, this is a no-op."""
+        Target validation always precedes optional stop. The strict switch
+        path leaves a non-quiescent runtime untouched; Stop & Switch may stop
+        first, then revalidates quiescence before persistence or provider
+        destruction. Same-engine READY selection is a no-op."""
         # M11.3F P1-03: reentrancy guard — a subscriber of AudioEngineService
         # state changes may attempt a nested switch while this transaction is
         # mid-flight; reject it deterministically.
@@ -158,11 +155,32 @@ class AudioEngineSelectionCoordinator:
         self._switch_in_progress = True
         self.last_failure_stage = None  # reset at the start of every transaction
         try:
-            self._switch_to_transaction(target)
+            self._switch_to_transaction(target, stop_playback=False)
         finally:
             self._switch_in_progress = False
 
-    def _switch_to_transaction(self, target: AudioEngineId) -> None:
+    def stop_and_switch_to(self, target: AudioEngineId) -> None:
+        """Stop active/pending playback and switch in one application use case.
+
+        Target validation and same-engine idempotence happen before stop, so
+        an unavailable or already-current target never disrupts playback.
+        Stop failure and reentrant playback both abort before persistence and
+        before the provider/router destructive boundary.
+        """
+        if self._switch_in_progress:
+            raise AudioEngineSwitchInProgressError(
+                "engine switch already in progress; nested switch rejected"
+            )
+        self._switch_in_progress = True
+        self.last_failure_stage = None
+        try:
+            self._switch_to_transaction(target, stop_playback=True)
+        finally:
+            self._switch_in_progress = False
+
+    def _switch_to_transaction(
+        self, target: AudioEngineId, *, stop_playback: bool
+    ) -> None:
         """Explicit quiescent switch to ``target``. Deterministic failure.
 
         Pre-destructive checks (registered / can_activate / quiescent) fail
@@ -188,6 +206,13 @@ class AudioEngineSelectionCoordinator:
             and state.lifecycle == AudioEngineLifecycle.READY
         ):
             return
+
+        # Dedicated Stop & Switch path. PlaybackService owns all stop
+        # semantics; this coordinator only composes the use case. The later
+        # lease acquisition is the mandatory revalidation after synchronous
+        # playback observers have run.
+        if stop_playback and not self._playback.is_engine_switch_quiescent():
+            self._playback.stop()
 
         # 3. ACQUIRE THE EXCLUSIVE QUIESCENCE LEASE (P1-01). This is the
         #    atomic check-then-act guard: from now on Playback REJECTS new

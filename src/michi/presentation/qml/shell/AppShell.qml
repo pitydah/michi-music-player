@@ -117,8 +117,6 @@ Item {
         audioEngineSwitchingTo: audioEngine.switchingTo
         audioEngineFallbackFrom: audioEngine.fallbackFrom
         audioEngineStatusSummary: audioEngine.statusSummary
-        audioEngineSwitchReady: audioEngine.engineSwitchReady
-        audioEngineSwitchBlocker: audioEngine.engineSwitchBlocker
         currentPath: playback.currentPath
         onPlayPauseRequested: playback.toggle_play_pause()
         onPreviousRequested: playbackSession.previous_track()
