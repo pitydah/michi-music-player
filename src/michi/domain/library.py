@@ -255,10 +255,13 @@ def make_artist_key(artist_name: str) -> str:
 
 
 def make_track_id(file_path) -> str:
-    """Canonical track identity (M6.1): the serialized path itself.
+    """LEGACY PATH-IDENTITY COMPATIBILITY ONLY (M6-EXT-R4).
 
-    Paths are case-sensitive on the local filesystem — NO casefold (a
-    different case is a different file). Deterministic and serializable."""
+    DO NOT USE IN NEW PRODUCTION CODE.
+    Stable Library identity is ``TrackRef.track_id`` / ``LibraryTrackResolver``;
+    this helper serializes a PATH as an id string and is retained solely for
+    historical tests and migration-era adapters. Path is location, never
+    identity."""
     return str(Path(file_path))
 
 

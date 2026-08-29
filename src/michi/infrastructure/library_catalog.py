@@ -304,6 +304,43 @@ class SqliteLibraryCatalogRepository(LibraryCatalogPort):
             conn.close()
         return tuple(self._media_from_row(row) for row in rows)
 
+    def get_track(self, track_id: str) -> TrackRecord | None:
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT track_id, media_file_id, created_at_ms "
+                "FROM library_tracks WHERE track_id = ?",
+                (track_id,),
+            ).fetchone()
+        except sqlite3.Error as exc:
+            raise LibraryCatalogStorageError(
+                f"catalog track lookup failed: {exc}"
+            ) from exc
+        finally:
+            conn.close()
+        if row is None:
+            return None
+        return TrackRecord(track_id=row[0], media_file_id=row[1], created_at_ms=row[2])
+
+    def get_media(self, media_file_id: str) -> MediaFileRecord | None:
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT media_file_id, library_source_id, relative_path, "
+                "last_known_path, availability FROM library_media_files "
+                "WHERE media_file_id = ?",
+                (media_file_id,),
+            ).fetchone()
+        except sqlite3.Error as exc:
+            raise LibraryCatalogStorageError(
+                f"catalog media lookup failed: {exc}"
+            ) from exc
+        finally:
+            conn.close()
+        if row is None:
+            return None
+        return self._media_from_row(row)
+
     @staticmethod
     def _media_from_row(row) -> MediaFileRecord:
         return MediaFileRecord(

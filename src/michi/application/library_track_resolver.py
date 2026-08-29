@@ -51,13 +51,16 @@ class LibraryTrackResolver:
         return None
 
     def resolve_media(self, track_id: str) -> MediaFileRecord | None:
-        """Authoritative MediaFileRecord by stable identity, or None."""
+        """Authoritative MediaFileRecord for a stable TrackId.
+
+        Resolution chain: TrackId → TrackRecord → media_file_id →
+        MediaFileRecord (never a media_id compared against a track_id)."""
         if self._catalog is None:
             return None
-        for media in self._catalog.load_media():
-            if media.media_file_id == track_id:
-                return media
-        return None
+        track = self._catalog.get_track(track_id)
+        if track is None:
+            return None
+        return self._catalog.get_media(track.media_file_id)
 
     def resolve_path(self, track_id: str) -> Path | None:
         """Current/last-known path projection, or None."""

@@ -253,3 +253,126 @@ class TestProductionGraphParity:
         assert graph.library_playback._resolver is graph.track_resolver
         assert graph.history_coordinator._resolver is graph.track_resolver
         graph.shutdown if hasattr(graph, "shutdown") else None
+
+
+class TestSelectionResolverStableIds:
+    """M6-EXT-R4 freeze gate: Library Queue/Playlist intents resolve by
+    stable TrackId — never Path(track_id)."""
+
+    def test_queue_tracks_resolves_by_uuid_and_carries_identity(self) -> None:
+        from michi.application.library_collection_coordinators import (
+            LibraryQueueCoordinator,
+        )
+
+        t1 = _track("/a.flac", "T1")
+        t2 = _track("/b.flac", "T2")
+        library, session, backend, resolver, coordinator, history, prefs = _harness(
+            [t1, t2]
+        )
+        queue = QueueService()
+        queue_coordinator = LibraryQueueCoordinator(library, queue)
+        added = queue_coordinator.queue_tracks(["T1", "T2", "no-such-id"])
+        assert added == 2
+        assert [t.library_track_id for t in queue.state.tracks] == ["T1", "T2"]
+        assert [t.file_path for t in queue.state.tracks] == [
+            Path("/a.flac"),
+            Path("/b.flac"),
+        ]
+
+    def test_queue_album_uses_track_id_membership(self) -> None:
+        from michi.application.library_collection_coordinators import (
+            LibraryQueueCoordinator,
+        )
+        from michi.domain.library import build_music_model
+
+        t1 = _track("/a/one.flac", "T1")
+        t2 = _track("/a/two.flac", "T2")
+        library, session, backend, resolver, coordinator, history, prefs = _harness(
+            [t1, t2]
+        )
+        album_key = build_music_model([t1, t2]).albums[0].key
+        queue = QueueService()
+        queue_coordinator = LibraryQueueCoordinator(library, queue)
+        added = queue_coordinator.queue_album(album_key)
+        assert added == 2
+        assert {t.library_track_id for t in queue.state.tracks} == {"T1", "T2"}
+
+    def test_playlist_add_persists_stable_references(self) -> None:
+        from michi.application.library_collection_coordinators import (
+            LibraryPlaylistCoordinator,
+        )
+        from michi.application.playlist_service import PlaylistService
+        from michi.domain.playlist import PlaylistTrackReference
+
+        t1 = _track("/a.flac", "T1")
+        library, session, backend, resolver, coordinator, history, prefs = _harness(
+            [t1]
+        )
+        playlist_service = PlaylistService()
+        playlist = playlist_service.create_playlist("Mix")
+        playlist_coordinator = LibraryPlaylistCoordinator(library, playlist_service)
+        added = playlist_coordinator.add_tracks(playlist.playlist_id, ["T1"])
+        assert added == 1
+        updated = playlist_service.get_playlist(playlist.playlist_id)
+        assert updated.track_ids == ("T1",)
+        assert updated.references() == (
+            PlaylistTrackReference(track_id="T1", fallback_path="/a.flac"),
+        )
+
+    def test_resolve_media_uses_track_then_media_chain(self, tmp_path) -> None:
+        from michi.domain.library_catalog import (
+            LibrarySource,
+            MediaAvailability,
+            MediaFileRecord,
+            TrackRecord,
+            new_library_source_id,
+            new_media_file_id,
+            new_track_id,
+        )
+        from michi.infrastructure.library_catalog import SqliteLibraryCatalogRepository
+
+        catalog = SqliteLibraryCatalogRepository(tmp_path / "michi.db")
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path="/M",
+        )
+        catalog.upsert_source(source)
+        media = MediaFileRecord(
+            media_file_id=new_media_file_id(),
+            library_source_id=source.library_source_id,
+            relative_path="a.flac",
+            last_known_path="/M/a.flac",
+            availability=MediaAvailability.AVAILABLE,
+        )
+        track = TrackRecord(track_id=new_track_id(), media_file_id=media.media_file_id)
+        catalog.apply_source_reconciliation((media,), (track,))
+        from michi.application.library_track_resolver import LibraryTrackResolver
+
+        library = LibraryService(_StubScanner(), library_prefs=_StubPrefs())
+        resolver = LibraryTrackResolver(library, catalog=catalog)
+        assert resolver.resolve_media(track.track_id) == media
+        assert resolver.resolve_media("no-such") is None
+        # A media_id must never be returned for a track_id query mismatch.
+        assert resolver.resolve_media(media.media_file_id) is None
+
+
+class TestStructuralNoPathIdentity:
+    def test_collection_coordinators_never_build_path_from_track_id(self) -> None:
+        import inspect
+
+        from michi.application import library_collection_coordinators as mod
+
+        source = inspect.getsource(mod)
+        assert "Path(str(track_id))" not in source
+        assert "Path(track_id)" not in source
+        assert "make_track_id" not in source
+
+    def test_selection_resolver_uses_resolver_authority(self) -> None:
+        import inspect
+
+        from michi.application import library_collection_coordinators as mod
+
+        source = inspect.getsource(mod)
+        assert "LibraryTrackResolver" in source
+        assert "resolve_ref" in source

@@ -80,6 +80,20 @@ class QueueService:
             self._state.tracks.append(Track(file_path=path))
         self._notify()
 
+    def add_many_entries(self, entries: list[tuple[Path, str | None]]) -> None:
+        """Bulk append with stable Library identity (M6-EXT-R4 freeze gate).
+
+        ``entries`` are (file_path, library_track_id) pairs — Queue content
+        stays temporary; the stable identity rides along so a moved Library
+        track resolves at playback time. One notification for the batch."""
+        if self._state.count + len(entries) > self._max_tracks:
+            raise QueueCapacityError(f"queue capacity {self._max_tracks} exceeded")
+        for path, library_track_id in entries:
+            self._state.tracks.append(
+                Track(file_path=path, library_track_id=library_track_id)
+            )
+        self._notify()
+
     def insert_at(
         self,
         index: int,

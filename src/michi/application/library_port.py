@@ -76,6 +76,14 @@ class LibraryCatalogPort(ABC):
     def media_for_source(self, source_id: str) -> tuple[MediaFileRecord, ...]: ...
 
     @abstractmethod
+    def get_track(self, track_id: str) -> TrackRecord | None:
+        """Single TrackRecord by stable identity (efficient lookup)."""
+
+    @abstractmethod
+    def get_media(self, media_file_id: str) -> MediaFileRecord | None:
+        """Single MediaFileRecord by stable identity (efficient lookup)."""
+
+    @abstractmethod
     def upsert_source(self, source: LibrarySource) -> None: ...
 
     @abstractmethod
