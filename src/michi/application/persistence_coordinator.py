@@ -480,12 +480,22 @@ class PersistenceCoordinator:
                 # Runtime error on the restored committed track.
                 self._release_resume_authority(reason="media rejected")
                 # fall through
-            elif (
-                state.file_path is None
-                or self._restored_snapshot is None
-                or str(state.file_path) != self._restored_snapshot.playback_path
+            elif state.file_path is None or self._restored_snapshot is None:
+                # The committed identity was removed.
+                self._release_resume_authority(reason="removed")
+                # fall through: the file_path change checkpoints the new truth
+            elif not self._playback_identity_equal(
+                str(state.file_path),
+                (
+                    self._session.state.current_entry.library_track_id
+                    if self._session.state.current_entry is not None
+                    else None
+                ),
+                self._restored_snapshot.playback_path,
+                self._restored_playback_track_id(),
             ):
-                # The committed identity was superseded or removed.
+                # CORRECTIVE SEAL §7: a MOVED track (same TrackId, new
+                # path) is the SAME identity — never a supersession break.
                 self._release_resume_authority(reason="superseded or removed")
                 # fall through: the file_path change checkpoints the new truth
             else:
@@ -629,11 +639,30 @@ class PersistenceCoordinator:
                     if snapshot.playback_path is not None
                     else None
                 )
+            persisted_entry = (
+                snapshot.context.entries[idx]
+                if 0 <= idx < len(snapshot.context.entries)
+                else None
+            )
             coherent = (
                 snapshot.playback_path is not None
                 and resume_target is not None
-                and 0 <= idx < len(resolved_entries)
+                and persisted_entry is not None
                 and engine_available  # M11.3G §66: never resume unbound
+                # CORRECTIVE SEAL §8: the restored playback identity must
+                # LOGICALLY match the persisted session entry — identity
+                # equality (TrackId first) AND internal snapshot integrity
+                # (the historical playback_path is the entry's own path).
+                # Two non-null fields never fabricate a relationship.
+                and self._playback_identity_equal(
+                    str(resume_target),
+                    resolved_current.library_track_id
+                    if resolved_current is not None
+                    else None,
+                    snapshot.playback_path,
+                    persisted_entry.library_track_id,
+                )
+                and str(persisted_entry.file_path) == snapshot.playback_path
             )
             if coherent:
                 # M5-LAST-GATE-2: the loaded snapshot is the last valid
