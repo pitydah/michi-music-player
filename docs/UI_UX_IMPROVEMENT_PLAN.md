@@ -286,6 +286,30 @@ semantic colors, material texture, glass primitive, and NowPlayingBar unchanged.
   800 px minimum width. The branch is published; PR creation and PR-triggered
   CI remain pending.
 
+## M9-R5.1 surgical hardening (local verification complete)
+
+R5.1 fixes only runtime-confirmed Library and playback defects. It does not
+introduce a new visual language or reopen Vinyl Wall, Cover Flow, artist cards,
+context menus, canonical materials, or player-bar geometry.
+
+- **Toolbar:** Search and Scan are direct responsive-grid peers; the obsolete
+  utility-width budget is gone, and the split button uses the canonical control
+  surface and one focus treatment.
+- **Track table:** title drag uses the persisted width as its baseline and
+  redistributes width through the nearest visible neighbor. Actions no longer
+  exposes a false resize affordance.
+- **Duration:** accepted-source identity clears stale duration, then performs a
+  transport query. Unknown and late duration remain truthful; seeking stays
+  disabled until duration is known.
+- **Audio engines:** quick selection and Settings consume the same bridge row
+  decision. Active playback selects through an atomic application-layer Stop &
+  Switch use case with no QML sequencing and no autoplay.
+- **Details:** Album/Artist playlist requests use upward signals, Artist return
+  restores keyboard focus, and Album formatting delegates to `MichiFormat`.
+- **Verification:** 3049 tests passed with 1 skipped under isolated XDG state;
+  Ruff, format, qmllint, compileall, build, production runtime, responsive
+  toolbar geometry, and all frozen firewalls are green. Remote CI is pending.
+
 ## Management notes
 
 - **Branch debt**: `antigravity/m9-r2-ui-ux-refinement` is 20 commits behind

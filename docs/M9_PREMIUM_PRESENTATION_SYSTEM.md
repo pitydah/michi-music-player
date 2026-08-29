@@ -444,3 +444,32 @@ server.
   palette/material/glass/NowPlaying firewalls pass. The branch is published;
   PR creation and PR-triggered CI remain pending, so the work package stays in
   `VERIFY`.
+
+### M9-R5.1 surgical Library and playback hardening
+
+- The toolbar now lays out navigation, the Search resize handle, Search, and
+  the Scan split button directly in one responsive grid. Search is the flexible
+  utility surface; Scan no longer participates in a manually budgeted wrapper.
+- Track-title resizing starts from the persisted width and compensates through
+  the nearest visible data column. This removes the wide-viewport dead zone,
+  keeps header and row geometry aligned, and leaves Actions non-resizable.
+- Playback duration is reset when a new source is accepted, queried once from
+  the active transport, normalized at the application boundary, and still
+  accepts later backend duration events. Unknown duration disables seeking,
+  renders an empty timeline, and displays an em dash without changing the
+  frozen `NowPlayingBar` geometry.
+- `AudioEngineBridge` projects one live per-engine selection decision for both
+  quick selection and Settings. Active playback uses the application-layer
+  `stop_and_switch_to()` transaction, which validates the target before Stop,
+  revalidates quiescence, reuses the existing lease/snapshot/rehydration path,
+  and never autoplays.
+- Album and Artist detail playlist actions now propagate as signals rather than
+  writing through bound relay properties. Artist return restores gallery
+  focus; detail sizing is content-led; Album detail uses `MichiFormat` as the
+  formatting authority.
+- Local acceptance evidence: **3049 passed, 1 skipped** under isolated XDG
+  state; Ruff, formatting, qmllint, compileall, wheel build, production QML
+  runtime, and toolbar geometry checks at 1920/1646/1440/1200/800 are green.
+  Canonical palette, semantic color, material texture, glass, and openspec
+  firewalls remain unchanged. Only timeline state/wiring changed inside
+  `NowPlayingBar`; its geometry remains frozen. Remote CI remains pending.
