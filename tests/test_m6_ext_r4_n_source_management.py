@@ -152,13 +152,11 @@ class TestSourcesDialogRuntime:
         )
         dialog = component.create()
         assert dialog is not None, component.errorString()
-        # The bridge is wired as the dialog's context; opening requires a
-        # visible window (production: the app shell), so the honest
-        # headless assertion is clean instantiation + the source list
-        # rendering against the real bridge.
+        # Production wires the bridge explicitly (toolbar Loader); opening
+        # requires a visible window (the app shell), so the honest
+        # headless assertion is clean instantiation + bridge wiring.
+        dialog.setProperty("library", bridge)
         assert dialog.property("library") is bridge
-        # Exercise the list refresh against the live bridge surface.
-        engine.rootContext().setContextProperty("library", bridge)
         dialog.open()
         for _ in range(3):
             app.processEvents(QEventLoop.AllEvents, 20)
