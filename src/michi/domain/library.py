@@ -5,6 +5,8 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from michi.domain.library_catalog import MediaAvailability
+
 if TYPE_CHECKING:  # M7: search types annotate LibraryState without a runtime
     # import cycle (search.py imports resolve_album_artist from here).
     from michi.domain.search import SearchProjection
@@ -50,7 +52,16 @@ class TrackRef:
     """model projection of TrackMetadata (album_artist/track/disc/composer/
     compilation + technical audio facts: codec/container/sample_rate/bit
     depth/channels/bitrate/file_size — M6-PRODUCTION-INTEGRATION retains the
-    technical carrier so canonical runtime projections can show facts)"""
+    technical carrier so canonical runtime projections can show facts).
+
+    M6-EXT-R4 (stable identity): ``track_id`` / ``media_file_id`` /
+    ``library_source_id`` are the stable catalog identities (empty ONLY for
+    legacy pre-migration records); ``availability`` decides playability —
+    a non-empty ``file_path`` never implies AVAILABLE. ``file_path`` is the
+    current resolved / last-known path projection, NOT identity. The
+    metadata carrier now matches TrackMetadata field-for-field (parity:
+    track_total/disc_total/date/sort_* no longer dropped).
+    """
 
     file_path: Path
     display_name: str = ""
@@ -62,10 +73,16 @@ class TrackRef:
     year: int = 0
     album_artist: str = ""
     track_number: int = 0
+    track_total: int = 0
     disc_number: int = 0
+    disc_total: int = 0
     composer: str = ""
+    date: str = ""
     compilation: bool = False
     sort_title: str = ""
+    sort_artist: str = ""
+    sort_album: str = ""
+    sort_album_artist: str = ""
     codec: str = ""
     container: str = ""
     sample_rate_hz: int = 0
@@ -73,6 +90,15 @@ class TrackRef:
     channels: int = 0
     bitrate_bps: int = 0
     file_size: int = 0
+
+    # Stable catalog identity (M6-EXT-R4). Empty only for legacy records
+    # that predate the catalog.
+    track_id: str = ""
+    media_file_id: str = ""
+    library_source_id: str = ""
+
+    # Observed availability; playability derives from THIS, not the path.
+    availability: "MediaAvailability" = MediaAvailability.UNKNOWN
 
     def __post_init__(self) -> None:
         if not self.display_name:

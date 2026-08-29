@@ -417,7 +417,18 @@ class LibraryService:
             return TrackRef(file_path=file_path)
         return self._trackref_from_metadata(file_path, meta)
 
-    def _trackref_from_metadata(self, file_path: Path, meta) -> TrackRef:
+    def _trackref_from_metadata(
+        self,
+        file_path: Path,
+        meta: TrackMetadata,
+        *,
+        track_id: str = "",
+        media_file_id: str = "",
+        library_source_id: str = "",
+    ) -> TrackRef:
+        """Project TrackMetadata onto a TrackRef with FULL carrier parity
+        (M6-EXT-R4-E: totals/date/sort fields are never dropped) plus the
+        stable catalog identities when the caller knows them."""
         return TrackRef(
             file_path=file_path,
             display_name=meta.title or file_path.stem,
@@ -429,13 +440,16 @@ class LibraryService:
             year=meta.year,
             album_artist=meta.album_artist,
             track_number=meta.track_number,
+            track_total=meta.track_total,
             disc_number=meta.disc_number,
+            disc_total=meta.disc_total,
             composer=meta.composer,
+            date=meta.date,
             compilation=meta.compilation,
             sort_title=meta.sort_title,
-            # M6-PRODUCTION-INTEGRATION: the canonical TrackRef retains the
-            # technical carrier so runtime projections can show facts
-            # (codec/container/sample rate/bit depth/channels/bitrate/size).
+            sort_artist=meta.sort_artist,
+            sort_album=meta.sort_album,
+            sort_album_artist=meta.sort_album_artist,
             codec=meta.codec,
             container=meta.container,
             sample_rate_hz=meta.sample_rate_hz,
@@ -443,6 +457,9 @@ class LibraryService:
             channels=meta.channels,
             bitrate_bps=meta.bitrate_bps,
             file_size=meta.file_size,
+            track_id=track_id,
+            media_file_id=media_file_id,
+            library_source_id=library_source_id,
         )
 
     def _enrich_albums(self, albums: tuple[AlbumRef, ...]) -> tuple[AlbumRef, ...]:
