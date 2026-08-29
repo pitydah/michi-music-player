@@ -807,14 +807,9 @@ class TestSourceConfigurationRaces:
             tmp_path, _source(tmp_path, "a")
         )
         (Path(coordinator.list_sources()[0].root_path) / "song.flac").write_bytes(b"x")
-        source_id = coordinator.list_sources()[0].library_source_id
-        done(gen, plan, None)  # deliver old plan BEFORE retirement? no:
-        # held; now retire BEFORE owner receives it
-        # Re-run with correct order: retire first, then deliver.
-        library2, catalog2, coordinator2, lifecycle2, gen2, plan2, done2 = (
-            self._held_scan_retired(tmp_path)
-        )
-        assert lifecycle2 is not None
+        # Held scan: retire first, then deliver the stale plan (covered by
+        # the dedicated race test below).
+        assert lifecycle is not None
 
     def _held_scan_retired(self, tmp_path):
         library, catalog, coordinator, _ = _env(tmp_path)
