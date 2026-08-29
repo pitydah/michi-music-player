@@ -8,7 +8,7 @@ ColumnLayout {
     objectName: "albumsView"
 
     property string albumMode: "grid"
-    signal addToPlaylistRequested(string path)
+    signal addToPlaylistRequested(string trackId)
     property string albumSortMode: "title"
     property bool albumSortDescending: false
     property string albumFilterMode: "all"
@@ -163,6 +163,6 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         visible: library.selectedAlbumKey !== ""
-        onAddToPlaylistRequested: path => root.addToPlaylistRequested(path)
+        onAddToPlaylistRequested: trackId => root.addToPlaylistRequested(trackId)
     }
 }

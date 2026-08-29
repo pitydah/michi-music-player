@@ -12,7 +12,7 @@ ColumnLayout {
     id: root
     objectName: "albumDetailView"
 
-    signal addToPlaylistRequested(string path)
+    signal addToPlaylistRequested(string trackId)
     property var inspectedTrack: null
     readonly property var inspectorRows: inspectedTrack ? [
         { label: "Format", value: inspectedTrack.codec || "Unknown" },
@@ -216,7 +216,7 @@ ColumnLayout {
                 onTrackActivated: (trackId, path, index) => library.activate_album_track(index)
                 onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
                 onQueueRequested: trackId => library.queue_track_by_id(trackId)
-                onAddToPlaylistRequested: trackId => root.addToPlaylistRequested(path)
+                onAddToPlaylistRequested: trackId => root.addToPlaylistRequested(trackId)
                 onPropertiesRequested: track => root.inspectedTrack = track
                 onGoToArtistRequested: artistKey => library.select_artist(artistKey)
             }

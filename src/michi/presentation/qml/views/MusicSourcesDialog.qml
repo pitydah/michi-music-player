@@ -153,22 +153,36 @@ Popup {
                                 }
                                 Row {
                                     spacing: MichiSpacing.xs
+                                    // P1-C UX defense: mutating actions are
+                                    // disabled while ANY scan is active.
+                                    property bool busy: root.library && root.library.scanActive
                                     MichiIconButton {
                                         iconName: "play"
                                         accessibleName: qsTr("Scan source")
-                                        enabled: parent.parent.parent.enabled
+                                        enabled: !parent.busy
+                                            && parent.parent.parent.enabled
                                             && parent.parent.parent.lifecycle === "active"
                                         onClicked: root.library.scan_source(parent.parent.parent.sourceId)
                                     }
                                     MichiIconButton {
                                         iconName: "folder"
                                         accessibleName: qsTr("Locate source")
+                                        enabled: !parent.busy
                                         onClicked: locateDialog.openFor(parent.parent.parent.sourceId)
+                                    }
+                                    MichiIconButton {
+                                        iconName: "refresh"
+                                        accessibleName: qsTr("Restore source")
+                                        visible: parent.parent.parent.lifecycle === "retired"
+                                        enabled: !parent.busy
+                                        onClicked: root.library.restore_source(parent.parent.parent.sourceId)
                                     }
                                     MichiIconButton {
                                         iconName: parent.parent.parent.enabled ? "pause" : "play"
                                         accessibleName: parent.parent.parent.enabled
                                             ? qsTr("Disable source") : qsTr("Enable source")
+                                        visible: parent.parent.parent.lifecycle === "active"
+                                        enabled: !parent.busy
                                         onClicked: root.library.disable_source(
                                             parent.parent.parent.sourceId,
                                             parent.parent.parent.enabled)
@@ -176,6 +190,8 @@ Popup {
                                     MichiIconButton {
                                         iconName: "trash"
                                         accessibleName: qsTr("Remove from Michi")
+                                        visible: parent.parent.parent.lifecycle === "active"
+                                        enabled: !parent.busy
                                         onClicked: root.library.retire_source(parent.parent.parent.sourceId)
                                     }
                                 }

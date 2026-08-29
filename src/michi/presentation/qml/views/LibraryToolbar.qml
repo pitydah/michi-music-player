@@ -14,12 +14,8 @@ MichiGlassSurface {
     property real searchPanePreferredWidth: defaultSearchWidth
     signal currentTabRequested(string tab)
 
-    readonly property bool scanning: (typeof library !== "undefined" && library)
-        && library.scanStatus !== ""
-        && library.scanStatus !== "IDLE"
-        && library.scanStatus !== "COMPLETED"
-        && library.scanStatus !== "CANCELLED"
-        && library.scanStatus !== "FAILED"
+    readonly property bool scanning: (typeof library !== "undefined" && library && library.scanActive === true)
+
     elevation: "subtle"
     tileSeed: 2
     shadowed: true

@@ -186,18 +186,39 @@ class LibraryBridge(QObject):
             return None
         return self._source_scan_lifecycle.state
 
-    def _get_scan_status(self) -> str:
-        """UNIFIED scan projection (CORRECTIVE SEAL §3 + P1-03): the ACTIVE
-        source scan wins; otherwise the RUN terminal result (FAILED /
-        CANCELLED / COMPLETED) is exposed — never hidden by legacy idle."""
+    def _legacy_scan_active(self) -> bool:
+        return self._service.state.scan_status in {
+            LibraryScanStatus.DISCOVERING,
+            LibraryScanStatus.INDEXING,
+            LibraryScanStatus.EXTRACTING,
+            LibraryScanStatus.COMMITTING,
+        }
+
+    def _get_scan_active(self) -> bool:
+        """ONE QML-facing active truth (P1-B): productive source scan OR a
+        genuinely active legacy scan — never inferred from terminal strings."""
         source_state = self._source_scan_state()
-        if source_state is not None:
-            if source_state.active:
-                return source_state.phase or "RUNNING"
-            if source_state.last_terminal_status:
-                return source_state.last_terminal_status
-        status = self._service.state.scan_status
-        return status.name if status is not LibraryScanStatus.IDLE else ""
+        if source_state is not None and source_state.active:
+            return True
+        return self._legacy_scan_active()
+
+    def _get_scan_status(self) -> str:
+        """UNIFIED scan projection with explicit priority (P1-B):
+        1. ACTIVE productive source scan wins;
+        2. ACTIVE legacy scan beats a historical Source terminal state;
+        3. Source run terminal truth;
+        4. legacy terminal truth."""
+        source_state = self._source_scan_state()
+        if source_state is not None and source_state.active:
+            return source_state.phase or "RUNNING"
+        legacy_status = self._service.state.scan_status
+        if self._legacy_scan_active():
+            return legacy_status.name
+        if source_state is not None and source_state.last_terminal_status:
+            return source_state.last_terminal_status
+        if legacy_status is not LibraryScanStatus.IDLE:
+            return legacy_status.name
+        return ""
 
     def _get_scan_processed(self) -> int:
         source_state = self._source_scan_state()
@@ -836,6 +857,7 @@ class LibraryBridge(QObject):
             "diagnostic": state.diagnostic,
         }
 
+    scanActive = Property(bool, _get_scan_active, notify=library_changed)
     scanDiagnostic = Property(str, _get_scan_diagnostic, notify=library_changed)
     libraryScanDiagnostic = Property(str, _get_scan_diagnostic, notify=library_changed)
     sourceScanStatus = Property(str, _get_source_scan_status, notify=library_changed)
@@ -933,21 +955,38 @@ class LibraryBridge(QObject):
     @Slot(str)
     def retire_source(self, source_id: str) -> None:
         """Remove from Michi: soft retirement (never a filesystem delete,
-        never a cascade delete of identities)."""
+        never a cascade delete of identities). P1-C: active scan work for
+        this source is invalidated so an old plan can never re-publish
+        retired tracks."""
         if self._source_coordinator is None:
             return
-        from michi.domain.playlist import PlaylistPersistenceError  # noqa: F401
-
         self._source_coordinator.retire_source(source_id)
+        if self._source_scan_lifecycle is not None:
+            self._source_scan_lifecycle.invalidate_source(source_id)
         self.library_changed.emit()
 
-    @Slot(str)
+    @Slot(str, bool)
     def disable_source(self, source_id: str, disabled: bool) -> None:
-        """Enable/disable a configured source (source stays configured)."""
+        """Enable/disable a configured source (stays configured). P1-C:
+        configuration mutates FIRST, then active scan work for this source
+        is invalidated (the owner gate rejects any old plan)."""
         if self._source_coordinator is None:
             return
         self._source_coordinator.set_source_enabled(source_id, not disabled)
+        if self._source_scan_lifecycle is not None:
+            self._source_scan_lifecycle.invalidate_source(source_id)
         self.library_changed.emit()
+
+    @Slot(str)
+    def restore_source(self, source_id: str) -> None:
+        """P1-D: restore a retired/disabled Source (SAME identity) and
+        reconcile its current root asynchronously."""
+        if self._source_coordinator is None:
+            return
+        restored = self._source_coordinator.reactivate_source(source_id)
+        self.library_changed.emit()
+        if self._source_scan_lifecycle is not None:
+            self._source_scan_lifecycle.request_scan_source(restored.library_source_id)
 
     @Slot(QUrl)
     def scan_url(self, directory: QUrl) -> None:

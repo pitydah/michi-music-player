@@ -68,7 +68,9 @@ ColumnLayout {
         title: library.hasDiagnostic ? "Library unavailable" : "Scan failed"
         message: library.hasDiagnostic
             ? library.diagnosticMessage
-            : "The library could not be scanned. Check your music folder and try again."
+            : (library.scanDiagnostic.length > 0
+                ? library.scanDiagnostic
+                : "The library could not be scanned. Check your music folder and try again.")
         actionText: qsTr("Retry scan")
         onActionRequested: root.scanRequested()
         Layout.fillWidth: true
@@ -86,7 +88,13 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         visible: library.fileCount === 0
-            && (library.scanStatus === "" || library.scanStatus === "IDLE")
+            && !library.scanActive
+            && (
+                library.scanStatus === ""
+                || library.scanStatus === "IDLE"
+                || library.scanStatus === "COMPLETED"
+                || library.scanStatus === "CANCELLED"
+            )
         title: qsTr("No music yet")
         message: qsTr("Scan a music folder to build your local library. Everything stays on your device.")
         actionText: qsTr("Choose Music Folder")

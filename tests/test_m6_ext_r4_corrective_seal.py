@@ -165,10 +165,10 @@ class TestLocateSourceAsync:
 
         pipeline = _CountingPipeline()
         lifecycle = SourceScanLifecycle(coordinator, pipeline)
+        new_root = tmp_path / "newroot"
+        new_root.mkdir()
         started = time.monotonic()
-        error = lifecycle.request_relocate(
-            source.library_source_id, str(tmp_path / "newroot")
-        )
+        error = lifecycle.request_relocate(source.library_source_id, str(new_root))
         elapsed = time.monotonic() - started
         assert error == ""
         # Zero heavy work: the root remap is a single cheap upsert.
@@ -182,9 +182,11 @@ class TestLocateSourceAsync:
         catalog.upsert_source(source)
         pipeline = _sync_pipeline()
         lifecycle = SourceScanLifecycle(coordinator, pipeline)
-        lifecycle.request_relocate(source.library_source_id, str(tmp_path / "newroot"))
+        new_root = tmp_path / "newroot"
+        new_root.mkdir()
+        lifecycle.request_relocate(source.library_source_id, str(new_root))
         # The catalog root is ALREADY updated (the scan only reconciles).
-        assert catalog.load_sources()[0].root_path == str(tmp_path / "newroot")
+        assert catalog.load_sources()[0].root_path == str(new_root)
 
     def test_e_overlap_still_rejected(self, tmp_path) -> None:
         library, catalog, coordinator = self._env(tmp_path)

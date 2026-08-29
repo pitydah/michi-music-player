@@ -904,36 +904,35 @@ class ApplicationContainer:
         except Exception as exc:
             error = error or exc
 
-        # P1-01: the SOURCE scan runtime is frozen FIRST (cancel → runner
-        # shutdown → relay disconnect), then the legacy scan runtime, all
-        # BEFORE any bridge disposal. First error is preserved; remaining
-        # safe cleanup still runs.
-        try:
-            if self._source_scan_lifecycle:
-                self._source_scan_lifecycle.cancel()
-            if self._source_scan_runner:
-                self._source_scan_runner.shutdown()
-                if hasattr(self._source_scan_runner, "disconnect_relay"):
-                    self._source_scan_runner.disconnect_relay()
-        except Exception as exc:
-            error = error or exc
+        # P1-01/§17: the SOURCE scan runtime is frozen FIRST (cancel →
+        # runner shutdown → relay disconnect), then the legacy runtime —
+        # ALL BEFORE bridge disposal. FIRST error is preserved while every
+        # remaining safe cleanup still runs.
+        def _capture_cleanup(action, current_error):
+            try:
+                action()
+            except Exception as exc:  # noqa: BLE001
+                return current_error or exc
+            return current_error
 
-        # Async scan lifecycle (M6-PRODUCTION-INTEGRATION): freeze the
-        # legacy runner (reject new submits + cancel active generations)
-        # and close the dispatcher (drop late callbacks) BEFORE any
-        # bridge/coordinator teardown — a worker finishing late can never
-        # mutate LibraryState or reach the QML bridge.
-        try:
-            if self._scan_runner:
-                self._scan_runner.shutdown()
-            if self._scan_dispatcher:
-                self._scan_dispatcher.shutdown()
-            if self._scan_runner and hasattr(self._scan_runner, "disconnect_relay"):
-                # KCR-010: public API only — relay cleanup is the runner's
-                # own responsibility during owner teardown.
-                self._scan_runner.disconnect_relay()
-        except Exception as exc:
-            error = error or exc
+        if self._source_scan_lifecycle is not None:
+            error = _capture_cleanup(self._source_scan_lifecycle.cancel, error)
+        if self._source_scan_runner is not None:
+            error = _capture_cleanup(self._source_scan_runner.shutdown, error)
+            if hasattr(self._source_scan_runner, "disconnect_relay"):
+                error = _capture_cleanup(
+                    self._source_scan_runner.disconnect_relay, error
+                )
+        if self._scan_runner is not None:
+            error = _capture_cleanup(self._scan_runner.shutdown, error)
+        if self._scan_dispatcher is not None:
+            error = _capture_cleanup(self._scan_dispatcher.shutdown, error)
+        if self._scan_runner is not None and hasattr(
+            self._scan_runner, "disconnect_relay"
+        ):
+            # KCR-010: public API only — relay cleanup is the runner's own
+            # responsibility during owner teardown.
+            error = _capture_cleanup(self._scan_runner.disconnect_relay, error)
 
         try:
             if self._coordinator:

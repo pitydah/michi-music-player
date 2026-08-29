@@ -9,7 +9,7 @@ import "../theme"
 Item {
     id: root
     objectName: "artistsView"
-    signal addToPlaylistRequested(string path)
+    signal addToPlaylistRequested(string trackId)
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -152,7 +152,7 @@ Item {
 
     ArtistDetailView {
         anchors.fill: parent
-        onAddToPlaylistRequested: path => root.addToPlaylistRequested(path)
+        onAddToPlaylistRequested: trackId => root.addToPlaylistRequested(trackId)
     }
 
     Connections {

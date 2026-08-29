@@ -19,7 +19,7 @@ ONE serialized per-source scan authority:
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
 
@@ -38,6 +38,7 @@ from michi.domain.library_catalog import (
     MediaAvailability,
     MediaFileRecord,
     SourceAvailability,
+    SourceLifecycle,
     TrackRecord,
     new_library_source_id,
     new_media_file_id,
@@ -212,9 +213,13 @@ class SourceScanCoordinator:
         versa) is rejected — /Music and /Music/Classical are never indexed
         as independent roots."""
         root = Path(root_path)
-        for existing in self._catalog.load_sources():
+        existing_sources = self._catalog.load_sources()
+        for existing in existing_sources:
             existing_root = Path(existing.root_path)
             if root == existing_root:
+                if existing.lifecycle is SourceLifecycle.RETIRED:
+                    # P1-D: exact same root → reactivate the SAME SourceId.
+                    return self.reactivate_source(existing.library_source_id)
                 raise SourceOverlapError(f"source root already configured: {root_path}")
             try:
                 overlaps = root.is_relative_to(
@@ -273,6 +278,11 @@ class SourceScanCoordinator:
         returns it. It NEVER scans, enumerates, extracts metadata,
         reconciles the catalog or publishes state — the caller decides when
         (and whether) a reconciliation scan runs."""
+        root = Path(new_root)
+        if not root.exists():
+            raise ValueError(f"source root does not exist: {new_root}")
+        if not root.is_dir():
+            raise ValueError(f"source root is not a directory: {new_root}")
         for other in self._catalog.load_sources():
             if other.library_source_id == source_id:
                 continue
@@ -379,9 +389,64 @@ class SourceScanCoordinator:
             return None  # stale generations NEVER change observed state
         if error is not None or plan is None:
             return None
-        # OWNER thread: publish the observed availability from the plan.
-        self._observations[source.library_source_id] = plan.outcome.availability
-        return self.commit_source_reconciliation(source, plan)
+        # P1-C Gate 3 — SOURCE CONFIGURATION PROVENANCE.
+        current = self._current_source_record(source.library_source_id)
+        if current is None:
+            return None
+        if not self._same_source_configuration(source, current):
+            logger.info(
+                "dropping stale source scan plan: configuration changed "
+                "during scan (source_id=%s)",
+                source.library_source_id,
+            )
+            return None
+        # Gate 4 — only ACTIVE + ENABLED Sources publish reconciliation.
+        if current.lifecycle is not SourceLifecycle.ACTIVE or not current.enabled:
+            logger.info(
+                "dropping source scan plan for inactive source: %s",
+                current.library_source_id,
+            )
+            return None
+        outcome = self.commit_source_reconciliation(current, plan)
+        if not outcome.failed:
+            self._observations[current.library_source_id] = outcome.availability
+        return outcome
+
+    def _current_source_record(self, source_id: str) -> LibrarySource | None:
+        """AUTHORITATIVE commit-boundary lookup (never the stale cache as
+        final authority); called once per source commit, not per track."""
+        sources = self._catalog.load_sources()
+        self._remember_sources(sources)
+        return self._source_records.get(source_id)
+
+    @staticmethod
+    def _same_source_configuration(
+        snapshot: LibrarySource, current: LibrarySource
+    ) -> bool:
+        return (
+            snapshot.library_source_id == current.library_source_id
+            and snapshot.root_path == current.root_path
+            and snapshot.enabled == current.enabled
+            and snapshot.lifecycle == current.lifecycle
+        )
+
+    def reactivate_source(self, source_id: str) -> LibrarySource:
+        """P1-D: restore a retired/disabled Source preserving its identity.
+        No MediaFile/Track deletion, no new SourceId; the physical truth is
+        UNKNOWN until the source is re-probed."""
+        source = self._current_source_record(source_id)
+        if source is None:
+            raise ValueError(f"unknown source: {source_id}")
+        if source.lifecycle is SourceLifecycle.ACTIVE:
+            if source.enabled:
+                return source
+            restored = replace(source, enabled=True)
+        else:
+            restored = replace(source, lifecycle=SourceLifecycle.ACTIVE, enabled=True)
+        self._catalog.upsert_source(restored)
+        self._remember_sources(self._catalog.load_sources())
+        self._observations.pop(source_id, None)
+        return restored
 
     def _remember_sources(self, sources: tuple[LibrarySource, ...]) -> None:
         self._source_records = {source.library_source_id: source for source in sources}

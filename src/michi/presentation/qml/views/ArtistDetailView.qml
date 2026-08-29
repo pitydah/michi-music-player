@@ -10,7 +10,7 @@ import "../theme"
 ColumnLayout {
     id: root
     objectName: "artistDetailView"
-    signal addToPlaylistRequested(string path)
+    signal addToPlaylistRequested(string trackId)
     readonly property string selectedArtistKey: library.selectedArtistKey
     readonly property real minimumTracksHeight: MichiMetrics.controlLarge * 5
     readonly property real minimumSummaryViewportHeight: MichiMetrics.controlLarge * 3
@@ -178,7 +178,7 @@ ColumnLayout {
         onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
         onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
         onQueueRequested: trackId => library.queue_track_by_id(trackId)
-        onAddToPlaylistRequested: trackId => root.addToPlaylistRequested(path)
+        onAddToPlaylistRequested: trackId => root.addToPlaylistRequested(trackId)
         onPropertiesRequested: track => trackPropertiesView.inspect(track)
         onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     }

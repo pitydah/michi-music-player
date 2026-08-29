@@ -107,47 +107,6 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
     #   4. discard: remove the staging file on persist failure
     # ------------------------------------------------------------------
 
-    def _stage_variant(
-        self, playlist_id: str, source_image_path: Path | str, *, suffix: str
-    ) -> str | None:
-        """Copies the NEW image to ``{final}.stage``; the committed asset
-        is untouched. Returns the FINAL stable path (the durable reference)
-        or None on validation failure."""
-        src = Path(source_image_path)
-        if not src.is_file():
-            return None
-        ext = src.suffix.lower()
-        if ext not in _ALLOWED_EXTENSIONS:
-            return None
-        try:
-            if src.stat().st_size == 0:
-                return None
-        except OSError:
-            return None
-        try:
-            self._storage_dir.mkdir(parents=True, exist_ok=True)
-            stem = f"playlist_{playlist_id}{suffix}"
-            final_path = self._storage_dir / f"{stem}{ext}"
-            stage_path = self._storage_dir / f"{stem}{ext}.stage"
-            shutil.copyfile(src, stage_path)
-            return str(final_path)
-        except OSError as exc:
-            logger.warning(
-                "Failed to stage playlist asset for %s: %s", playlist_id, exc
-            )
-            return None
-
-    def stage_cover(self, playlist_id: str, source_image_path) -> str | None:
-        return self._stage_variant(playlist_id, source_image_path, suffix="")
-
-    # ------------------------------------------------------------------
-    # P1-06 IMMUTABLE CANDIDATE PROTOCOL: the managed filename embeds a
-    # content digest — the candidate file EXISTS (immutable) before any
-    # database reference. A crash after commit can only leave an orphaned
-    # OLD asset (acceptable cleanup debt); a committed reference can never
-    # point to a not-yet-created file.
-    # ------------------------------------------------------------------
-
     def prepare_cover(self, playlist_id: str, source_image_path) -> str | None:
         return self._prepare_variant(playlist_id, source_image_path, suffix="")
 
@@ -157,6 +116,10 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
     def _prepare_variant(
         self, playlist_id: str, source_image_path, *, suffix: str
     ) -> str | None:
+        """P1-06 IMMUTABLE CANDIDATE: the content-versioned managed file
+        EXISTS before any database reference — a committed reference can
+        never point to a not-yet-created file; a crash after commit can
+        only leave an orphaned OLD asset (cleanup debt)."""
         src = Path(source_image_path)
         if not src.is_file():
             return None
@@ -203,51 +166,6 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
             candidate.unlink(missing_ok=True)
         except OSError as exc:
             logger.warning("Failed to delete managed asset %s: %s", candidate, exc)
-
-    def stage_hero(self, playlist_id: str, source_image_path) -> str | None:
-        return self._stage_variant(playlist_id, source_image_path, suffix="_hero")
-
-    def promote_staged(self, playlist_id: str, *, suffix: str) -> None:
-        """Atomically promotes the staged file to the committed asset and
-        retires superseded old-extension variants (post-commit only)."""
-        stem = f"playlist_{playlist_id}{suffix}"
-        promoted_ext = None
-        for ext in _ALLOWED_EXTENSIONS:
-            stage = self._storage_dir / f"{stem}{ext}.stage"
-            final = self._storage_dir / f"{stem}{ext}"
-            if stage.is_file():
-                try:
-                    stage.replace(final)
-                except OSError as exc:
-                    logger.warning("Promote failed for %s: %s", stage, exc)
-                    return
-                promoted_ext = ext
-                break
-        # Retire superseded old-extension variants (post-commit cleanup).
-        # ``promoted_ext`` is the EXTENSION THAT WAS PROMOTED — never a
-        # re-scan (set iteration order is not an ordering contract).
-        if promoted_ext is None:
-            return
-        for other_ext in _ALLOWED_EXTENSIONS:
-            if other_ext == promoted_ext:
-                continue
-            candidate = self._storage_dir / f"{stem}{other_ext}"
-            if candidate.is_file():
-                try:
-                    candidate.unlink(missing_ok=True)
-                except OSError as exc:
-                    logger.warning("Post-commit variant cleanup debt: %s", exc)
-
-    def discard_staged(self, playlist_id: str, *, suffix: str) -> None:
-        """Removes any staged file (persist failed: committed asset intact)."""
-        stem = f"playlist_{playlist_id}{suffix}"
-        for ext in _ALLOWED_EXTENSIONS:
-            stage = self._storage_dir / f"{stem}{ext}.stage"
-            if stage.is_file():
-                try:
-                    stage.unlink(missing_ok=True)
-                except OSError as exc:
-                    logger.warning("Discard staged failed for %s: %s", stage, exc)
 
     def _delete_variant(self, playlist_id: str, *, suffix: str) -> None:
         stem = f"playlist_{playlist_id}{suffix}"

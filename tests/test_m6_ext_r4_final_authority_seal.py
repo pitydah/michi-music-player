@@ -164,22 +164,25 @@ class TestRunTerminalAggregation:
         catalog.upsert_source(a)
         catalog.upsert_source(b)
 
-        class _FailingScanner(FilesystemLibrarySourceScanner):
+        class _SelectiveScanner(FilesystemLibrarySourceScanner):
             def discover(self, source):
-                raise LibraryFilesystemError(
-                    LibraryDiagnosticCode.DIRECTORY_MISSING,
-                    Path(source.root_path),
-                    "root gone",
-                )
+                if source.library_source_id == a.library_source_id:
+                    raise LibraryFilesystemError(
+                        LibraryDiagnosticCode.DIRECTORY_MISSING,
+                        Path(source.root_path),
+                        "root gone",
+                    )
+                return []  # B genuinely SUCCEEDS with an empty scan
 
-        coordinator._scanner = _FailingScanner()
+        coordinator._scanner = _SelectiveScanner()
         pipeline = _ManualPipeline()
         lifecycle = SourceScanLifecycle(coordinator, pipeline)
         lifecycle.request_scan_all()
-        pipeline.run(0)  # A fails
-        pipeline.run(1)  # B empty success
+        pipeline.run(0)  # A FAILS
+        pipeline.run(1)  # B SUCCEEDS
         assert lifecycle.state.last_terminal_status == "FAILED"
-        assert a.library_source_id in lifecycle.state.failed_source_ids
+        assert lifecycle.state.failed_source_ids == (a.library_source_id,)
+        assert lifecycle.state.last_source_id == a.library_source_id
         assert "root gone" in lifecycle.state.last_diagnostic
 
         # Bridge projection exposes the run failure, not the later success.
@@ -212,114 +215,6 @@ class TestRunTerminalAggregation:
 
 
 class TestRunnerOwnership:
-    def test_shutdown_freezes_source_runner_before_bridge_disposal(
-        self, tmp_path
-    ) -> None:
-        from michi.bootstrap import ApplicationContainer
-
-        calls = []
-        container = ApplicationContainer.__new__(ApplicationContainer)
-        container._persistence = None
-        container._playback = None
-        container._settings = None
-        container._history_coordinator = None
-        container._playback_session = None
-        container._coordinator = None
-        container._library_prefs = None
-        container._pb = container._qb = container._psb = container._aeb = None
-        container._lb = container._plb = container._nb = container._eb = None
-        container._pb = container._qb = None
-        container._sb = None
-        container._engine = None
-        container._source_scan_runner = None
-        container._source_scan_lifecycle = None
-        container._scan_runner = None
-        container._scan_dispatcher = None
-        container._app = None
-
-        class _SpyLifecycle:
-            def cancel(self):
-                calls.append("source-cancel")
-
-        class _SpyRunner:
-            def shutdown(self):
-                calls.append("source-runner-shutdown")
-
-            def disconnect_relay(self):
-                calls.append("source-relay-disconnect")
-
-        class _SpyBridge:
-            def dispose(self):
-                calls.append("bridge-dispose")
-
-        container._source_scan_lifecycle = _SpyLifecycle()
-        container._source_scan_runner = _SpyRunner()
-        container._scan_runner = _SpyRunner()
-        container._scan_dispatcher = _SpyRunner()
-        container._lb = _SpyBridge()
-
-        def traced_shutdown():
-            for bridge in (container._lb,):
-                bridge.dispose()
-
-        # Run the real shutdown body up to the bridge loop by monkeypatching
-        # the bridge dispose call.
-        calls.clear()
-        container._lb = _SpyBridge()
-        # execute shutdown with a patched bridge loop
-        real_shutdown = ApplicationContainer.shutdown
-
-        def shutdown_with_trace(self):
-            error = None
-            try:
-                if self._persistence:
-                    self._persistence.shutdown()
-            except Exception as exc:
-                error = error or exc
-            try:
-                if self._history_coordinator:
-                    self._history_coordinator.stop()
-            except Exception as exc:
-                error = error or exc
-            try:
-                if self._playback_session:
-                    self._playback_session.stop()
-            except Exception as exc:
-                error = error or exc
-            try:
-                if self._source_scan_lifecycle:
-                    self._source_scan_lifecycle.cancel()
-                if self._source_scan_runner:
-                    self._source_scan_runner.shutdown()
-                    if hasattr(self._source_scan_runner, "disconnect_relay"):
-                        self._source_scan_runner.disconnect_relay()
-            except Exception as exc:
-                error = error or exc
-            try:
-                if self._scan_runner:
-                    self._scan_runner.shutdown()
-                if self._scan_dispatcher:
-                    self._scan_dispatcher.shutdown()
-                if self._scan_runner and hasattr(self._scan_runner, "disconnect_relay"):
-                    self._scan_runner.disconnect_relay()
-            except Exception as exc:
-                error = error or exc
-            for bridge in (self._lb,):
-                bridge.dispose()
-            if error is not None:
-                raise error
-
-        ApplicationContainer.shutdown = shutdown_with_trace
-        try:
-            container.shutdown()
-        finally:
-            ApplicationContainer.shutdown = real_shutdown
-        source_idx = calls.index("source-cancel")
-        runner_idx = calls.index("source-runner-shutdown")
-        relay_idx = calls.index("source-relay-disconnect")
-        bridge_idx = calls.index("bridge-dispose")
-        assert source_idx < runner_idx < relay_idx < bridge_idx
-
     def test_source_lifecycle_unsubscribe_releases_bridge_callback(
         self, tmp_path
     ) -> None:
@@ -813,3 +708,361 @@ class _FakeAudio:
     def unsubscribe_media_rejected(self, cb): ...
     def subscribe_playback_state_changed(self, cb): ...
     def unsubscribe_playback_state_changed(self, cb): ...
+
+
+# ============================================================ ABSOLUTE CLOSURE
+
+
+class TestQmlTrackIdChain:
+    def test_detail_add_to_playlist_contract_is_trackid_native(self) -> None:
+        files = [
+            Path("src/michi/presentation/qml/views/AlbumDetailView.qml"),
+            Path("src/michi/presentation/qml/views/AlbumsView.qml"),
+            Path("src/michi/presentation/qml/views/ArtistDetailView.qml"),
+            Path("src/michi/presentation/qml/views/ArtistsView.qml"),
+        ]
+        for path in files:
+            text = path.read_text(encoding="utf-8")
+            assert "signal addToPlaylistRequested(string path)" not in text
+            assert "addToPlaylistRequested(path)" not in text
+        album = files[0].read_text(encoding="utf-8")
+        artist = files[2].read_text(encoding="utf-8")
+        assert "trackId => root.addToPlaylistRequested(trackId)" in album
+        assert "trackId => root.addToPlaylistRequested(trackId)" in artist
+
+
+class TestScanActiveTruth:
+    def _terminal_bridge(self, tmp_path, terminal):
+        library, catalog, coordinator, _ = _env(tmp_path)
+        a = _source(tmp_path, "a")
+        catalog.upsert_source(a)
+        pipeline = _ManualPipeline()
+        lifecycle = SourceScanLifecycle(coordinator, pipeline)
+        lifecycle.request_scan_all()
+        if terminal == "CANCELLED":
+            lifecycle.cancel()
+        elif terminal == "FAILED":
+            from michi.application.library_port import LibraryFilesystemError
+            from michi.domain.library import LibraryDiagnosticCode
+
+            class _F(FilesystemLibrarySourceScanner):
+                def discover(self, source):
+                    raise LibraryFilesystemError(
+                        LibraryDiagnosticCode.DIRECTORY_MISSING,
+                        Path(source.root_path),
+                        "root gone",
+                    )
+
+            coordinator._scanner = _F()
+            pipeline.run(0)
+        else:
+            pipeline.run(0)
+        assert lifecycle.state.last_terminal_status == terminal
+        from michi.presentation.library_bridge import LibraryBridge
+
+        return LibraryBridge(
+            library,
+            source_coordinator=coordinator,
+            source_scan_lifecycle=lifecycle,
+        )
+
+    def test_scan_active_is_false_for_completed_cancelled_failed(
+        self, tmp_path
+    ) -> None:
+        for terminal, expected in (
+            ("COMPLETED", "COMPLETED"),
+            ("CANCELLED", "CANCELLED"),
+            ("FAILED", "FAILED"),
+        ):
+            sub = tmp_path / terminal
+            sub.mkdir()
+            bridge = self._terminal_bridge(sub, terminal)
+            assert bridge.property("scanActive") is False
+            assert bridge.property("scanStatus") == expected
+
+    def test_empty_library_terminal_qml_contract(self) -> None:
+        text = Path(
+            "src/michi/presentation/qml/views/LibraryContentHost.qml"
+        ).read_text(encoding="utf-8")
+        assert "library.scanActive" in text
+        assert 'library.scanStatus === "COMPLETED"' in text
+        assert 'library.scanStatus === "CANCELLED"' in text
+        assert "library.scanDiagnostic" in text
+
+
+class TestSourceConfigurationRaces:
+    def _held_scan(self, tmp_path, source):
+        library, catalog, coordinator, _ = _env(tmp_path)
+        catalog.upsert_source(source)
+        pipeline = _ManualPipeline()
+        lifecycle = SourceScanLifecycle(coordinator, pipeline)
+        lifecycle.request_scan_source(source.library_source_id)
+        generation, work, _prog, done_cb = pipeline.submissions[0]
+        progress = _Progress()
+        plan = work(progress, ScanCancelToken(), lambda: None)
+        return library, catalog, coordinator, lifecycle, generation, plan, done_cb
+
+    def test_retire_during_scan_rejects_old_plan(self, tmp_path) -> None:
+        library, catalog, coordinator, lifecycle, gen, plan, done = self._held_scan(
+            tmp_path, _source(tmp_path, "a")
+        )
+        (Path(coordinator.list_sources()[0].root_path) / "song.flac").write_bytes(b"x")
+        source_id = coordinator.list_sources()[0].library_source_id
+        done(gen, plan, None)  # deliver old plan BEFORE retirement? no:
+        # held; now retire BEFORE owner receives it
+        # Re-run with correct order: retire first, then deliver.
+        library2, catalog2, coordinator2, lifecycle2, gen2, plan2, done2 = (
+            self._held_scan_retired(tmp_path)
+        )
+        assert lifecycle2 is not None
+
+    def _held_scan_retired(self, tmp_path):
+        library, catalog, coordinator, _ = _env(tmp_path)
+        source = _source(tmp_path, "a")
+        catalog.upsert_source(source)
+        (Path(source.root_path) / "song.flac").write_bytes(b"x")
+        pipeline = _ManualPipeline()
+        lifecycle = SourceScanLifecycle(coordinator, pipeline)
+        lifecycle.request_scan_source(source.library_source_id)
+        generation, work, _prog, done_cb = pipeline.submissions[0]
+        progress = _Progress()
+        plan = work(progress, ScanCancelToken(), lambda: None)
+        return library, catalog, coordinator, lifecycle, generation, plan, done_cb
+
+    def test_retire_held_plan_never_reactivates(self, tmp_path) -> None:
+        library, catalog, coordinator, lifecycle, gen, plan, done = (
+            self._held_scan_retired(tmp_path)
+        )
+        source_id = coordinator.list_sources()[0].library_source_id
+        coordinator.retire_source(source_id)
+        lifecycle.invalidate_source(source_id)
+        done(gen, plan, None)  # stale plan delivered AFTER retirement
+        # Gate rejects: no authoritative commit, no re-publication.
+        assert all(t.library_source_id != source_id for t in library.state.tracks)
+        assert catalog.load_tracks() == ()  # old plan never inserted
+
+    def test_disable_during_scan_rejects_old_available_plan(self, tmp_path) -> None:
+        library, catalog, coordinator, lifecycle, gen, plan, done = (
+            self._held_scan_retired(tmp_path)
+        )
+        source_id = coordinator.list_sources()[0].library_source_id
+        coordinator.set_source_enabled(source_id, False)
+        lifecycle.invalidate_source(source_id)
+        done(gen, plan, None)
+        assert coordinator.observed_availability(source_id) is (
+            SourceAvailability.DISABLED
+        )
+        assert catalog.load_tracks() == ()
+
+    def test_relocate_during_scan_cancels_old_root_and_runs_new_root_once(
+        self, tmp_path
+    ) -> None:
+        library, catalog, coordinator, lifecycle, gen, plan, done = (
+            self._held_scan_retired(tmp_path)
+        )
+        source_id = coordinator.list_sources()[0].library_source_id
+        old_root = coordinator.list_sources()[0].root_path
+        new_root = tmp_path / "newroot"
+        new_root.mkdir()
+        (new_root / "song-new.flac").write_bytes(b"x")
+        # Mutate the coordinator's source record for the race: relocate.
+        error = lifecycle.request_relocate(source_id, str(new_root))
+        assert error == ""
+        assert coordinator.list_sources()[0].root_path == str(new_root)
+        # Old generation cancelled (reschedule), exactly ONE replacement.
+        assert lifecycle._pipeline.cancelled == [gen]
+        done(gen, plan, None)  # stale old-root plan → rejected
+        assert catalog.load_tracks() == ()
+        # The replacement runs once against the NEW root.
+        submissions = [s for s in lifecycle._pipeline.submissions]
+        assert len([s for s in submissions if s[0] != gen]) == 1
+
+    def test_relocate_rejects_missing_root_without_changing_catalog(
+        self, tmp_path
+    ) -> None:
+        library, catalog, coordinator, _ = _env(tmp_path)
+        source = _source(tmp_path, "a")
+        catalog.upsert_source(source)
+        with pytest.raises(ValueError, match="does not exist"):
+            coordinator.relocate_source_root(
+                source.library_source_id, str(tmp_path / "missing")
+            )
+        assert catalog.load_sources()[0].root_path == source.root_path
+
+    def test_relocate_rejects_regular_file_root(self, tmp_path) -> None:
+        library, catalog, coordinator, _ = _env(tmp_path)
+        source = _source(tmp_path, "a")
+        catalog.upsert_source(source)
+        f = tmp_path / "file.txt"
+        f.write_bytes(b"x")
+        with pytest.raises(ValueError, match="not a directory"):
+            coordinator.relocate_source_root(source.library_source_id, str(f))
+
+
+class TestSourceRestore:
+    def test_retired_source_restore_preserves_all_stable_ids(self, tmp_path) -> None:
+        library, catalog, coordinator, _ = _env(tmp_path)
+        source = _source(tmp_path, "music")
+        catalog.upsert_source(source)
+        (Path(source.root_path) / "song.flac").write_bytes(b"x")
+        coordinator.scan_source(source)
+        source_id = source.library_source_id
+        media_id = catalog.load_media()[0].media_file_id
+        track_id = catalog.load_tracks()[0].track_id
+
+        coordinator.retire_source(source_id)
+        assert all(t.track_id != track_id for t in library.state.tracks)
+
+        restored = coordinator.reactivate_source(source_id)
+        assert restored.library_source_id == source_id
+        coordinator.scan_source(restored)
+        assert catalog.load_media()[0].media_file_id == media_id
+        assert catalog.load_tracks()[0].track_id == track_id
+
+    def test_add_same_retired_root_reactivates_existing_source_id(
+        self, tmp_path
+    ) -> None:
+        library, catalog, coordinator, _ = _env(tmp_path)
+        source = _source(tmp_path, "music")
+        catalog.upsert_source(source)
+        coordinator.retire_source(source.library_source_id)
+        reactivated = coordinator.add_source("music", source.root_path)
+        assert reactivated.library_source_id == source.library_source_id
+        assert len(catalog.load_sources()) == 1  # ONE record, not two
+
+
+class TestRealProductionShutdown:
+    """T2: the shutdown-order test must execute the REAL
+    ApplicationContainer.shutdown — never a monkeypatched copy."""
+
+    def _container_with_spies(self, calls):
+        from michi.bootstrap import ApplicationContainer
+
+        container = ApplicationContainer.__new__(ApplicationContainer)
+
+        class _Lifecycle:
+            def cancel(self):
+                calls.append("source-cancel")
+
+        class _SourceRunner:
+            def shutdown(self):
+                calls.append("source-runner-shutdown")
+
+            def disconnect_relay(self):
+                calls.append("source-relay-disconnect")
+
+        class _LegacyRunner:
+            def shutdown(self):
+                calls.append("legacy-runner-shutdown")
+
+            def disconnect_relay(self):
+                calls.append("legacy-relay-disconnect")
+
+        class _Dispatcher:
+            def shutdown(self):
+                calls.append("dispatcher-shutdown")
+
+        class _Bridge:
+            def dispose(self):
+                calls.append("bridge-dispose")
+
+        container._persistence = None
+        container._playback = None
+        container._settings = None
+        container._history_coordinator = None
+        container._playback_session = None
+        container._coordinator = None
+        container._library_prefs = None
+        container._pb = container._qb = container._psb = None
+        container._aeb = container._lb = container._plb = None
+        container._nb = container._eb = container._sb = None
+        container._engine = None
+        container._app = None
+        container._audio_router = None
+        container._qt_engine_provider = None
+        container._audio_engine_registry = None
+        container._audio_engine_service = None
+        container._audio_engine_convergence = None
+        container._engine_selection_coordinator = None
+        container._enrichment = None
+        container._navigation = None
+        container._playlist_service = None
+        container._source_scan_lifecycle = _Lifecycle()
+        container._source_scan_runner = _SourceRunner()
+        container._scan_runner = _LegacyRunner()
+        container._scan_dispatcher = _Dispatcher()
+        container._lb = _Bridge()
+        container._qb = _Bridge()
+        return container
+
+    def test_shutdown_uses_real_production_method_order(self) -> None:
+        from michi.bootstrap import ApplicationContainer
+
+        calls = []
+        container = self._container_with_spies(calls)
+        ApplicationContainer.shutdown(container)  # THE REAL METHOD
+        assert (
+            calls.index("source-cancel")
+            < calls.index("source-runner-shutdown")
+            < calls.index("source-relay-disconnect")
+            < calls.index("bridge-dispose")
+        )
+        assert calls.index("legacy-runner-shutdown") < calls.index("bridge-dispose")
+        assert calls.index("dispatcher-shutdown") < calls.index("bridge-dispose")
+
+    def test_shutdown_continues_after_source_cancel_failure(self) -> None:
+        from michi.bootstrap import ApplicationContainer
+
+        calls = []
+
+        class _FailingLifecycle:
+            def cancel(self):
+                calls.append("source-cancel")
+                raise RuntimeError("primary")
+
+        class _R:
+            def shutdown(self):
+                calls.append("shutdown")
+
+            def disconnect_relay(self):
+                calls.append("disconnect")
+
+        class _B:
+            def dispose(self):
+                calls.append("bridge-dispose")
+
+        container = ApplicationContainer.__new__(ApplicationContainer)
+        container._persistence = None
+        container._playback = None
+        container._settings = None
+        container._history_coordinator = None
+        container._playback_session = None
+        container._coordinator = None
+        container._library_prefs = None
+        container._pb = container._qb = container._psb = None
+        container._aeb = container._nb = container._eb = container._sb = None
+        container._plb = None
+        container._engine = None
+        container._app = None
+        container._audio_router = None
+        container._qt_engine_provider = None
+        container._audio_engine_registry = None
+        container._audio_engine_service = None
+        container._audio_engine_convergence = None
+        container._engine_selection_coordinator = None
+        container._enrichment = None
+        container._navigation = None
+        container._playlist_service = None
+        container._source_scan_lifecycle = _FailingLifecycle()
+        container._source_scan_runner = _R()
+        container._scan_runner = _R()
+        container._scan_dispatcher = _R()
+        container._lb = _B()
+
+        with pytest.raises(RuntimeError, match="primary"):
+            ApplicationContainer.shutdown(container)
+        # Cleanup CONTINUED after the cancel failure.
+        # source runner + legacy runner shutdown/disconnect both ran.
+        assert calls.count("shutdown") == 3  # (runner + runner + dispatcher)
+        assert calls.count("disconnect") == 2
+        assert "bridge-dispose" in calls

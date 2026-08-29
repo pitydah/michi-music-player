@@ -125,14 +125,16 @@ class SourceScanLifecycle:
         self._enqueue([source_id])
 
     def request_relocate(self, source_id: str, new_root: str) -> str:
-        """Locate Source… (CORRECTIVE SEAL §1): remap the root ONLY (single
-        cheap upsert, synchronous — never heavy work), then enqueue exactly
-        ONE async reconciliation scan."""
+        """Locate Source… (P1-C): remap the root ONLY (cheap upsert), then
+        reschedule EXACTLY ONE reconciliation against the NEW root — the
+        old-root active generation is cancelled by reschedule."""
+        if not self._active:
+            self._reset_terminal()
         try:
             relocated = self._coordinator.relocate_source_root(source_id, new_root)
         except ValueError as exc:
             return str(exc)
-        self._enqueue([relocated.library_source_id])
+        self.reschedule_source(relocated.library_source_id)
         return ""
 
     def cancel(self) -> None:
@@ -143,6 +145,28 @@ class SourceScanLifecycle:
         if self._active:
             self._cancel_requested = True
             self._pipeline.cancel(self._generation)
+
+    def _remove_queued_source(self, source_id: str) -> None:
+        self._queue = [c for c in self._queue if c != source_id]
+
+    def invalidate_source(self, source_id: str) -> None:
+        """Invalidate queued/current work for a Source whose configuration
+        changed. Does NOT cancel unrelated Sources and does NOT set
+        ``_cancel_requested`` (that flag means whole-run cancel)."""
+        self._remove_queued_source(source_id)
+        if self._active and self._state.current_source_id == source_id:
+            self._pipeline.cancel(self._generation)
+
+    def reschedule_source(self, source_id: str) -> None:
+        """Run this Source again using its CURRENT configuration: if it is
+        active, cancel the stale generation and queue exactly ONE
+        replacement; otherwise queue it next (never duplicated)."""
+        self._remove_queued_source(source_id)
+        self._queue.insert(0, source_id)
+        if self._active and self._state.current_source_id == source_id:
+            self._pipeline.cancel(self._generation)
+            return
+        self._start_next()
 
     # --------------------------------------------------------- relay handlers
 
@@ -291,10 +315,13 @@ class SourceScanLifecycle:
         failed_ids = self._state.failed_source_ids
         if status == _FAILED and source_id not in failed_ids:
             failed_ids = failed_ids + (source_id,)
-        # Preserve the FIRST diagnostic of the run.
-        run_diagnostic = self._state.last_diagnostic or diagnostic
-        # Terminal record survives source-to-source transitions inside the
-        # run and is finalized only at queue exhaustion.
+        # T3: last_source_id belongs to the PRESERVED first diagnostic —
+        # a later successful source must never overwrite either.
+        run_diagnostic = self._state.last_diagnostic
+        diagnostic_source_id = self._state.last_source_id
+        if diagnostic and not run_diagnostic:
+            run_diagnostic = diagnostic
+            diagnostic_source_id = source_id
         self._set_state(
             status=status,
             phase="",
@@ -304,7 +331,7 @@ class SourceScanLifecycle:
             diagnostic=diagnostic,
             failed_source_ids=failed_ids,
             last_diagnostic=run_diagnostic,
-            last_source_id=source_id,
+            last_source_id=diagnostic_source_id,
         )
         self._start_next()
 
