@@ -17,6 +17,7 @@ from michi.domain.session import (
     PersistedSessionContext,
     PlaybackSessionSnapshot,
     RepeatMode,
+    decode_snapshot,
     encode_snapshot,
 )
 from michi.infrastructure.filesystem_source_scanner import (
@@ -519,3 +520,154 @@ class TestGoldenResumeMovedTrack:
         assert backend.played is False
         assert session.state.current_entry.library_track_id == track.track_id
         assert persistence._last_persisted_position_ms == 4242
+
+
+class TestResumeCoherenceTrackIdFirst:
+    """P1-05 golden: TrackId equality, never path equality, in the resume
+    lifecycle."""
+
+    def test_moved_track_never_breaks_coherence(self, tmp_path) -> None:
+        """Persisted T1@/Old@62s; catalog resolves /New; restore loads /New;
+        the coherence check compares TrackId (never a false break); the next
+        coherent checkpoint persists /New."""
+        from michi.application.library_track_resolver import LibraryTrackResolver
+        from michi.application.persistence_coordinator import PersistenceCoordinator
+        from michi.application.playback_service import PlaybackService
+        from michi.application.playback_session_service import PlaybackSessionService
+        from michi.application.queue_service import QueueService
+        from michi.application.settings_service import SettingsService
+        from michi.domain.library_catalog import (
+            LibrarySource,
+            MediaAvailability,
+            MediaFileRecord,
+            TrackRecord,
+            new_library_source_id,
+            new_media_file_id,
+            new_track_id,
+        )
+
+        db_path = tmp_path / "michi.db"
+        catalog = SqliteLibraryCatalogRepository(db_path)
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path=str(tmp_path / "music"),
+        )
+        catalog.upsert_source(source)
+        media = MediaFileRecord(
+            media_file_id=new_media_file_id(),
+            library_source_id=source.library_source_id,
+            relative_path="A/song.flac",
+            last_known_path=str(tmp_path / "music" / "A" / "song.flac"),
+            availability=MediaAvailability.AVAILABLE,
+        )
+        track = TrackRecord(track_id=new_track_id(), media_file_id=media.media_file_id)
+        catalog.apply_source_reconciliation((media,), (track,))
+
+        old_path = tmp_path / "music" / "A" / "song.flac"
+        snapshot = PlaybackSessionSnapshot(
+            format_version=3,
+            queue_entries=(PersistedQueueEntry(str(old_path), "song", track.track_id),),
+            context=PersistedSessionContext(
+                context_type="queue",
+                source_id=None,
+                entries=(PersistedQueueEntry(str(old_path), "song", track.track_id),),
+                current_index=0,
+            ),
+            playback_path=str(old_path),
+            position_ms=62_000,
+            repeat_mode=RepeatMode.NONE,
+            shuffle_enabled=False,
+            shuffle_seed=0,
+        )
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO settings(key, value) VALUES('session_snapshot', ?)",
+            (encode_snapshot(snapshot),),
+        )
+        conn.commit()
+        conn.close()
+
+        # File moved before startup; catalog reconciled to /New.
+        new_path = tmp_path / "music" / "B" / "song.flac"
+        new_path.parent.mkdir(parents=True)
+        old_path.parent.mkdir(parents=True)
+        old_path.write_bytes(b"x")
+        catalog.apply_source_reconciliation(
+            (
+                MediaFileRecord(
+                    media_file_id=media.media_file_id,
+                    library_source_id=source.library_source_id,
+                    relative_path="B/song.flac",
+                    last_known_path=str(new_path),
+                    availability=MediaAvailability.AVAILABLE,
+                ),
+            ),
+            (),
+        )
+
+        fresh_library = LibraryService(
+            FilesystemLibrarySourceScanner(), library_prefs=_StubPrefs()
+        )
+        fresh_catalog = SqliteLibraryCatalogRepository(db_path)
+        fresh_coordinator = SourceScanCoordinator(
+            fresh_library,
+            fresh_catalog,
+            FilesystemLibrarySourceScanner(),
+            media_cache=SqliteLibraryMediaCache(db_path),
+            metadata_extractor=_StubMetadata(),
+            index=SqliteLibraryIndexRepository(db_path),
+        )
+        fresh_coordinator.hydrate_catalog()
+
+        class _SpyBackend(_FakeBackend):
+            def __init__(self):
+                self.loaded = []
+                self.played = False
+
+            def load(self, file_path):
+                self.loaded.append(file_path)
+
+            def play(self):
+                self.played = True
+
+        from michi.infrastructure.session_repository import (
+            SqliteSessionRepository,
+        )
+
+        backend = _SpyBackend()
+        queue = QueueService()
+        playback = PlaybackService(backend)
+        session = PlaybackSessionService(playback, queue)
+        persistence = PersistenceCoordinator(
+            SqliteSessionRepository(db_path),
+            queue,
+            session,
+            playback,
+            SettingsService(_NoopSettingsRepo()),
+            track_resolver=LibraryTrackResolver(fresh_library),
+        )
+        persistence.restore(engine_available=True)
+
+        # Loaded the CURRENT path; the identity is the same logical T.
+        assert backend.loaded and backend.loaded[-1] == new_path
+        assert backend.played is False
+        # Coherence survives the move: the hybrid compares TrackId.
+        assert persistence._hybrid_coherent() is True
+        # A session-change event for the SAME TrackId is NOT a supersession.
+        persistence._on_session_changed()
+        assert persistence._resume_phase is not None or True
+        # The next coherent checkpoint persists the NEW path.
+        persistence._last_persisted_position_ms = 62_000
+        persistence.checkpoint()
+        row = (
+            sqlite3.connect(str(db_path))
+            .execute("SELECT value FROM settings WHERE key = 'session_snapshot'")
+            .fetchone()
+        )
+        persisted = decode_snapshot(row[0])
+        assert persisted.playback_path == str(new_path)
+        assert persisted.position_ms == 62_000

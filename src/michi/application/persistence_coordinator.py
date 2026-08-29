@@ -195,7 +195,10 @@ class PersistenceCoordinator:
             and self._restored_snapshot is not None
         ):
             if self._hybrid_coherent():
-                playback_path = self._restored_snapshot.playback_path
+                # P1-05: persist the CURRENT resolved path (a moved track's
+                # new location) — never the stale snapshot path.
+                current = self._session.state.current_entry
+                playback_path = str(current.file_path) if current is not None else None
                 position_ms = self._restored_snapshot.position_ms
             else:
                 playback_path = None
@@ -242,6 +245,30 @@ class PersistenceCoordinator:
             shuffle_seed=self._session.shuffle_seed,
         )
 
+    @staticmethod
+    def _playback_identity_equal(
+        path_a: str, track_id_a: str | None, path_b: str, track_id_b: str | None
+    ) -> bool:
+        """THE ONE playback identity comparison (P1-05).
+
+        When BOTH sides carry a stable TrackId, equality IS TrackId
+        equality — a moved file is the SAME identity and can never be
+        misread as supersession/coherence break. Path comparison is the
+        fallback ONLY when either side lacks a stable id (legacy entries)."""
+        if track_id_a and track_id_b:
+            return track_id_a == track_id_b
+        return path_a == path_b
+
+    def _restored_playback_track_id(self) -> str | None:
+        restored = self._restored_snapshot
+        if restored is None:
+            return None
+        idx = restored.context.current_index
+        entries = restored.context.entries
+        if not (0 <= idx < len(entries)):
+            return None
+        return entries[idx].library_track_id
+
     def _hybrid_coherent(self) -> bool:
         """The hybrid's playback portion is only trusted WHILE coherent:
         a resume phase is open, a restored snapshot exists, its playback
@@ -254,7 +281,12 @@ class PersistenceCoordinator:
             and restored is not None
             and restored.playback_path is not None
             and session_entry is not None
-            and str(session_entry.file_path) == restored.playback_path
+            and self._playback_identity_equal(
+                str(session_entry.file_path),
+                session_entry.library_track_id,
+                restored.playback_path,
+                self._restored_playback_track_id(),
+            )
         )
 
     def _release_resume_authority(self, reason: str = "resume resolved") -> None:
@@ -373,8 +405,12 @@ class PersistenceCoordinator:
             and self._session.state.current_entry is not None
             and (
                 self._restored_snapshot is None
-                or str(self._session.state.current_entry.file_path)
-                != self._restored_snapshot.playback_path
+                or not self._playback_identity_equal(
+                    str(self._session.state.current_entry.file_path),
+                    self._session.state.current_entry.library_track_id,
+                    self._restored_snapshot.playback_path or "",
+                    self._restored_playback_track_id(),
+                )
             )
         ):
             self._playback.stop()
