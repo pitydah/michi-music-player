@@ -37,7 +37,13 @@ _FAILED = "FAILED"
 
 @dataclass(frozen=True)
 class SourceScanRunState:
-    """Observable scan lifecycle state (owner-thread truth)."""
+    """Observable scan lifecycle state (owner-thread truth).
+
+    CORRECTIVE SEAL §6: terminal results stay observable. ``status`` may
+    return to IDLE for queue processing, but ``last_terminal_status`` /
+    ``last_diagnostic`` / ``last_source_id`` persist until the NEXT scan
+    request — a filesystem failure is never erased before presentation can
+    show it."""
 
     generation: int = 0
     status: str = _IDLE
@@ -47,6 +53,9 @@ class SourceScanRunState:
     total: int = 0
     current_path: str = ""
     diagnostic: str = ""
+    last_terminal_status: str = ""
+    last_diagnostic: str = ""
+    last_source_id: str = ""
 
     @property
     def active(self) -> bool:
@@ -82,8 +91,17 @@ class SourceScanLifecycle:
         if callback not in self._subscribers:
             self._subscribers.append(callback)
 
+    def _reset_terminal(self) -> None:
+        """A NEW scan request clears the previous terminal record."""
+        self._set_state(
+            last_terminal_status="",
+            last_diagnostic="",
+            last_source_id="",
+        )
+
     def request_scan_all(self) -> None:
         """Scan ALL active + enabled sources, serialized (Scan library)."""
+        self._reset_terminal()
         self._enqueue(
             [
                 s.library_source_id
@@ -94,17 +112,18 @@ class SourceScanLifecycle:
 
     def request_scan_source(self, source_id: str) -> None:
         """Reconcile ONE source asynchronously (never the GUI thread)."""
+        self._reset_terminal()
         self._enqueue([source_id])
 
     def request_relocate(self, source_id: str, new_root: str) -> str:
-        """Locate Source…: remap the root (cheap single upsert, synchronous)
-        then enqueue the reconciliation scan. Returns "" on success or the
-        typed error message."""
+        """Locate Source… (CORRECTIVE SEAL §1): remap the root ONLY (single
+        cheap upsert, synchronous — never heavy work), then enqueue exactly
+        ONE async reconciliation scan."""
         try:
-            self._coordinator.relocate_source(source_id, new_root)
+            relocated = self._coordinator.relocate_source_root(source_id, new_root)
         except ValueError as exc:
             return str(exc)
-        self._enqueue([source_id])
+        self._enqueue([relocated.library_source_id])
         return ""
 
     def cancel(self) -> None:
@@ -238,6 +257,8 @@ class SourceScanLifecycle:
             status = _FAILED
         else:
             status = _IDLE
+        # Terminal record persists even after the operational status
+        # returns to IDLE for the next queued source.
         self._set_state(
             status=status,
             phase="",
@@ -245,6 +266,9 @@ class SourceScanLifecycle:
             total=0,
             current_path="",
             diagnostic=diagnostic,
+            last_terminal_status=status,
+            last_diagnostic=diagnostic,
+            last_source_id=self._state.current_source_id,
         )
         self._start_next()
 

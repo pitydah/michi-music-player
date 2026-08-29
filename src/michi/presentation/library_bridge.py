@@ -177,24 +177,53 @@ class LibraryBridge(QObject):
     def _get_has_diagnostic(self) -> bool:
         return self._service.state.diagnostic is not None
 
+    def _source_scan_state(self):
+        """The ONE productive source-scan lifecycle state (or None)."""
+        if self._source_scan_lifecycle is None:
+            return None
+        return self._source_scan_lifecycle.state
+
     def _get_scan_status(self) -> str:
-        """M6.7: scan-state projection — the enum NAME while a scan is in
-        flight (DISCOVERING/INDEXING/...), "" when IDLE. The QML toolbar
-        shows the name only when it is not IDLE."""
+        """UNIFIED scan projection (CORRECTIVE SEAL §3): the ACTIVE
+        authority wins — SourceScanLifecycle while running, the legacy
+        LibraryService scan otherwise. QML never selects between them."""
+        source_state = self._source_scan_state()
+        if source_state is not None and source_state.active:
+            return source_state.phase or "RUNNING"
         status = self._service.state.scan_status
         return status.name if status is not LibraryScanStatus.IDLE else ""
 
     def _get_scan_processed(self) -> int:
+        source_state = self._source_scan_state()
+        if source_state is not None and source_state.active:
+            return source_state.processed
         return self._service.state.scan_processed
 
     def _get_scan_total(self) -> int:
+        source_state = self._source_scan_state()
+        if source_state is not None and source_state.active:
+            return source_state.total
         return self._service.state.scan_total
 
     def _get_scan_progress(self) -> float:
+        source_state = self._source_scan_state()
+        if source_state is not None and source_state.active:
+            if source_state.total > 0:
+                return source_state.processed / source_state.total
+            return 0.0
         return self._service.state.scan_progress or 0.0
 
     def _get_scan_current_path(self) -> str:
+        source_state = self._source_scan_state()
+        if source_state is not None and source_state.active:
+            return source_state.current_path
         return self._service.state.scan_current_path or ""
+
+    def _get_scan_diagnostic(self) -> str:
+        source_state = self._source_scan_state()
+        if source_state is not None:
+            return source_state.diagnostic or ""
+        return ""
 
     def _get_album_count(self) -> int:
         return len(self._service.state.albums)
@@ -799,6 +828,7 @@ class LibraryBridge(QObject):
             "diagnostic": state.diagnostic,
         }
 
+    libraryScanDiagnostic = Property(str, _get_scan_diagnostic, notify=library_changed)
     sourceScanStatus = Property(str, _get_source_scan_status, notify=library_changed)
     sourceScanActive = Property(bool, _get_source_scan_active, notify=library_changed)
     sourceScanProgress = Property(
@@ -902,8 +932,13 @@ class LibraryBridge(QObject):
 
     @Slot()
     def cancel_scan(self) -> None:
-        """M6-PRODUCTION-INTEGRATION: delegate to the service (no progress
-        logic in the bridge)."""
+        """UNIFIED cancel intent (CORRECTIVE SEAL §2): the bridge decides
+        the ACTIVE productive authority — the source scan lifecycle when
+        running, the legacy LibraryService scan otherwise."""
+        source_state = self._source_scan_state()
+        if source_state is not None and source_state.active:
+            self._source_scan_lifecycle.cancel()
+            return
         self._service.cancel_scan()
 
     @Slot(str)

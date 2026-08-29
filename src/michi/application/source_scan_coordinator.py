@@ -245,25 +245,28 @@ class SourceScanCoordinator:
             outcomes.append(self.scan_source(source))
         return outcomes
 
-    def relocate_source(self, source_id: str, new_root: str) -> SourceScanOutcome:
-        """ROOT RELOCATION (M6-EXT-R4 §24): the user explicitly locates the
-        source at a new root. ONLY source.root_path changes — every
-        MediaFileId / TrackId / favorite / playlist / history entry survives
-        because relative paths and identities never change. Overlap guard
-        applies against OTHER sources."""
+    def relocate_source_root(self, source_id: str, new_root: str) -> LibrarySource:
+        """ROOT RELOCATION — ROOT ONLY (CORRECTIVE SEAL §1).
+
+        Validates overlap against OTHER sources, validates existence,
+        constructs the relocated LibrarySource preserving LibrarySourceId /
+        display name / enabled / lifecycle, persists the new root and
+        returns it. It NEVER scans, enumerates, extracts metadata,
+        reconciles the catalog or publishes state — the caller decides when
+        (and whether) a reconciliation scan runs."""
         for other in self._catalog.load_sources():
             if other.library_source_id == source_id:
                 continue
             try:
-                if Path(new_root).is_relative_to(Path(other.root_path)) or Path(
+                overlaps = Path(new_root).is_relative_to(Path(other.root_path)) or Path(
                     other.root_path
-                ).is_relative_to(Path(new_root)):
-                    raise SourceOverlapError(
-                        f"new root {new_root} overlaps existing source "
-                        f"{other.root_path}"
-                    )
+                ).is_relative_to(Path(new_root))
             except ValueError:
-                continue
+                overlaps = False
+            if overlaps:
+                raise SourceOverlapError(
+                    f"new root {new_root} overlaps existing source {other.root_path}"
+                )
         target = None
         for source in self._catalog.load_sources():
             if source.library_source_id == source_id:
@@ -279,6 +282,13 @@ class SourceScanCoordinator:
             lifecycle=target.lifecycle,
         )
         self._catalog.upsert_source(relocated)
+        return relocated
+
+    def relocate_source(self, source_id: str, new_root: str) -> SourceScanOutcome:
+        """LEGACY SYNCHRONOUS WRAPPER: relocate_source_root + immediate
+        scan. Kept only for non-productive callers; the productive path
+        uses ``relocate_source_root`` + the async scan lifecycle."""
+        relocated = self.relocate_source_root(source_id, new_root)
         return self.scan_source(relocated)
 
     def retire_source(self, source_id: str) -> None:
@@ -326,7 +336,7 @@ class SourceScanCoordinator:
                 progress.current_path = str(item.absolute_path)
                 progress.processed += 1
                 report()
-            return self.compute_source_reconciliation(source, discovered)
+            return self.compute_source_reconciliation(source, discovered, token=token)
 
         pipeline.submit(generation, work, on_progress, on_done)
 
@@ -393,10 +403,16 @@ class SourceScanCoordinator:
         self,
         source: LibrarySource,
         discovered: tuple[DiscoveredMediaFile, ...],
+        token=None,
     ) -> "SourceReconciliationPlan":
         """PURE-ish compute phase: reads catalog/caches, builds the full
-        reconciliation plan. NO durable writes (worker-safe)."""
-        return self._reconcile_available(source, discovered)
+        reconciliation plan. NO durable writes (worker-safe).
+
+        CORRECTIVE SEAL §4: the cancellation token propagates INTO the
+        reconciliation — checked before metadata extraction (per item) and
+        before the plan is returned, so a cancel during extraction can
+        never produce a commit-able plan."""
+        return self._reconcile_available(source, discovered, token=token)
 
     def commit_source_reconciliation(
         self,
@@ -464,6 +480,8 @@ class SourceScanCoordinator:
         self,
         source: LibrarySource,
         discovered: tuple[DiscoveredMediaFile, ...],
+        *,
+        token=None,
     ) -> SourceScanOutcome:
         known_by_path = {
             media.relative_path: media
@@ -520,6 +538,8 @@ class SourceScanCoordinator:
         index_upserts: list[_IndexEntry] = []
         cache_upserts: list[tuple] = []
         for item in discovered:
+            if token is not None and token.cancelled:
+                raise ScanCancelled()
             known = known_by_path.get(item.relative_path)
             media_id: str
             track: TrackRecord | None
@@ -610,6 +630,8 @@ class SourceScanCoordinator:
             cache_upserts.append(
                 (media_id, item.file_size, item.mtime_ns, item.device_id, item.inode)
             )
+        if token is not None and token.cancelled:
+            raise ScanCancelled()
 
         # PHASE 4 — persist the fresh MISSING records and project them.
         for media in missing_updates.values():

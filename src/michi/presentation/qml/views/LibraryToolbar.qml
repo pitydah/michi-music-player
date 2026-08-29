@@ -15,12 +15,11 @@ MichiGlassSurface {
     signal currentTabRequested(string tab)
 
     readonly property bool scanning: (typeof library !== "undefined" && library)
-        && ((library.scanStatus !== ""
-            && library.scanStatus !== "IDLE"
-            && library.scanStatus !== "COMPLETED"
-            && library.scanStatus !== "CANCELLED"
-            && library.scanStatus !== "FAILED")
-            || library.sourceScanActive)
+        && library.scanStatus !== ""
+        && library.scanStatus !== "IDLE"
+        && library.scanStatus !== "COMPLETED"
+        && library.scanStatus !== "CANCELLED"
+        && library.scanStatus !== "FAILED"
     elevation: "subtle"
     tileSeed: 2
     shadowed: true

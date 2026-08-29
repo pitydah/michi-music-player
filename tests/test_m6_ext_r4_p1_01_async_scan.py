@@ -157,10 +157,10 @@ class TestProductiveAsyncScan:
 
         original = coordinator.compute_source_reconciliation
 
-        def tracking(source, discovered):
+        def tracking(source, discovered, token=None):
             order.append(source.library_source_id)
             time.sleep(0.02)
-            return original(source, discovered)
+            return original(source, discovered, token=token)
 
         coordinator.compute_source_reconciliation = tracking
         relay = ScanRelay()

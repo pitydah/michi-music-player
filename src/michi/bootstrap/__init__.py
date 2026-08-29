@@ -153,6 +153,7 @@ class ServiceGraph:
     history_coordinator: PlaybackHistoryCoordinator
     track_resolver: LibraryTrackResolver
     source_scan_lifecycle: SourceScanLifecycle
+    source_scan_runner: ThreadScanRunner
     # NON-AUTHORITY / OBSERVABILITY ONLY: the concrete port bound inside the
     # router (test handle / introspection). Ownership lives in the provider.
     bound_audio_port: object
@@ -447,9 +448,18 @@ def _build_services(
     # commit after the generation gate; sources serialized). The bridge
     # only translates intents — it can never run a heavy scan on the GUI
     # thread.
-    source_scan_lifecycle = SourceScanLifecycle(source_coordinator, scan_runner)
-    scan_relay.done.connect(source_scan_lifecycle.handle_done, Qt.QueuedConnection)
-    scan_relay.progress.connect(
+    # CORRECTIVE SEAL §5: isolated runtime channels — the source scan
+    # lifecycle and the legacy LibraryService scan NEVER share a relay or
+    # runner. Payload types (SourceReconciliationPlan vs ScanResult) and
+    # generation counters cannot collide because the systems are
+    # structurally separate; no request-type discrimination by generation.
+    source_scan_relay = ScanRelay()
+    source_scan_runner = ThreadScanRunner(source_scan_relay)
+    source_scan_lifecycle = SourceScanLifecycle(source_coordinator, source_scan_runner)
+    source_scan_relay.done.connect(
+        source_scan_lifecycle.handle_done, Qt.QueuedConnection
+    )
+    source_scan_relay.progress.connect(
         source_scan_lifecycle.handle_progress, Qt.QueuedConnection
     )
 
@@ -497,6 +507,7 @@ def _build_services(
         library=library,
         bridge=lb,
         runner=scan_runner,
+        source_scan_runner=source_scan_runner,
         dispatcher=scan_dispatcher,
         playlist_service=playlist_service,
         library_index=library_index,
