@@ -155,6 +155,6 @@ class TestSourcesDialogRuntime:
         dialog.open()
         for _ in range(5):
             app.processEvents(QEventLoop.AllEvents, 20)
-        assert dialog.visible is True
+        assert dialog.property("visible") is True
         dialog.close()
         app.processEvents()
