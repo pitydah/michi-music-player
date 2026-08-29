@@ -77,7 +77,10 @@ def test_bridge_projects_canonical_identity_and_complete_technical_facts() -> No
 
     row = LibraryBridge._track_row(ref)
 
-    assert row["trackId"] == str(ref.file_path)
+    # M6-EXT-R4-F: pre-catalog records project the documented legacy-path
+    # fallback; migrated records project the stable TrackId.
+    assert row["trackId"] == f"legacy-path::{ref.file_path}"
+    assert row["path"] == str(ref.file_path)
     assert row["albumKey"]
     assert row["artistKey"] == "depeche mode"
     assert row["formatKey"] == "flac"

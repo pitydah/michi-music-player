@@ -88,9 +88,49 @@ class TestEnrichmentCachedFirst:
                 track_paths=(Path("/a.flac"),),
             ),
         )
-        enriched = service._enrich_albums(albums)
+        enriched = service._enrich_albums(albums, offline=True)
         assert enriched[0].has_artwork is True
         assert service.artwork_path_for("k1") is not None
+
+    def test_enrich_online_drops_stale_cached_when_provider_finds_none(
+        self, tmp_path
+    ) -> None:
+        # ONLINE golden degradation: a healthy source whose artwork is
+        # corrupt/untagged drops the stale cached cover (legacy contract).
+        from michi.application.library_service import LibraryService
+        from michi.domain.library import AlbumRef
+
+        cache = ArtworkCache(tmp_path / "cache")
+        cache.store("k1", Artwork(data=b"old-cover", mime_type="image/png"))
+
+        class _EmptyProvider:
+            def get_embedded_artwork(self, path):
+                return None
+
+            def get_embedded_front_artwork(self, path):
+                return None
+
+            def get_local_artwork(self, album_dir):
+                return None
+
+        service = LibraryService(
+            scanner=None,  # type: ignore[arg-type]
+            artwork_provider=_EmptyProvider(),  # type: ignore[arg-type]
+            artwork_cache=cache,
+        )
+        albums = (
+            AlbumRef(
+                key="k1",
+                title="K",
+                artist="A",
+                track_count=1,
+                duration_ms=1000,
+                track_paths=(Path("/a.flac"),),
+            ),
+        )
+        enriched = service._enrich_albums(albums)  # online (default)
+        assert enriched[0].has_artwork is False
+        assert service.artwork_path_for("k1") is None
 
     def test_enrich_updated_artwork_replaces_cached(self, tmp_path) -> None:
         # Digest invalidation: NEW provider artwork stores a NEW file that

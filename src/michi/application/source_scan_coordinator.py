@@ -155,7 +155,7 @@ class SourceScanCoordinator:
         # replace the state wholesale; later per-source scans reconcile each
         # source independently. No recently-added changes (not new).
         self._library._state.tracks = refs
-        self._library._rebuild_derived_library_state()
+        self._library._rebuild_derived_library_state(offline=True)
         self._library._notify()
         return len(refs)
 

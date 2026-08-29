@@ -462,23 +462,26 @@ class LibraryService:
             library_source_id=library_source_id,
         )
 
-    def _enrich_albums(self, albums: tuple[AlbumRef, ...]) -> tuple[AlbumRef, ...]:
+    def _enrich_albums(
+        self, albums: tuple[AlbumRef, ...], *, offline: bool = False
+    ) -> tuple[AlbumRef, ...]:
         """Mark albums with artwork (M6.5 + M6-PRODUCTION-INTEGRATION +
         M6-EXT-R4-M):
         PASS 0 — persisted cache lookup: PROVISIONAL cached cover renders
-        immediately (an offline source must NOT blank a valid cached cover);
-        PASS 1 — explicit FRONT cover from ANY album track;
+        immediately; PASS 1 — explicit FRONT cover from ANY album track;
         PASS 2 — first embedded fallback in canonical track order;
         PASS 3 — local artwork from the first track's parent directory;
         PASS 4 — none (has_artwork stays False; the Michi fallback asset is
         RECLASSIFIED to M9 — documented, not silently dropped).
 
-        When the source is AVAILABLE the provider passes still run and a
-        CHANGED artwork updates the cache (new content digest → new file →
-        manifest updated → the fresh cover wins). Without any provider the
-        cache-only pass still resolves (offline browse). ``_artwork_paths``
-        is REBUILT from scratch (atomic replace after the loop) so stale
-        mappings are pruned when albums or their artwork disappear."""
+        ONLINE (scan): the provider verdict wins — a healthy source whose
+        artwork is corrupt/untagged drops the stale cached cover (golden
+        degradation contract). OFFLINE (hydration): a valid cached cover is
+        kept — never blank a cached cover because the source is unreachable.
+
+        ``_artwork_paths`` is REBUILT from scratch (atomic replace after the
+        loop) so stale mappings are pruned when albums or their artwork
+        disappear."""
         if self._artwork_cache is None:
             return albums
         cache_lookup = getattr(self._artwork_cache, "lookup", None)
@@ -515,24 +518,32 @@ class LibraryService:
                     artwork = self._artwork_provider.get_local_artwork(
                         album.track_paths[0].parent
                     )
-            # PASS 4: fresh artwork wins; otherwise the cached cover (if
-            # any) stays — never blank a valid cached cover.
+            # PASS 4: fresh artwork wins. Online with no artwork found → the
+            # stale cached cover is dropped (source speaks: corrupt/untagged).
+            # Offline → the valid cached cover stays (never blank).
             has_artwork = cached is not None
             if artwork is not None:
                 stored_path = self._artwork_cache.store(album.key, artwork)
                 if stored_path is not None:
                     next_artwork_paths[album.key] = stored_path
                     has_artwork = True
+            elif cached is not None and not offline:
+                next_artwork_paths.pop(album.key, None)
+                has_artwork = False
             enriched.append(replace(album, has_artwork=has_artwork))
         self._artwork_paths = next_artwork_paths  # atomic replace: stale pruned
         return tuple(enriched)
 
-    def _rebuild_derived_library_state(self) -> None:
+    def _rebuild_derived_library_state(self, *, offline: bool = False) -> None:
         """Recompute albums/artists/genres/folders from the canonical tracks
         and enrich albums with artwork. Called after ANY structural track
-        mutation (successful scan, TRACK_MISSING removal, future mutations)."""
+        mutation (successful scan, TRACK_MISSING removal, hydration).
+
+        ``offline`` (M6-EXT-R4-M): hydration keeps valid cached covers;
+
+        online scans honor the provider verdict (corrupt art drops)."""
         model = build_music_model(self._state.tracks)
-        self._state.albums = self._enrich_albums(model.albums)
+        self._state.albums = self._enrich_albums(model.albums, offline=offline)
         self._state.artists = model.artists
         self._state.genres = model.genres
         self._state.composers = model.composers

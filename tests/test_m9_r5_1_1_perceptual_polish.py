@@ -30,8 +30,12 @@ def test_scan_and_search_share_control_medium_geometry() -> None:
 def test_split_button_is_compact_and_icon_absence_has_no_ghost_gap() -> None:
     split = _qml("controls/MichiSplitButton.qml")
 
-    assert "primaryContent.implicitWidth + MichiSpacing.md * 2" in split
-    assert "primaryContent.implicitWidth + MichiSpacing.lg * 2" not in split
+    # Explicit segment math (R4-Q remediation): the primary segment width
+    # accounts for the icon (iconSmall) + its spacing (sm) explicitly —
+    # positioner implicit sizes never drive the split geometry.
+    assert "MichiMetrics.iconSmall + MichiSpacing.sm" in split
+    assert "primarySegmentImplicitWidth" in split
+    assert "MichiSpacing.lg * 2" not in split
     assert "readonly property bool hasPrimaryIcon" in split
     assert "visible: root.hasPrimaryIcon" in split
     assert "visible: !root.iconOnly || !root.hasPrimaryIcon" in split

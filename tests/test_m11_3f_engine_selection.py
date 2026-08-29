@@ -1335,7 +1335,12 @@ class TestF42AdapterContract:
         # PLAYLIST APPEARANCE authorized additive change: separate optional
         # managed-hero lifecycle methods and an async palette extractor port;
         # the frozen AudioPort and transport semantics remain unchanged.
-        "src/michi/application/ports.py": "600b5237ac834e45",
+        # M6-EXT-R4 authorized additive change: library-domain boundaries
+        # (LibraryCatalogPort / LibraryUserStatePort /
+        # LibrarySourceScannerPort / DiscoveredMediaFile) plus the optional
+        # ArtworkCachePort.lookup default; the frozen AudioPort and audio
+        # transport semantics remain unchanged.
+        "src/michi/application/ports.py": "c711d41f64749faa",
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.

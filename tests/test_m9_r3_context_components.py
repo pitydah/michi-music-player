@@ -95,7 +95,8 @@ def test_toolbar_stacks_at_narrow_width_without_hiding_actions() -> None:
     assert "columns: root.width < 1100 ? 2 : 4" in toolbar
     assert "GridLayout" in toolbar
     assert 'secondaryIconName: "chevron-down"' in toolbar
-    assert 'iconName: "library"' in toolbar
+    # R5.1.1: the scan split button is icon-less by default (compact).
+    assert 'iconName: ""' in toolbar
     assert "MichiSplitButton" in toolbar
     assert "Math.min(root.width" in toolbar
 
