@@ -60,18 +60,60 @@ def new_playlist_id() -> str:
 
 
 @dataclass(frozen=True)
+class PlaylistTrackReference:
+    """One playlist membership intent (M6-EXT-R4-H).
+
+    ``track_id`` is the CANONICAL library identity; ``fallback_path`` is a
+    location snapshot used only while the catalog resolves (never identity).
+    """
+
+    track_id: str = ""
+    fallback_path: str = ""
+
+
+@dataclass(frozen=True)
 class Playlist:
-    """A user-defined persistent ordered collection of track paths.
+    """A user-defined persistent ordered collection of tracks.
 
     playlist_id is the canonical identity; name is mutable user-visible
     metadata. custom_cover_path and appearance are independent user-owned
-    visual metadata."""
+    visual metadata.
+
+    Track membership (M6-EXT-R4-H):
+    - ``track_ids`` is the CANONICAL NEW AUTHORITY (stable library identity).
+    - ``track_paths`` is the LEGACY/FALLBACK location snapshot — NEVER
+      identity. New production records keep both aligned by position;
+      legacy V1/V2 records may carry only ``track_paths`` until migration
+      resolves their ids.
+    """
 
     playlist_id: str
     name: str
+    # Field order is a compatibility seam: legacy code constructs
+    # ``Playlist(id, name, paths)`` positionally — track_paths keeps its
+    # historical slot (third). New production code uses keyword arguments.
     track_paths: tuple[str, ...] = ()
+    track_ids: tuple[str, ...] = ()
     custom_cover_path: str = ""
     appearance: PlaylistAppearance = field(default_factory=PlaylistAppearance)
+
+    def references(self) -> tuple[PlaylistTrackReference, ...]:
+        """Position-aligned membership references.
+
+        Aligns ``track_ids`` and ``track_paths`` by index; whenever only one
+        collection is populated (legacy path-only or id-only records) the
+        other side stays empty per entry.
+        """
+        count = max(len(self.track_ids), len(self.track_paths))
+        ids = self.track_ids
+        paths = self.track_paths
+        return tuple(
+            PlaylistTrackReference(
+                track_id=ids[i] if i < len(ids) else "",
+                fallback_path=paths[i] if i < len(paths) else "",
+            )
+            for i in range(count)
+        )
 
 
 @dataclass(frozen=True)

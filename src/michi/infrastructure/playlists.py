@@ -1,10 +1,20 @@
 """SQLite persistence for user playlists — shares the library_prefs table.
 
-M8-R1: playlists persist in V2 shape {"id", "name", "track_paths"}; legacy
-V1 records {"name", "track_paths"} decode to a DETERMINISTIC UUIDv5 id
-(domain.legacy_playlist_id) so restarts never change identity. Load never
-writes back. Playlist navigation metadata (pinned/recent) persists under the
-"playlist_navigation" key of the same table."""
+M8-R1: playlists persist with stable playlist ids. Persistence SHAPES
+(M6-EXT-R4-H):
+
+- V1 legacy: {"name", "track_paths"} → deterministic UUIDv5 id on decode.
+- V2: {"id", "name", "track_paths"} — path-only membership (legacy).
+- V3 (current emit shape): {"version": 3, "id", "name", "tracks":
+  [{"track_id", "fallback_path"}], ...} — stable TrackId membership with a
+  location snapshot.
+
+Load never writes back. V1/V2 decoders remain (migration machinery + safe
+read); production save emits V3 only.
+
+Playlist navigation metadata (pinned/recent) persists under the
+"playlist_navigation" key of the same table.
+"""
 
 import json
 import logging
@@ -25,6 +35,9 @@ from michi.domain.playlist import (
 logger = logging.getLogger(__name__)
 
 _HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+# V3 payload marker. Historical V1/V2 payloads have no "version" member.
+PLAYLIST_PERSISTENCE_VERSION = 3
 
 
 def _decoded_color(value: object, fallback: str) -> str:
@@ -82,27 +95,24 @@ def _decode_appearance(value: object) -> PlaylistAppearance:
 
 
 def _decode_playlist_entry(entry) -> Playlist | None:
-    """STRICT playlist entry decode (authoritative user state), V1 + V2.
+    """STRICT playlist entry decode (authoritative user state), V1 + V2 + V3.
 
+    Valid V3 shape: {"version": 3, "id": str, "name": str,
+    "tracks": [{"track_id": str, "fallback_path": str}]}.
     Valid V2 shape: {"id": str, "name": str, "track_paths": list[str]}.
     Valid V1 shape: {"name": str, "track_paths": list[str]} — the id is
     derived deterministically via legacy_playlist_id(name).
 
-    A malformed entry (non-dict, wrong member types, track_paths with ANY
-    non-string member, empty name) is rejected WHOLE — NEVER partially
-    salvaged. An explicitly persisted empty/wrong-typed id is treated as V1
-    (deterministic legacy derivation), never fabricated randomly. Valid
-    sibling entries in the same root list are preserved (established
-    best-effort collection semantics)."""
+    A malformed entry (non-dict, wrong member types, any non-string
+    membership) is rejected WHOLE — NEVER partially salvaged. An explicitly
+    persisted empty/wrong-typed id is treated as V1 (deterministic legacy
+    derivation), never fabricated randomly. Valid sibling entries in the
+    same root list are preserved (established best-effort collection
+    semantics)."""
     if not isinstance(entry, dict):
         return None
     name = entry.get("name")
-    paths = entry.get("track_paths")
     if not isinstance(name, str) or not name:
-        return None
-    if not isinstance(paths, list):
-        return None
-    if not all(isinstance(path, str) for path in paths):
         return None
     raw_id = entry.get("id")
     if isinstance(raw_id, str) and raw_id:
@@ -110,16 +120,61 @@ def _decode_playlist_entry(entry) -> Playlist | None:
     else:
         # V1 record or empty/wrong-typed id: deterministic legacy identity.
         playlist_id = legacy_playlist_id(name)
+
+    if entry.get("version") == PLAYLIST_PERSISTENCE_VERSION:
+        track_ids, track_paths = _decode_v3_tracks(entry.get("tracks"))
+    else:
+        track_ids, track_paths = (), _decode_v2_paths(entry.get("track_paths"))
+    if track_ids is None or track_paths is None:
+        return None
     raw_cover = entry.get("custom_cover_path")
     custom_cover_path = raw_cover if isinstance(raw_cover, str) else ""
     appearance = _decode_appearance(entry.get("appearance"))
     return Playlist(
         playlist_id=playlist_id,
         name=name,
-        track_paths=tuple(paths),
+        track_ids=track_ids,
+        track_paths=track_paths,
         custom_cover_path=custom_cover_path,
         appearance=appearance,
     )
+
+
+def _decode_v2_paths(raw) -> tuple[str, ...] | None:
+    """V1/V2 membership: a plain list of path strings."""
+    if not isinstance(raw, list):
+        return None
+    if not all(isinstance(path, str) for path in raw):
+        return None
+    return tuple(raw)
+
+
+def _decode_v3_tracks(raw) -> tuple[tuple[str, ...] | None, tuple[str, ...] | None]:
+    """V3 membership: a list of {"track_id": str, "fallback_path": str}.
+
+    Both collections must decode strictly; a missing track_id or a
+    non-string fallback rejects the WHOLE playlist entry (never partially
+    salvaged). All-empty collections normalize to () so a legacy path-only
+    (or future id-only) record round-trips losslessly. Returns (None, None)
+    on any violation."""
+    if not isinstance(raw, list):
+        return None, None
+    track_ids: list[str] = []
+    track_paths: list[str] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            return None, None
+        track_id = item.get("track_id")
+        fallback = item.get("fallback_path", "")
+        if not isinstance(track_id, str):
+            return None, None
+        if not isinstance(fallback, str):
+            return None, None
+        track_ids.append(track_id)
+        track_paths.append(fallback)
+    normalized_ids = () if all(not i for i in track_ids) else tuple(track_ids)
+    normalized_paths = () if all(not p for p in track_paths) else tuple(track_paths)
+    return normalized_ids, normalized_paths
 
 
 def _decode_navigation_state(value: object) -> PlaylistNavigationState:
@@ -228,9 +283,13 @@ class SqlitePlaylistsRepository(PlaylistsPort):
     def save(self, playlists: tuple[Playlist, ...]) -> None:
         payload = [
             {
+                "version": PLAYLIST_PERSISTENCE_VERSION,
                 "id": p.playlist_id,
                 "name": p.name,
-                "track_paths": list(p.track_paths),
+                "tracks": [
+                    {"track_id": ref.track_id, "fallback_path": ref.fallback_path}
+                    for ref in p.references()
+                ],
                 "custom_cover_path": p.custom_cover_path,
                 "appearance": {
                     "hero_mode": p.appearance.hero_mode.value,

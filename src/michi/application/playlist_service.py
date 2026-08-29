@@ -26,6 +26,7 @@ from michi.domain.playlist import (
     PlaylistAppearance,
     PlaylistHeroMode,
     PlaylistNavigationState,
+    PlaylistTrackReference,
     new_playlist_id,
     normalize_navigation_state,
 )
@@ -135,24 +136,48 @@ class PlaylistService:
     def create_playlist_with_tracks(
         self, name: str, file_paths: Iterable[str | Path]
     ) -> Playlist:
-        """Create one playlist and publish its initial ordered tracks once."""
+        """LEGACY COMPATIBILITY: create with location snapshots only.
+
+        New callers prefer ``create_playlist_with_references`` so membership
+        carries stable TrackIds."""
+        references = [
+            PlaylistTrackReference(track_id="", fallback_path=str(Path(p)))
+            for p in file_paths
+        ]
+        return self.create_playlist_with_references(name, references)
+
+    def create_playlist_with_references(
+        self,
+        name: str,
+        references: Iterable[PlaylistTrackReference],
+    ) -> Playlist:
+        """Create one playlist and publish its initial ordered membership
+        once (M6-EXT-R4-H canonical: stable TrackIds + location snapshot)."""
         cleaned = name.strip()
         if not cleaned:
             raise ValueError("playlist name must not be empty")
         if any(p.name == cleaned for p in self._playlists):
             raise ValueError(f"playlist already exists: {cleaned!r}")
-        paths: list[str] = []
-        seen: set[str] = set()
-        for file_path in file_paths:
-            path = str(Path(file_path))
-            if path in seen:
-                continue
-            seen.add(path)
-            paths.append(path)
+        seen_ids: set[str] = set()
+        seen_paths: set[str] = set()
+        track_ids: list[str] = []
+        track_paths: list[str] = []
+        for ref in references:
+            if ref.track_id:
+                if ref.track_id in seen_ids:
+                    continue
+                seen_ids.add(ref.track_id)
+            if ref.fallback_path:
+                if ref.fallback_path in seen_paths:
+                    continue
+                seen_paths.add(ref.fallback_path)
+            track_ids.append(ref.track_id)
+            track_paths.append(ref.fallback_path)
         playlist = Playlist(
             playlist_id=new_playlist_id(),
             name=cleaned,
-            track_paths=tuple(paths),
+            track_ids=tuple(track_ids),
+            track_paths=tuple(track_paths),
         )
         self._playlists.append(playlist)
         self._persist()
@@ -198,28 +223,50 @@ class PlaylistService:
         self.add_tracks(playlist_id, (file_path,))
 
     def add_tracks(self, playlist_id: str, file_paths) -> int:
-        """Append a batch once, preserving order and suppressing duplicates.
+        """LEGACY COMPATIBILITY: append location snapshots (no TrackIds).
 
-        The mutation persists and notifies at most once so a QML collection
-        intent never expands into presentation-owned service loops.
-        """
+        New callers prefer ``add_track_references``."""
+        references = [
+            PlaylistTrackReference(track_id="", fallback_path=str(Path(p)))
+            for p in file_paths
+        ]
+        return self.add_track_references(playlist_id, references)
+
+    def add_track_references(
+        self, playlist_id: str, references: Iterable[PlaylistTrackReference]
+    ) -> int:
+        """Append a membership batch once (M6-EXT-R4-H canonical).
+
+        Dedupe by TrackId when present, else by fallback path. The mutation
+        persists and notifies at most once so a QML collection intent never
+        expands into presentation-owned service loops."""
         index = self._find_by_id(playlist_id)
         if index < 0:
             return 0
         playlist = self._playlists[index]
-        paths = list(playlist.track_paths)
-        seen = set(paths)
+        track_ids = list(playlist.track_ids)
+        track_paths = list(playlist.track_paths)
+        seen_ids = set(track_ids)
+        seen_paths = set(track_paths)
         added = 0
-        for file_path in file_paths:
-            path = str(Path(file_path))
-            if path in seen:
+        for ref in references:
+            if ref.track_id:
+                if ref.track_id in seen_ids:
+                    continue
+                seen_ids.add(ref.track_id)
+            if ref.fallback_path and ref.fallback_path in seen_paths:
                 continue
-            seen.add(path)
-            paths.append(path)
+            seen_paths.add(ref.fallback_path)
+            track_ids.append(ref.track_id)
+            track_paths.append(ref.fallback_path)
             added += 1
         if added == 0:
             return 0
-        self._playlists[index] = replace(playlist, track_paths=tuple(paths))
+        self._playlists[index] = replace(
+            playlist,
+            track_ids=tuple(track_ids),
+            track_paths=tuple(track_paths),
+        )
         self._persist()
         self._notify()
         return added
@@ -229,11 +276,20 @@ class PlaylistService:
         if playlist_index < 0:
             return
         playlist = self._playlists[playlist_index]
-        if not (0 <= index < len(playlist.track_paths)):
+        count = max(len(playlist.track_ids), len(playlist.track_paths))
+        if not (0 <= index < count):
             return
-        paths = list(playlist.track_paths)
-        del paths[index]
-        self._playlists[playlist_index] = replace(playlist, track_paths=tuple(paths))
+        track_ids = list(playlist.track_ids)
+        track_paths = list(playlist.track_paths)
+        if index < len(track_ids):
+            del track_ids[index]
+        if index < len(track_paths):
+            del track_paths[index]
+        self._playlists[playlist_index] = replace(
+            playlist,
+            track_ids=tuple(track_ids),
+            track_paths=tuple(track_paths),
+        )
         self._persist()
         self._notify()
 
@@ -242,13 +298,23 @@ class PlaylistService:
         if playlist_index < 0:
             return
         playlist = self._playlists[playlist_index]
-        paths = list(playlist.track_paths)
-        if not (0 <= from_index < len(paths)):
+        track_ids = list(playlist.track_ids)
+        track_paths = list(playlist.track_paths)
+        count = max(len(track_ids), len(track_paths))
+        if not (0 <= from_index < count):
             return
-        to_index = max(0, min(to_index, len(paths) - 1))
-        track = paths.pop(from_index)
-        paths.insert(to_index, track)
-        self._playlists[playlist_index] = replace(playlist, track_paths=tuple(paths))
+        to_index = max(0, min(to_index, count - 1))
+        if from_index < len(track_ids):
+            moved_id = track_ids.pop(from_index)
+            track_ids.insert(to_index, moved_id)
+        if from_index < len(track_paths):
+            moved_path = track_paths.pop(from_index)
+            track_paths.insert(to_index, moved_path)
+        self._playlists[playlist_index] = replace(
+            playlist,
+            track_ids=tuple(track_ids),
+            track_paths=tuple(track_paths),
+        )
         self._persist()
         self._notify()
 
