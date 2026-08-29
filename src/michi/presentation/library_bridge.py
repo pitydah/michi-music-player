@@ -519,7 +519,6 @@ class LibraryBridge(QObject):
     def _get_song_paths(self) -> list[str]:
         return [str(t.file_path) for t in self._visible_track_refs()]
 
-    @staticmethod
     def _effective_availability(self, ref: TrackRef) -> str:
         """Composed playability (M6-EXT-R4 freeze gate §11): source
         observation dominates the media observation — ONE authority via
