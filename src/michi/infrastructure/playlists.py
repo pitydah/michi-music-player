@@ -29,6 +29,7 @@ from michi.domain.playlist import (
     PlaylistAppearance,
     PlaylistHeroMode,
     PlaylistNavigationState,
+    PlaylistPersistenceError,
     legacy_playlist_id,
 )
 
@@ -317,6 +318,9 @@ class SqlitePlaylistsRepository(PlaylistsPort):
         self._save_raw("playlist_navigation", _encode_navigation_state(state))
 
     def _save_raw(self, key: str, payload: str) -> None:
+        """TRUTHFUL authoritative write (M6-EXT-R4 freeze gate): a sqlite
+        failure raises ``PlaylistPersistenceError`` — never a silent
+        log-and-return. Load remains tolerant; writes are not."""
         try:
             conn = self._connect()
             try:
@@ -329,4 +333,6 @@ class SqlitePlaylistsRepository(PlaylistsPort):
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("%s save failed: %s", key, exc)
+            raise PlaylistPersistenceError(
+                f"playlist persistence failed ({key}): {exc}"
+            ) from exc

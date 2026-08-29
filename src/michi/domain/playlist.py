@@ -16,6 +16,14 @@ _MICHI_PLAYLIST_NAMESPACE = uuid.UUID("6f2a1b8e-4c3d-4a5b-9e8f-0a1b2c3d4e5f")
 MAX_RECENT_PLAYLISTS = 5
 
 
+class PlaylistPersistenceError(RuntimeError):
+    """An authoritative playlist write failed (M6-EXT-R4 freeze gate).
+
+    Truthful persistence: a mutation either commits or raises — the
+    in-memory state rolls back to the last persisted snapshot and the
+    caller never sees a false success."""
+
+
 class PlaylistHeroMode(StrEnum):
     """Persisted visual source for an individual playlist hero."""
 

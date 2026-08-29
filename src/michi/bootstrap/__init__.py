@@ -422,7 +422,7 @@ def _build_services(
         library, playback_session, resolver=track_resolver
     )
     playlist_playback = PlaylistPlaybackCoordinator(
-        playlist_service, playback_session, queue
+        playlist_service, playback_session, queue, resolver=track_resolver
     )
     library_queue = LibraryQueueCoordinator(library, queue)
     library_playlist = LibraryPlaylistCoordinator(library, playlist_service)

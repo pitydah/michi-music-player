@@ -1,14 +1,21 @@
-"""Playlist playback intent coordinator (M4-R1).
+"""Playlist playback intent coordinator (M4-R1 → M6-EXT-R4 freeze gate).
 
 Coordinates PlaylistService + PlaybackSessionService + QueueService. NO
 state authority. PLAY and QUEUE are DISTINCT user intents:
 - PLAY: playlist snapshot → PlaybackSession (PLAYLIST context).
-- QUEUE: playlist tracks → QueueService.add_many (explicit Queue mutation).
+- QUEUE: playlist tracks → QueueService (explicit Queue mutation).
+
+M6-EXT-R4 freeze gate: membership resolves through ``LibraryTrackResolver``
+by stable TrackId FIRST — the current resolved path is used; the persisted
+fallback path is used ONLY when the identity is unresolved/legacy. A moved
+file therefore plays from its NEW location while the playlist membership
+(and its TrackId) never changes.
 """
 
 import logging
 from pathlib import Path
 
+from michi.application.library_track_resolver import LibraryTrackResolver
 from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
@@ -28,10 +35,46 @@ class PlaylistPlaybackCoordinator:
         playlist_service: PlaylistService,
         playback_session: PlaybackSessionService,
         queue_service: QueueService,
+        resolver: LibraryTrackResolver | None = None,
     ) -> None:
         self._playlists = playlist_service
         self._session = playback_session
         self._queue = queue_service
+        self._resolver = resolver
+
+    def _resolve_entries(self, playlist_id: str) -> list[PlaybackSequenceEntry]:
+        """Resolve membership: TrackId → current resolved path; fallback
+        path only when the identity is unresolved/legacy. Unavailable
+        tracks keep their membership (never silently removed)."""
+        playlist = self._playlists.get_playlist(playlist_id)
+        if playlist is None:
+            return []
+        entries: list[PlaybackSequenceEntry] = []
+        for ref in playlist.references():
+            resolved_path: Path | None = None
+            if ref.track_id:
+                # Known identity: the CURRENT playable path decides. An
+                # unavailable/unresolved identity is SKIPPED (membership
+                # stays intact) — never a fallback that plays a missing
+                # file.
+                if self._resolver is not None:
+                    resolved_path = self._resolver.resolve_playable_path(ref.track_id)
+                if resolved_path is None:
+                    continue
+            else:
+                # LEGACY/unresolved record: the location snapshot is the
+                # honest projection.
+                resolved_path = Path(ref.fallback_path) if ref.fallback_path else None
+            if resolved_path is None:
+                continue
+            entries.append(
+                PlaybackSequenceEntry(
+                    file_path=resolved_path,
+                    title="",
+                    library_track_id=ref.track_id or None,
+                )
+            )
+        return entries
 
     def play_playlist(self, playlist_id: str, start_index: int = 0) -> None:
         """PLAYLIST snapshot context (never copies into Queue). The snapshot
@@ -41,10 +84,7 @@ class PlaylistPlaybackCoordinator:
         if playlist is None:
             logger.warning("playlist no encontrada: %s", playlist_id)
             return
-        entries = [
-            PlaybackSequenceEntry(file_path=Path(path), title="")
-            for path in playlist.track_paths
-        ]
+        entries = self._resolve_entries(playlist_id)
         if not entries:
             return
         if not (0 <= start_index < len(entries)):
@@ -60,9 +100,13 @@ class PlaylistPlaybackCoordinator:
 
     def queue_playlist(self, playlist_id: str) -> None:
         """EXPLICIT Queue intent: append playlist tracks to the Queue.
-        Never commands playback."""
+        Never commands playback. Entries carry the stable identity."""
         playlist = self._playlists.get_playlist(playlist_id)
         if playlist is None:
             logger.warning("playlist no encontrada: %s", playlist_id)
             return
-        self._queue.add_many([Path(path) for path in playlist.track_paths])
+        entries = self._resolve_entries(playlist_id)
+        if entries:
+            self._queue.add_many_entries(
+                [(entry.file_path, entry.library_track_id) for entry in entries]
+            )
