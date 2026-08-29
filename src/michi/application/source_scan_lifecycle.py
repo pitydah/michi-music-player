@@ -56,6 +56,7 @@ class SourceScanRunState:
     last_terminal_status: str = ""
     last_diagnostic: str = ""
     last_source_id: str = ""
+    failed_source_ids: tuple[str, ...] = ()
 
     @property
     def active(self) -> bool:
@@ -76,6 +77,7 @@ class SourceScanLifecycle:
         self._queue: list[str] = []
         self._generation = 0
         self._active = False
+        self._cancel_requested = False
         self._state = SourceScanRunState()
         self._subscribers: list[Callable[[SourceScanRunState], None]] = []
         if on_state is not None:
@@ -91,12 +93,19 @@ class SourceScanLifecycle:
         if callback not in self._subscribers:
             self._subscribers.append(callback)
 
+    def unsubscribe_state(self, callback: Callable[[SourceScanRunState], None]) -> None:
+        if callback in self._subscribers:
+            self._subscribers.remove(callback)
+
     def _reset_terminal(self) -> None:
-        """A NEW scan request clears the previous terminal record."""
+        """A NEW user scan request starts a fresh run: clears the previous
+        terminal record and the cancel flag."""
+        self._cancel_requested = False
         self._set_state(
             last_terminal_status="",
             last_diagnostic="",
             last_source_id="",
+            failed_source_ids=(),
         )
 
     def request_scan_all(self) -> None:
@@ -127,8 +136,13 @@ class SourceScanLifecycle:
         return ""
 
     def cancel(self) -> None:
-        """Cooperative cancel of the ACTIVE generation (unknown: no-op)."""
-        self._pipeline.cancel(self._generation)
+        """CANCEL THE WHOLE USER-REQUESTED RUN (P1-02): clears the remaining
+        source queue and cancels the active generation — no further source
+        ever starts after the acknowledgment."""
+        self._queue.clear()
+        if self._active:
+            self._cancel_requested = True
+            self._pipeline.cancel(self._generation)
 
     # --------------------------------------------------------- relay handlers
 
@@ -152,6 +166,12 @@ class SourceScanLifecycle:
             return
         if error is not None or plan is None:
             # Worker failure (typed scan error / cancellation): no commit.
+            # P1-05: the OWNER publishes the physical observation (never
+            # the worker); ScanCancelled fabricates no observation.
+            if error is not None and not isinstance(error, ScanCancelled):
+                self._coordinator.record_source_scan_error(
+                    source.library_source_id, error
+                )
             self._finish(
                 generation,
                 failed=not isinstance(error, ScanCancelled),
@@ -194,7 +214,14 @@ class SourceScanLifecycle:
         if self._active:
             return  # serialization: one source at a time
         if not self._queue:
-            if self._state.status != _IDLE:
+            if self._state.status != _IDLE or self._state.last_terminal_status == "":
+                # P1-03: finalize the RUN-level terminal truth once.
+                if self._state.failed_source_ids:
+                    terminal = _FAILED
+                elif self._cancel_requested:
+                    terminal = "CANCELLED"
+                else:
+                    terminal = "COMPLETED"
                 self._set_state(
                     status=_IDLE,
                     current_source_id="",
@@ -203,6 +230,7 @@ class SourceScanLifecycle:
                     total=0,
                     current_path="",
                     diagnostic="",
+                    last_terminal_status=terminal,
                 )
             return
         source_id = self._queue.pop(0)
@@ -250,6 +278,7 @@ class SourceScanLifecycle:
         if generation != self._generation:
             return  # superseded: its completion is irrelevant
         self._active = False
+        source_id = self._state.current_source_id
         if outcome is not None:
             status = _FAILED if outcome.failed else _IDLE
             diagnostic = outcome.diagnostic or ""
@@ -257,8 +286,15 @@ class SourceScanLifecycle:
             status = _FAILED
         else:
             status = _IDLE
-        # Terminal record persists even after the operational status
-        # returns to IDLE for the next queued source.
+        # P1-03: RUN-level failure aggregation — a later successful source
+        # NEVER converts an already failed run into success.
+        failed_ids = self._state.failed_source_ids
+        if status == _FAILED and source_id not in failed_ids:
+            failed_ids = failed_ids + (source_id,)
+        # Preserve the FIRST diagnostic of the run.
+        run_diagnostic = self._state.last_diagnostic or diagnostic
+        # Terminal record survives source-to-source transitions inside the
+        # run and is finalized only at queue exhaustion.
         self._set_state(
             status=status,
             phase="",
@@ -266,9 +302,9 @@ class SourceScanLifecycle:
             total=0,
             current_path="",
             diagnostic=diagnostic,
-            last_terminal_status=status,
-            last_diagnostic=diagnostic,
-            last_source_id=self._state.current_source_id,
+            failed_source_ids=failed_ids,
+            last_diagnostic=run_diagnostic,
+            last_source_id=source_id,
         )
         self._start_next()
 

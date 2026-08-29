@@ -352,7 +352,8 @@ class TestCancelDuringExtraction:
         # Cancelled during extraction → ZERO authoritative mutation.
         assert catalog.load_tracks() == ()
         assert library.state.tracks == []
-        assert lifecycle.state.last_terminal_status == "IDLE"  # cancelled ≠ failed
+        # P1-03: a cancelled run exposes the CANCELLED terminal truth.
+        assert lifecycle.state.last_terminal_status == "CANCELLED"
 
 
 class TestIsolatedProvenance:

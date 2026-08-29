@@ -5,7 +5,7 @@ import "../media"
 MichiTrackTable {
     id: root
     objectName: "historyView"
-    property string addTargetPath: ""
+    property string addTargetTrackId: ""
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -25,7 +25,7 @@ MichiTrackTable {
     onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
     onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
     onQueueRequested: trackId => library.queue_track_by_id(trackId)
-    onAddToPlaylistRequested: path => root.addTargetPath = path
+    onAddToPlaylistRequested: trackId => root.addTargetTrackId = trackId
     onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     onGoToArtistRequested: artistKey => library.select_artist(artistKey)
 }

@@ -1,5 +1,6 @@
 """Filesystem store for user-provided playlist cover and hero images."""
 
+import hashlib
 import logging
 import shutil
 from pathlib import Path
@@ -7,6 +8,16 @@ from pathlib import Path
 from michi.application.ports import PlaylistArtworkStorePort
 
 logger = logging.getLogger(__name__)
+
+
+def _content_digest(path: Path) -> str:
+    """Deterministic content version for immutable managed filenames."""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()[:20]
+
 
 _ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
@@ -128,6 +139,70 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
 
     def stage_cover(self, playlist_id: str, source_image_path) -> str | None:
         return self._stage_variant(playlist_id, source_image_path, suffix="")
+
+    # ------------------------------------------------------------------
+    # P1-06 IMMUTABLE CANDIDATE PROTOCOL: the managed filename embeds a
+    # content digest — the candidate file EXISTS (immutable) before any
+    # database reference. A crash after commit can only leave an orphaned
+    # OLD asset (acceptable cleanup debt); a committed reference can never
+    # point to a not-yet-created file.
+    # ------------------------------------------------------------------
+
+    def prepare_cover(self, playlist_id: str, source_image_path) -> str | None:
+        return self._prepare_variant(playlist_id, source_image_path, suffix="")
+
+    def prepare_hero(self, playlist_id: str, source_image_path) -> str | None:
+        return self._prepare_variant(playlist_id, source_image_path, suffix="_hero")
+
+    def _prepare_variant(
+        self, playlist_id: str, source_image_path, *, suffix: str
+    ) -> str | None:
+        src = Path(source_image_path)
+        if not src.is_file():
+            return None
+        ext = src.suffix.lower()
+        if ext not in _ALLOWED_EXTENSIONS:
+            return None
+        try:
+            if src.stat().st_size == 0:
+                return None
+        except OSError:
+            return None
+        try:
+            self._storage_dir.mkdir(parents=True, exist_ok=True)
+            digest = _content_digest(src)
+            stem = f"playlist_{playlist_id}{suffix}_{digest}"
+            final_path = self._storage_dir / f"{stem}{ext}"
+            if final_path.is_file():
+                return str(final_path)  # idempotent: same content exists
+            temp_path = final_path.with_suffix(final_path.suffix + ".tmp")
+            shutil.copyfile(src, temp_path)
+            temp_path.replace(final_path)
+            return str(final_path)
+        except OSError as exc:
+            logger.warning(
+                "Failed to prepare playlist %s asset for %s: %s",
+                suffix or "cover",
+                playlist_id,
+                exc,
+            )
+            return None
+
+    def delete_managed_asset(self, managed_path: str) -> None:
+        """Fail-closed safe delete: only files inside the managed storage
+        directory whose name starts with ``playlist_`` are removed."""
+        storage = self._storage_dir.resolve()
+        candidate = Path(managed_path).resolve()
+        if candidate.parent != storage:
+            logger.warning("refusing to delete non-managed asset: %s", managed_path)
+            return
+        if not candidate.name.startswith("playlist_"):
+            logger.warning("refusing to delete non-managed asset: %s", managed_path)
+            return
+        try:
+            candidate.unlink(missing_ok=True)
+        except OSError as exc:
+            logger.warning("Failed to delete managed asset %s: %s", candidate, exc)
 
     def stage_hero(self, playlist_id: str, source_image_path) -> str | None:
         return self._stage_variant(playlist_id, source_image_path, suffix="_hero")

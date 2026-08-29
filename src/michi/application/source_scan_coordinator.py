@@ -122,6 +122,11 @@ class SourceScanCoordinator:
         self._metadata_extractor = metadata_extractor
         self._index = index
         self._observations: dict[str, SourceAvailability] = {}
+        # P1-04: small in-memory source-record cache (never one SQLite query
+        # per TrackId at scale); refreshed on every production mutation.
+        self._source_records: dict[str, LibrarySource] = {
+            source.library_source_id: source for source in self._catalog.load_sources()
+        }
 
     # ------------------------------------------------------------ hydration
 
@@ -138,6 +143,14 @@ class SourceScanCoordinator:
         on the next scan)."""
         media_by_id = {m.media_file_id: m for m in self._catalog.load_media()}
         track_by_id = {t.media_file_id: t for t in self._catalog.load_tracks()}
+        sources = {
+            source.library_source_id: source for source in self._catalog.load_sources()
+        }
+        retired_ids = {
+            source_id
+            for source_id, source in sources.items()
+            if source.lifecycle.value == "retired"
+        }
         cache = (
             {Path(path): meta for path, meta in self._index_metadata().items()}
             if self._index is not None
@@ -145,6 +158,10 @@ class SourceScanCoordinator:
         )
         refs: list[TrackRef] = []
         for media in media_by_id.values():
+            # P1-04: RETIRED sources stay durable in the catalog but are
+            # EXCLUDED from the active hydrated projection (never deleted).
+            if media.library_source_id in retired_ids:
+                continue
             track = track_by_id.get(media.media_file_id)
             path = Path(media.last_known_path)
             meta = cache.get(path)
@@ -223,7 +240,9 @@ class SourceScanCoordinator:
     def list_sources(self) -> tuple[LibrarySource, ...]:
         """Public source management surface (M6-EXT-R4 freeze gate §21):
         presentation consumes THIS, never the repository directly."""
-        return self._catalog.load_sources()
+        sources = self._catalog.load_sources()
+        self._remember_sources(sources)
+        return sources
 
     def source_counts(self, library) -> dict[str, int]:
         """Track counts per source from the canonical library state."""
@@ -292,12 +311,21 @@ class SourceScanCoordinator:
         return self.scan_source(relocated)
 
     def retire_source(self, source_id: str) -> None:
-        """Soft retire (Remove from Michi) — never a filesystem delete."""
+        """Soft retire (Remove from Michi) — never a filesystem delete.
+        P1-04: catalog records (MediaFile/Track) and all user references
+        survive; the source leaves ONLY the active Library projection."""
         self._catalog.retire_source(source_id)
+        self._remember_sources(self._catalog.load_sources())
+        self._observations.pop(source_id, None)
+        self._library.apply_source_tracks(source_id, [])
 
     def set_source_enabled(self, source_id: str, enabled: bool) -> None:
         """Enable/disable a configured source (stays configured)."""
         self._catalog.set_source_enabled(source_id, enabled)
+        self._remember_sources(self._catalog.load_sources())
+        # P1-04: a re-enabled source is UNKNOWN until actually re-probed —
+        # never revive a stale AVAILABLE as current truth.
+        self._observations.pop(source_id, None)
 
     def submit_source_scan(
         self,
@@ -319,14 +347,9 @@ class SourceScanCoordinator:
         generation."""
 
         def work(progress, token, report):
-            try:
-                discovered = self._scanner.discover(source)
-            except LibraryFilesystemError as exc:
-                self._observations[source.library_source_id] = _availability_from_code(
-                    exc.code
-                )
-                raise
-            self._observations[source.library_source_id] = SourceAvailability.AVAILABLE
+            # P1-05: the WORKER computes facts only — it never mutates
+            # ``_observations`` (observable state is owner-published).
+            discovered = self._scanner.discover(source)
             progress.phase = "RECONCILING"
             progress.total = len(discovered)
             progress.processed = 0
@@ -353,17 +376,48 @@ class SourceScanCoordinator:
         None when the generation is stale / cancelled / failed (nothing was
         committed)."""
         if generation != current_generation:
-            return None
+            return None  # stale generations NEVER change observed state
         if error is not None or plan is None:
             return None
+        # OWNER thread: publish the observed availability from the plan.
+        self._observations[source.library_source_id] = plan.outcome.availability
         return self.commit_source_reconciliation(source, plan)
 
+    def _remember_sources(self, sources: tuple[LibrarySource, ...]) -> None:
+        self._source_records = {source.library_source_id: source for source in sources}
+
+    def _source_record(self, source_id: str) -> LibrarySource | None:
+        source = self._source_records.get(source_id)
+        if source is not None:
+            return source
+        sources = self._catalog.load_sources()
+        self._remember_sources(sources)
+        return self._source_records.get(source_id)
+
     def observed_availability(self, source_id: str) -> SourceAvailability:
-        """Last OBSERVED source availability (UI history, never eternal
-        truth — re-probed on every scan)."""
+        """CONFIGURED-AWARE availability (P1-04): DISABLED/RETIRED
+        configuration DOMINATES any physical observation — an old AVAILABLE
+        observation never overrides the configured state."""
+        source = self._source_record(source_id)
+        if source is not None and (
+            source.lifecycle.value == "retired" or not source.enabled
+        ):
+            return SourceAvailability.DISABLED
         return self._observations.get(source_id, SourceAvailability.UNKNOWN)
 
     # ------------------------------------------------------------------ scan
+
+    def record_source_scan_error(
+        self, source_id: str, error: BaseException
+    ) -> SourceAvailability:
+        """OWNER-THREAD ONLY (P1-05): records the physical observation for a
+        worker filesystem failure. ScanCancelled fabricates no observation."""
+        if isinstance(error, LibraryFilesystemError):
+            availability = _availability_from_code(error.code)
+        else:
+            availability = SourceAvailability.IO_ERROR
+        self._observations[source_id] = availability
+        return availability
 
     def scan_source(self, source: LibrarySource) -> SourceScanOutcome:
         """Reconcile ONE source against its catalog records (synchronous

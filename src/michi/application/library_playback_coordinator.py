@@ -80,45 +80,70 @@ class LibraryPlaybackCoordinator:
         if album is None:
             logger.warning("album no encontrado: %s", album_key)
             return
-        entries = []
-        # CORRECTIVE SEAL §14: modern membership resolves from TrackIds
-        # through the resolver (current paths); the legacy path projection
-        # is the explicit fallback for pre-migration albums.
+        entries, selected_entry_index = self._resolve_album_entries(album, start_index)
+        if not entries or selected_entry_index is None:
+            # The clicked member is unavailable: truthful no-play — never a
+            # silent neighbor substitution (P1-08).
+            return
+        # TD-013: validate the SELECTED track through the library filesystem
+        # gate (never removes identity — availability is marked instead).
+        selected = entries[selected_entry_index]
+        ref = self._resolver.resolve_ref(selected.library_track_id or "")
+        if ref is None or not self._library.validate_track_for_playback(ref):
+            return
+        self._session.play_context(
+            PlaybackContextType.ALBUM,
+            album_key,
+            entries,
+            selected_entry_index,
+        )
+
+    def _resolve_album_entries(self, album, requested_index: int):
+        """P1-08: membership index → playback entry index BY IDENTITY.
+
+        Modern membership (track_ids) resolves through the resolver; every
+        unavailable/unresolved member is SKIPPED (membership intact) while
+        the requested membership index maps to the resolved entry position.
+        A requested unavailable member yields ``selected_entry_index=None``
+        (no playback). Legacy albums fall back to track_paths with the
+        historical index semantics."""
         if album.track_ids:
-            for track_id in album.track_ids:
+            membership_ids = album.track_ids
+            if not (0 <= requested_index < len(membership_ids)):
+                return [], None
+            entries = []
+            selected_entry_index = None
+            for membership_index, track_id in enumerate(membership_ids):
                 ref = self._resolver.resolve_ref(track_id)
                 if ref is None:
                     continue  # identity unresolved: membership stays intact
+                playable_path = self._resolver.resolve_playable_path(track_id)
+                if playable_path is None:
+                    continue  # unavailable: filtered, not removed
+                if membership_index == requested_index:
+                    selected_entry_index = len(entries)
                 entries.append(
                     PlaybackSequenceEntry(
-                        file_path=ref.file_path,
+                        file_path=playable_path,
                         title=ref.title,
                         library_track_id=ref.track_id or None,
                     )
                 )
-        else:
-            for path in album.track_paths:
-                ref = self._library.resolve_trackref(path)
-                entries.append(
-                    PlaybackSequenceEntry(
-                        file_path=Path(path),
-                        title=ref.title if ref is not None else "",
-                        library_track_id=ref.track_id if ref is not None else None,
-                    )
+            return entries, selected_entry_index
+        # LEGACY pre-migration album: path projection with index semantics.
+        entries = []
+        for path in album.track_paths:
+            ref = self._library.resolve_trackref(path)
+            entries.append(
+                PlaybackSequenceEntry(
+                    file_path=Path(path),
+                    title=ref.title if ref is not None else "",
+                    library_track_id=ref.track_id if ref is not None else None,
                 )
-        if not entries:
-            return
-        if not (0 <= start_index < len(entries)):
-            start_index = 0
-        # TD-013: validate the clicked track through the library filesystem
-        # gate (never removes identity — availability is marked instead).
-        clicked = entries[start_index]
-        ref = self._library.resolve_trackref(clicked.file_path)
-        if ref is None or not self._library.validate_track_for_playback(ref):
-            return
-        self._session.play_context(
-            PlaybackContextType.ALBUM, album_key, entries, start_index
-        )
+            )
+        if not (0 <= requested_index < len(entries)):
+            requested_index = 0
+        return entries, requested_index
 
     def play_album_track(self, album_key: str, index: int) -> None:
         """Album Detail track click → ALBUM context at the clicked index

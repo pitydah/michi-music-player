@@ -219,24 +219,18 @@ class PlaylistService:
             pinned_ids=tuple(i for i in self._nav.pinned_ids if i != playlist_id),
             recent_ids=tuple(i for i in self._nav.recent_ids if i != playlist_id),
         )
-        # CORRECTIVE SEAL §10: ONE atomic repository transaction for the
-        # logical operation (collection + navigation). A failure rolls back
-        # BOTH — no half-committed delete, no false failure after an
-        # irreversible commit.
-        atomic = getattr(self._port, "save_playlists_with_navigation", None)
-        if atomic is not None:
+        # P1-06/P2: ONE atomic repository transaction (declared Port
+        # capability — production fails closed, never a sequential fallback).
+        if self._port is not None:
             candidate = tuple(self._playlists)
             try:
-                atomic(candidate, self._nav)
+                self._port.save_playlists_with_navigation(candidate, self._nav)
             except PlaylistPersistenceError:
                 self._playlists = list(self._persisted)
                 self._nav = self._persisted_nav
                 raise
             self._persisted = candidate
             self._persisted_nav = self._nav
-        else:
-            self._persist()  # may raise (state rolls back)
-            self._persist_nav()
         # COMMIT CONFIRMED: cleanup the managed assets (best effort).
         if self._artwork_store is not None:
             try:
@@ -366,34 +360,44 @@ class PlaylistService:
         self._notify()
 
     def set_custom_cover(self, playlist_id: str, cover_path: Path | str) -> str | None:
-        """Sets managed custom cover (CORRECTIVE SEAL §9 staging protocol).
+        """Sets managed custom cover (P1-06 IMMUTABLE CANDIDATE protocol).
 
-        Stage NEW bytes → authoritative persist (ref = final stable path) →
-        promote atomically. A persist failure discards the staging file and
-        preserves the previously committed image byte-for-byte."""
+        The content-versioned candidate file EXISTS before any database
+        reference; a commit failure deletes the candidate and leaves the
+        previously committed image byte-for-byte intact; after a confirmed
+        commit the superseded old asset is cleaned up best-effort."""
         index = self._find_by_id(playlist_id)
         if index < 0:
             return None
-        managed_path = str(cover_path)
-        staged = False
-        if self._artwork_store is not None:
-            staged_final = self._artwork_store.stage_cover(playlist_id, cover_path)
-            if staged_final is None:
-                return None
-            managed_path = staged_final
-            staged = True
         playlist = self._playlists[index]
-        self._playlists[index] = replace(playlist, custom_cover_path=managed_path)
+        old_path = playlist.custom_cover_path
+        candidate = str(cover_path)
+        if self._artwork_store is not None:
+            prepared = self._artwork_store.prepare_cover(playlist_id, cover_path)
+            if prepared is None:
+                return None
+            candidate = prepared
+        if candidate == old_path:
+            return old_path
+        self._playlists[index] = replace(playlist, custom_cover_path=candidate)
         try:
             self._persist()
         except PlaylistPersistenceError:
-            if staged and self._artwork_store is not None:
-                self._artwork_store.discard_staged(playlist_id, suffix="")
+            # Candidate never became the durable reference: remove it.
+            if self._artwork_store is not None:
+                try:
+                    self._artwork_store.delete_managed_asset(candidate)
+                except OSError as exc:
+                    logger.warning("orphan candidate cleanup debt: %s", exc)
             raise
-        if staged and self._artwork_store is not None:
-            self._artwork_store.promote_staged(playlist_id, suffix="")
+        # COMMIT CONFIRMED: retire the superseded old asset best-effort.
+        if self._artwork_store is not None and old_path and old_path != candidate:
+            try:
+                self._artwork_store.delete_managed_asset(old_path)
+            except OSError as exc:
+                logger.warning("old asset cleanup debt: %s", exc)
         self._notify()
-        return managed_path
+        return candidate
 
     def remove_custom_cover(self, playlist_id: str) -> None:
         """P1-06: persist the removal FIRST; delete the managed file only
@@ -501,32 +505,39 @@ class PlaylistService:
     def set_custom_hero_image(
         self, playlist_id: str, image_path: Path | str
     ) -> str | None:
-        """Sets managed hero image (CORRECTIVE SEAL §9 staging protocol)."""
+        """Sets managed hero image (P1-06 IMMUTABLE CANDIDATE protocol)."""
         playlist = self.get_playlist(playlist_id)
         if playlist is None:
             return None
-        managed_path = str(image_path)
-        staged = False
+        old_path = playlist.appearance.hero_image_path
+        candidate = str(image_path)
         if self._artwork_store is not None:
-            staged_final = self._artwork_store.stage_hero(playlist_id, image_path)
-            if staged_final is None:
+            prepared = self._artwork_store.prepare_hero(playlist_id, image_path)
+            if prepared is None:
                 return None
-            managed_path = staged_final
-            staged = True
+            candidate = prepared
+        if candidate == old_path:
+            return old_path
         appearance = replace(
             playlist.appearance,
             hero_mode=PlaylistHeroMode.IMAGE,
-            hero_image_path=managed_path,
+            hero_image_path=candidate,
         )
         try:
             self._replace_appearance(playlist_id, appearance)
         except PlaylistPersistenceError:
-            if staged and self._artwork_store is not None:
-                self._artwork_store.discard_staged(playlist_id, suffix="_hero")
+            if self._artwork_store is not None:
+                try:
+                    self._artwork_store.delete_managed_asset(candidate)
+                except OSError as exc:
+                    logger.warning("orphan candidate cleanup debt: %s", exc)
             raise
-        if staged and self._artwork_store is not None:
-            self._artwork_store.promote_staged(playlist_id, suffix="_hero")
-        return managed_path
+        if self._artwork_store is not None and old_path and old_path != candidate:
+            try:
+                self._artwork_store.delete_managed_asset(old_path)
+            except OSError as exc:
+                logger.warning("old hero cleanup debt: %s", exc)
+        return candidate
 
     def pin_playlist(self, playlist_id: str) -> None:
         if self._find_by_id(playlist_id) < 0:

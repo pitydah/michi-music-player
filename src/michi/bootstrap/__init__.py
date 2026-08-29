@@ -619,6 +619,8 @@ class ApplicationContainer:
         self._playlist_service: PlaylistService | None = None
         self._scan_runner: ThreadScanRunner | None = None
         self._scan_dispatcher: LibraryScanDispatcher | None = None
+        self._source_scan_runner: ThreadScanRunner | None = None
+        self._source_scan_lifecycle: SourceScanLifecycle | None = None
         self._pb: PlaybackBridge | None = None
         self._qb: QueueBridge | None = None
         self._lb: LibraryBridge | None = None
@@ -830,6 +832,8 @@ class ApplicationContainer:
         self._playlist_service = playlist_service
         self._scan_runner = scan_runner
         self._scan_dispatcher = scan_dispatcher
+        self._source_scan_runner = graph.source_scan_runner
+        self._source_scan_lifecycle = graph.source_scan_lifecycle
         self._library_prefs = lib_prefs
         self._navigation = navigation
         self._coordinator = coordinator
@@ -900,11 +904,25 @@ class ApplicationContainer:
         except Exception as exc:
             error = error or exc
 
+        # P1-01: the SOURCE scan runtime is frozen FIRST (cancel → runner
+        # shutdown → relay disconnect), then the legacy scan runtime, all
+        # BEFORE any bridge disposal. First error is preserved; remaining
+        # safe cleanup still runs.
+        try:
+            if self._source_scan_lifecycle:
+                self._source_scan_lifecycle.cancel()
+            if self._source_scan_runner:
+                self._source_scan_runner.shutdown()
+                if hasattr(self._source_scan_runner, "disconnect_relay"):
+                    self._source_scan_runner.disconnect_relay()
+        except Exception as exc:
+            error = error or exc
+
         # Async scan lifecycle (M6-PRODUCTION-INTEGRATION): freeze the
-        # runner (reject new submits + cancel active generations) and close
-        # the dispatcher (drop late callbacks) BEFORE any bridge/coordinator
-        # teardown — a worker finishing late can never mutate LibraryState
-        # or reach the QML bridge.
+        # legacy runner (reject new submits + cancel active generations)
+        # and close the dispatcher (drop late callbacks) BEFORE any
+        # bridge/coordinator teardown — a worker finishing late can never
+        # mutate LibraryState or reach the QML bridge.
         try:
             if self._scan_runner:
                 self._scan_runner.shutdown()
@@ -1035,6 +1053,8 @@ class ApplicationContainer:
         self._playlist_service = None
         self._scan_runner = None
         self._scan_dispatcher = None
+        self._source_scan_runner = None
+        self._source_scan_lifecycle = None
         self._navigation = None
         self._library = None
         self._queue = None

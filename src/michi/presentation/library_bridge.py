@@ -69,6 +69,9 @@ class LibraryBridge(QObject):
 
     def dispose(self) -> None:
         self._service.unsubscribe_changed(self._on_service_changed)
+        # P1-01: no source lifecycle may keep a disposed QML Bridge alive.
+        if self._source_scan_lifecycle is not None:
+            self._source_scan_lifecycle.unsubscribe_state(self._on_source_scan_state)
 
     def _on_service_changed(self) -> None:
         # M6.6: the selection identity is the canonical album key; a selected
@@ -184,12 +187,15 @@ class LibraryBridge(QObject):
         return self._source_scan_lifecycle.state
 
     def _get_scan_status(self) -> str:
-        """UNIFIED scan projection (CORRECTIVE SEAL §3): the ACTIVE
-        authority wins — SourceScanLifecycle while running, the legacy
-        LibraryService scan otherwise. QML never selects between them."""
+        """UNIFIED scan projection (CORRECTIVE SEAL §3 + P1-03): the ACTIVE
+        source scan wins; otherwise the RUN terminal result (FAILED /
+        CANCELLED / COMPLETED) is exposed — never hidden by legacy idle."""
         source_state = self._source_scan_state()
-        if source_state is not None and source_state.active:
-            return source_state.phase or "RUNNING"
+        if source_state is not None:
+            if source_state.active:
+                return source_state.phase or "RUNNING"
+            if source_state.last_terminal_status:
+                return source_state.last_terminal_status
         status = self._service.state.scan_status
         return status.name if status is not LibraryScanStatus.IDLE else ""
 
@@ -222,7 +228,9 @@ class LibraryBridge(QObject):
     def _get_scan_diagnostic(self) -> str:
         source_state = self._source_scan_state()
         if source_state is not None:
-            return source_state.diagnostic or ""
+            if source_state.active:
+                return source_state.diagnostic or ""
+            return source_state.last_diagnostic or ""
         return ""
 
     def _get_album_count(self) -> int:
@@ -828,6 +836,7 @@ class LibraryBridge(QObject):
             "diagnostic": state.diagnostic,
         }
 
+    scanDiagnostic = Property(str, _get_scan_diagnostic, notify=library_changed)
     libraryScanDiagnostic = Property(str, _get_scan_diagnostic, notify=library_changed)
     sourceScanStatus = Property(str, _get_source_scan_status, notify=library_changed)
     sourceScanActive = Property(bool, _get_source_scan_active, notify=library_changed)

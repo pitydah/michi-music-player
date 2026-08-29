@@ -211,10 +211,12 @@ ColumnLayout {
                 canAddToPlaylist: library.canAddTracksToPlaylists
                 canInspect: true
                 canNavigateEntities: true
-                onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
+                // P1-07: Album Detail keeps ALBUM playback context — the
+                // application coordinator owns TrackId membership.
+                onTrackActivated: (trackId, path, index) => library.activate_album_track(index)
                 onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
                 onQueueRequested: trackId => library.queue_track_by_id(trackId)
-                onAddToPlaylistRequested: path => root.addToPlaylistRequested(path)
+                onAddToPlaylistRequested: trackId => root.addToPlaylistRequested(path)
                 onPropertiesRequested: track => root.inspectedTrack = track
                 onGoToArtistRequested: artistKey => library.select_artist(artistKey)
             }

@@ -95,6 +95,19 @@ class PlaylistsPort(ABC):
     @abstractmethod
     def save(self, playlists: tuple[Playlist, ...]) -> None: ...
 
+    def save_playlists_with_navigation(self, playlists, navigation) -> None:
+        """P1-06/P2: ATOMIC playlist collection + navigation persistence.
+
+        Declared as a Port capability (never discovered via getattr).
+        Production must fail closed: an implementation that cannot provide
+        the atomic write raises instead of silently using two
+        transactions."""
+        from michi.domain.playlist import PlaylistPersistenceError
+
+        raise PlaylistPersistenceError(
+            "atomic playlist/navigation persistence not supported by this repository"
+        )
+
     def load_navigation(self) -> "PlaylistNavigationState":
         """Pinned/recent state; optional key — absence degrades to empty."""
         return PlaylistNavigationState()
@@ -117,7 +130,26 @@ class PlaylistArtworkStorePort(ABC):
 
     @abstractmethod
     def store_cover(self, playlist_id: str, source_path: Path | str) -> str | None:
-        """Copies source image atomically to managed storage. Returns managed path."""
+        """LEGACY compatibility wrapper (pre-immutable-candidate API)."""
+        ...
+
+    @abstractmethod
+    def prepare_cover(self, playlist_id: str, source_path: Path | str) -> str | None:
+        """P1-06: creates an IMMUTABLE content-versioned candidate asset and
+        returns its path. The candidate EXISTS before any database write —
+        a committed reference can never point to a not-yet-created file."""
+        ...
+
+    @abstractmethod
+    def prepare_hero(self, playlist_id: str, source_path: Path | str) -> str | None:
+        """P1-06: immutable content-versioned hero candidate (exists before
+        any database reference)."""
+        ...
+
+    @abstractmethod
+    def delete_managed_asset(self, managed_path: str) -> None:
+        """P1-06: safely deletes a MANAGED asset (fail closed against
+        arbitrary external paths). Best-effort post-commit cleanup."""
         ...
 
     @abstractmethod

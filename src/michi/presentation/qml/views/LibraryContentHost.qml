@@ -11,7 +11,7 @@ ColumnLayout {
     id: root
 
     property string currentTab: "songs"
-    property string addTargetPath: ""
+    property string addTargetTrackId: ""
     // LibraryView owns presentation preferences; recreated tab content only
     // receives their current projection so controls cannot break bindings.
     property string albumMode: "grid"
@@ -114,8 +114,8 @@ ColumnLayout {
         id: songsViewComponent
         SongsView {
             anchors.fill: parent
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            addTargetTrackId: root.addTargetTrackId
+            onAddTargetTrackIdChanged: root.addTargetTrackId = addTargetTrackId
             onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
     }
@@ -124,8 +124,8 @@ ColumnLayout {
         id: albumsViewComponent
         AlbumsView {
             anchors.fill: parent
-            onAddToPlaylistRequested: path =>
-                library.request_tracks_playlist_target([path])
+            onAddToPlaylistRequested: trackId =>
+                library.request_tracks_playlist_target([trackId])
             albumMode: root.albumMode
             albumSortMode: root.albumSortMode
             albumSortDescending: root.albumSortDescending
@@ -141,8 +141,8 @@ ColumnLayout {
         id: artistsViewComponent
         ArtistsView {
             anchors.fill: parent
-            onAddToPlaylistRequested: path =>
-                library.request_tracks_playlist_target([path])
+            onAddToPlaylistRequested: trackId =>
+                library.request_tracks_playlist_target([trackId])
         }
     }
 
@@ -164,8 +164,8 @@ ColumnLayout {
         id: favoritesViewComponent
         FavoritesView {
             anchors.fill: parent
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            addTargetTrackId: root.addTargetTrackId
+            onAddTargetTrackIdChanged: root.addTargetTrackId = addTargetTrackId
             onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
     }
@@ -174,8 +174,8 @@ ColumnLayout {
         id: historyViewComponent
         HistoryView {
             anchors.fill: parent
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            addTargetTrackId: root.addTargetTrackId
+            onAddTargetTrackIdChanged: root.addTargetTrackId = addTargetTrackId
             onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
     }
@@ -184,16 +184,16 @@ ColumnLayout {
         id: recentlyViewComponent
         RecentlyAddedView {
             anchors.fill: parent
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            addTargetTrackId: root.addTargetTrackId
+            onAddTargetTrackIdChanged: root.addTargetTrackId = addTargetTrackId
             onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
     }
 
-    onAddTargetPathChanged: {
-        if (addTargetPath !== "") {
-            library.request_tracks_playlist_target([addTargetPath])
-            addTargetPath = ""
+    onAddTargetTrackIdChanged: {
+        if (addTargetTrackId !== "") {
+            library.request_tracks_playlist_target([addTargetTrackId])
+            addTargetTrackId = ""
         }
     }
 }

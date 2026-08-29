@@ -141,6 +141,11 @@ def effective_availability(
         return MediaAvailability.ACCESS_DENIED
     if source is SourceAvailability.IO_ERROR:
         return MediaAvailability.IO_ERROR
+    if source is SourceAvailability.UNKNOWN:
+        # P1-04: a source that has not been re-probed yet is truthfully
+        # UNKNOWN — never a visual lie about last-known AVAILABLE. (UNKNOWN
+        # remains playback-eligible through the filesystem validation gate.)
+        return MediaAvailability.UNKNOWN
     return media
 
 

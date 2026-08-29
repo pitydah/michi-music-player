@@ -366,6 +366,9 @@ class TestPlaylistAssetDurableOrdering:
             def save_navigation(self, state):
                 del state
 
+            def save_playlists_with_navigation(self, playlists, navigation):
+                raise PlaylistPersistenceError("injected atomic DB failure")
+
         return _Failing()
 
     class _AssetStore:

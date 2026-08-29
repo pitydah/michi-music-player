@@ -178,7 +178,7 @@ ColumnLayout {
         onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
         onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
         onQueueRequested: trackId => library.queue_track_by_id(trackId)
-        onAddToPlaylistRequested: path => root.addToPlaylistRequested(path)
+        onAddToPlaylistRequested: trackId => root.addToPlaylistRequested(path)
         onPropertiesRequested: track => trackPropertiesView.inspect(track)
         onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     }
