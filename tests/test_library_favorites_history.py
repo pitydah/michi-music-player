@@ -502,9 +502,9 @@ class TestReferencePersistenceAudit:
     reference tuples (favoritePaths/historyPaths/recentlyAddedPaths)."""
 
     def test_favorite_survives_missing_track_activation(self, tmp_path):
-        """TD-013: activating a favorite whose file vanished removes the
-        membership entry (state.tracks) but MUST NOT erase the persisted
-        reference (favorite_paths); the queue stays untouched."""
+        """TD-013: activating a favorite whose file vanished must NOT erase
+        identity or the persisted reference — the membership is preserved
+        and marked MISSING."""
         p1 = tmp_path / "one.mp3"
         p1.write_bytes(b"x")
         scanner = _ValidatingScanner([p1])
@@ -515,10 +515,13 @@ class TestReferencePersistenceAudit:
         scanner.validate_errors = {
             p1: LibraryFilesystemError(LibraryDiagnosticCode.TRACK_MISSING, p1)
         }
-        # TD-013 validation stays LibraryService-owned (M4-R1 §33)
+        # TD-013 validation stays LibraryService-owned (M4-R1 §33).
+        # M6-EXT-R4 freeze gate §10: play-missing NEVER removes identity —
+        # the membership is PRESERVED and marked MISSING.
         track = library.state.tracks[0]
         assert library.validate_track_for_playback(track) is False
-        assert library.state.tracks == []  # membership removed
+        assert len(library.state.tracks) == 1  # membership preserved
+        assert library.state.tracks[0].availability.value == "missing"
         assert str(p1) in library.state.favorite_paths  # reference preserved
         assert library.state.diagnostic is not None
         assert library.state.diagnostic.code is LibraryDiagnosticCode.TRACK_MISSING
