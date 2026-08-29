@@ -70,6 +70,7 @@ class SourceScanOutcome:
     relinked: int = 0
     missing: int = 0
     failed: bool = False
+    cache_degraded: bool = False
     diagnostic: str = ""
 
     @property
@@ -402,19 +403,27 @@ class SourceScanCoordinator:
         source: LibrarySource,
         plan: "SourceReconciliationPlan",
     ) -> SourceScanOutcome:
-        """OWNER-THREAD commit phase: ONE authoritative catalog transaction,
-        then rebuildable caches, then state publication. Callers must pass
-        the generation gate BEFORE calling (stale plans never commit)."""
+        """OWNER-THREAD commit phase (P1-07), THREE separated phases:
+
+        AUTHORITATIVE: the ONE catalog transaction. Failure → failed
+        outcome, no state publication, nothing changed.
+
+        REBUILDABLE: index/media caches AFTER the authority committed. A
+        cache failure NEVER reverses the authoritative fact — it marks the
+        outcome ``cache_degraded`` (rebuildable debt) and publication
+        still converges LibraryState to the new authority.
+
+        PUBLICATION: state derived from the reconciliation. A publication
+        callback failure is logged and NEVER misreports the authoritative
+        transaction (the next scan/hydration converges).
+
+        Callers must pass the generation gate BEFORE calling."""
         outcome = plan.outcome
+        # AUTHORITATIVE PHASE
         try:
             self._catalog.apply_source_reconciliation(
                 tuple(plan.upsert_media), tuple(plan.upsert_tracks)
             )
-            if self._index is not None and plan.index_upserts:
-                self._index.upsert_many(tuple(plan.index_upserts))
-            if self._media_cache is not None and plan.cache_upserts:
-                for entry in plan.cache_upserts:
-                    self._media_cache.upsert(*entry)
         except LibraryCatalogError as exc:
             return SourceScanOutcome(
                 source_id=source.library_source_id,
@@ -422,10 +431,34 @@ class SourceScanCoordinator:
                 failed=True,
                 diagnostic=f"catalog commit failed: {exc}",
             )
-        self._library.apply_source_tracks(source.library_source_id, plan.refs)
-        if plan.new_track_ids:
-            self._library.note_new_track_ids(tuple(plan.new_track_ids))
-        return outcome
+        # REBUILDABLE PHASE — degradation, never authority reversal.
+        degraded = False
+        try:
+            if self._index is not None and plan.index_upserts:
+                self._index.upsert_many(tuple(plan.index_upserts))
+        except Exception as exc:  # noqa: BLE001 - rebuildable cache
+            degraded = True
+            logger.warning("index cache degraded (rebuildable): %s", exc)
+        try:
+            if self._media_cache is not None and plan.cache_upserts:
+                for entry in plan.cache_upserts:
+                    self._media_cache.upsert(*entry)
+        except Exception as exc:  # noqa: BLE001 - rebuildable cache
+            degraded = True
+            logger.warning("media cache degraded (rebuildable): %s", exc)
+        # PUBLICATION PHASE — the authority already changed; never pretend
+        # otherwise on a publication hiccup.
+        try:
+            self._library.apply_source_tracks(source.library_source_id, plan.refs)
+            if plan.new_track_ids:
+                self._library.note_new_track_ids(tuple(plan.new_track_ids))
+        except Exception as exc:  # noqa: BLE001 - publication is derived
+            logger.warning(
+                "state publication failed after authoritative commit; "
+                "next hydration/scan converges: %s",
+                exc,
+            )
+        return _bump_cache_degraded(outcome, degraded)
 
     def _reconcile_available(
         self,
@@ -682,6 +715,25 @@ def _media_available(
         relative_path=item.relative_path,
         last_known_path=str(item.absolute_path),
         availability=MediaAvailability.AVAILABLE,
+    )
+
+
+def _bump_cache_degraded(
+    outcome: SourceScanOutcome, degraded: bool
+) -> SourceScanOutcome:
+    if not degraded or outcome.cache_degraded:
+        return outcome
+    return SourceScanOutcome(
+        source_id=outcome.source_id,
+        availability=outcome.availability,
+        unchanged=outcome.unchanged,
+        modified=outcome.modified,
+        added=outcome.added,
+        relinked=outcome.relinked,
+        missing=outcome.missing,
+        failed=outcome.failed,
+        cache_degraded=True,
+        diagnostic=outcome.diagnostic,
     )
 
 

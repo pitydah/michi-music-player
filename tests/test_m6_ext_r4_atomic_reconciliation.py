@@ -166,3 +166,128 @@ class TestAtomicReconciliation:
             repo.apply_source_reconciliation((media,), (track,))
         assert repo.load_media() == ()
         assert repo.load_tracks() == ()
+
+
+class TestCacheDegradationSemantics:
+    """P1-07: after an authoritative commit, a rebuildable cache failure
+    never reverses the authoritative fact."""
+
+    def _env(self, tmp_path):
+        from michi.application.library_service import LibraryService
+        from michi.application.source_scan_coordinator import SourceScanCoordinator
+        from michi.infrastructure.filesystem_source_scanner import (
+            FilesystemLibrarySourceScanner,
+        )
+        from michi.infrastructure.library_media_cache import (
+            SqliteLibraryMediaCache,
+        )
+
+        db_path = tmp_path / "michi.db"
+        catalog = SqliteLibraryCatalogRepository(db_path)
+        library = LibraryService(FilesystemLibrarySourceScanner())
+        coordinator = SourceScanCoordinator(
+            library,
+            catalog,
+            FilesystemLibrarySourceScanner(),
+            media_cache=SqliteLibraryMediaCache(db_path),
+            metadata_extractor=None,
+        )
+        return library, catalog, coordinator
+
+    def test_catalog_succeeds_index_fails_state_converges(self, tmp_path) -> None:
+        from michi.infrastructure.library_index import SqliteLibraryIndexRepository
+
+        library, catalog, coordinator = self._env(tmp_path)
+        index = SqliteLibraryIndexRepository(tmp_path / "michi.db")
+        coordinator._index = index
+
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path=str(tmp_path / "music"),
+        )
+        catalog.upsert_source(source)
+        root = tmp_path / "music"
+        root.mkdir()
+        (root / "song.flac").write_bytes(b"x")
+
+        def broken_upsert(entries):
+            raise sqlite3.OperationalError("injected index failure")
+
+        index.upsert_many = broken_upsert
+        outcome = coordinator.scan_source(source)
+
+        # Authority committed, state converged, cache marked degraded.
+        assert outcome.failed is False
+        assert outcome.cache_degraded is True
+        assert len(catalog.load_tracks()) == 1
+        assert len(library.state.tracks) == 1
+        assert library.state.tracks[0].track_id == catalog.load_tracks()[0].track_id
+
+    def test_catalog_succeeds_media_cache_fails(self, tmp_path) -> None:
+        library, catalog, coordinator = self._env(tmp_path)
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path=str(tmp_path / "music"),
+        )
+        catalog.upsert_source(source)
+        root = tmp_path / "music"
+        root.mkdir()
+        (root / "song.flac").write_bytes(b"x")
+
+        coordinator._media_cache.upsert = lambda *a, **k: (_ for _ in ()).throw(
+            sqlite3.OperationalError("injected cache failure")
+        )
+        outcome = coordinator.scan_source(source)
+
+        assert outcome.failed is False
+        assert outcome.cache_degraded is True
+        assert len(catalog.load_tracks()) == 1
+        assert len(library.state.tracks) == 1  # still published
+
+    def test_catalog_fails_no_publication_no_fake_success(self, tmp_path) -> None:
+        library, catalog, coordinator = self._env(tmp_path)
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path=str(tmp_path / "music"),
+        )
+        catalog.upsert_source(source)
+        root = tmp_path / "music"
+        root.mkdir()
+        (root / "song.flac").write_bytes(b"x")
+
+        catalog.apply_source_reconciliation = lambda m, t: (_ for _ in ()).throw(
+            LibraryCatalogStorageError("injected catalog failure")
+        )
+        outcome = coordinator.scan_source(source)
+
+        assert outcome.failed is True
+        assert library.state.tracks == []  # no publication
+        assert catalog.load_tracks() == ()  # nothing committed
+
+    def test_publication_callback_failure_never_misreports_commit(
+        self, tmp_path
+    ) -> None:
+        library, catalog, coordinator = self._env(tmp_path)
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path=str(tmp_path / "music"),
+        )
+        catalog.upsert_source(source)
+        root = tmp_path / "music"
+        root.mkdir()
+        (root / "song.flac").write_bytes(b"x")
+
+        def broken_publish(source_id, refs):
+            raise RuntimeError("injected publication failure")
+
+        library.apply_source_tracks = broken_publish
+        outcome = coordinator.scan_source(source)
+
+        # The authoritative transaction DID happen; the outcome is NOT a
+        # failed scan pretending nothing occurred.
+        assert outcome.failed is False
+        assert len(catalog.load_tracks()) == 1

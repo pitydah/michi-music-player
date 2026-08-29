@@ -259,11 +259,12 @@ def test_play_track_clamps_out_of_range_index(tmp_path):
         service.add_track(pid, p)
     coord.open_playlist(pid)
 
-    bridge.play_playlist_track(99)  # out of range
+    bridge.play_playlist_track(99)  # out of membership range
 
     audio.trigger_media_accepted(paths[0])
-    assert session.state.context_type.name == "PLAYLIST"
-    assert session.state.current_index == 0  # canonical clamp to first
+    # P1-04: an out-of-range/invalid membership index NEVER silently starts
+    # another track — no playback request is issued at all.
+    assert session.state.context_type.name == "NONE"
     assert queue.state.count == 0
 
 
