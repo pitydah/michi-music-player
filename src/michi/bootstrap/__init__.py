@@ -433,11 +433,30 @@ def _build_services(
     scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
     scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
 
+    # M6-EXT-R4-K/N: the source-aware scan coordinator is the canonical
+    # per-source scan authority; the SAME instance backs the bridge.
+    from michi.application.source_scan_coordinator import SourceScanCoordinator
+    from michi.infrastructure.filesystem_source_scanner import (
+        FilesystemLibrarySourceScanner,
+    )
+    from michi.infrastructure.library_catalog import SqliteLibraryCatalogRepository
+    from michi.infrastructure.library_media_cache import SqliteLibraryMediaCache
+
+    source_coordinator = SourceScanCoordinator(
+        library,
+        SqliteLibraryCatalogRepository(db_path),
+        FilesystemLibrarySourceScanner(),
+        media_cache=SqliteLibraryMediaCache(db_path),
+        metadata_extractor=metadata_extractor,
+        index=library_index,
+    )
+
     lb = LibraryBridge(
         library,
         playback_coordinator=library_playback,
         queue_coordinator=library_queue,
         playlist_coordinator=library_playlist,
+        source_coordinator=source_coordinator,
     )
 
     return ServiceGraph(

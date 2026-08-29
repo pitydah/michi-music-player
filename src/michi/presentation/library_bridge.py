@@ -43,6 +43,7 @@ class LibraryBridge(QObject):
         album_query: LibraryAlbumQueryService | None = None,
         queue_coordinator: LibraryQueueCoordinator | None = None,
         playlist_coordinator: LibraryPlaylistCoordinator | None = None,
+        source_coordinator=None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -52,6 +53,7 @@ class LibraryBridge(QObject):
         self._album_query = album_query or LibraryAlbumQueryService()
         self._queue_coordinator = queue_coordinator
         self._playlist_coordinator = playlist_coordinator
+        self._source_coordinator = source_coordinator
         self._selected_album_key: str = ""
         self._selected_album: AlbumRef | None = None
         self._album_track_refs: list[TrackRef] = []
@@ -646,6 +648,80 @@ class LibraryBridge(QObject):
     @Slot(str)
     def scan(self, directory: str) -> None:
         self._service.start_scan(directory)
+
+    # ------------------------------------------------------------------
+    # M6-EXT-R4-N: source management presentation (application half).
+    # QML renders the projection; all intents land here.
+    # ------------------------------------------------------------------
+
+    def _get_music_sources(self) -> list[dict]:
+        if self._source_coordinator is None:
+            return []
+        sources = self._source_coordinator._catalog.load_sources()
+        state = self._service.state
+        counts: dict[str, int] = {}
+        for track in state.tracks:
+            if track.library_source_id:
+                counts[track.library_source_id] = (
+                    counts.get(track.library_source_id, 0) + 1
+                )
+        return [
+            {
+                "id": source.library_source_id,
+                "name": source.display_name,
+                "rootPath": source.root_path,
+                "enabled": source.enabled,
+                "lifecycle": source.lifecycle.value,
+                "availability": self._source_coordinator.observed_availability(
+                    source.library_source_id
+                ).value,
+                "trackCount": counts.get(source.library_source_id, 0),
+            }
+            for source in sources
+        ]
+
+    musicSources = Property(list, _get_music_sources, notify=library_changed)
+
+    @Slot(str)
+    def add_music_source(self, name: str, root_path: str) -> str:
+        """Add a source; returns its id on success, or a typed error
+        message on overlap/conflict (QML surfaces it honestly)."""
+        if self._source_coordinator is None:
+            return "Source management is not available."
+        try:
+            source = self._source_coordinator.add_source(name, root_path)
+        except ValueError as exc:
+            return str(exc)
+        self.library_changed.emit()
+        return source.library_source_id
+
+    @Slot(str)
+    def scan_source(self, source_id: str) -> None:
+        """Reconcile ONE source (serialized per-source scan)."""
+        if self._source_coordinator is None:
+            return
+        for source in self._source_coordinator._catalog.load_sources():
+            if source.library_source_id == source_id:
+                self._source_coordinator.scan_source(source)
+                self.library_changed.emit()
+                return
+
+    @Slot(str)
+    def retire_source(self, source_id: str) -> None:
+        """Remove from Michi: soft retirement (never a filesystem delete,
+        never a cascade delete of identities)."""
+        if self._source_coordinator is None:
+            return
+        self._source_coordinator._catalog.retire_source(source_id)
+        self.library_changed.emit()
+
+    @Slot(str)
+    def disable_source(self, source_id: str, disabled: bool) -> None:
+        """Enable/disable a configured source (source stays configured)."""
+        if self._source_coordinator is None:
+            return
+        self._source_coordinator._catalog.set_source_enabled(source_id, not disabled)
+        self.library_changed.emit()
 
     @Slot(QUrl)
     def scan_url(self, directory: QUrl) -> None:

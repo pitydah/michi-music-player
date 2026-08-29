@@ -39,6 +39,7 @@ from michi.domain.library_catalog import (
     MediaFileRecord,
     SourceAvailability,
     TrackRecord,
+    new_library_source_id,
     new_media_file_id,
     new_track_id,
 )
@@ -74,6 +75,11 @@ class SourceScanOutcome:
     @property
     def total(self) -> int:
         return self.unchanged + self.modified + self.added + self.relinked
+
+
+class SourceOverlapError(ValueError):
+    """Adding a source whose root contains (or is contained by) an existing
+    source root — typed conflict; never silently index nested roots."""
 
 
 class SourceScanCoordinator:
@@ -161,6 +167,37 @@ class SourceScanCoordinator:
         except Exception as exc:  # cache is rebuildable: never fatal
             logger.warning("index cache read failed during hydration: %s", exc)
             return {}
+
+    # -------------------------------------------------------------- sources
+
+    def add_source(self, display_name: str, root_path: str) -> LibrarySource:
+        """Add a new ACTIVE source with a typed overlap conflict check
+        (M6-EXT-R4 §65): an existing root containing the new root (or vice
+        versa) is rejected — /Music and /Music/Classical are never indexed
+        as independent roots."""
+        root = Path(root_path)
+        for existing in self._catalog.load_sources():
+            existing_root = Path(existing.root_path)
+            if root == existing_root:
+                raise SourceOverlapError(f"source root already configured: {root_path}")
+            try:
+                overlaps = root.is_relative_to(
+                    existing_root
+                ) or existing_root.is_relative_to(root)
+            except ValueError:
+                overlaps = False
+            if overlaps:
+                raise SourceOverlapError(
+                    f"source root {root_path} overlaps existing "
+                    f"source {existing.root_path}"
+                )
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name=display_name.strip() or root.name or "Music",
+            root_path=str(root),
+        )
+        self._catalog.upsert_source(source)
+        return source
 
     # ------------------------------------------------------------ observables
 
