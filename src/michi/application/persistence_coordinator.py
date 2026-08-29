@@ -125,12 +125,14 @@ class PersistenceCoordinator:
         playback_service: PlaybackService,
         settings_service: SettingsService,
         position_checkpoint_delta_ms: int = 5000,
+        track_resolver=None,
     ) -> None:
         self._repo = session_repository
         self._queue = queue_service
         self._session = playback_session
         self._playback = playback_service
         self._settings = settings_service
+        self._track_resolver = track_resolver
         self._position_checkpoint_delta_ms = position_checkpoint_delta_ms
         # Durable position marker: position deltas are measured from the
         # last position the application KNOWS was persisted. Seeded from
@@ -488,6 +490,18 @@ class PersistenceCoordinator:
             self._last_volume = volume
             self._last_muted = muted
 
+    def _restore_path(self, entry) -> Path:
+        """M6-EXT-R4 §48 restore priority: a stable library id resolves its
+        CURRENT path through the resolver when playable; otherwise the
+        persisted fallback path is kept honestly (no fabricated playback)."""
+        if entry.library_track_id and self._track_resolver is not None:
+            resolved = self._track_resolver.resolve_playable_path(
+                entry.library_track_id
+            )
+            if resolved is not None:
+                return resolved
+        return Path(entry.file_path)
+
     def restore(self, *, engine_available: bool = True) -> None:
         """Startup: rebuild Queue content, restore the PlaybackSession
         logical context, then resume playback only when the SESSION current
@@ -535,7 +549,7 @@ class PersistenceCoordinator:
             self._queue.restore_entries(
                 [
                     Track(
-                        Path(e.file_path),
+                        self._restore_path(e),
                         e.title,
                         library_track_id=e.library_track_id,
                     )
@@ -550,7 +564,9 @@ class PersistenceCoordinator:
                 source_id=context.source_id,
                 entries=[
                     PlaybackSequenceEntry(
-                        Path(e.file_path), e.title, library_track_id=e.library_track_id
+                        self._restore_path(e),
+                        e.title,
+                        library_track_id=e.library_track_id,
                     )
                     for e in context.entries
                 ],

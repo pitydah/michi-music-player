@@ -669,7 +669,12 @@ class ApplicationContainer:
         # restore-generated checkpoints.
         session_repo = SqliteSessionRepository(db_path)
         persistence = PersistenceCoordinator(
-            session_repo, queue, graph.playback_session, playback, settings
+            session_repo,
+            queue,
+            graph.playback_session,
+            playback,
+            settings,
+            track_resolver=graph.track_resolver,
         )
         # M4-R1 final seal: the Session owns its runtime subscriptions
         # (EOM + the ONE Queue→Session delivery path). start() BEFORE

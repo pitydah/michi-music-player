@@ -88,13 +88,79 @@ class SourceScanCoordinator:
         scanner: LibrarySourceScannerPort,
         media_cache=None,
         metadata_extractor: MetadataExtractorPort | None = None,
+        index=None,
     ) -> None:
         self._library = library
         self._catalog = catalog
         self._scanner = scanner
         self._media_cache = media_cache
         self._metadata_extractor = metadata_extractor
+        self._index = index
         self._observations: dict[str, SourceAvailability] = {}
+
+    # ------------------------------------------------------------ hydration
+
+    def hydrate_catalog(self) -> int:
+        """STARTUP CACHED LIBRARY (M6-EXT-R4 §55): load the catalog + media
+        cache into LibraryState WITHOUT any scan — a disconnected NAS still
+        renders its previously indexed music (identity, cached metadata,
+        availability), and M7 search finds it.
+
+        Metadata comes from the rebuildable index cache (path-keyed) when
+        available; otherwise the ref carries identity + availability with an
+        honest title from the last-known path. Returns the hydrated track
+        count. Availability is the last OBSERVED state (UI history, re-probed
+        on the next scan)."""
+        media_by_id = {m.media_file_id: m for m in self._catalog.load_media()}
+        track_by_id = {t.media_file_id: t for t in self._catalog.load_tracks()}
+        cache = (
+            {Path(path): meta for path, meta in self._index_metadata().items()}
+            if self._index is not None
+            else {}
+        )
+        refs: list[TrackRef] = []
+        for media in media_by_id.values():
+            track = track_by_id.get(media.media_file_id)
+            path = Path(media.last_known_path)
+            meta = cache.get(path)
+            if track is not None and meta is not None:
+                ref = self._library._trackref_from_metadata(
+                    path,
+                    meta,
+                    track_id=track.track_id,
+                    media_file_id=media.media_file_id,
+                    library_source_id=media.library_source_id or "",
+                )
+            else:
+                ref = TrackRef(
+                    file_path=path,
+                    display_name=path.stem,
+                    title=path.stem,
+                    track_id=track.track_id if track is not None else "",
+                    media_file_id=media.media_file_id,
+                    library_source_id=media.library_source_id or "",
+                )
+            from dataclasses import replace
+
+            ref = replace(ref, availability=media.availability)
+            refs.append(ref)
+
+        # Hydration is the FULL catalog projection (startup cached library):
+        # replace the state wholesale; later per-source scans reconcile each
+        # source independently. No recently-added changes (not new).
+        self._library._state.tracks = refs
+        self._library._rebuild_derived_library_state()
+        self._library._notify()
+        return len(refs)
+
+    def _index_metadata(self) -> dict:
+        if self._index is None:
+            return {}
+        try:
+            return {entry.track_id: entry.metadata for entry in self._index.load_all()}
+        except Exception as exc:  # cache is rebuildable: never fatal
+            logger.warning("index cache read failed during hydration: %s", exc)
+            return {}
 
     # ------------------------------------------------------------ observables
 
@@ -142,6 +208,11 @@ class SourceScanCoordinator:
             track.media_file_id: track for track in self._catalog.load_tracks()
         }
         cache = self._media_cache.load_all() if self._media_cache is not None else {}
+        index_meta = (
+            {entry.track_id: entry.metadata for entry in self._index.load_all()}
+            if self._index is not None
+            else {}
+        )
 
         outcome = SourceScanOutcome(
             source_id=source.library_source_id,
@@ -180,6 +251,7 @@ class SourceScanCoordinator:
                 relink_candidates[key] = media
 
         # PHASE 3 — discovered items reconcile against known/missing state.
+        index_upserts: list[_IndexEntry] = []
         for item in discovered:
             known = known_by_path.get(item.relative_path)
             media_id: str
@@ -234,9 +306,24 @@ class SourceScanCoordinator:
                     new_track_ids.append(track_id)
                     outcome = _bump(outcome, TrackScanDelta.ADDED)
 
+            # Metadata: reuse the rebuildable index cache for UNCHANGED
+            # (zero extraction); extract otherwise and refresh the cache.
+            meta = index_meta.get(str(item.absolute_path))
+            if meta is None:
+                meta = self._extract_meta(item.absolute_path)
+                index_upserts.append(
+                    _IndexEntry(
+                        str(item.absolute_path),
+                        item.file_size,
+                        item.mtime_ns,
+                        meta,
+                    )
+                )
+
             refs.append(
                 self._build_ref(
                     item.absolute_path,
+                    meta=meta,
                     media_id=media_id,
                     track=track,
                     source_id=source.library_source_id,
@@ -259,6 +346,7 @@ class SourceScanCoordinator:
             refs.append(
                 self._build_ref(
                     Path(media.last_known_path),
+                    meta=index_meta.get(media.last_known_path),
                     media_id=media.media_file_id,
                     track=track_by_media.get(media.media_file_id),
                     source_id=source.library_source_id,
@@ -270,6 +358,10 @@ class SourceScanCoordinator:
         try:
             self._catalog.upsert_media(tuple(upsert_media))
             self._catalog.upsert_tracks(tuple(upsert_tracks))
+            if self._index is not None and index_upserts:
+                # Rebuildable cache: refreshed AFTER the authoritative
+                # commit (a failed catalog write never advances the cache).
+                self._index.upsert_many(tuple(index_upserts))
         except LibraryCatalogError as exc:
             return SourceScanOutcome(
                 source_id=source.library_source_id,
@@ -278,16 +370,27 @@ class SourceScanCoordinator:
                 diagnostic=f"catalog commit failed: {exc}",
             )
 
+        # Publish ONLY after the durable commit succeeded; recently-added is
+        # recorded AFTER publication so the new ids resolve to their paths.
+        self._library.apply_source_tracks(source.library_source_id, refs)
         if new_track_ids:
             self._library.note_new_track_ids(tuple(new_track_ids))
-        # Publish ONLY after the durable commit succeeded.
-        self._library.apply_source_tracks(source.library_source_id, refs)
         return outcome
+
+    def _extract_meta(self, path: Path) -> TrackMetadata:
+        if self._metadata_extractor is None:
+            return TrackMetadata(title=path.stem)
+        try:
+            return self._metadata_extractor.extract(path)
+        except Exception as exc:  # extractor contract never raises, seal
+            logger.warning("metadata extraction failed for %s: %s", path, exc)
+            return TrackMetadata(title=path.stem)
 
     def _build_ref(
         self,
         path: Path,
         *,
+        meta: TrackMetadata | None,
         media_id: str,
         track: TrackRecord | None,
         source_id: str,
@@ -303,21 +406,7 @@ class SourceScanCoordinator:
                 library_source_id=source_id,
                 availability=availability,
             )
-        if self._metadata_extractor is None:
-            return TrackRef(
-                file_path=path,
-                display_name=path.stem,
-                title=path.stem,
-                track_id=track.track_id,
-                media_file_id=media_id,
-                library_source_id=source_id,
-                availability=availability,
-            )
-        try:
-            meta: TrackMetadata = self._metadata_extractor.extract(path)
-        except Exception as exc:  # extractor contract never raises, seal
-            logger.warning("metadata extraction failed for %s: %s", path, exc)
-            meta = TrackMetadata(title=path.stem)
+        meta = meta or self._extract_meta(path)
         from dataclasses import replace
 
         return replace(
@@ -335,6 +424,16 @@ class SourceScanCoordinator:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+class _IndexEntry:
+    """Path-keyed rebuildable metadata cache entry (index repo shape)."""
+
+    def __init__(self, track_id: str, file_size: int, mtime_ns: int, metadata) -> None:
+        self.track_id = track_id
+        self.file_size = file_size
+        self.mtime_ns = mtime_ns
+        self.metadata = metadata
 
 
 def _availability_from_code(code) -> SourceAvailability:
