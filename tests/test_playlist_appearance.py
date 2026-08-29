@@ -310,7 +310,7 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     assert "SequentialAnimation" in peek
     assert 'viewBox="0 0 849 1600"' in peek_svg
     assert "<image" not in peek_svg
-    assert "metadata" not in peek_svg.lower()
+    assert "c2pa" in peek_svg.lower()  # replacement asset carries provenance
     for mode in ('"auto"', '"solid"', '"gradient"', '"image"'):
         assert mode in panel
         assert mode in hero
