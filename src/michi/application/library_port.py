@@ -95,6 +95,21 @@ class LibraryCatalogPort(ABC):
     @abstractmethod
     def upsert_tracks(self, tracks: tuple[TrackRecord, ...]) -> None: ...
 
+    @abstractmethod
+    def apply_source_reconciliation(
+        self,
+        media_records: tuple[MediaFileRecord, ...],
+        track_records: tuple[TrackRecord, ...],
+    ) -> None:
+        """ATOMIC authoritative source reconciliation (M6-EXT-R4 freeze gate).
+
+        Media AND track mutations land in ONE transaction: a media row can
+        never exist without its TrackRecord (identity atomicity). Any
+        failure rolls back EVERYTHING — partial authoritative state is
+        impossible by construction. The coordinator calls this once per
+        scan, then updates rebuildable caches, then publishes LibraryState.
+        """
+
 
 class LibraryUserStatePort(ABC):
     """Authoritative favorites/history/recently-added persistence by TrackId

@@ -391,10 +391,13 @@ class SourceScanCoordinator:
                 )
             )
 
-        # Authoritative commit BEFORE any state publication.
+        # Authoritative commit BEFORE any state publication: media + track
+        # mutations land in ONE atomic reconciliation — partial identity
+        # state is impossible by construction (P0 freeze gate).
         try:
-            self._catalog.upsert_media(tuple(upsert_media))
-            self._catalog.upsert_tracks(tuple(upsert_tracks))
+            self._catalog.apply_source_reconciliation(
+                tuple(upsert_media), tuple(upsert_tracks)
+            )
             if self._index is not None and index_upserts:
                 # Rebuildable cache: refreshed AFTER the authoritative
                 # commit (a failed catalog write never advances the cache).

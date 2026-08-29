@@ -305,12 +305,12 @@ class TestCatalogCommitFailure:
         coordinator.scan_source(source)
         state_snapshot = list(library.state.tracks)
 
-        def boom(records):
+        def boom(records, tracks):
             from michi.application.library_port import LibraryCatalogStorageError
 
             raise LibraryCatalogStorageError("injected storage failure")
 
-        monkeypatch.setattr(catalog, "upsert_media", boom)
+        monkeypatch.setattr(catalog, "apply_source_reconciliation", boom)
         outcome = coordinator.scan_source(source)
 
         assert outcome.failed is True

@@ -386,32 +386,11 @@ class SqliteLibraryCatalogRepository(LibraryCatalogPort):
     def upsert_media(self, records: tuple[MediaFileRecord, ...]) -> None:
         if not records:
             return
-        now = _now_ms()
         conn = self._connect()
         try:
             conn.execute("BEGIN IMMEDIATE")
             for record in records:
-                conn.execute(
-                    "INSERT INTO library_media_files(media_file_id, "
-                    "library_source_id, relative_path, last_known_path, "
-                    "availability, created_at_ms, updated_at_ms) "
-                    "VALUES(?, ?, ?, ?, ?, ?, ?) "
-                    "ON CONFLICT(media_file_id) DO UPDATE SET "
-                    "library_source_id = excluded.library_source_id, "
-                    "relative_path = excluded.relative_path, "
-                    "last_known_path = excluded.last_known_path, "
-                    "availability = excluded.availability, "
-                    "updated_at_ms = excluded.updated_at_ms",
-                    (
-                        record.media_file_id,
-                        record.library_source_id,
-                        record.relative_path,
-                        record.last_known_path,
-                        record.availability.value,
-                        now,
-                        now,
-                    ),
-                )
+                self._upsert_media_statement(conn, record)
             conn.execute("COMMIT")
         except sqlite3.Error as exc:
             conn.execute("ROLLBACK")
@@ -451,14 +430,7 @@ class SqliteLibraryCatalogRepository(LibraryCatalogPort):
         try:
             conn.execute("BEGIN IMMEDIATE")
             for track in tracks:
-                conn.execute(
-                    "INSERT INTO library_tracks(track_id, media_file_id, "
-                    "created_at_ms) VALUES(?, ?, ?) "
-                    "ON CONFLICT(track_id) DO UPDATE SET "
-                    "media_file_id = excluded.media_file_id, "
-                    "created_at_ms = excluded.created_at_ms",
-                    (track.track_id, track.media_file_id, track.created_at_ms),
-                )
+                self._upsert_track_statement(conn, track)
             conn.execute("COMMIT")
         except sqlite3.Error as exc:
             conn.execute("ROLLBACK")
@@ -467,3 +439,69 @@ class SqliteLibraryCatalogRepository(LibraryCatalogPort):
             ) from exc
         finally:
             conn.close()
+
+    # ------------------------------------------------------------------
+    # ATOMIC source reconciliation (M6-EXT-R4 freeze gate): media + track
+    # mutations in ONE transaction — a MediaFileRecord can never exist
+    # without its TrackRecord. This is the ONLY reconciliation entry the
+    # source scan coordinator uses.
+    # ------------------------------------------------------------------
+
+    def apply_source_reconciliation(
+        self,
+        media_records: tuple[MediaFileRecord, ...],
+        track_records: tuple[TrackRecord, ...],
+    ) -> None:
+        conn = self._connect()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            for record in media_records:
+                self._upsert_media_statement(conn, record)
+            for track in track_records:
+                self._upsert_track_statement(conn, track)
+            conn.execute("COMMIT")
+        except sqlite3.Error as exc:
+            conn.execute("ROLLBACK")
+            raise LibraryCatalogStorageError(
+                f"catalog reconciliation failed: {exc}"
+            ) from exc
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _upsert_media_statement(
+        conn: sqlite3.Connection, record: MediaFileRecord
+    ) -> None:
+        now = _now_ms()
+        conn.execute(
+            "INSERT INTO library_media_files(media_file_id, "
+            "library_source_id, relative_path, last_known_path, "
+            "availability, created_at_ms, updated_at_ms) "
+            "VALUES(?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(media_file_id) DO UPDATE SET "
+            "library_source_id = excluded.library_source_id, "
+            "relative_path = excluded.relative_path, "
+            "last_known_path = excluded.last_known_path, "
+            "availability = excluded.availability, "
+            "updated_at_ms = excluded.updated_at_ms",
+            (
+                record.media_file_id,
+                record.library_source_id,
+                record.relative_path,
+                record.last_known_path,
+                record.availability.value,
+                now,
+                now,
+            ),
+        )
+
+    @staticmethod
+    def _upsert_track_statement(conn: sqlite3.Connection, track: TrackRecord) -> None:
+        conn.execute(
+            "INSERT INTO library_tracks(track_id, media_file_id, "
+            "created_at_ms) VALUES(?, ?, ?) "
+            "ON CONFLICT(track_id) DO UPDATE SET "
+            "media_file_id = excluded.media_file_id, "
+            "created_at_ms = excluded.created_at_ms",
+            (track.track_id, track.media_file_id, track.created_at_ms),
+        )
