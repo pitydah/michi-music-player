@@ -229,7 +229,7 @@ class LibraryBridge(QObject):
         bit_depths = set()
         dsd_rates = set()
         for ref in refs:
-            row = project_track_row(ref)
+            row = self._project_track_row(ref)
             label = row["formatLabel"]
             if label not in formats:
                 formats.append(label)
@@ -543,6 +543,17 @@ class LibraryBridge(QObject):
         the instance row builders)."""
         return project_track_row(ref)
 
+    def _project_track_row(self, ref: TrackRef) -> dict:
+        """THE ONE canonical TrackRef → UI row projector (P1-03).
+
+        Every surface (Songs, Favorites, History, Recently Added, Albums,
+        Artists, Search, tables, details) renders through this single
+        function: canonical row facts + artwork + EFFECTIVE availability.
+        QML only represents this truth — it never infers availability."""
+        row = project_track_row(ref)
+        row["availability"] = self._effective_availability(ref)
+        return row
+
     def _track_row_with_artwork(self, ref: TrackRef) -> dict:
         path = ref.file_path
         artwork_path = ""
@@ -550,8 +561,8 @@ class LibraryBridge(QObject):
             if path in album.track_paths:
                 artwork_path = self._service.artwork_path_for(album.key) or ""
                 break
-        row = project_track_row(ref, artwork_path=artwork_path)
-        row["availability"] = self._effective_availability(ref)
+        row = self._project_track_row(ref)
+        row["artworkPath"] = artwork_path
         return row
 
     def _track_rows_with_artwork(self, refs) -> list[dict]:
@@ -565,15 +576,14 @@ class LibraryBridge(QObject):
             album_key: self._service.artwork_path_for(album_key) or ""
             for album_key in set(album_key_by_path.values())
         }
-        return [
-            project_track_row(
-                ref,
-                artwork_path=artwork_by_album_key.get(
-                    album_key_by_path[ref.file_path], ""
-                ),
+        rows = []
+        for ref in track_refs:
+            row = self._project_track_row(ref)
+            row["artworkPath"] = artwork_by_album_key.get(
+                album_key_by_path[ref.file_path], ""
             )
-            for ref in track_refs
-        ]
+            rows.append(row)
+        return rows
 
     def _get_song_rows(self) -> list[dict]:
         return self._track_rows_with_artwork(
@@ -595,31 +605,59 @@ class LibraryBridge(QObject):
     def _get_album_filter_mode(self) -> str:
         return self._album_query.state.filter_mode
 
+    def _refs_for_ids(self, ids) -> list[TrackRef]:
+        """TrackId-native resolution: stable ids resolve through the live
+        TrackRefs (current path projection); legacy-path:: ids resolve via
+        the path fallback. Never rewrites identity."""
+        refs = []
+        for track_id in ids:
+            ref = self._service.trackref_by_id(track_id)
+            if ref is None and track_id.startswith("legacy-path::"):
+                ref = self._service.resolve_trackref(
+                    Path(track_id.removeprefix("legacy-path::"))
+                )
+            if ref is not None:
+                refs.append(ref)
+        return refs
+
+    def _collection_track_rows(self, ids) -> list[dict]:
+        """CANONICAL collection rows (P1-02): TrackId authority → matched
+        filter → current TrackRef → the one row projector."""
+        filtered = self._reference_ids(ids)
+        return self._track_rows_with_artwork(self._refs_for_ids(filtered))
+
     def _get_favorite_rows(self) -> list[dict]:
+        """LEGACY compatibility surface (path-based rows)."""
         return self._rows_for(self._reference_paths(self._service.state.favorite_paths))
 
-    def _get_favorite_track_rows(self) -> list[dict]:
-        return self._track_rows_for(
-            self._reference_paths(self._service.state.favorite_paths)
-        )
-
     def _get_history_rows(self) -> list[dict]:
+        """LEGACY compatibility surface (path-based rows)."""
         return self._rows_for(self._reference_paths(self._service.state.history_paths))
 
-    def _get_history_track_rows(self) -> list[dict]:
-        return self._track_rows_for(
-            self._reference_paths(self._service.state.history_paths)
-        )
-
     def _get_recently_added_rows(self) -> list[dict]:
+        """LEGACY compatibility surface (path-based rows)."""
         return self._rows_for(
             self._reference_paths(self._service.state.recently_added_paths)
         )
 
+    def _get_favorite_track_rows(self) -> list[dict]:
+        state = self._service.state
+        if state.favorite_track_ids:
+            return self._collection_track_rows(state.favorite_track_ids)
+        # Legacy path-only state (pre-migration): derived ids projection.
+        return self._track_rows_for(self._reference_paths(state.favorite_paths))
+
+    def _get_history_track_rows(self) -> list[dict]:
+        state = self._service.state
+        if state.history_track_ids:
+            return self._collection_track_rows(state.history_track_ids)
+        return self._track_rows_for(self._reference_paths(state.history_paths))
+
     def _get_recently_added_track_rows(self) -> list[dict]:
-        return self._track_rows_for(
-            self._reference_paths(self._service.state.recently_added_paths)
-        )
+        state = self._service.state
+        if state.recently_added_track_ids:
+            return self._collection_track_rows(state.recently_added_track_ids)
+        return self._track_rows_for(self._reference_paths(state.recently_added_paths))
 
     def _rows_for(self, paths) -> list[dict]:
         rows = []
@@ -761,12 +799,8 @@ class LibraryBridge(QObject):
             "diagnostic": state.diagnostic,
         }
 
-    sourceScanStatus = Property(
-        str, _get_source_scan_status, notify=library_changed
-    )
-    sourceScanActive = Property(
-        bool, _get_source_scan_active, notify=library_changed
-    )
+    sourceScanStatus = Property(str, _get_source_scan_status, notify=library_changed)
+    sourceScanActive = Property(bool, _get_source_scan_active, notify=library_changed)
     sourceScanProgress = Property(
         dict, _get_source_scan_progress, notify=library_changed
     )
