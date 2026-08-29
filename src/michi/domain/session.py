@@ -1,4 +1,4 @@
-"""Domain layer — persisted playback session snapshot (M4-R1, V2).
+"""Domain layer — persisted playback session snapshot (M4-R1, V3).
 
 Pure: no Qt, no sqlite3, no filesystem (json is fine).
 
@@ -12,6 +12,12 @@ backwards-migratable: malformed payloads decode to a fresh snapshot
 migrate to V2 (old queue becomes queue_entries; a valid old
 current_index becomes a QUEUE context; an incoherent legacy playback
 path is never fabricated).
+
+V3 (M6-EXT-R4-I): every persisted entry carries an optional
+``library_track_id`` (stable library identity) alongside its location
+snapshot (``fallback_path``). V1/V2 payloads keep decoding (their entries
+simply have no library identity yet — the R4-D database migration
+upgrades them in one transaction).
 """
 
 import json
@@ -22,8 +28,9 @@ from michi.domain.playback_session import (
     RepeatMode,
 )
 
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3
 V1_FORMAT_VERSION = 1
+V2_FORMAT_VERSION = 2
 
 # Stable serialized representations — part of the on-disk contract.
 _REPEAT_MODE_TO_STRING = {
@@ -52,8 +59,17 @@ _MISSING = object()
 
 @dataclass(frozen=True)
 class PersistedQueueEntry:
+    """One persisted queue/context entry.
+
+    Field order is a compatibility seam: legacy code constructs
+    ``PersistedQueueEntry(path, title)`` positionally. ``file_path`` is the
+    location snapshot (serialized as ``fallback_path`` in V3); the stable
+    library identity is ``library_track_id`` (None when unknown/legacy).
+    """
+
     file_path: str
     title: str
+    library_track_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -100,21 +116,46 @@ def _is_strict_int(value: object) -> bool:
 
 
 def _entry_to_dict(entry: PersistedQueueEntry) -> dict:
-    return {"file_path": entry.file_path, "title": entry.title}
+    """V3 serialized entry: stable identity + location snapshot."""
+    return {
+        "library_track_id": entry.library_track_id,
+        "fallback_path": entry.file_path,
+        "title": entry.title,
+    }
 
 
 def _decode_entries(raw: object) -> tuple[PersistedQueueEntry, ...] | None:
+    """Strict entry decode accepting V1/V2 (``file_path``) and V3
+    (``library_track_id`` + ``fallback_path``) member shapes."""
     if not isinstance(raw, list):
         return None
     entries: list[PersistedQueueEntry] = []
     for item in raw:
         if not isinstance(item, dict):
             return None
-        file_path = item.get("file_path", _MISSING)
-        title = item.get("title", _MISSING)
-        if not isinstance(file_path, str) or not isinstance(title, str):
-            return None
-        entries.append(PersistedQueueEntry(file_path=file_path, title=title))
+        if "library_track_id" in item or "fallback_path" in item:
+            # V3 member shape.
+            library_track_id = item.get("library_track_id", _MISSING)
+            fallback_path = item.get("fallback_path", _MISSING)
+            title = item.get("title", _MISSING)
+            if not (library_track_id is None or isinstance(library_track_id, str)):
+                return None
+            if not isinstance(fallback_path, str) or not isinstance(title, str):
+                return None
+            entries.append(
+                PersistedQueueEntry(
+                    file_path=fallback_path,
+                    title=title,
+                    library_track_id=library_track_id,
+                )
+            )
+        else:
+            # V1/V2 member shape: location snapshot only.
+            file_path = item.get("file_path", _MISSING)
+            title = item.get("title", _MISSING)
+            if not isinstance(file_path, str) or not isinstance(title, str):
+                return None
+            entries.append(PersistedQueueEntry(file_path=file_path, title=title))
     return tuple(entries)
 
 
@@ -139,7 +180,7 @@ def encode_snapshot(snapshot: PlaybackSessionSnapshot) -> str:
 
 
 def decode_snapshot(raw: str) -> PlaybackSessionSnapshot:
-    """Strictly decode a persisted snapshot (V2 native; V1 migrated).
+    """Strictly decode a persisted snapshot (V3 native; V2/V1 migrated).
 
     Every aspect is validated independently; ANY invalid aspect yields a
     fresh snapshot (never a partial one). Missing required keys are
@@ -162,10 +203,17 @@ def decode_snapshot(raw: str) -> PlaybackSessionSnapshot:
 
     if version == V1_FORMAT_VERSION:
         return _decode_v1(payload)
+    if version == V2_FORMAT_VERSION:
+        # V2 is the same strict modern shape; its entries simply carry no
+        # library identity (handled by _decode_entries member shapes).
+        return _decode_modern(payload, version)
     if version != FORMAT_VERSION:
         return fresh_snapshot()
+    return _decode_modern(payload, version)
 
-    # --- V2 native decode -------------------------------------------
+
+def _decode_modern(payload: dict, version: int) -> PlaybackSessionSnapshot:
+    """Strict decode shared by V2 (legacy) and V3 (native) payloads."""
     queue_raw = payload.get("queue", _MISSING)
     queue_entries = _decode_entries(queue_raw)
     if queue_entries is None:

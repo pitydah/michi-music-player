@@ -36,11 +36,18 @@ class RepeatMode(Enum):
 @dataclass(frozen=True)
 class PlaybackSequenceEntry:
     """A pure sequence value. Duplicates MUST be allowed: two entries with
-    the same path may occupy different sequence positions."""
+    the same path may occupy different sequence positions.
+
+    ``entry_id`` is the playback-sequence identity (preserved; never
+    replaced by library identity). ``library_track_id`` (M6-EXT-R4-I) is the
+    OPTIONAL stable Library entity identity carried through for history and
+    session V3 persistence.
+    """
 
     file_path: Path
     title: str = ""
     entry_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    library_track_id: str | None = None
 
 
 @dataclass

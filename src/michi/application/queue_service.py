@@ -55,10 +55,21 @@ class QueueService:
         for cb in list(self._subscribers):
             cb()
 
-    def add(self, file_path: Path, title: str = "") -> None:
+    def add(
+        self,
+        file_path: Path,
+        title: str = "",
+        library_track_id: str | None = None,
+    ) -> None:
         if self._state.count >= self._max_tracks:
             raise QueueCapacityError(f"queue capacity {self._max_tracks} exceeded")
-        self._state.tracks.append(Track(file_path=file_path, title=title))
+        self._state.tracks.append(
+            Track(
+                file_path=file_path,
+                title=title,
+                library_track_id=library_track_id,
+            )
+        )
         self._notify()
 
     def add_many(self, paths: list[Path]) -> None:
@@ -69,7 +80,13 @@ class QueueService:
             self._state.tracks.append(Track(file_path=path))
         self._notify()
 
-    def insert_at(self, index: int, file_path: Path, title: str = "") -> None:
+    def insert_at(
+        self,
+        index: int,
+        file_path: Path,
+        title: str = "",
+        library_track_id: str | None = None,
+    ) -> None:
         """Insert Queue content at a clamped position.
 
         Queue owns content only. Shuffle/repeat/navigation are exclusively
@@ -80,7 +97,11 @@ class QueueService:
         index = max(0, min(index, self._state.count))
         self._state.tracks.insert(
             index,
-            Track(file_path=file_path, title=title),
+            Track(
+                file_path=file_path,
+                title=title,
+                library_track_id=library_track_id,
+            ),
         )
         self._notify()
 

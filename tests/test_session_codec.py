@@ -127,7 +127,7 @@ def test_encode_deterministic():
         "not json",
         "[]",
         "{}",
-        _payload(version=3),
+        _payload(version=FORMAT_VERSION + 1),  # future version stays malformed
         _payload(version="1"),
         _payload(queue="x"),
         _payload(queue=[42]),

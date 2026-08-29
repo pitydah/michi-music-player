@@ -926,10 +926,12 @@ class TestFinalSealRestoreIdentity:
         # history identities are Queue runtime ids
         assert session._navigator.history[0].entry_id == q.state.tracks[0].entry_id
 
-    def test_ri06_format_version_remains_2(self):
+    def test_ri06_format_version_remains_current(self):
+        # M6-EXT-R4-I: the snapshot format advanced to V3 (library track
+        # identity); this pin tracks the CURRENT format version.
         from michi.domain.session import FORMAT_VERSION
 
-        assert FORMAT_VERSION == 2
+        assert FORMAT_VERSION == 3
 
     def test_ri07_no_entry_id_in_serialized_snapshot(self):
         from michi.domain.session import (

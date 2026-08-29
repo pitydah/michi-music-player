@@ -219,10 +219,14 @@ class PlaybackSessionService:
 
     def _queue_entries(self) -> list[PlaybackSequenceEntry]:
         """The LIVE Queue as PlaybackSequenceEntry values, preserving exact
-        entry identity (Track.entry_id). Used by every QUEUE path."""
+        entry identity (Track.entry_id) and the optional library identity
+        (M6-EXT-R4-I). Used by every QUEUE path."""
         return [
             PlaybackSequenceEntry(
-                file_path=t.file_path, title=t.title, entry_id=t.entry_id
+                file_path=t.file_path,
+                title=t.title,
+                entry_id=t.entry_id,
+                library_track_id=t.library_track_id,
             )
             for t in self._queue.state.tracks
         ]

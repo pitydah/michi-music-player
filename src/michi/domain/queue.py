@@ -21,11 +21,17 @@ class Track:
     preserved by move(), removed by remove()/clear(). Two entries with the
     same file_path MUST have different entry_ids — file_path is payload,
     NOT identity. Runtime-only: never persisted (restart creates fresh ids).
+
+    ``library_track_id`` (M6-EXT-R4-I) is the OPTIONAL stable Library
+    entity identity — different from ``entry_id``: two queue entries may
+    share a library_track_id (same song queued twice) with distinct
+    entry_ids.
     """
 
     file_path: Path
     title: str = ""
     entry_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    library_track_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.title:

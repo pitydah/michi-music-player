@@ -219,14 +219,16 @@ class PersistenceCoordinator:
         return PlaybackSessionSnapshot(
             format_version=FORMAT_VERSION,
             queue_entries=tuple(
-                PersistedQueueEntry(str(track.file_path), track.title)
+                PersistedQueueEntry(
+                    str(track.file_path), track.title, track.library_track_id
+                )
                 for track in queue_state.tracks
             ),
             context=PersistedSessionContext(
                 context_type=_CONTEXT_STRING[context_type],
                 source_id=session_state.source_id,
                 entries=tuple(
-                    PersistedQueueEntry(str(e.file_path), e.title)
+                    PersistedQueueEntry(str(e.file_path), e.title, e.library_track_id)
                     for e in session_state.entries
                 ),
                 current_index=session_state.current_index,
@@ -531,7 +533,14 @@ class PersistenceCoordinator:
             snapshot = self._repo.load()
             # M4-R1: Queue CONTENT restoration (no playback fields).
             self._queue.restore_entries(
-                [Track(Path(e.file_path), e.title) for e in snapshot.queue_entries]
+                [
+                    Track(
+                        Path(e.file_path),
+                        e.title,
+                        library_track_id=e.library_track_id,
+                    )
+                    for e in snapshot.queue_entries
+                ]
             )
             # M4-R1: PlaybackSession logical context restoration — no backend
             # command, no autoplay, no History event.
@@ -540,7 +549,9 @@ class PersistenceCoordinator:
                 context_type=_CONTEXT_TYPE[context.context_type],
                 source_id=context.source_id,
                 entries=[
-                    PlaybackSequenceEntry(Path(e.file_path), e.title)
+                    PlaybackSequenceEntry(
+                        Path(e.file_path), e.title, library_track_id=e.library_track_id
+                    )
                     for e in context.entries
                 ],
                 current_index=context.current_index,
