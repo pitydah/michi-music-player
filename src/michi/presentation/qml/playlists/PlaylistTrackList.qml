@@ -7,7 +7,7 @@ import "../primitives"
 import "../theme"
 
 // PlaylistTrackList — dense editorial track table. One continuous surface
-// with the PlaylistHero scrolling away on top; rows are quiet, 50px,
+// with the PlaylistHero scrolling away on top; rows are quiet, 54px,
 // border-bottom only; hover/selected/playing are distinct states.
 // The playlist is a persistent collection — selecting and playing a track
 // never requires queue operations (see playlists.play_track).
@@ -116,7 +116,7 @@ Item {
             required property int index
             required property var modelData
             width: trackList.width
-            height: 50
+            height: 54
             hoverEnabled: true
             focusPolicy: Qt.StrongFocus
             Accessible.role: Accessible.ListItem
@@ -179,10 +179,13 @@ Item {
                     }
                 }
 
-                // Track artwork 36px, radius 4, 8-12px gap to title
+                // Prefer the real album artwork projected by the bridge.
+                // Forty pixels keeps it recognizable without turning the
+                // dense playlist table into an album-card list.
                 Artwork {
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
+                    objectName: "playlistTrackArtwork_" + index
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
                     sourcePath: modelData.artworkPath || ""
                     fallbackText: modelData.title || modelData.displayName || "T"
                     radius: 4
@@ -191,7 +194,7 @@ Item {
                 // Title (heavier) + grouped artist on narrow widths
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.preferredWidth: root.narrow ? 0 : trackList.width * 0.36
+                    Layout.preferredWidth: root.narrow ? 0 : trackList.width * 0.34
                     Layout.minimumWidth: 120
                     spacing: 0
                     Layout.alignment: Qt.AlignVCenter
@@ -217,25 +220,25 @@ Item {
 
                 MichiText {
                     visible: root.showArtistColumn && !root.narrow
-                    Layout.preferredWidth: trackList.width * 0.2
+                    Layout.preferredWidth: trackList.width * 0.21
                     Layout.minimumWidth: 90
                     Layout.maximumWidth: 240
                     text: modelData.artist || "—"
                     role: "technical"
                     color: MichiPalette.textSecondary
-                    opacity: 0.65
+                    opacity: 0.78
                     elide: Text.ElideRight
                 }
 
                 MichiText {
                     visible: root.showAlbumColumn
-                    Layout.preferredWidth: trackList.width * 0.2
+                    Layout.preferredWidth: trackList.width * 0.21
                     Layout.minimumWidth: 90
                     Layout.maximumWidth: 240
                     text: modelData.album || "—"
                     role: "technical"
                     color: MichiPalette.textSecondary
-                    opacity: 0.6
+                    opacity: 0.72
                     elide: Text.ElideRight
                 }
 
@@ -244,6 +247,7 @@ Item {
                     Layout.preferredWidth: LibraryTrackColumnState.formatWidth
                     formatKey: modelData.formatKey || "unknown"
                     displayLabel: modelData.formatLabel || "UNKNOWN"
+                    opacity: trackItem.isPlaying ? 1 : 0.82
                 }
 
                 MichiText {
@@ -251,7 +255,8 @@ Item {
                     text: modelData.durationMs > 0 ? MichiFormat.formatDuration(modelData.durationMs) : ""
                     role: "technical"
                     technical: true
-                    color: MichiPalette.textMuted
+                    color: MichiPalette.textSecondary
+                    opacity: 0.82
                     horizontalAlignment: Text.AlignRight
                 }
 

@@ -112,7 +112,7 @@ Item {
             Layout.preferredWidth: root.narrow ? 88 : root.compact ? 252 : 326
             Layout.minimumWidth: root.narrow ? 76 : 204
             Layout.maximumWidth: 334
-            Layout.preferredHeight: 94
+            Layout.preferredHeight: 82
             Layout.alignment: Qt.AlignVCenter
             elevation: trackHover.hovered ? "elevated" : "standard"
             contentPadding: 0
@@ -125,12 +125,12 @@ Item {
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 10
-                spacing: 14
+                spacing: 12
 
                 Artwork {
                     objectName: "trackArtwork"
-                    Layout.preferredWidth: 72
-                    Layout.preferredHeight: 72
+                    Layout.preferredWidth: 62
+                    Layout.preferredHeight: 62
                     Layout.alignment: Qt.AlignVCenter
                     radius: 11
                     sourcePath: root.artworkPath
@@ -145,7 +145,7 @@ Item {
 
                     MichiText {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 24
+                        Layout.preferredHeight: 22
                         text: root.hasTrack ? root.trackTitle : "No track selected"
                         role: "body"
                         font.weight: Font.DemiBold
@@ -154,7 +154,7 @@ Item {
                     }
                     MichiText {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 20
+                        Layout.preferredHeight: 19
                         text: root.hasTrack
                             ? (root.artist.length > 0 ? root.artist : "Unknown artist")
                             : "Add music"
@@ -164,7 +164,7 @@ Item {
                     }
                     MichiText {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 18
+                        Layout.preferredHeight: 17
                         text: root.hasTrack
                             ? (root.album.length > 0 ? root.album : "Unknown album")
                             : "Local library"

@@ -81,7 +81,7 @@ Item {
         // region without becoming a giant card floating above the page.
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 122
+            Layout.preferredHeight: 128
 
             Rectangle {
                 anchors.fill: parent
@@ -104,6 +104,7 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: MichiSpacing.sm
                 anchors.rightMargin: MichiSpacing.sm
+                anchors.topMargin: MichiSpacing.sm
                 anchors.bottomMargin: MichiSpacing.md
                 spacing: MichiSpacing.md
 
@@ -113,7 +114,8 @@ Item {
                         spacing: MichiSpacing.xxs
                         MichiText {
                             text: qsTr("Playlists")
-                            role: "title"
+                            role: "display"
+                            font.weight: Font.DemiBold
                             color: MichiPalette.textPrimary
                         }
                         MichiText {
@@ -210,8 +212,10 @@ Item {
             visible: root.filteredPlaylists.length > 0 && root.displayMode === "grid"
             clip: true
             readonly property int targetCellWidth: MichiThemeState.density === "compact" ? 296 : 328
-            readonly property int columnCount: Math.max(1, Math.floor(width / targetCellWidth))
-            cellWidth: width / columnCount
+            // Keep the first card on the same visual axis as the page title
+            // and tools. Distributing spare width across every cell made a
+            // small collection look stranded in the middle of the page.
+            cellWidth: Math.min(width, targetCellWidth)
             cellHeight: 352
             model: root.filteredPlaylists
             keyNavigationEnabled: true
@@ -255,7 +259,8 @@ Item {
                     width: Math.min(304, parent.width - MichiSpacing.lg)
                     height: 332
                     anchors.top: parent.top
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: MichiSpacing.sm
                     anchors.topMargin: MichiSpacing.sm
                     selected: playlistCell.current && gridView.activeFocus
                     playlistId: playlistCell.modelData.playlistId

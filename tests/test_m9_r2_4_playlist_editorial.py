@@ -68,7 +68,7 @@ def test_track_rows_are_quiet_and_stateful():
     assert "MichiSemanticColors.rowSelected" in table
     assert "MichiSemanticColors.rowHover" in table
     assert "MichiSemanticColors.rowDivider" in table
-    assert "height: 50" in table  # compact 48-52px rows
+    assert "height: 54" in table  # compact, with recognizable 40px artwork
     assert "radius: 5" in table  # discrete hover radius
     assert "reuseItems: true" in table
     assert "keyNavigationEnabled: true" in table
@@ -181,7 +181,7 @@ def test_row_metadata_uses_technical_scale():
 def test_column_header_always_visible_backplane_fades():
     header = read("playlists/PlaylistColumnHeader.qml")
     assert 'role: "micro"' in header
-    assert "opacity: 0.4" in header
+    assert "opacity: 0.58" in header
     page = read("playlists/PlaylistDetailView.qml")
     # the column header lives in-flow below the hero (scrolls away) and
     # the sticky overlay fades in with its backplane while the hero leaves

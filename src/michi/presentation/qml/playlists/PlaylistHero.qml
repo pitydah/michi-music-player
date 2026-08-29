@@ -24,6 +24,9 @@ Item {
     property var autoHeroColors: [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
     property bool pinned: false
     property bool hasTracks: root.trackCount > 0
+    // Space reserved for navigation when the page places its back action
+    // inside this atmospheric surface instead of in a detached top strip.
+    property real navigationInset: 0
 
     readonly property bool compact: width < 720
     readonly property real coverSize: width >= 1120 ? 180
@@ -71,7 +74,7 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: root.compact ? MichiSpacing.lg : MichiSpacing.xl
         anchors.rightMargin: root.compact ? MichiSpacing.lg : MichiSpacing.xl
-        anchors.topMargin: MichiSpacing.lg
+        anchors.topMargin: root.navigationInset + MichiSpacing.sm
         anchors.bottomMargin: MichiSpacing.lg
         spacing: root.compact ? MichiSpacing.lg : MichiSpacing.xl
 
@@ -219,7 +222,7 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: MichiSpacing.sm
+                spacing: MichiSpacing.xs
 
                 MichiButton {
                     text: qsTr("Play")
@@ -250,17 +253,6 @@ Item {
                     implicitHeight: MichiMetrics.controlMedium
                     accessibleName: qsTr("Add tracks from library")
                     onClicked: root.addTracksRequested()
-                }
-
-                MichiButton {
-                    text: root.width >= 760
-                        ? qsTr("Customize appearance") : ""
-                    iconName: "sliders"
-                    iconOnly: root.width < 760
-                    variant: "ghost"
-                    implicitHeight: MichiMetrics.controlMedium
-                    accessibleName: qsTr("Customize playlist appearance")
-                    onClicked: root.customizeAppearanceRequested()
                 }
 
                 MichiIconButton {

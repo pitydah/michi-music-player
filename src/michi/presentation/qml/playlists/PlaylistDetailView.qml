@@ -83,6 +83,7 @@ Item {
                 heroImagePath: parent.appearance.heroImagePath || ""
                 autoHeroColors: playlists ? playlists.selectedPlaylistAutoHeroColors : [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
                 pinned: playlists ? playlists.selectedPlaylistPinned : false
+                navigationInset: MichiMetrics.controlMedium
                 // R2.1-07: signals wired INLINE (the ListView headerItem is
                 // this wrapper Item, NOT the hero — a Connections on
                 // headerItem never matches the hero's signals)
@@ -92,6 +93,21 @@ Item {
                 onCustomizeAppearanceRequested: appearancePanel.openForPlaylist()
                 onTogglePinRequested: root.togglePinRequested()
                 onAddTracksRequested: root.addMusicRequested()
+            }
+
+            // Navigation belongs to the hero composition. Keeping it in
+            // this scrolling wrapper removes the disconnected empty strip
+            // above the artwork while preserving a clear return affordance.
+            MichiIconButton {
+                objectName: "playlistBackButton"
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.leftMargin: MichiSpacing.xl
+                anchors.topMargin: MichiSpacing.sm
+                z: 7
+                iconName: "back"
+                accessibleName: qsTr("Back to All Playlists")
+                onClicked: root.backRequested()
             }
 
             PlaylistColumnHeader {
@@ -123,23 +139,6 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
-
-        // Top bar (fixed) — quiet back affordance only
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 48
-            Layout.leftMargin: MichiSpacing.xl
-            Layout.rightMargin: MichiSpacing.xl
-            spacing: MichiSpacing.sm
-            z: 6
-
-            MichiIconButton {
-                iconName: "back"
-                accessibleName: qsTr("Back to All Playlists")
-                onClicked: root.backRequested()
-            }
-            Item { Layout.fillWidth: true }
-        }
 
         Item {
             Layout.fillWidth: true
