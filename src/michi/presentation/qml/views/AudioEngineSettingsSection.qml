@@ -178,16 +178,21 @@ Item {
 
                     property bool isActive: card.modelData.id === root.activeEngineId
                     property bool isSelected: card.modelData.id === root.selectedEngineId
+                    property bool isSwitching: card.modelData.id === root.switchingTo
 
                     function statusText() {
+                        if (card.isSwitching)
+                            return qsTr("Switching\u2026")
                         if (card.isActive && card.isSelected)
                             return qsTr("Preferred · In use")
                         if (card.isActive)
                             return qsTr("In use")
-                        if (card.isSelected)
-                            return qsTr("Preferred")
                         if (!card.modelData.canActivate)
                             return qsTr("Not available")
+                        if (card.modelData.requiresStop)
+                            return qsTr("Stop & switch")
+                        if (card.isSelected)
+                            return qsTr("Preferred")
                         return ""
                     }
 
@@ -242,6 +247,16 @@ Item {
                             color: MichiTheme.textSecondary
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
+                        }
+
+                        Text {
+                            visible: card.modelData.requiresStop
+                            text: qsTr("Stops playback before switching")
+                            font.pixelSize: MichiTheme.fontSizeBody
+                            color: MichiTheme.textSecondary
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                            Accessible.role: Accessible.StaticText
                         }
 
                         Text {

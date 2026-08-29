@@ -26,7 +26,8 @@ def test_search_and_scan_have_independent_toolbar_geometry() -> None:
     scan_start = toolbar.index('objectName: "libraryScanSplitButton"')
     assert search_start < scan_start
     assert 'secondaryIconName: "chevron-down"' in toolbar
-    assert "Layout.preferredWidth: 28" in split
+    assert "readonly property real secondaryWidth: 26" in split
+    assert "Layout.preferredWidth: root.secondaryWidth" in split
     assert "TapHandler" in toolbar and "onDoubleTapped" in toolbar
     assert "visible: root.width >= 1100" in toolbar
 

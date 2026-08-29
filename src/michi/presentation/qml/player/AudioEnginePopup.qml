@@ -122,10 +122,12 @@ Popup {
                         return qsTr("Switching\u2026")
                     if (row.isActive)
                         return qsTr("Active")
-                    if (row.isSelected && root.hasFallback)
-                        return qsTr("Preferred")
                     if (!row.modelData.canActivate)
                         return qsTr("Not available")
+                    if (row.modelData.requiresStop)
+                        return qsTr("Stop & switch")
+                    if (row.isSelected && root.hasFallback)
+                        return qsTr("Preferred")
                     return ""
                 }
 

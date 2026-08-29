@@ -13,11 +13,13 @@ FocusScope {
     property string accessibleName: text
     property string secondaryAccessibleName: qsTr("More options")
     property bool iconOnly: false
-    readonly property real secondaryWidth: 28
+    readonly property bool hasPrimaryIcon: iconName.length > 0
+    readonly property real secondaryWidth: 26
+    readonly property real secondaryIconSize: 10
     signal primaryClicked()
     signal secondaryClicked()
 
-    implicitWidth: primaryButton.implicitWidth + secondaryButton.implicitWidth
+    implicitWidth: primaryButton.implicitWidth + secondaryWidth + 1
     implicitHeight: MichiMetrics.controlMedium
     activeFocusOnTab: false
 
@@ -37,8 +39,10 @@ FocusScope {
                 id: primaryButton
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                implicitWidth: root.iconOnly ? MichiMetrics.controlMedium
-                    : Math.max(82, primaryContent.implicitWidth + MichiSpacing.lg * 2)
+                implicitWidth: root.iconOnly && root.hasPrimaryIcon
+                    ? MichiMetrics.controlMedium
+                    : Math.max(82,
+                        primaryContent.implicitWidth + MichiSpacing.md * 2)
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
                 Accessible.role: Accessible.Button
@@ -51,13 +55,17 @@ FocusScope {
                     spacing: MichiSpacing.sm
                     MichiIcon {
                         name: root.iconName
+                        visible: root.hasPrimaryIcon
                         width: MichiMetrics.iconSmall
                         height: width
                         iconColor: root.enabled
                             ? MichiPalette.textSecondary : MichiPalette.textDisabled
                     }
                     MichiText {
-                        visible: !root.iconOnly
+                        // An icon-less instance must never collapse to a
+                        // blank primary segment when a responsive caller
+                        // requests icon-only presentation.
+                        visible: !root.iconOnly || !root.hasPrimaryIcon
                         text: root.text
                         role: "secondary"
                         font.weight: Font.Medium
@@ -73,16 +81,25 @@ FocusScope {
                 }
             }
 
-            Rectangle {
+            Item {
+                id: segmentDivider
                 Layout.fillHeight: true
                 Layout.preferredWidth: 1
-                color: MichiSemanticColors.borderSubtle
+
+                Rectangle {
+                    id: dividerLine
+                    anchors.centerIn: parent
+                    width: 1
+                    height: MichiMetrics.iconSmall
+                    color: MichiSemanticColors.borderSubtle
+                }
             }
 
             Button {
                 id: secondaryButton
                 Layout.fillHeight: true
-                Layout.preferredWidth: 28
+                Layout.preferredWidth: root.secondaryWidth
+                implicitWidth: root.secondaryWidth
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
                 Accessible.role: Accessible.Button
@@ -92,7 +109,7 @@ FocusScope {
                 contentItem: MichiIcon {
                     anchors.centerIn: parent
                     name: root.secondaryIconName
-                    width: 12
+                    width: root.secondaryIconSize
                     height: width
                     iconColor: root.enabled
                         ? MichiPalette.textSecondary : MichiPalette.textDisabled

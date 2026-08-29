@@ -12,6 +12,12 @@ ColumnLayout {
     objectName: "artistDetailView"
     signal addToPlaylistRequested(string path)
     readonly property string selectedArtistKey: library.selectedArtistKey
+    readonly property real minimumTracksHeight: MichiMetrics.controlLarge * 5
+    readonly property real minimumSummaryViewportHeight: MichiMetrics.controlLarge * 3
+    readonly property real summaryHeightBudget: Math.max(
+        minimumSummaryViewportHeight,
+        height - backButton.implicitHeight - tracksHeading.implicitHeight
+            - minimumTracksHeight - spacing * 3)
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -24,6 +30,7 @@ ColumnLayout {
     }
 
     MichiButton {
+        id: backButton
         text: qsTr("Artists")
         iconName: "back"
         variant: "ghost"
@@ -35,8 +42,8 @@ ColumnLayout {
     Flickable {
         id: summaryFlick
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(summaryColumn.implicitHeight,
-            Math.max(220, root.height - 300))
+        Layout.preferredHeight: Math.min(
+            summaryColumn.implicitHeight, root.summaryHeightBudget)
         contentWidth: width
         contentHeight: summaryColumn.implicitHeight
         clip: true
@@ -119,21 +126,27 @@ ColumnLayout {
 
             ListView {
                 id: artistAlbumsGrid
+                readonly property real albumCardWidth: 166
+                readonly property real albumCardHeight: 236
                 width: parent.width
-                height: visible ? 244 : 0
+                implicitHeight: visible && count > 0
+                    ? albumCardHeight + (albumScrollBar.visible
+                        ? albumScrollBar.implicitHeight : 0)
+                    : 0
+                height: implicitHeight
                 visible: library.artistAlbums.length > 0
                 model: library.artistAlbums
                 orientation: ListView.Horizontal
                 spacing: MichiSpacing.sm
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.horizontal: MichiScrollBar { }
+                ScrollBar.horizontal: MichiScrollBar { id: albumScrollBar }
                 Accessible.role: Accessible.List
                 Accessible.name: qsTr("Albums by this artist")
                 delegate: AlbumCard {
                     required property var modelData
-                    width: 166
-                    height: 236
+                    width: artistAlbumsGrid.albumCardWidth
+                    height: artistAlbumsGrid.albumCardHeight
                     album: modelData
                     onActivated: library.select_album(modelData.key)
                 }
@@ -142,6 +155,7 @@ ColumnLayout {
     }
 
     MichiText {
+        id: tracksHeading
         text: qsTr("Tracks")
         role: "section"
     }

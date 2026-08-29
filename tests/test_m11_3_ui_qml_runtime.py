@@ -366,6 +366,23 @@ class TestPopupBehavioral:
         assert mpd_row.property("enabled") is True
         popup.close()
 
+    def test_requires_stop_is_visible_before_popup_selection(self, qapp):
+        """M9-R5.1.1: a selectable row that requires coordinated stop
+        communicates the consequence before activation."""
+        h = _build(qapp, POPUP_HARNESS, "player/harness.qml")
+        h.bridge._playback_quiescent = lambda: False
+        h.bridge.refresh_engines()
+        _run(qapp)
+
+        popup = _by_name(h.window, "enginePopup")
+        popup.open()
+        _run(qapp, 300)
+        status = _by_name(h.window, "enginePopupRowStatus_gstreamer")
+
+        assert status is not None
+        assert _text(status) == "Stop & switch"
+        popup.close()
+
     def test_live_state_update_while_open(self, qapp):
         """Section 42 mandatory: popup stays open, state changes → rows
         re-render WITHOUT closing/reopening/imperative copies."""
@@ -595,6 +612,22 @@ class TestSettingsBehavioral:
         _run(qapp)
         qt_card = _by_name(window, "engineSettingsCard_qt_multimedia")
         assert qt_card.property("enabled") is True
+
+    def test_requires_stop_is_explained_on_engine_card(self, qapp):
+        """M9-R5.1.1: Settings presents stop-and-switch as an operational
+        consequence, not as an error or an after-click surprise."""
+        h = _build(qapp, SETTINGS_HARNESS, "views/harness.qml")
+        h.bridge._playback_quiescent = lambda: False
+        h.bridge.refresh_engines()
+        _run(qapp)
+
+        card = _by_name(h.window, "engineSettingsCard_gstreamer")
+        status = _by_name(h.window, "engineSettingsCardStatus_gstreamer")
+
+        assert card is not None
+        assert status is not None
+        assert _text(status) == "Stop & switch"
+        assert "Stops playback before switching" in _collect_text(card)
 
     def test_engine_card_keyboard_activation(self, qapp):
         h = _build(qapp, SETTINGS_HARNESS, "views/harness.qml")

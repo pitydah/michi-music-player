@@ -74,7 +74,9 @@ MichiGlassSurface {
             objectName: "libraryNavigationGrid"
             Layout.fillWidth: true
             columns: root.width < 1100 ? 2 : 4
-            columnSpacing: MichiSpacing.md
+            // Desktop Tabs → handle → Search totals 8 + 10 + 8 = 26 px:
+            // compact perceptual separation without shrinking the hitbox.
+            columnSpacing: MichiSpacing.sm
             rowSpacing: MichiSpacing.sm
 
             LibraryTabs {
@@ -107,7 +109,7 @@ MichiGlassSurface {
                     Rectangle {
                         anchors.centerIn: parent
                         width: 1
-                        height: parent.height - MichiSpacing.sm
+                        height: MichiMetrics.iconMedium - MichiSpacing.xxs
                         color: resizeHover.hovered || parent.activeFocus
                             ? MichiSemanticColors.borderStrong
                             : MichiSemanticColors.borderSubtle
@@ -196,11 +198,12 @@ MichiGlassSurface {
                     objectName: "libraryScanSplitButton"
                     Layout.row: root.width < 1100 ? 1 : 0
                     Layout.column: root.width < 1100 ? 1 : 3
-                    Layout.preferredHeight: MichiMetrics.controlLarge
+                    Layout.preferredHeight: MichiMetrics.controlMedium
+                    Layout.alignment: Qt.AlignVCenter
                     text: root.width < 760 ? qsTr("Scan") : qsTr("Scan library")
-                    iconName: "library"
+                    iconName: ""
                     secondaryIconName: "chevron-down"
-                    iconOnly: root.width < 980
+                    iconOnly: false
                     accessibleName: qsTr("Scan library")
                     secondaryAccessibleName: qsTr("Music source options")
                     enabled: !root.scanning
