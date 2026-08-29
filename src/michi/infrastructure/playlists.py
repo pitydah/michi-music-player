@@ -290,6 +290,10 @@ class SqlitePlaylistsRepository(PlaylistsPort):
                     {"track_id": ref.track_id, "fallback_path": ref.fallback_path}
                     for ref in p.references()
                 ],
+                # DERIVED COMPATIBILITY PROJECTION (never a second
+                # authority): the location snapshot of the same membership,
+                # kept so historical consumers of "track_paths" keep working.
+                "track_paths": [ref.fallback_path for ref in p.references()],
                 "custom_cover_path": p.custom_cover_path,
                 "appearance": {
                     "hero_mode": p.appearance.hero_mode.value,
