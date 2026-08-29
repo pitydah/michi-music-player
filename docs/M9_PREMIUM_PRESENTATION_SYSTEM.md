@@ -441,5 +441,6 @@ server.
 - Local acceptance evidence: **3036 passed, 1 skipped** under isolated XDG
   state; Ruff, formatting, qmllint, compileall, wheel build, production QML
   runtime, responsive captures at 1920/1646/1440/1200/800, and all canonical
-  palette/material/glass/NowPlaying firewalls pass. Publication and PR CI remain
-  pending, so the work package stays in `VERIFY`.
+  palette/material/glass/NowPlaying firewalls pass. The branch is published;
+  PR creation and PR-triggered CI remain pending, so the work package stays in
+  `VERIFY`.

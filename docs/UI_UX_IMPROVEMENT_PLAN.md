@@ -283,7 +283,8 @@ semantic colors, material texture, glass primitive, and NowPlayingBar unchanged.
 - **Verification:** 3036 tests passed with 1 skipped under isolated XDG state;
   Ruff, formatting, qmllint, compileall, wheel build, production runtime, and
   canonical firewalls are green. Captures cover 1920, 1646, 1440, 1200, and the
-  800 px minimum width. Publication and PR CI remain pending.
+  800 px minimum width. The branch is published; PR creation and PR-triggered
+  CI remain pending.
 
 ## Management notes
 
