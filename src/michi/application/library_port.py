@@ -1,6 +1,7 @@
 """Application ports — library scanner interface and catalog boundary."""
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 
 from michi.domain.library import LibraryDiagnosticCode
@@ -122,6 +123,42 @@ class LibraryUserStatePort(ABC):
 
     @abstractmethod
     def set_recently_added(self, track_ids: tuple[str, ...]) -> None: ...
+
+
+@dataclass(frozen=True)
+class DiscoveredMediaFile:
+    """One filesystem discovery fact (M6-EXT-R4-K).
+
+    The scanner discovers FILESYSTEM FACTS ONLY: absolute path, validated
+    relative path inside the source, fingerprint. It never allocates
+    TrackIds and never mutates the catalog."""
+
+    absolute_path: Path
+    relative_path: str
+    file_size: int
+    mtime_ns: int
+    device_id: int = 0
+    inode: int = 0
+
+
+class LibrarySourceScannerPort(ABC):
+    """Source-aware scanner boundary (M6-EXT-R4-K).
+
+    ``discover`` enumerates ONE source root. Directory symlinks are NOT
+    recursively followed (cycles / duplicate traversal / source escapes are
+    forbidden by contract). Raises ``LibraryFilesystemError`` with a typed
+    code when the root cannot be enumerated."""
+
+    @abstractmethod
+    def discover(self, source: LibrarySource) -> tuple[DiscoveredMediaFile, ...]:
+        """Enumerate media facts inside the source root.
+
+        The returned relative paths are validated (never absolute, never
+        ``..``-escaping, always inside the source)."""
+
+    @abstractmethod
+    def validate_file(self, path: Path) -> None:
+        """Raise LibraryFilesystemError when ``path`` is not a playable file."""
 
 
 class LibraryScannerPort(ABC):

@@ -652,6 +652,41 @@ class LibraryService:
                 return ref
         return None
 
+    def note_new_track_ids(self, track_ids: tuple[str, ...]) -> None:
+        """M6-EXT-R4-K: recently-added semantics — ONLY new TrackId
+        allocations enter Recently Added (never moves/relinks/modifies).
+        Persists through the existing prefs surface (id-keyed upgrade lands
+        with R4-G wiring)."""
+        if not track_ids:
+            return
+        # The legacy prefs surface is path-keyed; new ids are recorded via
+        # the recently-added path projection until the user-state
+        # integration replaces it. Each new id maps to its current path.
+        new_paths = []
+        for track_id in track_ids:
+            ref = self.trackref_by_id(track_id)
+            if ref is not None:
+                new_paths.append(str(ref.file_path))
+        if not new_paths:
+            return
+        self._state.recently_added_paths = merge_recently_added(
+            new_paths,
+            self._state.recently_added_paths,
+            current_library_paths={str(t.file_path) for t in self._state.tracks},
+            cap=RECENT_CAP,
+        )
+        self._persist_prefs()
+        self._notify()
+
+    def apply_source_tracks(self, source_id: str, refs: list[TrackRef]) -> None:
+        """M6-EXT-R4-K: replace ONLY this source's canonical TrackRefs and
+        rebuild the derived model. Other sources survive untouched (a
+        Source A scan can never remove Source B)."""
+        kept = [t for t in self._state.tracks if t.library_source_id != source_id]
+        self._state.tracks = kept + list(refs)
+        self._rebuild_derived_library_state()
+        self._notify()
+
     def resolve_trackref(self, file_path: Path) -> TrackRef | None:
         """Canonical TrackRef by current path, or None."""
         for ref in self._state.tracks:
