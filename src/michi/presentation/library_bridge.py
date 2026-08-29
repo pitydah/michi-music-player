@@ -449,12 +449,17 @@ class LibraryBridge(QObject):
 
     def _reference_paths(self, paths) -> tuple[str, ...]:
         """M7: reference surfaces (favorites/history/recently-added) are
-        filtered by the SAME matched track ids when search is active."""
+        filtered by the SAME matched track ids when search is active.
+
+        Reference surfaces are still path-keyed (legacy state); the matched
+        set carries stable ids with the documented ``legacy-path::``
+        fallback for pre-catalog records — both are honored here (M6-EXT-
+        R4-F compatibility projection)."""
         state = self._service.state
         if not state.search_active:
             return tuple(paths)
         matched = state.search_projection.matched_track_ids
-        return tuple(p for p in paths if p in matched)
+        return tuple(p for p in paths if p in matched or f"legacy-path::{p}" in matched)
 
     def _get_song_paths(self) -> list[str]:
         return [str(t.file_path) for t in self._visible_track_refs()]

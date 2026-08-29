@@ -129,6 +129,17 @@ _ALBUM_TYPE_BONUS = {
 }
 
 
+def stable_track_identity(track) -> str:
+    """The one stable-identity rule for search surfaces (M6-EXT-R4-F).
+
+    Prefer the catalog ``track_id``; pre-catalog records project the
+    documented ``legacy-path::`` fallback so M7 dedupe/ranking semantics are
+    unchanged until migration resolves their ids."""
+    if track.track_id:
+        return track.track_id
+    return f"legacy-path::{track.file_path}"
+
+
 @dataclass(frozen=True)
 class TrackSearchDocument:
     """Search representation of a canonical TrackRef — NOT a new entity.
@@ -154,7 +165,8 @@ class TrackSearchDocument:
 
     @property
     def track_id(self) -> str:
-        return str(self.track.file_path)
+        """Stable Library identity (M6-EXT-R4-F)."""
+        return stable_track_identity(self.track)
 
     @classmethod
     def from_track(cls, track) -> "TrackSearchDocument":
@@ -388,7 +400,9 @@ class SearchProjection:
 
     @property
     def matched_track_ids(self) -> frozenset[str]:
-        return frozenset(str(t.file_path) for t in self.tracks)
+        """Matched TrackIds (stable identity; legacy-path:: fallback for
+        pre-catalog records — M6-EXT-R4-F)."""
+        return frozenset(stable_track_identity(track) for track in self.tracks)
 
 
 def _ranked_entities(query: SearchQuery, docs) -> tuple:

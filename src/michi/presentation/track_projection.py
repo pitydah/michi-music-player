@@ -8,20 +8,26 @@ from michi.domain.library import (
     TrackRef,
     make_album_key,
     make_artist_key,
-    make_track_id,
     resolve_album_artist,
 )
 
 
 def project_track_row(ref: TrackRef, *, artwork_path: str = "") -> dict:
-    """Project one TrackRef without inferring output or quality claims."""
+    """Project one TrackRef without inferring output or quality claims.
+
+    ``trackId`` is the STABLE library identity (legacy-path:: fallback for
+    pre-catalog records only); the raw path stays visible as factual
+    location (M6-EXT-R4-F)."""
     format_facts = normalize_track_format(
         ref.codec, ref.container, ref.file_path, ref.sample_rate_hz
     )
     album_title = ref.album.strip() or "Unknown Album"
     album_artist = resolve_album_artist(ref).strip() or "Unknown Artist"
     return {
-        "trackId": make_track_id(ref.file_path),
+        "trackId": ref.track_id or f"legacy-path::{ref.file_path}",
+        "mediaFileId": ref.media_file_id,
+        "librarySourceId": ref.library_source_id,
+        "availability": ref.availability.value,
         "displayName": ref.display_name,
         "title": ref.title or ref.display_name,
         "artist": ref.artist,
@@ -52,10 +58,14 @@ def project_track_row(ref: TrackRef, *, artwork_path: str = "") -> dict:
 
 
 def project_unavailable_track(path: str | Path) -> dict:
-    """Project a persisted path whose Library metadata is unavailable."""
+    """Project a persisted path whose Library metadata is unavailable.
+
+    The projected ``trackId`` is the documented legacy-path fallback
+    identity (``legacy-path::<path>``) — the same fallback the search and
+    sort layers use for pre-catalog records (M6-EXT-R4-F)."""
     file_path = Path(path)
     return {
-        "trackId": str(file_path),
+        "trackId": f"legacy-path::{file_path}",
         "displayName": file_path.stem,
         "title": file_path.stem,
         "artist": "",

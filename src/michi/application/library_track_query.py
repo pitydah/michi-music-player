@@ -51,7 +51,10 @@ class LibraryTrackQueryService:
                 value = normalize_track_format(
                     ref.codec, ref.container, ref.file_path, ref.sample_rate_hz
                 ).label
-            return (value.casefold(), str(ref.file_path))
+            # Stable tie-break: TrackId (legacy-path:: fallback only for
+            # pre-catalog records) — M6-EXT-R4-F.
+            tiebreak = ref.track_id or f"legacy-path::{ref.file_path}"
+            return (value.casefold(), tiebreak)
 
         return sorted(rows, key=key, reverse=self._state.descending)
 

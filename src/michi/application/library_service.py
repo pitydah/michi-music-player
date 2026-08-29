@@ -220,14 +220,14 @@ class LibraryService:
         modified_ids = set(classification.modified)
         track_refs: list[TrackRef] = []
         upserts: list[LibraryIndexEntry] = []
-        for track_id, file_size, mtime_ns in discovered:
-            path = Path(track_id)
-            if track_id in added_ids or track_id in modified_ids:
+        for path_str, file_size, mtime_ns in discovered:
+            path = Path(path_str)
+            if path_str in added_ids or path_str in modified_ids:
                 meta = self._extract_meta(path)
                 ref = self._trackref_from_metadata(path, meta)
-                upserts.append(LibraryIndexEntry(track_id, file_size, mtime_ns, meta))
+                upserts.append(LibraryIndexEntry(path_str, file_size, mtime_ns, meta))
             else:
-                entry = known[track_id]
+                entry = known[path_str]
                 ref = self._trackref_from_metadata(path, entry.metadata)
             track_refs.append(ref)
         return track_refs, tuple(upserts), classification.removed
@@ -290,20 +290,20 @@ class LibraryService:
             progress.processed = 0
             track_refs = []
             upserts = []
-            for track_id, file_size, mtime_ns in discovered:
+            for path_str, file_size, mtime_ns in discovered:
                 if token.cancelled:
                     raise ScanCancelled()
-                progress.current_path = track_id
+                progress.current_path = path_str
                 progress.processed += 1
-                path = Path(track_id)
-                if track_id in added_ids or track_id in modified_ids:
+                path = Path(path_str)
+                if path_str in added_ids or path_str in modified_ids:
                     meta = self._extract_meta(path)
                     track_refs.append(self._trackref_from_metadata(path, meta))
                     upserts.append(
-                        LibraryIndexEntry(track_id, file_size, mtime_ns, meta)
+                        LibraryIndexEntry(path_str, file_size, mtime_ns, meta)
                     )
                 else:
-                    entry = known[track_id]
+                    entry = known[path_str]
                     track_refs.append(
                         self._trackref_from_metadata(path, entry.metadata)
                     )

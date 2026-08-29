@@ -284,15 +284,26 @@ def resolve_album_artist(track) -> str:
     return track.artist
 
 
+def _stable_track_tiebreak(track) -> str:
+    """Deterministic stable tie-break (M6-EXT-R4-F): TrackId first; the
+    documented legacy-path fallback is COMPATIBILITY ONLY — moving/renaming
+    a migrated track must never reorder equal-metadata album members."""
+    if track.track_id:
+        return track.track_id
+    return f"legacy-path::{track.file_path}"
+
+
 def _canonical_track_sort_key(track) -> tuple:
     """Canonical per-album track ordering (M6.1): (disc>0 or 10**6,
-    track>0 or 10**6, casefolded sort title or title, path). UNKNOWN (0)
-    sorts deterministically LAST within its dimension — never invented as 1."""
+    track>0 or 10**6, casefolded sort title or title, stable tie-break).
+    UNKNOWN (0) sorts deterministically LAST within its dimension — never
+    invented as 1. The final tie-break is the stable TrackId, never the
+    filesystem path."""
     return (
         track.disc_number if track.disc_number > 0 else 10**6,
         track.track_number if track.track_number > 0 else 10**6,
         (track.sort_title or track.title or "").casefold(),
-        str(track.file_path),
+        _stable_track_tiebreak(track),
     )
 
 
