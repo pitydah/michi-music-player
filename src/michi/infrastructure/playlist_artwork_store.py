@@ -31,6 +31,19 @@ _MAX_PIXELS = {
 # components (/, \, ..) never do.
 _SAFE_PLAYLIST_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 
+# R4-06: el filename V2 NUNCA contiene el playlist_id raw — el owner se
+# codifica como token hash inequívoco (elimina colisiones tipo
+# "abc" vs "abc_hero").
+_V2_ASSET_RE = re.compile(
+    r"playlist_v2_([0-9a-f]{20})_(cover|hero)_([0-9a-f]{20})\.(png|jpg|webp)"
+)
+
+
+def _owner_token(playlist_id: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(playlist_id.encode("utf-8")).hexdigest()[:20]
+
 
 # Canonical extension per REAL detected format (R2 P1-08): the stored file
 # uses the extension of the actual image format, never a misleading suffix.
@@ -164,6 +177,11 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
 
         Digest == the bytes that were actually saved. Any failure removes
         the temp (missing_ok) and NEVER touches the old asset."""
+        # R4-07: fail-closed CREATE path — un playlist_id unsafe no produce
+        # temp, copy ni ningún side effect.
+        if not _SAFE_PLAYLIST_ID_RE.fullmatch(playlist_id):
+            logger.warning("refusing prepare: unsafe playlist id %r", playlist_id)
+            return None
         src = Path(source_image_path)
         if not src.is_file():
             return None
@@ -226,7 +244,12 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
             )
             return None
 
-        stem = f"playlist_{playlist_id}{suffix}_{digest.hexdigest()[:20]}"
+        # R4-06: V2 — owner token hash + role explícito; el id raw nunca
+        # aparece en el nombre (sin ambigüedad de delimitadores).
+        role = "cover" if suffix == "" else "hero"
+        stem = (
+            f"playlist_v2_{_owner_token(playlist_id)}_{role}_{digest.hexdigest()[:20]}"
+        )
         final_path = self._storage_dir / f"{stem}{inspection.extension}"
         try:
             if final_path.is_file():
@@ -272,24 +295,24 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
         if role not in ("cover", "hero"):
             logger.warning("refusing delete: unknown role %r", role)
             return False
-        suffix = "" if role == "cover" else "_hero"
-        # Ownership exacta: prefix = playlist_<id><suffix>_ seguido
-        # INMEDIATAMENTE del digest canónico. Un id que contenga "_" o un
-        # hero tratado como cover nunca matchean (el digest es inmediato).
-        prefix = f"playlist_{playlist_id}{suffix}_"
-        if not candidate.name.startswith(prefix):
+        # R4-06: el filename V2 se parsea COMPLETO; el owner token (hash)
+        # y el role deben coincidir exactamente. Colisiones de
+        # delimitadores ("abc" vs "abc_hero") son imposibles.
+        match = _V2_ASSET_RE.fullmatch(candidate.name)
+        if match is None:
+            # Legacy V1 sin token inequívoco → FAIL CLOSED (deuda de
+            # cleanup antes que borrar un asset equivocado).
             logger.warning(
-                "refusing delete: %r does not belong to playlist %r (%s)",
+                "refusing delete: %r is not a V2 managed asset for %r (%s)",
                 candidate.name,
                 playlist_id,
                 role,
             )
             return False
-        rest = candidate.name[len(prefix) :]
-        if re.fullmatch(r"[0-9a-f]{20}\.(png|jpg|webp)", rest) is None:
+        token, file_role, digest, _ext = match.groups()
+        if token != _owner_token(playlist_id) or file_role != role:
             logger.warning(
-                "refusing delete: filename %r does not match %s ownership "
-                "for playlist %r",
+                "refusing delete: %r ownership mismatch (%s/%s)",
                 candidate.name,
                 role,
                 playlist_id,

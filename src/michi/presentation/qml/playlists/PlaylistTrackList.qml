@@ -18,7 +18,6 @@ Item {
     // R3-07: selección visual por PATH estable — el índice es una posición
     // y no sobrevive reorders; el path sí. Playback sigue usando index.
     property string selectedTrackPath: ""
-    property int selectedIndex: -1
     // The header must be a COMPONENT: ListView.header assigns to its
     // internal QQmlComponent slot — passing a pre-instantiated Item (typed
     // var or Item) fails with "Unable to assign ... to QQmlComponent" and
@@ -53,9 +52,8 @@ Item {
     onRowsChanged: root._syncSelectedIndex()
 
     function resetForPlaylist() {
-        // R3-07: reset total del estado transitorio para una playlist nueva.
-        root.selectedTrackPath = ""
-        root.selectedIndex = -1
+        // R4-02: el child NO escribe selection (autoridad del parent) —
+        // solo cursor/presentación. selectedTrackPath es identidad.
         trackList.positionViewAtBeginning()
         trackList.currentIndex = root.rows.length > 0 ? 0 : -1
     }
@@ -149,9 +147,7 @@ Item {
                 && playback && modelData.path
                 && playback.currentPath === modelData.path
             readonly property bool isSelected:
-                root.selectedTrackPath.length > 0
-                    ? root.selectedTrackPath === modelData.path
-                    : root.selectedIndex === index
+                root.selectedTrackPath === modelData.path
 
             // R3-09: reveal incluye el focus de los PROPIOS controles —
             // un keyboard user que tabee hasta ellos los ve (opacity 1

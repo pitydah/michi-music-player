@@ -86,7 +86,8 @@ def test_filesystem_playlist_artwork_store(tmp_path: Path) -> None:
     stored_path = store.prepare_cover("pl-123", src_img)
     assert stored_path is not None
     assert Path(stored_path).is_file()
-    assert Path(stored_path).name.startswith("playlist_pl-123_")
+    # R4-06: V2 — el filename usa owner token hash, nunca el id raw.
+    assert Path(stored_path).name.startswith("playlist_v2_")
 
     # Delete managed asset (fail-closed protocol)
     store.delete_managed_asset("pl-123", "cover", stored_path)

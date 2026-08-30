@@ -132,13 +132,18 @@ Item {
                 onPlayTrackRequested: index => playlists.play_playlist_track(index)
                 onAddMusicRequested: navigation.navigate("library")
                 onTogglePinRequested: {
-                    var result = playlists.selectedPlaylistPinned
-                        ? playlists.unpin_playlist(playlists.selectedPlaylistId)
-                        : playlists.pin_playlist(playlists.selectedPlaylistId)
+                    // R4-08: el feedback se deriva del COMMAND INTENT
+                    // confirmado, nunca del post-state (que ya cambió).
+                    var shouldPin = !playlists.selectedPlaylistPinned
+                    var playlistId = playlists.selectedPlaylistId
+                    var playlistName = playlists.selectedPlaylistName
+                    var result = shouldPin
+                        ? playlists.pin_playlist(playlistId)
+                        : playlists.unpin_playlist(playlistId)
                     if (result === "updated")
-                        window.showToast(playlists.selectedPlaylistPinned
-                            ? qsTr("Unpinned %1").arg(playlists.selectedPlaylistName)
-                            : qsTr("Pinned %1").arg(playlists.selectedPlaylistName))
+                        window.showToast(shouldPin
+                            ? qsTr("Pinned %1").arg(playlistName)
+                            : qsTr("Unpinned %1").arg(playlistName))
                 }
                 // M9-R1J: the shared dialogs are the canonical interaction
                 // boundary — the Detail emits intents; ContentHost routes
@@ -290,7 +295,13 @@ Item {
         customCoverPath: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveCustomCoverPath || ""
         coverAssetMissing: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.coverAssetMissing || false
         mosaicArtworkPaths: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.mosaicArtworkPaths || []
-        heroMode: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveHeroMode || "auto"
+        // R4-04: el editor parte del PERSISTED INTENT; el effective es
+        // solo preview. Un hero image missing nunca se convierte en Auto
+        // implícitamente.
+        persistedHeroMode: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.persistedHeroMode || "auto"
+        persistedHeroImagePath: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.persistedHeroImagePath || ""
+        effectiveHeroMode: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveHeroMode || "auto"
+        effectiveHeroImagePath: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveHeroImagePath || ""
         heroImageMissing: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.heroImageMissing || false
         heroSolidColor: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.heroSolidColor || MichiPalette.playlistHeroTopHex
         heroGradientColors: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.heroGradientColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
@@ -299,7 +310,6 @@ Item {
             return row && row.heroGradientAngle !== undefined
                 ? row.heroGradientAngle : 135
         }
-        heroImagePath: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveHeroImagePath || ""
         autoHeroColors: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.autoHeroColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
     }
 

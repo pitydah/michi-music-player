@@ -237,7 +237,9 @@ class PlaylistService:
             replace(p, name=cleaned) if p.playlist_id == playlist_id else p
             for p in self._playlists
         )
-        self._commit_playlists(candidate)
+        changed = self._commit_playlists(candidate)
+        if not changed:
+            return False
         self._notify()
         return True
 
@@ -256,7 +258,9 @@ class PlaylistService:
         candidate = tuple(
             updated if p.playlist_id == playlist_id else p for p in self._playlists
         )
-        self._commit_playlists(candidate)
+        changed = self._commit_playlists(candidate)
+        if not changed:
+            return False
         self._notify()
         return True
 
@@ -282,7 +286,9 @@ class PlaylistService:
         candidate = tuple(
             updated if p.playlist_id == playlist_id else p for p in self._playlists
         )
-        self._commit_playlists(candidate)
+        changed = self._commit_playlists(candidate)
+        if not changed:
+            return False
         self._notify()
         return True
 
@@ -299,7 +305,9 @@ class PlaylistService:
         candidate = tuple(
             updated if p.playlist_id == playlist_id else p for p in self._playlists
         )
-        self._commit_playlists(candidate)
+        changed = self._commit_playlists(candidate)
+        if not changed:
+            return False
         self._notify()
         return True
 
@@ -318,7 +326,9 @@ class PlaylistService:
         candidate = tuple(
             updated if p.playlist_id == playlist_id else p for p in self._playlists
         )
-        self._commit_playlists(candidate)
+        changed = self._commit_playlists(candidate)
+        if not changed:
+            return False
         self._notify()
         return True
 
@@ -375,7 +385,9 @@ class PlaylistService:
         candidate = tuple(
             updated if p.playlist_id == playlist_id else p for p in self._playlists
         )
-        self._commit_playlists(candidate)
+        changed = self._commit_playlists(candidate)
+        if not changed:
+            return False
         self._notify()
         if self._artwork_store is not None and old_path:
             try:
@@ -400,7 +412,9 @@ class PlaylistService:
         candidate = tuple(
             updated if p.playlist_id == playlist_id else p for p in self._playlists
         )
-        self._commit_playlists(candidate)
+        changed = self._commit_playlists(candidate)
+        if not changed:
+            return False
         self._notify()
         return True
 
@@ -632,7 +646,13 @@ class PlaylistService:
                 hero_image_path=new_hero_path,
             )
         else:
-            appearance = replace(appearance, hero_mode=PlaylistHeroMode.AUTO)
+            # R4-03: AUTO limpia TODO el estado específico de IMAGE —
+            # hero_image_path == "" es el estado canónico.
+            appearance = replace(
+                appearance,
+                hero_mode=PlaylistHeroMode.AUTO,
+                hero_image_path="",
+            )
 
         updated = replace(playlist, custom_cover_path=new_cover, appearance=appearance)
         candidate = tuple(

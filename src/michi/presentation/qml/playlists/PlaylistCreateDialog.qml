@@ -61,13 +61,31 @@ MichiDialog {
             root.errorText = qsTr("Playlist name must not be empty")
             return
         }
-        if (playlists.create_and_open_playlist(name)) {
-            // M9-R1I: deterministic success flow — created/opened, then the
-            // dialog closes (PLAYLISTS/<new id>, Recent rank 0, Detail shows).
+        // R4-01: los result codes NO son bool — cada code tiene su flujo.
+        var result = playlists.create_and_open_playlist(name)
+        if (result === "created"
+                || result === "created_recent_unsaved") {
             root.playlistCreated(name)
             root.close()
-        } else {
+            return
+        }
+        if (result === "conflict") {
             root.errorText = qsTr("A playlist with that name already exists")
+            nameField.forceActiveFocus()
+            return
+        }
+        if (result === "invalid") {
+            root.errorText = qsTr("Playlist name must not be empty")
+            nameField.forceActiveFocus()
+            return
+        }
+        if (result === "persistence_failed") {
+            // persistenceFailed es la ÚNICA autoridad de toast.
+            nameField.forceActiveFocus()
+            return
+        }
+        if (result === "not_found") {
+            root.errorText = qsTr("Could not create the playlist.")
             nameField.forceActiveFocus()
         }
     }

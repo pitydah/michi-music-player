@@ -122,19 +122,18 @@ class PlaylistsBridge(QObject):
         if self._palette_extractor is not None:
             self._palette_extractor.close()
 
-    def _run_mutation(self, operation: str, mutation) -> bool:
-        """R2 P1-05 PRESENTATION BOUNDARY: executes a persistence-capable
-        mutation and translates the contractual PlaylistPersistenceError
-        into a stable failure code — it NEVER escapes raw into QML.
-
-        Only contractual persistence failures are translated; programmer
-        errors keep raising (visible in development/tests)."""
+    def _run_mutation(self, operation: str, mutation):
+        """R4-10 PRESENTATION BOUNDARY: traduce SOLO la excepción
+        contractual PlaylistPersistenceError → persistenceFailed(operation)
+        + None (PERSISTENCE_FAILURE_SENTINEL). NUNCA convierte False
+        lógico (no-change/duplicate) en persistence failure — la semántica
+        lógica proviene del Service/result del caller."""
         try:
-            return bool(mutation())
+            return mutation()
         except PlaylistPersistenceError:
             logger.warning("playlist mutation failed (%s)", operation)
             self.persistenceFailed.emit(operation)
-            return False
+            return None
 
     def _on_playlist_service_changed(self) -> None:
         """R2 P1-10: a PlaylistService change marks the ROW projection dirty
@@ -772,11 +771,12 @@ class PlaylistsBridge(QObject):
             return "not_found"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "pin", lambda: self._playlist_service.pin_playlist(playlist_id)
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "updated"
+        return "updated" if result else "no_change"
 
     @Slot(str, result=str)
     def unpin_playlist(self, playlist_id: str) -> str:
@@ -784,11 +784,12 @@ class PlaylistsBridge(QObject):
             return "not_found"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "unpin", lambda: self._playlist_service.unpin_playlist(playlist_id)
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "updated"
+        return "updated" if result else "no_change"
 
     @Slot(str, str, result=str)
     def set_custom_cover(self, playlist_id: str, path: str) -> str:
@@ -997,14 +998,15 @@ class PlaylistsBridge(QObject):
             return "not_found"
         if not (0 <= from_index < len(playlist.track_paths)):
             return "invalid_index"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "move_track",
             lambda: self._playlist_service.move_track(
                 playlist_id, from_index, to_index
             ),
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "moved"
+        return "moved" if result else "no_change"
 
     @Slot()
     def play_selected_playlist(self) -> None:

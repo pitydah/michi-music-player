@@ -226,9 +226,11 @@ def test_cover_and_hero_assets_are_independent_and_cleaned(tmp_path: Path) -> No
 
     cover_path = Path(service.set_custom_cover("p1", cover_source))
     hero_path = Path(service.set_custom_hero_image("p1", hero_source))
-    assert cover_path.name.startswith("playlist_p1_")
+    assert cover_path.name.startswith("playlist_v2_")  # R4-06 V2 token
     assert cover_path.suffix == ".png"
-    assert hero_path.name.startswith("playlist_p1_hero_")
+    assert (
+        hero_path.name.startswith("playlist_v2_") and "_hero_" in hero_path.name
+    )  # R4-06
     assert hero_path.suffix == ".png"
 
     service.remove_custom_cover("p1")
@@ -341,7 +343,7 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     assert "set_custom_hero_from_url" not in panel
     assert "apply_visual_appearance(" in panel
     assert "root.draftHeroImageUrl = selectedFile" in panel
-    assert "Copying and persistence happen" in panel
+    assert "selección = DRAFT (cero writes)" in panel  # R4-04/05 comment
     # R3-06: el panel ÚNICO vive en ContentHost (Detail emite intent).
     assert "PlaylistAppearancePanel" not in detail
     assert "customizeAppearanceRequested" in detail

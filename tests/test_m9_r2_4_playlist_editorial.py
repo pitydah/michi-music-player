@@ -83,7 +83,9 @@ def test_playing_state_is_distinct_from_selected():
     assert "playback.currentPath === modelData.path" in table
     assert "MichiPlayingIndicator" in table
     assert "MichiPalette.auroraCyan" in table  # accent on the title
-    assert "root.selectedIndex === index" in table
+    # R4-02: isSelected = identidad por path (única autoridad).
+    assert "root.selectedTrackPath === modelData.path" in table
+    assert "selectedIndex" not in table
 
 
 def test_rows_activate_play_and_hide_actions_until_hover():
@@ -130,7 +132,8 @@ def test_page_connects_play_track_and_shuffle():
     page = read("playlists/PlaylistDetailView.qml")
     # M4-R1 authority: the row play intent routes DIRECTLY to the
     # PlaylistsBridge (play_playlist_track) — never a bare re-emit.
-    assert "onPlayTrackRequested: index => playlists.play_playlist_track(index)" in page
+    # R4-11: el Detail re-emite el INTENT; ContentHost traduce al Bridge.
+    assert "onPlayTrackRequested: index => root.playTrackRequested(index)" in page
     assert "onShuffleRequested: root.shuffleRequested()" in page  # R2.1-07 inline
     host = read("shell/ContentHost.qml")
     # R2 P2-01: the Detail playback intent routes through the canonical

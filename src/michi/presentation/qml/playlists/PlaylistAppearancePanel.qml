@@ -23,7 +23,12 @@ MichiDialog {
     property bool coverAssetMissing: false
     property bool heroImageMissing: false
     property var mosaicArtworkPaths: []
+    // R4-04: editor parte del PERSISTED INTENT; effective solo preview.
     property string heroMode: "auto"
+    property string persistedHeroMode: "auto"
+    property string persistedHeroImagePath: ""
+    property string effectiveHeroMode: "auto"
+    property string effectiveHeroImagePath: ""
     property string heroSolidColor: MichiPalette.playlistHeroTopHex
     property var heroGradientColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
     property real heroGradientAngle: 135
@@ -37,6 +42,13 @@ MichiDialog {
     property bool draftThirdColor: false
     property url draftHeroImageUrl: ""
     property string draftCoverAction: "keep"
+    // R4-05: preview WYSIWYG del candidate que Apply persistirá.
+    readonly property string draftPreviewCoverPath:
+        root.draftCoverAction === "replace"
+            ? root.draftCoverImageUrl.toString()
+            : root.draftCoverAction === "auto"
+                ? ""
+                : root.customCoverPath
     property url draftCoverImageUrl: ""
     property string errorText: ""
 
@@ -50,7 +62,9 @@ MichiDialog {
     }
 
     function _syncDraft() {
-        root.draftMode = root.heroMode || "auto"
+        // R4-04: el editor arranca del PERSISTED mode — un image missing
+        // permanece Image hasta que el usuario decida explícitamente.
+        root.draftMode = root.persistedHeroMode || root.heroMode || "auto"
         root.draftCoverAction = "keep"
         solidField.text = root.heroSolidColor || MichiPalette.playlistHeroTopHex
         var colors = root.heroGradientColors || []
@@ -84,7 +98,8 @@ MichiDialog {
             root.close()
         } else if (result === "asset_rejected") {
             root.errorText = qsTr(
-                "The previous custom image is unavailable. Choose another image.")
+                "The previous custom image is unavailable. "
+                + "Choose another image or reset to Automatic.")
         } else if (result === "invalid") {
             root.errorText = qsTr("Check the selected colors or image and try again.")
         }
@@ -112,12 +127,11 @@ MichiDialog {
         title: qsTr("Choose a custom hero image")
         nameFilters: [qsTr("Image files (*.png *.jpg *.jpeg *.webp)")]
         onAccepted: {
-            // File selection is a draft. Copying and persistence happen
-            // only in _applyHero(), so Close is a real cancellation path.
+            // R4-04/05: selección = DRAFT (cero writes); la persistencia
+            // ocurre solo en _apply() — Close es cancelación real.
             root.draftHeroImageUrl = selectedFile
             root.errorText = ""
             root.draftMode = "image"
-            root.draftHeroImageUrl = selectedFile
         }
     }
 
@@ -151,7 +165,7 @@ MichiDialog {
                     PlaylistArtwork {
                         Layout.preferredWidth: 112
                         Layout.preferredHeight: 112
-                        customCoverPath: root.customCoverPath
+                        customCoverPath: root.draftPreviewCoverPath
                         mosaicArtworkPaths: root.mosaicArtworkPaths
                         fallbackText: root.playlistName
                         radius: MichiRadius.md

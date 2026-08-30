@@ -15,8 +15,6 @@ Item {
     property string searchQuery: ""
     property string sortMode: "name" // "name", "name_desc", "tracks", "duration", "pinned", "recent"
     property string displayMode: "grid" // "grid" | "list"
-    property string appearancePlaylistId: ""
-
     signal createPlaylistRequested()
     signal openPlaylistRequested(string playlistId)
     signal playPlaylistRequested(string playlistId)
@@ -24,22 +22,6 @@ Item {
     signal customizeAppearanceRequested(string playlistId)
     signal renamePlaylistRequested(string playlistId, string playlistName)
     signal deletePlaylistRequested(string playlistId, string playlistName)
-
-    readonly property var appearancePlaylist: {
-        var rows = playlists.playlists || []
-        for (var index = 0; index < rows.length; ++index) {
-            if (rows[index].playlistId === root.appearancePlaylistId)
-                return rows[index]
-        }
-        return ({
-            playlistId: "", name: "", customCoverPath: "",
-            mosaicArtworkPaths: [], heroMode: "auto",
-            heroSolidColor: MichiPalette.playlistHeroTopHex,
-            heroGradientColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex],
-            heroGradientAngle: 135, heroImagePath: "",
-            autoHeroColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
-        })
-    }
 
     function customizeAppearance(row) {
         // R3-06: el panel ÚNICO vive en ContentHost.

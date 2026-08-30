@@ -18,12 +18,10 @@ Item {
     Component.onCompleted: root._detailReady = true
     property string playlistId: ""
     property string selectedTrackPath: ""
-    property int selectedIndex: -1
     onPlaylistIdChanged: {
-        // R3-07: el estado transitorio NUNCA se filtra entre playlists.
-        // El reset corre tras el layout (la página puede estar montándose).
+        // R4-02: el PARENT es la única autoridad de selección — se limpia
+        // al cambiar de playlist; el child solo resetea cursor/scroll.
         root.selectedTrackPath = ""
-        root.selectedIndex = -1
         if (root._detailReady)
             trackList.resetForPlaylist()
     }
@@ -174,18 +172,15 @@ Item {
                 anchors.fill: parent
                 rows: playlists.playlistTrackRows
                 selectedTrackPath: root.selectedTrackPath
-                selectedIndex: root.selectedIndex
                 showArtistColumn: root.width >= 700
                 showAlbumColumn: root.width >= 900
                 showFormatColumn: root.width > 1200
                 narrow: root.width < 700
                 heroComponent: heroComponent
 
-                onTrackSelected: path => {
-                    root.selectedTrackPath = path
-                    root.selectedIndex = -1
-                }
-                onPlayTrackRequested: index => playlists.play_playlist_track(index)
+                onTrackSelected: path => root.selectedTrackPath = path
+                // R4-11: el Detail re-emite el INTENT — ContentHost traduce.
+                onPlayTrackRequested: index => root.playTrackRequested(index)
                 onRemoveTrackRequested: index => root.removeTrackRequested(index)
                 onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
             }
