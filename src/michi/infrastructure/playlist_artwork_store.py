@@ -10,6 +10,31 @@ from michi.application.ports import PlaylistArtworkStorePort
 logger = logging.getLogger(__name__)
 
 
+def _is_decodable_image(path: Path) -> bool:
+    """True only when the file REALLY decodes as an image (KILLCRITIC P1)."""
+    try:
+        from PySide6.QtGui import QImageReader
+
+        reader = QImageReader(str(path))
+        image = reader.read()
+        return image is not None and not image.isNull()
+    except Exception:  # noqa: BLE001 - validation must never crash
+        return False
+
+
+def _image_edge_exceeds(path: Path, max_edge: int) -> bool:
+    try:
+        from PySide6.QtGui import QImageReader
+
+        reader = QImageReader(str(path))
+        size = reader.size()
+        if not size.isValid():
+            return False
+        return max(size.width(), size.height()) > max_edge
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _content_digest(path: Path) -> str:
     """Deterministic content version for immutable managed filenames."""
     digest = hashlib.sha256()
@@ -20,6 +45,14 @@ def _content_digest(path: Path) -> str:
 
 
 _ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+# KILLCRITIC hardening: a file must be a REAL decodable image, not just a
+# filename with an allowed extension. Bounds protect against garbage and
+# pathological resolutions (cover ~4k, hero generous but bounded).
+_COVER_MAX_EDGE = 4096
+_COVER_MAX_BYTES = 20 * 1024 * 1024
+_HERO_MAX_EDGE = 5120
+_HERO_MAX_BYTES = 30 * 1024 * 1024
 
 
 class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
@@ -129,8 +162,23 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
         ext = src.suffix.lower()
         if ext not in _ALLOWED_EXTENSIONS:
             return None
+        max_edge = _COVER_MAX_EDGE if suffix == "" else _HERO_MAX_EDGE
+        max_bytes = _COVER_MAX_BYTES if suffix == "" else _HERO_MAX_BYTES
         try:
             if src.stat().st_size == 0:
+                return None
+            if src.stat().st_size > max_bytes:
+                logger.warning(
+                    "rejecting oversized playlist asset (%d bytes)", src.stat().st_size
+                )
+                return None
+            # REAL decode validation (KILLCRITIC P1): garbage.jpg must never
+            # become a managed cover/hero.
+            if not _is_decodable_image(src):
+                logger.warning("rejecting non-decodable playlist asset: %s", src)
+                return None
+            if _image_edge_exceeds(src, max_edge):
+                logger.warning("rejecting over-resolution playlist asset: %s", src)
                 return None
         except OSError:
             return None

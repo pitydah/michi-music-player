@@ -43,6 +43,16 @@ class MemoryPlaylistsPort:
         self.save_navigation(navigation)
 
 
+def _real_image(path: Path, ext: str, color: int) -> Path:
+    """Real decodable image (the asset store validates actual decodability)."""
+    from PySide6.QtGui import QImage
+
+    img = QImage(64, 64, QImage.Format_RGB32)
+    img.fill(color)
+    assert img.save(str(path), "PNG" if ext == ".png" else "JPG")
+    return path
+
+
 def test_playlist_appearance_defaults_to_auto() -> None:
     playlist = Playlist(playlist_id="p1", name="Legacy-safe")
     assert playlist.appearance == PlaylistAppearance()
@@ -148,10 +158,8 @@ def test_malformed_appearance_degrades_field_by_field_without_writeback(
 def test_cover_and_hero_workflow_survives_restart_and_resets(tmp_path: Path) -> None:
     db_path = tmp_path / "michi.db"
     store = FilesystemPlaylistArtworkStore(tmp_path / "managed")
-    cover_source = tmp_path / "cover.jpg"
-    hero_source = tmp_path / "hero.png"
-    cover_source.write_bytes(b"cover")
-    hero_source.write_bytes(b"hero")
+    cover_source = _real_image(tmp_path / "cover.jpg", ".jpg", 0xFF581C)
+    hero_source = _real_image(tmp_path / "hero.png", ".png", 0xFF811B)
     repository = SqlitePlaylistsRepository(db_path)
     service = PlaylistService(playlists_port=repository, artwork_store=store)
     playlist = service.create_playlist("Restart")
@@ -208,10 +216,8 @@ def test_unrelated_mutations_preserve_appearance_metadata() -> None:
 
 def test_cover_and_hero_assets_are_independent_and_cleaned(tmp_path: Path) -> None:
     store = FilesystemPlaylistArtworkStore(tmp_path / "managed")
-    cover_source = tmp_path / "cover.png"
-    hero_source = tmp_path / "hero.webp"
-    cover_source.write_bytes(b"cover")
-    hero_source.write_bytes(b"hero")
+    cover_source = _real_image(tmp_path / "cover.png", ".png", 0xFF581C)
+    hero_source = _real_image(tmp_path / "hero.webp", ".webp", 0xFF811B)
     port = MemoryPlaylistsPort([Playlist(playlist_id="p1", name="Visual")])
     service = PlaylistService(playlists_port=port, artwork_store=store)
 

@@ -28,6 +28,7 @@ from michi.domain.library_catalog import (
     new_media_file_id,
     new_track_id,
 )
+from michi.domain.playlist import PlaylistTrackReference
 from michi.infrastructure.filesystem_source_scanner import (
     FilesystemLibrarySourceScanner,
 )
@@ -41,6 +42,17 @@ class _StubPrefs(LibraryPrefsPort):
 
     def save(self, prefs: LibraryPrefs) -> None:
         del prefs
+
+
+def _png_at(tmp_path, name: str, color) -> Path:
+    """Real decodable PNG (the asset store validates actual decodability)."""
+    from PySide6.QtGui import QImage
+
+    img = QImage(64, 64, QImage.Format_RGB32)
+    img.fill(color)
+    path = tmp_path / name
+    assert img.save(str(path), "PNG")
+    return path
 
 
 class _Progress:
@@ -477,8 +489,7 @@ class TestImmutableArtworkCandidates:
         )
         service._playlists = [Playlist(playlist_id="p1", name="Mix")]
         service._persisted = tuple(service._playlists)
-        src = tmp_path / "cover.png"
-        src.write_bytes(b"NEW-COVER")
+        src = _png_at(tmp_path, "cover.png", 0xFF581C)
         service.set_custom_cover("p1", src)
         # The DB references a file that ALREADY EXISTS (no staging window).
         assert seen.get("exists") is True
@@ -495,18 +506,16 @@ class TestImmutableArtworkCandidates:
         )
         service._playlists = [Playlist(playlist_id="p1", name="Mix")]
         service._persisted = tuple(service._playlists)
-        old_src = tmp_path / "old.png"
-        old_src.write_bytes(b"OLD-COVER")
+        old_src = _png_at(tmp_path, "old.png", 0xFF581C)
         assert service.set_custom_cover("p1", old_src) is not None
         old_path = service.get_playlist("p1").custom_cover_path
 
         port.fail = True
-        new_src = tmp_path / "new.png"
-        new_src.write_bytes(b"NEW-COVER")
+        new_src = _png_at(tmp_path, "new.png", 0xCB0543)
         with pytest.raises(PlaylistPersistenceError):
             service.set_custom_cover("p1", new_src)
         assert service.get_playlist("p1").custom_cover_path == old_path
-        assert Path(old_path).read_bytes() == b"OLD-COVER"
+        assert Path(old_path).read_bytes() == Path(old_src).read_bytes()
 
     def test_hero_db_failure_preserves_previous_bytes(self, tmp_path) -> None:
         from michi.application.playlist_service import PlaylistService
@@ -520,18 +529,16 @@ class TestImmutableArtworkCandidates:
         )
         service._playlists = [Playlist(playlist_id="p1", name="Mix")]
         service._persisted = tuple(service._playlists)
-        old_src = tmp_path / "old.png"
-        old_src.write_bytes(b"OLD-HERO")
+        old_src = _png_at(tmp_path, "old_hero.png", 0xFF811B)
         assert service.set_custom_hero_image("p1", old_src) is not None
         old_path = service.get_playlist("p1").appearance.hero_image_path
 
         port.fail = True
-        new_src = tmp_path / "new.png"
-        new_src.write_bytes(b"NEW-HERO")
+        new_src = _png_at(tmp_path, "new_hero.png", 0xF51D51)
         with pytest.raises(PlaylistPersistenceError):
             service.set_custom_hero_image("p1", new_src)
         assert service.get_playlist("p1").appearance.hero_image_path == old_path
-        assert Path(old_path).read_bytes() == b"OLD-HERO"
+        assert Path(old_path).read_bytes() == Path(old_src).read_bytes()
 
     def test_post_commit_old_cleanup_failure_does_not_rollback_new_reference(
         self, tmp_path
@@ -547,8 +554,7 @@ class TestImmutableArtworkCandidates:
         )
         service._playlists = [Playlist(playlist_id="p1", name="Mix")]
         service._persisted = tuple(service._playlists)
-        old_src = tmp_path / "old.png"
-        old_src.write_bytes(b"OLD")
+        old_src = _png_at(tmp_path, "old.png", 0xFF581C)
         assert service.set_custom_cover("p1", old_src) is not None
         old_path = service.get_playlist("p1").custom_cover_path
 
@@ -556,12 +562,11 @@ class TestImmutableArtworkCandidates:
             raise OSError("cleanup failure")
 
         store.delete_managed_asset = broken_delete
-        new_src = tmp_path / "new.png"
-        new_src.write_bytes(b"NEW")
+        new_src = _png_at(tmp_path, "new2.png", 0xCB0543)
         assert service.set_custom_cover("p1", new_src) is not None
         new_path = service.get_playlist("p1").custom_cover_path
         # Durable user state wins; the OLD orphan is acceptable cleanup debt.
-        assert Path(new_path).read_bytes() == b"NEW"
+        assert Path(new_path).read_bytes() == Path(new_src).read_bytes()
         assert new_path != old_path
 
 
@@ -1228,3 +1233,174 @@ class TestLoadingStateAuthority:
         assert 'library.scanStatus === "COMPLETED"' in empty
         assert 'library.scanStatus === "CANCELLED"' in empty
         assert "library.scanActive" in empty
+
+
+class TestRemoveUndoFrozenProvenance:
+    """P0-1: Undo restaura playlist original + índice exacto — nunca la
+    selección actual."""
+
+    def _service_with_tracks(self, names):
+        from michi.application.playlist_service import PlaylistService
+
+        service = PlaylistService(playlists_port=_MemoryPort())
+        playlist = service.create_playlist("A")
+        service.add_track_references(
+            playlist.playlist_id,
+            [
+                PlaylistTrackReference(track_id=f"T{i}", fallback_path=f"/{n}")
+                for i, n in enumerate(names)
+            ],
+        )
+        return service, playlist
+
+    def test_undo_restores_exact_position(self) -> None:
+        service, playlist = self._service_with_tracks(["a", "b", "c", "d"])
+        service.remove_track(playlist.playlist_id, 1)  # remove b
+        assert service.get_playlist(playlist.playlist_id).track_paths == (
+            "/a",
+            "/c",
+            "/d",
+        )
+        service.insert_track(
+            playlist.playlist_id,
+            1,
+            PlaylistTrackReference(track_id="T1", fallback_path="/b"),
+        )
+        assert service.get_playlist(playlist.playlist_id).track_paths == (
+            "/a",
+            "/b",
+            "/c",
+            "/d",
+        )
+
+    def test_undo_first_and_last_index(self) -> None:
+        service, playlist = self._service_with_tracks(["a", "b", "c"])
+        service.remove_track(playlist.playlist_id, 0)
+        service.insert_track(
+            playlist.playlist_id,
+            0,
+            PlaylistTrackReference(track_id="T0", fallback_path="/a"),
+        )
+        assert service.get_playlist(playlist.playlist_id).track_paths == (
+            "/a",
+            "/b",
+            "/c",
+        )
+        service.remove_track(playlist.playlist_id, 2)
+        service.insert_track(
+            playlist.playlist_id,
+            2,
+            PlaylistTrackReference(track_id="T2", fallback_path="/c"),
+        )
+        assert service.get_playlist(playlist.playlist_id).track_paths == (
+            "/a",
+            "/b",
+            "/c",
+        )
+
+    def test_undo_after_navigating_never_touches_other_playlist(self) -> None:
+        service, playlist_a = self._service_with_tracks(["a", "b", "c"])
+        playlist_b = service.create_playlist("B")
+        service.add_track_references(
+            playlist_b.playlist_id,
+            [PlaylistTrackReference(track_id="X", fallback_path="/x")],
+        )
+        service.remove_track(playlist_a.playlist_id, 1)  # remove b from A
+        # "Navigate" to B: the Undo uses the FROZEN playlist A id.
+        service.insert_track(
+            playlist_a.playlist_id,
+            1,
+            PlaylistTrackReference(track_id="T1", fallback_path="/b"),
+        )
+        assert service.get_playlist(playlist_a.playlist_id).track_paths == (
+            "/a",
+            "/b",
+            "/c",
+        )
+        assert service.get_playlist(playlist_b.playlist_id).track_paths == ("/x",)
+
+    def test_undo_no_duplicates(self) -> None:
+        service, playlist = self._service_with_tracks(["a", "b"])
+        service.remove_track(playlist.playlist_id, 1)
+        # Double Undo: the second insert is a duplicate → skipped.
+        ref = PlaylistTrackReference(track_id="T1", fallback_path="/b")
+        assert service.insert_track(playlist.playlist_id, 1, ref) is True
+        assert service.insert_track(playlist.playlist_id, 1, ref) is False
+        assert service.get_playlist(playlist.playlist_id).track_paths == ("/a", "/b")
+
+    def test_undo_after_playlist_deleted_degrades_safely(self) -> None:
+        service, playlist = self._service_with_tracks(["a", "b"])
+        service.remove_track(playlist.playlist_id, 1)
+        service.delete_playlist(playlist.playlist_id)
+        ok = service.insert_track(
+            playlist.playlist_id,
+            1,
+            PlaylistTrackReference(track_id="T1", fallback_path="/b"),
+        )
+        assert ok is False  # no crash, no recreation
+
+
+class _MemoryPort:
+    """Minimal truthful in-memory PlaylistsPort."""
+
+    def __init__(self):
+        self._items = ()
+
+    def load(self):
+        return self._items
+
+    def save(self, playlists):
+        self._items = tuple(playlists)
+
+    def load_navigation(self):
+        from michi.domain.playlist import PlaylistNavigationState
+
+        return PlaylistNavigationState()
+
+    def save_navigation(self, state):
+        del state
+
+    def save_playlists_with_navigation(self, playlists, navigation):
+        self.save(playlists)
+        self.save_navigation(navigation)
+
+
+class TestPlaylistAssetRealValidation:
+    """KILLCRITIC P1: garbage files with valid extensions must never become
+    managed covers/heroes."""
+
+    def _store(self, tmp_path):
+        from michi.infrastructure.playlist_artwork_store import (
+            FilesystemPlaylistArtworkStore,
+        )
+
+        return FilesystemPlaylistArtworkStore(tmp_path / "managed")
+
+    def test_garbage_jpg_rejected_as_cover(self, tmp_path) -> None:
+        store = self._store(tmp_path)
+        garbage = tmp_path / "garbage.jpg"
+        garbage.write_bytes(b"this is not an image at all" * 10)
+        assert store.prepare_cover("p1", garbage) is None
+        assert store.prepare_hero("p1", garbage) is None
+
+    def test_real_png_accepted(self, tmp_path) -> None:
+        store = self._store(tmp_path)
+        from PySide6.QtGui import QImage
+
+        img = QImage(64, 64, QImage.Format_RGB32)
+        img.fill(0xFF581C)
+        png = tmp_path / "real.png"
+        assert img.save(str(png), "PNG")
+        assert store.prepare_cover("p1", png) is not None
+
+    def test_oversized_resolution_rejected(self, tmp_path) -> None:
+        store = self._store(tmp_path)
+        from PySide6.QtGui import QImage
+
+        # 6000px edge exceeds the cover cap (4096) and hero cap (5120).
+        img = QImage(6000, 200, QImage.Format_RGB32)
+        img.fill(0xFF581C)
+        big = tmp_path / "big.png"
+        assert img.save(str(big), "PNG")
+        assert store.prepare_cover("p1", big) is None
+        assert store.prepare_hero("p1", big) is None

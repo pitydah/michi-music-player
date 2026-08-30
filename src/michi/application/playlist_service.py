@@ -328,6 +328,53 @@ class PlaylistService:
         self._notify()
         return added
 
+    def insert_track(
+        self,
+        playlist_id: str,
+        index: int,
+        reference: PlaylistTrackReference,
+    ) -> bool:
+        """RESTORE REMOVED TRACK AT ITS EXACT ORIGINAL POSITION (P0-1).
+
+        The caller supplies the FROZEN original playlist_id + index + ref
+        captured at removal time — this operation NEVER consults any
+        "selected" playlist. If the playlist was deleted meanwhile the
+        operation degrades safely (no-op, False). Exact-position restore
+        never duplicates: when the identity (track_id, else fallback path)
+        is already present, the insert is skipped (False)."""
+        playlist_index = self._find_by_id(playlist_id)
+        if playlist_index < 0:
+            return False  # playlist deleted before Undo: safe degradation
+        playlist = self._playlists[playlist_index]
+        track_ids = list(playlist.track_ids)
+        track_paths = list(playlist.track_paths)
+
+        identity = reference.track_id or reference.fallback_path
+        if identity:
+            existing = set(track_ids) | set(track_paths)
+            if identity in existing:
+                return False  # duplicate policy: exact identity already present
+
+        count = max(len(track_ids), len(track_paths))
+        clamped = max(0, min(index, count))
+        if clamped < len(track_ids):
+            track_ids.insert(clamped, reference.track_id)
+        else:
+            track_ids.append(reference.track_id)
+        if clamped < len(track_paths):
+            track_paths.insert(clamped, reference.fallback_path)
+        else:
+            track_paths.append(reference.fallback_path)
+
+        self._playlists[playlist_index] = replace(
+            playlist,
+            track_ids=tuple(track_ids),
+            track_paths=tuple(track_paths),
+        )
+        self._persist()
+        self._notify()
+        return True
+
     def remove_track(self, playlist_id: str, index: int) -> None:
         playlist_index = self._find_by_id(playlist_id)
         if playlist_index < 0:

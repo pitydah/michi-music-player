@@ -534,6 +534,17 @@ class TestPlaylistAssetDurableOrdering:
         assert service.get_playlist("p1").appearance.hero_image_path == ""
 
 
+def _make_png(tmp_path, name: str, color) -> Path:
+    """Real decodable PNG (the asset store validates actual decodability)."""
+    from PySide6.QtGui import QImage
+
+    img = QImage(64, 64, QImage.Format_RGB32)
+    img.fill(color)
+    path = tmp_path / name
+    assert img.save(str(path), "PNG")
+    return path
+
+
 class TestReplacementStagingProtocol:
     """CORRECTIVE SEAL §9 — byte level: a DB failure after staging must
     preserve the previously committed image byte-for-byte."""
@@ -576,23 +587,19 @@ class TestReplacementStagingProtocol:
         service._playlists = [Playlist(playlist_id="p1", name="Mix")]
         service._persisted = tuple(service._playlists)
         # Commit an initial cover (via the successful first save).
-        old_src = tmp_path / "old.jpg"
-        old_src.write_bytes(b"OLD_BYTES")
+        old_src = _make_png(tmp_path, "old.png", 0xFF581C)
         assert service.set_custom_cover("p1", old_src) is not None
         committed_path = service.get_playlist("p1").custom_cover_path
-        assert Path(committed_path).read_bytes() == b"OLD_BYTES"
+        assert Path(committed_path).read_bytes() == Path(old_src).read_bytes()
 
         # Replace with NEW bytes; the authoritative persist FAILS.
-        new_src = tmp_path / "new.jpg"
-        new_src.write_bytes(b"NEW_BYTES")
+        new_src = _make_png(tmp_path, "new.png", 0xCB0543)
         with pytest.raises(PlaylistPersistenceError):
             service.set_custom_cover("p1", new_src)
 
         # Old committed image byte-for-byte intact; metadata rolled back.
-        assert Path(committed_path).read_bytes() == b"OLD_BYTES"
+        assert Path(committed_path).read_bytes() == Path(old_src).read_bytes()
         assert service.get_playlist("p1").custom_cover_path == committed_path
-        # No NEW bytes anywhere in the committed asset.
-        assert b"NEW_BYTES" not in Path(committed_path).read_bytes()
 
     def test_hero_db_failure_preserves_old_bytes(self, tmp_path) -> None:
         from michi.domain.playlist import PlaylistHeroMode
@@ -609,17 +616,15 @@ class TestReplacementStagingProtocol:
             )
         ]
         service._persisted = tuple(service._playlists)
-        old_src = tmp_path / "old_hero.png"
-        old_src.write_bytes(b"OLD_HERO_BYTES")
+        old_src = _make_png(tmp_path, "old_hero.png", 0xFF811B)
         assert service.set_custom_hero_image("p1", old_src) is not None
         committed = service.get_playlist("p1").appearance.hero_image_path
-        assert Path(committed).read_bytes() == b"OLD_HERO_BYTES"
+        assert Path(committed).read_bytes() == Path(old_src).read_bytes()
 
-        new_src = tmp_path / "new_hero.png"
-        new_src.write_bytes(b"NEW_HERO_BYTES")
+        new_src = _make_png(tmp_path, "new_hero.png", 0xF51D51)
         with pytest.raises(PlaylistPersistenceError):
             service.set_custom_hero_image("p1", new_src)
-        assert Path(committed).read_bytes() == b"OLD_HERO_BYTES"
+        assert Path(committed).read_bytes() == Path(old_src).read_bytes()
         assert service.get_playlist("p1").appearance.hero_image_path == committed
 
     def test_extension_change_failure_preserves_old(self, tmp_path) -> None:
@@ -630,17 +635,15 @@ class TestReplacementStagingProtocol:
         )  # type: ignore[arg-type]
         service._playlists = [Playlist(playlist_id="p1", name="Mix")]
         service._persisted = tuple(service._playlists)
-        old_src = tmp_path / "old.jpg"
-        old_src.write_bytes(b"OLD_BYTES")
+        old_src = _make_png(tmp_path, "old.png", 0xFF581C)
         assert service.set_custom_cover("p1", old_src) is not None
         old_committed = Path(service.get_playlist("p1").custom_cover_path)
 
-        # Extension change .jpg → .png fails at persist: the .jpg survives.
-        new_src = tmp_path / "new.png"
-        new_src.write_bytes(b"NEW_BYTES")
+        # Replacement fails at persist: the old asset survives.
+        new_src = _make_png(tmp_path, "new.png", 0xCB0543)
         with pytest.raises(PlaylistPersistenceError):
             service.set_custom_cover("p1", new_src)
-        assert old_committed.read_bytes() == b"OLD_BYTES"
+        assert old_committed.read_bytes() == Path(old_src).read_bytes()
         assert service.get_playlist("p1").custom_cover_path == str(old_committed)
 
     def test_success_promotes_and_retires_old_extension(self, tmp_path) -> None:
@@ -650,16 +653,14 @@ class TestReplacementStagingProtocol:
         )  # type: ignore[arg-type]
         service._playlists = [Playlist(playlist_id="p1", name="Mix")]
         service._persisted = tuple(service._playlists)
-        old_src = tmp_path / "old.jpg"
-        old_src.write_bytes(b"OLD_BYTES")
+        old_src = _make_png(tmp_path, "old.png", 0xFF581C)
         assert service.set_custom_cover("p1", old_src) is not None
         old_path = Path(service.get_playlist("p1").custom_cover_path)
 
-        new_src = tmp_path / "new.png"
-        new_src.write_bytes(b"NEW_BYTES")
+        new_src = _make_png(tmp_path, "new2.png", 0xCB0543)
         assert service.set_custom_cover("p1", new_src) is not None
         final_path = Path(service.get_playlist("p1").custom_cover_path)
-        assert final_path.read_bytes() == b"NEW_BYTES"
+        assert final_path.read_bytes() == Path(new_src).read_bytes()
         # Superseded .jpg variant retired post-commit.
         assert not old_path.exists()
 

@@ -50,6 +50,16 @@ class FakeQueueService:
             self.current_index = index
 
 
+def _real_image(path: Path, ext: str, color: int) -> Path:
+    """Real decodable image (the asset store validates actual decodability)."""
+    from PySide6.QtGui import QImage
+
+    img = QImage(64, 64, QImage.Format_RGB32)
+    img.fill(color)
+    assert img.save(str(path), "PNG" if ext == ".png" else "JPG")
+    return path
+
+
 def test_playlist_play_now_semantics():
     """M4-R1: Play Playlist → PLAYLIST session context via the coordinator.
     QueueService (content only) is NEVER populated implicitly."""
@@ -141,7 +151,7 @@ def test_playlist_custom_cover_managed_copy_and_survives_original_delete():
 
         # Create external source image
         source_file = Path(tmpdir) / "my_external_cover.jpg"
-        source_file.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01")
+        source_file = _real_image(source_file, ".jpg", 0xCB0543)
 
         port = FakePlaylistsPort(
             [Playlist(playlist_id="p1", name="Rock", track_paths=())]
@@ -170,9 +180,9 @@ def test_playlist_custom_cover_replace_cleanup():
 
         # Create PNG and JPG source files
         png_file = Path(tmpdir) / "cover.png"
-        png_file.write_bytes(b"\x89PNG\r\n\x1a\n")
+        png_file = _real_image(png_file, ".png", 0xFF581C)
         jpg_file = Path(tmpdir) / "cover.jpg"
-        jpg_file.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF")
+        jpg_file = _real_image(jpg_file, ".jpg", 0xCB0543)
 
         port = FakePlaylistsPort([Playlist(playlist_id="p1", name="Chill")])
         service = PlaylistService(playlists_port=port, artwork_store=store)
@@ -193,7 +203,7 @@ def test_playlist_delete_cover_cleanup():
         store = FilesystemPlaylistArtworkStore(storage_dir)
 
         png_file = Path(tmpdir) / "cover.png"
-        png_file.write_bytes(b"\x89PNG\r\n\x1a\n")
+        png_file = _real_image(png_file, ".png", 0xFF581C)
 
         port = FakePlaylistsPort([Playlist(playlist_id="p1", name="To Delete")])
         service = PlaylistService(playlists_port=port, artwork_store=store)

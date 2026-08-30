@@ -175,15 +175,18 @@ Item {
                     deleteDialog.open()
                 }
                 onRemoveTrackRequested: index => {
+                    // P0-1: FROZEN provenance captured AT REMOVAL TIME — the
+                    // Undo callback must never consult the current selection.
                     var removed = playlists.playlistTracks[index]
+                    var removedPlaylistId = playlists.selectedPlaylistId
+                    var removedIndex = index
                     playlists.remove_track(index)
                     if (removed && removed.path) {
-                        // Phase 4 undo: re-add the removed track by path.
                         window.showToastWithAction(
                             qsTr("Removed from playlist"), qsTr("Undo"),
                             function() {
-                                library.add_tracks_to_playlist(
-                                    playlists.selectedPlaylistId, [removed.path])
+                                playlists.insert_track(
+                                    removedPlaylistId, removedIndex, removed.path)
                             })
                     }
                 }

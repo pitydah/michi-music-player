@@ -24,6 +24,7 @@ from michi.application.playlist_navigation_coordinator import (
 )
 from michi.application.playlist_service import PlaylistService
 from michi.application.ports import PlaylistPaletteExtractorPort
+from michi.domain.playlist import PlaylistTrackReference
 from michi.presentation.track_projection import (
     project_track_row,
     project_unavailable_track,
@@ -129,6 +130,20 @@ class PlaylistsBridge(QObject):
 
     # ------------------------------------------------------------------
     # Row projection (canonical playlist row shape)
+    def _build_artwork_index(self) -> dict:
+        """O(1) canonical index track_path → artwork_path (KILLCRITIC P1):
+        built ONCE per projection instead of scanning every album per row."""
+        index: dict = {}
+        if self._library is None:
+            return index
+        for album in self._library.state.albums:
+            artwork = self._library.artwork_path_for(album.key) or ""
+            if not artwork:
+                continue
+            for path in album.track_paths:
+                index[str(path)] = artwork
+        return index
+
     def _artwork_for_path(self, path_str: str) -> str:
         if self._library is None:
             return ""
@@ -140,10 +155,11 @@ class PlaylistsBridge(QObject):
     def _mosaic_for_paths(self, track_paths: tuple[str, ...]) -> list[str]:
         if self._library is None:
             return []
+        index = self._build_artwork_index()
         artworks: list[str] = []
         seen: set[str] = set()
         for path_str in track_paths:
-            art = self._artwork_for_path(path_str)
+            art = index.get(path_str, "")
             if art and art not in seen:
                 seen.add(art)
                 artworks.append(art)
@@ -362,6 +378,7 @@ class PlaylistsBridge(QObject):
         playlist = self._selected()
         if playlist is None:
             return []
+        artwork_index = self._build_artwork_index()
         rows = []
         for reference in playlist.references():
             ref = None
@@ -375,7 +392,8 @@ class PlaylistsBridge(QObject):
                 )
             if ref is not None:
                 row = project_track_row(
-                    ref, artwork_path=self._artwork_for_path(str(ref.file_path))
+                    ref,
+                    artwork_path=artwork_index.get(str(ref.file_path), ""),
                 )
                 if self._track_resolver is not None:
                     row["availability"] = self._track_resolver.effective_availability(
@@ -570,6 +588,17 @@ class PlaylistsBridge(QObject):
         playlist_id = self._current_playlist_id()
         if self._playlist_service is not None and playlist_id:
             self._playlist_service.remove_track(playlist_id, index)
+
+    @Slot(str, int, str)
+    def insert_track(self, playlist_id: str, index: int, path: str) -> None:
+        """P0-1: restore a removed track at its EXACT original position in
+        the FROZEN original playlist — never the current selection."""
+        if self._playlist_service is not None:
+            self._playlist_service.insert_track(
+                playlist_id,
+                index,
+                PlaylistTrackReference(track_id="", fallback_path=path),
+            )
 
     @Slot(int, int)
     def move_track(self, from_index: int, to_index: int) -> None:
