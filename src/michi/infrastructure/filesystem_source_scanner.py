@@ -35,10 +35,14 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
     """Walks one source root deterministically (sorted) without following
     directory symlinks."""
 
-    def discover(self, source: LibrarySource) -> tuple[DiscoveredMediaFile, ...]:
-        root = Path(source.root_path)
+    def _validate_source_root(self, root: Path) -> None:
+        """ONE root-validation gate used by BOTH discovery paths (P1-01).
+
+        A source root that disappears/unmounts is SOURCE-LEVEL truth
+        (DIRECTORY_MISSING / ACCESS_FAILURE / IO_FAILURE) — it is NEVER a
+        successful empty enumeration that fabricates child MISSING."""
         try:
-            stat = root.stat()
+            info = root.stat()
         except FileNotFoundError as exc:
             raise LibraryFilesystemError(
                 LibraryDiagnosticCode.DIRECTORY_MISSING, root, str(exc)
@@ -51,13 +55,16 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
             raise LibraryFilesystemError(
                 LibraryDiagnosticCode.IO_FAILURE, root, str(exc)
             ) from exc
-        if not stat_module.S_ISDIR(stat.st_mode):
+        if not stat_module.S_ISDIR(info.st_mode):
             raise LibraryFilesystemError(
                 LibraryDiagnosticCode.UNKNOWN_FAILURE,
                 root,
                 "source root is not a directory",
             )
 
+    def discover(self, source: LibrarySource) -> tuple[DiscoveredMediaFile, ...]:
+        root = Path(source.root_path)
+        self._validate_source_root(root)
         return self._collect_discovered(root, None, None)
 
     def _collect_discovered(
@@ -83,8 +90,17 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
                 info = path.stat()
                 device_id = getattr(info, "st_dev", 0)
                 inode = getattr(info, "st_ino", 0)
-            except OSError:
-                continue  # vanished mid-walk: skip honestly
+            except FileNotFoundError:
+                continue  # file vanished between enumeration and stat
+            except PermissionError as exc:
+                # La observación del source quedó incompleta → abort.
+                raise LibraryFilesystemError(
+                    LibraryDiagnosticCode.ACCESS_FAILURE, path, str(exc)
+                ) from exc
+            except OSError as exc:
+                raise LibraryFilesystemError(
+                    LibraryDiagnosticCode.IO_FAILURE, path, str(exc)
+                ) from exc
             discovered.append(
                 DiscoveredMediaFile(
                     absolute_path=path,
@@ -112,8 +128,16 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
             directory = stack.pop()
             try:
                 entries = sorted(directory.iterdir(), key=lambda p: p.name)
-            except FileNotFoundError:
-                continue  # a path vanished during the walk: honest skip
+            except FileNotFoundError as exc:
+                if directory == root:
+                    # El root desapareció ENTRE validación y walk:
+                    # truth a nivel de source, nunca enumeración vacía.
+                    raise LibraryFilesystemError(
+                        LibraryDiagnosticCode.DIRECTORY_MISSING,
+                        root,
+                        str(exc),
+                    ) from exc
+                continue  # un path anidado se desvaneció: honest skip
             except PermissionError as exc:
                 raise LibraryFilesystemError(
                     LibraryDiagnosticCode.ACCESS_FAILURE, directory, str(exc)
@@ -158,7 +182,13 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
         is respected without cancellation rather than bypassed."""
         if type(self).discover is not FilesystemLibrarySourceScanner.discover:
             return self.discover(source)
-        return self._collect_discovered(Path(source.root_path), token, on_entry)
+        root = Path(source.root_path)
+        self._validate_source_root(root)
+        if token is not None and token.cancelled:
+            from michi.application.ports import ScanCancelled
+
+            raise ScanCancelled()
+        return self._collect_discovered(root, token, on_entry)
 
     def validate_file(self, path: Path) -> None:
         """TD-013 shared gate: raise LibraryFilesystemError when the file is
