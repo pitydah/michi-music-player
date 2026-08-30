@@ -1272,7 +1272,10 @@ class TestF42AdapterContract:
         # PlaylistsPort writes are all ABSTRACT (no silent no-op defaults)
         # and save_state is mandatory — optional persistence is represented
         # by playlists_port=None. Audio/transport semantics untouched.
-        "src/michi/application/ports.py": "d94059be6e24c52c",
+        # PLAYLISTS R3 SEAL REVIEW (2026-08-30): delete_managed_asset abstract
+        # signature aligned to the ownership-verified (playlist_id, role,
+        # path) contract. Audio/transport semantics untouched.
+        "src/michi/application/ports.py": "2e42f5056b3a3fce",
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.
