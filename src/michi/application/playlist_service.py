@@ -12,6 +12,7 @@ presentation migrates to ids; they delegate name → id and must not be used
 by new code.
 """
 
+import contextlib
 import logging
 import math
 import re
@@ -579,12 +580,10 @@ class PlaylistService:
                 playlist_id, new_cover, playlist.custom_cover_path
             )
             if new_hero_path and new_hero_path != playlist.appearance.hero_image_path:
-                try:
+                with contextlib.suppress(OSError):
                     self._artwork_store.delete_managed_asset(
                         playlist_id, "hero", new_hero_path
                     )
-                except OSError:
-                    pass
             raise
 
     def _build_appearance_candidate(
@@ -643,22 +642,18 @@ class PlaylistService:
             # NO_CHANGE: zero writes; cleanup any freshly prepared candidate.
             if self._artwork_store is not None:
                 if new_cover != playlist.custom_cover_path and new_cover:
-                    try:
+                    with contextlib.suppress(OSError):
                         self._artwork_store.delete_managed_asset(
                             playlist_id, "cover", new_cover
                         )
-                    except OSError:
-                        pass
                 if (
                     new_hero_path != playlist.appearance.hero_image_path
                     and new_hero_path
                 ):
-                    try:
+                    with contextlib.suppress(OSError):
                         self._artwork_store.delete_managed_asset(
                             playlist_id, "hero", new_hero_path
                         )
-                    except OSError:
-                        pass
             return "no_change"
 
         # --- 4. persistir UNA vez, publicar, notificar ---
@@ -668,22 +663,18 @@ class PlaylistService:
             # DB fail: cleanup ONLY new candidates; old assets preserved.
             if self._artwork_store is not None:
                 if new_cover != playlist.custom_cover_path and new_cover:
-                    try:
+                    with contextlib.suppress(OSError):
                         self._artwork_store.delete_managed_asset(
                             playlist_id, "cover", new_cover
                         )
-                    except OSError:
-                        pass
                 if (
                     new_hero_path != playlist.appearance.hero_image_path
                     and new_hero_path
                 ):
-                    try:
+                    with contextlib.suppress(OSError):
                         self._artwork_store.delete_managed_asset(
                             playlist_id, "hero", new_hero_path
                         )
-                    except OSError:
-                        pass
             raise
         self._notify()
 
@@ -710,12 +701,10 @@ class PlaylistService:
 
     def _cleanup_prepared_cover(self, playlist_id, new_cover, old_cover) -> None:
         if self._artwork_store is not None and new_cover and new_cover != old_cover:
-            try:
+            with contextlib.suppress(OSError):
                 self._artwork_store.delete_managed_asset(
                     playlist_id, "cover", new_cover
                 )
-            except OSError:
-                pass
 
     def set_custom_hero_image(
         self, playlist_id: str, image_path: Path | str
