@@ -30,9 +30,14 @@ MichiDialog {
     property string heroImagePath: ""
     property var autoHeroColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
 
+    // R3-06 FULL DRAFT: nada se persiste hasta Apply. Cover y Hero son
+    // objetos independientes pero la decisión Apply/Cancel es UNA
+    // transacción editorial. Close/Cancel = cero writes.
     property string draftMode: "auto"
     property bool draftThirdColor: false
     property url draftHeroImageUrl: ""
+    property string draftCoverAction: "keep"
+    property url draftCoverImageUrl: ""
     property string errorText: ""
 
     function openForPlaylist() {
@@ -46,6 +51,7 @@ MichiDialog {
 
     function _syncDraft() {
         root.draftMode = root.heroMode || "auto"
+        root.draftCoverAction = "keep"
         solidField.text = root.heroSolidColor || MichiPalette.playlistHeroTopHex
         var colors = root.heroGradientColors || []
         gradientOne.text = colors.length > 0 ? colors[0] : MichiPalette.playlistHeroTopHex
@@ -53,39 +59,41 @@ MichiDialog {
         gradientThree.text = colors.length > 2 ? colors[2] : MichiPalette.playlistHeroBottomHex
         root.draftThirdColor = colors.length > 2
         root.draftHeroImageUrl = ""
+        root.draftCoverImageUrl = ""
         angleSlider.value = root.heroGradientAngle
         root.errorText = ""
     }
 
-    function _applyHero() {
-        var success = false
-        if (root.draftMode === "auto")
-            success = playlists.set_hero_auto(root.playlistId)
-        else if (root.draftMode === "solid")
-            success = playlists.set_hero_solid(root.playlistId, solidField.text)
-        else if (root.draftMode === "gradient") {
-            var colors = [gradientOne.text, gradientTwo.text]
-            if (root.draftThirdColor)
-                colors.push(gradientThree.text)
-            success = playlists.set_hero_gradient(
-                root.playlistId, colors, angleSlider.value)
-        } else if (root.draftMode === "image") {
-            if (root.draftHeroImageUrl.toString().length > 0) {
-                success = playlists.set_custom_hero_from_url(
-                    root.playlistId, root.draftHeroImageUrl)
-            } else if (root.heroImagePath.length > 0) {
-                success = true
-            } else {
-                heroDialog.open()
-                return
-            }
-        }
-        if (success) {
+    function _apply() {
+        // R3-06: UNA transacción editorial. Cover + Hero se resuelven
+        // juntos; el Bridge/Service persiste UNA vez.
+        var colors = [gradientOne.text, gradientTwo.text]
+        if (root.draftThirdColor)
+            colors.push(gradientThree.text)
+        var result = playlists.apply_visual_appearance(
+            root.playlistId,
+            root.draftCoverAction,
+            root.draftCoverImageUrl.toString(),
+            root.draftMode,
+            solidField.text,
+            colors,
+            angleSlider.value,
+            root.draftHeroImageUrl.toString())
+        if (result === "updated" || result === "no_change") {
             root.errorText = ""
             root.close()
-        } else {
+        } else if (result === "asset_rejected") {
+            root.errorText = qsTr(
+                "The previous custom image is unavailable. Choose another image.")
+        } else if (result === "invalid") {
             root.errorText = qsTr("Check the selected colors or image and try again.")
         }
+        // "persistence_failed": el persistence Connections informa una vez.
+    }
+
+    function _cancel() {
+        // Close/Cancel: CERO writes, CERO managed candidates, CERO notify.
+        root.close()
     }
 
     FileDialog {
@@ -93,8 +101,9 @@ MichiDialog {
         title: qsTr("Choose a custom playlist cover")
         nameFilters: [qsTr("Image files (*.png *.jpg *.jpeg *.webp)")]
         onAccepted: {
-            if (!playlists.set_custom_cover_from_url(root.playlistId, selectedFile))
-                root.errorText = qsTr("The selected cover could not be imported.")
+            // R3-06: DRAFT — no filesystem copy, no DB write.
+            root.draftCoverAction = "replace"
+            root.draftCoverImageUrl = selectedFile
         }
     }
 
@@ -108,6 +117,7 @@ MichiDialog {
             root.draftHeroImageUrl = selectedFile
             root.errorText = ""
             root.draftMode = "image"
+            root.draftHeroImageUrl = selectedFile
         }
     }
 
@@ -199,10 +209,13 @@ MichiDialog {
                         role: "secondary"
                         color: MichiPalette.textMuted
                     }
+                    // R3-06: Cover es DRAFT hasta Apply — seleccionar no
+                    // copia ni persiste nada.
                     RowLayout {
                         spacing: MichiSpacing.sm
                         MichiButton {
-                            text: qsTr("Custom image")
+                            text: root.draftCoverAction === "replace"
+                                ? qsTr("Replace image…") : qsTr("Custom image")
                             iconName: "image"
                             variant: "secondary"
                             accessibleName: qsTr("Choose custom cover image")
@@ -212,9 +225,18 @@ MichiDialog {
                             text: qsTr("Automatic mosaic")
                             iconName: "view-grid"
                             variant: "ghost"
-                            enabled: root.customCoverPath.length > 0
+                            enabled: root.draftCoverAction !== "auto"
                             accessibleName: qsTr("Reset cover to automatic album mosaic")
-                            onClicked: playlists.remove_custom_cover(root.playlistId)
+                            onClicked: {
+                                root.draftCoverAction = "auto"
+                                root.draftCoverImageUrl = ""
+                            }
+                        }
+                        MichiText {
+                            visible: root.draftCoverAction === "replace"
+                            text: qsTr("New cover selected — Apply to save")
+                            role: "caption"
+                            color: MichiPalette.textSecondary
                         }
                     }
                 }
@@ -384,16 +406,16 @@ MichiDialog {
             Layout.fillWidth: true
             Item { Layout.fillWidth: true }
             MichiButton {
-                text: qsTr("Close")
+                text: qsTr("Cancel")
                 variant: "ghost"
-                accessibleName: qsTr("Close without applying the hero preview")
-                onClicked: root.close()
+                accessibleName: qsTr("Cancel — nothing is saved")
+                onClicked: root._cancel()
             }
             MichiButton {
-                text: qsTr("Apply hero")
+                text: qsTr("Apply")
                 variant: "primary"
-                accessibleName: qsTr("Apply playlist hero appearance")
-                onClicked: root._applyHero()
+                accessibleName: qsTr("Apply playlist appearance")
+                onClicked: root._apply()
             }
         }
     }

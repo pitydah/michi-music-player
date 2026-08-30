@@ -21,6 +21,7 @@ Item {
     signal openPlaylistRequested(string playlistId)
     signal playPlaylistRequested(string playlistId)
     signal pinPlaylistRequested(string playlistId, bool pinned, string playlistName)
+    signal customizeAppearanceRequested(string playlistId)
     signal renamePlaylistRequested(string playlistId, string playlistName)
     signal deletePlaylistRequested(string playlistId, string playlistName)
 
@@ -41,8 +42,8 @@ Item {
     }
 
     function customizeAppearance(row) {
-        root.appearancePlaylistId = row.playlistId
-        appearancePanel.openForPlaylist()
+        // R3-06: el panel ÚNICO vive en ContentHost.
+        root.customizeAppearanceRequested(row.playlistId)
     }
 
     readonly property var filteredPlaylists: {
@@ -262,7 +263,7 @@ Item {
                     playlistName: playlistCell.modelData.name
                     trackCount: playlistCell.modelData.trackCount
                     durationMs: playlistCell.modelData.durationMs || 0
-                    customCoverPath: playlistCell.modelData.customCoverPath || ""
+                    customCoverPath: playlistCell.modelData.effectiveCustomCoverPath || ""
                     mosaicArtworkPaths: playlistCell.modelData.mosaicArtworkPaths || []
                     pinned: playlistCell.modelData.pinned
                     onActiveFocusChanged: {
@@ -318,7 +319,7 @@ Item {
                     PlaylistArtwork {
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
-                        customCoverPath: modelData.customCoverPath || ""
+                        customCoverPath: modelData.effectiveCustomCoverPath || ""
                         mosaicArtworkPaths: modelData.mosaicArtworkPaths || []
                         fallbackText: modelData.name
                         radius: MichiRadius.sm
@@ -425,18 +426,4 @@ Item {
         }
     }
 
-    PlaylistAppearancePanel {
-        id: appearancePanel
-        playlistId: root.appearancePlaylist.playlistId || ""
-        playlistName: root.appearancePlaylist.name || ""
-        customCoverPath: root.appearancePlaylist.customCoverPath || ""
-        mosaicArtworkPaths: root.appearancePlaylist.mosaicArtworkPaths || []
-        heroMode: root.appearancePlaylist.heroMode || "auto"
-        heroSolidColor: root.appearancePlaylist.heroSolidColor || MichiPalette.playlistHeroTopHex
-        heroGradientColors: root.appearancePlaylist.heroGradientColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
-        heroGradientAngle: root.appearancePlaylist.heroGradientAngle === undefined
-            ? 135 : root.appearancePlaylist.heroGradientAngle
-        heroImagePath: root.appearancePlaylist.heroImagePath || ""
-        autoHeroColors: root.appearancePlaylist.autoHeroColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
-    }
 }

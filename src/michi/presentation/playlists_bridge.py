@@ -220,15 +220,21 @@ class PlaylistsBridge(QObject):
                 total += ref.duration_ms
         return total
 
-    @staticmethod
-    def _appearance_row(playlist) -> dict:
+    def _appearance_row(self, playlist) -> dict:
+        """R3-05: the row carries persisted + effective + missing facts.
+        Rendering consumes effective*; editing/recovery consumes
+        persisted* + missing flags. No ambiguous raw names."""
         appearance = playlist.appearance
+        visual = self._visual_state(playlist)
         return {
-            "heroMode": appearance.hero_mode.value,
+            "persistedHeroMode": visual["persistedHeroMode"],
+            "effectiveHeroMode": visual["effectiveHeroMode"],
+            "persistedHeroImagePath": visual["persistedHeroImagePath"],
+            "effectiveHeroImagePath": visual["effectiveHeroImagePath"],
+            "heroImageMissing": visual["heroImageMissing"],
             "heroSolidColor": appearance.hero_solid_color,
             "heroGradientColors": list(appearance.hero_gradient_colors),
             "heroGradientAngle": appearance.hero_gradient_angle,
-            "heroImagePath": appearance.hero_image_path,
         }
 
     def _palette_source_key(self, paths: tuple[str, ...]) -> str:
@@ -239,8 +245,11 @@ class PlaylistsBridge(QObject):
         return "\n".join(paths)
 
     def _palette_sources_for(self, playlist, mosaic: list[str]) -> tuple[str, ...]:
-        if playlist.custom_cover_path:
-            return (playlist.custom_cover_path,)
+        """R3-11: the palette extracts from the EFFECTIVE cover — a
+        persisted-but-missing asset never feeds the extractor (dead file)."""
+        effective = self._effective_cover_path(playlist)
+        if effective:
+            return (effective,)
         return tuple(mosaic[:4])
 
     def _auto_palette_for(self, playlist, mosaic: list[str]) -> list[str]:
@@ -312,7 +321,10 @@ class PlaylistsBridge(QObject):
                 "name": playlist.name,
                 "trackCount": len(playlist.track_paths),
                 "durationMs": self._duration_for_paths(playlist.track_paths),
-                "customCoverPath": playlist.custom_cover_path,
+                "persistedCustomCoverPath": playlist.custom_cover_path,
+                "effectiveCustomCoverPath": self._effective_cover_path(playlist),
+                "coverAssetMissing": bool(playlist.custom_cover_path)
+                and not bool(self._effective_cover_path(playlist)),
                 "mosaicArtworkPaths": mosaic,
                 "pinned": playlist.playlist_id in nav.pinned_ids,
                 "recentRank": recent_rank.get(playlist.playlist_id, -1),
@@ -361,6 +373,61 @@ class PlaylistsBridge(QObject):
     def _get_selected_playlist_name(self) -> str:
         playlist = self._selected()
         return playlist.name if playlist is not None else ""
+
+    def _effective_cover_path(self, playlist) -> str:
+        """R3-05: the resolvable cover path ("" when missing) — rendering
+        ALWAYS uses this; the persisted intent stays untouched."""
+        path = playlist.custom_cover_path
+        if not path:
+            return ""
+        try:
+            return path if Path(path).is_file() else ""
+        except OSError:
+            return ""
+
+    def _effective_hero_mode(self, playlist) -> str:
+        """R3-05: persisted hero mode degraded to "auto" when the managed
+        image asset no longer exists."""
+        if playlist.appearance.hero_mode is PlaylistHeroMode.IMAGE:
+            path = playlist.appearance.hero_image_path
+            if not path:
+                return "auto"
+            try:
+                return "image" if Path(path).is_file() else "auto"
+            except OSError:
+                return "auto"
+        return playlist.appearance.hero_mode.value
+
+    def _effective_hero_image_path(self, playlist) -> str:
+        mode = self._effective_hero_mode(playlist)
+        if mode != "image":
+            return ""
+        return playlist.appearance.hero_image_path
+
+    def _visual_state(self, playlist) -> dict:
+        """R3-05: ONE canonical visual-state projection — persisted intent
+        AND effective render facts AND missing flags. Rendering uses
+        effective*; editing/recovery uses persisted* + missing flags."""
+        persisted_cover = playlist.custom_cover_path
+        effective_cover = self._effective_cover_path(playlist)
+        persisted_mode = playlist.appearance.hero_mode.value
+        persisted_hero = playlist.appearance.hero_image_path
+        effective_mode = self._effective_hero_mode(playlist)
+        effective_hero = self._effective_hero_image_path(playlist)
+        return {
+            "persistedCustomCoverPath": persisted_cover,
+            "effectiveCustomCoverPath": effective_cover,
+            "coverAssetMissing": bool(persisted_cover) and not bool(effective_cover),
+            "persistedHeroMode": persisted_mode,
+            "effectiveHeroMode": effective_mode,
+            "persistedHeroImagePath": persisted_hero,
+            "effectiveHeroImagePath": effective_hero,
+            "heroImageMissing": (
+                persisted_mode == "image"
+                and bool(persisted_hero)
+                and effective_mode != "image"
+            ),
+        }
 
     def _get_selected_playlist_custom_cover(self) -> str:
         """PERSISTED custom cover intent (R2 P1-11) — never mutated on
@@ -430,6 +497,21 @@ class PlaylistsBridge(QObject):
         return playlist_id in self._playlist_service.navigation.pinned_ids
 
     def _get_selected_appearance(self) -> dict:
+        """R3-05: selected-playlist appearance carries persisted AND
+        effective visual facts (detail panel + hero rendering)."""
+        playlist = self._selected()
+        if playlist is None:
+            return {
+                "persistedHeroMode": "auto",
+                "effectiveHeroMode": "auto",
+                "persistedHeroImagePath": "",
+                "effectiveHeroImagePath": "",
+                "heroImageMissing": False,
+                "heroSolidColor": "#152A45",
+                "heroGradientColors": ["#152A45", "#13243D"],
+                "heroGradientAngle": 135.0,
+            }
+        return self._appearance_row(playlist)
         playlist = self._selected()
         if playlist is None:
             return {
@@ -765,6 +847,43 @@ class PlaylistsBridge(QObject):
         ):
             return "persistence_failed"
         return "updated"
+
+    @Slot(str, str, str, str, str, list, float, str, result=str)
+    def apply_visual_appearance(
+        self,
+        playlist_id: str,
+        cover_action: str,
+        cover_source_path: str,
+        hero_mode: str,
+        hero_solid_color: str,
+        hero_gradient_colors: list,
+        hero_gradient_angle: float,
+        hero_image_source: str,
+    ) -> str:
+        """R3-06 ONE application transaction for the whole appearance.
+        Codes: "updated" | "no_change" | "invalid" | "asset_rejected" |
+        "not_found" | "persistence_failed"."""
+        if self._playlist_service is None:
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        try:
+            result = self._playlist_service.apply_visual_appearance(
+                playlist_id,
+                cover_action=cover_action,
+                cover_source_path=cover_source_path or None,
+                hero_mode=hero_mode,
+                hero_solid_color=hero_solid_color,
+                hero_gradient_colors=tuple(hero_gradient_colors),
+                hero_gradient_angle=float(hero_gradient_angle),
+                hero_image_source=hero_image_source or None,
+            )
+        except ValueError:
+            return "invalid"
+        except PlaylistPersistenceError:
+            self.persistenceFailed.emit("appearance")
+            return "persistence_failed"
+        return result
 
     @Slot(str, result=str)
     def set_hero_auto(self, playlist_id: str) -> str:

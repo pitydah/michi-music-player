@@ -143,6 +143,11 @@ Item {
                 // M9-R1J: the shared dialogs are the canonical interaction
                 // boundary — the Detail emits intents; ContentHost routes
                 // them into the SAME dialogs used by All Playlists cards.
+                onCustomizeAppearanceRequested: playlistId => {
+                    // R3-06: el panel ÚNICO abre con la playlist objetivo.
+                    root.appearanceTargetPlaylistId = playlistId
+                    root._openAppearancePanel()
+                }
                 onRenameRequested: (playlistId, playlistName) => {
                     renameDialog.targetPlaylistId = playlistId
                     renameDialog.targetPlaylistName = playlistName
@@ -254,6 +259,48 @@ Item {
             renameDialog.errorText = ""
             renameField.forceActiveFocus()
         }
+    }
+
+    // R3-06: UN SOLO PlaylistAppearancePanel (como Rename/Delete).
+    // Overview y Detail emiten customizeAppearanceRequested(playlistId).
+    property string appearanceTargetPlaylistId: ""
+
+    function _appearanceRowFor(playlistId) {
+        if (!playlistId || !playlists) return null
+        var rows = playlists.playlists || []
+        for (var i = 0; i < rows.length; ++i) {
+            if (rows[i].playlistId === playlistId) return rows[i]
+        }
+        return null
+    }
+
+    function _openAppearancePanel() {
+        // Si el target desapareció, cerrar de forma segura.
+        if (!root._appearanceRowFor(root.appearanceTargetPlaylistId)) {
+            appearancePanel.close()
+            return
+        }
+        appearancePanel.openForPlaylist()
+    }
+
+    PlaylistAppearancePanel {
+        id: appearancePanel
+        playlistId: root.appearanceTargetPlaylistId
+        playlistName: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.name || ""
+        customCoverPath: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveCustomCoverPath || ""
+        coverAssetMissing: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.coverAssetMissing || false
+        mosaicArtworkPaths: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.mosaicArtworkPaths || []
+        heroMode: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveHeroMode || "auto"
+        heroImageMissing: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.heroImageMissing || false
+        heroSolidColor: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.heroSolidColor || MichiPalette.playlistHeroTopHex
+        heroGradientColors: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.heroGradientColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
+        heroGradientAngle: {
+            var row = root._appearanceRowFor(root.appearanceTargetPlaylistId)
+            return row && row.heroGradientAngle !== undefined
+                ? row.heroGradientAngle : 135
+        }
+        heroImagePath: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveHeroImagePath || ""
+        autoHeroColors: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.autoHeroColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
     }
 
     // Shared delete dialog — same ephemeral target model.

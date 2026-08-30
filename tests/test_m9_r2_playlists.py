@@ -102,6 +102,6 @@ def test_playlists_bridge_mosaic_and_duration_projections() -> None:
     rows = bridge.property("playlists")
     assert len(rows) == 1
     assert rows[0]["playlistId"] == p.playlist_id
-    assert rows[0]["customCoverPath"] == "/custom.jpg"
+    assert rows[0]["persistedCustomCoverPath"] == "/custom.jpg"
     assert "mosaicArtworkPaths" in rows[0]
     assert "durationMs" in rows[0]

@@ -271,7 +271,7 @@ def test_bridge_projects_and_mutates_appearance_without_owning_selection() -> No
         assert bridge.set_hero_gradient("p1", ["#102030", "#405060", "#708090"], 405)
         row = bridge.property("playlists")[0]
         selected = bridge.property("selectedPlaylistAppearance")
-        assert row["heroMode"] == "gradient"
+        assert row["effectiveHeroMode"] == "gradient"
         assert row["heroGradientAngle"] == 45
         assert selected["heroGradientColors"] == ["#102030", "#405060", "#708090"]
         assert bridge.property("selectedPlaylistId") == "p1"
@@ -336,11 +336,19 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     # R2 P2-02: managed hero assets are IMMUTABLE content-addressed
     # candidates — content changes change the URL, so caching is safe.
     assert "cache: true" in hero
-    assert panel.count("set_custom_hero_from_url") == 1
+    # R3-06: el panel es FULL DRAFT — ninguna llamada directa de
+    # persistencia; un único apply_visual_appearance.
+    assert "set_custom_hero_from_url" not in panel
+    assert "apply_visual_appearance(" in panel
     assert "root.draftHeroImageUrl = selectedFile" in panel
     assert "Copying and persistence happen" in panel
-    assert "PlaylistAppearancePanel" in detail
-    assert "PlaylistAppearancePanel" in overview
+    # R3-06: el panel ÚNICO vive en ContentHost (Detail emite intent).
+    assert "PlaylistAppearancePanel" not in detail
+    assert "customizeAppearanceRequested" in detail
+    # R3-06: el panel ÚNICO vive en ContentHost (Overview emite intent).
+    assert "PlaylistAppearancePanel" not in overview
+    assert "customizeAppearanceRequested" in overview
     assert "substring(7)" not in detail + overview + panel
-    assert "set_custom_cover_from_url" in panel
+    # R3-06: draft-only — ninguna persistencia directa en el panel.
+    assert "set_custom_cover_from_url" not in panel
     assert "formatPlaylistSummary" in card + detail + overview

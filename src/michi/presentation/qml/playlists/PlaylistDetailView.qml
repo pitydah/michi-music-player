@@ -20,6 +20,7 @@ Item {
     signal playRequested()
     signal shuffleRequested()
     signal togglePinRequested()
+    signal customizeAppearanceRequested(string playlistId)
     signal renameRequested(string playlistId, string playlistName)
     signal deleteRequested(string playlistId, string playlistName)
     signal removeTrackRequested(int index)
@@ -82,7 +83,7 @@ Item {
                 heroGradientColors: parent.appearance.heroGradientColors || [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid]
                 heroGradientAngle: parent.appearance.heroGradientAngle === undefined
                     ? 135 : parent.appearance.heroGradientAngle
-                heroImagePath: parent.appearance.heroImagePath || ""
+                heroImagePath: parent.appearance.effectiveHeroImagePath || ""
                 autoHeroColors: playlists ? playlists.selectedPlaylistAutoHeroColors : [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
 
                 // R2.1-07: signals wired INLINE (the ListView headerItem is
@@ -91,7 +92,7 @@ Item {
                 onPlayRequested: root.playRequested()
                 onShuffleRequested: root.shuffleRequested()
                 onMoreRequested: detailMenu.popup()
-                onCustomizeAppearanceRequested: appearancePanel.openForPlaylist()
+                onCustomizeAppearanceRequested: root.customizeAppearanceRequested(root.playlistId)
 
                 onAddTracksRequested: root.addMusicRequested()
             }
@@ -104,26 +105,6 @@ Item {
                 showFormat: width > 1200
             }
         }
-    }
-
-    PlaylistAppearancePanel {
-        id: appearancePanel
-        playlistId: root.playlistId
-        playlistName: playlists ? playlists.selectedPlaylistName : ""
-        // R2 P1-11: effective resolvable assets; the persisted intent stays
-        // untouched and the missing flags let the user re-choose.
-        customCoverPath: playlists ? playlists.effectiveCustomCoverPath : ""
-        coverAssetMissing: playlists ? playlists.coverAssetMissing : false
-        mosaicArtworkPaths: playlists ? playlists.selectedPlaylistMosaicArtworkPaths : []
-        heroMode: playlists ? playlists.effectiveHeroMode : "auto"
-        heroImageMissing: playlists ? playlists.heroImageMissing : false
-        heroSolidColor: playlists ? playlists.selectedPlaylistAppearance.heroSolidColor : MichiPalette.playlistHeroTopHex
-        heroGradientColors: playlists ? playlists.selectedPlaylistAppearance.heroGradientColors : [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
-        heroGradientAngle: playlists
-            && playlists.selectedPlaylistAppearance.heroGradientAngle !== undefined
-            ? playlists.selectedPlaylistAppearance.heroGradientAngle : 135
-        heroImagePath: playlists ? playlists.selectedPlaylistAppearance.heroImagePath : ""
-        autoHeroColors: playlists ? playlists.selectedPlaylistAutoHeroColors : [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
     }
 
     ColumnLayout {
@@ -248,7 +229,7 @@ Item {
         }
         MenuItem {
             text: qsTr("Customize appearance…")
-            onTriggered: appearancePanel.openForPlaylist()
+            onTriggered: root.customizeAppearanceRequested(root.playlistId)
         }
         MenuItem {
             text: playlists.selectedPlaylistPinned ? qsTr("Unpin") : qsTr("Pin")
