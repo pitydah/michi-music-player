@@ -100,10 +100,12 @@ def test_toolbar_stacks_at_narrow_width_without_hiding_actions() -> None:
     assert 'secondaryIconName: "chevron-down"' in toolbar
     # R5.1.1: the scan split button is icon-less by default (compact).
     assert 'iconName: ""' in toolbar
-    # M6-EXT-R4 freeze gate §13: the primary scan action drives the
-    # multi-source workflow — never the deprecated currentDir authority.
+    # M6-EXT-R4 freeze gate §13 + PRODUCT CONVERGENCE SEAL (P1-LIB-01):
+    # the primary scan action drives the multi-source workflow through the
+    # ONE canonical snake_case action (the camelCase alias never existed).
     assert "performScan" in toolbar
-    assert "scanAllSources" in toolbar
+    assert "scan_all_sources()" in toolbar
+    assert "scanAllSources" not in toolbar
     assert "MichiSplitButton" in toolbar
     assert "Math.min(root.width" in toolbar
 

@@ -21,10 +21,15 @@ def test_scan_and_folder_actions_share_native_folder_picker_contract() -> None:
     assert "import QtQuick.Dialogs" in toolbar
     assert "FolderDialog {" in toolbar
     assert 'objectName: "libraryFolderDialog"' in toolbar
-    # M6-EXT-R4 freeze gate §13: the folder picker ADDS a source; the
-    # multi-source authority drives "Scan library" (never currentDir).
-    assert "add_music_source" in toolbar
-    assert "scanAllSources" in toolbar
+    # M6-EXT-R4 freeze gate §13 + PRODUCT CONVERGENCE SEAL (P1-LIB-01/03):
+    # the folder picker ADDS a source through the canonical QUrl slot
+    # (add_and_scan_music_source_url) and "Scan library" drives the ONE
+    # canonical snake_case action — the camelCase "scanAllSources" alias
+    # never existed on the Bridge (broken contract, removed by the seal).
+    assert "add_and_scan_music_source_url" in toolbar
+    assert "add_music_source" not in toolbar
+    assert "scan_all_sources()" in toolbar
+    assert "scanAllSources" not in toolbar
     assert "library.scan(library.currentDir)" not in toolbar
     assert "folderDialog.open()" in toolbar
     assert "enabled: !root.scanning" in toolbar

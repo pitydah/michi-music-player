@@ -173,6 +173,9 @@ Item {
             showArtistColumn: root.profileShowsArtist
             showAlbumColumn: root.profileShowsAlbum
             showArtwork: root.profileShowsArtwork
+            // P1-LIB-05: ONE boolean fact from the domain predicate —
+            // TrackRow blocks activation and dims; no string compares.
+            unavailable: Boolean(modelData.unavailable)
             playing: root.playingPath === modelData.path
             selected: root.selectionEnabled
                 ? root.selectedTrackIds.indexOf(trackId) !== -1

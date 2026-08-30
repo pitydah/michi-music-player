@@ -119,6 +119,23 @@ class MediaAvailability(StrEnum):
     IO_ERROR = "io_error"
 
 
+_PLAYBACK_BLOCKING_MEDIA_AVAILABILITY = frozenset(
+    {
+        MediaAvailability.MISSING,
+        MediaAvailability.SOURCE_OFFLINE,
+        MediaAvailability.ACCESS_DENIED,
+        MediaAvailability.IO_ERROR,
+    }
+)
+
+
+def media_playback_blocked(availability: MediaAvailability) -> bool:
+    """ONE domain predicate for playback blocking (P1-LIB-05).
+
+    UNKNOWN is NOT blocked — it remains filesystem-validation eligible."""
+    return availability in _PLAYBACK_BLOCKING_MEDIA_AVAILABILITY
+
+
 def effective_availability(
     media: MediaAvailability, source: SourceAvailability
 ) -> MediaAvailability:

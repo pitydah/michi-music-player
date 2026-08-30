@@ -95,12 +95,9 @@ class LibraryTrackResolver:
         ref = self.resolve_ref(track_id)
         if ref is None:
             return None
-        if self.effective_availability(ref) in (
-            MediaAvailability.MISSING,
-            MediaAvailability.SOURCE_OFFLINE,
-            MediaAvailability.ACCESS_DENIED,
-            MediaAvailability.IO_ERROR,
-        ):
+        from michi.domain.library_catalog import media_playback_blocked
+
+        if media_playback_blocked(self.effective_availability(ref)):
             return None
         return ref.file_path
 

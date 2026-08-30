@@ -40,34 +40,51 @@ MichiGlassSurface {
         return Math.max(Math.min(minimum, maximum), Math.min(maximum, candidate))
     }
 
-    // Shared scan entry point (toolbar button + empty-library CTA): scans the
-    // configured directory or opens the source picker when none is set.
-    // M6-EXT-R4 freeze gate §13: "Scan library" scans ALL active+enabled
-    // LibrarySources (serialized). With zero sources it opens the Add
-    // Music Source surface. currentDir is a deprecated compatibility
-    // projection and never drives this workflow.
+    // P1-LIB-01/04 CANONICAL scan entry point. The policy is EXACTLY:
+    //   no configured Source            → Add Source (folder picker)
+    //   configured, none scannable      → Music Sources manager
+    //   >= 1 scannable Source           → scan_all_sources()
+    // No lifecycle rule is reconstructed in QML; the Bridge exposes the
+    // two semantic Properties (configured vs scannable).
     function performScan() {
         if (typeof library === "undefined" || !library)
             return
-        if (library.hasSources())
-            library.scanAllSources()
-        else
+        if (!library.hasConfiguredSources) {
             folderDialog.open()
+            return
+        }
+        if (!library.hasScannableSources) {
+            root.openSourcesDialog()
+            return
+        }
+        library.scan_all_sources()
     }
 
-    // LEGACY COMPATIBILITY surface: the folder picker adds a source
-    // (multi-source authority lives in the source manager).
+    // P1-LIB-03: URL → local path translation lives in the Bridge.
     FolderDialog {
         id: folderDialog
         objectName: "libraryFolderDialog"
         title: qsTr("Add music source")
         onAccepted: {
             if (typeof library !== "undefined" && library && folderDialog.selectedFolder) {
-                var result = library.add_music_source(
-                    "Music",
-                    folderDialog.selectedFolder.toString().replace("file://", ""))
+                library.add_and_scan_music_source_url(folderDialog.selectedFolder)
             }
         }
+    }
+
+    // P1-LIB-01: the Music Sources manager Loader lives in the TOOLBAR
+    // ROOT scope — the menu action targets the object that owns it.
+    Loader {
+        id: sourcesDialogLoader
+        active: false
+        sourceComponent: MusicSourcesDialog {
+            library: typeof library !== "undefined" ? library : null
+            onClosed: sourcesDialogLoader.active = false
+        }
+    }
+    function openSourcesDialog() {
+        sourcesDialogLoader.active = true
+        sourcesDialogLoader.item.open()
     }
 
     ColumnLayout {
@@ -215,21 +232,6 @@ MichiGlassSurface {
                         && typeof library !== "undefined" && library
                     onPrimaryClicked: root.performScan()
                     onSecondaryClicked: sourceMenu.popup()
-        // M6-EXT-R4 freeze gate §36: lazy Music Sources manager (heavy
-        // dialog stays uninstantiated until opened).
-        Loader {
-            id: sourcesDialogLoader
-            active: false
-            sourceComponent: MusicSourcesDialog {
-                library: typeof library !== "undefined" ? library : null
-                onClosed: sourcesDialogLoader.active = false
-            }
-        }
-        function openSourcesDialog() {
-            sourcesDialogLoader.active = true
-            sourcesDialogLoader.item.open()
-        }
-
                     MichiMenu {
                         id: sourceMenu
                         x: Math.max(0, parent.width - width)
@@ -249,9 +251,11 @@ MichiGlassSurface {
                                 }
                                 MichiText {
                                     Layout.fillWidth: true
+                                    // P1-LIB-04: truthful multi-source count —
+                                    // currentDir is NOT library authority.
                                     text: typeof library !== "undefined" && library
-                                        && library.currentDir.length > 0
-                                        ? library.currentDir : qsTr("No folder selected")
+                                        ? qsTr("%n source(s) configured", "", library.configuredSourceCount)
+                                        : qsTr("No sources configured")
                                     role: "caption"
                                     elide: Text.ElideMiddle
                                 }

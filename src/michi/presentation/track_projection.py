@@ -13,6 +13,9 @@ from michi.domain.library import (
 
 
 def project_track_row(ref: TrackRef, *, artwork_path: str = "") -> dict:
+    # import local para evitar ciclos (track_projection ya importa domain)
+    from michi.domain.library_catalog import media_playback_blocked
+
     """Project one TrackRef without inferring output or quality claims.
 
     ``trackId`` is the STABLE library identity (legacy-path:: fallback for
@@ -28,6 +31,7 @@ def project_track_row(ref: TrackRef, *, artwork_path: str = "") -> dict:
         "mediaFileId": ref.media_file_id,
         "librarySourceId": ref.library_source_id,
         "availability": ref.availability.value,
+        "unavailable": media_playback_blocked(ref.availability),
         "displayName": ref.display_name,
         "title": ref.title or ref.display_name,
         "artist": ref.artist,

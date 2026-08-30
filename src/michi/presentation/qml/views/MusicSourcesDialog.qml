@@ -30,15 +30,10 @@ Popup {
         border.color: MichiSemanticColors.borderSubtle
     }
 
-    onOpened: {
-        if (root.library)
-            root.library.library_changed.connect(sourceList.refresh)
-        sourceList.refresh()
-    }
-    onClosed: {
-        if (root.library)
-            root.library.library_changed.disconnect(sourceList.refresh)
-    }
+    // P1-LIB-02: the declarative Repeater is reactive — no manual
+    // refresh wiring.
+    onOpened: { }
+    onClosed: { }
 
     ColumnLayout {
         anchors.fill: parent
@@ -63,51 +58,23 @@ Popup {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
+            // P1-LIB-02: DECLARATIVE source list. The Bridge's musicSources
+            // model is reactive — a Repeater owns delegate lifecycle and
+            // reacts to notify signals. NO manual createObject, NO
+            // parent-chain identity, NO Item.enabled collision
+            // (sourceEnabled is the configured-state projection).
             Column {
                 id: sourceList
                 width: sourceScroll.availableWidth
                 spacing: MichiSpacing.sm
 
-                function refresh() {
-                    if (!root.library)
-                        return
-                    var rows = root.library.musicSources
-                    for (var i = sourceList.children.length - 1; i >= 0; --i) {
-                        if (sourceList.children[i].objectName === "sourceCard")
-                            sourceList.children[i].destroy()
-                    }
-                    if (rows.length === 0) {
-                        var empty = emptyRow.createObject(sourceList)
-                        empty.text = qsTr("No music sources configured yet.")
-                    }
-                    for (var j = 0; j < rows.length; ++j)
-                        sourceCard.createObject(sourceList, {
-                            "sourceId": rows[j].id,
-                            "name": rows[j].name,
-                            "rootPath": rows[j].rootPath,
-                            "enabled": rows[j].enabled,
-                            "lifecycle": rows[j].lifecycle,
-                            "availability": rows[j].availability,
-                            "trackCount": rows[j].trackCount
-                        })
-                }
+                Repeater {
+                    id: sourceRepeater
+                    model: root.library ? root.library.musicSources : []
 
-                Component {
-                    id: emptyRow
-                    MichiText {
-                        objectName: "sourceCard"
-                        width: sourceList.width
-                        text: ""
-                        role: "secondary"
-                        wrapMode: Text.Wrap
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                }
-
-                Component {
-                    id: sourceCard
-                    Rectangle {
-                        objectName: "sourceCard"
+                    delegate: Rectangle {
+                        id: sourceCard
+                        objectName: "librarySourceCard_" + sourceId
                         width: sourceList.width
                         height: 96
                         radius: MichiRadius.md
@@ -115,13 +82,15 @@ Popup {
                         border.width: 1
                         border.color: MichiSemanticColors.borderSubtle
 
-                        property string sourceId: ""
-                        property string name: ""
-                        property string rootPath: ""
-                        property bool enabled: true
-                        property string lifecycle: "active"
-                        property string availability: "unknown"
-                        property int trackCount: 0
+                        required property var modelData
+
+                        property string sourceId: String(modelData.id || "")
+                        property string sourceName: String(modelData.name || "")
+                        property string rootPath: String(modelData.rootPath || "")
+                        property bool sourceEnabled: Boolean(modelData.enabled)
+                        property string lifecycle: String(modelData.lifecycle || "")
+                        property string availability: String(modelData.availability || "")
+                        property int trackCount: Number(modelData.trackCount || 0)
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -134,70 +103,84 @@ Popup {
                                     Layout.fillWidth: true
                                     spacing: MichiSpacing.xxs
                                     MichiText {
-                                        text: parent.parent.parent.name
+                                        text: sourceCard.sourceName
                                         role: "section"
                                         elide: Text.ElideRight
                                     }
                                     MichiText {
-                                        text: parent.parent.parent.rootPath
+                                        text: sourceCard.rootPath
                                         role: "caption"
                                         color: MichiPalette.textMuted
                                         elide: Text.ElideMiddle
                                     }
                                     MichiText {
-                                        text: parent.parent.parent.trackCount + " tracks · "
-                                            + parent.parent.parent.availability
+                                        text: sourceCard.trackCount + " tracks · "
+                                            + sourceCard.availability
                                         role: "caption"
                                         color: MichiPalette.textSecondary
                                     }
                                 }
                                 Row {
+                                    id: sourceActions
                                     spacing: MichiSpacing.xs
                                     // P1-C UX defense: mutating actions are
                                     // disabled while ANY scan is active.
                                     property bool busy: root.library && root.library.scanActive
                                     MichiIconButton {
+                                        objectName: "sourceScanAction_" + sourceCard.sourceId
                                         iconName: "play"
                                         accessibleName: qsTr("Scan source")
-                                        enabled: !parent.busy
-                                            && parent.parent.parent.enabled
-                                            && parent.parent.parent.lifecycle === "active"
-                                        onClicked: root.library.scan_source(parent.parent.parent.sourceId)
+                                        enabled: !sourceActions.busy
+                                            && sourceCard.sourceEnabled
+                                            && sourceCard.lifecycle === "active"
+                                        onClicked: root.library.scan_source(sourceCard.sourceId)
                                     }
                                     MichiIconButton {
+                                        objectName: "sourceLocateAction_" + sourceCard.sourceId
                                         iconName: "folder"
                                         accessibleName: qsTr("Locate source")
-                                        enabled: !parent.busy
-                                        onClicked: locateDialog.openFor(parent.parent.parent.sourceId)
+                                        enabled: !sourceActions.busy
+                                        onClicked: locateFolderDialog.openFor(sourceCard.sourceId)
                                     }
                                     MichiIconButton {
+                                        objectName: "sourceRestoreAction_" + sourceCard.sourceId
                                         iconName: "refresh"
                                         accessibleName: qsTr("Restore source")
-                                        visible: parent.parent.parent.lifecycle === "retired"
-                                        enabled: !parent.busy
-                                        onClicked: root.library.restore_source(parent.parent.parent.sourceId)
+                                        visible: sourceCard.lifecycle === "retired"
+                                        enabled: !sourceActions.busy
+                                        onClicked: root.library.restore_source(sourceCard.sourceId)
                                     }
                                     MichiIconButton {
-                                        iconName: parent.parent.parent.enabled ? "pause" : "play"
-                                        accessibleName: parent.parent.parent.enabled
+                                        objectName: "sourceToggleAction_" + sourceCard.sourceId
+                                        iconName: sourceCard.sourceEnabled ? "pause" : "play"
+                                        accessibleName: sourceCard.sourceEnabled
                                             ? qsTr("Disable source") : qsTr("Enable source")
-                                        visible: parent.parent.parent.lifecycle === "active"
-                                        enabled: !parent.busy
+                                        visible: sourceCard.lifecycle === "active"
+                                        enabled: !sourceActions.busy
                                         onClicked: root.library.disable_source(
-                                            parent.parent.parent.sourceId,
-                                            parent.parent.parent.enabled)
+                                            sourceCard.sourceId, sourceCard.sourceEnabled)
                                     }
                                     MichiIconButton {
+                                        objectName: "sourceRetireAction_" + sourceCard.sourceId
                                         iconName: "trash"
                                         accessibleName: qsTr("Remove from Michi")
-                                        visible: parent.parent.parent.lifecycle === "active"
-                                        enabled: !parent.busy
-                                        onClicked: root.library.retire_source(parent.parent.parent.sourceId)
+                                        visible: sourceCard.lifecycle === "active"
+                                        enabled: !sourceActions.busy
+                                        onClicked: root.library.retire_source(sourceCard.sourceId)
                                     }
                                 }
                             }
                         }
                     }
+                }
+
+                MichiText {
+                    width: sourceList.width
+                    visible: sourceRepeater.count === 0
+                    text: qsTr("No music sources configured yet.")
+                    role: "secondary"
+                    wrapMode: Text.Wrap
+                    horizontalAlignment: Text.AlignHCenter
                 }
             }
         }
@@ -218,48 +201,44 @@ Popup {
         }
     }
 
+    // P1-LIB-03: the Bridge owns ALL QUrl → local path translation.
     FolderDialog {
         id: folderDialog
+        objectName: "musicSourcesFolderDialog"
         title: qsTr("Add music source")
         onAccepted: {
-            if (root.library && folderDialog.selectedFolder) {
-                var result = root.library.add_music_source(
-                    folderDialog.selectedFolder.name || "Music",
-                    folderDialog.selectedFolder.toString().replace("file://", ""))
-                if (result.indexOf("-") !== 0)
-                    sourceList.refresh()
+            if (root.library && folderDialog.selectedFolder)
+                root.library.add_and_scan_music_source_url(folderDialog.selectedFolder)
+        }
+    }
+
+    // P1-LIB-03: Locate uses a FolderDialog; the text-path interaction is
+    // gone from the canonical surface (legacy string API remains only for
+    // compatibility).
+    FolderDialog {
+        id: locateFolderDialog
+        objectName: "musicSourcesLocateDialog"
+        title: qsTr("Locate source…")
+        property string targetSourceId: ""
+        function openFor(sourceId) {
+            locateFolderDialog.targetSourceId = sourceId
+            locateFolderDialog.open()
+        }
+        onAccepted: {
+            if (root.library && locateFolderDialog.targetSourceId.length > 0
+                    && locateFolderDialog.selectedFolder) {
+                root.library.relocate_source_url(
+                    locateFolderDialog.targetSourceId,
+                    locateFolderDialog.selectedFolder)
             }
         }
     }
 
-    Dialog {
-        id: locateDialog
-        title: qsTr("Locate source…")
-        modal: true
-        anchors.centerIn: parent
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        property string targetSourceId: ""
-        function openFor(sourceId) {
-            locateDialog.targetSourceId = sourceId
-            locateDialog.open()
-        }
-        onAccepted: {
-            if (root.library && locateDialog.targetSourceId.length > 0 && locateField.text.length > 0)
-                root.library.relocate_source(locateDialog.targetSourceId, locateField.text)
-        }
-        contentItem: ColumnLayout {
-            spacing: MichiSpacing.sm
-            MichiTextField {
-                id: locateField
-                Layout.fillWidth: true
-                placeholderText: qsTr("New root path for this source")
-            }
-            MichiText {
-                text: qsTr("Every track identity is preserved when you locate the source at its new root.")
-                role: "caption"
-                color: MichiPalette.textSecondary
-                wrapMode: Text.Wrap
-            }
-        }
+    MichiText {
+        text: qsTr("Every track identity is preserved when you locate the source at its new root.")
+        role: "caption"
+        color: MichiPalette.textSecondary
+        Layout.fillWidth: true
+        wrapMode: Text.Wrap
     }
 }

@@ -133,6 +133,20 @@ class SourceScanLifecycle:
             ]
         )
 
+    def request_add_source(self, display_name: str, root_path: str) -> str:
+        """ONE Application use case (P1-LIB-03): configure a new source AND
+        enqueue exactly ONE async scan of it. Returns "" on success or a
+        user-presentable error message."""
+        if self._active:
+            return "A library scan is already running."
+        self._reset_terminal()
+        try:
+            source = self._coordinator.add_source(display_name, root_path)
+        except ValueError as exc:
+            return str(exc)
+        self._enqueue([source.library_source_id])
+        return ""
+
     def request_scan_source(self, source_id: str) -> None:
         """Reconcile ONE source asynchronously (never the GUI thread)."""
         self._reset_terminal()
@@ -200,8 +214,15 @@ class SourceScanLifecycle:
     # --------------------------------------------------------- relay handlers
 
     def handle_progress(self, generation: int, progress) -> None:
-        """OWNER thread: forward progress for the CURRENT generation only."""
+        """OWNER thread: forward progress for the CURRENT generation only.
+
+        CONCURRENCY-LIB-04: after the owner rejected this generation
+        (cancel/invalidate/reschedule), late progress from the SAME
+        generation is ignored — it must never mutate visible scan state
+        before done() arrives."""
         if generation != self._generation:
+            return
+        if generation in self._rejected_generations:
             return
         self._set_state(
             phase=getattr(progress, "phase", self._state.phase),

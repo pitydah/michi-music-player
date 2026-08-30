@@ -23,6 +23,12 @@ from michi.domain.library import (
     make_artist_key,
     resolve_album_artist,
 )
+from michi.domain.library_catalog import (
+    MediaAvailability,
+    SourceLifecycle,
+    effective_availability,
+    media_playback_blocked,
+)
 from michi.presentation.track_projection import project_track_row
 
 
@@ -30,6 +36,9 @@ class LibraryBridge(QObject):
     """Thin adapter: LibraryService state → QML properties, QML intent → service."""
 
     library_changed = Signal()
+    # CONCURRENCY-LIB-02: pure scan telemetry — NEVER invalidates the
+    # expensive library projections on per-file progress ticks.
+    scan_changed = Signal()
     playlist_target_requested = Signal(dict)
     new_playlist_target_requested = Signal(dict)
     album_properties_requested = Signal(dict)
@@ -117,6 +126,9 @@ class LibraryBridge(QObject):
                     if make_artist_key(ref.artist.strip() or "Unknown Artist")
                     == self._selected_artist_key
                 ]
+        # CONCURRENCY-LIB-02: legacy service notifications also carry
+        # scan_changed so the legacy scan telemetry surface stays truthful.
+        self.scan_changed.emit()
         self.library_changed.emit()
 
     def _get_files(self) -> list[str]:
@@ -201,6 +213,31 @@ class LibraryBridge(QObject):
         if source_state is not None and source_state.active:
             return True
         return self._legacy_scan_active()
+
+    def _get_library_track_count(self) -> int:
+        """P1-LIB-06: STRUCTURAL library existence — never the filtered
+        visible projection. Search-/genre-zero rows are view concerns."""
+        return len(self._service.state.tracks)
+
+    def _get_has_configured_sources(self) -> bool:
+        """P1-LIB-01/04: TRUE when ANY source exists in the catalog —
+        regardless of enabled/lifecycle. Configured != scannable."""
+        if self._source_coordinator is None:
+            return False
+        return bool(self._source_coordinator.list_sources())
+
+    def _get_has_scannable_sources(self) -> bool:
+        if self._source_coordinator is None:
+            return False
+        return any(
+            source.lifecycle is SourceLifecycle.ACTIVE and source.enabled
+            for source in self._source_coordinator.list_sources()
+        )
+
+    def _get_configured_source_count(self) -> int:
+        if self._source_coordinator is None:
+            return 0
+        return len(self._source_coordinator.list_sources())
 
     def _get_scan_status(self) -> str:
         """UNIFIED scan projection with explicit priority (P1-B):
@@ -574,18 +611,21 @@ class LibraryBridge(QObject):
     def _get_song_paths(self) -> list[str]:
         return [str(t.file_path) for t in self._visible_track_refs()]
 
-    def _effective_availability(self, ref: TrackRef) -> str:
-        """Composed playability (M6-EXT-R4 freeze gate §11): source
-        observation dominates the media observation — ONE authority via
-        the shared domain composition."""
+    def _effective_media_availability(self, ref: TrackRef) -> MediaAvailability:
+        """P1-LIB-05: composed playability as the ENUM (one authority via
+        the shared domain composition) — consumers decide string vs bool."""
         if self._source_coordinator is not None and ref.library_source_id:
-            from michi.domain.library_catalog import effective_availability
-
             return effective_availability(
                 ref.availability,
                 self._source_coordinator.observed_availability(ref.library_source_id),
-            ).value
-        return ref.availability.value
+            )
+        return ref.availability
+
+    def _effective_availability(self, ref: TrackRef) -> str:
+        return self._effective_media_availability(ref).value
+
+    def _effective_availability(self, ref: TrackRef) -> str:
+        return self._effective_media_availability(ref).value
 
     @staticmethod
     def _track_row(ref: TrackRef) -> dict:
@@ -602,7 +642,9 @@ class LibraryBridge(QObject):
         function: canonical row facts + artwork + EFFECTIVE availability.
         QML only represents this truth — it never infers availability."""
         row = project_track_row(ref)
-        row["availability"] = self._effective_availability(ref)
+        availability = self._effective_media_availability(ref)
+        row["availability"] = availability.value
+        row["unavailable"] = media_playback_blocked(availability)
         return row
 
     def _track_row_with_artwork(self, ref: TrackRef) -> dict:
@@ -747,11 +789,11 @@ class LibraryBridge(QObject):
     diagnosticCode = Property(str, _get_diagnostic_code, notify=library_changed)
     diagnosticMessage = Property(str, _get_diagnostic_message, notify=library_changed)
     hasDiagnostic = Property(bool, _get_has_diagnostic, notify=library_changed)
-    scanStatus = Property(str, _get_scan_status, notify=library_changed)
-    scanProcessed = Property(int, _get_scan_processed, notify=library_changed)
-    scanTotal = Property(int, _get_scan_total, notify=library_changed)
-    scanProgress = Property(float, _get_scan_progress, notify=library_changed)
-    scanCurrentPath = Property(str, _get_scan_current_path, notify=library_changed)
+    scanStatus = Property(str, _get_scan_status, notify=scan_changed)
+    scanProcessed = Property(int, _get_scan_processed, notify=scan_changed)
+    scanTotal = Property(int, _get_scan_total, notify=scan_changed)
+    scanProgress = Property(float, _get_scan_progress, notify=scan_changed)
+    scanCurrentPath = Property(str, _get_scan_current_path, notify=scan_changed)
     albumCount = Property(int, _get_album_count, notify=library_changed)
     artistCount = Property(int, _get_artist_count, notify=library_changed)
     albums = Property(list, _get_albums, notify=library_changed)
@@ -823,8 +865,13 @@ class LibraryBridge(QObject):
     # ------------------------------------------------------------------
 
     def _on_source_scan_state(self, state) -> None:
-        """Owner-thread lifecycle truth → presentation (scanning/progress)."""
-        self.library_changed.emit()
+        """CONCURRENCY-LIB-02: per-file progress ticks emit scan_changed
+        ONLY. library_changed fires on structural transitions (terminal
+        status) — a progress tick must never trigger whole-Library
+        expensive recomputation."""
+        self.scan_changed.emit()
+        if not state.active and state.last_terminal_status:
+            self.library_changed.emit()
 
     def _get_source_scan_status(self) -> str:
         if self._source_scan_lifecycle is None:
@@ -850,10 +897,21 @@ class LibraryBridge(QObject):
             "diagnostic": state.diagnostic,
         }
 
-    scanActive = Property(bool, _get_scan_active, notify=library_changed)
-    scanDiagnostic = Property(str, _get_scan_diagnostic, notify=library_changed)
-    libraryScanDiagnostic = Property(str, _get_scan_diagnostic, notify=library_changed)
-    sourceScanStatus = Property(str, _get_source_scan_status, notify=library_changed)
+    scanActive = Property(bool, _get_scan_active, notify=scan_changed)
+    # P1-LIB-01/04: semantic state as Properties (configured != scannable).
+    libraryTrackCount = Property(int, _get_library_track_count, notify=library_changed)
+    hasConfiguredSources = Property(
+        bool, _get_has_configured_sources, notify=library_changed
+    )
+    hasScannableSources = Property(
+        bool, _get_has_scannable_sources, notify=library_changed
+    )
+    configuredSourceCount = Property(
+        int, _get_configured_source_count, notify=library_changed
+    )
+    scanDiagnostic = Property(str, _get_scan_diagnostic, notify=scan_changed)
+    libraryScanDiagnostic = Property(str, _get_scan_diagnostic, notify=scan_changed)
+    sourceScanStatus = Property(str, _get_source_scan_status, notify=scan_changed)
     sourceScanActive = Property(bool, _get_source_scan_active, notify=library_changed)
     sourceScanProgress = Property(
         dict, _get_source_scan_progress, notify=library_changed
@@ -928,13 +986,30 @@ class LibraryBridge(QObject):
         if self._source_scan_lifecycle is not None:
             self._source_scan_lifecycle.request_scan_all()
 
-    @Slot()
-    def has_sources(self) -> bool:
-        if self._source_coordinator is None:
-            return False
-        return any(
-            s.lifecycle.value == "active" and s.enabled
-            for s in self._source_coordinator.list_sources()
+    @Slot(QUrl, result=str)
+    def add_and_scan_music_source_url(self, directory: QUrl) -> str:
+        """P1-LIB-03 CANONICAL first-run intent: one QUrl → local path
+        translation (Application owns URL semantics, never QML), configure
+        the source and enqueue exactly ONE async scan. Returns "" on
+        success or a user-presentable error."""
+        if self._source_scan_lifecycle is None:
+            return "Source management is not available."
+        if not directory.isLocalFile():
+            return "Only local folders can be used as music sources."
+        return self._source_scan_lifecycle.request_add_source(
+            "", directory.toLocalFile()
+        )
+
+    @Slot(str, QUrl, result=str)
+    def relocate_source_url(self, source_id: str, directory: QUrl) -> str:
+        """P1-LIB-03 CANONICAL Locate: QUrl → local path, remap root only,
+        reschedule exactly one scan. Returns "" on success or an error."""
+        if self._source_scan_lifecycle is None:
+            return "Source management is not available."
+        if not directory.isLocalFile():
+            return "Only local folders can be used as music sources."
+        return self._source_scan_lifecycle.request_relocate(
+            source_id, directory.toLocalFile()
         )
 
     @Slot(str, str)

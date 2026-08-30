@@ -199,10 +199,15 @@ class TestStructuralAntiRegression:
         assert "_coordinator._catalog" not in source
 
     def test_toolbar_never_drives_current_dir_scan(self) -> None:
+        # M6-EXT-R4 LIBRARY PRODUCT CONVERGENCE SEAL (P1-LIB-01): the
+        # toolbar uses the ONE canonical snake_case action — the camelCase
+        # "scanAllSources" alias never existed on the Bridge (broken
+        # contract, removed by the seal; no duplicate alias is added).
         source = Path("src/michi/presentation/qml/views/LibraryToolbar.qml").read_text(
             encoding="utf-8"
         )
-        assert "scanAllSources" in source
+        assert "scan_all_sources()" in source
+        assert "scanAllSources" not in source
         assert "library.scan(library.currentDir)" not in source
 
     def test_make_track_id_is_legacy_only(self) -> None:

@@ -64,8 +64,11 @@ ColumnLayout {
 
     ErrorState {
         objectName: "libraryErrorState"
+        // P1-LIB-06: structural existence (libraryTrackCount) drives the
+        // error surface — a filtered zero-result projection never
+        // impersonates an empty library.
         visible: library.hasDiagnostic
-            || (library.scanStatus === "FAILED" && library.fileCount === 0)
+            || (library.scanStatus === "FAILED" && library.libraryTrackCount === 0)
         title: library.hasDiagnostic ? "Library unavailable" : "Scan failed"
         message: library.hasDiagnostic
             ? library.diagnosticMessage
@@ -82,14 +85,14 @@ ColumnLayout {
         id: contentArea
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: library.fileCount > 0
+        visible: library.libraryTrackCount > 0
     }
 
     EmptyState {
         objectName: "libraryEmptyState"
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: library.fileCount === 0
+        visible: library.libraryTrackCount === 0
             && !library.scanActive
             && (
                 library.scanStatus === ""
