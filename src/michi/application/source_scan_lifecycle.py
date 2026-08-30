@@ -27,6 +27,7 @@ from dataclasses import dataclass, replace
 
 from michi.application.ports import ScanCancelled
 from michi.application.source_scan_coordinator import SourceScanCoordinator
+from michi.domain.library_catalog import LibrarySource
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ class SourceScanLifecycle:
         self._generation = 0
         self._active = False
         self._cancel_requested = False
+        self._active_source_snapshot: LibrarySource | None = None
         self._state = SourceScanRunState()
         self._subscribers: list[Callable[[SourceScanRunState], None]] = []
         if on_state is not None:
@@ -182,19 +184,27 @@ class SourceScanLifecycle:
         )
 
     def handle_done(self, generation: int, plan, error: BaseException | None) -> None:
-        """OWNER thread: generation gate BEFORE any commit. A stale or
-        failed generation never touches the catalog."""
-        source = self._current_source()
-        if generation != self._generation or source is None:
+        """OWNER thread (10/10 FINAL SEAL P1-01): generation + SNAPSHOT
+        provenance first — the current catalog is NEVER re-fetched to
+        pretend it is the worker snapshot."""
+        if generation != self._generation:
+            return
+        source_snapshot = self._active_source_snapshot
+        if source_snapshot is None:
             self._finish(generation, stale=True)
             return
         if error is not None or plan is None:
-            # Worker failure (typed scan error / cancellation): no commit.
-            # P1-05: the OWNER publishes the physical observation (never
-            # the worker); ScanCancelled fabricates no observation.
+            # Worker failure: no commit. ScanCancelled fabricates no
+            # observation. A REAL error describing OLD configuration must
+            # not poison the current (possibly relocated) root.
             if error is not None and not isinstance(error, ScanCancelled):
+                if not self._coordinator.source_configuration_is_current(
+                    source_snapshot
+                ):
+                    self._finish(generation, stale=True)
+                    return
                 self._coordinator.record_source_scan_error(
-                    source.library_source_id, error
+                    source_snapshot.library_source_id, error
                 )
             self._finish(
                 generation,
@@ -203,7 +213,7 @@ class SourceScanLifecycle:
             )
             return
         outcome = self._coordinator.commit_source_scan_if_current(
-            generation, self._generation, source, plan, None
+            generation, self._generation, plan, None
         )
         if outcome is None:
             self._finish(generation, stale=True)
@@ -272,6 +282,8 @@ class SourceScanLifecycle:
         self._active = True
         self._generation += 1
         generation = self._generation
+        # The EXACT snapshot that starts this generation — never re-fetched.
+        self._active_source_snapshot = source
         self._set_state(
             generation=generation,
             status=_RUNNING,
@@ -302,6 +314,9 @@ class SourceScanLifecycle:
         if generation != self._generation:
             return  # superseded: its completion is irrelevant
         self._active = False
+        # 10/10 FINAL SEAL §8: generation N owns snapshot N — clear it
+        # BEFORE the next generation can start.
+        self._active_source_snapshot = None
         source_id = self._state.current_source_id
         if outcome is not None:
             status = _FAILED if outcome.failed else _IDLE

@@ -63,6 +63,7 @@ ColumnLayout {
     spacing: MichiTheme.space8
 
     ErrorState {
+        objectName: "libraryErrorState"
         visible: library.hasDiagnostic
             || (library.scanStatus === "FAILED" && library.fileCount === 0)
         title: library.hasDiagnostic ? "Library unavailable" : "Scan failed"
@@ -85,6 +86,7 @@ ColumnLayout {
     }
 
     EmptyState {
+        objectName: "libraryEmptyState"
         Layout.fillWidth: true
         Layout.fillHeight: true
         visible: library.fileCount === 0
@@ -103,14 +105,14 @@ ColumnLayout {
     }
 
     LoadingState {
+        objectName: "libraryLoadingState"
         Layout.fillWidth: true
         Layout.fillHeight: true
-        // FAILED/CANCELLED must NOT spin forever: the ErrorState (above)
-        // covers FAILED with a retry, and CANCELLED returns to the
-        // EmptyState prompt.
+        // 10/10 FINAL SEAL P1-02: scanActive is the ONLY operational
+        // authority — the Bridge owns the state machine; this surface
+        // never reconstructs it from status strings.
         visible: library.fileCount === 0
-            && library.scanStatus !== "" && library.scanStatus !== "IDLE"
-            && library.scanStatus !== "FAILED" && library.scanStatus !== "CANCELLED"
+            && library.scanActive
         message: qsTr("Building your library…")
     }
 

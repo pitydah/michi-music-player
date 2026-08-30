@@ -134,7 +134,7 @@ class TestAsyncSourceScan:
 
         def on_done(generation, plan, error):
             results["outcome"] = coordinator.commit_source_scan_if_current(
-                generation, 1, source, plan, error
+                generation, 1, plan, error
             )
 
         coordinator.submit_source_scan(source, pipeline, 1, on_done=on_done)
@@ -153,7 +153,7 @@ class TestAsyncSourceScan:
             # The generation already advanced: the stale plan must NOT
             # commit (simulates a superseded scan arriving late).
             results["outcome"] = coordinator.commit_source_scan_if_current(
-                generation, 99, source, plan, error
+                generation, 99, plan, error
             )
 
         coordinator.submit_source_scan(source, pipeline, 1, on_done=on_done)
@@ -171,7 +171,7 @@ class TestAsyncSourceScan:
         def on_done(generation, plan, error):
             results["error"] = error
             results["outcome"] = coordinator.commit_source_scan_if_current(
-                generation, 1, source, plan, error
+                generation, 1, plan, error
             )
 
         coordinator.submit_source_scan(source, pipeline, 1, on_done=on_done)

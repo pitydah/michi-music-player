@@ -116,10 +116,13 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
     def _prepare_variant(
         self, playlist_id: str, source_image_path, *, suffix: str
     ) -> str | None:
-        """P1-06 IMMUTABLE CANDIDATE: the content-versioned managed file
-        EXISTS before any database reference — a committed reference can
-        never point to a not-yet-created file; a crash after commit can
-        only leave an orphaned OLD asset (cleanup debt)."""
+        """IMMUTABLE CANDIDATE PROTOCOL:
+        1. prepare_* writes a content-versioned FINAL managed file.
+        2. only after the file exists may SQLite reference it.
+        3. DB failure deletes the new candidate best-effort and keeps old.
+        4. DB success makes the new reference authoritative.
+        5. old managed asset cleanup is best-effort after commit.
+        There is NO post-DB promotion step."""
         src = Path(source_image_path)
         if not src.is_file():
             return None

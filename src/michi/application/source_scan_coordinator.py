@@ -85,21 +85,24 @@ class SourceOverlapError(ValueError):
 
 
 @dataclass
+@dataclass(frozen=True)
 class SourceReconciliationPlan:
-    """Worker-produced reconciliation plan (M6-EXT-R4 freeze gate §14).
+    """IMMUTABLE worker result (10/10 FINAL SEAL P1-01).
 
-    The plan is the ONLY thing that crosses the thread boundary: the worker
-    computes it (reads only); the owner thread commits it atomically after
-    the generation gate. Provisional ids inside become authoritative ONLY
-    after the catalog commit."""
+    ``source_snapshot`` is the EXACT immutable LibrarySource configuration
+    used to discover/extract/reconcile this plan. Owner-side commit MUST
+    compare this snapshot with the current authoritative catalog source
+    before any durable or observable write — the plan is self-describing
+    evidence, never re-derived from a re-fetched Source."""
 
+    source_snapshot: LibrarySource
     outcome: SourceScanOutcome
-    refs: list[TrackRef]
-    upsert_media: list[MediaFileRecord]
-    upsert_tracks: list[TrackRecord]
-    index_upserts: list
-    cache_upserts: list
-    new_track_ids: list[str]
+    refs: tuple[TrackRef, ...]
+    upsert_media: tuple[MediaFileRecord, ...]
+    upsert_tracks: tuple[TrackRecord, ...]
+    index_upserts: tuple
+    cache_upserts: tuple
+    new_track_ids: tuple[str, ...]
 
 
 class SourceScanCoordinator:
@@ -238,6 +241,7 @@ class SourceScanCoordinator:
             root_path=str(root),
         )
         self._catalog.upsert_source(source)
+        self._remember_sources(self._catalog.load_sources())
         return source
 
     # ------------------------------------------------------------ observables
@@ -311,6 +315,10 @@ class SourceScanCoordinator:
             lifecycle=target.lifecycle,
         )
         self._catalog.upsert_source(relocated)
+        self._remember_sources(self._catalog.load_sources())
+        # 10/10 FINAL SEAL §9: the old physical observation describes /OLD —
+        # /NEW is UNKNOWN until re-probed. Never AVAILABLE optimistically.
+        self._observations.pop(source_id, None)
         return relocated
 
     def relocate_source(self, source_id: str, new_root: str) -> SourceScanOutcome:
@@ -377,30 +385,42 @@ class SourceScanCoordinator:
         self,
         generation: int,
         current_generation: int,
-        source: LibrarySource,
         plan: "SourceReconciliationPlan | None",
         error: BaseException | None,
     ) -> SourceScanOutcome | None:
-        """OWNER-THREAD gate: commit ONLY when the generation is current and
-        the worker produced a plan without error. Returns the outcome, or
-        None when the generation is stale / cancelled / failed (nothing was
-        committed)."""
+        """OWNER-THREAD gate (10/10 FINAL SEAL P1-01): the PLAN carries its
+        own provenance. No external Source argument — the worker snapshot is
+        the only evidence of what was scanned.
+
+        GATES: 1 generation → 2 worker outcome → 3 catalog configuration →
+        4 exact snapshot provenance → 5 ACTIVE+ENABLED. ZERO durable or
+        observable writes before Gate 5."""
         if generation != current_generation:
             return None  # stale generations NEVER change observed state
         if error is not None or plan is None:
             return None
-        # P1-C Gate 3 — SOURCE CONFIGURATION PROVENANCE.
-        current = self._current_source_record(source.library_source_id)
+        snapshot = plan.source_snapshot
+        # Gate 3 — current catalog configuration.
+        current = self._current_source_record(snapshot.library_source_id)
         if current is None:
-            return None
-        if not self._same_source_configuration(source, current):
             logger.info(
-                "dropping stale source scan plan: configuration changed "
-                "during scan (source_id=%s)",
-                source.library_source_id,
+                "dropping source scan plan: source no longer exists (source_id=%s)",
+                snapshot.library_source_id,
             )
             return None
-        # Gate 4 — only ACTIVE + ENABLED Sources publish reconciliation.
+        # Gate 4 — EXACT source configuration provenance (root/enabled/
+        # lifecycle) from the plan itself.
+        if not self._same_source_configuration(snapshot, current):
+            logger.info(
+                "dropping stale source scan plan: source configuration "
+                "changed during scan "
+                "(source_id=%s old_root=%s current_root=%s)",
+                snapshot.library_source_id,
+                snapshot.root_path,
+                current.root_path,
+            )
+            return None
+        # Gate 5 — only ACTIVE + ENABLED is productive.
         if current.lifecycle is not SourceLifecycle.ACTIVE or not current.enabled:
             logger.info(
                 "dropping source scan plan for inactive source: %s",
@@ -411,6 +431,19 @@ class SourceScanCoordinator:
         if not outcome.failed:
             self._observations[current.library_source_id] = outcome.availability
         return outcome
+
+    def source_configuration_is_current(self, snapshot: LibrarySource) -> bool:
+        """READ-ONLY authority gate (10/10 FINAL SEAL §5): true only when the
+        snapshot exactly matches the current catalog configuration AND the
+        source is ACTIVE + ENABLED. Never mutates anything."""
+        current = self._current_source_record(snapshot.library_source_id)
+        if current is None:
+            return False
+        return (
+            self._same_source_configuration(snapshot, current)
+            and current.lifecycle is SourceLifecycle.ACTIVE
+            and current.enabled
+        )
 
     def _current_source_record(self, source_id: str) -> LibrarySource | None:
         """AUTHORITATIVE commit-boundary lookup (never the stale cache as
@@ -601,7 +634,7 @@ class SourceScanCoordinator:
         discovered: tuple[DiscoveredMediaFile, ...],
         *,
         token=None,
-    ) -> SourceScanOutcome:
+    ) -> "SourceReconciliationPlan":
         known_by_path = {
             media.relative_path: media
             for media in self._catalog.media_for_source(source.library_source_id)
@@ -768,13 +801,14 @@ class SourceScanCoordinator:
             )
 
         return SourceReconciliationPlan(
+            source_snapshot=source,
             outcome=outcome,
-            refs=refs,
-            upsert_media=upsert_media,
-            upsert_tracks=upsert_tracks,
-            index_upserts=index_upserts,
-            cache_upserts=cache_upserts,
-            new_track_ids=new_track_ids,
+            refs=tuple(refs),
+            upsert_media=tuple(upsert_media),
+            upsert_tracks=tuple(upsert_tracks),
+            index_upserts=tuple(index_upserts),
+            cache_upserts=tuple(cache_upserts),
+            new_track_ids=tuple(new_track_ids),
         )
 
     def _extract_meta(self, path: Path) -> TrackMetadata:

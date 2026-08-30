@@ -81,6 +81,27 @@ class _ManualPipeline:
         return plan
 
 
+class _DelayedCancelPipeline(_ManualPipeline):
+    """Cancel is REQUESTED but NOT acknowledged (10/10 FINAL SEAL §16):
+    the racing completion can arrive before the acknowledgment."""
+
+    def cancel(self, generation):
+        self.cancelled.append(generation)
+        # Deliberately DO NOT invoke on_done.
+
+    def run(self, index=0):
+        generation, work, on_progress, on_done = self.submissions[index]
+        progress = _Progress()
+        token = ScanCancelToken()
+        try:
+            plan = work(progress, token, lambda: None)
+        except BaseException as exc:  # noqa: BLE001
+            on_done(generation, None, exc)
+            return None
+        on_done(generation, plan, None)
+        return plan
+
+
 def _source(tmp_path, name):
     root = tmp_path / name
     root.mkdir(exist_ok=True)
@@ -802,15 +823,6 @@ class TestSourceConfigurationRaces:
         plan = work(progress, ScanCancelToken(), lambda: None)
         return library, catalog, coordinator, lifecycle, generation, plan, done_cb
 
-    def test_retire_during_scan_rejects_old_plan(self, tmp_path) -> None:
-        library, catalog, coordinator, lifecycle, gen, plan, done = self._held_scan(
-            tmp_path, _source(tmp_path, "a")
-        )
-        (Path(coordinator.list_sources()[0].root_path) / "song.flac").write_bytes(b"x")
-        # Held scan: retire first, then deliver the stale plan (covered by
-        # the dedicated race test below).
-        assert lifecycle is not None
-
     def _held_scan_retired(self, tmp_path):
         library, catalog, coordinator, _ = _env(tmp_path)
         source = _source(tmp_path, "a")
@@ -1060,3 +1072,159 @@ class TestRealProductionShutdown:
         assert calls.count("shutdown") == 3  # (runner + runner + dispatcher)
         assert calls.count("disconnect") == 2
         assert "bridge-dispose" in calls
+
+
+class TestPlanProvenance:
+    def test_reconciliation_plan_carries_exact_source_snapshot(self, tmp_path) -> None:
+        from dataclasses import FrozenInstanceError
+
+        library, catalog, coordinator, _ = _env(tmp_path)
+        source = _source(tmp_path, "a")
+        catalog.upsert_source(source)
+        (Path(source.root_path) / "song.flac").write_bytes(b"x")
+        pipeline = _ManualPipeline()
+        lifecycle = SourceScanLifecycle(coordinator, pipeline)
+        lifecycle.request_scan_source(source.library_source_id)
+        _gen, work, _prog, _done = pipeline.submissions[0]
+        plan = work(_Progress(), ScanCancelToken(), lambda: None)
+        assert plan.source_snapshot.root_path == source.root_path
+
+        # Mutate the CATALOG root WITHOUT touching the plan.
+        new_root = tmp_path / "b"
+        new_root.mkdir()
+        from dataclasses import replace as dc_replace
+
+        catalog.upsert_source(dc_replace(source, root_path=str(new_root)))
+        assert plan.source_snapshot.root_path == source.root_path
+        assert catalog.load_sources()[0].root_path == str(new_root)
+        assert plan.source_snapshot != catalog.load_sources()[0]
+
+        # Immutability of the boundary carrier.
+        with pytest.raises(FrozenInstanceError):
+            plan.source_snapshot = source  # type: ignore[misc]
+        assert isinstance(plan.refs, tuple)
+        assert isinstance(plan.upsert_media, tuple)
+        assert isinstance(plan.upsert_tracks, tuple)
+        assert isinstance(plan.new_track_ids, tuple)
+
+    def test_relocate_rejects_old_success_even_before_cancel_ack(
+        self, tmp_path
+    ) -> None:
+        """Golden race (§17): OLD-root SUCCESS arrives BEFORE the cancel
+        acknowledgment — it must never commit."""
+        library, catalog, coordinator, _ = _env(tmp_path)
+        old_root = tmp_path / "old"
+        old_root.mkdir()
+        new_root = tmp_path / "new"
+        new_root.mkdir()
+        (old_root / "old.flac").write_bytes(b"x")
+        (new_root / "new.flac").write_bytes(b"x")
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path=str(old_root),
+        )
+        catalog.upsert_source(source)
+        pipeline = _DelayedCancelPipeline()
+        lifecycle = SourceScanLifecycle(coordinator, pipeline)
+        lifecycle.request_scan_source(source.library_source_id)
+        old_generation, old_work, _prog, old_done = pipeline.submissions[0]
+        old_plan = old_work(_Progress(), ScanCancelToken(), lambda: None)
+        assert old_plan.source_snapshot.root_path == str(old_root)
+
+        # Locate → NEW root; cancel REQUESTED but NOT acknowledged.
+        assert lifecycle.request_relocate(source.library_source_id, str(new_root)) == ""
+        assert catalog.load_sources()[0].root_path == str(new_root)
+        assert pipeline.cancelled == [old_generation]
+        assert coordinator.observed_availability(source.library_source_id) is (
+            SourceAvailability.UNKNOWN
+        )
+        # Deliver OLD SUCCESS now (before any cancel acknowledgment).
+        old_done(old_generation, old_plan, None)
+        # The old-root plan never became authoritative.
+        assert catalog.load_tracks() == ()
+        assert coordinator.observed_availability(source.library_source_id) is (
+            SourceAvailability.UNKNOWN
+        )
+        # The queued NEW-root replacement runs exactly once.
+        replacements = [s for s in pipeline.submissions if s[0] != old_generation]
+        assert len(replacements) == 1
+        new_generation, new_work, _np, new_done = replacements[0]
+        new_plan = new_work(_Progress(), ScanCancelToken(), lambda: None)
+        new_done(new_generation, new_plan, None)
+        media = catalog.load_media()
+        assert len(media) == 1
+        assert media[0].last_known_path.endswith("new.flac")
+        assert coordinator.observed_availability(source.library_source_id) is (
+            SourceAvailability.AVAILABLE
+        )
+
+    def test_relocate_rejects_old_root_error_before_cancel_ack(self, tmp_path) -> None:
+        """Golden race (§18): an OLD-root error must NOT mark the NEW root
+        MISSING/OFFLINE."""
+        from michi.application.library_port import LibraryFilesystemError
+        from michi.domain.library import LibraryDiagnosticCode
+
+        library, catalog, coordinator, _ = _env(tmp_path)
+        old_root = tmp_path / "old"
+        old_root.mkdir()
+        new_root = tmp_path / "new"
+        new_root.mkdir()
+        (new_root / "new.flac").write_bytes(b"x")
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="S",
+            root_path=str(old_root),
+        )
+        catalog.upsert_source(source)
+        pipeline = _DelayedCancelPipeline()
+        lifecycle = SourceScanLifecycle(coordinator, pipeline)
+        lifecycle.request_scan_source(source.library_source_id)
+        old_generation, _work, _prog, old_done = pipeline.submissions[0]
+
+        assert lifecycle.request_relocate(source.library_source_id, str(new_root)) == ""
+        assert pipeline.cancelled == [old_generation]
+        # Cancel NOT acknowledged; deliver the OLD error.
+        old_done(
+            old_generation,
+            None,
+            LibraryFilesystemError(
+                LibraryDiagnosticCode.DIRECTORY_MISSING,
+                old_root,
+                "old root gone",
+            ),
+        )
+        assert catalog.load_sources()[0].root_path == str(new_root)
+        # The /OLD error never contaminated /NEW.
+        assert coordinator.observed_availability(source.library_source_id) is (
+            SourceAvailability.UNKNOWN
+        )
+        # The replacement /NEW scan runs and succeeds → AVAILABLE.
+        replacements = [s for s in pipeline.submissions if s[0] != old_generation]
+        assert len(replacements) == 1
+        new_generation, new_work, _np, new_done = replacements[0]
+        new_plan = new_work(_Progress(), ScanCancelToken(), lambda: None)
+        new_done(new_generation, new_plan, None)
+        assert coordinator.observed_availability(source.library_source_id) is (
+            SourceAvailability.AVAILABLE
+        )
+
+
+class TestLoadingStateAuthority:
+    def test_loading_state_uses_scan_active_only(self) -> None:
+        qml = Path("src/michi/presentation/qml/views/LibraryContentHost.qml").read_text(
+            encoding="utf-8"
+        )
+        loading = qml.split("LoadingState {", 1)[1].split("TrackPropertiesView {", 1)[0]
+        assert "visible: library.fileCount === 0" in loading
+        assert "&& library.scanActive" in loading
+        assert "scanStatus" not in loading  # never reconstructs the machine
+
+    def test_empty_state_explicitly_accepts_terminal(self) -> None:
+        qml = Path("src/michi/presentation/qml/views/LibraryContentHost.qml").read_text(
+            encoding="utf-8"
+        )
+        empty = qml.split("EmptyState {", 1)[1].split("LoadingState {", 1)[0]
+        assert 'library.scanStatus === "COMPLETED"' in empty
+        assert 'library.scanStatus === "CANCELLED"' in empty
+        assert "library.scanActive" in empty
