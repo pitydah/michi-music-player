@@ -30,12 +30,6 @@ _MAX_PIXELS = {
 # R3-01 fail-closed identifier policy: UUIDs and safe names pass; path
 # components (/, \, ..) never do.
 _SAFE_PLAYLIST_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
-_ASSET_NAME_RE = {
-    "": re.compile(r"playlist_[A-Za-z0-9._-]{1,128}_[0-9a-f]{20}\.(png|jpg|webp)"),
-    "_hero": re.compile(
-        r"playlist_[A-Za-z0-9._-]{1,128}_hero_[0-9a-f]{20}\.(png|jpg|webp)"
-    ),
-}
 
 
 # Canonical extension per REAL detected format (R2 P1-08): the stored file
@@ -279,20 +273,26 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
             logger.warning("refusing delete: unknown role %r", role)
             return False
         suffix = "" if role == "cover" else "_hero"
-        pattern = _ASSET_NAME_RE[suffix]
-        if pattern.fullmatch(candidate.name) is None:
+        # Ownership exacta: prefix = playlist_<id><suffix>_ seguido
+        # INMEDIATAMENTE del digest canónico. Un id que contenga "_" o un
+        # hero tratado como cover nunca matchean (el digest es inmediato).
+        prefix = f"playlist_{playlist_id}{suffix}_"
+        if not candidate.name.startswith(prefix):
+            logger.warning(
+                "refusing delete: %r does not belong to playlist %r (%s)",
+                candidate.name,
+                playlist_id,
+                role,
+            )
+            return False
+        rest = candidate.name[len(prefix) :]
+        if re.fullmatch(r"[0-9a-f]{20}\.(png|jpg|webp)", rest) is None:
             logger.warning(
                 "refusing delete: filename %r does not match %s ownership "
                 "for playlist %r",
                 candidate.name,
                 role,
                 playlist_id,
-            )
-            return False
-        if not candidate.name.startswith(f"playlist_{playlist_id}{suffix}_"):
-            logger.warning(
-                "refusing delete: %r belongs to a different owner/role",
-                candidate.name,
             )
             return False
         try:
