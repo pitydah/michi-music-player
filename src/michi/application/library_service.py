@@ -99,6 +99,10 @@ class LibraryService:
         self._subscribers: list[Callable[[], None]] = []
         self._library_prefs = library_prefs
         self._library_index = library_index
+        # PERF-LIB-01: derived O(1) TrackRef indexes over canonical state
+        # (no second authority; rebuilt at the ONE structural chokepoint).
+        self._track_refs_by_id: dict[str, TrackRef] = {}
+        self._track_refs_by_path: dict[Path, TrackRef] = {}
         self._scan_pipeline = scan_pipeline
         # M6-EXT-R4 freeze gate: CANONICAL user state is TrackId-based
         # (LibraryUserStatePort); legacy path collections load only as the
@@ -197,6 +201,9 @@ class LibraryService:
             if str(t.file_path) not in previous_paths
         ]
         self._state.tracks = next_tracks
+        # PERF-LIB-01: the legacy scan commit reindexes the O(1) maps at
+        # the same point every other structural path does.
+        self._reindex_track_refs()
         # M7: the RAW query SURVIVES successful scans — the active search
         # projection is rebuilt against the new canonical library below.
         self._state.current_directory = directory
@@ -548,22 +555,38 @@ class LibraryService:
                     next_artwork_paths[album.key] = stored_path
                     has_artwork = True
             elif cached is not None and not offline:
+                # P2-HIGH: ONLINE confirmed negative — persist the
+                # invalidation so an offline restart cannot resurrect the
+                # obsolete manifest entry.
                 next_artwork_paths.pop(album.key, None)
                 has_artwork = False
+                invalidate = getattr(self._artwork_cache, "invalidate", None)
+                if invalidate is not None:
+                    invalidate(album.key)
             enriched.append(replace(album, has_artwork=has_artwork))
         self._artwork_paths = next_artwork_paths  # atomic replace: stale pruned
         return tuple(enriched)
 
-    def _rebuild_derived_library_state(self, *, offline: bool = False) -> None:
+    def _rebuild_derived_library_state(
+        self, *, offline: bool = False, cache_only: bool = False
+    ) -> None:
         """Recompute albums/artists/genres/folders from the canonical tracks
         and enrich albums with artwork. Called after ANY structural track
         mutation (successful scan, TRACK_MISSING removal, hydration).
 
-        ``offline`` (M6-EXT-R4-M): hydration keeps valid cached covers;
+        ``offline`` (M6-EXT-R4-M): hydration keeps valid cached covers.
 
-        online scans honor the provider verdict (corrupt art drops)."""
+        ``cache_only`` (P1/PERF-LIB-12): structural publication WITHOUT
+        ArtworkProvider I/O — already-cached artwork is projected and the
+        provider probing happens later on the WORKER (async artwork
+        refresh). Online scans honor the provider verdict (corrupt art
+        drops) through that refresh lifecycle."""
+        self._reindex_track_refs()
         model = build_music_model(self._state.tracks)
-        self._state.albums = self._enrich_albums(model.albums, offline=offline)
+        if cache_only:
+            self._state.albums = self._enrich_albums_cached_only(model.albums)
+        else:
+            self._state.albums = self._enrich_albums(model.albums, offline=offline)
         self._state.artists = model.artists
         self._state.genres = model.genres
         self._state.composers = model.composers
@@ -571,6 +594,25 @@ class LibraryService:
         # M7: the search corpus + active projection follow the new canonical
         # model (structural mutation chokepoint).
         self._rebuild_search_corpus()
+
+    def _enrich_albums_cached_only(
+        self, albums: tuple[AlbumRef, ...]
+    ) -> tuple[AlbumRef, ...]:
+        """P1/PERF-LIB-12: structural publication projects ONLY already-
+        cached artwork (no provider I/O — this runs on the owner thread).
+        The async artwork refresh later re-probes the provider."""
+        if self._artwork_cache is None:
+            return albums
+        cache_lookup = getattr(self._artwork_cache, "lookup", None)
+        next_artwork_paths: dict[str, Path] = {}
+        enriched = []
+        for album in albums:
+            cached = cache_lookup(album.key) if cache_lookup is not None else None
+            if cached is not None:
+                next_artwork_paths[album.key] = cached
+            enriched.append(replace(album, has_artwork=cached is not None))
+        self._artwork_paths = next_artwork_paths
+        return tuple(enriched)
 
     def restore_directory_hint(self, directory: str) -> None:
         """Restore a persisted path as context. No scan. Idempotent."""
@@ -848,30 +890,73 @@ class LibraryService:
         ref = self.trackref_by_id(track_id)
         return str(ref.file_path) if ref is not None else None
 
+    def _reindex_track_refs(self) -> None:
+        """PERF-LIB-01 ONE rebuild chokepoint: called from
+        _rebuild_derived_library_state BEFORE consumers rely on the new
+        track collection — covers hydration, legacy scan, source scan,
+        source removal and structural replacement."""
+        self._track_refs_by_id = {
+            ref.track_id: ref for ref in self._state.tracks if ref.track_id
+        }
+        self._track_refs_by_path = {ref.file_path: ref for ref in self._state.tracks}
+
     def trackref_by_id(self, track_id: str) -> TrackRef | None:
-        """Canonical TrackRef by stable identity, or None (M6-EXT-R4-J)."""
+        """Canonical TrackRef by stable identity, or None (M6-EXT-R4-J).
+
+        O(1) average (PERF-LIB-01): derived index over canonical state."""
         if not track_id:
             return None
-        for ref in self._state.tracks:
-            if ref.track_id == track_id:
-                return ref
-        return None
+        return self._track_refs_by_id.get(track_id)
 
-    def apply_source_tracks(self, source_id: str, refs: list[TrackRef]) -> None:
+    def apply_source_tracks(
+        self, source_id: str, refs: list[TrackRef], *, cache_only: bool = False
+    ) -> None:
         """M6-EXT-R4-K: replace ONLY this source's canonical TrackRefs and
         rebuild the derived model. Other sources survive untouched (a
-        Source A scan can never remove Source B)."""
+        Source A scan can never remove Source B).
+
+        ``cache_only`` (P1/PERF-LIB-12): the scan owner commits STRUCTURE
+        with already-cached artwork only; provider probing is scheduled as
+        async artwork refresh instead of running on the owner thread.
+
+        P1-LIB-11: the TRACK_MISSING diagnostic is IDENTITY-AWARE — if the
+        diagnostic described a TrackId of THIS source and that stable
+        identity recovers (scan/relink), the diagnostic converges to None.
+        Unrelated diagnostics are never touched."""
+        diagnostic_track_id = None
+        diagnostic = self._state.diagnostic
+        if (
+            diagnostic is not None
+            and diagnostic.code is LibraryDiagnosticCode.TRACK_MISSING
+            and diagnostic.path is not None
+        ):
+            old_ref = self.resolve_trackref(diagnostic.path)
+            if old_ref is not None and old_ref.library_source_id == source_id:
+                diagnostic_track_id = old_ref.track_id
+
         kept = [t for t in self._state.tracks if t.library_source_id != source_id]
         self._state.tracks = kept + list(refs)
-        self._rebuild_derived_library_state()
+        self._rebuild_derived_library_state(cache_only=cache_only)
+
+        if diagnostic_track_id:
+            current = self.trackref_by_id(diagnostic_track_id)
+            if current is None:
+                # Source intentionally removed from the active projection.
+                self._state.diagnostic = None
+            elif current.availability is not MediaAvailability.MISSING:
+                # Same stable identity recovered by the scan/relink.
+                self._state.diagnostic = None
+            # else: still genuinely missing — keep the diagnostic.
+
         self._notify()
 
     def resolve_trackref(self, file_path: Path) -> TrackRef | None:
-        """Canonical TrackRef by current path, or None."""
-        for ref in self._state.tracks:
-            if ref.file_path == file_path:
-                return ref
-        return None
+        """Canonical TrackRef by current path, or None.
+
+        O(1) average (PERF-LIB-01). The key is the Library's current
+        factual path projection — no Path.resolve() (not a new identity
+        policy)."""
+        return self._track_refs_by_path.get(Path(file_path))
 
     def validate_track_for_playback(self, track: TrackRef) -> bool:
         """TD-013 filesystem validation (kept in LibraryService).
@@ -890,6 +975,10 @@ class LibraryService:
                 self._state.tracks = [
                     preserved if t is track else t for t in self._state.tracks
                 ]
+                # PERF-LIB-01: bounded index refresh for the replaced ref.
+                if preserved.track_id:
+                    self._track_refs_by_id[preserved.track_id] = preserved
+                self._track_refs_by_path[preserved.file_path] = preserved
                 if track.media_file_id and self._catalog is not None:
                     try:
                         self._catalog.mark_media_availability(

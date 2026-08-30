@@ -455,6 +455,16 @@ def _build_services(
     # structurally separate; no request-type discrimination by generation.
     source_scan_relay = ScanRelay()
     source_scan_runner = ThreadScanRunner(source_scan_relay)
+    # P1/PERF-LIB-12: async artwork probing after source commits — the
+    # owner thread never runs Mutagen/directory/read I/O for artwork.
+    from michi.application.library_artwork_refresh import LibraryArtworkRefresh
+
+    source_coordinator._artwork_refresh = LibraryArtworkRefresh(
+        library,
+        artwork_provider,
+        artwork_cache,
+        runner=source_scan_runner,
+    )
     source_scan_lifecycle = SourceScanLifecycle(source_coordinator, source_scan_runner)
     source_scan_relay.done.connect(
         source_scan_lifecycle.handle_done, Qt.QueuedConnection

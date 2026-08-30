@@ -510,8 +510,13 @@ class TestTruthfulHygiene:
 
         # DURING extraction of the first item the item is NOT counted yet.
         assert probe.seen and probe.seen[0][0] == 0
-        # AFTER full reconciliation the item IS counted.
-        assert progress.processed == 1
+        # AFTER reconciliation the item IS counted (RECONCILING phase).
+        # (M6-EXT-R4 PRODUCT CONVERGENCE SEAL CONCURRENCY-LIB-03B:
+        # MARKING_MISSING is a separate truthful phase that resets
+        # processed to its own total — a scan with no missing candidates
+        # ends that phase at 0.)
+        assert progress.phase == "MARKING_MISSING"
+        assert progress.total == 0
 
 
 class TestArtworkSingleProtocol:
