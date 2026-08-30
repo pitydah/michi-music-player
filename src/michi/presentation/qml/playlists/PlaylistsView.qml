@@ -20,7 +20,7 @@ Item {
     signal createPlaylistRequested()
     signal openPlaylistRequested(string playlistId)
     signal playPlaylistRequested(string playlistId)
-    signal pinPlaylistRequested(string playlistId, bool pinned)
+    signal pinPlaylistRequested(string playlistId, bool pinned, string playlistName)
     signal renamePlaylistRequested(string playlistId, string playlistName)
     signal deletePlaylistRequested(string playlistId, string playlistName)
 
@@ -272,10 +272,12 @@ Item {
                     onOpenRequested: root.openPlaylistRequested(playlistCell.modelData.playlistId)
                     onPlayRequested: root.playPlaylistRequested(playlistCell.modelData.playlistId)
                     onPinToggled: {
-                        root.pinPlaylistRequested(playlistCell.modelData.playlistId, !playlistCell.modelData.pinned)
-                        window.showToast(playlistCell.modelData.pinned
-                            ? qsTr("Unpinned %1").arg(playlistCell.modelData.name)
-                            : qsTr("Pinned %1").arg(playlistCell.modelData.name))
+                        // R2 P1-12: feedback is shown by ContentHost ONLY
+                        // when the pin/unpin was durably committed.
+                        root.pinPlaylistRequested(
+                            playlistCell.modelData.playlistId,
+                            !playlistCell.modelData.pinned,
+                            playlistCell.modelData.name)
                     }
                     onCustomizeAppearanceRequested:
                         root.customizeAppearance(playlistCell.modelData)
@@ -363,7 +365,7 @@ Item {
                         accessibleName: modelData.pinned
                             ? qsTr("Unpin ") + modelData.name
                             : qsTr("Pin ") + modelData.name
-                        onClicked: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
+                        onClicked: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned, modelData.name)
                     }
 
                     MichiIconButton {
@@ -389,7 +391,7 @@ Item {
                     }
                     MenuItem {
                         text: modelData.pinned ? qsTr("Unpin") : qsTr("Pin")
-                        onTriggered: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
+                        onTriggered: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned, modelData.name)
                     }
                     MenuItem {
                         text: qsTr("Customize appearance…")

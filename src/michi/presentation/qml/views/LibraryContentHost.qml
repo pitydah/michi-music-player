@@ -101,9 +101,15 @@ ColumnLayout {
                     onClicked: {
                         // M9-R1 cross-feature: Library sends tracks to
                         // Playlists by canonical id (PLAINTLIST-HIERARCHY-02).
-                        playlists.add_track_to_playlist(modelData.playlistId, addTargetPath)
+                        // R2 P1-12: success feedback ONLY on durable add;
+                        // an already-present track is never "Added".
+                        var added = playlists.add_track_to_playlist(
+                            modelData.playlistId, addTargetPath)
                         addTargetPath = ""
-                        window.showToast(qsTr("Added to %1").arg(modelData.name))
+                        if (added)
+                            window.showToast(qsTr("Added to %1").arg(modelData.name))
+                        else
+                            window.showToast(qsTr("Already in %1").arg(modelData.name))
                     }
                 }
             }

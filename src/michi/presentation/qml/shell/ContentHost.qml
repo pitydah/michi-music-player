@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
+import "../patterns"
 import "../playlists"
 import "../primitives"
 import "../theme"
@@ -71,9 +72,16 @@ Item {
                 onCreatePlaylistRequested: root.createPlaylistRequested()
                 onOpenPlaylistRequested: playlistId => playlists.open_playlist(playlistId)
                 onPlayPlaylistRequested: playlistId => playlists.play_playlist(playlistId)
-                onPinPlaylistRequested: (playlistId, pinned) => {
-                    if (pinned) playlists.pin_playlist(playlistId)
-                    else playlists.unpin_playlist(playlistId)
+                onPinPlaylistRequested: (playlistId, pinned, playlistName) => {
+                    var ok = pinned
+                        ? playlists.pin_playlist(playlistId)
+                        : playlists.unpin_playlist(playlistId)
+                    if (ok)
+                        window.showToast(pinned
+                            ? qsTr("Pinned %1").arg(playlistName)
+                            : qsTr("Unpinned %1").arg(playlistName))
+                    else
+                        window.showToast(qsTr("Could not pin playlist"))
                 }
                 // M9-R1I: card dialogs use EPHEMERAL action targets — they
                 // never touch navigation (no select_playlist, no Detail
@@ -118,7 +126,7 @@ Item {
                         playback.shuffle = true
                     playlists.play_selected_playlist()
                 }
-                onPlayTrackRequested: index => playlists.play_track(index)
+                onPlayTrackRequested: index => playlists.play_playlist_track(index)
                 onAddMusicRequested: navigation.navigate("library")
                 onTogglePinRequested: {
                     if (playlists.selectedPlaylistPinned)
@@ -145,14 +153,19 @@ Item {
                     var removed = playlists.playlistTracks[index]
                     var removedPlaylistId = playlists.selectedPlaylistId
                     var removedIndex = index
-                    playlists.remove_track(index)
-                    if (removed && removed.path) {
-                        window.showToastWithAction(
-                            qsTr("Removed from playlist"), qsTr("Undo"),
-                            function() {
-                                playlists.insert_track(
-                                    removedPlaylistId, removedIndex, removed.path)
-                            })
+                    // R2 P1-12: the Undo toast appears ONLY when the removal
+                    // was durably committed.
+                    if (playlists.remove_track(index)) {
+                        if (removed && removed.path) {
+                            window.showToastWithAction(
+                                qsTr("Removed from playlist"), qsTr("Undo"),
+                                function() {
+                                    playlists.insert_track(
+                                        removedPlaylistId, removedIndex, removed.path)
+                                })
+                        }
+                    } else {
+                        window.showToast(qsTr("Could not remove track"))
                     }
                 }
                 onMoveTrackRequested: (fromIndex, toIndex) => {
@@ -265,8 +278,42 @@ Item {
             }
         }
         function _confirm() {
-            playlists.delete_playlist(deleteDialog.targetPlaylistId)
-            deleteDialog.close()
+            // R2 P1-05/P1-12: the dialog closes ONLY when the compound
+            // delete was durably committed.
+            if (playlists.delete_playlist(deleteDialog.targetPlaylistId)) {
+                deleteDialog.close()
+            } else {
+                window.showToast(qsTr("Could not delete playlist"))
+            }
         }
+    }
+
+    // R2 P1-05: presentation-safe persistence failure — stable operation
+    // code from the bridge, human text here (qsTr). The connector lives in
+    // its own component (no `playlists` module-import collision).
+    PersistFailureConnector {
+        failureMessageFor: function(operationCode) {
+            var message = qsTr("Could not save changes")
+            if (operationCode === "create")
+                message = qsTr("Could not create playlist")
+            else if (operationCode === "rename")
+                message = qsTr("Could not rename playlist")
+            else if (operationCode === "delete")
+                message = qsTr("Could not delete playlist")
+            else if (operationCode === "pin" || operationCode === "unpin")
+                message = qsTr("Could not update pin state")
+            else if (operationCode === "cover" || operationCode === "hero")
+                message = qsTr("Could not update appearance")
+            else if (operationCode === "add_tracks")
+                message = qsTr("Could not add tracks")
+            else if (operationCode === "remove_track")
+                message = qsTr("Could not remove track")
+            else if (operationCode === "move_track")
+                message = qsTr("Could not reorder tracks")
+            else if (operationCode === "insert_track")
+                message = qsTr("Could not restore track")
+            return message
+        }
+        notify: function(text) { window.showToast(text) }
     }
 }

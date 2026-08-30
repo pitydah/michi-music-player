@@ -20,6 +20,8 @@ MichiDialog {
     property string playlistId: ""
     property string playlistName: ""
     property string customCoverPath: ""
+    property bool coverAssetMissing: false
+    property bool heroImageMissing: false
     property var mosaicArtworkPaths: []
     property string heroMode: "auto"
     property string heroSolidColor: MichiPalette.playlistHeroTopHex
@@ -110,6 +112,15 @@ MichiDialog {
     }
 
     contentItem: ColumnLayout {
+            // R2 P1-11: a persisted custom asset whose managed file is
+            // missing degrades safely — the user is told and can re-choose.
+            MichiText {
+                visible: root.coverAssetMissing || root.heroImageMissing
+                text: qsTr("Custom image is unavailable. Choose another image or reset to Automatic.")
+                role: "warning"
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
         spacing: MichiSpacing.md
 
         MichiScrollView {

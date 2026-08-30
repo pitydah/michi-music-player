@@ -13,11 +13,13 @@ playlist identity. The bridge keeps NO local selection state; every
 selected* projection derives from navigation.state.playlist_id.
 """
 
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Qt, QUrl, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
+from michi.application.errors import PlaylistPersistenceError
 from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.playlist_navigation_coordinator import (
@@ -25,6 +27,9 @@ from michi.application.playlist_navigation_coordinator import (
 )
 from michi.application.playlist_service import PlaylistService
 from michi.application.ports import PlaylistPaletteExtractorPort
+from michi.domain.playlist import PlaylistHeroMode
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_HERO_PALETTE = ["#152A45", "#13243D", "#0A0D14"]
 
@@ -61,6 +66,9 @@ class PlaylistsBridge(QObject):
     target; name is display-only."""
 
     playlists_changed = Signal()
+    # R2 P1-05: presentation-safe persistence failure notification. The
+    # human text lives in QML (qsTr); this carries a STABLE operation code.
+    mutationFailed = Signal(str)
     _palette_ready = Signal(str, str, list)
 
     def __init__(
@@ -82,7 +90,12 @@ class PlaylistsBridge(QObject):
         self._palette_extractor = palette_extractor
         self._auto_palettes: dict[str, list[str]] = {}
         self._palette_sources: dict[str, str] = {}
-        self._palette_epoch = 0
+        # R2 P1-09: explicit cached projection. The artwork index is rebuilt
+        # ONLY when the Library changes; playlist rows are rebuilt ONLY when
+        # PlaylistService/navigation changes — never per getter call.
+        self._artwork_index: dict[str, str] = {}
+        self._artwork_index_dirty = True
+        self._rows_cache: list[dict] | None = None
         self._palette_ready.connect(self._apply_palette, Qt.QueuedConnection)
         if playlist_service is not None:
             playlist_service.subscribe_changed(self._on_playlist_service_changed)
@@ -103,32 +116,54 @@ class PlaylistsBridge(QObject):
         if self._palette_extractor is not None:
             self._palette_extractor.close()
 
+    def _run_mutation(self, operation: str, mutation) -> bool:
+        """R2 P1-05 PRESENTATION BOUNDARY: executes a persistence-capable
+        mutation and translates the contractual PlaylistPersistenceError
+        into a stable failure code — it NEVER escapes raw into QML.
+
+        Only contractual persistence failures are translated; programmer
+        errors keep raising (visible in development/tests)."""
+        try:
+            return bool(mutation())
+        except PlaylistPersistenceError:
+            logger.warning("playlist mutation failed (%s)", operation)
+            self.mutationFailed.emit(operation)
+            return False
+
     def _on_playlist_service_changed(self) -> None:
-        # A managed cover can be atomically replaced at the SAME path. A
-        # generation token ensures the old in-flight result cannot win and
-        # lets the extractor's mtime-aware cache observe the replacement.
-        self._palette_epoch += 1
-        self._palette_sources.clear()
+        """R2 P1-10: a PlaylistService change marks the ROW projection dirty
+        but NEVER invalidates palettes globally. Palette source identity
+        depends on the actual source paths (content-addressed managed files
+        change their path when their content changes) — rename/pin/unpin/
+        recent/open do not touch artwork and therefore trigger ZERO new
+        palette requests."""
+        self._rows_cache = None
         self.playlists_changed.emit()
 
     def _on_navigation_changed(self) -> None:
+        self._rows_cache = None
         self.playlists_changed.emit()
 
     def _on_library_changed(self) -> None:
         """M9-R1J: playlist search projection reads LibraryService search
         state (query/active) and track metadata — react to library changes
-        so searchPlaylists/searchPlaylistCount/playlistTrackRows recompute."""
-        self._palette_epoch += 1
-        self._palette_sources.clear()
+        so searchPlaylists/searchPlaylistCount/playlistTrackRows recompute.
+        The artwork index is rebuilt lazily ONCE on the next rows refresh."""
+        self._artwork_index_dirty = True
+        self._rows_cache = None
         self.playlists_changed.emit()
 
     # ------------------------------------------------------------------
     # Row projection (canonical playlist row shape)
     def _build_artwork_index(self) -> dict[str, str]:
-        """O(1) path → artwork map built once per refresh (P1-05).
+        """path → artwork map (R2 P1-09). REBUILT ONLY when the Library
+        changed; cached between refreshes. Never rebuilt per playlist."""
+        if self._artwork_index_dirty:
+            self._artwork_index = self._compute_artwork_index()
+            self._artwork_index_dirty = False
+        return self._artwork_index
 
-        A naive per-row linear scan over albums is O(albums × tracks);
-        the index amortizes the whole scan to O(total tracks) per refresh."""
+    def _compute_artwork_index(self) -> dict[str, str]:
         if self._library is None:
             return {}
         index: dict[str, str] = {}
@@ -152,10 +187,12 @@ class PlaylistsBridge(QObject):
                 return self._library.artwork_path_for(a.key) or ""
         return ""
 
-    def _mosaic_for_paths(self, track_paths: tuple[str, ...]) -> list[str]:
-        if self._library is None:
-            return []
-        index = self._build_artwork_index()
+    def _mosaic_for_paths(
+        self, track_paths: tuple[str, ...], index: dict[str, str] | None = None
+    ) -> list[str]:
+        """R2 P1-09: uses the EXISTING artwork index — never builds one."""
+        if index is None:
+            index = self._build_artwork_index()
         artworks: list[str] = []
         seen: set[str] = set()
         for path_str in track_paths:
@@ -189,7 +226,11 @@ class PlaylistsBridge(QObject):
         }
 
     def _palette_source_key(self, paths: tuple[str, ...]) -> str:
-        return f"{self._palette_epoch}\n" + "\n".join(paths)
+        """R2 P1-10: resource identity ONLY — content-addressed managed
+        assets change their path when their content changes, so the path
+        list IS the freshness truth. No global epoch, no cross-playlist
+        invalidation."""
+        return "\n".join(paths)
 
     def _palette_sources_for(self, playlist, mosaic: list[str]) -> tuple[str, ...]:
         if playlist.custom_cover_path:
@@ -231,11 +272,24 @@ class PlaylistsBridge(QObject):
         if normalized == self._auto_palettes.get(playlist_id):
             return
         self._auto_palettes[playlist_id] = normalized
+        # The cached rows snapshot autoHeroColors — invalidate so the
+        # overview renders the freshly extracted palette.
+        self._rows_cache = None
         self.playlists_changed.emit()
 
     def _rows(self) -> list[dict]:
+        """R2 P1-09 CACHED projection: rebuilt only when marked dirty.
+        Getters (playlists/pinned/recent) all consume the SAME rows — the
+        full projection is never recomputed per getter."""
+        if self._rows_cache is not None:
+            return self._rows_cache
+        self._rows_cache = self._compute_rows()
+        return self._rows_cache
+
+    def _compute_rows(self) -> list[dict]:
         if self._playlist_service is None:
             return []
+        index = self._build_artwork_index()
         nav = self._playlist_service.navigation
         valid_ids = {
             playlist.playlist_id for playlist in self._playlist_service.playlists
@@ -246,7 +300,7 @@ class PlaylistsBridge(QObject):
         recent_rank = {pid: rank for rank, pid in enumerate(nav.recent_ids)}
         rows = []
         for playlist in self._playlist_service.playlists:
-            mosaic = self._mosaic_for_paths(playlist.track_paths)
+            mosaic = self._mosaic_for_paths(playlist.track_paths, index)
             row = {
                 "playlistId": playlist.playlist_id,
                 "name": playlist.name,
@@ -303,8 +357,53 @@ class PlaylistsBridge(QObject):
         return playlist.name if playlist is not None else ""
 
     def _get_selected_playlist_custom_cover(self) -> str:
+        """PERSISTED custom cover intent (R2 P1-11) — never mutated on
+        load; the UI uses the EFFECTIVE projections for rendering."""
         playlist = self._selected()
         return playlist.custom_cover_path if playlist is not None else ""
+
+    def _get_effective_custom_cover(self) -> str:
+        """EFFECTIVE cover path: the persisted path when the managed asset
+        still EXISTS, otherwise "" — the UI renders the automatic mosaic
+        instead of a dead box. Persisted intent is preserved."""
+        path = self._get_selected_playlist_custom_cover()
+        if not path:
+            return ""
+        try:
+            return path if Path(path).is_file() else ""
+        except OSError:
+            return ""
+
+    def _get_cover_asset_missing(self) -> bool:
+        return bool(self._get_selected_playlist_custom_cover()) and not bool(
+            self._get_effective_custom_cover()
+        )
+
+    def _get_effective_hero_mode(self) -> str:
+        """EFFECTIVE hero mode: persisted ``image`` degrades to ``auto``
+        when the managed hero asset no longer exists."""
+        playlist = self._selected()
+        if playlist is None:
+            return "auto"
+        if playlist.appearance.hero_mode is PlaylistHeroMode.IMAGE:
+            path = playlist.appearance.hero_image_path
+            if not path:
+                return "auto"
+            try:
+                return "image" if Path(path).is_file() else "auto"
+            except OSError:
+                return "auto"
+        return playlist.appearance.hero_mode.value
+
+    def _get_hero_image_missing(self) -> bool:
+        playlist = self._selected()
+        if playlist is None:
+            return False
+        return (
+            playlist.appearance.hero_mode is PlaylistHeroMode.IMAGE
+            and playlist.appearance.hero_image_path != ""
+            and self._get_effective_hero_mode() == "auto"
+        )
 
     def _get_selected_playlist_duration_ms(self) -> int:
         playlist = self._selected()
@@ -316,7 +415,7 @@ class PlaylistsBridge(QObject):
         playlist = self._selected()
         if playlist is None:
             return []
-        return self._mosaic_for_paths(playlist.track_paths)
+        return self._mosaic_for_paths(playlist.track_paths, self._build_artwork_index())
 
     def _get_selected_playlist_pinned(self) -> bool:
         playlist_id = self._current_playlist_id()
@@ -340,7 +439,9 @@ class PlaylistsBridge(QObject):
         playlist = self._selected()
         if playlist is None:
             return list(_DEFAULT_HERO_PALETTE)
-        mosaic = self._mosaic_for_paths(playlist.track_paths)
+        mosaic = self._mosaic_for_paths(
+            playlist.track_paths, self._build_artwork_index()
+        )
         return self._auto_palette_for(playlist, mosaic)
 
     def _selected(self):
@@ -455,6 +556,18 @@ class PlaylistsBridge(QObject):
     selectedPlaylistCustomCoverPath = Property(
         str, _get_selected_playlist_custom_cover, notify=playlists_changed
     )
+    # R2 P1-11: effective-resolvable asset projections (persisted intent
+    # stays untouched; rendering never breaks).
+    effectiveCustomCoverPath = Property(
+        str, _get_effective_custom_cover, notify=playlists_changed
+    )
+    coverAssetMissing = Property(
+        bool, _get_cover_asset_missing, notify=playlists_changed
+    )
+    effectiveHeroMode = Property(
+        str, _get_effective_hero_mode, notify=playlists_changed
+    )
+    heroImageMissing = Property(bool, _get_hero_image_missing, notify=playlists_changed)
     selectedPlaylistDurationMs = Property(
         int, _get_selected_playlist_duration_ms, notify=playlists_changed
     )
@@ -501,9 +614,13 @@ class PlaylistsBridge(QObject):
         if self._playlist_service is None or self._coordinator is None:
             return False
         try:
-            playlist = self._playlist_service.create_playlist(name)
+            if not self._run_mutation(
+                "create", lambda: self._playlist_service.create_playlist(name)
+            ):
+                return False
         except ValueError:
-            return False
+            return False  # invalid/duplicate name: failure, not a raise
+        playlist = self._playlist_service.playlists[-1]
         self._coordinator.open_playlist(playlist.playlist_id)
         return True
 
@@ -517,33 +634,50 @@ class PlaylistsBridge(QObject):
         if self._playlist_service.get_playlist(playlist_id) is None:
             return False  # missing playlist is a failure, not a silent no-op
         try:
-            self._playlist_service.rename_playlist(playlist_id, new_name)
+            return self._run_mutation(
+                "rename",
+                lambda: self._playlist_service.rename_playlist(playlist_id, new_name),
+            )
         except ValueError:
             return False
-        return True
 
-    @Slot(str)
-    def delete_playlist(self, playlist_id: str) -> None:
-        if self._playlist_service is not None:
-            self._playlist_service.delete_playlist(playlist_id)
+    @Slot(str, result=bool)
+    def delete_playlist(self, playlist_id: str) -> bool:
+        """R2 P1-05: True ONLY when the compound delete was durably
+        committed. The Delete dialog must NOT close on False."""
+        if self._playlist_service is None:
+            return False
+        return self._run_mutation(
+            "delete", lambda: self._playlist_service.delete_playlist(playlist_id)
+        )
 
-    @Slot(str)
-    def pin_playlist(self, playlist_id: str) -> None:
-        if self._playlist_service is not None:
-            self._playlist_service.pin_playlist(playlist_id)
+    @Slot(str, result=bool)
+    def pin_playlist(self, playlist_id: str) -> bool:
+        if self._playlist_service is None:
+            return False
+        return self._run_mutation(
+            "pin", lambda: self._playlist_service.pin_playlist(playlist_id)
+        )
 
-    @Slot(str)
-    def unpin_playlist(self, playlist_id: str) -> None:
-        if self._playlist_service is not None:
-            self._playlist_service.unpin_playlist(playlist_id)
+    @Slot(str, result=bool)
+    def unpin_playlist(self, playlist_id: str) -> bool:
+        if self._playlist_service is None:
+            return False
+        return self._run_mutation(
+            "unpin", lambda: self._playlist_service.unpin_playlist(playlist_id)
+        )
 
     @Slot(str, str, result=bool)
     def set_custom_cover(self, playlist_id: str, path: str) -> bool:
         local_path = local_path_from_url(path)
         if local_path is None or self._playlist_service is None:
             return False
-        return (
-            self._playlist_service.set_custom_cover(playlist_id, local_path) is not None
+        return self._run_mutation(
+            "cover",
+            lambda: (
+                self._playlist_service.set_custom_cover(playlist_id, local_path)
+                is not None
+            ),
         )
 
     @Slot(str, QUrl, result=bool)
@@ -551,25 +685,38 @@ class PlaylistsBridge(QObject):
         path = local_path_from_url(url)
         if path is None or self._playlist_service is None:
             return False
-        return self._playlist_service.set_custom_cover(playlist_id, path) is not None
+        return self._run_mutation(
+            "cover",
+            lambda: (
+                self._playlist_service.set_custom_cover(playlist_id, path) is not None
+            ),
+        )
 
-    @Slot(str)
-    def remove_custom_cover(self, playlist_id: str) -> None:
-        if self._playlist_service is not None:
-            self._playlist_service.remove_custom_cover(playlist_id)
+    @Slot(str, result=bool)
+    def remove_custom_cover(self, playlist_id: str) -> bool:
+        if self._playlist_service is None:
+            return False
+        return self._run_mutation(
+            "cover", lambda: self._playlist_service.remove_custom_cover(playlist_id)
+        )
 
     @Slot(str, result=bool)
     def set_hero_auto(self, playlist_id: str) -> bool:
         if self._playlist_service is None:
             return False
-        return self._playlist_service.set_hero_auto(playlist_id)
+        return self._run_mutation(
+            "hero", lambda: self._playlist_service.set_hero_auto(playlist_id)
+        )
 
     @Slot(str, str, result=bool)
     def set_hero_solid(self, playlist_id: str, color: str) -> bool:
         if self._playlist_service is None:
             return False
         try:
-            return self._playlist_service.set_hero_solid(playlist_id, color)
+            return self._run_mutation(
+                "hero",
+                lambda: self._playlist_service.set_hero_solid(playlist_id, color),
+            )
         except ValueError:
             return False
 
@@ -578,8 +725,11 @@ class PlaylistsBridge(QObject):
         if self._playlist_service is None:
             return False
         try:
-            return self._playlist_service.set_hero_gradient(
-                playlist_id, tuple(str(color) for color in colors), angle
+            return self._run_mutation(
+                "hero",
+                lambda: self._playlist_service.set_hero_gradient(
+                    playlist_id, tuple(str(color) for color in colors), angle
+                ),
             )
         except (TypeError, ValueError):
             return False
@@ -589,33 +739,65 @@ class PlaylistsBridge(QObject):
         path = local_path_from_url(url)
         if path is None or self._playlist_service is None:
             return False
-        return (
-            self._playlist_service.set_custom_hero_image(playlist_id, path) is not None
+        return self._run_mutation(
+            "hero",
+            lambda: (
+                self._playlist_service.set_custom_hero_image(playlist_id, path)
+                is not None
+            ),
         )
 
-    @Slot(str, str)
-    def add_track(self, playlist_id: str, path: str) -> None:
-        if self._playlist_service is not None:
-            self._playlist_service.add_track(playlist_id, Path(path))
+    @Slot(str, str, result=bool)
+    def add_track(self, playlist_id: str, path: str) -> bool:
+        if self._playlist_service is None:
+            return False
+        return self._run_mutation(
+            "add_tracks",
+            lambda: self._playlist_service.add_track(playlist_id, Path(path)),
+        )
 
-    @Slot(int)
-    @Slot(str, int, str)
-    def insert_track(self, playlist_id: str, index: int, path: str) -> None:
+    @Slot(str, int, str, result=bool)
+    def insert_track(self, playlist_id: str, index: int, path: str) -> bool:
         """P0-01: restore a removed track at its EXACT original position in
-        the FROZEN original playlist — never the current selection."""
-        if self._playlist_service is not None:
-            self._playlist_service.insert_track(playlist_id, index, path)
+        the FROZEN original playlist — never the current selection.
 
-    def remove_track(self, index: int) -> None:
-        playlist_id = self._current_playlist_id()
-        if self._playlist_service is not None and playlist_id:
-            self._playlist_service.remove_track(playlist_id, index)
+        R2 P1-01: EXACTLY this single signature in the QObject metaobject
+        (no stray @Slot(int)); returns True only when the restore was
+        durably committed."""
+        if self._playlist_service is None:
+            return False
+        return self._run_mutation(
+            "insert_track",
+            lambda: self._playlist_service.insert_track(playlist_id, index, path),
+        )
 
-    @Slot(int, int)
-    def move_track(self, from_index: int, to_index: int) -> None:
+    @Slot(int, result=bool)
+    def remove_track(self, index: int) -> bool:
+        """R2 P1-01: registered as ``remove_track(int)`` in the QObject
+        metaobject — QML ``playlists.remove_track(index)`` MUST resolve.
+        True ONLY when a valid playlist+index was durably removed."""
         playlist_id = self._current_playlist_id()
-        if self._playlist_service is not None and playlist_id:
-            self._playlist_service.move_track(playlist_id, from_index, to_index)
+        if self._playlist_service is None or not playlist_id:
+            return False
+        playlist = self._playlist_service.get_playlist(playlist_id)
+        if playlist is None or not (0 <= index < len(playlist.track_paths)):
+            return False
+        return self._run_mutation(
+            "remove_track",
+            lambda: self._playlist_service.remove_track(playlist_id, index),
+        )
+
+    @Slot(int, int, result=bool)
+    def move_track(self, from_index: int, to_index: int) -> bool:
+        playlist_id = self._current_playlist_id()
+        if self._playlist_service is None or not playlist_id:
+            return False
+        return self._run_mutation(
+            "move_track",
+            lambda: self._playlist_service.move_track(
+                playlist_id, from_index, to_index
+            ),
+        )
 
     @Slot()
     def play_selected_playlist(self) -> None:
@@ -649,8 +831,21 @@ class PlaylistsBridge(QObject):
         if pid:
             self.queue_playlist(pid)
 
-    @Slot(str, str)
-    def add_track_to_playlist(self, playlist_id: str, path: str) -> None:
-        """Cross-feature (Library → Playlist): add a track by id."""
-        if self._playlist_service is not None:
-            self._playlist_service.add_track(playlist_id, Path(path))
+    @Slot(str, str, result=bool)
+    def add_track_to_playlist(self, playlist_id: str, path: str) -> bool:
+        """Cross-feature (Library → Playlist): add a track by id.
+
+        R2 P1-12: True ONLY when the track was actually ADDED. False when
+        the track was ALREADY present, the playlist is unknown, or the
+        write failed — the UI must never show 'Added to X' on False."""
+        if self._playlist_service is None:
+            return False
+        playlist = self._playlist_service.get_playlist(playlist_id)
+        if playlist is None:
+            return False
+        if str(Path(path)) in playlist.track_paths:
+            return False  # already present: NOT "Added"
+        return self._run_mutation(
+            "add_tracks",
+            lambda: self._playlist_service.add_track(playlist_id, Path(path)),
+        )

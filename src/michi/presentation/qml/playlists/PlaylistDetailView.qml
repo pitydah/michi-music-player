@@ -70,16 +70,21 @@ Item {
                 trackCount: playlists ? playlists.playlistTracks.length : 0
                 durationMs: playlists ? playlists.selectedPlaylistDurationMs : 0
                 description: playlists ? (playlists.selectedPlaylistDescription || "") : ""
-                customCoverPath: playlists ? (playlists.selectedPlaylistCustomCoverPath || "") : ""
+                // R2 P1-11: EFFECTIVE cover — a vanished managed asset
+                // renders the automatic mosaic, never a dead box.
+                customCoverPath: playlists ? (playlists.effectiveCustomCoverPath || "") : ""
                 mosaicArtworkPaths: playlists ? (playlists.selectedPlaylistMosaicArtworkPaths || []) : []
-                heroMode: parent.appearance.heroMode || "auto"
+                // R2 P1-11: effective hero mode — a persisted image whose
+                // managed asset vanished degrades to auto (never a dead
+                // render); persisted intent stays untouched.
+                heroMode: playlists ? playlists.effectiveHeroMode : "auto"
                 heroSolidColor: parent.appearance.heroSolidColor || MichiPalette.playlistHeroTop
                 heroGradientColors: parent.appearance.heroGradientColors || [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid]
                 heroGradientAngle: parent.appearance.heroGradientAngle === undefined
                     ? 135 : parent.appearance.heroGradientAngle
                 heroImagePath: parent.appearance.heroImagePath || ""
                 autoHeroColors: playlists ? playlists.selectedPlaylistAutoHeroColors : [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
-                pinned: playlists ? playlists.selectedPlaylistPinned : false
+
                 // R2.1-07: signals wired INLINE (the ListView headerItem is
                 // this wrapper Item, NOT the hero — a Connections on
                 // headerItem never matches the hero's signals)
@@ -87,7 +92,7 @@ Item {
                 onShuffleRequested: root.shuffleRequested()
                 onMoreRequested: detailMenu.popup()
                 onCustomizeAppearanceRequested: appearancePanel.openForPlaylist()
-                onTogglePinRequested: root.togglePinRequested()
+
                 onAddTracksRequested: root.addMusicRequested()
             }
 
@@ -105,9 +110,13 @@ Item {
         id: appearancePanel
         playlistId: root.playlistId
         playlistName: playlists ? playlists.selectedPlaylistName : ""
-        customCoverPath: playlists ? playlists.selectedPlaylistCustomCoverPath : ""
+        // R2 P1-11: effective resolvable assets; the persisted intent stays
+        // untouched and the missing flags let the user re-choose.
+        customCoverPath: playlists ? playlists.effectiveCustomCoverPath : ""
+        coverAssetMissing: playlists ? playlists.coverAssetMissing : false
         mosaicArtworkPaths: playlists ? playlists.selectedPlaylistMosaicArtworkPaths : []
-        heroMode: playlists ? playlists.selectedPlaylistAppearance.heroMode : "auto"
+        heroMode: playlists ? playlists.effectiveHeroMode : "auto"
+        heroImageMissing: playlists ? playlists.heroImageMissing : false
         heroSolidColor: playlists ? playlists.selectedPlaylistAppearance.heroSolidColor : MichiPalette.playlistHeroTopHex
         heroGradientColors: playlists ? playlists.selectedPlaylistAppearance.heroGradientColors : [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
         heroGradientAngle: playlists

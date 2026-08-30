@@ -85,9 +85,11 @@ Item {
         sourceSize.width: Math.min(1600, Math.round(width * Screen.devicePixelRatio))
         sourceSize.height: Math.min(600, Math.round(height * Screen.devicePixelRatio))
         asynchronous: true
-        // Managed hero files are mutable at a stable path. Caching would
+        // R2 P2-02: managed hero files are IMMUTABLE content-addressed
+        // candidates — when the bytes change the URL changes, so caching
+        // is safe and preferable. Caching would
         // keep the previous bytes visible after a same-extension replace.
-        cache: false
+        cache: true
         fillMode: Image.PreserveAspectCrop
     }
 

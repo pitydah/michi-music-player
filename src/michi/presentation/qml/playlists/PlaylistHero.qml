@@ -22,7 +22,6 @@ Item {
     property real heroGradientAngle: 135
     property string heroImagePath: ""
     property var autoHeroColors: [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
-    property bool pinned: false
     property bool hasTracks: root.trackCount > 0
 
     readonly property bool compact: width < 720
@@ -33,7 +32,6 @@ Item {
     signal shuffleRequested()
     signal moreRequested()
     signal customizeAppearanceRequested()
-    signal togglePinRequested()
     signal addTracksRequested()
 
     implicitHeight: Math.max(248, Math.min(300,
