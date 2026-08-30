@@ -27,7 +27,7 @@ from dataclasses import dataclass, replace
 
 from michi.application.ports import ScanCancelled
 from michi.application.source_scan_coordinator import SourceScanCoordinator
-from michi.domain.library_catalog import LibrarySource
+from michi.domain.library_catalog import LibrarySource, SourceLifecycle
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +80,17 @@ class SourceScanLifecycle:
         self._active = False
         self._cancel_requested = False
         self._active_source_snapshot: LibrarySource | None = None
+        # TRUE FINAL FREEZE P1-01: the config generation captured when the
+        # active generation STARTED — used for the error-path ABA seal.
+        self._active_source_config_epoch: int | None = None
+        # TRUE FINAL FREEZE P1-02: OWNER-side rejected-generation registry.
+        # The worker token is cooperative optimization; the OWNER rejection
+        # is the authoritative linearization point. A queued SUCCESS can
+        # never commit after the owner processed cancel/invalidate/
+        # reschedule.
+        self._rejected_generations: dict[int, str] = {}
+        # TRUE FINAL FREEZE P2: truthful terminal hint for stale runs.
+        self._terminal_hint = ""
         self._state = SourceScanRunState()
         self._subscribers: list[Callable[[SourceScanRunState], None]] = []
         if on_state is not None:
@@ -103,6 +114,7 @@ class SourceScanLifecycle:
         """A NEW user scan request starts a fresh run: clears the previous
         terminal record and the cancel flag."""
         self._cancel_requested = False
+        self._terminal_hint = ""
         self._set_state(
             last_terminal_status="",
             last_diagnostic="",
@@ -139,14 +151,29 @@ class SourceScanLifecycle:
         self.reschedule_source(relocated.library_source_id)
         return ""
 
+    def _reject_active_generation(self, reason: str) -> None:
+        """OWNER-side linearization point (TRUE FINAL FREEZE P1-02): the
+        moment the owner processes Cancel/invalidate/reschedule, the current
+        generation becomes non-committable. Explicit user Cancel is the
+        strongest reason and never downgrades."""
+        if not self._active:
+            return
+        generation = self._generation
+        previous = self._rejected_generations.get(generation)
+        if previous != "cancel":
+            self._rejected_generations[generation] = reason
+        if reason == "cancel":
+            self._rejected_generations[generation] = "cancel"
+        self._pipeline.cancel(generation)
+
     def cancel(self) -> None:
         """CANCEL THE WHOLE USER-REQUESTED RUN (P1-02): clears the remaining
-        source queue and cancels the active generation — no further source
-        ever starts after the acknowledgment."""
+        source queue and rejects the active generation — no further source
+        ever starts and a queued worker SUCCESS can never commit."""
         self._queue.clear()
         if self._active:
             self._cancel_requested = True
-            self._pipeline.cancel(self._generation)
+            self._reject_active_generation("cancel")
 
     def _remove_queued_source(self, source_id: str) -> None:
         self._queue = [c for c in self._queue if c != source_id]
@@ -157,16 +184,16 @@ class SourceScanLifecycle:
         ``_cancel_requested`` (that flag means whole-run cancel)."""
         self._remove_queued_source(source_id)
         if self._active and self._state.current_source_id == source_id:
-            self._pipeline.cancel(self._generation)
+            self._reject_active_generation("invalidate")
 
     def reschedule_source(self, source_id: str) -> None:
         """Run this Source again using its CURRENT configuration: if it is
-        active, cancel the stale generation and queue exactly ONE
+        active, reject the stale generation and queue exactly ONE
         replacement; otherwise queue it next (never duplicated)."""
         self._remove_queued_source(source_id)
         self._queue.insert(0, source_id)
         if self._active and self._state.current_source_id == source_id:
-            self._pipeline.cancel(self._generation)
+            self._reject_active_generation("reschedule")
             return
         self._start_next()
 
@@ -186,8 +213,16 @@ class SourceScanLifecycle:
     def handle_done(self, generation: int, plan, error: BaseException | None) -> None:
         """OWNER thread (10/10 FINAL SEAL P1-01): generation + SNAPSHOT
         provenance first — the current catalog is NEVER re-fetched to
-        pretend it is the worker snapshot."""
+        pretend it is the worker snapshot.
+
+        TRUE FINAL FREEZE P1-02: the owner-side rejection registry is
+        checked BEFORE any result handling — a queued SUCCESS can never
+        commit after the owner processed Cancel/invalidate/reschedule."""
         if generation != self._generation:
+            return
+        rejection = self._rejected_generations.pop(generation, None)
+        if rejection is not None:
+            self._finish(generation, stale=True)
             return
         source_snapshot = self._active_source_snapshot
         if source_snapshot is None:
@@ -196,10 +231,15 @@ class SourceScanLifecycle:
         if error is not None or plan is None:
             # Worker failure: no commit. ScanCancelled fabricates no
             # observation. A REAL error describing OLD configuration must
-            # not poison the current (possibly relocated) root.
+            # not poison the current (possibly relocated) root — the ABA
+            # seal requires BOTH the epoch AND the field values.
             if error is not None and not isinstance(error, ScanCancelled):
+                source_config_epoch = self._active_source_config_epoch
+                if source_config_epoch is None:
+                    self._finish(generation, stale=True)
+                    return
                 if not self._coordinator.source_configuration_is_current(
-                    source_snapshot
+                    source_snapshot, source_config_epoch
                 ):
                     self._finish(generation, stale=True)
                     return
@@ -250,8 +290,12 @@ class SourceScanLifecycle:
         if not self._queue:
             if self._state.status != _IDLE or self._state.last_terminal_status == "":
                 # P1-03: finalize the RUN-level terminal truth once.
+                # TRUE FINAL FREEZE P2: a superseded scan did NOT complete
+                # successfully — never report a false COMPLETED.
                 if self._state.failed_source_ids:
                     terminal = _FAILED
+                elif self._terminal_hint:
+                    terminal = self._terminal_hint
                 elif self._cancel_requested:
                     terminal = "CANCELLED"
                 else:
@@ -279,11 +323,25 @@ class SourceScanLifecycle:
         if source is None:
             self._start_next()
             return
+        # TRUE FINAL FREEZE P1-04: the Application enforces the invariant
+        # immediately before worker submit. QML disabling a button is UX
+        # defense — this is the authorization boundary.
+        if source.lifecycle is not SourceLifecycle.ACTIVE or not source.enabled:
+            self._active_source_snapshot = None
+            self._active_source_config_epoch = None
+            self._start_next()
+            return
         self._active = True
         self._generation += 1
         generation = self._generation
         # The EXACT snapshot that starts this generation — never re-fetched.
         self._active_source_snapshot = source
+        # TRUE FINAL FREEZE P1-01: capture the config generation BEFORE
+        # worker discovery; the error path uses it as the ABA seal.
+        source_config_epoch = self._coordinator.source_config_epoch(
+            source.library_source_id
+        )
+        self._active_source_config_epoch = source_config_epoch
         self._set_state(
             generation=generation,
             status=_RUNNING,
@@ -300,6 +358,7 @@ class SourceScanLifecycle:
             generation,
             on_progress=self.handle_progress,
             on_done=self.handle_done,
+            source_config_epoch=source_config_epoch,
         )
 
     def _finish(
@@ -315,9 +374,13 @@ class SourceScanLifecycle:
             return  # superseded: its completion is irrelevant
         self._active = False
         # 10/10 FINAL SEAL §8: generation N owns snapshot N — clear it
-        # BEFORE the next generation can start.
+        # BEFORE the next generation can start. TRUE FINAL FREEZE P1-01:
+        # the config epoch is cleared with its snapshot.
         self._active_source_snapshot = None
+        self._active_source_config_epoch = None
         source_id = self._state.current_source_id
+        if stale and not self._queue and not self._state.failed_source_ids:
+            self._terminal_hint = "CANCELLED"
         if outcome is not None:
             status = _FAILED if outcome.failed else _IDLE
             diagnostic = outcome.diagnostic or ""

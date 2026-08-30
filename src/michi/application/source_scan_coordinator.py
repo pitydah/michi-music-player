@@ -84,18 +84,20 @@ class SourceOverlapError(ValueError):
     source root — typed conflict; never silently index nested roots."""
 
 
-@dataclass
 @dataclass(frozen=True)
 class SourceReconciliationPlan:
     """IMMUTABLE worker result (10/10 FINAL SEAL P1-01).
 
     ``source_snapshot`` is the EXACT immutable LibrarySource configuration
-    used to discover/extract/reconcile this plan. Owner-side commit MUST
-    compare this snapshot with the current authoritative catalog source
-    before any durable or observable write — the plan is self-describing
-    evidence, never re-derived from a re-fetched Source."""
+    used to discover/extract/reconcile this plan. ``source_config_epoch``
+    is the process-local monotonic configuration generation captured at
+    submission — the ABA seal. Owner-side commit MUST compare BOTH the
+    snapshot fields AND the epoch against the current authoritative catalog
+    source before any durable or observable write — the plan is
+    self-describing evidence, never re-derived from a re-fetched Source."""
 
     source_snapshot: LibrarySource
+    source_config_epoch: int
     outcome: SourceScanOutcome
     refs: tuple[TrackRef, ...]
     upsert_media: tuple[MediaFileRecord, ...]
@@ -128,8 +130,16 @@ class SourceScanCoordinator:
         self._observations: dict[str, SourceAvailability] = {}
         # P1-04: small in-memory source-record cache (never one SQLite query
         # per TrackId at scale); refreshed on every production mutation.
+        initial_sources = self._catalog.load_sources()
         self._source_records: dict[str, LibrarySource] = {
-            source.library_source_id: source for source in self._catalog.load_sources()
+            source.library_source_id: source for source in initial_sources
+        }
+        # TRUE FINAL FREEZE P1-01: process-local monotonic configuration
+        # generation per source — the ABA seal. Persisted nowhere: no scan
+        # worker survives process shutdown, so durability adds no
+        # correctness, only schema/authority blast radius.
+        self._source_config_epochs: dict[str, int] = {
+            source.library_source_id: 0 for source in initial_sources
         }
 
     # ------------------------------------------------------------ hydration
@@ -352,6 +362,7 @@ class SourceScanCoordinator:
         generation: int,
         on_progress=None,
         on_done=None,
+        source_config_epoch: int | None = None,
     ) -> None:
         """ASYNC source-aware scan (M6-EXT-R4 freeze gate §14): the heavy
         compute runs on the WORKER via the existing M6.4 pipeline; the
@@ -362,21 +373,57 @@ class SourceScanCoordinator:
         ``pipeline`` is a ScanPipelinePort; ``on_done(generation, plan,
         error)`` runs on the owner thread and MUST call
         ``commit_source_reconciliation`` only after validating the
-        generation."""
+        generation.
+
+        TRUE FINAL FREEZE P1-01: the source config epoch is captured HERE
+        (owner/application call) BEFORE any worker discovery — the worker
+        closure uses the captured value and NEVER reads the coordinator
+        epoch map from the worker thread."""
+
+        if source_config_epoch is None:
+            source_config_epoch = self.source_config_epoch(source.library_source_id)
+        captured_epoch = source_config_epoch
+        # Frozen legacy mocks replace compute_source_reconciliation with a
+        # pre-epoch signature — detect support ONCE and degrade gracefully
+        # (the real production method always supports the new kwargs).
+        compute_accepts_epoch = self._compute_accepts_epoch_kwargs()
 
         def work(progress, token, report):
             # P1-05: the WORKER computes facts only — it never mutates
             # ``_observations`` (observable state is owner-published).
+            # TRUE FINAL FREEZE P2: progress phases are TRUTHFUL —
+            # ``processed`` counts reconciled items, not enumerated ones.
+            progress.phase = "DISCOVERING"
+            progress.current_path = None
+            progress.processed = 0
+            progress.total = 0
+            report()
             discovered = self._scanner.discover(source)
             progress.phase = "RECONCILING"
             progress.total = len(discovered)
             progress.processed = 0
-            for item in discovered:
-                if token.cancelled:
-                    raise ScanCancelled()
+            progress.current_path = None
+            report()
+
+            def on_item_started(item):
                 progress.current_path = str(item.absolute_path)
+                report()
+
+            def on_item_completed(item):
                 progress.processed += 1
                 report()
+
+            if compute_accepts_epoch:
+                return self.compute_source_reconciliation(
+                    source,
+                    discovered,
+                    token=token,
+                    source_config_epoch=captured_epoch,
+                    on_item_started=on_item_started,
+                    on_item_completed=on_item_completed,
+                )
+            # Legacy mock compatibility (frozen evidence): the wrapper
+            # resolves the CURRENT epoch itself via the optional default.
             return self.compute_source_reconciliation(source, discovered, token=token)
 
         pipeline.submit(generation, work, on_progress, on_done)
@@ -408,8 +455,22 @@ class SourceScanCoordinator:
                 snapshot.library_source_id,
             )
             return None
-        # Gate 4 — EXACT source configuration provenance (root/enabled/
-        # lifecycle) from the plan itself.
+        # Gate 4 — TRUE FINAL FREEZE P1-01 ABA seal: the plan carries the
+        # process-local configuration epoch captured at submission. Value
+        # equality cannot prove "no intermediate mutation" — the epoch can.
+        current_epoch = self._source_config_epochs.get(snapshot.library_source_id, 0)
+        if plan.source_config_epoch != current_epoch:
+            logger.info(
+                "dropping stale source scan plan: configuration epoch "
+                "changed (source_id=%s plan_epoch=%s current_epoch=%s)",
+                snapshot.library_source_id,
+                plan.source_config_epoch,
+                current_epoch,
+            )
+            return None
+        # Gate 4b — EXACT source configuration provenance (root/enabled/
+        # lifecycle) from the plan itself. Defense in depth: BOTH the epoch
+        # AND the fields must match.
         if not self._same_source_configuration(snapshot, current):
             logger.info(
                 "dropping stale source scan plan: source configuration "
@@ -432,18 +493,39 @@ class SourceScanCoordinator:
             self._observations[current.library_source_id] = outcome.availability
         return outcome
 
-    def source_configuration_is_current(self, snapshot: LibrarySource) -> bool:
-        """READ-ONLY authority gate (10/10 FINAL SEAL §5): true only when the
-        snapshot exactly matches the current catalog configuration AND the
-        source is ACTIVE + ENABLED. Never mutates anything."""
+    def source_configuration_is_current(
+        self,
+        snapshot: LibrarySource,
+        source_config_epoch: int,
+    ) -> bool:
+        """READ-ONLY authority gate (10/10 FINAL SEAL §5): true only when
+        the snapshot exactly matches the current catalog configuration AND
+        the epoch matches the current generation AND the source is
+        ACTIVE + ENABLED. Never mutates anything."""
         current = self._current_source_record(snapshot.library_source_id)
         if current is None:
             return False
+        current_epoch = self._source_config_epochs.get(snapshot.library_source_id, 0)
         return (
-            self._same_source_configuration(snapshot, current)
+            source_config_epoch == current_epoch
+            and self._same_source_configuration(snapshot, current)
             and current.lifecycle is SourceLifecycle.ACTIVE
             and current.enabled
         )
+
+    def _compute_accepts_epoch_kwargs(self) -> bool:
+        """TRUE FINAL FREEZE P1-01 compatibility seam: production code
+        always supports the epoch kwargs; frozen legacy mocks that wrap
+        compute with the old signature keep working unchanged."""
+        try:
+            import inspect
+
+            return (
+                "source_config_epoch"
+                in inspect.signature(self.compute_source_reconciliation).parameters
+            )
+        except (TypeError, ValueError):
+            return False
 
     def _current_source_record(self, source_id: str) -> LibrarySource | None:
         """AUTHORITATIVE commit-boundary lookup (never the stale cache as
@@ -481,8 +563,43 @@ class SourceScanCoordinator:
         self._observations.pop(source_id, None)
         return restored
 
+    @staticmethod
+    def _scan_config_signature(source: LibrarySource) -> tuple:
+        """SCAN-AFFECTING configuration only: root / enabled / lifecycle.
+        display_name is presentation metadata — never scan-affecting."""
+        return (
+            source.root_path,
+            source.enabled,
+            source.lifecycle,
+        )
+
     def _remember_sources(self, sources: tuple[LibrarySource, ...]) -> None:
-        self._source_records = {source.library_source_id: source for source in sources}
+        """ONE mutation-detection chokepoint: every production mutation
+        already refreshes the source cache after its catalog write, so the
+        epoch bumps here — never duplicated in each mutation method."""
+        next_records = {source.library_source_id: source for source in sources}
+        previous_records = self._source_records
+        for source_id, current in next_records.items():
+            previous = previous_records.get(source_id)
+            if source_id not in self._source_config_epochs:
+                self._source_config_epochs[source_id] = 0
+            elif previous is not None and self._scan_config_signature(
+                previous
+            ) != self._scan_config_signature(current):
+                self._source_config_epochs[source_id] += 1
+        self._source_records = next_records
+        # Hard deletion is not the normal R4 lifecycle, but do not retain
+        # runtime tokens for genuinely vanished Sources.
+        for source_id in tuple(self._source_config_epochs):
+            if source_id not in next_records:
+                self._source_config_epochs.pop(source_id, None)
+
+    def source_config_epoch(self, source_id: str) -> int:
+        """PUBLIC APPLICATION READ of the process-local config generation.
+        Synchronizes the source cache against the authoritative catalog
+        BEFORE exposing the token (never a stale cache as truth)."""
+        self._current_source_record(source_id)
+        return self._source_config_epochs.get(source_id, 0)
 
     def _source_record(self, source_id: str) -> LibrarySource | None:
         source = self._source_records.get(source_id)
@@ -556,6 +673,10 @@ class SourceScanCoordinator:
         source: LibrarySource,
         discovered: tuple[DiscoveredMediaFile, ...],
         token=None,
+        *,
+        source_config_epoch: int | None = None,
+        on_item_started=None,
+        on_item_completed=None,
     ) -> "SourceReconciliationPlan":
         """PURE-ish compute phase: reads catalog/caches, builds the full
         reconciliation plan. NO durable writes (worker-safe).
@@ -563,8 +684,22 @@ class SourceScanCoordinator:
         CORRECTIVE SEAL §4: the cancellation token propagates INTO the
         reconciliation — checked before metadata extraction (per item) and
         before the plan is returned, so a cancel during extraction can
-        never produce a commit-able plan."""
-        return self._reconcile_available(source, discovered, token=token)
+        never produce a commit-able plan.
+
+        TRUE FINAL FREEZE P1-01: ``source_config_epoch`` is None only for
+        synchronous/test callers — the CURRENT value is resolved before
+        reconciliation. The plan carries the epoch so the owner commit can
+        apply the ABA seal."""
+        if source_config_epoch is None:
+            source_config_epoch = self.source_config_epoch(source.library_source_id)
+        return self._reconcile_available(
+            source,
+            discovered,
+            token=token,
+            source_config_epoch=source_config_epoch,
+            on_item_started=on_item_started,
+            on_item_completed=on_item_completed,
+        )
 
     def commit_source_reconciliation(
         self,
@@ -634,6 +769,9 @@ class SourceScanCoordinator:
         discovered: tuple[DiscoveredMediaFile, ...],
         *,
         token=None,
+        source_config_epoch: int,
+        on_item_started=None,
+        on_item_completed=None,
     ) -> "SourceReconciliationPlan":
         known_by_path = {
             media.relative_path: media
@@ -692,6 +830,8 @@ class SourceScanCoordinator:
         for item in discovered:
             if token is not None and token.cancelled:
                 raise ScanCancelled()
+            if on_item_started is not None:
+                on_item_started(item)
             known = known_by_path.get(item.relative_path)
             media_id: str
             track: TrackRecord | None
@@ -782,6 +922,8 @@ class SourceScanCoordinator:
             cache_upserts.append(
                 (media_id, item.file_size, item.mtime_ns, item.device_id, item.inode)
             )
+            if on_item_completed is not None:
+                on_item_completed(item)
         if token is not None and token.cancelled:
             raise ScanCancelled()
 
@@ -802,6 +944,7 @@ class SourceScanCoordinator:
 
         return SourceReconciliationPlan(
             source_snapshot=source,
+            source_config_epoch=source_config_epoch,
             outcome=outcome,
             refs=tuple(refs),
             upsert_media=tuple(upsert_media),
@@ -860,14 +1003,17 @@ class SourceScanCoordinator:
 # ---------------------------------------------------------------------------
 
 
+@dataclass(frozen=True)
 class _IndexEntry:
-    """Path-keyed rebuildable metadata cache entry (index repo shape)."""
+    """Path-keyed rebuildable metadata cache entry (index repo shape).
 
-    def __init__(self, track_id: str, file_size: int, mtime_ns: int, metadata) -> None:
-        self.track_id = track_id
-        self.file_size = file_size
-        self.mtime_ns = mtime_ns
-        self.metadata = metadata
+    TRUE FINAL FREEZE P2: the plan claims immutability — every meaningful
+    carrier must actually be immutable."""
+
+    track_id: str
+    file_size: int
+    mtime_ns: int
+    metadata: TrackMetadata
 
 
 def _availability_from_code(code) -> SourceAvailability:
