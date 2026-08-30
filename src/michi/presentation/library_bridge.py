@@ -503,51 +503,44 @@ class LibraryBridge(QObject):
         ]
 
     def _get_favorite_track_ids(self) -> list[str]:
+        """MEMBERSHIP TRUTH (TRUE FINAL FREEZE P1-05): never Search-filtered.
+        Search filters ROWS (the view projection), never membership."""
         state = self._service.state
         if state.favorite_track_ids:
-            return list(self._reference_ids(state.favorite_track_ids))
-        return [
-            f"legacy-path::{p}" for p in self._reference_paths(state.favorite_paths)
-        ]
+            return list(state.favorite_track_ids)
+        return [f"legacy-path::{path}" for path in state.favorite_paths]
 
     def _get_history_track_ids(self) -> list[str]:
         state = self._service.state
         if state.history_track_ids:
-            return list(self._reference_ids(state.history_track_ids))
-        return [f"legacy-path::{p}" for p in self._reference_paths(state.history_paths)]
+            return list(state.history_track_ids)
+        return [f"legacy-path::{path}" for path in state.history_paths]
 
     def _get_recently_added_track_ids(self) -> list[str]:
         state = self._service.state
         if state.recently_added_track_ids:
-            return list(self._reference_ids(state.recently_added_track_ids))
-        return [
-            f"legacy-path::{p}"
-            for p in self._reference_paths(state.recently_added_paths)
-        ]
+            return list(state.recently_added_track_ids)
+        return [f"legacy-path::{path}" for path in state.recently_added_paths]
 
     def _get_favorite_paths(self) -> list[str]:
+        """Derived path projection of the FULL favorite membership — a
+        Search query never mutates the membership projection."""
         state = self._service.state
         if state.favorite_track_ids:
-            return list(
-                self._paths_for_ids(self._reference_ids(state.favorite_track_ids))
-            )
-        return list(self._reference_paths(state.favorite_paths))
+            return list(self._paths_for_ids(state.favorite_track_ids))
+        return list(state.favorite_paths)
 
     def _get_history_paths(self) -> list[str]:
         state = self._service.state
         if state.history_track_ids:
-            return list(
-                self._paths_for_ids(self._reference_ids(state.history_track_ids))
-            )
-        return list(self._reference_paths(state.history_paths))
+            return list(self._paths_for_ids(state.history_track_ids))
+        return list(state.history_paths)
 
     def _get_recently_added_paths(self) -> list[str]:
         state = self._service.state
         if state.recently_added_track_ids:
-            return list(
-                self._paths_for_ids(self._reference_ids(state.recently_added_track_ids))
-            )
-        return list(self._reference_paths(state.recently_added_paths))
+            return list(self._paths_for_ids(state.recently_added_track_ids))
+        return list(state.recently_added_paths)
 
     def _reference_paths(self, paths) -> tuple[str, ...]:
         """LEGACY path surface filter (M6-EXT-R4 freeze gate): pre-migration
@@ -1076,7 +1069,19 @@ class LibraryBridge(QObject):
             self._playback_coordinator.play_album(album_key)
 
     @Slot(str)
+    def toggle_favorite_by_id(self, track_id: str) -> None:
+        """Canonical Favorite intent by stable TrackId (TRUE FINAL FREEZE
+        P1-03). ``legacy-path::`` is the explicit compatibility seam only.
+        A raw UUID is NEVER converted into a Path."""
+        if track_id.startswith("legacy-path::"):
+            self._service.toggle_favorite(track_id.removeprefix("legacy-path::"))
+            return
+        self._service.toggle_favorite_by_id(track_id)
+
+    @Slot(str)
     def toggle_favorite(self, path: str) -> None:
+        """LEGACY compatibility only (TRUE FINAL FREEZE P1-03): the modern
+        TrackId-native intent goes through ``toggle_favorite_by_id``."""
         self._service.toggle_favorite(path)
 
     @Slot(str)

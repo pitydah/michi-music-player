@@ -166,6 +166,7 @@ ColumnLayout {
         Layout.fillHeight: true
         rows: library.artistTracks
         playingPath: playback.currentPath
+        favoriteTrackIds: library.favoriteTrackIds
         favoritePaths: library.favoritePaths
         columnProfile: "artist"
         showArtistColumn: false

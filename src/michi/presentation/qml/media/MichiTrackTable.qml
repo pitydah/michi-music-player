@@ -10,6 +10,7 @@ Item {
 
     property var rows: []
     property string playingPath: ""
+    property var favoriteTrackIds: []
     property var favoritePaths: []
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
@@ -144,7 +145,10 @@ Item {
             showTechnicalColumns: true
             showActions: root.showActions
             numberText: root.numberText(modelData, index)
-            trackId: modelData.trackId || modelData.path
+            trackId: modelData.trackId
+                && String(modelData.trackId).length > 0
+                ? String(modelData.trackId)
+                : "legacy-path::" + String(modelData.path)
             filePath: modelData.path
             title: modelData.title || modelData.displayName
             artist: modelData.artist || ""
@@ -171,9 +175,15 @@ Item {
             showArtwork: root.profileShowsArtwork
             playing: root.playingPath === modelData.path
             selected: root.selectionEnabled
-                ? root.selectedTrackIds.indexOf(modelData.trackId) !== -1
+                ? root.selectedTrackIds.indexOf(trackId) !== -1
                 : root.selectedIndex === index
-            favorite: root.favoritePaths.indexOf(modelData.path) !== -1
+            favorite:
+                root.favoriteTrackIds.indexOf(trackId) !== -1
+                || (
+                    (!modelData.trackId
+                     || String(modelData.trackId).length === 0)
+                    && root.favoritePaths.indexOf(modelData.path) !== -1
+                )
             showFavorite: root.canFavorite
             showAddToPlaylist: root.canAddToPlaylist
             showInspector: root.canInspect
@@ -186,13 +196,13 @@ Item {
             }
             onActivated: {
                 if (root.selectionEnabled)
-                    root.selectionToggleRequested(modelData.trackId)
+                    root.selectionToggleRequested(trackId)
                 else
-                    root.trackActivated(modelData.trackId, modelData.path, index)
+                    root.trackActivated(trackId, modelData.path, index)
             }
-            onFavoriteToggled: root.favoriteRequested(modelData.trackId)
-            onQueueRequested: root.queueRequested(modelData.trackId)
-            onAddToPlaylistRequested: root.addToPlaylistRequested(modelData.trackId)
+            onFavoriteToggled: root.favoriteRequested(trackId)
+            onQueueRequested: root.queueRequested(trackId)
+            onAddToPlaylistRequested: root.addToPlaylistRequested(trackId)
             onInspectorRequested: root.propertiesRequested(modelData)
             onGoToAlbumRequested: root.goToAlbumRequested(modelData.albumKey)
             onGoToArtistRequested: root.goToArtistRequested(modelData.artistKey)

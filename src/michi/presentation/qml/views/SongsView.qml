@@ -12,6 +12,7 @@ MichiTrackTable {
     rows: library.songRows
     playingPath: typeof playback !== "undefined" && playback
         ? playback.currentPath : ""
+    favoriteTrackIds: library.favoriteTrackIds
     favoritePaths: library.favoritePaths
     sortingEnabled: true
     sortColumn: library.trackSortColumn

@@ -201,6 +201,7 @@ ColumnLayout {
                 anchors.fill: parent
                 rows: library.albumTracks
                 playingPath: playback.currentPath
+                favoriteTrackIds: library.favoriteTrackIds
                 favoritePaths: library.favoritePaths
                 columnProfile: "album"
                 showAlbumColumn: false
