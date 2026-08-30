@@ -190,6 +190,29 @@ class PlaylistService:
         self._persist()
         self._notify()
 
+    def insert_track(self, playlist_id: str, index: int, file_path) -> bool:
+        """RESTORE REMOVED TRACK AT ITS EXACT ORIGINAL POSITION (P0-01).
+
+        The caller supplies the FROZEN original playlist_id + index +
+        path captured at removal time — this operation NEVER consults any
+        "selected" playlist. Safe degradation: a playlist deleted before
+        Undo is a no-op (False). Exact-position restore never duplicates:
+        an already-present path is skipped (False)."""
+        playlist_index = self._find_by_id(playlist_id)
+        if playlist_index < 0:
+            return False  # playlist deleted before Undo: safe degradation
+        playlist = self._playlists[playlist_index]
+        key = str(Path(file_path))
+        if key in playlist.track_paths:
+            return False  # duplicate policy: exact path already present
+        paths = list(playlist.track_paths)
+        clamped = max(0, min(index, len(paths)))
+        paths.insert(clamped, key)
+        self._playlists[playlist_index] = replace(playlist, track_paths=tuple(paths))
+        self._persist()
+        self._notify()
+        return True
+
     def remove_track(self, playlist_id: str, index: int) -> None:
         playlist_index = self._find_by_id(playlist_id)
         if playlist_index < 0:

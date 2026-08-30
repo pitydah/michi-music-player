@@ -575,6 +575,13 @@ class PlaylistsBridge(QObject):
             self._playlist_service.add_track(playlist_id, Path(path))
 
     @Slot(int)
+    @Slot(str, int, str)
+    def insert_track(self, playlist_id: str, index: int, path: str) -> None:
+        """P0-01: restore a removed track at its EXACT original position in
+        the FROZEN original playlist — never the current selection."""
+        if self._playlist_service is not None:
+            self._playlist_service.insert_track(playlist_id, index, path)
+
     def remove_track(self, index: int) -> None:
         playlist_id = self._current_playlist_id()
         if self._playlist_service is not None and playlist_id:
