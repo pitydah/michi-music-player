@@ -10,6 +10,9 @@ from michi.domain.playlist import Playlist, PlaylistNavigationState
 
 
 class _MemoryPort(PlaylistsPort):
+    """R3-02: a real in-memory port implementing the FULL contract —
+    save_state publishes both snapshots as ONE logical operation."""
+
     def __init__(self):
         self._items = ()
         self.nav = PlaylistNavigationState()
@@ -25,6 +28,10 @@ class _MemoryPort(PlaylistsPort):
 
     def save_navigation(self, state):
         self.nav = state
+
+    def save_state(self, playlists, navigation):
+        self._items = tuple(playlists)
+        self.nav = navigation
 
 
 def _service_with(names):
@@ -260,7 +267,7 @@ class TestArtworkTransactions:
         assert service.set_custom_cover("p1", old_src) is not None
         old_path = service.get_playlist("p1").custom_cover_path
 
-        def broken_delete(managed_path):
+        def broken_delete(playlist_id, role, managed_path):
             raise OSError("cleanup failure")
 
         store = service._artwork_store
@@ -332,12 +339,16 @@ class TestRealAssetValidation:
         store = FilesystemPlaylistArtworkStore(tmp_path / "managed")
         outside = tmp_path / "outside.png"
         outside.write_bytes(b"precious")
-        store.delete_managed_asset(str(outside))  # fuera del storage dir → refuse
+        store.delete_managed_asset(
+            "p1", "cover", str(outside)
+        )  # fuera del storage dir → refuse
         assert outside.exists()
         foreign = tmp_path / "managed" / "other.png"
         store._storage_dir.mkdir(parents=True, exist_ok=True)
         foreign.write_bytes(b"precious")
-        store.delete_managed_asset(str(foreign))  # nombre no playlist_ → refuse
+        store.delete_managed_asset(
+            "p1", "cover", str(foreign)
+        )  # nombre no playlist_ → refuse
         assert foreign.exists()
 
 

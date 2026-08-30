@@ -26,6 +26,11 @@ class FakePlaylistsPort(PlaylistsPort):
     def save_navigation(self, state):
         self.nav = state
 
+    def save_state(self, playlists, navigation):
+        # R3-02: atomic compound write.
+        self.items = list(playlists)
+        self.nav = navigation
+
 
 class FakeQueueService:
     def __init__(self):

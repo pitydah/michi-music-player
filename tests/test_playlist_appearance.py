@@ -38,6 +38,12 @@ class MemoryPlaylistsPort:
     def save_navigation(self, state):
         self.navigation = state
 
+    def save_state(self, playlists, navigation):
+        # R3-02: atomic compound write (single logical in-memory operation).
+        self.items = tuple(playlists)
+        self.navigation = navigation
+        self.save_count += 1
+
 
 def test_playlist_appearance_defaults_to_auto() -> None:
     playlist = Playlist(playlist_id="p1", name="Legacy-safe")

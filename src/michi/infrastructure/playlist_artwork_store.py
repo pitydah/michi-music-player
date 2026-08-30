@@ -3,6 +3,7 @@
 import hashlib
 import logging
 import os
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -25,6 +26,16 @@ _HERO_MAX_PIXELS = 24_000_000  # ~24 MP
 _MAX_PIXELS = {
     _COVER_MAX_EDGE: _COVER_MAX_PIXELS,
     _HERO_MAX_EDGE: _HERO_MAX_PIXELS,
+}
+
+# R3-01 fail-closed identifier policy: UUIDs and safe names pass; path
+# components (/, \, ..) never do.
+_SAFE_PLAYLIST_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+_ASSET_NAME_RE = {
+    "": re.compile(r"playlist_[A-Za-z0-9._-]{1,128}_[0-9a-f]{20}\.(png|jpg|webp)"),
+    "_hero": re.compile(
+        r"playlist_[A-Za-z0-9._-]{1,128}_hero_[0-9a-f]{20}\.(png|jpg|webp)"
+    ),
 }
 
 
@@ -325,21 +336,57 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
             )
             return None
 
-    def delete_managed_asset(self, managed_path: str) -> None:
-        """Fail-closed safe delete: only files inside the managed storage
-        directory whose name starts with ``playlist_`` are removed."""
+    def delete_managed_asset(
+        self, playlist_id: str, role: str, managed_path: str
+    ) -> bool:
+        """R3-01 OWNERSHIP-VERIFIED safe delete. Authorizes unlink ONLY
+        when EVERY structural fact matches:
+
+            1. path inside the managed storage directory;
+            2. playlist_id is a safe identifier (fail-closed policy);
+            3. filename belongs EXACTLY to playlist_id;
+            4. filename belongs EXACTLY to the requested role
+               (cover vs hero are distinguishable);
+            5. digest has the canonical 20-hex shape;
+            6. extension belongs to the managed format set.
+
+        Returns True when the asset was actually removed. A persisted
+        record pointing at ANOTHER playlist's asset (corrupt/tampered DB)
+        can never authorize an unlink."""
         storage = self._storage_dir.resolve()
         candidate = Path(managed_path).resolve()
         if candidate.parent != storage:
             logger.warning("refusing to delete non-managed asset: %s", managed_path)
-            return
-        if not candidate.name.startswith("playlist_"):
-            logger.warning("refusing to delete non-managed asset: %s", managed_path)
-            return
+            return False
+        if not _SAFE_PLAYLIST_ID_RE.fullmatch(playlist_id):
+            logger.warning("refusing delete: unsafe playlist id %r", playlist_id)
+            return False
+        if role not in ("cover", "hero"):
+            logger.warning("refusing delete: unknown role %r", role)
+            return False
+        suffix = "" if role == "cover" else "_hero"
+        pattern = _ASSET_NAME_RE[suffix]
+        if pattern.fullmatch(candidate.name) is None:
+            logger.warning(
+                "refusing delete: filename %r does not match %s ownership "
+                "for playlist %r",
+                candidate.name,
+                role,
+                playlist_id,
+            )
+            return False
+        if not candidate.name.startswith(f"playlist_{playlist_id}{suffix}_"):
+            logger.warning(
+                "refusing delete: %r belongs to a different owner/role",
+                candidate.name,
+            )
+            return False
         try:
             candidate.unlink(missing_ok=True)
+            return True
         except OSError as exc:
             logger.warning("Failed to delete managed asset %s: %s", candidate, exc)
+            return False
 
     def delete_cover(self, playlist_id: str) -> None:
         """Removes any stored cover files for the given playlist id."""

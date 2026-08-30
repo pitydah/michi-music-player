@@ -6,6 +6,16 @@ it owns musical/domain concepts only.
 """
 
 
+class PlaylistNameInvalidError(ValueError):
+    """Playlist name is empty/whitespace — a LOGICAL validation result,
+    never a persistence failure (R3-04)."""
+
+
+class PlaylistNameConflictError(ValueError):
+    """A playlist with this name already exists — a LOGICAL validation
+    result, never a persistence failure (R3-04)."""
+
+
 class PlaylistPersistenceError(RuntimeError):
     """An authoritative playlist write failed (P0-02).
 

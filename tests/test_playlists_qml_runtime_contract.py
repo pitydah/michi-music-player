@@ -179,6 +179,25 @@ def _load_harness(engine, window_stub):
     return obj
 
 
+class ConnectorHookSpy(QObject):
+    """Slot QML-invocable que registra el mensaje del connector."""
+
+    messages = []
+
+    @Slot(str)
+    def notify(self, text):
+        ConnectorHookSpy.messages.append(str(text))
+
+
+def _load_file(engine, path):
+    component = QQmlComponent(engine, str(path))
+    errs = "; ".join(e.toString() for e in component.errors())
+    assert component.status() == QQmlComponent.Ready, f"{path.name}: {errs}"
+    obj = component.create()
+    engine._keepalive = getattr(engine, "_keepalive", []) + [component]
+    return obj
+
+
 def _load(engine, rel):
     component = QQmlComponent(engine, str(QML_DIR / rel))
     errs = "; ".join(e.toString() for e in component.errors())
@@ -231,11 +250,10 @@ class TestMetaObjectContract:
         coord.open_playlist(nav_id)  # selection IS navigation
         meta = pb.metaObject()
         remove = meta.method(meta.indexOfMethod("remove_track(int)"))
-        assert remove.typeName() == "bool", f"type: {remove.typeName()}"
-        from PySide6.QtCore import Q_ARG, Q_RETURN_ARG, QMetaObject
+        assert remove.typeName() in ("QString", "bool"), f"type: {remove.typeName()}"
+        from PySide6.QtCore import Q_ARG, QMetaObject
 
-        ret = Q_RETURN_ARG("bool")
-        ok = QMetaObject.invokeMethod(pb, "remove_track", ret, Q_ARG("int", 0))
+        ok = QMetaObject.invokeMethod(pb, "remove_track", Q_ARG("int", 0))
         assert ok is True, "QMetaObject.invokeMethod failed"
         assert service.get_playlist(nav_id).track_paths == ()
 
@@ -274,7 +292,7 @@ class TestQmlRuntimeRemoveUndo:
         removed_path = service.get_playlist(playlist.playlist_id).track_paths[1]
         view.removeTrackRequested.emit(1)
         # User presses Undo with FROZEN provenance (exact ContentHost logic).
-        assert pb.insert_track(playlist.playlist_id, 1, removed_path) is True
+        assert pb.insert_track(playlist.playlist_id, 1, removed_path) == "restored"
         assert service.get_playlist(playlist.playlist_id).track_paths == (
             "/a.flac",
             "/b.flac",
@@ -291,7 +309,7 @@ class TestQmlRuntimeRemoveUndo:
         service._nav = PlaylistNavigationState(
             pinned_ids=(), recent_ids=(other.playlist_id,)
         )
-        assert pb.insert_track(playlist.playlist_id, 1, removed_path) is True
+        assert pb.insert_track(playlist.playlist_id, 1, removed_path) == "restored"
         assert service.get_playlist(playlist.playlist_id).track_paths == (
             "/a.flac",
             "/b.flac",
@@ -303,8 +321,10 @@ class TestQmlRuntimeRemoveUndo:
         service, pb, view, playlist, engine = self._detail_world(tmp_path)
         removed_path = service.get_playlist(playlist.playlist_id).track_paths[1]
         view.removeTrackRequested.emit(1)
-        assert pb.insert_track(playlist.playlist_id, 1, removed_path) is True
-        assert pb.insert_track(playlist.playlist_id, 1, removed_path) is False
+        assert pb.insert_track(playlist.playlist_id, 1, removed_path) == "restored"
+        assert (
+            pb.insert_track(playlist.playlist_id, 1, removed_path) == "already_present"
+        )
         assert service.get_playlist(playlist.playlist_id).track_paths == (
             "/a.flac",
             "/b.flac",
@@ -316,7 +336,7 @@ class TestQmlRuntimeRemoveUndo:
         removed_path = service.get_playlist(playlist.playlist_id).track_paths[1]
         view.removeTrackRequested.emit(1)
         service.delete_playlist(playlist.playlist_id)
-        assert pb.insert_track(playlist.playlist_id, 1, removed_path) is False
+        assert pb.insert_track(playlist.playlist_id, 1, removed_path) == "not_found"
 
 
 class TestContentHostReal:
@@ -373,6 +393,13 @@ class _FailingPort(FakePlaylistsPort):
             raise PlaylistPersistenceError("injected failure")
         super().save_navigation(state)
 
+    def save_state(self, playlists, navigation):
+        self.writes += 1
+        if self.writes > self.fail_after:
+            raise PlaylistPersistenceError("injected failure")
+        self._stored = list(playlists)
+        self._nav_stored = navigation
+
 
 class TestFailureFeedback:
     def test_remove_failure_no_success_toast(self, tmp_path, qapp):
@@ -387,7 +414,7 @@ class TestFailureFeedback:
         coord.open_playlist(playlist.playlist_id)
 
         failures = []
-        pb.mutationFailed.connect(failures.append)
+        pb.persistenceFailed.connect(failures.append)
 
         window = _WindowStub()
         playback = _PlaybackStub()
@@ -397,7 +424,7 @@ class TestFailureFeedback:
         host = _load(engine, "shell/ContentHost.qml")
         host.setProperty("currentRoute", "playlists")
 
-        assert pb.remove_track(0) is False
+        assert pb.remove_track(0) == "persistence_failed"
         assert failures == ["remove_track"]
         assert all("Removed from playlist" not in t for t in window.toasts)
         assert service.get_playlist(playlist.playlist_id).track_paths == ("/a.flac",)
@@ -424,31 +451,71 @@ class TestFailureFeedback:
         # Invoke the REAL production _confirm() QML function (declared on
         # the deleteDialog object). Offscreen visibility is managed by the
         # Popup stack (unreliable), so the gate is the OBSERVABLE contract:
-        # with a failed durable delete, _confirm takes the else branch —
-        # it does NOT close the dialog and it shows the failure toast.
+        # with a failed durable delete, _confirm does NOT close the dialog
+        # and the bridge reports "persistence_failed" with EXACTLY ONE
+        # persistenceFailed emission (the connector translates it to ONE
+        # toast — verified separately below).
+        failures = []
+        pb.persistenceFailed.connect(failures.append)
         meta = dialog.metaObject()
         idx = meta.indexOfMethod("_confirm()")
         assert idx >= 0, "_confirm() not found on the delete dialog"
         meta.method(idx).invoke(dialog)
-        # The production _confirm() closes ONLY on durable success:
+        # The production _confirm() closes ONLY on "deleted":
         host_source = Path(QML_DIR / "shell" / "ContentHost.qml").read_text()
         assert (
-            "if (playlists.delete_playlist(deleteDialog.targetPlaylistId)) {"
+            'playlists.delete_playlist(deleteDialog.targetPlaylistId) === "deleted"'
             in host_source
         )
         assert "deleteDialog.close()" in host_source
-        # Service intact ⇒ the else branch ran ⇒ close() was NOT called.
+        # Service intact ⇒ close() was NOT called.
         assert len(service.playlists) == 1
         assert service.playlists[0].playlist_id == playlist.playlist_id
-        assert any("Could not delete playlist" in t for t in window.toasts)
+        # EXACTLY ONE durable-write failure signal (R3-04) → the
+        # ContentHost Connections translates it into EXACTLY ONE toast.
+        assert failures == ["delete"]
+        assert len(window.toasts) == 1
+
+    def test_persistence_connector_reports_exactly_one_toast(self, qapp):
+        """R3-04: the canonical Connections+alias pattern translates ONE
+        durable-write failure into EXACTLY ONE user message."""
+        from michi.application.playlist_navigation_coordinator import (
+            PlaylistNavigationCoordinator,
+        )
+        from michi.application.playlist_service import PlaylistService
+        from michi.presentation.playlists_bridge import PlaylistsBridge
+
+        service = PlaylistService(playlists_port=FakePlaylistsPort())
+        pb = PlaylistsBridge(
+            playlist_service=service,
+            playlist_navigation=PlaylistNavigationCoordinator(
+                service, NavigationService()
+            ),
+            navigation_service=NavigationService(),
+        )
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML_DIR))
+        engine.rootContext().setContextProperty("playlists", pb)
+        spy = ConnectorHookSpy()
+        engine.rootContext().setContextProperty("spyHook", spy)
+        harness_path = Path(__file__).resolve().parent / "PersistConnectorHarness.qml"
+        harness = _load_file(engine, harness_path)
+        pb.persistenceFailed.emit("delete")
+        assert spy.messages == ["msg:delete"]
 
     def test_add_track_to_playlist_already_present_not_added(self, tmp_path):
         service, _, _, pb = _bridge(tmp_path)
         playlist = service.create_playlist("Mix")
         service.add_track(playlist.playlist_id, "/a.flac")
-        assert pb.add_track_to_playlist(playlist.playlist_id, "/a.flac") is False
-        assert pb.add_track_to_playlist(playlist.playlist_id, "/b.flac") is True
-        assert pb.add_track_to_playlist(playlist.playlist_id, "/b.flac") is False
+        assert (
+            pb.add_track_to_playlist(playlist.playlist_id, "/a.flac")
+            == "already_present"
+        )
+        assert pb.add_track_to_playlist(playlist.playlist_id, "/b.flac") == "added"
+        assert (
+            pb.add_track_to_playlist(playlist.playlist_id, "/b.flac")
+            == "already_present"
+        )
 
     def test_appearance_slots_translate_persistence_failure(self, tmp_path):
         """REVIEW FINDING: cover/hero/rename/create slots must translate
@@ -458,21 +525,23 @@ class TestFailureFeedback:
         port = _FailingPort(fail_after=999)
         service, nav, coord, pb = _bridge(tmp_path, port=port)
         failures = []
-        pb.mutationFailed.connect(failures.append)
+        pb.persistenceFailed.connect(failures.append)
 
         # Ghost ids: failure, never a raise, no feedback noise.
-        assert pb.rename_playlist("ghost", "X") is False
-        assert pb.set_custom_cover("ghost", "/tmp/x.png") is False
+        assert pb.rename_playlist("ghost", "X") == "not_found"
+        assert pb.set_custom_cover("ghost", "/tmp/x.png") == "not_found"
         assert (
             pb.set_custom_cover_from_url("ghost", QUrl.fromLocalFile("/tmp/x.png"))
-            is False
+            == "not_found"
         )
-        assert pb.set_hero_auto("ghost") is False
-        assert pb.set_hero_solid("ghost", "#112233") is False
-        assert pb.set_hero_gradient("ghost", ["#112233", "#445566"], 45.0) is False
+        assert pb.set_hero_auto("ghost") == "not_found"
+        assert pb.set_hero_solid("ghost", "#112233") == "not_found"
+        assert (
+            pb.set_hero_gradient("ghost", ["#112233", "#445566"], 45.0) == "not_found"
+        )
         assert (
             pb.set_custom_hero_from_url("ghost", QUrl.fromLocalFile("/tmp/h.png"))
-            is False
+            == "not_found"
         )
         assert failures == []
 
@@ -481,11 +550,20 @@ class TestFailureFeedback:
         # propagate a raw PlaylistPersistenceError.
         playlist = service.create_playlist("Mix")
         port.fail_after = 1  # the NEXT write (the mutation) fails
-        assert pb.set_custom_cover(playlist.playlist_id, "/tmp/x.png") is False
+        # Cover: la persistencia falla → persistence_failed + signal.
+        assert (
+            pb.set_custom_cover(playlist.playlist_id, "/tmp/x.png")
+            == "persistence_failed"
+        )
         assert failures == ["cover"]
-        assert pb.set_hero_solid(playlist.playlist_id, "#112233") is False
+        # Hero SOLID: persistence_failed + signal.
+        assert (
+            pb.set_hero_solid(playlist.playlist_id, "#112233") == "persistence_failed"
+        )
         assert failures == ["cover", "hero"]
-        assert pb.rename_playlist(playlist.playlist_id, "Renamed") is False
+        assert (
+            pb.rename_playlist(playlist.playlist_id, "Renamed") == "persistence_failed"
+        )
         assert failures == ["cover", "hero", "rename"]
 
 

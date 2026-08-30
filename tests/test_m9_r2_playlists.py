@@ -89,7 +89,7 @@ def test_filesystem_playlist_artwork_store(tmp_path: Path) -> None:
     assert Path(stored_path).name.startswith("playlist_pl-123_")
 
     # Delete managed asset (fail-closed protocol)
-    store.delete_managed_asset(stored_path)
+    store.delete_managed_asset("pl-123", "cover", stored_path)
     assert not Path(stored_path).exists()
 
 

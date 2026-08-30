@@ -11,7 +11,7 @@ Item {
     QtObject {
         id: window
         function showToast(text, tone) {
-            windowApi.showToast(text, tone)
+            windowApi.showToast(text)
         }
         function showToastWithAction(text, action, handler) {
             windowApi.showToastWithAction(text, action, handler)

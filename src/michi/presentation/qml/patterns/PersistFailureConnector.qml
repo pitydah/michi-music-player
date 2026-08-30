@@ -19,7 +19,7 @@ Connections {
     // (text) => void — supplied by the host (window.showToast etc.).
     property var notify: null
 
-    function onMutationFailed(operationCode) {
+    function onPersistenceFailed(operationCode) {
         if (root.failureMessageFor && root.notify)
             root.notify(root.failureMessageFor(operationCode))
     }

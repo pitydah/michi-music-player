@@ -69,48 +69,46 @@ class LibraryPrefsPort(ABC):
 
 
 class PlaylistsPort(ABC):
-    """Playlist persistence boundary (R2 P1-04): LOAD is tolerant/safe-read,
-    WRITE is authoritative/truthful — success is durable, failure raises
-    PlaylistPersistenceError (defined in michi.application.errors).
+    """Playlist persistence boundary (R3-02): a NON-None port implements
+    the FULL contract — LOAD is tolerant/safe-read, every WRITE is
+    authoritative (durable on success, raises PlaylistPersistenceError on
+    failure), and save_state is the MANDATORY atomic compound write.
+
+    There is NO silent no-op write: optional persistence is represented by
+    ``playlists_port=None`` at the service level, never by a port whose
+    writes could be ignored. Atomicity is part of the type contract.
 
     M8-R1: playlists persist with stable ids (V2); legacy V1 records decode
     to deterministic ids. Navigation metadata (pinned/recent) has its own
-    load/save pair. save_state is the ATOMIC compound write for mutations
-    that touch both authorities (delete). Default no-op implementations
-    keep existing fakes and optional wiring backward compatible."""
+    load/save pair."""
 
     @abstractmethod
     def load(self) -> tuple[Playlist, ...]:
         """SAFE READ: tolerant; a corrupt/missing payload degrades to the
-        last valid state or empty — load NEVER raises (R2 P1-04)."""
-        return ()
+        last valid state or empty — load NEVER raises."""
 
+    @abstractmethod
     def save(self, playlists: tuple[Playlist, ...]) -> None:
-        """AUTHORITATIVE WRITE (R2 P1-04): success means DURABLE; failure
-        MUST raise PlaylistPersistenceError. Default no-op for fakes."""
-        del playlists
+        """AUTHORITATIVE WRITE: durable on success; raises
+        PlaylistPersistenceError on failure."""
 
+    @abstractmethod
     def load_navigation(self) -> "PlaylistNavigationState":
-        """Pinned/recent state; optional key — absence degrades to empty."""
-        return PlaylistNavigationState()
+        """Pinned/recent state; absence degrades to empty."""
 
+    @abstractmethod
     def save_navigation(self, state: "PlaylistNavigationState") -> None:
-        """AUTHORITATIVE WRITE (R2 P1-04): durable on success, raises
-        PlaylistPersistenceError on failure. Default no-op for fakes."""
-        del state
+        """AUTHORITATIVE WRITE: durable on success; raises
+        PlaylistPersistenceError on failure."""
 
+    @abstractmethod
     def save_state(
         self,
         playlists: tuple[Playlist, ...],
         navigation: "PlaylistNavigationState",
     ) -> None:
-        """ATOMIC collection+navigation write (R2 P1-02): a compound
-        mutation must NEVER leave only one authority confirmed. Production
-        repositories override this with ONE SQLite transaction; the
-        concrete default (two sequential writes) exists ONLY for legacy
-        in-memory fakes whose writes cannot partially fail."""
-        self.save(playlists)
-        self.save_navigation(navigation)
+        """MANDATORY ATOMIC compound write (R2 P1-02): one logical
+        operation — NEVER two independent best-effort commits."""
 
 
 class PlaylistArtworkStorePort(ABC):

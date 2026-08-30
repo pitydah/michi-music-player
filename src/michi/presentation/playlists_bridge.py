@@ -19,7 +19,11 @@ from pathlib import Path
 from PySide6.QtCore import Property, QObject, Qt, QUrl, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
-from michi.application.errors import PlaylistPersistenceError
+from michi.application.errors import (
+    PlaylistNameConflictError,
+    PlaylistNameInvalidError,
+    PlaylistPersistenceError,
+)
 from michi.application.library_service import LibraryService
 from michi.application.navigation_service import NavigationService
 from michi.application.playlist_navigation_coordinator import (
@@ -68,7 +72,9 @@ class PlaylistsBridge(QObject):
     playlists_changed = Signal()
     # R2 P1-05: presentation-safe persistence failure notification. The
     # human text lives in QML (qsTr); this carries a STABLE operation code.
-    mutationFailed = Signal(str)
+    # R3-04: UNA SOLA autoridad de durable-write failure. El signal
+    # significa EXACTAMENTE "DURABLE WRITE FAILED" — nunca un fallo lógico.
+    persistenceFailed = Signal(str)
     _palette_ready = Signal(str, str, list)
 
     def __init__(
@@ -127,7 +133,7 @@ class PlaylistsBridge(QObject):
             return bool(mutation())
         except PlaylistPersistenceError:
             logger.warning("playlist mutation failed (%s)", operation)
-            self.mutationFailed.emit(operation)
+            self.persistenceFailed.emit(operation)
             return False
 
     def _on_playlist_service_changed(self) -> None:
@@ -596,208 +602,301 @@ class PlaylistsBridge(QObject):
     # Intents — playlist service CRUD by id (no name-based production path)
     # ------------------------------------------------------------------
 
-    @Slot(str)
-    def open_playlist(self, playlist_id: str) -> None:
-        """Validated open (recent + navigation) through the coordinator."""
-        if self._coordinator is not None:
-            self._coordinator.open_playlist(playlist_id)
+    @Slot(str, result=str)
+    def open_playlist(self, playlist_id: str) -> str:
+        """R3-03: validated open through the coordinator. Returns a stable
+        result code:
+
+            "opened"                  — navigated, Recent persisted
+            "opened_recent_unsaved"   — navigated, Recent write failed
+            "not_found"               — fell back to All Playlists
+
+        A Recent persistence failure NEVER blocks navigation and NEVER
+        escapes as a raw exception; it emits persistenceFailed("recent")."""
+        if self._coordinator is None:
+            return "not_found"
+        result = self._coordinator.open_playlist(playlist_id)
+        if not result.recent_persisted and result.opened:
+            self.persistenceFailed.emit("recent")
+        return result.code
 
     @Slot()
     def open_all_playlists(self) -> None:
         if self._coordinator is not None:
             self._coordinator.open_all_playlists()
 
-    @Slot(str, result=bool)
-    def create_and_open_playlist(self, name: str) -> bool:
-        """Create + open (M9-R1 workflow): returns True when the playlist was
-        created and opened (route → PLAYLISTS/<new id>, Recent updated)."""
+    @Slot(str, result=str)
+    def create_and_open_playlist(self, name: str) -> str:
+        """R3-03/04 Create + open. Returns a stable result code:
+
+            "created"                 — created + opened, Recent persisted
+            "created_recent_unsaved"  — created + opened, Recent write failed
+            "conflict"                — duplicate name (logical, no signal)
+            "invalid"                 — invalid name (logical, no signal)
+            "persistence_failed"      — durable create write failed
+            "not_found"               — service/coordinator unavailable
+
+        The EXACT Playlist returned by create_playlist is opened (never a
+        re-fetch by position)."""
         if self._playlist_service is None or self._coordinator is None:
-            return False
+            return "not_found"
         try:
-            if not self._run_mutation(
-                "create", lambda: self._playlist_service.create_playlist(name)
-            ):
-                return False
-        except ValueError:
-            return False  # invalid/duplicate name: failure, not a raise
-        playlist = self._playlist_service.playlists[-1]
-        self._coordinator.open_playlist(playlist.playlist_id)
-        return True
+            created = self._playlist_service.create_playlist(name)
+        except PlaylistNameConflictError:
+            return "conflict"
+        except PlaylistNameInvalidError:
+            return "invalid"
+        except PlaylistPersistenceError:
+            self.persistenceFailed.emit("create")
+            return "persistence_failed"
+        result = self._coordinator.open_playlist(created.playlist_id)
+        if not result.recent_persisted and result.opened:
+            self.persistenceFailed.emit("recent")
+            return "created_recent_unsaved"
+        return "created"
 
-    @Slot(str, str, result=bool)
-    def rename_playlist(self, playlist_id: str, new_name: str) -> bool:
-        """Explicit success contract (M9-R1I): True only when the rename
-        succeeded; False for missing playlist / invalid / duplicate name.
-        Never raises into QML."""
+    @Slot(str, str, result=str)
+    def rename_playlist(self, playlist_id: str, new_name: str) -> str:
+        """R3-04 rename with stable result codes:
+
+        "renamed"             — durable success
+        "no_change"           — same name (no write, no notify)
+        "invalid"             — invalid name (logical)
+        "conflict"            — duplicate name (logical)
+        "not_found"           — playlist missing
+        "persistence_failed"  — durable write failed (signal emitted)
+        """
         if self._playlist_service is None:
-            return False
+            return "not_found"
         if self._playlist_service.get_playlist(playlist_id) is None:
-            return False  # missing playlist is a failure, not a silent no-op
+            return "not_found"
         try:
-            return self._run_mutation(
-                "rename",
-                lambda: self._playlist_service.rename_playlist(playlist_id, new_name),
-            )
-        except ValueError:
-            return False
+            changed = self._playlist_service.rename_playlist(playlist_id, new_name)
+        except PlaylistNameConflictError:
+            return "conflict"
+        except PlaylistNameInvalidError:
+            return "invalid"
+        except PlaylistPersistenceError:
+            self.persistenceFailed.emit("rename")
+            return "persistence_failed"
+        return "renamed" if changed else "no_change"
 
-    @Slot(str, result=bool)
-    def delete_playlist(self, playlist_id: str) -> bool:
-        """R2 P1-05: True ONLY when the compound delete was durably
-        committed. The Delete dialog must NOT close on False."""
+    @Slot(str, result=str)
+    def delete_playlist(self, playlist_id: str) -> str:
+        """R3-04 delete codes: "deleted" | "not_found" | "persistence_failed".
+        The Delete dialog closes ONLY on "deleted"."""
         if self._playlist_service is None:
-            return False
-        return self._run_mutation(
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        if not self._run_mutation(
             "delete", lambda: self._playlist_service.delete_playlist(playlist_id)
-        )
+        ):
+            return "persistence_failed"
+        return "deleted"
 
-    @Slot(str, result=bool)
-    def pin_playlist(self, playlist_id: str) -> bool:
+    @Slot(str, result=str)
+    def pin_playlist(self, playlist_id: str) -> str:
         if self._playlist_service is None:
-            return False
-        return self._run_mutation(
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        if not self._run_mutation(
             "pin", lambda: self._playlist_service.pin_playlist(playlist_id)
-        )
+        ):
+            return "persistence_failed"
+        return "updated"
 
-    @Slot(str, result=bool)
-    def unpin_playlist(self, playlist_id: str) -> bool:
+    @Slot(str, result=str)
+    def unpin_playlist(self, playlist_id: str) -> str:
         if self._playlist_service is None:
-            return False
-        return self._run_mutation(
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        if not self._run_mutation(
             "unpin", lambda: self._playlist_service.unpin_playlist(playlist_id)
-        )
+        ):
+            return "persistence_failed"
+        return "updated"
 
     @Slot(str, str, result=bool)
-    def set_custom_cover(self, playlist_id: str, path: str) -> bool:
+    def set_custom_cover(self, playlist_id: str, path: str) -> str:
+        """R3-04 appearance codes (cover)."""
         local_path = local_path_from_url(path)
         if local_path is None or self._playlist_service is None:
-            return False
-        return self._run_mutation(
+            return "invalid"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        if not self._run_mutation(
             "cover",
             lambda: (
                 self._playlist_service.set_custom_cover(playlist_id, local_path)
                 is not None
             ),
-        )
+        ):
+            return "persistence_failed"
+        return "updated"
 
-    @Slot(str, QUrl, result=bool)
-    def set_custom_cover_from_url(self, playlist_id: str, url: QUrl) -> bool:
+    @Slot(str, QUrl, result=str)
+    def set_custom_cover_from_url(self, playlist_id: str, url: QUrl) -> str:
         path = local_path_from_url(url)
         if path is None or self._playlist_service is None:
-            return False
-        return self._run_mutation(
+            return "invalid"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        if not self._run_mutation(
             "cover",
             lambda: (
                 self._playlist_service.set_custom_cover(playlist_id, path) is not None
             ),
-        )
+        ):
+            return "persistence_failed"
+        return "updated"
 
-    @Slot(str, result=bool)
-    def remove_custom_cover(self, playlist_id: str) -> bool:
+    @Slot(str, result=str)
+    def remove_custom_cover(self, playlist_id: str) -> str:
         if self._playlist_service is None:
-            return False
-        return self._run_mutation(
-            "cover", lambda: self._playlist_service.remove_custom_cover(playlist_id)
-        )
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        if not self._run_mutation(
+            "cover",
+            lambda: self._playlist_service.remove_custom_cover(playlist_id),
+        ):
+            return "persistence_failed"
+        return "updated"
 
-    @Slot(str, result=bool)
-    def set_hero_auto(self, playlist_id: str) -> bool:
+    @Slot(str, result=str)
+    def set_hero_auto(self, playlist_id: str) -> str:
         if self._playlist_service is None:
-            return False
-        return self._run_mutation(
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        if not self._run_mutation(
             "hero", lambda: self._playlist_service.set_hero_auto(playlist_id)
-        )
+        ):
+            return "persistence_failed"
+        return "updated"
 
-    @Slot(str, str, result=bool)
-    def set_hero_solid(self, playlist_id: str, color: str) -> bool:
+    @Slot(str, str, result=str)
+    def set_hero_solid(self, playlist_id: str, color: str) -> str:
         if self._playlist_service is None:
-            return False
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
         try:
-            return self._run_mutation(
+            ok = self._run_mutation(
                 "hero",
                 lambda: self._playlist_service.set_hero_solid(playlist_id, color),
             )
         except ValueError:
-            return False
+            return "invalid"
+        return "updated" if ok else "persistence_failed"
 
-    @Slot(str, list, float, result=bool)
-    def set_hero_gradient(self, playlist_id: str, colors: list, angle: float) -> bool:
+    @Slot(str, list, float, result=str)
+    def set_hero_gradient(self, playlist_id: str, colors: list, angle: float) -> str:
         if self._playlist_service is None:
-            return False
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
         try:
-            return self._run_mutation(
+            ok = self._run_mutation(
                 "hero",
                 lambda: self._playlist_service.set_hero_gradient(
                     playlist_id, tuple(str(color) for color in colors), angle
                 ),
             )
         except (TypeError, ValueError):
-            return False
+            return "invalid"
+        return "updated" if ok else "persistence_failed"
 
-    @Slot(str, QUrl, result=bool)
-    def set_custom_hero_from_url(self, playlist_id: str, url: QUrl) -> bool:
+    @Slot(str, QUrl, result=str)
+    def set_custom_hero_from_url(self, playlist_id: str, url: QUrl) -> str:
         path = local_path_from_url(url)
         if path is None or self._playlist_service is None:
-            return False
-        return self._run_mutation(
+            return "invalid"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        if not self._run_mutation(
             "hero",
             lambda: (
                 self._playlist_service.set_custom_hero_image(playlist_id, path)
                 is not None
             ),
-        )
+        ):
+            return "persistence_failed"
+        return "updated"
 
-    @Slot(str, str, result=bool)
-    def add_track(self, playlist_id: str, path: str) -> bool:
+    @Slot(str, str, result=str)
+    def add_track(self, playlist_id: str, path: str) -> str:
         if self._playlist_service is None:
-            return False
-        return self._run_mutation(
+            return "not_found"
+        if not self._run_mutation(
             "add_tracks",
             lambda: self._playlist_service.add_track(playlist_id, Path(path)),
-        )
+        ):
+            return "persistence_failed"
+        return "added"
 
-    @Slot(str, int, str, result=bool)
-    def insert_track(self, playlist_id: str, index: int, path: str) -> bool:
-        """P0-01: restore a removed track at its EXACT original position in
-        the FROZEN original playlist — never the current selection.
+    @Slot(str, int, str, result=str)
+    def insert_track(self, playlist_id: str, index: int, path: str) -> str:
+        """P0-01: restore a removed track at its EXACT original position.
+        R3-04 codes: "restored" | "already_present" | "not_found" |
+        "persistence_failed". EXACTLY this single signature (R2 P1-01).
 
-        R2 P1-01: EXACTLY this single signature in the QObject metaobject
-        (no stray @Slot(int)); returns True only when the restore was
-        durably committed."""
+        The service returns False for a LOGICAL duplicate (already present)
+        — that is never a persistence failure."""
         if self._playlist_service is None:
-            return False
-        return self._run_mutation(
-            "insert_track",
-            lambda: self._playlist_service.insert_track(playlist_id, index, path),
-        )
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        try:
+            restored = self._playlist_service.insert_track(playlist_id, index, path)
+        except PlaylistPersistenceError:
+            self.persistenceFailed.emit("insert_track")
+            return "persistence_failed"
+        return "restored" if restored else "already_present"
 
-    @Slot(int, result=bool)
-    def remove_track(self, index: int) -> bool:
-        """R2 P1-01: registered as ``remove_track(int)`` in the QObject
-        metaobject — QML ``playlists.remove_track(index)`` MUST resolve.
-        True ONLY when a valid playlist+index was durably removed."""
+    @Slot(int, result=str)
+    def remove_track(self, index: int) -> str:
+        """R3-04 remove codes: "removed" | "invalid_index" | "not_found" |
+        "persistence_failed". Registered as ``remove_track(int)`` in the
+        QObject metaobject (R2 P1-01)."""
         playlist_id = self._current_playlist_id()
         if self._playlist_service is None or not playlist_id:
-            return False
+            return "not_found"
         playlist = self._playlist_service.get_playlist(playlist_id)
-        if playlist is None or not (0 <= index < len(playlist.track_paths)):
-            return False
-        return self._run_mutation(
+        if playlist is None:
+            return "not_found"
+        if not (0 <= index < len(playlist.track_paths)):
+            return "invalid_index"
+        if not self._run_mutation(
             "remove_track",
             lambda: self._playlist_service.remove_track(playlist_id, index),
-        )
+        ):
+            return "persistence_failed"
+        return "removed"
 
-    @Slot(int, int, result=bool)
-    def move_track(self, from_index: int, to_index: int) -> bool:
+    @Slot(int, int, result=str)
+    def move_track(self, from_index: int, to_index: int) -> str:
+        """R3-04 move codes: "moved" | "no_change" | "invalid_index" |
+        "not_found" | "persistence_failed"."""
         playlist_id = self._current_playlist_id()
         if self._playlist_service is None or not playlist_id:
-            return False
-        return self._run_mutation(
+            return "not_found"
+        playlist = self._playlist_service.get_playlist(playlist_id)
+        if playlist is None:
+            return "not_found"
+        if not (0 <= from_index < len(playlist.track_paths)):
+            return "invalid_index"
+        if not self._run_mutation(
             "move_track",
             lambda: self._playlist_service.move_track(
                 playlist_id, from_index, to_index
             ),
-        )
+        ):
+            return "persistence_failed"
+        return "moved"
 
     @Slot()
     def play_selected_playlist(self) -> None:
@@ -831,21 +930,21 @@ class PlaylistsBridge(QObject):
         if pid:
             self.queue_playlist(pid)
 
-    @Slot(str, str, result=bool)
-    def add_track_to_playlist(self, playlist_id: str, path: str) -> bool:
+    @Slot(str, str, result=str)
+    def add_track_to_playlist(self, playlist_id: str, path: str) -> str:
         """Cross-feature (Library → Playlist): add a track by id.
-
-        R2 P1-12: True ONLY when the track was actually ADDED. False when
-        the track was ALREADY present, the playlist is unknown, or the
-        write failed — the UI must never show 'Added to X' on False."""
+        R3-04 codes: "added" | "already_present" | "not_found" |
+        "persistence_failed"."""
         if self._playlist_service is None:
-            return False
+            return "not_found"
         playlist = self._playlist_service.get_playlist(playlist_id)
         if playlist is None:
-            return False
+            return "not_found"
         if str(Path(path)) in playlist.track_paths:
-            return False  # already present: NOT "Added"
-        return self._run_mutation(
+            return "already_present"
+        if not self._run_mutation(
             "add_tracks",
             lambda: self._playlist_service.add_track(playlist_id, Path(path)),
-        )
+        ):
+            return "persistence_failed"
+        return "added"

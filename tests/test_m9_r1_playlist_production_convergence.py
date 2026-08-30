@@ -59,7 +59,7 @@ class TestSingleNavigationTruth:
         service, nav, coord, bridge = _world()
         a = service.create_playlist("A")
         coord.open_all_playlists()
-        assert bridge.rename_playlist(a.playlist_id, "A Long") is True
+        assert bridge.rename_playlist(a.playlist_id, "A Long") == "renamed"
         assert nav.state.playlist_id is None
         assert nav.state.current_route == AppRoute.PLAYLISTS
 
@@ -112,7 +112,7 @@ class TestSingleNavigationTruth:
 class TestCreateWorkflow:
     def test_create_success_returns_true_and_opens(self):
         service, nav, coord, bridge = _world()
-        assert bridge.create_and_open_playlist("Jazz") is True
+        assert bridge.create_and_open_playlist("Jazz") == "created"
         created = service.playlists[0]
         assert nav.state.playlist_id == created.playlist_id
         assert service.navigation.recent_ids[0] == created.playlist_id
@@ -122,13 +122,13 @@ class TestCreateWorkflow:
         service, nav, coord, bridge = _world()
         bridge.create_and_open_playlist("Jazz")
         before = nav.state.playlist_id
-        assert bridge.create_and_open_playlist("Jazz") is False
+        assert bridge.create_and_open_playlist("Jazz") == "conflict"
         assert len(service.playlists) == 1
         assert nav.state.playlist_id == before
 
     def test_create_empty_returns_false(self):
         service, nav, coord, bridge = _world()
-        assert bridge.create_and_open_playlist("   ") is False
+        assert bridge.create_and_open_playlist("   ") == "invalid"
         assert service.playlists == ()
 
 
@@ -136,7 +136,7 @@ class TestRenameContract:
     def test_rename_success_true_same_id(self):
         service, nav, coord, bridge = _world()
         a = service.create_playlist("A")
-        assert bridge.rename_playlist(a.playlist_id, "A Long") is True
+        assert bridge.rename_playlist(a.playlist_id, "A Long") == "renamed"
         assert service.playlists[0].playlist_id == a.playlist_id
         assert service.playlists[0].name == "A Long"
 
@@ -144,24 +144,24 @@ class TestRenameContract:
         service, nav, coord, bridge = _world()
         a = service.create_playlist("A")
         service.create_playlist("B")
-        assert bridge.rename_playlist(a.playlist_id, "B") is False
+        assert bridge.rename_playlist(a.playlist_id, "B") == "conflict"
         assert service.playlists[0].name == "A"
 
     def test_rename_unknown_false(self):
         service, nav, coord, bridge = _world()
-        assert bridge.rename_playlist("ghost", "X") is False
+        assert bridge.rename_playlist("ghost", "X") == "not_found"
 
     def test_rename_empty_false(self):
         service, nav, coord, bridge = _world()
         a = service.create_playlist("A")
-        assert bridge.rename_playlist(a.playlist_id, "   ") is False
+        assert bridge.rename_playlist(a.playlist_id, "   ") == "invalid"
 
     def test_rename_same_name_succeeds(self):
         """Renaming to the SAME name is a successful no-op — the entity is
         never treated as its own conflicting duplicate."""
         service, nav, coord, bridge = _world()
         a = service.create_playlist("Jazz")
-        assert bridge.rename_playlist(a.playlist_id, "Jazz") is True
+        assert bridge.rename_playlist(a.playlist_id, "Jazz") == "renamed"
         assert service.playlists[0].name == "Jazz"
 
 

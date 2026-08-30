@@ -30,6 +30,10 @@ Item {
     readonly property bool _playlistDetail: root.currentRoute === "playlists"
         && navigation.playlistId !== ""
 
+    // R3-04: el alias evita el module-import collision ("../playlists")
+    // para el Connections de persistence failures.
+    readonly property var playlistsBridge: playlists
+
     MichiSurface { anchors.fill: parent; level: "content"; radius: MichiRadius.floating }
 
     StackLayout {
@@ -73,15 +77,14 @@ Item {
                 onOpenPlaylistRequested: playlistId => playlists.open_playlist(playlistId)
                 onPlayPlaylistRequested: playlistId => playlists.play_playlist(playlistId)
                 onPinPlaylistRequested: (playlistId, pinned, playlistName) => {
-                    var ok = pinned
+                    var result = pinned
                         ? playlists.pin_playlist(playlistId)
                         : playlists.unpin_playlist(playlistId)
-                    if (ok)
+                    if (result === "updated")
                         window.showToast(pinned
                             ? qsTr("Pinned %1").arg(playlistName)
                             : qsTr("Unpinned %1").arg(playlistName))
-                    else
-                        window.showToast(qsTr("Could not pin playlist"))
+                    // "persistence_failed": connector reports exactly once.
                 }
                 // M9-R1I: card dialogs use EPHEMERAL action targets — they
                 // never touch navigation (no select_playlist, no Detail
@@ -129,10 +132,13 @@ Item {
                 onPlayTrackRequested: index => playlists.play_playlist_track(index)
                 onAddMusicRequested: navigation.navigate("library")
                 onTogglePinRequested: {
-                    if (playlists.selectedPlaylistPinned)
-                        playlists.unpin_playlist(playlists.selectedPlaylistId)
-                    else
-                        playlists.pin_playlist(playlists.selectedPlaylistId)
+                    var result = playlists.selectedPlaylistPinned
+                        ? playlists.unpin_playlist(playlists.selectedPlaylistId)
+                        : playlists.pin_playlist(playlists.selectedPlaylistId)
+                    if (result === "updated")
+                        window.showToast(playlists.selectedPlaylistPinned
+                            ? qsTr("Unpinned %1").arg(playlists.selectedPlaylistName)
+                            : qsTr("Pinned %1").arg(playlists.selectedPlaylistName))
                 }
                 // M9-R1J: the shared dialogs are the canonical interaction
                 // boundary — the Detail emits intents; ContentHost routes
@@ -153,9 +159,11 @@ Item {
                     var removed = playlists.playlistTracks[index]
                     var removedPlaylistId = playlists.selectedPlaylistId
                     var removedIndex = index
-                    // R2 P1-12: the Undo toast appears ONLY when the removal
-                    // was durably committed.
-                    if (playlists.remove_track(index)) {
+                    // R3-04: the Undo toast appears ONLY on "removed"; a
+                    // persistence failure is reported EXACTLY ONCE by the
+                    // persistence connector (no second local toast).
+                    var result = playlists.remove_track(index)
+                    if (result === "removed") {
                         if (removed && removed.path) {
                             window.showToastWithAction(
                                 qsTr("Removed from playlist"), qsTr("Undo"),
@@ -164,8 +172,8 @@ Item {
                                         removedPlaylistId, removedIndex, removed.path)
                                 })
                         }
-                    } else {
-                        window.showToast(qsTr("Could not remove track"))
+                    } else if (result === "invalid_index") {
+                        // safe degradation: nothing changed
                     }
                 }
                 onMoveTrackRequested: (fromIndex, toIndex) => {
@@ -229,11 +237,16 @@ Item {
                 renameDialog.errorText = qsTr("Playlist name must not be empty")
                 return
             }
-            // M9-R1I explicit contract: only close on real success.
-            if (playlists.rename_playlist(renameDialog.targetPlaylistId, name)) {
+            // R3-04: only close on durable success; logical failures show
+            // their specific inline error; persistence failures are
+            // reported EXACTLY ONCE by the persistence Connections.
+            var result = playlists.rename_playlist(renameDialog.targetPlaylistId, name)
+            if (result === "renamed" || result === "no_change") {
                 renameDialog.close()
-            } else {
+            } else if (result === "conflict") {
                 renameDialog.errorText = qsTr("A playlist with that name already exists.")
+            } else if (result === "invalid") {
+                renameDialog.errorText = qsTr("Playlist name must not be empty")
             }
         }
         onOpened: {
@@ -278,21 +291,20 @@ Item {
             }
         }
         function _confirm() {
-            // R2 P1-05/P1-12: the dialog closes ONLY when the compound
-            // delete was durably committed.
-            if (playlists.delete_playlist(deleteDialog.targetPlaylistId)) {
+            // R3-04: the dialog closes ONLY on "deleted"; persistence
+            // failure is reported EXACTLY ONCE by the connector.
+            if (playlists.delete_playlist(deleteDialog.targetPlaylistId) === "deleted")
                 deleteDialog.close()
-            } else {
-                window.showToast(qsTr("Could not delete playlist"))
-            }
         }
     }
 
-    // R2 P1-05: presentation-safe persistence failure — stable operation
-    // code from the bridge, human text here (qsTr). The connector lives in
-    // its own component (no `playlists` module-import collision).
-    PersistFailureConnector {
-        failureMessageFor: function(operationCode) {
+    // R3-04: ONE authority for durable-write failures. The Connections
+    // uses the local alias (never the raw `playlists` name — the module
+    // import would shadow it). The caller NEVER shows a second local
+    // error for a persistence failure.
+    Connections {
+        target: root.playlistsBridge
+        function onPersistenceFailed(operationCode) {
             var message = qsTr("Could not save changes")
             if (operationCode === "create")
                 message = qsTr("Could not create playlist")
@@ -312,8 +324,7 @@ Item {
                 message = qsTr("Could not reorder tracks")
             else if (operationCode === "insert_track")
                 message = qsTr("Could not restore track")
-            return message
+            window.showToast(message)
         }
-        notify: function(text) { window.showToast(text) }
     }
 }

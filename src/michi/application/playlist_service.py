@@ -19,7 +19,11 @@ from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
-from michi.application.errors import PlaylistPersistenceError
+from michi.application.errors import (
+    PlaylistNameConflictError,
+    PlaylistNameInvalidError,
+    PlaylistPersistenceError,
+)
 from michi.application.ports import PlaylistArtworkStorePort, PlaylistsPort
 from michi.domain.playlist import (
     MAX_RECENT_PLAYLISTS,
@@ -131,12 +135,9 @@ class PlaylistService:
         partially fail) — the sequential fallback is safe for them and the
         production port always provides the atomic write."""
         if self._port is not None:
-            save_state = getattr(self._port, "save_state", None)
-            if save_state is not None:
-                save_state(candidate_playlists, candidate_navigation)
-            else:
-                self._port.save(candidate_playlists)
-                self._port.save_navigation(candidate_navigation)
+            # R3-02: the port contract REQUIRES save_state — no sequential
+            # fallback can silently weaken atomicity.
+            self._port.save_state(candidate_playlists, candidate_navigation)
         self._playlists = list(candidate_playlists)
         self._persisted = candidate_playlists
         self._nav = candidate_navigation
@@ -166,9 +167,9 @@ class PlaylistService:
     def create_playlist(self, name: str) -> Playlist:
         cleaned = name.strip()
         if not cleaned:
-            raise ValueError("playlist name must not be empty")
+            raise PlaylistNameInvalidError("playlist name must not be empty")
         if any(p.name == cleaned for p in self._playlists):
-            raise ValueError(f"playlist already exists: {cleaned!r}")
+            raise PlaylistNameConflictError(f"playlist already exists: {cleaned!r}")
         playlist = Playlist(playlist_id=new_playlist_id(), name=cleaned)
         self._commit_playlists((*tuple(self._playlists), playlist))
         self._notify()
@@ -197,13 +198,15 @@ class PlaylistService:
         self._notify()
         # DB COMMIT CONFIRMED — retire managed assets best-effort.
         if self._artwork_store is not None:
-            for asset_path in (
-                doomed.custom_cover_path,
-                doomed.appearance.hero_image_path,
+            for role, asset_path in (
+                ("cover", doomed.custom_cover_path),
+                ("hero", doomed.appearance.hero_image_path),
             ):
                 if asset_path:
                     try:
-                        self._artwork_store.delete_managed_asset(asset_path)
+                        self._artwork_store.delete_managed_asset(
+                            playlist_id, role, asset_path
+                        )
                     except OSError as exc:
                         logger.warning("playlist teardown cleanup debt: %s", exc)
         return True
@@ -214,11 +217,11 @@ class PlaylistService:
             return False
         cleaned = new_name.strip()
         if not cleaned:
-            raise ValueError("playlist name must not be empty")
+            raise PlaylistNameInvalidError("playlist name must not be empty")
         if any(
             p.name == cleaned and p.playlist_id != playlist_id for p in self._playlists
         ):
-            raise ValueError(f"playlist already exists: {cleaned!r}")
+            raise PlaylistNameConflictError(f"playlist already exists: {cleaned!r}")
         candidate = tuple(
             replace(p, name=cleaned) if p.playlist_id == playlist_id else p
             for p in self._playlists
@@ -333,14 +336,16 @@ class PlaylistService:
             # P0-03: candidate never became durable — remove it best-effort.
             if self._artwork_store is not None:
                 try:
-                    self._artwork_store.delete_managed_asset(candidate)
+                    self._artwork_store.delete_managed_asset(
+                        playlist_id, "cover", candidate
+                    )
                 except OSError as exc:
                     logger.warning("orphan candidate cleanup debt: %s", exc)
             raise
         # COMMIT CONFIRMED: retire the superseded old asset best-effort.
         if self._artwork_store is not None and old_path and old_path != candidate:
             try:
-                self._artwork_store.delete_managed_asset(old_path)
+                self._artwork_store.delete_managed_asset(playlist_id, "cover", old_path)
             except OSError as exc:
                 logger.warning("old asset cleanup debt: %s", exc)
         self._notify()
@@ -363,7 +368,7 @@ class PlaylistService:
         self._notify()
         if self._artwork_store is not None and old_path:
             try:
-                self._artwork_store.delete_managed_asset(old_path)
+                self._artwork_store.delete_managed_asset(playlist_id, "cover", old_path)
             except OSError as exc:
                 logger.warning("old cover cleanup debt: %s", exc)
         return True
@@ -410,7 +415,7 @@ class PlaylistService:
         )
         if result and self._artwork_store is not None and old_path:
             try:
-                self._artwork_store.delete_managed_asset(old_path)
+                self._artwork_store.delete_managed_asset(playlist_id, "hero", old_path)
             except OSError as exc:
                 logger.warning("old hero cleanup debt: %s", exc)
         return result
@@ -432,7 +437,7 @@ class PlaylistService:
         )
         if result and self._artwork_store is not None and old_path:
             try:
-                self._artwork_store.delete_managed_asset(old_path)
+                self._artwork_store.delete_managed_asset(playlist_id, "hero", old_path)
             except OSError as exc:
                 logger.warning("old hero cleanup debt: %s", exc)
         return result
@@ -463,7 +468,7 @@ class PlaylistService:
         )
         if result and self._artwork_store is not None and old_path:
             try:
-                self._artwork_store.delete_managed_asset(old_path)
+                self._artwork_store.delete_managed_asset(playlist_id, "hero", old_path)
             except OSError as exc:
                 logger.warning("old hero cleanup debt: %s", exc)
         return result
@@ -493,13 +498,15 @@ class PlaylistService:
         except PlaylistPersistenceError:
             if self._artwork_store is not None:
                 try:
-                    self._artwork_store.delete_managed_asset(candidate)
+                    self._artwork_store.delete_managed_asset(
+                        playlist_id, "hero", candidate
+                    )
                 except OSError as exc:
                     logger.warning("orphan candidate cleanup debt: %s", exc)
             raise
         if self._artwork_store is not None and old_path and old_path != candidate:
             try:
-                self._artwork_store.delete_managed_asset(old_path)
+                self._artwork_store.delete_managed_asset(playlist_id, "hero", old_path)
             except OSError as exc:
                 logger.warning("old hero cleanup debt: %s", exc)
         return candidate
