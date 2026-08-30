@@ -455,16 +455,23 @@ def _build_services(
     # structurally separate; no request-type discrimination by generation.
     source_scan_relay = ScanRelay()
     source_scan_runner = ThreadScanRunner(source_scan_relay)
-    # P1/PERF-LIB-12: async artwork probing after source commits — the
-    # owner thread never runs Mutagen/directory/read I/O for artwork.
+    # P1/PERF-LIB-12 + R4 FINAL RUNTIME TRUTH SEAL (P1-03): artwork probing
+    # runs on its OWN relay + runner — NUNCA comparte el relay del source
+    # scan (dominios de provenance distintos). El relay dedicado conecta la
+    # completion al owner handler handle_done (los callbacks por-submit del
+    # ThreadScanRunner no son la autoridad productiva).
     from michi.application.library_artwork_refresh import LibraryArtworkRefresh
 
-    source_coordinator._artwork_refresh = LibraryArtworkRefresh(
+    artwork_relay = ScanRelay()
+    artwork_runner = ThreadScanRunner(artwork_relay)
+    artwork_refresh = LibraryArtworkRefresh(
         library,
         artwork_provider,
         artwork_cache,
-        runner=source_scan_runner,
+        runner=artwork_runner,
     )
+    artwork_relay.done.connect(artwork_refresh.handle_done, Qt.QueuedConnection)
+    source_coordinator._artwork_refresh = artwork_refresh
     source_scan_lifecycle = SourceScanLifecycle(source_coordinator, source_scan_runner)
     source_scan_relay.done.connect(
         source_scan_lifecycle.handle_done, Qt.QueuedConnection
@@ -545,6 +552,11 @@ def _build_services(
         artwork_provider=artwork_provider,
         artwork_cache=artwork_cache,
     )
+    # R4 FINAL RUNTIME TRUTH SEAL (P1-03): el runner dedicado del canal
+    # de artwork se expone como atributo dinámico (los fakes legacy
+    # construyen ServiceGraph sin este campo).
+    graph.artwork_runner = artwork_runner
+    return graph
 
 
 def _shutdown_audio_runtime(router, engine_service, registry) -> None:
@@ -844,6 +856,7 @@ class ApplicationContainer:
         self._scan_dispatcher = scan_dispatcher
         self._source_scan_runner = graph.source_scan_runner
         self._source_scan_lifecycle = graph.source_scan_lifecycle
+        self._artwork_runner = getattr(graph, "artwork_runner", None)
         self._library_prefs = lib_prefs
         self._navigation = navigation
         self._coordinator = coordinator
@@ -933,6 +946,11 @@ class ApplicationContainer:
                 error = _capture_cleanup(
                     self._source_scan_runner.disconnect_relay, error
                 )
+        artwork_runner = getattr(self, "_artwork_runner", None)
+        if artwork_runner is not None:
+            # R4 FINAL RUNTIME TRUTH SEAL: el runner dedicado de artwork se
+            # apaga con la MISMA disciplina (no daemon olvidado).
+            error = _capture_cleanup(artwork_runner.shutdown, error)
         if self._scan_runner is not None:
             error = _capture_cleanup(self._scan_runner.shutdown, error)
         if self._scan_dispatcher is not None:
