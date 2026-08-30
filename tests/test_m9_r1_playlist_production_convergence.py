@@ -157,11 +157,11 @@ class TestRenameContract:
         assert bridge.rename_playlist(a.playlist_id, "   ") == "invalid"
 
     def test_rename_same_name_succeeds(self):
-        """Renaming to the SAME name is a successful no-op — the entity is
-        never treated as its own conflicting duplicate."""
+        """R4-09: renombrar al MISMO nombre es NO_CHANGE — cero writes,
+        cero notify; nunca se trata como duplicado conflictivo."""
         service, nav, coord, bridge = _world()
         a = service.create_playlist("Jazz")
-        assert bridge.rename_playlist(a.playlist_id, "Jazz") == "renamed"
+        assert bridge.rename_playlist(a.playlist_id, "Jazz") == "no_change"
         assert service.playlists[0].name == "Jazz"
 
 

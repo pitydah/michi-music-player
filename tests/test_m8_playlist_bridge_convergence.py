@@ -221,8 +221,14 @@ class TestM4R1FinalSealPlaylistTrack:
         qml = Path(
             "src/michi/presentation/qml/playlists/PlaylistDetailView.qml"
         ).read_text()
+        # R4-11: el Detail re-emite el INTENT; ContentHost traduce al Bridge
+        # (nunca child→bridge directo).
         assert (
-            "onPlayTrackRequested: index => playlists.play_playlist_track(index)" in qml
+            "onPlayTrackRequested: index => root.playTrackRequested(index)" in qml
+        )
+        assert (
+            "onPlayTrackRequested: index => playlists.play_playlist_track(index)"
+            not in qml
         )
 
     def test_pl05_click_index_2_playlist_context(self):
