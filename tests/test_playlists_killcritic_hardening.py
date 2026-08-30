@@ -339,3 +339,60 @@ class TestRealAssetValidation:
         foreign.write_bytes(b"precious")
         store.delete_managed_asset(str(foreign))  # nombre no playlist_ → refuse
         assert foreign.exists()
+
+
+class TestArtworkIndex:
+    """P1-05/P1-04: playlist track rows carry artworkPath via O(1) index."""
+
+    def test_playlist_track_rows_project_artwork_path(self, tmp_path):
+        from michi.application.library_service import LibraryService
+        from michi.application.navigation_service import NavigationService
+        from michi.application.playlist_navigation_coordinator import (
+            PlaylistNavigationCoordinator,
+        )
+        from michi.presentation.playlists_bridge import PlaylistsBridge
+        from tests.test_library_artwork import FakeArtworkCache, FakeArtworkProvider
+        from tests.test_library_metadata import FakeExtractor, FakeScanner
+
+        track = tmp_path / "a.flac"
+        track.write_bytes(b"x")
+        provider = FakeArtworkProvider(
+            artwork=__import__(
+                "michi.domain.library", fromlist=["Artwork"]
+            ).Artwork(data=b"PNGDATA", mime_type="image/png")
+        )
+        cache = FakeArtworkCache()
+        library = LibraryService(
+            FakeScanner([track]),
+            metadata_extractor=FakeExtractor(),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        assert library.state.albums
+        expected = cache.paths[library.state.albums[0].key]
+        service = PlaylistService(playlists_port=_MemoryPort())
+        nav = NavigationService()
+        service.set_on_playlist_deleted(nav.forget_playlist)
+        coord = PlaylistNavigationCoordinator(service, nav)
+        bridge = PlaylistsBridge(
+            playlist_service=service,
+            playlist_navigation=coord,
+            navigation_service=nav,
+            library=library,
+        )
+        playlist = service.create_playlist("Mix")
+        service.add_track(playlist.playlist_id, str(track))
+        bridge.open_playlist(playlist.playlist_id)
+
+        rows = bridge.playlistTrackRows
+        assert len(rows) == 1
+        assert "artworkPath" in rows[0], f"row keys: {sorted(rows[0])}"
+        assert rows[0]["artworkPath"] == str(expected)
+
+    def test_artwork_index_is_o1_per_row(self):
+        from michi.presentation.playlists_bridge import PlaylistsBridge
+
+        bridge = PlaylistsBridge.__new__(PlaylistsBridge)
+        bridge._library = None
+        assert bridge._build_artwork_index() == {}

@@ -124,9 +124,29 @@ class PlaylistsBridge(QObject):
 
     # ------------------------------------------------------------------
     # Row projection (canonical playlist row shape)
-    def _artwork_for_path(self, path_str: str) -> str:
+    def _build_artwork_index(self) -> dict[str, str]:
+        """O(1) path → artwork map built once per refresh (P1-05).
+
+        A naive per-row linear scan over albums is O(albums × tracks);
+        the index amortizes the whole scan to O(total tracks) per refresh."""
+        if self._library is None:
+            return {}
+        index: dict[str, str] = {}
+        for album in self._library.state.albums:
+            art = self._library.artwork_path_for(album.key) or ""
+            if not art:
+                continue
+            for track_path in album.track_paths:
+                index.setdefault(str(track_path), art)
+        return index
+
+    def _artwork_for_path(
+        self, path_str: str, index: dict[str, str] | None = None
+    ) -> str:
         if self._library is None:
             return ""
+        if index is not None:
+            return index.get(path_str, "")
         for a in self._library.state.albums:
             if path_str in a.track_paths:
                 return self._library.artwork_path_for(a.key) or ""
@@ -135,10 +155,11 @@ class PlaylistsBridge(QObject):
     def _mosaic_for_paths(self, track_paths: tuple[str, ...]) -> list[str]:
         if self._library is None:
             return []
+        index = self._build_artwork_index()
         artworks: list[str] = []
         seen: set[str] = set()
         for path_str in track_paths:
-            art = self._artwork_for_path(path_str)
+            art = self._artwork_for_path(path_str, index)
             if art and art not in seen:
                 seen.add(art)
                 artworks.append(art)
@@ -353,6 +374,7 @@ class PlaylistsBridge(QObject):
         playlist = self._selected()
         if playlist is None:
             return []
+        index = self._build_artwork_index()
         rows = []
         for path in playlist.track_paths:
             ref = (
@@ -361,7 +383,7 @@ class PlaylistsBridge(QObject):
                 else None
             )
             if ref is not None:
-                rows.append(self._track_row(ref))
+                rows.append(self._track_row(ref, index))
                 continue
             rows.append(
                 {
@@ -377,11 +399,12 @@ class PlaylistsBridge(QObject):
                     "bitDepth": 0,
                     "channels": 0,
                     "fileSize": 0,
+                    "artworkPath": self._artwork_for_path(path, index),
                 }
             )
         return rows
 
-    def _track_row(self, ref) -> dict:
+    def _track_row(self, ref, index: dict[str, str] | None = None) -> dict:
         return {
             "displayName": ref.display_name,
             "title": ref.title or ref.display_name,
@@ -389,6 +412,7 @@ class PlaylistsBridge(QObject):
             "album": ref.album,
             "durationMs": ref.duration_ms,
             "path": str(ref.file_path),
+            "artworkPath": self._artwork_for_path(str(ref.file_path), index),
             "qualityLabel": make_track_quality_label(ref),
             "codec": ref.codec,
             "sampleRateHz": ref.sample_rate_hz,
