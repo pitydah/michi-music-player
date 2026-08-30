@@ -26,6 +26,7 @@ from michi.domain.playlist import (
     PlaylistAppearance,
     PlaylistHeroMode,
     PlaylistNavigationState,
+    PlaylistPersistenceError,
     new_playlist_id,
     normalize_navigation_state,
 )
@@ -59,6 +60,9 @@ class PlaylistService:
         self._playlists: list[Playlist] = list(
             playlists_port.load() if playlists_port is not None else ()
         )
+        # Truthful persistence baseline: rollback target on storage failure.
+        self._persisted: tuple[Playlist, ...] = tuple(self._playlists)
+        self._persisted_nav = PlaylistNavigationState()
         # M8-R1F: SAFE READ normalization — reconcile persisted pinned/recent
         # against the actual collection (stale ids pruned, duplicates
         # first-wins, recent bounded). NO writeback during load: disk may
@@ -71,6 +75,7 @@ class PlaylistService:
         self._nav = normalize_navigation_state(
             loaded_nav, tuple(p.playlist_id for p in self._playlists)
         )
+        self._persisted_nav = self._nav
         self._subscribers: list[Callable[[], None]] = []
         self._on_playlist_deleted: Callable[[str], None] | None = None
 
@@ -101,12 +106,27 @@ class PlaylistService:
             cb()
 
     def _persist(self) -> None:
+        """P0-02 TRUTHFUL persistence: the candidate collection is saved
+        BEFORE publication. On failure the in-memory state rolls back to
+        the last persisted snapshot and PlaylistPersistenceError
+        propagates — no false success."""
+        candidate = tuple(self._playlists)
         if self._port is not None:
-            self._port.save(tuple(self._playlists))
+            try:
+                self._port.save(candidate)
+            except PlaylistPersistenceError:
+                self._playlists = list(self._persisted)
+                raise
+        self._persisted = candidate
 
     def _persist_nav(self) -> None:
         if self._port is not None:
-            self._port.save_navigation(self._nav)
+            try:
+                self._port.save_navigation(self._nav)
+            except PlaylistPersistenceError:
+                self._nav = self._persisted_nav
+                raise
+        self._persisted_nav = self._nav
 
     def _find_by_id(self, playlist_id: str) -> int:
         for i, playlist in enumerate(self._playlists):

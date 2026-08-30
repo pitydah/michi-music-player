@@ -54,6 +54,14 @@ def legacy_playlist_id(name: str) -> str:
     return str(uuid.uuid5(_MICHI_PLAYLIST_NAMESPACE, f"legacy_playlist::{name}"))
 
 
+class PlaylistPersistenceError(RuntimeError):
+    """An authoritative playlist write failed (P0-02).
+
+    Truthful persistence: a mutation either commits or raises — the
+    in-memory state rolls back to the last persisted snapshot and the
+    caller never sees a false success."""
+
+
 def new_playlist_id() -> str:
     """Fresh collision-resistant opaque identity (UUID4, canonical str)."""
     return str(uuid.uuid4())

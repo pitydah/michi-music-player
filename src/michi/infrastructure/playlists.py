@@ -19,6 +19,7 @@ from michi.domain.playlist import (
     PlaylistAppearance,
     PlaylistHeroMode,
     PlaylistNavigationState,
+    PlaylistPersistenceError,
     legacy_playlist_id,
 )
 
@@ -266,4 +267,8 @@ class SqlitePlaylistsRepository(PlaylistsPort):
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("%s save failed: %s", key, exc)
+            # P0-02: TRUTHFUL persistence — a sqlite failure raises instead
+            # of silently logging while QML reports success.
+            raise PlaylistPersistenceError(
+                f"playlist persistence failed ({key}): {exc}"
+            ) from exc
