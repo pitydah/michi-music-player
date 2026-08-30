@@ -49,7 +49,7 @@ def _canonical_color(value: str) -> str:
 
 class PlaylistService:
     """Owns the ordered playlist collection and its navigation metadata
-    (pinned/recent); mutates, persists truthfully (authoritative writes) and notifies. M4-R1:
+    (pinned/recent); mutates and persists truthfully (authoritative writes). M4-R1:
     playback authority lives in PlaybackSessionService + PlaylistPlaybackCoordinator;
     QueueService owns temporary Queue content only (never referenced here)."""
 

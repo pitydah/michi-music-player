@@ -499,7 +499,7 @@ class TestFailureFeedback:
         spy = ConnectorHookSpy()
         engine.rootContext().setContextProperty("spyHook", spy)
         harness_path = Path(__file__).resolve().parent / "PersistConnectorHarness.qml"
-        harness = _load_file(engine, harness_path)
+        _load_file(engine, harness_path)
         pb.persistenceFailed.emit("delete")
         assert spy.messages == ["msg:delete"]
 
