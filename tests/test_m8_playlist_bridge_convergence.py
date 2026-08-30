@@ -223,9 +223,7 @@ class TestM4R1FinalSealPlaylistTrack:
         ).read_text()
         # R4-11: el Detail re-emite el INTENT; ContentHost traduce al Bridge
         # (nunca child→bridge directo).
-        assert (
-            "onPlayTrackRequested: index => root.playTrackRequested(index)" in qml
-        )
+        assert "onPlayTrackRequested: index => root.playTrackRequested(index)" in qml
         assert (
             "onPlayTrackRequested: index => playlists.play_playlist_track(index)"
             not in qml
