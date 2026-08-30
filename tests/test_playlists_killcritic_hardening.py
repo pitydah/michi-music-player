@@ -357,9 +357,9 @@ class TestArtworkIndex:
         track = tmp_path / "a.flac"
         track.write_bytes(b"x")
         provider = FakeArtworkProvider(
-            artwork=__import__(
-                "michi.domain.library", fromlist=["Artwork"]
-            ).Artwork(data=b"PNGDATA", mime_type="image/png")
+            artwork=__import__("michi.domain.library", fromlist=["Artwork"]).Artwork(
+                data=b"PNGDATA", mime_type="image/png"
+            )
         )
         cache = FakeArtworkCache()
         library = LibraryService(
