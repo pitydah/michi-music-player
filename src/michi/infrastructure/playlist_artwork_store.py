@@ -73,11 +73,13 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
         *,
         suffix: str,
     ) -> str | None:
-        """Atomically copies an external image file into managed storage.
+        """LEGACY COMPATIBILITY ONLY (TRUE FINAL FREEZE P2): deterministic
+        destructive replacement pinned by historical contracts.
 
-        Cleans up any previously stored variant for this playlist with a
-        different extension. Returns the string path to the managed copy,
-        or None on failure.
+        Production PlaylistService MUST use the immutable candidate
+        protocol (prepare_cover / prepare_hero / delete_managed_asset) —
+        this variant exists solely because frozen tests pin the old
+        deterministic filenames.
         """
         src = Path(source_image_path)
         if not src.is_file():
@@ -122,22 +124,23 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
     def store_cover(
         self, playlist_id: str, source_image_path: Path | str
     ) -> str | None:
+        """LEGACY COMPATIBILITY ONLY — see ``_store_variant``."""
         return self._store_variant(playlist_id, source_image_path, suffix="")
 
     # Compatibility alias retained for the pre-appearance API.
     store_artwork = store_cover
 
     def store_hero(self, playlist_id: str, source_image_path: Path | str) -> str | None:
+        """LEGACY COMPATIBILITY ONLY — see ``_store_variant``."""
         return self._store_variant(playlist_id, source_image_path, suffix="_hero")
 
     # ------------------------------------------------------------------
-    # CORRECTIVE SEAL §9 staging protocol: SQLite failure must NEVER alter
-    # the previously committed user-visible image.
-    #   1. stage: copy NEW bytes to a staging file (committed asset intact)
-    #   2. authoritative playlist persist (ref = final stable path)
-    #   3. promote: atomically replace the committed asset with the staging
-    #      file, then retire superseded old-extension variants
-    #   4. discard: remove the staging file on persist failure
+    # TRUE FINAL FREEZE P2 — ONE SAFE PRODUCTION PROTOCOL: immutable
+    # content-versioned candidates. The candidate EXISTS before any
+    # database reference; a DB failure deletes the candidate best-effort
+    # and keeps the old asset; DB success makes the new reference
+    # authoritative; old-asset cleanup is best-effort AFTER commit. There
+    # is NO post-DB promotion step and NO destructive replacement.
     # ------------------------------------------------------------------
 
     def prepare_cover(self, playlist_id: str, source_image_path) -> str | None:

@@ -39,10 +39,11 @@ class LibraryPlaybackCoordinator:
         New callers prefer ``play_track_by_id`` (M6-EXT-R4-J canonical
         intent). TD-013 (M4-R1 final seal): every Library-origin playback
         intent resolves the TrackRef and validates the filesystem through
-        the LibraryService gate BEFORE requesting the session. A missing
-        track removes the exact stale reference / sets the diagnostic;
-        ACCESS/IO/UNKNOWN preserve the reference. No validation → no
-        playback request.
+        the LibraryService gate BEFORE requesting the session. A
+        missing/unavailable playback validation rejects playback, marks
+        availability truthfully when applicable, and preserves Stable
+        Track identity/catalog membership for later relink. No validation
+        → no playback request.
         """
         ref = self._library.resolve_trackref(file_path)
         if ref is None:
