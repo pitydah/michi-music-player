@@ -92,7 +92,9 @@ def test_rows_activate_play_and_hide_actions_until_hover():
     assert "onDoubleClicked" not in table
     assert "root.playTrackRequested(index)" in table
     assert "Keys.onReturnPressed: root.playTrackRequested(index)" in table
-    assert "opacity: trackItem.hovered || trackItem.visualFocus ? 1 : 0" in table
+    # R3-09: reveal incluye el activeFocus de los propios controles.
+    assert "opacity: actionsVisible ? 1 : 0" in table
+    assert "favoriteButton.activeFocus || moreButton.activeFocus" in table
     assert "enabled: !MichiAccessibility.reducedMotion" in table  # gated fade
 
 
@@ -237,7 +239,7 @@ def test_keyboard_navigation_updates_visible_selection():
     # arrow-key navigation moves currentIndex invisibly unless the focused
     # row also becomes the selected row — audit fix
     assert "onActiveFocusChanged: {" in table
-    assert "root.trackSelected(index)" in table
+    assert "root.trackSelected(modelData.path)" in table
     # both keyboard paths (row keys + list keys) reproduce from the index
     assert "Keys.onReturnPressed: root.playTrackRequested(index)" in table
     assert "root.playTrackRequested(currentIndex)" in table
@@ -261,10 +263,14 @@ def test_michi_format_is_locale_aware():
 
 def test_reorder_keeps_keyboard_cursor_on_moved_row():
     table = read("playlists/PlaylistTrackList.qml")
-    assert "root.trackSelected(index - 1)" in table
-    assert "trackList.currentIndex = index - 1" in table
-    assert "trackList.currentItem.forceActiveFocus()" in table
-    assert "root.trackSelected(index + 1)" in table
+    # R3-08: el reorder NO mueve la selección optimistamente — solo el
+    # intent; la selección por path sigue la fila cuando rows cambia.
+    assert "root.moveTrackRequested(index, index - 1)" in table
+    assert "onRowsChanged" in table
+    # R3-07: la selección por path es la identidad; el cursor del teclado
+    # se sincroniza desde rows (no se fuerza optimistamente).
+    assert "selectedTrackPath" in table
+    assert "trackList.currentIndex = i" in table
 
 
 def test_add_tracks_becomes_icon_only_on_narrow_windows():

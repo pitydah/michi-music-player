@@ -15,6 +15,9 @@ Item {
     id: root
 
     property var rows: []
+    // R3-07: selección visual por PATH estable — el índice es una posición
+    // y no sobrevive reorders; el path sí. Playback sigue usando index.
+    property string selectedTrackPath: ""
     property int selectedIndex: -1
     // The header must be a COMPONENT: ListView.header assigns to its
     // internal QQmlComponent slot — passing a pre-instantiated Item (typed
@@ -30,9 +33,32 @@ Item {
     readonly property real contentY: trackList.contentY
 
     signal playTrackRequested(int index)
-    signal trackSelected(int index)
+    signal trackSelected(string path)
     signal removeTrackRequested(int index)
     signal moveTrackRequested(int fromIndex, int toIndex)
+
+    // R3-07/08: rows-driven selection sync — cuando rows cambia (move
+    // exitoso), el path seleccionado sigue a su nueva posición.
+    function _syncSelectedIndex() {
+        if (root.selectedTrackPath.length === 0)
+            return
+        for (var i = 0; i < root.rows.length; ++i) {
+            if (root.rows[i].path === root.selectedTrackPath) {
+                trackList.currentIndex = i
+                return
+            }
+        }
+        trackList.currentIndex = -1
+    }
+    onRowsChanged: root._syncSelectedIndex()
+
+    function resetForPlaylist() {
+        // R3-07: reset total del estado transitorio para una playlist nueva.
+        root.selectedTrackPath = ""
+        root.selectedIndex = -1
+        trackList.positionViewAtBeginning()
+        trackList.currentIndex = root.rows.length > 0 ? 0 : -1
+    }
 
     implicitHeight: 420
     clip: true
@@ -122,7 +148,19 @@ Item {
             readonly property bool isPlaying: typeof playback !== "undefined"
                 && playback && modelData.path
                 && playback.currentPath === modelData.path
-            readonly property bool isSelected: root.selectedIndex === index
+            readonly property bool isSelected:
+                root.selectedTrackPath.length > 0
+                    ? root.selectedTrackPath === modelData.path
+                    : root.selectedIndex === index
+
+            // R3-09: reveal incluye el focus de los PROPIOS controles —
+            // un keyboard user que tabee hasta ellos los ve (opacity 1
+            // con activeFocus del child, aunque trackItem no tenga
+            // visualFocus). NO se sacan del tab order.
+            readonly property bool actionsVisible:
+                trackItem.hovered || trackItem.visualFocus
+                || favoriteButton.activeFocus || moreButton.activeFocus
+                || trackMenu.visible
 
             // Distinct states: selected = quiet elevation; playing = accent
             // title + animated indicator; both combine cleanly.
@@ -255,8 +293,8 @@ Item {
                     horizontalAlignment: Text.AlignRight
                 }
 
-                // Context actions — quiet until the row is hovered/focused
                 MichiIconButton {
+                    id: favoriteButton
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
                     iconName: "heart"
@@ -265,7 +303,7 @@ Item {
                         ? qsTr("Remove from favorites") : qsTr("Add to favorites")
                     selected: typeof library !== "undefined" && library
                         && library.favoritePaths.indexOf(modelData.path) !== -1
-                    opacity: trackItem.hovered || trackItem.visualFocus ? 1 : 0
+                    opacity: actionsVisible ? 1 : 0
                     Behavior on opacity {
                         enabled: !MichiAccessibility.reducedMotion
                         NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
@@ -276,11 +314,12 @@ Item {
                     }
                 }
                 MichiIconButton {
+                    id: moreButton
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
                     iconName: "more"
                     accessibleName: qsTr("More options for ") + modelData.title
-                    opacity: trackItem.hovered || trackItem.visualFocus ? 1 : 0
+                    opacity: actionsVisible ? 1 : 0
                     Behavior on opacity {
                         enabled: !MichiAccessibility.reducedMotion
                         NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
@@ -291,7 +330,7 @@ Item {
 
             // Canonical product contract: one click both selects and plays.
             onClicked: {
-                root.trackSelected(index)
+                root.trackSelected(modelData.path)
                 root.playTrackRequested(index)
             }
             // Keyboard navigation feedback: arrow keys move the ListView
@@ -299,34 +338,36 @@ Item {
             // selected row (otherwise the cursor moves invisibly)
             onActiveFocusChanged: {
                 if (activeFocus)
-                    root.trackSelected(index)
+                    root.trackSelected(modelData.path)
             }
             Keys.onReturnPressed: root.playTrackRequested(index)
             Keys.onEnterPressed: root.playTrackRequested(index)
             Keys.onUpPressed: event => {
                 if (event.modifiers & Qt.AltModifier) {
                     if (index > 0) {
+                        // R3-08: SOLO el intent. La selección se mantiene
+                        // por path; rows cambia → onRowsChanged sincroniza
+                        // currentIndex con la posición del path seleccionado.
                         root.moveTrackRequested(index, index - 1)
-                        // keep the keyboard cursor on the moved row (the
-                        // delegate reorders underneath the focus)
-                        root.trackSelected(index - 1)
-                        trackList.currentIndex = index - 1
-                        if (trackList.currentItem)
-                            trackList.currentItem.forceActiveFocus()
                         event.accepted = true
+                    } else {
+                        event.accepted = false
                     }
+                } else {
+                    // R3-F1: Up/Down plain → keyNavigation nativo del ListView.
+                    event.accepted = false
                 }
             }
             Keys.onDownPressed: event => {
                 if (event.modifiers & Qt.AltModifier) {
                     if (index < root.rows.length - 1) {
                         root.moveTrackRequested(index, index + 1)
-                        root.trackSelected(index + 1)
-                        trackList.currentIndex = index + 1
-                        if (trackList.currentItem)
-                            trackList.currentItem.forceActiveFocus()
                         event.accepted = true
+                    } else {
+                        event.accepted = false
                     }
+                } else {
+                    event.accepted = false
                 }
             }
 

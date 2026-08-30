@@ -109,6 +109,7 @@ Item {
 
             Item {
                 id: coverLayer
+                objectName: "cardCoverArea"
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: parent.width
@@ -146,6 +147,7 @@ Item {
 
             MichiButton {
                 id: playButton
+                objectName: "cardPlayButton"
                 anchors.centerIn: coverLayer
                 implicitWidth: 48
                 implicitHeight: 48
@@ -170,6 +172,7 @@ Item {
 
             MichiIconButton {
                 id: moreButton
+                objectName: "cardMoreButton"
                 anchors.top: coverLayer.top
                 anchors.right: coverLayer.right
                 anchors.margins: MichiSpacing.sm

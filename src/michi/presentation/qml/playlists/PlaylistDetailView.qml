@@ -14,8 +14,19 @@ Item {
     id: root
 
     objectName: "playlistDetailView"
+    property bool _detailReady: false
+    Component.onCompleted: root._detailReady = true
     property string playlistId: ""
+    property string selectedTrackPath: ""
     property int selectedIndex: -1
+    onPlaylistIdChanged: {
+        // R3-07: el estado transitorio NUNCA se filtra entre playlists.
+        // El reset corre tras el layout (la página puede estar montándose).
+        root.selectedTrackPath = ""
+        root.selectedIndex = -1
+        if (root._detailReady)
+            trackList.resetForPlaylist()
+    }
     signal backRequested()
     signal playRequested()
     signal shuffleRequested()
@@ -162,6 +173,7 @@ Item {
                 id: trackList
                 anchors.fill: parent
                 rows: playlists.playlistTrackRows
+                selectedTrackPath: root.selectedTrackPath
                 selectedIndex: root.selectedIndex
                 showArtistColumn: root.width >= 700
                 showAlbumColumn: root.width >= 900
@@ -169,7 +181,10 @@ Item {
                 narrow: root.width < 700
                 heroComponent: heroComponent
 
-                onTrackSelected: index => root.selectedIndex = index
+                onTrackSelected: path => {
+                    root.selectedTrackPath = path
+                    root.selectedIndex = -1
+                }
                 onPlayTrackRequested: index => playlists.play_playlist_track(index)
                 onRemoveTrackRequested: index => root.removeTrackRequested(index)
                 onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)

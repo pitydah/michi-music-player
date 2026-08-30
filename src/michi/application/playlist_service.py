@@ -109,39 +109,49 @@ class PlaylistService:
         for cb in list(self._subscribers):
             cb()
 
-    def _commit_playlists(self, candidate: tuple[Playlist, ...]) -> None:
+    def _commit_playlists(self, candidate: tuple[Playlist, ...]) -> bool:
         """PUBLISH AFTER DURABILITY (R2 P1-03): the immutable candidate is
-        written BEFORE it becomes published state. No provisional mutation,
-        no compensation — either the write is durable or nothing changes."""
+        written BEFORE it becomes published state.
+
+        R3-12: an identical candidate is a NO-OP — zero persistence, zero
+        publish, zero notify. Returns True only when something changed."""
+        if candidate == tuple(self._playlists):
+            return False
         if self._port is not None:
             self._port.save(candidate)  # raises PlaylistPersistenceError
         self._playlists = list(candidate)
         self._persisted = candidate
+        return True
 
-    def _commit_navigation(self, candidate: PlaylistNavigationState) -> None:
+    def _commit_navigation(self, candidate: PlaylistNavigationState) -> bool:
+        if candidate == self._nav:
+            return False
         if self._port is not None:
             self._port.save_navigation(candidate)
         self._nav = candidate
         self._persisted_nav = candidate
+        return True
 
     def _commit_state(
         self,
         candidate_playlists: tuple[Playlist, ...],
         candidate_navigation: PlaylistNavigationState,
-    ) -> None:
+    ) -> bool:
         """ATOMIC compound commit (R2 P1-02): collection + navigation are
-        ONE durable transaction. Duck-typed legacy fakes without
-        ``save_state`` are in-memory by construction (their writes cannot
-        partially fail) — the sequential fallback is safe for them and the
-        production port always provides the atomic write."""
+        ONE durable transaction (the port contract REQUIRES save_state).
+        R3-12: an identical compound state is a NO-OP."""
+        if (
+            candidate_playlists == tuple(self._playlists)
+            and candidate_navigation == self._nav
+        ):
+            return False
         if self._port is not None:
-            # R3-02: the port contract REQUIRES save_state — no sequential
-            # fallback can silently weaken atomicity.
             self._port.save_state(candidate_playlists, candidate_navigation)
         self._playlists = list(candidate_playlists)
         self._persisted = candidate_playlists
         self._nav = candidate_navigation
         self._persisted_nav = candidate_navigation
+        return True
 
     def _find_by_id(self, playlist_id: str) -> int:
         for i, playlist in enumerate(self._playlists):
