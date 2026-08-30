@@ -451,30 +451,41 @@ class TestArtworkRuntimeChannel:
             LibraryArtworkRefresh,
         )
 
+        class _ArtProvider:
+            def get_embedded_artwork(self, file_path):
+                return _Artwork()
+
+            def get_local_artwork(self, album_dir):
+                return None
+
         refresh = LibraryArtworkRefresh(
-            library, _FakeProvider(), cache, runner=_ManualRunner()
+            library, _ArtProvider(), cache, runner=_ManualRunner()
         )
-        refresh.schedule()  # gen 1
-        refresh.schedule()  # gen 2
-        assert len(refresh._runner.submissions) == 2
+        # ABSOLUTE FINAL SEAL (P1-04 single-flight): el segundo schedule NO
+        # crea un segundo worker — gen2 queda PENDING hasta que gen1
+        # termine (coalescing; solo la latest genera worker).
+        refresh.schedule()  # gen 1 (activo)
+        refresh.schedule()  # gen 2 (pending; single-flight)
+        assert len(refresh._runner.submissions) == 1
+        assert refresh._generation == 2
         gen1_work = refresh._runner.submissions[0][1]
+
+        # gen1 termina como stale (generation 1 != latest 2) → NO publica;
+        # SOLO gen2 (latest) arranca después.
+        results1 = gen1_work(_Progress(), ScanCancelToken(), lambda: None)
+        refresh.handle_done(1, results1, None)
+        assert cache.lookup(album_key) is None, "stale generation mutated the manifest"
+        assert len(refresh._runner.submissions) == 2
         gen2_work = refresh._runner.submissions[1][1]
 
-        # Ejecutar el worker de la generación 2 (facts).
+        # La generación 2 (latest) publica.
         results2 = gen2_work(_Progress(), ScanCancelToken(), lambda: None)
-        results2[album_key] = _Artwork(b"B2")
-        # Owner entrega la generación 2.
         refresh.handle_done(2, results2, None)
         assert cache.lookup(album_key) is not None
         manifest_after_gen2 = cache.lookup(album_key)
 
-        # La generación 1 llega TARDE con ART_A — debe ser inerte.
-        results1 = gen1_work(_Progress(), ScanCancelToken(), lambda: None)
-        results1[album_key] = _Artwork(b"ART_A_STALE")
-        refresh.handle_done(1, results1, None)
-        assert cache.lookup(album_key) == manifest_after_gen2, (
-            "stale generation modified the manifest"
-        )
+        # Nada más puede llegar: gen1 ya se descartó por el gate.
+        assert cache.lookup(album_key) == manifest_after_gen2
 
 
 # ==========================================================================

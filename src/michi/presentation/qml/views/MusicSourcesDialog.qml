@@ -53,6 +53,19 @@ Popup {
             }
         }
 
+        // P1-07 ABSOLUTE FINAL: el error de operación se renderiza DENTRO
+        // del modal (el chip del toolbar queda detrás del overlay). Misma
+        // autoridad: Bridge.sourceOperationError.
+        MichiStatusChip {
+            objectName: "musicSourcesOperationError"
+            Layout.fillWidth: true
+            visible: root.library
+                && root.library.sourceOperationError.length > 0
+            text: root.library
+                ? root.library.sourceOperationError : ""
+            tone: "error"
+        }
+
         ScrollView {
             id: sourceScroll
             Layout.fillWidth: true

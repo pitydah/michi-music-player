@@ -990,11 +990,14 @@ class LibraryBridge(QObject):
     def scan_source(self, source_id: str) -> None:
         """P1-01: reconcile ONE source ASYNC (worker compute, owner commit)
         — the GUI thread never touches the filesystem or SQLite here."""
+        # P1-07 ABSOLUTE FINAL: una acción válida limpia el error previo.
+        self._set_source_operation_error("")
         if self._source_scan_lifecycle is not None:
             self._source_scan_lifecycle.request_scan_source(source_id)
 
     @Slot()
     def scan_all_sources(self) -> None:
+        self._set_source_operation_error("")
         """CANONICAL 'Scan library' intent: ALL active + enabled sources,
         serialized ASYNC through the one scan lifecycle."""
         if self._source_scan_lifecycle is not None:
@@ -1054,7 +1057,12 @@ class LibraryBridge(QObject):
         retired tracks."""
         if self._source_coordinator is None:
             return
-        self._source_coordinator.retire_source(source_id)
+        try:
+            self._source_coordinator.retire_source(source_id)
+        except ValueError as exc:
+            self._set_source_operation_error(str(exc))
+            return
+        self._set_source_operation_error("")
         if self._source_scan_lifecycle is not None:
             self._source_scan_lifecycle.invalidate_source(source_id)
         self.library_changed.emit()
@@ -1066,7 +1074,12 @@ class LibraryBridge(QObject):
         is invalidated (the owner gate rejects any old plan)."""
         if self._source_coordinator is None:
             return
-        self._source_coordinator.set_source_enabled(source_id, not disabled)
+        try:
+            self._source_coordinator.set_source_enabled(source_id, not disabled)
+        except ValueError as exc:
+            self._set_source_operation_error(str(exc))
+            return
+        self._set_source_operation_error("")
         if self._source_scan_lifecycle is not None:
             self._source_scan_lifecycle.invalidate_source(source_id)
         self.library_changed.emit()
@@ -1077,7 +1090,12 @@ class LibraryBridge(QObject):
         reconcile its current root asynchronously."""
         if self._source_coordinator is None:
             return
-        restored = self._source_coordinator.reactivate_source(source_id)
+        try:
+            restored = self._source_coordinator.reactivate_source(source_id)
+        except ValueError as exc:
+            self._set_source_operation_error(str(exc))
+            return
+        self._set_source_operation_error("")
         self.library_changed.emit()
         if self._source_scan_lifecycle is not None:
             self._source_scan_lifecycle.request_scan_source(restored.library_source_id)

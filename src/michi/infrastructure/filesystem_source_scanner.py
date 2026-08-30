@@ -35,6 +35,13 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
     """Walks one source root deterministically (sorted) without following
     directory symlinks."""
 
+    @staticmethod
+    def _raise_if_cancelled(token) -> None:
+        if token is not None and token.cancelled:
+            from michi.application.ports import ScanCancelled
+
+            raise ScanCancelled()
+
     def _validate_source_root(self, root: Path) -> None:
         """ONE root-validation gate used by BOTH discovery paths (P1-01).
 
@@ -71,7 +78,19 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
         self, root, token, on_entry
     ) -> tuple[DiscoveredMediaFile, ...]:
         discovered: list[DiscoveredMediaFile] = []
-        for path in self._walk(root):
+        # Compatibilidad con fakes legacy que overridean _walk(root) sin
+        # token (firma pre-P1-06).
+        try:
+            import inspect
+
+            _walk_accepts_token = (
+                "token" in inspect.signature(self._walk).parameters
+            )
+        except (TypeError, ValueError):
+            _walk_accepts_token = True
+        for path in (
+            self._walk(root, token) if _walk_accepts_token else self._walk(root)
+        ):
             if token is not None and token.cancelled:
                 from michi.application.ports import ScanCancelled
 
@@ -113,7 +132,7 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
             )
         return tuple(discovered)
 
-    def _walk(self, root: Path):
+    def _walk(self, root: Path, token=None):
         """Deterministic bounded walk: sorted entries, directory symlinks
         skipped (never followed).
 
@@ -122,12 +141,22 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
         instead of silently skipping it. A skipped subtree would make the
         coordinator fabricate authoritative MISSING records for its known
         children — false physical truth. FileNotFoundError is the ONLY
-        honest skip (a path vanished mid-walk)."""
+        honest skip (a path vanished mid-walk).
+
+        ABSOLUTE FINAL SEAL (P1-06): cancellation is checked WHILE
+        consuming directory entries — a directory-heavy tree aborts
+        promptly instead of waiting for the next FILE yield."""
         stack = [root]
         while stack:
+            self._raise_if_cancelled(token)
             directory = stack.pop()
+            entries = []
             try:
-                entries = sorted(directory.iterdir(), key=lambda p: p.name)
+                # Consumo cooperativo de la enumeración (no un único
+                # sorted(iterdir()) opaco).
+                for entry in directory.iterdir():
+                    self._raise_if_cancelled(token)
+                    entries.append(entry)
             except FileNotFoundError as exc:
                 if directory == root:
                     # El root desapareció ENTRE validación y walk:
@@ -146,7 +175,11 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
                 raise LibraryFilesystemError(
                     LibraryDiagnosticCode.IO_FAILURE, directory, str(exc)
                 ) from exc
+            self._raise_if_cancelled(token)
+            entries.sort(key=lambda path: path.name)
+            self._raise_if_cancelled(token)
             for entry in entries:
+                self._raise_if_cancelled(token)
                 try:
                     is_dir = entry.is_dir()  # follows symlinks for the CHECK
                 except FileNotFoundError:
@@ -160,9 +193,26 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
                         LibraryDiagnosticCode.IO_FAILURE, entry, str(exc)
                     ) from exc
                 if is_dir:
-                    if entry.is_symlink():
+                    try:
+                        is_symlink = entry.is_symlink()
+                    except FileNotFoundError:
+                        continue
+                    except PermissionError as exc:
+                        raise LibraryFilesystemError(
+                            LibraryDiagnosticCode.ACCESS_FAILURE,
+                            entry,
+                            str(exc),
+                        ) from exc
+                    except OSError as exc:
+                        raise LibraryFilesystemError(
+                            LibraryDiagnosticCode.IO_FAILURE,
+                            entry,
+                            str(exc),
+                        ) from exc
+                    if is_symlink:
                         # Contract: never follow directory symlinks.
                         continue
+                    self._raise_if_cancelled(token)
                     stack.append(entry)
                     continue
                 yield entry

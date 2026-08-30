@@ -470,7 +470,12 @@ def _build_services(
         artwork_cache,
         runner=artwork_runner,
     )
-    artwork_relay.done.connect(artwork_refresh.handle_done, Qt.QueuedConnection)
+    from michi.infrastructure.library_artwork_dispatcher import (
+        LibraryArtworkDispatcher,
+    )
+
+    artwork_dispatcher = LibraryArtworkDispatcher(artwork_refresh)
+    artwork_relay.done.connect(artwork_dispatcher.on_done, Qt.QueuedConnection)
     source_coordinator._artwork_refresh = artwork_refresh
     source_scan_lifecycle = SourceScanLifecycle(source_coordinator, source_scan_runner)
     source_scan_relay.done.connect(
@@ -556,6 +561,8 @@ def _build_services(
     # de artwork se expone como atributo dinámico (los fakes legacy
     # construyen ServiceGraph sin este campo).
     graph.artwork_runner = artwork_runner
+    graph.artwork_refresh = artwork_refresh
+    graph.artwork_dispatcher = artwork_dispatcher
     return graph
 
 
@@ -857,6 +864,8 @@ class ApplicationContainer:
         self._source_scan_runner = graph.source_scan_runner
         self._source_scan_lifecycle = graph.source_scan_lifecycle
         self._artwork_runner = getattr(graph, "artwork_runner", None)
+        self._artwork_refresh = getattr(graph, "artwork_refresh", None)
+        self._artwork_dispatcher = getattr(graph, "artwork_dispatcher", None)
         self._library_prefs = lib_prefs
         self._navigation = navigation
         self._coordinator = coordinator
@@ -946,11 +955,19 @@ class ApplicationContainer:
                 error = _capture_cleanup(
                     self._source_scan_runner.disconnect_relay, error
                 )
+        artwork_refresh = getattr(self, "_artwork_refresh", None)
+        if artwork_refresh is not None:
+            # ABSOLUTE FINAL SEAL: close authority primero (late results
+            # inertes), luego el runner cooperativo, luego el dispatcher.
+            error = _capture_cleanup(artwork_refresh.shutdown, error)
         artwork_runner = getattr(self, "_artwork_runner", None)
         if artwork_runner is not None:
-            # R4 FINAL RUNTIME TRUTH SEAL: el runner dedicado de artwork se
-            # apaga con la MISMA disciplina (no daemon olvidado).
             error = _capture_cleanup(artwork_runner.shutdown, error)
+            if hasattr(artwork_runner, "disconnect_relay"):
+                error = _capture_cleanup(artwork_runner.disconnect_relay, error)
+        artwork_dispatcher = getattr(self, "_artwork_dispatcher", None)
+        if artwork_dispatcher is not None:
+            error = _capture_cleanup(artwork_dispatcher.shutdown, error)
         if self._scan_runner is not None:
             error = _capture_cleanup(self._scan_runner.shutdown, error)
         if self._scan_dispatcher is not None:

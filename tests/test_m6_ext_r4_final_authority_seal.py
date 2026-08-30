@@ -1221,7 +1221,12 @@ class TestLoadingStateAuthority:
             encoding="utf-8"
         )
         loading = qml.split("LoadingState {", 1)[1].split("TrackPropertiesView {", 1)[0]
-        assert "visible: library.fileCount === 0" in loading
+        # ABSOLUTE FINAL SEAL (P1-05): el LoadingState usa EXISTENCIA
+        # ESTRUCTURAL (libraryTrackCount) — fileCount es proyección
+        # filtrada (una búsqueda con 0 resultados no debe mostrar
+        # "Building your library…"). scanActive sigue siendo la única
+        # autoridad operacional.
+        assert "visible: library.libraryTrackCount === 0" in loading
         assert "&& library.scanActive" in loading
         assert "scanStatus" not in loading  # never reconstructs the machine
 

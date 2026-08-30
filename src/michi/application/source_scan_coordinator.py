@@ -406,6 +406,12 @@ class SourceScanCoordinator:
         # P1-05 R4: la publicación estructural al retirar es cache-only
         # (sin probing de Mutagen/directorios en el owner).
         self._library.apply_source_tracks(source_id, [], cache_only=True)
+        # ABSOLUTE FINAL SEAL: retirar cambia la composición de albums —
+        # el artwork refresh invalida el trabajo en vuelo (nunca se lanza
+        # un worker para probar media de la fuente retirada: con cero
+        # albums no arranca ningún worker nuevo).
+        if self._artwork_refresh is not None:
+            self._artwork_refresh.schedule()
 
     def set_source_enabled(self, source_id: str, enabled: bool) -> None:
         """Enable/disable a configured source (stays configured)."""

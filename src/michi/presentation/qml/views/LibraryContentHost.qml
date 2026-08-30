@@ -114,7 +114,7 @@ ColumnLayout {
         // 10/10 FINAL SEAL P1-02: scanActive is the ONLY operational
         // authority — the Bridge owns the state machine; this surface
         // never reconstructs it from status strings.
-        visible: library.fileCount === 0
+        visible: library.libraryTrackCount === 0
             && library.scanActive
         message: qsTr("Building your library…")
     }
