@@ -1268,7 +1268,11 @@ class TestF42AdapterContract:
         # with the atomic save_state compound write, and PlaylistArtworkStorePort
         # declares the immutable candidate protocol (prepare_cover/prepare_hero/
         # delete_managed_asset). Audio/transport semantics untouched.
-        "src/michi/application/ports.py": "d0f0fa52e366f1ac",
+        # PLAYLISTS R3 SEAL (2026-08-30, R3-02) authorized reopening:
+        # PlaylistsPort writes are all ABSTRACT (no silent no-op defaults)
+        # and save_state is mandatory — optional persistence is represented
+        # by playlists_port=None. Audio/transport semantics untouched.
+        "src/michi/application/ports.py": "d94059be6e24c52c",
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.
