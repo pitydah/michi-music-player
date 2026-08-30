@@ -561,6 +561,44 @@ class PlaylistService:
             new_hero_path = ""
 
         # --- 3. construir candidate completo ---
+        # Cualquier fallo de validación retira los candidates preparados.
+        try:
+            return self._build_appearance_candidate(
+                playlist_id,
+                playlist,
+                appearance,
+                hero_mode,
+                hero_solid_color,
+                hero_gradient_colors,
+                hero_gradient_angle,
+                new_cover,
+                new_hero_path,
+            )
+        except ValueError:
+            self._cleanup_prepared_cover(
+                playlist_id, new_cover, playlist.custom_cover_path
+            )
+            if new_hero_path and new_hero_path != playlist.appearance.hero_image_path:
+                try:
+                    self._artwork_store.delete_managed_asset(
+                        playlist_id, "hero", new_hero_path
+                    )
+                except OSError:
+                    pass
+            raise
+
+    def _build_appearance_candidate(
+        self,
+        playlist_id,
+        playlist,
+        appearance,
+        hero_mode,
+        hero_solid_color,
+        hero_gradient_colors,
+        hero_gradient_angle,
+        new_cover,
+        new_hero_path,
+    ):
         if hero_mode == "solid":
             canonical = _canonical_color(hero_solid_color)
             appearance = replace(

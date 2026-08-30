@@ -501,16 +501,7 @@ class PlaylistsBridge(QObject):
         effective visual facts (detail panel + hero rendering)."""
         playlist = self._selected()
         if playlist is None:
-            return {
-                "persistedHeroMode": "auto",
-                "effectiveHeroMode": "auto",
-                "persistedHeroImagePath": "",
-                "effectiveHeroImagePath": "",
-                "heroImageMissing": False,
-                "heroSolidColor": "#152A45",
-                "heroGradientColors": ["#152A45", "#13243D"],
-                "heroGradientAngle": 135.0,
-            }
+            return {}
         return self._appearance_row(playlist)
         playlist = self._selected()
         if playlist is None:
@@ -799,7 +790,7 @@ class PlaylistsBridge(QObject):
             return "persistence_failed"
         return "updated"
 
-    @Slot(str, str, result=bool)
+    @Slot(str, str, result=str)
     def set_custom_cover(self, playlist_id: str, path: str) -> str:
         """R3-04 appearance codes (cover)."""
         local_path = local_path_from_url(path)

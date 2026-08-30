@@ -135,8 +135,13 @@ class PlaylistArtworkStorePort(ABC):
         ...
 
     @abstractmethod
-    def delete_managed_asset(self, managed_path: str) -> None:
-        """Fail-closed retirement of a managed file by reference."""
+    def delete_managed_asset(
+        self, playlist_id: str, role: str, managed_path: str
+    ) -> bool:
+        """Fail-closed, OWNERSHIP-VERIFIED retirement of a managed file
+        (R3-01): authorizes unlink ONLY when the file belongs exactly to
+        ``playlist_id`` and ``role`` (cover | hero). Returns True when
+        actually removed."""
         ...
 
 
