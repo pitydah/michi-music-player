@@ -277,3 +277,65 @@ class TestArtworkTransactions:
         garbage.write_bytes(b"this is not an image" * 10)
         assert service.set_custom_cover("p1", garbage) is None
         assert service.set_custom_hero_image("p1", garbage) is None
+
+
+class TestRealAssetValidation:
+    """P1-01: managed visual assets must REALLY decode as images."""
+
+    def _service(self, tmp_path):
+        from michi.infrastructure.playlist_artwork_store import (
+            FilesystemPlaylistArtworkStore,
+        )
+
+        service = PlaylistService(
+            playlists_port=_MemoryPort(),
+            artwork_store=FilesystemPlaylistArtworkStore(tmp_path / "managed"),
+        )
+        service._playlists = [Playlist(playlist_id="p1", name="Mix")]
+        service._persisted = tuple(service._playlists)
+        return service
+
+    def test_byte_budget_cover_rejected(self, tmp_path):
+        from PySide6.QtGui import QImage
+
+        service = self._service(tmp_path)
+        img = QImage(4000, 4000, QImage.Format_RGB32)
+        img.fill(0xFF581C)
+        big = tmp_path / "big.png"
+        assert img.save(str(big), "PNG")
+        # Force the byte budget with an inflated payload.
+        big.write_bytes(big.read_bytes() + b"\x00" * (21 * 1024 * 1024))
+        assert service.set_custom_cover("p1", big) is None
+
+    def test_over_resolution_rejected(self, tmp_path):
+        from PySide6.QtGui import QImage
+
+        service = self._service(tmp_path)
+        img = QImage(6000, 64, QImage.Format_RGB32)
+        img.fill(0xFF581C)
+        wide = tmp_path / "wide.png"
+        assert img.save(str(wide), "PNG")
+        assert service.set_custom_cover("p1", wide) is None  # cover: 4096 max
+        assert service.set_custom_hero_image("p1", wide) is None  # hero: 5120 max
+
+    def test_empty_file_rejected(self, tmp_path):
+        service = self._service(tmp_path)
+        empty = tmp_path / "empty.png"
+        empty.write_bytes(b"")
+        assert service.set_custom_cover("p1", empty) is None
+
+    def test_delete_managed_asset_fail_closed(self, tmp_path):
+        from michi.infrastructure.playlist_artwork_store import (
+            FilesystemPlaylistArtworkStore,
+        )
+
+        store = FilesystemPlaylistArtworkStore(tmp_path / "managed")
+        outside = tmp_path / "outside.png"
+        outside.write_bytes(b"precious")
+        store.delete_managed_asset(str(outside))  # fuera del storage dir → refuse
+        assert outside.exists()
+        foreign = tmp_path / "managed" / "other.png"
+        store._storage_dir.mkdir(parents=True, exist_ok=True)
+        foreign.write_bytes(b"precious")
+        store.delete_managed_asset(str(foreign))  # nombre no playlist_ → refuse
+        assert foreign.exists()
