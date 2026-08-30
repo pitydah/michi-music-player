@@ -69,57 +69,77 @@ class LibraryPrefsPort(ABC):
 
 
 class PlaylistsPort(ABC):
-    """Playlist persistence (best effort; load never raises).
+    """Playlist persistence boundary (R2 P1-04): LOAD is tolerant/safe-read,
+    WRITE is authoritative/truthful — success is durable, failure raises
+    PlaylistPersistenceError (defined in michi.application.errors).
 
     M8-R1: playlists persist with stable ids (V2); legacy V1 records decode
     to deterministic ids. Navigation metadata (pinned/recent) has its own
-    load/save pair. Default no-op implementations keep existing fakes and
-    optional wiring backward compatible."""
+    load/save pair. save_state is the ATOMIC compound write for mutations
+    that touch both authorities (delete). Default no-op implementations
+    keep existing fakes and optional wiring backward compatible."""
 
     @abstractmethod
-    def load(self) -> tuple[Playlist, ...]: ...
+    def load(self) -> tuple[Playlist, ...]:
+        """SAFE READ: tolerant; a corrupt/missing payload degrades to the
+        last valid state or empty — load NEVER raises (R2 P1-04)."""
+        return ()
 
-    @abstractmethod
-    def save(self, playlists: tuple[Playlist, ...]) -> None: ...
+    def save(self, playlists: tuple[Playlist, ...]) -> None:
+        """AUTHORITATIVE WRITE (R2 P1-04): success means DURABLE; failure
+        MUST raise PlaylistPersistenceError. Default no-op for fakes."""
+        del playlists
 
     def load_navigation(self) -> "PlaylistNavigationState":
         """Pinned/recent state; optional key — absence degrades to empty."""
         return PlaylistNavigationState()
 
     def save_navigation(self, state: "PlaylistNavigationState") -> None:
-        """Best-effort persistence of pinned/recent state; default no-op.
+        """AUTHORITATIVE WRITE (R2 P1-04): durable on success, raises
+        PlaylistPersistenceError on failure. Default no-op for fakes."""
+        del state
 
-        Concrete no-op (not abstract): legacy fakes and optional wiring stay
-        backward compatible without implementing navigation persistence."""
-        del state  # default no-op: navigation persistence is optional
+    def save_state(
+        self,
+        playlists: tuple[Playlist, ...],
+        navigation: "PlaylistNavigationState",
+    ) -> None:
+        """ATOMIC collection+navigation write (R2 P1-02): a compound
+        mutation must NEVER leave only one authority confirmed. Production
+        repositories override this with ONE SQLite transaction; the
+        concrete default (two sequential writes) exists ONLY for legacy
+        in-memory fakes whose writes cannot partially fail."""
+        self.save(playlists)
+        self.save_navigation(navigation)
 
 
 class PlaylistArtworkStorePort(ABC):
-    """Boundary for user-supplied playlist visual asset storage.
+    """Boundary for user-supplied playlist visual asset storage (R2 P1-06).
 
-    Cover and hero image assets have separate managed lifecycles. The hero
-    methods remain concrete optional defaults so older test doubles keep
-    working while production storage implements the complete contract.
+    The CANONICAL contract is the IMMUTABLE CANDIDATE protocol:
+    ``prepare_cover`` / ``prepare_hero`` materialize a content-versioned
+    final file that EXISTS before any database reference, and
+    ``delete_managed_asset`` retires a managed file by reference after the
+    database commit. The legacy deterministic-replacement API
+    (store_cover / store_hero / delete_cover / delete_hero) is NOT part of
+    this contract — a test-double implementing only this port must never
+    need those methods.
     """
 
     @abstractmethod
-    def store_cover(self, playlist_id: str, source_path: Path | str) -> str | None:
-        """Copies source image atomically to managed storage. Returns managed path."""
+    def prepare_cover(self, playlist_id: str, source_path: Path | str) -> str | None:
+        """Materialize the immutable cover candidate; None on rejection."""
         ...
 
     @abstractmethod
-    def delete_cover(self, playlist_id: str) -> None:
-        """Deletes any managed cover file for the given playlist id."""
+    def prepare_hero(self, playlist_id: str, source_path: Path | str) -> str | None:
+        """Materialize the immutable hero candidate; None on rejection."""
         ...
 
-    def store_hero(self, playlist_id: str, source_path: Path | str) -> str | None:
-        """Copies a custom hero image into managed storage."""
-        del playlist_id, source_path
-        return None
-
-    def delete_hero(self, playlist_id: str) -> None:
-        """Deletes any managed hero image for the given playlist id."""
-        del playlist_id
+    @abstractmethod
+    def delete_managed_asset(self, managed_path: str) -> None:
+        """Fail-closed retirement of a managed file by reference."""
+        ...
 
 
 class PlaylistPaletteExtractorPort(ABC):

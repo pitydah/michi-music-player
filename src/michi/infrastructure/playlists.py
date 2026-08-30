@@ -13,13 +13,13 @@ import re
 import sqlite3
 from pathlib import Path
 
+from michi.application.errors import PlaylistPersistenceError
 from michi.application.ports import PlaylistsPort
 from michi.domain.playlist import (
     Playlist,
     PlaylistAppearance,
     PlaylistHeroMode,
     PlaylistNavigationState,
-    PlaylistPersistenceError,
     legacy_playlist_id,
 )
 
@@ -227,7 +227,57 @@ class SqlitePlaylistsRepository(PlaylistsPort):
         return tuple(playlists)
 
     def save(self, playlists: tuple[Playlist, ...]) -> None:
-        payload = [
+        """AUTHORITATIVE WRITE (R2 P1-04): durable on success; raises
+        PlaylistPersistenceError on any sqlite failure. Never best effort."""
+        self._save_raw("playlists", json.dumps(self._payload(playlists)))
+
+    def load_navigation(self) -> PlaylistNavigationState:
+        parsed = self._load_raw("playlist_navigation")
+        if parsed is None:
+            return PlaylistNavigationState()
+        return _decode_navigation_state(parsed)
+
+    def save_navigation(self, state: PlaylistNavigationState) -> None:
+        """AUTHORITATIVE WRITE (R2 P1-04): durable on success; raises
+        PlaylistPersistenceError on any sqlite failure."""
+        self._save_raw("playlist_navigation", _encode_navigation_state(state))
+
+    def save_state(
+        self,
+        playlists: tuple[Playlist, ...],
+        navigation: PlaylistNavigationState,
+    ) -> None:
+        """ATOMIC compound write (R2 P1-02): ONE connection, ONE
+        transaction, TWO upserts, ONE commit. Any failure ROLLS BACK and
+        raises PlaylistPersistenceError — there is NO observable moment
+        where only one of the two authorities is confirmed."""
+        try:
+            conn = self._connect()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                conn.execute(
+                    "INSERT INTO library_prefs(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    ("playlists", json.dumps(self._payload(playlists))),
+                )
+                conn.execute(
+                    "INSERT INTO library_prefs(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    ("playlist_navigation", _encode_navigation_state(navigation)),
+                )
+                conn.commit()
+            except sqlite3.Error:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
+        except sqlite3.Error as exc:
+            raise PlaylistPersistenceError(
+                f"playlist persistence failed (compound state): {exc}"
+            ) from exc
+
+    def _payload(self, playlists: tuple[Playlist, ...]) -> list[dict]:
+        return [
             {
                 "id": p.playlist_id,
                 "name": p.name,
@@ -243,16 +293,6 @@ class SqlitePlaylistsRepository(PlaylistsPort):
             }
             for p in playlists
         ]
-        self._save_raw("playlists", json.dumps(payload))
-
-    def load_navigation(self) -> PlaylistNavigationState:
-        parsed = self._load_raw("playlist_navigation")
-        if parsed is None:
-            return PlaylistNavigationState()
-        return _decode_navigation_state(parsed)
-
-    def save_navigation(self, state: PlaylistNavigationState) -> None:
-        self._save_raw("playlist_navigation", _encode_navigation_state(state))
 
     def _save_raw(self, key: str, payload: str) -> None:
         try:

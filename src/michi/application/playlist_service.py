@@ -19,6 +19,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
+from michi.application.errors import PlaylistPersistenceError
 from michi.application.ports import PlaylistArtworkStorePort, PlaylistsPort
 from michi.domain.playlist import (
     MAX_RECENT_PLAYLISTS,
@@ -26,7 +27,6 @@ from michi.domain.playlist import (
     PlaylistAppearance,
     PlaylistHeroMode,
     PlaylistNavigationState,
-    PlaylistPersistenceError,
     new_playlist_id,
     normalize_navigation_state,
 )
@@ -105,28 +105,42 @@ class PlaylistService:
         for cb in list(self._subscribers):
             cb()
 
-    def _persist(self) -> None:
-        """P0-02 TRUTHFUL persistence: the candidate collection is saved
-        BEFORE publication. On failure the in-memory state rolls back to
-        the last persisted snapshot and PlaylistPersistenceError
-        propagates — no false success."""
-        candidate = tuple(self._playlists)
+    def _commit_playlists(self, candidate: tuple[Playlist, ...]) -> None:
+        """PUBLISH AFTER DURABILITY (R2 P1-03): the immutable candidate is
+        written BEFORE it becomes published state. No provisional mutation,
+        no compensation — either the write is durable or nothing changes."""
         if self._port is not None:
-            try:
-                self._port.save(candidate)
-            except PlaylistPersistenceError:
-                self._playlists = list(self._persisted)
-                raise
+            self._port.save(candidate)  # raises PlaylistPersistenceError
+        self._playlists = list(candidate)
         self._persisted = candidate
 
-    def _persist_nav(self) -> None:
+    def _commit_navigation(self, candidate: PlaylistNavigationState) -> None:
         if self._port is not None:
-            try:
-                self._port.save_navigation(self._nav)
-            except PlaylistPersistenceError:
-                self._nav = self._persisted_nav
-                raise
-        self._persisted_nav = self._nav
+            self._port.save_navigation(candidate)
+        self._nav = candidate
+        self._persisted_nav = candidate
+
+    def _commit_state(
+        self,
+        candidate_playlists: tuple[Playlist, ...],
+        candidate_navigation: PlaylistNavigationState,
+    ) -> None:
+        """ATOMIC compound commit (R2 P1-02): collection + navigation are
+        ONE durable transaction. Duck-typed legacy fakes without
+        ``save_state`` are in-memory by construction (their writes cannot
+        partially fail) — the sequential fallback is safe for them and the
+        production port always provides the atomic write."""
+        if self._port is not None:
+            save_state = getattr(self._port, "save_state", None)
+            if save_state is not None:
+                save_state(candidate_playlists, candidate_navigation)
+            else:
+                self._port.save(candidate_playlists)
+                self._port.save_navigation(candidate_navigation)
+        self._playlists = list(candidate_playlists)
+        self._persisted = candidate_playlists
+        self._nav = candidate_navigation
+        self._persisted_nav = candidate_navigation
 
     def _find_by_id(self, playlist_id: str) -> int:
         for i, playlist in enumerate(self._playlists):
@@ -156,24 +170,28 @@ class PlaylistService:
         if any(p.name == cleaned for p in self._playlists):
             raise ValueError(f"playlist already exists: {cleaned!r}")
         playlist = Playlist(playlist_id=new_playlist_id(), name=cleaned)
-        self._playlists.append(playlist)
-        self._persist()
+        self._commit_playlists((*tuple(self._playlists), playlist))
         self._notify()
         return playlist
 
-    def delete_playlist(self, playlist_id: str) -> None:
+    def delete_playlist(self, playlist_id: str) -> bool:
+        """R2 P1-02 ATOMIC delete: playlists + navigation commit in ONE
+        durable transaction. The published state changes ONLY after the
+        write is confirmed — there is never an observable moment where only
+        one of the two authorities was updated. True only when deleted."""
         index = self._find_by_id(playlist_id)
         if index < 0:
-            return
+            return False
         doomed = self._playlists[index]
-        del self._playlists[index]
-        # Prune navigation metadata (never dangling ids).
-        self._nav = PlaylistNavigationState(
+        candidate_playlists = tuple(
+            p for p in self._playlists if p.playlist_id != playlist_id
+        )
+        candidate_navigation = PlaylistNavigationState(
             pinned_ids=tuple(i for i in self._nav.pinned_ids if i != playlist_id),
             recent_ids=tuple(i for i in self._nav.recent_ids if i != playlist_id),
         )
-        self._persist()
-        self._persist_nav()
+        self._commit_state(candidate_playlists, candidate_navigation)
+        # PUBLICATION AFTER DURABILITY.
         if self._on_playlist_deleted is not None:
             self._on_playlist_deleted(playlist_id)
         self._notify()
@@ -188,11 +206,12 @@ class PlaylistService:
                         self._artwork_store.delete_managed_asset(asset_path)
                     except OSError as exc:
                         logger.warning("playlist teardown cleanup debt: %s", exc)
+        return True
 
-    def rename_playlist(self, playlist_id: str, new_name: str) -> None:
+    def rename_playlist(self, playlist_id: str, new_name: str) -> bool:
         index = self._find_by_id(playlist_id)
         if index < 0:
-            return
+            return False
         cleaned = new_name.strip()
         if not cleaned:
             raise ValueError("playlist name must not be empty")
@@ -200,24 +219,32 @@ class PlaylistService:
             p.name == cleaned and p.playlist_id != playlist_id for p in self._playlists
         ):
             raise ValueError(f"playlist already exists: {cleaned!r}")
-        playlist = self._playlists[index]
-        self._playlists[index] = replace(playlist, name=cleaned)
-        self._persist()
+        candidate = tuple(
+            replace(p, name=cleaned) if p.playlist_id == playlist_id else p
+            for p in self._playlists
+        )
+        self._commit_playlists(candidate)
         self._notify()
+        return True
 
-    def add_track(self, playlist_id: str, file_path) -> None:
+    def add_track(self, playlist_id: str, file_path) -> bool:
+        """Returns True when the track was actually added; False when the
+        playlist is unknown or the path was ALREADY present (dedupe) —
+        callers can distinguish 'Added' from 'Already in playlist'."""
         index = self._find_by_id(playlist_id)
         if index < 0:
-            return
+            return False
         path = str(Path(file_path))
         playlist = self._playlists[index]
         if path in playlist.track_paths:
-            return  # dedupe
-        self._playlists[index] = replace(
-            playlist, track_paths=(*playlist.track_paths, path)
+            return False  # dedupe
+        updated = replace(playlist, track_paths=(*playlist.track_paths, path))
+        candidate = tuple(
+            updated if p.playlist_id == playlist_id else p for p in self._playlists
         )
-        self._persist()
+        self._commit_playlists(candidate)
         self._notify()
+        return True
 
     def insert_track(self, playlist_id: str, index: int, file_path) -> bool:
         """RESTORE REMOVED TRACK AT ITS EXACT ORIGINAL POSITION (P0-01).
@@ -237,38 +264,49 @@ class PlaylistService:
         paths = list(playlist.track_paths)
         clamped = max(0, min(index, len(paths)))
         paths.insert(clamped, key)
-        self._playlists[playlist_index] = replace(playlist, track_paths=tuple(paths))
-        self._persist()
+        updated = replace(playlist, track_paths=tuple(paths))
+        candidate = tuple(
+            updated if p.playlist_id == playlist_id else p for p in self._playlists
+        )
+        self._commit_playlists(candidate)
         self._notify()
         return True
 
-    def remove_track(self, playlist_id: str, index: int) -> None:
+    def remove_track(self, playlist_id: str, index: int) -> bool:
         playlist_index = self._find_by_id(playlist_id)
         if playlist_index < 0:
-            return
+            return False
         playlist = self._playlists[playlist_index]
         if not (0 <= index < len(playlist.track_paths)):
-            return
+            return False
         paths = list(playlist.track_paths)
         del paths[index]
-        self._playlists[playlist_index] = replace(playlist, track_paths=tuple(paths))
-        self._persist()
+        updated = replace(playlist, track_paths=tuple(paths))
+        candidate = tuple(
+            updated if p.playlist_id == playlist_id else p for p in self._playlists
+        )
+        self._commit_playlists(candidate)
         self._notify()
+        return True
 
-    def move_track(self, playlist_id: str, from_index: int, to_index: int) -> None:
+    def move_track(self, playlist_id: str, from_index: int, to_index: int) -> bool:
         playlist_index = self._find_by_id(playlist_id)
         if playlist_index < 0:
-            return
+            return False
         playlist = self._playlists[playlist_index]
         paths = list(playlist.track_paths)
         if not (0 <= from_index < len(paths)):
-            return
+            return False
         to_index = max(0, min(to_index, len(paths) - 1))
         track = paths.pop(from_index)
         paths.insert(to_index, track)
-        self._playlists[playlist_index] = replace(playlist, track_paths=tuple(paths))
-        self._persist()
+        updated = replace(playlist, track_paths=tuple(paths))
+        candidate = tuple(
+            updated if p.playlist_id == playlist_id else p for p in self._playlists
+        )
+        self._commit_playlists(candidate)
         self._notify()
+        return True
 
     def set_custom_cover(self, playlist_id: str, cover_path: Path | str) -> str | None:
         """Sets managed custom cover. Validates, copies to app storage and persists."""
@@ -285,9 +323,12 @@ class PlaylistService:
             candidate = prepared
         if candidate == old_path:
             return old_path
-        self._playlists[index] = replace(playlist, custom_cover_path=candidate)
+        updated = replace(playlist, custom_cover_path=candidate)
+        candidate_tuple = tuple(
+            updated if p.playlist_id == playlist_id else p for p in self._playlists
+        )
         try:
-            self._persist()
+            self._commit_playlists(candidate_tuple)
         except PlaylistPersistenceError:
             # P0-03: candidate never became durable — remove it best-effort.
             if self._artwork_store is not None:
@@ -305,22 +346,27 @@ class PlaylistService:
         self._notify()
         return candidate
 
-    def remove_custom_cover(self, playlist_id: str) -> None:
+    def remove_custom_cover(self, playlist_id: str) -> bool:
         """Removes custom cover, reverts to auto mosaic, deletes the managed
-        file AFTER the database commit (P0-03: never a dangling reference)."""
+        file AFTER the database commit (P0-03: never a dangling reference).
+        True only when the removal was durably committed."""
         index = self._find_by_id(playlist_id)
         if index < 0:
-            return
+            return False
         playlist = self._playlists[index]
         old_path = playlist.custom_cover_path
-        self._playlists[index] = replace(playlist, custom_cover_path="")
-        self._persist()
+        updated = replace(playlist, custom_cover_path="")
+        candidate = tuple(
+            updated if p.playlist_id == playlist_id else p for p in self._playlists
+        )
+        self._commit_playlists(candidate)
         self._notify()
         if self._artwork_store is not None and old_path:
             try:
                 self._artwork_store.delete_managed_asset(old_path)
             except OSError as exc:
                 logger.warning("old cover cleanup debt: %s", exc)
+        return True
 
     # ------------------------------------------------------------------
     # Per-playlist hero appearance. Cover and hero mutations are strictly
@@ -334,8 +380,11 @@ class PlaylistService:
         index = self._find_by_id(playlist_id)
         if index < 0:
             return False
-        self._playlists[index] = replace(self._playlists[index], appearance=appearance)
-        self._persist()
+        updated = replace(self._playlists[index], appearance=appearance)
+        candidate = tuple(
+            updated if p.playlist_id == playlist_id else p for p in self._playlists
+        )
+        self._commit_playlists(candidate)
         self._notify()
         return True
 
@@ -455,27 +504,29 @@ class PlaylistService:
                 logger.warning("old hero cleanup debt: %s", exc)
         return candidate
 
-    def pin_playlist(self, playlist_id: str) -> None:
+    def pin_playlist(self, playlist_id: str) -> bool:
         if self._find_by_id(playlist_id) < 0:
-            return
+            return False
         if playlist_id in self._nav.pinned_ids:
-            return  # duplicate pin: no-op
-        self._nav = PlaylistNavigationState(
+            return False  # duplicate pin: no-op
+        candidate = PlaylistNavigationState(
             pinned_ids=(*self._nav.pinned_ids, playlist_id),
             recent_ids=self._nav.recent_ids,
         )
-        self._persist_nav()
+        self._commit_navigation(candidate)
         self._notify()
+        return True
 
-    def unpin_playlist(self, playlist_id: str) -> None:
+    def unpin_playlist(self, playlist_id: str) -> bool:
         if playlist_id not in self._nav.pinned_ids:
-            return  # unpin missing id: no-op
-        self._nav = PlaylistNavigationState(
+            return False  # unpin missing id: no-op
+        candidate = PlaylistNavigationState(
             pinned_ids=tuple(i for i in self._nav.pinned_ids if i != playlist_id),
             recent_ids=self._nav.recent_ids,
         )
-        self._persist_nav()
+        self._commit_navigation(candidate)
         self._notify()
+        return True
 
     def mark_recent(self, playlist_id: str) -> None:
         """MRU semantics: most recently opened/navigated first, bounded by
@@ -490,9 +541,9 @@ class PlaylistService:
         recent = [i for i in self._nav.recent_ids if i != playlist_id]
         recent.insert(0, playlist_id)
         recent = recent[:MAX_RECENT_PLAYLISTS]
-        self._nav = PlaylistNavigationState(
+        candidate = PlaylistNavigationState(
             pinned_ids=self._nav.pinned_ids,
             recent_ids=tuple(recent),
         )
-        self._persist_nav()
+        self._commit_navigation(candidate)
         self._notify()
