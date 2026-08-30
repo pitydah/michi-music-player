@@ -193,9 +193,12 @@ MichiDialog {
                                 ]
                             gradientAngle: angleSlider.value
                             heroImagePath: root.draftHeroImageUrl.toString().length > 0
-                                ? root.draftHeroImageUrl.toString() : root.heroImagePath
-                            coverPath: root.customCoverPath
-                            mosaicArtworkPaths: root.mosaicArtworkPaths
+                                ? root.draftHeroImageUrl.toString() : root.effectiveHeroImagePath
+                            // R4-05: el preview del hero auto deriva del DRAFT
+                            // cover (WYSIWYG del candidate que Apply persistirá).
+                            coverPath: root.draftPreviewCoverPath
+                            mosaicArtworkPaths: root.draftCoverAction === "auto"
+                                ? [] : root.mosaicArtworkPaths
                             autoColors: root.autoHeroColors
                         }
                         Rectangle {

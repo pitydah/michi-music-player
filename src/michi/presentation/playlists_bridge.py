@@ -505,11 +505,14 @@ class PlaylistsBridge(QObject):
         playlist = self._selected()
         if playlist is None:
             return {
-                "heroMode": "auto",
+                "persistedHeroMode": "auto",
+                "effectiveHeroMode": "auto",
+                "persistedHeroImagePath": "",
+                "effectiveHeroImagePath": "",
+                "heroImageMissing": False,
                 "heroSolidColor": "#152A45",
                 "heroGradientColors": ["#152A45", "#13243D"],
                 "heroGradientAngle": 135.0,
-                "heroImagePath": "",
             }
         return self._appearance_row(playlist)
 
@@ -831,12 +834,13 @@ class PlaylistsBridge(QObject):
             return "not_found"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "cover",
             lambda: self._playlist_service.remove_custom_cover(playlist_id),
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "updated"
+        return "updated" if result else "no_change"
 
     @Slot(str, str, str, str, str, list, float, str, result=str)
     def apply_visual_appearance(
@@ -881,11 +885,12 @@ class PlaylistsBridge(QObject):
             return "not_found"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "hero", lambda: self._playlist_service.set_hero_auto(playlist_id)
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "updated"
+        return "updated" if result else "no_change"
 
     @Slot(str, str, result=str)
     def set_hero_solid(self, playlist_id: str, color: str) -> str:
