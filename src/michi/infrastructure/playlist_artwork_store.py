@@ -267,6 +267,53 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
             )
             return None
 
+    def delete_legacy_managed_asset(
+        self, playlist_id: str, role: str, managed_path: str
+    ) -> bool:
+        """R5-06: retirement EXPLÍCITO de assets V1 legacy (pre-V2), sin
+        relajar la seguridad V2.
+
+        Autoriza SOLO la gramática legacy exacta:
+
+            cover:  playlist_<playlist_id>.<ext>
+            hero:   playlist_<playlist_id>_hero.<ext>
+
+        Si el playlist_id contiene "_hero" (o cualquier delimitador que
+        haga la ownership AMBIGUA en esta gramática) → FAIL CLOSED (la
+        deuda de storage es preferible al cross-owner deletion)."""
+        storage = self._storage_dir.resolve()
+        candidate = Path(managed_path).resolve()
+        if candidate.parent != storage:
+            logger.warning("refusing legacy delete: non-managed path")
+            return False
+        if not _SAFE_PLAYLIST_ID_RE.fullmatch(playlist_id):
+            logger.warning("refusing legacy delete: unsafe id %r", playlist_id)
+            return False
+        if playlist_id.endswith("_hero"):
+            # Ambiguo en la gramática legacy (cover de "x_hero" vs hero de
+            # "x") — fail closed.
+            logger.warning("refusing legacy delete: ambiguous owner %r", playlist_id)
+            return False
+        if role not in ("cover", "hero"):
+            return False
+        if role == "cover":
+            legacy_name = f"playlist_{playlist_id}{candidate.suffix.lower()}"
+        else:
+            legacy_name = f"playlist_{playlist_id}_hero{candidate.suffix.lower()}"
+        if candidate.name != legacy_name:
+            logger.warning(
+                "refusing legacy delete: %r != %r", candidate.name, legacy_name
+            )
+            return False
+        if candidate.suffix.lower() not in _ALLOWED_EXTENSIONS:
+            return False
+        try:
+            candidate.unlink(missing_ok=True)
+            return True
+        except OSError as exc:
+            logger.warning("Failed to delete legacy asset %s: %s", candidate, exc)
+            return False
+
     def delete_managed_asset(
         self, playlist_id: str, role: str, managed_path: str
     ) -> bool:

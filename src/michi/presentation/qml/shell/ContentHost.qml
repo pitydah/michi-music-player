@@ -363,7 +363,11 @@ Item {
         target: root.playlistsBridge
         function onPersistenceFailed(operationCode) {
             var message = qsTr("Could not save changes")
-            if (operationCode === "create")
+            if (operationCode === "recent")
+                // R5-08: la acción PRIMARIA (abrir) SÍ tuvo éxito — solo
+                // falló la metadata secundaria.
+                message = qsTr("Playlist opened, but Recent wasn't saved")
+            else if (operationCode === "create")
                 message = qsTr("Could not create playlist")
             else if (operationCode === "rename")
                 message = qsTr("Could not rename playlist")

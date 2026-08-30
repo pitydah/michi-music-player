@@ -498,6 +498,64 @@ class PlaylistService:
                 logger.warning("old hero cleanup debt: %s", exc)
         return result
 
+    @staticmethod
+    def _normalize_visual_appearance_request(
+        *,
+        cover_action: str,
+        cover_source_path,
+        hero_mode: str,
+        hero_solid_color: str,
+        hero_gradient_colors: tuple[str, ...],
+        hero_gradient_angle: float,
+        hero_image_source,
+    ):
+        """R5-01 PHASE 1 — PURE VALIDATION / NORMALIZATION.
+
+        No filesystem, no service state, no artwork_store, no persist, no
+        notify. Returns the normalized tuple or None when the REQUEST is
+        logically invalid (zero side effects guaranteed)."""
+        if cover_action not in ("keep", "auto", "replace"):
+            return None
+        if hero_mode not in ("auto", "solid", "gradient", "image"):
+            return None
+        solid_color = ""
+        gradient_colors: tuple[str, ...] = ()
+        gradient_angle = 0.0
+        if hero_mode == "solid":
+            try:
+                solid_color = _canonical_color(hero_solid_color)
+            except ValueError:
+                return None
+        elif hero_mode == "gradient":
+            if len(hero_gradient_colors) not in (2, 3):
+                return None
+            try:
+                gradient_colors = tuple(
+                    _canonical_color(color) for color in hero_gradient_colors
+                )
+            except ValueError:
+                return None
+            try:
+                numeric_angle = float(hero_gradient_angle)
+            except (TypeError, ValueError):
+                return None
+            if not math.isfinite(numeric_angle):
+                return None
+            gradient_angle = numeric_angle % 360.0
+        cover_source = (
+            Path(cover_source_path) if cover_source_path is not None else None
+        )
+        hero_source = Path(hero_image_source) if hero_image_source is not None else None
+        return (
+            cover_action,
+            hero_mode,
+            solid_color,
+            gradient_colors,
+            gradient_angle,
+            cover_source,
+            hero_source,
+        )
+
     def apply_visual_appearance(
         self,
         playlist_id: str,
@@ -524,43 +582,67 @@ class PlaylistService:
         playlist = self.get_playlist(playlist_id)
         if playlist is None:
             return "not_found"
-        if cover_action not in ("keep", "auto", "replace"):
-            return "invalid"
-        if hero_mode not in ("auto", "solid", "gradient", "image"):
-            return "invalid"
 
-        # --- 1. preparar candidates (cover) ---
+        # PHASE 1 — PURE VALIDATION / NORMALIZATION (R5-01): cero
+        # filesystem antes de saber si la petición completa es válida.
+        normalized = self._normalize_visual_appearance_request(
+            cover_action=cover_action,
+            cover_source_path=cover_source_path,
+            hero_mode=hero_mode,
+            hero_solid_color=hero_solid_color,
+            hero_gradient_colors=hero_gradient_colors,
+            hero_gradient_angle=hero_gradient_angle,
+            hero_image_source=hero_image_source,
+        )
+        if normalized is None:
+            return "invalid"
+        (
+            norm_cover_action,
+            norm_hero_mode,
+            norm_solid_color,
+            norm_gradient_colors,
+            norm_gradient_angle,
+            norm_cover_source,
+            norm_hero_source,
+        ) = normalized
+
+        # PHASE 2 — PREPARE ASSETS (solo candidates de ESTA operación).
         new_cover = playlist.custom_cover_path
-        if cover_action == "auto":
+        new_hero_path = playlist.appearance.hero_image_path
+        prepared_candidates = []  # (role, path) creados en esta operación
+
+        if norm_cover_action == "auto":
             new_cover = ""
-        elif cover_action == "replace":
-            if cover_source_path is None:
+        elif norm_cover_action == "replace":
+            if norm_cover_source is None:
                 return "invalid"
             prepared = None
             if self._artwork_store is not None:
                 prepared = self._artwork_store.prepare_cover(
-                    playlist_id, cover_source_path
+                    playlist_id, norm_cover_source
                 )
             if prepared is None:
                 return "asset_rejected"
             new_cover = prepared
+            prepared_candidates.append(("cover", new_cover))
 
-        # --- 2. preparar candidates (hero) ---
         appearance = playlist.appearance
-        new_hero_path = appearance.hero_image_path
-        if hero_mode == "image":
-            if hero_image_source is not None:
+        if norm_hero_mode == "image":
+            if norm_hero_source is not None:
                 prepared_hero = None
                 if self._artwork_store is not None:
                     prepared_hero = self._artwork_store.prepare_hero(
-                        playlist_id, hero_image_source
+                        playlist_id, norm_hero_source
                     )
                 if prepared_hero is None:
-                    self._cleanup_prepared_cover(
-                        playlist_id, new_cover, playlist.custom_cover_path
-                    )
+                    for role, path in prepared_candidates:
+                        with contextlib.suppress(OSError):
+                            self._artwork_store.delete_managed_asset(
+                                playlist_id, role, path
+                            )
                     return "asset_rejected"
                 new_hero_path = prepared_hero
+                prepared_candidates.append(("hero", new_hero_path))
             else:
                 # Un persisted missing hero NO puede ser un "keep image".
                 try:
@@ -568,86 +650,39 @@ class PlaylistService:
                 except OSError:
                     hero_exists = False
                 if not hero_exists:
-                    self._cleanup_prepared_cover(
-                        playlist_id, new_cover, playlist.custom_cover_path
-                    )
+                    for role, path in prepared_candidates:
+                        with contextlib.suppress(OSError):
+                            self._artwork_store.delete_managed_asset(
+                                playlist_id, role, path
+                            )
                     return "asset_rejected"
         else:
             new_hero_path = ""
 
-        # --- 3. construir candidate completo ---
-        # Cualquier fallo de validación retira los candidates preparados.
-        try:
-            return self._build_appearance_candidate(
-                playlist_id,
-                playlist,
-                appearance,
-                hero_mode,
-                hero_solid_color,
-                hero_gradient_colors,
-                hero_gradient_angle,
-                new_cover,
-                new_hero_path,
-            )
-        except ValueError:
-            self._cleanup_prepared_cover(
-                playlist_id, new_cover, playlist.custom_cover_path
-            )
-            if new_hero_path and new_hero_path != playlist.appearance.hero_image_path:
-                with contextlib.suppress(OSError):
-                    self._artwork_store.delete_managed_asset(
-                        playlist_id, "hero", new_hero_path
-                    )
-            raise
-
-    def _build_appearance_candidate(
-        self,
-        playlist_id,
-        playlist,
-        appearance,
-        hero_mode,
-        hero_solid_color,
-        hero_gradient_colors,
-        hero_gradient_angle,
-        new_cover,
-        new_hero_path,
-    ):
-        if hero_mode == "solid":
-            canonical = _canonical_color(hero_solid_color)
+        # PHASE 3 — BUILD DOMAIN CANDIDATE (usa valores NORMALIZADOS).
+        if norm_hero_mode == "solid":
             appearance = replace(
                 appearance,
                 hero_mode=PlaylistHeroMode.SOLID,
-                hero_solid_color=canonical,
+                hero_solid_color=norm_solid_color,
                 hero_image_path="",
             )
-        elif hero_mode == "gradient":
-            if len(hero_gradient_colors) not in (2, 3):
-                self._cleanup_prepared_cover(
-                    playlist_id, new_cover, playlist.custom_cover_path
-                )
-                return "invalid"
-            canonical_colors = tuple(
-                _canonical_color(color) for color in hero_gradient_colors
-            )
-            numeric_angle = float(hero_gradient_angle)
-            if not math.isfinite(numeric_angle):
-                return "invalid"
+        elif norm_hero_mode == "gradient":
             appearance = replace(
                 appearance,
                 hero_mode=PlaylistHeroMode.GRADIENT,
-                hero_gradient_colors=canonical_colors,
-                hero_gradient_angle=numeric_angle % 360.0,
+                hero_gradient_colors=norm_gradient_colors,
+                hero_gradient_angle=norm_gradient_angle,
                 hero_image_path="",
             )
-        elif hero_mode == "image":
+        elif norm_hero_mode == "image":
             appearance = replace(
                 appearance,
                 hero_mode=PlaylistHeroMode.IMAGE,
                 hero_image_path=new_hero_path,
             )
         else:
-            # R4-03: AUTO limpia TODO el estado específico de IMAGE —
-            # hero_image_path == "" es el estado canónico.
+            # R4-03: AUTO limpia TODO el estado específico de IMAGE.
             appearance = replace(
                 appearance,
                 hero_mode=PlaylistHeroMode.AUTO,
@@ -658,66 +693,55 @@ class PlaylistService:
         candidate = tuple(
             updated if p.playlist_id == playlist_id else p for p in self._playlists
         )
+
+        # NO_CHANGE: limpiar SOLO candidates frescos de ESTA operación.
         if candidate == tuple(self._playlists):
-            # NO_CHANGE: zero writes; cleanup any freshly prepared candidate.
-            if self._artwork_store is not None:
-                if new_cover != playlist.custom_cover_path and new_cover:
-                    with contextlib.suppress(OSError):
-                        self._artwork_store.delete_managed_asset(
-                            playlist_id, "cover", new_cover
-                        )
-                if (
-                    new_hero_path != playlist.appearance.hero_image_path
-                    and new_hero_path
-                ):
-                    with contextlib.suppress(OSError):
-                        self._artwork_store.delete_managed_asset(
-                            playlist_id, "hero", new_hero_path
-                        )
+            for role, path in prepared_candidates:
+                with contextlib.suppress(OSError):
+                    self._artwork_store.delete_managed_asset(playlist_id, role, path)
             return "no_change"
 
-        # --- 4. persistir UNA vez, publicar, notificar ---
+        # PHASE 4 — COMMIT (una sola durabilidad).
         try:
             self._commit_playlists(candidate)
         except PlaylistPersistenceError:
-            # DB fail: cleanup ONLY new candidates; old assets preserved.
-            if self._artwork_store is not None:
-                if new_cover != playlist.custom_cover_path and new_cover:
-                    with contextlib.suppress(OSError):
-                        self._artwork_store.delete_managed_asset(
-                            playlist_id, "cover", new_cover
-                        )
-                if (
-                    new_hero_path != playlist.appearance.hero_image_path
-                    and new_hero_path
-                ):
-                    with contextlib.suppress(OSError):
-                        self._artwork_store.delete_managed_asset(
-                            playlist_id, "hero", new_hero_path
-                        )
+            # DB fail: limpiar SOLO candidates nuevos; old assets intactos.
+            for role, path in prepared_candidates:
+                with contextlib.suppress(OSError):
+                    self._artwork_store.delete_managed_asset(playlist_id, role, path)
             raise
         self._notify()
 
-        # --- 5. retirar superseded post-commit (best-effort) ---
-        if self._artwork_store is not None:
-            if new_cover != playlist.custom_cover_path and playlist.custom_cover_path:
-                try:
-                    self._artwork_store.delete_managed_asset(
-                        playlist_id, "cover", playlist.custom_cover_path
-                    )
-                except OSError as exc:
-                    logger.warning("old cover cleanup debt: %s", exc)
-            if (
-                new_hero_path != playlist.appearance.hero_image_path
-                and playlist.appearance.hero_image_path
-            ):
-                try:
-                    self._artwork_store.delete_managed_asset(
-                        playlist_id, "hero", playlist.appearance.hero_image_path
-                    )
-                except OSError as exc:
-                    logger.warning("old hero cleanup debt: %s", exc)
+        # PHASE 5 — RETIRE SUPERSEDED (post-commit, best-effort; V1 o V2).
+        if new_cover != playlist.custom_cover_path and playlist.custom_cover_path:
+            self._retire_managed_asset(playlist_id, "cover", playlist.custom_cover_path)
+        if (
+            new_hero_path != playlist.appearance.hero_image_path
+            and playlist.appearance.hero_image_path
+        ):
+            self._retire_managed_asset(
+                playlist_id, "hero", playlist.appearance.hero_image_path
+            )
         return "updated"
+
+    def _retire_managed_asset(self, playlist_id: str, role: str, path: str) -> None:
+        """R5-06: retira un asset (V2 o legacy V1) tras el DB commit. V2 usa
+        ownership por token; V1 usa la gramática legacy con fail-closed."""
+        if not path:
+            return
+        store = self._artwork_store
+        if store is None:
+            return
+        try:
+            deleted = store.delete_managed_asset(playlist_id, role, path)
+        except TypeError:
+            deleted = False
+        if deleted:
+            return
+        legacy = getattr(store, "delete_legacy_managed_asset", None)
+        if legacy is not None:
+            with contextlib.suppress(OSError):
+                legacy(playlist_id, role, path)
 
     def _cleanup_prepared_cover(self, playlist_id, new_cover, old_cover) -> None:
         if self._artwork_store is not None and new_cover and new_cover != old_cover:
@@ -788,16 +812,16 @@ class PlaylistService:
         self._notify()
         return True
 
-    def mark_recent(self, playlist_id: str) -> None:
+    def mark_recent(self, playlist_id: str) -> bool:
         """MRU semantics: most recently opened/navigated first, bounded by
         MAX_RECENT_PLAYLISTS, no duplicates. Unknown ids never enter.
 
         Idempotent: opening the already-most-recent playlist is a no-op
         (no persistence, no notification) — the MRU order did not change."""
         if self._find_by_id(playlist_id) < 0:
-            return
+            return False
         if self._nav.recent_ids and self._nav.recent_ids[0] == playlist_id:
-            return  # already MRU rank 0: order unchanged
+            return False  # already MRU rank 0: order unchanged
         recent = [i for i in self._nav.recent_ids if i != playlist_id]
         recent.insert(0, playlist_id)
         recent = recent[:MAX_RECENT_PLAYLISTS]
@@ -805,5 +829,9 @@ class PlaylistService:
             pinned_ids=self._nav.pinned_ids,
             recent_ids=tuple(recent),
         )
-        self._commit_navigation(candidate)
+        # R5-05: NO_CHANGE = cero write + cero notify.
+        changed = self._commit_navigation(candidate)
+        if not changed:
+            return False
         self._notify()
+        return True

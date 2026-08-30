@@ -502,19 +502,6 @@ class PlaylistsBridge(QObject):
         if playlist is None:
             return {}
         return self._appearance_row(playlist)
-        playlist = self._selected()
-        if playlist is None:
-            return {
-                "persistedHeroMode": "auto",
-                "effectiveHeroMode": "auto",
-                "persistedHeroImagePath": "",
-                "effectiveHeroImagePath": "",
-                "heroImageMissing": False,
-                "heroSolidColor": "#152A45",
-                "heroGradientColors": ["#152A45", "#13243D"],
-                "heroGradientAngle": 135.0,
-            }
-        return self._appearance_row(playlist)
 
     def _get_selected_auto_hero_colors(self) -> list[str]:
         playlist = self._selected()
@@ -762,11 +749,12 @@ class PlaylistsBridge(QObject):
             return "not_found"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "delete", lambda: self._playlist_service.delete_playlist(playlist_id)
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "deleted"
+        return "deleted" if result else "no_change"
 
     @Slot(str, result=str)
     def pin_playlist(self, playlist_id: str) -> str:
@@ -802,15 +790,16 @@ class PlaylistsBridge(QObject):
             return "invalid"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "cover",
             lambda: (
                 self._playlist_service.set_custom_cover(playlist_id, local_path)
                 is not None
             ),
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "updated"
+        return "updated" if result else "asset_rejected"
 
     @Slot(str, QUrl, result=str)
     def set_custom_cover_from_url(self, playlist_id: str, url: QUrl) -> str:
@@ -819,14 +808,15 @@ class PlaylistsBridge(QObject):
             return "invalid"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "cover",
             lambda: (
                 self._playlist_service.set_custom_cover(playlist_id, path) is not None
             ),
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "updated"
+        return "updated" if result else "asset_rejected"
 
     @Slot(str, result=str)
     def remove_custom_cover(self, playlist_id: str) -> str:
@@ -899,13 +889,15 @@ class PlaylistsBridge(QObject):
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
         try:
-            ok = self._run_mutation(
+            result = self._run_mutation(
                 "hero",
                 lambda: self._playlist_service.set_hero_solid(playlist_id, color),
             )
         except ValueError:
             return "invalid"
-        return "updated" if ok else "persistence_failed"
+        if result is None:
+            return "persistence_failed"
+        return "updated" if result else "no_change"
 
     @Slot(str, list, float, result=str)
     def set_hero_gradient(self, playlist_id: str, colors: list, angle: float) -> str:
@@ -914,7 +906,7 @@ class PlaylistsBridge(QObject):
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
         try:
-            ok = self._run_mutation(
+            result = self._run_mutation(
                 "hero",
                 lambda: self._playlist_service.set_hero_gradient(
                     playlist_id, tuple(str(color) for color in colors), angle
@@ -922,7 +914,9 @@ class PlaylistsBridge(QObject):
             )
         except (TypeError, ValueError):
             return "invalid"
-        return "updated" if ok else "persistence_failed"
+        if result is None:
+            return "persistence_failed"
+        return "updated" if result else "no_change"
 
     @Slot(str, QUrl, result=str)
     def set_custom_hero_from_url(self, playlist_id: str, url: QUrl) -> str:
@@ -931,26 +925,28 @@ class PlaylistsBridge(QObject):
             return "invalid"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "hero",
             lambda: (
                 self._playlist_service.set_custom_hero_image(playlist_id, path)
                 is not None
             ),
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "updated"
+        return "updated" if result else "asset_rejected"
 
     @Slot(str, str, result=str)
     def add_track(self, playlist_id: str, path: str) -> str:
         if self._playlist_service is None:
             return "not_found"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "add_tracks",
             lambda: self._playlist_service.add_track(playlist_id, Path(path)),
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "added"
+        return "added" if result else "already_present"
 
     @Slot(str, int, str, result=str)
     def insert_track(self, playlist_id: str, index: int, path: str) -> str:
@@ -964,12 +960,13 @@ class PlaylistsBridge(QObject):
             return "not_found"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
-        try:
-            restored = self._playlist_service.insert_track(playlist_id, index, path)
-        except PlaylistPersistenceError:
-            self.persistenceFailed.emit("insert_track")
+        result = self._run_mutation(
+            "insert_track",
+            lambda: self._playlist_service.insert_track(playlist_id, index, path),
+        )
+        if result is None:
             return "persistence_failed"
-        return "restored" if restored else "already_present"
+        return "restored" if result else "already_present"
 
     @Slot(int, result=str)
     def remove_track(self, index: int) -> str:
@@ -984,12 +981,13 @@ class PlaylistsBridge(QObject):
             return "not_found"
         if not (0 <= index < len(playlist.track_paths)):
             return "invalid_index"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "remove_track",
             lambda: self._playlist_service.remove_track(playlist_id, index),
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "removed"
+        return "removed" if result else "no_change"
 
     @Slot(int, int, result=str)
     def move_track(self, from_index: int, to_index: int) -> str:
@@ -1057,9 +1055,10 @@ class PlaylistsBridge(QObject):
             return "not_found"
         if str(Path(path)) in playlist.track_paths:
             return "already_present"
-        if not self._run_mutation(
+        result = self._run_mutation(
             "add_tracks",
             lambda: self._playlist_service.add_track(playlist_id, Path(path)),
-        ):
+        )
+        if result is None:
             return "persistence_failed"
-        return "added"
+        return "added" if result else "already_present"

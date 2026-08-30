@@ -24,15 +24,24 @@ MichiDialog {
     property bool heroImageMissing: false
     property var mosaicArtworkPaths: []
     // R4-04: editor parte del PERSISTED INTENT; effective solo preview.
-    property string heroMode: "auto"
     property string persistedHeroMode: "auto"
     property string persistedHeroImagePath: ""
     property string effectiveHeroMode: "auto"
     property string effectiveHeroImagePath: ""
+    // R5-03b: el PREVIEW del hero nunca miente — persisted IMAGE con
+    // asset missing renderiza fallback AUTO hasta decisión explícita.
+    readonly property string previewHeroMode: {
+        if (root.draftMode !== "image")
+            return root.draftMode
+        if (root.draftHeroImageUrl.toString().length > 0)
+            return "image"
+        if (root.heroImageMissing)
+            return "auto"
+        return "image"
+    }
     property string heroSolidColor: MichiPalette.playlistHeroTopHex
     property var heroGradientColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
     property real heroGradientAngle: 135
-    property string heroImagePath: ""
     property var autoHeroColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
 
     // R3-06 FULL DRAFT: nada se persiste hasta Apply. Cover y Hero son
@@ -64,7 +73,7 @@ MichiDialog {
     function _syncDraft() {
         // R4-04: el editor arranca del PERSISTED mode — un image missing
         // permanece Image hasta que el usuario decida explícitamente.
-        root.draftMode = root.persistedHeroMode || root.heroMode || "auto"
+        root.draftMode = root.persistedHeroMode || "auto"
         root.draftCoverAction = "keep"
         solidField.text = root.heroSolidColor || MichiPalette.playlistHeroTopHex
         var colors = root.heroGradientColors || []
@@ -178,7 +187,7 @@ MichiDialog {
 
                         PlaylistHeroBackground {
                             anchors.fill: parent
-                            heroMode: root.draftMode
+                            heroMode: root.previewHeroMode
                             solidColor: root._previewColor(
                                 solidField.text, MichiPalette.playlistHeroTopHex)
                             gradientColors: root.draftThirdColor
@@ -196,9 +205,11 @@ MichiDialog {
                                 ? root.draftHeroImageUrl.toString() : root.effectiveHeroImagePath
                             // R4-05: el preview del hero auto deriva del DRAFT
                             // cover (WYSIWYG del candidate que Apply persistirá).
+                            // R5-03a: PlaylistHeroBackground resuelve la
+                            // precedencia coverPath → mosaic → default;
+                            // el panel no duplica esa lógica.
                             coverPath: root.draftPreviewCoverPath
-                            mosaicArtworkPaths: root.draftCoverAction === "auto"
-                                ? [] : root.mosaicArtworkPaths
+                            mosaicArtworkPaths: root.mosaicArtworkPaths
                             autoColors: root.autoHeroColors
                         }
                         Rectangle {
@@ -387,7 +398,7 @@ MichiDialog {
                         visible: root.draftMode === "image"
                         MichiButton {
                             text: root.draftHeroImageUrl.toString().length > 0
-                                || root.heroImagePath.length > 0
+                                || root.persistedHeroImagePath.length > 0
                                 ? qsTr("Replace image") : qsTr("Choose image")
                             iconName: "image"
                             accessibleName: qsTr("Choose a custom hero image")
@@ -398,7 +409,7 @@ MichiDialog {
                             variant: "ghost"
                             enabled: root.draftMode !== "auto"
                                 || root.draftHeroImageUrl.toString().length > 0
-                                || root.heroImagePath.length > 0
+                                || root.persistedHeroImagePath.length > 0
                             accessibleName: qsTr("Reset hero background to automatic")
                             onClicked: {
                                 root.draftHeroImageUrl = ""
