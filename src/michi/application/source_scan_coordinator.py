@@ -222,7 +222,9 @@ class SourceScanCoordinator:
         # replace the state wholesale; later per-source scans reconcile each
         # source independently. No recently-added changes (not new).
         self._library._state.tracks = refs
-        self._library._rebuild_derived_library_state(offline=True)
+        # P1-05 R4: hydration renderiza desde cache SIN provider I/O — el
+        # arranque offline nunca toca media inalcanzable.
+        self._library._rebuild_derived_library_state(offline=True, cache_only=True)
         self._library._notify()
         return len(refs)
 
@@ -376,7 +378,7 @@ class SourceScanCoordinator:
         relocated = LibrarySource(
             library_source_id=target.library_source_id,
             display_name=target.display_name,
-            root_path=new_root,
+            root_path=str(root),
             enabled=target.enabled,
             lifecycle=target.lifecycle,
         )
@@ -401,7 +403,9 @@ class SourceScanCoordinator:
         self._catalog.retire_source(source_id)
         self._remember_sources(self._catalog.load_sources())
         self._observations.pop(source_id, None)
-        self._library.apply_source_tracks(source_id, [])
+        # P1-05 R4: la publicación estructural al retirar es cache-only
+        # (sin probing de Mutagen/directorios en el owner).
+        self._library.apply_source_tracks(source_id, [], cache_only=True)
 
     def set_source_enabled(self, source_id: str, enabled: bool) -> None:
         """Enable/disable a configured source (stays configured)."""

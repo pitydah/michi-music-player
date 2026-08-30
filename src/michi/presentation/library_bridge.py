@@ -39,6 +39,9 @@ class LibraryBridge(QObject):
     # CONCURRENCY-LIB-02: pure scan telemetry — NEVER invalidates the
     # expensive library projections on per-file progress ticks.
     scan_changed = Signal()
+    # P1-08 R4: error de operación de source observable (una autoridad,
+    # renderizada por QML con el sistema de diseño existente).
+    source_operation_error_changed = Signal()
     playlist_target_requested = Signal(dict)
     new_playlist_target_requested = Signal(dict)
     album_properties_requested = Signal(dict)
@@ -57,6 +60,7 @@ class LibraryBridge(QObject):
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
+        self._source_operation_error = ""
         self._service = service
         self._playback_coordinator = playback_coordinator
         self._track_query = track_query or LibraryTrackQueryService()
@@ -75,6 +79,16 @@ class LibraryBridge(QObject):
         self._artist_track_refs: list[TrackRef] = []
         self._selected_genre_key = ""
         service.subscribe_changed(self._on_service_changed)
+
+    def _get_source_operation_error(self) -> str:
+        return self._source_operation_error
+
+    def _set_source_operation_error(self, message: str) -> None:
+        message = message or ""
+        if message == self._source_operation_error:
+            return
+        self._source_operation_error = message
+        self.source_operation_error_changed.emit()
 
     def dispose(self) -> None:
         self._service.unsubscribe_changed(self._on_service_changed)
@@ -624,9 +638,6 @@ class LibraryBridge(QObject):
     def _effective_availability(self, ref: TrackRef) -> str:
         return self._effective_media_availability(ref).value
 
-    def _effective_availability(self, ref: TrackRef) -> str:
-        return self._effective_media_availability(ref).value
-
     @staticmethod
     def _track_row(ref: TrackRef) -> dict:
         """Map one canonical TrackRef to display facts without UI inference
@@ -912,10 +923,13 @@ class LibraryBridge(QObject):
     scanDiagnostic = Property(str, _get_scan_diagnostic, notify=scan_changed)
     libraryScanDiagnostic = Property(str, _get_scan_diagnostic, notify=scan_changed)
     sourceScanStatus = Property(str, _get_source_scan_status, notify=scan_changed)
-    sourceScanActive = Property(bool, _get_source_scan_active, notify=library_changed)
-    sourceScanProgress = Property(
-        dict, _get_source_scan_progress, notify=library_changed
+    sourceOperationError = Property(
+        str,
+        _get_source_operation_error,
+        notify=source_operation_error_changed,
     )
+    sourceScanActive = Property(bool, _get_source_scan_active, notify=scan_changed)
+    sourceScanProgress = Property(dict, _get_source_scan_progress, notify=scan_changed)
 
     def _track_id_resolvable(self, value: str) -> bool:
         """Stable identity first (CORRECTIVE SEAL §12/§13). A raw path is
@@ -993,24 +1007,36 @@ class LibraryBridge(QObject):
         the source and enqueue exactly ONE async scan. Returns "" on
         success or a user-presentable error."""
         if self._source_scan_lifecycle is None:
-            return "Source management is not available."
+            error = "Source management is not available."
+            self._set_source_operation_error(error)
+            return error
         if not directory.isLocalFile():
-            return "Only local folders can be used as music sources."
-        return self._source_scan_lifecycle.request_add_source(
+            error = "Only local folders can be used as music sources."
+            self._set_source_operation_error(error)
+            return error
+        error = self._source_scan_lifecycle.request_add_source(
             "", directory.toLocalFile()
         )
+        self._set_source_operation_error(error)
+        return error
 
     @Slot(str, QUrl, result=str)
     def relocate_source_url(self, source_id: str, directory: QUrl) -> str:
         """P1-LIB-03 CANONICAL Locate: QUrl → local path, remap root only,
         reschedule exactly one scan. Returns "" on success or an error."""
         if self._source_scan_lifecycle is None:
-            return "Source management is not available."
+            error = "Source management is not available."
+            self._set_source_operation_error(error)
+            return error
         if not directory.isLocalFile():
-            return "Only local folders can be used as music sources."
-        return self._source_scan_lifecycle.request_relocate(
+            error = "Only local folders can be used as music sources."
+            self._set_source_operation_error(error)
+            return error
+        error = self._source_scan_lifecycle.request_relocate(
             source_id, directory.toLocalFile()
         )
+        self._set_source_operation_error(error)
+        return error
 
     @Slot(str, str)
     def relocate_source(self, source_id: str, new_root: str) -> str:

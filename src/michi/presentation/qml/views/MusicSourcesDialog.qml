@@ -235,7 +235,7 @@ Popup {
     }
 
     MichiText {
-        text: qsTr("Every track identity is preserved when you locate the source at its new root.")
+        text: qsTr("Michi preserves track identities when files can be matched safely.")
         role: "caption"
         color: MichiPalette.textSecondary
         Layout.fillWidth: true

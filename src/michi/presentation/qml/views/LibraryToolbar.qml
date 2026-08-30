@@ -60,6 +60,20 @@ MichiGlassSurface {
         library.scan_all_sources()
     }
 
+    // P1-08 R4: el error de operación de source es UNA autoridad del
+    // Bridge — QML solo lo renderiza con el sistema de diseño existente.
+    MichiStatusChip {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: MichiSpacing.xs
+        anchors.rightMargin: MichiSpacing.md
+        visible: typeof library !== "undefined" && library
+            && library.sourceOperationError.length > 0
+        text: typeof library !== "undefined" && library
+            ? library.sourceOperationError : ""
+        tone: "error"
+    }
+
     // P1-LIB-03: URL → local path translation lives in the Bridge.
     FolderDialog {
         id: folderDialog
