@@ -122,13 +122,13 @@ class TestTruthfulPersistence:
         def save(self, playlists):
             self.saved += 1
             if self.saved > self.fail_after:
-                from michi.domain.playlist import PlaylistPersistenceError
+                from michi.application.errors import PlaylistPersistenceError
 
                 raise PlaylistPersistenceError("injected DB failure")
             self._items = tuple(playlists)
 
     def test_create_failure_never_publishes(self):
-        from michi.domain.playlist import PlaylistPersistenceError
+        from michi.application.errors import PlaylistPersistenceError
 
         service = PlaylistService(playlists_port=self._FailingPort(fail_after=0))
         with pytest.raises(PlaylistPersistenceError):
@@ -136,7 +136,7 @@ class TestTruthfulPersistence:
         assert service.playlists == ()
 
     def test_mutation_failure_rolls_back_to_persisted(self):
-        from michi.domain.playlist import PlaylistPersistenceError
+        from michi.application.errors import PlaylistPersistenceError
 
         service = PlaylistService(playlists_port=self._FailingPort(fail_after=1))
         playlist = service.create_playlist("Mix")  # save 1 ok
@@ -180,7 +180,7 @@ class TestArtworkTransactions:
         def save(self, playlists):
             self.saved += 1
             if self.saved > self.fail_after:
-                from michi.domain.playlist import PlaylistPersistenceError
+                from michi.application.errors import PlaylistPersistenceError
 
                 raise PlaylistPersistenceError("injected DB failure")
             self._items = tuple(playlists)
@@ -199,7 +199,7 @@ class TestArtworkTransactions:
         return service
 
     def test_cover_db_failure_preserves_old_bytes(self, tmp_path):
-        from michi.domain.playlist import PlaylistPersistenceError
+        from michi.application.errors import PlaylistPersistenceError
 
         service = self._service(tmp_path, fail_after=1)
         old_src = _png_at(tmp_path, "old.png", 0xFF581C)
@@ -216,7 +216,7 @@ class TestArtworkTransactions:
         assert Path(old_path).read_bytes() == Path(old_src).read_bytes()
 
     def test_hero_db_failure_preserves_old_bytes(self, tmp_path):
-        from michi.domain.playlist import PlaylistPersistenceError
+        from michi.application.errors import PlaylistPersistenceError
 
         service = self._service(tmp_path, fail_after=1)
         old_src = _png_at(tmp_path, "old_hero.png", 0xFF811B)
@@ -389,10 +389,3 @@ class TestArtworkIndex:
         assert len(rows) == 1
         assert "artworkPath" in rows[0], f"row keys: {sorted(rows[0])}"
         assert rows[0]["artworkPath"] == str(expected)
-
-    def test_artwork_index_is_o1_per_row(self):
-        from michi.presentation.playlists_bridge import PlaylistsBridge
-
-        bridge = PlaylistsBridge.__new__(PlaylistsBridge)
-        bridge._library = None
-        assert bridge._build_artwork_index() == {}

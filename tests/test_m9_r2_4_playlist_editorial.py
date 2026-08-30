@@ -40,7 +40,10 @@ def test_hero_typography_and_compact_actions():
     assert "maximumLineCount: 2" in hero  # description cap
     assert "iconOnly: root.width < 920" in hero
     assert "implicitHeight: MichiMetrics.controlMedium" in hero  # Play 36px
-    assert "pinned" in hero  # pin toggle kept in hero
+    # R2 P2-01: pin lives in the More menu — the hero carries NO dead
+    # pinned/togglePinRequested wiring.
+    assert "pinned" not in hero
+    assert "togglePinRequested" not in hero
 
 
 def test_hero_cover_is_square_with_faint_shadow():
@@ -127,7 +130,10 @@ def test_page_connects_play_track_and_shuffle():
     assert "onPlayTrackRequested: index => playlists.play_playlist_track(index)" in page
     assert "onShuffleRequested: root.shuffleRequested()" in page  # R2.1-07 inline
     host = read("shell/ContentHost.qml")
-    assert "playlists.play_track(index)" in host
+    # R2 P2-01: the Detail playback intent routes through the canonical
+    # play_playlist_track — the dead play_track route is gone.
+    assert "playlists.play_track(index)" not in host
+    assert "playlists.play_playlist_track(index)" in host
     assert "onShuffleRequested" in host
     assert 'navigation.navigate("library")' in host
 

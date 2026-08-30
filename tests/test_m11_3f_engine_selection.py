@@ -1263,7 +1263,12 @@ class TestF42AdapterContract:
         # PLAYLIST APPEARANCE authorized additive change: separate optional
         # managed-hero lifecycle methods and an async palette extractor port;
         # the frozen AudioPort and transport semantics remain unchanged.
-        "src/michi/application/ports.py": "600b5237ac834e45",
+        # PLAYLISTS R2 SEAL (2026-08-29, P1-04/P1-06) authorized reopening:
+        # PlaylistsPort writes are now authoritative (PlaylistPersistenceError)
+        # with the atomic save_state compound write, and PlaylistArtworkStorePort
+        # declares the immutable candidate protocol (prepare_cover/prepare_hero/
+        # delete_managed_asset). Audio/transport semantics untouched.
+        "src/michi/application/ports.py": "d0f0fa52e366f1ac",
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.

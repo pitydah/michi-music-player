@@ -327,7 +327,9 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     assert "MichiMaterialTexture" in hero
     assert "signalContour" in hero
     assert 'root.heroMode !== "image"' in hero
-    assert "cache: false" in hero
+    # R2 P2-02: managed hero assets are IMMUTABLE content-addressed
+    # candidates — content changes change the URL, so caching is safe.
+    assert "cache: true" in hero
     assert panel.count("set_custom_hero_from_url") == 1
     assert "root.draftHeroImageUrl = selectedFile" in panel
     assert "Copying and persistence happen" in panel
