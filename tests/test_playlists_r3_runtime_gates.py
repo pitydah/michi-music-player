@@ -235,3 +235,33 @@ class TestActionFocusVisibility:
         assert "moreButton.activeFocus" in table
         assert "opacity: actionsVisible ? 1 : 0" in table
         assert "focusPolicy: Qt.NoFocus" not in table
+
+
+# ==========================================================================
+# R3-13 — NO DUAL ARTWORK STORAGE API
+# ==========================================================================
+
+
+class TestSingleArtworkProtocol:
+    def test_no_legacy_mutable_storage_api_in_production(self):
+        store = Path(
+            QML_DIR.parents[1] / "infrastructure" / "playlist_artwork_store.py"
+        )
+        if not store.exists():
+            store = Path("src/michi/infrastructure/playlist_artwork_store.py")
+        source = store.read_text()
+        for symbol in (
+            "store_cover",
+            "store_hero",
+            "delete_cover",
+            "delete_hero",
+            "store_artwork",
+            "delete_artwork",
+            "_store_variant",
+            "_delete_variant",
+        ):
+            assert symbol not in source, f"legacy storage symbol remains: {symbol}"
+        # El protocolo canónico es el único lifecycle.
+        assert "def prepare_cover" in source
+        assert "def prepare_hero" in source
+        assert "def delete_managed_asset" in source

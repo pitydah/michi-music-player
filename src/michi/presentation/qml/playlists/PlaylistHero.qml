@@ -13,7 +13,7 @@ Item {
     property string playlistName: ""
     property int trackCount: 0
     property int durationMs: 0
-    property string description: ""
+
     property string customCoverPath: ""
     property var mosaicArtworkPaths: []
     property string heroMode: "auto"
@@ -199,18 +199,6 @@ Item {
                 role: "technical"
                 color: MichiPalette.textSecondary
                 opacity: 0.78
-            }
-
-            MichiText {
-                Layout.fillWidth: true
-                visible: root.description.length > 0
-                text: root.description
-                role: "secondary"
-                color: MichiPalette.textSecondary
-                opacity: 0.72
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
-                elide: Text.ElideRight
             }
 
             Item { Layout.preferredHeight: MichiSpacing.xs }

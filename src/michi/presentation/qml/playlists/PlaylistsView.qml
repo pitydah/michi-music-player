@@ -210,8 +210,13 @@ Item {
             Layout.fillHeight: true
             visible: root.filteredPlaylists.length > 0 && root.displayMode === "grid"
             clip: true
-            readonly property int targetCellWidth: MichiThemeState.density === "compact" ? 296 : 328
-            readonly property int columnCount: Math.max(1, Math.floor(width / targetCellWidth))
+            // R3-16: density objetivo 5 cards en el área útil típica 1920
+            // con sidebar expandido (~1560px útiles): 1560/5 ≈ 312 → 304
+            // estándar / 288 compacto, máx 6 columnas.
+            readonly property int targetCellWidth: MichiThemeState.density === "compact" ? 288 : 304
+            readonly property int maxColumns: 6
+            readonly property int columnCount: Math.min(
+                maxColumns, Math.max(1, Math.floor(width / targetCellWidth)))
             cellWidth: width / columnCount
             cellHeight: 352
             model: root.filteredPlaylists
@@ -359,14 +364,6 @@ Item {
                         iconName: "play"
                         accessibleName: qsTr("Play ") + modelData.name
                         onClicked: root.playPlaylistRequested(modelData.playlistId)
-                    }
-
-                    MichiIconButton {
-                        iconName: modelData.pinned ? "pin" : "circle"
-                        accessibleName: modelData.pinned
-                            ? qsTr("Unpin ") + modelData.name
-                            : qsTr("Pin ") + modelData.name
-                        onClicked: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned, modelData.name)
                     }
 
                     MichiIconButton {

@@ -154,7 +154,7 @@ def _encode_navigation_state(state: PlaylistNavigationState) -> str:
 class SqlitePlaylistsRepository(PlaylistsPort):
     """JSON payloads under the 'playlists' and 'playlist_navigation' keys of
     the shared library_prefs table. Never touches the settings table or
-    journal mode; never raises: persistence is best effort.
+    journal mode; writes are authoritative (raise on failure).
 
     Malformed ROOT (scalar/string/object/null/boolean/invalid JSON) ->
     whole collection (). Malformed ENTRY -> that entry discarded; valid

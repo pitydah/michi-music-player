@@ -668,9 +668,7 @@ class PlaylistsBridge(QObject):
     selectedPlaylistAutoHeroColors = Property(
         list, _get_selected_auto_hero_colors, notify=playlists_changed
     )
-    selectedPlaylistDescription = Property(
-        str, lambda self: "", notify=playlists_changed
-    )
+
     playlistTracks = Property(list, _get_playlist_tracks, notify=playlists_changed)
     playlistTrackRows = Property(
         list, _get_playlist_track_rows, notify=playlists_changed

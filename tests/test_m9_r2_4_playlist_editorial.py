@@ -37,7 +37,8 @@ def test_hero_typography_and_compact_actions():
     assert "font.letterSpacing: 1.35" in hero
     assert 'role: "display"' in hero  # dominant title
     assert "font.weight: Font.DemiBold" in hero
-    assert "maximumLineCount: 2" in hero  # description cap
+    # R3-14: no hay description ficticia (feature real pendiente).
+    assert "description" not in hero
     assert "iconOnly: root.width < 920" in hero
     assert "implicitHeight: MichiMetrics.controlMedium" in hero  # Play 36px
     # R2 P2-01: pin lives in the More menu — the hero carries NO dead

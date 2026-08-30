@@ -70,8 +70,8 @@ Item {
         anchors.fill: parent
         visible: root.heroMode === "auto" && root.autoArtworkPath.length > 0
         source: visible ? Qt.resolvedUrl(root.autoArtworkPath) : ""
-        sourceSize.width: Math.min(1600, Math.round(width * Screen.devicePixelRatio))
-        sourceSize.height: Math.min(600, Math.round(height * Screen.devicePixelRatio))
+        sourceSize.width: Math.min(3200, Math.round(width * Screen.devicePixelRatio))
+        sourceSize.height: Math.min(900, Math.round(height * Screen.devicePixelRatio))
         asynchronous: true
         cache: true
         fillMode: Image.PreserveAspectCrop
@@ -82,8 +82,8 @@ Item {
         anchors.fill: parent
         visible: root.heroMode === "image" && root.heroImagePath.length > 0
         source: visible ? Qt.resolvedUrl(root.heroImagePath) : ""
-        sourceSize.width: Math.min(1600, Math.round(width * Screen.devicePixelRatio))
-        sourceSize.height: Math.min(600, Math.round(height * Screen.devicePixelRatio))
+        sourceSize.width: Math.min(3200, Math.round(width * Screen.devicePixelRatio))
+        sourceSize.height: Math.min(900, Math.round(height * Screen.devicePixelRatio))
         asynchronous: true
         // R2 P2-02: managed hero files are IMMUTABLE content-addressed
         // candidates — when the bytes change the URL changes, so caching

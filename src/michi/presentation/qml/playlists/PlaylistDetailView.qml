@@ -81,7 +81,7 @@ Item {
                 playlistName: playlists ? playlists.selectedPlaylistName : ""
                 trackCount: playlists ? playlists.playlistTracks.length : 0
                 durationMs: playlists ? playlists.selectedPlaylistDurationMs : 0
-                description: playlists ? (playlists.selectedPlaylistDescription || "") : ""
+
                 // R2 P1-11: EFFECTIVE cover — a vanished managed asset
                 // renders the automatic mosaic, never a dead box.
                 customCoverPath: playlists ? (playlists.effectiveCustomCoverPath || "") : ""
