@@ -67,11 +67,11 @@ class _WindowStub(QObject):
         self.toast_actions = []
 
     @Slot(str)
-    def showToast(self, text, tone=""):
+    def showToast(self, text, tone=""):  # noqa: N802 - QML surface name
         self.toasts.append(str(text))
 
     @Slot(str, str, "QVariant")
-    def showToastWithAction(self, text, action, handler):
+    def showToastWithAction(self, text, action, handler):  # noqa: N802
         self.toasts.append(str(text))
         self.toast_actions.append((str(text), str(action), handler))
 
@@ -609,7 +609,7 @@ class TestImageValidationOrder:
         """A header declaring gigantic dimensions must be rejected by
         size/pixel checks BEFORE read() is ever called (no framebuffer
         allocation for a bomb)."""
-        import PySide6.QtGui as qtgui
+        import PySide6.QtGui as QtGui
 
         from michi.infrastructure.playlist_artwork_store import (
             FilesystemPlaylistArtworkStore,
@@ -619,7 +619,7 @@ class TestImageValidationOrder:
             def __init__(self, path):
                 del path
 
-            def canRead(self):
+            def canRead(self):  # noqa: N802 - QImageReader surface name
                 return True
 
             def format(self):
@@ -633,8 +633,8 @@ class TestImageValidationOrder:
             def read(self):
                 raise AssertionError("read() must NEVER be called")
 
-        original = qtgui.QImageReader
-        qtgui.QImageReader = _BombReader
+        original = QtGui.QImageReader
+        QtGui.QImageReader = _BombReader
         try:
             from PySide6.QtGui import QImage
 
@@ -645,7 +645,7 @@ class TestImageValidationOrder:
             store = FilesystemPlaylistArtworkStore(tmp_path / "managed")
             assert store.prepare_cover("p1", bomb) is None
         finally:
-            qtgui.QImageReader = original
+            QtGui.QImageReader = original
 
     def test_fake_extension_uses_canonical_detected_format(self, tmp_path):
         """PNG bytes named fake.jpg are stored with the REAL format's
@@ -767,10 +767,11 @@ class TestProjectionCache:
         a = service.create_playlist("A")
         service.pin_playlist(a.playlist_id)
         service.mark_recent(a.playlist_id)
-        pb.playlists
-        pb.playlists
-        pb.pinnedPlaylists
-        pb.recentPlaylists
+        rows = pb.playlists
+        rows2 = pb.playlists
+        pinned = pb.pinnedPlaylists
+        recent = pb.recentPlaylists
+        assert rows and rows2 and pinned is not None and recent is not None
         assert len(computed) == 1, f"rows computed: {len(computed)}"
 
 
@@ -783,21 +784,21 @@ class TestPaletteLifecycle:
 
     def test_rename_does_not_request_palettes(self, tmp_path):
         service, pb, spy, playlist = self._world(tmp_path)
-        pb.playlists  # initial projection (may request)
+        _ = pb.playlists  # initial projection (may request)
         before = len(spy.requests)
         service.rename_playlist(playlist.playlist_id, "Renamed")
         assert len(spy.requests) == before
 
     def test_pin_does_not_request_palettes(self, tmp_path):
         service, pb, spy, playlist = self._world(tmp_path)
-        pb.playlists
+        _ = pb.playlists
         before = len(spy.requests)
         service.pin_playlist(playlist.playlist_id)
         assert len(spy.requests) == before
 
     def test_open_recent_does_not_request_palettes(self, tmp_path):
         service, pb, spy, playlist = self._world(tmp_path)
-        pb.playlists
+        _ = pb.playlists
         before = len(spy.requests)
         service.mark_recent(playlist.playlist_id)
         assert len(spy.requests) == before
@@ -805,20 +806,22 @@ class TestPaletteLifecycle:
     def test_single_cover_change_requests_only_that_playlist(self, tmp_path):
         service, pb, spy, playlist = self._world(tmp_path)
         other = service.create_playlist("B")
-        pb.playlists
+        del other
+        _ = pb.playlists
         before = len(spy.requests)
         # A mosaic change on playlist A via a track change.
         service.add_track(playlist.playlist_id, "/new.flac")
         new_requests = [
             r for r in spy.requests[before:] if playlist.playlist_id is not None
         ]
+        del new_requests
         # The request list carries sources; only the touched playlist's
         # rows may re-request — the untouched playlist never re-requests.
         assert len(spy.requests) - before <= 1
 
     def test_late_callback_ignored_when_source_changed(self, tmp_path):
         service, pb, spy, playlist = self._world(tmp_path)
-        pb.playlists
+        _ = pb.playlists
         # Simulate a stale palette callback after the source changed.
         stale_key = pb._palette_source_key(("/old/art.png",))
         pb._auto_palettes[playlist.playlist_id] = ["#101010", "#202020", "#303030"]
