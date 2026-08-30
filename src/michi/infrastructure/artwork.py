@@ -212,6 +212,15 @@ class ArtworkCache(ArtworkCachePort):
 
     # ------------------------------------------------------------- port API
 
+    def invalidate(self, album_key: str) -> None:
+        """P2-HIGH: persist a CONFIRMED negative verdict. The blob is NOT
+        deleted synchronously — content-addressed orphan cleanup is cache
+        GC outside this fix."""
+        if album_key not in self._manifest:
+            return
+        self._manifest.pop(album_key, None)
+        self._persist_manifest()
+
     def lookup(self, album_key: str) -> Path | None:
         """Persisted album_key → cached file, validated against the disk.
 

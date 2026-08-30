@@ -19,6 +19,7 @@ ONE serialized per-source scan authority:
 """
 
 import logging
+import os
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
@@ -31,7 +32,11 @@ from michi.application.library_port import (
     LibrarySourceScannerPort,
 )
 from michi.application.library_service import LibraryService
-from michi.application.ports import MetadataExtractorPort, ScanCancelled
+from michi.application.ports import (
+    MetadataExtractionError,
+    MetadataExtractorPort,
+    ScanCancelled,
+)
 from michi.domain.library import TrackMetadata, TrackRef
 from michi.domain.library_catalog import (
     LibrarySource,
@@ -79,6 +84,15 @@ class SourceScanOutcome:
         return self.unchanged + self.modified + self.added + self.relinked
 
 
+class _SameRootRetiredError(Exception):
+    """Internal signal: the exact root belongs to a RETIRED Source — the
+    caller must reactivate the SAME SourceId instead of creating a new one."""
+
+    def __init__(self, source_id: str) -> None:
+        super().__init__(source_id)
+        self.source_id = source_id
+
+
 class SourceOverlapError(ValueError):
     """Adding a source whose root contains (or is contained by) an existing
     source root — typed conflict; never silently index nested roots."""
@@ -120,6 +134,7 @@ class SourceScanCoordinator:
         media_cache=None,
         metadata_extractor: MetadataExtractorPort | None = None,
         index=None,
+        artwork_refresh=None,
     ) -> None:
         self._library = library
         self._catalog = catalog
@@ -127,6 +142,8 @@ class SourceScanCoordinator:
         self._media_cache = media_cache
         self._metadata_extractor = metadata_extractor
         self._index = index
+        # P1/PERF-LIB-12: async artwork refresh (owner-gated, worker-probed).
+        self._artwork_refresh = artwork_refresh
         self._observations: dict[str, SourceAvailability] = {}
         # P1-04: small in-memory source-record cache (never one SQLite query
         # per TrackId at scale); refreshed on every production mutation.
@@ -220,31 +237,80 @@ class SourceScanCoordinator:
 
     # -------------------------------------------------------------- sources
 
-    def add_source(self, display_name: str, root_path: str) -> LibrarySource:
-        """Add a new ACTIVE source with a typed overlap conflict check
-        (M6-EXT-R4 §65): an existing root containing the new root (or vice
-        versa) is rejected — /Music and /Music/Classical are never indexed
-        as independent roots."""
-        root = Path(root_path)
-        existing_sources = self._catalog.load_sources()
+    @staticmethod
+    def _normalize_source_root(
+        raw: str,
+        *,
+        require_existing: bool,
+    ) -> Path:
+        """P1-LIB-10 ONE root canonicalization for NEW add/relocate
+        mutations: expand user syntax, require absolute, normalize
+        lexically. Never mutates legacy persisted records."""
+        root = Path(raw).expanduser()
+        if not root.is_absolute():
+            raise ValueError("music source root must be absolute")
+        root = Path(os.path.normpath(str(root)))
+        if require_existing:
+            if not root.exists():
+                raise ValueError(f"music source root does not exist: {root}")
+            if not root.is_dir():
+                raise ValueError(f"music source root is not a directory: {root}")
+        return root
+
+    @staticmethod
+    def _physical_evidence(root: Path) -> Path | None:
+        """Resolved physical path used ONLY as overlap evidence; falls back
+        to lexical when resolution is unavailable — never fabricated."""
+        try:
+            return root.resolve(strict=False)
+        except (OSError, RuntimeError):
+            return None
+
+    @classmethod
+    def _roots_overlap(cls, a: Path, b: Path) -> bool:
+        """Lexical overlap OR resolvable physical overlap (P1-LIB-10): a
+        symlink alias of an existing configured root is a typed conflict."""
+        try:
+            if a.is_relative_to(b) or b.is_relative_to(a):
+                return True
+        except ValueError:
+            pass
+        physical_a = cls._physical_evidence(a)
+        physical_b = cls._physical_evidence(b)
+        if physical_a is not None and physical_b is not None:
+            try:
+                if physical_a.is_relative_to(physical_b) or physical_b.is_relative_to(
+                    physical_a
+                ):
+                    return True
+            except ValueError:
+                pass
+        return False
+
+    def _ensure_no_overlap(self, root: Path, existing_sources) -> None:
         for existing in existing_sources:
             existing_root = Path(existing.root_path)
             if root == existing_root:
                 if existing.lifecycle is SourceLifecycle.RETIRED:
                     # P1-D: exact same root → reactivate the SAME SourceId.
-                    return self.reactivate_source(existing.library_source_id)
-                raise SourceOverlapError(f"source root already configured: {root_path}")
-            try:
-                overlaps = root.is_relative_to(
-                    existing_root
-                ) or existing_root.is_relative_to(root)
-            except ValueError:
-                overlaps = False
-            if overlaps:
+                    raise _SameRootRetiredError(existing.library_source_id)
+                raise SourceOverlapError(f"source root already configured: {root}")
+            if self._roots_overlap(root, existing_root):
                 raise SourceOverlapError(
-                    f"source root {root_path} overlaps existing "
-                    f"source {existing.root_path}"
+                    f"source root {root} overlaps existing source {existing.root_path}"
                 )
+
+    def add_source(self, display_name: str, root_path: str) -> LibrarySource:
+        """Add a new ACTIVE source with a typed overlap conflict check
+        (M6-EXT-R4 §65 + P1-LIB-10): relative roots are rejected and
+        lexical OR physical (alias) overlap is a typed conflict."""
+        root = self._normalize_source_root(root_path, require_existing=True)
+        existing_sources = self._catalog.load_sources()
+        try:
+            self._ensure_no_overlap(root, existing_sources)
+        except _SameRootRetiredError as retired:
+            # P1-D: exact same root → reactivate the SAME SourceId.
+            return self.reactivate_source(retired.source_id)
         source = LibrarySource(
             library_source_id=new_library_source_id(),
             display_name=display_name.strip() or root.name or "Music",
@@ -292,21 +358,11 @@ class SourceScanCoordinator:
         returns it. It NEVER scans, enumerates, extracts metadata,
         reconciles the catalog or publishes state — the caller decides when
         (and whether) a reconciliation scan runs."""
-        root = Path(new_root)
-        if not root.exists():
-            raise ValueError(f"source root does not exist: {new_root}")
-        if not root.is_dir():
-            raise ValueError(f"source root is not a directory: {new_root}")
+        root = self._normalize_source_root(new_root, require_existing=True)
         for other in self._catalog.load_sources():
             if other.library_source_id == source_id:
                 continue
-            try:
-                overlaps = Path(new_root).is_relative_to(Path(other.root_path)) or Path(
-                    other.root_path
-                ).is_relative_to(Path(new_root))
-            except ValueError:
-                overlaps = False
-            if overlaps:
+            if self._roots_overlap(root, Path(other.root_path)):
                 raise SourceOverlapError(
                     f"new root {new_root} overlaps existing source {other.root_path}"
                 )
@@ -386,7 +442,7 @@ class SourceScanCoordinator:
         # Frozen legacy mocks replace compute_source_reconciliation with a
         # pre-epoch signature — detect support ONCE and degrade gracefully
         # (the real production method always supports the new kwargs).
-        compute_accepts_epoch = self._compute_accepts_epoch_kwargs()
+        compute_kwargs = self._compute_supported_kwargs()
 
         def work(progress, token, report):
             # P1-05: the WORKER computes facts only — it never mutates
@@ -398,7 +454,13 @@ class SourceScanCoordinator:
             progress.processed = 0
             progress.total = 0
             report()
-            discovered = self._scanner.discover(source)
+            # CONCURRENCY-LIB-03A: the productive walk is cooperatively
+            # cancellable (legacy fakes inherit the plain-discover default).
+            discover = getattr(self._scanner, "discover_cancellable", None)
+            if discover is not None:
+                discovered = discover(source, token=token)
+            else:
+                discovered = self._scanner.discover(source)
             progress.phase = "RECONCILING"
             progress.total = len(discovered)
             progress.processed = 0
@@ -413,18 +475,24 @@ class SourceScanCoordinator:
                 progress.processed += 1
                 report()
 
-            if compute_accepts_epoch:
-                return self.compute_source_reconciliation(
-                    source,
-                    discovered,
-                    token=token,
-                    source_config_epoch=captured_epoch,
-                    on_item_started=on_item_started,
-                    on_item_completed=on_item_completed,
-                )
-            # Legacy mock compatibility (frozen evidence): the wrapper
-            # resolves the CURRENT epoch itself via the optional default.
-            return self.compute_source_reconciliation(source, discovered, token=token)
+            def on_phase_change(phase, total):
+                progress.phase = phase
+                progress.processed = 0
+                progress.total = total
+                report()
+
+            kwargs = {}
+            if "source_config_epoch" in compute_kwargs:
+                kwargs["source_config_epoch"] = captured_epoch
+            if "on_item_started" in compute_kwargs:
+                kwargs["on_item_started"] = on_item_started
+            if "on_item_completed" in compute_kwargs:
+                kwargs["on_item_completed"] = on_item_completed
+            if "on_phase_change" in compute_kwargs:
+                kwargs["on_phase_change"] = on_phase_change
+            return self.compute_source_reconciliation(
+                source, discovered, token=token, **kwargs
+            )
 
         pipeline.submit(generation, work, on_progress, on_done)
 
@@ -513,19 +581,18 @@ class SourceScanCoordinator:
             and current.enabled
         )
 
-    def _compute_accepts_epoch_kwargs(self) -> bool:
-        """TRUE FINAL FREEZE P1-01 compatibility seam: production code
-        always supports the epoch kwargs; frozen legacy mocks that wrap
-        compute with the old signature keep working unchanged."""
+    def _compute_supported_kwargs(self) -> frozenset[str]:
+        """Compatibility seam: frozen legacy mocks wrap compute with older
+        signatures; production always supports the full set. Each optional
+        kwarg is feature-detected individually."""
         try:
             import inspect
 
-            return (
-                "source_config_epoch"
-                in inspect.signature(self.compute_source_reconciliation).parameters
+            return frozenset(
+                inspect.signature(self.compute_source_reconciliation).parameters
             )
         except (TypeError, ValueError):
-            return False
+            return frozenset()
 
     def _current_source_record(self, source_id: str) -> LibrarySource | None:
         """AUTHORITATIVE commit-boundary lookup (never the stale cache as
@@ -677,6 +744,7 @@ class SourceScanCoordinator:
         source_config_epoch: int | None = None,
         on_item_started=None,
         on_item_completed=None,
+        on_phase_change=None,
     ) -> "SourceReconciliationPlan":
         """PURE-ish compute phase: reads catalog/caches, builds the full
         reconciliation plan. NO durable writes (worker-safe).
@@ -699,6 +767,7 @@ class SourceScanCoordinator:
             source_config_epoch=source_config_epoch,
             on_item_started=on_item_started,
             on_item_completed=on_item_completed,
+            on_phase_change=on_phase_change,
         )
 
     def commit_source_reconciliation(
@@ -750,9 +819,15 @@ class SourceScanCoordinator:
             degraded = True
             logger.warning("media cache degraded (rebuildable): %s", exc)
         # PUBLICATION PHASE — the authority already changed; never pretend
-        # otherwise on a publication hiccup.
+        # otherwise on a publication hiccup. P1/PERF-LIB-12: structural
+        # publication is CACHE-ONLY (no ArtworkProvider I/O on the owner
+        # thread); the async artwork refresh re-probes the provider.
         try:
-            self._library.apply_source_tracks(source.library_source_id, plan.refs)
+            self._library.apply_source_tracks(
+                source.library_source_id, plan.refs, cache_only=True
+            )
+            if self._artwork_refresh is not None:
+                self._artwork_refresh.schedule()
             if plan.new_track_ids:
                 self._library.note_new_track_ids(tuple(plan.new_track_ids))
         except Exception as exc:  # noqa: BLE001 - publication is derived
@@ -772,6 +847,7 @@ class SourceScanCoordinator:
         source_config_epoch: int,
         on_item_started=None,
         on_item_completed=None,
+        on_phase_change=None,
     ) -> "SourceReconciliationPlan":
         known_by_path = {
             media.relative_path: media
@@ -812,21 +888,31 @@ class SourceScanCoordinator:
                     availability=MediaAvailability.MISSING,
                 )
 
-        # PHASE 2 — bounded relink candidates: fresh-MISSING media grouped
-        # by cached (device_id, inode) observation. Auto-relink fires ONLY
-        # when EXACTLY ONE candidate matches; 0 or >1 candidates (hardlink
-        # ambiguity) become a NEW identity and the old media stays MISSING.
-        relink_candidates: dict[tuple[int, int], list[MediaFileRecord]] = {}
+        # PHASE 2 — STRONG relink evidence (P1-LIB-09): (device_id,
+        # inode, file_size, mtime_ns). Only non-zero usable physical IDs
+        # participate. A normal rename/move preserves all four facts;
+        # inode reuse changes size/mtime and is therefore rejected.
+        missing_candidates_by_evidence: dict[tuple, list[MediaFileRecord]] = {}
         for media in missing_updates.values():
             cached = cache.get(media.media_file_id)
             if cached is None or not cached[2] or not cached[3]:
                 continue  # no usable relocation evidence
-            key = (cached[2], cached[3])
-            relink_candidates.setdefault(key, []).append(media)
+            evidence = (cached[2], cached[3], cached[0], cached[1])
+            missing_candidates_by_evidence.setdefault(evidence, []).append(media)
 
         # PHASE 3 — discovered items reconcile against known/missing state.
         index_upserts: list[_IndexEntry] = []
         cache_upserts: list[tuple] = []
+        # P1-LIB-09: pre-group ALL discovered paths by physical evidence so
+        # the 1↔1 guard sees the FULL destination set (a second hardlink
+        # discovered later must invalidate the first one's relink too).
+        discovered_by_evidence: dict[tuple, list] = {}
+        for item in discovered:
+            if item.device_id and item.inode:
+                discovered_by_evidence.setdefault(
+                    (item.device_id, item.inode, item.file_size, item.mtime_ns),
+                    [],
+                ).append(item)
         for item in discovered:
             if token is not None and token.cancelled:
                 raise ScanCancelled()
@@ -858,14 +944,30 @@ class SourceScanCoordinator:
                     else:
                         outcome = _bump(outcome, TrackScanDelta.MODIFIED)
             else:
-                # CASE B: new relative path → bounded relink candidate.
-                key = (item.device_id, item.inode)
+                # CASE B: new relative path → STRONG 1↔1 relink evidence.
+                # Legal ONLY when exactly ONE missing candidate AND exactly
+                # ONE discovered path share the same evidence tuple —
+                # otherwise (inode reuse, hardlink destination ambiguity)
+                # a NEW identity is allocated and the old media stays
+                # MISSING. Conservative false-negative > false-positive
+                # identity merge.
+                evidence = (
+                    item.device_id,
+                    item.inode,
+                    item.file_size,
+                    item.mtime_ns,
+                )
                 candidates = (
-                    relink_candidates.get(key)
+                    missing_candidates_by_evidence.get(evidence)
                     if item.device_id and item.inode
                     else None
                 )
-                if candidates is not None and len(candidates) == 1:
+                discovered_count = len(discovered_by_evidence.get(evidence, ()))
+                if (
+                    candidates is not None
+                    and len(candidates) == 1
+                    and discovered_count == 1
+                ):
                     # EXACT unique same-source move (§16): preserve ids.
                     candidate = candidates[0]
                     media_id = candidate.media_file_id
@@ -928,7 +1030,13 @@ class SourceScanCoordinator:
             raise ScanCancelled()
 
         # PHASE 4 — persist the fresh MISSING records and project them.
+        # CONCURRENCY-LIB-03B: truthful MARKING_MISSING phase with
+        # per-item cancellation and progress.
+        if on_phase_change is not None:
+            on_phase_change("MARKING_MISSING", len(missing_updates))
         for media in missing_updates.values():
+            if token is not None and token.cancelled:
+                raise ScanCancelled()
             upsert_media.append(media)
             outcome = _bump(outcome, TrackScanDelta.MISSING)
             refs.append(
@@ -941,6 +1049,8 @@ class SourceScanCoordinator:
                     availability=MediaAvailability.MISSING,
                 )
             )
+            if on_item_completed is not None:
+                on_item_completed(media)
 
         return SourceReconciliationPlan(
             source_snapshot=source,
@@ -955,13 +1065,20 @@ class SourceScanCoordinator:
         )
 
     def _extract_meta(self, path: Path) -> TrackMetadata:
+        """P1-LIB-08 FAIL-CLOSED metadata: a typed filesystem failure
+        (MetadataExtractionError) is NEVER converted into a fabricated
+        success that could be cached under the new fingerprint. The
+        infrastructure extractor already owns the "readable but untagged"
+        fallback; the coordinator preserves the distinction."""
         if self._metadata_extractor is None:
             return TrackMetadata(title=path.stem)
         try:
             return self._metadata_extractor.extract(path)
-        except Exception as exc:  # extractor contract never raises, seal
-            logger.warning("metadata extraction failed for %s: %s", path, exc)
-            return TrackMetadata(title=path.stem)
+        except MetadataExtractionError:
+            raise
+        except Exception:
+            logger.exception("metadata extractor contract violation for %s", path)
+            raise
 
     def _build_ref(
         self,

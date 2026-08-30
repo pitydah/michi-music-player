@@ -187,6 +187,18 @@ class LibrarySourceScannerPort(ABC):
         The returned relative paths are validated (never absolute, never
         ``..``-escaping, always inside the source)."""
 
+    def discover_cancellable(
+        self,
+        source: LibrarySource,
+        token=None,
+        on_entry=None,
+    ) -> tuple[DiscoveredMediaFile, ...]:
+        """OPTIONAL cooperative-cancellation capability (CONCURRENCY-LIB-03):
+        default = plain discover for legacy fakes. The production scanner
+        overrides this with a cancellable walk."""
+        del token, on_entry
+        return self.discover(source)
+
     @abstractmethod
     def validate_file(self, path: Path) -> None:
         """Raise LibraryFilesystemError when ``path`` is not a playable file."""

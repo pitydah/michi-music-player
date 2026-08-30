@@ -1345,7 +1345,11 @@ class TestF42AdapterContract:
         # (prepare_cover/prepare_hero/delete_managed_asset) and PlaylistsPort
         # declares the atomic save_playlists_with_navigation capability.
         # The frozen AudioPort and audio transport semantics remain unchanged.
-        "src/michi/application/ports.py": "644730a22f6aa2cc",
+        # M6-EXT-R4 LIBRARY PRODUCT CONVERGENCE SEAL (P2-HIGH) authorized
+        # reopening: ArtworkCachePort gained the backward-compatible
+        # persistent `invalidate` operation for confirmed negative artwork
+        # verdicts. Audio/transport semantics untouched.
+        "src/michi/application/ports.py": "4ddfeeee4df0dcb4",
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.

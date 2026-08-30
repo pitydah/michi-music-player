@@ -70,6 +70,15 @@ class ArtworkCachePort(ABC):
         del album_key
         return None
 
+    def invalidate(self, album_key: str) -> None:
+        """P2-HIGH: persist a CONFIRMED negative artwork verdict. Called
+        ONLY when an ONLINE observation conclusively says "no artwork" —
+        never on offline hydration (absence of a probe is not a negative).
+        Default no-op keeps fakes compatible; the production cache
+        overrides this."""
+        del album_key
+        return None
+
 
 class LibraryPrefsPort(ABC):
     """Favorites/history/recently-added persistence (best effort)."""

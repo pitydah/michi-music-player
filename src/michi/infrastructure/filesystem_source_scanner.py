@@ -58,8 +58,19 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
                 "source root is not a directory",
             )
 
+        return self._collect_discovered(root, None, None)
+
+    def _collect_discovered(
+        self, root, token, on_entry
+    ) -> tuple[DiscoveredMediaFile, ...]:
         discovered: list[DiscoveredMediaFile] = []
         for path in self._walk(root):
+            if token is not None and token.cancelled:
+                from michi.application.ports import ScanCancelled
+
+                raise ScanCancelled()
+            if on_entry is not None:
+                on_entry(path)
             if path.suffix.lower() not in _MEDIA_SUFFIXES:
                 continue
             try:
@@ -88,22 +99,42 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
 
     def _walk(self, root: Path):
         """Deterministic bounded walk: sorted entries, directory symlinks
-        skipped (never followed), OSError on a subdirectory logged + skipped."""
+        skipped (never followed).
+
+        P1-LIB-07 FAIL-CLOSED enumeration: an unreadable nested directory
+        ABORTS the whole source observation (typed LibraryFilesystemError)
+        instead of silently skipping it. A skipped subtree would make the
+        coordinator fabricate authoritative MISSING records for its known
+        children — false physical truth. FileNotFoundError is the ONLY
+        honest skip (a path vanished mid-walk)."""
         stack = [root]
         while stack:
             directory = stack.pop()
             try:
                 entries = sorted(directory.iterdir(), key=lambda p: p.name)
+            except FileNotFoundError:
+                continue  # a path vanished during the walk: honest skip
+            except PermissionError as exc:
+                raise LibraryFilesystemError(
+                    LibraryDiagnosticCode.ACCESS_FAILURE, directory, str(exc)
+                ) from exc
             except OSError as exc:
-                logger.warning(
-                    "source walk skipped unreadable directory %s: %s", directory, exc
-                )
-                continue
+                raise LibraryFilesystemError(
+                    LibraryDiagnosticCode.IO_FAILURE, directory, str(exc)
+                ) from exc
             for entry in entries:
                 try:
                     is_dir = entry.is_dir()  # follows symlinks for the CHECK
-                except OSError:
-                    continue
+                except FileNotFoundError:
+                    continue  # vanished mid-walk
+                except PermissionError as exc:
+                    raise LibraryFilesystemError(
+                        LibraryDiagnosticCode.ACCESS_FAILURE, entry, str(exc)
+                    ) from exc
+                except OSError as exc:
+                    raise LibraryFilesystemError(
+                        LibraryDiagnosticCode.IO_FAILURE, entry, str(exc)
+                    ) from exc
                 if is_dir:
                     if entry.is_symlink():
                         # Contract: never follow directory symlinks.
@@ -111,6 +142,23 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
                     stack.append(entry)
                     continue
                 yield entry
+
+    def discover_cancellable(
+        self,
+        source: LibrarySource,
+        token=None,
+        on_entry=None,
+    ) -> tuple[DiscoveredMediaFile, ...]:
+        """P1/CONCURRENCY-LIB-03A: the productive async walk is
+        cooperatively cancellable — between directory/entry operations the
+        token is checked so Cancel during a huge tree walk stops promptly.
+
+        A subclass that overrides ``discover`` (frozen legacy fakes raise
+        typed errors there) keeps its override authoritative: the override
+        is respected without cancellation rather than bypassed."""
+        if type(self).discover is not FilesystemLibrarySourceScanner.discover:
+            return self.discover(source)
+        return self._collect_discovered(Path(source.root_path), token, on_entry)
 
     def validate_file(self, path: Path) -> None:
         """TD-013 shared gate: raise LibraryFilesystemError when the file is
