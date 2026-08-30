@@ -1,11 +1,12 @@
 """Playlists KILLCRITIC hardening (post PR #222) — P0 integrity tests."""
 
+from pathlib import Path
 
 import pytest
 
 from michi.application.playlist_service import PlaylistService
 from michi.application.ports import PlaylistsPort
-from michi.domain.playlist import PlaylistNavigationState
+from michi.domain.playlist import Playlist, PlaylistNavigationState
 
 
 class _MemoryPort(PlaylistsPort):
@@ -154,3 +155,125 @@ class TestTruthfulPersistence:
             playlists_port=SqlitePlaylistsRepository(tmp_path / "michi.db")
         )
         assert reloaded.get_playlist(playlist.playlist_id).track_paths == ("/a.flac",)
+
+
+def _png_at(tmp_path, name, color):
+    """Real decodable PNG (the asset store validates actual decodability)."""
+    from PySide6.QtGui import QImage
+
+    img = QImage(64, 64, QImage.Format_RGB32)
+    img.fill(color)
+    path = tmp_path / name
+    assert img.save(str(path), "PNG")
+    return path
+
+
+class TestArtworkTransactions:
+    """P0-03: SQLite failure must never alter the committed image."""
+
+    class _FailingPort(_MemoryPort):
+        def __init__(self, fail_after=999):
+            super().__init__()
+            self.saved = 0
+            self.fail_after = fail_after
+
+        def save(self, playlists):
+            self.saved += 1
+            if self.saved > self.fail_after:
+                from michi.domain.playlist import PlaylistPersistenceError
+
+                raise PlaylistPersistenceError("injected DB failure")
+            self._items = tuple(playlists)
+
+    def _service(self, tmp_path, fail_after=999):
+        from michi.infrastructure.playlist_artwork_store import (
+            FilesystemPlaylistArtworkStore,
+        )
+
+        service = PlaylistService(
+            playlists_port=self._FailingPort(fail_after),
+            artwork_store=FilesystemPlaylistArtworkStore(tmp_path / "managed"),
+        )
+        service._playlists = [Playlist(playlist_id="p1", name="Mix")]
+        service._persisted = tuple(service._playlists)
+        return service
+
+    def test_cover_db_failure_preserves_old_bytes(self, tmp_path):
+        from michi.domain.playlist import PlaylistPersistenceError
+
+        service = self._service(tmp_path, fail_after=1)
+        old_src = _png_at(tmp_path, "old.png", 0xFF581C)
+        assert service.set_custom_cover("p1", old_src) is not None
+        old_path = service.get_playlist("p1").custom_cover_path
+        assert Path(old_path).read_bytes() == Path(old_src).read_bytes()
+
+        port = service._port
+        port.fail_after = 0
+        new_src = _png_at(tmp_path, "new.png", 0xCB0543)
+        with pytest.raises(PlaylistPersistenceError):
+            service.set_custom_cover("p1", new_src)
+        assert service.get_playlist("p1").custom_cover_path == old_path
+        assert Path(old_path).read_bytes() == Path(old_src).read_bytes()
+
+    def test_hero_db_failure_preserves_old_bytes(self, tmp_path):
+        from michi.domain.playlist import PlaylistPersistenceError
+
+        service = self._service(tmp_path, fail_after=1)
+        old_src = _png_at(tmp_path, "old_hero.png", 0xFF811B)
+        assert service.set_custom_hero_image("p1", old_src) is not None
+        old_path = service.get_playlist("p1").appearance.hero_image_path
+        assert Path(old_path).read_bytes() == Path(old_src).read_bytes()
+
+        port = service._port
+        port.fail_after = 0
+        new_src = _png_at(tmp_path, "new_hero.png", 0xF51D51)
+        with pytest.raises(PlaylistPersistenceError):
+            service.set_custom_hero_image("p1", new_src)
+        assert service.get_playlist("p1").appearance.hero_image_path == old_path
+        assert Path(old_path).read_bytes() == Path(old_src).read_bytes()
+
+    def test_candidate_exists_before_database_save(self, tmp_path):
+        seen = {}
+
+        class _InspectingPort(_MemoryPort):
+            def save(self, playlists):
+                candidate = playlists[0].custom_cover_path
+                seen["exists"] = Path(candidate).is_file() if candidate else False
+                self._items = tuple(playlists)
+
+        service = PlaylistService(
+            playlists_port=_InspectingPort(),
+            artwork_store=__import__(
+                "michi.infrastructure.playlist_artwork_store",
+                fromlist=["FilesystemPlaylistArtworkStore"],
+            ).FilesystemPlaylistArtworkStore(tmp_path / "managed"),
+        )
+        service._playlists = [Playlist(playlist_id="p1", name="Mix")]
+        service._persisted = tuple(service._playlists)
+        src = _png_at(tmp_path, "cover.png", 0xFF581C)
+        service.set_custom_cover("p1", src)
+        assert seen.get("exists") is True
+
+    def test_post_commit_cleanup_failure_keeps_new_reference(self, tmp_path):
+        service = self._service(tmp_path)
+        old_src = _png_at(tmp_path, "old.png", 0xFF581C)
+        assert service.set_custom_cover("p1", old_src) is not None
+        old_path = service.get_playlist("p1").custom_cover_path
+
+        def broken_delete(managed_path):
+            raise OSError("cleanup failure")
+
+        store = service._artwork_store
+        store.delete_managed_asset = broken_delete
+        new_src = _png_at(tmp_path, "new2.png", 0xCB0543)
+        assert service.set_custom_cover("p1", new_src) is not None
+        new_path = service.get_playlist("p1").custom_cover_path
+        assert Path(new_path).read_bytes() == Path(new_src).read_bytes()
+        assert new_path != old_path
+
+    def test_garbage_image_rejected(self, tmp_path):
+        service = self._service(tmp_path)
+        garbage = tmp_path / "garbage.jpg"
+        garbage.write_bytes(b"this is not an image" * 10)
+        assert service.set_custom_cover("p1", garbage) is None
+        assert service.set_custom_hero_image("p1", garbage) is None

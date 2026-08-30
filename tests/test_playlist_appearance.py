@@ -141,13 +141,22 @@ def test_malformed_appearance_degrades_field_by_field_without_writeback(
     assert stored == payload
 
 
+def _real_png(tmp_path: Path, name: str) -> Path:
+    """Real decodable PNG — required since asset validation (P1-01)."""
+    from PySide6.QtGui import QImage
+
+    img = QImage(64, 64, QImage.Format_RGB32)
+    img.fill(0xFF581C)
+    path = tmp_path / name
+    assert img.save(str(path), "PNG")
+    return path
+
+
 def test_cover_and_hero_workflow_survives_restart_and_resets(tmp_path: Path) -> None:
     db_path = tmp_path / "michi.db"
     store = FilesystemPlaylistArtworkStore(tmp_path / "managed")
-    cover_source = tmp_path / "cover.jpg"
-    hero_source = tmp_path / "hero.png"
-    cover_source.write_bytes(b"cover")
-    hero_source.write_bytes(b"hero")
+    cover_source = _real_png(tmp_path, "cover.png")
+    hero_source = _real_png(tmp_path, "hero.png")
     repository = SqlitePlaylistsRepository(db_path)
     service = PlaylistService(playlists_port=repository, artwork_store=store)
     playlist = service.create_playlist("Restart")
@@ -204,17 +213,17 @@ def test_unrelated_mutations_preserve_appearance_metadata() -> None:
 
 def test_cover_and_hero_assets_are_independent_and_cleaned(tmp_path: Path) -> None:
     store = FilesystemPlaylistArtworkStore(tmp_path / "managed")
-    cover_source = tmp_path / "cover.png"
-    hero_source = tmp_path / "hero.webp"
-    cover_source.write_bytes(b"cover")
-    hero_source.write_bytes(b"hero")
+    cover_source = _real_png(tmp_path, "cover.png")
+    hero_source = _real_png(tmp_path, "hero.png")
     port = MemoryPlaylistsPort([Playlist(playlist_id="p1", name="Visual")])
     service = PlaylistService(playlists_port=port, artwork_store=store)
 
     cover_path = Path(service.set_custom_cover("p1", cover_source))
     hero_path = Path(service.set_custom_hero_image("p1", hero_source))
-    assert cover_path.name == "playlist_p1.png"
-    assert hero_path.name == "playlist_p1_hero.webp"
+    assert cover_path.name.startswith("playlist_p1_")
+    assert cover_path.suffix == ".png"
+    assert hero_path.name.startswith("playlist_p1_hero_")
+    assert hero_path.suffix == ".png"
 
     service.remove_custom_cover("p1")
     current = service.get_playlist("p1")

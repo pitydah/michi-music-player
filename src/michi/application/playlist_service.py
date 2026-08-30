@@ -165,9 +165,7 @@ class PlaylistService:
         index = self._find_by_id(playlist_id)
         if index < 0:
             return
-        if self._artwork_store is not None:
-            self._artwork_store.delete_cover(playlist_id)
-            self._artwork_store.delete_hero(playlist_id)
+        doomed = self._playlists[index]
         del self._playlists[index]
         # Prune navigation metadata (never dangling ids).
         self._nav = PlaylistNavigationState(
@@ -179,6 +177,17 @@ class PlaylistService:
         if self._on_playlist_deleted is not None:
             self._on_playlist_deleted(playlist_id)
         self._notify()
+        # DB COMMIT CONFIRMED — retire managed assets best-effort.
+        if self._artwork_store is not None:
+            for asset_path in (
+                doomed.custom_cover_path,
+                doomed.appearance.hero_image_path,
+            ):
+                if asset_path:
+                    try:
+                        self._artwork_store.delete_managed_asset(asset_path)
+                    except OSError as exc:
+                        logger.warning("playlist teardown cleanup debt: %s", exc)
 
     def rename_playlist(self, playlist_id: str, new_name: str) -> None:
         index = self._find_by_id(playlist_id)
@@ -266,29 +275,52 @@ class PlaylistService:
         index = self._find_by_id(playlist_id)
         if index < 0:
             return None
-        managed_path = str(cover_path)
-        if self._artwork_store is not None:
-            stored = self._artwork_store.store_cover(playlist_id, cover_path)
-            if stored is None:
-                return None
-            managed_path = stored
         playlist = self._playlists[index]
-        self._playlists[index] = replace(playlist, custom_cover_path=managed_path)
-        self._persist()
+        old_path = playlist.custom_cover_path
+        candidate = str(cover_path)
+        if self._artwork_store is not None:
+            prepared = self._artwork_store.prepare_cover(playlist_id, cover_path)
+            if prepared is None:
+                return None
+            candidate = prepared
+        if candidate == old_path:
+            return old_path
+        self._playlists[index] = replace(playlist, custom_cover_path=candidate)
+        try:
+            self._persist()
+        except PlaylistPersistenceError:
+            # P0-03: candidate never became durable — remove it best-effort.
+            if self._artwork_store is not None:
+                try:
+                    self._artwork_store.delete_managed_asset(candidate)
+                except OSError as exc:
+                    logger.warning("orphan candidate cleanup debt: %s", exc)
+            raise
+        # COMMIT CONFIRMED: retire the superseded old asset best-effort.
+        if self._artwork_store is not None and old_path and old_path != candidate:
+            try:
+                self._artwork_store.delete_managed_asset(old_path)
+            except OSError as exc:
+                logger.warning("old asset cleanup debt: %s", exc)
         self._notify()
-        return managed_path
+        return candidate
 
     def remove_custom_cover(self, playlist_id: str) -> None:
-        """Removes custom cover, deletes managed file and reverts to auto mosaic."""
+        """Removes custom cover, reverts to auto mosaic, deletes the managed
+        file AFTER the database commit (P0-03: never a dangling reference)."""
         index = self._find_by_id(playlist_id)
         if index < 0:
             return
-        if self._artwork_store is not None:
-            self._artwork_store.delete_cover(playlist_id)
         playlist = self._playlists[index]
+        old_path = playlist.custom_cover_path
         self._playlists[index] = replace(playlist, custom_cover_path="")
         self._persist()
         self._notify()
+        if self._artwork_store is not None and old_path:
+            try:
+                self._artwork_store.delete_managed_asset(old_path)
+            except OSError as exc:
+                logger.warning("old cover cleanup debt: %s", exc)
 
     # ------------------------------------------------------------------
     # Per-playlist hero appearance. Cover and hero mutations are strictly
@@ -307,16 +339,19 @@ class PlaylistService:
         self._notify()
         return True
 
-    def _delete_hero_asset(self, playlist_id: str) -> None:
-        if self._artwork_store is not None:
-            self._artwork_store.delete_hero(playlist_id)
+    def _delete_hero_asset(self, playlist_id: str) -> str:
+        """Returns the path to retire AFTER the DB commit (P0-03)."""
+        playlist = self.get_playlist(playlist_id)
+        if playlist is None or self._artwork_store is None:
+            return ""
+        return playlist.appearance.hero_image_path
 
     def set_hero_auto(self, playlist_id: str) -> bool:
         playlist = self.get_playlist(playlist_id)
         if playlist is None:
             return False
-        self._delete_hero_asset(playlist_id)
-        return self._replace_appearance(
+        old_path = self._delete_hero_asset(playlist_id)
+        result = self._replace_appearance(
             playlist_id,
             replace(
                 playlist.appearance,
@@ -324,14 +359,20 @@ class PlaylistService:
                 hero_image_path="",
             ),
         )
+        if result and self._artwork_store is not None and old_path:
+            try:
+                self._artwork_store.delete_managed_asset(old_path)
+            except OSError as exc:
+                logger.warning("old hero cleanup debt: %s", exc)
+        return result
 
     def set_hero_solid(self, playlist_id: str, color: str) -> bool:
         playlist = self.get_playlist(playlist_id)
         if playlist is None:
             return False
         canonical = _canonical_color(color)
-        self._delete_hero_asset(playlist_id)
-        return self._replace_appearance(
+        old_path = self._delete_hero_asset(playlist_id)
+        result = self._replace_appearance(
             playlist_id,
             replace(
                 playlist.appearance,
@@ -340,6 +381,12 @@ class PlaylistService:
                 hero_image_path="",
             ),
         )
+        if result and self._artwork_store is not None and old_path:
+            try:
+                self._artwork_store.delete_managed_asset(old_path)
+            except OSError as exc:
+                logger.warning("old hero cleanup debt: %s", exc)
+        return result
 
     def set_hero_gradient(
         self, playlist_id: str, colors: tuple[str, ...], angle: float
@@ -354,8 +401,8 @@ class PlaylistService:
         if not math.isfinite(numeric_angle):
             raise ValueError("hero gradient angle must be finite")
         normalized_angle = numeric_angle % 360.0
-        self._delete_hero_asset(playlist_id)
-        return self._replace_appearance(
+        old_path = self._delete_hero_asset(playlist_id)
+        result = self._replace_appearance(
             playlist_id,
             replace(
                 playlist.appearance,
@@ -365,6 +412,12 @@ class PlaylistService:
                 hero_image_path="",
             ),
         )
+        if result and self._artwork_store is not None and old_path:
+            try:
+                self._artwork_store.delete_managed_asset(old_path)
+            except OSError as exc:
+                logger.warning("old hero cleanup debt: %s", exc)
+        return result
 
     def set_custom_hero_image(
         self, playlist_id: str, image_path: Path | str
@@ -372,19 +425,35 @@ class PlaylistService:
         playlist = self.get_playlist(playlist_id)
         if playlist is None:
             return None
-        managed_path = str(image_path)
+        old_path = playlist.appearance.hero_image_path
+        candidate = str(image_path)
         if self._artwork_store is not None:
-            stored = self._artwork_store.store_hero(playlist_id, image_path)
-            if stored is None:
+            prepared = self._artwork_store.prepare_hero(playlist_id, image_path)
+            if prepared is None:
                 return None
-            managed_path = stored
+            candidate = prepared
+        if candidate == old_path:
+            return old_path
         appearance = replace(
             playlist.appearance,
             hero_mode=PlaylistHeroMode.IMAGE,
-            hero_image_path=managed_path,
+            hero_image_path=candidate,
         )
-        self._replace_appearance(playlist_id, appearance)
-        return managed_path
+        try:
+            self._replace_appearance(playlist_id, appearance)
+        except PlaylistPersistenceError:
+            if self._artwork_store is not None:
+                try:
+                    self._artwork_store.delete_managed_asset(candidate)
+                except OSError as exc:
+                    logger.warning("orphan candidate cleanup debt: %s", exc)
+            raise
+        if self._artwork_store is not None and old_path and old_path != candidate:
+            try:
+                self._artwork_store.delete_managed_asset(old_path)
+            except OSError as exc:
+                logger.warning("old hero cleanup debt: %s", exc)
+        return candidate
 
     def pin_playlist(self, playlist_id: str) -> None:
         if self._find_by_id(playlist_id) < 0:
