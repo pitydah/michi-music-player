@@ -415,7 +415,9 @@ class TestLibraryPageOrchestration:
             obj.setProperty("currentTab", "albums")
             _process_events()
             popup = obj.findChild(QObject, "libraryViewOptionsPopup")
+            switcher = obj.findChild(QObject, "albumViewSwitcher")
             assert popup is not None
+            assert switcher is not None
 
             cases = (
                 (
@@ -475,7 +477,12 @@ class TestLibraryPageOrchestration:
             )
 
             for mode, section, key, value, name, prop, default in cases:
-                obj.setProperty("albumMode", mode)
+                assert QMetaObject.invokeMethod(
+                    switcher,
+                    "selected",
+                    Qt.DirectConnection,
+                    Q_ARG(str, mode),
+                )
                 _process_events()
                 active = obj.findChild(QObject, name)
                 assert active is not None
