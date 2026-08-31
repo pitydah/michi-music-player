@@ -90,21 +90,45 @@ MichiGlassSurface {
                     Layout.fillHeight: true
 
                     MichiText {
+                        objectName: "scanStatusText"
                         anchors.centerIn: parent
                         width: parent.width
-                        text: root.scanning
-                            ? library.scanProcessed + " / " + library.scanTotal
-                            : root.libraryAvailable && library.searchActive
-                                ? library.searchTotalCount === 0
-                                    ? qsTr("No results")
-                                    : qsTr("%1 results").arg(library.searchTotalCount)
-                                : ""
+                        visible: root.scanning
+                        text: root.libraryAvailable
+                            ? library.scanStatus + " · " + library.scanProcessed
+                                + " / " + library.scanTotal : ""
                         role: "technical"
                         technical: true
                         horizontalAlignment: Text.AlignRight
-                        color: root.libraryAvailable && library.searchActive
-                            && library.searchTotalCount === 0
-                            ? MichiPalette.warning : MichiPalette.textMuted
+                        color: MichiPalette.auroraCyan
+                        elide: Text.ElideRight
+                    }
+
+                    MichiText {
+                        objectName: "searchNoResultsText"
+                        anchors.centerIn: parent
+                        width: parent.width
+                        visible: !root.scanning && root.libraryAvailable
+                            && library.searchActive && library.searchTotalCount === 0
+                        text: qsTr("No results")
+                        role: "technical"
+                        technical: true
+                        horizontalAlignment: Text.AlignRight
+                        color: MichiPalette.warning
+                        elide: Text.ElideRight
+                    }
+
+                    MichiText {
+                        anchors.centerIn: parent
+                        width: parent.width
+                        visible: !root.scanning && root.libraryAvailable
+                            && library.searchActive && library.searchTotalCount > 0
+                        text: root.libraryAvailable
+                            ? qsTr("%1 results").arg(library.searchTotalCount) : ""
+                        role: "technical"
+                        technical: true
+                        horizontalAlignment: Text.AlignRight
+                        color: MichiPalette.textMuted
                         elide: Text.ElideRight
                     }
                 }

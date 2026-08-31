@@ -115,6 +115,19 @@ class AlbumTechnicalState(Enum):
 
 
 @dataclass(frozen=True)
+class AlbumTechnicalFacts:
+    """Derived, non-persisted facts for album presentation and filtering."""
+
+    state: AlbumTechnicalState = AlbumTechnicalState.UNKNOWN
+    codecs: tuple[str, ...] = ()
+    max_sample_rate_hz: int = 0
+    max_bit_depth: int = 0
+    max_channels: int = 0
+    contains_dsd: bool = False
+    contains_high_resolution: bool = False
+
+
+@dataclass(frozen=True)
 class LibraryDiagnostic:
     code: LibraryDiagnosticCode
     message: str
@@ -150,13 +163,6 @@ class AlbumRef:
     genres: tuple[str, ...] = ()
     composers: tuple[str, ...] = ()
     technical_summary: str = ""
-    technical_state: AlbumTechnicalState = AlbumTechnicalState.UNKNOWN
-    codecs: tuple[str, ...] = ()
-    max_sample_rate_hz: int = 0
-    max_bit_depth: int = 0
-    max_channels: int = 0
-    contains_dsd: bool = False
-    contains_high_resolution: bool = False
 
 
 @dataclass(frozen=True)
@@ -329,6 +335,30 @@ def _album_technical_summary(tracks) -> str:
     return ""
 
 
+def build_album_technical_facts(tracks) -> AlbumTechnicalFacts:
+    """Build structured facts without changing the frozen ``AlbumRef`` carrier."""
+    members = tuple(tracks)
+    contains_dsd = any(
+        track.codec.casefold().startswith(("dsd", "dsf", "dff")) for track in members
+    )
+    return AlbumTechnicalFacts(
+        state=_album_technical_state(members),
+        codecs=tuple(
+            sorted({track.codec for track in members if track.codec}, key=str.casefold)
+        ),
+        max_sample_rate_hz=max((track.sample_rate_hz for track in members), default=0),
+        max_bit_depth=max((track.bit_depth for track in members), default=0),
+        max_channels=max((track.channels for track in members), default=0),
+        contains_dsd=contains_dsd,
+        # Factual browse criterion only. This does not claim bit-perfect output,
+        # perceptual quality, or DAC capability.
+        contains_high_resolution=contains_dsd
+        or any(
+            track.bit_depth >= 24 or track.sample_rate_hz >= 96_000 for track in members
+        ),
+    )
+
+
 def build_music_model(tracks) -> MusicModel:
     """Derive albums and artists from tracks (pure, deterministic by key).
 
@@ -413,23 +443,6 @@ def build_music_model(tracks) -> MusicModel:
         # first member in input order (input-order-independent determinism).
         entry["year"] = next((t.year for t in tracks_sorted if t.year > 0), 0)
         entry["technical_summary"] = _album_technical_summary(tracks_sorted)
-        entry["technical_state"] = _album_technical_state(tracks_sorted)
-        entry["codecs"] = tuple(
-            sorted({t.codec for t in tracks_sorted if t.codec}, key=str.casefold)
-        )
-        entry["max_sample_rate_hz"] = max(
-            (t.sample_rate_hz for t in tracks_sorted), default=0
-        )
-        entry["max_bit_depth"] = max((t.bit_depth for t in tracks_sorted), default=0)
-        entry["max_channels"] = max((t.channels for t in tracks_sorted), default=0)
-        entry["contains_dsd"] = any(
-            t.codec.casefold().startswith(("dsd", "dsf", "dff")) for t in tracks_sorted
-        )
-        # Factual browse criterion only. This does not claim bit-perfect output,
-        # perceptual quality, or DAC capability.
-        entry["contains_high_resolution"] = entry["contains_dsd"] or any(
-            t.bit_depth >= 24 or t.sample_rate_hz >= 96_000 for t in tracks_sorted
-        )
         entry["disc_count"] = (
             len({t.disc_number for t in entry["tracks"] if t.disc_number > 0}) or 1
         )
@@ -461,13 +474,6 @@ def build_music_model(tracks) -> MusicModel:
                     genres=entry["genres"],
                     composers=entry["composers"],
                     technical_summary=entry["technical_summary"],
-                    technical_state=entry["technical_state"],
-                    codecs=entry["codecs"],
-                    max_sample_rate_hz=entry["max_sample_rate_hz"],
-                    max_bit_depth=entry["max_bit_depth"],
-                    max_channels=entry["max_channels"],
-                    contains_dsd=entry["contains_dsd"],
-                    contains_high_resolution=entry["contains_high_resolution"],
                 )
                 for entry in album_entries.values()
             ),

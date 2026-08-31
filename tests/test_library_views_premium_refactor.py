@@ -3,7 +3,11 @@ from pathlib import Path
 import pytest
 
 from michi.application.settings_service import SettingsService
-from michi.domain.library import TrackRef, build_music_model
+from michi.domain.library import (
+    TrackRef,
+    build_album_technical_facts,
+    build_music_model,
+)
 from michi.domain.settings import (
     GalleryViewPreferences,
     LibraryViewPreferences,
@@ -97,10 +101,11 @@ def test_album_technical_facts_are_structured_not_parsed_from_labels() -> None:
         ),
     ]
     album = build_music_model(tracks).albums[0]
-    assert album.codecs == ("FLAC",)
-    assert album.max_sample_rate_hz == 96_000
-    assert album.max_bit_depth == 24
-    assert album.contains_high_resolution is True
+    facts = build_album_technical_facts(tracks)
+    assert facts.codecs == ("FLAC",)
+    assert facts.max_sample_rate_hz == 96_000
+    assert facts.max_bit_depth == 24
+    assert facts.contains_high_resolution is True
     assert album.technical_summary == "Mixed formats"
 
 

@@ -11,6 +11,7 @@ from michi.domain.library import (
     ArtistRef,
     LibraryScanStatus,
     TrackRef,
+    build_album_technical_facts,
     build_timeline_projection,
     make_artist_key,
 )
@@ -168,8 +169,11 @@ class LibraryBridge(QObject):
     def _get_artist_count(self) -> int:
         return len(self._service.state.artists)
 
-    def _album_row(self, album: AlbumRef) -> dict:
+    def _album_row(self, album: AlbumRef, tracks_by_path: dict[Path, TrackRef]) -> dict:
         """Canonical album presentation row shared by every Library view."""
+        facts = build_album_technical_facts(
+            tracks_by_path[path] for path in album.track_paths if path in tracks_by_path
+        )
         return {
             "key": album.key,
             "title": album.title,
@@ -182,14 +186,14 @@ class LibraryBridge(QObject):
             "hasArtwork": album.has_artwork,
             "artworkPath": self._service.artwork_path_for(album.key) or "",
             "year": album.year,
-            "technicalState": album.technical_state.name.lower(),
+            "technicalState": facts.state.name.lower(),
             "technicalSummary": album.technical_summary,
-            "codecs": list(album.codecs),
-            "maxSampleRateHz": album.max_sample_rate_hz,
-            "maxBitDepth": album.max_bit_depth,
-            "maxChannels": album.max_channels,
-            "containsDsd": album.contains_dsd,
-            "containsHighResolution": album.contains_high_resolution,
+            "codecs": list(facts.codecs),
+            "maxSampleRateHz": facts.max_sample_rate_hz,
+            "maxBitDepth": facts.max_bit_depth,
+            "maxChannels": facts.max_channels,
+            "containsDsd": facts.contains_dsd,
+            "containsHighResolution": facts.contains_high_resolution,
         }
 
     def _album_rows(self) -> list[dict]:
@@ -200,7 +204,10 @@ class LibraryBridge(QObject):
             if self._service.state.search_active
             else self._service.state.albums
         )
-        return [self._album_row(album) for album in albums]
+        tracks_by_path = {
+            track.file_path: track for track in self._service.state.tracks
+        }
+        return [self._album_row(album, tracks_by_path) for album in albums]
 
     def _get_timeline_albums(self) -> list[dict]:
         # M7: the timeline receives the SAME filtered album set as the other
@@ -212,11 +219,14 @@ class LibraryBridge(QObject):
         )
         rows = []
         albums_by_key = {a.key: a for a in albums}
+        tracks_by_path = {
+            track.file_path: track for track in self._service.state.tracks
+        }
         for projection in build_timeline_projection(albums):
             album = albums_by_key.get(projection.album_key)
             if album is None:
                 continue
-            row = self._album_row(album)
+            row = self._album_row(album, tracks_by_path)
             row["decade"] = projection.decade
             rows.append(row)
         return rows
