@@ -222,15 +222,34 @@ def render(output: Path) -> list[dict]:
                     for item in visual_descendants(active)
                     if item.objectName() == "albumGridCell"
                 ]
-                cell_x_positions = {
-                    round(float(cell.mapToItem(active, QPointF()).x()), 1)
-                    for cell in cells
-                }
+                cell_records = []
+                for cell in cells:
+                    position = cell.mapToItem(active, QPointF())
+                    cell_records.append(
+                        {
+                            "index": int(cell.property("index")),
+                            "x": round(float(position.x()), 1),
+                            "y": round(float(position.y()), 1),
+                            "width": round(float(cell.property("width")), 1),
+                            "height": round(float(cell.property("height")), 1),
+                        }
+                    )
+                on_screen = [
+                    cell
+                    for cell in cell_records
+                    if cell["x"] < active_width
+                    and cell["x"] + cell["width"] > 0
+                    and cell["y"] < float(active.property("height"))
+                    and cell["y"] + cell["height"] > 0
+                ]
+                cell_x_positions = {cell["x"] for cell in on_screen}
                 if len(cell_x_positions) < 3:
                     raise RuntimeError(
                         "Gallery delegates did not occupy three distinct columns: "
-                        f"columns={columns}, cellWidth={active.property('cellWidth')}, "
-                        f"cells={len(cells)}, x={sorted(cell_x_positions)}"
+                        f"columns={columns}, flow={active.property('flow')}, "
+                        f"cellWidth={active.property('cellWidth')}, "
+                        f"content={active.property('contentWidth')}x"
+                        f"{active.property('contentHeight')}, cells={cell_records[:12]}"
                     )
 
             if state == "selected-and-focus":
