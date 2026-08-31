@@ -47,7 +47,7 @@ ListView {
     Accessible.name: qsTr("Album timeline")
     Accessible.description: qsTr("Albums grouped chronologically")
 
-    function restoredIndex() {
+    function resolveTimelineBrowseIndex() {
         if (browseState && browseState.currentKey) {
             for (var i = 0; i < albumModel.length; ++i)
                 if (albumModel[i].key === browseState.currentKey) return i
@@ -55,7 +55,7 @@ ListView {
         return browseState ? browseState.chronologyIndex : -1
     }
     Component.onCompleted: if (browseState) Qt.callLater(function() {
-        albumTimeline.currentIndex = restoredIndex()
+        albumTimeline.currentIndex = albumTimeline.resolveTimelineBrowseIndex()
         albumTimeline.contentY = browseState.chronologyContentY
     })
     onContentYChanged: if (browseState) browseState.chronologyContentY = contentY

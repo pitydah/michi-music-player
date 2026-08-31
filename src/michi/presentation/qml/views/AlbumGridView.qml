@@ -54,7 +54,7 @@ GridView {
     Accessible.name: qsTr("Albums in grid view")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open an album")
 
-    function restoredIndex(fallback) {
+    function resolveBrowseIndex(fallback) {
         if (browseState && browseState.currentKey) {
             for (var i = 0; i < albumModel.length; ++i)
                 if (albumModel[i].key === browseState.currentKey) return i
@@ -62,7 +62,7 @@ GridView {
         return fallback
     }
     Component.onCompleted: if (browseState) Qt.callLater(function() {
-        albumGrid.currentIndex = restoredIndex(browseState.galleryIndex)
+        albumGrid.currentIndex = albumGrid.resolveBrowseIndex(browseState.galleryIndex)
         albumGrid.contentY = browseState.galleryContentY
     })
     onContentYChanged: if (browseState) browseState.galleryContentY = contentY
