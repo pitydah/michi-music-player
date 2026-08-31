@@ -13,8 +13,9 @@ MichiGlassSurface {
     property bool hasCachedKnowledge: false
     property bool showCachedContext: true
     property bool onlineEnabled: false
-    readonly property color albumAccent: album && album.artworkPalette
-        ? album.artworkPalette.accentSafe : MichiPalette.auroraCyan
+    AlbumPaletteBinding { id: paletteBinding; album: root.album }
+    readonly property color albumAccent: paletteBinding.value.accentSafe
+        || MichiPalette.auroraCyan
     signal openRequested(string key)
     signal playRequested(string key)
     signal enrichmentRequested(string key)

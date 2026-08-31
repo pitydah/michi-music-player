@@ -24,6 +24,7 @@ PathView {
             Math.max(176, height - 156))))
     readonly property var currentAlbum: count > 0 && currentIndex >= 0
         ? albumModel[Math.min(currentIndex, albumModel.length - 1)] : null
+    AlbumPaletteBinding { id: currentPalette; album: albumsPath.currentAlbum }
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -68,9 +69,8 @@ PathView {
         anchors.fill: parent
         z: -100
         visible: albumsPath.ambientColor
-        color: albumsPath.currentAlbum && albumsPath.currentAlbum.artworkPalette
-            ? albumsPath.currentAlbum.artworkPalette.dominant
-            : MichiSemanticColors.auroraCyanSurface
+        color: currentPalette.value.dominant
+            || MichiSemanticColors.auroraCyanSurface
         opacity: 0.34
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
@@ -151,10 +151,7 @@ PathView {
         required property int index
         required property var modelData
         property var album: modelData
-        onAlbumChanged: {
-            if (album && typeof library.request_album_palette === "function")
-                library.request_album_palette(album.key)
-        }
+        AlbumPaletteBinding { album: pathAlbum.album }
         width: albumsPath.coverSize
         height: albumsPath.coverSize + 48
         scale: PathView.isCurrentItem ? 1.0
@@ -193,6 +190,13 @@ PathView {
             sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
             fallbackText: modelData.title
             requestedSize: Math.round(width * Screen.devicePixelRatio)
+        }
+
+        MichiFocusRing {
+            anchors.fill: artwork
+            visualFocus: (pathAlbum.activeFocus
+                || (albumsPath.activeFocus && PathView.isCurrentItem))
+                && MichiAccessibility.keyboardMode
         }
 
         // Ground reflection / floor shadow under cover
@@ -259,9 +263,7 @@ PathView {
         elevation: "elevated"
         contentPadding: MichiSpacing.md
         accented: true
-        accentColor: albumsPath.currentAlbum && albumsPath.currentAlbum.artworkPalette
-            ? albumsPath.currentAlbum.artworkPalette.accentSafe
-            : MichiPalette.auroraCyan
+        accentColor: currentPalette.value.accentSafe || MichiPalette.auroraCyan
         materialRole: MichiMaterialRole.elevated
         visible: albumsPath.currentAlbum !== null
         z: 1000

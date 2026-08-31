@@ -126,6 +126,7 @@ GridView {
             height: parent.height - albumGrid.cardGap
             album: albumCell.modelData
             selected: albumCell.current
+            collectionFocus: albumGrid.activeFocus && albumCell.current
             metadataLevel: albumGrid.metadataLevel
             quickActionsVisible: albumGrid.quickActions
             precisionMetadata: albumGrid.precisionMetadata

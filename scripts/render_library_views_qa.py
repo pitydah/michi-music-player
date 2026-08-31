@@ -8,21 +8,25 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import tempfile
 from pathlib import Path
 
 from PySide6.QtCore import (
     Property,
     QCoreApplication,
     QEvent,
+    QMetaObject,
     QObject,
+    QPoint,
     QPointF,
+    Qt,
     QtMsgType,
     QUrl,
     Signal,
     Slot,
     qInstallMessageHandler,
 )
-from PySide6.QtGui import QColor, QGuiApplication
+from PySide6.QtGui import QColor, QGuiApplication, QImage, QPainter
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickWindow
 from PySide6.QtTest import QTest
@@ -54,11 +58,15 @@ import "../theme"
 LibraryView {
     property bool qaReducedMotion: false
     property bool qaHighContrast: false
+    property bool qaPrecisionMode: false
     onQaReducedMotionChanged: MichiAccessibility.reducedMotion = qaReducedMotion
     onQaHighContrastChanged: MichiAccessibility.highContrast = qaHighContrast
+    onQaPrecisionModeChanged: MichiThemeState.precisionMode = qaPrecisionMode
+    function qaEnableKeyboardMode() { MichiAccessibility.noteKeyboard() }
     Component.onCompleted: {
         MichiAccessibility.reducedMotion = qaReducedMotion
         MichiAccessibility.highContrast = qaHighContrast
+        MichiThemeState.precisionMode = qaPrecisionMode
     }
 }
 """
@@ -72,21 +80,61 @@ def review_frames() -> tuple[tuple[int, int, str], ...]:
     )
 
 
-def album_rows(count: int = 72) -> list[dict]:
+def create_artwork_fixtures(directory: Path) -> tuple[str, ...]:
+    """Create asymmetric covers so crop/stretch defects are visible."""
+    colors = (
+        ("#163548", "#62B5D7"),
+        ("#462A25", "#D78B62"),
+        ("#29213E", "#A88BD5"),
+    )
+    paths = []
+    for index, (background, accent) in enumerate(colors):
+        image = QImage(420, 280, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(QColor(background))
+        painter = QPainter(image)
+        painter.fillRect(0, 0, 105, 280, QColor(accent))
+        painter.fillRect(315, 0, 105, 280, QColor("#09141E"))
+        painter.setBrush(QColor("#F4EEE8"))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(156, 86, 108, 108)
+        painter.end()
+        path = directory / f"qa-cover-{index}.png"
+        if not image.save(str(path)):
+            raise RuntimeError(f"could not create QA artwork fixture {path}")
+        paths.append(str(path))
+    return tuple(paths)
+
+
+def album_rows(
+    count: int = 72,
+    *,
+    state: str = "idle",
+    artwork_paths: tuple[str, ...] = (),
+) -> list[dict]:
     palettes = (
         ("#1D4561", "#163548", "#09141E", "#62B5D7"),
         ("#67402E", "#462A25", "#170D0D", "#D78B62"),
         ("#3D315C", "#29213E", "#0E0A16", "#A88BD5"),
     )
+    if state == "empty":
+        return []
     rows = []
     for index in range(count):
         dominant, secondary, backplane, accent = palettes[index % len(palettes)]
         year = 1958 + index % 68
+        artwork_path = ""
+        if state != "missing-artwork" and artwork_paths and index % 5 != 4:
+            artwork_path = artwork_paths[index % len(artwork_paths)]
+        title = f"Nocturne Archive {index + 1:02d}"
+        artist = f"Michi Ensemble {index % 11 + 1}"
+        if state == "long-metadata":
+            title += " — The Complete Restored Sessions and Alternate Takes"
+            artist += " with the Transpacific Chamber Orchestra Collective"
         rows.append(
             {
                 "key": f"qa::{index}",
-                "title": f"Nocturne Archive {index + 1:02d}",
-                "artist": f"Michi Ensemble {index % 11 + 1}",
+                "title": title,
+                "artist": artist,
                 "year": year,
                 "decade": f"{year // 10 * 10}s",
                 "trackCount": 7 + index % 8,
@@ -94,8 +142,8 @@ def album_rows(count: int = 72) -> list[dict]:
                 "discCount": 2 if index % 9 == 0 else 1,
                 "genres": ["Electronic", "Ambient"] if index % 3 == 0 else ["Jazz"],
                 "composers": [],
-                "hasArtwork": False,
-                "artworkPath": "",
+                "hasArtwork": bool(artwork_path),
+                "artworkPath": artwork_path,
                 "technicalState": "mixed" if index % 5 == 0 else "homogeneous",
                 "technicalSummary": "FLAC · 24-bit · 96 kHz",
                 "codecs": ["FLAC"],
@@ -131,10 +179,12 @@ def visual_descendants(item):
 
 class QaLibrary(QObject):
     library_changed = Signal()
+    albumPaletteChanged = Signal(str, "QVariantMap")
 
-    def __init__(self) -> None:
+    def __init__(self, state: str, artwork_paths: tuple[str, ...]) -> None:
         super().__init__()
-        self._albums = album_rows()
+        self._state = state
+        self._albums = album_rows(state=state, artwork_paths=artwork_paths)
 
     @Property(list, notify=library_changed)
     def albums(self):
@@ -150,8 +200,14 @@ class QaLibrary(QObject):
     currentDir = Property(str, lambda self: "/qa/music", notify=library_changed)
     selectedAlbumKey = Property(str, lambda self: "", notify=library_changed)
     selectedArtistKey = Property(str, lambda self: "", notify=library_changed)
-    searchActive = Property(bool, lambda self: False, notify=library_changed)
-    searchQuery = Property(str, lambda self: "", notify=library_changed)
+    searchActive = Property(
+        bool, lambda self: self._state == "search-active", notify=library_changed
+    )
+    searchQuery = Property(
+        str,
+        lambda self: "nocturne" if self._state == "search-active" else "",
+        notify=library_changed,
+    )
     searchAlbumCount = Property(
         int, lambda self: len(self._albums), notify=library_changed
     )
@@ -174,11 +230,13 @@ class QaLibrary(QObject):
     albumArtwork = Property(str, lambda self: "", notify=library_changed)
     albumTracks = Property(list, lambda self: [], notify=library_changed)
     albumPresentation = Property(
-        "QVariantMap", lambda self: self._albums[0], notify=library_changed
+        "QVariantMap",
+        lambda self: self._albums[0] if self._albums else {},
+        notify=library_changed,
     )
     albumArtworkPalette = Property(
         "QVariantMap",
-        lambda self: self._albums[0]["artworkPalette"],
+        lambda self: self._albums[0]["artworkPalette"] if self._albums else {},
         notify=library_changed,
     )
 
@@ -270,7 +328,6 @@ def knowledge_row() -> dict:
 
 def render(output: Path) -> list[dict]:
     app = QGuiApplication.instance() or QGuiApplication([])
-    library = QaLibrary()
     enrichment = QaEnrichment()
     playlists = QaPlaylists()
     results = []
@@ -287,21 +344,24 @@ def render(output: Path) -> list[dict]:
 
     previous_handler = qInstallMessageHandler(message_handler)
     try:
-        for view_name, mode in MODES.items():
-            for width, height, state in review_frames():
-                _render_frame(
-                    app,
-                    library,
-                    enrichment,
-                    playlists,
-                    output,
-                    results,
-                    view_name,
-                    mode,
-                    width,
-                    height,
-                    state,
-                )
+        with tempfile.TemporaryDirectory(prefix="michi-library-qa-") as temp_dir:
+            artwork_paths = create_artwork_fixtures(Path(temp_dir))
+            for view_name, mode in MODES.items():
+                for width, height, state in review_frames():
+                    library = QaLibrary(state, artwork_paths)
+                    _render_frame(
+                        app,
+                        library,
+                        enrichment,
+                        playlists,
+                        output,
+                        results,
+                        view_name,
+                        mode,
+                        width,
+                        height,
+                        state,
+                    )
     finally:
         qInstallMessageHandler(previous_handler)
     if messages:
@@ -352,6 +412,7 @@ def _render_frame(
                 "height": height,
                 "qaReducedMotion": state == "reduced-motion",
                 "qaHighContrast": state == "high-contrast",
+                "qaPrecisionMode": state == "precision-on",
             }
         )
         if root is None:
@@ -363,6 +424,11 @@ def _render_frame(
         window.show()
         QTest.qWait(160)
 
+        albums_host = root.findChild(QObject, "albumsView")
+        if state == "filter-active" and albums_host is not None:
+            albums_host.setProperty("albumFilterMode", "hires")
+            QCoreApplication.processEvents()
+
         active = root.findChild(QObject, ACTIVE_NAMES[mode])
         if active is None:
             raise RuntimeError(f"{view_name} did not instantiate {ACTIVE_NAMES[mode]}")
@@ -371,7 +437,7 @@ def _render_frame(
             raise RuntimeError(
                 f"{view_name} collapsed to {active_width}px at {width}px"
             )
-        if mode == "grid" and width >= 1440:
+        if mode == "grid" and width >= 1440 and state != "empty":
             columns = int(active.property("columnCount"))
             if columns < 3:
                 raise RuntimeError(
@@ -413,14 +479,61 @@ def _render_frame(
                     f"{active.property('contentHeight')}, cells={cell_records[:12]}"
                 )
 
-        if state == "selected-and-focus":
-            active.setFocus(True)
+        if state in {"selected", "keyboard-focus"}:
+            if mode == "magazine":
+                active.setProperty("rovingIndex", 1)
+                magazine_list = root.findChild(QObject, "albumMagazineList")
+                if magazine_list is not None:
+                    magazine_list.setProperty("currentIndex", 1)
+            elif active.property("currentIndex") is not None:
+                active.setProperty("currentIndex", 1)
+
+        if state == "keyboard-focus":
+            QMetaObject.invokeMethod(root, "qaEnableKeyboardMode", Qt.DirectConnection)
+            focus_target = (
+                root.findChild(QObject, "albumMagazineList")
+                if mode == "magazine"
+                else active
+            )
+            if focus_target is None:
+                raise RuntimeError(f"{view_name} has no keyboard focus target")
+            focus_target.setFocus(True, Qt.FocusReason.TabFocusReason)
+            QCoreApplication.processEvents()
+            if window.activeFocusItem() is None:
+                raise RuntimeError(
+                    f"{view_name} did not establish active keyboard focus"
+                )
+        elif state == "hover":
+            hover_target = (
+                active.property("currentItem")
+                if mode != "magazine" and active.property("currentItem") is not None
+                else active
+            )
+            target_width = float(hover_target.property("width"))
+            target_height = float(hover_target.property("height"))
+            point = hover_target.mapToItem(
+                window.contentItem(),
+                QPointF(
+                    min(target_width * 0.5, 220),
+                    min(target_height * 0.5, 110),
+                ),
+            )
+            QTest.mouseMove(window, QPoint(round(point.x()), round(point.y())))
         elif state == "view-options-open":
             popup = root.findChild(QObject, "libraryViewOptionsPopup")
             if popup is None:
                 raise RuntimeError("View Options popup not found")
             popup.setProperty("visible", True)
-        QTest.qWait(260 if state == "view-options-open" else 80)
+        QTest.qWait(260 if state in {"view-options-open", "hover"} else 80)
+
+        if state == "empty" and library.albumCount != 0:
+            raise RuntimeError("empty QA state still contains albums")
+        if (
+            state == "filter-active"
+            and active.property("count") is not None
+            and int(active.property("count")) >= library.albumCount
+        ):
+            raise RuntimeError("active filter did not reduce the album collection")
 
         target = output / f"{view_name}--{width}x{height}--{state}.png"
         image = window.grabWindow()

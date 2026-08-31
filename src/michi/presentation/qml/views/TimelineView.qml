@@ -143,10 +143,7 @@ ListView {
         required property int index
         required property var modelData
         property var album: modelData
-        onAlbumChanged: {
-            if (album && typeof library.request_album_palette === "function")
-                library.request_album_palette(album.key)
-        }
+        AlbumPaletteBinding { id: paletteBinding; album: timelineRow.album }
         readonly property bool selected: ListView.isCurrentItem
         width: albumTimeline.width
         height: albumTimeline.densityMode === "compact" ? 58
@@ -170,7 +167,8 @@ ListView {
                 ColorAnimation { duration: MichiMotion.micro }
             }
             MichiFocusRing {
-                visualFocus: timelineRow.activeFocus
+                visualFocus: (timelineRow.activeFocus
+                    || (albumTimeline.activeFocus && timelineRow.selected))
                     && MichiAccessibility.keyboardMode
             }
         }
@@ -190,8 +188,7 @@ ListView {
             height: width
             radius: width / 2
             color: timelineRow.selected
-                ? (modelData.artworkPalette
-                    ? modelData.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                ? (paletteBinding.value.accentSafe || MichiPalette.auroraCyan)
                 : MichiPalette.textMuted
             border.width: 2
             border.color: MichiPalette.obsidian

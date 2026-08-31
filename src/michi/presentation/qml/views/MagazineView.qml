@@ -24,6 +24,7 @@ Item {
     property string cachedAlbumKey: ""
     property bool showCachedContext: true
     readonly property var heroAlbum: albumModel.length > 0 ? albumModel[0] : null
+    AlbumPaletteBinding { id: heroPalette; album: root.heroAlbum }
     readonly property string heroLabel: !heroAlbum ? ""
         : heroAlbum.isRecentlyAdded ? qsTr("RECENTLY ADDED")
         : heroAlbum.isFavorite ? qsTr("FAVORITE FROM YOUR LIBRARY")
@@ -37,15 +38,6 @@ Item {
         ? albumModel.slice(7) : []
     readonly property var archiveRows: root.makeArchiveRows()
     property int rovingIndex: 0
-
-    function requestLeadPalettes() {
-        if (!albumModel || typeof library.request_album_palette !== "function")
-            return
-        for (var index = 0; index < Math.min(7, albumModel.length); ++index)
-            library.request_album_palette(albumModel[index].key)
-    }
-    Component.onCompleted: requestLeadPalettes()
-    onAlbumModelChanged: requestLeadPalettes()
 
     MichiMaterial {
         id: editorialMaterial
@@ -155,25 +147,21 @@ Item {
                 Layout.preferredHeight: root.informationRichness === "minimal"
                     ? 190 : root.informationRichness === "rich" ? 250 : 220
                 radius: MichiRadius.lg
-                color: root.heroAlbum && root.heroAlbum.artworkPalette
-                    ? root.heroAlbum.artworkPalette.backplane : MichiPalette.obsidianRaised
+                color: heroPalette.value.backplane || MichiPalette.obsidianRaised
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop {
                         position: 0
-                        color: root.heroAlbum && root.heroAlbum.artworkPalette
-                            ? root.heroAlbum.artworkPalette.dominant : MichiPalette.playlistHeroTop
+                        color: heroPalette.value.dominant || MichiPalette.playlistHeroTop
                     }
                     GradientStop {
                         position: 1
-                        color: root.heroAlbum && root.heroAlbum.artworkPalette
-                            ? root.heroAlbum.artworkPalette.backplane : MichiPalette.playlistHeroBottom
+                        color: heroPalette.value.backplane || MichiPalette.playlistHeroBottom
                     }
                 }
                 border.width: 1
                 border.color: root.rovingIndex === 0 && albumMagazine.activeFocus
-                    ? (root.heroAlbum && root.heroAlbum.artworkPalette
-                        ? root.heroAlbum.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                    ? (heroPalette.value.accentSafe || MichiPalette.auroraCyan)
                     : heroTap.pressed
                     ? MichiSemanticColors.auroraCyanBorder
                     : heroHover.hovered
@@ -208,8 +196,7 @@ Item {
                             text: root.heroLabel
                             role: "technical"
                             technical: true
-                            color: root.heroAlbum && root.heroAlbum.artworkPalette
-                                ? root.heroAlbum.artworkPalette.accentSafe : MichiPalette.auroraCyan
+                            color: heroPalette.value.accentSafe || MichiPalette.auroraCyan
                         }
 
                         MichiText {
@@ -255,8 +242,7 @@ Item {
                             text: root.heroAlbum ? root.heroAlbum.technicalSummary : ""
                             role: "technical"
                             technical: true
-                            color: root.heroAlbum && root.heroAlbum.artworkPalette
-                                ? root.heroAlbum.artworkPalette.accentSafe : MichiPalette.auroraCyan
+                            color: heroPalette.value.accentSafe || MichiPalette.auroraCyan
                             elide: Text.ElideRight
                         }
 
@@ -307,6 +293,10 @@ Item {
                         id: medFeature
                         required property int index
                         required property var modelData
+                        AlbumPaletteBinding {
+                            id: medPalette
+                            album: medFeature.modelData
+                        }
                         Layout.fillWidth: true
                         Layout.preferredHeight: 96
                         radius: MichiRadius.md
@@ -315,8 +305,7 @@ Item {
                         border.width: 1
                         border.color: root.rovingIndex === index + 1
                                 && albumMagazine.activeFocus
-                            ? (modelData.artworkPalette
-                                ? modelData.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                            ? (medPalette.value.accentSafe || MichiPalette.auroraCyan)
                             : medTap.pressed
                             ? MichiSemanticColors.auroraCyanBorder
                             : medHover.hovered
@@ -398,6 +387,10 @@ Item {
                         id: compactFeature
                         required property int index
                         required property var modelData
+                        AlbumPaletteBinding {
+                            id: compactPalette
+                            album: compactFeature.modelData
+                        }
                         Layout.fillWidth: true
                         Layout.preferredHeight: 64
                         radius: MichiRadius.md
@@ -406,8 +399,7 @@ Item {
                         border.width: 1
                         border.color: root.rovingIndex === index + 3
                                 && albumMagazine.activeFocus
-                            ? (modelData.artworkPalette
-                                ? modelData.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                            ? (compactPalette.value.accentSafe || MichiPalette.auroraCyan)
                             : compTap.pressed
                             ? MichiSemanticColors.auroraCyanBorder
                             : compHover.hovered
@@ -527,6 +519,7 @@ Item {
                     album: archiveDelegate.modelData
                     showTechnical: false
                     selected: root.rovingIndex === archiveDelegate.index + 7
+                    collectionFocus: albumMagazine.activeFocus && selected
                     onSelectedRequested: {
                         albumMagazine.currentIndex = archiveDelegate.index
                         root.selectEditorial(archiveDelegate.index + 7, album.key)
@@ -550,6 +543,7 @@ Item {
                             showTechnical: false
                             selected: root.rovingIndex
                                 === archiveDelegate.index * 2 + index + 7
+                            collectionFocus: albumMagazine.activeFocus && selected
                             onSelectedRequested: root.selectEditorial(
                                 archiveDelegate.index * 2 + index + 7, modelData.key)
                             onOpenRequested: library.select_album(modelData.key)
