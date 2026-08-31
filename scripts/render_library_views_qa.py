@@ -212,21 +212,24 @@ class QaLibrary(QObject):
 
 
 class QaEnrichment(QObject):
-    revision = Property(int, lambda self: 0)
-    onlineEnabled = Property(bool, lambda self: False)
-    activeKind = Property(str, lambda self: "")
-    state = Property(str, lambda self: "idle")
-    stateMessage = Property(str, lambda self: "")
-    busy = Property(bool, lambda self: False)
-    albumArtworkPath = Property(str, lambda self: "")
-    albumKnowledge = Property("QVariantMap", lambda self: knowledge_row())
-    albumHasKnowledge = Property(bool, lambda self: False)
-    albumAttributions = Property(list, lambda self: [])
-    reviewOpen = Property(bool, lambda self: False)
-    reviewKind = Property(str, lambda self: "")
-    reviewLoading = Property(bool, lambda self: False)
-    reviewError = Property(str, lambda self: "")
-    albumCandidates = Property(list, lambda self: [])
+    changed = Signal()
+    revision = Property(int, lambda self: 0, notify=changed)
+    onlineEnabled = Property(bool, lambda self: False, notify=changed)
+    activeKind = Property(str, lambda self: "", notify=changed)
+    state = Property(str, lambda self: "idle", notify=changed)
+    stateMessage = Property(str, lambda self: "", notify=changed)
+    busy = Property(bool, lambda self: False, notify=changed)
+    albumArtworkPath = Property(str, lambda self: "", notify=changed)
+    albumKnowledge = Property(
+        "QVariantMap", lambda self: knowledge_row(), notify=changed
+    )
+    albumHasKnowledge = Property(bool, lambda self: False, notify=changed)
+    albumAttributions = Property(list, lambda self: [], notify=changed)
+    reviewOpen = Property(bool, lambda self: False, notify=changed)
+    reviewKind = Property(str, lambda self: "", notify=changed)
+    reviewLoading = Property(bool, lambda self: False, notify=changed)
+    reviewError = Property(str, lambda self: "", notify=changed)
+    albumCandidates = Property(list, lambda self: [], notify=changed)
 
     @Slot(str, int, result="QVariantMap")
     def album(self, key, _revision):
@@ -246,7 +249,8 @@ class QaEnrichment(QObject):
 
 
 class QaPlaylists(QObject):
-    playlists = Property(list, lambda self: [])
+    changed = Signal()
+    playlists = Property(list, lambda self: [], notify=changed)
 
 
 def knowledge_row() -> dict:
