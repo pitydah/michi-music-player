@@ -97,11 +97,10 @@ def test_rows_activate_play_and_hide_actions_until_hover():
     # double-click model of the pre-M4-R1 branch was replaced).
     # PL-FINAL-14: el target es SIEMPRE el índice CANONICO (filter-safe).
     assert "onDoubleClicked" not in table
+    assert "if (trackItem.canInteract)" in table
     assert "root.playTrackRequested(trackItem.canonicalIndex)" in table
-    assert (
-        "Keys.onReturnPressed: root.playTrackRequested(trackItem.canonicalIndex)"
-        in table
-    )
+    assert "Keys.onReturnPressed: {" in table
+    assert "if (trackItem.canInteract)" in table
     # R3-09: reveal incluye el activeFocus de los propios controles.
     assert "opacity: actionsVisible ? 1 : 0" in table
     assert "favoriteButton.activeFocus || moreButton.activeFocus" in table
@@ -259,10 +258,8 @@ def test_keyboard_navigation_updates_visible_selection():
     assert "root.trackSelected(modelData.path)" in table
     # both keyboard paths (row keys + list keys) reproduce from the
     # CANONICAL index (PL-FINAL-14: filter-safe)
-    assert (
-        "Keys.onReturnPressed: root.playTrackRequested(trackItem.canonicalIndex)"
-        in table
-    )
+    assert "Keys.onReturnPressed: {" in table
+    assert "if (trackItem.canInteract)" in table
     assert "root.playTrackRequested(root.rows[currentIndex].canonicalIndex)" in table
 
 

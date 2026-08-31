@@ -122,7 +122,12 @@ Item {
                     NumberAnimation { duration: MichiMotion.page; easing.type: MichiMotion.outCubic }
                 }
                 playlistId: navigation.playlistId
-                onBackRequested: playlists.open_all_playlists()
+                onBackRequested: {
+                    // PL-FINAL-A02: salir del detalle limpia la búsqueda
+                    // local (estado transiente).
+                    playlists.set_playlist_search_query("")
+                    playlists.open_all_playlists()
+                }
                 onPlayRequested: playlists.play_selected_playlist()
                 onShuffleRequested: {
                     if (typeof playback !== "undefined" && playback)
@@ -142,13 +147,15 @@ Item {
                     descriptionField.text = description
                     descriptionDialog.open()
                 }
-                onRemoveTracksRequested: indices => {
-                    // PL-FINAL-15: batch remove — UNA transacción.
-                    var result = playlists.remove_tracks(indices)
+                onRemoveTracksRequested: paths => {
+                    // PL-FINAL-A01: batch remove por PATH IDENTITY — el
+                    // bridge resuelve posiciones del snapshot canónico.
+                    var result = playlists.remove_tracks_by_paths(paths)
                     if (result === "removed") {
-                        playlistDetail.checkedIndices = []
+                        playlistDetail.checkedTrackPaths = []
+                        playlistDetail.shiftAnchorPath = ""
                         playlistDetail.selectionMode = false
-                        window.showToast(qsTr("%n tracks removed", "", indices.length))
+                        window.showToast(qsTr("%n tracks removed", "", paths.length))
                     }
                     // "persistence_failed": connector reports exactly once.
                 }
@@ -349,13 +356,9 @@ Item {
         id: trackPicker
         objectName: "playlistTrackPicker"
         playlistId: ""
-        presentPaths: {
-            var rows = playlists.playlistTrackRows || []
-            var paths = []
-            for (var i = 0; i < rows.length; ++i)
-                paths.push(rows[i].path)
-            return paths
-        }
+        // PL-FINAL-A08: membership CANÓNICA — nunca la proyección filtrada
+        // por la búsqueda local del Detail.
+        presentPaths: playlists.selectedPlaylistTrackPaths || []
         onAddCompleted: (added, alreadyPresent) => {
             var message = qsTr("%n tracks added", "", added)
             if (alreadyPresent > 0)

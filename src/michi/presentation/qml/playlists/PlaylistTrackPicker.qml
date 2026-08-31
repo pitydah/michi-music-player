@@ -27,8 +27,28 @@ MichiDialog {
     property var selectedPaths: []  // paths nuevos seleccionados
     property string query: ""
     property var visibleRows: []
+    // PL-FINAL-A11: membership map O(1) — construido UNA vez por estado;
+    // nunca indexOf() repetido dentro de delegates con bibliotecas grandes.
+    property var presentMap: ({})
 
     signal addCompleted(int added, int alreadyPresent)
+
+    // PL-FINAL-A09: UNA sola entrada de toggle — mouse, checkbox, Space,
+    // Enter y Return comparten EXACTAMENTE la misma regla: un track ya
+    // presente NO es addable y jamás entra a selectedPaths.
+    function toggleIfAddable(path) {
+        if (root.presentMap[path])
+            return false
+        var i = root.selectedPaths.indexOf(path)
+        if (i === -1)
+            root.selectedPaths = root.selectedPaths.concat([path])
+        else {
+            var copy = root.selectedPaths.slice()
+            copy.splice(i, 1)
+            root.selectedPaths = copy
+        }
+        return true
+    }
 
     function _matches(row) {
         var q = root.query.trim().toLowerCase()
@@ -48,27 +68,25 @@ MichiDialog {
         root.visibleRows = out
     }
 
+    function _rebuildPresentMap() {
+        var map = {}
+        for (var i = 0; i < root.presentPaths.length; ++i)
+            map[root.presentPaths[i]] = true
+        root.presentMap = map
+    }
+
     function _isSelected(path) {
         return root.selectedPaths.indexOf(path) !== -1
     }
 
-    function _toggle(path) {
-        var i = root.selectedPaths.indexOf(path)
-        if (i === -1)
-            root.selectedPaths = root.selectedPaths.concat([path])
-        else {
-            var copy = root.selectedPaths.slice()
-            copy.splice(i, 1)
-            root.selectedPaths = copy
-        }
-    }
-
     function selectAllVisible() {
-        var sel = []
+        // PL-FINAL-A10: UNION — la selección existente NUNCA se destruye;
+        // solo se agregan los tracks visibles actuales addable (dedupe).
+        var sel = root.selectedPaths.slice()
         for (var i = 0; i < root.visibleRows.length; ++i) {
-            var row = root.visibleRows[i]
-            if (root.presentPaths.indexOf(row.path) === -1)
-                sel.push(row.path)
+            var path = root.visibleRows[i].path
+            if (!root.presentMap[path] && sel.indexOf(path) === -1)
+                sel.push(path)
         }
         root.selectedPaths = sel
     }
@@ -80,7 +98,7 @@ MichiDialog {
     function _newSelectionCount() {
         var count = 0
         for (var i = 0; i < root.selectedPaths.length; ++i) {
-            if (root.presentPaths.indexOf(root.selectedPaths[i]) === -1)
+            if (!root.presentMap[root.selectedPaths[i]])
                 ++count
         }
         return count
@@ -102,9 +120,11 @@ MichiDialog {
     onOpened: {
         root.query = ""
         root.selectedPaths = []
+        root._rebuildPresentMap()
         root._refresh()
         searchField.forceActiveFocus()
     }
+    onPresentPathsChanged: root._rebuildPresentMap()
 
     Connections {
         target: typeof library !== "undefined" ? library : null
@@ -183,7 +203,7 @@ MichiDialog {
                     Accessible.name: modelData.title + " — " + modelData.artist
 
                     readonly property bool alreadyPresent:
-                        root.presentPaths.indexOf(modelData.path) !== -1
+                        root.presentMap[modelData.path] === true
                     readonly property bool isChecked: root._isSelected(modelData.path)
 
                     contentItem: RowLayout {
@@ -196,7 +216,7 @@ MichiDialog {
                             checked: pickItem.isChecked
                             enabled: !pickItem.alreadyPresent
                             Accessible.name: qsTr("Select ") + modelData.title
-                            onToggled: root._toggle(modelData.path)
+                            onToggled: root.toggleIfAddable(modelData.path)
                         }
 
                         Artwork {
@@ -248,14 +268,14 @@ MichiDialog {
                     }
 
                     onClicked: {
-                        if (!pickItem.alreadyPresent)
-                            root._toggle(modelData.path)
+                        // PL-FINAL-A09: misma regla que checkbox/keys.
+                        root.toggleIfAddable(modelData.path)
                     }
-                    Keys.onReturnPressed: root._toggle(modelData.path)
-                    Keys.onEnterPressed: root._toggle(modelData.path)
+                    Keys.onReturnPressed: root.toggleIfAddable(modelData.path)
+                    Keys.onEnterPressed: root.toggleIfAddable(modelData.path)
                     Keys.onSpacePressed: {
                         if (!pickItem.alreadyPresent)
-                            root._toggle(modelData.path)
+                            root.toggleIfAddable(modelData.path)
                     }
                 }
             }

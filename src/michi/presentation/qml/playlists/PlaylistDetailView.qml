@@ -19,9 +19,15 @@ Item {
     property string playlistId: ""
     property string selectedTrackPath: ""
     onPlaylistIdChanged: {
-        // R4-02: el PARENT es la única autoridad de selección — se limpia
-        // al cambiar de playlist; el child solo resetea cursor/scroll.
+        // R4-02 + PL-FINAL-A02: el PARENT es la única autoridad de
+        // selección — TODO el estado efímero se resetea al cambiar de
+        // playlist: selección, selection mode, búsqueda local, cursor.
         root.selectedTrackPath = ""
+        root.checkedTrackPaths = []
+        root.shiftAnchorPath = ""
+        root.selectionMode = false
+        if (playlists)
+            playlists.set_playlist_search_query("")
         if (root._detailReady)
             trackList.resetForPlaylist()
     }
@@ -39,13 +45,28 @@ Item {
     signal addMusicRequested()
     signal editDescriptionRequested(string playlistId, string description)
 
-    // PL-FINAL-15: selection mode — el Set de indices canonicos vive aqui
-    // (el child solo proyecta checkboxes). Path estable como identidad.
+    // PL-FINAL-A01/A02: la selección multiselect se identifica por PATH
+    // (identidad estable). Los índices son posiciones derivadas del estado
+    // canónico y NUNCA se usan como identidad persistente de selección.
     property bool selectionMode: false
-    property var checkedIndices: []
+    property var checkedTrackPaths: []
+    // PL-FINAL-A11: shift-range — anchor del rango (path) + orden visible
+    // actual; el rango se calcula sobre las rows visibles AL MOMENTO.
+    property string shiftAnchorPath: ""
     readonly property bool searchActive: playlists
         && playlists.playlistSearchQuery.length > 0
-    readonly property bool hasChecked: root.checkedIndices.length > 0
+    readonly property bool hasChecked: root.checkedTrackPaths.length > 0
+
+    // PL-FINAL-A10: UNION deduplicada de paths (Select All visible
+    // acumula; nunca reemplaza la selección existente).
+    function _unionPaths(a, b) {
+        var result = a.slice()
+        for (var i = 0; i < b.length; ++i) {
+            if (result.indexOf(b[i]) === -1)
+                result.push(b[i])
+        }
+        return result
+    }
 
     // Hero occupies ~30-40% of the first visible screen
     readonly property real heroHeight: Math.max(240, Math.min(300, root.height * 0.36))
@@ -89,9 +110,12 @@ Item {
                 playlistName: playlists ? playlists.selectedPlaylistName : ""
                 trackCount: playlists ? playlists.playlistTracks.length : 0
                 durationMs: playlists ? playlists.selectedPlaylistDurationMs : 0
-                // PL-FINAL-05/16: descripcion real + conteo honesto.
+                // PL-FINAL-05/16: descripcion real + conteo honesto +
+                // playable count (Play/Shuffle habilitados solo con tracks
+                // reproducibles).
                 description: playlists ? playlists.selectedPlaylistDescription : ""
                 unavailableCount: playlists ? playlists.playlistUnavailableCount : 0
+                availableTrackCount: playlists ? playlists.playlistAvailableTrackCount : 0
 
                 // R2 P1-11: EFFECTIVE cover — a vanished managed asset
                 // renders the automatic mosaic, never a dead box.
@@ -171,19 +195,20 @@ Item {
                 implicitHeight: MichiMetrics.controlMedium
                 accessibleName: qsTr("Select multiple tracks")
                 onClicked: {
-                    root.checkedIndices = []
+                    root.checkedTrackPaths = []
+                    root.shiftAnchorPath = ""
                     root.selectionMode = true
                 }
             }
-            // PL-FINAL-15: en selection mode — remove batch + done.
+            // PL-FINAL-15: en selection mode — remove batch (por PATH) + done.
             MichiButton {
                 visible: root.selectionMode
-                text: qsTr("Remove %1").arg(root.checkedIndices.length)
+                text: qsTr("Remove %1").arg(root.checkedTrackPaths.length)
                 variant: "danger"
                 implicitHeight: MichiMetrics.controlMedium
                 enabled: root.hasChecked
                 accessibleName: qsTr("Remove selected tracks from playlist")
-                onClicked: root.removeTracksRequested(root.checkedIndices.slice())
+                onClicked: root.removeTracksRequested(root.checkedTrackPaths.slice())
             }
             MichiButton {
                 visible: root.selectionMode
@@ -192,7 +217,8 @@ Item {
                 implicitHeight: MichiMetrics.controlMedium
                 accessibleName: qsTr("Exit selection mode")
                 onClicked: {
-                    root.checkedIndices = []
+                    root.checkedTrackPaths = []
+                    root.shiftAnchorPath = ""
                     root.selectionMode = false
                 }
             }
@@ -241,7 +267,7 @@ Item {
                 heroComponent: heroComponent
                 // PL-FINAL-14/15: selection mode + reorder gated por search.
                 selectionMode: root.selectionMode
-                checkedIndices: root.checkedIndices
+                checkedPaths: root.checkedTrackPaths
                 reorderEnabled: !root.searchActive && !root.selectionMode
 
                 onTrackSelected: path => root.selectedTrackPath = path
@@ -249,16 +275,43 @@ Item {
                 onPlayTrackRequested: index => root.playTrackRequested(index)
                 onRemoveTrackRequested: index => root.removeTrackRequested(index)
                 onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
-                onSelectionToggleRequested: index => {
-                    // PL-FINAL-15: toggle por INDEX CANONICO — las rows
-                    // filtradas por search conservan canonicalIndex.
-                    var i = root.checkedIndices.indexOf(index)
-                    if (i === -1)
-                        root.checkedIndices = root.checkedIndices.concat([index])
-                    else {
-                        var copy = root.checkedIndices.slice()
-                        copy.splice(i, 1)
-                        root.checkedIndices = copy
+                onSelectionToggleRequested: (path, shiftHeld) => {
+                    // PL-FINAL-A01/A11: toggle por PATH (identidad). Con
+                    // Shift: rango desde el anchor sobre las rows VISIBLES
+                    // actuales (proyección filtrada) — nunca índices.
+                    if (shiftHeld && root.shiftAnchorPath.length > 0) {
+                        var rows = playlists.playlistTrackRows || []
+                        var anchorPos = -1
+                        var targetPos = -1
+                        for (var i = 0; i < rows.length; ++i) {
+                            if (rows[i].path === root.shiftAnchorPath)
+                                anchorPos = i
+                            if (rows[i].path === path)
+                                targetPos = i
+                        }
+                        if (anchorPos >= 0 && targetPos >= 0) {
+                            var lo = Math.min(anchorPos, targetPos)
+                            var hi = Math.max(anchorPos, targetPos)
+                            var range = []
+                            for (var j = lo; j <= hi; ++j)
+                                range.push(rows[j].path)
+                            root.checkedTrackPaths = root._unionPaths(
+                                root.checkedTrackPaths, range)
+                            root.shiftAnchorPath = path
+                            return
+                        }
+                    }
+                    var i2 = root.checkedTrackPaths.indexOf(path)
+                    if (i2 === -1) {
+                        root.checkedTrackPaths =
+                            root.checkedTrackPaths.concat([path])
+                        root.shiftAnchorPath = path
+                    } else {
+                        var copy = root.checkedTrackPaths.slice()
+                        copy.splice(i2, 1)
+                        root.checkedTrackPaths = copy
+                        if (root.shiftAnchorPath === path)
+                            root.shiftAnchorPath = ""
                     }
                 }
             }

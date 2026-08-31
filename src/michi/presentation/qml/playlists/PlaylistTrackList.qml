@@ -23,9 +23,9 @@ Item {
     // DESHABILITA (un índice filtrado nunca debe reordenar la playlist).
     property bool selectionMode: false
     property bool reorderEnabled: true
-    // PL-FINAL-15: indices (canonical) seleccionados en selection mode —
-    // el Detail es el dueño del Set; esta lista solo proyecta.
-    property var checkedIndices: []
+    // PL-FINAL-A01: selección por PATH (identidad estable). El Detail es
+    // el dueño del Set; esta lista solo proyecta checkboxes.
+    property var checkedPaths: []
     // The header must be a COMPONENT: ListView.header assigns to its
     // internal QQmlComponent slot — passing a pre-instantiated Item (typed
     // var or Item) fails with "Unable to assign ... to QQmlComponent" and
@@ -43,7 +43,7 @@ Item {
     signal trackSelected(string path)
     signal removeTrackRequested(int index)
     signal moveTrackRequested(int fromIndex, int toIndex)
-    signal selectionToggleRequested(int index)
+    signal selectionToggleRequested(string path, bool shiftHeld)
 
     // R3-07/08: rows-driven selection sync — cuando rows cambia (move
     // exitoso), el path seleccionado sigue a su nueva posición.
@@ -91,15 +91,17 @@ Item {
         ScrollBar.vertical: MichiScrollBar { }
 
         Keys.onReturnPressed: {
-            // PL-FINAL-14: la tecla global del ListView también apunta al
-            // índice CANONICO de la row actual (filtro-safe).
+            // PL-FINAL-14/A04: la tecla global del ListView apunta al
+            // índice CANONICO (filter-safe) y respeta canInteract.
             if (currentIndex >= 0 && currentIndex < root.rows.length
-                    && root.rows[currentIndex].canonicalIndex !== undefined)
+                    && root.rows[currentIndex].canonicalIndex !== undefined
+                    && root.rows[currentIndex].available !== false)
                 root.playTrackRequested(root.rows[currentIndex].canonicalIndex)
         }
         Keys.onEnterPressed: {
             if (currentIndex >= 0 && currentIndex < root.rows.length
-                    && root.rows[currentIndex].canonicalIndex !== undefined)
+                    && root.rows[currentIndex].canonicalIndex !== undefined
+                    && root.rows[currentIndex].available !== false)
                 root.playTrackRequested(root.rows[currentIndex].canonicalIndex)
         }
 
@@ -178,6 +180,10 @@ Item {
             readonly property bool unavailable: modelData.available === false
                 || modelData.unavailableReason !== undefined
                 && modelData.unavailableReason !== ""
+            // PL-FINAL-A04: UNA SOLA autoridad de interacción — canInteract
+            // define el permiso para play/queue. Todas las rutas (click,
+            // teclado, menú, shortcuts) usan ESTA propiedad.
+            readonly property bool canInteract: !trackItem.unavailable
 
             // R3-09: reveal incluye el focus de los PROPIOS controles —
             // un keyboard user que tabee hasta ellos los ve (opacity 1
@@ -208,11 +214,10 @@ Item {
                     CheckBox {
                         visible: root.selectionMode
                         anchors.centerIn: parent
-                        checked: root.checkedIndices.indexOf(
-                            trackItem.canonicalIndex) !== -1
+                        checked: root.checkedPaths.indexOf(modelData.path) !== -1
                         Accessible.name: qsTr("Select ") + modelData.title
                         onToggled: root.selectionToggleRequested(
-                            trackItem.canonicalIndex)
+                            modelData.path, false)
                     }
 
                     Drag.active: root.reorderEnabled && dragHandler.active
@@ -384,15 +389,16 @@ Item {
 
             // Canonical product contract: one click both selects and plays —
             // EXCEPT in selection mode (click toggles selection, NO
-            // playback) and for unavailable tracks (never played). Target
-            // identity is ALWAYS canonicalIndex (filter-safe).
+            // playback) and for unavailable tracks (select only, NO play —
+            // PL-FINAL-A04 canInteract). Target identity is ALWAYS the
+            // canonical path (filter-safe).
             onClicked: {
                 if (root.selectionMode) {
-                    root.selectionToggleRequested(trackItem.canonicalIndex)
+                    root.selectionToggleRequested(modelData.path, false)
                     return
                 }
                 root.trackSelected(modelData.path)
-                if (!trackItem.unavailable)
+                if (trackItem.canInteract)
                     root.playTrackRequested(trackItem.canonicalIndex)
             }
             // Keyboard navigation feedback: arrow keys move the ListView
@@ -402,8 +408,20 @@ Item {
                 if (activeFocus)
                     root.trackSelected(modelData.path)
             }
-            Keys.onReturnPressed: root.playTrackRequested(trackItem.canonicalIndex)
-            Keys.onEnterPressed: root.playTrackRequested(trackItem.canonicalIndex)
+            Keys.onReturnPressed: {
+                if (trackItem.canInteract)
+                    root.playTrackRequested(trackItem.canonicalIndex)
+            }
+            Keys.onEnterPressed: {
+                if (trackItem.canInteract)
+                    root.playTrackRequested(trackItem.canonicalIndex)
+            }
+            Keys.onSpacePressed: {
+                if (root.selectionMode) {
+                    root.selectionToggleRequested(modelData.path, false)
+                    event.accepted = true
+                }
+            }
             Keys.onUpPressed: event => {
                 if (event.modifiers & Qt.AltModifier && root.reorderEnabled
                         && !root.selectionMode) {
@@ -469,11 +487,14 @@ Item {
                 id: trackMenu
                 MenuItem {
                     text: qsTr("Play")
-                    enabled: !trackItem.unavailable
+                    enabled: trackItem.canInteract
                     onTriggered: root.playTrackRequested(trackItem.canonicalIndex)
                 }
                 MenuItem {
                     text: qsTr("Add to Queue")
+                    // PL-FINAL-A04: canQueue == canInteract — un track
+                    // unavailable nunca entra a la queue.
+                    enabled: trackItem.canInteract
                     onTriggered: queue.add_file(modelData.path)
                 }
                 MichiSeparator { }
