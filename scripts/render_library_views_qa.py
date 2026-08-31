@@ -246,7 +246,8 @@ def render(output: Path) -> list[dict]:
                 if len(cell_x_positions) < 3:
                     raise RuntimeError(
                         "Gallery delegates did not occupy three distinct columns: "
-                        f"columns={columns}, flow={active.property('flow')}, "
+                        f"columns={columns}, rowsFlow="
+                        f"{active.property('rowsFlowActive')}, "
                         f"cellWidth={active.property('cellWidth')}, "
                         f"content={active.property('contentWidth')}x"
                         f"{active.property('contentHeight')}, cells={cell_records[:12]}"

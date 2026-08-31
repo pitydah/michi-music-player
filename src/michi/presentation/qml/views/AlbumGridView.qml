@@ -31,6 +31,7 @@ GridView {
         : spacingMode === "airy" ? MichiSpacing.xl : MichiThemeState.contentGap
     readonly property int columnCount: Math.max(1, Math.floor(
         (usableWidth + cardGap) / (minimumCardWidth + cardGap)))
+    readonly property bool rowsFlowActive: flow === GridView.FlowLeftToRight
     readonly property real resolvedCardWidth: Math.min(maximumCardWidth,
         cellWidth - cardGap)
     readonly property int metadataHeight: metadataLevel === "minimal" ? 64
