@@ -197,6 +197,17 @@ def render(output: Path) -> list[dict]:
                 raise RuntimeError(
                     f"{view_name} did not instantiate {ACTIVE_NAMES[mode]}"
                 )
+            active_width = float(active.property("width"))
+            if active_width < width * 0.5:
+                raise RuntimeError(
+                    f"{view_name} collapsed to {active_width}px at {width}px"
+                )
+            if mode == "grid" and width >= 1440:
+                columns = int(active.property("columnCount"))
+                if columns < 3:
+                    raise RuntimeError(
+                        f"Gallery rendered only {columns} column(s) at {width}px"
+                    )
 
             if state == "selected-and-focus":
                 active.setFocus(True)

@@ -196,6 +196,9 @@ ColumnLayout {
             id: modeLoader
             objectName: "albumModeLoader"
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            Layout.preferredWidth: Math.max(0, modeArea.width
+                - (albumInspector.visible ? 320 + modeArea.spacing : 0))
             Layout.fillHeight: true
             active: modeArea.visible
             asynchronous: false
@@ -241,6 +244,7 @@ ColumnLayout {
         }
 
         LibraryAlbumInspector {
+            id: albumInspector
             Layout.preferredWidth: 320
             Layout.fillHeight: true
             visible: root.inspectorEnabled() && root.currentBrowseAlbum !== null
