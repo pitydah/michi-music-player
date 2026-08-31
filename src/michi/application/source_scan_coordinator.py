@@ -299,11 +299,28 @@ class SourceScanCoordinator:
         → unhealthy Source excluded → healthy Sources retained → active
         stale worker cancelled → latest pending snapshot replaces old
         pending. NEVER hard-invalidate (invalidate() would drop the latest
-        pending healthy work and starve refresh)."""
-        if self._artwork_refresh is not None:
-            schedule = getattr(self._artwork_refresh, "schedule", None)
-            if schedule is not None:
-                schedule()
+        pending healthy work and starve refresh).
+
+        ABSOLUTE FINAL CLOSURE — DERIVED AUTHORITY FIREWALL: artwork is
+        derived, rebuildable, non-authoritative. A throwing schedule() must
+        NEVER fail/reclassify/rollback an already committed Source/Catalog
+        result: the broad catch is correct HERE precisely because this
+        helper is the derived-state firewall — SourceAvailability, TrackId,
+        MediaFileId, the Catalog transaction and LibrarySourceId were all
+        already determined by the caller. NO rethrow."""
+        refresh = self._artwork_refresh
+        if refresh is None:
+            return
+        schedule = getattr(refresh, "schedule", None)
+        if schedule is None:
+            return
+        try:
+            schedule()
+        except Exception:
+            logger.exception(
+                "Artwork convergence scheduling failed; "
+                "Library source/catalog authority remains committed"
+            )
 
     def _ensure_no_overlap(self, root: Path, existing_sources) -> None:
         for existing in existing_sources:
@@ -429,9 +446,9 @@ class SourceScanCoordinator:
         # ABSOLUTE FINAL SEAL: retirar cambia la composición de albums —
         # el artwork refresh invalida el trabajo en vuelo (nunca se lanza
         # un worker para probar media de la fuente retirada: con cero
-        # albums no arranca ningún worker nuevo).
-        if self._artwork_refresh is not None:
-            self._artwork_refresh.schedule()
+        # albums no arranca ningún worker nuevo). Firewalled: un fallo de
+        # artwork NUNCA revierte el retire (DERIVED AUTHORITY FIREWALL).
+        self._schedule_artwork_convergence()
 
     def set_source_enabled(self, source_id: str, enabled: bool) -> None:
         """Enable/disable a configured source (stays configured)."""

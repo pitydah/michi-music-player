@@ -254,7 +254,14 @@ class MutagenArtworkProvider(ArtworkProviderPort):
     ) -> ArtworkProbeObservation:
         """M6.5 album policy with tri-state truth: front → generic →
         local. Any uncertain observation poisons the album verdict to
-        UNAVAILABLE (never destroys last-known cache)."""
+        UNAVAILABLE (never destroys last-known cache).
+
+        ABSOLUTE FINAL CLOSURE: PASS 3 is EXHAUSTIVE over local artwork —
+        ALBUM != DIRECTORY. A canonical AlbumRef may span multi-disc
+        folders or multiple Sources, so EVERY unique track directory is
+        probed (dict.fromkeys: dedup + first-seen deterministic order,
+        no set sorting). Negative evidence stays exhaustive: ABSENT is
+        valid ONLY when every unique directory was readable and absent."""
         uncertain = False
         for path in track_paths:
             if token is not None and token.cancelled:
@@ -276,8 +283,14 @@ class MutagenArtworkProvider(ArtworkProviderPort):
                 return observation
             if observation.verdict is ArtworkProbeVerdict.UNAVAILABLE:
                 uncertain = True
-        if track_paths:
-            local = self._probe_local_artwork(track_paths[0].parent)
+        # PASS 3 — local artwork across ALL unique track directories.
+        local_dirs = tuple(dict.fromkeys(path.parent for path in track_paths))
+        for album_dir in local_dirs:
+            if token is not None and token.cancelled:
+                from michi.application.ports import ScanCancelled
+
+                raise ScanCancelled()
+            local = self._probe_local_artwork(album_dir)
             if local.verdict is ArtworkProbeVerdict.FOUND:
                 return local
             if local.verdict is ArtworkProbeVerdict.UNAVAILABLE:
