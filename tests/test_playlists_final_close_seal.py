@@ -20,10 +20,12 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
+import sys
 from pathlib import Path
 
+import pytest
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QImage
+from PySide6.QtGui import QGuiApplication, QImage
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtTest import QTest
 
@@ -36,6 +38,16 @@ from tests.test_m8_playlist_bridge import _make_bridge, _tracks
 from tests.test_playlists import FakePlaylistsPort
 
 QML_DIR = Path("src/michi/presentation/qml")
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    """QGuiApplication compartido (patrón test_m9_qml) — requerido por
+    los harness QML runtime en CI sin display."""
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication(sys.argv)
+    yield app
 
 
 def _js_list(obj, prop):
