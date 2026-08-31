@@ -15,13 +15,19 @@ Item {
     property string coverPath: ""
     property var mosaicArtworkPaths: []
     property var autoColors: [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
+    // PL-FINAL-09: focal anchor of the custom hero image (0..1 normalized).
+    property real focalX: 0.5
+    property real focalY: 0.5
 
     readonly property string autoArtworkPath: root.coverPath.length > 0
         ? root.coverPath
         : root.mosaicArtworkPaths && root.mosaicArtworkPaths.length > 0
             ? root.mosaicArtworkPaths[0] : ""
+    // PL-FINAL-10: el scrim editorial NUNCA aplasta el artwork custom —
+    // 0.88 era un "giant black wash". Imagen/solid usan 0.66 (la imagen
+    // sigue leyéndose como la imagen del usuario); auto usa 0.56.
     readonly property real readingScrimOpacity:
-        root.heroMode === "image" || root.heroMode === "solid" ? 0.88 : 0.64
+        root.heroMode === "image" || root.heroMode === "solid" ? 0.66 : 0.56
 
     Rectangle {
         anchors.fill: parent
@@ -78,19 +84,16 @@ Item {
         opacity: 0.28
     }
 
-    Image {
+    // PL-FINAL-09/10: focal-aware crop del hero image (mismo renderer que
+    // el preview del editor) + sourceSize dinámico con DPR.
+    FocalCropImage {
         anchors.fill: parent
         visible: root.heroMode === "image" && root.heroImagePath.length > 0
-        source: visible ? Qt.resolvedUrl(root.heroImagePath) : ""
-        sourceSize.width: Math.min(3200, Math.round(width * Screen.devicePixelRatio))
-        sourceSize.height: Math.min(900, Math.round(height * Screen.devicePixelRatio))
-        asynchronous: true
-        // R2 P2-02: managed hero files are IMMUTABLE content-addressed
-        // candidates — when the bytes change the URL changes, so caching
-        // is safe and preferable. Caching would
-        // keep the previous bytes visible after a same-extension replace.
-        cache: true
-        fillMode: Image.PreserveAspectCrop
+        source: visible ? root.heroImagePath : ""
+        focalX: root.focalX
+        focalY: root.focalY
+        maxWidth: Math.min(4096, Math.round(width * Screen.devicePixelRatio * 1.5))
+        maxHeight: Math.min(1200, Math.round(height * Screen.devicePixelRatio * 1.5))
     }
 
     // A horizontal editorial scrim reserves a reliably calm reading field

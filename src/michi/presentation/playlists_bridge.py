@@ -101,7 +101,14 @@ class PlaylistsBridge(QObject):
         # PlaylistService/navigation changes — never per getter call.
         self._artwork_index: dict[str, str] = {}
         self._artwork_index_dirty = True
+        # PL-FINAL-18: duration-by-path index — resolve_trackref is
+        # O(library); the index makes a playlist projection O(tracks).
+        self._duration_index: dict[str, int] | None = None
         self._rows_cache: list[dict] | None = None
+        # PL-FINAL-14: playlist-LOCAL search (detail toolbar). Never
+        # touches LibraryService search state; the query only filters the
+        # current playlist projection.
+        self._playlist_search_query: str = ""
         self._palette_ready.connect(self._apply_palette, Qt.QueuedConnection)
         if playlist_service is not None:
             playlist_service.subscribe_changed(self._on_playlist_service_changed)
@@ -155,6 +162,7 @@ class PlaylistsBridge(QObject):
         so searchPlaylists/searchPlaylistCount/playlistTrackRows recompute.
         The artwork index is rebuilt lazily ONCE on the next rows refresh."""
         self._artwork_index_dirty = True
+        self._duration_index = None  # PL-FINAL-18: rebuild lazily
         self._rows_cache = None
         self.playlists_changed.emit()
 
@@ -212,12 +220,26 @@ class PlaylistsBridge(QObject):
     def _duration_for_paths(self, track_paths: tuple[str, ...]) -> int:
         if self._library is None:
             return 0
+        index = self._build_duration_index()
         total = 0
         for path_str in track_paths:
-            ref = self._library.resolve_trackref(Path(path_str))
-            if ref is not None:
-                total += ref.duration_ms
+            total += index.get(path_str, 0)
         return total
+
+    def _build_duration_index(self) -> dict[str, int]:
+        """PL-FINAL-18: path → duration_ms index, rebuilt ONLY when the
+        Library revision changed (resolve_trackref is O(library) per
+        lookup; the index makes playlist projections O(playlist tracks))."""
+        if self._library is None:
+            return {}
+        if self._duration_index is None:
+            index: dict[str, int] = {}
+            for track in self._library.state.tracks:
+                key = str(track.file_path)
+                if key not in index:
+                    index[key] = track.duration_ms
+            self._duration_index = index
+        return self._duration_index
 
     def _appearance_row(self, playlist) -> dict:
         """R3-05: the row carries persisted + effective + missing facts.
@@ -234,6 +256,8 @@ class PlaylistsBridge(QObject):
             "heroSolidColor": appearance.hero_solid_color,
             "heroGradientColors": list(appearance.hero_gradient_colors),
             "heroGradientAngle": appearance.hero_gradient_angle,
+            "heroFocalX": appearance.hero_focal_x,
+            "heroFocalY": appearance.hero_focal_y,
         }
 
     def _palette_source_key(self, paths: tuple[str, ...]) -> str:
@@ -318,6 +342,7 @@ class PlaylistsBridge(QObject):
             row = {
                 "playlistId": playlist.playlist_id,
                 "name": playlist.name,
+                "description": playlist.description,
                 "trackCount": len(playlist.track_paths),
                 "durationMs": self._duration_for_paths(playlist.track_paths),
                 "persistedCustomCoverPath": playlist.custom_cover_path,
@@ -372,6 +397,10 @@ class PlaylistsBridge(QObject):
     def _get_selected_playlist_name(self) -> str:
         playlist = self._selected()
         return playlist.name if playlist is not None else ""
+
+    def _get_selected_playlist_description(self) -> str:
+        playlist = self._selected()
+        return playlist.description if playlist is not None else ""
 
     def _effective_cover_path(self, playlist) -> str:
         """R3-05: the resolvable cover path ("" when missing) — rendering
@@ -540,24 +569,33 @@ class PlaylistsBridge(QObject):
         return rows
 
     def _get_playlist_track_rows(self) -> list[dict]:
+        """PL-FINAL-14/16/17: canonical detail projection. Every row
+        carries ``canonicalIndex`` (its position in the canonical playlist
+        — NEVER the filtered-list index) and explicit availability
+        metadata. When a local search query is active the rows are FILTERED
+        (title/artist/album, case-insensitive) but every visible row keeps
+        its canonicalIndex; missing rows are never silently dropped."""
         playlist = self._selected()
         if playlist is None:
             return []
         index = self._build_artwork_index()
+        query = " ".join(self._playlist_search_query.casefold().split())
         rows = []
-        for path in playlist.track_paths:
+        for canonical_index, path in enumerate(playlist.track_paths):
             ref = (
                 self._library.resolve_trackref(Path(path))
                 if self._library is not None
                 else None
             )
             if ref is not None:
-                rows.append(self._track_row(ref, index))
-                continue
-            rows.append(
-                {
-                    "displayName": Path(path).stem,
-                    "title": Path(path).stem,
+                row = self._track_row(ref, index, canonical_index)
+                row["available"] = True
+                row["unavailableReason"] = ""
+            else:
+                stem = Path(path).stem
+                row = {
+                    "displayName": stem,
+                    "title": stem,
                     "artist": "",
                     "album": "",
                     "durationMs": 0,
@@ -568,12 +606,23 @@ class PlaylistsBridge(QObject):
                     "bitDepth": 0,
                     "channels": 0,
                     "fileSize": 0,
-                    "artworkPath": self._artwork_for_path(path, index),
+                    "artworkPath": "",
+                    "canonicalIndex": canonical_index,
+                    "available": False,
+                    "unavailableReason": "not_in_library",
                 }
-            )
+            if query:
+                haystack = " ".join(
+                    [row["title"], row["artist"], row["album"]]
+                ).casefold()
+                if query not in haystack:
+                    continue
+            rows.append(row)
         return rows
 
-    def _track_row(self, ref, index: dict[str, str] | None = None) -> dict:
+    def _track_row(
+        self, ref, index: dict[str, str] | None = None, canonical_index: int = 0
+    ) -> dict:
         return {
             "displayName": ref.display_name,
             "title": ref.title or ref.display_name,
@@ -588,7 +637,33 @@ class PlaylistsBridge(QObject):
             "bitDepth": ref.bit_depth,
             "channels": ref.channels,
             "fileSize": ref.file_size,
+            "canonicalIndex": canonical_index,
         }
+
+    def _get_playlist_search_query(self) -> str:
+        return self._playlist_search_query
+
+    @Slot(str)
+    def set_playlist_search_query(self, query: str) -> None:
+        """PL-FINAL-14: playlist-LOCAL search filter (never touches the
+        global Library search). Empty/whitespace query clears the filter."""
+        cleaned = " ".join(str(query).casefold().split())
+        if cleaned == self._playlist_search_query:
+            return
+        self._playlist_search_query = cleaned
+        self.playlists_changed.emit()
+
+    def _get_playlist_unavailable_count(self) -> int:
+        """PL-FINAL-16: honest count of tracks the library cannot resolve —
+        the hero summary must explain '10 tracks · 36 min · 2 unavailable'."""
+        playlist = self._selected()
+        if playlist is None or self._library is None:
+            return 0
+        count = 0
+        for path in playlist.track_paths:
+            if self._library.resolve_trackref(Path(path)) is None:
+                count += 1
+        return count
 
     def _get_search_playlists(self) -> list[dict]:
         """Local playlist-name matches kept separate from the frozen M7
@@ -617,6 +692,9 @@ class PlaylistsBridge(QObject):
     )
     selectedPlaylistName = Property(
         str, _get_selected_playlist_name, notify=playlists_changed
+    )
+    selectedPlaylistDescription = Property(
+        str, _get_selected_playlist_description, notify=playlists_changed
     )
     selectedPlaylistPinned = Property(
         bool, _get_selected_playlist_pinned, notify=playlists_changed
@@ -652,6 +730,15 @@ class PlaylistsBridge(QObject):
     playlistTracks = Property(list, _get_playlist_tracks, notify=playlists_changed)
     playlistTrackRows = Property(
         list, _get_playlist_track_rows, notify=playlists_changed
+    )
+    playlistSearchQuery = Property(
+        str,
+        _get_playlist_search_query,
+        set_playlist_search_query,
+        notify=playlists_changed,
+    )
+    playlistUnavailableCount = Property(
+        int, _get_playlist_unavailable_count, notify=playlists_changed
     )
     searchPlaylists = Property(list, _get_search_playlists, notify=playlists_changed)
     searchPlaylistCount = Property(
@@ -782,57 +869,7 @@ class PlaylistsBridge(QObject):
             return "persistence_failed"
         return "updated" if result else "no_change"
 
-    @Slot(str, str, result=str)
-    def set_custom_cover(self, playlist_id: str, path: str) -> str:
-        """R3-04 appearance codes (cover)."""
-        local_path = local_path_from_url(path)
-        if local_path is None or self._playlist_service is None:
-            return "invalid"
-        if not self._playlist_service.contains_playlist(playlist_id):
-            return "not_found"
-        result = self._run_mutation(
-            "cover",
-            lambda: (
-                self._playlist_service.set_custom_cover(playlist_id, local_path)
-                is not None
-            ),
-        )
-        if result is None:
-            return "persistence_failed"
-        return "updated" if result else "asset_rejected"
-
-    @Slot(str, QUrl, result=str)
-    def set_custom_cover_from_url(self, playlist_id: str, url: QUrl) -> str:
-        path = local_path_from_url(url)
-        if path is None or self._playlist_service is None:
-            return "invalid"
-        if not self._playlist_service.contains_playlist(playlist_id):
-            return "not_found"
-        result = self._run_mutation(
-            "cover",
-            lambda: (
-                self._playlist_service.set_custom_cover(playlist_id, path) is not None
-            ),
-        )
-        if result is None:
-            return "persistence_failed"
-        return "updated" if result else "asset_rejected"
-
-    @Slot(str, result=str)
-    def remove_custom_cover(self, playlist_id: str) -> str:
-        if self._playlist_service is None:
-            return "not_found"
-        if not self._playlist_service.contains_playlist(playlist_id):
-            return "not_found"
-        result = self._run_mutation(
-            "cover",
-            lambda: self._playlist_service.remove_custom_cover(playlist_id),
-        )
-        if result is None:
-            return "persistence_failed"
-        return "updated" if result else "no_change"
-
-    @Slot(str, str, str, str, str, list, float, str, result=str)
+    @Slot(str, str, str, str, str, list, float, str, float, float, result=str)
     def apply_visual_appearance(
         self,
         playlist_id: str,
@@ -843,24 +880,43 @@ class PlaylistsBridge(QObject):
         hero_gradient_colors: list,
         hero_gradient_angle: float,
         hero_image_source: str,
+        hero_focal_x: float = 0.5,
+        hero_focal_y: float = 0.5,
     ) -> str:
-        """R3-06 ONE application transaction for the whole appearance.
-        Codes: "updated" | "no_change" | "invalid" | "asset_rejected" |
-        "not_found" | "persistence_failed"."""
+        """R3-06/PL-FINAL-02 ONE application transaction for the whole
+        appearance. Codes: "updated" | "no_change" | "invalid" |
+        "asset_rejected" | "not_found" | "persistence_failed".
+
+        PL-FINAL-02: the QUrl boundary lives HERE — cover and hero sources
+        are normalized to pure local filesystem paths BEFORE PlaylistService
+        sees them. A file:/// URL from QML never reaches the filesystem as a
+        raw string; remote/malformed schemes are rejected ("invalid")."""
         if self._playlist_service is None:
             return "not_found"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
+        cover_source = (
+            local_path_from_url(cover_source_path) if cover_source_path else None
+        )
+        hero_source = (
+            local_path_from_url(hero_image_source) if hero_image_source else None
+        )
+        if cover_source_path and cover_source is None:
+            return "invalid"  # remote/malformed URL: never reaches the FS
+        if hero_image_source and hero_source is None:
+            return "invalid"
         try:
             result = self._playlist_service.apply_visual_appearance(
                 playlist_id,
                 cover_action=cover_action,
-                cover_source_path=cover_source_path or None,
+                cover_source_path=cover_source,
                 hero_mode=hero_mode,
                 hero_solid_color=hero_solid_color,
                 hero_gradient_colors=tuple(hero_gradient_colors),
                 hero_gradient_angle=float(hero_gradient_angle),
-                hero_image_source=hero_image_source or None,
+                hero_image_source=hero_source,
+                hero_focal_x=float(hero_focal_x),
+                hero_focal_y=float(hero_focal_y),
             )
         except ValueError:
             return "invalid"
@@ -869,72 +925,25 @@ class PlaylistsBridge(QObject):
             return "persistence_failed"
         return result
 
-    @Slot(str, result=str)
-    def set_hero_auto(self, playlist_id: str) -> str:
-        if self._playlist_service is None:
-            return "not_found"
-        if not self._playlist_service.contains_playlist(playlist_id):
-            return "not_found"
-        result = self._run_mutation(
-            "hero", lambda: self._playlist_service.set_hero_auto(playlist_id)
-        )
-        if result is None:
-            return "persistence_failed"
-        return "updated" if result else "no_change"
-
     @Slot(str, str, result=str)
-    def set_hero_solid(self, playlist_id: str, color: str) -> str:
+    def set_playlist_description(self, playlist_id: str, description: str) -> str:
+        """PL-FINAL-05: real playlist description metadata. Codes:
+        "updated" | "no_change" | "invalid" | "not_found" |
+        "persistence_failed"."""
         if self._playlist_service is None:
             return "not_found"
         if not self._playlist_service.contains_playlist(playlist_id):
             return "not_found"
         try:
-            result = self._run_mutation(
-                "hero",
-                lambda: self._playlist_service.set_hero_solid(playlist_id, color),
+            changed = self._playlist_service.set_playlist_description(
+                playlist_id, description
             )
         except ValueError:
             return "invalid"
-        if result is None:
+        except PlaylistPersistenceError:
+            self.persistenceFailed.emit("description")
             return "persistence_failed"
-        return "updated" if result else "no_change"
-
-    @Slot(str, list, float, result=str)
-    def set_hero_gradient(self, playlist_id: str, colors: list, angle: float) -> str:
-        if self._playlist_service is None:
-            return "not_found"
-        if not self._playlist_service.contains_playlist(playlist_id):
-            return "not_found"
-        try:
-            result = self._run_mutation(
-                "hero",
-                lambda: self._playlist_service.set_hero_gradient(
-                    playlist_id, tuple(str(color) for color in colors), angle
-                ),
-            )
-        except (TypeError, ValueError):
-            return "invalid"
-        if result is None:
-            return "persistence_failed"
-        return "updated" if result else "no_change"
-
-    @Slot(str, QUrl, result=str)
-    def set_custom_hero_from_url(self, playlist_id: str, url: QUrl) -> str:
-        path = local_path_from_url(url)
-        if path is None or self._playlist_service is None:
-            return "invalid"
-        if not self._playlist_service.contains_playlist(playlist_id):
-            return "not_found"
-        result = self._run_mutation(
-            "hero",
-            lambda: (
-                self._playlist_service.set_custom_hero_image(playlist_id, path)
-                is not None
-            ),
-        )
-        if result is None:
-            return "persistence_failed"
-        return "updated" if result else "asset_rejected"
+        return "updated" if changed else "no_change"
 
     @Slot(str, str, result=str)
     def add_track(self, playlist_id: str, path: str) -> str:
@@ -1042,6 +1051,63 @@ class PlaylistsBridge(QObject):
         pid = self._current_playlist_id()
         if pid:
             self.queue_playlist(pid)
+
+    @Slot(str, list, result=dict)
+    def add_tracks(self, playlist_id: str, paths: list) -> dict:
+        """PL-FINAL-13: BATCH add tracks (one candidate, one persist, one
+        notify). Structured result for QML:
+
+            {"status": "updated"|"no_change"|"not_found"|"persistence_failed",
+             "addedCount": n, "alreadyPresentCount": m}
+
+        A persistence failure NEVER reports success: status is
+        "persistence_failed" and no partial mutation exists."""
+        if self._playlist_service is None:
+            return {"status": "not_found", "addedCount": 0, "alreadyPresentCount": 0}
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return {"status": "not_found", "addedCount": 0, "alreadyPresentCount": 0}
+        try:
+            added, already = self._playlist_service.add_tracks(playlist_id, paths)
+        except PlaylistPersistenceError:
+            self.persistenceFailed.emit("add_tracks")
+            return {
+                "status": "persistence_failed",
+                "addedCount": 0,
+                "alreadyPresentCount": 0,
+            }
+        if added == 0:
+            return {
+                "status": "no_change",
+                "addedCount": 0,
+                "alreadyPresentCount": already,
+            }
+        return {
+            "status": "updated",
+            "addedCount": added,
+            "alreadyPresentCount": already,
+        }
+
+    @Slot(list, result=str)
+    def remove_tracks(self, indices: list) -> str:
+        """PL-FINAL-15: BATCH remove on the CURRENT playlist (single
+        candidate, single persist). Codes: "removed" | "no_change" |
+        "invalid_index" | "not_found" | "persistence_failed"."""
+        playlist_id = self._current_playlist_id()
+        if self._playlist_service is None or not playlist_id:
+            return "not_found"
+        playlist = self._playlist_service.get_playlist(playlist_id)
+        if playlist is None:
+            return "not_found"
+        valid = [i for i in indices if 0 <= i < len(playlist.track_paths)]
+        if not valid:
+            return "invalid_index"
+        result = self._run_mutation(
+            "remove_tracks",
+            lambda: self._playlist_service.remove_tracks(playlist_id, valid),
+        )
+        if result is None:
+            return "persistence_failed"
+        return "removed" if result else "no_change"
 
     @Slot(str, str, result=str)
     def add_track_to_playlist(self, playlist_id: str, path: str) -> str:

@@ -130,7 +130,28 @@ Item {
                     playlists.play_selected_playlist()
                 }
                 onPlayTrackRequested: index => playlists.play_playlist_track(index)
-                onAddMusicRequested: navigation.navigate("library")
+                onAddMusicRequested: {
+                    // PL-FINAL-13: Add Tracks es un workflow REAL dentro del
+                    // contexto del playlist (picker modal) — ya no navega
+                    // vagamente a Library abandonando el contexto.
+                    root.trackPicker.playlistId = playlists.selectedPlaylistId
+                    root.trackPicker.open()
+                }
+                onEditDescriptionRequested: (playlistId, description) => {
+                    descriptionDialog.targetPlaylistId = playlistId
+                    descriptionField.text = description
+                    descriptionDialog.open()
+                }
+                onRemoveTracksRequested: indices => {
+                    // PL-FINAL-15: batch remove — UNA transacción.
+                    var result = playlists.remove_tracks(indices)
+                    if (result === "removed") {
+                        playlistDetail.checkedIndices = []
+                        playlistDetail.selectionMode = false
+                        window.showToast(qsTr("%n tracks removed", "", indices.length))
+                    }
+                    // "persistence_failed": connector reports exactly once.
+                }
                 onTogglePinRequested: {
                     // R4-08: el feedback se deriva del COMMAND INTENT
                     // confirmado, nunca del post-state (que ya cambió).
@@ -311,6 +332,115 @@ Item {
                 ? row.heroGradientAngle : 135
         }
         autoHeroColors: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.autoHeroColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
+        // PL-FINAL-09: focal persistido (draft del editor).
+        persistedHeroFocalX: {
+            var row = root._appearanceRowFor(root.appearanceTargetPlaylistId)
+            return row && row.heroFocalX !== undefined ? row.heroFocalX : 0.5
+        }
+        persistedHeroFocalY: {
+            var row = root._appearanceRowFor(root.appearanceTargetPlaylistId)
+            return row && row.heroFocalY !== undefined ? row.heroFocalY : 0.5
+        }
+    }
+
+    // PL-FINAL-13: Add Tracks picker — batch add real, contexto del
+    // playlist preservado.
+    PlaylistTrackPicker {
+        id: trackPicker
+        objectName: "playlistTrackPicker"
+        playlistId: ""
+        presentPaths: {
+            var rows = playlists.playlistTrackRows || []
+            var paths = []
+            for (var i = 0; i < rows.length; ++i)
+                paths.push(rows[i].path)
+            return paths
+        }
+        onAddCompleted: (added, alreadyPresent) => {
+            var message = qsTr("%n tracks added", "", added)
+            if (alreadyPresent > 0)
+                message += qsTr(" · %n already in playlist", "", alreadyPresent)
+            window.showToast(message)
+        }
+    }
+
+    // PL-FINAL-05: real playlist description edit (compact dialog).
+    MichiDialog {
+        id: descriptionDialog
+        objectName: "playlistDescriptionDialog"
+        title: qsTr("Edit description")
+        width: 480
+        property string targetPlaylistId: ""
+        property string errorText: ""
+        standardButtons: Dialog.NoButton
+
+        contentItem: ColumnLayout {
+            spacing: MichiSpacing.md
+            MichiText {
+                text: qsTr("Describe this playlist — shown in its header.")
+                role: "secondary"
+                color: MichiPalette.textSecondary
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            TextArea {
+                id: descriptionField
+                Layout.fillWidth: true
+                Layout.preferredHeight: 110
+                placeholderText: qsTr("Optional description")
+                wrapMode: Text.WordWrap
+                color: MichiPalette.textPrimary
+                placeholderTextColor: MichiPalette.textMuted
+                selectionColor: MichiSemanticColors.surfaceSelected
+                selectedTextColor: MichiPalette.textPrimary
+                background: Rectangle {
+                    radius: MichiRadius.md
+                    color: MichiSemanticColors.controlSurface
+                    border.width: 1
+                    border.color: descriptionField.activeFocus
+                        ? MichiSemanticColors.borderStrong
+                        : MichiSemanticColors.borderSubtle
+                }
+                Accessible.name: qsTr("Playlist description")
+            }
+            MichiText {
+                visible: descriptionDialog.errorText !== ""
+                text: descriptionDialog.errorText
+                role: "technical"
+                technical: true
+                color: MichiPalette.error
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: MichiSpacing.sm
+                MichiButton {
+                    text: qsTr("Cancel")
+                    variant: "ghost"
+                    onClicked: descriptionDialog.close()
+                }
+                MichiButton {
+                    text: qsTr("Save")
+                    variant: "primary"
+                    onClicked: descriptionDialog._save()
+                }
+            }
+        }
+        function _save() {
+            var result = playlists.set_playlist_description(
+                descriptionDialog.targetPlaylistId, descriptionField.text)
+            if (result === "updated" || result === "no_change") {
+                descriptionDialog.errorText = ""
+                descriptionDialog.close()
+            } else if (result === "invalid") {
+                descriptionDialog.errorText = qsTr(
+                    "Description must be at most 1000 characters.")
+            }
+            // "persistence_failed": connector reports exactly once.
+        }
+        onOpened: {
+            descriptionDialog.errorText = ""
+            descriptionField.forceActiveFocus()
+        }
     }
 
     // Shared delete dialog — same ephemeral target model.
@@ -375,12 +505,15 @@ Item {
                 message = qsTr("Could not delete playlist")
             else if (operationCode === "pin" || operationCode === "unpin")
                 message = qsTr("Could not update pin state")
-            else if (operationCode === "cover" || operationCode === "hero")
+            else if (operationCode === "cover" || operationCode === "hero"
+                || operationCode === "appearance")
                 message = qsTr("Could not update appearance")
+            else if (operationCode === "description")
+                message = qsTr("Could not save description")
             else if (operationCode === "add_tracks")
                 message = qsTr("Could not add tracks")
-            else if (operationCode === "remove_track")
-                message = qsTr("Could not remove track")
+            else if (operationCode === "remove_track" || operationCode === "remove_tracks")
+                message = qsTr("Could not remove tracks")
             else if (operationCode === "move_track")
                 message = qsTr("Could not reorder tracks")
             else if (operationCode === "insert_track")

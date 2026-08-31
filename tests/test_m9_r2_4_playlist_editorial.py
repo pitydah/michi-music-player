@@ -37,8 +37,11 @@ def test_hero_typography_and_compact_actions():
     assert "font.letterSpacing: 1.35" in hero
     assert 'role: "display"' in hero  # dominant title
     assert "font.weight: Font.DemiBold" in hero
-    # R3-14: no hay description ficticia (feature real pendiente).
-    assert "description" not in hero
+    # R3-14 + PL-FINAL-05: la description es REAL (metadata de dominio
+    # persistida) — el hero la muestra cuando no es vacía.
+    assert 'property string description: ""' in hero
+    assert "root.description.length > 0" in hero
+    assert "unavailableCount" in hero
     assert "iconOnly: root.width < 920" in hero
     assert "implicitHeight: MichiMetrics.controlMedium" in hero  # Play 36px
     # R2 P2-01: pin lives in the More menu — the hero carries NO dead
@@ -92,9 +95,13 @@ def test_rows_activate_play_and_hide_actions_until_hover():
     table = read("playlists/PlaylistTrackList.qml")
     # M4-R1 authority: single-click row activation emits play (the
     # double-click model of the pre-M4-R1 branch was replaced).
+    # PL-FINAL-14: el target es SIEMPRE el índice CANONICO (filter-safe).
     assert "onDoubleClicked" not in table
-    assert "root.playTrackRequested(index)" in table
-    assert "Keys.onReturnPressed: root.playTrackRequested(index)" in table
+    assert "root.playTrackRequested(trackItem.canonicalIndex)" in table
+    assert (
+        "Keys.onReturnPressed: root.playTrackRequested(trackItem.canonicalIndex)"
+        in table
+    )
     # R3-09: reveal incluye el activeFocus de los propios controles.
     assert "opacity: actionsVisible ? 1 : 0" in table
     assert "favoriteButton.activeFocus || moreButton.activeFocus" in table
@@ -141,7 +148,13 @@ def test_page_connects_play_track_and_shuffle():
     assert "playlists.play_track(index)" not in host
     assert "playlists.play_playlist_track(index)" in host
     assert "onShuffleRequested" in host
-    assert 'navigation.navigate("library")' in host
+    # PL-FINAL-13: Add Tracks es un picker real dentro del contexto — la
+    # navegación vaga a Library desapareció.
+    assert 'navigation.navigate("library")' not in host
+    assert "PlaylistTrackPicker" in host
+    picker = read("playlists/PlaylistTrackPicker.qml")
+    assert "playlists.add_tracks(" in picker
+    assert "library.songRows" in picker
 
 
 def test_hero_self_sizes_and_page_never_collapses_it():
@@ -244,9 +257,13 @@ def test_keyboard_navigation_updates_visible_selection():
     # row also becomes the selected row — audit fix
     assert "onActiveFocusChanged: {" in table
     assert "root.trackSelected(modelData.path)" in table
-    # both keyboard paths (row keys + list keys) reproduce from the index
-    assert "Keys.onReturnPressed: root.playTrackRequested(index)" in table
-    assert "root.playTrackRequested(currentIndex)" in table
+    # both keyboard paths (row keys + list keys) reproduce from the
+    # CANONICAL index (PL-FINAL-14: filter-safe)
+    assert (
+        "Keys.onReturnPressed: root.playTrackRequested(trackItem.canonicalIndex)"
+        in table
+    )
+    assert "root.playTrackRequested(root.rows[currentIndex].canonicalIndex)" in table
 
 
 # ── Audit debt block (W1, W5, O2) ─────────────────────────────────────────────
@@ -269,7 +286,12 @@ def test_reorder_keeps_keyboard_cursor_on_moved_row():
     table = read("playlists/PlaylistTrackList.qml")
     # R3-08: el reorder NO mueve la selección optimistamente — solo el
     # intent; la selección por path sigue la fila cuando rows cambia.
-    assert "root.moveTrackRequested(index, index - 1)" in table
+    # PL-FINAL-14: el reorder usa el índice CANONICO (gated por search).
+    assert (
+        "root.moveTrackRequested(\n"
+        "                            trackItem.canonicalIndex,"
+        " trackItem.canonicalIndex - 1)" in table
+    )
     assert "onRowsChanged" in table
     # R3-07: la selección por path es la identidad; el cursor del teclado
     # se sincroniza desde rows (no se fuerza optimistamente).
@@ -289,10 +311,13 @@ def test_add_tracks_becomes_icon_only_on_narrow_windows():
 
 def test_drag_reorder_handle_and_drop_line():
     table = read("playlists/PlaylistTrackList.qml")
-    assert "Drag.active: dragHandler.active" in table
+    # PL-FINAL-14: el drag handle queda gateado por reorderEnabled (un
+    # filtro de búsqueda activo DESHABILITA el reorder por índice).
+    assert "Drag.active: root.reorderEnabled && dragHandler.active" in table
     assert '"application/x-michi-playlist-index": index' in table
     assert "DragHandler {" in table
     assert "DropArea {" in table
+    assert "enabled: root.reorderEnabled && !root.selectionMode" in table
     assert "trackList.indexAt(drag.x, drag.y)" in table
     assert "insertLine.visible = false" in table
     assert "root.moveTrackRequested(from, to)" in table

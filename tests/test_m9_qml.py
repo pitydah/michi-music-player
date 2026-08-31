@@ -333,8 +333,16 @@ class TestPlaylistTrackInteraction:
         qml = Path(
             "src/michi/presentation/qml/playlists/PlaylistTrackList.qml"
         ).read_text()
-        assert "Keys.onReturnPressed: root.playTrackRequested(index)" in qml
-        assert "Keys.onEnterPressed: root.playTrackRequested(index)" in qml
+        # PL-FINAL-14: Enter/Return reproducen el PLAY con el índice
+        # CANONICO (filter-safe) — nunca el índice de la lista filtrada.
+        assert (
+            "Keys.onReturnPressed: root.playTrackRequested(trackItem.canonicalIndex)"
+            in qml
+        )
+        assert (
+            "Keys.onEnterPressed: root.playTrackRequested(trackItem.canonicalIndex)"
+            in qml
+        )
         assert len(plays) == 0  # no spurious emission without events
         obj.deleteLater()
         component.deleteLater()

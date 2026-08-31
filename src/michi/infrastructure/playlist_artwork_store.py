@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 
 from michi.application.ports import PlaylistArtworkStorePort
+from michi.domain.playlist import PreparedPlaylistAsset
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,10 @@ _SAFE_PLAYLIST_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 _V2_ASSET_RE = re.compile(
     r"playlist_v2_([0-9a-f]{20})_(cover|hero)_([0-9a-f]{20})\.(png|jpg|webp)"
 )
+
+# PL-FINAL-04: sufijo digest de la era legacy digest-era
+# (playlist_<id>_<digest20>.<ext>). Un digest exige exactamente 20 hex.
+_DIGEST_SUFFIX_RE = re.compile(r"_([0-9a-f]{20})$")
 
 
 def _owner_token(playlist_id: str) -> str:
@@ -156,14 +161,28 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
         self._storage_dir = storage_dir
 
     def prepare_cover(self, playlist_id: str, source_image_path) -> str | None:
-        return self._prepare_variant(playlist_id, source_image_path, suffix="")
+        candidate = self.prepare_candidate(playlist_id, source_image_path, "cover")
+        return candidate.path if candidate is not None else None
 
     def prepare_hero(self, playlist_id: str, source_image_path) -> str | None:
-        return self._prepare_variant(playlist_id, source_image_path, suffix="_hero")
+        candidate = self.prepare_candidate(playlist_id, source_image_path, "hero")
+        return candidate.path if candidate is not None else None
+
+    def prepare_candidate(
+        self, playlist_id: str, source_image_path, role: str
+    ) -> PreparedPlaylistAsset | None:
+        """PL-FINAL-01: full candidate contract — the returned
+        ``created_by_operation`` distinguishes a newly materialized managed
+        file from an idempotent REUSE of an identical content-addressed
+        file. Only True candidates may enter rollback cleanup ownership."""
+        if role not in ("cover", "hero"):
+            return None
+        suffix = "" if role == "cover" else "_hero"
+        return self._prepare_variant(playlist_id, source_image_path, suffix=suffix)
 
     def _prepare_variant(
         self, playlist_id: str, source_image_path, *, suffix: str
-    ) -> str | None:
+    ) -> PreparedPlaylistAsset | None:
         """IMMUTABLE CANDIDATE PROTOCOL (P0-03) with the R2 copy-once-hash
         pipeline (P1-08):
 
@@ -182,6 +201,7 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
         if not _SAFE_PLAYLIST_ID_RE.fullmatch(playlist_id):
             logger.warning("refusing prepare: unsafe playlist id %r", playlist_id)
             return None
+        role = "cover" if suffix == "" else "hero"
         src = Path(source_image_path)
         if not src.is_file():
             return None
@@ -246,7 +266,6 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
 
         # R4-06: V2 — owner token hash + role explícito; el id raw nunca
         # aparece en el nombre (sin ambigüedad de delimitadores).
-        role = "cover" if suffix == "" else "hero"
         stem = (
             f"playlist_v2_{_owner_token(playlist_id)}_{role}_{digest.hexdigest()[:20]}"
         )
@@ -254,9 +273,16 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
         try:
             if final_path.is_file():
                 temp_path.unlink(missing_ok=True)
-                return str(final_path)  # idempotent: same content exists
+                # PL-FINAL-01: idempotent REUSE — the exact bytes already
+                # exist as a managed file; this candidate was NOT created
+                # by this operation and must never be rollback-cleaned.
+                return PreparedPlaylistAsset(
+                    path=str(final_path), role=role, created_by_operation=False
+                )
             os.replace(temp_path, final_path)
-            return str(final_path)
+            return PreparedPlaylistAsset(
+                path=str(final_path), role=role, created_by_operation=True
+            )
         except OSError as exc:
             temp_path.unlink(missing_ok=True)
             logger.warning(
@@ -270,17 +296,19 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
     def delete_legacy_managed_asset(
         self, playlist_id: str, role: str, managed_path: str
     ) -> bool:
-        """R5-06: retirement EXPLÍCITO de assets V1 legacy (pre-V2), sin
+        """R5-06 + PL-FINAL-04: retirement EXPLÍCITO de assets pre-V2, sin
         relajar la seguridad V2.
 
         Autoriza SOLO la gramática legacy exacta:
 
-            cover:  playlist_<playlist_id>.<ext>
-            hero:   playlist_<playlist_id>_hero.<ext>
+            stable cover:  playlist_<playlist_id>.<ext>
+            stable hero:   playlist_<playlist_id>_hero.<ext>
+            digest cover:  playlist_<playlist_id>_<digest20>.<ext>
+            digest hero:   playlist_<playlist_id>_hero_<digest20>.<ext>
 
-        Si el playlist_id contiene "_hero" (o cualquier delimitador que
-        haga la ownership AMBIGUA en esta gramática) → FAIL CLOSED (la
-        deuda de storage es preferible al cross-owner deletion)."""
+        FAIL CLOSED cuando la ownership es AMBIGUA en estas gramáticas
+        (playlist_id que termina en "_hero" o en un patrón de digest): la
+        deuda de storage es preferible al cross-owner deletion."""
         storage = self._storage_dir.resolve()
         candidate = Path(managed_path).resolve()
         if candidate.parent != storage:
@@ -294,18 +322,35 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
             # "x") — fail closed.
             logger.warning("refusing legacy delete: ambiguous owner %r", playlist_id)
             return False
-        if role not in ("cover", "hero"):
-            return False
-        if role == "cover":
-            legacy_name = f"playlist_{playlist_id}{candidate.suffix.lower()}"
-        else:
-            legacy_name = f"playlist_{playlist_id}_hero{candidate.suffix.lower()}"
-        if candidate.name != legacy_name:
+        if re.search(r"_[0-9a-f]{20}$", playlist_id) is not None:
+            # El id termina con un patrón de digest: su cover digest
+            # ("playlist_<id>_<digest>") podría coincidir con el cover
+            # digest de otro id más corto — fail closed.
             logger.warning(
-                "refusing legacy delete: %r != %r", candidate.name, legacy_name
+                "refusing legacy delete: digest-ambiguous owner %r", playlist_id
             )
             return False
+        if role not in ("cover", "hero"):
+            return False
         if candidate.suffix.lower() not in _ALLOWED_EXTENSIONS:
+            return False
+        name = candidate.name
+        stem = name[: -len(candidate.suffix)]
+        digest_match = _DIGEST_SUFFIX_RE.search(stem)
+        if role == "cover":
+            stable_ok = stem == f"playlist_{playlist_id}"
+            digest_ok = digest_match is not None and (
+                stem[: digest_match.start()] == f"playlist_{playlist_id}"
+            )
+        else:
+            stable_ok = stem == f"playlist_{playlist_id}_hero"
+            digest_ok = digest_match is not None and (
+                stem[: digest_match.start()] == f"playlist_{playlist_id}_hero"
+            )
+        if not (stable_ok or digest_ok):
+            logger.warning(
+                "refusing legacy delete: %r != %r", candidate.name, playlist_id
+            )
             return False
         try:
             candidate.unlink(missing_ok=True)

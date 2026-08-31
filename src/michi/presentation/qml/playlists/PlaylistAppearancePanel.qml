@@ -43,6 +43,23 @@ MichiDialog {
     property var heroGradientColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
     property real heroGradientAngle: 135
     property var autoHeroColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
+    // PL-FINAL-09: focal persistido (0..1) — el draft solo se persiste con
+    // Apply; Reset vuelve al centro 0.5/0.5.
+    property real persistedHeroFocalX: 0.5
+    property real persistedHeroFocalY: 0.5
+    property real draftHeroFocalX: 0.5
+    property real draftHeroFocalY: 0.5
+
+    // PL-FINAL-08: warnings DRAFT-AWARE — el warning describe el
+    // CANDIDATO que el usuario edita, no solo el estado persistido.
+    readonly property bool unresolvedMissingCover:
+        root.coverAssetMissing && root.draftCoverAction !== "replace"
+    readonly property bool unresolvedMissingHero:
+        root.heroImageMissing
+        && root.draftMode === "image"
+        && root.draftHeroImageUrl.toString().length === 0
+    readonly property bool hasUnresolved:
+        root.unresolvedMissingCover || root.unresolvedMissingHero
 
     // R3-06 FULL DRAFT: nada se persiste hasta Apply. Cover y Hero son
     // objetos independientes pero la decisión Apply/Cancel es UNA
@@ -75,6 +92,8 @@ MichiDialog {
         // permanece Image hasta que el usuario decida explícitamente.
         root.draftMode = root.persistedHeroMode || "auto"
         root.draftCoverAction = "keep"
+        root.draftHeroFocalX = root.persistedHeroFocalX
+        root.draftHeroFocalY = root.persistedHeroFocalY
         solidField.text = root.heroSolidColor || MichiPalette.playlistHeroTopHex
         var colors = root.heroGradientColors || []
         gradientOne.text = colors.length > 0 ? colors[0] : MichiPalette.playlistHeroTopHex
@@ -89,7 +108,10 @@ MichiDialog {
 
     function _apply() {
         // R3-06: UNA transacción editorial. Cover + Hero se resuelven
-        // juntos; el Bridge/Service persiste UNA vez.
+        // juntos; el Bridge/Service persiste UNA vez. PL-FINAL-08: con un
+        // asset missing sin resolución el Apply queda bloqueado.
+        if (root.hasUnresolved)
+            return
         var colors = [gradientOne.text, gradientTwo.text]
         if (root.draftThirdColor)
             colors.push(gradientThree.text)
@@ -101,7 +123,9 @@ MichiDialog {
             solidField.text,
             colors,
             angleSlider.value,
-            root.draftHeroImageUrl.toString())
+            root.draftHeroImageUrl.toString(),
+            root.draftHeroFocalX,
+            root.draftHeroFocalY)
         if (result === "updated" || result === "no_change") {
             root.errorText = ""
             root.close()
@@ -145,11 +169,16 @@ MichiDialog {
     }
 
     contentItem: ColumnLayout {
-            // R2 P1-11: a persisted custom asset whose managed file is
-            // missing degrades safely — the user is told and can re-choose.
+            // R2 P1-11 + PL-FINAL-08: el warning describe el CANDIDATO
+            // que el usuario edita — seleccionar un reemplazo lo hace
+            // desaparecer de inmediato.
             MichiText {
-                visible: root.coverAssetMissing || root.heroImageMissing
-                text: qsTr("Custom image is unavailable. Choose another image or reset to Automatic.")
+                visible: root.hasUnresolved
+                text: root.unresolvedMissingCover && root.unresolvedMissingHero
+                    ? qsTr("Custom images are unavailable. Choose replacements or reset to Automatic.")
+                    : root.unresolvedMissingCover
+                        ? qsTr("The custom cover is unavailable. Choose a new image or reset to Automatic.")
+                        : qsTr("The custom hero image is unavailable. Choose a new image or reset to Automatic.")
                 role: "warning"
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -186,6 +215,7 @@ MichiDialog {
                         clip: true
 
                         PlaylistHeroBackground {
+                            id: previewHero
                             anchors.fill: parent
                             heroMode: root.previewHeroMode
                             solidColor: root._previewColor(
@@ -211,6 +241,47 @@ MichiDialog {
                             coverPath: root.draftPreviewCoverPath
                             mosaicArtworkPaths: root.mosaicArtworkPaths
                             autoColors: root.autoHeroColors
+                            // PL-FINAL-09: WYSIWYG del focal draft.
+                            focalX: root.draftHeroFocalX
+                            focalY: root.draftHeroFocalY
+                        }
+                        // PL-FINAL-09: arrastrar la imagen del hero reposiciona
+                        // el focal (solo en modo image); Reset → centro.
+                        MouseArea {
+                            anchors.fill: parent
+                            visible: root.previewHeroMode === "image"
+                            hoverEnabled: true
+                            cursorShape: Qt.ClosedHandCursor
+                            property real _lastX: 0
+                            property real _lastY: 0
+                            onPressed: mouse => {
+                                _lastX = mouse.x
+                                _lastY = mouse.y
+                            }
+                            onPositionChanged: mouse => {
+                                if (!pressed)
+                                    return
+                                root.draftHeroFocalX = Math.max(0, Math.min(1,
+                                    root.draftHeroFocalX
+                                    + (mouse.x - _lastX) / Math.max(1, width)))
+                                root.draftHeroFocalY = Math.max(0, Math.min(1,
+                                    root.draftHeroFocalY
+                                    + (mouse.y - _lastY) / Math.max(1, height)))
+                                _lastX = mouse.x
+                                _lastY = mouse.y
+                            }
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "transparent"
+                                radius: MichiRadius.md
+                                border.width: root.previewHeroMode === "image" ? 1 : 0
+                                border.color: MichiPalette.auroraCyan
+                                opacity: 0.0
+                                Behavior on opacity {
+                                    enabled: !MichiAccessibility.reducedMotion
+                                    NumberAnimation { duration: MichiMotion.micro }
+                                }
+                            }
                         }
                         Rectangle {
                             anchors.fill: parent
@@ -416,6 +487,43 @@ MichiDialog {
                                 root.draftMode = "auto"
                             }
                         }
+                        Item { Layout.fillWidth: true }
+                        MichiButton {
+                            text: qsTr("Reset position")
+                            variant: "ghost"
+                            visible: root.draftMode === "image"
+                            enabled: root.draftHeroFocalX !== 0.5
+                                || root.draftHeroFocalY !== 0.5
+                            accessibleName: qsTr("Reset image position to center")
+                            onClicked: {
+                                root.draftHeroFocalX = 0.5
+                                root.draftHeroFocalY = 0.5
+                            }
+                        }
+                    }
+                    // PL-FINAL-09: guidance discreta (no domina el editor) +
+                    // reposicionamiento por teclado (flechas) en modo image.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: root.draftMode === "image"
+                        spacing: MichiSpacing.sm
+                        MichiText {
+                            text: qsTr("Drag the preview to reposition · Recommended: 2400×600 · wide 4:1 artwork works best")
+                            role: "caption"
+                            color: MichiPalette.textMuted
+                            elide: Text.ElideRight
+                        }
+                        Item {
+                            Layout.preferredWidth: 120
+                            Layout.preferredHeight: 20
+                            focusPolicy: Qt.StrongFocus
+                            activeFocusOnTab: true
+                            Accessible.name: qsTr("Reposition hero image with arrow keys")
+                            Keys.onLeftPressed: root.draftHeroFocalX = Math.max(0, root.draftHeroFocalX - 0.05)
+                            Keys.onRightPressed: root.draftHeroFocalX = Math.min(1, root.draftHeroFocalX + 0.05)
+                            Keys.onUpPressed: root.draftHeroFocalY = Math.max(0, root.draftHeroFocalY - 0.05)
+                            Keys.onDownPressed: root.draftHeroFocalY = Math.min(1, root.draftHeroFocalY + 0.05)
+                        }
                     }
                 }
             }
@@ -442,6 +550,7 @@ MichiDialog {
             MichiButton {
                 text: qsTr("Apply")
                 variant: "primary"
+                enabled: !root.hasUnresolved
                 accessibleName: qsTr("Apply playlist appearance")
                 onClicked: root._apply()
             }

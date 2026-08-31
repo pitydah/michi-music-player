@@ -18,6 +18,14 @@ Item {
     // R3-07: selección visual por PATH estable — el índice es una posición
     // y no sobrevive reorders; el path sí. Playback sigue usando index.
     property string selectedTrackPath: ""
+    // PL-FINAL-14/15: selection mode (checkboxes, sin playback) y reorder
+    // gated — con un filtro de búsqueda activo el drag reorder se
+    // DESHABILITA (un índice filtrado nunca debe reordenar la playlist).
+    property bool selectionMode: false
+    property bool reorderEnabled: true
+    // PL-FINAL-15: indices (canonical) seleccionados en selection mode —
+    // el Detail es el dueño del Set; esta lista solo proyecta.
+    property var checkedIndices: []
     // The header must be a COMPONENT: ListView.header assigns to its
     // internal QQmlComponent slot — passing a pre-instantiated Item (typed
     // var or Item) fails with "Unable to assign ... to QQmlComponent" and
@@ -35,6 +43,7 @@ Item {
     signal trackSelected(string path)
     signal removeTrackRequested(int index)
     signal moveTrackRequested(int fromIndex, int toIndex)
+    signal selectionToggleRequested(int index)
 
     // R3-07/08: rows-driven selection sync — cuando rows cambia (move
     // exitoso), el path seleccionado sigue a su nueva posición.
@@ -82,18 +91,26 @@ Item {
         ScrollBar.vertical: MichiScrollBar { }
 
         Keys.onReturnPressed: {
-            if (currentIndex >= 0 && currentIndex < root.rows.length)
-                root.playTrackRequested(currentIndex)
+            // PL-FINAL-14: la tecla global del ListView también apunta al
+            // índice CANONICO de la row actual (filtro-safe).
+            if (currentIndex >= 0 && currentIndex < root.rows.length
+                    && root.rows[currentIndex].canonicalIndex !== undefined)
+                root.playTrackRequested(root.rows[currentIndex].canonicalIndex)
         }
         Keys.onEnterPressed: {
-            if (currentIndex >= 0 && currentIndex < root.rows.length)
-                root.playTrackRequested(currentIndex)
+            if (currentIndex >= 0 && currentIndex < root.rows.length
+                    && root.rows[currentIndex].canonicalIndex !== undefined)
+                root.playTrackRequested(root.rows[currentIndex].canonicalIndex)
         }
 
-        // Reorder by drag & drop: drop line + move to the target row
+        // Reorder by drag & drop: drop line + move to the target row.
+        // PL-FINAL-14: con filtro de búsqueda activo el reorder se
+        // deshabilita por completo (drop nunca reordena posiciones
+        // filtradas).
         DropArea {
             anchors.fill: parent
             keys: ["application/x-michi-playlist-index"]
+            enabled: root.reorderEnabled && !root.selectionMode
 
             onPositionChanged: drag => {
                 var to = trackList.indexAt(drag.x, drag.y)
@@ -143,11 +160,24 @@ Item {
             Accessible.role: Accessible.ListItem
             Accessible.name: modelData.title + " — " + modelData.artist
 
+            // PL-FINAL-14: TODA acción que llega al Bridge usa el INDEX
+            // CANONICO del modelo (la posición real en la playlist). Con
+            // un filtro de búsqueda activo, `index` es la posición en la
+            // lista FILTRADA y nunca debe usarse como identidad.
+            readonly property int canonicalIndex:
+                modelData.canonicalIndex !== undefined
+                    ? modelData.canonicalIndex : index
+
             readonly property bool isPlaying: typeof playback !== "undefined"
                 && playback && modelData.path
                 && playback.currentPath === modelData.path
             readonly property bool isSelected:
                 root.selectedTrackPath === modelData.path
+            // PL-FINAL-16: un track que la biblioteca no resuelve nunca se
+            // borra silenciosamente: queda visible, marcado y sin playback.
+            readonly property bool unavailable: modelData.available === false
+                || modelData.unavailableReason !== undefined
+                && modelData.unavailableReason !== ""
 
             // R3-09: reveal incluye el focus de los PROPIOS controles —
             // un keyboard user que tabee hasta ellos los ve (opacity 1
@@ -169,11 +199,24 @@ Item {
                 // Track number / playing indicator (36-40px) — doubles as
                 // the drag handle for reordering (M7)
                 Item {
-                    Layout.preferredWidth: 36
+                    Layout.preferredWidth: root.selectionMode ? 40 : 36
                     Layout.preferredHeight: 40
 
-                    Drag.active: dragHandler.active
-                    Drag.source: trackItem
+                    // PL-FINAL-15: en selection mode el handle de drag
+                    // desaparece y entra el checkbox; el drag reorder solo
+                    // es válido sin filtro de búsqueda activo.
+                    CheckBox {
+                        visible: root.selectionMode
+                        anchors.centerIn: parent
+                        checked: root.checkedIndices.indexOf(
+                            trackItem.canonicalIndex) !== -1
+                        Accessible.name: qsTr("Select ") + modelData.title
+                        onToggled: root.selectionToggleRequested(
+                            trackItem.canonicalIndex)
+                    }
+
+                    Drag.active: root.reorderEnabled && dragHandler.active
+                    Drag.source: root.reorderEnabled ? trackItem : null
                     Drag.supportedActions: Qt.MoveAction
                     Drag.mimeData: { "application/x-michi-playlist-index": index }
                     Drag.hotSpot.x: width / 2
@@ -181,6 +224,7 @@ Item {
 
                     DragHandler {
                         id: dragHandler
+                        enabled: root.reorderEnabled && !root.selectionMode
                         acceptedButtons: Qt.LeftButton
                         cursorShape: Qt.OpenHandCursor
                         onActiveChanged: {
@@ -193,7 +237,7 @@ Item {
 
                     MichiText {
                         anchors.centerIn: parent
-                        visible: !trackItem.isPlaying
+                        visible: !trackItem.isPlaying && !root.selectionMode
                         text: index + 1
                         role: "technical"
                         technical: true
@@ -272,12 +316,26 @@ Item {
 
                 MichiText {
                     visible: root.showFormatColumn
-                    Layout.preferredWidth: 72
+                    // PL-FINAL-24: 72px truncaba "FLAC · 24/96" — mínimo
+                    // responsivo para no cortar etiquetas reales.
+                    Layout.preferredWidth: Math.max(96, trackList.width * 0.13)
+                    Layout.minimumWidth: 96
+                    Layout.maximumWidth: 200
                     text: (modelData.qualityLabel && modelData.qualityLabel !== "")
                         ? modelData.qualityLabel : ""
                     role: "technical"
                     color: MichiPalette.textMuted
                     elide: Text.ElideRight
+                }
+
+                // PL-FINAL-16: estado explícito de track no disponible —
+                // nunca borrado silencioso, nunca playback roto.
+                MichiText {
+                    visible: trackItem.unavailable
+                    text: qsTr("Unavailable")
+                    role: "technical"
+                    color: MichiPalette.textSecondary
+                    opacity: 0.55
                 }
 
                 MichiText {
@@ -324,10 +382,18 @@ Item {
                 }
             }
 
-            // Canonical product contract: one click both selects and plays.
+            // Canonical product contract: one click both selects and plays —
+            // EXCEPT in selection mode (click toggles selection, NO
+            // playback) and for unavailable tracks (never played). Target
+            // identity is ALWAYS canonicalIndex (filter-safe).
             onClicked: {
+                if (root.selectionMode) {
+                    root.selectionToggleRequested(trackItem.canonicalIndex)
+                    return
+                }
                 root.trackSelected(modelData.path)
-                root.playTrackRequested(index)
+                if (!trackItem.unavailable)
+                    root.playTrackRequested(trackItem.canonicalIndex)
             }
             // Keyboard navigation feedback: arrow keys move the ListView
             // currentIndex, so the focused row must also become the visible
@@ -336,15 +402,17 @@ Item {
                 if (activeFocus)
                     root.trackSelected(modelData.path)
             }
-            Keys.onReturnPressed: root.playTrackRequested(index)
-            Keys.onEnterPressed: root.playTrackRequested(index)
+            Keys.onReturnPressed: root.playTrackRequested(trackItem.canonicalIndex)
+            Keys.onEnterPressed: root.playTrackRequested(trackItem.canonicalIndex)
             Keys.onUpPressed: event => {
-                if (event.modifiers & Qt.AltModifier) {
-                    if (index > 0) {
+                if (event.modifiers & Qt.AltModifier && root.reorderEnabled
+                        && !root.selectionMode) {
+                    if (trackItem.canonicalIndex > 0) {
                         // R3-08: SOLO el intent. La selección se mantiene
                         // por path; rows cambia → onRowsChanged sincroniza
                         // currentIndex con la posición del path seleccionado.
-                        root.moveTrackRequested(index, index - 1)
+                        root.moveTrackRequested(
+                            trackItem.canonicalIndex, trackItem.canonicalIndex - 1)
                         event.accepted = true
                     } else {
                         event.accepted = false
@@ -355,9 +423,11 @@ Item {
                 }
             }
             Keys.onDownPressed: event => {
-                if (event.modifiers & Qt.AltModifier) {
-                    if (index < root.rows.length - 1) {
-                        root.moveTrackRequested(index, index + 1)
+                if (event.modifiers & Qt.AltModifier && root.reorderEnabled
+                        && !root.selectionMode) {
+                    if (trackItem.canonicalIndex < root.rows.length - 1) {
+                        root.moveTrackRequested(
+                            trackItem.canonicalIndex, trackItem.canonicalIndex + 1)
                         event.accepted = true
                     } else {
                         event.accepted = false
@@ -399,7 +469,8 @@ Item {
                 id: trackMenu
                 MenuItem {
                     text: qsTr("Play")
-                    onTriggered: root.playTrackRequested(index)
+                    enabled: !trackItem.unavailable
+                    onTriggered: root.playTrackRequested(trackItem.canonicalIndex)
                 }
                 MenuItem {
                     text: qsTr("Add to Queue")
@@ -408,17 +479,21 @@ Item {
                 MichiSeparator { }
                 MenuItem {
                     text: qsTr("Remove from playlist")
-                    onTriggered: root.removeTrackRequested(index)
+                    onTriggered: root.removeTrackRequested(trackItem.canonicalIndex)
                 }
                 MenuItem {
                     text: qsTr("Move Up")
-                    enabled: index > 0
-                    onTriggered: root.moveTrackRequested(index, index - 1)
+                    enabled: trackItem.canonicalIndex > 0 && root.reorderEnabled
+                        && !root.selectionMode
+                    onTriggered: root.moveTrackRequested(
+                        trackItem.canonicalIndex, trackItem.canonicalIndex - 1)
                 }
                 MenuItem {
                     text: qsTr("Move Down")
-                    enabled: index < root.rows.length - 1
-                    onTriggered: root.moveTrackRequested(index, index + 1)
+                    enabled: trackItem.canonicalIndex < root.rows.length - 1
+                        && root.reorderEnabled && !root.selectionMode
+                    onTriggered: root.moveTrackRequested(
+                        trackItem.canonicalIndex, trackItem.canonicalIndex + 1)
                 }
             }
         }

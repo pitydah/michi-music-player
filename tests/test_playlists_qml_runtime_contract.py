@@ -29,7 +29,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
 import pytest
-from PySide6.QtCore import Property, QObject, QUrl, Slot
+from PySide6.QtCore import Property, QObject, Slot
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtWidgets import QApplication
 
@@ -518,9 +518,10 @@ class TestFailureFeedback:
         )
 
     def test_appearance_slots_translate_persistence_failure(self, tmp_path):
-        """REVIEW FINDING: cover/hero/rename/create slots must translate
-        PlaylistPersistenceError (return False + mutationFailed) — never
-        escape raw into QML."""
+        """REVIEW FINDING: the canonical apply_visual_appearance slot must
+        translate PlaylistPersistenceError (return persistence_failed +
+        signal) — never escape raw into QML. Legacy cover/hero slots were
+        removed (PL-FINAL-03: zero production QML consumers)."""
 
         port = _FailingPort(fail_after=999)
         service, nav, coord, pb = _bridge(tmp_path, port=port)
@@ -529,42 +530,44 @@ class TestFailureFeedback:
 
         # Ghost ids: failure, never a raise, no feedback noise.
         assert pb.rename_playlist("ghost", "X") == "not_found"
-        assert pb.set_custom_cover("ghost", "/tmp/x.png") == "not_found"
         assert (
-            pb.set_custom_cover_from_url("ghost", QUrl.fromLocalFile("/tmp/x.png"))
+            pb.apply_visual_appearance(
+                "ghost", "replace", "/tmp/x.png", "auto", "", [], 135.0, ""
+            )
             == "not_found"
         )
-        assert pb.set_hero_auto("ghost") == "not_found"
-        assert pb.set_hero_solid("ghost", "#112233") == "not_found"
         assert (
-            pb.set_hero_gradient("ghost", ["#112233", "#445566"], 45.0) == "not_found"
+            pb.apply_visual_appearance(
+                "ghost", "keep", "", "solid", "#112233", [], 135.0, ""
+            )
+            == "not_found"
         )
         assert (
-            pb.set_custom_hero_from_url("ghost", QUrl.fromLocalFile("/tmp/h.png"))
+            pb.apply_visual_appearance(
+                "ghost", "keep", "", "image", "", [], 135.0, "/tmp/h.png"
+            )
             == "not_found"
         )
         assert failures == []
 
-        # Real playlist + failing port: cover/hero/rename raise inside the
-        # service; the bridge must translate (False + mutationFailed), NOT
-        # propagate a raw PlaylistPersistenceError.
+        # Real playlist + failing port: the canonical appearance transaction
+        # raises inside the service; the bridge must translate
+        # (persistence_failed + signal), NOT propagate raw. (Cover replace
+        # necesita artwork_store; el caso solid cubre el path sin assets.)
         playlist = service.create_playlist("Mix")
         port.fail_after = 1  # the NEXT write (the mutation) fails
-        # Cover: la persistencia falla → persistence_failed + signal.
+        # Hero SOLID: la persistencia falla → persistence_failed + signal.
         assert (
-            pb.set_custom_cover(playlist.playlist_id, "/tmp/x.png")
+            pb.apply_visual_appearance(
+                playlist.playlist_id, "keep", "", "solid", "#112233", [], 135.0, ""
+            )
             == "persistence_failed"
         )
-        assert failures == ["cover"]
-        # Hero SOLID: persistence_failed + signal.
-        assert (
-            pb.set_hero_solid(playlist.playlist_id, "#112233") == "persistence_failed"
-        )
-        assert failures == ["cover", "hero"]
+        assert failures == ["appearance"]
         assert (
             pb.rename_playlist(playlist.playlist_id, "Renamed") == "persistence_failed"
         )
-        assert failures == ["cover", "hero", "rename"]
+        assert failures == ["appearance", "rename"]
 
 
 # ==========================================================================

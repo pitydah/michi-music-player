@@ -270,7 +270,22 @@ def test_bridge_projects_and_mutates_appearance_without_owning_selection() -> No
     navigation.navigate_to_playlist("p1")
     bridge = PlaylistsBridge(service, navigation_service=navigation)
     try:
-        assert bridge.set_hero_gradient("p1", ["#102030", "#405060", "#708090"], 405)
+        # PL-FINAL-03: el camino canónico de apariencia es
+        # apply_visual_appearance (los slots legacy set_hero_* fueron
+        # removidos del bridge — cero consumers QML).
+        assert (
+            bridge.apply_visual_appearance(
+                "p1",
+                "keep",
+                "",
+                "gradient",
+                "",
+                ["#102030", "#405060", "#708090"],
+                405,
+                "",
+            )
+            == "updated"
+        )
         row = bridge.property("playlists")[0]
         selected = bridge.property("selectedPlaylistAppearance")
         assert row["effectiveHeroMode"] == "gradient"

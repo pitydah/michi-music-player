@@ -33,9 +33,19 @@ Item {
     signal renameRequested(string playlistId, string playlistName)
     signal deleteRequested(string playlistId, string playlistName)
     signal removeTrackRequested(int index)
+    signal removeTracksRequested(var indices)
     signal moveTrackRequested(int fromIndex, int toIndex)
     signal playTrackRequested(int index)
     signal addMusicRequested()
+    signal editDescriptionRequested(string playlistId, string description)
+
+    // PL-FINAL-15: selection mode — el Set de indices canonicos vive aqui
+    // (el child solo proyecta checkboxes). Path estable como identidad.
+    property bool selectionMode: false
+    property var checkedIndices: []
+    readonly property bool searchActive: playlists
+        && playlists.playlistSearchQuery.length > 0
+    readonly property bool hasChecked: root.checkedIndices.length > 0
 
     // Hero occupies ~30-40% of the first visible screen
     readonly property real heroHeight: Math.max(240, Math.min(300, root.height * 0.36))
@@ -79,6 +89,9 @@ Item {
                 playlistName: playlists ? playlists.selectedPlaylistName : ""
                 trackCount: playlists ? playlists.playlistTracks.length : 0
                 durationMs: playlists ? playlists.selectedPlaylistDurationMs : 0
+                // PL-FINAL-05/16: descripcion real + conteo honesto.
+                description: playlists ? playlists.selectedPlaylistDescription : ""
+                unavailableCount: playlists ? playlists.playlistUnavailableCount : 0
 
                 // R2 P1-11: EFFECTIVE cover — a vanished managed asset
                 // renders the automatic mosaic, never a dead box.
@@ -94,6 +107,11 @@ Item {
                     ? 135 : parent.appearance.heroGradientAngle
                 heroImagePath: parent.appearance.effectiveHeroImagePath || ""
                 autoHeroColors: playlists ? playlists.selectedPlaylistAutoHeroColors : [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
+                // PL-FINAL-09: focal del hero image (persistido con Apply).
+                heroFocalX: parent.appearance.heroFocalX === undefined
+                    ? 0.5 : parent.appearance.heroFocalX
+                heroFocalY: parent.appearance.heroFocalY === undefined
+                    ? 0.5 : parent.appearance.heroFocalY
 
                 // R2.1-07: signals wired INLINE (the ListView headerItem is
                 // this wrapper Item, NOT the hero — a Connections on
@@ -133,6 +151,50 @@ Item {
                 iconName: "back"
                 accessibleName: qsTr("Back to All Playlists")
                 onClicked: root.backRequested()
+            }
+            // PL-FINAL-14/15: toolbar local — búsqueda dentro de la
+            // playlist + selection mode. La búsqueda NUNCA toca el search
+            // global de la biblioteca.
+            MichiTextField {
+                Layout.fillWidth: true
+                Layout.maximumWidth: 320
+                Layout.preferredHeight: MichiMetrics.controlMedium
+                placeholderText: qsTr("Search in playlist")
+                text: playlists.playlistSearchQuery
+                onTextChanged: playlists.set_playlist_search_query(text)
+                Accessible.name: qsTr("Search tracks in this playlist")
+            }
+            MichiButton {
+                visible: !root.selectionMode
+                text: qsTr("Select")
+                variant: "ghost"
+                implicitHeight: MichiMetrics.controlMedium
+                accessibleName: qsTr("Select multiple tracks")
+                onClicked: {
+                    root.checkedIndices = []
+                    root.selectionMode = true
+                }
+            }
+            // PL-FINAL-15: en selection mode — remove batch + done.
+            MichiButton {
+                visible: root.selectionMode
+                text: qsTr("Remove %1").arg(root.checkedIndices.length)
+                variant: "danger"
+                implicitHeight: MichiMetrics.controlMedium
+                enabled: root.hasChecked
+                accessibleName: qsTr("Remove selected tracks from playlist")
+                onClicked: root.removeTracksRequested(root.checkedIndices.slice())
+            }
+            MichiButton {
+                visible: root.selectionMode
+                text: qsTr("Done")
+                variant: "ghost"
+                implicitHeight: MichiMetrics.controlMedium
+                accessibleName: qsTr("Exit selection mode")
+                onClicked: {
+                    root.checkedIndices = []
+                    root.selectionMode = false
+                }
             }
             Item { Layout.fillWidth: true }
         }
@@ -177,14 +239,31 @@ Item {
                 showFormatColumn: root.width > 1200
                 narrow: root.width < 700
                 heroComponent: heroComponent
+                // PL-FINAL-14/15: selection mode + reorder gated por search.
+                selectionMode: root.selectionMode
+                checkedIndices: root.checkedIndices
+                reorderEnabled: !root.searchActive && !root.selectionMode
 
                 onTrackSelected: path => root.selectedTrackPath = path
                 // R4-11: el Detail re-emite el INTENT — ContentHost traduce.
                 onPlayTrackRequested: index => root.playTrackRequested(index)
                 onRemoveTrackRequested: index => root.removeTrackRequested(index)
                 onMoveTrackRequested: (f, t) => root.moveTrackRequested(f, t)
+                onSelectionToggleRequested: index => {
+                    // PL-FINAL-15: toggle por INDEX CANONICO — las rows
+                    // filtradas por search conservan canonicalIndex.
+                    var i = root.checkedIndices.indexOf(index)
+                    if (i === -1)
+                        root.checkedIndices = root.checkedIndices.concat([index])
+                    else {
+                        var copy = root.checkedIndices.slice()
+                        copy.splice(i, 1)
+                        root.checkedIndices = copy
+                    }
+                }
             }
-            // Empty state — hero stays, tracks area shows a quiet prompt
+            // Empty state — hero stays, tracks area shows a quiet prompt.
+            // PL-FINAL-14: distingue "sin tracks" de "sin coincidencias".
             ColumnLayout {
                 anchors.fill: parent
                 anchors.topMargin: root.heroHeight
@@ -202,12 +281,15 @@ Item {
                 }
                 MichiText {
                     Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("This playlist is empty")
+                    text: root.searchActive
+                        ? qsTr("No matching tracks")
+                        : qsTr("This playlist is empty")
                     role: "section"
                     color: MichiPalette.textPrimary
                 }
                 MichiText {
                     Layout.alignment: Qt.AlignHCenter
+                    visible: !root.searchActive
                     text: qsTr("Add music from your library to start listening.")
                     role: "secondary"
                     color: MichiPalette.textSecondary
@@ -216,6 +298,7 @@ Item {
                 Item { Layout.preferredHeight: MichiSpacing.xs }
                 MichiButton {
                     Layout.alignment: Qt.AlignHCenter
+                    visible: !root.searchActive
                     text: qsTr("Add Music")
                     iconName: "plus"
                     variant: "secondary"
@@ -236,6 +319,12 @@ Item {
         MenuItem {
             text: qsTr("Add tracks…")
             onTriggered: root.addMusicRequested()
+        }
+        MenuItem {
+            objectName: "playlistDetailEditDescriptionAction"
+            text: qsTr("Edit description…")
+            onTriggered: root.editDescriptionRequested(
+                root.playlistId, playlists.selectedPlaylistDescription)
         }
         MenuItem {
             text: qsTr("Customize appearance…")

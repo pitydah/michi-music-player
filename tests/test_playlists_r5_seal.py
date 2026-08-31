@@ -181,20 +181,50 @@ class TestResultSemanticsConverged:
     def test_same_hero_solid_no_change_no_signal(self, tmp_path):
         service, nav, coord, bridge = _world(tmp_path)
         playlist = service.create_playlist("Mix")
-        service.set_hero_solid(playlist.playlist_id, "#112233")
+        # PL-FINAL-03: el camino canónico es apply_visual_appearance (los
+        # slots legacy set_hero_* fueron removidos — cero consumers QML).
+        assert (
+            service.apply_visual_appearance(
+                playlist.playlist_id,
+                cover_action="keep",
+                hero_mode="solid",
+                hero_solid_color="#112233",
+            )
+            == "updated"
+        )
         failures = []
         bridge.persistenceFailed.connect(failures.append)
-        assert bridge.set_hero_solid(playlist.playlist_id, "#112233") == "no_change"
+        assert (
+            bridge.apply_visual_appearance(
+                playlist.playlist_id, "keep", "", "solid", "#112233", [], 135.0, ""
+            )
+            == "no_change"
+        )
         assert failures == []
 
     def test_same_hero_gradient_no_change_no_signal(self, tmp_path):
         service, nav, coord, bridge = _world(tmp_path)
         playlist = service.create_playlist("Mix")
-        service.set_hero_gradient(playlist.playlist_id, ("#112233", "#445566"), 45.0)
+        service.apply_visual_appearance(
+            playlist.playlist_id,
+            cover_action="keep",
+            hero_mode="gradient",
+            hero_gradient_colors=("#112233", "#445566"),
+            hero_gradient_angle=45.0,
+        )
         failures = []
         bridge.persistenceFailed.connect(failures.append)
         assert (
-            bridge.set_hero_gradient(playlist.playlist_id, ["#112233", "#445566"], 45.0)
+            bridge.apply_visual_appearance(
+                playlist.playlist_id,
+                "keep",
+                "",
+                "gradient",
+                "",
+                ["#112233", "#445566"],
+                45.0,
+                "",
+            )
             == "no_change"
         )
         assert failures == []
@@ -202,10 +232,17 @@ class TestResultSemanticsConverged:
     def test_same_hero_auto_no_change_no_signal(self, tmp_path):
         service, nav, coord, bridge = _world(tmp_path)
         playlist = service.create_playlist("Mix")
-        service.set_hero_auto(playlist.playlist_id)
+        service.apply_visual_appearance(
+            playlist.playlist_id, cover_action="keep", hero_mode="auto"
+        )
         failures = []
         bridge.persistenceFailed.connect(failures.append)
-        assert bridge.set_hero_auto(playlist.playlist_id) == "no_change"
+        assert (
+            bridge.apply_visual_appearance(
+                playlist.playlist_id, "keep", "", "auto", "", [], 135.0, ""
+            )
+            == "no_change"
+        )
         assert failures == []
 
     def test_duplicate_add_is_already_present_no_signal(self, tmp_path):

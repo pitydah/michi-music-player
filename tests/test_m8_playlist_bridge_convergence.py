@@ -211,7 +211,9 @@ class TestM4R1FinalSealPlaylistTrack:
             "src/michi/presentation/qml/playlists/PlaylistTrackList.qml"
         ).read_text()
         assert "signal playTrackRequested(int index)" in qml
-        assert "root.playTrackRequested(index)" in qml  # mouse + keyboard
+        # PL-FINAL-14: mouse + keyboard emit the CANONICAL index
+        # (filter-safe) — nunca el índice de la lista filtrada.
+        assert "root.playTrackRequested(trackItem.canonicalIndex)" in qml
         assert "Keys.onReturnPressed" in qml
         assert "Keys.onEnterPressed" in qml
 

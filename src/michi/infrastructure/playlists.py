@@ -73,12 +73,26 @@ def _decode_appearance(value: object) -> PlaylistAppearance:
     if mode is PlaylistHeroMode.IMAGE and not image_path:
         mode = PlaylistHeroMode.AUTO
 
+    # PL-FINAL-09: focal point — tolerate missing fields, clamp malformed
+    # values; no load-time writeback required.
+    def _decoded_focal(key: str, fallback: float) -> float:
+        raw = value.get(key)
+        if (
+            isinstance(raw, (int, float))
+            and not isinstance(raw, bool)
+            and math.isfinite(float(raw))
+        ):
+            return max(0.0, min(1.0, float(raw)))
+        return fallback
+
     return PlaylistAppearance(
         hero_mode=mode,
         hero_solid_color=solid,
         hero_gradient_colors=colors,
         hero_gradient_angle=angle,
         hero_image_path=image_path,
+        hero_focal_x=_decoded_focal("hero_focal_x", default.hero_focal_x),
+        hero_focal_y=_decoded_focal("hero_focal_y", default.hero_focal_y),
     )
 
 
@@ -114,12 +128,15 @@ def _decode_playlist_entry(entry) -> Playlist | None:
     raw_cover = entry.get("custom_cover_path")
     custom_cover_path = raw_cover if isinstance(raw_cover, str) else ""
     appearance = _decode_appearance(entry.get("appearance"))
+    raw_description = entry.get("description")
+    description = raw_description if isinstance(raw_description, str) else ""
     return Playlist(
         playlist_id=playlist_id,
         name=name,
         track_paths=tuple(paths),
         custom_cover_path=custom_cover_path,
         appearance=appearance,
+        description=description,
     )
 
 
@@ -289,7 +306,10 @@ class SqlitePlaylistsRepository(PlaylistsPort):
                     "hero_gradient_colors": list(p.appearance.hero_gradient_colors),
                     "hero_gradient_angle": p.appearance.hero_gradient_angle,
                     "hero_image_path": p.appearance.hero_image_path,
+                    "hero_focal_x": p.appearance.hero_focal_x,
+                    "hero_focal_y": p.appearance.hero_focal_y,
                 },
+                "description": p.description,
             }
             for p in playlists
         ]

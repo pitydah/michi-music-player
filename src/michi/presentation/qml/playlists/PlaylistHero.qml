@@ -13,6 +13,10 @@ Item {
     property string playlistName: ""
     property int trackCount: 0
     property int durationMs: 0
+    // PL-FINAL-05/16: descripción real del playlist + conteo honesto de
+    // tracks que la biblioteca no puede resolver.
+    property string description: ""
+    property int unavailableCount: 0
 
     property string customCoverPath: ""
     property var mosaicArtworkPaths: []
@@ -22,6 +26,9 @@ Item {
     property real heroGradientAngle: 135
     property string heroImagePath: ""
     property var autoHeroColors: [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
+    // PL-FINAL-09: focal del hero image (0..1) — se propaga al background.
+    property real heroFocalX: 0.5
+    property real heroFocalY: 0.5
     property bool hasTracks: root.trackCount > 0
 
     readonly property bool compact: width < 720
@@ -62,6 +69,8 @@ Item {
         coverPath: root.customCoverPath
         mosaicArtworkPaths: root.mosaicArtworkPaths
         autoColors: root.autoHeroColors
+        focalX: root.heroFocalX
+        focalY: root.heroFocalY
     }
 
     RowLayout {
@@ -196,9 +205,25 @@ Item {
                 Layout.fillWidth: true
                 text: MichiFormat.formatPlaylistSummary(
                     root.trackCount, root.durationMs)
+                    + (root.unavailableCount > 0
+                        ? qsTr(" · %n unavailable", "", root.unavailableCount)
+                        : "")
                 role: "technical"
                 color: MichiPalette.textSecondary
                 opacity: 0.78
+            }
+
+            MichiText {
+                Layout.fillWidth: true
+                Layout.maximumWidth: 560
+                visible: root.description.length > 0
+                text: root.description
+                role: "secondary"
+                color: MichiPalette.textPrimary
+                opacity: 0.82
+                elide: Text.ElideRight
+                maximumLineCount: 2
+                wrapMode: Text.WordWrap
             }
 
             Item { Layout.preferredHeight: MichiSpacing.xs }

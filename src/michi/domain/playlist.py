@@ -14,6 +14,26 @@ from enum import StrEnum
 _MICHI_PLAYLIST_NAMESPACE = uuid.UUID("6f2a1b8e-4c3d-4a5b-9e8f-0a1b2c3d4e5f")
 
 MAX_RECENT_PLAYLISTS = 5
+MAX_DESCRIPTION_LENGTH = 1000
+
+
+@dataclass(frozen=True)
+class PreparedPlaylistAsset:
+    """Transaction-owned asset candidate contract (PL-FINAL-01).
+
+    ``created_by_operation`` is the KILLCRITIC fact that makes rollback
+    safe for content-addressed storage: a prepared path is NOT necessarily
+    a new file — content-addressed stores REUSE an existing file when the
+    exact same bytes already exist. Only candidates with
+    ``created_by_operation == True`` may ever enter rollback cleanup
+    ownership. Reused assets, previously committed assets, other
+    playlists' assets and unowned paths are NEVER deleted by a failed
+    transaction.
+    """
+
+    path: str
+    role: str  # "cover" | "hero"
+    created_by_operation: bool
 
 
 class PlaylistHeroMode(StrEnum):
@@ -40,6 +60,10 @@ class PlaylistAppearance:
     hero_gradient_colors: tuple[str, ...] = ("#152A45", "#13243D")
     hero_gradient_angle: float = 135.0
     hero_image_path: str = ""
+    # PL-FINAL-09: focal point of the hero IMAGE (0..1 normalized; the
+    # default 0.5/0.5 is the exact backward-compatible center crop).
+    hero_focal_x: float = 0.5
+    hero_focal_y: float = 0.5
 
 
 def legacy_playlist_id(name: str) -> str:
@@ -72,6 +96,9 @@ class Playlist:
     track_paths: tuple[str, ...] = ()
     custom_cover_path: str = ""
     appearance: PlaylistAppearance = field(default_factory=PlaylistAppearance)
+    # PL-FINAL-05: playlist metadata (NOT appearance) — survives rename,
+    # track mutation and appearance changes; "" means no description.
+    description: str = ""
 
 
 @dataclass(frozen=True)
