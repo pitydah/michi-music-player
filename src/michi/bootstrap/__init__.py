@@ -90,7 +90,10 @@ from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from michi.presentation.audio_engine_bridge import AudioEngineBridge
-from michi.presentation.enrichment_bridge import EnrichmentBridge
+from michi.presentation.enrichment_bridge import (
+    EnrichmentBridge,
+    LibraryEnrichmentProjection,
+)
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
 from michi.presentation.playback_bridge import PlaybackBridge
@@ -616,6 +619,11 @@ class ApplicationContainer:
             library=library,
             asset_store=self._enrichment.asset_store,
         )
+        self._library_enrichment = LibraryEnrichmentProjection(
+            service=self._enrichment.service,
+            asset_store=self._enrichment.asset_store,
+        )
+        self._eb.changed.connect(self._library_enrichment.invalidate)
 
         # Library/settings coordination: restore last_directory, sync on scan
         lib_prefs = LibraryPreferencesCoordinator(library, settings)
@@ -706,6 +714,7 @@ class ApplicationContainer:
         ctx.setContextProperty("settingsBridge", sb)
         ctx.setContextProperty("audioEngine", aeb)
         ctx.setContextProperty("enrichment", self._eb)
+        ctx.setContextProperty("libraryEnrichment", self._library_enrichment)
 
         # M6.9 policy wiring (composition root): SettingsBridge stays
         # Settings-only; the EnrichmentBridge reacts to the CURRENT value

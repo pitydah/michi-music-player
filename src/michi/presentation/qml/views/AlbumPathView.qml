@@ -31,7 +31,9 @@ PathView {
     clip: true
     interactive: count > 1
     pathItemCount: visibleAlbums === "auto"
-        ? (width >= 1500 ? 9 : width >= 1050 ? 7 : width >= 680 ? 5 : 3)
+        ? (MichiBreakpoints.isXl(width) ? 9
+            : MichiBreakpoints.isWide(width) ? 7
+            : MichiBreakpoints.isMedium(width) ? 5 : 3)
         : Number(visibleAlbums)
     cacheItemCount: pathItemCount + 2
     preferredHighlightBegin: 0.5

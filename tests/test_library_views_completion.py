@@ -77,13 +77,47 @@ def test_material_palette_and_enrichment_firewall_are_explicit() -> None:
     library_bridge = (ROOT / "src/michi/presentation/library_bridge.py").read_text()
     assert "Canvas {" not in texture
     assert "toDataURL" not in texture
-    assert "def browse_album_cached" in bridge
-    cached_body = bridge.split("def browse_album_cached", 1)[1].split(
-        "def refresh_artist", 1
+    library_view = _text("views/LibraryView.qml")
+    albums_view = _text("views/AlbumsView.qml")
+    detail = _text("views/AlbumDetailView.qml")
+    assert "class LibraryEnrichmentProjection" in bridge
+    assert "def open_album_cached" in bridge
+    cached_body = bridge.split("def open_album_cached", 1)[1].split(
+        "def browse_album_cached", 1
     )[0]
     assert "_start_album_operation" not in cached_body
+    assert "browse_album_cached" not in library_view
+    assert "libraryEnrichment.album" in albums_view
+    assert "open_album_cached" in detail
     assert '"artworkPalette"' in library_bridge
     assert '"accentSafe"' in library_bridge
+
+
+def test_responsive_material_and_view_options_closure_contracts() -> None:
+    breakpoints = _text("theme/MichiBreakpoints.qml")
+    header = _text("views/LibraryHeader.qml")
+    flow = _text("views/AlbumPathView.qml")
+    popup = _text("views/LibraryViewOptionsPopup.qml")
+    material = _text("primitives/MichiMaterial.qml")
+    surface = _text("primitives/MichiGlassSurface.qml")
+    assert "int xsMax: 679" in breakpoints and "int compactMin: 680" in breakpoints
+    assert "int mediumMin: 900" in breakpoints and "int xlMin: 1600" in breakpoints
+    assert 'objectName: "compactAlbumViewPicker"' in header
+    assert 'objectName: "compactAlbumViewPopup"' in header
+    assert "MichiBreakpoints.isXl(width) ? 9" in flow
+    assert "MichiBreakpoints.isWide(width) ? 7" in flow
+    assert "MichiBreakpoints.isMedium(width) ? 5 : 3" in flow
+    assert 'text: qsTr("ACTIVE")' in popup
+    assert "activeCustomizations()" in popup
+    assert "SequentialAnimation" in popup and "displayedMode" in popup
+    assert (
+        "role === MichiMaterialRole.control"
+        not in material.split("readonly property bool blurEligible", 1)[1].split(
+            "readonly property bool textured", 1
+        )[0]
+    )
+    assert "materialSpec.baseColor" in surface
+    assert "materialSpec.bottomColor" in surface
 
 
 def test_scale_fixture_has_10k_stable_canonical_keys() -> None:

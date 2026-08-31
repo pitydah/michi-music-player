@@ -449,6 +449,20 @@ class LibraryBridge(QObject):
         artwork_path = self._get_album_artwork()
         return self._album_palette(self._selected_album_key, artwork_path)
 
+    def _get_album_presentation(self) -> dict:
+        """Return the same canonical facts row used by all album browsers."""
+        if self._selected_album is None:
+            return {}
+        tracks_by_path = {
+            track.file_path: track for track in self._service.state.tracks
+        }
+        return self._album_row(
+            self._selected_album,
+            tracks_by_path,
+            set(self._service.state.favorite_paths),
+            set(self._service.state.recently_added_paths),
+        )
+
     def _get_album_tracks(self) -> list[dict]:
         return [
             {
@@ -663,6 +677,9 @@ class LibraryBridge(QObject):
     albumArtwork = Property(str, _get_album_artwork, notify=library_changed)
     albumArtworkPalette = Property(
         "QVariantMap", _get_album_artwork_palette, notify=library_changed
+    )
+    albumPresentation = Property(
+        "QVariantMap", _get_album_presentation, notify=library_changed
     )
     albumTracks = Property(list, _get_album_tracks, notify=library_changed)
     selectedArtistKey = Property(str, _get_selected_artist_key, notify=library_changed)

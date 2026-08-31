@@ -90,6 +90,7 @@ def test_vinyl_wall_has_no_permanent_rotation() -> None:
 
 def test_six_canonical_album_views_remain_available() -> None:
     albums = _text("views/AlbumsView.qml")
+    header = _text("views/LibraryHeader.qml")
     expected = {
         "grid": "AlbumGridView.qml",
         "cover": "AlbumPathView.qml",
@@ -99,7 +100,8 @@ def test_six_canonical_album_views_remain_available() -> None:
         "list": "AlbumListView.qml",
     }
     for mode, filename in expected.items():
-        assert f'onClicked: albumMode = "{mode}"' in albums
+        assert f'value: "{mode}"' in header
+        assert f'case "{mode}": return' in albums or mode == "grid"
         assert (QML / "views" / filename).is_file()
     assert "CoverFlow" not in albums
 

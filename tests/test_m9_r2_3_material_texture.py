@@ -74,7 +74,8 @@ def test_backdrop_blur_uses_multi_effect_gated_to_high_quality():
     assert "import QtQuick.Effects" in glass
     assert "MultiEffect {" in glass
     assert "ShaderEffectSource {" in glass
-    assert "sourceItem: root.window" in glass
+    assert "sourceItem: root.Window.window" in glass
+    assert "root.Window.window.contentItem" in glass
     assert 'MichiThemeState.glassQuality === "high"' in glass
     assert 'root.elevation !== "subtle"' in glass
     assert "blurMax: MichiElevation.modalBlur" in glass

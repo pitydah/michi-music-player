@@ -17,6 +17,27 @@ GridView {
     property string revealMode: "standard"
     property string metadataLevel: "standard"
     property bool artworkLabel: true
+    MichiMaterial {
+        id: vinylMaterial
+        role: MichiMaterialRole.vinyl
+    }
+    Rectangle {
+        x: albumVinyl.contentX
+        y: albumVinyl.contentY
+        width: albumVinyl.width
+        height: albumVinyl.height
+        color: vinylMaterial.baseColor
+        z: -2
+    }
+    MichiMaterialTexture {
+        x: albumVinyl.contentX
+        y: albumVinyl.contentY
+        width: albumVinyl.width
+        height: albumVinyl.height
+        textureName: vinylMaterial.textureName
+        textureOpacity: vinylMaterial.textureOpacity
+        z: -1
+    }
     readonly property int minimumTileWidth: MichiThemeState.density === "compact"
         ? Math.round(164 * albumZoom)
         : MichiThemeState.density === "comfortable"

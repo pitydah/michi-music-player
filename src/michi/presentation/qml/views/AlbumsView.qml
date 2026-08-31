@@ -28,6 +28,13 @@ ColumnLayout {
     readonly property var editorialAlbums: buildEditorialAlbums(presentationAlbums)
     readonly property var currentBrowseAlbum: findAlbumByKey(
         browseState ? browseState.currentKey : "")
+    readonly property int enrichmentRevision: typeof libraryEnrichment !== "undefined"
+        && libraryEnrichment ? libraryEnrichment.revision : 0
+    readonly property var currentBrowseEnrichment: currentBrowseAlbum
+        && typeof libraryEnrichment !== "undefined" && libraryEnrichment
+        ? libraryEnrichment.album(currentBrowseAlbum.key, enrichmentRevision) : ({
+            albumKey: "", hasCachedKnowledge: false, knowledge: ({})
+        })
 
     function findAlbumByKey(key) {
         for (var i = 0; i < presentationAlbums.length; ++i)
@@ -179,15 +186,6 @@ ColumnLayout {
     Layout.fillHeight: true
     spacing: MichiTheme.space8
 
-    // The single visible mode switcher lives in LibraryToolbar. These local
-    // intent markers preserve the frozen M6 presentation-only contract:
-    // onClicked: albumMode = "grid"
-    // onClicked: albumMode = "cover"
-    // onClicked: albumMode = "vinyl"
-    // onClicked: albumMode = "timeline"
-    // onClicked: albumMode = "magazine"
-    // onClicked: albumMode = "list"
-
     RowLayout {
         id: modeArea
         Layout.fillWidth: true
@@ -247,13 +245,8 @@ ColumnLayout {
             Layout.fillHeight: true
             visible: root.inspectorEnabled() && root.currentBrowseAlbum !== null
             album: root.currentBrowseAlbum
-            hasCachedKnowledge: typeof enrichment !== "undefined" && enrichment
-                && enrichment.activeKind === "album"
-                && enrichment.activeKey === (root.currentBrowseAlbum
-                    ? root.currentBrowseAlbum.key : "")
-                && enrichment.albumHasKnowledge
-            cachedKnowledge: typeof enrichment !== "undefined" && enrichment
-                ? enrichment.albumKnowledge : ({})
+            hasCachedKnowledge: root.currentBrowseEnrichment.hasCachedKnowledge || false
+            cachedKnowledge: root.currentBrowseEnrichment.knowledge || ({})
             showCachedContext: root.albumMode === "magazine"
                 ? root.viewPreferences.editorial.cachedEnrichmentVisible : true
             onlineEnabled: typeof enrichment !== "undefined" && enrichment
@@ -312,12 +305,9 @@ ColumnLayout {
                 ? root.viewPreferences.flow.ambientColor : true
             metadataLevel: root.viewPreferences.flow
                 ? root.viewPreferences.flow.metadataLevel : "standard"
-            cachedKnowledge: typeof enrichment !== "undefined" && enrichment
-                ? enrichment.albumKnowledge : ({})
-            hasCachedKnowledge: typeof enrichment !== "undefined" && enrichment
-                ? enrichment.albumHasKnowledge : false
-            cachedAlbumKey: typeof enrichment !== "undefined" && enrichment
-                ? enrichment.activeKey : ""
+            cachedKnowledge: root.currentBrowseEnrichment.knowledge || ({})
+            hasCachedKnowledge: root.currentBrowseEnrichment.hasCachedKnowledge || false
+            cachedAlbumKey: root.currentBrowseEnrichment.albumKey || ""
         }
     }
 
@@ -369,12 +359,9 @@ ColumnLayout {
                 ? root.viewPreferences.editorial.informationRichness : "standard"
             archiveLayout: root.viewPreferences.editorial
                 ? root.viewPreferences.editorial.archiveLayout : "list"
-            cachedKnowledge: typeof enrichment !== "undefined" && enrichment
-                ? enrichment.albumKnowledge : ({})
-            hasCachedKnowledge: typeof enrichment !== "undefined" && enrichment
-                ? enrichment.albumHasKnowledge : false
-            cachedAlbumKey: typeof enrichment !== "undefined" && enrichment
-                ? enrichment.activeKey : ""
+            cachedKnowledge: root.currentBrowseEnrichment.knowledge || ({})
+            hasCachedKnowledge: root.currentBrowseEnrichment.hasCachedKnowledge || false
+            cachedAlbumKey: root.currentBrowseEnrichment.albumKey || ""
             showCachedContext: root.viewPreferences.editorial
                 ? root.viewPreferences.editorial.cachedEnrichmentVisible : true
         }

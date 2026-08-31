@@ -8,8 +8,10 @@ from types import SimpleNamespace
 
 import pytest
 from conftest import FakeAudioPort
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, QObject
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtQuick import QQuickWindow
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
@@ -110,6 +112,36 @@ def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
     assert len({row["key"] for row in rows}) == 10_000
     assert rows[0]["artworkPalette"]["accentSafe"].startswith("#")
     assert elapsed < 8.0
+
+    qml_dir = Path(__file__).parents[1] / "src/michi/presentation/qml"
+    engine = QQmlEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.rootContext().setContextProperty("library", bridge)
+    component = QQmlComponent(engine, str(qml_dir / "views/AlbumGridView.qml"))
+    errors = "; ".join(error.toString() for error in component.errors())
+    assert component.status() == QQmlComponent.Ready, errors
+    view = component.create()
+    window = QQuickWindow()
+    try:
+        assert view is not None
+        view.setParentItem(window.contentItem())
+        window.setGeometry(0, 0, 1440, 900)
+        view.setProperty("width", 1440)
+        view.setProperty("height", 900)
+        window.show()
+        QCoreApplication.processEvents()
+        assert view.property("count") == 10_000
+
+        max_y = max(0.0, float(view.property("contentHeight")) - 900)
+        for step in range(120):
+            view.setProperty("contentY", max_y * ((step % 30) / 29))
+            QCoreApplication.processEvents()
+        assert len(view.findChildren(QObject)) < 600
+    finally:
+        window.close()
+        window.deleteLater()
+        if view is not None:
+            view.deleteLater()
     bridge.dispose()
 
 

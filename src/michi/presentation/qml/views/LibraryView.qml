@@ -154,15 +154,6 @@ Item {
     }
 
     Connections {
-        target: albumBrowseState
-        function onCurrentKeyChanged() {
-            if (albumBrowseState.currentKey.length > 0
-                    && typeof enrichment !== "undefined" && enrichment)
-                enrichment.browse_album_cached(albumBrowseState.currentKey)
-        }
-    }
-
-    Connections {
         target: typeof settingsBridge !== "undefined" ? settingsBridge : null
         ignoreUnknownSignals: true
         function onLibraryViewsChanged() { root.loadViewPreferences() }

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../patterns"
@@ -82,7 +83,6 @@ PageHeader {
         if (root.albumMode === "list" && p.studioList)
             return p.studioList.density !== "standard"
                 || p.studioList.artworkSize !== "small"
-                || p.studioList.metadataLevel !== "standard"
                 || !p.studioList.precisionMetadata || !p.studioList.inspector
                 || !p.studioList.artistColumn || !p.studioList.yearColumn
                 || !p.studioList.tracksColumn || !p.studioList.durationColumn
@@ -114,6 +114,14 @@ PageHeader {
         return qsTr("Gallery")
     }
 
+    function albumModeIcon() {
+        for (var i = 0; i < root.albumViewModes.length; ++i) {
+            if (root.albumViewModes[i].value === root.albumMode)
+                return root.albumViewModes[i].icon
+        }
+        return "view-grid"
+    }
+
     function contextualSubtitle() {
         if (typeof library === "undefined" || !library)
             return qsTr("Your local music collection")
@@ -134,7 +142,7 @@ PageHeader {
     subtitle: root.contextualSubtitle()
 
     MichiText {
-        visible: root.albumViewsVisible && root.width >= 1120
+        visible: root.albumViewsVisible && MichiBreakpoints.isXl(root.width)
         text: qsTr("VIEWS")
         role: "technical"
         technical: true
@@ -144,16 +152,75 @@ PageHeader {
     MichiSegmentedControl {
         objectName: "albumViewSwitcher"
         visible: root.albumViewsVisible
+            && MichiBreakpoints.atLeastMedium(root.width)
         model: root.albumViewModes
         currentValue: root.albumMode
-        compact: true
+        compact: !MichiBreakpoints.isXl(root.width)
         accessiblePrefix: "Album view"
         Accessible.name: qsTr("Album view")
         onSelected: value => root.albumModeRequested(value)
     }
 
+    Item {
+        id: compactPickerHost
+        objectName: "compactAlbumViewPicker"
+        visible: root.albumViewsVisible
+            && !MichiBreakpoints.atLeastMedium(root.width)
+        Layout.preferredWidth: 154
+        Layout.preferredHeight: MichiMetrics.controlMedium
+
+        MichiButton {
+            anchors.fill: parent
+            text: root.albumModeLabel()
+            iconName: root.albumModeIcon()
+            variant: "secondary"
+            accessibleName: qsTr("Choose album view. Current: %1")
+                .arg(root.albumModeLabel())
+            onClicked: compactPicker.visible
+                ? compactPicker.close() : compactPicker.open()
+        }
+
+        Popup {
+            id: compactPicker
+            objectName: "compactAlbumViewPopup"
+            x: Math.min(0, compactPickerHost.width - implicitWidth)
+            y: compactPickerHost.height + MichiSpacing.xs
+            padding: MichiSpacing.sm
+            modal: false
+            focus: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+            background: MichiGlassSurface {
+                materialRole: MichiMaterialRole.modal
+                elevation: "modal"
+                contentPadding: 0
+                glintMode: "edge"
+            }
+            contentItem: GridLayout {
+                columns: 2
+                rowSpacing: MichiSpacing.xs
+                columnSpacing: MichiSpacing.xs
+                Repeater {
+                    model: root.albumViewModes
+                    delegate: MichiButton {
+                        required property var modelData
+                        Layout.preferredWidth: 142
+                        text: modelData.label
+                        iconName: modelData.icon
+                        selected: root.albumMode === modelData.value
+                        variant: "ghost"
+                        onClicked: {
+                            root.albumModeRequested(modelData.value)
+                            compactPicker.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Rectangle {
-        visible: root.albumViewsVisible && root.width >= 840
+        visible: root.albumViewsVisible
+            && MichiBreakpoints.atLeastMedium(root.width)
         Layout.preferredWidth: 1
         Layout.preferredHeight: 26
         color: MichiSemanticColors.borderSubtle
@@ -161,6 +228,7 @@ PageHeader {
 
     Item {
         id: viewOptionsContainer
+        visible: root.albumViewsVisible
         Layout.preferredWidth: 36
         Layout.preferredHeight: 36
 

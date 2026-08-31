@@ -38,6 +38,22 @@ Item {
     readonly property var archiveRows: root.makeArchiveRows()
     property int rovingIndex: 0
 
+    MichiMaterial {
+        id: editorialMaterial
+        role: MichiMaterialRole.editorial
+    }
+    Rectangle {
+        anchors.fill: parent
+        color: editorialMaterial.baseColor
+        z: -2
+    }
+    MichiMaterialTexture {
+        anchors.fill: parent
+        textureName: editorialMaterial.textureName
+        textureOpacity: editorialMaterial.textureOpacity
+        z: -1
+    }
+
     function makeArchiveRows() {
         var rows = []
         for (var index = 0; index < archiveAlbums.length; index += 2)
@@ -271,7 +287,7 @@ Item {
             // 2. Medium Features (2 larger cards)
             GridLayout {
                 Layout.fillWidth: true
-                columns: albumMagazine.width >= 720 ? 2 : 1
+                columns: MichiBreakpoints.atLeastMedium(albumMagazine.width) ? 2 : 1
                 columnSpacing: MichiThemeState.contentGap
                 rowSpacing: MichiSpacing.sm
                 visible: root.mediumFeatures.length > 0
@@ -362,7 +378,7 @@ Item {
             // 3. Compact Features (4 compact cards)
             GridLayout {
                 Layout.fillWidth: true
-                columns: albumMagazine.width >= 720 ? 2 : 1
+                columns: MichiBreakpoints.atLeastMedium(albumMagazine.width) ? 2 : 1
                 columnSpacing: MichiThemeState.contentGap
                 rowSpacing: MichiSpacing.xs
                 visible: root.compactFeatures.length > 0
