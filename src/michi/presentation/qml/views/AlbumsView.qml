@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import "../patterns"
 import "../theme"
 
@@ -16,12 +17,35 @@ ColumnLayout {
     property real albumZoom: 1.0
     property var viewPreferences: ({})
     property var browseState: null
+    property string loadedMode: "grid"
+    property string pendingMode: "grid"
+    property bool transitionsReady: false
     signal sortModeRequested(string mode)
     signal sortDirectionRequested(bool descending)
     readonly property var presentationAlbums: buildPresentationAlbums(library.albums)
     readonly property var presentationTimelineAlbums: buildTimelineAlbums(
         library.timelineAlbums, presentationAlbums)
     readonly property var editorialAlbums: buildEditorialAlbums(presentationAlbums)
+    readonly property var currentBrowseAlbum: findAlbumByKey(
+        browseState ? browseState.currentKey : "")
+
+    function findAlbumByKey(key) {
+        for (var i = 0; i < presentationAlbums.length; ++i)
+            if (presentationAlbums[i].key === key) return presentationAlbums[i]
+        return null
+    }
+
+    function inspectorEnabled() {
+        if (width < MichiBreakpoints.medium)
+            return false
+        if (albumMode === "grid") return viewPreferences.gallery
+            ? viewPreferences.gallery.inspector : true
+        if (albumMode === "vinyl") return viewPreferences.vinyl
+            ? viewPreferences.vinyl.inspector : true
+        if (albumMode === "list") return viewPreferences.studioList
+            ? viewPreferences.studioList.inspector : true
+        return false
+    }
 
     function normalized(value) {
         return String(value || "").toLocaleLowerCase()
@@ -87,6 +111,18 @@ ColumnLayout {
     function buildEditorialAlbums(source) {
         var rows = source ? source.slice() : []
         rows.sort(function(left, right) {
+            var recentOrder = Number(Boolean(right.isRecentlyAdded))
+                - Number(Boolean(left.isRecentlyAdded))
+            if (recentOrder !== 0)
+                return recentOrder
+            var favoriteOrder = Number(Boolean(right.isFavorite))
+                - Number(Boolean(left.isFavorite))
+            if (favoriteOrder !== 0)
+                return favoriteOrder
+            var fidelityOrder = Number(Boolean(right.containsHighResolution))
+                - Number(Boolean(left.containsHighResolution))
+            if (fidelityOrder !== 0)
+                return fidelityOrder
             var artworkOrder = Number(Boolean(right.hasArtwork))
                 - Number(Boolean(left.hasArtwork))
             if (artworkOrder !== 0)
@@ -119,11 +155,24 @@ ColumnLayout {
     }
 
     onAlbumModeChanged: {
-        // Loader releases the old item with deferred deletion. Clear its
-        // diagnostic identity synchronously so accessibility/tests never see
-        // two active projections during the transition.
-        if (modeLoader.item)
-            modeLoader.item.objectName = ""
+        pendingMode = albumMode
+        if (!transitionsReady || MichiAccessibility.reducedMotion
+                || root.Window.window === null) {
+            if (modeLoader.item)
+                modeLoader.item.objectName = ""
+            loadedMode = pendingMode
+            modeLoader.opacity = 1
+            modeLoader.scale = 1
+        } else {
+            modeEnter.stop()
+            modeExit.restart()
+        }
+    }
+
+    Component.onCompleted: {
+        loadedMode = albumMode
+        pendingMode = albumMode
+        transitionsReady = true
     }
 
     Layout.fillWidth: true
@@ -139,7 +188,7 @@ ColumnLayout {
     // onClicked: albumMode = "magazine"
     // onClicked: albumMode = "list"
 
-    Item {
+    RowLayout {
         id: modeArea
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -148,20 +197,70 @@ ColumnLayout {
         Loader {
             id: modeLoader
             objectName: "albumModeLoader"
-            anchors.fill: parent
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             active: modeArea.visible
             asynchronous: false
-            sourceComponent: root.componentForMode(root.albumMode)
-            opacity: status === Loader.Ready ? 1 : 0
+            sourceComponent: root.componentForMode(root.loadedMode)
+            opacity: 1
+            scale: 1
 
-            Behavior on opacity {
-                enabled: !MichiAccessibility.reducedMotion
-                NumberAnimation {
-                    duration: MichiMotion.standard
-                    easing.type: MichiMotion.outCubic
-                }
+        }
+
+        NumberAnimation {
+            id: modeExit
+            target: modeLoader
+            property: "opacity"
+            to: 0
+            duration: MichiMotion.viewExit
+            easing.type: MichiMotion.inOutCubic
+            onStopped: {
+                if (modeLoader.item)
+                    modeLoader.item.objectName = ""
+                root.loadedMode = root.pendingMode
+                modeLoader.scale = 0.985
+                Qt.callLater(function() { modeEnter.restart() })
             }
+        }
+        ParallelAnimation {
+            id: modeEnter
+            NumberAnimation {
+                target: modeLoader
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: MichiMotion.viewEnter
+                easing.type: MichiMotion.outCubic
+            }
+            NumberAnimation {
+                target: modeLoader
+                property: "scale"
+                from: 0.985
+                to: 1
+                duration: MichiMotion.viewEnter
+                easing.type: MichiMotion.outCubic
+            }
+        }
 
+        LibraryAlbumInspector {
+            Layout.preferredWidth: 320
+            Layout.fillHeight: true
+            visible: root.inspectorEnabled() && root.currentBrowseAlbum !== null
+            album: root.currentBrowseAlbum
+            hasCachedKnowledge: typeof enrichment !== "undefined" && enrichment
+                && enrichment.activeKind === "album"
+                && enrichment.activeKey === (root.currentBrowseAlbum
+                    ? root.currentBrowseAlbum.key : "")
+                && enrichment.albumHasKnowledge
+            cachedKnowledge: typeof enrichment !== "undefined" && enrichment
+                ? enrichment.albumKnowledge : ({})
+            showCachedContext: root.albumMode === "magazine"
+                ? root.viewPreferences.editorial.cachedEnrichmentVisible : true
+            onlineEnabled: typeof enrichment !== "undefined" && enrichment
+                ? enrichment.onlineEnabled : false
+            onOpenRequested: key => library.select_album(key)
+            onPlayRequested: key => library.play_album(key)
+            onEnrichmentRequested: key => enrichment.activate_album(key)
         }
     }
 
@@ -211,6 +310,14 @@ ColumnLayout {
                 ? root.viewPreferences.flow.depth : "standard"
             ambientColor: root.viewPreferences.flow
                 ? root.viewPreferences.flow.ambientColor : true
+            metadataLevel: root.viewPreferences.flow
+                ? root.viewPreferences.flow.metadataLevel : "standard"
+            cachedKnowledge: typeof enrichment !== "undefined" && enrichment
+                ? enrichment.albumKnowledge : ({})
+            hasCachedKnowledge: typeof enrichment !== "undefined" && enrichment
+                ? enrichment.albumHasKnowledge : false
+            cachedAlbumKey: typeof enrichment !== "undefined" && enrichment
+                ? enrichment.activeKey : ""
         }
     }
 
@@ -227,6 +334,8 @@ ColumnLayout {
                 ? root.viewPreferences.vinyl.reveal : "standard"
             metadataLevel: root.viewPreferences.vinyl
                 ? root.viewPreferences.vinyl.metadataLevel : "standard"
+            artworkLabel: root.viewPreferences.vinyl
+                ? root.viewPreferences.vinyl.artworkLabel : true
         }
     }
 
@@ -243,6 +352,8 @@ ColumnLayout {
                 ? root.viewPreferences.chronology.density : "standard"
             metadataLevel: root.viewPreferences.chronology
                 ? root.viewPreferences.chronology.metadataLevel : "standard"
+            showPeriodDensity: root.viewPreferences.chronology
+                ? root.viewPreferences.chronology.showPeriodDensity : false
         }
     }
 
@@ -256,6 +367,16 @@ ColumnLayout {
                 ? root.viewPreferences.editorial.heroVisible : true
             informationRichness: root.viewPreferences.editorial
                 ? root.viewPreferences.editorial.informationRichness : "standard"
+            archiveLayout: root.viewPreferences.editorial
+                ? root.viewPreferences.editorial.archiveLayout : "list"
+            cachedKnowledge: typeof enrichment !== "undefined" && enrichment
+                ? enrichment.albumKnowledge : ({})
+            hasCachedKnowledge: typeof enrichment !== "undefined" && enrichment
+                ? enrichment.albumHasKnowledge : false
+            cachedAlbumKey: typeof enrichment !== "undefined" && enrichment
+                ? enrichment.activeKey : ""
+            showCachedContext: root.viewPreferences.editorial
+                ? root.viewPreferences.editorial.cachedEnrichmentVisible : true
         }
     }
 

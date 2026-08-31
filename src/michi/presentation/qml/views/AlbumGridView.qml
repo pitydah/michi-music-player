@@ -16,6 +16,8 @@ GridView {
     property string metadataLevel: "standard"
     property bool quickActions: true
     property bool precisionMetadata: false
+    readonly property real contentMaxWidth: 1760
+    readonly property real usableWidth: Math.min(width, contentMaxWidth)
     readonly property int minimumCardWidth: MichiThemeState.density === "compact"
         ? Math.round(154 * albumZoom)
         : MichiThemeState.density === "comfortable"
@@ -27,7 +29,7 @@ GridView {
     readonly property int cardGap: spacingMode === "tight" ? MichiSpacing.sm
         : spacingMode === "airy" ? MichiSpacing.xl : MichiThemeState.contentGap
     readonly property int columnCount: Math.max(1, Math.floor(
-        (width + cardGap) / (minimumCardWidth + cardGap)))
+        (usableWidth + cardGap) / (minimumCardWidth + cardGap)))
     readonly property real resolvedCardWidth: Math.min(maximumCardWidth,
         cellWidth - cardGap)
     readonly property int metadataHeight: metadataLevel === "minimal" ? 64
@@ -36,7 +38,9 @@ GridView {
     Layout.fillWidth: true
     Layout.fillHeight: true
     model: albumModel
-    cellWidth: width / columnCount
+    leftMargin: Math.max(0, (width - usableWidth) / 2)
+    rightMargin: leftMargin
+    cellWidth: usableWidth / columnCount
     cellHeight: resolvedCardWidth + metadataHeight + cardGap
     clip: true
     boundsBehavior: Flickable.StopAtBounds

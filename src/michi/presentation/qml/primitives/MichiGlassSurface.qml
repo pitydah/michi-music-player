@@ -7,15 +7,17 @@ Item {
     id: root
     default property alias contentData: content.data
     property string elevation: "standard"
+    property string materialRole: MichiMaterialRole.control
     property int contentPadding: MichiSpacing.lg
     property bool accented: false
     property bool accentLineVisible: false
     property color accentColor: MichiPalette.auroraBlue
     property bool shadowed: elevation !== "subtle"
-    property bool textured: elevation !== "subtle"
+    property bool textured: materialSpec.textured
     property int tileSeed: 0
-    // auto: only meaningful raised/control materials; always/never are explicit.
-    property string glintMode: "auto"
+    // none: clean material; edge: rim/sheens only; michi: subtle brand glint.
+    // auto/always/never remain compatibility aliases for older call sites.
+    property string glintMode: "none"
     // Always-on backdrop blur (true smoke glass) for hero surfaces like
     // the sidebar — overrides the high-quality-only gate.
     property bool forceBlur: false
@@ -29,6 +31,10 @@ Item {
         : MichiThemeState.glassQuality === "low" ? 0.96
         : MichiThemeState.glassQuality === "high" ? 0.76 : 0.86
     readonly property bool raised: elevation === "modal" || elevation === "elevated"
+        || materialRole === MichiMaterialRole.elevated
+        || materialRole === MichiMaterialRole.hero
+        || materialRole === MichiMaterialRole.modal
+    MichiMaterial { id: materialSpec; role: root.materialRole }
     readonly property color materialTop: MichiSemanticColors.glassTop(
         root.raised, root.materialOpacity)
     readonly property color materialBottom: MichiSemanticColors.glassBottom(
@@ -39,7 +45,7 @@ Item {
     // to the tinted-gradient material otherwise (no window in tests → off).
     readonly property bool blurEnabled: root.window !== null
         && (root.forceBlur
-            || (MichiThemeState.glassQuality === "high"
+            || (materialSpec.blurEligible && MichiThemeState.glassQuality === "high"
                 && root.elevation !== "subtle"))
     readonly property real blurAmount: root.elevation === "modal" ? MichiElevation.modalBlur
         : root.raised ? MichiElevation.elevatedBlur : MichiElevation.standardBlur
@@ -118,6 +124,8 @@ Item {
         MichiMaterialTexture {
             anchors.fill: parent
             tileSeed: root.tileSeed
+            textureName: materialSpec.textureName
+            textureOpacity: materialSpec.textureOpacity
             visible: root.textured && opacity > 0
         }
 
@@ -130,8 +138,9 @@ Item {
             anchors.left: parent.left
             width: Math.min(parent.width, parent.height) * 0.55
             height: width * 0.584   // viewBox 100 x 58.4
-            visible: parent.width > 0 && root.glintMode !== "never"
-                && (root.glintMode === "always" || root.raised)
+            visible: parent.width > 0 && (
+                root.glintMode === "michi" || root.glintMode === "always"
+                || (root.glintMode === "auto" && root.raised))
             Shape {
                 anchors.fill: parent
                 ShapePath {

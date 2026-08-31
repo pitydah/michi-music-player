@@ -13,6 +13,7 @@ Rectangle {
     property bool showTrackCount: true
     property bool showDuration: true
     property bool showTechnical: MichiThemeState.precisionMode
+    property bool precisionMetadata: true
     property string artworkSize: "small"
     property string rowDensity: "standard"
     signal selectedRequested()
@@ -29,12 +30,10 @@ Rectangle {
 
     implicitHeight: rowDensity === "compact" ? 44
         : rowDensity === "comfortable" ? 64 : 52
-    radius: MichiRadius.sm
+    radius: 0
     color: root.selected ? MichiSemanticColors.surfaceSelected
         : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-    border.width: root.selected || hover.hovered ? 1 : 0
-    border.color: root.selected
-        ? MichiSemanticColors.auroraBorderSubtle : MichiSemanticColors.borderSubtle
+    border.width: 0
     activeFocusOnTab: false
     Accessible.role: Accessible.ListItem
     Accessible.name: root.album
@@ -108,12 +107,32 @@ Rectangle {
         MichiText {
             visible: root.showTechnical
             Layout.preferredWidth: 160
-            text: root.album ? root.album.technicalSummary : ""
+            text: !root.album ? ""
+                : root.precisionMetadata ? (root.album.technicalSummary || "")
+                : root.album.codecs && root.album.codecs.length > 0
+                    ? root.album.codecs[0] : ""
             role: "technical"
             technical: true
             color: MichiPalette.auroraCyan
             elide: Text.ElideRight
         }
+    }
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 2
+        visible: root.selected
+        color: root.album && root.album.artworkPalette
+            ? root.album.artworkPalette.accentSafe : MichiPalette.auroraCyan
+    }
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: 1
+        color: MichiSemanticColors.borderSubtle
     }
 
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
@@ -136,10 +155,5 @@ Rectangle {
     Behavior on color {
         enabled: !MichiAccessibility.reducedMotion
         ColorAnimation { duration: MichiMotion.micro }
-    }
-    // Smooth the 0↔1 border toggle instead of popping it
-    Behavior on border.width {
-        enabled: !MichiAccessibility.reducedMotion
-        NumberAnimation { duration: MichiMotion.micro }
     }
 }

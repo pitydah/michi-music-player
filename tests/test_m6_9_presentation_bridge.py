@@ -72,6 +72,19 @@ def _wait_for(bridge, state, timeout_rounds=40):
 
 
 class TestActivationSemantics:
+    def test_passive_album_browse_is_cache_only_even_when_online(self):
+        bridge, _, _, _, _, _, _ = make_bridge(online=True)
+        resolver = bridge._service._resolver
+        calls_before = resolver.calls
+
+        bridge.browse_album_cached(ALBUM_X_KEY)
+        process_events(8)
+
+        assert bridge.property("activeKey") == ALBUM_X_KEY
+        assert bridge.property("activeKind") == "album"
+        assert bridge.property("state") == "IDLE"
+        assert resolver.calls == calls_before
+
     def test_activate_cached_artist_no_network_knowledge_visible(self):
         """A: cached knowledge projects immediately; no network."""
         bridge, service, _, _, _, _, _ = make_bridge(online=True)

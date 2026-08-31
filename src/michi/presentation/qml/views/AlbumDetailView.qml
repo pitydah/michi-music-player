@@ -26,16 +26,22 @@ ColumnLayout {
     ] : []
 
     visible: library.selectedAlbumKey !== ""
+    focus: visible
     Layout.fillWidth: true
     Layout.fillHeight: true
     spacing: MichiThemeState.contentGap
 
-    /* M6.9: explicit detail activation drives enrichment for the
-     * selected album — never lists/search/scan. */
+    /* Opening detail is passive: it may hydrate an existing local cache but
+     * never starts a network operation. Refresh/review below are explicit. */
     readonly property string selectedAlbumKey: library.selectedAlbumKey
     onSelectedAlbumKeyChanged: {
         if (root.selectedAlbumKey.length > 0)
-            enrichment.activate_album(root.selectedAlbumKey)
+            enrichment.browse_album_cached(root.selectedAlbumKey)
+    }
+
+    Keys.onEscapePressed: function(event) {
+        library.clear_album_selection()
+        event.accepted = true
     }
 
     onVisibleChanged: if (!visible) inspectedTrack = null
@@ -94,8 +100,34 @@ ColumnLayout {
         elevation: "elevated"
         contentPadding: MichiSpacing.xl
         accented: true
-        accentColor: MichiPalette.auroraBlue
+        accentColor: library.albumArtworkPalette
+            ? library.albumArtworkPalette.accentSafe : MichiPalette.auroraBlue
         textured: true
+        materialRole: MichiMaterialRole.hero
+        glintMode: "michi"
+
+        Rectangle {
+            anchors.fill: parent
+            radius: MichiRadius.lg
+            opacity: 0.34
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop {
+                    position: 0
+                    color: library.albumArtworkPalette
+                        ? library.albumArtworkPalette.dominant : MichiPalette.playlistHeroTop
+                }
+                GradientStop {
+                    position: 1
+                    color: library.albumArtworkPalette
+                        ? library.albumArtworkPalette.backplane : MichiPalette.playlistHeroBottom
+                }
+            }
+            Behavior on opacity {
+                enabled: !MichiAccessibility.reducedMotion
+                NumberAnimation { duration: MichiMotion.paletteCrossfade }
+            }
+        }
 
         RowLayout {
             id: heroContent
@@ -163,7 +195,7 @@ ColumnLayout {
                         text: "Play album"
                         iconName: "play"
                         enabled: library.albumTracks.length > 0
-                        onClicked: library.activate_album_track(0)
+                        onClicked: library.play_selected_album()
                     }
                 }
             }

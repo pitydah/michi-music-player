@@ -268,6 +268,27 @@ class EnrichmentBridge(QObject):
             return
         self._start_album_operation(local_album_key)
 
+    @Slot(str)
+    def browse_album_cached(self, local_album_key: str) -> None:
+        """Project cached album context for passive browse; never starts network."""
+        if self._disposed or not local_album_key:
+            return
+        self._invalidate_review_session()
+        self._presentation_intent_id += 1
+        if (
+            self._active_kind == "album"
+            and self._active_key
+            and self._active_key != local_album_key
+        ):
+            self._coordinator.cancel_album(self._active_key)
+        self._active_kind = "album"
+        self._active_key = local_album_key
+        self._reset_transient()
+        self._load_cached_album()
+        self._state = "READY" if self._album_has_knowledge else "IDLE"
+        self._state_message = ""
+        self.changed.emit()
+
     @Slot()
     def refresh_artist(self) -> None:
         if self._disposed or self._active_kind != "artist" or not self._active_key:

@@ -16,6 +16,16 @@ ListView {
     property string direction: "newest"
     property string densityMode: "standard"
     property string metadataLevel: "standard"
+    property bool showPeriodDensity: false
+
+    function sectionCount(sectionValue) {
+        var count = 0
+        for (var i = 0; i < albumModel.length; ++i) {
+            var value = groupByDecade ? albumModel[i].decade : albumModel[i].year
+            if (String(value) === String(sectionValue)) ++count
+        }
+        return count
+    }
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -69,26 +79,26 @@ ListView {
     section.delegate: Item {
         required property string section
         width: albumTimeline.width
-        height: 48
+        height: 38
         z: 4
 
-        // Opaque base so the floating inline label covers rows scrolling
-        // underneath instead of letting them show through.
         Rectangle {
             anchors.fill: parent
             color: MichiPalette.obsidian
+            opacity: 0.94
+            border.width: 0
         }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 20
+            anchors.leftMargin: MichiSpacing.md
             anchors.rightMargin: MichiSpacing.lg
             spacing: MichiSpacing.md
 
             Rectangle {
-                Layout.preferredWidth: 14
-                Layout.preferredHeight: 14
-                radius: 7
+                Layout.preferredWidth: 8
+                Layout.preferredHeight: 8
+                radius: 4
                 color: MichiPalette.auroraCyan
                 border.width: 2
                 border.color: MichiPalette.obsidian
@@ -116,7 +126,9 @@ ListView {
             }
 
             MichiText {
-                text: albumTimeline.groupByDecade ? "DECADE" : "YEAR"
+                text: albumTimeline.showPeriodDensity
+                    ? qsTr("%1 albums").arg(albumTimeline.sectionCount(section))
+                    : albumTimeline.groupByDecade ? qsTr("DECADE") : qsTr("YEAR")
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
@@ -172,7 +184,9 @@ ListView {
             height: width
             radius: width / 2
             color: timelineRow.selected
-                ? MichiPalette.auroraCyan : MichiPalette.textMuted
+                ? (modelData.artworkPalette
+                    ? modelData.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                : MichiPalette.textMuted
             border.width: 2
             border.color: MichiPalette.obsidian
         }

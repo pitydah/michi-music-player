@@ -30,6 +30,11 @@ jobs:
           ruff check src tests
           ruff format --check src tests
 
+      - name: QML syntax
+        run: |
+          pyside6-qmllint -I src/michi/presentation/qml \
+            src/michi/presentation/qml/**/*.qml
+
       - name: Test
         env:
           QT_QPA_PLATFORM: offscreen

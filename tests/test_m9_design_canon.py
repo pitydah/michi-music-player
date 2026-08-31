@@ -55,11 +55,14 @@ def test_material_texture_is_lightweight_packaged_and_quality_aware() -> None:
     glass = _text("primitives/MichiGlassSurface.qml")
     surface = _text("primitives/MichiSurface.qml")
     package = Path("pyproject.toml").read_text()
-    # M9-R2.3: procedural deterministic grain (Canvas tile) replaced the
-    # 64px SVG — no asset, no sub-pixel aliasing, per-surface seed.
-    assert "function makeRandom(seed)" in texture
-    assert "toDataURL" in texture
-    assert "width: 128" in texture
+    # Library Views 2.0: static catalog assets are decoded once by Qt and
+    # shared across surfaces; no Canvas/data URL is generated per instance.
+    assert "Canvas {" not in texture
+    assert "toDataURL" not in texture
+    assert 'return "../assets/" + resolved + ".svg"' in texture
+    assert (QML / "assets/grain-graphite-01.svg").is_file()
+    assert (QML / "assets/grain-glass-01.svg").is_file()
+    assert (QML / "assets/paper-editorial-01.svg").is_file()
     assert "property int tileSeed: 0" in texture
     assert 'MichiThemeState.glassQuality === "low" ? 0' in texture
     assert "property bool shadowed" in glass
@@ -297,7 +300,8 @@ def test_album_grid_and_detail_have_premium_information_hierarchy() -> None:
     assert "minimumCardWidth" in grid
     assert "maximumCardWidth" in grid
     assert "resolvedCardWidth" in grid
-    assert "root.album.technicalSummary" in card
+    assert "technicalText" in card
+    assert "album.technicalSummary" in card
     assert "root.album.trackCount" in card
     assert 'objectName: "albumHeroSurface"' in detail
     assert 'objectName: "albumTrackTableSurface"' in detail
@@ -418,7 +422,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert "albumModeRequested" in header
     assert "MichiSegmentedControl {" not in albums
     assert "onAlbumModeRequested" in library
-    assert "sourceComponent: root.componentForMode(root.albumMode)" in albums
+    assert "sourceComponent: root.componentForMode(root.loadedMode)" in albums
+    assert "MichiMotion.viewExit" in albums
+    assert "MichiMotion.viewEnter" in albums
     assert "root.currentValue = modelData.value" not in segmented
 
 
