@@ -12,6 +12,10 @@ ListView {
 
     property var albumModel: library.timelineAlbums
     property bool groupByDecade: true
+    property var browseState: null
+    property string direction: "newest"
+    property string densityMode: "standard"
+    property string metadataLevel: "standard"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -32,6 +36,24 @@ ListView {
     Accessible.role: Accessible.List
     Accessible.name: qsTr("Album timeline")
     Accessible.description: qsTr("Albums grouped chronologically")
+
+    function restoredIndex() {
+        if (browseState && browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i)
+                if (albumModel[i].key === browseState.currentKey) return i
+        }
+        return browseState ? browseState.chronologyIndex : -1
+    }
+    Component.onCompleted: if (browseState) Qt.callLater(function() {
+        albumTimeline.currentIndex = restoredIndex()
+        albumTimeline.contentY = browseState.chronologyContentY
+    })
+    onContentYChanged: if (browseState) browseState.chronologyContentY = contentY
+    onCurrentIndexChanged: if (browseState) {
+        browseState.chronologyIndex = currentIndex
+        if (currentIndex >= 0 && currentIndex < albumModel.length)
+            browseState.remember(albumModel[currentIndex].key)
+    }
 
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)
@@ -109,9 +131,9 @@ ListView {
         property var album: modelData
         readonly property bool selected: ListView.isCurrentItem
         width: albumTimeline.width
-        height: MichiThemeState.density === "compact" ? 58
-            : MichiThemeState.density === "comfortable" ? 82 : 70
-        activeFocusOnTab: true
+        height: albumTimeline.densityMode === "compact" ? 58
+            : albumTimeline.densityMode === "expanded" ? 86 : 70
+        activeFocusOnTab: false
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
         Accessible.selected: timelineRow.selected
@@ -195,7 +217,8 @@ ListView {
                     ? MichiPalette.textSecondary : MichiPalette.textMuted
             }
             MichiText {
-                visible: modelData.trackCount > 0
+                visible: albumTimeline.metadataLevel !== "minimal"
+                    && modelData.trackCount > 0
                 text: modelData.trackCount + (modelData.trackCount === 1 ? " track" : " tracks")
                 role: "technical"
                 technical: true
@@ -203,7 +226,9 @@ ListView {
             }
             Item { Layout.fillWidth: true }
             MichiText {
-                visible: modelData.technicalSummary ? (modelData.technicalSummary.length > 0) : false
+                visible: albumTimeline.metadataLevel === "detailed"
+                    && modelData.technicalSummary
+                    ? modelData.technicalSummary.length > 0 : false
                 text: modelData.technicalSummary || ""
                 role: "technical"
                 technical: true
@@ -213,11 +238,12 @@ ListView {
 
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
         TapHandler {
-            onTapped: {
+            exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+            onSingleTapped: {
                 albumTimeline.currentIndex = timelineRow.index
                 timelineRow.forceActiveFocus()
-                library.select_album(modelData.key)
             }
+            onDoubleTapped: library.select_album(modelData.key)
         }
         Keys.onReturnPressed: library.select_album(modelData.key)
         Keys.onEnterPressed: library.select_album(modelData.key)

@@ -183,7 +183,7 @@ def test_album_table_header_click_to_sort_wired():
     host = read("views/LibraryContentHost.qml")
     assert "signal sortModeRequested(string mode)" in host
     library_view = read("views/LibraryView.qml")
-    assert "onSortModeRequested: mode => root.albumSortMode = mode" in library_view
+    assert "onSortModeRequested: mode => root.requestAlbumSort(mode)" in library_view
 
 
 # ── Phase 2: queue keyboard navigation and dismissal ──────────────────────────
@@ -230,10 +230,10 @@ def test_cover_flow_tap_preserves_drag_and_focus():
     assert "MouseArea {" not in content
 
 
-def test_vinyl_wall_first_tap_selects_second_opens():
+def test_vinyl_wall_selects_on_tap_and_opens_on_double_tap():
     content = read("views/VinylWallView.qml")
-    assert "var wasCurrent = albumVinyl.currentIndex === vinylTile.index" in content
-    assert "if (wasCurrent)" in content
+    assert "albumVinyl.currentIndex = vinylTile.index" in content
+    assert "onDoubleTapped: library.select_album(modelData.key)" in content
 
 
 def test_timeline_reuses_items_and_aligns_to_grid():
@@ -257,7 +257,7 @@ def test_timeline_year_uses_neutral_accent():
 
 def test_vinyl_label_neutral_when_unselected():
     content = read("views/VinylWallView.qml")
-    assert "? MichiPalette.auroraCyan : MichiPalette.graphiteRaised" in content
+    assert "? MichiPalette.auroraCyan : MichiPalette.graphite" in content
     assert "MichiScrollBar" in content
 
 
@@ -415,16 +415,16 @@ def test_action_feedback_call_sites():
 
 def test_no_hardcoded_visible_strings_in_mixed_files():
     magazine = read("views/MagazineView.qml")
-    assert 'text: qsTr("SPOTLIGHT")' in magazine
+    assert 'text: qsTr("FEATURED FROM YOUR LIBRARY")' in magazine
     assert '"0%1"' in magazine  # R2: .arg() substitution
     assert "index + 2)" in magazine
     card = read("playlists/PlaylistCard.qml")
     assert "Pinned playlist" in card  # accessible name stays (decorative dot)
     toolbar = read("views/LibraryToolbar.qml")
-    assert 'text: qsTr("No results")' in toolbar
+    assert 'qsTr("No results")' in toolbar
     assert 'text: qsTr("Cancel")' in toolbar
     header = read("views/LibraryHeader.qml")
-    assert 'label: qsTr("Grid")' in header
+    assert 'label: qsTr("Gallery")' in header
     assert 'text: qsTr("VIEWS")' in header
     settings = read("views/SettingsView.qml")
     assert 'title: qsTr("Settings")' in settings

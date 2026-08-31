@@ -6,7 +6,7 @@ Does NOT own runtime Playback/Queue/Library state.
 
 from michi.application.persistence import SettingsRepository
 from michi.domain.audio_engine import AudioEngineId
-from michi.domain.settings import SettingsState, WindowGeometry
+from michi.domain.settings import LibraryViewPreferences, SettingsState, WindowGeometry
 
 
 class SettingsService:
@@ -81,4 +81,16 @@ class SettingsService:
             self.save()
         except Exception:
             self.state.online_enrichment = previous
+            raise
+
+    def set_library_view_preferences(self, preferences: LibraryViewPreferences) -> None:
+        """Persist Library presentation preferences transactionally."""
+        previous = self.state.library_views
+        if previous == preferences:
+            return
+        self.state.library_views = preferences
+        try:
+            self.save()
+        except Exception:
+            self.state.library_views = previous
             raise

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../theme"
 
@@ -10,6 +11,11 @@ GridView {
 
     property var albumModel: library.albums
     property real albumZoom: 1.0
+    property var browseState: null
+    property string spacingMode: "balanced"
+    property string metadataLevel: "standard"
+    property bool quickActions: true
+    property bool precisionMetadata: false
     readonly property int minimumCardWidth: MichiThemeState.density === "compact"
         ? Math.round(154 * albumZoom)
         : MichiThemeState.density === "comfortable"
@@ -18,13 +24,14 @@ GridView {
         ? Math.round(184 * albumZoom)
         : MichiThemeState.density === "comfortable"
             ? Math.round(250 * albumZoom) : Math.round(216 * albumZoom)
-    readonly property int cardGap: MichiThemeState.contentGap
+    readonly property int cardGap: spacingMode === "tight" ? MichiSpacing.sm
+        : spacingMode === "airy" ? MichiSpacing.xl : MichiThemeState.contentGap
     readonly property int columnCount: Math.max(1, Math.floor(
         (width + cardGap) / (minimumCardWidth + cardGap)))
     readonly property real resolvedCardWidth: Math.min(maximumCardWidth,
         cellWidth - cardGap)
-    readonly property int metadataHeight: MichiThemeState.density === "compact"
-        ? 76 : MichiThemeState.density === "comfortable" ? 108 : 92
+    readonly property int metadataHeight: metadataLevel === "minimal" ? 64
+        : metadataLevel === "detailed" ? 112 : 86
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -41,6 +48,24 @@ GridView {
     Accessible.role: Accessible.List
     Accessible.name: qsTr("Albums in grid view")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open an album")
+
+    function restoredIndex(fallback) {
+        if (browseState && browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i)
+                if (albumModel[i].key === browseState.currentKey) return i
+        }
+        return fallback
+    }
+    Component.onCompleted: if (browseState) Qt.callLater(function() {
+        albumGrid.currentIndex = restoredIndex(browseState.galleryIndex)
+        albumGrid.contentY = browseState.galleryContentY
+    })
+    onContentYChanged: if (browseState) browseState.galleryContentY = contentY
+    onCurrentIndexChanged: if (browseState) {
+        browseState.galleryIndex = currentIndex
+        if (currentIndex >= 0 && currentIndex < albumModel.length)
+            browseState.remember(albumModel[currentIndex].key)
+    }
 
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)
@@ -62,10 +87,7 @@ GridView {
         }
     }
 
-    ScrollBar.vertical: ScrollBar {
-        policy: ScrollBar.AsNeeded
-        width: MichiSpacing.sm
-    }
+    ScrollBar.vertical: MichiScrollBar { }
 
     delegate: Item {
         id: albumCell
@@ -83,14 +105,21 @@ GridView {
             height: parent.height - albumGrid.cardGap
             album: albumCell.modelData
             selected: albumCell.current
+            metadataLevel: albumGrid.metadataLevel
+            quickActionsVisible: albumGrid.quickActions
+            precisionMetadata: albumGrid.precisionMetadata
             onActiveFocusChanged: {
                 if (activeFocus)
                     albumGrid.currentIndex = albumCell.index
             }
-            onActivated: {
+            onSelectedRequested: {
+                albumGrid.currentIndex = albumCell.index
+            }
+            onOpenRequested: {
                 albumGrid.currentIndex = albumCell.index
                 library.select_album(albumCell.modelData.key)
             }
+            onPlayRequested: library.play_album(albumCell.modelData.key)
         }
     }
 }

@@ -168,6 +168,30 @@ class LibraryBridge(QObject):
     def _get_artist_count(self) -> int:
         return len(self._service.state.artists)
 
+    def _album_row(self, album: AlbumRef) -> dict:
+        """Canonical album presentation row shared by every Library view."""
+        return {
+            "key": album.key,
+            "title": album.title,
+            "artist": album.artist,
+            "trackCount": album.track_count,
+            "durationMs": album.duration_ms,
+            "discCount": album.disc_count,
+            "genres": list(album.genres),
+            "composers": list(album.composers),
+            "hasArtwork": album.has_artwork,
+            "artworkPath": self._service.artwork_path_for(album.key) or "",
+            "year": album.year,
+            "technicalState": album.technical_state.name.lower(),
+            "technicalSummary": album.technical_summary,
+            "codecs": list(album.codecs),
+            "maxSampleRateHz": album.max_sample_rate_hz,
+            "maxBitDepth": album.max_bit_depth,
+            "maxChannels": album.max_channels,
+            "containsDsd": album.contains_dsd,
+            "containsHighResolution": album.contains_high_resolution,
+        }
+
     def _album_rows(self) -> list[dict]:
         # M7: the unified search projection filters the album surface; the
         # canonical collections are the passthrough when search is inactive.
@@ -176,22 +200,7 @@ class LibraryBridge(QObject):
             if self._service.state.search_active
             else self._service.state.albums
         )
-        rows = []
-        for album in albums:
-            rows.append(
-                {
-                    "key": album.key,
-                    "title": album.title,
-                    "artist": album.artist,
-                    "trackCount": album.track_count,
-                    "durationMs": album.duration_ms,
-                    "hasArtwork": album.has_artwork,
-                    "artworkPath": self._service.artwork_path_for(album.key) or "",
-                    "year": album.year,
-                    "technicalSummary": album.technical_summary,
-                }
-            )
-        return rows
+        return [self._album_row(album) for album in albums]
 
     def _get_timeline_albums(self) -> list[dict]:
         # M7: the timeline receives the SAME filtered album set as the other
@@ -205,19 +214,11 @@ class LibraryBridge(QObject):
         albums_by_key = {a.key: a for a in albums}
         for projection in build_timeline_projection(albums):
             album = albums_by_key.get(projection.album_key)
-            rows.append(
-                {
-                    "key": projection.album_key,
-                    "title": projection.title,
-                    "artist": projection.artist,
-                    "year": projection.year,
-                    "decade": projection.decade,
-                    "hasArtwork": album.has_artwork if album is not None else False,
-                    "artworkPath": (
-                        self._service.artwork_path_for(projection.album_key) or ""
-                    ),
-                }
-            )
+            if album is None:
+                continue
+            row = self._album_row(album)
+            row["decade"] = projection.decade
+            rows.append(row)
         return rows
 
     def _artist_rows(self) -> list[dict]:

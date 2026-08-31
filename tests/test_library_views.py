@@ -280,7 +280,7 @@ class TestBridgeViews:
         assert isinstance(rows, list)
         assert len(rows) == 2
         for row in rows:
-            assert set(row.keys()) == {
+            assert {
                 "key",
                 "title",
                 "artist",
@@ -290,7 +290,14 @@ class TestBridgeViews:
                 "artworkPath",
                 "year",
                 "technicalSummary",
-            }
+                "technicalState",
+                "codecs",
+                "maxSampleRateHz",
+                "maxBitDepth",
+                "maxChannels",
+                "containsDsd",
+                "containsHighResolution",
+            } <= set(row)
             assert row["hasArtwork"] is True
             assert row["artworkPath"] == str(cache.paths[row["key"]])
         artist_rows = bridge.property("artists")

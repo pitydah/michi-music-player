@@ -18,6 +18,8 @@ ColumnLayout {
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
     property real albumZoom: 1.0
+    property var viewPreferences: ({})
+    property var browseState: null
     property var _content: null   // the current tab view
     signal scanRequested()
     signal sortModeRequested(string mode)
@@ -169,6 +171,8 @@ ColumnLayout {
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
             albumZoom: root.albumZoom
+            viewPreferences: root.viewPreferences
+            browseState: root.browseState
             onSortModeRequested: mode => root.sortModeRequested(mode)
             onSortDirectionRequested: descending => root.sortDirectionRequested(descending)
         }

@@ -7,18 +7,25 @@ Item {
     id: root
     property var album: null
     property bool selected: false
+    property bool quickActionsVisible: true
+    property string metadataLevel: "standard"
+    property bool precisionMetadata: false
+    signal selectedRequested()
+    signal openRequested()
+    signal playRequested()
+    // Compatibility intent: activation means OPEN, never Play.
     signal activated()
     implicitWidth: 196
     implicitHeight: 286
     focus: false
-    activeFocusOnTab: true
+    activeFocusOnTab: false
     scale: hover.hovered ? 1.015 : 1
     Accessible.role: Accessible.ListItem
     Accessible.name: album ? album.title + " by " + album.artist : "Album"
     Accessible.description: album ? root.albumDescription() : ""
-    Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); activated() }
-    Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); activated() }
-    Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); activated() }
+    Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); openRequested(); activated() }
+    Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); openRequested(); activated() }
+    Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); playRequested() }
 
     function albumDescription() {
         var details = []
@@ -36,9 +43,9 @@ Item {
         radius: MichiRadius.lg
         color: tap.pressed
             ? MichiSemanticColors.surfacePressed
-            : hover.hovered
-                ? MichiSemanticColors.surfaceHover
-                : root.selected
+            : root.selected
+                ? MichiSemanticColors.surfaceSelected
+                : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
         border.width: 1
         border.color: root.selected
             ? MichiSemanticColors.auroraCyanBorderSubtle
@@ -83,7 +90,8 @@ Item {
                     width: MichiMetrics.controlLarge
                     height: MichiMetrics.controlLarge
                     radius: MichiMetrics.controlLarge / 2
-                    visible: hover.hovered || root.activeFocus
+                    visible: root.quickActionsVisible
+                        && (hover.hovered || root.activeFocus)
                     color: MichiSemanticColors.scrimStrong
                     border.width: 1
                     border.color: MichiSemanticColors.auroraCyanBorder
@@ -101,6 +109,18 @@ Item {
                         height: width
                         name: "play"
                         iconColor: MichiPalette.auroraCyan
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: root.quickActionsVisible
+                        cursorShape: Qt.PointingHandCursor
+                        Accessible.role: Accessible.Button
+                        Accessible.name: qsTr("Play album")
+                        onClicked: {
+                            MichiAccessibility.notePointer()
+                            root.playRequested()
+                        }
                     }
                 }
             }
@@ -120,7 +140,8 @@ Item {
                         elide: Text.ElideRight
                     }
                     MichiText {
-                        visible: root.album && root.album.year > 0
+                        visible: root.metadataLevel !== "minimal"
+                            && root.album && root.album.year > 0
                         text: root.album ? root.album.year : ""
                         role: "technical"
                         technical: true
@@ -135,7 +156,10 @@ Item {
                 }
                 MichiText {
                     Layout.fillWidth: true
-                    visible: root.album && root.album.technicalSummary ? (root.album.technicalSummary.length > 0) : false
+                    visible: (root.metadataLevel === "detailed"
+                        || root.precisionMetadata)
+                        && root.album && root.album.technicalSummary
+                        ? root.album.technicalSummary.length > 0 : false
                     text: root.album && root.album.technicalSummary ? root.album.technicalSummary : ""
                     role: "technical"
                     technical: true
@@ -144,7 +168,7 @@ Item {
                 }
                 MichiText {
                     Layout.fillWidth: true
-                    visible: MichiThemeState.density === "comfortable"
+                    visible: root.metadataLevel === "detailed"
                     text: root.album
                         ? root.album.trackCount
                             + (root.album.trackCount === 1 ? " track" : " tracks")
@@ -169,9 +193,15 @@ Item {
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
     TapHandler {
         id: tap
-        onTapped: {
+        exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+        onSingleTapped: {
             MichiAccessibility.notePointer()
             root.forceActiveFocus()
+            root.selectedRequested()
+        }
+        onDoubleTapped: {
+            MichiAccessibility.notePointer()
+            root.openRequested()
             root.activated()
         }
     }

@@ -166,7 +166,8 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     now_playing = _text("player/NowPlayingBar.qml")
     assert "property bool accented" in glass
     assert "Behavior on scale" in button
-    assert "MichiStatusChip" in toolbar
+    assert 'objectName: "stableLibrarySearchPane"' in toolbar
+    assert "Layout.preferredWidth: 82" in toolbar
     assert 'import "../controls"' in content
     assert 'text: qsTr("ADD TRACK TO")' in content
     assert "MichiIconButton" in content
@@ -227,10 +228,10 @@ def test_density_precision_and_inspector_are_real_surfaces() -> None:
     toolbar = _text("views/LibraryToolbar.qml")
     album_detail = _text("views/AlbumDetailView.qml")
     assert "View options" in header
-    assert 'objectName: "libraryDensityControl"' in popup
-    assert "MichiThemeState.density" in popup
-    assert "compact: true" in popup
-    assert "MichiThemeState.precisionMode" in popup
+    assert "viewPreferenceRequested" in popup
+    assert "galleryOptions" in popup
+    assert "studioOptions" in popup
+    assert "precisionMetadata" in popup
     assert "MichiThemeState.density" not in toolbar
     assert "MichiThemeState.precisionMode" not in toolbar
     assert "InspectorPanel" in album_detail
@@ -275,16 +276,17 @@ def test_album_artwork_zoom_is_real_and_persistent() -> None:
     path = _text("views/AlbumPathView.qml")
     icons = _text("primitives/MichiIcon.qml")
     assert "property real albumZoom: 1.0" in library
-    assert "onAlbumZoomRequested" in library
-    assert "zoom-out" in popup
-    assert "zoom-in" in popup
+    assert "libraryViews" in library
+    assert "set_library_views" in library
+    assert "artworkSize" in popup
+    assert "coverSize" in popup
+    assert "sleeveSize" in popup
     assert "albumZoom: root.albumZoom" in content
     assert albums.count("albumZoom: root.albumZoom") == 3
     for source in (grid, vinyl, path):
         assert "property real albumZoom: 1.0" in source
         assert "albumZoom" in source
-    assert 'root.name === "zoom-out"' in icons
-    assert 'root.name === "zoom-in"' in icons
+    assert 'root.name === "view-options"' in icons
 
 
 def test_album_grid_and_detail_have_premium_information_hierarchy() -> None:
@@ -316,7 +318,7 @@ def test_transport_microdetails_are_coherent_surfaces() -> None:
     assert bar.count("y: volumeSlider.topPadding") == 2
     repeat_branch = icons.split(
         '} else if (root.name === "repeat" || root.name === "repeat-one") {'
-    )[1].split('} else if (root.name === "sliders" || root.name === "equalizer") {')[0]
+    )[1].split('} else if (root.name === "view-options") {')[0]
     assert "ctx.arc" not in repeat_branch
 
 
@@ -399,9 +401,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert "albumViewsVisible" in header
     assert 'currentTab === "albums"' in header
     assert 'objectName: "albumViewSwitcher"' not in toolbar
-    assert 'objectName: "libraryNavigationSplitView"' in toolbar
-    assert 'objectName: "resizableLibrarySearchPane"' in toolbar
-    assert "SplitView.fillWidth: true" in toolbar
+    assert 'objectName: "stableLibrarySearchPane"' in toolbar
+    assert "SplitView" not in toolbar
+    assert "Layout.preferredWidth: 82" in toolbar
     assert toolbar.index("LibraryTabs {") < toolbar.index("MichiSearchField {")
     assert "compact: true" in header
     for icon in (
@@ -451,7 +453,9 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     assert "root.enabled && root.primary" in button
     assert "anchors.bottom: parent.bottom" not in tabs
     assert "visible: root.selected" not in icon_button
-    assert "zoom-out" in popup
+    assert "artworkSize" in popup
+    assert "coverSize" in popup
+    assert "sleeveSize" in popup
     quality = bar.split('objectName: "qualityBadge"', 1)[1].split(
         'objectName: "queueButton"', 1
     )[0]

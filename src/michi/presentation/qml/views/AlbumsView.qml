@@ -14,11 +14,14 @@ ColumnLayout {
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
     property real albumZoom: 1.0
+    property var viewPreferences: ({})
+    property var browseState: null
     signal sortModeRequested(string mode)
     signal sortDirectionRequested(bool descending)
     readonly property var presentationAlbums: buildPresentationAlbums(library.albums)
     readonly property var presentationTimelineAlbums: buildTimelineAlbums(
         library.timelineAlbums, presentationAlbums)
+    readonly property var editorialAlbums: buildEditorialAlbums(presentationAlbums)
 
     function normalized(value) {
         return String(value || "").toLocaleLowerCase()
@@ -31,11 +34,7 @@ ColumnLayout {
             case "dated": return Number(album.year || 0) > 0
             case "undated": return Number(album.year || 0) <= 0
             case "hires": {
-                var summary = normalized(album.technicalSummary)
-                return summary.indexOf("24-bit") !== -1
-                    || summary.indexOf("dsd") !== -1
-                    || summary.indexOf("192 khz") !== -1
-                    || summary.indexOf("96 khz") !== -1
+                return Boolean(album.containsHighResolution)
             }
             default: return true
         }
@@ -76,8 +75,26 @@ ColumnLayout {
         })
         rows.sort(function(left, right) {
             var yearOrder = Number(right.year || 0) - Number(left.year || 0)
+            if (root.viewPreferences.chronology
+                    && root.viewPreferences.chronology.direction === "oldest")
+                yearOrder = -yearOrder
             return yearOrder !== 0 ? yearOrder
                 : root.normalized(left.title).localeCompare(root.normalized(right.title))
+        })
+        return rows
+    }
+
+    function buildEditorialAlbums(source) {
+        var rows = source ? source.slice() : []
+        rows.sort(function(left, right) {
+            var artworkOrder = Number(Boolean(right.hasArtwork))
+                - Number(Boolean(left.hasArtwork))
+            if (artworkOrder !== 0)
+                return artworkOrder
+            var yearOrder = Number(right.year || 0) - Number(left.year || 0)
+            if (yearOrder !== 0)
+                return yearOrder
+            return root.normalized(left.title).localeCompare(root.normalized(right.title))
         })
         return rows
     }
@@ -145,10 +162,6 @@ ColumnLayout {
                 }
             }
 
-            onLoaded: {
-                if (item)
-                    item.forceActiveFocus()
-            }
         }
     }
 
@@ -173,6 +186,15 @@ ColumnLayout {
             anchors.fill: parent
             albumModel: root.presentationAlbums
             albumZoom: root.albumZoom
+            browseState: root.browseState
+            spacingMode: root.viewPreferences.gallery
+                ? root.viewPreferences.gallery.spacing : "balanced"
+            metadataLevel: root.viewPreferences.gallery
+                ? root.viewPreferences.gallery.metadataLevel : "standard"
+            quickActions: root.viewPreferences.gallery
+                ? root.viewPreferences.gallery.quickActions : true
+            precisionMetadata: root.viewPreferences.gallery
+                ? root.viewPreferences.gallery.precisionMetadata : false
         }
     }
 
@@ -182,6 +204,13 @@ ColumnLayout {
             anchors.fill: parent
             albumModel: root.presentationAlbums
             albumZoom: root.albumZoom
+            browseState: root.browseState
+            visibleAlbums: root.viewPreferences.flow
+                ? root.viewPreferences.flow.visibleAlbums : "auto"
+            depthMode: root.viewPreferences.flow
+                ? root.viewPreferences.flow.depth : "standard"
+            ambientColor: root.viewPreferences.flow
+                ? root.viewPreferences.flow.ambientColor : true
         }
     }
 
@@ -191,6 +220,13 @@ ColumnLayout {
             anchors.fill: parent
             albumModel: root.presentationAlbums
             albumZoom: root.albumZoom
+            browseState: root.browseState
+            spacingMode: root.viewPreferences.vinyl
+                ? root.viewPreferences.vinyl.spacing : "standard"
+            revealMode: root.viewPreferences.vinyl
+                ? root.viewPreferences.vinyl.reveal : "standard"
+            metadataLevel: root.viewPreferences.vinyl
+                ? root.viewPreferences.vinyl.metadataLevel : "standard"
         }
     }
 
@@ -200,6 +236,13 @@ ColumnLayout {
             anchors.fill: parent
             albumModel: root.presentationTimelineAlbums
             groupByDecade: root.albumTimelineGrouping === "decade"
+            browseState: root.browseState
+            direction: root.viewPreferences.chronology
+                ? root.viewPreferences.chronology.direction : "newest"
+            densityMode: root.viewPreferences.chronology
+                ? root.viewPreferences.chronology.density : "standard"
+            metadataLevel: root.viewPreferences.chronology
+                ? root.viewPreferences.chronology.metadataLevel : "standard"
         }
     }
 
@@ -207,7 +250,12 @@ ColumnLayout {
         id: magazineComponent
         MagazineView {
             anchors.fill: parent
-            albumModel: root.presentationAlbums
+            albumModel: root.editorialAlbums
+            browseState: root.browseState
+            heroVisible: root.viewPreferences.editorial
+                ? root.viewPreferences.editorial.heroVisible : true
+            informationRichness: root.viewPreferences.editorial
+                ? root.viewPreferences.editorial.informationRichness : "standard"
         }
     }
 
@@ -216,6 +264,8 @@ ColumnLayout {
         AlbumListView {
             anchors.fill: parent
             albumModel: root.presentationAlbums
+            browseState: root.browseState
+            viewPreferences: root.viewPreferences.studioList || ({})
             sortMode: root.albumSortMode
             sortDescending: root.albumSortDescending
             onSortRequested: mode => root.requestAlbumSort(mode)

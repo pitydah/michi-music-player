@@ -13,6 +13,11 @@ Rectangle {
     property bool showTrackCount: true
     property bool showDuration: true
     property bool showTechnical: MichiThemeState.precisionMode
+    property string artworkSize: "small"
+    property string rowDensity: "standard"
+    signal selectedRequested()
+    signal openRequested()
+    signal playRequested()
     signal activated()
 
     readonly property real titleColumnRatio: root.showTechnical ? 0.34 : 0.45
@@ -22,23 +27,24 @@ Rectangle {
     readonly property int artistColumnWidth: Math.min(
         300, Math.max(150, Math.round(root.width * 0.20)))
 
-    implicitHeight: Math.max(MichiThemeState.rowHeight, 44)
+    implicitHeight: rowDensity === "compact" ? 44
+        : rowDensity === "comfortable" ? 64 : 52
     radius: MichiRadius.sm
     color: root.selected ? MichiSemanticColors.surfaceSelected
         : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
     border.width: root.selected || hover.hovered ? 1 : 0
     border.color: root.selected
         ? MichiSemanticColors.auroraBorderSubtle : MichiSemanticColors.borderSubtle
-    activeFocusOnTab: true
+    activeFocusOnTab: false
     Accessible.role: Accessible.ListItem
     Accessible.name: root.album
         ? root.album.title + " by " + root.album.artist
         : "Album"
     Accessible.description: qsTr("Open album")
 
-    Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
-    Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
-    Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); root.activated() }
+    Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); root.openRequested(); root.activated() }
+    Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); root.openRequested(); root.activated() }
+    Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); root.playRequested() }
 
 
     RowLayout {
@@ -48,7 +54,8 @@ Rectangle {
         spacing: MichiSpacing.md
 
         Artwork {
-            Layout.preferredWidth: MichiThemeState.density === "comfortable" ? 40 : 34
+            visible: root.artworkSize !== "none"
+            Layout.preferredWidth: root.artworkSize === "standard" ? 44 : 34
             Layout.preferredHeight: Layout.preferredWidth
             sourcePath: root.album && root.album.hasArtwork ? root.album.artworkPath : ""
             fallbackText: root.album ? root.album.title : "?"
@@ -111,9 +118,15 @@ Rectangle {
 
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
     TapHandler {
-        onTapped: {
+        exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+        onSingleTapped: {
             MichiAccessibility.notePointer()
             root.forceActiveFocus()
+            root.selectedRequested()
+        }
+        onDoubleTapped: {
+            MichiAccessibility.notePointer()
+            root.openRequested()
             root.activated()
         }
     }

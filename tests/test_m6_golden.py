@@ -938,7 +938,8 @@ class TestGoldenSixViews:
             assert f'objectName: "{name}"' in qml, f"{name} missing"
         assert qml.count("property var albumModel: library.albums") == 5
         assert qml.count("property var albumModel: library.timelineAlbums") == 1
-        assert qml.count("albumModel: root.presentationAlbums") == 5
+        assert qml.count("albumModel: root.presentationAlbums") == 4
+        assert qml.count("albumModel: root.editorialAlbums") == 1
         assert qml.count("albumModel: root.presentationTimelineAlbums") == 1
         for ident in (
             "gridAlbums",

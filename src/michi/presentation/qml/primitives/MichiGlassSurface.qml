@@ -14,6 +14,8 @@ Item {
     property bool shadowed: elevation !== "subtle"
     property bool textured: elevation !== "subtle"
     property int tileSeed: 0
+    // auto: only meaningful raised/control materials; always/never are explicit.
+    property string glintMode: "auto"
     // Always-on backdrop blur (true smoke glass) for hero surfaces like
     // the sidebar — overrides the high-quality-only gate.
     property bool forceBlur: false
@@ -128,7 +130,8 @@ Item {
             anchors.left: parent.left
             width: Math.min(parent.width, parent.height) * 0.55
             height: width * 0.584   // viewBox 100 x 58.4
-            visible: parent.width > 0
+            visible: parent.width > 0 && root.glintMode !== "never"
+                && (root.glintMode === "always" || root.raised)
             Shape {
                 anchors.fill: parent
                 ShapePath {
