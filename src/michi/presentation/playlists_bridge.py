@@ -31,7 +31,7 @@ from michi.application.playlist_navigation_coordinator import (
 )
 from michi.application.playlist_service import PlaylistService
 from michi.application.ports import PlaylistPaletteExtractorPort
-from michi.domain.playlist import PlaylistHeroMode
+from michi.domain.playlist import MAX_DESCRIPTION_LENGTH, PlaylistHeroMode
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,10 @@ class PlaylistsBridge(QObject):
     # significa EXACTAMENTE "DURABLE WRITE FAILED" — nunca un fallo lógico.
     persistenceFailed = Signal(str)
     _palette_ready = Signal(str, str, list)
+    # PL-FINAL-B02: palette del DRAFT cover para el preview WYSIWYG del
+    # editor (generation token QML; nunca se persiste). Nombre camelCase:
+    # PySide6 expone señales Python con su nombre exacto en QML.
+    draftPaletteReady = Signal(int, list)
 
     def __init__(
         self,
@@ -104,6 +108,11 @@ class PlaylistsBridge(QObject):
         # PL-FINAL-18: duration-by-path index — resolve_trackref is
         # O(library); the index makes a playlist projection O(tracks).
         self._duration_index: dict[str, int] | None = None
+        # PL-FINAL-A12: path → TrackRef index over the CURRENT Library
+        # revision. resolve_trackref() is O(library) PER LOOKUP — every
+        # detail projection (rows, unavailable count, playback filtering)
+        # goes through THIS index. Rebuilt exactly once per library change.
+        self._trackref_index: dict[str, object] | None = None
         self._rows_cache: list[dict] | None = None
         # PL-FINAL-14: playlist-LOCAL search (detail toolbar). Never
         # touches LibraryService search state; the query only filters the
@@ -153,6 +162,9 @@ class PlaylistsBridge(QObject):
         self.playlists_changed.emit()
 
     def _on_navigation_changed(self) -> None:
+        """PL-FINAL-A02/A03: la búsqueda local es TRANSIENT — nunca
+        sobrevive al cambio de playlist ni a la salida del detalle."""
+        self._playlist_search_query = ""
         self._rows_cache = None
         self.playlists_changed.emit()
 
@@ -163,8 +175,21 @@ class PlaylistsBridge(QObject):
         The artwork index is rebuilt lazily ONCE on the next rows refresh."""
         self._artwork_index_dirty = True
         self._duration_index = None  # PL-FINAL-18: rebuild lazily
+        self._trackref_index = None  # PL-FINAL-A12: rebuild lazily
         self._rows_cache = None
         self.playlists_changed.emit()
+
+    def _build_trackref_index(self) -> dict[str, object]:
+        """PL-FINAL-A12: canonical path → TrackRef, rebuilt EXACTLY ONCE
+        per Library revision. All playlist detail projections are O(P)
+        against this index — never O(P × T) linear resolve_trackref."""
+        if self._trackref_index is None:
+            index: dict[str, object] = {}
+            if self._library is not None:
+                for track in self._library.state.tracks:
+                    index.setdefault(str(track.file_path), track)
+            self._trackref_index = index
+        return self._trackref_index
 
     # ------------------------------------------------------------------
     # Row projection (canonical playlist row shape)
@@ -241,6 +266,10 @@ class PlaylistsBridge(QObject):
             self._duration_index = index
         return self._duration_index
 
+    def _trackref_for_path(self, path: str):
+        """PL-FINAL-A12: O(1) canonical lookup via the revision index."""
+        return self._build_trackref_index().get(path)
+
     def _appearance_row(self, playlist) -> dict:
         """R3-05: the row carries persisted + effective + missing facts.
         Rendering consumes effective*; editing/recovery consumes
@@ -296,6 +325,29 @@ class PlaylistsBridge(QObject):
                 )
         return self._auto_palettes.get(
             playlist.playlist_id, list(_DEFAULT_HERO_PALETTE)
+        )
+
+    @Slot(str, int)
+    def request_draft_palette(self, cover_path: str, generation: int) -> None:
+        """PL-FINAL-B02: palette del DRAFT cover para el preview del editor
+        de apariencia. La extracción es async; el QML dueño del generation
+        token descarta callbacks stale (draft A que termina después de B
+        nunca gana). NUNCA se persiste — es preview puro. Sin archivo
+        válido: no request (el preview usa la palette neutral)."""
+        if self._palette_extractor is None or not cover_path:
+            return
+        local = local_path_from_url(cover_path)
+        if local is None:
+            return
+        try:
+            if not Path(local).is_file():
+                return
+        except OSError:
+            return
+        sources = (str(local),)
+        self._palette_extractor.request_palette(
+            sources,
+            lambda colors: self.draftPaletteReady.emit(generation, list(colors)),
         )
 
     @Slot(str, str, list)
@@ -399,8 +451,16 @@ class PlaylistsBridge(QObject):
         return playlist.name if playlist is not None else ""
 
     def _get_selected_playlist_description(self) -> str:
+        """PL-FINAL-DESCRIPTION: proyección SEGURA — un payload legacy
+        corrupto/enorme nunca entra a QML; se clamp a la longitud máxima
+        SIN reescribir el DB en load."""
         playlist = self._selected()
-        return playlist.description if playlist is not None else ""
+        if playlist is None:
+            return ""
+        description = playlist.description
+        if not isinstance(description, str):
+            return ""
+        return description[:MAX_DESCRIPTION_LENGTH]
 
     def _effective_cover_path(self, playlist) -> str:
         """R3-05: the resolvable cover path ("" when missing) — rendering
@@ -553,11 +613,7 @@ class PlaylistsBridge(QObject):
             return []
         rows = []
         for path in playlist.track_paths:
-            ref = (
-                self._library.resolve_trackref(Path(path))
-                if self._library is not None
-                else None
-            )
+            ref = self._trackref_for_path(path) if self._library is not None else None
             rows.append(
                 {
                     "displayName": (
@@ -582,11 +638,7 @@ class PlaylistsBridge(QObject):
         query = " ".join(self._playlist_search_query.casefold().split())
         rows = []
         for canonical_index, path in enumerate(playlist.track_paths):
-            ref = (
-                self._library.resolve_trackref(Path(path))
-                if self._library is not None
-                else None
-            )
+            ref = self._trackref_for_path(path) if self._library is not None else None
             if ref is not None:
                 row = self._track_row(ref, index, canonical_index)
                 row["available"] = True
@@ -655,15 +707,31 @@ class PlaylistsBridge(QObject):
 
     def _get_playlist_unavailable_count(self) -> int:
         """PL-FINAL-16: honest count of tracks the library cannot resolve —
-        the hero summary must explain '10 tracks · 36 min · 2 unavailable'."""
+        the hero summary must explain '10 tracks · 36 min · 2 unavailable'.
+        PL-FINAL-A12: O(P) against the revision index."""
         playlist = self._selected()
         if playlist is None or self._library is None:
             return 0
-        count = 0
-        for path in playlist.track_paths:
-            if self._library.resolve_trackref(Path(path)) is None:
-                count += 1
-        return count
+        index = self._build_trackref_index()
+        return sum(1 for path in playlist.track_paths if path not in index)
+
+    def _get_playlist_available_count(self) -> int:
+        """PL-FINAL-A05: count of tracks the library CAN resolve — the
+        hero Play/Shuffle contract operates only on playable tracks."""
+        playlist = self._selected()
+        if playlist is None or self._library is None:
+            return 0
+        index = self._build_trackref_index()
+        return sum(1 for path in playlist.track_paths if path in index)
+
+    def _get_playlist_track_paths(self) -> list[str]:
+        """PL-FINAL-A08: CANONICAL membership paths — NEVER filtered by
+        the local search. The Add Tracks picker derives 'In playlist'
+        from THIS property, not from the filtered rows projection."""
+        playlist = self._selected()
+        if playlist is None:
+            return []
+        return list(playlist.track_paths)
 
     def _get_search_playlists(self) -> list[dict]:
         """Local playlist-name matches kept separate from the frozen M7
@@ -739,6 +807,13 @@ class PlaylistsBridge(QObject):
     )
     playlistUnavailableCount = Property(
         int, _get_playlist_unavailable_count, notify=playlists_changed
+    )
+    playlistAvailableTrackCount = Property(
+        int, _get_playlist_available_count, notify=playlists_changed
+    )
+    # PL-FINAL-A08: membership canónica SIN filtro (picker / undo / etc).
+    selectedPlaylistTrackPaths = Property(
+        list, _get_playlist_track_paths, notify=playlists_changed
     )
     searchPlaylists = Property(list, _get_search_playlists, notify=playlists_changed)
     searchPlaylistCount = Property(
@@ -1028,23 +1103,81 @@ class PlaylistsBridge(QObject):
 
     @Slot(str)
     def play_playlist(self, playlist_id: str) -> None:
+        """PL-FINAL-A05: PLAYLIST playback operates ONLY on tracks the
+        library can resolve. Missing/unavailable paths NEVER reach the
+        audio engine — the coordinator receives the available snapshot.
+        Without a library (tests/headless) there is no availability truth
+        — the raw snapshot is used."""
         if self._playback_coordinator is not None:
-            self._playback_coordinator.play_playlist(playlist_id)
+            playlist = (
+                self._playlist_service.get_playlist(playlist_id)
+                if self._playlist_service is not None
+                else None
+            )
+            if playlist is None:
+                return
+            paths = list(playlist.track_paths)
+            if self._library is not None:
+                index = self._build_trackref_index()
+                available = [p for p in paths if p in index]
+                if not available:
+                    return
+                paths = available
+            self._playback_coordinator.play_playlist_paths(playlist_id, paths)
 
     @Slot(int)
     def play_playlist_track(self, index: int) -> None:
-        """Playlist Detail track click → PLAYLIST context at index N."""
+        """Playlist Detail track click → PLAYLIST context at index N.
+        PL-FINAL-A05: un track no resoluble (unavailable) nunca se envía
+        al motor (cuando hay library truth)."""
         if self._playback_coordinator is not None:
             playlist_id = self._current_playlist_id()
-            if playlist_id:
-                self._playback_coordinator.play_playlist_track(playlist_id, index)
+            playlist = (
+                self._playlist_service.get_playlist(playlist_id)
+                if playlist_id and self._playlist_service is not None
+                else None
+            )
+            if playlist is None:
+                return
+            if not (0 <= index < len(playlist.track_paths)):
+                # Legacy contract: un índice fuera de rango clamp a 0
+                # (comportamiento histórico del coordinator).
+                index = 0
+            paths = list(playlist.track_paths)
+            if self._library is not None:
+                path = paths[index]
+                index_map = self._build_trackref_index()
+                if path not in index_map:
+                    return
+                available = [p for p in paths if p in index_map]
+                start = available.index(path)
+                self._playback_coordinator.play_playlist_paths(
+                    playlist_id, available, start_index=start
+                )
+                return
+            self._playback_coordinator.play_playlist_paths(
+                playlist_id, paths, start_index=index
+            )
 
     @Slot(str)
     def queue_playlist(self, playlist_id: str) -> None:
         """EXPLICIT Queue intent through the coordinator (no private
-        _queue access)."""
+        _queue access). PL-FINAL-A05: solo paths disponibles (con library
+        truth); sin library, snapshot crudo."""
         if self._playback_coordinator is not None:
-            self._playback_coordinator.queue_playlist(playlist_id)
+            playlist = (
+                self._playlist_service.get_playlist(playlist_id)
+                if self._playlist_service is not None
+                else None
+            )
+            if playlist is None:
+                return
+            paths = list(playlist.track_paths)
+            if self._library is not None:
+                index_map = self._build_trackref_index()
+                paths = [p for p in paths if p in index_map]
+            if paths:
+                self._playback_coordinator.queue_playlist_paths(playlist_id, paths)
 
     @Slot()
     def queue_selected_playlist(self) -> None:
@@ -1104,6 +1237,39 @@ class PlaylistsBridge(QObject):
         result = self._run_mutation(
             "remove_tracks",
             lambda: self._playlist_service.remove_tracks(playlist_id, valid),
+        )
+        if result is None:
+            return "persistence_failed"
+        return "removed" if result else "no_change"
+
+    @Slot(list, result=str)
+    def remove_tracks_by_paths(self, paths: list) -> str:
+        """PL-FINAL-A01: BATCH remove by PATH IDENTITY (the multiselect
+        contract). Positions are resolved from the CURRENT canonical
+        playlist.track_paths snapshot AT INTENT TIME — never from stale
+        visual indices, never from a filtered projection. Paths that
+        vanished from the playlist are skipped truthfully (they are
+        already gone). ONE persist, ONE notify. Codes: "removed" |
+        "no_change" | "invalid" | "not_found" | "persistence_failed"."""
+        playlist_id = self._current_playlist_id()
+        if self._playlist_service is None or not playlist_id:
+            return "not_found"
+        playlist = self._playlist_service.get_playlist(playlist_id)
+        if playlist is None:
+            return "not_found"
+        unique = list(dict.fromkeys(str(p) for p in paths))
+        if not unique:
+            return "invalid"
+        canonical = list(playlist.track_paths)
+        position_by_path = {path: i for i, path in enumerate(canonical)}
+        indices = [
+            position_by_path[path] for path in unique if path in position_by_path
+        ]
+        if not indices:
+            return "no_change"
+        result = self._run_mutation(
+            "remove_tracks",
+            lambda: self._playlist_service.remove_tracks(playlist_id, indices),
         )
         if result is None:
             return "persistence_failed"

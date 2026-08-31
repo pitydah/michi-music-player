@@ -50,10 +50,12 @@ MichiDialog {
     property real draftHeroFocalX: 0.5
     property real draftHeroFocalY: 0.5
 
-    // PL-FINAL-08: warnings DRAFT-AWARE — el warning describe el
+    // PL-FINAL-08 + A06: warnings DRAFT-AWARE — el warning describe el
     // CANDIDATO que el usuario edita, no solo el estado persistido.
+    // Recovery válido: keep broken → unresolved; replace → resolved;
+    // AUTOMATIC MOSAIC → resolved (nunca se bloquea Apply con Auto).
     readonly property bool unresolvedMissingCover:
-        root.coverAssetMissing && root.draftCoverAction !== "replace"
+        root.coverAssetMissing && root.draftCoverAction === "keep"
     readonly property bool unresolvedMissingHero:
         root.heroImageMissing
         && root.draftMode === "image"
@@ -77,6 +79,38 @@ MichiDialog {
                 : root.customCoverPath
     property url draftCoverImageUrl: ""
     property string errorText: ""
+    // PL-FINAL-B02: palette del DRAFT cover — preview WYSIWYG real. El
+    // generation token descarta callbacks stale (draft A nunca sobrescribe
+    // B). NUNCA se persiste; mientras no llega, palette neutral.
+    property int draftPaletteGeneration: 0
+    property var draftPaletteColors: []
+    readonly property var previewAutoColors:
+        root.draftPaletteColors.length >= 2
+            ? root.draftPaletteColors
+            : root.autoHeroColors
+    readonly property var _neutralPalette:
+        [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex,
+         MichiPalette.playlistHeroBottomHex]
+
+    function _requestDraftPalette() {
+        root.draftPaletteColors = []
+        root.draftPaletteGeneration += 1
+        var gen = root.draftPaletteGeneration
+        var cover = root.draftPreviewCoverPath
+        if (cover.length > 0)
+            playlists.request_draft_palette(cover, gen)
+    }
+
+    onDraftPreviewCoverPathChanged: root._requestDraftPalette()
+
+    Connections {
+        target: typeof playlists !== "undefined" ? playlists : null
+        function onDraftPaletteReady(generation, colors) {            // PL-FINAL-B02: SOLO el generation actual gana.
+            if (generation === root.draftPaletteGeneration && colors
+                    && colors.length >= 2)
+                root.draftPaletteColors = colors
+        }
+    }
 
     function openForPlaylist() {
         root._syncDraft()
@@ -235,12 +269,11 @@ MichiDialog {
                                 ? root.draftHeroImageUrl.toString() : root.effectiveHeroImagePath
                             // R4-05: el preview del hero auto deriva del DRAFT
                             // cover (WYSIWYG del candidate que Apply persistirá).
-                            // R5-03a: PlaylistHeroBackground resuelve la
-                            // precedencia coverPath → mosaic → default;
-                            // el panel no duplica esa lógica.
+                            // PL-FINAL-B02: autoColors del DRAFT (palette
+                            // async del draft cover) — nunca la persistida.
                             coverPath: root.draftPreviewCoverPath
                             mosaicArtworkPaths: root.mosaicArtworkPaths
-                            autoColors: root.autoHeroColors
+                            autoColors: root.previewAutoColors
                             // PL-FINAL-09: WYSIWYG del focal draft.
                             focalX: root.draftHeroFocalX
                             focalY: root.draftHeroFocalY
@@ -261,12 +294,18 @@ MichiDialog {
                             onPositionChanged: mouse => {
                                 if (!pressed)
                                     return
+                                // PL-FINAL-B04: DIRECT MANIPULATION — la
+                                // imagen sigue al puntero. FocalCropImage:
+                                // x = clamp(fx*(cw−rw), cw−rw, 0) con
+                                // (cw−rw) < 0 → fx↑ mueve la imagen a la
+                                // IZQUIERDA. Arrastrar +Δx (imagen a la
+                                // derecha) ⇒ fx DEBE DISMINUIR.
                                 root.draftHeroFocalX = Math.max(0, Math.min(1,
                                     root.draftHeroFocalX
-                                    + (mouse.x - _lastX) / Math.max(1, width)))
+                                    - (mouse.x - _lastX) / Math.max(1, width)))
                                 root.draftHeroFocalY = Math.max(0, Math.min(1,
                                     root.draftHeroFocalY
-                                    + (mouse.y - _lastY) / Math.max(1, height)))
+                                    - (mouse.y - _lastY) / Math.max(1, height)))
                                 _lastX = mouse.x
                                 _lastY = mouse.y
                             }
@@ -373,6 +412,9 @@ MichiDialog {
                         Layout.fillWidth: true
                         visible: root.draftMode === "solid"
                         MichiText { text: qsTr("Color"); role: "secondary" }
+                        // PL-FINAL-B03: swatch CLICKEABLE → Qt ColorDialog
+                        // (edición visual real; el campo hex queda como
+                        // entrada avanzada).
                         Rectangle {
                             Layout.preferredWidth: MichiMetrics.controlMedium
                             Layout.preferredHeight: MichiMetrics.controlMedium
@@ -381,6 +423,29 @@ MichiDialog {
                                 solidField.text, MichiPalette.playlistHeroTopHex)
                             border.width: 1
                             border.color: MichiSemanticColors.borderStrong
+                            focusPolicy: Qt.StrongFocus
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.Button
+                            Accessible.name: qsTr("Open color picker for solid hero color")
+                            Keys.onReturnPressed: openDialog()
+                            Keys.onEnterPressed: openDialog()
+                            Keys.onSpacePressed: openDialog()
+                            function openDialog() {
+                                colorDialog.targetField = solidField
+                                colorDialog.selectedColor =
+                                    root._previewColor(solidField.text,
+                                        MichiPalette.playlistHeroTopHex)
+                                colorDialog.open()
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: parent.openDialog()
+                            }
+                            MichiFocusRing {
+                                visualFocus: parent.activeFocus
+                                    && MichiAccessibility.keyboardMode
+                            }
                         }
                         MichiTextField {
                             id: solidField
@@ -388,6 +453,23 @@ MichiDialog {
                             accessibleName: qsTr("Solid hero color in hexadecimal")
                             placeholderText: MichiPalette.playlistHeroTopHex
                             maximumLength: 7
+                        }
+                    }
+
+                    // PL-FINAL-B03: un ColorDialog compartido (target por
+                    // campo) — edición visual sin duplicar estado.
+                    ColorDialog {
+                        id: colorDialog
+                        title: qsTr("Choose color")
+                        property var targetField: null
+                        onAccepted: {
+                            if (colorDialog.targetField) {
+                                var hex = colorDialog.selectedColor.toString()
+                                // "#aarrggbb" → "#rrggbb"
+                                if (hex.length >= 7)
+                                    colorDialog.targetField.text =
+                                        "#" + hex.slice(3)
+                            }
                         }
                     }
 
@@ -411,6 +493,32 @@ MichiDialog {
                                         modelData.text, MichiPalette.playlistHeroTopHex)
                                     border.width: 1
                                     border.color: MichiSemanticColors.borderStrong
+                                    focusPolicy: Qt.StrongFocus
+                                    activeFocusOnTab: true
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: qsTr(
+                                        "Open color picker for gradient stop %1").arg(index + 1)
+                                    function openDialog() {
+                                        colorDialog.targetField = modelData
+                                        colorDialog.selectedColor = root._previewColor(
+                                            modelData.text,
+                                            index === 0 ? MichiPalette.playlistHeroTopHex
+                                                : index === 1 ? MichiPalette.playlistHeroMidHex
+                                                : MichiPalette.playlistHeroBottomHex)
+                                        colorDialog.open()
+                                    }
+                                    Keys.onReturnPressed: openDialog()
+                                    Keys.onEnterPressed: openDialog()
+                                    Keys.onSpacePressed: openDialog()
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: parent.openDialog()
+                                    }
+                                    MichiFocusRing {
+                                        visualFocus: parent.activeFocus
+                                            && MichiAccessibility.keyboardMode
+                                    }
                                 }
                             }
                         }
@@ -519,10 +627,32 @@ MichiDialog {
                             focusPolicy: Qt.StrongFocus
                             activeFocusOnTab: true
                             Accessible.name: qsTr("Reposition hero image with arrow keys")
-                            Keys.onLeftPressed: root.draftHeroFocalX = Math.max(0, root.draftHeroFocalX - 0.05)
-                            Keys.onRightPressed: root.draftHeroFocalX = Math.min(1, root.draftHeroFocalX + 0.05)
-                            Keys.onUpPressed: root.draftHeroFocalY = Math.max(0, root.draftHeroFocalY - 0.05)
-                            Keys.onDownPressed: root.draftHeroFocalY = Math.min(1, root.draftHeroFocalY + 0.05)
+                            // PL-FINAL-B04: flechas = fino (±0.05),
+                            // Shift+flechas = grueso (±0.2).
+                            function _step(event, axis) {
+                                var step = (event.modifiers & Qt.ShiftModifier)
+                                    ? 0.2 : 0.05
+                                if (axis === "x")
+                                    root.draftHeroFocalX = Math.max(0, Math.min(1,
+                                        root.draftHeroFocalX - step))
+                                else
+                                    root.draftHeroFocalY = Math.max(0, Math.min(1,
+                                        root.draftHeroFocalY - step))
+                            }
+                            Keys.onLeftPressed: event => _step(event, "x")
+                            Keys.onRightPressed: event => {
+                                var step = (event.modifiers & Qt.ShiftModifier)
+                                    ? 0.2 : 0.05
+                                root.draftHeroFocalX = Math.max(0, Math.min(1,
+                                    root.draftHeroFocalX + step))
+                            }
+                            Keys.onUpPressed: event => _step(event, "y")
+                            Keys.onDownPressed: event => {
+                                var step = (event.modifiers & Qt.ShiftModifier)
+                                    ? 0.2 : 0.05
+                                root.draftHeroFocalY = Math.max(0, Math.min(1,
+                                    root.draftHeroFocalY + step))
+                            }
                         }
                     }
                 }
