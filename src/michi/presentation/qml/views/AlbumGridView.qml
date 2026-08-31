@@ -16,6 +16,7 @@ GridView {
     property string metadataLevel: "standard"
     property bool quickActions: true
     property bool precisionMetadata: false
+    property bool layoutReady: false
     readonly property real contentMaxWidth: 1760
     readonly property real usableWidth: Math.min(width, contentMaxWidth)
     readonly property int minimumCardWidth: MichiThemeState.density === "compact"
@@ -54,19 +55,27 @@ GridView {
     Accessible.name: qsTr("Albums in grid view")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open an album")
 
-    Component.onCompleted: if (browseState) Qt.callLater(function() {
-        var restoredIndex = browseState.galleryIndex
-        if (browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i) {
-                if (albumModel[i].key === browseState.currentKey) {
-                    restoredIndex = i
-                    break
+    Component.onCompleted: {
+        layoutReady = true
+        Qt.callLater(function() {
+            albumGrid.forceLayout()
+            if (browseState) {
+                var restoredIndex = browseState.galleryIndex
+                if (browseState.currentKey) {
+                    for (var i = 0; i < albumModel.length; ++i) {
+                        if (albumModel[i].key === browseState.currentKey) {
+                            restoredIndex = i
+                            break
+                        }
+                    }
                 }
+                albumGrid.currentIndex = restoredIndex
+                albumGrid.contentY = browseState.galleryContentY
             }
-        }
-        albumGrid.currentIndex = restoredIndex
-        albumGrid.contentY = browseState.galleryContentY
-    })
+        })
+    }
+    onCellWidthChanged: if (layoutReady) albumGrid.forceLayout()
+    onCellHeightChanged: if (layoutReady) albumGrid.forceLayout()
     onContentYChanged: if (browseState) browseState.galleryContentY = contentY
     onCurrentIndexChanged: if (browseState) {
         browseState.galleryIndex = currentIndex
