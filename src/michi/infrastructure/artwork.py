@@ -210,12 +210,23 @@ class MutagenArtworkProvider(ArtworkProviderPort):
 
     def _probe_local_artwork(self, album_dir: Path) -> ArtworkProbeObservation:
         """Tri-state local probe: complete deterministic enumeration;
-        unreadable entries or an inaccessible directory are UNAVAILABLE."""
+        unreadable entries or an inaccessible directory are UNAVAILABLE.
+
+        MERGE-READINESS (deterministic candidate policy):
+        - EXACT canonical case match wins (cover.jpg beats COVER.JPG even
+          when both coexist — never raw iterdir order);
+        - case-insensitive matches are sorted by filename (locale-free);
+        - an unreadable/oversized/unusable PRIMARY candidate marks
+          uncertainty and CONTINUES to the next candidate — a valid
+          fallback still yields FOUND (positive evidence is existential);
+        - uncertainty without any valid candidate → UNAVAILABLE;
+        - no candidates and fully observed → ABSENT_CONFIRMED."""
         try:
             entries = list(album_dir.iterdir())
         except OSError as exc:
             return ArtworkProbeObservation.unavailable(str(exc))
-        lowered_map = {}
+        exact_files: dict[str, Path] = {}
+        folded_files: dict[str, list[Path]] = {}
         uncertain = False
         for entry in entries:
             try:
@@ -224,22 +235,29 @@ class MutagenArtworkProvider(ArtworkProviderPort):
             except OSError:
                 uncertain = True
                 continue
-            lowered_map[entry.name.lower()] = entry
+            exact_files[entry.name] = entry
+            folded_files.setdefault(entry.name.casefold(), []).append(entry)
+        for matches in folded_files.values():
+            matches.sort(key=lambda path: path.name)
         for name in self._LOCAL_ARTWORK_FILES:
-            candidate = lowered_map.get(name.lower())
+            candidate = exact_files.get(name)
+            if candidate is None:
+                matches = folded_files.get(name.casefold(), [])
+                candidate = matches[0] if matches else None
             if candidate is None:
                 continue
             try:
                 data = candidate.read_bytes()
-            except OSError as exc:
-                return ArtworkProbeObservation.unavailable(str(exc))
+            except OSError:
+                uncertain = True
+                continue
             if len(data) > self._max_bytes:
-                return ArtworkProbeObservation.unavailable("local artwork oversized")
+                uncertain = True
+                continue
             mime = self._LOCAL_ARTWORK_MIME.get(candidate.suffix.lower(), "")
             if not mime:
-                return ArtworkProbeObservation.unavailable(
-                    "local artwork MIME not cacheable"
-                )
+                uncertain = True
+                continue
             return ArtworkProbeObservation.found(Artwork(data=data, mime_type=mime))
         if uncertain:
             return ArtworkProbeObservation.unavailable(

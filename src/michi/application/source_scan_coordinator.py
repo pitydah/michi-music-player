@@ -611,8 +611,12 @@ class SourceScanCoordinator:
             # P1-E: la verdad física del source se publica ANTES de que el
             # artwork decida si ese source puede tocarse.
             self._observations[current.library_source_id] = outcome.availability
-            if self._artwork_refresh is not None:
-                self._artwork_refresh.schedule()
+            # MERGE-READINESS P1: NUNCA schedule() directo — el firewall de
+            # autoridad derivada. Un fallo de artwork aquí NO puede escapar:
+            # SourceScanLifecycle._finish() debe ejecutarse siempre, o el
+            # lifecycle quedaría stall (_active forever, Scan All muerto)
+            # aunque el commit de Source ya fue exitoso.
+            self._schedule_artwork_convergence()
         return outcome
 
     def source_configuration_is_current(
