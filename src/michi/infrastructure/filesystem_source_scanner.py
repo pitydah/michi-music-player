@@ -83,9 +83,7 @@ class FilesystemLibrarySourceScanner(LibrarySourceScannerPort):
         try:
             import inspect
 
-            _walk_accepts_token = (
-                "token" in inspect.signature(self._walk).parameters
-            )
+            _walk_accepts_token = "token" in inspect.signature(self._walk).parameters
         except (TypeError, ValueError):
             _walk_accepts_token = True
         for path in (

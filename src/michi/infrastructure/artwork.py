@@ -8,6 +8,11 @@ from pathlib import Path
 from mutagen import File as MutagenFile
 from mutagen import MutagenError
 
+from michi.application.library_artwork_contracts import (
+    ArtworkProbeObservation,
+    ArtworkProbeVerdict,
+    PreparedArtwork,
+)
 from michi.application.ports import ArtworkCachePort, ArtworkProviderPort
 from michi.domain.library import Artwork
 
@@ -150,6 +155,139 @@ class MutagenArtworkProvider(ArtworkProviderPort):
             return Artwork(data=data, mime_type=mime)
         return None
 
+    def _probe_embedded(
+        self, file_path: Path, *, front_only: bool
+    ) -> ArtworkProbeObservation:
+        """Tri-state embedded probe (R4 artwork authority): filesystem or
+        Mutagen failure is UNAVAILABLE (not confirmed absence)."""
+        try:
+            audio = MutagenFile(str(file_path))
+        except (OSError, MutagenError) as exc:
+            return ArtworkProbeObservation.unavailable(str(exc))
+        if audio is None:
+            return ArtworkProbeObservation.unavailable(
+                "media parser returned no readable object"
+            )
+        tags = getattr(audio, "tags", None)
+        frame = None
+        if tags is not None and hasattr(tags, "getall"):
+            frames = tags.getall("APIC")
+            if front_only:
+                frame = next((f for f in frames if getattr(f, "type", None) == 3), None)
+            else:
+                frame = next(
+                    (f for f in frames if getattr(f, "type", None) == 3),
+                    frames[0] if frames else None,
+                )
+            if frame is not None:
+                artwork = self._guarded(frame.mime, frame.data)
+                if artwork is not None:
+                    return ArtworkProbeObservation.found(artwork)
+                return ArtworkProbeObservation.unavailable(
+                    "embedded artwork unusable/oversized"
+                )
+        pictures = getattr(audio, "pictures", None)
+        if pictures:
+            if front_only:
+                picture = next(
+                    (p for p in pictures if getattr(p, "type", None) == 3),
+                    None,
+                )
+            else:
+                picture = next(
+                    (p for p in pictures if getattr(p, "type", None) == 3),
+                    pictures[0],
+                )
+            if picture is not None:
+                artwork = self._guarded(picture.mime, picture.data)
+                if artwork is not None:
+                    return ArtworkProbeObservation.found(artwork)
+                return ArtworkProbeObservation.unavailable(
+                    "embedded artwork unusable/oversized"
+                )
+        # Tags leídos correctamente y sin artwork → ausencia confirmada.
+        return ArtworkProbeObservation.absent()
+
+    def _probe_local_artwork(self, album_dir: Path) -> ArtworkProbeObservation:
+        """Tri-state local probe: complete deterministic enumeration;
+        unreadable entries or an inaccessible directory are UNAVAILABLE."""
+        try:
+            entries = list(album_dir.iterdir())
+        except OSError as exc:
+            return ArtworkProbeObservation.unavailable(str(exc))
+        lowered_map = {}
+        uncertain = False
+        for entry in entries:
+            try:
+                if not entry.is_file():
+                    continue
+            except OSError:
+                uncertain = True
+                continue
+            lowered_map[entry.name.lower()] = entry
+        for name in self._LOCAL_ARTWORK_FILES:
+            candidate = lowered_map.get(name.lower())
+            if candidate is None:
+                continue
+            try:
+                data = candidate.read_bytes()
+            except OSError as exc:
+                return ArtworkProbeObservation.unavailable(str(exc))
+            if len(data) > self._max_bytes:
+                return ArtworkProbeObservation.unavailable("local artwork oversized")
+            mime = self._LOCAL_ARTWORK_MIME.get(candidate.suffix.lower(), "")
+            if not mime:
+                return ArtworkProbeObservation.unavailable(
+                    "local artwork MIME not cacheable"
+                )
+            return ArtworkProbeObservation.found(Artwork(data=data, mime_type=mime))
+        if uncertain:
+            return ArtworkProbeObservation.unavailable(
+                "local artwork observation incomplete"
+            )
+        return ArtworkProbeObservation.absent()
+
+    def probe_album_artwork(
+        self,
+        track_paths: tuple[Path, ...],
+        token=None,
+    ) -> ArtworkProbeObservation:
+        """M6.5 album policy with tri-state truth: front → generic →
+        local. Any uncertain observation poisons the album verdict to
+        UNAVAILABLE (never destroys last-known cache)."""
+        uncertain = False
+        for path in track_paths:
+            if token is not None and token.cancelled:
+                from michi.application.ports import ScanCancelled
+
+                raise ScanCancelled()
+            observation = self._probe_embedded(path, front_only=True)
+            if observation.verdict is ArtworkProbeVerdict.FOUND:
+                return observation
+            if observation.verdict is ArtworkProbeVerdict.UNAVAILABLE:
+                uncertain = True
+        for path in track_paths:
+            if token is not None and token.cancelled:
+                from michi.application.ports import ScanCancelled
+
+                raise ScanCancelled()
+            observation = self._probe_embedded(path, front_only=False)
+            if observation.verdict is ArtworkProbeVerdict.FOUND:
+                return observation
+            if observation.verdict is ArtworkProbeVerdict.UNAVAILABLE:
+                uncertain = True
+        if track_paths:
+            local = self._probe_local_artwork(track_paths[0].parent)
+            if local.verdict is ArtworkProbeVerdict.FOUND:
+                return local
+            if local.verdict is ArtworkProbeVerdict.UNAVAILABLE:
+                uncertain = True
+        if uncertain:
+            return ArtworkProbeObservation.unavailable(
+                "album artwork observation incomplete"
+            )
+        return ArtworkProbeObservation.absent()
+
     def _guarded(self, mime: str, data: bytes) -> Artwork | None:
         if len(data) > self._max_bytes:
             logger.warning(
@@ -216,10 +354,83 @@ class ArtworkCache(ArtworkCachePort):
         """P2-HIGH: persist a CONFIRMED negative verdict. The blob is NOT
         deleted synchronously — content-addressed orphan cleanup is cache
         GC outside this fix."""
-        if album_key not in self._manifest:
-            return
-        self._manifest.pop(album_key, None)
-        self._persist_manifest()
+        self.commit_manifest_batch(upserts=(), removals=(album_key,))
+
+    def prepare_artwork(
+        self, album_key: str, artwork: Artwork
+    ) -> PreparedArtwork | None:
+        """WORKER-SAFE: escribe el blob content-addressed pero NUNCA muta
+        el manifest (un worker stale puede dejar un blob huérfano —
+        rebuildable — pero jamás un mapping obsoleto)."""
+        if not artwork.data:
+            return None
+        if len(artwork.data) > _DEFAULT_MAX_BYTES:
+            return None
+
+        content_digest = hashlib.sha256(artwork.data).hexdigest()
+        key_digest = hashlib.sha256(
+            (album_key + content_digest).encode("utf-8")
+        ).hexdigest()[:16]
+        ext = _EXT_BY_MIME.get(artwork.mime_type)
+        if ext is None:
+            return None
+        target = self._cache_dir / f"{key_digest}.{ext}"
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists():
+                tmp = target.with_suffix(target.suffix + ".tmp")
+                tmp.write_bytes(artwork.data)
+                os.replace(tmp, target)
+        except OSError as exc:
+            logger.warning("Cannot prepare artwork %s: %s", target, exc)
+            return None
+        return PreparedArtwork(
+            album_key=album_key,
+            filename=target.name,
+            path=target,
+        )
+
+    def commit_manifest_batch(
+        self,
+        *,
+        upserts: tuple[PreparedArtwork, ...],
+        removals: tuple[str, ...],
+    ) -> dict[str, Path]:
+        """OWNER: UNA transacción de manifest por lote (N albums → <= 1
+        persist). Fail-closed: solo filenames dentro del cache dir."""
+        changed = False
+        published: dict[str, Path] = {}
+        for album_key in removals:
+            if album_key in self._manifest:
+                self._manifest.pop(album_key, None)
+                changed = True
+        for prepared in upserts:
+            if Path(prepared.filename).name != prepared.filename:
+                logger.warning(
+                    "rejecting unsafe artwork cache filename: %s",
+                    prepared.filename,
+                )
+                continue
+            expected = self._cache_dir / prepared.filename
+            if expected != prepared.path:
+                logger.warning(
+                    "rejecting artwork path outside prepared contract: %s",
+                    prepared.path,
+                )
+                continue
+            try:
+                exists = expected.is_file()
+            except OSError:
+                exists = False
+            if not exists:
+                continue
+            if self._manifest.get(prepared.album_key) != prepared.filename:
+                self._manifest[prepared.album_key] = prepared.filename
+                changed = True
+            published[prepared.album_key] = expected
+        if changed:
+            self._persist_manifest()
+        return published
 
     def lookup(self, album_key: str) -> Path | None:
         """Persisted album_key → cached file, validated against the disk.
@@ -254,24 +465,8 @@ class ArtworkCache(ArtworkCachePort):
                 _DEFAULT_MAX_BYTES,
             )
             return None
-        content_digest = hashlib.sha256(artwork.data).hexdigest()
-        key_digest = hashlib.sha256(
-            (album_key + content_digest).encode("utf-8")
-        ).hexdigest()[:16]
-        ext = _EXT_BY_MIME.get(artwork.mime_type, "bin")
-        target = self._cache_dir / f"{key_digest}.{ext}"
-        try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if target.exists():
-                self._manifest[album_key] = target.name
-                self._persist_manifest()
-                return target  # idempotent: no rewrite for unchanged content
-            tmp = target.with_suffix(target.suffix + ".tmp")
-            tmp.write_bytes(artwork.data)
-            os.replace(tmp, target)  # atomic-ish replace
-        except OSError as exc:
-            logger.warning("Cannot cache artwork %s: %s", target, exc)
+        prepared = self.prepare_artwork(album_key, artwork)
+        if prepared is None:
             return None
-        self._manifest[album_key] = target.name
-        self._persist_manifest()
-        return target
+        published = self.commit_manifest_batch(upserts=(prepared,), removals=())
+        return published.get(album_key)

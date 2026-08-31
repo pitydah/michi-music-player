@@ -997,9 +997,9 @@ class LibraryBridge(QObject):
 
     @Slot()
     def scan_all_sources(self) -> None:
-        self._set_source_operation_error("")
         """CANONICAL 'Scan library' intent: ALL active + enabled sources,
-        serialized ASYNC through the one scan lifecycle."""
+        serialized asynchronously."""
+        self._set_source_operation_error("")
         if self._source_scan_lifecycle is not None:
             self._source_scan_lifecycle.request_scan_all()
 

@@ -166,6 +166,11 @@ class ServiceGraph:
     metadata_extractor: object
     artwork_provider: object
     artwork_cache: object
+    # R4 artwork authority: ownership explícita (defaults preservan los
+    # constructores legacy).
+    artwork_runner: ThreadScanRunner | None = None
+    artwork_refresh: object | None = None
+    artwork_dispatcher: object | None = None
 
 
 @dataclass
@@ -469,6 +474,9 @@ def _build_services(
         artwork_provider,
         artwork_cache,
         runner=artwork_runner,
+        album_probe=artwork_provider,
+        prepared_cache=artwork_cache,
+        source_availability_provider=source_coordinator.observed_availability,
     )
     from michi.infrastructure.library_artwork_dispatcher import (
         LibraryArtworkDispatcher,
@@ -524,7 +532,7 @@ def _build_services(
         source_scan_lifecycle=source_scan_lifecycle,
     )
 
-    return ServiceGraph(
+    graph = ServiceGraph(
         db_path=db_path,
         library=library,
         bridge=lb,
@@ -556,13 +564,10 @@ def _build_services(
         metadata_extractor=metadata_extractor,
         artwork_provider=artwork_provider,
         artwork_cache=artwork_cache,
+        artwork_runner=artwork_runner,
+        artwork_refresh=artwork_refresh,
+        artwork_dispatcher=artwork_dispatcher,
     )
-    # R4 FINAL RUNTIME TRUTH SEAL (P1-03): el runner dedicado del canal
-    # de artwork se expone como atributo dinámico (los fakes legacy
-    # construyen ServiceGraph sin este campo).
-    graph.artwork_runner = artwork_runner
-    graph.artwork_refresh = artwork_refresh
-    graph.artwork_dispatcher = artwork_dispatcher
     return graph
 
 
@@ -863,9 +868,9 @@ class ApplicationContainer:
         self._scan_dispatcher = scan_dispatcher
         self._source_scan_runner = graph.source_scan_runner
         self._source_scan_lifecycle = graph.source_scan_lifecycle
-        self._artwork_runner = getattr(graph, "artwork_runner", None)
-        self._artwork_refresh = getattr(graph, "artwork_refresh", None)
-        self._artwork_dispatcher = getattr(graph, "artwork_dispatcher", None)
+        self._artwork_runner = graph.artwork_runner
+        self._artwork_refresh = graph.artwork_refresh
+        self._artwork_dispatcher = graph.artwork_dispatcher
         self._library_prefs = lib_prefs
         self._navigation = navigation
         self._coordinator = coordinator
@@ -1011,7 +1016,7 @@ class ApplicationContainer:
         # begins — a close-time fatal runtime event (e.g. MPD transport
         # error while closing) must NEVER trigger a Qt fallback during
         # application shutdown.
-        if self._engine_selection_coordinator is not None and getattr(
+        if getattr(self, "_engine_selection_coordinator", None) is not None and getattr(
             self, "_audio_engine_convergence", None
         ):
             self._audio_engine_convergence.shutdown()

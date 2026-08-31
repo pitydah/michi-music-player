@@ -289,6 +289,14 @@ class SourceScanCoordinator:
                 pass
         return False
 
+    def _invalidate_artwork(self) -> None:
+        """P1-E: supersede el artwork worker cuando la verdad del source
+        se vuelve insegura (error/relocate/disable/reactivate)."""
+        if self._artwork_refresh is not None:
+            invalidate = getattr(self._artwork_refresh, "invalidate", None)
+            if invalidate is not None:
+                invalidate()
+
     def _ensure_no_overlap(self, root: Path, existing_sources) -> None:
         for existing in existing_sources:
             existing_root = Path(existing.root_path)
@@ -387,6 +395,8 @@ class SourceScanCoordinator:
         # 10/10 FINAL SEAL §9: the old physical observation describes /OLD —
         # /NEW is UNKNOWN until re-probed. Never AVAILABLE optimistically.
         self._observations.pop(source_id, None)
+        # Un worker en vuelo aún contiene rutas OLD → supersede.
+        self._invalidate_artwork()
         return relocated
 
     def relocate_source(self, source_id: str, new_root: str) -> SourceScanOutcome:
@@ -420,6 +430,7 @@ class SourceScanCoordinator:
         # P1-04: a re-enabled source is UNKNOWN until actually re-probed —
         # never revive a stale AVAILABLE as current truth.
         self._observations.pop(source_id, None)
+        self._invalidate_artwork()
 
     def submit_source_scan(
         self,
@@ -568,7 +579,11 @@ class SourceScanCoordinator:
             return None
         outcome = self.commit_source_reconciliation(current, plan)
         if not outcome.failed:
+            # P1-E: la verdad física del source se publica ANTES de que el
+            # artwork decida si ese source puede tocarse.
             self._observations[current.library_source_id] = outcome.availability
+            if self._artwork_refresh is not None:
+                self._artwork_refresh.schedule()
         return outcome
 
     def source_configuration_is_current(
@@ -638,6 +653,7 @@ class SourceScanCoordinator:
         self._catalog.upsert_source(restored)
         self._remember_sources(self._catalog.load_sources())
         self._observations.pop(source_id, None)
+        self._invalidate_artwork()
         return restored
 
     @staticmethod
@@ -709,6 +725,7 @@ class SourceScanCoordinator:
         else:
             availability = SourceAvailability.IO_ERROR
         self._observations[source_id] = availability
+        self._invalidate_artwork()
         return availability
 
     def scan_source(self, source: LibrarySource) -> SourceScanOutcome:
@@ -735,7 +752,11 @@ class SourceScanCoordinator:
 
         self._observations[source.library_source_id] = SourceAvailability.AVAILABLE
         plan = self.compute_source_reconciliation(source, discovered)
-        return self.commit_source_reconciliation(source, plan)
+        outcome = self.commit_source_reconciliation(source, plan)
+        # §26: ONE success → ONE artwork schedule (tras la observación).
+        if not outcome.failed and self._artwork_refresh is not None:
+            self._artwork_refresh.schedule()
+        return outcome
 
     # ------------------------------------------------------------------
     # COMPUTE / COMMIT split (M6-EXT-R4 freeze gate §14): the heavy phase
@@ -836,8 +857,6 @@ class SourceScanCoordinator:
             self._library.apply_source_tracks(
                 source.library_source_id, plan.refs, cache_only=True
             )
-            if self._artwork_refresh is not None:
-                self._artwork_refresh.schedule()
             if plan.new_track_ids:
                 self._library.note_new_track_ids(tuple(plan.new_track_ids))
         except Exception as exc:  # noqa: BLE001 - publication is derived
