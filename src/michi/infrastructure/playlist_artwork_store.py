@@ -352,11 +352,7 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
             return None
         stem = name[: -len(suffix)]
         digest_match = _DIGEST_SUFFIX_RE.search(stem)
-        owner = (
-            stem[: digest_match.start()]
-            if digest_match is not None
-            else stem
-        )
+        owner = stem[: digest_match.start()] if digest_match is not None else stem
         # playlist_<owner> o playlist_<owner>_hero
         if not owner.startswith("playlist_"):
             return None
