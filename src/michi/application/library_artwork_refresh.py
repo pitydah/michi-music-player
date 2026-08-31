@@ -1,17 +1,35 @@
 """P1/PERF-LIB-12 R4 — bounded single-flight Application artwork lifecycle.
 
-ABSOLUTE FINAL RUNTIME SEAL structure:
+ABSOLUTE FINAL RUNTIME SEAL + NEGATIVE-EVIDENCE CONVERGENCE SEAL structure:
 
     owner schedule()  (every structural event = new authority epoch,
                        INCLUDING zero-album transitions)
         ↓ immutable _AlbumArtworkSnapshot (album_key + membership signature
-          + track_paths) — NEVER mutable library state
+          + track_paths + coverage_complete) — NEVER mutable library state
         ↓ dedicated ThreadScanRunner + ScanRelay + LibraryArtworkDispatcher
         ↓ WORKER: provider I/O ONLY → immutable _AlbumArtworkProbe facts
+          (tri-state verdict + prepared content-addressed blob +
+          coverage_complete)
         ↓ owner handle_done(generation) gate
         ↓ _apply: generation → current album existence → CURRENT membership
-          signature → ONLY THEN cache.store/cache.invalidate
+          signature → negative-evidence coverage gate → ONE batch manifest
+          mapping commit
         ↓ library._artwork_paths + album.has_artwork + notify
+
+EPISTEMIC CONTRACT (negative evidence must be EXHAUSTIVE):
+    positive evidence can be partial (ANY valid observable member with
+    artwork proves FOUND);
+    negative evidence (ABSENT_CONFIRMED) is valid ONLY when EVERY canonical
+    album member that could contain artwork was successfully covered.
+
+    PARTIAL + FOUND        → FOUND
+    PARTIAL + ABSENT       → UNAVAILABLE (preserve last known)
+    PARTIAL + UNAVAILABLE  → UNAVAILABLE
+    COMPLETE + ABSENT      → ABSENT_CONFIRMED (cache invalidation allowed)
+
+    The worker converts ABSENT→UNAVAILABLE when its snapshot coverage is
+    partial, and the owner RE-VALIDATES current coverage before accepting
+    any removal (defense in depth against source-truth supersession).
 
 Single-flight: at most ONE active provider worker. New requests supersede
 the active generation; ONLY the latest pending snapshot starts after the
@@ -33,12 +51,20 @@ from michi.application.ports import (
     ScanCancelled,
 )
 from michi.domain.library_catalog import (
+    MediaAvailability,
     SourceAvailability,
     effective_availability,
-    media_playback_blocked,
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _AlbumProbeSelection:
+    """Coverage-aware selection of observable album members."""
+
+    track_paths: tuple[Path, ...]
+    coverage_complete: bool
 
 
 @dataclass(frozen=True)
@@ -48,16 +74,19 @@ class _AlbumArtworkSnapshot:
     album_key: str
     membership_signature: tuple[str, ...]
     track_paths: tuple[Path, ...]
+    coverage_complete: bool
 
 
 @dataclass(frozen=True)
 class _AlbumArtworkProbe:
     """Immutable worker fact: album_key + membership + tri-state verdict
-    (+ prepared blob para FOUND)."""
+    (+ prepared blob para FOUND) + coverage truth — what the worker was
+    actually entitled to conclude."""
 
     album_key: str
     membership_signature: tuple[str, ...]
     verdict: ArtworkProbeVerdict
+    coverage_complete: bool = True
     prepared: PreparedArtwork | None = None
     # legacy compatibility only
     artwork: object | None = None
@@ -115,55 +144,96 @@ class LibraryArtworkRefresh:
 
     # -------------------------------------------------------- snapshots
 
-    def _eligible_track_paths(self, album) -> tuple[Path, ...]:
-        """R4 artwork authority: solo se tocan tracks cuyo Source está
-        POSITIVAMENTE AVAILABLE. Un source visible desde cache NO es
-        permiso para tocar su filesystem."""
+    def _probe_selection(self, album) -> _AlbumProbeSelection:
+        """NEGATIVE-EVIDENCE SEAL: coverage-aware selection of probeable
+        album members.
+
+        Positive evidence can be partial; negative evidence must be
+        EXHAUSTIVE. ``coverage_complete`` is True ONLY when every canonical
+        album member that could contain artwork was selected for probing:
+
+        - member without a TrackRef            → incomplete
+        - member without source provenance     → incomplete
+        - Source not positively AVAILABLE      → incomplete
+        - media not positively AVAILABLE       → incomplete
+          (UNKNOWN media is NOT proof of observability)
+
+        An UNKNOWN source/media is NEVER probed and NEVER counts toward a
+        confirmed album-wide negative."""
         if self._source_availability_provider is None:
-            # Legacy compatibility only.
-            return tuple(album.track_paths)
+            # Explicit legacy compatibility: sin source-awareness no se
+            # puede distinguir cobertura parcial — el comportamiento
+            # histórico se preserva completo.
+            return _AlbumProbeSelection(
+                track_paths=tuple(album.track_paths),
+                coverage_complete=True,
+            )
+
         track_ids = tuple(
             str(track_id)
             for track_id in getattr(album, "track_ids", ())
             if str(track_id)
         )
         if not track_ids:
-            # Legacy carrier sin provenance estable.
-            return tuple(album.track_paths)
+            # Historical AlbumRef carrier. Preserve old behavior ONLY for
+            # this explicit compatibility branch. Never infer modern
+            # stable identity from a Path.
+            return _AlbumProbeSelection(
+                track_paths=tuple(album.track_paths),
+                coverage_complete=True,
+            )
+
         paths: list[Path] = []
+        coverage_complete = True
+
         for track_id in track_ids:
             ref = self._library.trackref_by_id(track_id)
             if ref is None:
+                coverage_complete = False
                 continue
             source_id = ref.library_source_id or ""
-            if source_id:
-                source_availability = self._source_availability_provider(source_id)
-                # Artwork I/O es MÁS estricto que playback fallback: solo
-                # un source positivamente AVAILABLE se proba.
-                if source_availability is not SourceAvailability.AVAILABLE:
-                    continue
-                availability = effective_availability(
-                    ref.availability, source_availability
-                )
-            else:
-                availability = ref.availability
-            if media_playback_blocked(availability):
+            # Modern source-aware Library: no source provenance = no
+            # filesystem permission.
+            if not source_id:
+                coverage_complete = False
+                continue
+            source_availability = self._source_availability_provider(source_id)
+            if source_availability is not SourceAvailability.AVAILABLE:
+                coverage_complete = False
+                continue
+            effective = effective_availability(ref.availability, source_availability)
+            # Artwork probing is stricter than playback fallback: negative
+            # evidence requires the media itself to be positively
+            # AVAILABLE — UNKNOWN is not proof of observability.
+            if effective is not MediaAvailability.AVAILABLE:
+                coverage_complete = False
                 continue
             paths.append(ref.file_path)
-        return tuple(paths)
+
+        return _AlbumProbeSelection(
+            track_paths=tuple(paths),
+            coverage_complete=coverage_complete and len(paths) == len(track_ids),
+        )
+
+    def _eligible_track_paths(self, album) -> tuple[Path, ...]:
+        """LEGACY COMPATIBILITY WRAPPER ONLY (frozen historical tests).
+        Production uses _probe_selection() with coverage truth."""
+        return self._probe_selection(album).track_paths
 
     def _snapshot_albums(self) -> tuple[_AlbumArtworkSnapshot, ...]:
         snapshots = []
         for album in self._library.state.albums:
-            paths = self._eligible_track_paths(album)
-            if not paths:
-                # no probe != no artwork — preserve cached artwork.
+            selection = self._probe_selection(album)
+            if not selection.track_paths:
+                # Zero observable members: no probe != no artwork — the
+                # existing cached artwork remains valid last-known cache.
                 continue
             snapshots.append(
                 _AlbumArtworkSnapshot(
                     album_key=album.key,
                     membership_signature=self._membership_signature(album),
-                    track_paths=paths,
+                    track_paths=selection.track_paths,
+                    coverage_complete=selection.coverage_complete,
                 )
             )
         return tuple(snapshots)
@@ -237,6 +307,16 @@ class LibraryArtworkRefresh:
                         snapshot.track_paths, token
                     )
                     verdict = observation.verdict
+                    # NEGATIVE-EVIDENCE SEAL: ABSENT_CONFIRMED es válido
+                    # SOLO con cobertura EXHAUSTIVA del album. Una
+                    # observación parcial (Source OFFLINE/UNKNOWN/missing
+                    # member) NUNCA prueba que el album no tiene artwork —
+                    # degrada a UNAVAILABLE (preserva el último conocido).
+                    if (
+                        verdict is ArtworkProbeVerdict.ABSENT_CONFIRMED
+                        and not snapshot.coverage_complete
+                    ):
+                        verdict = ArtworkProbeVerdict.UNAVAILABLE
                     prepared = None
                     if verdict is ArtworkProbeVerdict.FOUND:
                         prepared = self._prepared_cache.prepare_artwork(
@@ -250,6 +330,7 @@ class LibraryArtworkRefresh:
                             album_key=snapshot.album_key,
                             membership_signature=snapshot.membership_signature,
                             verdict=verdict,
+                            coverage_complete=snapshot.coverage_complete,
                             prepared=prepared,
                         )
                     )
@@ -390,6 +471,17 @@ class LibraryArtworkRefresh:
                 # Preserva el artwork actual/último conocido.
                 continue
             if probe.verdict is ArtworkProbeVerdict.ABSENT_CONFIRMED:
+                # NEGATIVE-EVIDENCE SEAL — defense in depth: la remoción
+                # exige COMPLETA-ENTONCES (cobertura del worker) Y
+                # COMPLETA-AHORA (cobertura actual revalidada). Un cambio
+                # de truth del source entre el worker y el owner, o un
+                # refactor futuro, NUNCA convierte un negativo parcial en
+                # invalidación de cache.
+                if not probe.coverage_complete:
+                    continue
+                current_selection = self._probe_selection(current)
+                if not current_selection.coverage_complete:
+                    continue
                 removals.append(probe.album_key)
                 continue
             if probe.verdict is ArtworkProbeVerdict.FOUND:

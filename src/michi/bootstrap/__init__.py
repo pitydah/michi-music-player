@@ -664,6 +664,12 @@ class ApplicationContainer:
         self._enrichment: EnrichmentGraph | None = None
         self._enrichment_settings: SettingsService | None = None
         self._eb: EnrichmentBridge | None = None
+        # NEGATIVE-EVIDENCE SEAL §40: ownership artwork DECLARADA en
+        # __init__ (nunca solo dentro de initialize) — el teardown accede
+        # directamente, sin getattr defensivo.
+        self._artwork_runner: ThreadScanRunner | None = None
+        self._artwork_refresh = None
+        self._artwork_dispatcher = None
 
     def initialize(self) -> None:
         QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -960,19 +966,43 @@ class ApplicationContainer:
                 error = _capture_cleanup(
                     self._source_scan_runner.disconnect_relay, error
                 )
+        # NEGATIVE-EVIDENCE SEAL §41-42: artwork teardown en el orden
+        # canónico — 1) refresh.shutdown (autoridad cerrada: resultados
+        # tardíos inertes), 2) dispatcher.shutdown (done encolados de Qt
+        # se vuelven no-op), 3) runner.shutdown (reject submit + cancel
+        # cooperativo), 4) runner.disconnect_relay (severar delivery).
+        # Los handles se liberan SOLO cuando el cleanup fue probado; si
+        # una operación lanza, se retienen (nunca se borra la única
+        # referencia a un runtime cuya liberación no fue demostrada).
+        # (getattr defensivo: los tests legacy construyen el container con
+        # __new__ sin __init__; la ownership real se declara en __init__.)
+        artwork_cleanup_failed = False
+
+        def _capture_artwork_cleanup(action):
+            nonlocal error
+            nonlocal artwork_cleanup_failed
+
+            try:
+                action()
+            except Exception as exc:  # noqa: BLE001
+                artwork_cleanup_failed = True
+                error = error or exc
+
         artwork_refresh = getattr(self, "_artwork_refresh", None)
         if artwork_refresh is not None:
-            # ABSOLUTE FINAL SEAL: close authority primero (late results
-            # inertes), luego el runner cooperativo, luego el dispatcher.
-            error = _capture_cleanup(artwork_refresh.shutdown, error)
-        artwork_runner = getattr(self, "_artwork_runner", None)
-        if artwork_runner is not None:
-            error = _capture_cleanup(artwork_runner.shutdown, error)
-            if hasattr(artwork_runner, "disconnect_relay"):
-                error = _capture_cleanup(artwork_runner.disconnect_relay, error)
+            _capture_artwork_cleanup(artwork_refresh.shutdown)
         artwork_dispatcher = getattr(self, "_artwork_dispatcher", None)
         if artwork_dispatcher is not None:
-            error = _capture_cleanup(artwork_dispatcher.shutdown, error)
+            _capture_artwork_cleanup(artwork_dispatcher.shutdown)
+        artwork_runner = getattr(self, "_artwork_runner", None)
+        if artwork_runner is not None:
+            _capture_artwork_cleanup(artwork_runner.shutdown)
+            if hasattr(artwork_runner, "disconnect_relay"):
+                _capture_artwork_cleanup(artwork_runner.disconnect_relay)
+        if not artwork_cleanup_failed:
+            self._artwork_refresh = None
+            self._artwork_dispatcher = None
+            self._artwork_runner = None
         if self._scan_runner is not None:
             error = _capture_cleanup(self._scan_runner.shutdown, error)
         if self._scan_dispatcher is not None:

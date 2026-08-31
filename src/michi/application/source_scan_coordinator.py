@@ -289,13 +289,21 @@ class SourceScanCoordinator:
                 pass
         return False
 
-    def _invalidate_artwork(self) -> None:
-        """P1-E: supersede el artwork worker cuando la verdad del source
-        se vuelve insegura (error/relocate/disable/reactivate)."""
+    def _schedule_artwork_convergence(self) -> None:
+        """NEGATIVE-EVIDENCE SEAL: rebuild artwork work from CURRENT source
+        truth.
+
+        Source configuration/availability changes invalidate old physical
+        assumptions, but healthy Sources must continue converging. schedule()
+        → generation++ → snapshot CURRENT albums → source-aware eligibility
+        → unhealthy Source excluded → healthy Sources retained → active
+        stale worker cancelled → latest pending snapshot replaces old
+        pending. NEVER hard-invalidate (invalidate() would drop the latest
+        pending healthy work and starve refresh)."""
         if self._artwork_refresh is not None:
-            invalidate = getattr(self._artwork_refresh, "invalidate", None)
-            if invalidate is not None:
-                invalidate()
+            schedule = getattr(self._artwork_refresh, "schedule", None)
+            if schedule is not None:
+                schedule()
 
     def _ensure_no_overlap(self, root: Path, existing_sources) -> None:
         for existing in existing_sources:
@@ -395,8 +403,10 @@ class SourceScanCoordinator:
         # 10/10 FINAL SEAL §9: the old physical observation describes /OLD —
         # /NEW is UNKNOWN until re-probed. Never AVAILABLE optimistically.
         self._observations.pop(source_id, None)
-        # Un worker en vuelo aún contiene rutas OLD → supersede.
-        self._invalidate_artwork()
+        # NEGATIVE-EVIDENCE SEAL: el worker en vuelo aún contiene rutas OLD
+        # → reschedulea el mundo artwork actual (OLD excluido por UNKNOWN,
+        # fuentes sanas NO afectadas). Nunca invalidate() sin reemplazo.
+        self._schedule_artwork_convergence()
         return relocated
 
     def relocate_source(self, source_id: str, new_root: str) -> SourceScanOutcome:
@@ -430,7 +440,9 @@ class SourceScanCoordinator:
         # P1-04: a re-enabled source is UNKNOWN until actually re-probed —
         # never revive a stale AVAILABLE as current truth.
         self._observations.pop(source_id, None)
-        self._invalidate_artwork()
+        # NEGATIVE-EVIDENCE SEAL: converger al subset sano (el source
+        # disable/enable se excluye por UNKNOWN/DISABLED; los demás siguen).
+        self._schedule_artwork_convergence()
 
     def submit_source_scan(
         self,
@@ -653,7 +665,10 @@ class SourceScanCoordinator:
         self._catalog.upsert_source(restored)
         self._remember_sources(self._catalog.load_sources())
         self._observations.pop(source_id, None)
-        self._invalidate_artwork()
+        # NEGATIVE-EVIDENCE SEAL: el source restaurado es UNKNOWN hasta su
+        # scan real — no se proba aún, pero las fuentes sanas no se
+        # privan de refresco.
+        self._schedule_artwork_convergence()
         return restored
 
     @staticmethod
@@ -725,12 +740,23 @@ class SourceScanCoordinator:
         else:
             availability = SourceAvailability.IO_ERROR
         self._observations[source_id] = availability
-        self._invalidate_artwork()
+        # NEGATIVE-EVIDENCE SEAL: la verdad del source se publica PRIMERO;
+        # el artwork converge al mundo actual (el source fallido queda
+        # excluido del snapshot automáticamente; los sanos siguen).
+        self._schedule_artwork_convergence()
         return availability
 
     def scan_source(self, source: LibrarySource) -> SourceScanOutcome:
         """Reconcile ONE source against its catalog records (synchronous
         convenience path: compute + commit on the caller thread).
+
+        NEGATIVE-EVIDENCE SEAL §22: semantically IDENTICAL to the async
+        owner path —
+
+            error path:  observation FIRST (typed) → ONE artwork schedule
+            success:     authoritative commit → observation AFTER commit →
+                         ONE artwork schedule
+            commit fail: NO artwork schedule based on failed reconciliation
 
         RETIRED/disabled sources are skipped entirely (no writes)."""
         if source.lifecycle.value == "retired" or not source.enabled:
@@ -742,20 +768,20 @@ class SourceScanCoordinator:
         try:
             discovered = self._scanner.discover(source)
         except LibraryFilesystemError as exc:
-            availability = _availability_from_code(exc.code)
-            self._observations[source.library_source_id] = availability
+            availability = self.record_source_scan_error(source.library_source_id, exc)
             return SourceScanOutcome(
                 source_id=source.library_source_id,
                 availability=availability,
                 diagnostic=exc.detail or exc.code.value,
             )
 
-        self._observations[source.library_source_id] = SourceAvailability.AVAILABLE
         plan = self.compute_source_reconciliation(source, discovered)
         outcome = self.commit_source_reconciliation(source, plan)
-        # §26: ONE success → ONE artwork schedule (tras la observación).
-        if not outcome.failed and self._artwork_refresh is not None:
-            self._artwork_refresh.schedule()
+        if not outcome.failed:
+            # §26/§23: la observación se publica DESPUÉS del commit
+            # autoritativo y ANTES del schedule de artwork.
+            self._observations[source.library_source_id] = outcome.availability
+            self._schedule_artwork_convergence()
         return outcome
 
     # ------------------------------------------------------------------
