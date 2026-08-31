@@ -289,6 +289,15 @@ Item {
                     ctx.restore()
                     return
                 }
+            } else if (root.name === "view-options") {
+                // Collection viewport with a small visual-adjust indicator.
+                ctx.rect(3.5, 4.5, 17, 15)
+                ctx.rect(6, 7, 6.5, 6.5)
+                line(ctx, 14.5, 7.5, 18, 7.5)
+                line(ctx, 14.5, 10.5, 18, 10.5)
+                line(ctx, 6, 16.5, 12.5, 16.5)
+                ctx.moveTo(18, 15)
+                ctx.arc(16.5, 15, 1.5, 0, Math.PI * 2)
             } else if (root.name === "sliders" || root.name === "equalizer") {
                 if (root.name === "equalizer") {
                     // Audiophile 4-band precision spectrum bars

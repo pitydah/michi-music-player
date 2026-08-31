@@ -11,6 +11,10 @@ PathView {
 
     property var albumModel: library.albums
     property real albumZoom: 1.0
+    property var browseState: null
+    property string visibleAlbums: "auto"
+    property string depthMode: "standard"
+    property bool ambientColor: true
     readonly property real coverSize: Math.max(176, Math.min(330,
         Math.min(width * 0.24 * albumZoom,
             Math.max(176, height - 156))))
@@ -22,7 +26,9 @@ PathView {
     model: albumModel
     clip: true
     interactive: count > 1
-    pathItemCount: width >= 1500 ? 9 : width >= 1050 ? 7 : 5
+    pathItemCount: visibleAlbums === "auto"
+        ? (width >= 1500 ? 9 : width >= 1050 ? 7 : 5)
+        : Number(visibleAlbums)
     cacheItemCount: pathItemCount + 2
     preferredHighlightBegin: 0.5
     preferredHighlightEnd: 0.5
@@ -33,6 +39,28 @@ PathView {
     Accessible.role: Accessible.List
     Accessible.name: qsTr("Albums in PathView")
     Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
+
+    function restoredIndex() {
+        if (browseState && browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i)
+                if (albumModel[i].key === browseState.currentKey) return i
+        }
+        return browseState ? browseState.flowIndex : -1
+    }
+    Component.onCompleted: if (browseState) currentIndex = restoredIndex()
+    onCurrentIndexChanged: if (browseState) {
+        browseState.flowIndex = currentIndex
+        if (currentAlbum)
+            browseState.remember(currentAlbum.key)
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        z: -100
+        visible: albumsPath.ambientColor
+        color: MichiSemanticColors.auroraCyanSurface
+        opacity: 0.18
+    }
 
     Keys.onLeftPressed: decrementCurrentIndex()
     Keys.onRightPressed: incrementCurrentIndex()
@@ -109,7 +137,10 @@ PathView {
         property var album: modelData
         width: albumsPath.coverSize
         height: albumsPath.coverSize + 48
-        scale: PathView.isCurrentItem ? 1.0 : (PathView.itemScale || 0.58)
+        scale: PathView.isCurrentItem ? 1.0
+            : (PathView.itemScale || 0.58)
+                * (albumsPath.depthMode === "subtle" ? 1.08
+                    : albumsPath.depthMode === "immersive" ? 0.9 : 1.0)
         opacity: PathView.itemOpacity === undefined ? 1 : PathView.itemOpacity
         z: PathView.isCurrentItem ? 100 : Math.round(PathView.itemDepth || 0)
         Accessible.role: Accessible.Button
@@ -178,7 +209,8 @@ PathView {
         // Click selects + keeps keyboard focus; double-click opens.
         TapHandler {
             id: tap
-            onTapped: {
+            exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+            onSingleTapped: {
                 albumsPath.currentIndex = pathAlbum.index
                 pathAlbum.forceActiveFocus()
             }

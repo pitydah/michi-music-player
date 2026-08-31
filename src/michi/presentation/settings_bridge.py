@@ -13,6 +13,8 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.settings_service import SettingsService
 from michi.domain.settings import (
+    library_view_preferences_from_json,
+    library_view_preferences_to_json,
     window_geometry_from_json,
     window_geometry_to_json,
 )
@@ -24,6 +26,7 @@ class SettingsBridge(QObject):
     """Thin adapter: SettingsService persisted state → QML properties/slots."""
 
     onlineEnrichmentChanged = Signal()
+    libraryViewsChanged = Signal()
 
     def __init__(self, service: SettingsService, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -47,6 +50,9 @@ class SettingsBridge(QObject):
     def _get_online_enrichment(self) -> bool:
         return self._service.state.online_enrichment
 
+    def _get_library_views(self) -> str:
+        return library_view_preferences_to_json(self._service.state.library_views)
+
     lastDirectory = Property(str, _get_last_directory)
     volume = Property(int, _get_volume)
     muted = Property(bool, _get_muted)
@@ -55,6 +61,7 @@ class SettingsBridge(QObject):
     onlineEnrichment = Property(
         bool, _get_online_enrichment, notify=onlineEnrichmentChanged
     )
+    libraryViews = Property(str, _get_library_views, notify=libraryViewsChanged)
 
     @Slot(str)
     def set_theme(self, theme: str) -> None:
@@ -72,3 +79,13 @@ class SettingsBridge(QObject):
     def set_online_enrichment(self, enabled: bool) -> None:
         self._service.set_online_enrichment(bool(enabled))
         self.onlineEnrichmentChanged.emit()
+
+    @Slot(str, result=bool)
+    def set_library_views(self, json_str: str) -> bool:
+        preferences, malformed = library_view_preferences_from_json(json_str)
+        if malformed:
+            logger.warning("ignoring malformed Library view preferences from QML")
+            return False
+        self._service.set_library_view_preferences(preferences)
+        self.libraryViewsChanged.emit()
+        return True

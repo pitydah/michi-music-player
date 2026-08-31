@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../primitives"
 import "../theme"
@@ -14,6 +15,9 @@ Item {
 
     property var albumModel: library.albums
     property var model: albumModel
+    property var browseState: null
+    property bool heroVisible: true
+    property string informationRichness: "standard"
     readonly property var heroAlbum: albumModel.length > 0 ? albumModel[0] : null
     readonly property var mediumFeatures: albumModel && albumModel.length > 1
         ? albumModel.slice(1, Math.min(3, albumModel.length)) : []
@@ -33,10 +37,16 @@ Item {
         Accessible.role: Accessible.List
         Accessible.name: qsTr("Albums in magazine editorial view")
 
-        ScrollBar.vertical: ScrollBar {
-            policy: ScrollBar.AsNeeded
-            width: MichiSpacing.sm
-        }
+        ScrollBar.vertical: MichiScrollBar { }
+
+        Component.onCompleted: if (root.browseState) Qt.callLater(function() {
+            albumMagazine.currentIndex = root.browseState.editorialIndex
+            albumMagazine.contentY = root.browseState.editorialContentY
+        })
+        onContentYChanged: if (root.browseState)
+            root.browseState.editorialContentY = contentY
+        onCurrentIndexChanged: if (root.browseState)
+            root.browseState.editorialIndex = currentIndex
 
         header: ColumnLayout {
             width: albumMagazine.width
@@ -46,7 +56,8 @@ Item {
             Rectangle {
                 id: heroCard
                 Layout.fillWidth: true
-                Layout.preferredHeight: 220
+                Layout.preferredHeight: root.informationRichness === "minimal"
+                    ? 190 : root.informationRichness === "rich" ? 250 : 220
                 radius: MichiRadius.lg
                 color: MichiPalette.obsidianRaised
                 border.width: 1
@@ -55,7 +66,7 @@ Item {
                     : heroHover.hovered
                         ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
                 clip: true
-                visible: root.heroAlbum !== null
+                visible: root.heroVisible && root.heroAlbum !== null
                 focusPolicy: Qt.StrongFocus
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
@@ -87,7 +98,7 @@ Item {
                         spacing: MichiSpacing.xs
 
                         MichiText {
-                            text: qsTr("SPOTLIGHT")
+                            text: qsTr("FEATURED FROM YOUR LIBRARY")
                             role: "technical"
                             technical: true
                             color: MichiPalette.auroraCyan
@@ -104,6 +115,7 @@ Item {
 
                         MichiText {
                             Layout.fillWidth: true
+                            visible: root.informationRichness !== "minimal"
                             text: root.heroAlbum
                                 ? root.heroAlbum.artist
                                     + (root.heroAlbum.year > 0
@@ -111,6 +123,17 @@ Item {
                                 : ""
                             role: "section"
                             color: MichiPalette.textSecondary
+                            elide: Text.ElideRight
+                        }
+                        MichiText {
+                            Layout.fillWidth: true
+                            visible: root.informationRichness === "rich"
+                                && root.heroAlbum
+                                && root.heroAlbum.technicalSummary.length > 0
+                            text: root.heroAlbum ? root.heroAlbum.technicalSummary : ""
+                            role: "technical"
+                            technical: true
+                            color: MichiPalette.auroraCyan
                             elide: Text.ElideRight
                         }
 
@@ -129,7 +152,18 @@ Item {
                 }
 
                 HoverHandler { id: heroHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler { id: heroTap; onTapped: { if (root.heroAlbum) library.select_album(root.heroAlbum.key) } }
+                TapHandler {
+                    id: heroTap
+                    exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+                    onSingleTapped: {
+                        if (root.heroAlbum && root.browseState)
+                            root.browseState.remember(root.heroAlbum.key)
+                    }
+                    onDoubleTapped: {
+                        if (root.heroAlbum)
+                            library.select_album(root.heroAlbum.key)
+                    }
+                }
                 MichiFocusRing { visualFocus: heroCard.activeFocus && MichiAccessibility.keyboardMode }
             }
 
@@ -211,7 +245,13 @@ Item {
                         }
 
                         HoverHandler { id: medHover; cursorShape: Qt.PointingHandCursor }
-                        TapHandler { id: medTap; onTapped: library.select_album(modelData.key) }
+                        TapHandler {
+                            id: medTap
+                            exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+                            onSingleTapped: if (root.browseState)
+                                root.browseState.remember(modelData.key)
+                            onDoubleTapped: library.select_album(modelData.key)
+                        }
                         MichiFocusRing { visualFocus: medFeature.activeFocus && MichiAccessibility.keyboardMode }
                     }
                 }
@@ -297,7 +337,13 @@ Item {
                         }
 
                         HoverHandler { id: compHover; cursorShape: Qt.PointingHandCursor }
-                        TapHandler { id: compTap; onTapped: library.select_album(modelData.key) }
+                        TapHandler {
+                            id: compTap
+                            exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+                            onSingleTapped: if (root.browseState)
+                                root.browseState.remember(modelData.key)
+                            onDoubleTapped: library.select_album(modelData.key)
+                        }
                         MichiFocusRing { visualFocus: compactFeature.activeFocus && MichiAccessibility.keyboardMode }
                     }
                 }
@@ -340,10 +386,16 @@ Item {
             album: modelData
             showTechnical: false
             selected: ListView.isCurrentItem
-            onActivated: {
+            onSelectedRequested: {
+                albumMagazine.currentIndex = index
+                if (root.browseState)
+                    root.browseState.remember(modelData.key)
+            }
+            onOpenRequested: {
                 albumMagazine.currentIndex = index
                 library.select_album(modelData.key)
             }
+            onPlayRequested: library.play_album(modelData.key)
         }
     }
 }

@@ -12,6 +12,10 @@ GridView {
 
     property var albumModel: library.albums
     property real albumZoom: 1.0
+    property var browseState: null
+    property string spacingMode: "standard"
+    property string revealMode: "standard"
+    property string metadataLevel: "standard"
     readonly property int minimumTileWidth: MichiThemeState.density === "compact"
         ? Math.round(164 * albumZoom)
         : MichiThemeState.density === "comfortable"
@@ -35,6 +39,24 @@ GridView {
     Accessible.name: qsTr("Albums on the vinyl wall")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open")
 
+    function restoredIndex() {
+        if (browseState && browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i)
+                if (albumModel[i].key === browseState.currentKey) return i
+        }
+        return browseState ? browseState.vinylIndex : -1
+    }
+    Component.onCompleted: if (browseState) Qt.callLater(function() {
+        albumVinyl.currentIndex = restoredIndex()
+        albumVinyl.contentY = browseState.vinylContentY
+    })
+    onContentYChanged: if (browseState) browseState.vinylContentY = contentY
+    onCurrentIndexChanged: if (browseState) {
+        browseState.vinylIndex = currentIndex
+        if (currentIndex >= 0 && currentIndex < albumModel.length)
+            browseState.remember(albumModel[currentIndex].key)
+    }
+
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)
             library.select_album(albumModel[currentIndex].key)
@@ -55,9 +77,12 @@ GridView {
         readonly property real stageSize: Math.min(width - MichiSpacing.xl,
             height - 76)
         readonly property real sleeveSize: stageSize * 0.76
-        width: albumVinyl.cellWidth - MichiThemeState.contentGap
-        height: albumVinyl.cellHeight - MichiThemeState.contentGap
-        activeFocusOnTab: true
+        readonly property int wallGap: albumVinyl.spacingMode === "tight"
+            ? MichiSpacing.sm : albumVinyl.spacingMode === "gallery"
+                ? MichiSpacing.xl : MichiThemeState.contentGap
+        width: albumVinyl.cellWidth - wallGap
+        height: albumVinyl.cellHeight - wallGap
+        activeFocusOnTab: false
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
         Accessible.selected: vinylTile.selected
@@ -93,8 +118,10 @@ GridView {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.horizontalCenterOffset: hover.hovered || vinylTile.selected
-                    ? width * 0.16 : width * 0.04
-                color: MichiPalette.graphiteRaised
+                    ? width * (albumVinyl.revealMode === "subtle" ? 0.1
+                        : albumVinyl.revealMode === "pronounced" ? 0.24 : 0.16)
+                    : width * 0.04
+                color: MichiPalette.graphite
                 border.width: 1
                 border.color: MichiSemanticColors.borderStrong
 
@@ -128,7 +155,7 @@ GridView {
                     height: width
                     radius: width / 2
                     color: vinylTile.selected
-                        ? MichiPalette.auroraCyan : MichiPalette.graphiteRaised
+                        ? MichiPalette.auroraCyan : MichiPalette.graphite
                     border.width: 1
                     border.color: MichiSemanticColors.innerHighlight
                     Rectangle {
@@ -180,6 +207,7 @@ GridView {
             }
             MichiText {
                 Layout.fillWidth: true
+                visible: albumVinyl.metadataLevel !== "minimal"
                 text: modelData.technicalSummary || (modelData.trackCount
                     + (modelData.trackCount === 1 ? " track" : " tracks"))
                 role: "technical"
@@ -191,6 +219,7 @@ GridView {
             }
             MichiText {
                 Layout.fillWidth: true
+                visible: albumVinyl.metadataLevel === "detailed"
                 text: modelData.artist + (modelData.year > 0
                     ? " · " + modelData.year : "")
                 role: "secondary"
@@ -202,15 +231,12 @@ GridView {
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
         TapHandler {
             id: vinylTap
-            // First tap selects (showing the rich selected state: disc
-            // offset, cyan label); tapping the already-selected tile opens.
-            onTapped: {
-                var wasCurrent = albumVinyl.currentIndex === vinylTile.index
+            exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+            onSingleTapped: {
                 albumVinyl.currentIndex = vinylTile.index
                 vinylTile.forceActiveFocus()
-                if (wasCurrent)
-                    library.select_album(modelData.key)
             }
+            onDoubleTapped: library.select_album(modelData.key)
         }
         Keys.onReturnPressed: library.select_album(modelData.key)
         Keys.onEnterPressed: library.select_album(modelData.key)

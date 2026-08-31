@@ -157,7 +157,8 @@ class TestSharedAlbumModel:
         # projection after the same filter has been applied.
         assert qml.count("property var albumModel: library.albums") == 5
         assert qml.count("property var albumModel: library.timelineAlbums") == 1
-        assert qml.count("albumModel: root.presentationAlbums") == 5
+        assert qml.count("albumModel: root.presentationAlbums") == 4
+        assert qml.count("albumModel: root.editorialAlbums") == 1
         assert qml.count("albumModel: root.presentationTimelineAlbums") == 1
         # The magazine hero is derived from its injected model rather than
         # owning a separate album collection.
@@ -300,9 +301,9 @@ class TestCanonicalProjections:
         assert [
             (r["key"], r["title"], r["artist"], r["year"], r["decade"]) for r in rows
         ] == [(p.album_key, p.title, p.artist, p.year, p.decade) for p in expected]
-        # Only hasArtwork/artworkPath are bridge additions.
+        # Timeline extends the canonical album presentation row only with decade.
         for row in rows:
-            assert set(row.keys()) == {
+            assert {
                 "key",
                 "title",
                 "artist",
@@ -310,7 +311,11 @@ class TestCanonicalProjections:
                 "decade",
                 "hasArtwork",
                 "artworkPath",
-            }
+                "trackCount",
+                "durationMs",
+                "technicalSummary",
+                "containsHighResolution",
+            } <= set(row)
         bridge.dispose()
 
     def test_no_duplicated_album_identity_logic(self, tmp_path):
