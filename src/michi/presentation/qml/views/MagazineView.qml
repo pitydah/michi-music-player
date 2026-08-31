@@ -38,6 +38,15 @@ Item {
     readonly property var archiveRows: root.makeArchiveRows()
     property int rovingIndex: 0
 
+    function requestLeadPalettes() {
+        if (!albumModel || typeof library.request_album_palette !== "function")
+            return
+        for (var index = 0; index < Math.min(7, albumModel.length); ++index)
+            library.request_album_palette(albumModel[index].key)
+    }
+    Component.onCompleted: requestLeadPalettes()
+    onAlbumModelChanged: requestLeadPalettes()
+
     MichiMaterial {
         id: editorialMaterial
         role: MichiMaterialRole.editorial

@@ -143,6 +143,10 @@ ListView {
         required property int index
         required property var modelData
         property var album: modelData
+        onAlbumChanged: {
+            if (album && typeof library.request_album_palette === "function")
+                library.request_album_palette(album.key)
+        }
         readonly property bool selected: ListView.isCurrentItem
         width: albumTimeline.width
         height: albumTimeline.densityMode === "compact" ? 58

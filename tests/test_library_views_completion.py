@@ -158,6 +158,14 @@ def test_visual_qa_manifest_covers_every_view_breakpoint_and_state() -> None:
         "studio-list",
     ]
     assert manifest["widths"] == [680, 900, 1200, 1440, 1920, 2560]
+    frames = manifest["requiredReviewFrames"]
+    assert sorted({frame["width"] for frame in frames}) == manifest["widths"]
+    assert {
+        "selected-and-focus",
+        "view-options-open",
+        "reduced-motion",
+        "high-contrast",
+    } <= {frame["state"] for frame in frames}
     for state in (
         "idle",
         "selected",
@@ -166,3 +174,6 @@ def test_visual_qa_manifest_covers_every_view_breakpoint_and_state() -> None:
         "high-contrast",
     ):
         assert state in manifest["states"]
+    runner = (ROOT / "scripts/render_library_views_qa.py").read_text(encoding="utf-8")
+    assert 'manifest["requiredReviewFrames"]' in runner
+    assert "FRAMES =" not in runner

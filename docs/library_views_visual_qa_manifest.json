@@ -25,11 +25,16 @@
   ],
   "widths": [680, 900, 1200, 1440, 1920, 2560],
   "requiredReviewFrames": [
+    {"width": 680, "height": 900, "state": "xs"},
     {"width": 900, "height": 900, "state": "compact"},
+    {"width": 1200, "height": 900, "state": "medium"},
     {"width": 1440, "height": 900, "state": "normal"},
     {"width": 1920, "height": 1080, "state": "wide"},
+    {"width": 2560, "height": 1440, "state": "ultra-wide"},
     {"width": 1440, "height": 900, "state": "selected-and-focus"},
-    {"width": 1440, "height": 900, "state": "view-options-open"}
+    {"width": 1440, "height": 900, "state": "view-options-open"},
+    {"width": 1440, "height": 900, "state": "reduced-motion"},
+    {"width": 1440, "height": 900, "state": "high-contrast"}
   ],
   "assertions": [
     "No stretched artwork wallpaper",
