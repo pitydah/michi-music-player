@@ -408,8 +408,11 @@ def test_action_feedback_call_sites():
     lib_host = read("views/LibraryContentHost.qml")
     assert 'qsTr("Added to %1")' in lib_host  # R2: .arg() substitution
     assert "modelData.name)" in lib_host
-    host = read("shell/ContentHost.qml")
-    assert "add_track_to_playlist(" in host
+    # P0-01: the Undo path in ContentHost now uses insert_track with FROZEN
+    # provenance; the user-facing "Add to playlist" call-site with toast
+    # feedback lives in LibraryContentHost and stays audited here.
+    library_host = read("views/LibraryContentHost.qml")
+    assert "add_track_to_playlist(" in library_host
 
 
 # ── Phase 4: full qsTr coverage (no intra-file mixes) ─────────────────────────

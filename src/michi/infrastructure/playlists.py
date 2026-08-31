@@ -13,6 +13,7 @@ import re
 import sqlite3
 from pathlib import Path
 
+from michi.application.errors import PlaylistPersistenceError
 from michi.application.ports import PlaylistsPort
 from michi.domain.playlist import (
     Playlist,
@@ -72,12 +73,26 @@ def _decode_appearance(value: object) -> PlaylistAppearance:
     if mode is PlaylistHeroMode.IMAGE and not image_path:
         mode = PlaylistHeroMode.AUTO
 
+    # PL-FINAL-09: focal point — tolerate missing fields, clamp malformed
+    # values; no load-time writeback required.
+    def _decoded_focal(key: str, fallback: float) -> float:
+        raw = value.get(key)
+        if (
+            isinstance(raw, (int, float))
+            and not isinstance(raw, bool)
+            and math.isfinite(float(raw))
+        ):
+            return max(0.0, min(1.0, float(raw)))
+        return fallback
+
     return PlaylistAppearance(
         hero_mode=mode,
         hero_solid_color=solid,
         hero_gradient_colors=colors,
         hero_gradient_angle=angle,
         hero_image_path=image_path,
+        hero_focal_x=_decoded_focal("hero_focal_x", default.hero_focal_x),
+        hero_focal_y=_decoded_focal("hero_focal_y", default.hero_focal_y),
     )
 
 
@@ -113,12 +128,15 @@ def _decode_playlist_entry(entry) -> Playlist | None:
     raw_cover = entry.get("custom_cover_path")
     custom_cover_path = raw_cover if isinstance(raw_cover, str) else ""
     appearance = _decode_appearance(entry.get("appearance"))
+    raw_description = entry.get("description")
+    description = raw_description if isinstance(raw_description, str) else ""
     return Playlist(
         playlist_id=playlist_id,
         name=name,
         track_paths=tuple(paths),
         custom_cover_path=custom_cover_path,
         appearance=appearance,
+        description=description,
     )
 
 
@@ -153,7 +171,7 @@ def _encode_navigation_state(state: PlaylistNavigationState) -> str:
 class SqlitePlaylistsRepository(PlaylistsPort):
     """JSON payloads under the 'playlists' and 'playlist_navigation' keys of
     the shared library_prefs table. Never touches the settings table or
-    journal mode; never raises: persistence is best effort.
+    journal mode; writes are authoritative (raise on failure).
 
     Malformed ROOT (scalar/string/object/null/boolean/invalid JSON) ->
     whole collection (). Malformed ENTRY -> that entry discarded; valid
@@ -226,7 +244,57 @@ class SqlitePlaylistsRepository(PlaylistsPort):
         return tuple(playlists)
 
     def save(self, playlists: tuple[Playlist, ...]) -> None:
-        payload = [
+        """AUTHORITATIVE WRITE (R2 P1-04): durable on success; raises
+        PlaylistPersistenceError on any sqlite failure. Never best effort."""
+        self._save_raw("playlists", json.dumps(self._payload(playlists)))
+
+    def load_navigation(self) -> PlaylistNavigationState:
+        parsed = self._load_raw("playlist_navigation")
+        if parsed is None:
+            return PlaylistNavigationState()
+        return _decode_navigation_state(parsed)
+
+    def save_navigation(self, state: PlaylistNavigationState) -> None:
+        """AUTHORITATIVE WRITE (R2 P1-04): durable on success; raises
+        PlaylistPersistenceError on any sqlite failure."""
+        self._save_raw("playlist_navigation", _encode_navigation_state(state))
+
+    def save_state(
+        self,
+        playlists: tuple[Playlist, ...],
+        navigation: PlaylistNavigationState,
+    ) -> None:
+        """ATOMIC compound write (R2 P1-02): ONE connection, ONE
+        transaction, TWO upserts, ONE commit. Any failure ROLLS BACK and
+        raises PlaylistPersistenceError — there is NO observable moment
+        where only one of the two authorities is confirmed."""
+        try:
+            conn = self._connect()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                conn.execute(
+                    "INSERT INTO library_prefs(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    ("playlists", json.dumps(self._payload(playlists))),
+                )
+                conn.execute(
+                    "INSERT INTO library_prefs(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    ("playlist_navigation", _encode_navigation_state(navigation)),
+                )
+                conn.commit()
+            except sqlite3.Error:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
+        except sqlite3.Error as exc:
+            raise PlaylistPersistenceError(
+                f"playlist persistence failed (compound state): {exc}"
+            ) from exc
+
+    def _payload(self, playlists: tuple[Playlist, ...]) -> list[dict]:
+        return [
             {
                 "id": p.playlist_id,
                 "name": p.name,
@@ -238,20 +306,13 @@ class SqlitePlaylistsRepository(PlaylistsPort):
                     "hero_gradient_colors": list(p.appearance.hero_gradient_colors),
                     "hero_gradient_angle": p.appearance.hero_gradient_angle,
                     "hero_image_path": p.appearance.hero_image_path,
+                    "hero_focal_x": p.appearance.hero_focal_x,
+                    "hero_focal_y": p.appearance.hero_focal_y,
                 },
+                "description": p.description,
             }
             for p in playlists
         ]
-        self._save_raw("playlists", json.dumps(payload))
-
-    def load_navigation(self) -> PlaylistNavigationState:
-        parsed = self._load_raw("playlist_navigation")
-        if parsed is None:
-            return PlaylistNavigationState()
-        return _decode_navigation_state(parsed)
-
-    def save_navigation(self, state: PlaylistNavigationState) -> None:
-        self._save_raw("playlist_navigation", _encode_navigation_state(state))
 
     def _save_raw(self, key: str, payload: str) -> None:
         try:
@@ -266,4 +327,8 @@ class SqlitePlaylistsRepository(PlaylistsPort):
             finally:
                 conn.close()
         except sqlite3.Error as exc:
-            logger.warning("%s save failed: %s", key, exc)
+            # P0-02: TRUTHFUL persistence — a sqlite failure raises instead
+            # of silently logging while QML reports success.
+            raise PlaylistPersistenceError(
+                f"playlist persistence failed ({key}): {exc}"
+            ) from exc

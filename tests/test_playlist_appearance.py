@@ -38,6 +38,12 @@ class MemoryPlaylistsPort:
     def save_navigation(self, state):
         self.navigation = state
 
+    def save_state(self, playlists, navigation):
+        # R3-02: atomic compound write (single logical in-memory operation).
+        self.items = tuple(playlists)
+        self.navigation = navigation
+        self.save_count += 1
+
 
 def test_playlist_appearance_defaults_to_auto() -> None:
     playlist = Playlist(playlist_id="p1", name="Legacy-safe")
@@ -141,13 +147,22 @@ def test_malformed_appearance_degrades_field_by_field_without_writeback(
     assert stored == payload
 
 
+def _real_png(tmp_path: Path, name: str) -> Path:
+    """Real decodable PNG — required since asset validation (P1-01)."""
+    from PySide6.QtGui import QImage
+
+    img = QImage(64, 64, QImage.Format_RGB32)
+    img.fill(0xFF581C)
+    path = tmp_path / name
+    assert img.save(str(path), "PNG")
+    return path
+
+
 def test_cover_and_hero_workflow_survives_restart_and_resets(tmp_path: Path) -> None:
     db_path = tmp_path / "michi.db"
     store = FilesystemPlaylistArtworkStore(tmp_path / "managed")
-    cover_source = tmp_path / "cover.jpg"
-    hero_source = tmp_path / "hero.png"
-    cover_source.write_bytes(b"cover")
-    hero_source.write_bytes(b"hero")
+    cover_source = _real_png(tmp_path, "cover.png")
+    hero_source = _real_png(tmp_path, "hero.png")
     repository = SqlitePlaylistsRepository(db_path)
     service = PlaylistService(playlists_port=repository, artwork_store=store)
     playlist = service.create_playlist("Restart")
@@ -204,17 +219,19 @@ def test_unrelated_mutations_preserve_appearance_metadata() -> None:
 
 def test_cover_and_hero_assets_are_independent_and_cleaned(tmp_path: Path) -> None:
     store = FilesystemPlaylistArtworkStore(tmp_path / "managed")
-    cover_source = tmp_path / "cover.png"
-    hero_source = tmp_path / "hero.webp"
-    cover_source.write_bytes(b"cover")
-    hero_source.write_bytes(b"hero")
+    cover_source = _real_png(tmp_path, "cover.png")
+    hero_source = _real_png(tmp_path, "hero.png")
     port = MemoryPlaylistsPort([Playlist(playlist_id="p1", name="Visual")])
     service = PlaylistService(playlists_port=port, artwork_store=store)
 
     cover_path = Path(service.set_custom_cover("p1", cover_source))
     hero_path = Path(service.set_custom_hero_image("p1", hero_source))
-    assert cover_path.name == "playlist_p1.png"
-    assert hero_path.name == "playlist_p1_hero.webp"
+    assert cover_path.name.startswith("playlist_v2_")  # R4-06 V2 token
+    assert cover_path.suffix == ".png"
+    assert (
+        hero_path.name.startswith("playlist_v2_") and "_hero_" in hero_path.name
+    )  # R4-06
+    assert hero_path.suffix == ".png"
 
     service.remove_custom_cover("p1")
     current = service.get_playlist("p1")
@@ -253,10 +270,25 @@ def test_bridge_projects_and_mutates_appearance_without_owning_selection() -> No
     navigation.navigate_to_playlist("p1")
     bridge = PlaylistsBridge(service, navigation_service=navigation)
     try:
-        assert bridge.set_hero_gradient("p1", ["#102030", "#405060", "#708090"], 405)
+        # PL-FINAL-03: el camino canónico de apariencia es
+        # apply_visual_appearance (los slots legacy set_hero_* fueron
+        # removidos del bridge — cero consumers QML).
+        assert (
+            bridge.apply_visual_appearance(
+                "p1",
+                "keep",
+                "",
+                "gradient",
+                "",
+                ["#102030", "#405060", "#708090"],
+                405,
+                "",
+            )
+            == "updated"
+        )
         row = bridge.property("playlists")[0]
         selected = bridge.property("selectedPlaylistAppearance")
-        assert row["heroMode"] == "gradient"
+        assert row["effectiveHeroMode"] == "gradient"
         assert row["heroGradientAngle"] == 45
         assert selected["heroGradientColors"] == ["#102030", "#405060", "#708090"]
         assert bridge.property("selectedPlaylistId") == "p1"
@@ -318,12 +350,22 @@ def test_qml_appearance_and_michipeek_contracts() -> None:
     assert "MichiMaterialTexture" in hero
     assert "signalContour" in hero
     assert 'root.heroMode !== "image"' in hero
-    assert "cache: false" in hero
-    assert panel.count("set_custom_hero_from_url") == 1
+    # R2 P2-02: managed hero assets are IMMUTABLE content-addressed
+    # candidates — content changes change the URL, so caching is safe.
+    assert "cache: true" in hero
+    # R3-06: el panel es FULL DRAFT — ninguna llamada directa de
+    # persistencia; un único apply_visual_appearance.
+    assert "set_custom_hero_from_url" not in panel
+    assert "apply_visual_appearance(" in panel
     assert "root.draftHeroImageUrl = selectedFile" in panel
-    assert "Copying and persistence happen" in panel
-    assert "PlaylistAppearancePanel" in detail
-    assert "PlaylistAppearancePanel" in overview
+    assert "selección = DRAFT (cero writes)" in panel  # R4-04/05 comment
+    # R3-06: el panel ÚNICO vive en ContentHost (Detail emite intent).
+    assert "PlaylistAppearancePanel" not in detail
+    assert "customizeAppearanceRequested" in detail
+    # R3-06: el panel ÚNICO vive en ContentHost (Overview emite intent).
+    assert "PlaylistAppearancePanel" not in overview
+    assert "customizeAppearanceRequested" in overview
     assert "substring(7)" not in detail + overview + panel
-    assert "set_custom_cover_from_url" in panel
+    # R3-06: draft-only — ninguna persistencia directa en el panel.
+    assert "set_custom_cover_from_url" not in panel
     assert "formatPlaylistSummary" in card + detail + overview

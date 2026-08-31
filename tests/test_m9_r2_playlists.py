@@ -76,16 +76,21 @@ def test_filesystem_playlist_artwork_store(tmp_path: Path) -> None:
     store_dir = tmp_path / "covers"
     store = FilesystemPlaylistArtworkStore(store_dir)
 
-    src_img = tmp_path / "source.png"
-    src_img.write_bytes(b"dummy png content")
+    from PySide6.QtGui import QImage
 
-    stored_path = store.store_cover("pl-123", src_img)
+    img = QImage(64, 64, QImage.Format_RGB32)
+    img.fill(0xFF581C)
+    src_img = tmp_path / "source.png"
+    assert img.save(str(src_img), "PNG")
+
+    stored_path = store.prepare_cover("pl-123", src_img)
     assert stored_path is not None
     assert Path(stored_path).is_file()
-    assert Path(stored_path).name == "playlist_pl-123.png"
+    # R4-06: V2 — el filename usa owner token hash, nunca el id raw.
+    assert Path(stored_path).name.startswith("playlist_v2_")
 
-    # Delete cover
-    store.delete_cover("pl-123")
+    # Delete managed asset (fail-closed protocol)
+    store.delete_managed_asset("pl-123", "cover", stored_path)
     assert not Path(stored_path).exists()
 
 
@@ -98,6 +103,6 @@ def test_playlists_bridge_mosaic_and_duration_projections() -> None:
     rows = bridge.property("playlists")
     assert len(rows) == 1
     assert rows[0]["playlistId"] == p.playlist_id
-    assert rows[0]["customCoverPath"] == "/custom.jpg"
+    assert rows[0]["persistedCustomCoverPath"] == "/custom.jpg"
     assert "mosaicArtworkPaths" in rows[0]
     assert "durationMs" in rows[0]

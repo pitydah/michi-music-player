@@ -15,34 +15,17 @@ Item {
     property string searchQuery: ""
     property string sortMode: "name" // "name", "name_desc", "tracks", "duration", "pinned", "recent"
     property string displayMode: "grid" // "grid" | "list"
-    property string appearancePlaylistId: ""
-
     signal createPlaylistRequested()
     signal openPlaylistRequested(string playlistId)
     signal playPlaylistRequested(string playlistId)
-    signal pinPlaylistRequested(string playlistId, bool pinned)
+    signal pinPlaylistRequested(string playlistId, bool pinned, string playlistName)
+    signal customizeAppearanceRequested(string playlistId)
     signal renamePlaylistRequested(string playlistId, string playlistName)
     signal deletePlaylistRequested(string playlistId, string playlistName)
 
-    readonly property var appearancePlaylist: {
-        var rows = playlists.playlists || []
-        for (var index = 0; index < rows.length; ++index) {
-            if (rows[index].playlistId === root.appearancePlaylistId)
-                return rows[index]
-        }
-        return ({
-            playlistId: "", name: "", customCoverPath: "",
-            mosaicArtworkPaths: [], heroMode: "auto",
-            heroSolidColor: MichiPalette.playlistHeroTopHex,
-            heroGradientColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex],
-            heroGradientAngle: 135, heroImagePath: "",
-            autoHeroColors: [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
-        })
-    }
-
     function customizeAppearance(row) {
-        root.appearancePlaylistId = row.playlistId
-        appearancePanel.openForPlaylist()
+        // R3-06: el panel ÚNICO vive en ContentHost.
+        root.customizeAppearanceRequested(row.playlistId)
     }
 
     readonly property var filteredPlaylists: {
@@ -209,8 +192,13 @@ Item {
             Layout.fillHeight: true
             visible: root.filteredPlaylists.length > 0 && root.displayMode === "grid"
             clip: true
-            readonly property int targetCellWidth: MichiThemeState.density === "compact" ? 296 : 328
-            readonly property int columnCount: Math.max(1, Math.floor(width / targetCellWidth))
+            // R3-16: density objetivo 5 cards en el área útil típica 1920
+            // con sidebar expandido (~1560px útiles): 1560/5 ≈ 312 → 304
+            // estándar / 288 compacto, máx 6 columnas.
+            readonly property int targetCellWidth: MichiThemeState.density === "compact" ? 288 : 304
+            readonly property int maxColumns: 6
+            readonly property int columnCount: Math.min(
+                maxColumns, Math.max(1, Math.floor(width / targetCellWidth)))
             cellWidth: width / columnCount
             cellHeight: 352
             model: root.filteredPlaylists
@@ -262,7 +250,7 @@ Item {
                     playlistName: playlistCell.modelData.name
                     trackCount: playlistCell.modelData.trackCount
                     durationMs: playlistCell.modelData.durationMs || 0
-                    customCoverPath: playlistCell.modelData.customCoverPath || ""
+                    customCoverPath: playlistCell.modelData.effectiveCustomCoverPath || ""
                     mosaicArtworkPaths: playlistCell.modelData.mosaicArtworkPaths || []
                     pinned: playlistCell.modelData.pinned
                     onActiveFocusChanged: {
@@ -272,10 +260,12 @@ Item {
                     onOpenRequested: root.openPlaylistRequested(playlistCell.modelData.playlistId)
                     onPlayRequested: root.playPlaylistRequested(playlistCell.modelData.playlistId)
                     onPinToggled: {
-                        root.pinPlaylistRequested(playlistCell.modelData.playlistId, !playlistCell.modelData.pinned)
-                        window.showToast(playlistCell.modelData.pinned
-                            ? qsTr("Unpinned %1").arg(playlistCell.modelData.name)
-                            : qsTr("Pinned %1").arg(playlistCell.modelData.name))
+                        // R2 P1-12: feedback is shown by ContentHost ONLY
+                        // when the pin/unpin was durably committed.
+                        root.pinPlaylistRequested(
+                            playlistCell.modelData.playlistId,
+                            !playlistCell.modelData.pinned,
+                            playlistCell.modelData.name)
                     }
                     onCustomizeAppearanceRequested:
                         root.customizeAppearance(playlistCell.modelData)
@@ -316,7 +306,7 @@ Item {
                     PlaylistArtwork {
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
-                        customCoverPath: modelData.customCoverPath || ""
+                        customCoverPath: modelData.effectiveCustomCoverPath || ""
                         mosaicArtworkPaths: modelData.mosaicArtworkPaths || []
                         fallbackText: modelData.name
                         radius: MichiRadius.sm
@@ -359,14 +349,6 @@ Item {
                     }
 
                     MichiIconButton {
-                        iconName: modelData.pinned ? "pin" : "circle"
-                        accessibleName: modelData.pinned
-                            ? qsTr("Unpin ") + modelData.name
-                            : qsTr("Pin ") + modelData.name
-                        onClicked: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
-                    }
-
-                    MichiIconButton {
                         iconName: "more"
                         accessibleName: qsTr("More options for ") + modelData.name
                         onClicked: listRowMenu.popup()
@@ -389,7 +371,7 @@ Item {
                     }
                     MenuItem {
                         text: modelData.pinned ? qsTr("Unpin") : qsTr("Pin")
-                        onTriggered: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
+                        onTriggered: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned, modelData.name)
                     }
                     MenuItem {
                         text: qsTr("Customize appearance…")
@@ -423,18 +405,4 @@ Item {
         }
     }
 
-    PlaylistAppearancePanel {
-        id: appearancePanel
-        playlistId: root.appearancePlaylist.playlistId || ""
-        playlistName: root.appearancePlaylist.name || ""
-        customCoverPath: root.appearancePlaylist.customCoverPath || ""
-        mosaicArtworkPaths: root.appearancePlaylist.mosaicArtworkPaths || []
-        heroMode: root.appearancePlaylist.heroMode || "auto"
-        heroSolidColor: root.appearancePlaylist.heroSolidColor || MichiPalette.playlistHeroTopHex
-        heroGradientColors: root.appearancePlaylist.heroGradientColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
-        heroGradientAngle: root.appearancePlaylist.heroGradientAngle === undefined
-            ? 135 : root.appearancePlaylist.heroGradientAngle
-        heroImagePath: root.appearancePlaylist.heroImagePath || ""
-        autoHeroColors: root.appearancePlaylist.autoHeroColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
-    }
 }
