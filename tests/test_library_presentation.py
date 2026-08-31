@@ -412,6 +412,8 @@ class TestLibraryPageOrchestration:
         obj = component.create()
         assert obj is not None
         try:
+            obj.setProperty("width", 1440)
+            obj.setProperty("height", 900)
             obj.setProperty("currentTab", "albums")
             _process_events()
             popup = obj.findChild(QObject, "libraryViewOptionsPopup")
