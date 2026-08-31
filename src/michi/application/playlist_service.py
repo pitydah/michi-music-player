@@ -25,6 +25,7 @@ from michi.application.errors import (
     PlaylistNameInvalidError,
     PlaylistPersistenceError,
 )
+from michi.application.playlist_asset_contract import PreparedPlaylistAsset
 from michi.application.ports import PlaylistArtworkStorePort, PlaylistsPort
 from michi.domain.playlist import (
     MAX_DESCRIPTION_LENGTH,
@@ -33,7 +34,6 @@ from michi.domain.playlist import (
     PlaylistAppearance,
     PlaylistHeroMode,
     PlaylistNavigationState,
-    PreparedPlaylistAsset,
     new_playlist_id,
     normalize_navigation_state,
 )
@@ -424,25 +424,58 @@ class PlaylistService:
         self._notify()
         return True
 
+    def collect_orphan_assets(self) -> list[str]:
+        """PL-FINAL-C03: production-safe orphan GC — maintenance helper
+        (never automatic at load). Returns the list of REMOVED managed
+        files that proved orphan status: blobs referenced by no live
+        playlist, and legacy files whose owner playlist no longer exists.
+        Fail closed: unknown grammar, ambiguous owners and files of live
+        playlists are never touched. Rebuildable cache debt is preferred
+        over any guessed deletion."""
+        store = self._artwork_store
+        if store is None:
+            return []
+        collect = getattr(store, "collect_orphan_candidates", None)
+        if collect is None:
+            return []
+        referenced: set[str] = set()
+        for playlist in self._playlists:
+            if playlist.custom_cover_path:
+                referenced.add(str(Path(playlist.custom_cover_path).resolve()))
+            hero = playlist.appearance.hero_image_path
+            if hero:
+                referenced.add(str(Path(hero).resolve()))
+        live_ids = {p.playlist_id for p in self._playlists}
+        candidates = collect(referenced, live_ids)
+        removed: list[str] = []
+        for candidate in candidates:
+            try:
+                candidate.unlink(missing_ok=True)
+                removed.append(str(candidate))
+            except OSError as exc:
+                logger.warning("orphan cleanup debt: %s: %s", candidate, exc)
+        return removed
+
     def _prepare_asset(
         self, playlist_id: str, source_path, role: str
     ) -> PreparedPlaylistAsset | None:
-        """PL-FINAL-01: prepared candidate with content-addressed truth.
-        The production store implements ``prepare_candidate`` (reused files
-        are marked created_by_operation=False); test doubles only implement
-        the frozen legacy protocol and are assumed to create their
-        synthetic candidates."""
+        """PL-FINAL-A07: UN solo contrato — el store DEBE implementar
+        ``prepare_candidate`` con content-addressed truth (reused files
+        marcados created_by_operation=False). NO existe fallback que
+        invente ownership: si el store no expone el contrato completo, la
+        operación falla cerrado (asset_rejected) — nunca se asume que un
+        path fue creado por esta operación."""
         store = self._artwork_store
         if store is None:
             return None
         prepare_candidate = getattr(store, "prepare_candidate", None)
-        if prepare_candidate is not None:
-            return prepare_candidate(playlist_id, source_path, role)
-        prepare = store.prepare_cover if role == "cover" else store.prepare_hero
-        path = prepare(playlist_id, source_path)
-        if path is None:
+        if prepare_candidate is None:
+            logger.warning(
+                "artwork store does not implement prepare_candidate — "
+                "refusing asset operation (fail-closed ownership)"
+            )
             return None
-        return PreparedPlaylistAsset(path=path, role=role, created_by_operation=True)
+        return prepare_candidate(playlist_id, source_path, role)
 
     def set_custom_cover(self, playlist_id: str, cover_path: Path | str) -> str | None:
         """Sets managed custom cover. Validates, copies to app storage and persists."""

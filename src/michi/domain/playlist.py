@@ -17,25 +17,6 @@ MAX_RECENT_PLAYLISTS = 5
 MAX_DESCRIPTION_LENGTH = 1000
 
 
-@dataclass(frozen=True)
-class PreparedPlaylistAsset:
-    """Transaction-owned asset candidate contract (PL-FINAL-01).
-
-    ``created_by_operation`` is the KILLCRITIC fact that makes rollback
-    safe for content-addressed storage: a prepared path is NOT necessarily
-    a new file — content-addressed stores REUSE an existing file when the
-    exact same bytes already exist. Only candidates with
-    ``created_by_operation == True`` may ever enter rollback cleanup
-    ownership. Reused assets, previously committed assets, other
-    playlists' assets and unowned paths are NEVER deleted by a failed
-    transaction.
-    """
-
-    path: str
-    role: str  # "cover" | "hero"
-    created_by_operation: bool
-
-
 class PlaylistHeroMode(StrEnum):
     """Persisted visual source for an individual playlist hero."""
 

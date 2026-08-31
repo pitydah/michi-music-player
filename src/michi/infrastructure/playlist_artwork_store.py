@@ -7,8 +7,8 @@ import re
 import uuid
 from pathlib import Path
 
+from michi.application.playlist_asset_contract import PreparedPlaylistAsset
 from michi.application.ports import PlaylistArtworkStorePort
-from michi.domain.playlist import PreparedPlaylistAsset
 
 logger = logging.getLogger(__name__)
 
@@ -292,6 +292,82 @@ class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
                 exc,
             )
             return None
+
+    def collect_orphan_candidates(
+        self,
+        referenced_paths: set[str],
+        live_playlist_ids: set[str],
+    ) -> list[Path]:
+        """PL-FINAL-C03: production-safe orphan GC (maintenance helper —
+        never runs automatically at load).
+
+        Only files that PROVE orphan status are returned:
+
+        - V2 file whose exact path is not referenced by any live playlist
+          (the owner token is irrelevant: if nothing references it, the
+          mapping is gone and the blob is rebuildable cache debt);
+        - legacy stable/digest-era file whose owner playlist_id NO LONGER
+          EXISTS (its playlist is gone; the grammar is unambiguous and the
+          owner is not alive).
+
+        FAIL CLOSED: any file that does not match a known managed grammar,
+        any legacy file whose owner still exists (even if unreferenced),
+        and any ambiguous legacy owner are NEVER returned. Deleting a
+        wrongly-guessed legacy asset is data loss; leaving an orphan is
+        rebuildable debt."""
+        try:
+            entries = list(self._storage_dir.iterdir())
+        except OSError:
+            return []
+        orphans: list[Path] = []
+        for entry in entries:
+            try:
+                if not entry.is_file():
+                    continue
+            except OSError:
+                continue
+            resolved = entry.resolve()
+            if str(resolved) in referenced_paths:
+                continue
+            name = entry.name
+            if _V2_ASSET_RE.fullmatch(name) is not None:
+                # Blob no referenciado por ninguna playlist viva.
+                orphans.append(resolved)
+                continue
+            # Gramática legacy: el owner debe ser un playlist YA INEXISTENTE.
+            owner = self._legacy_owner(name)
+            if owner is None:
+                continue  # gramática desconocida o ambigua → nunca tocar
+            if owner in live_playlist_ids:
+                continue  # el dueño vive → no es un orphan probado
+            orphans.append(resolved)
+        return orphans
+
+    @staticmethod
+    def _legacy_owner(name: str) -> str | None:
+        """Owner playlist_id de la gramática legacy (stable + digest-era).
+        None cuando la gramática no matchea o es ambigua (fail closed)."""
+        suffix = Path(name).suffix.lower()
+        if suffix not in _ALLOWED_EXTENSIONS:
+            return None
+        stem = name[: -len(suffix)]
+        digest_match = _DIGEST_SUFFIX_RE.search(stem)
+        owner = (
+            stem[: digest_match.start()]
+            if digest_match is not None
+            else stem
+        )
+        # playlist_<owner> o playlist_<owner>_hero
+        if not owner.startswith("playlist_"):
+            return None
+        owner = owner[len("playlist_") :]
+        if owner.endswith("_hero"):
+            owner = owner[: -len("_hero")]
+        if not owner or not _SAFE_PLAYLIST_ID_RE.fullmatch(owner):
+            return None
+        if owner.endswith("_hero") or _DIGEST_SUFFIX_RE.search(owner) is not None:
+            return None  # dueño ambiguo → fail closed
+        return owner
 
     def delete_legacy_managed_asset(
         self, playlist_id: str, role: str, managed_path: str
