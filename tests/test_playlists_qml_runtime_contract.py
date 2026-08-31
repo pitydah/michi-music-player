@@ -141,12 +141,16 @@ def _bridge(
 
 
 class _StoreStub:
-    """Duck-typed artwork store matching the R2 canonical port contract."""
+    """Duck-typed artwork store — PL-FINAL-A07: implements the canonical
+    prepare_candidate contract (the service refuses stores without it)."""
 
     def prepare_cover(self, playlist_id, source):
         return None
 
     def prepare_hero(self, playlist_id, source):
+        return None
+
+    def prepare_candidate(self, playlist_id, source_path, role):
         return None
 
     def delete_managed_asset(self, managed_path):
