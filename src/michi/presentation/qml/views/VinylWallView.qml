@@ -97,10 +97,7 @@ GridView {
         required property int index
         required property var modelData
         property var album: modelData
-        onAlbumChanged: {
-            if (album && typeof library.request_album_palette === "function")
-                library.request_album_palette(album.key)
-        }
+        AlbumPaletteBinding { id: paletteBinding; album: vinylTile.album }
         readonly property bool selected: GridView.isCurrentItem
         readonly property real stageSize: Math.min(width - MichiSpacing.xl,
             height - 76)
@@ -123,11 +120,11 @@ GridView {
                 : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
             border.width: 1
             border.color: vinylTile.selected
-                ? (modelData.artworkPalette
-                    ? modelData.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                ? (paletteBinding.value.accentSafe || MichiPalette.auroraCyan)
                 : hover.hovered ? MichiSemanticColors.borderStrong : "transparent"
             MichiFocusRing {
-                visualFocus: vinylTile.activeFocus
+                visualFocus: (vinylTile.activeFocus
+                    || (albumVinyl.activeFocus && vinylTile.selected))
                     && MichiAccessibility.keyboardMode
             }
         }
@@ -151,8 +148,9 @@ GridView {
                         : albumVinyl.revealMode === "pronounced" ? 0.24 : 0.16)
                     : width * 0.04
                 selected: vinylTile.selected
-                labelColor: albumVinyl.artworkLabel && modelData.artworkPalette
-                    ? modelData.artworkPalette.accentSafe : MichiPalette.graphite
+                labelColor: albumVinyl.artworkLabel
+                    ? (paletteBinding.value.accentSafe || MichiPalette.graphite)
+                    : MichiPalette.graphite
                 rotation: vinylTile.selected ? 1.5 : hover.hovered ? 0.8 : 0
 
                 Behavior on anchors.horizontalCenterOffset {
@@ -217,8 +215,7 @@ GridView {
                 role: "technical"
                 technical: true
                 color: vinylTile.selected
-                    ? (modelData.artworkPalette
-                        ? modelData.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                    ? (paletteBinding.value.accentSafe || MichiPalette.auroraCyan)
                     : MichiPalette.textMuted
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight

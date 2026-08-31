@@ -7,19 +7,14 @@ Item {
     id: root
     property var album: null
 
-    function requestPalette() {
-        if (root.album && typeof library !== "undefined" && library
-                && typeof library.request_album_palette === "function")
-            library.request_album_palette(root.album.key)
-    }
-    Component.onCompleted: requestPalette()
-    onAlbumChanged: requestPalette()
+    AlbumPaletteBinding { id: paletteBinding; album: root.album }
     property bool selected: false
+    property bool collectionFocus: false
     property bool quickActionsVisible: true
     property string metadataLevel: "standard"
     property bool precisionMetadata: false
-    readonly property color albumAccent: album && album.artworkPalette
-        ? album.artworkPalette.accentSafe : MichiPalette.auroraCyan
+    readonly property color albumAccent: paletteBinding.value.accentSafe
+        || MichiPalette.auroraCyan
     readonly property string technicalText: !album ? ""
         : precisionMetadata ? (album.technicalSummary || "")
         : album.codecs && album.codecs.length > 0 ? album.codecs[0] : ""
@@ -194,7 +189,8 @@ Item {
 
     MichiFocusRing {
         anchors.fill: parent
-        visualFocus: root.activeFocus && MichiAccessibility.keyboardMode
+        visualFocus: (root.activeFocus || root.collectionFocus)
+            && MichiAccessibility.keyboardMode
     }
 
     Behavior on scale {

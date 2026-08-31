@@ -114,6 +114,7 @@ ListView {
         width: root.width
         album: modelData
         selected: ListView.isCurrentItem
+        collectionFocus: root.activeFocus && ListView.isCurrentItem
         showArtist: root.showArtistColumn
         showYear: root.showYearColumn
         showTrackCount: root.showTrackCountColumn

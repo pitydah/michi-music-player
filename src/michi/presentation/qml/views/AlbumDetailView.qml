@@ -14,6 +14,7 @@ ColumnLayout {
     property string addTargetPath: ""
     property var inspectedTrack: null
     readonly property var albumFacts: library.albumPresentation || ({})
+    AlbumPaletteBinding { id: paletteBinding; album: root.albumFacts }
     readonly property var albumFactRows: [
         { label: "Format", value: albumFacts.codecs && albumFacts.codecs.length
             ? albumFacts.codecs.join(" · ") : "Unknown" },
@@ -117,8 +118,7 @@ ColumnLayout {
         elevation: "elevated"
         contentPadding: MichiSpacing.xl
         accented: true
-        accentColor: library.albumArtworkPalette
-            ? library.albumArtworkPalette.accentSafe : MichiPalette.auroraBlue
+        accentColor: paletteBinding.value.accentSafe || MichiPalette.auroraBlue
         textured: true
         materialRole: MichiMaterialRole.hero
         glintMode: "michi"
@@ -131,13 +131,11 @@ ColumnLayout {
                 orientation: Gradient.Horizontal
                 GradientStop {
                     position: 0
-                    color: library.albumArtworkPalette
-                        ? library.albumArtworkPalette.dominant : MichiPalette.playlistHeroTop
+                    color: paletteBinding.value.dominant || MichiPalette.playlistHeroTop
                 }
                 GradientStop {
                     position: 1
-                    color: library.albumArtworkPalette
-                        ? library.albumArtworkPalette.backplane : MichiPalette.playlistHeroBottom
+                    color: paletteBinding.value.backplane || MichiPalette.playlistHeroBottom
                 }
             }
             Behavior on opacity {

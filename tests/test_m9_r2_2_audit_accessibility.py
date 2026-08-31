@@ -260,7 +260,8 @@ def test_timeline_year_uses_neutral_accent():
 
 def test_vinyl_label_neutral_when_unselected():
     content = read("views/VinylWallView.qml")
-    assert "modelData.artworkPalette.accentSafe : MichiPalette.graphite" in content
+    assert "paletteBinding.value.accentSafe || MichiPalette.graphite" in content
+    assert ": MichiPalette.graphite" in content
     assert "MichiScrollBar" in content
 
 

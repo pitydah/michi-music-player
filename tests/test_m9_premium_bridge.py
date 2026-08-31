@@ -8,11 +8,11 @@ from types import SimpleNamespace
 
 import pytest
 from conftest import FakeAudioPort
-from PySide6.QtCore import Property, QCoreApplication, QObject, Slot
+from PySide6.QtCore import Property, QCoreApplication, QMetaObject, QObject, Qt, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickWindow
-from PySide6.QtTest import QTest
+from PySide6.QtTest import QSignalSpy, QTest
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
@@ -55,6 +55,7 @@ class _Extractor:
 class _PaletteExtractor:
     def __init__(self) -> None:
         self.callback = None
+        self.callbacks = []
         self.sources = ()
         self.requests = []
         self.closed = False
@@ -62,6 +63,7 @@ class _PaletteExtractor:
     def request_palette(self, source_paths, callback) -> None:
         self.sources = source_paths
         self.callback = callback
+        self.callbacks.append(callback)
         self.requests.append(source_paths)
 
     def close(self) -> None:
@@ -111,6 +113,7 @@ def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
             title=f"Track {index:05d}",
             artist=f"Artist {index:05d}",
             album=f"Album {index:05d}",
+            year=1950 + index % 76,
             duration_ms=180_000,
             codec="FLAC",
             sample_rate_hz=96_000 if index % 7 == 0 else 44_100,
@@ -149,10 +152,16 @@ def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
         assert view.property("count") == 10_000
 
         max_y = max(0.0, float(view.property("contentHeight")) - 900)
+        slowest_scroll_step = 0.0
         for step in range(120):
+            step_started = time.perf_counter()
             view.setProperty("contentY", max_y * ((step % 30) / 29))
             QCoreApplication.processEvents()
+            slowest_scroll_step = max(
+                slowest_scroll_step, time.perf_counter() - step_started
+            )
         assert len(view.findChildren(QObject)) < 600
+        assert slowest_scroll_step < 0.5
     finally:
         window.close()
         window.deleteLater()
@@ -212,6 +221,7 @@ def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
             restored = restored.toVariant()
         assert len(restored) == 10_000
 
+        slowest_navigation = 0.0
         for mode, object_name in (
             ("grid", "albumGridView"),
             ("cover", "albumCoverView"),
@@ -224,12 +234,29 @@ def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
             QTest.qWait(420)
             active = albums_view.findChild(QObject, object_name)
             assert active is not None, f"{object_name} did not materialize"
+            navigation_started = time.perf_counter()
             if active.property("currentIndex") is not None:
                 active.setProperty("currentIndex", 9999)
                 QCoreApplication.processEvents()
+            if mode == "magazine":
+                magazine_list = albums_view.findChild(QObject, "albumMagazineList")
+                assert magazine_list is not None
+                assert int(magazine_list.property("count")) > 9_000
+                magazine_list.setProperty(
+                    "currentIndex", int(magazine_list.property("count")) - 1
+                )
+                assert QMetaObject.invokeMethod(
+                    magazine_list, "positionViewAtEnd", Qt.DirectConnection
+                )
+                QCoreApplication.processEvents()
+                assert float(magazine_list.property("contentY")) > 0
+            slowest_navigation = max(
+                slowest_navigation, time.perf_counter() - navigation_started
+            )
             assert len(albums_view.findChildren(QObject)) < 2_500
 
         assert time.perf_counter() - started < 20.0
+        assert slowest_navigation < 1.5
     finally:
         window.close()
         window.deleteLater()
@@ -268,6 +295,39 @@ def test_album_palette_projection_is_async_clamped_and_owned(qapp, tmp_path) -> 
     assert extractor.closed is True
 
 
+def test_palette_updates_are_granular_and_reset_when_artwork_disappears(qapp) -> None:
+    track = TrackRef(
+        Path("/virtual/palette.flac"),
+        title="Palette",
+        artist="Michi",
+        album="Palette",
+    )
+    library = _ProjectionLibrary([track], artwork=True)
+    extractor = _PaletteExtractor()
+    bridge = LibraryBridge(library, palette_extractor=extractor)
+    row = bridge.property("albums")[0]
+    palette_spy = QSignalSpy(bridge.albumPaletteChanged)
+    library_spy = QSignalSpy(bridge.library_changed)
+
+    bridge.request_album_palette(row["key"])
+    extractor.callback(("#204080", "#183050", "#0A0D14"))
+    QCoreApplication.processEvents()
+
+    assert palette_spy.count() == 1
+    assert palette_spy.at(0)[0] == row["key"]
+    assert palette_spy.at(0)[1]["dominant"] == "#204080"
+    assert library_spy.count() == 0
+
+    library._artwork = False
+    bridge.request_album_palette(row["key"])
+
+    assert palette_spy.count() == 2
+    assert palette_spy.at(1)[1]["dominant"] == "#152A45"
+    assert row["key"] not in bridge._album_palettes
+    assert library_spy.count() == 0
+    bridge.dispose()
+
+
 def test_10k_projection_only_requests_palettes_for_materialized_albums(qapp) -> None:
     tracks = [
         TrackRef(
@@ -294,6 +354,17 @@ def test_10k_projection_only_requests_palettes_for_materialized_albums(qapp) -> 
 
     assert len(extractor.requests) == len(visible_keys)
     assert len(bridge._palette_sources) == len(visible_keys)
+
+    palette_spy = QSignalSpy(bridge.albumPaletteChanged)
+    library_spy = QSignalSpy(bridge.library_changed)
+    started = time.perf_counter()
+    for callback in extractor.callbacks:
+        callback(("#204080", "#183050", "#0A0D14"))
+    QCoreApplication.processEvents()
+
+    assert palette_spy.count() == len(visible_keys)
+    assert library_spy.count() == 0
+    assert time.perf_counter() - started < 0.5
     bridge.dispose()
 
 

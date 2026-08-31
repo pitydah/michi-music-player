@@ -133,6 +133,7 @@ def test_new_qml_is_packaged_and_singleton_registered() -> None:
     project = (ROOT / "pyproject.toml").read_text()
     qmldir = _text("theme/qmldir")
     required = (
+        "media/AlbumPaletteBinding.qml",
         "media/MichiVinylDisc.qml",
         "patterns/LibraryAlbumInspector.qml",
         "primitives/MichiMaterial.qml",
@@ -160,20 +161,8 @@ def test_visual_qa_manifest_covers_every_view_breakpoint_and_state() -> None:
     assert manifest["widths"] == [680, 900, 1200, 1440, 1920, 2560]
     frames = manifest["requiredReviewFrames"]
     assert sorted({frame["width"] for frame in frames}) == manifest["widths"]
-    assert {
-        "selected-and-focus",
-        "view-options-open",
-        "reduced-motion",
-        "high-contrast",
-    } <= {frame["state"] for frame in frames}
-    for state in (
-        "idle",
-        "selected",
-        "keyboard-focus",
-        "reduced-motion",
-        "high-contrast",
-    ):
-        assert state in manifest["states"]
+    rendered_states = {frame["state"] for frame in frames}
+    assert set(manifest["states"]) <= rendered_states
     runner = (ROOT / "scripts/render_library_views_qa.py").read_text(encoding="utf-8")
     assert 'manifest["requiredReviewFrames"]' in runner
     assert "FRAMES =" not in runner

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, Qt, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QObject, Qt, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
@@ -24,6 +24,7 @@ class LibraryBridge(QObject):
     """Thin adapter: LibraryService state → QML properties, QML intent → service."""
 
     library_changed = Signal()
+    albumPaletteChanged = Signal(str, "QVariantMap")
     _palette_ready = Signal(str, str, list)
 
     def __init__(
@@ -37,6 +38,7 @@ class LibraryBridge(QObject):
         self._service = service
         self._playback_coordinator = playback_coordinator
         self._palette_extractor = palette_extractor
+        self._valid_album_keys = {album.key for album in service.state.albums}
         self._album_palettes: dict[str, list[str]] = {}
         self._palette_sources: dict[str, str] = {}
         self._album_artwork_paths: dict[str, str] = {}
@@ -46,21 +48,17 @@ class LibraryBridge(QObject):
         self._selected_artist_key: str = ""
         self._selected_artist: ArtistRef | None = None
         self._artist_track_refs: list[TrackRef] = []
-        self._palette_notification_timer = QTimer(self)
-        self._palette_notification_timer.setSingleShot(True)
-        self._palette_notification_timer.setInterval(80)
-        self._palette_notification_timer.timeout.connect(self.library_changed.emit)
         self._palette_ready.connect(self._apply_palette, Qt.QueuedConnection)
         service.subscribe_changed(self._on_service_changed)
 
     def dispose(self) -> None:
         self._service.unsubscribe_changed(self._on_service_changed)
-        self._palette_notification_timer.stop()
         if self._palette_extractor is not None:
             self._palette_extractor.close()
 
     def _on_service_changed(self) -> None:
         valid_album_keys = {album.key for album in self._service.state.albums}
+        self._valid_album_keys = valid_album_keys
         stale_palette_keys = (
             set(self._palette_sources)
             | set(self._album_palettes)
@@ -253,19 +251,29 @@ class LibraryBridge(QObject):
         """Warm one visible/selected album palette, deduplicated by artwork."""
         if not album_key:
             return
-        artwork_path = self._album_artwork_paths.get(album_key)
-        if artwork_path is None:
-            if not any(album.key == album_key for album in self._service.state.albums):
-                return
-            artwork_path = self._service.artwork_path_for(album_key) or ""
-            self._album_artwork_paths[album_key] = artwork_path
+        cached_artwork_path = self._album_artwork_paths.get(album_key)
+        if album_key not in self._valid_album_keys and cached_artwork_path is None:
+            return
+        # Resolve the source on every materialization request. Artwork may be
+        # added, replaced or removed while the album identity remains stable.
+        artwork_path = (
+            self._service.artwork_path_for(album_key) or ""
+            if album_key in self._valid_album_keys
+            else cached_artwork_path or ""
+        )
+        self._album_artwork_paths[album_key] = artwork_path
         source_key = self._palette_source_key(artwork_path)
         if self._palette_sources.get(album_key) == source_key:
             return
         self._palette_sources[album_key] = source_key
+        previous = self._album_palettes.pop(album_key, None)
+        if previous is not None:
+            self.albumPaletteChanged.emit(
+                album_key, self._palette_row(list(_DEFAULT_ALBUM_PALETTE))
+            )
         if not artwork_path:
-            self._album_palettes.pop(album_key, None)
-        elif self._palette_extractor is not None:
+            return
+        if self._palette_extractor is not None:
             self._palette_extractor.request_palette(
                 (artwork_path,),
                 lambda colors: self._palette_ready.emit(
@@ -283,8 +291,7 @@ class LibraryBridge(QObject):
         if len(normalized) < 2 or normalized == self._album_palettes.get(album_key):
             return
         self._album_palettes[album_key] = normalized
-        if not self._palette_notification_timer.isActive():
-            self._palette_notification_timer.start()
+        self.albumPaletteChanged.emit(album_key, self._palette_row(normalized))
 
     def _album_row(
         self,

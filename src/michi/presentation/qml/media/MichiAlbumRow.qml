@@ -8,14 +8,9 @@ Rectangle {
 
     property var album: null
 
-    function requestPalette() {
-        if (root.album && typeof library !== "undefined" && library
-                && typeof library.request_album_palette === "function")
-            library.request_album_palette(root.album.key)
-    }
-    Component.onCompleted: requestPalette()
-    onAlbumChanged: requestPalette()
+    AlbumPaletteBinding { id: paletteBinding; album: root.album }
     property bool selected: false
+    property bool collectionFocus: false
     property bool showArtist: true
     property bool showYear: true
     property bool showTrackCount: true
@@ -132,8 +127,7 @@ Rectangle {
         anchors.bottom: parent.bottom
         width: 2
         visible: root.selected
-        color: root.album && root.album.artworkPalette
-            ? root.album.artworkPalette.accentSafe : MichiPalette.auroraCyan
+        color: paletteBinding.value.accentSafe || MichiPalette.auroraCyan
     }
     Rectangle {
         anchors.left: parent.left
@@ -158,7 +152,8 @@ Rectangle {
         }
     }
     MichiFocusRing {
-        visualFocus: root.activeFocus && MichiAccessibility.keyboardMode
+        visualFocus: (root.activeFocus || root.collectionFocus)
+            && MichiAccessibility.keyboardMode
     }
     Behavior on color {
         enabled: !MichiAccessibility.reducedMotion
