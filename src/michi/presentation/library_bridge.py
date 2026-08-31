@@ -38,6 +38,7 @@ class LibraryBridge(QObject):
         self._service = service
         self._playback_coordinator = playback_coordinator
         self._palette_extractor = palette_extractor
+        self._valid_album_keys = {album.key for album in service.state.albums}
         self._album_palettes: dict[str, list[str]] = {}
         self._palette_sources: dict[str, str] = {}
         self._album_artwork_paths: dict[str, str] = {}
@@ -57,6 +58,7 @@ class LibraryBridge(QObject):
 
     def _on_service_changed(self) -> None:
         valid_album_keys = {album.key for album in self._service.state.albums}
+        self._valid_album_keys = valid_album_keys
         stale_palette_keys = (
             set(self._palette_sources)
             | set(self._album_palettes)
@@ -249,13 +251,16 @@ class LibraryBridge(QObject):
         """Warm one visible/selected album palette, deduplicated by artwork."""
         if not album_key:
             return
-        if album_key not in self._album_artwork_paths and not any(
-            album.key == album_key for album in self._service.state.albums
-        ):
+        cached_artwork_path = self._album_artwork_paths.get(album_key)
+        if album_key not in self._valid_album_keys and cached_artwork_path is None:
             return
         # Resolve the source on every materialization request. Artwork may be
         # added, replaced or removed while the album identity remains stable.
-        artwork_path = self._service.artwork_path_for(album_key) or ""
+        artwork_path = (
+            self._service.artwork_path_for(album_key) or ""
+            if album_key in self._valid_album_keys
+            else cached_artwork_path or ""
+        )
         self._album_artwork_paths[album_key] = artwork_path
         source_key = self._palette_source_key(artwork_path)
         if self._palette_sources.get(album_key) == source_key:
