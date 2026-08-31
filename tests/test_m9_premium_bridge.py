@@ -69,7 +69,7 @@ class _ProjectionLibrary:
         self.state = SimpleNamespace(
             albums=model.albums,
             artists=model.artists,
-            tracks=model.tracks,
+            tracks=tuple(tracks),
             favorite_paths=(),
             recently_added_paths=(),
             search_active=False,
