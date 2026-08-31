@@ -38,6 +38,7 @@ GridView {
     Layout.fillWidth: true
     Layout.fillHeight: true
     model: albumModel
+    flow: GridView.FlowLeftToRight
     leftMargin: Math.max(0, (width - usableWidth) / 2)
     rightMargin: leftMargin
     cellWidth: usableWidth / columnCount
@@ -95,6 +96,7 @@ GridView {
 
     delegate: Item {
         id: albumCell
+        objectName: "albumGridCell"
         required property int index
         required property var modelData
         readonly property bool current: GridView.isCurrentItem

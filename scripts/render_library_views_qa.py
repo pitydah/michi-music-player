@@ -208,6 +208,14 @@ def render(output: Path) -> list[dict]:
                     raise RuntimeError(
                         f"Gallery rendered only {columns} column(s) at {width}px"
                     )
+                cells = active.findChildren(QObject, "albumGridCell")
+                cell_x_positions = {
+                    round(float(cell.property("x")), 1) for cell in cells
+                }
+                if len(cell_x_positions) < 3:
+                    raise RuntimeError(
+                        "Gallery delegates did not occupy three distinct columns"
+                    )
 
             if state == "selected-and-focus":
                 active.setFocus(True)

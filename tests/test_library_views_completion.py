@@ -96,6 +96,7 @@ def test_material_palette_and_enrichment_firewall_are_explicit() -> None:
 def test_responsive_material_and_view_options_closure_contracts() -> None:
     breakpoints = _text("theme/MichiBreakpoints.qml")
     header = _text("views/LibraryHeader.qml")
+    gallery = _text("views/AlbumGridView.qml")
     flow = _text("views/AlbumPathView.qml")
     popup = _text("views/LibraryViewOptionsPopup.qml")
     material = _text("primitives/MichiMaterial.qml")
@@ -104,6 +105,7 @@ def test_responsive_material_and_view_options_closure_contracts() -> None:
     assert "int mediumMin: 900" in breakpoints and "int xlMin: 1600" in breakpoints
     assert 'objectName: "compactAlbumViewPicker"' in header
     assert 'objectName: "compactAlbumViewPopup"' in header
+    assert "flow: GridView.FlowLeftToRight" in gallery
     assert "MichiBreakpoints.isXl(width) ? 9" in flow
     assert "MichiBreakpoints.isWide(width) ? 7" in flow
     assert "MichiBreakpoints.isMedium(width) ? 5 : 3" in flow
