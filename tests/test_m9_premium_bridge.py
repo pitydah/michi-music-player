@@ -8,10 +8,11 @@ from types import SimpleNamespace
 
 import pytest
 from conftest import FakeAudioPort
-from PySide6.QtCore import QCoreApplication, QObject
+from PySide6.QtCore import Property, QCoreApplication, QObject, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickWindow
+from PySide6.QtTest import QTest
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
@@ -55,19 +56,22 @@ class _PaletteExtractor:
     def __init__(self) -> None:
         self.callback = None
         self.sources = ()
+        self.requests = []
         self.closed = False
 
     def request_palette(self, source_paths, callback) -> None:
         self.sources = source_paths
         self.callback = callback
+        self.requests.append(source_paths)
 
     def close(self) -> None:
         self.closed = True
 
 
 class _ProjectionLibrary:
-    def __init__(self, tracks) -> None:
+    def __init__(self, tracks, *, artwork=False) -> None:
         model = build_music_model(tracks)
+        self._artwork = artwork
         self.state = SimpleNamespace(
             albums=model.albums,
             artists=model.artists,
@@ -84,8 +88,20 @@ class _ProjectionLibrary:
     def unsubscribe_changed(self, _callback) -> None:
         return None
 
-    def artwork_path_for(self, _album_key) -> str:
-        return ""
+    def artwork_path_for(self, album_key) -> str:
+        return f"/virtual/artwork/{album_key}.jpg" if self._artwork else ""
+
+
+class _LibraryEnrichment(QObject):
+    revision = Property(int, lambda self: 0)
+
+    @Slot(str, int, result="QVariantMap")
+    def album(self, key, _revision):
+        return {
+            "albumKey": key,
+            "hasCachedKnowledge": False,
+            "knowledge": {},
+        }
 
 
 def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
@@ -142,6 +158,83 @@ def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
         window.deleteLater()
         if view is not None:
             view.deleteLater()
+
+    enrichment_projection = _LibraryEnrichment()
+    enrichment = {
+        "onlineEnabled": False,
+        "activeKind": "",
+        "state": "idle",
+        "stateMessage": "",
+        "busy": False,
+        "albumArtworkPath": "",
+        "albumKnowledge": {},
+        "albumHasKnowledge": False,
+        "albumAttributions": [],
+        "reviewOpen": False,
+        "reviewKind": "",
+        "reviewLoading": False,
+        "reviewError": "",
+        "albumCandidates": [],
+    }
+    engine = QQmlEngine()
+    engine.addImportPath(str(qml_dir))
+    engine.rootContext().setContextProperty("library", bridge)
+    engine.rootContext().setContextProperty("libraryEnrichment", enrichment_projection)
+    engine.rootContext().setContextProperty("enrichment", enrichment)
+    component = QQmlComponent(engine, str(qml_dir / "views/AlbumsView.qml"))
+    errors = "; ".join(error.toString() for error in component.errors())
+    assert component.status() == QQmlComponent.Ready, errors
+    albums_view = component.create()
+    window = QQuickWindow()
+    started = time.perf_counter()
+    try:
+        assert albums_view is not None
+        albums_view.setParentItem(window.contentItem())
+        window.setGeometry(0, 0, 1440, 900)
+        albums_view.setProperty("width", 1440)
+        albums_view.setProperty("height", 900)
+        window.show()
+        QTest.qWait(100)
+
+        albums_view.setProperty("albumFilterMode", "hires")
+        QCoreApplication.processEvents()
+        filtered = albums_view.property("presentationAlbums")
+        if hasattr(filtered, "toVariant"):
+            filtered = filtered.toVariant()
+        assert len(filtered) == 1429
+
+        albums_view.setProperty("albumSortMode", "year")
+        albums_view.setProperty("albumSortDescending", True)
+        albums_view.setProperty("albumFilterMode", "all")
+        QCoreApplication.processEvents()
+        restored = albums_view.property("presentationAlbums")
+        if hasattr(restored, "toVariant"):
+            restored = restored.toVariant()
+        assert len(restored) == 10_000
+
+        for mode, object_name in (
+            ("grid", "albumGridView"),
+            ("cover", "albumCoverView"),
+            ("vinyl", "albumVinylView"),
+            ("timeline", "albumTimelineView"),
+            ("magazine", "albumMagazineView"),
+            ("list", "albumListView"),
+        ):
+            albums_view.setProperty("albumMode", mode)
+            QTest.qWait(420)
+            active = albums_view.findChild(QObject, object_name)
+            assert active is not None, f"{object_name} did not materialize"
+            if active.property("currentIndex") is not None:
+                active.setProperty("currentIndex", 9999)
+                QCoreApplication.processEvents()
+            assert len(albums_view.findChildren(QObject)) < 2_500
+
+        assert time.perf_counter() - started < 20.0
+    finally:
+        window.close()
+        window.deleteLater()
+        if albums_view is not None:
+            albums_view.deleteLater()
     bridge.dispose()
 
 
@@ -152,15 +245,19 @@ def test_album_palette_projection_is_async_clamped_and_owned(qapp, tmp_path) -> 
     artwork = tmp_path / "cover.png"
     artwork.write_bytes(b"placeholder")
 
-    initial = bridge._album_palette("album::palette", str(artwork))
+    bridge._album_artwork_paths["album::palette"] = str(artwork)
+    initial = bridge._album_palette("album::palette")
     assert initial["dominant"] == "#152A45"
+    assert extractor.sources == ()
+
+    bridge.request_album_palette("album::palette")
     assert extractor.sources == (str(artwork),)
     assert extractor.callback is not None
 
     extractor.callback(("#204080", "#183050", "#0A0D14"))
     QCoreApplication.processEvents()
     QCoreApplication.processEvents()
-    projected = bridge._album_palette("album::palette", str(artwork))
+    projected = bridge._album_palette("album::palette")
 
     assert projected["dominant"] == "#204080"
     assert projected["backplane"] == "#0A0D14"
@@ -169,6 +266,35 @@ def test_album_palette_projection_is_async_clamped_and_owned(qapp, tmp_path) -> 
     assert projected["warmth"] < 0
     bridge.dispose()
     assert extractor.closed is True
+
+
+def test_10k_projection_only_requests_palettes_for_materialized_albums(qapp) -> None:
+    tracks = [
+        TrackRef(
+            Path(f"/virtual/{index:05d}.flac"),
+            title=f"Track {index:05d}",
+            artist=f"Artist {index:05d}",
+            album=f"Album {index:05d}",
+        )
+        for index in range(10_000)
+    ]
+    extractor = _PaletteExtractor()
+    bridge = LibraryBridge(
+        _ProjectionLibrary(tracks, artwork=True), palette_extractor=extractor
+    )
+
+    rows = bridge.property("albums")
+    assert len(rows) == 10_000
+    assert extractor.requests == []
+
+    visible_keys = [row["key"] for row in rows[:24]]
+    for key in visible_keys:
+        bridge.request_album_palette(key)
+        bridge.request_album_palette(key)
+
+    assert len(extractor.requests) == len(visible_keys)
+    assert len(bridge._palette_sources) == len(visible_keys)
+    bridge.dispose()
 
 
 def test_queue_bridge_exposes_rows_and_existing_remove_intent() -> None:

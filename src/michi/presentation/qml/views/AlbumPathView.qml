@@ -151,6 +151,10 @@ PathView {
         required property int index
         required property var modelData
         property var album: modelData
+        onAlbumChanged: {
+            if (album && typeof library.request_album_palette === "function")
+                library.request_album_palette(album.key)
+        }
         width: albumsPath.coverSize
         height: albumsPath.coverSize + 48
         scale: PathView.isCurrentItem ? 1.0

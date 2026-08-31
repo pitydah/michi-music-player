@@ -7,6 +7,14 @@ Rectangle {
     id: root
 
     property var album: null
+
+    function requestPalette() {
+        if (root.album && typeof library !== "undefined" && library
+                && typeof library.request_album_palette === "function")
+            library.request_album_palette(root.album.key)
+    }
+    Component.onCompleted: requestPalette()
+    onAlbumChanged: requestPalette()
     property bool selected: false
     property bool showArtist: true
     property bool showYear: true

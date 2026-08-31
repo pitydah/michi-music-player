@@ -97,6 +97,10 @@ GridView {
         required property int index
         required property var modelData
         property var album: modelData
+        onAlbumChanged: {
+            if (album && typeof library.request_album_palette === "function")
+                library.request_album_palette(album.key)
+        }
         readonly property bool selected: GridView.isCurrentItem
         readonly property real stageSize: Math.min(width - MichiSpacing.xl,
             height - 76)
