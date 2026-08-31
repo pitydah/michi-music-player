@@ -8,9 +8,11 @@ import "../theme"
 
 Popup {
     id: root
+    objectName: "libraryViewOptionsPopup"
 
     property string currentTab: "songs"
     property string albumMode: "grid"
+    property string displayedMode: albumMode
     property string albumSortMode: "title"
     property bool albumSortDescending: false
     property string albumFilterMode: "all"
@@ -31,17 +33,43 @@ Popup {
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
 
+    onAlbumModeChanged: {
+        if (!opened || MichiAccessibility.reducedMotion) {
+            displayedMode = albumMode
+            contextualLoader.opacity = 1
+        } else {
+            contextualSwap.restart()
+        }
+    }
+    onOpenedChanged: if (opened) {
+        displayedMode = albumMode
+        contextualLoader.opacity = 1
+    }
+
     enter: Transition {
-        NumberAnimation {
-            property: "opacity"; from: 0; to: 1
-            duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.popupOpen
-            easing.type: MichiMotion.outCubic
+        ParallelAnimation {
+            NumberAnimation {
+                property: "opacity"; from: 0; to: 1
+                duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.popupOpen
+                easing.type: MichiMotion.outCubic
+            }
+            NumberAnimation {
+                property: "scale"; from: 0.985; to: 1
+                duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.popupOpen
+                easing.type: MichiMotion.outCubic
+            }
         }
     }
     exit: Transition {
-        NumberAnimation {
-            property: "opacity"; from: 1; to: 0
-            duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.popupClose
+        ParallelAnimation {
+            NumberAnimation {
+                property: "opacity"; from: 1; to: 0
+                duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.popupClose
+            }
+            NumberAnimation {
+                property: "scale"; from: 1; to: 0.985
+                duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.popupClose
+            }
         }
     }
 
@@ -56,8 +84,8 @@ Popup {
         contentPadding: 0
     }
 
-    function sectionName() {
-        switch (root.albumMode) {
+    function sectionName(mode) {
+        switch (mode === undefined ? root.albumMode : mode) {
             case "cover": return "flow"
             case "vinyl": return "vinyl"
             case "timeline": return "chronology"
@@ -67,8 +95,8 @@ Popup {
         }
     }
 
-    function modeLabel() {
-        switch (root.albumMode) {
+    function modeLabel(mode) {
+        switch (mode === undefined ? root.albumMode : mode) {
             case "cover": return qsTr("Album Flow")
             case "vinyl": return qsTr("Listening Wall")
             case "timeline": return qsTr("Chronology")
@@ -92,7 +120,94 @@ Popup {
         return 0
     }
 
+    function defaultValues(section) {
+        var defaults = {
+            gallery: { artworkSize: "medium", spacing: "balanced",
+                metadataLevel: "standard", quickActions: true,
+                precisionMetadata: false, inspector: true },
+            flow: { coverSize: "standard", visibleAlbums: "auto",
+                depth: "standard", ambientColor: true,
+                metadataLevel: "standard" },
+            vinyl: { sleeveSize: "standard", spacing: "standard",
+                reveal: "standard", metadataLevel: "standard",
+                artworkLabel: true, inspector: true },
+            chronology: { grouping: "decade", direction: "newest",
+                density: "standard", metadataLevel: "standard",
+                showPeriodDensity: false },
+            editorial: { heroVisible: true, informationRichness: "standard",
+                cachedEnrichmentVisible: true, archiveLayout: "list" },
+            studioList: { density: "standard", artworkSize: "small",
+                precisionMetadata: true, inspector: true, artistColumn: true,
+                yearColumn: true, tracksColumn: true, durationColumn: true,
+                formatColumn: true }
+        }
+        return defaults[section] || ({})
+    }
+
+    function optionLabel(key) {
+        var labels = {
+            artworkSize: qsTr("Artwork size"), spacing: qsTr("Spacing"),
+            metadataLevel: qsTr("Metadata"), quickActions: qsTr("Quick actions"),
+            precisionMetadata: qsTr("Precision metadata"), inspector: qsTr("Inspector"),
+            coverSize: qsTr("Cover size"), visibleAlbums: qsTr("Visible albums"),
+            depth: qsTr("Depth"), ambientColor: qsTr("Ambient color"),
+            sleeveSize: qsTr("Sleeve size"), reveal: qsTr("Vinyl reveal"),
+            artworkLabel: qsTr("Artwork label"), grouping: qsTr("Grouping"),
+            direction: qsTr("Direction"), density: qsTr("Density"),
+            showPeriodDensity: qsTr("Collection density"), heroVisible: qsTr("Hero"),
+            informationRichness: qsTr("Information richness"),
+            cachedEnrichmentVisible: qsTr("Saved online context"),
+            archiveLayout: qsTr("Archive layout"), artistColumn: qsTr("Artist column"),
+            yearColumn: qsTr("Year column"), tracksColumn: qsTr("Tracks column"),
+            durationColumn: qsTr("Duration column"), formatColumn: qsTr("Format column")
+        }
+        return labels[key] || key
+    }
+
+    function displayValue(value) {
+        if (typeof value === "boolean")
+            return value ? qsTr("On") : qsTr("Off")
+        return String(value).replace(/([A-Z])/g, " $1")
+    }
+
+    function activeCustomizations() {
+        var items = []
+        if (root.albumFilterMode !== "all")
+            items.push({ kind: "filter", label: qsTr("Album filter · %1")
+                .arg(root.displayValue(root.albumFilterMode)) })
+        if (root.displayedMode !== "timeline"
+                && (root.albumSortMode !== "title" || root.albumSortDescending))
+            items.push({ kind: "sort", label: qsTr("Sort · %1%2")
+                .arg(root.displayValue(root.albumSortMode))
+                .arg(root.albumSortDescending ? qsTr(" · descending") : "") })
+        var section = root.sectionName(root.displayedMode)
+        var defaults = root.defaultValues(section)
+        var current = root.viewPreferences && root.viewPreferences[section]
+            ? root.viewPreferences[section] : ({})
+        var keys = Object.keys(defaults)
+        for (var i = 0; i < keys.length; ++i) {
+            var key = keys[i]
+            var value = current[key] === undefined ? defaults[key] : current[key]
+            if (value !== defaults[key])
+                items.push({ kind: "view", section: section, key: key,
+                    defaultValue: defaults[key], label: root.optionLabel(key)
+                        + " · " + root.displayValue(value) })
+        }
+        return items
+    }
+
+    function clearCustomization(item) {
+        if (item.kind === "filter")
+            root.albumFilterRequested("all")
+        else if (item.kind === "sort") {
+            root.albumSortRequested("title")
+            root.albumSortDirectionRequested(false)
+        } else if (item.kind === "view")
+            root.viewPreferenceRequested(item.section, item.key, item.defaultValue)
+    }
+
     contentItem: ColumnLayout {
+        id: popupContent
         spacing: MichiSpacing.md
         implicitWidth: 320
 
@@ -109,7 +224,7 @@ Popup {
                 Layout.fillWidth: true
                 spacing: 0
                 MichiText {
-                    text: root.modeLabel().toUpperCase()
+                    text: root.modeLabel(root.displayedMode).toUpperCase()
                     role: "technical"
                     technical: true
                     font.weight: Font.DemiBold
@@ -142,7 +257,7 @@ Popup {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: MichiSpacing.xs
-                visible: root.albumMode !== "timeline"
+                visible: root.displayedMode !== "timeline"
                 MichiComboBox {
                     Layout.fillWidth: true
                     model: [qsTr("Title"), qsTr("Album artist"), qsTr("Release year"), qsTr("Track count"), qsTr("Duration")]
@@ -179,13 +294,50 @@ Popup {
             }
         }
 
-        Loader {
+        ColumnLayout {
             Layout.fillWidth: true
-            sourceComponent: root.albumMode === "cover" ? flowOptions
-                : root.albumMode === "vinyl" ? vinylOptions
-                : root.albumMode === "timeline" ? chronologyOptions
-                : root.albumMode === "magazine" ? editorialOptions
-                : root.albumMode === "list" ? studioOptions : galleryOptions
+            spacing: MichiSpacing.xs
+            visible: activeRepeater.count > 0
+            MichiText {
+                text: qsTr("ACTIVE")
+                role: "technical"
+                technical: true
+                color: MichiPalette.auroraCyan
+            }
+            Repeater {
+                id: activeRepeater
+                model: root.activeCustomizations()
+                delegate: RowLayout {
+                    id: activeRow
+                    required property var modelData
+                    Layout.fillWidth: true
+                    MichiText {
+                        Layout.fillWidth: true
+                        text: activeRow.modelData.label
+                        role: "caption"
+                        color: MichiPalette.textSecondary
+                        elide: Text.ElideRight
+                    }
+                    MichiIconButton {
+                        Layout.preferredWidth: MichiMetrics.controlSmall
+                        Layout.preferredHeight: MichiMetrics.controlSmall
+                        iconName: "close"
+                        accessibleName: qsTr("Clear %1")
+                            .arg(activeRow.modelData.label)
+                        onClicked: root.clearCustomization(activeRow.modelData)
+                    }
+                }
+            }
+        }
+
+        Loader {
+            id: contextualLoader
+            Layout.fillWidth: true
+            sourceComponent: root.displayedMode === "cover" ? flowOptions
+                : root.displayedMode === "vinyl" ? vinylOptions
+                : root.displayedMode === "timeline" ? chronologyOptions
+                : root.displayedMode === "magazine" ? editorialOptions
+                : root.displayedMode === "list" ? studioOptions : galleryOptions
         }
 
         Rectangle {
@@ -196,10 +348,27 @@ Popup {
 
         MichiButton {
             Layout.fillWidth: true
-            text: qsTr("Reset %1").arg(root.modeLabel())
+            text: qsTr("Reset %1").arg(root.modeLabel(root.displayedMode))
             iconName: "reset"
             variant: "ghost"
-            onClicked: root.resetViewRequested(root.sectionName())
+            onClicked: root.resetViewRequested(root.sectionName(root.displayedMode))
+        }
+    }
+
+    SequentialAnimation {
+        id: contextualSwap
+        NumberAnimation {
+            target: contextualLoader
+            property: "opacity"
+            to: 0
+            duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.micro
+        }
+        ScriptAction { script: root.displayedMode = root.albumMode }
+        NumberAnimation {
+            target: contextualLoader
+            property: "opacity"
+            to: 1
+            duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.standard
         }
     }
 

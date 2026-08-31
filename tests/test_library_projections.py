@@ -194,21 +194,17 @@ class TestSharedAlbumModel:
         assert bridge.property("selectedAlbumKey") == album_a.key
         bridge.dispose()
 
-        # Structural: albumMode is a local view property and the switcher
-        # buttons only ASSIGN albumMode (no library. calls inside the block).
-        # M6.7 ADAPTATION: albumMode + the switcher moved into
-        # AlbumsView.qml (the albums host), so the greps target that file.
+        # Structural: albumMode remains presentation state and the Header
+        # selector emits a mode request without touching the Library bridge.
         albums_view_qml = (_VIEWS_DIR / "AlbumsView.qml").read_text()
+        header_qml = (_VIEWS_DIR / "LibraryHeader.qml").read_text()
         assert "property string albumMode" in albums_view_qml
-        start = albums_view_qml.index('onClicked: albumMode = "grid"')
-        list_marker = 'onClicked: albumMode = "list"'
-        end = albums_view_qml.index(list_marker) + len(list_marker)
-        switcher = albums_view_qml[start:end]
-        assert "library." not in switcher, (
+        selector = header_qml.split("MichiSegmentedControl", 1)[1]
+        assert "library." not in selector, (
             "the mode switcher must not touch the bridge — albumMode is local"
         )
         for mode in ("grid", "cover", "vinyl", "timeline", "magazine", "list"):
-            assert f'onClicked: albumMode = "{mode}"' in switcher
+            assert f'value: "{mode}"' in header_qml
 
 
 class TestSelectionLifecycle:

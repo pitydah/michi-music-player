@@ -80,6 +80,95 @@ _TERMINAL_STATES = {
 }
 
 
+class LibraryEnrichmentProjection(QObject):
+    """Read-only, cache-only album facts for passive Library browsing.
+
+    This projection deliberately owns no active entity, request generation,
+    cancellation, review state, or network policy.  A lookup may read the
+    local enrichment cache and the managed artwork store; it can never mutate
+    either authority.  Detail/refresh operations remain owned by
+    :class:`EnrichmentBridge`.
+    """
+
+    changed = Signal()
+
+    def __init__(
+        self,
+        service: EnrichmentService,
+        asset_store: EnrichmentAssetStorePort,
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._service = service
+        self._asset_store = asset_store
+        self._revision = 0
+
+    def _get_revision(self) -> int:
+        return self._revision
+
+    revision = Property(int, _get_revision, notify=changed)
+
+    @Slot()
+    def invalidate(self) -> None:
+        """Notify QML after an explicit enrichment action changed the cache."""
+        self._revision += 1
+        self.changed.emit()
+
+    @Slot(str, int, result="QVariantMap")
+    def album(self, local_album_key: str, _revision: int = 0) -> dict:
+        if not local_album_key:
+            return self._empty_album_projection("")
+        profile = self._service.get_album_knowledge(local_album_key)
+        if profile is None:
+            return self._empty_album_projection(local_album_key)
+
+        knowledge = {
+            "releaseGroupId": profile.release_group_id,
+            "releaseId": profile.release_id,
+            "genres": list(profile.external_genres),
+            "firstReleaseYear": profile.first_release_year,
+            "releaseYear": profile.release_year,
+            "label": profile.label,
+        }
+        knowledge = {key: value for key, value in knowledge.items() if value}
+        artwork_path = ""
+        source_count = int(bool(profile.provenance.provider))
+        if profile.artwork_asset_id:
+            path = self._asset_store.path_for(profile.artwork_asset_id)
+            artwork_path = str(path) if path is not None else ""
+            if self._asset_store.record_for(profile.artwork_asset_id) is not None:
+                source_count += 1
+        return {
+            "albumKey": local_album_key,
+            "hasCachedKnowledge": bool(knowledge),
+            "artworkOverrideCached": artwork_path,
+            "label": profile.label,
+            "genres": list(profile.external_genres),
+            "firstReleaseYear": profile.first_release_year,
+            "releaseYear": profile.release_year,
+            "stale": profile.provenance.is_stale,
+            "sourceCount": source_count,
+            "matchState": "matched",
+            "knowledge": knowledge,
+        }
+
+    @staticmethod
+    def _empty_album_projection(local_album_key: str) -> dict:
+        return {
+            "albumKey": local_album_key,
+            "hasCachedKnowledge": False,
+            "artworkOverrideCached": "",
+            "label": "",
+            "genres": [],
+            "firstReleaseYear": 0,
+            "releaseYear": 0,
+            "stale": False,
+            "sourceCount": 0,
+            "matchState": "none",
+            "knowledge": {},
+        }
+
+
 class EnrichmentBridge(QObject):
     """One production bridge exposing a stable QML projection.
 
@@ -269,8 +358,8 @@ class EnrichmentBridge(QObject):
         self._start_album_operation(local_album_key)
 
     @Slot(str)
-    def browse_album_cached(self, local_album_key: str) -> None:
-        """Project cached album context for passive browse; never starts network."""
+    def open_album_cached(self, local_album_key: str) -> None:
+        """Open explicit album detail from cache without starting network."""
         if self._disposed or not local_album_key:
             return
         self._invalidate_review_session()
@@ -288,6 +377,15 @@ class EnrichmentBridge(QObject):
         self._state = "READY" if self._album_has_knowledge else "IDLE"
         self._state_message = ""
         self.changed.emit()
+
+    @Slot(str)
+    def browse_album_cached(self, local_album_key: str) -> None:
+        """Compatibility alias for explicit cache-only detail activation.
+
+        Passive Library views use ``LibraryEnrichmentProjection`` and never
+        call this stateful bridge.
+        """
+        self.open_album_cached(local_album_key)
 
     @Slot()
     def refresh_artist(self) -> None:

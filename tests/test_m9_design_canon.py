@@ -90,6 +90,7 @@ def test_vinyl_wall_has_no_permanent_rotation() -> None:
 
 def test_six_canonical_album_views_remain_available() -> None:
     albums = _text("views/AlbumsView.qml")
+    header = _text("views/LibraryHeader.qml")
     expected = {
         "grid": "AlbumGridView.qml",
         "cover": "AlbumPathView.qml",
@@ -99,7 +100,8 @@ def test_six_canonical_album_views_remain_available() -> None:
         "list": "AlbumListView.qml",
     }
     for mode, filename in expected.items():
-        assert f'onClicked: albumMode = "{mode}"' in albums
+        assert f'value: "{mode}"' in header
+        assert f'case "{mode}": return' in albums or mode == "grid"
         assert (QML / "views" / filename).is_file()
     assert "CoverFlow" not in albums
 
@@ -170,7 +172,7 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "property bool accented" in glass
     assert "Behavior on scale" in button
     assert 'objectName: "stableLibrarySearchPane"' in toolbar
-    assert "Layout.preferredWidth: 82" in toolbar
+    assert "? 82 : 48" in toolbar
     assert 'import "../controls"' in content
     assert 'text: qsTr("ADD TRACK TO")' in content
     assert "MichiIconButton" in content
@@ -407,9 +409,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert 'objectName: "albumViewSwitcher"' not in toolbar
     assert 'objectName: "stableLibrarySearchPane"' in toolbar
     assert "SplitView" not in toolbar
-    assert "Layout.preferredWidth: 82" in toolbar
+    assert "? 82 : 48" in toolbar
     assert toolbar.index("LibraryTabs {") < toolbar.index("MichiSearchField {")
-    assert "compact: true" in header
+    assert "compact: !MichiBreakpoints.isXl(root.width)" in header
     for icon in (
         "view-grid",
         "view-path",

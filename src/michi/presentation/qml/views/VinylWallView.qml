@@ -17,6 +17,27 @@ GridView {
     property string revealMode: "standard"
     property string metadataLevel: "standard"
     property bool artworkLabel: true
+    MichiMaterial {
+        id: vinylMaterial
+        role: MichiMaterialRole.vinyl
+    }
+    Rectangle {
+        x: albumVinyl.contentX
+        y: albumVinyl.contentY
+        width: albumVinyl.width
+        height: albumVinyl.height
+        color: vinylMaterial.baseColor
+        z: -2
+    }
+    MichiMaterialTexture {
+        x: albumVinyl.contentX
+        y: albumVinyl.contentY
+        width: albumVinyl.width
+        height: albumVinyl.height
+        textureName: vinylMaterial.textureName
+        textureOpacity: vinylMaterial.textureOpacity
+        z: -1
+    }
     readonly property int minimumTileWidth: MichiThemeState.density === "compact"
         ? Math.round(164 * albumZoom)
         : MichiThemeState.density === "comfortable"
@@ -40,15 +61,17 @@ GridView {
     Accessible.name: qsTr("Albums on the vinyl wall")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open")
 
-    function restoredIndex() {
-        if (browseState && browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i)
-                if (albumModel[i].key === browseState.currentKey) return i
-        }
-        return browseState ? browseState.vinylIndex : -1
-    }
     Component.onCompleted: if (browseState) Qt.callLater(function() {
-        albumVinyl.currentIndex = restoredIndex()
+        var restoredIndex = browseState.vinylIndex
+        if (browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i) {
+                if (albumModel[i].key === browseState.currentKey) {
+                    restoredIndex = i
+                    break
+                }
+            }
+        }
+        albumVinyl.currentIndex = restoredIndex
         albumVinyl.contentY = browseState.vinylContentY
     })
     onContentYChanged: if (browseState) browseState.vinylContentY = contentY

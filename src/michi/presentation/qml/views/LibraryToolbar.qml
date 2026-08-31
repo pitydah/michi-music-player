@@ -6,6 +6,7 @@ import "../theme"
 
 MichiGlassSurface {
     id: root
+    objectName: "libraryToolbar"
 
     property string currentTab: "songs"
     signal currentTabRequested(string tab)
@@ -54,7 +55,8 @@ MichiGlassSurface {
         LibraryTabs {
             id: libraryNavigation
             Layout.fillWidth: true
-            Layout.minimumWidth: 280
+            Layout.minimumWidth: MichiBreakpoints.atLeastMedium(root.width)
+                ? 280 : 210
             currentTab: root.currentTab
             onTabRequested: tab => root.currentTabRequested(tab)
         }
@@ -64,9 +66,12 @@ MichiGlassSurface {
         Item {
             id: searchPane
             objectName: "stableLibrarySearchPane"
-            Layout.preferredWidth: root.width >= 1480 ? 620
-                : root.width >= 1120 ? 500 : 390
-            Layout.minimumWidth: 300
+            Layout.preferredWidth: MichiBreakpoints.isXl(root.width) ? 620
+                : MichiBreakpoints.isWide(root.width) ? 500
+                : MichiBreakpoints.isMedium(root.width) ? 420
+                : MichiBreakpoints.isCompactBand(root.width) ? 360 : 320
+            Layout.minimumWidth: MichiBreakpoints.atLeastMedium(root.width)
+                ? 320 : 280
             Layout.maximumWidth: 700
             Layout.fillHeight: true
 
@@ -77,7 +82,8 @@ MichiGlassSurface {
                 MichiSearchField {
                     id: searchInput
                     Layout.fillWidth: true
-                    Layout.minimumWidth: 210
+                    Layout.minimumWidth: MichiBreakpoints.atLeastMedium(root.width)
+                        ? 210 : 130
                     text: root.libraryAvailable ? library.searchQuery : ""
                     placeholderText: root.searchPlaceholder()
                     onEdited: query => { if (root.libraryAvailable) library.search(query) }
@@ -86,7 +92,8 @@ MichiGlassSurface {
 
                 // Fixed slot: result/scanning text never moves the search field.
                 Item {
-                    Layout.preferredWidth: 82
+                    Layout.preferredWidth: MichiBreakpoints.atLeastMedium(root.width)
+                        ? 82 : 48
                     Layout.fillHeight: true
 
                     MichiText {
@@ -149,6 +156,7 @@ MichiGlassSurface {
 
                     LibrarySourcePopover {
                         id: sourcePopover
+                        objectName: "librarySourcePopover"
                         x: -326
                         y: parent.height + MichiSpacing.xs
                     }
@@ -157,11 +165,12 @@ MichiGlassSurface {
                 MichiButton {
                     visible: !root.scanning
                     text: root.hasSource
-                        ? (root.width < 900 ? qsTr("Scan") : qsTr("Scan library"))
+                        ? (MichiBreakpoints.isCompact(root.width)
+                            ? qsTr("Scan") : qsTr("Scan library"))
                         : qsTr("Choose folder")
                     iconName: root.hasSource ? "library" : "folder"
                     variant: "secondary"
-                    iconOnly: root.width < 980
+                    iconOnly: !MichiBreakpoints.atLeastWide(root.width)
                     accessibleName: root.hasSource
                         ? qsTr("Scan library") : qsTr("Choose music folder")
                     enabled: root.libraryAvailable

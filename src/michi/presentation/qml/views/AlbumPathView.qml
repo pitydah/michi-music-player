@@ -31,7 +31,9 @@ PathView {
     clip: true
     interactive: count > 1
     pathItemCount: visibleAlbums === "auto"
-        ? (width >= 1500 ? 9 : width >= 1050 ? 7 : width >= 680 ? 5 : 3)
+        ? (MichiBreakpoints.isXl(width) ? 9
+            : MichiBreakpoints.isWide(width) ? 7
+            : MichiBreakpoints.isMedium(width) ? 5 : 3)
         : Number(visibleAlbums)
     cacheItemCount: pathItemCount + 2
     preferredHighlightBegin: 0.5
@@ -44,14 +46,18 @@ PathView {
     Accessible.name: qsTr("Albums in album flow view")
     Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
 
-    function restoredIndex() {
-        if (browseState && browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i)
-                if (albumModel[i].key === browseState.currentKey) return i
+    Component.onCompleted: if (browseState) {
+        var restoredIndex = browseState.flowIndex
+        if (browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i) {
+                if (albumModel[i].key === browseState.currentKey) {
+                    restoredIndex = i
+                    break
+                }
+            }
         }
-        return browseState ? browseState.flowIndex : -1
+        currentIndex = restoredIndex
     }
-    Component.onCompleted: if (browseState) currentIndex = restoredIndex()
     onCurrentIndexChanged: if (browseState) {
         browseState.flowIndex = currentIndex
         if (currentAlbum)

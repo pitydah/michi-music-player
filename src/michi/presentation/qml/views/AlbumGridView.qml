@@ -16,6 +16,7 @@ GridView {
     property string metadataLevel: "standard"
     property bool quickActions: true
     property bool precisionMetadata: false
+    property bool layoutReady: false
     readonly property real contentMaxWidth: 1760
     readonly property real usableWidth: Math.min(width, contentMaxWidth)
     readonly property int minimumCardWidth: MichiThemeState.density === "compact"
@@ -30,6 +31,7 @@ GridView {
         : spacingMode === "airy" ? MichiSpacing.xl : MichiThemeState.contentGap
     readonly property int columnCount: Math.max(1, Math.floor(
         (usableWidth + cardGap) / (minimumCardWidth + cardGap)))
+    readonly property bool rowsFlowActive: flow === GridView.FlowLeftToRight
     readonly property real resolvedCardWidth: Math.min(maximumCardWidth,
         cellWidth - cardGap)
     readonly property int metadataHeight: metadataLevel === "minimal" ? 64
@@ -37,7 +39,11 @@ GridView {
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: albumModel
+    // A Loader may complete this component before its layout has assigned the
+    // final width. Defer delegate creation one event-loop turn so GridView does
+    // not retain cells positioned against the provisional one-column geometry.
+    model: layoutReady ? albumModel : []
+    flow: GridView.FlowLeftToRight
     leftMargin: Math.max(0, (width - usableWidth) / 2)
     rightMargin: leftMargin
     cellWidth: usableWidth / columnCount
@@ -53,17 +59,27 @@ GridView {
     Accessible.name: qsTr("Albums in grid view")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open an album")
 
-    function restoredIndex(fallback) {
-        if (browseState && browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i)
-                if (albumModel[i].key === browseState.currentKey) return i
-        }
-        return fallback
+    Component.onCompleted: {
+        Qt.callLater(function() {
+            layoutReady = true
+            albumGrid.forceLayout()
+            if (browseState) {
+                var restoredIndex = browseState.galleryIndex
+                if (browseState.currentKey) {
+                    for (var i = 0; i < albumModel.length; ++i) {
+                        if (albumModel[i].key === browseState.currentKey) {
+                            restoredIndex = i
+                            break
+                        }
+                    }
+                }
+                albumGrid.currentIndex = restoredIndex
+                albumGrid.contentY = browseState.galleryContentY
+            }
+        })
     }
-    Component.onCompleted: if (browseState) Qt.callLater(function() {
-        albumGrid.currentIndex = restoredIndex(browseState.galleryIndex)
-        albumGrid.contentY = browseState.galleryContentY
-    })
+    onCellWidthChanged: if (layoutReady) albumGrid.forceLayout()
+    onCellHeightChanged: if (layoutReady) albumGrid.forceLayout()
     onContentYChanged: if (browseState) browseState.galleryContentY = contentY
     onCurrentIndexChanged: if (browseState) {
         browseState.galleryIndex = currentIndex
@@ -95,6 +111,7 @@ GridView {
 
     delegate: Item {
         id: albumCell
+        objectName: "albumGridCell"
         required property int index
         required property var modelData
         readonly property bool current: GridView.isCurrentItem

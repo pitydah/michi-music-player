@@ -284,12 +284,11 @@ def test_artist_hero_is_elevated_glass():
 
 
 def test_album_detail_no_duplicated_metadata_at_wide_widths():
-    """Album detail uses width breakpoints (main authority: 960/760) to
-    avoid duplicated metadata on wide layouts."""
+    """Album detail uses shared semantic breakpoints at wide/medium widths."""
     content = read("views/AlbumDetailView.qml")
-    assert content.count("root.width >= 960") >= 1
-    assert "root.width < 760" in content
-    assert "root.width >= 760" in content
+    assert "MichiBreakpoints.atLeastWide(root.width)" in content
+    assert "!MichiBreakpoints.atLeastMedium(root.width)" in content
+    assert "MichiBreakpoints.atLeastMedium(root.width)" in content
 
 
 # ── Phase 3: copy and fine accessibility ──────────────────────────────────────

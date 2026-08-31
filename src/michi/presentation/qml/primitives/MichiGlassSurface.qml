@@ -1,18 +1,21 @@
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
+import QtQuick.Window
 import "../theme"
 
 Item {
     id: root
     default property alias contentData: content.data
     property string elevation: "standard"
-    property string materialRole: MichiMaterialRole.control
+    property string materialRole: elevation === "modal" ? MichiMaterialRole.modal
+        : elevation === "elevated" ? MichiMaterialRole.elevated
+        : MichiMaterialRole.content
     property int contentPadding: MichiSpacing.lg
     property bool accented: false
     property bool accentLineVisible: false
     property color accentColor: MichiPalette.auroraBlue
-    property bool shadowed: elevation !== "subtle"
+    property bool shadowed: materialSpec.shadowed
     property bool textured: materialSpec.textured
     property int tileSeed: 0
     // none: clean material; edge: rim/sheens only; michi: subtle brand glint.
@@ -30,20 +33,17 @@ Item {
         ? root.materialOpacityOverride
         : MichiThemeState.glassQuality === "low" ? 0.96
         : MichiThemeState.glassQuality === "high" ? 0.76 : 0.86
-    readonly property bool raised: elevation === "modal" || elevation === "elevated"
-        || materialRole === MichiMaterialRole.elevated
-        || materialRole === MichiMaterialRole.hero
-        || materialRole === MichiMaterialRole.modal
+    readonly property bool raised: materialSpec.shadowed
     MichiMaterial { id: materialSpec; role: root.materialRole }
-    readonly property color materialTop: MichiSemanticColors.glassTop(
-        root.raised, root.materialOpacity)
-    readonly property color materialBottom: MichiSemanticColors.glassBottom(
-        root.raised, root.materialOpacity)
+    readonly property color materialTop: MichiSemanticColors.withAlpha(
+        materialSpec.baseColor, root.materialOpacity)
+    readonly property color materialBottom: MichiSemanticColors.withAlpha(
+        materialSpec.bottomColor, root.materialOpacity)
 
     // Real backdrop blur (QtQuick.Effects) — only at high glass quality and
     // on non-subtle surfaces, where the render cost is justified. Falls back
     // to the tinted-gradient material otherwise (no window in tests → off).
-    readonly property bool blurEnabled: root.window !== null
+    readonly property bool blurEnabled: root.Window.window !== null
         && (root.forceBlur
             || (materialSpec.blurEligible && MichiThemeState.glassQuality === "high"
                 && root.elevation !== "subtle"))
@@ -89,13 +89,15 @@ Item {
             id: blurSource
             anchors.fill: parent
             visible: root.blurEnabled
-            sourceItem: root.window ? root.window.contentItem : null
+            sourceItem: root.Window.window ? root.Window.window.contentItem : null
             // R2.1-09: mapToItem requires a QQuickItem target — root.window
             // is a QQuickWindow (type mismatch); the window CONTENT item is
             // the valid coordinate space for the backdrop source.
             sourceRect: Qt.rect(
-                root.mapToItem(root.window ? root.window.contentItem : null, 0, 0).x,
-                root.mapToItem(root.window ? root.window.contentItem : null, 0, 0).y,
+                root.mapToItem(root.Window.window
+                    ? root.Window.window.contentItem : null, 0, 0).x,
+                root.mapToItem(root.Window.window
+                    ? root.Window.window.contentItem : null, 0, 0).y,
                 root.width, root.height)
             live: true
         }

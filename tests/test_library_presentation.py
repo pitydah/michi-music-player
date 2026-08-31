@@ -32,9 +32,19 @@ import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Q_ARG, QCoreApplication, QEvent, QMetaObject, QObject, Qt
+from PySide6.QtCore import (
+    Q_ARG,
+    QCoreApplication,
+    QEvent,
+    QMetaObject,
+    QObject,
+    Qt,
+    QtMsgType,
+    qInstallMessageHandler,
+)
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtQuick import QQuickWindow
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
@@ -268,16 +278,26 @@ class TestLibraryPageOrchestration:
             _process_events()
             baseline_objects = len(obj.findChildren(QObject))
 
-            for switch_index in range(100):
-                mode, expected_name = ALBUM_MODES[switch_index % len(ALBUM_MODES)]
-                host.setProperty("albumMode", mode)
-                _process_events()
-                active = [
-                    name
-                    for _candidate_mode, name in ALBUM_MODES
-                    if obj.findChild(QObject, name) is not None
-                ]
-                assert active == [expected_name]
+            messages = []
+
+            def message_handler(message_type, _context, message):
+                if message_type in (QtMsgType.QtWarningMsg, QtMsgType.QtCriticalMsg):
+                    messages.append(message)
+
+            previous_handler = qInstallMessageHandler(message_handler)
+            try:
+                for switch_index in range(100):
+                    mode, expected_name = ALBUM_MODES[switch_index % len(ALBUM_MODES)]
+                    host.setProperty("albumMode", mode)
+                    _process_events()
+                    active = [
+                        name
+                        for _candidate_mode, name in ALBUM_MODES
+                        if obj.findChild(QObject, name) is not None
+                    ]
+                    assert active == [expected_name]
+            finally:
+                qInstallMessageHandler(previous_handler)
 
             QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
             _process_events()
@@ -286,8 +306,53 @@ class TestLibraryPageOrchestration:
                 browse_state.property("currentKey")
                 == bridge.property("albums")[0]["key"]
             )
+            assert messages == [], "QML warnings during 100 switches: " + "; ".join(
+                messages
+            )
             obj.deleteLater()
         finally:
+            bridge.dispose()
+
+    def test_compact_picker_and_scan_source_chooser_execute(self, qapp, tmp_path):
+        library = _make_library(FakeScanner([]), FakeExtractor())
+        bridge = LibraryBridge(library)
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML_DIR))
+        engine.rootContext().setContextProperty("library", bridge)
+        component = QQmlComponent(engine, str(VIEWS_DIR / "LibraryView.qml"))
+        window = QQuickWindow()
+        try:
+            obj = component.create()
+            assert obj is not None
+            obj.setParentItem(window.contentItem())
+            window.setGeometry(0, 0, 680, 900)
+            obj.setProperty("width", 680)
+            obj.setProperty("height", 900)
+            obj.setProperty("currentTab", "albums")
+            window.show()
+            _process_events()
+
+            compact = obj.findChild(QObject, "compactAlbumViewPicker")
+            segmented = obj.findChild(QObject, "albumViewSwitcher")
+            assert compact is not None and bool(compact.property("visible"))
+            assert segmented is not None and not bool(segmented.property("visible"))
+
+            window.setWidth(900)
+            obj.setProperty("width", 900)
+            _process_events()
+            assert not bool(compact.property("visible"))
+            assert bool(segmented.property("visible"))
+
+            toolbar = obj.findChild(QObject, "libraryToolbar")
+            chooser = obj.findChild(QObject, "librarySourcePopover")
+            assert toolbar is not None and chooser is not None
+            assert QMetaObject.invokeMethod(toolbar, "performScan", Qt.DirectConnection)
+            _process_events()
+            assert bool(chooser.property("visible"))
+            obj.deleteLater()
+        finally:
+            window.close()
+            window.deleteLater()
             bridge.dispose()
 
     def test_album_view_switcher_event_drives_the_loaded_projection(

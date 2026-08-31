@@ -13,6 +13,23 @@ ColumnLayout {
 
     property string addTargetPath: ""
     property var inspectedTrack: null
+    readonly property var albumFacts: library.albumPresentation || ({})
+    readonly property var albumFactRows: [
+        { label: "Format", value: albumFacts.codecs && albumFacts.codecs.length
+            ? albumFacts.codecs.join(" · ") : "Unknown" },
+        { label: "Sample rate", value: albumFacts.maxSampleRateHz > 0
+            ? (albumFacts.maxSampleRateHz / 1000) + " kHz" : "Unknown" },
+        { label: "Bit depth", value: albumFacts.maxBitDepth > 0
+            ? albumFacts.maxBitDepth + "-bit" : "Unknown" },
+        { label: "Channels", value: albumFacts.maxChannels > 0
+            ? String(albumFacts.maxChannels) : "Unknown" },
+        { label: "Discs", value: albumFacts.discCount > 0
+            ? String(albumFacts.discCount) : "Unknown" },
+        { label: "Classification", value: albumFacts.containsDsd ? "DSD"
+            : albumFacts.containsHighResolution ? "High-resolution PCM"
+            : albumFacts.technicalState === "homogeneous" ? "Consistent"
+            : albumFacts.technicalState === "mixed" ? "Mixed formats" : "Standard" }
+    ]
     readonly property var inspectorRows: inspectedTrack ? [
         { label: "Format", value: inspectedTrack.codec || "Unknown" },
         { label: "Sample rate", value: inspectedTrack.sampleRateHz > 0
@@ -36,7 +53,7 @@ ColumnLayout {
     readonly property string selectedAlbumKey: library.selectedAlbumKey
     onSelectedAlbumKeyChanged: {
         if (root.selectedAlbumKey.length > 0)
-            enrichment.browse_album_cached(root.selectedAlbumKey)
+            enrichment.open_album_cached(root.selectedAlbumKey)
     }
 
     Keys.onEscapePressed: function(event) {
@@ -201,7 +218,7 @@ ColumnLayout {
             }
 
             Rectangle {
-                visible: root.width >= 960
+                visible: MichiBreakpoints.atLeastWide(root.width)
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true
                 Layout.topMargin: MichiSpacing.sm
@@ -210,7 +227,7 @@ ColumnLayout {
             }
 
             ColumnLayout {
-                visible: root.width >= 960
+                visible: MichiBreakpoints.atLeastWide(root.width)
                 Layout.preferredWidth: 178
                 Layout.alignment: Qt.AlignTop
                 spacing: MichiSpacing.md
@@ -270,13 +287,73 @@ ColumnLayout {
         visible: enrichment.activeKind === "album"
     }
 
-    EnrichmentKnowledgeCard {
+    GridLayout {
         Layout.fillWidth: true
-        title: "About this album"
-        knowledge: enrichment.albumKnowledge
-        hasKnowledge: enrichment.albumHasKnowledge
-        sources: enrichment.albumAttributions
+        columns: MichiBreakpoints.atLeastWide(root.width) ? 2 : 1
+        columnSpacing: MichiSpacing.lg
+        rowSpacing: MichiSpacing.lg
         visible: enrichment.activeKind === "album"
+
+        EnrichmentKnowledgeCard {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop
+            title: "About this album"
+            knowledge: enrichment.albumKnowledge
+            hasKnowledge: enrichment.albumHasKnowledge
+            sources: enrichment.albumAttributions
+            materialRole: MichiMaterialRole.editorial
+        }
+
+        MichiGlassSurface {
+            objectName: "albumTechnicalFacts"
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop
+            implicitHeight: factsColumn.implicitHeight + MichiSpacing.lg * 2
+            materialRole: MichiMaterialRole.control
+            contentPadding: MichiSpacing.lg
+            shadowed: false
+
+            ColumnLayout {
+                id: factsColumn
+                anchors.fill: parent
+                anchors.margins: MichiSpacing.lg
+                spacing: MichiSpacing.md
+
+                MichiText {
+                    text: "Album facts"
+                    role: "section"
+                }
+
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: MichiBreakpoints.atLeastMedium(root.width) ? 2 : 1
+                    columnSpacing: MichiSpacing.xl
+                    rowSpacing: MichiSpacing.sm
+
+                    Repeater {
+                        model: root.albumFactRows
+                        delegate: ColumnLayout {
+                            id: albumFactDelegate
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: MichiSpacing.xxs
+                            MichiText {
+                                text: albumFactDelegate.modelData.label.toUpperCase()
+                                role: "technical"
+                                technical: true
+                                color: MichiPalette.textMuted
+                            }
+                            MichiText {
+                                Layout.fillWidth: true
+                                text: albumFactDelegate.modelData.value
+                                role: "secondary"
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     EnrichmentActions {
@@ -295,7 +372,8 @@ ColumnLayout {
     InspectorPanel {
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? 210 : 0
-        visible: root.inspectedTrack !== null && root.width < 760
+        visible: root.inspectedTrack !== null
+            && !MichiBreakpoints.atLeastMedium(root.width)
         title: root.inspectedTrack ? root.inspectedTrack.title : "Track information"
         rows: root.inspectorRows
         onCloseRequested: root.inspectedTrack = null
@@ -361,7 +439,8 @@ ColumnLayout {
         InspectorPanel {
             Layout.preferredWidth: 320
             Layout.fillHeight: true
-            visible: root.inspectedTrack !== null && root.width >= 760
+            visible: root.inspectedTrack !== null
+                && MichiBreakpoints.atLeastMedium(root.width)
             title: root.inspectedTrack ? root.inspectedTrack.title : "Track information"
             rows: root.inspectorRows
             onCloseRequested: root.inspectedTrack = null

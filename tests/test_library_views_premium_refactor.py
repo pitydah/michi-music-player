@@ -125,7 +125,7 @@ def test_library_qml_truth_contracts_are_explicit() -> None:
     assert "onDoubleTapped:" in card and "root.openRequested()" in card
     assert 'objectName: "stableLibrarySearchPane"' in toolbar
     assert "SplitView" not in toolbar
-    assert 'root.albumMode !== "timeline"' in popup
+    assert 'root.displayedMode !== "timeline"' in popup
     assert 'iconName: "view-options"' in header
     assert 'iconName: "sliders"' not in header
     assert "containsHighResolution" in albums

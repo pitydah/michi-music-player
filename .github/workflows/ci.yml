@@ -27,13 +27,37 @@ jobs:
 
       - name: Lint
         run: |
-          ruff check src tests
-          ruff format --check src tests
+          ruff check src tests scripts
+          ruff format --check src tests scripts
 
       - name: QML syntax
         run: |
           pyside6-qmllint -I src/michi/presentation/qml \
             src/michi/presentation/qml/**/*.qml
+
+      - name: Premium Library QML warning gate
+        run: |
+          pyside6-qmllint -W 0 \
+            --context-properties disable \
+            --unqualified disable \
+            --missing-property disable \
+            --Quick.layout-positioning error \
+            -I src/michi/presentation/qml \
+            src/michi/presentation/qml/views/LibraryView.qml \
+            src/michi/presentation/qml/views/LibraryHeader.qml \
+            src/michi/presentation/qml/views/LibraryToolbar.qml \
+            src/michi/presentation/qml/views/LibraryViewOptionsPopup.qml \
+            src/michi/presentation/qml/views/AlbumsView.qml \
+            src/michi/presentation/qml/views/AlbumDetailView.qml \
+            src/michi/presentation/qml/views/AlbumGridView.qml \
+            src/michi/presentation/qml/views/AlbumPathView.qml \
+            src/michi/presentation/qml/views/VinylWallView.qml \
+            src/michi/presentation/qml/views/TimelineView.qml \
+            src/michi/presentation/qml/views/MagazineView.qml \
+            src/michi/presentation/qml/views/AlbumListView.qml \
+            src/michi/presentation/qml/primitives/MichiMaterial.qml \
+            src/michi/presentation/qml/primitives/MichiGlassSurface.qml \
+            src/michi/presentation/qml/theme/MichiBreakpoints.qml
 
       - name: Test
         env:
@@ -42,3 +66,27 @@ jobs:
 
       - name: Build
         run: python -m build
+
+      - name: Installed wheel smoke
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m venv --system-site-packages /tmp/michi-wheel-smoke
+          /tmp/michi-wheel-smoke/bin/pip install --no-deps --force-reinstall dist/*.whl
+          cd /tmp
+          /tmp/michi-wheel-smoke/bin/python \
+            "$GITHUB_WORKSPACE/scripts/installed_wheel_smoke.py"
+
+      - name: Render Library visual QA
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python scripts/render_library_views_qa.py \
+            --output artifacts/library-views
+
+      - name: Upload Library visual QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: library-views-visual-qa
+          path: artifacts/library-views
+          if-no-files-found: error
