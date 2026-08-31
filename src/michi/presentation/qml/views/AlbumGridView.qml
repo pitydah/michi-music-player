@@ -39,7 +39,10 @@ GridView {
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: albumModel
+    // A Loader may complete this component before its layout has assigned the
+    // final width. Defer delegate creation one event-loop turn so GridView does
+    // not retain cells positioned against the provisional one-column geometry.
+    model: layoutReady ? albumModel : []
     flow: GridView.FlowLeftToRight
     leftMargin: Math.max(0, (width - usableWidth) / 2)
     rightMargin: leftMargin
@@ -57,8 +60,8 @@ GridView {
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open an album")
 
     Component.onCompleted: {
-        layoutReady = true
         Qt.callLater(function() {
+            layoutReady = true
             albumGrid.forceLayout()
             if (browseState) {
                 var restoredIndex = browseState.galleryIndex
