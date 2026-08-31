@@ -18,13 +18,48 @@ Item {
     property var browseState: null
     property bool heroVisible: true
     property string informationRichness: "standard"
+    property string archiveLayout: "list"
+    property var cachedKnowledge: ({})
+    property bool hasCachedKnowledge: false
+    property string cachedAlbumKey: ""
+    property bool showCachedContext: true
     readonly property var heroAlbum: albumModel.length > 0 ? albumModel[0] : null
+    readonly property string heroLabel: !heroAlbum ? ""
+        : heroAlbum.isRecentlyAdded ? qsTr("RECENTLY ADDED")
+        : heroAlbum.isFavorite ? qsTr("FAVORITE FROM YOUR LIBRARY")
+        : heroAlbum.containsHighResolution ? qsTr("HIGH FIDELITY")
+        : qsTr("FROM YOUR LIBRARY")
     readonly property var mediumFeatures: albumModel && albumModel.length > 1
         ? albumModel.slice(1, Math.min(3, albumModel.length)) : []
     readonly property var compactFeatures: albumModel && albumModel.length > 3
         ? albumModel.slice(3, Math.min(7, albumModel.length)) : []
     readonly property var archiveAlbums: albumModel && albumModel.length > 7
         ? albumModel.slice(7) : []
+    readonly property var archiveRows: root.makeArchiveRows()
+    property int rovingIndex: 0
+
+    function makeArchiveRows() {
+        var rows = []
+        for (var index = 0; index < archiveAlbums.length; index += 2)
+            rows.push(archiveAlbums.slice(index, index + 2))
+        return rows
+    }
+
+    function selectEditorial(index, key) {
+        rovingIndex = Math.max(0, Math.min(index, albumModel.length - 1))
+        if (browseState && key)
+            browseState.remember(key)
+    }
+
+    function positionRoving() {
+        if (rovingIndex < 7) {
+            albumMagazine.positionViewAtBeginning()
+            return
+        }
+        albumMagazine.currentIndex = archiveLayout === "list"
+            ? rovingIndex - 7 : Math.floor((rovingIndex - 7) / 2)
+        albumMagazine.positionViewAtIndex(albumMagazine.currentIndex, ListView.Contain)
+    }
 
     ListView {
         id: albumMagazine
@@ -34,6 +69,7 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         spacing: MichiSpacing.xs
         activeFocusOnTab: true
+        focus: true
         Accessible.role: Accessible.List
         Accessible.name: qsTr("Albums in magazine editorial view")
 
@@ -48,6 +84,41 @@ Item {
         onCurrentIndexChanged: if (root.browseState)
             root.browseState.editorialIndex = currentIndex
 
+        Keys.onUpPressed: {
+            if (root.albumModel.length > 0) {
+                root.rovingIndex = Math.max(0, root.rovingIndex - 1)
+                root.selectEditorial(root.rovingIndex, root.albumModel[root.rovingIndex].key)
+                root.positionRoving()
+            }
+        }
+        Keys.onDownPressed: {
+            if (root.albumModel.length > 0) {
+                root.rovingIndex = Math.min(root.albumModel.length - 1, root.rovingIndex + 1)
+                root.selectEditorial(root.rovingIndex, root.albumModel[root.rovingIndex].key)
+                root.positionRoving()
+            }
+        }
+        Keys.onLeftPressed: {
+            if (root.archiveLayout === "compactGrid" && root.rovingIndex >= 7) {
+                root.rovingIndex = Math.max(7, root.rovingIndex - 1)
+                root.selectEditorial(root.rovingIndex, root.albumModel[root.rovingIndex].key)
+                root.positionRoving()
+            }
+        }
+        Keys.onRightPressed: {
+            if (root.archiveLayout === "compactGrid" && root.rovingIndex >= 7) {
+                root.rovingIndex = Math.min(root.albumModel.length - 1, root.rovingIndex + 1)
+                root.selectEditorial(root.rovingIndex, root.albumModel[root.rovingIndex].key)
+                root.positionRoving()
+            }
+        }
+        Keys.onReturnPressed: if (root.albumModel.length > 0)
+            library.select_album(root.albumModel[root.rovingIndex].key)
+        Keys.onEnterPressed: if (root.albumModel.length > 0)
+            library.select_album(root.albumModel[root.rovingIndex].key)
+        Keys.onSpacePressed: if (root.albumModel.length > 0)
+            library.select_album(root.albumModel[root.rovingIndex].key)
+
         header: ColumnLayout {
             width: albumMagazine.width
             spacing: MichiThemeState.contentGap
@@ -59,23 +130,34 @@ Item {
                 Layout.preferredHeight: root.informationRichness === "minimal"
                     ? 190 : root.informationRichness === "rich" ? 250 : 220
                 radius: MichiRadius.lg
-                color: MichiPalette.obsidianRaised
+                color: root.heroAlbum && root.heroAlbum.artworkPalette
+                    ? root.heroAlbum.artworkPalette.backplane : MichiPalette.obsidianRaised
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop {
+                        position: 0
+                        color: root.heroAlbum && root.heroAlbum.artworkPalette
+                            ? root.heroAlbum.artworkPalette.dominant : MichiPalette.playlistHeroTop
+                    }
+                    GradientStop {
+                        position: 1
+                        color: root.heroAlbum && root.heroAlbum.artworkPalette
+                            ? root.heroAlbum.artworkPalette.backplane : MichiPalette.playlistHeroBottom
+                    }
+                }
                 border.width: 1
-                border.color: heroTap.pressed
+                border.color: root.rovingIndex === 0 && albumMagazine.activeFocus
+                    ? (root.heroAlbum && root.heroAlbum.artworkPalette
+                        ? root.heroAlbum.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                    : heroTap.pressed
                     ? MichiSemanticColors.auroraCyanBorder
                     : heroHover.hovered
                         ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
                 clip: true
                 visible: root.heroVisible && root.heroAlbum !== null
-                focusPolicy: Qt.StrongFocus
-                activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: root.heroAlbum
                     ? root.heroAlbum.title + " by " + root.heroAlbum.artist : ""
-
-                Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); if (root.heroAlbum) library.select_album(root.heroAlbum.key) }
-                Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); if (root.heroAlbum) library.select_album(root.heroAlbum.key) }
-                Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); if (root.heroAlbum) library.select_album(root.heroAlbum.key) }
 
                 RowLayout {
                     anchors.fill: parent
@@ -98,10 +180,11 @@ Item {
                         spacing: MichiSpacing.xs
 
                         MichiText {
-                            text: qsTr("FEATURED FROM YOUR LIBRARY")
+                            text: root.heroLabel
                             role: "technical"
                             technical: true
-                            color: MichiPalette.auroraCyan
+                            color: root.heroAlbum && root.heroAlbum.artworkPalette
+                                ? root.heroAlbum.artworkPalette.accentSafe : MichiPalette.auroraCyan
                         }
 
                         MichiText {
@@ -127,13 +210,28 @@ Item {
                         }
                         MichiText {
                             Layout.fillWidth: true
+                            visible: root.showCachedContext
+                                && root.hasCachedKnowledge && root.heroAlbum
+                                && root.cachedAlbumKey === root.heroAlbum.key
+                            text: root.cachedKnowledge
+                                ? [root.cachedKnowledge.label || "",
+                                    root.cachedKnowledge.genres
+                                        ? root.cachedKnowledge.genres.join(" · ") : ""]
+                                    .filter(value => value !== "").join(" — ") : ""
+                            role: "caption"
+                            color: MichiPalette.textMuted
+                            elide: Text.ElideRight
+                        }
+                        MichiText {
+                            Layout.fillWidth: true
                             visible: root.informationRichness === "rich"
                                 && root.heroAlbum
                                 && root.heroAlbum.technicalSummary.length > 0
                             text: root.heroAlbum ? root.heroAlbum.technicalSummary : ""
                             role: "technical"
                             technical: true
-                            color: MichiPalette.auroraCyan
+                            color: root.heroAlbum && root.heroAlbum.artworkPalette
+                                ? root.heroAlbum.artworkPalette.accentSafe : MichiPalette.auroraCyan
                             elide: Text.ElideRight
                         }
 
@@ -157,14 +255,17 @@ Item {
                     exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
                     onSingleTapped: {
                         if (root.heroAlbum && root.browseState)
-                            root.browseState.remember(root.heroAlbum.key)
+                            root.selectEditorial(0, root.heroAlbum.key)
                     }
                     onDoubleTapped: {
                         if (root.heroAlbum)
                             library.select_album(root.heroAlbum.key)
                     }
                 }
-                MichiFocusRing { visualFocus: heroCard.activeFocus && MichiAccessibility.keyboardMode }
+                MichiFocusRing {
+                    visualFocus: albumMagazine.activeFocus && root.rovingIndex === 0
+                        && MichiAccessibility.keyboardMode
+                }
             }
 
             // 2. Medium Features (2 larger cards)
@@ -187,18 +288,16 @@ Item {
                         color: medHover.hovered
                             ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
                         border.width: 1
-                        border.color: medTap.pressed
+                        border.color: root.rovingIndex === index + 1
+                                && albumMagazine.activeFocus
+                            ? (modelData.artworkPalette
+                                ? modelData.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                            : medTap.pressed
                             ? MichiSemanticColors.auroraCyanBorder
                             : medHover.hovered
                                 ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
-                        focusPolicy: Qt.StrongFocus
-                        activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: modelData.title + " by " + modelData.artist
-
-                        Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
-                        Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
-                        Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
 
                         RowLayout {
                             anchors.fill: parent
@@ -248,11 +347,14 @@ Item {
                         TapHandler {
                             id: medTap
                             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
-                            onSingleTapped: if (root.browseState)
-                                root.browseState.remember(modelData.key)
+                            onSingleTapped: root.selectEditorial(index + 1, modelData.key)
                             onDoubleTapped: library.select_album(modelData.key)
                         }
-                        MichiFocusRing { visualFocus: medFeature.activeFocus && MichiAccessibility.keyboardMode }
+                        MichiFocusRing {
+                            visualFocus: albumMagazine.activeFocus
+                                && root.rovingIndex === index + 1
+                                && MichiAccessibility.keyboardMode
+                        }
                     }
                 }
             }
@@ -277,18 +379,16 @@ Item {
                         color: compHover.hovered
                             ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
                         border.width: 1
-                        border.color: compTap.pressed
+                        border.color: root.rovingIndex === index + 3
+                                && albumMagazine.activeFocus
+                            ? (modelData.artworkPalette
+                                ? modelData.artworkPalette.accentSafe : MichiPalette.auroraCyan)
+                            : compTap.pressed
                             ? MichiSemanticColors.auroraCyanBorder
                             : compHover.hovered
                                 ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
-                        focusPolicy: Qt.StrongFocus
-                        activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: modelData.title + " by " + modelData.artist
-
-                        Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
-                        Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
-                        Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); library.select_album(modelData.key) }
 
                         RowLayout {
                             anchors.fill: parent
@@ -340,11 +440,14 @@ Item {
                         TapHandler {
                             id: compTap
                             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
-                            onSingleTapped: if (root.browseState)
-                                root.browseState.remember(modelData.key)
+                            onSingleTapped: root.selectEditorial(index + 3, modelData.key)
                             onDoubleTapped: library.select_album(modelData.key)
                         }
-                        MichiFocusRing { visualFocus: compactFeature.activeFocus && MichiAccessibility.keyboardMode }
+                        MichiFocusRing {
+                            visualFocus: albumMagazine.activeFocus
+                                && root.rovingIndex === index + 3
+                                && MichiAccessibility.keyboardMode
+                        }
                     }
                 }
             }
@@ -370,32 +473,70 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 1
+                    Layout.preferredHeight: 1
                     color: MichiSemanticColors.borderSubtle
                 }
             }
+
         }
 
         // 4. Archive Albums (virtualized delegates scrolling with the rest of the page)
-        model: root.archiveAlbums
+        model: root.archiveLayout === "list" ? root.archiveAlbums : root.archiveRows
 
-        delegate: MichiAlbumRow {
+        delegate: Item {
+            id: archiveDelegate
             required property int index
             required property var modelData
             width: albumMagazine.width
-            album: modelData
-            showTechnical: false
-            selected: ListView.isCurrentItem
-            onSelectedRequested: {
-                albumMagazine.currentIndex = index
-                if (root.browseState)
-                    root.browseState.remember(modelData.key)
+            height: 64
+
+            Loader {
+                anchors.fill: parent
+                sourceComponent: root.archiveLayout === "list"
+                    ? archiveListRow : archiveCompactRow
             }
-            onOpenRequested: {
-                albumMagazine.currentIndex = index
-                library.select_album(modelData.key)
+
+            Component {
+                id: archiveListRow
+                MichiAlbumRow {
+                    album: archiveDelegate.modelData
+                    showTechnical: false
+                    selected: root.rovingIndex === archiveDelegate.index + 7
+                    onSelectedRequested: {
+                        albumMagazine.currentIndex = archiveDelegate.index
+                        root.selectEditorial(archiveDelegate.index + 7, album.key)
+                    }
+                    onOpenRequested: library.select_album(album.key)
+                    onPlayRequested: library.play_album(album.key)
+                }
             }
-            onPlayRequested: library.play_album(modelData.key)
+
+            Component {
+                id: archiveCompactRow
+                RowLayout {
+                    spacing: MichiSpacing.sm
+                    Repeater {
+                        model: archiveDelegate.modelData
+                        delegate: MichiAlbumRow {
+                            required property int index
+                            required property var modelData
+                            Layout.fillWidth: true
+                            album: modelData
+                            showTechnical: false
+                            selected: root.rovingIndex
+                                === archiveDelegate.index * 2 + index + 7
+                            onSelectedRequested: root.selectEditorial(
+                                archiveDelegate.index * 2 + index + 7, modelData.key)
+                            onOpenRequested: library.select_album(modelData.key)
+                            onPlayRequested: library.play_album(modelData.key)
+                        }
+                    }
+                    Item {
+                        Layout.fillWidth: true
+                        visible: archiveDelegate.modelData.length === 1
+                    }
+                }
+            }
         }
     }
 }

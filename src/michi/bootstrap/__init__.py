@@ -406,7 +406,11 @@ def _build_services(
     scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
     scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
 
-    lb = LibraryBridge(library, playback_coordinator=library_playback)
+    lb = LibraryBridge(
+        library,
+        playback_coordinator=library_playback,
+        palette_extractor=QtPlaylistPaletteExtractor(),
+    )
 
     return ServiceGraph(
         db_path=db_path,

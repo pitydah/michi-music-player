@@ -5,7 +5,10 @@ import "../theme"
 Item {
     id: root
 
-    AlbumBrowseState { id: albumBrowseState }
+    AlbumBrowseState {
+        id: albumBrowseState
+        objectName: "albumBrowseState"
+    }
 
     property string currentTab: "songs"
     // M6-PRODUCTION-INTEGRATION: albumMode lives HERE (the root survives
@@ -148,6 +151,15 @@ Item {
     Connections {
         target: library
         function onLibrary_changed() { root.syncEntitySelection() }
+    }
+
+    Connections {
+        target: albumBrowseState
+        function onCurrentKeyChanged() {
+            if (albumBrowseState.currentKey.length > 0
+                    && typeof enrichment !== "undefined" && enrichment)
+                enrichment.browse_album_cached(albumBrowseState.currentKey)
+        }
     }
 
     Connections {

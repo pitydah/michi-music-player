@@ -10,6 +10,11 @@ Item {
     property bool quickActionsVisible: true
     property string metadataLevel: "standard"
     property bool precisionMetadata: false
+    readonly property color albumAccent: album && album.artworkPalette
+        ? album.artworkPalette.accentSafe : MichiPalette.auroraCyan
+    readonly property string technicalText: !album ? ""
+        : precisionMetadata ? (album.technicalSummary || "")
+        : album.codecs && album.codecs.length > 0 ? album.codecs[0] : ""
     signal selectedRequested()
     signal openRequested()
     signal playRequested()
@@ -48,8 +53,8 @@ Item {
                 : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
         border.width: 1
         border.color: root.selected
-            ? MichiSemanticColors.auroraCyanBorderSubtle
-            : hover.hovered ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
+            ? root.albumAccent
+            : hover.hovered ? root.albumAccent : MichiSemanticColors.borderSubtle
 
         Behavior on color {
             enabled: !MichiAccessibility.reducedMotion
@@ -156,14 +161,12 @@ Item {
                 }
                 MichiText {
                     Layout.fillWidth: true
-                    visible: (root.metadataLevel === "detailed"
-                        || root.precisionMetadata)
-                        && root.album && root.album.technicalSummary
-                        ? root.album.technicalSummary.length > 0 : false
-                    text: root.album && root.album.technicalSummary ? root.album.technicalSummary : ""
+                    visible: root.metadataLevel !== "minimal"
+                        && root.technicalText.length > 0
+                    text: root.technicalText
                     role: "technical"
                     technical: true
-                    color: root.selected ? MichiPalette.auroraCyan : MichiPalette.textMuted
+                    color: root.selected ? root.albumAccent : MichiPalette.textMuted
                     elide: Text.ElideRight
                 }
                 MichiText {

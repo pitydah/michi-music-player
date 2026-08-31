@@ -15,17 +15,35 @@ ListView {
     property var browseState: null
     property var viewPreferences: ({})
     signal sortRequested(string mode)
-    readonly property bool showArtistColumn: viewPreferences.artistColumn !== false
-        && width >= 620
-    readonly property bool showYearColumn: viewPreferences.yearColumn !== false
-        && width >= 500
-    readonly property bool showTrackCountColumn: viewPreferences.tracksColumn !== false
-        && width >= 760
-    readonly property bool showDurationColumn: viewPreferences.durationColumn !== false
-        && width >= 680
-    readonly property bool showTechnicalColumn: width >= 1040
-        && viewPreferences.formatColumn !== false
-        && viewPreferences.precisionMetadata !== false
+    readonly property var columnPlan: resolveColumnPlan(width, viewPreferences)
+    readonly property bool showArtistColumn: columnPlan.artist
+    readonly property bool showYearColumn: columnPlan.year
+    readonly property bool showTrackCountColumn: columnPlan.tracks
+    readonly property bool showDurationColumn: columnPlan.duration
+    readonly property bool showTechnicalColumn: columnPlan.format
+
+    function resolveColumnPlan(availableWidth, preferences) {
+        var remaining = Math.max(0, availableWidth - 360)
+        var result = { artist: false, year: false, tracks: false,
+            duration: false, format: false }
+        var ordered = [
+            { key: "artist", pref: "artistColumn", cost: 210 },
+            { key: "year", pref: "yearColumn", cost: 70 },
+            { key: "tracks", pref: "tracksColumn", cost: 64 },
+            { key: "duration", pref: "durationColumn", cost: 74 },
+            { key: "format", pref: "formatColumn", cost: 170 }
+        ]
+        for (var index = 0; index < ordered.length; ++index) {
+            var column = ordered[index]
+            if (preferences[column.pref] === false)
+                continue
+            if (remaining < column.cost)
+                break
+            result[column.key] = true
+            remaining -= column.cost
+        }
+        return result
+    }
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -99,6 +117,7 @@ ListView {
         showTrackCount: root.showTrackCountColumn
         showDuration: root.showDurationColumn
         showTechnical: root.showTechnicalColumn
+        precisionMetadata: root.viewPreferences.precisionMetadata !== false
         artworkSize: root.viewPreferences.artworkSize || "small"
         rowDensity: root.viewPreferences.density || "standard"
         onActiveFocusChanged: {

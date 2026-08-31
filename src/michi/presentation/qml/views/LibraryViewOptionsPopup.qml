@@ -34,23 +34,25 @@ Popup {
     enter: Transition {
         NumberAnimation {
             property: "opacity"; from: 0; to: 1
-            duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.standard
+            duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.popupOpen
             easing.type: MichiMotion.outCubic
         }
     }
     exit: Transition {
         NumberAnimation {
             property: "opacity"; from: 1; to: 0
-            duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.micro
+            duration: MichiAccessibility.reducedMotion ? 0 : MichiMotion.popupClose
         }
     }
 
     background: MichiGlassSurface {
         elevation: "modal"
+        materialRole: MichiMaterialRole.modal
         tileSeed: 4
         radius: MichiRadius.lg
         shadowed: true
         textured: true
+        glintMode: "edge"
         contentPadding: 0
     }
 
@@ -242,6 +244,12 @@ Popup {
                 checked: root.pref("gallery", "precisionMetadata", false)
                 onToggled: root.viewPreferenceRequested("gallery", "precisionMetadata", checked)
             }
+            MichiSwitch {
+                Layout.fillWidth: true
+                text: qsTr("Selection inspector")
+                checked: root.pref("gallery", "inspector", true)
+                onToggled: root.viewPreferenceRequested("gallery", "inspector", checked)
+            }
         }
     }
 
@@ -274,6 +282,12 @@ Popup {
                 checked: root.pref("flow", "ambientColor", true)
                 onToggled: root.viewPreferenceRequested("flow", "ambientColor", checked)
             }
+            MichiComboBox {
+                Layout.fillWidth: true
+                model: [qsTr("Minimal selection info"), qsTr("Standard selection info"), qsTr("Detailed selection info")]
+                currentIndex: ({ minimal: 0, standard: 1, detailed: 2 })[root.pref("flow", "metadataLevel", "standard")]
+                onActivated: root.viewPreferenceRequested("flow", "metadataLevel", ["minimal", "standard", "detailed"][currentIndex])
+            }
         }
     }
 
@@ -299,6 +313,22 @@ Popup {
                 model: [qsTr("Subtle reveal"), qsTr("Standard reveal"), qsTr("Pronounced reveal")]
                 currentIndex: ({ subtle: 0, standard: 1, pronounced: 2 })[root.pref("vinyl", "reveal", "standard")]
                 onActivated: root.viewPreferenceRequested("vinyl", "reveal", ["subtle", "standard", "pronounced"][currentIndex])
+            }
+            MichiComboBox {
+                Layout.fillWidth: true
+                model: [qsTr("Minimal metadata"), qsTr("Standard metadata"), qsTr("Detailed metadata")]
+                currentIndex: ({ minimal: 0, standard: 1, detailed: 2 })[root.pref("vinyl", "metadataLevel", "standard")]
+                onActivated: root.viewPreferenceRequested("vinyl", "metadataLevel", ["minimal", "standard", "detailed"][currentIndex])
+            }
+            MichiSwitch {
+                Layout.fillWidth: true; text: qsTr("Match disc label to artwork")
+                checked: root.pref("vinyl", "artworkLabel", true)
+                onToggled: root.viewPreferenceRequested("vinyl", "artworkLabel", checked)
+            }
+            MichiSwitch {
+                Layout.fillWidth: true; text: qsTr("Selection inspector")
+                checked: root.pref("vinyl", "inspector", true)
+                onToggled: root.viewPreferenceRequested("vinyl", "inspector", checked)
             }
         }
     }
@@ -327,6 +357,17 @@ Popup {
                 currentIndex: ({ compact: 0, standard: 1, expanded: 2 })[root.pref("chronology", "density", "standard")]
                 onActivated: root.viewPreferenceRequested("chronology", "density", ["compact", "standard", "expanded"][currentIndex])
             }
+            MichiComboBox {
+                Layout.fillWidth: true
+                model: [qsTr("Minimal information"), qsTr("Standard information"), qsTr("Detailed information")]
+                currentIndex: ({ minimal: 0, standard: 1, detailed: 2 })[root.pref("chronology", "metadataLevel", "standard")]
+                onActivated: root.viewPreferenceRequested("chronology", "metadataLevel", ["minimal", "standard", "detailed"][currentIndex])
+            }
+            MichiSwitch {
+                Layout.fillWidth: true; text: qsTr("Show collection density")
+                checked: root.pref("chronology", "showPeriodDensity", false)
+                onToggled: root.viewPreferenceRequested("chronology", "showPeriodDensity", checked)
+            }
         }
     }
 
@@ -346,6 +387,17 @@ Popup {
                 model: [qsTr("Minimal information"), qsTr("Standard information"), qsTr("Rich information")]
                 currentIndex: ({ minimal: 0, standard: 1, rich: 2 })[root.pref("editorial", "informationRichness", "standard")]
                 onActivated: root.viewPreferenceRequested("editorial", "informationRichness", ["minimal", "standard", "rich"][currentIndex])
+            }
+            MichiSwitch {
+                Layout.fillWidth: true; text: qsTr("Show saved online context")
+                checked: root.pref("editorial", "cachedEnrichmentVisible", true)
+                onToggled: root.viewPreferenceRequested("editorial", "cachedEnrichmentVisible", checked)
+            }
+            MichiComboBox {
+                Layout.fillWidth: true
+                model: [qsTr("Archive list"), qsTr("Compact archive grid")]
+                currentIndex: root.pref("editorial", "archiveLayout", "list") === "compactGrid" ? 1 : 0
+                onActivated: root.viewPreferenceRequested("editorial", "archiveLayout", currentIndex === 0 ? "list" : "compactGrid")
             }
         }
     }
@@ -373,6 +425,21 @@ Popup {
                 onToggled: root.viewPreferenceRequested("studioList", "artistColumn", checked)
             }
             MichiSwitch {
+                Layout.fillWidth: true; text: qsTr("Year column")
+                checked: root.pref("studioList", "yearColumn", true)
+                onToggled: root.viewPreferenceRequested("studioList", "yearColumn", checked)
+            }
+            MichiSwitch {
+                Layout.fillWidth: true; text: qsTr("Tracks column")
+                checked: root.pref("studioList", "tracksColumn", true)
+                onToggled: root.viewPreferenceRequested("studioList", "tracksColumn", checked)
+            }
+            MichiSwitch {
+                Layout.fillWidth: true; text: qsTr("Duration column")
+                checked: root.pref("studioList", "durationColumn", true)
+                onToggled: root.viewPreferenceRequested("studioList", "durationColumn", checked)
+            }
+            MichiSwitch {
                 Layout.fillWidth: true; text: qsTr("Format column")
                 checked: root.pref("studioList", "formatColumn", true)
                 onToggled: root.viewPreferenceRequested("studioList", "formatColumn", checked)
@@ -381,6 +448,11 @@ Popup {
                 Layout.fillWidth: true; text: qsTr("Precision metadata")
                 checked: root.pref("studioList", "precisionMetadata", true)
                 onToggled: root.viewPreferenceRequested("studioList", "precisionMetadata", checked)
+            }
+            MichiSwitch {
+                Layout.fillWidth: true; text: qsTr("Selection inspector")
+                checked: root.pref("studioList", "inspector", true)
+                onToggled: root.viewPreferenceRequested("studioList", "inspector", checked)
             }
         }
     }

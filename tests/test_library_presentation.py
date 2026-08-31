@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, Qt
+from PySide6.QtCore import Q_ARG, QCoreApplication, QEvent, QMetaObject, QObject, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
@@ -244,6 +244,48 @@ class TestLibraryPageOrchestration:
                         f"albumMode {mode!r} — the six heavy views must be "
                         "unloaded on mode switch"
                     )
+            obj.deleteLater()
+        finally:
+            bridge.dispose()
+
+    def test_album_view_100_switch_stress_has_one_projection_and_no_growth(
+        self, qapp, tmp_path
+    ):
+        bridge, engine, component = _load_library_view(tmp_path)
+        try:
+            obj = component.create()
+            assert obj is not None
+            obj.setProperty("currentTab", "albums")
+            _process_events()
+            host = obj.findChild(QObject, "albumsView")
+            browse_state = obj.findChild(QObject, "albumBrowseState")
+            assert host is not None and browse_state is not None
+
+            for mode, _name in ALBUM_MODES:
+                host.setProperty("albumMode", mode)
+                _process_events()
+            QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+            _process_events()
+            baseline_objects = len(obj.findChildren(QObject))
+
+            for switch_index in range(100):
+                mode, expected_name = ALBUM_MODES[switch_index % len(ALBUM_MODES)]
+                host.setProperty("albumMode", mode)
+                _process_events()
+                active = [
+                    name
+                    for _candidate_mode, name in ALBUM_MODES
+                    if obj.findChild(QObject, name) is not None
+                ]
+                assert active == [expected_name]
+
+            QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+            _process_events()
+            assert len(obj.findChildren(QObject)) <= baseline_objects + 8
+            assert (
+                browse_state.property("currentKey")
+                == bridge.property("albums")[0]["key"]
+            )
             obj.deleteLater()
         finally:
             bridge.dispose()

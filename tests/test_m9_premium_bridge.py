@@ -1,17 +1,33 @@
 """Bridge-level gates for the M9 premium presentation projections."""
 
+import os
+import sys
+import time
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
 from conftest import FakeAudioPort
+from PySide6.QtCore import QCoreApplication
+from PySide6.QtGui import QGuiApplication
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
-from michi.domain.library import TrackMetadata, TrackRef
+from michi.domain.library import TrackMetadata, TrackRef, build_music_model
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.playback_bridge import PlaybackBridge
 from michi.presentation.queue_bridge import QueueBridge
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QGuiApplication.instance()
+    if app is None:
+        app = QGuiApplication(sys.argv)
+    yield app
 
 
 class _Scanner:
@@ -31,6 +47,96 @@ class _Extractor:
 
     def extract(self, path):
         return self.factory(path)
+
+
+class _PaletteExtractor:
+    def __init__(self) -> None:
+        self.callback = None
+        self.sources = ()
+        self.closed = False
+
+    def request_palette(self, source_paths, callback) -> None:
+        self.sources = source_paths
+        self.callback = callback
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class _ProjectionLibrary:
+    def __init__(self, tracks) -> None:
+        model = build_music_model(tracks)
+        self.state = SimpleNamespace(
+            albums=model.albums,
+            artists=model.artists,
+            tracks=model.tracks,
+            favorite_paths=(),
+            recently_added_paths=(),
+            search_active=False,
+            search_projection=None,
+        )
+
+    def subscribe_changed(self, _callback) -> None:
+        return None
+
+    def unsubscribe_changed(self, _callback) -> None:
+        return None
+
+    def artwork_path_for(self, _album_key) -> str:
+        return ""
+
+
+def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
+    tracks = [
+        TrackRef(
+            Path(f"/virtual/{index:05d}.flac"),
+            title=f"Track {index:05d}",
+            artist=f"Artist {index:05d}",
+            album=f"Album {index:05d}",
+            duration_ms=180_000,
+            codec="FLAC",
+            sample_rate_hz=96_000 if index % 7 == 0 else 44_100,
+            bit_depth=24 if index % 7 == 0 else 16,
+        )
+        for index in range(10_000)
+    ]
+    bridge = LibraryBridge(_ProjectionLibrary(tracks))
+
+    started = time.perf_counter()
+    rows = bridge.property("albums")
+    elapsed = time.perf_counter() - started
+
+    assert len(rows) == 10_000
+    assert len({row["key"] for row in rows}) == 10_000
+    assert rows[0]["artworkPalette"]["accentSafe"].startswith("#")
+    assert elapsed < 8.0
+    bridge.dispose()
+
+
+def test_album_palette_projection_is_async_clamped_and_owned(qapp, tmp_path) -> None:
+    library, *_rest = _library_world(tmp_path)
+    extractor = _PaletteExtractor()
+    bridge = LibraryBridge(library, palette_extractor=extractor)
+    artwork = tmp_path / "cover.png"
+    artwork.write_bytes(b"placeholder")
+
+    initial = bridge._album_palette("album::palette", str(artwork))
+    assert initial["dominant"] == "#152A45"
+    assert extractor.sources == (str(artwork),)
+    assert extractor.callback is not None
+
+    extractor.callback(("#204080", "#183050", "#0A0D14"))
+    QCoreApplication.processEvents()
+    QCoreApplication.processEvents()
+    projected = bridge._album_palette("album::palette", str(artwork))
+
+    assert projected["dominant"] == "#204080"
+    assert projected["backplane"] == "#0A0D14"
+    assert projected["accentSafe"].startswith("#")
+    assert 0 <= projected["luminance"] <= 1
+    assert projected["warmth"] < 0
+    bridge.dispose()
+    assert extractor.closed is True
 
 
 def test_queue_bridge_exposes_rows_and_existing_remove_intent() -> None:

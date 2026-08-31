@@ -15,6 +15,10 @@ PathView {
     property string visibleAlbums: "auto"
     property string depthMode: "standard"
     property bool ambientColor: true
+    property string metadataLevel: "standard"
+    property var cachedKnowledge: ({})
+    property bool hasCachedKnowledge: false
+    property string cachedAlbumKey: ""
     readonly property real coverSize: Math.max(176, Math.min(330,
         Math.min(width * 0.24 * albumZoom,
             Math.max(176, height - 156))))
@@ -27,7 +31,7 @@ PathView {
     clip: true
     interactive: count > 1
     pathItemCount: visibleAlbums === "auto"
-        ? (width >= 1500 ? 9 : width >= 1050 ? 7 : 5)
+        ? (width >= 1500 ? 9 : width >= 1050 ? 7 : width >= 680 ? 5 : 3)
         : Number(visibleAlbums)
     cacheItemCount: pathItemCount + 2
     preferredHighlightBegin: 0.5
@@ -37,7 +41,7 @@ PathView {
     activeFocusOnTab: true
     focus: true
     Accessible.role: Accessible.List
-    Accessible.name: qsTr("Albums in PathView")
+    Accessible.name: qsTr("Albums in album flow view")
     Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
 
     function restoredIndex() {
@@ -58,8 +62,14 @@ PathView {
         anchors.fill: parent
         z: -100
         visible: albumsPath.ambientColor
-        color: MichiSemanticColors.auroraCyanSurface
-        opacity: 0.18
+        color: albumsPath.currentAlbum && albumsPath.currentAlbum.artworkPalette
+            ? albumsPath.currentAlbum.artworkPalette.dominant
+            : MichiSemanticColors.auroraCyanSurface
+        opacity: 0.34
+        Behavior on color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.paletteCrossfade }
+        }
     }
 
     Keys.onLeftPressed: decrementCurrentIndex()
@@ -234,11 +244,15 @@ PathView {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: MichiSpacing.lg
         width: Math.min(720, parent.width - MichiSpacing.xl * 2)
-        height: 76
+        height: albumsPath.metadataLevel === "detailed" ? 104
+            : albumsPath.metadataLevel === "minimal" ? 64 : 82
         elevation: "elevated"
         contentPadding: MichiSpacing.md
         accented: true
-        accentColor: MichiPalette.auroraCyan
+        accentColor: albumsPath.currentAlbum && albumsPath.currentAlbum.artworkPalette
+            ? albumsPath.currentAlbum.artworkPalette.accentSafe
+            : MichiPalette.auroraCyan
+        materialRole: MichiMaterialRole.elevated
         visible: albumsPath.currentAlbum !== null
         z: 1000
 
@@ -265,13 +279,39 @@ PathView {
                 }
             }
             MichiText {
+                visible: albumsPath.metadataLevel !== "minimal"
                 text: albumsPath.currentAlbum
                     ? albumsPath.currentAlbum.trackCount
                         + (albumsPath.currentAlbum.trackCount === 1 ? " track" : " tracks")
                     : ""
                 role: "technical"
                 technical: true
-                color: MichiPalette.auroraCyan
+                color: detailSurface.accentColor
+            }
+            MichiText {
+                visible: albumsPath.metadataLevel === "detailed"
+                    && albumsPath.currentAlbum
+                    && albumsPath.currentAlbum.technicalSummary.length > 0
+                text: albumsPath.currentAlbum
+                    ? albumsPath.currentAlbum.technicalSummary : ""
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
+            }
+            MichiText {
+                visible: albumsPath.metadataLevel !== "minimal"
+                    && albumsPath.hasCachedKnowledge
+                    && albumsPath.currentAlbum
+                    && albumsPath.cachedAlbumKey === albumsPath.currentAlbum.key
+                text: albumsPath.cachedKnowledge
+                    ? [albumsPath.cachedKnowledge.label || "",
+                        albumsPath.cachedKnowledge.genres
+                            ? albumsPath.cachedKnowledge.genres.join(" · ") : ""]
+                        .filter(value => value !== "").join(" — ") : ""
+                role: "caption"
+                Layout.maximumWidth: 180
+                color: MichiPalette.textMuted
+                elide: Text.ElideRight
             }
             Rectangle {
                 Layout.preferredWidth: 1
@@ -301,8 +341,7 @@ PathView {
                 accessibleName: qsTr("Play selected album")
                 onClicked: {
                     if (albumsPath.currentAlbum) {
-                        library.select_album(albumsPath.currentAlbum.key)
-                        library.play_all()
+                        library.play_album(albumsPath.currentAlbum.key)
                     }
                 }
             }

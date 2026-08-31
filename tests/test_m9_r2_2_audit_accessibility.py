@@ -42,10 +42,13 @@ def test_playlist_card_exposes_selected_state():
 
 def test_magazine_cards_are_keyboard_focusable():
     content = read("views/MagazineView.qml")
-    assert content.count("focusPolicy: Qt.StrongFocus") >= 3
-    assert content.count("activeFocusOnTab: true") >= 3
-    assert content.count("Keys.onSpacePressed") >= 3
-    assert content.count("MichiFocusRing") >= 3
+    # One tab stop enters the editorial collection; arrows move a roving
+    # index instead of creating a giant tab chain through every feature.
+    assert content.count("activeFocusOnTab: true") == 1
+    assert "property int rovingIndex" in content
+    assert "Keys.onUpPressed" in content
+    assert "Keys.onDownPressed" in content
+    assert "Keys.onReturnPressed" in content
 
 
 def test_playlist_appearance_customization_is_keyboard_accessible():
@@ -239,7 +242,7 @@ def test_vinyl_wall_selects_on_tap_and_opens_on_double_tap():
 def test_timeline_reuses_items_and_aligns_to_grid():
     content = read("views/TimelineView.qml")
     assert "reuseItems: true" in content
-    assert "anchors.leftMargin: 20" in content
+    assert "anchors.leftMargin: MichiSpacing.md" in content
     assert "anchors.leftMargin: 28" in content
     assert "color: MichiPalette.obsidian" in content
     assert "Behavior on color" in content
@@ -257,7 +260,7 @@ def test_timeline_year_uses_neutral_accent():
 
 def test_vinyl_label_neutral_when_unselected():
     content = read("views/VinylWallView.qml")
-    assert "? MichiPalette.auroraCyan : MichiPalette.graphite" in content
+    assert "modelData.artworkPalette.accentSafe : MichiPalette.graphite" in content
     assert "MichiScrollBar" in content
 
 
@@ -415,7 +418,9 @@ def test_action_feedback_call_sites():
 
 def test_no_hardcoded_visible_strings_in_mixed_files():
     magazine = read("views/MagazineView.qml")
-    assert 'text: qsTr("FEATURED FROM YOUR LIBRARY")' in magazine
+    assert 'qsTr("RECENTLY ADDED")' in magazine
+    assert 'qsTr("FAVORITE FROM YOUR LIBRARY")' in magazine
+    assert 'qsTr("HIGH FIDELITY")' in magazine
     assert '"0%1"' in magazine  # R2: .arg() substitution
     assert "index + 2)" in magazine
     card = read("playlists/PlaylistCard.qml")
