@@ -46,15 +46,18 @@ PathView {
     Accessible.name: qsTr("Albums in album flow view")
     Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
 
-    function resolveFlowBrowseIndex() {
-        if (browseState && browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i)
-                if (albumModel[i].key === browseState.currentKey) return i
+    Component.onCompleted: if (browseState) {
+        var restoredIndex = browseState.flowIndex
+        if (browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i) {
+                if (albumModel[i].key === browseState.currentKey) {
+                    restoredIndex = i
+                    break
+                }
+            }
         }
-        return browseState ? browseState.flowIndex : -1
+        currentIndex = restoredIndex
     }
-    Component.onCompleted: if (browseState)
-        currentIndex = albumsPath.resolveFlowBrowseIndex()
     onCurrentIndexChanged: if (browseState) {
         browseState.flowIndex = currentIndex
         if (currentAlbum)

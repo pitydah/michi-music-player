@@ -61,15 +61,17 @@ ListView {
     Accessible.role: Accessible.Table
     Accessible.name: qsTr("Albums in list view")
 
-    function resolveListBrowseIndex() {
-        if (browseState && browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i)
-                if (albumModel[i].key === browseState.currentKey) return i
-        }
-        return browseState ? browseState.listIndex : -1
-    }
     Component.onCompleted: if (browseState) Qt.callLater(function() {
-        root.currentIndex = root.resolveListBrowseIndex()
+        var restoredIndex = browseState.listIndex
+        if (browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i) {
+                if (albumModel[i].key === browseState.currentKey) {
+                    restoredIndex = i
+                    break
+                }
+            }
+        }
+        root.currentIndex = restoredIndex
         root.contentY = browseState.listContentY
     })
     onContentYChanged: if (browseState) browseState.listContentY = contentY

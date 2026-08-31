@@ -61,15 +61,17 @@ GridView {
     Accessible.name: qsTr("Albums on the vinyl wall")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open")
 
-    function resolveVinylBrowseIndex() {
-        if (browseState && browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i)
-                if (albumModel[i].key === browseState.currentKey) return i
-        }
-        return browseState ? browseState.vinylIndex : -1
-    }
     Component.onCompleted: if (browseState) Qt.callLater(function() {
-        albumVinyl.currentIndex = albumVinyl.resolveVinylBrowseIndex()
+        var restoredIndex = browseState.vinylIndex
+        if (browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i) {
+                if (albumModel[i].key === browseState.currentKey) {
+                    restoredIndex = i
+                    break
+                }
+            }
+        }
+        albumVinyl.currentIndex = restoredIndex
         albumVinyl.contentY = browseState.vinylContentY
     })
     onContentYChanged: if (browseState) browseState.vinylContentY = contentY

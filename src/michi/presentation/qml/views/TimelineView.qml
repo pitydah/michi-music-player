@@ -47,15 +47,17 @@ ListView {
     Accessible.name: qsTr("Album timeline")
     Accessible.description: qsTr("Albums grouped chronologically")
 
-    function resolveTimelineBrowseIndex() {
-        if (browseState && browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i)
-                if (albumModel[i].key === browseState.currentKey) return i
-        }
-        return browseState ? browseState.chronologyIndex : -1
-    }
     Component.onCompleted: if (browseState) Qt.callLater(function() {
-        albumTimeline.currentIndex = albumTimeline.resolveTimelineBrowseIndex()
+        var restoredIndex = browseState.chronologyIndex
+        if (browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i) {
+                if (albumModel[i].key === browseState.currentKey) {
+                    restoredIndex = i
+                    break
+                }
+            }
+        }
+        albumTimeline.currentIndex = restoredIndex
         albumTimeline.contentY = browseState.chronologyContentY
     })
     onContentYChanged: if (browseState) browseState.chronologyContentY = contentY

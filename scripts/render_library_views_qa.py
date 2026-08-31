@@ -215,7 +215,9 @@ def render(output: Path) -> list[dict]:
                 }
                 if len(cell_x_positions) < 3:
                     raise RuntimeError(
-                        "Gallery delegates did not occupy three distinct columns"
+                        "Gallery delegates did not occupy three distinct columns: "
+                        f"columns={columns}, cellWidth={active.property('cellWidth')}, "
+                        f"cells={len(cells)}, x={sorted(cell_x_positions)}"
                     )
 
             if state == "selected-and-focus":
