@@ -10,7 +10,7 @@ import json
 import os
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QObject, QPointF, QUrl, Signal, Slot
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickWindow
@@ -210,7 +210,8 @@ def render(output: Path) -> list[dict]:
                     )
                 cells = active.findChildren(QObject, "albumGridCell")
                 cell_x_positions = {
-                    round(float(cell.property("x")), 1) for cell in cells
+                    round(float(cell.mapToItem(active, QPointF()).x()), 1)
+                    for cell in cells
                 }
                 if len(cell_x_positions) < 3:
                     raise RuntimeError(
