@@ -91,6 +91,15 @@ def album_rows(count: int = 72) -> list[dict]:
     return rows
 
 
+def visual_descendants(item):
+    """Walk QQuickItem ownership, including view-managed delegate wrappers."""
+    pending = list(item.childItems())
+    while pending:
+        child = pending.pop()
+        yield child
+        pending.extend(child.childItems())
+
+
 class QaLibrary(QObject):
     library_changed = Signal()
 
@@ -208,7 +217,11 @@ def render(output: Path) -> list[dict]:
                     raise RuntimeError(
                         f"Gallery rendered only {columns} column(s) at {width}px"
                     )
-                cells = active.findChildren(QObject, "albumGridCell")
+                cells = [
+                    item
+                    for item in visual_descendants(active)
+                    if item.objectName() == "albumGridCell"
+                ]
                 cell_x_positions = {
                     round(float(cell.mapToItem(active, QPointF()).x()), 1)
                     for cell in cells
