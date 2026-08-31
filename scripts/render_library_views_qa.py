@@ -11,9 +11,10 @@ import os
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickWindow
+from PySide6.QtTest import QTest
 
 ROOT = Path(__file__).resolve().parents[1]
 QML = ROOT / "src/michi/presentation/qml"
@@ -24,6 +25,14 @@ MODES = {
     "chronology": "timeline",
     "editorial": "magazine",
     "studio-list": "list",
+}
+ACTIVE_NAMES = {
+    "grid": "albumGridView",
+    "cover": "albumCoverView",
+    "vinyl": "albumVinylView",
+    "timeline": "albumTimelineView",
+    "magazine": "albumMagazineView",
+    "list": "albumListView",
 }
 FRAMES = (
     (900, 900, "compact"),
@@ -166,41 +175,37 @@ def render(output: Path) -> list[dict]:
             errors = "; ".join(error.toString() for error in component.errors())
             if component.status() != QQmlComponent.Ready:
                 raise RuntimeError(errors)
-            root = component.create()
+            root = component.createWithInitialProperties(
+                {
+                    "currentTab": "albums",
+                    "albumMode": mode,
+                    "width": width,
+                    "height": height,
+                }
+            )
             if root is None:
                 raise RuntimeError(errors or "LibraryView could not instantiate")
             window = QQuickWindow()
             window.setGeometry(0, 0, width, height)
+            window.setColor(QColor("#0A0D14"))
             root.setParentItem(window.contentItem())
-            root.setProperty("width", width)
-            root.setProperty("height", height)
-            root.setProperty("currentTab", "albums")
-            root.setProperty("albumMode", mode)
             window.show()
-            for _ in range(8):
-                app.processEvents()
+            QTest.qWait(160)
+
+            active = root.findChild(QObject, ACTIVE_NAMES[mode])
+            if active is None:
+                raise RuntimeError(
+                    f"{view_name} did not instantiate {ACTIVE_NAMES[mode]}"
+                )
 
             if state == "selected-and-focus":
-                active = root.findChild(
-                    QObject,
-                    {
-                        "grid": "albumGridView",
-                        "cover": "albumCoverView",
-                        "vinyl": "albumVinylView",
-                        "timeline": "albumTimelineView",
-                        "magazine": "albumMagazineView",
-                        "list": "albumListView",
-                    }[mode],
-                )
-                if active is not None:
-                    active.setFocus(True)
+                active.setFocus(True)
             elif state == "view-options-open":
                 popup = root.findChild(QObject, "libraryViewOptionsPopup")
                 if popup is None:
                     raise RuntimeError("View Options popup not found")
                 popup.setProperty("visible", True)
-            for _ in range(6):
-                app.processEvents()
+            QTest.qWait(260 if state == "view-options-open" else 80)
 
             target = output / f"{view_name}--{width}x{height}--{state}.png"
             image = window.grabWindow()
