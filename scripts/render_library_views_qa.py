@@ -430,6 +430,8 @@ def _render_frame(
             QCoreApplication.processEvents()
 
         active = root.findChild(QObject, ACTIVE_NAMES[mode])
+        if active is None and state == "empty":
+            active = albums_host
         if active is None:
             raise RuntimeError(f"{view_name} did not instantiate {ACTIVE_NAMES[mode]}")
         active_width = float(active.property("width"))
