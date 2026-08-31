@@ -172,7 +172,7 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "property bool accented" in glass
     assert "Behavior on scale" in button
     assert 'objectName: "stableLibrarySearchPane"' in toolbar
-    assert "Layout.preferredWidth: 82" in toolbar
+    assert "? 82 : 48" in toolbar
     assert 'import "../controls"' in content
     assert 'text: qsTr("ADD TRACK TO")' in content
     assert "MichiIconButton" in content
@@ -409,9 +409,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert 'objectName: "albumViewSwitcher"' not in toolbar
     assert 'objectName: "stableLibrarySearchPane"' in toolbar
     assert "SplitView" not in toolbar
-    assert "Layout.preferredWidth: 82" in toolbar
+    assert "? 82 : 48" in toolbar
     assert toolbar.index("LibraryTabs {") < toolbar.index("MichiSearchField {")
-    assert "compact: true" in header
+    assert "compact: !MichiBreakpoints.isXl(root.width)" in header
     for icon in (
         "view-grid",
         "view-path",

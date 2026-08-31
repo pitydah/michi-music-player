@@ -35,10 +35,10 @@ Item {
         : MichiThemeState.glassQuality === "high" ? 0.76 : 0.86
     readonly property bool raised: materialSpec.shadowed
     MichiMaterial { id: materialSpec; role: root.materialRole }
-    readonly property color materialTop: Qt.rgba(materialSpec.baseColor.r,
-        materialSpec.baseColor.g, materialSpec.baseColor.b, root.materialOpacity)
-    readonly property color materialBottom: Qt.rgba(materialSpec.bottomColor.r,
-        materialSpec.bottomColor.g, materialSpec.bottomColor.b, root.materialOpacity)
+    readonly property color materialTop: MichiSemanticColors.withAlpha(
+        materialSpec.baseColor, root.materialOpacity)
+    readonly property color materialBottom: MichiSemanticColors.withAlpha(
+        materialSpec.bottomColor, root.materialOpacity)
 
     // Real backdrop blur (QtQuick.Effects) — only at high glass quality and
     // on non-subtle surfaces, where the render cost is justified. Falls back
