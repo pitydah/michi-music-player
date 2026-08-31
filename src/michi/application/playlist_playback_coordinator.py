@@ -36,14 +36,30 @@ class PlaylistPlaybackCoordinator:
     def play_playlist(self, playlist_id: str, start_index: int = 0) -> None:
         """PLAYLIST snapshot context (never copies into Queue). The snapshot
         is taken at intent time: later persistent edits do not rewrite the
-        running session; a future Play uses the updated playlist."""
+        running session; a future Play uses the updated playlist.
+
+        PL-FINAL-A05: callers MUST pass an already availability-filtered
+        path list through play_playlist_paths; this legacy entry point
+        keeps the raw snapshot for compatibility callers."""
         playlist = self._playlists.get_playlist(playlist_id)
         if playlist is None:
             logger.warning("playlist no encontrada: %s", playlist_id)
             return
+        self.play_playlist_paths(playlist_id, list(playlist.track_paths), start_index)
+
+    def play_playlist_paths(
+        self,
+        playlist_id: str,
+        available_paths: list[str],
+        start_index: int = 0,
+    ) -> None:
+        """PL-FINAL-A05: PLAYLIST snapshot over the AVAILABLE subset only.
+        The presentation layer resolves availability (library truth); the
+        coordinator never guesses it. Never sends missing paths to the
+        engine; a future Play uses the updated playlist."""
         entries = [
             PlaybackSequenceEntry(file_path=Path(path), title="")
-            for path in playlist.track_paths
+            for path in available_paths
         ]
         if not entries:
             return
@@ -60,9 +76,18 @@ class PlaylistPlaybackCoordinator:
 
     def queue_playlist(self, playlist_id: str) -> None:
         """EXPLICIT Queue intent: append playlist tracks to the Queue.
-        Never commands playback."""
+        Never commands playback. PL-FINAL-A05: la presentación pasa la
+        lista ya filtrada por disponibilidad vía queue_playlist_paths."""
         playlist = self._playlists.get_playlist(playlist_id)
         if playlist is None:
             logger.warning("playlist no encontrada: %s", playlist_id)
             return
-        self._queue.add_many([Path(path) for path in playlist.track_paths])
+        self.queue_playlist_paths(playlist_id, list(playlist.track_paths))
+
+    def queue_playlist_paths(
+        self, playlist_id: str, available_paths: list[str]
+    ) -> None:
+        """PL-FINAL-A05: EXPLICIT Queue intent over the AVAILABLE subset."""
+        if not available_paths:
+            return
+        self._queue.add_many([Path(path) for path in available_paths])

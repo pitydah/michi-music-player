@@ -17,6 +17,9 @@ Item {
     // tracks que la biblioteca no puede resolver.
     property string description: ""
     property int unavailableCount: 0
+    // PL-FINAL-A05: Play/Shuffle operan SOLO sobre tracks reproducibles.
+    property int availableTrackCount: 0
+    readonly property bool hasPlayableTracks: root.availableTrackCount > 0
 
     property string customCoverPath: ""
     property var mosaicArtworkPaths: []
@@ -29,7 +32,6 @@ Item {
     // PL-FINAL-09: focal del hero image (0..1) — se propaga al background.
     property real heroFocalX: 0.5
     property real heroFocalY: 0.5
-    property bool hasTracks: root.trackCount > 0
 
     readonly property bool compact: width < 720
     readonly property real coverSize: width >= 1120 ? 180
@@ -237,7 +239,7 @@ Item {
                     iconName: "play"
                     variant: "primary"
                     implicitHeight: MichiMetrics.controlMedium
-                    enabled: root.hasTracks
+                    enabled: root.hasPlayableTracks
                     accessibleName: qsTr("Play playlist now")
                     onClicked: root.playRequested()
                 }
@@ -248,7 +250,7 @@ Item {
                     iconOnly: root.width < 820
                     variant: "secondary"
                     implicitHeight: MichiMetrics.controlMedium
-                    enabled: root.hasTracks
+                    enabled: root.hasPlayableTracks
                     accessibleName: qsTr("Shuffle playlist")
                     onClicked: root.shuffleRequested()
                 }
