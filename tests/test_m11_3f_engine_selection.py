@@ -136,6 +136,10 @@ class FakePort:
         for cb in list(self._listeners["media_accepted"]):
             cb(path)
 
+    def emit_media_rejected(self, path, message):
+        for cb in list(self._listeners["media_rejected"]):
+            cb(path, message)
+
     def emit_playback_state(self, status):
         for cb in list(self._listeners["playback_state_changed"]):
             cb(status)
@@ -505,7 +509,7 @@ class TestF2Quiescence:
     def _harness(self):
         return make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
 
-    def test_f07_playing_switch_rejected(self):
+    def test_f07_playing_switch_stops_and_rehydrates(self):
         h = self._harness()
         # canonical PLAYING: accepted track + armed intent + backend PLAYING
         h.playback.load_and_play("/music/a.flac")
@@ -513,20 +517,22 @@ class TestF2Quiescence:
         h.playback.play()
         h.router._bound.emit_playback_state(PlaybackStatus.PLAYING)
         assert h.playback.state.status == PlaybackStatus.PLAYING
-        with pytest.raises(AudioEngineSwitchNotQuiescentError):
-            h.coordinator.switch_to(AudioEngineId.GSTREAMER)
-        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+        assert h.playback.state.status is PlaybackStatus.STOPPED
+        h.router._bound.emit_media_accepted("/music/a.flac")
 
-    def test_f08_paused_switch_rejected(self):
+    def test_f08_paused_switch_stops_and_rehydrates(self):
         h = self._harness()
         h.playback.load_and_play("/music/a.flac")
         h.router._bound.emit_media_accepted("/music/a.flac")
         h.playback.play()
         h.router._bound.emit_playback_state(PlaybackStatus.PAUSED)
         assert h.playback.state.status == PlaybackStatus.PAUSED
-        with pytest.raises(AudioEngineSwitchNotQuiescentError):
-            h.coordinator.switch_to(AudioEngineId.GSTREAMER)
-        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+        assert h.playback.state.status is PlaybackStatus.STOPPED
+        h.router._bound.emit_media_accepted("/music/a.flac")
 
     def test_f09_pending_load_switch_rejected(self):
         h = self._harness()
@@ -733,8 +739,7 @@ class TestF3F4SwitchOrder:
 
 class TestF5F6F7:
     def test_f54_playback_acceptance_switch(self):
-        """The MANDATORY acceptance gate: old acceptance invalidated, next
-        play reloads the logical track on the NEW backend."""
+        """Old acceptance is invalidated and the target is rehydrated once."""
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
         qt = h.providers[AudioEngineId.QT_MULTIMEDIA]
         gst = h.providers[AudioEngineId.GSTREAMER]
@@ -755,9 +760,11 @@ class TestF5F6F7:
         assert h.playback.state.file_path == "/music/a.flac"
         assert h.playback.state.status == PlaybackStatus.STOPPED
         assert h.playback._accepted is False  # old backend acceptance invalidated
-        # next play() reloads on the NEW backend
+        assert [t for _, t in gst.port_loads] == ["/music/a.flac"]
+        h.router._bound.emit_media_accepted("/music/a.flac")
+        # The explicit play uses the accepted prepared source; no second load.
         h.playback.play()
-        assert [t for _, t in gst.port_loads] == ["/music/a.flac"]  # exactly once
+        assert [t for _, t in gst.port_loads] == ["/music/a.flac"]
         assert gst.port_plays.count(AudioEngineId.GSTREAMER) == 1
         assert qt.port_loads == []  # no load on old backend after detach
         assert qt.port_plays == []
@@ -794,7 +801,7 @@ class TestF5F6F7:
         assert h.playback._intent is False
         assert h.playback.state.file_path == "/music/a.flac"
 
-    def test_f27_next_play_reloads_logical_track_on_target(self):
+    def test_f27_next_play_uses_rehydrated_logical_track_on_target(self):
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
         qt = h.providers[AudioEngineId.QT_MULTIMEDIA]
         gst = h.providers[AudioEngineId.GSTREAMER]
@@ -802,10 +809,12 @@ class TestF5F6F7:
         h.router._bound.emit_media_accepted("/music/a.flac")
         h.playback.stop()
         h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        h.router._bound.emit_media_accepted("/music/a.flac")
         qt.port_loads.clear()  # solo importa lo que ocurre DESPUÉS del detach
         qt.port_plays.clear()
+        gst.port_loads.clear()
         h.playback.play()
-        assert [t for _, t in gst.port_loads] == ["/music/a.flac"]
+        assert gst.port_loads == []
         assert gst.port_plays == [AudioEngineId.GSTREAMER]
         assert qt.port_loads == []
         assert qt.port_plays == []

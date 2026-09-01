@@ -113,21 +113,15 @@ Popup {
                 Layout.preferredHeight: 38
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
-                // P1-02: a row is selectable ONLY when the engine is truly
-                // switchable — canActivate AND playback quiescent AND no
-                // switch in flight AND not already Active+Preferred.
-                enabled: row.modelData.canActivate
-                    && root.engineSwitchReady
+                // Application owns the semantic plan. QML only renders its
+                // action/readiness roles; it never reconstructs switch policy.
+                enabled: row.modelData.selectionAllowed
+                    && row.modelData.selectionAction !== "noop"
                     && !row.isSwitching
-                    && root.switchingTo === ""
-                    && !(
-                        row.modelData.id === root.activeEngineId
-                        && row.modelData.id === root.selectedEngineId
-                    )
 
                 property bool isActive: row.modelData.id === root.activeEngineId
                 property bool isSelected: row.modelData.id === root.selectedEngineId
-                property bool isSwitching: row.modelData.id === root.switchingTo
+                property bool isSwitching: row.modelData.switching
 
                 function statusLabel() {
                     if (row.isSwitching)
@@ -155,10 +149,11 @@ Popup {
                 Accessible.description: {
                     if (!row.modelData.canActivate)
                         return qsTr("Not available on this system")
-                    if (!root.engineSwitchReady && root.engineSwitchBlocker !== "")
+                    if (!row.modelData.selectionAllowed
+                            && row.modelData.selectionBlocker !== "")
                         return qsTr("Select ") + row.modelData.displayName
-                            + " — " + root.engineSwitchBlocker
-                    if (root.switchingTo !== "" || row.isSwitching)
+                            + " — " + row.modelData.selectionBlocker
+                    if (row.isSwitching)
                         return qsTr("Select ") + row.modelData.displayName
                             + " — " + qsTr("Audio engine change is already in progress.")
                     return qsTr("Select ") + row.modelData.displayName

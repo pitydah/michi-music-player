@@ -94,6 +94,13 @@ Evidence-based; states per `docs/STATUS_MATRIX.md`.
 | M11.4 Audiophile Output/DAC  | AUDITED    | Not implemented — research evidence collected (RESEARCH-01: device identity, capabilities, profiles, DSD/DoP, volume; DAC_DEVICE_REFERENCE_AUDIT.md + AUDIOPHILE_FEATURE_MATRIX.md) | Work package M11.4 — READY |
 | M11.5 Audiophile Guarantees  | AUDITED    | Not implemented — research evidence collected (RESEARCH-01: bit-perfect contract, gapless ownership, cross-format degradation; BIT_PERFECT_CONTRACT_PROPOSAL.md) | Work package M11.5 — READY |
 
+> **M11.3 selector corrective supersession:** Audio Engine Selector Corrective
+> Seal R2 replaces the historical quiescent-only selector description in the
+> M11.3 row. Application-owned plans now distinguish no-op, preference-only,
+> runtime switch, preferred retry, and unavailable targets. Runtime switches
+> accept STOPPED/PAUSED/PLAYING, preserve logical media/position, and end
+> STOPPED after bounded no-autoplay rehydration.
+
 ## Future Execution Order
 
 ### Current Execution Order (canonical)

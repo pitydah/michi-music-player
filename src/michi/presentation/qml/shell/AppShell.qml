@@ -114,7 +114,8 @@ Item {
         audioEngineActiveName: audioEngine.activeEngineName
         audioEngineSelectedName: audioEngine.selectedEngineName
         audioEngineLifecycle: audioEngine.lifecycle
-        audioEngineSwitchingTo: audioEngine.switchingTo
+        audioEngineSwitchingTo: audioEngine.switchRequestPendingTarget !== ""
+            ? audioEngine.switchRequestPendingTarget : audioEngine.switchingTo
         audioEngineFallbackFrom: audioEngine.fallbackFrom
         audioEngineStatusSummary: audioEngine.statusSummary
         audioEngineSwitchReady: audioEngine.engineSwitchReady

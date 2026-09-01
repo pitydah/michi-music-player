@@ -358,6 +358,8 @@ class TestPopupBehavioral:
         # switch completes → rows re-enable
         service.mark_ready(AudioEngineId.GSTREAMER)
         _run(qapp)
+        qt_row = _by_name(window, "enginePopupRow_qt_multimedia")
+        mpd_row = _by_name(window, "enginePopupRow_mpd")
         assert qt_row.property("enabled") is True
         assert mpd_row.property("enabled") is True
         popup.close()

@@ -3,20 +3,19 @@
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 
+from michi.application.audio_engine_selection import (
+    EngineSwitchBlocker,
+    EngineSwitchReadiness,
+    MediaRequestPurpose,
+    MediaRequestTerminalResult,
+    MediaRequestTerminalStatus,
+)
 from michi.application.ports import AudioLoadError, AudioPort
 from michi.domain.playback import PlaybackState, PlaybackStatus
 
 logger = logging.getLogger(__name__)
-
-
-class _PreparePurpose(Enum):
-    """P2-01: typed purpose of stopped-media preparation."""
-
-    STARTUP_RESTORE = "startup_restore"
-    ENGINE_SWITCH = "engine_switch"
 
 
 class EngineSwitchLeaseHeldError(RuntimeError):
@@ -25,20 +24,44 @@ class EngineSwitchLeaseHeldError(RuntimeError):
 
 
 class EngineSwitchLease:
-    """P1-01: exclusive quiescence lease for engine switching. While held,
-    playback intents that would break quiescence are rejected explicitly.
-    Released exactly once via release() (idempotent)."""
+    """Exclusive runtime-switch authority plus immutable playback snapshot.
 
-    __slots__ = ("_service", "_released")
+    The coordinator can issue privileged transition commands through this
+    object; external PlaybackService commands remain rejected until release
+    or terminal engine-switch rehydration.
+    """
 
-    def __init__(self, service: "PlaybackService") -> None:
+    __slots__ = ("_service", "_released", "_generation", "snapshot")
+
+    def __init__(
+        self,
+        service: "PlaybackService",
+        snapshot: "EngineSwitchMediaSnapshot",
+        generation: int,
+    ) -> None:
         self._service = service
         self._released = False
+        self._generation = generation
+        self.snapshot = snapshot
+
+    def controlled_stop(self) -> None:
+        self._service._engine_switch_controlled_stop(self)
+
+    def invalidate_backend_acceptance(self) -> None:
+        self._service._engine_switch_invalidate_acceptance(self)
+
+    def prepare_on_target(self) -> bool:
+        """Start stopped-media rehydration.
+
+        Returns True when the transition authority was handed to an
+        asynchronous request. A terminal callback/timeout then releases it.
+        """
+        return self._service._engine_switch_prepare_on_target(self)
 
     def release(self) -> None:
         if not self._released:
             self._released = True
-            self._service._release_engine_switch_lease()
+            self._service._release_engine_switch_lease(self)
 
 
 class PlaybackNotQuiescentError(RuntimeError):
@@ -55,6 +78,9 @@ class EngineSwitchMediaSnapshot:
     file_path: Path | None
     confirmed_position_ms: int
     deferred_resume_target_ms: int | None
+    previous_status: PlaybackStatus = PlaybackStatus.STOPPED
+    volume: int = 100
+    muted: bool = False
 
 
 class PlaybackService:
@@ -125,6 +151,7 @@ class PlaybackService:
         self._pending_on_accepted: Callable[[Path], None] | None = None
         self._pending_on_rejected: Callable[[Path, str], None] | None = None
         self._pending_on_cancelled: Callable[[Path], None] | None = None
+        self._pending_purpose: MediaRequestPurpose | None = None
         self._pending_resume_position_ms: int | None = None
         # M5-LAST-GATE-2 resume confirmation: armed when a prepare_for_resume
         # actually requested a seek (post-acceptance), disarmed by the FIRST
@@ -139,6 +166,14 @@ class PlaybackService:
         self._accepted = False
         self._converging_unexpected = False  # R2 ghost-playback guard
         self._engine_switch_lease_active = False  # P1-01 exclusive lease
+        self._engine_switch_lease: EngineSwitchLease | None = None
+        self._engine_switch_generation = 0
+        self._engine_switch_resume_target_ms: int | None = None
+        self._last_engine_switch_rehydration: MediaRequestTerminalResult | None = None
+        self._engine_switch_timeout_scheduler: (
+            Callable[[int, Callable[[], None]], None] | None
+        ) = None
+        self._engine_switch_timeout_ms = 10_000
         # M11.3C-R6.5.2: token privado de transacción de request — los
         # callbacks públicos son DIRECTOS (pueden rechazar/aceptar/superseder
         # sincrónicamente DENTRO de load()); el epoch permite al request
@@ -152,6 +187,26 @@ class PlaybackService:
     @property
     def state(self) -> PlaybackState:
         return self._state
+
+    @property
+    def engine_switch_resume_target_ms(self) -> int | None:
+        return self._engine_switch_resume_target_ms
+
+    @property
+    def last_engine_switch_rehydration(
+        self,
+    ) -> MediaRequestTerminalResult | None:
+        return self._last_engine_switch_rehydration
+
+    def set_engine_switch_timeout_scheduler(
+        self,
+        scheduler: Callable[[int, Callable[[], None]], None],
+        *,
+        timeout_ms: int = 10_000,
+    ) -> None:
+        """Inject the runtime scheduler at the composition boundary."""
+        self._engine_switch_timeout_scheduler = scheduler
+        self._engine_switch_timeout_ms = max(1, timeout_ms)
 
     def subscribe_changed(self, callback: Callable[[], None]) -> None:
         if callback not in self._subscribers:
@@ -244,6 +299,7 @@ class PlaybackService:
         self._request_epoch += 1
         my_epoch = self._request_epoch
         self._pending_path = file_path
+        self._pending_purpose = MediaRequestPurpose.USER_PLAY
         self._pending_on_accepted = on_accepted
         self._pending_on_rejected = on_rejected
         self._pending_on_cancelled = on_cancelled
@@ -312,6 +368,7 @@ class PlaybackService:
     def _clear_pending(self) -> None:
         """Terminaliza el candidato pendiente sin invocar callbacks."""
         self._pending_path = None
+        self._pending_purpose = None
         self._pending_on_accepted = None
         self._pending_on_rejected = None
         self._pending_on_cancelled = None
@@ -323,7 +380,7 @@ class PlaybackService:
         and may emit resume_prepared. Gated by the engine-switch lease."""
         self._ensure_no_engine_switch_lease("prepare_for_resume")
         self._prepare_stopped_media(
-            file_path, position_ms, _PreparePurpose.STARTUP_RESTORE
+            file_path, position_ms, MediaRequestPurpose.STARTUP_RESTORE
         )
 
     def prepare_after_engine_switch(self, snapshot: EngineSwitchMediaSnapshot) -> None:
@@ -336,14 +393,16 @@ class PlaybackService:
         if resume_position is None:
             resume_position = snapshot.confirmed_position_ms
         self._prepare_stopped_media(
-            snapshot.file_path, resume_position, _PreparePurpose.ENGINE_SWITCH
+            snapshot.file_path,
+            resume_position,
+            MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION,
         )
 
     def _prepare_stopped_media(
         self,
         file_path: Path,
         position_ms: int,
-        purpose: "_PreparePurpose",
+        purpose: MediaRequestPurpose,
     ) -> None:
         """Shared stopped-media preparation (P2-01). Semantics:
         LOAD (never autoplay) + post-acceptance seek; the deferred resume
@@ -376,6 +435,7 @@ class PlaybackService:
         self._request_epoch += 1  # M11.3C-R6.5.2: request identity
         my_epoch = self._request_epoch
         self._pending_path = file_path
+        self._pending_purpose = purpose
         self._pending_on_accepted = None
         self._pending_on_rejected = None
         self._pending_on_cancelled = None
@@ -384,22 +444,29 @@ class PlaybackService:
         try:
             self._audio.load(file_path)
         except AudioLoadError as exc:
-            if purpose is _PreparePurpose.ENGINE_SWITCH:
+            if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
                 # P2-02: a failed load is VISIBLE on the model state (never
                 # only in a log). The engine itself stays READY — this is a
                 # media domain failure, not an engine failure.
                 self._pending_path = None
+                self._pending_purpose = None
                 self._pending_resume_position_ms = None
                 self._state.error_message = (
                     "Audio engine switched, but the current track could not "
                     f"be prepared: {exc}"
                 )
                 self._notify()
+                self._complete_engine_switch_rehydration(
+                    MediaRequestTerminalStatus.REJECTED,
+                    file_path,
+                    str(exc),
+                )
                 return
             # STARTUP_RESTORE: the original fail-closed disposition —
             # pending cleared, previous acceptance PRESERVED (same as the
             # generic destructive path), then AudioLoadError raises
             self._pending_path = None
+            self._pending_purpose = None
             self._pending_on_accepted = None
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
@@ -415,6 +482,7 @@ class PlaybackService:
                 # cancelled callback): preserve terminal rejection state.
                 raise
             self._pending_path = None
+            self._pending_purpose = None
             self._pending_on_accepted = None
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
@@ -429,6 +497,18 @@ class PlaybackService:
                 self._notify()
             else:
                 self._accepted = previous_accepted
+            if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
+                self._state.status = PlaybackStatus.STOPPED
+                self._state.error_message = (
+                    "Audio engine switched, but the current track could not "
+                    f"be prepared: {exc}"
+                )
+                self._notify()
+                self._complete_engine_switch_rehydration(
+                    MediaRequestTerminalStatus.REJECTED,
+                    file_path,
+                    str(exc),
+                )
             raise
         if my_epoch != self._request_epoch:
             return
@@ -446,12 +526,16 @@ class PlaybackService:
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
         self._notify()
+        if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
+            self._schedule_engine_switch_timeout(file_path, my_epoch)
 
     def _on_media_accepted(self, file_path: Path) -> None:
         if self._pending_path is None or file_path != self._pending_path:
             return
         on_accepted = self._pending_on_accepted
+        purpose = self._pending_purpose
         self._pending_path = None
+        self._pending_purpose = None
         self._pending_on_accepted = None
         self._pending_on_rejected = None
         self._pending_on_cancelled = None
@@ -462,25 +546,101 @@ class PlaybackService:
         if on_accepted is not None:
             on_accepted(file_path)
         self._apply_prepare_seek()
+        if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
+            self._complete_engine_switch_rehydration(
+                MediaRequestTerminalStatus.ACCEPTED, file_path
+            )
 
-    def acquire_engine_switch_lease(self) -> EngineSwitchLease:
-        """P1-01: acquire the EXCLUSIVE quiescence lease for an engine
-        switch transaction. Fails deterministically when playback is not
-        switchable or when another switch already holds it."""
-        if not self.is_engine_switch_quiescent():
+    def engine_switch_readiness(self) -> EngineSwitchReadiness:
+        """Return the typed authority decision for a new explicit switch."""
+        if self._engine_switch_lease_active:
+            if self._pending_purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
+                # A newer explicit selection may supersede only rehydration.
+                return EngineSwitchReadiness(True)
+            return EngineSwitchReadiness(False, EngineSwitchBlocker.SWITCH_IN_PROGRESS)
+        if self._pending_path is not None:
+            blocker = (
+                EngineSwitchBlocker.STARTUP_RESTORE_PENDING
+                if self._pending_purpose is MediaRequestPurpose.STARTUP_RESTORE
+                else EngineSwitchBlocker.USER_MEDIA_REQUEST_PENDING
+            )
+            return EngineSwitchReadiness(False, blocker)
+        if self._resume_prepared_pending:
+            return EngineSwitchReadiness(
+                False, EngineSwitchBlocker.STARTUP_RESTORE_PENDING
+            )
+        if self._intent and self._state.status is PlaybackStatus.STOPPED:
+            return EngineSwitchReadiness(
+                False, EngineSwitchBlocker.USER_MEDIA_REQUEST_PENDING
+            )
+        return EngineSwitchReadiness(True)
+
+    def begin_engine_switch(self) -> EngineSwitchLease:
+        """Atomically capture playback truth and acquire switch authority."""
+        readiness = self.engine_switch_readiness()
+        if not readiness.allowed:
+            if readiness.blocker is EngineSwitchBlocker.SWITCH_IN_PROGRESS:
+                raise EngineSwitchLeaseHeldError(
+                    readiness.detail or readiness.blocker.value
+                )
             raise PlaybackNotQuiescentError(
-                "engine switch requires quiescent playback (STOPPED, no "
-                "pending load, no play intent, no resume in flight)"
+                readiness.detail or readiness.blocker.value  # type: ignore[union-attr]
             )
         if self._engine_switch_lease_active:
-            raise EngineSwitchLeaseHeldError(
-                "an engine switch transaction is already in progress"
-            )
+            self._cancel_engine_switch_rehydration("superseded by a newer switch")
+        snapshot = self.snapshot_engine_switch_media()
+        self._engine_switch_generation += 1
         self._engine_switch_lease_active = True
-        return EngineSwitchLease(self)
+        lease = EngineSwitchLease(self, snapshot, self._engine_switch_generation)
+        self._engine_switch_lease = lease
+        self._engine_switch_resume_target_ms = (
+            snapshot.deferred_resume_target_ms
+            if snapshot.deferred_resume_target_ms is not None
+            else snapshot.confirmed_position_ms
+        )
+        return lease
 
-    def _release_engine_switch_lease(self) -> None:
+    def acquire_engine_switch_lease(self) -> EngineSwitchLease:
+        """Compatibility name for the atomic engine-switch transition."""
+        return self.begin_engine_switch()
+
+    def _release_engine_switch_lease(self, lease: EngineSwitchLease) -> None:
+        if self._engine_switch_lease is not lease:
+            return
         self._engine_switch_lease_active = False
+        self._engine_switch_lease = None
+
+    def _require_engine_switch_lease(self, lease: EngineSwitchLease) -> None:
+        if self._engine_switch_lease is not lease or lease._released:
+            raise EngineSwitchLeaseHeldError("stale engine switch authority")
+
+    def _engine_switch_controlled_stop(self, lease: EngineSwitchLease) -> None:
+        self._require_engine_switch_lease(lease)
+        if self._state.status is not PlaybackStatus.STOPPED or self._intent:
+            self._audio.stop()
+        self._intent = False
+        self._state.status = PlaybackStatus.STOPPED
+        self._state.position_ms = lease.snapshot.confirmed_position_ms
+        self._notify()
+
+    def _engine_switch_invalidate_acceptance(self, lease: EngineSwitchLease) -> None:
+        self._require_engine_switch_lease(lease)
+        self._request_epoch += 1
+        self._clear_pending()
+        self._intent = False
+        self._accepted = False
+        self._converging_unexpected = False
+
+    def _engine_switch_prepare_on_target(self, lease: EngineSwitchLease) -> bool:
+        self._require_engine_switch_lease(lease)
+        if lease.snapshot.file_path is None:
+            lease.release()
+            return False
+        self.prepare_after_engine_switch(lease.snapshot)
+        return (
+            self._engine_switch_lease is lease
+            and self._pending_purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION
+        )
 
     def _ensure_no_engine_switch_lease(self, operation: str) -> None:
         """P1-01 gate: while the exclusive switch lease is held, playback
@@ -498,6 +658,69 @@ class PlaybackService:
             file_path=self._state.file_path,
             confirmed_position_ms=self._state.position_ms,
             deferred_resume_target_ms=self._deferred_resume_target_ms,
+            previous_status=self._state.status,
+            volume=self._state.volume,
+            muted=self._state.muted,
+        )
+
+    def _schedule_engine_switch_timeout(self, file_path: Path, epoch: int) -> None:
+        if self._engine_switch_timeout_scheduler is None:
+            return
+
+        def expire() -> None:
+            if (
+                self._request_epoch != epoch
+                or self._pending_path != file_path
+                or self._pending_purpose
+                is not MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION
+            ):
+                return
+            self._request_epoch += 1
+            self._clear_pending()
+            self._accepted = False
+            self._intent = False
+            self._state.status = PlaybackStatus.STOPPED
+            message = (
+                "Timed out while preparing the current track on the new audio engine."
+            )
+            self._state.error_message = message
+            self._notify()
+            self._complete_engine_switch_rehydration(
+                MediaRequestTerminalStatus.TIMEOUT, file_path, message
+            )
+
+        self._engine_switch_timeout_scheduler(self._engine_switch_timeout_ms, expire)
+
+    def _complete_engine_switch_rehydration(
+        self,
+        status: MediaRequestTerminalStatus,
+        file_path: Path,
+        message: str | None = None,
+    ) -> None:
+        self._last_engine_switch_rehydration = MediaRequestTerminalResult(
+            MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION,
+            status,
+            str(file_path),
+            message,
+        )
+        lease = self._engine_switch_lease
+        if lease is not None:
+            lease.release()
+
+    def _cancel_engine_switch_rehydration(self, message: str) -> None:
+        path = self._pending_path
+        if (
+            path is None
+            or self._pending_purpose
+            is not MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION
+        ):
+            return
+        self._request_epoch += 1
+        self._clear_pending()
+        self._accepted = False
+        self._intent = False
+        self._complete_engine_switch_rehydration(
+            MediaRequestTerminalStatus.CANCELLED, path, message
         )
 
     def _apply_prepare_seek(self) -> None:
@@ -547,7 +770,7 @@ class PlaybackService:
                 self._resume_prepared_pending = False
                 if (
                     getattr(self, "_prepare_purpose", None)
-                    is not _PreparePurpose.ENGINE_SWITCH
+                    is not MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION
                 ):
                     for cb in list(self._resume_prepared_subscribers):
                         cb(self._state.file_path, confirmed)
@@ -563,7 +786,9 @@ class PlaybackService:
     def _on_media_rejected(self, file_path: Path, message: str) -> None:
         if self._pending_path is not None and file_path == self._pending_path:
             on_rejected = self._pending_on_rejected
+            purpose = self._pending_purpose
             self._pending_path = None
+            self._pending_purpose = None
             self._pending_on_accepted = None
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
@@ -576,6 +801,10 @@ class PlaybackService:
             self._notify()
             if on_rejected is not None:
                 on_rejected(file_path, message)
+            if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
+                self._complete_engine_switch_rehydration(
+                    MediaRequestTerminalStatus.REJECTED, file_path, message
+                )
         elif (
             self._state.file_path is not None
             and file_path == self._state.file_path
@@ -659,6 +888,7 @@ class PlaybackService:
             raise
 
     def pause(self) -> None:
+        self._ensure_no_engine_switch_lease("pause")
         self._audio.pause()
 
     def resume(self) -> None:
@@ -672,6 +902,7 @@ class PlaybackService:
             raise
 
     def stop(self) -> None:
+        self._ensure_no_engine_switch_lease("stop")
         # AR-17 (reliability seal): capture the pending identity FIRST, then
         # attempt the backend safety command; the local intent is cleared
         # ONLY after the backend accepted the stop. A backend stop failure
@@ -682,6 +913,7 @@ class PlaybackService:
         self._audio.stop()
         # SUCCESS COMMIT — backend accepted the safety command
         self._pending_path = None
+        self._pending_purpose = None
         self._pending_on_accepted = None
         self._pending_on_rejected = None
         self._pending_on_cancelled = None
@@ -722,8 +954,10 @@ class PlaybackService:
         # the existing reentrancy discipline (clear pending first, then fire).
         self._request_epoch += 1
         pending_path = self._pending_path
+        pending_purpose = self._pending_purpose
         on_rejected = self._pending_on_rejected
         self._pending_path = None
+        self._pending_purpose = None
         self._pending_on_accepted = None
         self._pending_on_rejected = None
         self._pending_on_cancelled = None
@@ -739,6 +973,13 @@ class PlaybackService:
         self._notify()
         if (
             pending_path is not None
+            and pending_purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION
+        ):
+            self._complete_engine_switch_rehydration(
+                MediaRequestTerminalStatus.REJECTED, pending_path, reason
+            )
+        if (
+            pending_path is not None
             and on_rejected is not None
             and self._pending_path is None
         ):
@@ -750,15 +991,18 @@ class PlaybackService:
         # is not a confirmed position — canonical position changes arrive
         # exclusively through backend observation (update_position) or an
         # explicitly confirmed backend truth seam. No fabricated position.
+        self._ensure_no_engine_switch_lease("seek")
         self._audio.seek(position_ms)
 
     def set_volume(self, value: int) -> None:
+        self._ensure_no_engine_switch_lease("set_volume")
         clamped = max(0, min(100, value))
         self._audio.set_volume(clamped)
         self._state.volume = clamped
         self._notify()
 
     def set_muted(self, muted: bool) -> None:
+        self._ensure_no_engine_switch_lease("set_muted")
         self._audio.set_muted(muted)
         self._state.muted = muted
         self._notify()
@@ -777,7 +1021,7 @@ class PlaybackService:
             if (
                 self._state.file_path is not None
                 and getattr(self, "_prepare_purpose", None)
-                is not _PreparePurpose.ENGINE_SWITCH
+                is not MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION
             ):
                 for cb in list(self._resume_prepared_subscribers):
                     cb(self._state.file_path, position_ms)
@@ -828,6 +1072,7 @@ class PlaybackService:
             )
         self._request_epoch += 1
         self._pending_path = None
+        self._pending_purpose = None
         self._pending_on_accepted = None
         self._pending_on_rejected = None
         self._pending_on_cancelled = None

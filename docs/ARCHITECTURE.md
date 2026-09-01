@@ -136,9 +136,11 @@ engines adapt TO Michi contracts, never the reverse:
 - **MPD** — MANAGED AUDIO TRANSPORT ENGINE (private instance, generated
   config). MPD MUST NOT own canonical Michi Queue/Repeat/Shuffle/Playlist
   semantics; it is an engine behind AudioPort only.
-- Engine switching for 1.0 is performed from a QUIESCENT/STOPPED state
-  (stop → close → init → bind → validate → ready); no seamless handover
-  mid-track. Selection is persisted.
+- Engine selection uses an Application-owned semantic plan. Preference-only
+  changes never churn the runtime. Explicit runtime changes accept canonical
+  STOPPED/PAUSED/PLAYING state and perform a controlled stop-and-rehydrate
+  transition that preserves logical media/position and ends STOPPED. Selection
+  is persisted; no seamless/autoplaying handover occurs.
 - **Owners (M11.3A)**: `AudioEngineService` → AudioEngineState (sole
   authority; SELECTED != ACTIVE); `AudioEngineRegistry` → provider set (one
   per canonical id, deterministic order); providers (`AudioEngineProviderPort`)
@@ -147,12 +149,12 @@ engines adapt TO Michi contracts, never the reverse:
   subscribing to the SAME router object across engine switches.
   **M11.3F — `AudioEngineSelectionCoordinator`** is the single explicit
   switch transaction (application layer, framework-free, providers only via
-  the registry): preflight can_activate → quiescent (PlaybackService semantic
-  query) → stop → revalidate → persist SELECTED (SettingsService, durable
-  BEFORE the destructive boundary) → closing → router unbind → source close →
-  invalidate old backend acceptance (next play() reloads the logical track on
-  the new backend) → initializing → target open → bind + validate → restore
-  volume/mute → READY. SELECTED != ACTIVE is truthful during the window and
+  the registry): semantic plan → atomic Playback snapshot/lease → persist
+  SELECTED (SettingsService, durable BEFORE destructive work) → privileged
+  controlled stop when needed → closing → router unbind → source close →
+  invalidate old backend acceptance → initializing → target open → bind +
+  validate → restore volume/mute → READY → bounded stopped-media load/seek
+  rehydration without autoplay. SELECTED != ACTIVE is truthful during the window and
   after restart (F restart contract: persisted selected restored, active stays
   Qt READY until explicit switching — M11.3G owns automatic convergence).
   No fallback, no reopen, no auto-select.
