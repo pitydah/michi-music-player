@@ -26,6 +26,10 @@ Popup {
     property string fallbackFrom: ""
     property bool hasFallback: false
     property string statusSummary: ""
+    // P1-02: truthful readiness — the SAME truth Playback uses to allow
+    // the engine-switch lease (populated from the bridge projection).
+    property bool engineSwitchReady: true
+    property string engineSwitchBlocker: ""
 
     signal engineSwitchRequested(string engineId)
 
@@ -109,25 +113,25 @@ Popup {
                 Layout.preferredHeight: 38
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
-                // The bridge owns the one live selection decision shared by
-                // quick selection and Settings (including Stop & Switch).
-                enabled: row.modelData.canSelectNow
+                // Application owns the semantic plan. QML only renders its
+                // action/readiness roles; it never reconstructs switch policy.
+                enabled: row.modelData.selectionAllowed
+                    && row.modelData.selectionAction !== "noop"
+                    && !row.isSwitching
 
                 property bool isActive: row.modelData.id === root.activeEngineId
                 property bool isSelected: row.modelData.id === root.selectedEngineId
-                property bool isSwitching: row.modelData.id === root.switchingTo
+                property bool isSwitching: row.modelData.switching
 
                 function statusLabel() {
                     if (row.isSwitching)
                         return qsTr("Switching\u2026")
                     if (row.isActive)
                         return qsTr("Active")
-                    if (!row.modelData.canActivate)
-                        return qsTr("Not available")
-                    if (row.modelData.requiresStop)
-                        return qsTr("Stop & switch")
                     if (row.isSelected && root.hasFallback)
                         return qsTr("Preferred")
+                    if (!row.modelData.canActivate)
+                        return qsTr("Not available")
                     return ""
                 }
 
@@ -145,9 +149,13 @@ Popup {
                 Accessible.description: {
                     if (!row.modelData.canActivate)
                         return qsTr("Not available on this system")
-                    if (row.modelData.selectionBlocker !== "")
+                    if (!row.modelData.selectionAllowed
+                            && row.modelData.selectionBlocker !== "")
                         return qsTr("Select ") + row.modelData.displayName
                             + " — " + row.modelData.selectionBlocker
+                    if (row.isSwitching)
+                        return qsTr("Select ") + row.modelData.displayName
+                            + " — " + qsTr("Audio engine change is already in progress.")
                     return qsTr("Select ") + row.modelData.displayName
                 }
 

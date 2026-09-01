@@ -53,6 +53,10 @@ QtObject {
         return Qt.rgba(toneColor.r, toneColor.g, toneColor.b, 0.09)
     }
 
+    function withAlpha(toneColor, alpha) {
+        return Qt.rgba(toneColor.r, toneColor.g, toneColor.b, alpha)
+    }
+
     function statusBorder(toneColor) {
         return Qt.rgba(toneColor.r, toneColor.g, toneColor.b, 0.24)
     }

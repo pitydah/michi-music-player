@@ -8,17 +8,16 @@ Item {
     property var artist: null
     property bool selected: false
     signal activated()
-    signal selectedRequested()
 
     implicitWidth: 184
     implicitHeight: 240
+    scale: hover.hovered ? 1.015 : 1
     activeFocusOnTab: true
     Accessible.role: Accessible.ListItem
     Accessible.name: artist ? artist.name : "Artist"
     Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); activated() }
     Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); activated() }
     Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); activated() }
-    Keys.onPressed: event => artistContext.handleContextKey(event)
 
     Rectangle {
         anchors.fill: parent
@@ -28,8 +27,6 @@ Item {
             : hover.hovered
                 ? MichiSemanticColors.surfaceHover
                 : root.selected
-                    ? MichiSemanticColors.surfaceSelected
-                    : MichiSemanticColors.contentSurface
         border.width: 1
         border.color: root.selected
             ? MichiSemanticColors.auroraCyanBorderSubtle
@@ -105,6 +102,11 @@ Item {
         visualFocus: root.activeFocus && MichiAccessibility.keyboardMode
     }
 
+    Behavior on scale {
+        enabled: !MichiAccessibility.reducedMotion
+        NumberAnimation { duration: MichiMotion.artwork; easing.type: MichiMotion.outCubic }
+    }
+
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
     TapHandler {
         id: tap
@@ -113,11 +115,5 @@ Item {
             root.forceActiveFocus()
             root.activated()
         }
-    }
-    ArtistContextArea {
-        id: artistContext
-        anchors.fill: parent
-        artist: root.artist
-        onContextRequested: root.selectedRequested()
     }
 }

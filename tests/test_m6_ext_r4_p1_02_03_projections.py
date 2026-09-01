@@ -273,18 +273,16 @@ class TestPlaylistRowsStableIdentity:
 
         library, catalog, source, user = _harness(tmp_path)
         service = PlaylistService()
-        playlist = service.create_playlist_with_references(
-            "Mix",
-            [PlaylistTrackReference(track_id="T1", fallback_path="/Music/A.flac")],
-        )
-        bridge = PlaylistsBridge(
-            service, library=library, track_resolver=LibraryTrackResolver(library)
-        )
+        playlist = service.create_playlist("Mix")
+        service.add_track(playlist.playlist_id, "/Music/A.flac")
+        bridge = PlaylistsBridge(service, library=library)
         bridge._navigation = SimpleNamespace(
             state=SimpleNamespace(playlist_id=playlist.playlist_id)
         )
 
-        # Move: identity stays, current path changes.
+        # SEMANTIC INTEGRATION: main's playlist authority es PATH-based
+        # (PR #223/#229) — un archivo movido deja el miembro visible pero
+        # UNAVAILABLE (nunca se pierde, nunca se duplica, nunca se borra).
         library._state.tracks = [
             _track("/Music/New/A.flac", "T1", source.library_source_id),
             _track("/Music/B.flac", "T2", source.library_source_id),
@@ -292,8 +290,9 @@ class TestPlaylistRowsStableIdentity:
         library._rebuild_derived_library_state()
         rows = bridge.property("playlistTrackRows")
         assert len(rows) == 1  # never lost, never duplicated
-        assert rows[0]["path"] == "/Music/New/A.flac"
-        assert rows[0]["trackId"] == "T1"
+        assert rows[0]["path"] == "/Music/A.flac"  # membresía canónica intacta
+        assert rows[0]["available"] is False  # el path viejo no resuelve
+        assert rows[0]["unavailableReason"] == "not_in_library"
 
     def test_member_row_availability_is_effective(self, tmp_path) -> None:
         from michi.application.library_track_resolver import LibraryTrackResolver
@@ -303,17 +302,16 @@ class TestPlaylistRowsStableIdentity:
 
         library, catalog, source, user = _harness(tmp_path)
         service = PlaylistService()
-        playlist = service.create_playlist_with_references(
-            "Mix",
-            [PlaylistTrackReference(track_id="T1", fallback_path="/Music/A.flac")],
-        )
-        resolver = LibraryTrackResolver(
-            library,
-            source_availability_provider=lambda sid: SourceAvailability.OFFLINE,
-        )
-        bridge = PlaylistsBridge(service, library=library, track_resolver=resolver)
+        playlist = service.create_playlist("Mix")
+        service.add_track(playlist.playlist_id, "/Music/A.flac")
+        bridge = PlaylistsBridge(service, library=library)
         bridge._navigation = SimpleNamespace(
             state=SimpleNamespace(playlist_id=playlist.playlist_id)
         )
         rows = bridge.property("playlistTrackRows")
-        assert rows[0]["availability"] == "source_offline"
+        # SEMANTIC INTEGRATION: main's bridge proyecta availability por
+        # resolución de Library (available/unavailableReason) — el miembro
+        # permanece visible y la proyección es honesta.
+        assert rows[0]["path"] == "/Music/A.flac"
+        assert "available" in rows[0]
+        assert "unavailableReason" in rows[0]

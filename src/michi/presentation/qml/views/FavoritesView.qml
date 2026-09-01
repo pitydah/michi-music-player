@@ -1,32 +1,59 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
+import "../patterns"
+import "../theme"
 
-MichiTrackTable {
+ListView {
     id: root
     objectName: "favoritesView"
-    property string addTargetTrackId: ""
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    rows: library.favoriteTrackRows
-    playingPath: typeof playback !== "undefined" && playback
-        ? playback.currentPath : ""
-    favoriteTrackIds: library.favoriteTrackIds
-    favoritePaths: library.favoritePaths
-    canFavorite: true
-    canQueue: library.canQueueTracks
-    canAddToPlaylist: library.canAddTracksToPlaylists
-    canInspect: true
-    canNavigateEntities: true
-    emptyTitle: qsTr("No favorites yet")
-    emptyMessage: qsTr("Use the heart action on any track to save it here.")
-    emptyIcon: "heart"
+    model: library.favoriteTrackRows
+    clip: true
+    spacing: MichiSpacing.xs
+    boundsBehavior: Flickable.StopAtBounds
+    headerPositioning: ListView.InlineHeader
 
-    onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
-    onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
-    onQueueRequested: trackId => library.queue_track_by_id(trackId)
-    onAddToPlaylistRequested: trackId => root.addTargetTrackId = trackId
-    onGoToAlbumRequested: albumKey => library.select_album(albumKey)
-    onGoToArtistRequested: artistKey => library.select_artist(artistKey)
+    ScrollBar.vertical: MichiScrollBar { }
+
+    header: Item {
+        width: root.width
+        height: root.count > 0 ? favoritesTableHeader.implicitHeight : root.height
+
+        TrackTableHeader {
+            id: favoritesTableHeader
+            width: parent.width
+            actionColumnWidth: 32
+            visible: root.count > 0
+        }
+
+        EmptyState {
+            anchors.fill: parent
+            visible: root.count === 0
+            title: qsTr("No favorites yet")
+            message: qsTr("Tap the heart on any track to save it here.")
+            iconName: "heart"
+        }
+    }
+
+    delegate: TrackRow {
+        required property int index
+        required property var modelData
+        width: root.width
+        numberText: String(index + 1)
+        title: modelData.title
+        artist: modelData.artist
+        album: modelData.album
+        durationMs: modelData.durationMs
+        quality: modelData.qualityLabel
+        playing: playback.currentPath === modelData.path
+        favorite: true
+        showFavorite: true
+        onActivated: library.activate_path(modelData.path)
+        onFavoriteToggled: library.toggle_favorite(modelData.path)
+    }
 }

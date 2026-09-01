@@ -207,8 +207,11 @@ class TestBridgeTimeline:
                 "decade",
                 "hasArtwork",
                 "artworkPath",
-            }.issubset(row)
-            assert row["artistKey"]
+                "trackCount",
+                "durationMs",
+                "technicalSummary",
+                "containsHighResolution",
+            } <= set(row)
         bridge.dispose()
 
     def test_timeline_albums_reactive(self, tmp_path):

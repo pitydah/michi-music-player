@@ -27,21 +27,34 @@ on-demand Loader contract (activate the tab/mode first, then findChild) and
 fail on baseline because there is no ``albumsView`` host to activate.
 """
 
+import json
 import os
 import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, Qt
+from PySide6.QtCore import (
+    Q_ARG,
+    QCoreApplication,
+    QEvent,
+    QMetaObject,
+    QObject,
+    Qt,
+    QtMsgType,
+    qInstallMessageHandler,
+)
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtQuick import QQuickWindow
 
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
 from michi.application.playback_session_service import PlaybackSessionService
 from michi.application.queue_service import QueueService
+from michi.application.settings_service import SettingsService
 from michi.presentation.library_bridge import LibraryBridge
-from tests.conftest import FakeAudioPort
+from michi.presentation.settings_bridge import SettingsBridge
+from tests.conftest import FakeAudioPort, FakeSettingsRepo
 from tests.test_library_metadata import FakeExtractor, FakeScanner
 
 QML_DIR = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
@@ -248,6 +261,103 @@ class TestLibraryPageOrchestration:
         finally:
             bridge.dispose()
 
+    def test_album_view_100_switch_stress_has_one_projection_and_no_growth(
+        self, qapp, tmp_path
+    ):
+        bridge, engine, component = _load_library_view(tmp_path)
+        try:
+            obj = component.create()
+            assert obj is not None
+            obj.setProperty("currentTab", "albums")
+            _process_events()
+            host = obj.findChild(QObject, "albumsView")
+            browse_state = obj.findChild(QObject, "albumBrowseState")
+            assert host is not None and browse_state is not None
+
+            for mode, _name in ALBUM_MODES:
+                host.setProperty("albumMode", mode)
+                _process_events()
+            QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+            _process_events()
+            baseline_objects = len(obj.findChildren(QObject))
+
+            messages = []
+
+            def message_handler(message_type, _context, message):
+                if message_type in (QtMsgType.QtWarningMsg, QtMsgType.QtCriticalMsg):
+                    messages.append(message)
+
+            previous_handler = qInstallMessageHandler(message_handler)
+            try:
+                for switch_index in range(100):
+                    mode, expected_name = ALBUM_MODES[switch_index % len(ALBUM_MODES)]
+                    host.setProperty("albumMode", mode)
+                    _process_events()
+                    active = [
+                        name
+                        for _candidate_mode, name in ALBUM_MODES
+                        if obj.findChild(QObject, name) is not None
+                    ]
+                    assert active == [expected_name]
+            finally:
+                qInstallMessageHandler(previous_handler)
+
+            QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+            _process_events()
+            assert len(obj.findChildren(QObject)) <= baseline_objects + 8
+            assert (
+                browse_state.property("currentKey")
+                == bridge.property("albums")[0]["key"]
+            )
+            assert messages == [], "QML warnings during 100 switches: " + "; ".join(
+                messages
+            )
+            obj.deleteLater()
+        finally:
+            bridge.dispose()
+
+    def test_compact_picker_and_scan_source_chooser_execute(self, qapp, tmp_path):
+        library = _make_library(FakeScanner([]), FakeExtractor())
+        bridge = LibraryBridge(library)
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML_DIR))
+        engine.rootContext().setContextProperty("library", bridge)
+        component = QQmlComponent(engine, str(VIEWS_DIR / "LibraryView.qml"))
+        window = QQuickWindow()
+        try:
+            obj = component.create()
+            assert obj is not None
+            obj.setParentItem(window.contentItem())
+            window.setGeometry(0, 0, 680, 900)
+            obj.setProperty("width", 680)
+            obj.setProperty("height", 900)
+            obj.setProperty("currentTab", "albums")
+            window.show()
+            _process_events()
+
+            compact = obj.findChild(QObject, "compactAlbumViewPicker")
+            segmented = obj.findChild(QObject, "albumViewSwitcher")
+            assert compact is not None and bool(compact.property("visible"))
+            assert segmented is not None and not bool(segmented.property("visible"))
+
+            window.setWidth(900)
+            obj.setProperty("width", 900)
+            _process_events()
+            assert not bool(compact.property("visible"))
+            assert bool(segmented.property("visible"))
+
+            toolbar = obj.findChild(QObject, "libraryToolbar")
+            chooser = obj.findChild(QObject, "librarySourcePopover")
+            assert toolbar is not None and chooser is not None
+            assert QMetaObject.invokeMethod(toolbar, "performScan", Qt.DirectConnection)
+            _process_events()
+            assert bool(chooser.property("visible"))
+            obj.deleteLater()
+        finally:
+            window.close()
+            window.deleteLater()
+            bridge.dispose()
+
     def test_album_view_switcher_event_drives_the_loaded_projection(
         self, qapp, tmp_path
     ):
@@ -289,6 +399,121 @@ class TestLibraryPageOrchestration:
 
             obj.deleteLater()
         finally:
+            bridge.dispose()
+
+    def test_view_options_events_update_persist_and_reset_every_projection(
+        self, qapp, tmp_path
+    ):
+        bridge, engine, component = _load_library_view(tmp_path)
+        settings = SettingsService(FakeSettingsRepo())
+        settings.load()
+        settings_bridge = SettingsBridge(settings)
+        engine.rootContext().setContextProperty("settingsBridge", settings_bridge)
+        obj = component.create()
+        assert obj is not None
+        try:
+            obj.setProperty("width", 1440)
+            obj.setProperty("height", 900)
+            obj.setProperty("currentTab", "albums")
+            _process_events()
+            popup = obj.findChild(QObject, "libraryViewOptionsPopup")
+            switcher = obj.findChild(QObject, "albumViewSwitcher")
+            assert popup is not None
+            assert switcher is not None
+
+            cases = (
+                (
+                    "grid",
+                    "gallery",
+                    "spacing",
+                    "airy",
+                    "albumGridView",
+                    "spacingMode",
+                    "balanced",
+                ),
+                (
+                    "cover",
+                    "flow",
+                    "visibleAlbums",
+                    "7",
+                    "albumCoverView",
+                    "visibleAlbums",
+                    "auto",
+                ),
+                (
+                    "vinyl",
+                    "vinyl",
+                    "reveal",
+                    "pronounced",
+                    "albumVinylView",
+                    "revealMode",
+                    "standard",
+                ),
+                (
+                    "timeline",
+                    "chronology",
+                    "density",
+                    "expanded",
+                    "albumTimelineView",
+                    "densityMode",
+                    "standard",
+                ),
+                (
+                    "magazine",
+                    "editorial",
+                    "informationRichness",
+                    "rich",
+                    "albumMagazineView",
+                    "informationRichness",
+                    "standard",
+                ),
+                (
+                    "list",
+                    "studioList",
+                    "artistColumn",
+                    False,
+                    "albumListView",
+                    "showArtistColumn",
+                    True,
+                ),
+            )
+
+            for mode, section, key, value, name, prop, default in cases:
+                assert QMetaObject.invokeMethod(
+                    switcher,
+                    "selected",
+                    Qt.DirectConnection,
+                    Q_ARG(str, mode),
+                )
+                _process_events()
+                active = obj.findChild(QObject, name)
+                assert active is not None
+                assert QMetaObject.invokeMethod(
+                    popup,
+                    "viewPreferenceRequested",
+                    Qt.DirectConnection,
+                    Q_ARG(str, section),
+                    Q_ARG(str, key),
+                    Q_ARG("QVariant", value),
+                )
+                _process_events()
+
+                assert active.property(prop) == value
+                persisted = json.loads(settings_bridge.property("libraryViews"))
+                assert persisted[section][key] == value
+
+                assert QMetaObject.invokeMethod(
+                    popup,
+                    "resetViewRequested",
+                    Qt.DirectConnection,
+                    Q_ARG(str, section),
+                )
+                _process_events()
+                assert active.property(prop) == default
+                persisted = json.loads(settings_bridge.property("libraryViews"))
+                assert persisted[section][key] == default
+        finally:
+            obj.deleteLater()
             bridge.dispose()
 
     def test_album_detail_opens_and_closes(self, qapp, tmp_path):

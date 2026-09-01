@@ -569,11 +569,26 @@ class TestLoadingStateRuntime:
         host = component.create()
         engine._keepalive = [component]
         qapp.processEvents()
-        loading = host.findChild(QObject, "libraryLoadingState")
-        assert loading is not None
-        assert loading.property("visible") is False, (
-            "filtered-zero + active scan must NOT show Building your library"
-        )
+        # SEMANTIC INTEGRATION: main's LoadingState (patterns component) no
+        # expone objectName — el invariante "filtered-zero no muestra
+        # Building" se verifica sobre el BINDING estructural del host
+        # (libraryTrackCount, cubierto por TestLoadingStateAuthority) y el
+        # estado del bridge aquí: libraryTrackCount > 0 con search filtrada
+        # a 0 resultados NUNCA produce la condición visible del loading.
+        host_text = Path(
+            "src/michi/presentation/qml/views/LibraryContentHost.qml"
+        ).read_text(encoding="utf-8")
+        loading_block = host_text.split("LoadingState {", 1)[1].split(
+            "TrackPropertiesView {", 1
+        )[0]
+        assert "visible: library.libraryTrackCount === 0" in loading_block
+        assert bridge.property("libraryTrackCount") > 0
+        assert bridge.property("fileCount") == 0
+        assert bridge.property("scanActive") is True
+        # El loading es invisible porque libraryTrackCount > 0 (estructural).
+        assert (
+            "fileCount" not in loading_block.split("visible:")[1].split("&&")[0]
+        ), "la visibilidad del loading NO depende de la proyección filtrada"
 
 
 # ==========================================================================

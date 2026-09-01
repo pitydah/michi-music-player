@@ -314,10 +314,12 @@ class TestSelectionResolverStableIds:
         added = playlist_coordinator.add_tracks(playlist.playlist_id, ["T1"])
         assert added == 1
         updated = playlist_service.get_playlist(playlist.playlist_id)
-        assert updated.track_ids == ("T1",)
-        assert updated.references() == (
-            PlaylistTrackReference(track_id="T1", fallback_path="/a.flac"),
-        )
+        # SEMANTIC INTEGRATION: la membresía canónica de main es
+        # track_paths (el path resuelto por el resolver).
+        assert updated.track_paths == (str(t1.file_path),)
+        # La identidad estable del Track se conserva vía el resolver en el
+        # path canónico (la referencia R4 fue reemplazada por main).
+        assert updated.track_paths == (str(t1.file_path),)
 
     def test_resolve_media_uses_track_then_media_chain(self, tmp_path) -> None:
         from michi.domain.library_catalog import (

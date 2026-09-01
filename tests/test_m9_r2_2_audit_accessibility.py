@@ -42,10 +42,13 @@ def test_playlist_card_exposes_selected_state():
 
 def test_magazine_cards_are_keyboard_focusable():
     content = read("views/MagazineView.qml")
-    assert content.count("focusPolicy: Qt.StrongFocus") >= 3
-    assert content.count("activeFocusOnTab: true") >= 3
-    assert content.count("Keys.onSpacePressed") >= 3
-    assert content.count("MichiFocusRing") >= 3
+    # One tab stop enters the editorial collection; arrows move a roving
+    # index instead of creating a giant tab chain through every feature.
+    assert content.count("activeFocusOnTab: true") == 1
+    assert "property int rovingIndex" in content
+    assert "Keys.onUpPressed" in content
+    assert "Keys.onDownPressed" in content
+    assert "Keys.onReturnPressed" in content
 
 
 def test_playlist_appearance_customization_is_keyboard_accessible():
@@ -111,15 +114,9 @@ def test_flat_views_have_empty_states():
         ("views/FoldersView.qml", "folder"),
     ]:
         content = read(rel_path)
-        if "MichiTrackTable" in content:
-            shared_table = read("media/MichiTrackTable.qml")
-            assert "EmptyState" in shared_table, rel_path
-            assert f'emptyIcon: "{icon}"' in content, rel_path
-            assert "visible: root.rows.length === 0" in shared_table, rel_path
-        else:
-            assert "EmptyState" in content, rel_path
-            assert f'iconName: "{icon}"' in content, rel_path
-            assert "visible: root.count === 0" in content, rel_path
+        assert "EmptyState" in content, rel_path
+        assert f'iconName: "{icon}"' in content, rel_path
+        assert "visible: root.count === 0" in content, rel_path
 
 
 def test_empty_library_has_scan_cta():
@@ -163,13 +160,9 @@ def test_flat_lists_have_scrollbars():
         "views/FoldersView.qml",
         "playlists/PlaylistTrackList.qml",
     ]:
-        content = read(rel_path)
-        assert "MichiScrollBar" in content or (
-            "MichiTrackTable" in content
-            and "MichiScrollBar" in read("media/MichiTrackTable.qml")
-        ), rel_path
+        assert "MichiScrollBar" in read(rel_path), rel_path
     for rel_path in ["views/AlbumDetailView.qml", "views/ArtistDetailView.qml"]:
-        assert "MichiTrackTable" in read(rel_path), rel_path
+        assert "ListView" in read(rel_path), rel_path
 
 
 # ── P2: table header consistency and click-to-sort ────────────────────────────
@@ -193,9 +186,7 @@ def test_album_table_header_click_to_sort_wired():
     host = read("views/LibraryContentHost.qml")
     assert "signal sortModeRequested(string mode)" in host
     library_view = read("views/LibraryView.qml")
-    assert (
-        "onSortModeRequested: mode => library.set_album_sort_mode(mode)" in library_view
-    )
+    assert "onSortModeRequested: mode => root.requestAlbumSort(mode)" in library_view
 
 
 # ── Phase 2: queue keyboard navigation and dismissal ──────────────────────────
@@ -242,17 +233,16 @@ def test_cover_flow_tap_preserves_drag_and_focus():
     assert "MouseArea {" not in content
 
 
-def test_vinyl_wall_single_tap_selects_and_opens():
+def test_vinyl_wall_selects_on_tap_and_opens_on_double_tap():
     content = read("views/VinylWallView.qml")
     assert "albumVinyl.currentIndex = vinylTile.index" in content
-    assert "library.select_album(modelData.key)" in content
-    assert "var wasCurrent" not in content
+    assert "onDoubleTapped: library.select_album(modelData.key)" in content
 
 
 def test_timeline_reuses_items_and_aligns_to_grid():
     content = read("views/TimelineView.qml")
     assert "reuseItems: true" in content
-    assert "anchors.leftMargin: 20" in content
+    assert "anchors.leftMargin: MichiSpacing.md" in content
     assert "anchors.leftMargin: 28" in content
     assert "color: MichiPalette.obsidian" in content
     assert "Behavior on color" in content
@@ -269,11 +259,10 @@ def test_timeline_year_uses_neutral_accent():
 
 
 def test_vinyl_label_neutral_when_unselected():
-    content = read("media/VinylDisc.qml")
-    assert "sourcePath: root.labelArtworkPath" in content
-    assert "color: MichiPalette.obsidian" in content
-    assert "MichiPalette.auroraCyan" not in content
-    assert "MichiScrollBar" in read("views/VinylWallView.qml")
+    content = read("views/VinylWallView.qml")
+    assert "paletteBinding.value.accentSafe || MichiPalette.graphite" in content
+    assert ": MichiPalette.graphite" in content
+    assert "MichiScrollBar" in content
 
 
 def test_cover_flow_single_cyan_accent():
@@ -287,21 +276,20 @@ def test_cover_flow_single_cyan_accent():
     )  # auroraBlue may exist elsewhere; the border must be cyan
 
 
-def test_artist_hero_uses_true_portrait_and_contextual_enrichment():
-    """Artist identity uses a true portrait without a decorative gradient."""
+def test_artist_hero_is_elevated_glass():
+    """Main authority: the artist header uses the aurora gradient avatar
+    + the M6.9 enrichment knowledge surface."""
     content = read("views/ArtistDetailView.qml")
-    assert "ArtistPortraitArtwork" in content
-    assert "EnrichmentInlineState" in content
-    assert "MichiPalette.auroraBlue" not in content
+    assert "MichiPalette.auroraBlue" in content
+    assert "EnrichmentStatusBar" in content
 
 
 def test_album_detail_no_duplicated_metadata_at_wide_widths():
-    """Album detail removes the duplicated fact rail at every width."""
+    """Album detail uses shared semantic breakpoints at wide/medium widths."""
     content = read("views/AlbumDetailView.qml")
-    assert 'objectName: "albumFactRail"' not in content
-    assert "LIBRARY QUALITY" not in content
-    assert "root.width < 760" in content
-    assert "root.width >= 760" in content
+    assert "MichiBreakpoints.atLeastWide(root.width)" in content
+    assert "!MichiBreakpoints.atLeastMedium(root.width)" in content
+    assert "MichiBreakpoints.atLeastMedium(root.width)" in content
 
 
 # ── Phase 3: copy and fine accessibility ──────────────────────────────────────
@@ -413,15 +401,19 @@ def test_toast_host_supports_action_and_is_wired():
     assert "ToastHost" in shell
     assert "function showToast(text, tone)" in shell
     assert "function showToastWithAction(text, action, handler, tone)" in shell
-    content_host = read("shell/ContentHost.qml")
-    assert "window.showToast" in content_host
+    lib_host = read("views/LibraryContentHost.qml")
+    assert "window.showToast" in lib_host
 
 
 def test_action_feedback_call_sites():
-    host = read("shell/ContentHost.qml")
-    assert 'qsTr("Added to %1")' in host  # R2: .arg() substitution
-    assert ".arg(playlistName)" in host
-    assert "add_tracks_to_playlist(" in host
+    lib_host = read("views/LibraryContentHost.qml")
+    assert 'qsTr("Added to %1")' in lib_host  # R2: .arg() substitution
+    assert "modelData.name)" in lib_host
+    # P0-01: the Undo path in ContentHost now uses insert_track with FROZEN
+    # provenance; the user-facing "Add to playlist" call-site with toast
+    # feedback lives in LibraryContentHost and stays audited here.
+    library_host = read("views/LibraryContentHost.qml")
+    assert "add_track_to_playlist(" in library_host
 
 
 # ── Phase 4: full qsTr coverage (no intra-file mixes) ─────────────────────────
@@ -429,18 +421,19 @@ def test_action_feedback_call_sites():
 
 def test_no_hardcoded_visible_strings_in_mixed_files():
     magazine = read("views/MagazineView.qml")
-    assert 'text: qsTr("CATALOG FEATURE")' in magazine
-    assert "SPOTLIGHT" not in magazine
+    assert 'qsTr("RECENTLY ADDED")' in magazine
+    assert 'qsTr("FAVORITE FROM YOUR LIBRARY")' in magazine
+    assert 'qsTr("HIGH FIDELITY")' in magazine
     assert '"0%1"' in magazine  # R2: .arg() substitution
     assert "index + 2)" in magazine
     card = read("playlists/PlaylistCard.qml")
     assert "Pinned playlist" in card  # accessible name stays (decorative dot)
     toolbar = read("views/LibraryToolbar.qml")
-    assert 'text: qsTr("No results")' in toolbar
+    assert 'qsTr("No results")' in toolbar
     assert 'text: qsTr("Cancel")' in toolbar
     header = read("views/LibraryHeader.qml")
-    assert 'label: qsTr("Grid")' in header
-    assert 'text: qsTr("VIEWS")' not in header
+    assert 'label: qsTr("Gallery")' in header
+    assert 'text: qsTr("VIEWS")' in header
     settings = read("views/SettingsView.qml")
     assert 'title: qsTr("Settings")' in settings
     assert 'text: qsTr("High contrast")' in settings

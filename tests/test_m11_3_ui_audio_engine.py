@@ -83,6 +83,17 @@ class TestNowPlayingBar:
         npb = read("player/NowPlayingBar.qml")
         assert "audioEngineRefreshRequested()" in npb
         assert "enginePopup.open()" in npb
+        assert npb.index("enginePopup.open()") < npb.index(
+            "root.audioEngineRefreshRequested()"
+        )
+
+    def test_popup_and_settings_consume_application_plan_roles(self):
+        popup = read("player/AudioEnginePopup.qml")
+        settings = read("views/AudioEngineSettingsSection.qml")
+        for source in (popup, settings):
+            assert "modelData.selectionAllowed" in source
+            assert "modelData.selectionAction" in source
+            assert "modelData.selectionBlocker" in source
 
     def test_tooltip_uses_friendly_names_not_ids(self):
         """M11.3-UI-R1 (P2-02): tooltip never shows canonical engine IDs."""

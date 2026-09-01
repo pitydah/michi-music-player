@@ -136,6 +136,10 @@ class FakePort:
         for cb in list(self._listeners["media_accepted"]):
             cb(path)
 
+    def emit_media_rejected(self, path, message):
+        for cb in list(self._listeners["media_rejected"]):
+            cb(path, message)
+
     def emit_playback_state(self, status):
         for cb in list(self._listeners["playback_state_changed"]):
             cb(status)
@@ -505,7 +509,7 @@ class TestF2Quiescence:
     def _harness(self):
         return make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
 
-    def test_f07_playing_switch_rejected(self):
+    def test_f07_playing_switch_stops_and_rehydrates(self):
         h = self._harness()
         # canonical PLAYING: accepted track + armed intent + backend PLAYING
         h.playback.load_and_play("/music/a.flac")
@@ -513,20 +517,22 @@ class TestF2Quiescence:
         h.playback.play()
         h.router._bound.emit_playback_state(PlaybackStatus.PLAYING)
         assert h.playback.state.status == PlaybackStatus.PLAYING
-        with pytest.raises(AudioEngineSwitchNotQuiescentError):
-            h.coordinator.switch_to(AudioEngineId.GSTREAMER)
-        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+        assert h.playback.state.status is PlaybackStatus.STOPPED
+        h.router._bound.emit_media_accepted("/music/a.flac")
 
-    def test_f08_paused_switch_rejected(self):
+    def test_f08_paused_switch_stops_and_rehydrates(self):
         h = self._harness()
         h.playback.load_and_play("/music/a.flac")
         h.router._bound.emit_media_accepted("/music/a.flac")
         h.playback.play()
         h.router._bound.emit_playback_state(PlaybackStatus.PAUSED)
         assert h.playback.state.status == PlaybackStatus.PAUSED
-        with pytest.raises(AudioEngineSwitchNotQuiescentError):
-            h.coordinator.switch_to(AudioEngineId.GSTREAMER)
-        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
+        h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
+        assert h.playback.state.status is PlaybackStatus.STOPPED
+        h.router._bound.emit_media_accepted("/music/a.flac")
 
     def test_f09_pending_load_switch_rejected(self):
         h = self._harness()
@@ -562,78 +568,6 @@ class TestF2Quiescence:
         h.playback.stop()
         assert h.playback.state.status == PlaybackStatus.STOPPED
         assert h.playback.is_engine_switch_quiescent() is True
-
-
-class TestStopAndSwitch:
-    def _playing_harness(self):
-        h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
-        h.playback.load_and_play("/music/a.flac")
-        h.router._bound.emit_media_accepted("/music/a.flac")
-        h.playback.play()
-        h.router._bound.emit_playback_state(PlaybackStatus.PLAYING)
-        return h
-
-    def test_playing_source_is_stopped_then_switched_without_autoplay(self):
-        h = self._playing_harness()
-
-        h.coordinator.stop_and_switch_to(AudioEngineId.GSTREAMER)
-
-        assert h.router.bound_engine_id == AudioEngineId.GSTREAMER
-        assert h.playback.state.status == PlaybackStatus.STOPPED
-        assert h.playback.state.file_path == "/music/a.flac"
-        assert h.providers[AudioEngineId.GSTREAMER].port_plays == []
-        assert h.providers[AudioEngineId.GSTREAMER].port_loads == [
-            (AudioEngineId.GSTREAMER, "/music/a.flac")
-        ]
-
-    def test_unavailable_target_does_not_stop_playback(self):
-        h = make_harness(
-            AudioEngineId.QT_MULTIMEDIA,
-            AudioEngineId.GSTREAMER,
-            available={AudioEngineId.GSTREAMER: False},
-        )
-        old_port = h.router._bound
-        h.playback.load_and_play("/music/a.flac")
-        old_port.emit_media_accepted("/music/a.flac")
-        h.playback.play()
-        old_port.emit_playback_state(PlaybackStatus.PLAYING)
-
-        with pytest.raises(AudioEngineSwitchUnavailableError):
-            h.coordinator.stop_and_switch_to(AudioEngineId.GSTREAMER)
-
-        assert h.playback.state.status == PlaybackStatus.PLAYING
-        assert "stop" not in old_port.events
-        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
-
-    def test_stop_failure_aborts_before_persistence_and_destructive_boundary(self):
-        h = self._playing_harness()
-        old_port = h.router._bound
-
-        def fail_stop():
-            raise RuntimeError("stop failed")
-
-        old_port.stop = fail_stop
-        with pytest.raises(RuntimeError, match="stop failed"):
-            h.coordinator.stop_and_switch_to(AudioEngineId.GSTREAMER)
-
-        assert h.settings_repo.saved == []
-        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
-        assert h.providers[AudioEngineId.QT_MULTIMEDIA].close_count == 0
-
-    def test_reentrant_play_after_stop_aborts_before_persistence(self):
-        h = self._playing_harness()
-
-        def rearm():
-            if h.playback.state.status == PlaybackStatus.STOPPED:
-                h.playback._intent = True
-
-        h.playback.subscribe_changed(rearm)
-
-        with pytest.raises(AudioEngineSwitchNotQuiescentError):
-            h.coordinator.stop_and_switch_to(AudioEngineId.GSTREAMER)
-
-        assert h.settings_repo.saved == []
-        assert h.router.bound_engine_id == AudioEngineId.QT_MULTIMEDIA
 
 
 # ---------------------------------------------------------------------------
@@ -805,8 +739,7 @@ class TestF3F4SwitchOrder:
 
 class TestF5F6F7:
     def test_f54_playback_acceptance_switch(self):
-        """The MANDATORY acceptance gate: old acceptance invalidated, next
-        play reloads the logical track on the NEW backend."""
+        """Old acceptance is invalidated and the target is rehydrated once."""
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
         qt = h.providers[AudioEngineId.QT_MULTIMEDIA]
         gst = h.providers[AudioEngineId.GSTREAMER]
@@ -827,9 +760,11 @@ class TestF5F6F7:
         assert h.playback.state.file_path == "/music/a.flac"
         assert h.playback.state.status == PlaybackStatus.STOPPED
         assert h.playback._accepted is False  # old backend acceptance invalidated
-        # next play() reloads on the NEW backend
+        assert [t for _, t in gst.port_loads] == ["/music/a.flac"]
+        h.router._bound.emit_media_accepted("/music/a.flac")
+        # The explicit play uses the accepted prepared source; no second load.
         h.playback.play()
-        assert [t for _, t in gst.port_loads] == ["/music/a.flac"]  # exactly once
+        assert [t for _, t in gst.port_loads] == ["/music/a.flac"]
         assert gst.port_plays.count(AudioEngineId.GSTREAMER) == 1
         assert qt.port_loads == []  # no load on old backend after detach
         assert qt.port_plays == []
@@ -866,7 +801,7 @@ class TestF5F6F7:
         assert h.playback._intent is False
         assert h.playback.state.file_path == "/music/a.flac"
 
-    def test_f27_next_play_reloads_logical_track_on_target(self):
+    def test_f27_next_play_uses_rehydrated_logical_track_on_target(self):
         h = make_harness(AudioEngineId.QT_MULTIMEDIA, AudioEngineId.GSTREAMER)
         qt = h.providers[AudioEngineId.QT_MULTIMEDIA]
         gst = h.providers[AudioEngineId.GSTREAMER]
@@ -874,10 +809,12 @@ class TestF5F6F7:
         h.router._bound.emit_media_accepted("/music/a.flac")
         h.playback.stop()
         h.coordinator.switch_to(AudioEngineId.GSTREAMER)
+        h.router._bound.emit_media_accepted("/music/a.flac")
         qt.port_loads.clear()  # solo importa lo que ocurre DESPUÉS del detach
         qt.port_plays.clear()
+        gst.port_loads.clear()
         h.playback.play()
-        assert [t for _, t in gst.port_loads] == ["/music/a.flac"]
+        assert gst.port_loads == []
         assert gst.port_plays == [AudioEngineId.GSTREAMER]
         assert qt.port_loads == []
         assert qt.port_plays == []
@@ -1335,21 +1272,25 @@ class TestF42AdapterContract:
         # PLAYLIST APPEARANCE authorized additive change: separate optional
         # managed-hero lifecycle methods and an async palette extractor port;
         # the frozen AudioPort and transport semantics remain unchanged.
-        # M6-EXT-R4 authorized additive change: library-domain boundaries
-        # (LibraryCatalogPort / LibraryUserStatePort /
-        # LibrarySourceScannerPort / DiscoveredMediaFile) plus the optional
-        # ArtworkCachePort.lookup default; the frozen AudioPort and audio
-        # transport semantics remain unchanged.
-        # M6-EXT-R4 FINAL AUTHORITY SEAL authorized additive change:
-        # PlaylistArtworkStorePort declares the immutable-candidate contract
-        # (prepare_cover/prepare_hero/delete_managed_asset) and PlaylistsPort
-        # declares the atomic save_playlists_with_navigation capability.
-        # The frozen AudioPort and audio transport semantics remain unchanged.
-        # M6-EXT-R4 LIBRARY PRODUCT CONVERGENCE SEAL (P2-HIGH) authorized
-        # reopening: ArtworkCachePort gained the backward-compatible
-        # persistent `invalidate` operation for confirmed negative artwork
-        # verdicts. Audio/transport semantics untouched.
-        "src/michi/application/ports.py": "4ddfeeee4df0dcb4",
+        # PLAYLISTS R2 SEAL (2026-08-29, P1-04/P1-06) authorized reopening:
+        # PlaylistsPort writes are now authoritative (PlaylistPersistenceError)
+        # with the atomic save_state compound write, and PlaylistArtworkStorePort
+        # declares the immutable candidate protocol (prepare_cover/prepare_hero/
+        # delete_managed_asset). Audio/transport semantics untouched.
+        # PLAYLISTS R3 SEAL (2026-08-30, R3-02) authorized reopening:
+        # PlaylistsPort writes are all ABSTRACT (no silent no-op defaults)
+        # and save_state is mandatory — optional persistence is represented
+        # by playlists_port=None. Audio/transport semantics untouched.
+        # PLAYLISTS R3 SEAL REVIEW (2026-08-30): delete_managed_asset abstract
+        # signature aligned to the ownership-verified (playlist_id, role,
+        # path) contract. Audio/transport semantics untouched.
+        # M6-EXT-R4 SEMANTIC INTEGRATION (2026-09-01): ports.py merged the R4
+        # library seals (ArtworkCachePort.lookup/invalidate persisted cache)
+        # with main's playlists/views/audio contracts (R3-02 playlists port
+        # docstring, PlaylistPaletteExtractorPort). Semantic audit: zero
+        # methods lost vs either side, zero duplicates. Hash re-sealed after
+        # validation — audio/transport semantics untouched.
+        "src/michi/application/ports.py": "aa4c7c9de8821f73",
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.

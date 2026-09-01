@@ -1,20 +1,10 @@
 """SQLite persistence for user playlists — shares the library_prefs table.
 
-M8-R1: playlists persist with stable playlist ids. Persistence SHAPES
-(M6-EXT-R4-H):
-
-- V1 legacy: {"name", "track_paths"} → deterministic UUIDv5 id on decode.
-- V2: {"id", "name", "track_paths"} — path-only membership (legacy).
-- V3 (current emit shape): {"version": 3, "id", "name", "tracks":
-  [{"track_id", "fallback_path"}], ...} — stable TrackId membership with a
-  location snapshot.
-
-Load never writes back. V1/V2 decoders remain (migration machinery + safe
-read); production save emits V3 only.
-
-Playlist navigation metadata (pinned/recent) persists under the
-"playlist_navigation" key of the same table.
-"""
+M8-R1: playlists persist in V2 shape {"id", "name", "track_paths"}; legacy
+V1 records {"name", "track_paths"} decode to a DETERMINISTIC UUIDv5 id
+(domain.legacy_playlist_id) so restarts never change identity. Load never
+writes back. Playlist navigation metadata (pinned/recent) persists under the
+"playlist_navigation" key of the same table."""
 
 import json
 import logging
@@ -23,22 +13,25 @@ import re
 import sqlite3
 from pathlib import Path
 
+from michi.application.errors import PlaylistPersistenceError
 from michi.application.ports import PlaylistsPort
 from michi.domain.playlist import (
     Playlist,
     PlaylistAppearance,
     PlaylistHeroMode,
     PlaylistNavigationState,
-    PlaylistPersistenceError,
     legacy_playlist_id,
 )
+
+# SEMANTIC INTEGRATION (2026-09-01): version of the CURRENT persistence
+# shape (V2, {"id", "name", "track_paths"}). The M6-EXT-R4 legacy identity
+# migration and its seals read this constant; the loader tolerates the
+# informational "version" field and never writes it back.
+PLAYLIST_PERSISTENCE_VERSION = 2
 
 logger = logging.getLogger(__name__)
 
 _HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
-
-# V3 payload marker. Historical V1/V2 payloads have no "version" member.
-PLAYLIST_PERSISTENCE_VERSION = 3
 
 
 def _decoded_color(value: object, fallback: str) -> str:
@@ -86,34 +79,51 @@ def _decode_appearance(value: object) -> PlaylistAppearance:
     if mode is PlaylistHeroMode.IMAGE and not image_path:
         mode = PlaylistHeroMode.AUTO
 
+    # PL-FINAL-09: focal point — tolerate missing fields, clamp malformed
+    # values; no load-time writeback required.
+    def _decoded_focal(key: str, fallback: float) -> float:
+        raw = value.get(key)
+        if (
+            isinstance(raw, (int, float))
+            and not isinstance(raw, bool)
+            and math.isfinite(float(raw))
+        ):
+            return max(0.0, min(1.0, float(raw)))
+        return fallback
+
     return PlaylistAppearance(
         hero_mode=mode,
         hero_solid_color=solid,
         hero_gradient_colors=colors,
         hero_gradient_angle=angle,
         hero_image_path=image_path,
+        hero_focal_x=_decoded_focal("hero_focal_x", default.hero_focal_x),
+        hero_focal_y=_decoded_focal("hero_focal_y", default.hero_focal_y),
     )
 
 
 def _decode_playlist_entry(entry) -> Playlist | None:
-    """STRICT playlist entry decode (authoritative user state), V1 + V2 + V3.
+    """STRICT playlist entry decode (authoritative user state), V1 + V2.
 
-    Valid V3 shape: {"version": 3, "id": str, "name": str,
-    "tracks": [{"track_id": str, "fallback_path": str}]}.
     Valid V2 shape: {"id": str, "name": str, "track_paths": list[str]}.
     Valid V1 shape: {"name": str, "track_paths": list[str]} — the id is
     derived deterministically via legacy_playlist_id(name).
 
-    A malformed entry (non-dict, wrong member types, any non-string
-    membership) is rejected WHOLE — NEVER partially salvaged. An explicitly
-    persisted empty/wrong-typed id is treated as V1 (deterministic legacy
-    derivation), never fabricated randomly. Valid sibling entries in the
-    same root list are preserved (established best-effort collection
-    semantics)."""
+    A malformed entry (non-dict, wrong member types, track_paths with ANY
+    non-string member, empty name) is rejected WHOLE — NEVER partially
+    salvaged. An explicitly persisted empty/wrong-typed id is treated as V1
+    (deterministic legacy derivation), never fabricated randomly. Valid
+    sibling entries in the same root list are preserved (established
+    best-effort collection semantics)."""
     if not isinstance(entry, dict):
         return None
     name = entry.get("name")
+    paths = entry.get("track_paths")
     if not isinstance(name, str) or not name:
+        return None
+    if not isinstance(paths, list):
+        return None
+    if not all(isinstance(path, str) for path in paths):
         return None
     raw_id = entry.get("id")
     if isinstance(raw_id, str) and raw_id:
@@ -121,61 +131,19 @@ def _decode_playlist_entry(entry) -> Playlist | None:
     else:
         # V1 record or empty/wrong-typed id: deterministic legacy identity.
         playlist_id = legacy_playlist_id(name)
-
-    if entry.get("version") == PLAYLIST_PERSISTENCE_VERSION:
-        track_ids, track_paths = _decode_v3_tracks(entry.get("tracks"))
-    else:
-        track_ids, track_paths = (), _decode_v2_paths(entry.get("track_paths"))
-    if track_ids is None or track_paths is None:
-        return None
     raw_cover = entry.get("custom_cover_path")
     custom_cover_path = raw_cover if isinstance(raw_cover, str) else ""
     appearance = _decode_appearance(entry.get("appearance"))
+    raw_description = entry.get("description")
+    description = raw_description if isinstance(raw_description, str) else ""
     return Playlist(
         playlist_id=playlist_id,
         name=name,
-        track_ids=track_ids,
-        track_paths=track_paths,
+        track_paths=tuple(paths),
         custom_cover_path=custom_cover_path,
         appearance=appearance,
+        description=description,
     )
-
-
-def _decode_v2_paths(raw) -> tuple[str, ...] | None:
-    """V1/V2 membership: a plain list of path strings."""
-    if not isinstance(raw, list):
-        return None
-    if not all(isinstance(path, str) for path in raw):
-        return None
-    return tuple(raw)
-
-
-def _decode_v3_tracks(raw) -> tuple[tuple[str, ...] | None, tuple[str, ...] | None]:
-    """V3 membership: a list of {"track_id": str, "fallback_path": str}.
-
-    Both collections must decode strictly; a missing track_id or a
-    non-string fallback rejects the WHOLE playlist entry (never partially
-    salvaged). All-empty collections normalize to () so a legacy path-only
-    (or future id-only) record round-trips losslessly. Returns (None, None)
-    on any violation."""
-    if not isinstance(raw, list):
-        return None, None
-    track_ids: list[str] = []
-    track_paths: list[str] = []
-    for item in raw:
-        if not isinstance(item, dict):
-            return None, None
-        track_id = item.get("track_id")
-        fallback = item.get("fallback_path", "")
-        if not isinstance(track_id, str):
-            return None, None
-        if not isinstance(fallback, str):
-            return None, None
-        track_ids.append(track_id)
-        track_paths.append(fallback)
-    normalized_ids = () if all(not i for i in track_ids) else tuple(track_ids)
-    normalized_paths = () if all(not p for p in track_paths) else tuple(track_paths)
-    return normalized_ids, normalized_paths
 
 
 def _decode_navigation_state(value: object) -> PlaylistNavigationState:
@@ -209,7 +177,7 @@ def _encode_navigation_state(state: PlaylistNavigationState) -> str:
 class SqlitePlaylistsRepository(PlaylistsPort):
     """JSON payloads under the 'playlists' and 'playlist_navigation' keys of
     the shared library_prefs table. Never touches the settings table or
-    journal mode; never raises: persistence is best effort.
+    journal mode; writes are authoritative (raise on failure).
 
     Malformed ROOT (scalar/string/object/null/boolean/invalid JSON) ->
     whole collection (). Malformed ENTRY -> that entry discarded; valid
@@ -282,31 +250,9 @@ class SqlitePlaylistsRepository(PlaylistsPort):
         return tuple(playlists)
 
     def save(self, playlists: tuple[Playlist, ...]) -> None:
-        payload = [
-            {
-                "version": PLAYLIST_PERSISTENCE_VERSION,
-                "id": p.playlist_id,
-                "name": p.name,
-                "tracks": [
-                    {"track_id": ref.track_id, "fallback_path": ref.fallback_path}
-                    for ref in p.references()
-                ],
-                # DERIVED COMPATIBILITY PROJECTION (never a second
-                # authority): the location snapshot of the same membership,
-                # kept so historical consumers of "track_paths" keep working.
-                "track_paths": [ref.fallback_path for ref in p.references()],
-                "custom_cover_path": p.custom_cover_path,
-                "appearance": {
-                    "hero_mode": p.appearance.hero_mode.value,
-                    "hero_solid_color": p.appearance.hero_solid_color,
-                    "hero_gradient_colors": list(p.appearance.hero_gradient_colors),
-                    "hero_gradient_angle": p.appearance.hero_gradient_angle,
-                    "hero_image_path": p.appearance.hero_image_path,
-                },
-            }
-            for p in playlists
-        ]
-        self._save_raw("playlists", json.dumps(payload))
+        """AUTHORITATIVE WRITE (R2 P1-04): durable on success; raises
+        PlaylistPersistenceError on any sqlite failure. Never best effort."""
+        self._save_raw("playlists", json.dumps(self._payload(playlists)))
 
     def load_navigation(self) -> PlaylistNavigationState:
         parsed = self._load_raw("playlist_navigation")
@@ -315,64 +261,66 @@ class SqlitePlaylistsRepository(PlaylistsPort):
         return _decode_navigation_state(parsed)
 
     def save_navigation(self, state: PlaylistNavigationState) -> None:
+        """AUTHORITATIVE WRITE (R2 P1-04): durable on success; raises
+        PlaylistPersistenceError on any sqlite failure."""
         self._save_raw("playlist_navigation", _encode_navigation_state(state))
 
-    def save_playlists_with_navigation(
-        self, playlists: tuple[Playlist, ...], navigation: PlaylistNavigationState
+    def save_state(
+        self,
+        playlists: tuple[Playlist, ...],
+        navigation: PlaylistNavigationState,
     ) -> None:
-        """CORRECTIVE SEAL §10: playlist collection + navigation metadata
-        in ONE transaction — a delete can never half-commit (collection
-        gone but navigation stale, or vice versa). Raises
-        ``PlaylistPersistenceError`` on any failure (full rollback)."""
-        payload = json.dumps(
-            [
-                {
-                    "version": PLAYLIST_PERSISTENCE_VERSION,
-                    "id": p.playlist_id,
-                    "name": p.name,
-                    "tracks": [
-                        {"track_id": ref.track_id, "fallback_path": ref.fallback_path}
-                        for ref in p.references()
-                    ],
-                    "track_paths": [ref.fallback_path for ref in p.references()],
-                    "custom_cover_path": p.custom_cover_path,
-                    "appearance": {
-                        "hero_mode": p.appearance.hero_mode.value,
-                        "hero_solid_color": p.appearance.hero_solid_color,
-                        "hero_gradient_colors": list(p.appearance.hero_gradient_colors),
-                        "hero_gradient_angle": p.appearance.hero_gradient_angle,
-                        "hero_image_path": p.appearance.hero_image_path,
-                    },
-                }
-                for p in playlists
-            ]
-        )
-        nav_payload = _encode_navigation_state(navigation)
+        """ATOMIC compound write (R2 P1-02): ONE connection, ONE
+        transaction, TWO upserts, ONE commit. Any failure ROLLS BACK and
+        raises PlaylistPersistenceError — there is NO observable moment
+        where only one of the two authorities is confirmed."""
         try:
             conn = self._connect()
             try:
                 conn.execute("BEGIN IMMEDIATE")
-                for key, value in (
-                    ("playlists", payload),
-                    ("playlist_navigation", nav_payload),
-                ):
-                    conn.execute(
-                        "INSERT INTO library_prefs(key, value) VALUES(?, ?) "
-                        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                        (key, value),
-                    )
-                conn.execute("COMMIT")
+                conn.execute(
+                    "INSERT INTO library_prefs(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    ("playlists", json.dumps(self._payload(playlists))),
+                )
+                conn.execute(
+                    "INSERT INTO library_prefs(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    ("playlist_navigation", _encode_navigation_state(navigation)),
+                )
+                conn.commit()
+            except sqlite3.Error:
+                conn.rollback()
+                raise
             finally:
                 conn.close()
         except sqlite3.Error as exc:
             raise PlaylistPersistenceError(
-                f"playlist+navigation persistence failed: {exc}"
+                f"playlist persistence failed (compound state): {exc}"
             ) from exc
 
+    def _payload(self, playlists: tuple[Playlist, ...]) -> list[dict]:
+        return [
+            {
+                "id": p.playlist_id,
+                "name": p.name,
+                "track_paths": list(p.track_paths),
+                "custom_cover_path": p.custom_cover_path,
+                "appearance": {
+                    "hero_mode": p.appearance.hero_mode.value,
+                    "hero_solid_color": p.appearance.hero_solid_color,
+                    "hero_gradient_colors": list(p.appearance.hero_gradient_colors),
+                    "hero_gradient_angle": p.appearance.hero_gradient_angle,
+                    "hero_image_path": p.appearance.hero_image_path,
+                    "hero_focal_x": p.appearance.hero_focal_x,
+                    "hero_focal_y": p.appearance.hero_focal_y,
+                },
+                "description": p.description,
+            }
+            for p in playlists
+        ]
+
     def _save_raw(self, key: str, payload: str) -> None:
-        """TRUTHFUL authoritative write (M6-EXT-R4 freeze gate): a sqlite
-        failure raises ``PlaylistPersistenceError`` — never a silent
-        log-and-return. Load remains tolerant; writes are not."""
         try:
             conn = self._connect()
             try:
@@ -385,6 +333,8 @@ class SqlitePlaylistsRepository(PlaylistsPort):
             finally:
                 conn.close()
         except sqlite3.Error as exc:
+            # P0-02: TRUTHFUL persistence — a sqlite failure raises instead
+            # of silently logging while QML reports success.
             raise PlaylistPersistenceError(
                 f"playlist persistence failed ({key}): {exc}"
             ) from exc

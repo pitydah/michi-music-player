@@ -528,7 +528,10 @@ class TestArtworkSingleProtocol:
         assert "store_hero(" not in service_source
 
     def test_playlist_service_uses_prepare_protocol(self) -> None:
+        # SEMANTIC INTEGRATION: main's PlaylistService (PR #229) usa el
+        # contrato ÚNICO prepare_candidate — el protocolo paralelo
+        # prepare_cover/prepare_hero fue eliminado del Service.
         service_source = Path("src/michi/application/playlist_service.py").read_text()
-        assert "prepare_cover(" in service_source
-        assert "prepare_hero(" in service_source
+        assert "prepare_candidate(" in service_source
         assert "delete_managed_asset(" in service_source
+        assert "prepare_cover(" not in service_source

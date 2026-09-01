@@ -26,8 +26,6 @@ MichiGlassSurface {
     signal nextRequested()
     signal repeatModeRequested(string mode)
     signal shuffleRequested(bool enabled)
-    signal goToAlbumRequested(string albumKey)
-    signal goToArtistRequested(string artistKey)
     signal closeRequested()
 
     elevation: "subtle"
@@ -94,43 +92,12 @@ MichiGlassSurface {
                 spacing: MichiSpacing.xs
 
                 TrackRow {
-                    id: queueTrack
                     Layout.fillWidth: true
                     numberText: String(index + 1)
-                    trackId: modelData.trackId || modelData.path
-                    filePath: modelData.path
                     title: modelData.title
                     artist: modelData.artist || ""
                     album: modelData.album || ""
-                    albumKey: modelData.albumKey || ""
-                    artistKey: modelData.artistKey || ""
-                    artworkPath: modelData.artworkPath || ""
                     durationMs: modelData.durationMs || 0
-                    formatKey: modelData.formatKey || "unknown"
-                    formatLabel: modelData.formatLabel || "UNKNOWN"
-                    codec: modelData.codec || ""
-                    container: modelData.container || ""
-                    dsdRate: modelData.dsdRate || ""
-                    sampleRateHz: modelData.sampleRateHz || 0
-                    bitDepth: modelData.bitDepth || 0
-                    bitrateBps: modelData.bitrateBps || 0
-                    channels: modelData.channels || 0
-                    fileSize: modelData.fileSize || 0
-                    genre: modelData.genre || ""
-                    composer: modelData.composer || ""
-                    year: modelData.year || 0
-                    // Missing Library metadata is not proof that a Queue path
-                    // is unavailable. Playback remains the validating owner.
-                    unavailable: false
-                    favorite: !modelData.unavailable
-                        && library.favoritePaths.indexOf(modelData.path) !== -1
-                    showFavorite: !modelData.unavailable
-                    showAddToPlaylist: !modelData.unavailable
-                        && library.canAddTracksToPlaylists
-                    showInspector: true
-                    canGoToAlbum: Boolean(modelData.albumKey)
-                    canGoToArtist: Boolean(modelData.artistKey)
-                    useDefaultContextMenu: false
                     playing: index === root.currentIndex
                     // R2.1-08: attached property, not a ListView member —
                     // queueList.isCurrentItem is undefined -> bool warning
@@ -140,60 +107,12 @@ MichiGlassSurface {
                     showAlbumColumn: false
                     showQualityColumn: false
                     showDurationColumn: root.width >= 390
-                    canMoveUp: index > 0
-                    canMoveDown: index + 1 < root.count
                     onActiveFocusChanged: {
                         if (activeFocus)
                             queueList.currentIndex = index
                     }
-                    onSelectedRequested: queueList.currentIndex = index
                     onActivated: root.trackClicked(index)
                     onRemoveRequested: root.removeRequested(index)
-                    onMoveUpRequested: root.moveRequested(index, index - 1)
-                    onMoveDownRequested: root.moveRequested(index, index + 1)
-                    onFavoriteToggled: library.toggle_favorite(modelData.path)
-                    onAddToPlaylistRequested:
-                        library.request_tracks_playlist_target([modelData.trackId])
-                    onInspectorRequested: queueProperties.inspect(modelData)
-                    onGoToAlbumRequested:
-                        root.goToAlbumRequested(modelData.albumKey)
-                    onGoToArtistRequested:
-                        root.goToArtistRequested(modelData.artistKey)
-                    onContextMenuRequested: queueTrackMenu.popup()
-                }
-                QueueTrackContextMenu {
-                    id: queueTrackMenu
-                    titleText: modelData.title
-                    artistText: modelData.artist || ""
-                    albumText: modelData.album || ""
-                    artworkPath: modelData.artworkPath || ""
-                    formatKey: modelData.formatKey || "unknown"
-                    formatLabel: modelData.formatLabel || "UNKNOWN"
-                    canPlayNow: true
-                    canAddToPlaylist: !modelData.unavailable
-                        && library.canAddTracksToPlaylists
-                    canFavorite: !modelData.unavailable
-                    favorite: !modelData.unavailable
-                        && library.favoritePaths.indexOf(modelData.path) !== -1
-                    canGoToAlbum: Boolean(modelData.albumKey)
-                    canGoToArtist: Boolean(modelData.artistKey)
-                    canShowProperties: true
-                    canMoveUp: index > 0
-                    canMoveDown: index + 1 < root.count
-                    onPlayNowRequested: root.trackClicked(index)
-                    onAddToPlaylistRequested:
-                        library.request_tracks_playlist_target([modelData.trackId])
-                    onAddToNewPlaylistRequested:
-                        library.request_new_playlist_for_tracks([modelData.trackId])
-                    onFavoriteRequested: library.toggle_favorite(modelData.path)
-                    onGoToAlbumRequested:
-                        root.goToAlbumRequested(modelData.albumKey)
-                    onGoToArtistRequested:
-                        root.goToArtistRequested(modelData.artistKey)
-                    onPropertiesRequested: queueProperties.inspect(modelData)
-                    onRemoveRequested: root.removeRequested(index)
-                    onMoveUpRequested: root.moveRequested(index, index - 1)
-                    onMoveDownRequested: root.moveRequested(index, index + 1)
                 }
                 // Reorder affordances reveal on row hover, matching the
                 // row's own hover-reveal trash (TrackRow opacity pattern).
@@ -215,8 +134,6 @@ MichiGlassSurface {
             }
         }
     }
-
-    TrackPropertiesView { id: queueProperties }
 
     // Destructive action guard: clearing the queue requires confirmation.
     MichiDialog {

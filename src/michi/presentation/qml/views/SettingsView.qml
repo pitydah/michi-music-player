@@ -176,7 +176,8 @@ Item {
                 fallbackFrom: audioEngine.fallbackFrom
                 errorMessage: audioEngine.errorMessage
                 statusSummary: audioEngine.statusSummary
-                switchingTo: audioEngine.switchingTo
+                switchingTo: audioEngine.switchRequestPendingTarget !== ""
+                    ? audioEngine.switchRequestPendingTarget : audioEngine.switchingTo
                 onEngineSwitchRequested: (engineId) => audioEngine.switch_engine(engineId)
             }
 

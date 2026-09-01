@@ -1,9 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "../controls"
-import "../media"
 import "../patterns"
-import "../playlists"
 import "../primitives"
 import "../theme"
 
@@ -11,7 +9,7 @@ ColumnLayout {
     id: root
 
     property string currentTab: "songs"
-    property string addTargetTrackId: ""
+    property string addTargetPath: ""
     // LibraryView owns presentation preferences; recreated tab content only
     // receives their current projection so controls cannot break bindings.
     property string albumMode: "grid"
@@ -20,6 +18,8 @@ ColumnLayout {
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
     property real albumZoom: 1.0
+    property var viewPreferences: ({})
+    property var browseState: null
     property var _content: null   // the current tab view
     signal scanRequested()
     signal sortModeRequested(string mode)
@@ -63,43 +63,82 @@ ColumnLayout {
     spacing: MichiTheme.space8
 
     ErrorState {
-        objectName: "libraryErrorState"
-        // P1-LIB-06: structural existence (libraryTrackCount) drives the
-        // error surface — a filtered zero-result projection never
-        // impersonates an empty library.
         visible: library.hasDiagnostic
-            || (library.scanStatus === "FAILED" && library.libraryTrackCount === 0)
+            || (library.scanStatus === "FAILED" && library.fileCount === 0)
         title: library.hasDiagnostic ? "Library unavailable" : "Scan failed"
         message: library.hasDiagnostic
             ? library.diagnosticMessage
-            : (library.scanDiagnostic.length > 0
-                ? library.scanDiagnostic
-                : "The library could not be scanned. Check your music folder and try again.")
+            : "The library could not be scanned. Check your music folder and try again."
         actionText: qsTr("Retry scan")
         onActionRequested: root.scanRequested()
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? implicitHeight : 0
     }
 
+    MichiGlassSurface {
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible ? 48 : 0
+        visible: addTargetPath !== ""
+        elevation: "subtle"
+        contentPadding: MichiSpacing.sm
+        accented: true
+        accentColor: MichiPalette.auroraPurple
+
+        RowLayout {
+            anchors.fill: parent
+            spacing: MichiSpacing.sm
+            MichiText {
+                text: qsTr("ADD TRACK TO")
+                role: "technical"
+                technical: true
+                color: MichiPalette.auroraPurple
+                font.weight: Font.DemiBold
+            }
+
+            Repeater {
+                model: playlists.playlists
+                delegate: MichiButton {
+                    text: modelData.name
+                    variant: "secondary"
+                    onClicked: {
+                        // M9-R1 cross-feature: Library sends tracks to
+                        // Playlists by canonical id (PLAINTLIST-HIERARCHY-02).
+                        // R2 P1-12: success feedback ONLY on durable add;
+                        // an already-present track is never "Added".
+                        // R4: los result codes NO son truthy — comparación exacta.
+                        var added = playlists.add_track_to_playlist(
+                            modelData.playlistId, addTargetPath)
+                        addTargetPath = ""
+                        if (added === "added")
+                            window.showToast(qsTr("Added to %1").arg(modelData.name))
+                        else if (added === "already_present")
+                            window.showToast(qsTr("Already in %1").arg(modelData.name))
+                        // "persistence_failed": el persistence Connections informa.
+                    }
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+            MichiIconButton {
+                iconName: "close"
+                accessibleName: qsTr("Cancel playlist selection")
+                onClicked: addTargetPath = ""
+            }
+        }
+    }
+
     Item {
         id: contentArea
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: library.libraryTrackCount > 0
+        visible: library.fileCount > 0
     }
 
     EmptyState {
-        objectName: "libraryEmptyState"
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: library.libraryTrackCount === 0
-            && !library.scanActive
-            && (
-                library.scanStatus === ""
-                || library.scanStatus === "IDLE"
-                || library.scanStatus === "COMPLETED"
-                || library.scanStatus === "CANCELLED"
-            )
+        visible: library.fileCount === 0
+            && (library.scanStatus === "" || library.scanStatus === "IDLE")
         title: qsTr("No music yet")
         message: qsTr("Scan a music folder to build your local library. Everything stays on your device.")
         actionText: qsTr("Choose Music Folder")
@@ -108,28 +147,27 @@ ColumnLayout {
     }
 
     LoadingState {
-        objectName: "libraryLoadingState"
         Layout.fillWidth: true
         Layout.fillHeight: true
-        // 10/10 FINAL SEAL P1-02: scanActive is the ONLY operational
-        // authority — the Bridge owns the state machine; this surface
-        // never reconstructs it from status strings.
+        // FAILED/CANCELLED must NOT spin forever: the ErrorState (above)
+        // covers FAILED with a retry, and CANCELLED returns to the
+        // EmptyState prompt.
+        // SEMANTIC INTEGRATION (M6-EXT-R4 P1-05): EXISTENCIA ESTRUCTURAL
+        // (libraryTrackCount) — fileCount es la proyección FILTRADA (una
+        // búsqueda con 0 resultados no muestra "Building your library…"
+        // mientras el scan corre).
         visible: library.libraryTrackCount === 0
-            && library.scanActive
+            && library.scanStatus !== "" && library.scanStatus !== "IDLE"
+            && library.scanStatus !== "FAILED" && library.scanStatus !== "CANCELLED"
         message: qsTr("Building your library…")
-    }
-
-    TrackPropertiesView {
-        id: trackPropertiesView
     }
 
     Component {
         id: songsViewComponent
         SongsView {
             anchors.fill: parent
-            addTargetTrackId: root.addTargetTrackId
-            onAddTargetTrackIdChanged: root.addTargetTrackId = addTargetTrackId
-            onPropertiesRequested: track => trackPropertiesView.inspect(track)
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
         }
     }
 
@@ -137,14 +175,16 @@ ColumnLayout {
         id: albumsViewComponent
         AlbumsView {
             anchors.fill: parent
-            onAddToPlaylistRequested: trackId =>
-                library.request_tracks_playlist_target([trackId])
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
             albumMode: root.albumMode
             albumSortMode: root.albumSortMode
             albumSortDescending: root.albumSortDescending
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
             albumZoom: root.albumZoom
+            viewPreferences: root.viewPreferences
+            browseState: root.browseState
             onSortModeRequested: mode => root.sortModeRequested(mode)
             onSortDirectionRequested: descending => root.sortDirectionRequested(descending)
         }
@@ -154,8 +194,8 @@ ColumnLayout {
         id: artistsViewComponent
         ArtistsView {
             anchors.fill: parent
-            onAddToPlaylistRequested: trackId =>
-                library.request_tracks_playlist_target([trackId])
+            addTargetPath: root.addTargetPath
+            onAddTargetPathChanged: root.addTargetPath = addTargetPath
         }
     }
 
@@ -177,9 +217,6 @@ ColumnLayout {
         id: favoritesViewComponent
         FavoritesView {
             anchors.fill: parent
-            addTargetTrackId: root.addTargetTrackId
-            onAddTargetTrackIdChanged: root.addTargetTrackId = addTargetTrackId
-            onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
     }
 
@@ -187,9 +224,6 @@ ColumnLayout {
         id: historyViewComponent
         HistoryView {
             anchors.fill: parent
-            addTargetTrackId: root.addTargetTrackId
-            onAddTargetTrackIdChanged: root.addTargetTrackId = addTargetTrackId
-            onPropertiesRequested: track => trackPropertiesView.inspect(track)
         }
     }
 
@@ -197,16 +231,6 @@ ColumnLayout {
         id: recentlyViewComponent
         RecentlyAddedView {
             anchors.fill: parent
-            addTargetTrackId: root.addTargetTrackId
-            onAddTargetTrackIdChanged: root.addTargetTrackId = addTargetTrackId
-            onPropertiesRequested: track => trackPropertiesView.inspect(track)
-        }
-    }
-
-    onAddTargetTrackIdChanged: {
-        if (addTargetTrackId !== "") {
-            library.request_tracks_playlist_target([addTargetTrackId])
-            addTargetTrackId = ""
         }
     }
 }

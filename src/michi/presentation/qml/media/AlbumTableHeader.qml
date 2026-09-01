@@ -9,9 +9,10 @@ Rectangle {
     property bool showYear: true
     property bool showTrackCount: true
     property bool showDuration: true
-    property bool showTechnical: false
+    property bool showTechnical: MichiThemeState.precisionMode
     property string sortMode: "title"
     property bool sortDescending: false
+    property int focusColumn: 0
     signal sortRequested(string mode)
 
     readonly property real titleColumnRatio: root.showTechnical ? 0.34 : 0.45
@@ -27,11 +28,45 @@ Rectangle {
     border.color: MichiSemanticColors.borderSubtle
     radius: MichiRadius.sm
     z: 10
+    activeFocusOnTab: true
+    Accessible.role: Accessible.List
+    Accessible.name: qsTr("Sortable album table columns. Current sort: %1, %2")
+        .arg(root.sortMode).arg(root.sortDescending ? qsTr("descending") : qsTr("ascending"))
+    Accessible.description: qsTr("Use Left and Right to choose a column and Enter to sort")
+
+    function sortableColumns() {
+        var columns = ["title"]
+        if (showArtist) columns.push("artist")
+        if (showYear) columns.push("year")
+        if (showTrackCount) columns.push("tracks")
+        if (showDuration) columns.push("duration")
+        return columns
+    }
+
+    Keys.onLeftPressed: focusColumn = Math.max(0, focusColumn - 1)
+    Keys.onRightPressed: focusColumn = Math.min(
+        sortableColumns().length - 1, focusColumn + 1)
+    Keys.onReturnPressed: {
+        MichiAccessibility.noteKeyboard()
+        sortRequested(sortableColumns()[focusColumn])
+    }
+    Keys.onEnterPressed: {
+        MichiAccessibility.noteKeyboard()
+        sortRequested(sortableColumns()[focusColumn])
+    }
+    Keys.onSpacePressed: {
+        MichiAccessibility.noteKeyboard()
+        sortRequested(sortableColumns()[focusColumn])
+    }
 
     // Sortable column: hover affordance, cursor, and click-to-sort.
     // Non-sortable columns (FORMAT) use a plain Item wrapper.
     function columnText(active) {
         return active ? MichiPalette.auroraCyan : MichiPalette.textMuted
+    }
+
+    MichiFocusRing {
+        visualFocus: root.activeFocus && MichiAccessibility.keyboardMode
     }
 
     RowLayout {

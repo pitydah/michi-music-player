@@ -15,7 +15,7 @@ from michi.application.library_track_resolver import LibraryTrackResolver
 from michi.application.playlist_service import PlaylistService
 from michi.application.queue_service import QueueService
 from michi.domain.library import TrackRef, make_artist_key
-from michi.domain.playlist import Playlist, PlaylistTrackReference
+from michi.domain.playlist import Playlist
 
 
 class _LibrarySelectionResolver:
@@ -133,42 +133,53 @@ class LibraryQueueCoordinator:
 class LibraryPlaylistCoordinator:
     """Translate Library selections into identity-based Playlist mutations.
 
-    Every membership intent is a ``PlaylistTrackReference`` (stable TrackId
-    + location snapshot) — never a bare path."""
+    Every membership intent resolves through the canonical selection
+    resolver and mutates PlaylistService by track_paths (SEMANTIC
+    INTEGRATION: main's playlist authority is path-based)."""
 
     def __init__(self, library: LibraryService, playlists: PlaylistService) -> None:
         self._selection = _LibrarySelectionResolver(library)
         self._playlists = playlists
 
     @staticmethod
-    def _references(refs: list[TrackRef]) -> list[PlaylistTrackReference]:
-        return [
-            PlaylistTrackReference(
-                track_id=ref.track_id or "", fallback_path=str(ref.file_path)
-            )
-            for ref in refs
-        ]
+    def _paths(refs: list[TrackRef]) -> list[str]:
+        """SEMANTIC INTEGRATION: main's playlist authority is
+        track_paths — paths, not R4-era references."""
+        return [str(ref.file_path) for ref in refs]
 
     def add_tracks(self, playlist_id: str, track_ids: Iterable[str]) -> int:
         if not self._playlists.contains_playlist(playlist_id):
             return 0
-        return self._playlists.add_track_references(
-            playlist_id, self._references(self._selection.tracks(track_ids))
+        added, _ = self._playlists.add_tracks(
+            playlist_id, self._paths(self._selection.tracks(track_ids))
         )
+        return added
 
     def add_album(self, playlist_id: str, album_key: str) -> int:
         if not self._playlists.contains_playlist(playlist_id):
             return 0
-        return self._playlists.add_track_references(
-            playlist_id, self._references(self._selection.album(album_key))
+        added, _ = self._playlists.add_tracks(
+            playlist_id, self._paths(self._selection.album(album_key))
         )
+        return added
 
     def add_artist(self, playlist_id: str, artist_key: str) -> int:
         if not self._playlists.contains_playlist(playlist_id):
             return 0
-        return self._playlists.add_track_references(
-            playlist_id, self._references(self._selection.artist(artist_key))
+        added, _ = self._playlists.add_tracks(
+            playlist_id, self._paths(self._selection.artist(artist_key))
         )
+        return added
+
+    def _create_with_paths(self, name: str, refs) -> Playlist | None:
+        playlist = self._playlists.create_playlist(name)
+        if playlist is None:
+            return None
+        if refs:
+            self._playlists.add_tracks(playlist.playlist_id, self._paths(refs))
+        # El create devolvió la instancia pre-mutación (frozen replace):
+        # devolver la autoridad actual del service.
+        return self._playlists.get_playlist(playlist.playlist_id) or playlist
 
     def create_from_tracks(
         self, name: str, track_ids: Iterable[str]
@@ -176,22 +187,16 @@ class LibraryPlaylistCoordinator:
         refs = self._selection.tracks(track_ids)
         if not refs:
             return None
-        return self._playlists.create_playlist_with_references(
-            name, self._references(refs)
-        )
+        return self._create_with_paths(name, refs)
 
     def create_from_album(self, name: str, album_key: str) -> Playlist | None:
         refs = self._selection.album(album_key)
         if not refs:
             return None
-        return self._playlists.create_playlist_with_references(
-            name, self._references(refs)
-        )
+        return self._create_with_paths(name, refs)
 
     def create_from_artist(self, name: str, artist_key: str) -> Playlist | None:
         refs = self._selection.artist(artist_key)
         if not refs:
             return None
-        return self._playlists.create_playlist_with_references(
-            name, self._references(refs)
-        )
+        return self._create_with_paths(name, refs)

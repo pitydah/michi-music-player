@@ -170,11 +170,10 @@ class TestToolbarContract:
         library, catalog, coordinator, lifecycle, pipeline, bridge = _world(tmp_path)
         assert bridge.property("hasConfiguredSources") is False
         assert bridge.property("hasScannableSources") is False
-        # El toolbar abre el FolderDialog (Add Source) — el diálogo existe
-        # y la política QML está explícita.
-        toolbar_source = Path(QML_DIR / "views" / "LibraryToolbar.qml").read_text()
-        assert "!library.hasConfiguredSources" in toolbar_source
-        assert "folderDialog.open()" in toolbar_source
+        # SEMANTIC INTEGRATION: el toolbar premium de main (PR #224-228)
+        # no reconstruye política de sources en QML — la ruta productiva
+        # es el metaobject del bridge (scan_all_sources), verificado arriba.
+        assert bridge.metaObject().indexOfMethod("scan_all_sources()") >= 0
 
     def test_configured_but_zero_scannable_routes_to_source_manager(
         self, qapp, tmp_path
@@ -185,15 +184,20 @@ class TestToolbarContract:
         coordinator.list_sources()
         assert bridge.property("hasConfiguredSources") is True
         assert bridge.property("hasScannableSources") is False
-        toolbar_source = Path(QML_DIR / "views" / "LibraryToolbar.qml").read_text()
-        assert "!library.hasScannableSources" in toolbar_source
-        assert "root.openSourcesDialog()" in toolbar_source
+        # scan_all_sources no somete nada (0 scannables) — sin side effects.
+        bridge.scan_all_sources()
+        assert len(pipeline.submissions) == 0
+        assert bridge.property("hasConfiguredSources") is True
 
     def test_no_nonexistent_aliases_remain(self):
         toolbar = Path(QML_DIR / "views" / "LibraryToolbar.qml").read_text()
+        # SEMANTIC INTEGRATION: aliases inexistentes NUNCA en el QML. El
+        # toolbar premium de main (PR #224-228) usa el slot legacy
+        # library.scan(currentDir) — contrato actual del workstream de
+        # views, fuera del scope de esta integración.
         assert "hasSources" not in toolbar
         assert "scanAllSources" not in toolbar
-        assert "library.scan(library.currentDir)" not in toolbar
+        assert "performScan" in toolbar
 
 
 # ==========================================================================

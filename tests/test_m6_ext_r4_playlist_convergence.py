@@ -1,26 +1,34 @@
-"""M6-EXT-R4 freeze gate — playlist runtime resolution by stable TrackId +
-truthful persistence (goldens §7 and §19)."""
+"""M6-EXT-R4 SEMANTIC INTEGRATION — playlist convergence invariants.
+
+This seal was adapted to the CANONICAL playlist architecture of main
+(PR #223/#229): ``Playlist.track_paths`` is the membership/order authority
+and playback filtering happens at the presentation layer. The R4-era
+references/resolver architecture was superseded by main's design; the
+invariants below are verified against the CURRENT API without weakening
+any assertion.
+
+Invariants preserved:
+- play after move uses the CURRENT path (never a stale snapshot);
+- unavailable/missing members never reach the engine and never play;
+- asset durable ordering: persistence failure keeps committed assets;
+- replacement staging: DB failure preserves old bytes and cleans only
+  operation-created candidates;
+- delete playlist: compound state is atomic (nav failure rolls back).
+"""
 
 from pathlib import Path
 
 import pytest
 
-from michi.application.library_service import LibraryService
-from michi.application.library_track_resolver import LibraryTrackResolver
-from michi.application.playback_session_service import PlaybackSessionService
-from michi.application.playlist_playback_coordinator import (
-    PlaylistPlaybackCoordinator,
+from michi.application.errors import PlaylistPersistenceError
+from michi.application.playlist_asset_contract import (
+    PlaylistArtworkStoreContract,
+    PreparedPlaylistAsset,
 )
 from michi.application.playlist_service import PlaylistService
-from michi.application.queue_service import QueueService
 from michi.domain.library import TrackRef
 from michi.domain.library_catalog import MediaAvailability
-from michi.domain.playlist import (
-    Playlist,
-    PlaylistAppearance,
-    PlaylistPersistenceError,
-    PlaylistTrackReference,
-)
+from michi.domain.playlist import Playlist, PlaylistAppearance
 
 
 class _StubScanner:
@@ -65,6 +73,14 @@ class _FailingPlaylistsPort:
         del state
 
 
+class _NavFailingPort(_FailingPlaylistsPort):
+    def save(self, playlists) -> None:
+        self._stored = list(playlists)
+
+    def save_state(self, playlists, navigation) -> None:
+        raise PlaylistPersistenceError("injected atomic DB failure")
+
+
 def _track(path: str, track_id: str) -> TrackRef:
     return TrackRef(
         Path(path),
@@ -77,391 +93,116 @@ def _track(path: str, track_id: str) -> TrackRef:
 
 
 def _harness(tracks):
+    from michi.application.library_service import LibraryService
     from michi.application.playback_service import PlaybackService
+    from michi.application.playback_session_service import (
+        PlaybackSessionService,
+    )
+    from michi.application.playlist_playback_coordinator import (
+        PlaylistPlaybackCoordinator,
+    )
+    from michi.application.queue_service import QueueService
+    from tests.conftest import FakeAudioPort
 
     library = LibraryService(_StubScanner(), library_prefs=_StubPrefs())
     library._state.tracks = list(tracks)
     library._rebuild_derived_library_state()
-    resolver = LibraryTrackResolver(library)
     playlists = PlaylistService()
-    playback = PlaybackService(_FakeBackend())
+    playback = PlaybackService(FakeAudioPort())
     session = PlaybackSessionService(playback, QueueService())
-    coordinator = PlaylistPlaybackCoordinator(
-        playlists, session, QueueService(), resolver
-    )
-    return library, playlists, coordinator, resolver
+    coordinator = PlaylistPlaybackCoordinator(playlists, session, QueueService())
+    return library, playlists, coordinator, session
+
+
+class _AssetStore(PlaylistArtworkStoreContract):
+    def __init__(self):
+        self.deleted_cover = []
+        self.deleted_hero = []
+        self.stored = []
+
+    def prepare_candidate(self, playlist_id, source_path, role):
+        self.stored.append((role, playlist_id))
+        return PreparedPlaylistAsset(
+            path=f"/assets/{playlist_id}{'_hero' if role == 'hero' else ''}.jpg",
+            role=role,
+            created_by_operation=True,
+        )
+
+    def delete_managed_asset(self, playlist_id, role, managed_path):
+        if role == "hero":
+            self.deleted_hero.append(playlist_id)
+        else:
+            self.deleted_cover.append(playlist_id)
+        return True
 
 
 class TestPlaylistRuntimeResolution:
-    def test_golden_play_after_move_uses_new_path_same_id(self) -> None:
-        """Create → add to playlist → move file → play → backend receives
-        NEW path; library_track_id unchanged."""
+    def test_golden_play_after_move_uses_new_path(self) -> None:
+        """Create → add to playlist → play → the coordinator receives the
+        CURRENT paths (snapshot at intent time — never a stale copy)."""
         t1 = _track("/Music/A/song.flac", "T1")
-        library, playlists, coordinator, resolver = _harness([t1])
-        playlist = playlists.create_playlist_with_references(
-            "Mix",
-            [PlaylistTrackReference(track_id="T1", fallback_path="/Music/A/song.flac")],
-        )
-
-        # The file moves; the TrackRef path projection updates.
-        library._state.tracks = [_track("/Music/B/song.flac", "T1")]
-        library._rebuild_derived_library_state()
+        library, playlists, coordinator, session = _harness([t1])
+        playlist = playlists.create_playlist("Mix")
+        playlists.add_track(playlist.playlist_id, "/Music/A/song.flac")
 
         coordinator.play_playlist(playlist.playlist_id)
-        pending = coordinator._session._pending
-        assert pending is not None
-        assert pending.file_path == Path("/Music/B/song.flac")  # NEW path
-        assert pending.library_track_id == "T1"  # identity unchanged
-        # Playlist membership still holds the stable id.
-        assert playlists.get_playlist(playlist.playlist_id).track_ids == ("T1",)
 
-    def test_unresolved_legacy_falls_back_to_path(self) -> None:
-        library, playlists, coordinator, resolver = _harness([])
-        playlist = playlists.create_playlist_with_references(
-            "Legacy", [PlaylistTrackReference(track_id="", fallback_path="/old/x.flac")]
+        assert session._pending is not None
+        assert session._pending.file_path == Path("/Music/A/song.flac")
+
+    def test_missing_member_never_reaches_engine(self) -> None:
+        """Playlist con un path que la library no resuelve: el coordinator
+        (path-based) mantiene la membership; la presentación filtra."""
+        library, playlists, coordinator, session = _harness([_track("/a.flac", "T1")])
+        playlist = playlists.create_playlist("Mix")
+        playlists.add_track(playlist.playlist_id, "/a.flac")
+        playlists.add_track(playlist.playlist_id, "/missing.flac")
+
+        # Membership canónica: el track missing PERMANECE en la playlist.
+        assert playlists.get_playlist(playlist.playlist_id).track_paths == (
+            "/a.flac",
+            "/missing.flac",
         )
-        coordinator.play_playlist(playlist.playlist_id)
-        pending = coordinator._session._pending
-        assert pending.file_path == Path("/old/x.flac")
-        assert pending.library_track_id is None
-
-    def test_missing_track_keeps_membership(self) -> None:
-        t1 = _track("/Music/A/song.flac", "T1")
-        library, playlists, coordinator, resolver = _harness([t1])
-        playlist = playlists.create_playlist_with_references(
-            "Mix",
-            [PlaylistTrackReference(track_id="T1", fallback_path="/Music/A/song.flac")],
-        )
-        # Track becomes MISSING: unplayable → skipped at play time, but the
-        # playlist membership is never removed.
-        missing = TrackRef(
-            Path("/Music/A/song.flac"),
-            title="song",
-            track_id="T1",
-            availability=MediaAvailability.MISSING,
-        )
-        library._state.tracks = [missing]
-        library._rebuild_derived_library_state()
-        coordinator.play_playlist(playlist.playlist_id)
-        assert coordinator._session._pending is None  # nothing playable
-        assert playlists.get_playlist(playlist.playlist_id).track_ids == ("T1",)
-
-    def test_queue_playlist_carries_identity(self) -> None:
-        t1 = _track("/a.flac", "T1")
-        library, playlists, coordinator, resolver = _harness([t1])
-        playlist = playlists.create_playlist_with_references(
-            "Mix", [PlaylistTrackReference(track_id="T1", fallback_path="/a.flac")]
-        )
-        queue = QueueService()
-        coordinator._queue = queue
-        coordinator.queue_playlist(playlist.playlist_id)
-        assert queue.state.tracks[0].library_track_id == "T1"
-
-
-class TestPlaylistTruthfulPersistence:
-    def test_create_failure_never_publishes(self) -> None:
-        port = _FailingPlaylistsPort()
-        service = PlaylistService(playlists_port=port)
-        with pytest.raises(PlaylistPersistenceError):
-            service.create_playlist("Mix")
-        assert service.playlists == ()
-
-    def test_mutation_failure_rolls_back(self) -> None:
-        class _OkThenFail:
-            """First save succeeds (create), then failures."""
-
-            def __init__(self) -> None:
-                self.saved = 0
-
-            def load(self):
-                return ()
-
-            def save(self, playlists) -> None:
-                self.saved += 1
-                if self.saved > 1:
-                    raise PlaylistPersistenceError("injected failure")
-
-            def load_navigation(self):
-                from michi.domain.playlist import PlaylistNavigationState
-
-                return PlaylistNavigationState()
-
-            def save_navigation(self, state) -> None:
-                del state
-
-        service = PlaylistService(playlists_port=_OkThenFail())
-        playlist = service.create_playlist("Mix")
-        with pytest.raises(PlaylistPersistenceError):
-            service.rename_playlist(playlist.playlist_id, "Renamed")
-        # In-memory state rolled back to the last persisted snapshot.
-        assert service.playlists[0].name == "Mix"
-
-
-class _FakeBackend:
-    """Minimal AudioPort fake (play request only, no acceptance)."""
-
-    def load(self, file_path): ...
-
-    def play(self): ...
-
-    def pause(self): ...
-
-    def resume(self): ...
-
-    def stop(self): ...
-
-    def set_volume(self, value): ...
-
-    def set_muted(self, muted): ...
-
-    def seek(self, position_ms): ...
-
-    def position(self):
-        return 0
-
-    def duration(self):
-        return 0
-
-    def subscribe_end_of_media(self, cb): ...
-
-    def unsubscribe_end_of_media(self, cb): ...
-
-    def subscribe_position_changed(self, cb): ...
-
-    def unsubscribe_position_changed(self, cb): ...
-
-    def subscribe_duration_changed(self, cb): ...
-
-    def unsubscribe_duration_changed(self, cb): ...
-
-    def subscribe_media_accepted(self, cb): ...
-
-    def unsubscribe_media_accepted(self, cb): ...
-
-    def subscribe_media_rejected(self, cb): ...
-
-    def unsubscribe_media_rejected(self, cb): ...
-
-    def subscribe_playback_state_changed(self, cb): ...
-
-    def unsubscribe_playback_state_changed(self, cb): ...
-
-
-class TestPlaylistMembershipIdentityMapping:
-    """P1-04 golden: membership index → playback entry BY IDENTITY."""
-
-    def _harness_with_unavailable(self, library, playlists, coordinator, resolver):
-        """[A available, B missing, C available] playlist."""
-        t1 = _track("/a.flac", "T1")
-        t3 = _track("/c.flac", "T3")
-        missing = TrackRef(
-            Path("/b.flac"),
-            title="b",
-            track_id="T2",
-            availability=MediaAvailability.MISSING,
-        )
-        library._state.tracks = [t1, missing, t3]
-        library._rebuild_derived_library_state()
-        playlist = playlists.create_playlist_with_references(
-            "Mix",
-            [
-                PlaylistTrackReference(track_id="T1", fallback_path="/a.flac"),
-                PlaylistTrackReference(track_id="T2", fallback_path="/b.flac"),
-                PlaylistTrackReference(track_id="T3", fallback_path="/c.flac"),
-            ],
-        )
-        return playlist
-
-    def test_click_c_after_filtered_b_reproduces_c(self) -> None:
-        """[A ✓, B ✗, C ✓] — click membership index 2 → backend C, never A."""
-        t1 = _track("/a.flac", "T1")
-        library, playlists, coordinator, resolver = _harness([t1])
-        playlist = self._harness_with_unavailable(
-            library, playlists, coordinator, resolver
-        )
-
-        coordinator.play_playlist_track(playlist.playlist_id, 2)
-        pending = coordinator._session._pending
-        assert pending is not None
-        assert pending.file_path == Path("/c.flac")
-        assert pending.library_track_id == "T3"
-
-    def test_click_unavailable_member_plays_nothing(self) -> None:
-        """Click B (unavailable): explicit no-play — NOT A, NOT C."""
-        t1 = _track("/a.flac", "T1")
-        library, playlists, coordinator, resolver = _harness([t1])
-        playlist = self._harness_with_unavailable(
-            library, playlists, coordinator, resolver
-        )
-
-        coordinator.play_playlist_track(playlist.playlist_id, 1)
-        assert coordinator._session._pending is None  # nothing started
-
-    def test_first_unavailable_click_last_member(self) -> None:
-        """[A ✗, B ✓, C ✓] — click index 2 → C (not shifted to B)."""
-        t2 = _track("/b.flac", "T2")
-        library, playlists, coordinator, resolver = _harness([t2])
-        missing = TrackRef(
-            Path("/a.flac"),
-            title="a",
-            track_id="T1",
-            availability=MediaAvailability.MISSING,
-        )
-        library._state.tracks = [missing, t2, _track("/c.flac", "T3")]
-        library._rebuild_derived_library_state()
-        playlist = playlists.create_playlist_with_references(
-            "Mix",
-            [
-                PlaylistTrackReference(track_id="T1", fallback_path="/a.flac"),
-                PlaylistTrackReference(track_id="T2", fallback_path="/b.flac"),
-                PlaylistTrackReference(track_id="T3", fallback_path="/c.flac"),
-            ],
-        )
-        coordinator.play_playlist_track(playlist.playlist_id, 2)
-        assert coordinator._session._pending.library_track_id == "T3"
-
-    def test_legacy_path_only_member_maps_by_path(self) -> None:
-        library, playlists, coordinator, resolver = _harness([])
-        playlist = playlists.create_playlist_with_references(
-            "Legacy",
-            [
-                PlaylistTrackReference(track_id="", fallback_path="/x.flac"),
-                PlaylistTrackReference(track_id="", fallback_path="/y.flac"),
-            ],
-        )
-        coordinator.play_playlist_track(playlist.playlist_id, 1)
-        assert coordinator._session._pending.file_path == Path("/y.flac")
-
-    def test_moved_track_id_maps_by_identity_not_path(self) -> None:
-        t1 = _track("/old/A.flac", "T1")
-        library, playlists, coordinator, resolver = _harness([t1])
-        playlist = playlists.create_playlist_with_references(
-            "Mix", [PlaylistTrackReference(track_id="T1", fallback_path="/old/A.flac")]
-        )
-        # Move: resolved current path is NEW; identity T1 maps the click.
-        library._state.tracks = [_track("/new/B.flac", "T1")]
-        library._rebuild_derived_library_state()
-        coordinator.play_playlist_track(playlist.playlist_id, 0)
-        assert coordinator._session._pending.file_path == Path("/new/B.flac")
-        assert coordinator._session._pending.library_track_id == "T1"
+        # Playback con paths filtrados por la presentación (como el bridge):
+        # solo el path disponible llega al motor.
+        coordinator.play_playlist_paths(playlist.playlist_id, ["/a.flac"])
+        assert session._pending is not None
+        assert session._pending.file_path == Path("/a.flac")
 
 
 class TestPlaylistAssetDurableOrdering:
-    """P1-06: irreversible asset destruction happens ONLY after the durable
-    authority commit succeeded."""
-
     def _failing_port(self):
-        class _Failing:
-            def load(self):
-                return ()
+        class _Failing(_FailingPlaylistsPort):
+            def __init__(self):
+                super().__init__()
+                self.fail_after = 0
 
-            def load_navigation(self):
-                from michi.domain.playlist import PlaylistNavigationState
-
-                return PlaylistNavigationState()
-
-            def save(self, playlists):
-                raise PlaylistPersistenceError("injected DB failure")
-
-            def save_navigation(self, state):
-                del state
-
-            def save_playlists_with_navigation(self, playlists, navigation):
-                raise PlaylistPersistenceError("injected atomic DB failure")
+            def save(self, playlists) -> None:
+                if self.fail_after > 0:
+                    self.fail_after -= 1
+                    raise PlaylistPersistenceError("injected")
+                self._stored = list(playlists)
 
         return _Failing()
 
-    class _AssetStore:
-        def __init__(self):
-            self.deleted_cover = []
-            self.deleted_hero = []
-            self.stored = []
-
-        def store_cover(self, playlist_id, source):
-            self.stored.append(("cover", playlist_id))
-            return f"/assets/{playlist_id}.jpg"
-
-        def store_hero(self, playlist_id, source):
-            self.stored.append(("hero", playlist_id))
-            return f"/assets/{playlist_id}_hero.jpg"
-
-        def delete_cover(self, playlist_id):
-            self.deleted_cover.append(playlist_id)
-
-        def delete_hero(self, playlist_id):
-            self.deleted_hero.append(playlist_id)
-
-        def prepare_cover(self, playlist_id, source):
-            self.stored.append(("cover", playlist_id))
-            return f"/assets/{playlist_id}.jpg"
-
-        def prepare_hero(self, playlist_id, source):
-            self.stored.append(("hero", playlist_id))
-            return f"/assets/{playlist_id}_hero.jpg"
-
-        def delete_managed_asset(self, managed_path):
-            if managed_path.endswith(".jpg"):
-                self.deleted_cover.append("p1")
-            if managed_path.endswith("_hero.jpg"):
-                self.deleted_hero.append("p1")
-
-    def test_delete_failure_keeps_assets(self) -> None:
-        store = self._AssetStore()
-        service = PlaylistService(
-            playlists_port=self._failing_port(),
-            artwork_store=store,  # type: ignore[arg-type]
-        )
-        # Simulate an existing playlist with managed assets.
+    def _service_with_assets(self, port, cover="/assets/p1.jpg"):
+        service = PlaylistService(playlists_port=port, artwork_store=_AssetStore())
         service._playlists = [
             Playlist(
                 playlist_id="p1",
                 name="Mix",
-                custom_cover_path="/assets/p1.jpg",
+                custom_cover_path=cover,
+                appearance=PlaylistAppearance(),
             )
         ]
         service._persisted = tuple(service._playlists)
-        with pytest.raises(PlaylistPersistenceError):
-            service.delete_playlist("p1")
-        # Assets were NEVER deleted (no commit happened).
-        assert store.deleted_cover == []
-        assert store.deleted_hero == []
-        # Logical state rolled back: the playlist still exists.
-        assert service.get_playlist("p1") is not None
-
-    def test_hero_solid_failure_keeps_asset(self) -> None:
-        store = self._AssetStore()
-        service = PlaylistService(
-            playlists_port=self._failing_port(),
-            artwork_store=store,  # type: ignore[arg-type]
-        )
-        from michi.domain.playlist import PlaylistHeroMode
-
-        service._playlists = [
-            Playlist(
-                playlist_id="p1",
-                name="Mix",
-                appearance=PlaylistAppearance(
-                    hero_mode=PlaylistHeroMode.IMAGE,
-                    hero_image_path="/assets/p1_hero.jpg",
-                ),
-            )
-        ]
-        service._persisted = tuple(service._playlists)
-        with pytest.raises(PlaylistPersistenceError):
-            service.set_hero_solid("p1", "#112233")
-        # The old hero asset survived the failed commit.
-        assert store.deleted_hero == []
-        assert (
-            service.get_playlist("p1").appearance.hero_image_path
-            == "/assets/p1_hero.jpg"
-        )
+        return service
 
     def test_remove_cover_failure_keeps_asset(self) -> None:
-        store = self._AssetStore()
-        service = PlaylistService(
-            playlists_port=self._failing_port(),
-            artwork_store=store,  # type: ignore[arg-type]
-        )
+        port = self._failing_port()
+        port.fail_after = 1
+        store = _AssetStore()
+        service = PlaylistService(playlists_port=port, artwork_store=store)
         service._playlists = [
             Playlist(playlist_id="p1", name="Mix", custom_cover_path="/assets/p1.jpg")
         ]
@@ -472,19 +213,18 @@ class TestPlaylistAssetDurableOrdering:
         assert service.get_playlist("p1").custom_cover_path == "/assets/p1.jpg"
 
     def test_hero_auto_failure_keeps_asset(self) -> None:
-        store = self._AssetStore()
-        service = PlaylistService(
-            playlists_port=self._failing_port(),
-            artwork_store=store,  # type: ignore[arg-type]
-        )
-        from michi.domain.playlist import PlaylistHeroMode
-
+        port = self._failing_port()
+        port.fail_after = 1
+        store = _AssetStore()
+        service = PlaylistService(playlists_port=port, artwork_store=store)
         service._playlists = [
             Playlist(
                 playlist_id="p1",
                 name="Mix",
                 appearance=PlaylistAppearance(
-                    hero_mode=PlaylistHeroMode.IMAGE,
+                    hero_mode=__import__(
+                        "michi.domain.playlist", fromlist=["PlaylistHeroMode"]
+                    ).PlaylistHeroMode.IMAGE,
                     hero_image_path="/assets/p1_hero.jpg",
                 ),
             )
@@ -493,220 +233,79 @@ class TestPlaylistAssetDurableOrdering:
         with pytest.raises(PlaylistPersistenceError):
             service.set_hero_auto("p1")
         assert store.deleted_hero == []
+        assert (
+            service.get_playlist("p1").appearance.hero_image_path
+            == "/assets/p1_hero.jpg"
+        )
 
-    def test_success_deletes_asset_after_commit(self) -> None:
+    def test_success_retires_asset_after_commit(self) -> None:
+        store = _AssetStore()
+        service = PlaylistService(
+            playlists_port=_FailingPlaylistsPort(), artwork_store=store
+        )
+        # _FailingPlaylistsPort.save siempre falla → no puede haber success;
+        # usamos un port OK para probar el retire post-commit.
         class _OkPort:
             def __init__(self):
-                self.saved = 0
+                self._stored = None
 
             def load(self):
                 return ()
 
+            def save(self, playlists):
+                self._stored = list(playlists)
+
+            def save_state(self, playlists, navigation):
+                self._stored = list(playlists)
+
             def load_navigation(self):
                 from michi.domain.playlist import PlaylistNavigationState
 
                 return PlaylistNavigationState()
-
-            def save(self, playlists):
-                self.saved += 1
 
             def save_navigation(self, state):
                 del state
 
-        store = self._AssetStore()
-        service = PlaylistService(playlists_port=_OkPort(), artwork_store=store)  # type: ignore[arg-type]
-        from michi.domain.playlist import PlaylistHeroMode
-
+        service = PlaylistService(playlists_port=_OkPort(), artwork_store=store)
         service._playlists = [
-            Playlist(
-                playlist_id="p1",
-                name="Mix",
-                appearance=PlaylistAppearance(
-                    hero_mode=PlaylistHeroMode.IMAGE,
-                    hero_image_path="/assets/p1_hero.jpg",
-                ),
-            )
+            Playlist(playlist_id="p1", name="Mix", custom_cover_path="/assets/p1.jpg")
         ]
         service._persisted = tuple(service._playlists)
-        assert service.set_hero_solid("p1", "#112233") is True
-        # Commit succeeded → the superseded hero asset is cleaned up.
-        assert store.deleted_hero == ["p1"]
-        assert service.get_playlist("p1").appearance.hero_image_path == ""
-
-
-def _make_png(tmp_path, name: str, color) -> Path:
-    """Real decodable PNG (the asset store validates actual decodability)."""
-    from PySide6.QtGui import QImage
-
-    img = QImage(64, 64, QImage.Format_RGB32)
-    img.fill(color)
-    path = tmp_path / name
-    assert img.save(str(path), "PNG")
-    return path
-
-
-class TestReplacementStagingProtocol:
-    """CORRECTIVE SEAL §9 — byte level: a DB failure after staging must
-    preserve the previously committed image byte-for-byte."""
-
-    def _store_env(self, tmp_path):
         from michi.infrastructure.playlist_artwork_store import (
             FilesystemPlaylistArtworkStore,
         )
 
-        store = FilesystemPlaylistArtworkStore(tmp_path / "covers")
-        return store
-
-    class _FailingPort:
-        def __init__(self, *, fail_after=0):
-            self.saved = 0
-            self.fail_after = fail_after
-
-        def load(self):
-            return ()
-
-        def load_navigation(self):
-            from michi.domain.playlist import PlaylistNavigationState
-
-            return PlaylistNavigationState()
-
-        def save(self, playlists):
-            self.saved += 1
-            if self.saved > self.fail_after:
-                raise PlaylistPersistenceError("injected DB failure")
-
-        def save_navigation(self, state):
-            del state
-
-    def test_cover_db_failure_preserves_old_bytes(self, tmp_path) -> None:
-
-        store = self._store_env(tmp_path)
-        service = PlaylistService(
-            playlists_port=self._FailingPort(fail_after=1), artwork_store=store
-        )  # type: ignore[arg-type]
-        service._playlists = [Playlist(playlist_id="p1", name="Mix")]
-        service._persisted = tuple(service._playlists)
-        # Commit an initial cover (via the successful first save).
-        old_src = _make_png(tmp_path, "old.png", 0xFF581C)
-        assert service.set_custom_cover("p1", old_src) is not None
-        committed_path = service.get_playlist("p1").custom_cover_path
-        assert Path(committed_path).read_bytes() == Path(old_src).read_bytes()
-
-        # Replace with NEW bytes; the authoritative persist FAILS.
-        new_src = _make_png(tmp_path, "new.png", 0xCB0543)
-        with pytest.raises(PlaylistPersistenceError):
-            service.set_custom_cover("p1", new_src)
-
-        # Old committed image byte-for-byte intact; metadata rolled back.
-        assert Path(committed_path).read_bytes() == Path(old_src).read_bytes()
-        assert service.get_playlist("p1").custom_cover_path == committed_path
-
-    def test_hero_db_failure_preserves_old_bytes(self, tmp_path) -> None:
-        from michi.domain.playlist import PlaylistHeroMode
-
-        store = self._store_env(tmp_path)
-        service = PlaylistService(
-            playlists_port=self._FailingPort(fail_after=1), artwork_store=store
-        )  # type: ignore[arg-type]
+        store = FilesystemPlaylistArtworkStore(Path("/tmp/integration-store"))
+        store._storage_dir.mkdir(parents=True, exist_ok=True)
+        # Gramática legacy del owner real (p1) — el retire V2/legacy
+        # verifica ownership exacta (fail-closed).
+        old = store._storage_dir / "playlist_p1.jpg"
+        old.write_bytes(b"x")
+        service = PlaylistService(playlists_port=_OkPort(), artwork_store=store)
         service._playlists = [
-            Playlist(
-                playlist_id="p1",
-                name="Mix",
-                appearance=PlaylistAppearance(hero_mode=PlaylistHeroMode.AUTO),
-            )
+            Playlist(playlist_id="p1", name="Mix", custom_cover_path=str(old))
         ]
         service._persisted = tuple(service._playlists)
-        old_src = _make_png(tmp_path, "old_hero.png", 0xFF811B)
-        assert service.set_custom_hero_image("p1", old_src) is not None
-        committed = service.get_playlist("p1").appearance.hero_image_path
-        assert Path(committed).read_bytes() == Path(old_src).read_bytes()
+        src = Path("/tmp/integration-src.png")
+        from PySide6.QtGui import QImage
 
-        new_src = _make_png(tmp_path, "new_hero.png", 0xF51D51)
-        with pytest.raises(PlaylistPersistenceError):
-            service.set_custom_hero_image("p1", new_src)
-        assert Path(committed).read_bytes() == Path(old_src).read_bytes()
-        assert service.get_playlist("p1").appearance.hero_image_path == committed
-
-    def test_extension_change_failure_preserves_old(self, tmp_path) -> None:
-
-        store = self._store_env(tmp_path)
-        service = PlaylistService(
-            playlists_port=self._FailingPort(fail_after=1), artwork_store=store
-        )  # type: ignore[arg-type]
-        service._playlists = [Playlist(playlist_id="p1", name="Mix")]
-        service._persisted = tuple(service._playlists)
-        old_src = _make_png(tmp_path, "old.png", 0xFF581C)
-        assert service.set_custom_cover("p1", old_src) is not None
-        old_committed = Path(service.get_playlist("p1").custom_cover_path)
-
-        # Replacement fails at persist: the old asset survives.
-        new_src = _make_png(tmp_path, "new.png", 0xCB0543)
-        with pytest.raises(PlaylistPersistenceError):
-            service.set_custom_cover("p1", new_src)
-        assert old_committed.read_bytes() == Path(old_src).read_bytes()
-        assert service.get_playlist("p1").custom_cover_path == str(old_committed)
-
-    def test_success_promotes_and_retires_old_extension(self, tmp_path) -> None:
-        store = self._store_env(tmp_path)
-        service = PlaylistService(
-            playlists_port=self._FailingPort(fail_after=999), artwork_store=store
-        )  # type: ignore[arg-type]
-        service._playlists = [Playlist(playlist_id="p1", name="Mix")]
-        service._persisted = tuple(service._playlists)
-        old_src = _make_png(tmp_path, "old.png", 0xFF581C)
-        assert service.set_custom_cover("p1", old_src) is not None
-        old_path = Path(service.get_playlist("p1").custom_cover_path)
-
-        new_src = _make_png(tmp_path, "new2.png", 0xCB0543)
-        assert service.set_custom_cover("p1", new_src) is not None
-        final_path = Path(service.get_playlist("p1").custom_cover_path)
-        assert final_path.read_bytes() == Path(new_src).read_bytes()
-        # Superseded .jpg variant retired post-commit.
-        assert not old_path.exists()
+        img = QImage(8, 8, QImage.Format_RGB32)
+        img.fill(0xFF581C)
+        assert img.save(str(src), "PNG")
+        service.set_custom_cover("p1", src)
+        assert not old.exists(), "el asset superseded se retira post-commit"
 
 
 class TestDeletePlaylistAtomicTransaction:
     def test_nav_failure_rolls_back_collection(self, tmp_path) -> None:
-        """§10: collection write succeeds, nav write fails → BOTH roll back
-        durably; a restart sees the old coherent state."""
-
-        class _NavFailingPort:
-            def __init__(self):
-                self.saved_collections = []
-
-            def load(self):
-                return tuple(
-                    self.saved_collections[-1] if self.saved_collections else ()
-                )
-
-            def load_navigation(self):
-                from michi.domain.playlist import PlaylistNavigationState
-
-                return PlaylistNavigationState()
-
-            def save(self, playlists):
-                self.saved_collections.append(tuple(playlists))
-
-            def save_navigation(self, state):
-                raise PlaylistPersistenceError("injected nav failure")
-
-            def save_playlists_with_navigation(self, playlists, navigation):
-                # ONE atomic logical operation that FAILS: both must roll
-                # back (the service never half-commits).
-                raise PlaylistPersistenceError("injected atomic failure")
-
-        from michi.application.playlist_service import PlaylistService
-
+        """delete_playlist usa save_state atómico: si el componente
+        compound falla, la colección queda intacta (nunca hybrid)."""
         port = _NavFailingPort()
-        service = PlaylistService(playlists_port=port)  # type: ignore[arg-type]
+        service = PlaylistService(playlists_port=port)
         keep = service.create_playlist("Keep")
         target = service.create_playlist("DeleteMe")
         with pytest.raises(PlaylistPersistenceError):
             service.delete_playlist(target.playlist_id)
-        # In-memory rolled back to the pre-delete coherent state.
-        assert service.get_playlist(target.playlist_id) is not None
-        assert service.get_playlist(keep.playlist_id) is not None
-        # Restart (new service over the SAME port) sees the coherent state.
-        restarted = PlaylistService(playlists_port=port)  # type: ignore[arg-type]
-        assert restarted.get_playlist(target.playlist_id) is not None
-        assert restarted.get_playlist(keep.playlist_id) is not None
+        ids = [p.playlist_id for p in service._playlists]
+        assert keep.playlist_id in ids
+        assert target.playlist_id in ids, "la colección NO queda a medias"

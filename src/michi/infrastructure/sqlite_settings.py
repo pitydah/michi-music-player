@@ -20,6 +20,8 @@ from michi.domain.persistence_health import (
 from michi.domain.settings import (
     SettingsState,
     WindowGeometry,
+    library_view_preferences_from_json,
+    library_view_preferences_to_json,
     window_geometry_from_json,
     window_geometry_to_json,
 )
@@ -1064,6 +1066,15 @@ class SQLiteSettingsRepository(SettingsRepository):
                         "invalid persisted setting 'audio_engine_id'; "
                         "using default qt_multimedia"
                     )
+            elif key == "library_view_preferences":
+                state.library_views, malformed = library_view_preferences_from_json(
+                    value
+                )
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'library_view_preferences'; "
+                        "using safe field defaults"
+                    )
         return state
 
     def save(self, state: SettingsState) -> None:
@@ -1076,6 +1087,10 @@ class SQLiteSettingsRepository(SettingsRepository):
             ("window_geometry", window_geometry_to_json(state.window_geometry)),
             ("online_enrichment", str(state.online_enrichment).lower()),
             ("audio_engine_id", state.audio_engine_id.value),
+            (
+                "library_view_preferences",
+                library_view_preferences_to_json(state.library_views),
+            ),
         ]
         # Explicit close (M5-PRODUCTION-LIFECYCLE-GATE): the with-conn only
         # commits; close deterministically instead of waiting for GC.

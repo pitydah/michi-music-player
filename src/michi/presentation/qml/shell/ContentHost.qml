@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
-import "../media"
+import "../patterns"
 import "../playlists"
 import "../primitives"
 import "../theme"
@@ -11,7 +11,6 @@ import "../views"
 Item {
     id: root
     property string currentRoute: ""
-    property var pendingPlaylistSelection: ({})
     signal createPlaylistRequested()
 
     function routeIndex(route) {
@@ -25,44 +24,15 @@ Item {
         }
     }
 
-    function selectionDescription(payload) {
-        if (!payload)
-            return ""
-        if (payload.kind === "album")
-            return qsTr("Choose a playlist for this album.")
-        if (payload.kind === "artist")
-            return qsTr("Choose a playlist for this artist.")
-        var count = (payload.trackIds || []).length
-        return count === 1
-            ? qsTr("Choose a playlist for this track.")
-            : qsTr("Choose a playlist for %1 tracks.").arg(count)
-    }
-
-    function addSelectionToPlaylist(playlistId, payload) {
-        if (!payload)
-            return 0
-        if (payload.kind === "album")
-            return library.add_album_to_playlist(playlistId, payload.albumKey)
-        if (payload.kind === "artist")
-            return library.add_artist_to_playlist(playlistId, payload.artistKey)
-        return library.add_tracks_to_playlist(playlistId, payload.trackIds || [])
-    }
-
-    function createPlaylistForSelection(name, payload) {
-        if (!payload)
-            return ""
-        if (payload.kind === "album")
-            return library.create_playlist_from_album(name, payload.albumKey)
-        if (payload.kind === "artist")
-            return library.create_playlist_from_artist(name, payload.artistKey)
-        return library.create_playlist_from_tracks(name, payload.trackIds || [])
-    }
-
     // PLAYLIST-HIERARCHY-04: detail = PLAYLISTS + playlist_id; All
     // Playlists = PLAYLISTS + None. NavigationState decides the screen;
     // PlaylistsBridge provides content (single navigation truth).
     readonly property bool _playlistDetail: root.currentRoute === "playlists"
         && navigation.playlistId !== ""
+
+    // R3-04: el alias evita el module-import collision ("../playlists")
+    // para el Connections de persistence failures.
+    readonly property var playlistsBridge: playlists
 
     MichiSurface { anchors.fill: parent; level: "content"; radius: MichiRadius.floating }
 
@@ -106,9 +76,15 @@ Item {
                 onCreatePlaylistRequested: root.createPlaylistRequested()
                 onOpenPlaylistRequested: playlistId => playlists.open_playlist(playlistId)
                 onPlayPlaylistRequested: playlistId => playlists.play_playlist(playlistId)
-                onPinPlaylistRequested: (playlistId, pinned) => {
-                    if (pinned) playlists.pin_playlist(playlistId)
-                    else playlists.unpin_playlist(playlistId)
+                onPinPlaylistRequested: (playlistId, pinned, playlistName) => {
+                    var result = pinned
+                        ? playlists.pin_playlist(playlistId)
+                        : playlists.unpin_playlist(playlistId)
+                    if (result === "updated")
+                        window.showToast(pinned
+                            ? qsTr("Pinned %1").arg(playlistName)
+                            : qsTr("Unpinned %1").arg(playlistName))
+                    // "persistence_failed": connector reports exactly once.
                 }
                 // M9-R1I: card dialogs use EPHEMERAL action targets — they
                 // never touch navigation (no select_playlist, no Detail
@@ -146,24 +122,76 @@ Item {
                     NumberAnimation { duration: MichiMotion.page; easing.type: MichiMotion.outCubic }
                 }
                 playlistId: navigation.playlistId
-                onBackRequested: playlists.open_all_playlists()
+                onBackRequested: {
+                    // PL-FINAL-A02: salir del detalle limpia la búsqueda
+                    // local (estado transiente).
+                    playlists.set_playlist_search_query("")
+                    playlists.open_all_playlists()
+                }
                 onPlayRequested: playlists.play_selected_playlist()
                 onShuffleRequested: {
+                    // PL-10-FINAL-06: defensivo — sin tracks reproducibles
+                    // el shuffle no toca el motor ni el playback state.
+                    if (!playlists || playlists.playlistAvailableTrackCount <= 0)
+                        return
                     if (typeof playback !== "undefined" && playback)
                         playback.shuffle = true
                     playlists.play_selected_playlist()
                 }
-                onPlayTrackRequested: index => playlists.play_track(index)
-                onAddMusicRequested: libraryTrackPicker.begin()
+                onPlayTrackRequested: index => playlists.play_playlist_track(index)
+                onAddMusicRequested: {
+                    // PL-FINAL-13: Add Tracks es un workflow REAL dentro del
+                    // contexto del playlist (picker modal) — ya no navega
+                    // vagamente a Library abandonando el contexto.
+                    root.trackPicker.playlistId = playlists.selectedPlaylistId
+                    root.trackPicker.open()
+                }
+                onEditDescriptionRequested: (playlistId, description) => {
+                    descriptionDialog.targetPlaylistId = playlistId
+                    descriptionField.text = description
+                    descriptionDialog.open()
+                }
+                onRemoveTracksRequested: paths => {
+                    // PL-10-FINAL-05: batch remove por PATH IDENTITY con
+                    // resultado estructurado TRUTHFUL — el toast usa el
+                    // conteo REAL de removidos, nunca la longitud del
+                    // intent (paths ya desaparecidos = missingCount).
+                    var result = playlists.remove_tracks_by_paths(paths)
+                    if (result.status === "removed") {
+                        playlistDetail.checkedTrackPaths = []
+                        playlistDetail.shiftAnchorPath = ""
+                        playlistDetail.selectionMode = false
+                        var message = qsTr("%n tracks removed", "",
+                            result.removedCount)
+                        if (result.missingCount > 0)
+                            message += qsTr(" · %n no longer present", "",
+                                result.missingCount)
+                        window.showToast(message)
+                    }
+                    // "persistence_failed": connector reports exactly once.
+                }
                 onTogglePinRequested: {
-                    if (playlists.selectedPlaylistPinned)
-                        playlists.unpin_playlist(playlists.selectedPlaylistId)
-                    else
-                        playlists.pin_playlist(playlists.selectedPlaylistId)
+                    // R4-08: el feedback se deriva del COMMAND INTENT
+                    // confirmado, nunca del post-state (que ya cambió).
+                    var shouldPin = !playlists.selectedPlaylistPinned
+                    var playlistId = playlists.selectedPlaylistId
+                    var playlistName = playlists.selectedPlaylistName
+                    var result = shouldPin
+                        ? playlists.pin_playlist(playlistId)
+                        : playlists.unpin_playlist(playlistId)
+                    if (result === "updated")
+                        window.showToast(shouldPin
+                            ? qsTr("Pinned %1").arg(playlistName)
+                            : qsTr("Unpinned %1").arg(playlistName))
                 }
                 // M9-R1J: the shared dialogs are the canonical interaction
                 // boundary — the Detail emits intents; ContentHost routes
                 // them into the SAME dialogs used by All Playlists cards.
+                onCustomizeAppearanceRequested: playlistId => {
+                    // R3-06: el panel ÚNICO abre con la playlist objetivo.
+                    root.appearanceTargetPlaylistId = playlistId
+                    root._openAppearancePanel()
+                }
                 onRenameRequested: (playlistId, playlistName) => {
                     renameDialog.targetPlaylistId = playlistId
                     renameDialog.targetPlaylistName = playlistName
@@ -175,88 +203,32 @@ Item {
                     deleteDialog.open()
                 }
                 onRemoveTrackRequested: index => {
-                    // P0-1: FROZEN provenance captured AT REMOVAL TIME — the
+                    // P0-01: FROZEN provenance captured AT REMOVAL TIME — the
                     // Undo callback must never consult the current selection.
                     var removed = playlists.playlistTracks[index]
                     var removedPlaylistId = playlists.selectedPlaylistId
                     var removedIndex = index
-                    playlists.remove_track(index)
-                    if (removed && removed.path) {
-                        window.showToastWithAction(
-                            qsTr("Removed from playlist"), qsTr("Undo"),
-                            function() {
-                                playlists.insert_track(
-                                    removedPlaylistId, removedIndex, removed.path)
-                            })
+                    // R3-04: the Undo toast appears ONLY on "removed"; a
+                    // persistence failure is reported EXACTLY ONCE by the
+                    // persistence connector (no second local toast).
+                    var result = playlists.remove_track(index)
+                    if (result === "removed") {
+                        if (removed && removed.path) {
+                            window.showToastWithAction(
+                                qsTr("Removed from playlist"), qsTr("Undo"),
+                                function() {
+                                    playlists.insert_track(
+                                        removedPlaylistId, removedIndex, removed.path)
+                                })
+                        }
+                    } else if (result === "invalid_index") {
+                        // safe degradation: nothing changed
                     }
                 }
                 onMoveTrackRequested: (fromIndex, toIndex) => {
                     playlists.move_track(fromIndex, toIndex)
                 }
-                onAddToPlaylistRequested: trackId => {
-                    library.request_tracks_playlist_target([trackId])
-                }
-                onGoToAlbumRequested: albumKey => {
-                    navigation.navigate("library")
-                    library.select_album(albumKey)
-                }
-                onGoToArtistRequested: artistKey => {
-                    navigation.navigate("library")
-                    library.select_artist(artistKey)
-                }
             }
-        }
-    }
-
-    LibraryTrackPicker {
-        id: libraryTrackPicker
-        trackRows: library.songRows
-        onTracksRequested: trackIds => {
-            var added = library.add_tracks_to_playlist(
-                playlists.selectedPlaylistId, trackIds)
-            if (added > 0 && typeof window !== "undefined" && window)
-                window.showToast(qsTr("Added %1 tracks").arg(added))
-        }
-    }
-
-    PlaylistTargetPicker {
-        id: playlistTargetPicker
-        playlistRows: playlists.playlists
-        pinnedRows: playlists.pinnedPlaylists
-        recentRows: playlists.recentPlaylists
-        selectionPayload: root.pendingPlaylistSelection
-        selectionDescription: root.selectionDescription(selectionPayload)
-        onTargetRequested: (playlistId, playlistName, payload) => {
-            var added = root.addSelectionToPlaylist(playlistId, payload)
-            if (added > 0 && typeof window !== "undefined" && window)
-                window.showToast(qsTr("Added to %1").arg(playlistName))
-        }
-        onNewPlaylistRequested: payload => selectionCreateDialog.begin(payload)
-    }
-
-    SelectionPlaylistCreateDialog {
-        id: selectionCreateDialog
-        onCreateRequested: (name, payload) => {
-            var playlistId = root.createPlaylistForSelection(name, payload)
-            complete(playlistId.length > 0)
-            if (playlistId.length > 0 && typeof window !== "undefined" && window)
-                window.showToast(qsTr("Created playlist and added selection"))
-        }
-    }
-
-    AlbumPropertiesView { id: albumPropertiesView }
-
-    Connections {
-        target: library
-        function onPlaylist_target_requested(payload) {
-            root.pendingPlaylistSelection = payload
-            playlistTargetPicker.open()
-        }
-        function onNew_playlist_target_requested(payload) {
-            selectionCreateDialog.begin(payload)
-        }
-        function onAlbum_properties_requested(album) {
-            albumPropertiesView.inspect(album)
         }
     }
 
@@ -314,17 +286,174 @@ Item {
                 renameDialog.errorText = qsTr("Playlist name must not be empty")
                 return
             }
-            // M9-R1I explicit contract: only close on real success.
-            if (playlists.rename_playlist(renameDialog.targetPlaylistId, name)) {
+            // R3-04: only close on durable success; logical failures show
+            // their specific inline error; persistence failures are
+            // reported EXACTLY ONCE by the persistence Connections.
+            var result = playlists.rename_playlist(renameDialog.targetPlaylistId, name)
+            if (result === "renamed" || result === "no_change") {
                 renameDialog.close()
-            } else {
+            } else if (result === "conflict") {
                 renameDialog.errorText = qsTr("A playlist with that name already exists.")
+            } else if (result === "invalid") {
+                renameDialog.errorText = qsTr("Playlist name must not be empty")
             }
         }
         onOpened: {
             renameField.text = renameDialog.targetPlaylistName
             renameDialog.errorText = ""
             renameField.forceActiveFocus()
+        }
+    }
+
+    // R3-06: UN SOLO PlaylistAppearancePanel (como Rename/Delete).
+    // Overview y Detail emiten customizeAppearanceRequested(playlistId).
+    property string appearanceTargetPlaylistId: ""
+
+    function _appearanceRowFor(playlistId) {
+        if (!playlistId || !playlists) return null
+        var rows = playlists.playlists || []
+        for (var i = 0; i < rows.length; ++i) {
+            if (rows[i].playlistId === playlistId) return rows[i]
+        }
+        return null
+    }
+
+    function _openAppearancePanel() {
+        // Si el target desapareció, cerrar de forma segura.
+        if (!root._appearanceRowFor(root.appearanceTargetPlaylistId)) {
+            appearancePanel.close()
+            return
+        }
+        appearancePanel.openForPlaylist()
+    }
+
+    PlaylistAppearancePanel {
+        id: appearancePanel
+        playlistId: root.appearanceTargetPlaylistId
+        playlistName: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.name || ""
+        customCoverPath: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveCustomCoverPath || ""
+        coverAssetMissing: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.coverAssetMissing || false
+        mosaicArtworkPaths: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.mosaicArtworkPaths || []
+        // R4-04: el editor parte del PERSISTED INTENT; el effective es
+        // solo preview. Un hero image missing nunca se convierte en Auto
+        // implícitamente.
+        persistedHeroMode: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.persistedHeroMode || "auto"
+        persistedHeroImagePath: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.persistedHeroImagePath || ""
+        effectiveHeroMode: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveHeroMode || "auto"
+        effectiveHeroImagePath: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.effectiveHeroImagePath || ""
+        heroImageMissing: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.heroImageMissing || false
+        heroSolidColor: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.heroSolidColor || MichiPalette.playlistHeroTopHex
+        heroGradientColors: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.heroGradientColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex]
+        heroGradientAngle: {
+            var row = root._appearanceRowFor(root.appearanceTargetPlaylistId)
+            return row && row.heroGradientAngle !== undefined
+                ? row.heroGradientAngle : 135
+        }
+        autoHeroColors: root._appearanceRowFor(root.appearanceTargetPlaylistId)?.autoHeroColors || [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex, MichiPalette.playlistHeroBottomHex]
+        // PL-FINAL-09: focal persistido (draft del editor).
+        persistedHeroFocalX: {
+            var row = root._appearanceRowFor(root.appearanceTargetPlaylistId)
+            return row && row.heroFocalX !== undefined ? row.heroFocalX : 0.5
+        }
+        persistedHeroFocalY: {
+            var row = root._appearanceRowFor(root.appearanceTargetPlaylistId)
+            return row && row.heroFocalY !== undefined ? row.heroFocalY : 0.5
+        }
+    }
+
+    // PL-FINAL-13: Add Tracks picker — batch add real, contexto del
+    // playlist preservado.
+    PlaylistTrackPicker {
+        id: trackPicker
+        objectName: "playlistTrackPicker"
+        playlistId: ""
+        // PL-FINAL-A08: membership CANÓNICA — nunca la proyección filtrada
+        // por la búsqueda local del Detail.
+        presentPaths: playlists.selectedPlaylistTrackPaths || []
+        onAddCompleted: (added, alreadyPresent) => {
+            var message = qsTr("%n tracks added", "", added)
+            if (alreadyPresent > 0)
+                message += qsTr(" · %n already in playlist", "", alreadyPresent)
+            window.showToast(message)
+        }
+    }
+
+    // PL-FINAL-05: real playlist description edit (compact dialog).
+    MichiDialog {
+        id: descriptionDialog
+        objectName: "playlistDescriptionDialog"
+        title: qsTr("Edit description")
+        width: 480
+        property string targetPlaylistId: ""
+        property string errorText: ""
+        standardButtons: Dialog.NoButton
+
+        contentItem: ColumnLayout {
+            spacing: MichiSpacing.md
+            MichiText {
+                text: qsTr("Describe this playlist — shown in its header.")
+                role: "secondary"
+                color: MichiPalette.textSecondary
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            TextArea {
+                id: descriptionField
+                Layout.fillWidth: true
+                Layout.preferredHeight: 110
+                placeholderText: qsTr("Optional description")
+                wrapMode: Text.WordWrap
+                color: MichiPalette.textPrimary
+                placeholderTextColor: MichiPalette.textMuted
+                selectionColor: MichiSemanticColors.surfaceSelected
+                selectedTextColor: MichiPalette.textPrimary
+                background: Rectangle {
+                    radius: MichiRadius.md
+                    color: MichiSemanticColors.controlSurface
+                    border.width: 1
+                    border.color: descriptionField.activeFocus
+                        ? MichiSemanticColors.borderStrong
+                        : MichiSemanticColors.borderSubtle
+                }
+                Accessible.name: qsTr("Playlist description")
+            }
+            MichiText {
+                visible: descriptionDialog.errorText !== ""
+                text: descriptionDialog.errorText
+                role: "technical"
+                technical: true
+                color: MichiPalette.error
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: MichiSpacing.sm
+                MichiButton {
+                    text: qsTr("Cancel")
+                    variant: "ghost"
+                    onClicked: descriptionDialog.close()
+                }
+                MichiButton {
+                    text: qsTr("Save")
+                    variant: "primary"
+                    onClicked: descriptionDialog._save()
+                }
+            }
+        }
+        function _save() {
+            var result = playlists.set_playlist_description(
+                descriptionDialog.targetPlaylistId, descriptionField.text)
+            if (result === "updated" || result === "no_change") {
+                descriptionDialog.errorText = ""
+                descriptionDialog.close()
+            } else if (result === "invalid") {
+                descriptionDialog.errorText = qsTr(
+                    "Description must be at most 1000 characters.")
+            }
+            // "persistence_failed": connector reports exactly once.
+        }
+        onOpened: {
+            descriptionDialog.errorText = ""
+            descriptionField.forceActiveFocus()
         }
     }
 
@@ -363,8 +492,47 @@ Item {
             }
         }
         function _confirm() {
-            playlists.delete_playlist(deleteDialog.targetPlaylistId)
-            deleteDialog.close()
+            // R3-04: the dialog closes ONLY on "deleted"; persistence
+            // failure is reported EXACTLY ONCE by the connector.
+            if (playlists.delete_playlist(deleteDialog.targetPlaylistId) === "deleted")
+                deleteDialog.close()
+        }
+    }
+
+    // R3-04: ONE authority for durable-write failures. The Connections
+    // uses the local alias (never the raw `playlists` name — the module
+    // import would shadow it). The caller NEVER shows a second local
+    // error for a persistence failure.
+    Connections {
+        target: root.playlistsBridge
+        function onPersistenceFailed(operationCode) {
+            var message = qsTr("Could not save changes")
+            if (operationCode === "recent")
+                // R5-08: la acción PRIMARIA (abrir) SÍ tuvo éxito — solo
+                // falló la metadata secundaria.
+                message = qsTr("Playlist opened, but Recent wasn't saved")
+            else if (operationCode === "create")
+                message = qsTr("Could not create playlist")
+            else if (operationCode === "rename")
+                message = qsTr("Could not rename playlist")
+            else if (operationCode === "delete")
+                message = qsTr("Could not delete playlist")
+            else if (operationCode === "pin" || operationCode === "unpin")
+                message = qsTr("Could not update pin state")
+            else if (operationCode === "cover" || operationCode === "hero"
+                || operationCode === "appearance")
+                message = qsTr("Could not update appearance")
+            else if (operationCode === "description")
+                message = qsTr("Could not save description")
+            else if (operationCode === "add_tracks")
+                message = qsTr("Could not add tracks")
+            else if (operationCode === "remove_track" || operationCode === "remove_tracks")
+                message = qsTr("Could not remove tracks")
+            else if (operationCode === "move_track")
+                message = qsTr("Could not reorder tracks")
+            else if (operationCode === "insert_track")
+                message = qsTr("Could not restore track")
+            window.showToast(message)
         }
     }
 }

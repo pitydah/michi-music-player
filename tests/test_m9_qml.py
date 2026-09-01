@@ -333,8 +333,12 @@ class TestPlaylistTrackInteraction:
         qml = Path(
             "src/michi/presentation/qml/playlists/PlaylistTrackList.qml"
         ).read_text()
-        assert "Keys.onReturnPressed: root.playTrackRequested(index)" in qml
-        assert "Keys.onEnterPressed: root.playTrackRequested(index)" in qml
+        # PL-FINAL-14/A04: Enter/Return reproducen el PLAY con el índice
+        # CANONICO (filter-safe) y respetan canInteract (unavailable nunca
+        # se reproduce).
+        assert "Keys.onReturnPressed: {" in qml
+        assert "if (trackItem.canInteract)" in qml
+        assert "Keys.onEnterPressed: {" in qml
         assert len(plays) == 0  # no spurious emission without events
         obj.deleteLater()
         component.deleteLater()
@@ -343,18 +347,19 @@ class TestPlaylistTrackInteraction:
     def test_qi02_more_options_no_play(self, qapp):
         """More Options button click opens the menu — never playTrackRequested.
 
-        The full-row overlay MouseArea is REMOVED (P2-03); the ONLY playback
-        emission is the ItemDelegate's own onClicked. The nested
-        MichiIconButton consumes its own click and opens the menu."""
+        PL-10-FINAL-03: the row interaction surface is the rowSurface
+        MouseArea (modifiers reales); the ItemDelegate has NO onClicked
+        (una sola autoridad de click). The nested MichiIconButton consumes
+        its own click and opens the menu."""
         from pathlib import Path
 
         qml = Path("src/michi/presentation/qml/playlists/PlaylistTrackList.qml")
         text = qml.read_text()
-        # no full-row overlay MouseArea element (only the word in a comment)
         import re
 
-        assert not re.search(r"\bMouseArea\s*\{", text)
-        assert "root.trackSelected(index)" in text
-        assert "trackItem.forceActiveFocus()" in text
-        assert "trackMenu.popup()" in text  # button keeps its own target
-        assert "onClicked: {" in text  # delegate own click → play
+        assert re.search(r"\bid: rowSurface\b", text)
+        assert "onClicked: trackMenu.popup()" in text  # button keeps its own
+        # El click de FILA vive en rowSurface (modifiers reales) — el
+        # ItemDelegate ya no tiene onClicked propio (una sola autoridad).
+        assert "onClicked: mouse => {" in text
+        assert "(mouse.modifiers & Qt.ShiftModifier) !== 0" in text

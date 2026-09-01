@@ -19,7 +19,6 @@ Item {
     property string status: "stopped"
     property int position: 0
     property int duration: 0
-    readonly property bool durationKnown: root.duration > 0
     property int volume: 100
     property bool muted: false
     property bool hasPrevious: false
@@ -37,6 +36,8 @@ Item {
     property string audioEngineSwitchingTo: ""
     property string audioEngineFallbackFrom: ""
     property string audioEngineStatusSummary: ""
+    property bool audioEngineSwitchReady: true
+    property string audioEngineSwitchBlocker: ""
     // PLAYBACK-CONTROLS-R1 (P2): the Play affordance derives from MEDIA
     // truth (committed logical track), not from presentation text.
     property string currentPath: ""
@@ -112,7 +113,7 @@ Item {
             Layout.preferredWidth: root.narrow ? 88 : root.compact ? 252 : 326
             Layout.minimumWidth: root.narrow ? 76 : 204
             Layout.maximumWidth: 334
-            Layout.preferredHeight: 82
+            Layout.preferredHeight: 94
             Layout.alignment: Qt.AlignVCenter
             elevation: trackHover.hovered ? "elevated" : "standard"
             contentPadding: 0
@@ -125,12 +126,12 @@ Item {
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 10
-                spacing: 12
+                spacing: 14
 
                 Artwork {
                     objectName: "trackArtwork"
-                    Layout.preferredWidth: 62
-                    Layout.preferredHeight: 62
+                    Layout.preferredWidth: 72
+                    Layout.preferredHeight: 72
                     Layout.alignment: Qt.AlignVCenter
                     radius: 11
                     sourcePath: root.artworkPath
@@ -145,7 +146,7 @@ Item {
 
                     MichiText {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 22
+                        Layout.preferredHeight: 24
                         text: root.hasTrack ? root.trackTitle : "No track selected"
                         role: "body"
                         font.weight: Font.DemiBold
@@ -154,7 +155,7 @@ Item {
                     }
                     MichiText {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 19
+                        Layout.preferredHeight: 20
                         text: root.hasTrack
                             ? (root.artist.length > 0 ? root.artist : "Unknown artist")
                             : "Add music"
@@ -164,7 +165,7 @@ Item {
                     }
                     MichiText {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 17
+                        Layout.preferredHeight: 18
                         text: root.hasTrack
                             ? (root.album.length > 0 ? root.album : "Unknown album")
                             : "Local library"
@@ -212,17 +213,16 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
                     from: 0
-                    to: root.durationKnown ? root.duration : 1
-                    value: root.durationKnown ? Math.min(root.position, to) : 0
-                    enabled: root.durationKnown
+                    to: Math.max(root.duration, 1)
+                    value: Math.min(root.position, to)
+                    enabled: root.duration > 0
                     focusPolicy: Qt.StrongFocus
                     hoverEnabled: true
                     Accessible.role: Accessible.Slider
                     Accessible.name: qsTr("Playback position")
-                    Accessible.description: root.durationKnown
-                        ? qsTr("%1 of %2").arg(formatTime(value))
-                            .arg(formatTime(root.duration))
-                        : qsTr("Duration unavailable")
+                    Accessible.description: qsTr("%1 of %2")
+                        .arg(formatTime(value))
+                        .arg(formatTime(root.duration))
                     onMoved: root.seekRequested(Math.round(value))
 
                     background: Rectangle {
@@ -274,9 +274,9 @@ Item {
                     id: remainingLabel
                     objectName: "remainingLabel"
                     Layout.preferredWidth: 44
-                    text: root.showRemainingTime && root.durationKnown
+                    text: root.showRemainingTime && root.duration > 0
                         ? ("-" + formatTime(Math.max(0, root.duration - root.position)))
-                        : root.durationKnown ? formatTime(root.duration) : qsTr("—")
+                        : formatTime(root.duration)
                     role: "technical"
                     technical: true
                     color: remHover.hovered ? MichiPalette.auroraCyan : MichiPalette.textPrimary
@@ -609,11 +609,10 @@ Item {
                 checkable: true
                 checked: enginePopup.opened
                 onClicked: {
-                    // Controlled explicit availability refresh, then open.
-                    // The popup re-renders live from the refreshed model
-                    // (no stale snapshot: rows stay bound to root.*).
-                    root.audioEngineRefreshRequested()
+                    // Paint cached facts immediately. The isolated refresh
+                    // updates the live-bound rows after the popup is visible.
                     enginePopup.open()
+                    root.audioEngineRefreshRequested()
                 }
                 Accessible.name: root.audioEngineTooltip()
             }
@@ -633,6 +632,8 @@ Item {
                 hasFallback: root.audioEngineFallbackFrom !== ""
                     && root.selectedEngineId !== root.activeEngineId
                 statusSummary: root.audioEngineStatusSummary
+                engineSwitchReady: root.audioEngineSwitchReady
+                engineSwitchBlocker: root.audioEngineSwitchBlocker
                 onEngineSwitchRequested: (engineId) =>
                     root.audioEngineSwitchRequested(engineId)
             }

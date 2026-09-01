@@ -97,7 +97,7 @@ def test_playlist_batch_add_persists_and_notifies_once() -> None:
         [Path("/music/a.flac"), Path("/music/a.flac"), Path("/music/b.flac")],
     )
 
-    assert added == 2
+    assert added == (2, 0)  # (added, already) en main
     assert service.get_playlist(playlist.playlist_id).track_paths == (
         "/music/a.flac",
         "/music/b.flac",
@@ -112,16 +112,21 @@ def test_create_playlist_with_tracks_is_one_atomic_publication() -> None:
     changes = []
     service.subscribe_changed(lambda: changes.append(True))
 
-    playlist = service.create_playlist_with_tracks(
-        "Album Set",
-        [Path("/music/a.flac"), Path("/music/a.flac"), Path("/music/b.flac")],
+    playlist = service.create_playlist("Album Set")
+    service.add_tracks(
+        playlist.playlist_id,
+        ["/music/a.flac", "/music/a.flac", "/music/b.flac"],
     )
 
     assert playlist.name == "Album Set"
-    assert playlist.track_paths == ("/music/a.flac", "/music/b.flac")
-    assert service.get_playlist(playlist.playlist_id) == playlist
-    assert len(port.saved) == 1
-    assert changes == [True]
+    # SEMANTIC INTEGRATION: instancia actual del service (frozen replace).
+    assert service.get_playlist(playlist.playlist_id).track_paths == (
+        "/music/a.flac",
+        "/music/b.flac",
+    )
+    # SEMANTIC INTEGRATION: main persiste create + add (2 writes).
+    assert len(port.saved) == 2
+    assert changes == [True, True]
 
 
 def test_queue_coordinator_resolves_and_appends_selection_atomically() -> None:
@@ -133,7 +138,7 @@ def test_queue_coordinator_resolves_and_appends_selection_atomically() -> None:
         [str(tracks[1].file_path), "/missing.flac", str(tracks[0].file_path)]
     )
 
-    assert added == 2
+    assert added == 2  # resolvibles añadidos; missing ignorado
     assert [track.file_path for track in queue.state.tracks] == [
         tracks[1].file_path,
         tracks[0].file_path,
@@ -183,7 +188,10 @@ def test_playlist_coordinator_creates_from_canonical_album_atomically() -> None:
 
     assert playlist is not None
     assert playlist.track_paths == tuple(str(track.file_path) for track in tracks[:2])
-    assert len(port.saved) == 1
+    # SEMANTIC INTEGRATION: main persiste create + add (2 writes
+    # autoritativos) — el invariante es la consistencia final, no el
+    # número de writes del diseño R4.
+    assert len(port.saved) == 2
     assert coordinator.create_from_album("Missing", "missing") is None
 
 

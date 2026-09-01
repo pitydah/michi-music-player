@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../theme"
 
@@ -10,6 +11,14 @@ GridView {
 
     property var albumModel: library.albums
     property real albumZoom: 1.0
+    property var browseState: null
+    property string spacingMode: "balanced"
+    property string metadataLevel: "standard"
+    property bool quickActions: true
+    property bool precisionMetadata: false
+    property bool layoutReady: false
+    readonly property real contentMaxWidth: 1760
+    readonly property real usableWidth: Math.min(width, contentMaxWidth)
     readonly property int minimumCardWidth: MichiThemeState.density === "compact"
         ? Math.round(154 * albumZoom)
         : MichiThemeState.density === "comfortable"
@@ -18,18 +27,26 @@ GridView {
         ? Math.round(184 * albumZoom)
         : MichiThemeState.density === "comfortable"
             ? Math.round(250 * albumZoom) : Math.round(216 * albumZoom)
-    readonly property int cardGap: MichiThemeState.contentGap
+    readonly property int cardGap: spacingMode === "tight" ? MichiSpacing.sm
+        : spacingMode === "airy" ? MichiSpacing.xl : MichiThemeState.contentGap
     readonly property int columnCount: Math.max(1, Math.floor(
-        (width + cardGap) / (minimumCardWidth + cardGap)))
+        (usableWidth + cardGap) / (minimumCardWidth + cardGap)))
+    readonly property bool rowsFlowActive: flow === GridView.FlowLeftToRight
     readonly property real resolvedCardWidth: Math.min(maximumCardWidth,
         cellWidth - cardGap)
-    readonly property int metadataHeight: MichiThemeState.density === "compact"
-        ? 76 : MichiThemeState.density === "comfortable" ? 108 : 92
+    readonly property int metadataHeight: metadataLevel === "minimal" ? 64
+        : metadataLevel === "detailed" ? 112 : 86
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: albumModel
-    cellWidth: width / columnCount
+    // A Loader may complete this component before its layout has assigned the
+    // final width. Defer delegate creation one event-loop turn so GridView does
+    // not retain cells positioned against the provisional one-column geometry.
+    model: layoutReady ? albumModel : []
+    flow: GridView.FlowLeftToRight
+    leftMargin: Math.max(0, (width - usableWidth) / 2)
+    rightMargin: leftMargin
+    cellWidth: usableWidth / columnCount
     cellHeight: resolvedCardWidth + metadataHeight + cardGap
     clip: true
     boundsBehavior: Flickable.StopAtBounds
@@ -41,6 +58,34 @@ GridView {
     Accessible.role: Accessible.List
     Accessible.name: qsTr("Albums in grid view")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open an album")
+
+    Component.onCompleted: {
+        Qt.callLater(function() {
+            layoutReady = true
+            albumGrid.forceLayout()
+            if (browseState) {
+                var restoredIndex = browseState.galleryIndex
+                if (browseState.currentKey) {
+                    for (var i = 0; i < albumModel.length; ++i) {
+                        if (albumModel[i].key === browseState.currentKey) {
+                            restoredIndex = i
+                            break
+                        }
+                    }
+                }
+                albumGrid.currentIndex = restoredIndex
+                albumGrid.contentY = browseState.galleryContentY
+            }
+        })
+    }
+    onCellWidthChanged: if (layoutReady) albumGrid.forceLayout()
+    onCellHeightChanged: if (layoutReady) albumGrid.forceLayout()
+    onContentYChanged: if (browseState) browseState.galleryContentY = contentY
+    onCurrentIndexChanged: if (browseState) {
+        browseState.galleryIndex = currentIndex
+        if (currentIndex >= 0 && currentIndex < albumModel.length)
+            browseState.remember(albumModel[currentIndex].key)
+    }
 
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)
@@ -62,13 +107,11 @@ GridView {
         }
     }
 
-    ScrollBar.vertical: ScrollBar {
-        policy: ScrollBar.AsNeeded
-        width: MichiSpacing.sm
-    }
+    ScrollBar.vertical: MichiScrollBar { }
 
     delegate: Item {
         id: albumCell
+        objectName: "albumGridCell"
         required property int index
         required property var modelData
         readonly property bool current: GridView.isCurrentItem
@@ -83,15 +126,22 @@ GridView {
             height: parent.height - albumGrid.cardGap
             album: albumCell.modelData
             selected: albumCell.current
+            collectionFocus: albumGrid.activeFocus && albumCell.current
+            metadataLevel: albumGrid.metadataLevel
+            quickActionsVisible: albumGrid.quickActions
+            precisionMetadata: albumGrid.precisionMetadata
             onActiveFocusChanged: {
                 if (activeFocus)
                     albumGrid.currentIndex = albumCell.index
             }
-            onActivated: {
+            onSelectedRequested: {
+                albumGrid.currentIndex = albumCell.index
+            }
+            onOpenRequested: {
                 albumGrid.currentIndex = albumCell.index
                 library.select_album(albumCell.modelData.key)
             }
-            onSelectedRequested: albumGrid.currentIndex = albumCell.index
+            onPlayRequested: library.play_album(albumCell.modelData.key)
         }
     }
 }

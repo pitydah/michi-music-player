@@ -52,6 +52,11 @@ MichiSurface {
                         currentIndex: model.indexOf(MichiThemeState.glassQuality)
                         onActivated: MichiThemeState.glassQuality = currentText
                     }
+                    MichiSwitch {
+                        text: "Precision mode"
+                        checked: MichiThemeState.precisionMode
+                        onToggled: MichiThemeState.precisionMode = checked
+                    }
                     Item { Layout.fillWidth: true }
                 }
             }

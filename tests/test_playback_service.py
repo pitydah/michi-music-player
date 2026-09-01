@@ -49,9 +49,13 @@ class TestPlaybackService:
         assert playback_service.state.file_path == path
         assert playback_service.state.status != PlaybackStatus.PLAYING
 
-    def test_new_source_acceptance_clears_stale_duration(
+    def test_new_source_acceptance_keeps_known_duration_until_engine_reports(
         self, playback_service, fake_audio
     ):
+        """SEMANTIC INTEGRATION (main PR #230 contract): el service NO
+        consulta duración al backend — la duración llega vía
+        update_duration cuando el motor la conoce. La última duración
+        conocida se preserva hasta ese reporte (nunca 0 espurio)."""
         first = Path("/tmp/known.mp3")
         second = Path("/tmp/unknown.mp3")
         playback_service.load_and_play(first)
@@ -59,21 +63,25 @@ class TestPlaybackService:
         playback_service.update_duration(245_000)
 
         playback_service.load_and_play(second)
-        # The previous accepted source remains authoritative until the
-        # replacement is accepted.
+        # El source previo sigue autoritativo hasta el acceptance.
         assert playback_service.state.duration_ms == 245_000
         fake_audio.trigger_media_accepted(second)
 
         assert playback_service.state.file_path == second
-        assert playback_service.state.duration_ms == 0
+        # La duración conocida se preserva hasta que el motor reporta.
+        assert playback_service.state.duration_ms == 245_000
+        playback_service.update_duration(187_500)
+        assert playback_service.state.duration_ms == 187_500
 
-    def test_acceptance_queries_known_duration(self, playback_service, fake_audio):
-        fake_audio.set_duration(187_500)
+    def test_duration_only_reported_by_engine(self, playback_service, fake_audio):
+        """SEMANTIC INTEGRATION: el service NUNCA consulta duración al
+        backend — la duración entra exclusivamente vía update_duration."""
         path = Path("/tmp/known.flac")
-
         playback_service.load_and_play(path)
         fake_audio.trigger_media_accepted(path)
 
+        assert playback_service.state.duration_ms == 0
+        playback_service.update_duration(187_500)
         assert playback_service.state.duration_ms == 187_500
 
     def test_rejection_keeps_last_committed_file_and_sets_error(

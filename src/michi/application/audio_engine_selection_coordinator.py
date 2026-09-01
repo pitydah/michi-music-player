@@ -1,4 +1,4 @@
-"""M11.3F — quiescent engine selection coordinator (application layer).
+"""M11.3F/R2 — semantic engine selection coordinator (application layer).
 
 Transaction/orchestration authority for EXPLICIT engine switching. It does
 NOT own engine state (AudioEngineService does), does NOT own the provider
@@ -22,6 +22,11 @@ from collections.abc import Callable
 from enum import Enum
 
 from michi.application.audio_engine_registry import AudioEngineRegistry
+from michi.application.audio_engine_selection import (
+    EngineSelectionAction,
+    EngineSelectionPlan,
+    EngineSwitchBlocker,
+)
 from michi.application.audio_engine_service import AudioEngineService
 from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.playback_service import (
@@ -30,7 +35,11 @@ from michi.application.playback_service import (
     PlaybackService,
 )
 from michi.application.settings_service import SettingsService
-from michi.domain.audio_engine import AudioEngineId, AudioEngineLifecycle
+from michi.domain.audio_engine import (
+    AudioEngineDescriptor,
+    AudioEngineId,
+    AudioEngineLifecycle,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +49,7 @@ class AudioEngineSwitchError(RuntimeError):
 
 
 class AudioEngineSwitchNotQuiescentError(AudioEngineSwitchError):
-    """The switch was rejected because playback is not truly quiescent."""
+    """Compatibility error for a typed pending-media readiness blocker."""
 
 
 class AudioEngineSwitchUnavailableError(AudioEngineSwitchError):
@@ -73,13 +82,16 @@ class AudioEngineSwitchFailureStage(Enum):
 
 
 class AudioEngineSelectionCoordinator:
-    """Explicit quiescent engine selection — the single switch transaction.
+    """Explicit semantic engine selection — the single switch transaction.
 
     Canonical transaction:
 
         VERIFY TARGET (registered + freshly probed + can_activate)
-        → [STOP when explicitly requested by stop_and_switch_to]
-        → VERIFY / REVALIDATE QUIESCENT
+        → VERIFY QUIESCENT
+        → STOP
+        → REVALIDATE QUIESCENT (stop() notifies subscribers; a DIRECT /
+          reentrant subscriber may have requested new playback — abort
+          before the destructive boundary if so)
         → PERSIST SELECTION (durable save BEFORE any destructive work)
         → mark SELECTED (switching_to exposed truthfully)
         → mark CLOSING
@@ -138,13 +150,72 @@ class AudioEngineSelectionCoordinator:
     # Public transaction
     # ------------------------------------------------------------------
 
+    def selection_plan(
+        self,
+        target: AudioEngineId,
+        descriptor: AudioEngineDescriptor | None = None,
+    ) -> EngineSelectionPlan:
+        """Compute the single semantic meaning of an explicit selection."""
+        state = self._engine_service.state
+        if state.switching_to is not None or self._switch_in_progress:
+            return EngineSelectionPlan(
+                target,
+                EngineSelectionAction.RUNTIME_SWITCH,
+                False,
+                EngineSwitchBlocker.SWITCH_IN_PROGRESS,
+            )
+        active_ready = (
+            target == state.active_engine_id
+            and state.lifecycle is AudioEngineLifecycle.READY
+        )
+        if active_ready and target == state.selected_engine_id:
+            return EngineSelectionPlan(target, EngineSelectionAction.NOOP, True)
+        if active_ready:
+            return EngineSelectionPlan(
+                target, EngineSelectionAction.PREFERENCE_ONLY, True
+            )
+
+        if descriptor is None:
+            try:
+                descriptor = self._registry.provider(target).probe()
+            except Exception as exc:  # noqa: BLE001 — availability boundary
+                return EngineSelectionPlan(
+                    target,
+                    EngineSelectionAction.UNAVAILABLE,
+                    False,
+                    EngineSwitchBlocker.RUNTIME_UNAVAILABLE,
+                    f"Availability check failed: {exc}",
+                )
+        if not descriptor.can_activate:
+            return EngineSelectionPlan(
+                target,
+                EngineSelectionAction.UNAVAILABLE,
+                False,
+                EngineSwitchBlocker.RUNTIME_UNAVAILABLE,
+                descriptor.activation_blocker,
+            )
+
+        action = (
+            EngineSelectionAction.RETRY_PREFERRED
+            if target == state.selected_engine_id and target != state.active_engine_id
+            else EngineSelectionAction.RUNTIME_SWITCH
+        )
+        readiness = self._playback.engine_switch_readiness()
+        return EngineSelectionPlan(
+            target,
+            action,
+            readiness.allowed,
+            readiness.blocker,
+            readiness.detail,
+        )
+
     def switch_to(self, target: AudioEngineId) -> None:
         """Explicit quiescent switch to ``target``. Deterministic failure.
 
-        Target validation always precedes optional stop. The strict switch
-        path leaves a non-quiescent runtime untouched; Stop & Switch may stop
-        first, then revalidates quiescence before persistence or provider
-        destruction. Same-engine READY selection is a no-op."""
+        Pre-destructive checks (registered / can_activate / quiescent) fail
+        with the OLD runtime untouched: no stop, no persistence mutation, no
+        unbind, no close, no target open. Same-engine idempotence: when
+        selected == active == target and READY, this is a no-op."""
         # M11.3F P1-03: reentrancy guard — a subscriber of AudioEngineService
         # state changes may attempt a nested switch while this transaction is
         # mid-flight; reject it deterministically.
@@ -152,34 +223,16 @@ class AudioEngineSelectionCoordinator:
             raise AudioEngineSwitchInProgressError(
                 "engine switch already in progress; nested switch rejected"
             )
+        plan = self.selection_plan(target)
         self._switch_in_progress = True
         self.last_failure_stage = None  # reset at the start of every transaction
         try:
-            self._switch_to_transaction(target, stop_playback=False)
-        finally:
-            self._switch_in_progress = False
-
-    def stop_and_switch_to(self, target: AudioEngineId) -> None:
-        """Stop active/pending playback and switch in one application use case.
-
-        Target validation and same-engine idempotence happen before stop, so
-        an unavailable or already-current target never disrupts playback.
-        Stop failure and reentrant playback both abort before persistence and
-        before the provider/router destructive boundary.
-        """
-        if self._switch_in_progress:
-            raise AudioEngineSwitchInProgressError(
-                "engine switch already in progress; nested switch rejected"
-            )
-        self._switch_in_progress = True
-        self.last_failure_stage = None
-        try:
-            self._switch_to_transaction(target, stop_playback=True)
+            self._switch_to_transaction(target, plan)
         finally:
             self._switch_in_progress = False
 
     def _switch_to_transaction(
-        self, target: AudioEngineId, *, stop_playback: bool
+        self, target: AudioEngineId, plan: EngineSelectionPlan
     ) -> None:
         """Explicit quiescent switch to ``target``. Deterministic failure.
 
@@ -187,32 +240,25 @@ class AudioEngineSelectionCoordinator:
         with the OLD runtime untouched: no stop, no persistence mutation, no
         unbind, no close, no target open. Same-engine idempotence: when
         selected == active == target and READY, this is a no-op."""
-        # 1. VERIFY TARGET — fresh probe, can_activate gate.
-        provider = self._registry.provider(target)
-        descriptor = provider.probe()
-        if not descriptor.can_activate:
+        if plan.action is EngineSelectionAction.NOOP:
+            return
+        if plan.action is EngineSelectionAction.PREFERENCE_ONLY:
+            self._settings.set_audio_engine(target)
+            self._engine_service.restore_selected(target)
+            return
+        if plan.action is EngineSelectionAction.UNAVAILABLE:
             raise AudioEngineSwitchUnavailableError(
-                f"target engine {target.value} no activable: "
-                f"{descriptor.activation_blocker}"
+                f"target engine {target.value} no activable: {plan.blocker_detail}"
             )
+        if not plan.allowed:
+            if plan.blocker is EngineSwitchBlocker.SWITCH_IN_PROGRESS:
+                raise AudioEngineSwitchInProgressError(plan.blocker_message)
+            raise AudioEngineSwitchNotQuiescentError(plan.blocker_message)
+
+        provider = self._registry.provider(target)
 
         state = self._engine_service.state
         active = state.active_engine_id
-
-        # 2. SAME-ENGINE IDEMPOTENCE — no churn, no duplicate callbacks.
-        if (
-            target == state.selected_engine_id
-            and target == active
-            and state.lifecycle == AudioEngineLifecycle.READY
-        ):
-            return
-
-        # Dedicated Stop & Switch path. PlaybackService owns all stop
-        # semantics; this coordinator only composes the use case. The later
-        # lease acquisition is the mandatory revalidation after synchronous
-        # playback observers have run.
-        if stop_playback and not self._playback.is_engine_switch_quiescent():
-            self._playback.stop()
 
         # 3. ACQUIRE THE EXCLUSIVE QUIESCENCE LEASE (P1-01). This is the
         #    atomic check-then-act guard: from now on Playback REJECTS new
@@ -222,12 +268,13 @@ class AudioEngineSelectionCoordinator:
         #    an in-flight switch. No redundant stop() (KCR-021) — the
         #    provider is released at the destructive boundary.
         try:
-            lease = self._playback.acquire_engine_switch_lease()
+            lease = self._playback.begin_engine_switch()
         except PlaybackNotQuiescentError as exc:
             raise AudioEngineSwitchNotQuiescentError(str(exc)) from exc
         except EngineSwitchLeaseHeldError as exc:
             raise AudioEngineSwitchInProgressError(str(exc)) from exc
 
+        rehydration_pending = False
         try:  # P1-01: lease held across the WHOLE transaction, released in
             # finally on every outcome (success, persistence failure, source
             # unbind/close failure, target open/bind/restore failure).
@@ -238,11 +285,28 @@ class AudioEngineSelectionCoordinator:
 
             # 7. SELECTED (old engine may still be active — truthful window).
             self._engine_service.mark_selected(target)
-            volume, muted = self._playback.snapshot_volume()
-            # 7.5 (KCR-021): capture the stopped-media truth (logical resume
-            #     target included) BEFORE the destructive boundary — the old
-            #     backend invalidation must never erase what the user restored.
-            media_snapshot = self._playback.snapshot_engine_switch_media()
+            # The snapshot was captured atomically with lease acquisition,
+            # before mark_selected() could publish to reentrant observers.
+            media_snapshot = lease.snapshot
+            try:
+                lease.controlled_stop()
+            except Exception:
+                # Persistence precedes transport mutation. If the controlled
+                # stop fails, no detach/close/open occurred: restore the prior
+                # preference best effort, clear switching_to, and preserve the
+                # original stop exception as the primary failure.
+                try:
+                    self._settings.set_audio_engine(state.selected_engine_id)
+                except Exception:  # noqa: BLE001 — secondary rollback failure
+                    logger.warning(
+                        "could not roll back audio-engine preference after "
+                        "controlled stop failure",
+                        exc_info=True,
+                    )
+                self._engine_service.mark_selection_aborted(
+                    self._settings.state.audio_engine_id
+                )
+                raise
 
             # 8. DESTRUCTIVE BOUNDARY.
             if active is not None:
@@ -282,12 +346,12 @@ class AudioEngineSelectionCoordinator:
                     source_provider.close()
                 except Exception as original:
                     self.last_failure_stage = AudioEngineSwitchFailureStage.SOURCE_CLOSE
-                    self._playback.invalidate_backend_acceptance_for_engine_switch()
+                    lease.invalidate_backend_acceptance()
                     self._engine_service.mark_failed(active, str(original))
                     raise
                 # 8c. INVALIDATE OLD BACKEND ACCEPTANCE — the new backend has
                 #     never loaded the logical track; next play() reloads it.
-                self._playback.invalidate_backend_acceptance_for_engine_switch()
+                lease.invalidate_backend_acceptance()
 
             # 9. TARGET ACTIVATION.
             self._engine_service.mark_initializing(target)
@@ -312,7 +376,9 @@ class AudioEngineSelectionCoordinator:
                     )
                 # 11. RESTORE VOLUME/MUTE — canonical preferences on the new
                 #     transport BEFORE READY.
-                self._playback.restore_volume(volume, muted)
+                self._playback.restore_volume(
+                    media_snapshot.volume, media_snapshot.muted
+                )
             except Exception as original:
                 # Target bound (or partially bound): release best effort. P1-04:
                 # NEVER close the target provider while the router still reports
@@ -373,7 +439,7 @@ class AudioEngineSelectionCoordinator:
             #     engine switch: the target stays READY; the model surfaces the
             #     rejection/load error through its canonical path.
             try:
-                self._playback.prepare_after_engine_switch(media_snapshot)
+                rehydration_pending = lease.prepare_on_target()
             except Exception:
                 # engine already READY — the model state carries the media
                 # failure (first-error-wins preserved for the switch itself)
@@ -382,5 +448,8 @@ class AudioEngineSelectionCoordinator:
                     target.value,
                     exc_info=True,
                 )
-        finally:  # P1-01: lease ALWAYS released
-            lease.release()
+        finally:
+            # Async rehydration retains authority through its terminal
+            # ACCEPTED/REJECTED/CANCELLED/TIMEOUT outcome.
+            if not rehydration_pending:
+                lease.release()

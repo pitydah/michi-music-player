@@ -91,12 +91,18 @@ class LibraryPrefsPort(ABC):
 
 
 class PlaylistsPort(ABC):
-    """Playlist persistence (best effort; load never raises).
+    """Playlist persistence boundary (R3-02): a NON-None port implements
+    the FULL contract — LOAD is tolerant/safe-read, every WRITE is
+    authoritative (durable on success, raises PlaylistPersistenceError on
+    failure), and save_state is the MANDATORY atomic compound write.
+
+    There is NO silent no-op write: optional persistence is represented by
+    ``playlists_port=None`` at the service level, never by a port whose
+    writes could be ignored. Atomicity is part of the type contract.
 
     M8-R1: playlists persist with stable ids (V2); legacy V1 records decode
     to deterministic ids. Navigation metadata (pinned/recent) has its own
-    load/save pair. Default no-op implementations keep existing fakes and
-    optional wiring backward compatible."""
+    load/save pair."""
 
     @abstractmethod
     def load(self) -> tuple[Playlist, ...]: ...

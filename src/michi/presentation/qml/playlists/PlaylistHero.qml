@@ -13,7 +13,14 @@ Item {
     property string playlistName: ""
     property int trackCount: 0
     property int durationMs: 0
+    // PL-FINAL-05/16: descripción real del playlist + conteo honesto de
+    // tracks que la biblioteca no puede resolver.
     property string description: ""
+    property int unavailableCount: 0
+    // PL-FINAL-A05: Play/Shuffle operan SOLO sobre tracks reproducibles.
+    property int availableTrackCount: 0
+    readonly property bool hasPlayableTracks: root.availableTrackCount > 0
+
     property string customCoverPath: ""
     property var mosaicArtworkPaths: []
     property string heroMode: "auto"
@@ -22,11 +29,9 @@ Item {
     property real heroGradientAngle: 135
     property string heroImagePath: ""
     property var autoHeroColors: [MichiPalette.playlistHeroTop, MichiPalette.playlistHeroMid, MichiPalette.playlistHeroBottom]
-    property bool pinned: false
-    property bool hasTracks: root.trackCount > 0
-    // Space reserved for navigation when the page places its back action
-    // inside this atmospheric surface instead of in a detached top strip.
-    property real navigationInset: 0
+    // PL-FINAL-09: focal del hero image (0..1) — se propaga al background.
+    property real heroFocalX: 0.5
+    property real heroFocalY: 0.5
 
     readonly property bool compact: width < 720
     readonly property real coverSize: width >= 1120 ? 180
@@ -36,7 +41,6 @@ Item {
     signal shuffleRequested()
     signal moreRequested()
     signal customizeAppearanceRequested()
-    signal togglePinRequested()
     signal addTracksRequested()
 
     implicitHeight: Math.max(248, Math.min(300,
@@ -67,6 +71,8 @@ Item {
         coverPath: root.customCoverPath
         mosaicArtworkPaths: root.mosaicArtworkPaths
         autoColors: root.autoHeroColors
+        focalX: root.heroFocalX
+        focalY: root.heroFocalY
     }
 
     RowLayout {
@@ -74,7 +80,7 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: root.compact ? MichiSpacing.lg : MichiSpacing.xl
         anchors.rightMargin: root.compact ? MichiSpacing.lg : MichiSpacing.xl
-        anchors.topMargin: root.navigationInset + MichiSpacing.sm
+        anchors.topMargin: MichiSpacing.lg
         anchors.bottomMargin: MichiSpacing.lg
         spacing: root.compact ? MichiSpacing.lg : MichiSpacing.xl
 
@@ -201,6 +207,9 @@ Item {
                 Layout.fillWidth: true
                 text: MichiFormat.formatPlaylistSummary(
                     root.trackCount, root.durationMs)
+                    + (root.unavailableCount > 0
+                        ? qsTr(" · %n unavailable", "", root.unavailableCount)
+                        : "")
                 role: "technical"
                 color: MichiPalette.textSecondary
                 opacity: 0.78
@@ -208,28 +217,29 @@ Item {
 
             MichiText {
                 Layout.fillWidth: true
+                Layout.maximumWidth: 560
                 visible: root.description.length > 0
                 text: root.description
                 role: "secondary"
-                color: MichiPalette.textSecondary
-                opacity: 0.72
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
+                color: MichiPalette.textPrimary
+                opacity: 0.82
                 elide: Text.ElideRight
+                maximumLineCount: 2
+                wrapMode: Text.WordWrap
             }
 
             Item { Layout.preferredHeight: MichiSpacing.xs }
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: MichiSpacing.xs
+                spacing: MichiSpacing.sm
 
                 MichiButton {
                     text: qsTr("Play")
                     iconName: "play"
                     variant: "primary"
                     implicitHeight: MichiMetrics.controlMedium
-                    enabled: root.hasTracks
+                    enabled: root.hasPlayableTracks
                     accessibleName: qsTr("Play playlist now")
                     onClicked: root.playRequested()
                 }
@@ -240,7 +250,7 @@ Item {
                     iconOnly: root.width < 820
                     variant: "secondary"
                     implicitHeight: MichiMetrics.controlMedium
-                    enabled: root.hasTracks
+                    enabled: root.hasPlayableTracks
                     accessibleName: qsTr("Shuffle playlist")
                     onClicked: root.shuffleRequested()
                 }
@@ -253,6 +263,17 @@ Item {
                     implicitHeight: MichiMetrics.controlMedium
                     accessibleName: qsTr("Add tracks from library")
                     onClicked: root.addTracksRequested()
+                }
+
+                MichiButton {
+                    text: root.width >= 760
+                        ? qsTr("Customize appearance") : ""
+                    iconName: "sliders"
+                    iconOnly: root.width < 760
+                    variant: "ghost"
+                    implicitHeight: MichiMetrics.controlMedium
+                    accessibleName: qsTr("Customize playlist appearance")
+                    onClicked: root.customizeAppearanceRequested()
                 }
 
                 MichiIconButton {

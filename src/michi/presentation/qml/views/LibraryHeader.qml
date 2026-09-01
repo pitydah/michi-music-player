@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../patterns"
@@ -15,6 +16,7 @@ PageHeader {
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
     property real albumZoom: 1.0
+    property var viewPreferences: ({})
 
     signal albumModeRequested(string mode)
     signal albumSortRequested(string mode)
@@ -22,26 +24,71 @@ PageHeader {
     signal albumFilterRequested(string mode)
     signal albumTimelineGroupingRequested(string mode)
     signal albumZoomRequested(real value)
+    signal viewPreferenceRequested(string section, string key, var value)
+    signal resetViewRequested(string section)
 
     readonly property bool albumViewsVisible: currentTab === "albums"
         && (typeof library === "undefined" || !library || library.selectedAlbumKey === "")
     readonly property var albumViewModes: [
-        { value: "grid", label: qsTr("Grid"), icon: "view-grid" },
-        { value: "cover", label: qsTr("Cover Flow"), icon: "view-path" },
-        { value: "vinyl", label: qsTr("Vinyl Wall"), icon: "view-vinyl" },
-        { value: "timeline", label: qsTr("Timeline"), icon: "view-timeline" },
-        { value: "magazine", label: qsTr("Magazine"), icon: "view-magazine" },
-        { value: "list", label: qsTr("List"), icon: "view-list" }
+        { value: "grid", label: qsTr("Gallery"), icon: "view-grid" },
+        { value: "cover", label: qsTr("Album Flow"), icon: "view-path" },
+        { value: "vinyl", label: qsTr("Listening Wall"), icon: "view-vinyl" },
+        { value: "timeline", label: qsTr("Chronology"), icon: "view-timeline" },
+        { value: "magazine", label: qsTr("Editorial"), icon: "view-magazine" },
+        { value: "list", label: qsTr("Studio List"), icon: "view-list" }
     ]
 
     readonly property bool hasNonDefaultOptions: MichiThemeState.density !== "standard"
+        || MichiThemeState.precisionMode
         || (root.currentTab === "albums" && (
-            root.albumZoom !== 1.0
+            root.activeViewCustomized()
             || root.albumSortMode !== "title"
             || root.albumSortDescending === true
             || root.albumFilterMode !== "all"
             || root.albumTimelineGrouping !== "decade"
         ))
+
+    function activeViewCustomized() {
+        var p = root.viewPreferences
+        if (!p)
+            return false
+        if (root.albumMode === "grid" && p.gallery)
+            return p.gallery.artworkSize !== "medium"
+                || p.gallery.spacing !== "balanced"
+                || p.gallery.metadataLevel !== "standard"
+                || p.gallery.precisionMetadata || !p.gallery.quickActions
+                || !p.gallery.inspector
+        if (root.albumMode === "cover" && p.flow)
+            return p.flow.coverSize !== "standard"
+                || p.flow.visibleAlbums !== "auto"
+                || p.flow.depth !== "standard" || !p.flow.ambientColor
+                || p.flow.metadataLevel !== "standard"
+        if (root.albumMode === "vinyl" && p.vinyl)
+            return p.vinyl.sleeveSize !== "standard"
+                || p.vinyl.spacing !== "standard"
+                || p.vinyl.reveal !== "standard"
+                || p.vinyl.metadataLevel !== "standard"
+                || !p.vinyl.artworkLabel || !p.vinyl.inspector
+        if (root.albumMode === "timeline" && p.chronology)
+            return p.chronology.grouping !== "decade"
+                || p.chronology.direction !== "newest"
+                || p.chronology.density !== "standard"
+                || p.chronology.metadataLevel !== "standard"
+                || p.chronology.showPeriodDensity
+        if (root.albumMode === "magazine" && p.editorial)
+            return !p.editorial.heroVisible
+                || p.editorial.informationRichness !== "standard"
+                || !p.editorial.cachedEnrichmentVisible
+                || p.editorial.archiveLayout !== "list"
+        if (root.albumMode === "list" && p.studioList)
+            return p.studioList.density !== "standard"
+                || p.studioList.artworkSize !== "small"
+                || !p.studioList.precisionMetadata || !p.studioList.inspector
+                || !p.studioList.artistColumn || !p.studioList.yearColumn
+                || !p.studioList.tracksColumn || !p.studioList.durationColumn
+                || !p.studioList.formatColumn
+        return false
+    }
 
     // Wayfinding: the header names the active tab (was a static "Library")
     // so users always know where they are inside the library.
@@ -59,53 +106,121 @@ PageHeader {
         }
     }
 
+    function albumModeLabel() {
+        for (var i = 0; i < root.albumViewModes.length; ++i) {
+            if (root.albumViewModes[i].value === root.albumMode)
+                return root.albumViewModes[i].label
+        }
+        return qsTr("Gallery")
+    }
+
+    function albumModeIcon() {
+        for (var i = 0; i < root.albumViewModes.length; ++i) {
+            if (root.albumViewModes[i].value === root.albumMode)
+                return root.albumViewModes[i].icon
+        }
+        return "view-grid"
+    }
+
     function contextualSubtitle() {
         if (typeof library === "undefined" || !library)
             return qsTr("Your local music collection")
-        switch (root.currentTab) {
-        case "albums":
-            return library.albumCount === 1
-                ? qsTr("1 album") : qsTr("%1 albums").arg(library.albumCount)
-        case "artists":
-            return library.artistCount === 1
-                ? qsTr("1 artist") : qsTr("%1 artists").arg(library.artistCount)
-        case "genres":
-            return library.genres.length === 1
-                ? qsTr("1 genre") : qsTr("%1 genres").arg(library.genres.length)
-        case "favorites":
-            return library.favoriteTrackRows.length === 1
-                ? qsTr("1 favorite")
-                : qsTr("%1 favorites").arg(library.favoriteTrackRows.length)
-        case "history":
-            return library.historyTrackRows.length === 1
-                ? qsTr("1 track")
-                : qsTr("%1 tracks").arg(library.historyTrackRows.length)
-        case "recently":
-            return library.recentlyAddedTrackRows.length === 1
-                ? qsTr("1 track")
-                : qsTr("%1 tracks").arg(library.recentlyAddedTrackRows.length)
-        default:
-            return library.fileCount === 1
-                ? qsTr("1 track") : qsTr("%1 tracks").arg(library.fileCount)
+        if (library.searchActive) {
+            if (root.currentTab === "albums")
+                return qsTr("%1 albums matching “%2”")
+                    .arg(library.searchAlbumCount).arg(library.searchQuery)
+            return qsTr("%1 results matching “%2”")
+                .arg(library.searchTotalCount).arg(library.searchQuery)
         }
+        if (library.fileCount > 0)
+            return qsTr("%1 tracks · %2 albums · %3 artists")
+                .arg(library.fileCount).arg(library.albumCount).arg(library.artistCount)
+        return qsTr("Your local music collection")
     }
 
     title: root.tabTitle()
     subtitle: root.contextualSubtitle()
 
+    MichiText {
+        visible: root.albumViewsVisible && MichiBreakpoints.isXl(root.width)
+        text: qsTr("VIEWS")
+        role: "technical"
+        technical: true
+        color: MichiPalette.textMuted
+    }
+
     MichiSegmentedControl {
         objectName: "albumViewSwitcher"
         visible: root.albumViewsVisible
+            && MichiBreakpoints.atLeastMedium(root.width)
         model: root.albumViewModes
         currentValue: root.albumMode
-        compact: true
+        compact: !MichiBreakpoints.isXl(root.width)
         accessiblePrefix: "Album view"
         Accessible.name: qsTr("Album view")
         onSelected: value => root.albumModeRequested(value)
     }
 
+    Item {
+        id: compactPickerHost
+        objectName: "compactAlbumViewPicker"
+        visible: root.albumViewsVisible
+            && !MichiBreakpoints.atLeastMedium(root.width)
+        Layout.preferredWidth: 154
+        Layout.preferredHeight: MichiMetrics.controlMedium
+
+        MichiButton {
+            anchors.fill: parent
+            text: root.albumModeLabel()
+            iconName: root.albumModeIcon()
+            variant: "secondary"
+            accessibleName: qsTr("Choose album view. Current: %1")
+                .arg(root.albumModeLabel())
+            onClicked: compactPicker.visible
+                ? compactPicker.close() : compactPicker.open()
+        }
+
+        Popup {
+            id: compactPicker
+            objectName: "compactAlbumViewPopup"
+            x: Math.min(0, compactPickerHost.width - implicitWidth)
+            y: compactPickerHost.height + MichiSpacing.xs
+            padding: MichiSpacing.sm
+            modal: false
+            focus: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+            background: MichiGlassSurface {
+                materialRole: MichiMaterialRole.modal
+                elevation: "modal"
+                contentPadding: 0
+                glintMode: "edge"
+            }
+            contentItem: GridLayout {
+                columns: 2
+                rowSpacing: MichiSpacing.xs
+                columnSpacing: MichiSpacing.xs
+                Repeater {
+                    model: root.albumViewModes
+                    delegate: MichiButton {
+                        required property var modelData
+                        Layout.preferredWidth: 142
+                        text: modelData.label
+                        iconName: modelData.icon
+                        selected: root.albumMode === modelData.value
+                        variant: "ghost"
+                        onClicked: {
+                            root.albumModeRequested(modelData.value)
+                            compactPicker.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Rectangle {
-        visible: root.albumViewsVisible && root.width >= 840
+        visible: root.albumViewsVisible
+            && MichiBreakpoints.atLeastMedium(root.width)
         Layout.preferredWidth: 1
         Layout.preferredHeight: 26
         color: MichiSemanticColors.borderSubtle
@@ -113,6 +228,7 @@ PageHeader {
 
     Item {
         id: viewOptionsContainer
+        visible: root.albumViewsVisible
         Layout.preferredWidth: 36
         Layout.preferredHeight: 36
 
@@ -121,8 +237,11 @@ PageHeader {
             anchors.centerIn: parent
             width: MichiMetrics.controlMedium
             height: MichiMetrics.controlMedium
-            iconName: "sliders"
-            accessibleName: qsTr("View options")
+            iconName: "view-options"
+            accessibleName: root.albumViewsVisible
+                ? qsTr("%1 options%2").arg(root.albumModeLabel())
+                    .arg(root.hasNonDefaultOptions ? qsTr(" · Customized") : "")
+                : qsTr("View options")
             selected: viewOptionsPopup.visible || root.hasNonDefaultOptions
             onClicked: {
                 if (viewOptionsPopup.visible) {
@@ -157,11 +276,15 @@ PageHeader {
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
             albumZoom: root.albumZoom
+            viewPreferences: root.viewPreferences
             onAlbumSortRequested: mode => root.albumSortRequested(mode)
             onAlbumSortDirectionRequested: desc => root.albumSortDirectionRequested(desc)
             onAlbumFilterRequested: mode => root.albumFilterRequested(mode)
             onAlbumTimelineGroupingRequested: grp => root.albumTimelineGroupingRequested(grp)
             onAlbumZoomRequested: zoom => root.albumZoomRequested(zoom)
+            onViewPreferenceRequested: (section, key, value) =>
+                root.viewPreferenceRequested(section, key, value)
+            onResetViewRequested: section => root.resetViewRequested(section)
         }
     }
 }

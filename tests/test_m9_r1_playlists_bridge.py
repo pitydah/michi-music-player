@@ -169,7 +169,7 @@ class TestIntents:
     def test_create_duplicate_rejected(self):
         service, _, bridge, _ = _build()
         bridge.create_and_open_playlist("Jazz")
-        assert bridge.create_and_open_playlist("Jazz") is False
+        assert bridge.create_and_open_playlist("Jazz") == "conflict"
         assert len(service.playlists) == 1
 
     def test_delete_and_pin_unpin(self):

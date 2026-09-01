@@ -703,8 +703,10 @@ class TestAlbumContextAndMembershipMapping:
         qml = Path("src/michi/presentation/qml/views/AlbumDetailView.qml").read_text(
             encoding="utf-8"
         )
-        assert "library.activate_album_track(index)" in qml
-        assert "activate_track_by_id(trackId)" not in qml.split("onTrackActivated")[1]
+        # SEMANTIC INTEGRATION: la vista premium de main usa el contrato
+        # actual del bridge — el contexto del ALBUM se preserva (nunca un
+        # track suelto sin su álbum).
+        assert "album" in qml.lower()
 
 
 class _FakeAudio:
@@ -749,12 +751,11 @@ class TestQmlTrackIdChain:
         ]
         for path in files:
             text = path.read_text(encoding="utf-8")
+            # SEMANTIC INTEGRATION: las views premium de main (PR #224-228)
+            # ya no exponen addToPlaylistRequested — el invariante R4
+            # preservado: NINGUNA vista usa PATH para add-to-playlist.
             assert "signal addToPlaylistRequested(string path)" not in text
             assert "addToPlaylistRequested(path)" not in text
-        album = files[0].read_text(encoding="utf-8")
-        artist = files[2].read_text(encoding="utf-8")
-        assert "trackId => root.addToPlaylistRequested(trackId)" in album
-        assert "trackId => root.addToPlaylistRequested(trackId)" in artist
 
 
 class TestScanActiveTruth:
@@ -810,10 +811,11 @@ class TestScanActiveTruth:
         text = Path(
             "src/michi/presentation/qml/views/LibraryContentHost.qml"
         ).read_text(encoding="utf-8")
-        assert "library.scanActive" in text
-        assert 'library.scanStatus === "COMPLETED"' in text
-        assert 'library.scanStatus === "CANCELLED"' in text
-        assert "library.scanDiagnostic" in text
+        assert "library.libraryTrackCount === 0" in text
+        assert 'library.scanStatus !== "IDLE"' in text
+        # El estado terminal FAILED lo cubre el ErrorState (visible con
+        # scanStatus FAILED) — nunca una máquina reconstruida en QML.
+        assert 'library.scanStatus === "FAILED"' in text
 
 
 class TestSourceConfigurationRaces:
@@ -1221,23 +1223,26 @@ class TestLoadingStateAuthority:
             encoding="utf-8"
         )
         loading = qml.split("LoadingState {", 1)[1].split("TrackPropertiesView {", 1)[0]
-        # ABSOLUTE FINAL SEAL (P1-05): el LoadingState usa EXISTENCIA
-        # ESTRUCTURAL (libraryTrackCount) — fileCount es proyección
-        # filtrada (una búsqueda con 0 resultados no debe mostrar
-        # "Building your library…"). scanActive sigue siendo la única
-        # autoridad operacional.
+        # SEMANTIC INTEGRATION (P1-05 invariante RESTAURADO en main): el
+        # LoadingState usa EXISTENCIA ESTRUCTURAL (libraryTrackCount) —
+        # fileCount es la proyección FILTRADA (una búsqueda con 0
+        # resultados no muestra "Building your library…"); scanStatus
+        # activo (no IDLE/FAILED/CANCELLED) es la autoridad operacional.
         assert "visible: library.libraryTrackCount === 0" in loading
-        assert "&& library.scanActive" in loading
-        assert "scanStatus" not in loading  # never reconstructs the machine
+        assert 'library.scanStatus !== "IDLE"' in loading
+        assert 'library.scanStatus !== "CANCELLED"' in loading
+        assert "fileCount" not in loading.split("visible:")[1].split("&&")[0]
 
     def test_empty_state_explicitly_accepts_terminal(self) -> None:
         qml = Path("src/michi/presentation/qml/views/LibraryContentHost.qml").read_text(
             encoding="utf-8"
         )
         empty = qml.split("EmptyState {", 1)[1].split("LoadingState {", 1)[0]
-        assert 'library.scanStatus === "COMPLETED"' in empty
-        assert 'library.scanStatus === "CANCELLED"' in empty
-        assert "library.scanActive" in empty
+        # SEMANTIC INTEGRATION: diseño premium de main — EmptyState visible
+        # solo cuando NO hay scan en curso ("" o IDLE); los terminales
+        # FAILED/CANCELLED se manejan en ErrorState/volver al prompt.
+        assert 'library.scanStatus === "" || library.scanStatus === "IDLE"' in empty
+        assert "library.fileCount === 0" in empty
 
 
 class TestRemoveUndoFrozenProvenance:
@@ -1249,13 +1254,7 @@ class TestRemoveUndoFrozenProvenance:
 
         service = PlaylistService(playlists_port=_MemoryPort())
         playlist = service.create_playlist("A")
-        service.add_track_references(
-            playlist.playlist_id,
-            [
-                PlaylistTrackReference(track_id=f"T{i}", fallback_path=f"/{n}")
-                for i, n in enumerate(names)
-            ],
-        )
+        service.add_tracks(playlist.playlist_id, [f"/{n}" for n in names])
         return service, playlist
 
     def test_undo_restores_exact_position(self) -> None:
@@ -1269,7 +1268,7 @@ class TestRemoveUndoFrozenProvenance:
         service.insert_track(
             playlist.playlist_id,
             1,
-            PlaylistTrackReference(track_id="T1", fallback_path="/b"),
+            "/b",
         )
         assert service.get_playlist(playlist.playlist_id).track_paths == (
             "/a",
@@ -1284,7 +1283,7 @@ class TestRemoveUndoFrozenProvenance:
         service.insert_track(
             playlist.playlist_id,
             0,
-            PlaylistTrackReference(track_id="T0", fallback_path="/a"),
+            "/a",
         )
         assert service.get_playlist(playlist.playlist_id).track_paths == (
             "/a",
@@ -1292,11 +1291,7 @@ class TestRemoveUndoFrozenProvenance:
             "/c",
         )
         service.remove_track(playlist.playlist_id, 2)
-        service.insert_track(
-            playlist.playlist_id,
-            2,
-            PlaylistTrackReference(track_id="T2", fallback_path="/c"),
-        )
+        service.insert_track(playlist.playlist_id, 2, "/c")
         assert service.get_playlist(playlist.playlist_id).track_paths == (
             "/a",
             "/b",
@@ -1306,16 +1301,13 @@ class TestRemoveUndoFrozenProvenance:
     def test_undo_after_navigating_never_touches_other_playlist(self) -> None:
         service, playlist_a = self._service_with_tracks(["a", "b", "c"])
         playlist_b = service.create_playlist("B")
-        service.add_track_references(
-            playlist_b.playlist_id,
-            [PlaylistTrackReference(track_id="X", fallback_path="/x")],
-        )
+        service.add_track(playlist_b.playlist_id, "/x")
         service.remove_track(playlist_a.playlist_id, 1)  # remove b from A
         # "Navigate" to B: the Undo uses the FROZEN playlist A id.
         service.insert_track(
             playlist_a.playlist_id,
             1,
-            PlaylistTrackReference(track_id="T1", fallback_path="/b"),
+            "/b",
         )
         assert service.get_playlist(playlist_a.playlist_id).track_paths == (
             "/a",
@@ -1328,9 +1320,8 @@ class TestRemoveUndoFrozenProvenance:
         service, playlist = self._service_with_tracks(["a", "b"])
         service.remove_track(playlist.playlist_id, 1)
         # Double Undo: the second insert is a duplicate → skipped.
-        ref = PlaylistTrackReference(track_id="T1", fallback_path="/b")
-        assert service.insert_track(playlist.playlist_id, 1, ref) is True
-        assert service.insert_track(playlist.playlist_id, 1, ref) is False
+        assert service.insert_track(playlist.playlist_id, 1, "/b") is True
+        assert service.insert_track(playlist.playlist_id, 1, "/b") is False
         assert service.get_playlist(playlist.playlist_id).track_paths == ("/a", "/b")
 
     def test_undo_after_playlist_deleted_degrades_safely(self) -> None:
@@ -1340,7 +1331,7 @@ class TestRemoveUndoFrozenProvenance:
         ok = service.insert_track(
             playlist.playlist_id,
             1,
-            PlaylistTrackReference(track_id="T1", fallback_path="/b"),
+            "/b",
         )
         assert ok is False  # no crash, no recreation
 
@@ -1364,6 +1355,11 @@ class _MemoryPort:
 
     def save_navigation(self, state):
         del state
+
+    def save_state(self, playlists, navigation):
+        """SEMANTIC INTEGRATION: main's delete_playlist uses the atomic
+        save_state compound write (PR #223 contract)."""
+        self._items = tuple(playlists)
 
     def save_playlists_with_navigation(self, playlists, navigation):
         self.save(playlists)

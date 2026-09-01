@@ -1,32 +1,61 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
+import "../patterns"
+import "../primitives"
+import "../theme"
 
-MichiTrackTable {
+// RecentlyAddedView — Recently imported tracks with temporal section headers
+ListView {
     id: root
     objectName: "recentlyView"
-    property string addTargetTrackId: ""
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    rows: library.recentlyAddedTrackRows
-    playingPath: typeof playback !== "undefined" && playback
-        ? playback.currentPath : ""
-    favoriteTrackIds: library.favoriteTrackIds
-    favoritePaths: library.favoritePaths
-    canFavorite: true
-    canQueue: library.canQueueTracks
-    canAddToPlaylist: library.canAddTracksToPlaylists
-    canInspect: true
-    canNavigateEntities: true
-    emptyTitle: qsTr("Nothing added recently")
-    emptyMessage: qsTr("Newly imported tracks will appear here.")
-    emptyIcon: "recent"
+    model: library.recentlyAddedTrackRows
+    clip: true
+    spacing: MichiSpacing.xs
+    boundsBehavior: Flickable.StopAtBounds
+    headerPositioning: ListView.InlineHeader
 
-    onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
-    onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
-    onQueueRequested: trackId => library.queue_track_by_id(trackId)
-    onAddToPlaylistRequested: trackId => root.addTargetTrackId = trackId
-    onGoToAlbumRequested: albumKey => library.select_album(albumKey)
-    onGoToArtistRequested: artistKey => library.select_artist(artistKey)
+    ScrollBar.vertical: MichiScrollBar { }
+
+    header: Item {
+        width: root.width
+        height: root.count > 0 ? recentlyTableHeader.implicitHeight : root.height
+
+        TrackTableHeader {
+            id: recentlyTableHeader
+            width: parent.width
+            actionColumnWidth: 32
+            visible: root.count > 0
+        }
+
+        EmptyState {
+            anchors.fill: parent
+            visible: root.count === 0
+            title: qsTr("Nothing added recently")
+            message: qsTr("Newly imported tracks will appear here.")
+            iconName: "recent"
+        }
+    }
+
+    delegate: TrackRow {
+        required property int index
+        required property var modelData
+        width: root.width
+        numberText: String(index + 1)
+        title: modelData.title
+        artist: modelData.artist
+        album: modelData.album
+        durationMs: modelData.durationMs
+        quality: modelData.qualityLabel
+        playing: playback.currentPath === modelData.path
+        favorite: library.favoritePaths.indexOf(modelData.path) !== -1
+        showFavorite: true
+        onActivated: library.activate_path(modelData.path)
+        onFavoriteToggled: library.toggle_favorite(modelData.path)
+    }
 }

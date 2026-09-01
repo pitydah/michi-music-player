@@ -132,18 +132,17 @@ MichiGlassSurface {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: 14
-                    // Single-accent brand tile: deep obsidian frame around
-                    // the canonical Michi logo (user-supplied artwork).
+                    // Single-accent brand tile: cyan on deep obsidian
                     color: MichiPalette.obsidianRaised
                     border.width: 1
                     border.color: MichiSemanticColors.auroraCyanBorderSubtle
-                    Image {
+                    MichiIcon {
                         anchors.centerIn: parent
-                        width: 26
-                        height: 26
-                        source: "../assets/michi-logo.svg"
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
+                        width: 23
+                        height: 23
+                        name: "cat"
+                        iconColor: MichiPalette.auroraCyan
+                        strokeWidth: 1.9
                     }
                 }
                 ColumnLayout {

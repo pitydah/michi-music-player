@@ -26,11 +26,10 @@ class FakePlaylistsPort(PlaylistsPort):
     def save_navigation(self, state):
         self.nav = state
 
-    def save_playlists_with_navigation(self, playlists, navigation):
-
-        self.save(playlists)
-
-        self.save_navigation(navigation)
+    def save_state(self, playlists, navigation):
+        # R3-02: atomic compound write.
+        self.items = list(playlists)
+        self.nav = navigation
 
 
 class FakeQueueService:
@@ -48,16 +47,6 @@ class FakeQueueService:
     def play_index(self, index: int):
         if 0 <= index < len(self.items):
             self.current_index = index
-
-
-def _real_image(path: Path, ext: str, color: int) -> Path:
-    """Real decodable image (the asset store validates actual decodability)."""
-    from PySide6.QtGui import QImage
-
-    img = QImage(64, 64, QImage.Format_RGB32)
-    img.fill(color)
-    assert img.save(str(path), "PNG" if ext == ".png" else "JPG")
-    return path
 
 
 def test_playlist_play_now_semantics():
@@ -150,8 +139,12 @@ def test_playlist_custom_cover_managed_copy_and_survives_original_delete():
         store = FilesystemPlaylistArtworkStore(storage_dir)
 
         # Create external source image
+        from PySide6.QtGui import QImage
+
+        qimg = QImage(64, 64, QImage.Format_RGB32)
+        qimg.fill(0xFF581C)
         source_file = Path(tmpdir) / "my_external_cover.jpg"
-        source_file = _real_image(source_file, ".jpg", 0xCB0543)
+        assert qimg.save(str(source_file), "JPG")
 
         port = FakePlaylistsPort(
             [Playlist(playlist_id="p1", name="Rock", track_paths=())]
@@ -179,10 +172,18 @@ def test_playlist_custom_cover_replace_cleanup():
         store = FilesystemPlaylistArtworkStore(storage_dir)
 
         # Create PNG and JPG source files
+        from PySide6.QtGui import QImage
+
+        img = QImage(64, 64, QImage.Format_RGB32)
+        img.fill(0xFF581C)
         png_file = Path(tmpdir) / "cover.png"
-        png_file = _real_image(png_file, ".png", 0xFF581C)
+        assert img.save(str(png_file), "PNG")
         jpg_file = Path(tmpdir) / "cover.jpg"
-        jpg_file = _real_image(jpg_file, ".jpg", 0xCB0543)
+        from PySide6.QtGui import QImage
+
+        qimg = QImage(64, 64, QImage.Format_RGB32)
+        qimg.fill(0xFF581C)
+        assert qimg.save(str(jpg_file), "JPG")
 
         port = FakePlaylistsPort([Playlist(playlist_id="p1", name="Chill")])
         service = PlaylistService(playlists_port=port, artwork_store=store)
@@ -202,8 +203,12 @@ def test_playlist_delete_cover_cleanup():
         storage_dir = Path(tmpdir) / "covers"
         store = FilesystemPlaylistArtworkStore(storage_dir)
 
+        from PySide6.QtGui import QImage
+
+        img = QImage(64, 64, QImage.Format_RGB32)
+        img.fill(0xFF581C)
         png_file = Path(tmpdir) / "cover.png"
-        png_file = _real_image(png_file, ".png", 0xFF581C)
+        assert img.save(str(png_file), "PNG")
 
         port = FakePlaylistsPort([Playlist(playlist_id="p1", name="To Delete")])
         service = PlaylistService(playlists_port=port, artwork_store=store)

@@ -22,24 +22,31 @@ def test_six_view_icons_remain_in_library_header() -> None:
         assert f'icon: "{view_mode}"' in header_src
 
 
-def test_view_options_popup_keeps_density_and_contextual_album_options() -> None:
+def test_view_options_popup_consolidates_density_precision_zoom_sort() -> None:
     header_src = _text("views/LibraryHeader.qml")
     popup_src = _text("views/LibraryViewOptionsPopup.qml")
     assert "View options" in header_src
     assert "LibraryViewOptionsPopup" in header_src
-    assert 'objectName: "libraryDensityControl"' in popup_src
-    assert "Precision metadata" not in popup_src
-    assert "zoom-out" in popup_src
-    assert "zoom-in" in popup_src
+    assert "viewPreferenceRequested" in popup_src
+    for view_id in (
+        "galleryOptions",
+        "flowOptions",
+        "vinylOptions",
+        "chronologyOptions",
+        "editorialOptions",
+        "studioOptions",
+    ):
+        assert f"id: {view_id}" in popup_src
+    assert "artworkSize" in popup_src
     assert "SORT & FILTER" in popup_src
-    assert "TIMELINE GROUPING" in popup_src
+    assert "CHRONOLOGY" in popup_src
 
 
-def test_toolbar_is_single_strip_with_native_source_picker() -> None:
+def test_toolbar_is_single_strip_with_source_popover() -> None:
     toolbar_src = _text("views/LibraryToolbar.qml")
     assert "LibraryTabs" in toolbar_src
     assert "MichiSearchField" in toolbar_src
-    assert "FolderDialog" in toolbar_src
+    assert "LibrarySourcePopover" in toolbar_src
     # Permanent second albums row is removed from toolbar
     assert 'objectName: "albumOrganizationControl"' not in toolbar_src
     assert 'objectName: "albumSizeControl"' not in toolbar_src

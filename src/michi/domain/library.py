@@ -141,6 +141,19 @@ class AlbumTechnicalState(Enum):
 
 
 @dataclass(frozen=True)
+class AlbumTechnicalFacts:
+    """Derived, non-persisted facts for album presentation and filtering."""
+
+    state: AlbumTechnicalState = AlbumTechnicalState.UNKNOWN
+    codecs: tuple[str, ...] = ()
+    max_sample_rate_hz: int = 0
+    max_bit_depth: int = 0
+    max_channels: int = 0
+    contains_dsd: bool = False
+    contains_high_resolution: bool = False
+
+
+@dataclass(frozen=True)
 class LibraryDiagnostic:
     code: LibraryDiagnosticCode
     message: str
@@ -364,6 +377,30 @@ def _album_technical_summary(tracks) -> str:
     if state is AlbumTechnicalState.MIXED:
         return "Mixed formats"
     return ""
+
+
+def build_album_technical_facts(tracks) -> AlbumTechnicalFacts:
+    """Build structured facts without changing the frozen ``AlbumRef`` carrier."""
+    members = tuple(tracks)
+    contains_dsd = any(
+        track.codec.casefold().startswith(("dsd", "dsf", "dff")) for track in members
+    )
+    return AlbumTechnicalFacts(
+        state=_album_technical_state(members),
+        codecs=tuple(
+            sorted({track.codec for track in members if track.codec}, key=str.casefold)
+        ),
+        max_sample_rate_hz=max((track.sample_rate_hz for track in members), default=0),
+        max_bit_depth=max((track.bit_depth for track in members), default=0),
+        max_channels=max((track.channels for track in members), default=0),
+        contains_dsd=contains_dsd,
+        # Factual browse criterion only. This does not claim bit-perfect output,
+        # perceptual quality, or DAC capability.
+        contains_high_resolution=contains_dsd
+        or any(
+            track.bit_depth >= 24 or track.sample_rate_hz >= 96_000 for track in members
+        ),
+    )
 
 
 def build_music_model(tracks) -> MusicModel:

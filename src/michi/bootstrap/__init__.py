@@ -12,7 +12,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QStandardPaths, Qt, QUrl
+from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -99,8 +99,14 @@ from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
-from michi.presentation.audio_engine_bridge import AudioEngineBridge
-from michi.presentation.enrichment_bridge import EnrichmentBridge
+from michi.presentation.audio_engine_bridge import (
+    AudioEngineBridge,
+    submit_audio_engine_probe,
+)
+from michi.presentation.enrichment_bridge import (
+    EnrichmentBridge,
+    LibraryEnrichmentProjection,
+)
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
 from michi.presentation.playback_bridge import PlaybackBridge
@@ -506,8 +512,10 @@ def _build_services(
     library_playback = LibraryPlaybackCoordinator(
         library, playback_session, resolver=track_resolver
     )
+    # SEMANTIC INTEGRATION: el PlaylistPlaybackCoordinator de main (PR
+    # #223/#229) es path-based — el resolver R4 ya no aplica a playlists.
     playlist_playback = PlaylistPlaybackCoordinator(
-        playlist_service, playback_session, queue, resolver=track_resolver
+        playlist_service, playback_session, queue
     )
     library_queue = LibraryQueueCoordinator(library, queue)
     library_playlist = LibraryPlaylistCoordinator(library, playlist_service)
@@ -530,6 +538,7 @@ def _build_services(
         playlist_coordinator=library_playlist,
         source_coordinator=source_coordinator,
         source_scan_lifecycle=source_scan_lifecycle,
+        palette_extractor=QtPlaylistPaletteExtractor(),
     )
 
     graph = ServiceGraph(
@@ -699,6 +708,9 @@ class ApplicationContainer:
         self._qt_engine_provider = graph.qt_engine_provider
 
         playback = graph.playback
+        playback.set_engine_switch_timeout_scheduler(
+            lambda timeout_ms, callback: QTimer.singleShot(timeout_ms, callback)
+        )
         queue = graph.queue
         library = graph.library
         scan_runner = graph.runner
@@ -753,6 +765,11 @@ class ApplicationContainer:
             library=library,
             asset_store=self._enrichment.asset_store,
         )
+        self._library_enrichment = LibraryEnrichmentProjection(
+            service=self._enrichment.service,
+            asset_store=self._enrichment.asset_store,
+        )
+        self._eb.changed.connect(self._library_enrichment.invalidate)
 
         # Library/settings coordination: restore last_directory, sync on scan
         lib_prefs = LibraryPreferencesCoordinator(library, settings)
@@ -817,6 +834,7 @@ class ApplicationContainer:
             ),
             playback_subscribe=lambda cb: playback.subscribe_changed(cb),
             playback_unsubscribe=lambda cb: playback.unsubscribe_changed(cb),
+            probe_submit=submit_audio_engine_probe,
         )
         lb = graph.bridge
         # M8-R1F: application-level coordination for the OPEN PLAYLIST
@@ -826,6 +844,9 @@ class ApplicationContainer:
         nb = NavigationBridge(navigation, playlist_navigation=playlist_nav)
         # M9-R1: first-class Playlists presentation bridge — canonical
         # playlist projection lives here, not in LibraryBridge.
+        # SEMANTIC INTEGRATION: PlaylistsBridge de main (PR #229) es
+        # path-based — no acepta track_resolver (la resolución por
+        # identidad R4 fue reemplazada por la autoridad track_paths).
         plb = PlaylistsBridge(
             playlist_service,
             playlist_navigation=playlist_nav,
@@ -833,7 +854,6 @@ class ApplicationContainer:
             library=library,
             playback_coordinator=graph.playlist_playback,
             palette_extractor=QtPlaylistPaletteExtractor(),
-            track_resolver=graph.track_resolver,
         )
         sb = SettingsBridge(settings)
 
@@ -849,6 +869,7 @@ class ApplicationContainer:
         ctx.setContextProperty("settingsBridge", sb)
         ctx.setContextProperty("audioEngine", aeb)
         ctx.setContextProperty("enrichment", self._eb)
+        ctx.setContextProperty("libraryEnrichment", self._library_enrichment)
 
         # M6.9 policy wiring (composition root): SettingsBridge stays
         # Settings-only; the EnrichmentBridge reacts to the CURRENT value

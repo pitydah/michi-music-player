@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import "../controls"
 import "../primitives"
 import "../theme"
 
@@ -8,14 +7,22 @@ Rectangle {
     id: root
 
     property var album: null
+
+    AlbumPaletteBinding { id: paletteBinding; album: root.album }
     property bool selected: false
+    property bool collectionFocus: false
     property bool showArtist: true
     property bool showYear: true
     property bool showTrackCount: true
     property bool showDuration: true
-    property bool showTechnical: false
-    signal activated()
+    property bool showTechnical: MichiThemeState.precisionMode
+    property bool precisionMetadata: true
+    property string artworkSize: "small"
+    property string rowDensity: "standard"
     signal selectedRequested()
+    signal openRequested()
+    signal playRequested()
+    signal activated()
 
     readonly property real titleColumnRatio: root.showTechnical ? 0.34 : 0.45
     readonly property int titleColumnWidth: Math.min(
@@ -24,24 +31,22 @@ Rectangle {
     readonly property int artistColumnWidth: Math.min(
         300, Math.max(150, Math.round(root.width * 0.20)))
 
-    implicitHeight: Math.max(MichiThemeState.rowHeight, 44)
-    radius: MichiRadius.sm
+    implicitHeight: rowDensity === "compact" ? 44
+        : rowDensity === "comfortable" ? 64 : 52
+    radius: 0
     color: root.selected ? MichiSemanticColors.surfaceSelected
         : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-    border.width: root.selected || hover.hovered ? 1 : 0
-    border.color: root.selected
-        ? MichiSemanticColors.auroraBorderSubtle : MichiSemanticColors.borderSubtle
-    activeFocusOnTab: true
+    border.width: 0
+    activeFocusOnTab: false
     Accessible.role: Accessible.ListItem
     Accessible.name: root.album
         ? root.album.title + " by " + root.album.artist
         : "Album"
     Accessible.description: qsTr("Open album")
 
-    Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
-    Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); root.activated() }
-    Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); root.activated() }
-    Keys.onPressed: event => albumContext.handleContextKey(event)
+    Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); root.openRequested(); root.activated() }
+    Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); root.openRequested(); root.activated() }
+    Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); root.playRequested() }
 
 
     RowLayout {
@@ -51,7 +56,8 @@ Rectangle {
         spacing: MichiSpacing.md
 
         Artwork {
-            Layout.preferredWidth: MichiThemeState.density === "comfortable" ? 40 : 34
+            visible: root.artworkSize !== "none"
+            Layout.preferredWidth: root.artworkSize === "standard" ? 44 : 34
             Layout.preferredHeight: Layout.preferredWidth
             sourcePath: root.album && root.album.hasArtwork ? root.album.artworkPath : ""
             fallbackText: root.album ? root.album.title : "?"
@@ -104,46 +110,53 @@ Rectangle {
         MichiText {
             visible: root.showTechnical
             Layout.preferredWidth: 160
-            text: root.album ? root.album.technicalSummary : ""
+            text: !root.album ? ""
+                : root.precisionMetadata ? (root.album.technicalSummary || "")
+                : root.album.codecs && root.album.codecs.length > 0
+                    ? root.album.codecs[0] : ""
             role: "technical"
             technical: true
             color: MichiPalette.auroraCyan
             elide: Text.ElideRight
         }
-        MichiIconButton {
-            visible: hover.hovered || root.activeFocus
-            Layout.preferredWidth: MichiMetrics.controlMedium
-            Layout.preferredHeight: MichiMetrics.controlMedium
-            iconName: "play"
-            accessibleName: qsTr("Play album")
-            onClicked: if (root.album) library.play_album(root.album.key)
-        }
+    }
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 2
+        visible: root.selected
+        color: paletteBinding.value.accentSafe || MichiPalette.auroraCyan
+    }
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: 1
+        color: MichiSemanticColors.borderSubtle
     }
 
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
     TapHandler {
-        onTapped: {
+        exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+        onSingleTapped: {
             MichiAccessibility.notePointer()
             root.forceActiveFocus()
+            root.selectedRequested()
+        }
+        onDoubleTapped: {
+            MichiAccessibility.notePointer()
+            root.openRequested()
             root.activated()
         }
     }
-    AlbumContextArea {
-        id: albumContext
-        anchors.fill: parent
-        album: root.album
-        onContextRequested: root.selectedRequested()
-    }
     MichiFocusRing {
-        visualFocus: root.activeFocus && MichiAccessibility.keyboardMode
+        visualFocus: (root.activeFocus || root.collectionFocus)
+            && MichiAccessibility.keyboardMode
     }
     Behavior on color {
         enabled: !MichiAccessibility.reducedMotion
         ColorAnimation { duration: MichiMotion.micro }
-    }
-    // Smooth the 0↔1 border toggle instead of popping it
-    Behavior on border.width {
-        enabled: !MichiAccessibility.reducedMotion
-        NumberAnimation { duration: MichiMotion.micro }
     }
 }

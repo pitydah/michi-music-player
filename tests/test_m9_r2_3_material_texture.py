@@ -1,8 +1,8 @@
 """Structural tests for the M9-R2.3 premium material composition overhaul.
 
-Covers: procedural deterministic grain (replacing the 64px SVG), the real
-backdrop blur (MultiEffect) gated to high glass quality, the reinforced
-sheen/glint/rim layers, and per-surface tile seeds.
+Covers: cached deterministic grain assets, the real backdrop blur (MultiEffect)
+gated to high glass quality, the reinforced sheen/glint/rim layers, and
+per-surface tile seeds.
 """
 
 from pathlib import Path
@@ -14,24 +14,31 @@ def read(rel_path: str) -> str:
     return Path(QML_ROOT, rel_path).read_text(encoding="utf-8")
 
 
-# ── Procedural grain (R1 + R7) ────────────────────────────────────────────────
+# ── Cached grain catalog (R1 + R7) ───────────────────────────────────────────
 
 
-def test_grain_is_procedural_dense_and_seeded():
+def test_grain_uses_cached_assets_and_seeded_variants():
     texture = read("primitives/MichiMaterialTexture.qml")
-    # no asset dependency
+    # The grain catalog is decoded once by Qt and shared by every surface.
     assert "michi-grain.svg" not in texture
-    assert "toDataURL" in texture
-    # deterministic PRNG + per-surface seed
-    assert "function makeRandom(seed)" in texture
+    assert "toDataURL" not in texture
+    assert "Canvas {" not in texture
     assert "property int tileSeed: 0" in texture
-    assert "0x9E3779B9 ^ root.tileSeed" in texture
-    # dense gaussian dots, smooth rendering
-    assert "i < 260" in texture
-    assert "Math.arc" not in texture
-    assert "0.45 + g * 1.15" in texture
+    assert 'property string textureName: "grain-graphite-01"' in texture
+    assert 'resolved = "grain-graphite-02"' in texture
+    assert 'return "../assets/" + resolved + ".svg"' in texture
+    assert "asynchronous: true" in texture
+    assert "cache: true" in texture
+    assert "fillMode: Image.Tile" in texture
     assert "smooth: true" in texture
-    # quality-aware opacity (stronger than the old 0.09/0.16)
+    for asset in (
+        "grain-glass-01.svg",
+        "grain-graphite-01.svg",
+        "grain-graphite-02.svg",
+        "paper-editorial-01.svg",
+    ):
+        assert Path(QML_ROOT, "assets", asset).is_file()
+    # Quality-aware opacity (stronger than the old 0.09/0.16).
     assert 'MichiThemeState.glassQuality === "high" ? 0.36' in texture
     assert ": 0.22" in texture
 
@@ -67,7 +74,8 @@ def test_backdrop_blur_uses_multi_effect_gated_to_high_quality():
     assert "import QtQuick.Effects" in glass
     assert "MultiEffect {" in glass
     assert "ShaderEffectSource {" in glass
-    assert "sourceItem: root.window" in glass
+    assert "sourceItem: root.Window.window" in glass
+    assert "root.Window.window.contentItem" in glass
     assert 'MichiThemeState.glassQuality === "high"' in glass
     assert 'root.elevation !== "subtle"' in glass
     assert "blurMax: MichiElevation.modalBlur" in glass

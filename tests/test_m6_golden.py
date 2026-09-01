@@ -905,20 +905,18 @@ class TestGoldenSixViews:
         rows = bridge.property("albumTracks")
         assert [r["path"] for r in rows] == [str(p) for p in album_x.track_paths]
 
-        # Mode switching is local presentation state — the selection never
-        # moves or resets. The switcher only ASSIGNS albumMode (M6.7 pin).
+        # Mode switching is presentation state — the selection never moves
+        # or resets. The header emits a mode request; it never mutates Library.
         assert bridge.property("selectedAlbumKey") == album_x.key
         albums_view_qml = (_VIEWS_DIR / "AlbumsView.qml").read_text()
+        header_qml = (_VIEWS_DIR / "LibraryHeader.qml").read_text()
         assert "property string albumMode" in albums_view_qml
-        start = albums_view_qml.index('onClicked: albumMode = "grid"')
-        list_marker = 'onClicked: albumMode = "list"'
-        end = albums_view_qml.index(list_marker) + len(list_marker)
-        switcher = albums_view_qml[start:end]
-        assert "library." not in switcher, (
+        selector = header_qml.split("MichiSegmentedControl", 1)[1]
+        assert "library." not in selector, (
             "the mode switcher must not touch the bridge — albumMode is local"
         )
         for mode in ("grid", "cover", "vinyl", "timeline", "magazine", "list"):
-            assert f'onClicked: albumMode = "{mode}"' in switcher
+            assert f'value: "{mode}"' in header_qml
 
         # An unchanged rescan keeps the selection and the shared model.
         library.scan(str(golden.root))
@@ -938,7 +936,8 @@ class TestGoldenSixViews:
             assert f'objectName: "{name}"' in qml, f"{name} missing"
         assert qml.count("property var albumModel: library.albums") == 5
         assert qml.count("property var albumModel: library.timelineAlbums") == 1
-        assert qml.count("albumModel: root.presentationAlbums") == 5
+        assert qml.count("albumModel: root.presentationAlbums") == 4
+        assert qml.count("albumModel: root.editorialAlbums") == 1
         assert qml.count("albumModel: root.presentationTimelineAlbums") == 1
         for ident in (
             "gridAlbums",

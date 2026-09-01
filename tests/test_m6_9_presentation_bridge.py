@@ -25,6 +25,7 @@ from michi.domain.enrichment import (
     EnrichmentEntityKind,
     KnowledgeProvenance,
 )
+from michi.presentation.enrichment_bridge import LibraryEnrichmentProjection
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -76,6 +77,49 @@ def _wait_for(bridge, state, timeout_rounds=40):
 
 
 class TestActivationSemantics:
+    def test_passive_library_projection_never_changes_active_operation(self):
+        bridge, service, _, _, asset_store, _, _ = make_bridge(online=True)
+        bridge.activate_album(ALBUM_X_KEY)
+        assert _wait_for(bridge, "READY")
+        active_before = (
+            bridge.property("activeKind"),
+            bridge.property("activeKey"),
+            bridge.property("state"),
+        )
+        resolver_calls = service._resolver.calls
+
+        projection = LibraryEnrichmentProjection(service, asset_store)
+        cached = projection.album(ALBUM_X_KEY)
+        missing = projection.album(ALBUM_Y_KEY)
+        revision_before = projection.property("revision")
+        projection.invalidate()
+        process_events(8)
+
+        assert cached["albumKey"] == ALBUM_X_KEY
+        assert cached["hasCachedKnowledge"] is True
+        assert cached["label"] == ""
+        assert missing["matchState"] == "none"
+        assert service._resolver.calls == resolver_calls
+        assert projection.property("revision") == revision_before + 1
+        assert (
+            bridge.property("activeKind"),
+            bridge.property("activeKey"),
+            bridge.property("state"),
+        ) == active_before
+
+    def test_passive_album_browse_is_cache_only_even_when_online(self):
+        bridge, _, _, _, _, _, _ = make_bridge(online=True)
+        resolver = bridge._service._resolver
+        calls_before = resolver.calls
+
+        bridge.browse_album_cached(ALBUM_X_KEY)
+        process_events(8)
+
+        assert bridge.property("activeKey") == ALBUM_X_KEY
+        assert bridge.property("activeKind") == "album"
+        assert bridge.property("state") == "IDLE"
+        assert resolver.calls == calls_before
+
     def test_activate_cached_artist_no_network_knowledge_visible(self):
         """A: cached knowledge projects immediately; no network."""
         bridge, service, _, _, _, _, _ = make_bridge(online=True)

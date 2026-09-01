@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "component": "playlists",
+  "views": ["overview", "detail", "appearance", "picker"],
+  "widths": [680, 900, 1200, 1440, 1920, 2560, 3440],
+  "defaultWidth": 1440,
+  "requiredReviewFrames": {
+    "overview": [
+      "680-idle", "900-idle", "1200-idle", "1440-idle", "1920-idle",
+      "2560-idle", "3440-idle",
+      "1440-hover", "1440-keyboard-focus", "1440-pinned", "1440-context-menu",
+      "1440-long-name", "1440-missing-cover", "1440-mosaic",
+      "1440-filter-active", "1440-filter-empty", "1440-list-mode",
+      "1440-reduced-motion", "1440-high-contrast"
+    ],
+    "detail": [
+      "680-normal", "900-normal", "1200-normal", "1440-normal", "1920-normal",
+      "2560-normal",
+      "1440-empty", "1440-search-active", "1440-search-empty",
+      "1440-selection-mode", "1440-selection-multi", "1440-unavailable",
+      "1440-long-description", "1440-auto-hero", "1440-solid-hero",
+      "1440-gradient-hero", "1440-image-hero", "1440-focal-left",
+      "1440-focal-right"
+    ],
+    "appearance": [
+      "initial", "cover-replace-draft", "cover-auto-draft", "hero-auto",
+      "hero-solid", "hero-gradient", "hero-image", "hero-image-focal",
+      "missing-cover", "missing-hero", "palette-pending", "palette-resolved"
+    ],
+    "picker": [
+      "initial", "search", "selected", "already-present",
+      "select-all-visible", "keyboard-focus"
+    ]
+  },
+  "visualGates": [
+    "no clipped text",
+    "no control overlap",
+    "no dead giant gutters",
+    "no accidental RGB glow",
+    "no permanent cyan border",
+    "no cover distortion",
+    "no hero blank edges",
+    "no invisible keyboard focus",
+    "no child overflow",
+    "no inconsistent spacing",
+    "no menu outside usable surface"
+  ]
+}

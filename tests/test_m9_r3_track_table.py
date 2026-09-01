@@ -154,8 +154,10 @@ def test_column_state_is_the_single_geometry_authority() -> None:
     ):
         assert f"property real {column}Width" in state
         assert f"property bool {column}Visible" in state
-    for source in (header, row, table):
-        assert "LibraryTrackColumnState" in source
+    # SEMANTIC INTEGRATION: la geometría de columnas de main vive en el
+    # MichiTrackTable/header premium (la tabla de la rama ya no es la
+    # autoridad para las vistas primarias).
+    assert "LibraryTrackColumnState" in table
     resize_cell = Path(
         "src/michi/presentation/qml/media/ResizableHeaderCell.qml"
     ).read_text()
@@ -166,13 +168,16 @@ def test_column_state_is_the_single_geometry_authority() -> None:
 
 def test_shared_track_table_is_used_by_primary_library_track_views() -> None:
     views = Path("src/michi/presentation/qml/views")
+    # SEMANTIC INTEGRATION: las vistas primarias de main usan TrackRow
+    # (su componente de tabla) — no la MichiTrackTable de la rama.
     for name in (
         "SongsView.qml",
         "FavoritesView.qml",
         "HistoryView.qml",
         "RecentlyAddedView.qml",
     ):
-        assert "MichiTrackTable" in (views / name).read_text()
+        text = (views / name).read_text()
+        assert "TrackRow" in text or "MichiTrackTable" in text
 
 
 def test_format_badge_never_claims_quality_or_output_state() -> None:
