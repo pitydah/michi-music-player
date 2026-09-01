@@ -48,7 +48,9 @@ Popup {
         MichiTextField {
             id: dirInput
             Layout.fillWidth: true
-            text: library.currentDir
+            // FREEZE FIX (audit P1): el input es del USUARIO — el estado
+            // legacy currentDir no es autoridad para agregar un source.
+            text: ""
             placeholderText: qsTr("Choose a local music directory…")
             accessibleName: qsTr("Music directory")
         }
@@ -60,13 +62,15 @@ Popup {
             Item { Layout.fillWidth: true }
 
             MichiButton {
-                text: qsTr("Scan library")
+                text: qsTr("Add source & scan")
                 variant: "primary"
-                enabled: dirInput.text.length > 0 || library.currentDir.length > 0
+                // FREEZE FIX (audit P1): agregar una carpeta SIEMPRE pasa
+                // por add_and_scan_music_source_url (SourceScanLifecycle)
+                // — nunca por library.scan() (pipeline legacy).
+                enabled: dirInput.text.trim().length > 0
                 onClicked: {
-                    var directory = dirInput.text.length > 0
-                        ? dirInput.text : library.currentDir
-                    library.scan(directory)
+                    library.add_and_scan_music_source_url(
+                        QUrl.fromLocalFile(dirInput.text.trim()))
                     root.close()
                 }
             }

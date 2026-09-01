@@ -191,13 +191,64 @@ class TestToolbarContract:
 
     def test_no_nonexistent_aliases_remain(self):
         toolbar = Path(QML_DIR / "views" / "LibraryToolbar.qml").read_text()
-        # SEMANTIC INTEGRATION: aliases inexistentes NUNCA en el QML. El
-        # toolbar premium de main (PR #224-228) usa el slot legacy
-        # library.scan(currentDir) — contrato actual del workstream de
-        # views, fuera del scope de esta integración.
         assert "hasSources" not in toolbar
         assert "scanAllSources" not in toolbar
         assert "performScan" in toolbar
+
+    def test_productive_ui_scan_wiring_uses_source_lifecycle_only(self):
+        """FREEZE AUDIT P1 GATE: la UI premium (toolbar + source popover)
+        NUNCA llama library.scan() (pipeline legacy) — el Scan pasa por
+        scan_all_sources() y agregar carpeta por
+        add_and_scan_music_source_url (SourceScanLifecycle). El estado
+        visual de sources deriva de la proyección moderna
+        (hasConfiguredSources), nunca de currentDir."""
+        toolbar = Path(QML_DIR / "views" / "LibraryToolbar.qml").read_text()
+        popover = Path(QML_DIR / "views" / "LibrarySourcePopover.qml").read_text()
+
+        # 1) El toolbar productivo nunca toca el pipeline legacy
+        # (solo comentarios que lo prohíben).
+        code_lines = [l for l in toolbar.splitlines() if l.strip() and not l.strip().startswith("//")]
+        assert "library.scan(" not in "".join(code_lines)
+        assert "library.currentDir" not in toolbar
+        # 2) El estado de Sources es la proyección moderna del Bridge.
+        assert "library.hasConfiguredSources" in toolbar
+        # 3) El Scan usa el Source lifecycle canónico.
+        assert "library.scan_all_sources()" in toolbar
+        # 4) Agregar carpeta usa add_and_scan_music_source_url.
+        assert "library.add_and_scan_music_source_url(" in popover
+        popover_code = [l for l in popover.splitlines() if l.strip() and not l.strip().startswith("//")]
+        assert "library.scan(" not in "".join(popover_code)
+        # 5) El popover no depende del estado legacy currentDir.
+        assert "library.currentDir" not in popover
+
+    def test_perform_scan_runtime_uses_modern_lifecycle(self, qapp, tmp_path):
+        """FREEZE AUDIT P1 GATE (runtime): invocar performScan() del
+        toolbar REAL con un source configurado somete al
+        SourceScanLifecycle (scan_all_sources) — nunca al pipeline legacy."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+        library, catalog, coordinator, lifecycle, pipeline, bridge = _world(tmp_path)
+        source = _source(tmp_path, "a")
+        (Path(source.root_path) / "a.flac").write_bytes(b"x")
+        catalog.upsert_source(source)
+        coordinator.list_sources()
+        bridge.library_changed.emit()
+
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML_DIR))
+        engine.rootContext().setContextProperty("library", bridge)
+        toolbar = _load(engine, "views/LibraryToolbar.qml")
+        assert toolbar.property("hasSource") is True
+        meta = toolbar.metaObject()
+        idx = meta.indexOfMethod("performScan()")
+        assert idx >= 0
+        meta.method(idx).invoke(toolbar)
+        qapp.processEvents()
+        assert len(pipeline.submissions) == 1, (
+            "performScan → scan_all_sources → SourceScanLifecycle"
+        )
+        engine.deleteLater()
 
 
 # ==========================================================================

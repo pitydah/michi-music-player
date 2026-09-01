@@ -12,7 +12,12 @@ MichiGlassSurface {
     signal currentTabRequested(string tab)
 
     readonly property bool libraryAvailable: typeof library !== "undefined" && library
-    readonly property bool hasSource: libraryAvailable && library.currentDir.length > 0
+    // FREEZE FIX (FINAL EXTERNAL FREEZE AUDIT P1): el estado visual de
+    // Sources deriva de la PROYECCIÓN MODERNA del Bridge (fuentes
+    // configuradas), nunca de currentDir (estado legacy del pipeline
+    // antiguo).
+    readonly property bool hasSource: libraryAvailable
+        && library.hasConfiguredSources
     readonly property bool scanning: libraryAvailable
         && library.scanStatus !== ""
         && library.scanStatus !== "IDLE"
@@ -41,8 +46,10 @@ MichiGlassSurface {
     function performScan() {
         if (!root.libraryAvailable || root.scanning)
             return
+        // FREEZE FIX (audit P1): el Scan SIEMPRE pasa por el Source
+        // lifecycle moderno — nunca por library.scan() (pipeline legacy).
         if (root.hasSource)
-            library.scan(library.currentDir)
+            library.scan_all_sources()
         else
             sourcePopover.open()
     }
