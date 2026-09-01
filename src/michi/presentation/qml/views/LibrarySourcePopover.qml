@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../controls"
 import "../primitives"
@@ -45,14 +46,12 @@ Popup {
             }
         }
 
-        MichiTextField {
-            id: dirInput
+        MichiText {
             Layout.fillWidth: true
-            // FREEZE FIX (audit P1): el input es del USUARIO — el estado
-            // legacy currentDir no es autoridad para agregar un source.
-            text: ""
-            placeholderText: qsTr("Choose a local music directory…")
-            accessibleName: qsTr("Music directory")
+            text: qsTr("Choose a local folder to add it as a music source and scan it.")
+            role: "secondary"
+            color: MichiPalette.textSecondary
+            wrapMode: Text.Wrap
         }
 
         RowLayout {
@@ -64,15 +63,22 @@ Popup {
             MichiButton {
                 text: qsTr("Add source & scan")
                 variant: "primary"
-                // FREEZE FIX (audit P1): agregar una carpeta SIEMPRE pasa
-                // por add_and_scan_music_source_url (SourceScanLifecycle)
-                // — nunca por library.scan() (pipeline legacy).
-                enabled: dirInput.text.trim().length > 0
-                onClicked: {
-                    library.add_and_scan_music_source_url(
-                        QUrl.fromLocalFile(dirInput.text.trim()))
-                    root.close()
-                }
+                // P1.1: native FolderDialog owns local-url creation. QML
+                // never reconstructs QUrl/file:// semantics by hand.
+                onClicked: folderDialog.open()
+            }
+        }
+    }
+
+    FolderDialog {
+        id: folderDialog
+        objectName: "librarySourceFolderDialog"
+        title: qsTr("Choose music folder")
+        onAccepted: {
+            if (typeof library !== "undefined" && library
+                    && folderDialog.selectedFolder) {
+                library.add_and_scan_music_source_url(folderDialog.selectedFolder)
+                root.close()
             }
         }
     }
