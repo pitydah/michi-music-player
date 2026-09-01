@@ -18,6 +18,8 @@ ColumnLayout {
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
     property real albumZoom: 1.0
+    property var viewPreferences: ({})
+    property var browseState: null
     property var _content: null   // the current tab view
     signal scanRequested()
     signal sortModeRequested(string mode)
@@ -101,9 +103,17 @@ ColumnLayout {
                     onClicked: {
                         // M9-R1 cross-feature: Library sends tracks to
                         // Playlists by canonical id (PLAINTLIST-HIERARCHY-02).
-                        playlists.add_track_to_playlist(modelData.playlistId, addTargetPath)
+                        // R2 P1-12: success feedback ONLY on durable add;
+                        // an already-present track is never "Added".
+                        // R4: los result codes NO son truthy — comparación exacta.
+                        var added = playlists.add_track_to_playlist(
+                            modelData.playlistId, addTargetPath)
                         addTargetPath = ""
-                        window.showToast(qsTr("Added to %1").arg(modelData.name))
+                        if (added === "added")
+                            window.showToast(qsTr("Added to %1").arg(modelData.name))
+                        else if (added === "already_present")
+                            window.showToast(qsTr("Already in %1").arg(modelData.name))
+                        // "persistence_failed": el persistence Connections informa.
                     }
                 }
             }
@@ -169,6 +179,8 @@ ColumnLayout {
             albumFilterMode: root.albumFilterMode
             albumTimelineGrouping: root.albumTimelineGrouping
             albumZoom: root.albumZoom
+            viewPreferences: root.viewPreferences
+            browseState: root.browseState
             onSortModeRequested: mode => root.sortModeRequested(mode)
             onSortDirectionRequested: descending => root.sortDirectionRequested(descending)
         }

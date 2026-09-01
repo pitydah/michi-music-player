@@ -92,6 +92,18 @@ class FakePlaylistsPort:
         self._nav_stored = state
         self.saved_nav.append(state)
 
+    def save_state(
+        self,
+        playlists: tuple[Playlist, ...],
+        navigation: PlaylistNavigationState,
+    ) -> None:
+        """R3-02: atomic compound write — both snapshots published as ONE
+        logical in-memory operation (no half-commit observable)."""
+        self._stored = list(playlists)
+        self._nav_stored = navigation
+        self.saved.append(tuple(playlists))
+        self.saved_nav.append(navigation)
+
 
 def _make_queue():
     """Build QueueService + PlaybackSessionService over FakeAudioPort."""
@@ -527,7 +539,7 @@ class TestPlaylistBridge:
         bridge, _ = self._plb(queue, library, playlist_service)
         bridge.create_and_open_playlist("A")
         created = playlist_service.playlists[0]
-        assert bridge.rename_playlist(created.playlist_id, "B") is True
+        assert bridge.rename_playlist(created.playlist_id, "B") == "renamed"
         assert [(r["name"], r["trackCount"]) for r in bridge.property("playlists")] == [
             ("B", 0)
         ]

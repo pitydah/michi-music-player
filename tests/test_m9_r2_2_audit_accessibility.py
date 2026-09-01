@@ -42,17 +42,20 @@ def test_playlist_card_exposes_selected_state():
 
 def test_magazine_cards_are_keyboard_focusable():
     content = read("views/MagazineView.qml")
-    assert content.count("focusPolicy: Qt.StrongFocus") >= 3
-    assert content.count("activeFocusOnTab: true") >= 3
-    assert content.count("Keys.onSpacePressed") >= 3
-    assert content.count("MichiFocusRing") >= 3
+    # One tab stop enters the editorial collection; arrows move a roving
+    # index instead of creating a giant tab chain through every feature.
+    assert content.count("activeFocusOnTab: true") == 1
+    assert "property int rovingIndex" in content
+    assert "Keys.onUpPressed" in content
+    assert "Keys.onDownPressed" in content
+    assert "Keys.onReturnPressed" in content
 
 
-def test_playlist_cover_change_is_keyboard_accessible():
+def test_playlist_appearance_customization_is_keyboard_accessible():
     content = read("playlists/PlaylistHero.qml")
     assert "Accessible.role: Accessible.Button" in content
-    assert 'Accessible.name: qsTr("Change playlist cover")' in content
-    assert "Keys.onSpacePressed: root.changeCoverRequested()" in content
+    assert 'Accessible.name: qsTr("Customize playlist appearance")' in content
+    assert "Keys.onSpacePressed: root.customizeAppearanceRequested()" in content
     assert "MichiFocusRing" in content
 
 
@@ -183,7 +186,7 @@ def test_album_table_header_click_to_sort_wired():
     host = read("views/LibraryContentHost.qml")
     assert "signal sortModeRequested(string mode)" in host
     library_view = read("views/LibraryView.qml")
-    assert "onSortModeRequested: mode => root.albumSortMode = mode" in library_view
+    assert "onSortModeRequested: mode => root.requestAlbumSort(mode)" in library_view
 
 
 # ── Phase 2: queue keyboard navigation and dismissal ──────────────────────────
@@ -230,16 +233,16 @@ def test_cover_flow_tap_preserves_drag_and_focus():
     assert "MouseArea {" not in content
 
 
-def test_vinyl_wall_first_tap_selects_second_opens():
+def test_vinyl_wall_selects_on_tap_and_opens_on_double_tap():
     content = read("views/VinylWallView.qml")
-    assert "var wasCurrent = albumVinyl.currentIndex === vinylTile.index" in content
-    assert "if (wasCurrent)" in content
+    assert "albumVinyl.currentIndex = vinylTile.index" in content
+    assert "onDoubleTapped: library.select_album(modelData.key)" in content
 
 
 def test_timeline_reuses_items_and_aligns_to_grid():
     content = read("views/TimelineView.qml")
     assert "reuseItems: true" in content
-    assert "anchors.leftMargin: 20" in content
+    assert "anchors.leftMargin: MichiSpacing.md" in content
     assert "anchors.leftMargin: 28" in content
     assert "color: MichiPalette.obsidian" in content
     assert "Behavior on color" in content
@@ -257,7 +260,8 @@ def test_timeline_year_uses_neutral_accent():
 
 def test_vinyl_label_neutral_when_unselected():
     content = read("views/VinylWallView.qml")
-    assert "? MichiPalette.auroraCyan : MichiPalette.graphiteRaised" in content
+    assert "paletteBinding.value.accentSafe || MichiPalette.graphite" in content
+    assert ": MichiPalette.graphite" in content
     assert "MichiScrollBar" in content
 
 
@@ -281,12 +285,11 @@ def test_artist_hero_is_elevated_glass():
 
 
 def test_album_detail_no_duplicated_metadata_at_wide_widths():
-    """Album detail uses width breakpoints (main authority: 960/760) to
-    avoid duplicated metadata on wide layouts."""
+    """Album detail uses shared semantic breakpoints at wide/medium widths."""
     content = read("views/AlbumDetailView.qml")
-    assert content.count("root.width >= 960") >= 1
-    assert "root.width < 760" in content
-    assert "root.width >= 760" in content
+    assert "MichiBreakpoints.atLeastWide(root.width)" in content
+    assert "!MichiBreakpoints.atLeastMedium(root.width)" in content
+    assert "MichiBreakpoints.atLeastMedium(root.width)" in content
 
 
 # ── Phase 3: copy and fine accessibility ──────────────────────────────────────
@@ -406,8 +409,11 @@ def test_action_feedback_call_sites():
     lib_host = read("views/LibraryContentHost.qml")
     assert 'qsTr("Added to %1")' in lib_host  # R2: .arg() substitution
     assert "modelData.name)" in lib_host
-    host = read("shell/ContentHost.qml")
-    assert "add_track_to_playlist(" in host
+    # P0-01: the Undo path in ContentHost now uses insert_track with FROZEN
+    # provenance; the user-facing "Add to playlist" call-site with toast
+    # feedback lives in LibraryContentHost and stays audited here.
+    library_host = read("views/LibraryContentHost.qml")
+    assert "add_track_to_playlist(" in library_host
 
 
 # ── Phase 4: full qsTr coverage (no intra-file mixes) ─────────────────────────
@@ -415,16 +421,18 @@ def test_action_feedback_call_sites():
 
 def test_no_hardcoded_visible_strings_in_mixed_files():
     magazine = read("views/MagazineView.qml")
-    assert 'text: qsTr("SPOTLIGHT")' in magazine
+    assert 'qsTr("RECENTLY ADDED")' in magazine
+    assert 'qsTr("FAVORITE FROM YOUR LIBRARY")' in magazine
+    assert 'qsTr("HIGH FIDELITY")' in magazine
     assert '"0%1"' in magazine  # R2: .arg() substitution
     assert "index + 2)" in magazine
     card = read("playlists/PlaylistCard.qml")
     assert "Pinned playlist" in card  # accessible name stays (decorative dot)
     toolbar = read("views/LibraryToolbar.qml")
-    assert 'text: qsTr("No results")' in toolbar
+    assert 'qsTr("No results")' in toolbar
     assert 'text: qsTr("Cancel")' in toolbar
     header = read("views/LibraryHeader.qml")
-    assert 'label: qsTr("Grid")' in header
+    assert 'label: qsTr("Gallery")' in header
     assert 'text: qsTr("VIEWS")' in header
     settings = read("views/SettingsView.qml")
     assert 'title: qsTr("Settings")' in settings

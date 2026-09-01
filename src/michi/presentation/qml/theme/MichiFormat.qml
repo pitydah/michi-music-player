@@ -47,6 +47,20 @@ QtObject {
         return _digit(minutes) + " " + qsTr("min")
     }
 
+    // Canonical playlist metadata used by both Overview and Detail.
+    // Short playlists retain precise m:ss; hour-scale collections favor a
+    // compact editorial summary.
+    function formatPlaylistSummary(trackCount, durationMs) {
+        var count = Math.max(0, Number(trackCount) || 0)
+        var label = _digit(count) + " "
+            + (count === 1 ? qsTr("track") : qsTr("tracks"))
+        if (!durationMs || durationMs <= 0)
+            return label
+        var duration = durationMs >= 3600000
+            ? formatHoursMinutes(durationMs) : formatDuration(durationMs)
+        return duration.length > 0 ? label + " · " + duration : label
+    }
+
     // "N.N MB" / "N.NN GB", "Unknown" for missing input.
     function formatFileSize(bytes) {
         if (!bytes || bytes <= 0)

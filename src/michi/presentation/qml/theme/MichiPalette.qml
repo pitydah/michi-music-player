@@ -6,6 +6,10 @@ QtObject {
     readonly property color obsidianDeep: "#07090E"
     readonly property color obsidianRaised: "#0D111B"
     readonly property color graphite: "#14171C"
+    readonly property color editorialPaper: "#11141B"
+    readonly property color vinylOuter: "#262A31"
+    readonly property color vinylMid: "#11141A"
+    readonly property color vinylInner: "#05070B"
     readonly property color playerSurfaceTop: "#0B0E16"
     readonly property color trackSurfaceTop: "#141824"
     readonly property color trackSurfaceHover: "#171B29"
@@ -16,6 +20,9 @@ QtObject {
     readonly property color playlistHeroTop: "#152A45"
     readonly property color playlistHeroMid: "#13243D"
     readonly property color playlistHeroBottom: "#0A0D14"
+    readonly property string playlistHeroTopHex: "#152A45"
+    readonly property string playlistHeroMidHex: "#13243D"
+    readonly property string playlistHeroBottomHex: "#0A0D14"
     readonly property color textPrimary: "#ECEEF3"
     // High-contrast mode lifts the secondary tiers so all functional text
     // exceeds 7:1 on obsidian (borders/opacity alone are not enough).

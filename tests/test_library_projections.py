@@ -157,7 +157,8 @@ class TestSharedAlbumModel:
         # projection after the same filter has been applied.
         assert qml.count("property var albumModel: library.albums") == 5
         assert qml.count("property var albumModel: library.timelineAlbums") == 1
-        assert qml.count("albumModel: root.presentationAlbums") == 5
+        assert qml.count("albumModel: root.presentationAlbums") == 4
+        assert qml.count("albumModel: root.editorialAlbums") == 1
         assert qml.count("albumModel: root.presentationTimelineAlbums") == 1
         # The magazine hero is derived from its injected model rather than
         # owning a separate album collection.
@@ -193,21 +194,17 @@ class TestSharedAlbumModel:
         assert bridge.property("selectedAlbumKey") == album_a.key
         bridge.dispose()
 
-        # Structural: albumMode is a local view property and the switcher
-        # buttons only ASSIGN albumMode (no library. calls inside the block).
-        # M6.7 ADAPTATION: albumMode + the switcher moved into
-        # AlbumsView.qml (the albums host), so the greps target that file.
+        # Structural: albumMode remains presentation state and the Header
+        # selector emits a mode request without touching the Library bridge.
         albums_view_qml = (_VIEWS_DIR / "AlbumsView.qml").read_text()
+        header_qml = (_VIEWS_DIR / "LibraryHeader.qml").read_text()
         assert "property string albumMode" in albums_view_qml
-        start = albums_view_qml.index('onClicked: albumMode = "grid"')
-        list_marker = 'onClicked: albumMode = "list"'
-        end = albums_view_qml.index(list_marker) + len(list_marker)
-        switcher = albums_view_qml[start:end]
-        assert "library." not in switcher, (
+        selector = header_qml.split("MichiSegmentedControl", 1)[1]
+        assert "library." not in selector, (
             "the mode switcher must not touch the bridge — albumMode is local"
         )
         for mode in ("grid", "cover", "vinyl", "timeline", "magazine", "list"):
-            assert f'onClicked: albumMode = "{mode}"' in switcher
+            assert f'value: "{mode}"' in header_qml
 
 
 class TestSelectionLifecycle:
@@ -300,9 +297,9 @@ class TestCanonicalProjections:
         assert [
             (r["key"], r["title"], r["artist"], r["year"], r["decade"]) for r in rows
         ] == [(p.album_key, p.title, p.artist, p.year, p.decade) for p in expected]
-        # Only hasArtwork/artworkPath are bridge additions.
+        # Timeline extends the canonical album presentation row only with decade.
         for row in rows:
-            assert set(row.keys()) == {
+            assert {
                 "key",
                 "title",
                 "artist",
@@ -310,7 +307,11 @@ class TestCanonicalProjections:
                 "decade",
                 "hasArtwork",
                 "artworkPath",
-            }
+                "trackCount",
+                "durationMs",
+                "technicalSummary",
+                "containsHighResolution",
+            } <= set(row)
         bridge.dispose()
 
     def test_no_duplicated_album_identity_logic(self, tmp_path):

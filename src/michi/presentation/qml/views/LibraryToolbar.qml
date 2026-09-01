@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../primitives"
@@ -7,214 +6,207 @@ import "../theme"
 
 MichiGlassSurface {
     id: root
+    objectName: "libraryToolbar"
 
     property string currentTab: "songs"
     signal currentTabRequested(string tab)
 
-    readonly property bool scanning: (typeof library !== "undefined" && library)
+    readonly property bool libraryAvailable: typeof library !== "undefined" && library
+    readonly property bool hasSource: libraryAvailable && library.currentDir.length > 0
+    readonly property bool scanning: libraryAvailable
         && library.scanStatus !== ""
         && library.scanStatus !== "IDLE"
         && library.scanStatus !== "COMPLETED"
         && library.scanStatus !== "CANCELLED"
         && library.scanStatus !== "FAILED"
+
     elevation: "subtle"
     tileSeed: 2
     shadowed: true
     textured: true
-    accented: root.scanning || ((typeof library !== "undefined" && library) && library.scanStatus === "FAILED")
-    accentColor: ((typeof library !== "undefined" && library) && library.scanStatus === "FAILED")
+    accented: root.scanning || (root.libraryAvailable && library.scanStatus === "FAILED")
+    accentColor: root.libraryAvailable && library.scanStatus === "FAILED"
         ? MichiPalette.error : MichiPalette.auroraCyan
     contentPadding: MichiSpacing.md
-    implicitHeight: toolbarContent.implicitHeight + MichiSpacing.md * 2
+    implicitHeight: MichiMetrics.controlLarge + MichiSpacing.md * 2
 
     function searchPlaceholder() {
-        if (currentTab === "albums") return "Search albums or album artists…"
-        if (currentTab === "artists") return "Search artists…"
-        if (currentTab === "genres") return "Search genres…"
-        if (currentTab === "playlists") return "Search tracks or playlists…"
-        return "Search title, artist, album, genre or composer…"
+        if (currentTab === "albums") return qsTr("Search albums or album artists…")
+        if (currentTab === "artists") return qsTr("Search artists…")
+        if (currentTab === "genres") return qsTr("Search genres…")
+        if (currentTab === "playlists") return qsTr("Search tracks or playlists…")
+        return qsTr("Search title, artist, album, genre or composer…")
     }
 
-    // Shared scan entry point (toolbar button + empty-library CTA): scans the
-    // configured directory or opens the source picker when none is set.
     function performScan() {
-        if (typeof library === "undefined" || !library)
+        if (!root.libraryAvailable || root.scanning)
             return
-        if (library.currentDir.length > 0)
+        if (root.hasSource)
             library.scan(library.currentDir)
         else
             sourcePopover.open()
     }
 
-    ColumnLayout {
+    RowLayout {
         id: toolbarContent
         anchors.fill: parent
         spacing: MichiSpacing.sm
 
-        SplitView {
-            id: navigationSplit
-            objectName: "libraryNavigationSplitView"
+        LibraryTabs {
+            id: libraryNavigation
             Layout.fillWidth: true
-            Layout.preferredHeight: MichiMetrics.controlLarge
-            orientation: Qt.Horizontal
+            Layout.minimumWidth: MichiBreakpoints.atLeastMedium(root.width)
+                ? 280 : 210
+            currentTab: root.currentTab
+            onTabRequested: tab => root.currentTabRequested(tab)
+        }
 
-            handle: Item {
-                implicitWidth: 16
-                implicitHeight: navigationSplit.height
-                HoverHandler {
-                    id: navigationHandleHover
-                    cursorShape: Qt.SplitHCursor
+        Item { Layout.preferredWidth: MichiSpacing.xs }
+
+        Item {
+            id: searchPane
+            objectName: "stableLibrarySearchPane"
+            Layout.preferredWidth: MichiBreakpoints.isXl(root.width) ? 620
+                : MichiBreakpoints.isWide(root.width) ? 500
+                : MichiBreakpoints.isMedium(root.width) ? 420
+                : MichiBreakpoints.isCompactBand(root.width) ? 360 : 320
+            Layout.minimumWidth: MichiBreakpoints.atLeastMedium(root.width)
+                ? 320 : 280
+            Layout.maximumWidth: 700
+            Layout.fillHeight: true
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: MichiSpacing.sm
+
+                MichiSearchField {
+                    id: searchInput
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: MichiBreakpoints.atLeastMedium(root.width)
+                        ? 210 : 130
+                    text: root.libraryAvailable ? library.searchQuery : ""
+                    placeholderText: root.searchPlaceholder()
+                    onEdited: query => { if (root.libraryAvailable) library.search(query) }
+                    onClearRequested: { if (root.libraryAvailable) library.clear_search() }
                 }
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 1
-                    height: 20
-                    color: navigationHandleHover.hovered
-                        ? MichiSemanticColors.auroraCyanBorder
-                        : MichiSemanticColors.borderSubtle
-                }
-            }
 
-            LibraryTabs {
-                id: libraryNavigation
-                SplitView.fillWidth: true
-                SplitView.minimumWidth: 300
-                currentTab: root.currentTab
-                onTabRequested: tab => root.currentTabRequested(tab)
-            }
+                // Fixed slot: result/scanning text never moves the search field.
+                Item {
+                    Layout.preferredWidth: MichiBreakpoints.atLeastMedium(root.width)
+                        ? 82 : 48
+                    Layout.fillHeight: true
 
-            Item {
-                id: searchPane
-                objectName: "resizableLibrarySearchPane"
-                SplitView.preferredWidth: root.width >= 1480 ? 640 : 520
-                SplitView.minimumWidth: root.width < 980 ? 360 : 430
-                SplitView.maximumWidth: 760
+                    MichiText {
+                        objectName: "scanStatusText"
+                        anchors.centerIn: parent
+                        width: parent.width
+                        visible: root.scanning
+                        text: root.libraryAvailable
+                            ? library.scanStatus + " · " + library.scanProcessed
+                                + " / " + library.scanTotal : ""
+                        role: "technical"
+                        technical: true
+                        horizontalAlignment: Text.AlignRight
+                        color: MichiPalette.auroraCyan
+                        elide: Text.ElideRight
+                    }
 
-                RowLayout {
-                    anchors.fill: parent
-                    spacing: MichiSpacing.sm
-
-                    MichiStatusChip {
+                    MichiText {
                         objectName: "searchNoResultsText"
-                        visible: typeof library !== "undefined" && library
-                            && library.searchActive
-                            && library.searchTotalCount === 0
+                        anchors.centerIn: parent
+                        width: parent.width
+                        visible: !root.scanning && root.libraryAvailable
+                            && library.searchActive && library.searchTotalCount === 0
                         text: qsTr("No results")
-                        tone: "warning"
+                        role: "technical"
+                        technical: true
+                        horizontalAlignment: Text.AlignRight
+                        color: MichiPalette.warning
+                        elide: Text.ElideRight
                     }
 
-                    MichiStatusChip {
-                        visible: typeof library !== "undefined" && library
-                            && library.searchActive
-                            && library.searchTotalCount > 0
-                        text: (typeof library !== "undefined" && library ? library.searchTotalCount : 0) + " results"
-                        tone: "active"
+                    MichiText {
+                        anchors.centerIn: parent
+                        width: parent.width
+                        visible: !root.scanning && root.libraryAvailable
+                            && library.searchActive && library.searchTotalCount > 0
+                        text: root.libraryAvailable
+                            ? qsTr("%1 results").arg(library.searchTotalCount) : ""
+                        role: "technical"
+                        technical: true
+                        horizontalAlignment: Text.AlignRight
+                        color: MichiPalette.textMuted
+                        elide: Text.ElideRight
+                    }
+                }
+
+                Item {
+                    Layout.preferredWidth: MichiMetrics.controlMedium
+                    Layout.preferredHeight: MichiMetrics.controlMedium
+
+                    MichiIconButton {
+                        id: sourceBtn
+                        anchors.fill: parent
+                        iconName: "folder"
+                        selected: sourcePopover.visible
+                        accessibleName: qsTr("Music folder source")
+                        onClicked: sourcePopover.visible
+                            ? sourcePopover.close() : sourcePopover.open()
                     }
 
-                    MichiSearchField {
-                        id: searchInput
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 210
-                        text: typeof library !== "undefined" && library ? library.searchQuery : ""
-                        placeholderText: root.searchPlaceholder()
-                        onEdited: query => { if (typeof library !== "undefined" && library) library.search(query) }
-                        onClearRequested: { if (typeof library !== "undefined" && library) library.clear_search() }
+                    LibrarySourcePopover {
+                        id: sourcePopover
+                        objectName: "librarySourcePopover"
+                        x: -326
+                        y: parent.height + MichiSpacing.xs
                     }
+                }
 
-                    Item {
-                        Layout.preferredWidth: MichiMetrics.controlMedium
-                        Layout.preferredHeight: MichiMetrics.controlMedium
+                MichiButton {
+                    visible: !root.scanning
+                    text: root.hasSource
+                        ? (MichiBreakpoints.isCompact(root.width)
+                            ? qsTr("Scan") : qsTr("Scan library"))
+                        : qsTr("Choose folder")
+                    iconName: root.hasSource ? "library" : "folder"
+                    variant: "secondary"
+                    iconOnly: !MichiBreakpoints.atLeastWide(root.width)
+                    accessibleName: root.hasSource
+                        ? qsTr("Scan library") : qsTr("Choose music folder")
+                    enabled: root.libraryAvailable
+                    onClicked: root.performScan()
+                }
 
-                        MichiIconButton {
-                            id: sourceBtn
-                            anchors.fill: parent
-                            iconName: "folder"
-                            selected: sourcePopover.visible
-                            accessibleName: qsTr("Music folder source")
-                            onClicked: {
-                                if (sourcePopover.visible)
-                                    sourcePopover.close()
-                                else
-                                    sourcePopover.open()
-                            }
-                        }
-
-                        LibrarySourcePopover {
-                            id: sourcePopover
-                            x: -326
-                            y: parent.height + MichiSpacing.xs
-                        }
-                    }
-
-                    MichiButton {
-                        text: root.width < 760 ? "Scan" : "Scan library"
-                        iconName: "library"
-                        variant: "secondary"
-                        iconOnly: root.width < 980
-                        accessibleName: qsTr("Scan library")
-                        enabled: !root.scanning
-                            && typeof library !== "undefined" && library
-                            && library.currentDir.length > 0
-                        onClicked: root.performScan()
-                    }
+                MichiButton {
+                    visible: root.scanning
+                    text: qsTr("Cancel")
+                    iconName: "close"
+                    variant: "secondary"
+                    onClicked: { if (root.libraryAvailable) library.cancel_scan() }
                 }
             }
         }
+    }
 
-        // Transient thin progress row during active scan
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: MichiSpacing.sm
-            visible: root.scanning || (typeof library !== "undefined" && library && (library.scanStatus === "FAILED" || library.scanStatus === "CANCELLED"))
+    // Progress is painted inside the fixed toolbar bounds; content never jumps.
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: 2
+        color: "transparent"
+        visible: root.scanning
 
-            MichiStatusChip {
-                objectName: "scanStatusText"
-                text: typeof library !== "undefined" && library ? library.scanStatus : ""
-                tone: (typeof library !== "undefined" && library && library.scanStatus === "FAILED") ? "error"
-                    : (typeof library !== "undefined" && library && library.scanStatus === "COMPLETED") ? "success" : "active"
-            }
-            MichiText {
-                text: typeof library !== "undefined" && library ? (library.scanProcessed + " / " + library.scanTotal) : ""
-                role: "technical"
-                technical: true
-            }
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 6
-                radius: 3
-                color: MichiPalette.smokeRaised
-                visible: typeof library !== "undefined" && library && library.scanTotal > 0
-                clip: true
-                Rectangle {
-                    width: typeof library !== "undefined" && library ? (parent.width * library.scanProgress) : 0
-                    height: parent.height
-                    radius: 3
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0; color: MichiPalette.auroraBlue }
-                        GradientStop { position: 1; color: MichiPalette.auroraCyan }
-                    }
-                    Behavior on width {
-                        enabled: !MichiAccessibility.reducedMotion
-                        NumberAnimation {
-                            duration: MichiMotion.standard
-                            easing.type: MichiMotion.outCubic
-                        }
-                    }
+        Rectangle {
+            height: parent.height
+            width: root.libraryAvailable ? parent.width * library.scanProgress : 0
+            color: MichiPalette.auroraCyan
+            Behavior on width {
+                enabled: !MichiAccessibility.reducedMotion
+                NumberAnimation {
+                    duration: MichiMotion.standard
+                    easing.type: MichiMotion.outCubic
                 }
-            }
-            MichiText {
-                text: typeof library !== "undefined" && library ? library.scanCurrentPath : ""
-                Layout.maximumWidth: 220
-                role: "caption"
-                color: MichiPalette.textMuted
-                elide: Text.ElideMiddle
-            }
-            MichiButton {
-                text: qsTr("Cancel")
-                variant: "ghost"
-                visible: root.scanning
-                onClicked: { if (typeof library !== "undefined" && library) library.cancel_scan() }
             }
         }
     }

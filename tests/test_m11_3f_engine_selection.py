@@ -1269,7 +1269,22 @@ class TestF42AdapterContract:
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py
         # gained the typed AudioTransportError hierarchy (CommandError /
         # UnavailableError) — additive error surface, AudioPort unchanged.
-        "src/michi/application/ports.py": "776c46628ba9f85d",
+        # PLAYLIST APPEARANCE authorized additive change: separate optional
+        # managed-hero lifecycle methods and an async palette extractor port;
+        # the frozen AudioPort and transport semantics remain unchanged.
+        # PLAYLISTS R2 SEAL (2026-08-29, P1-04/P1-06) authorized reopening:
+        # PlaylistsPort writes are now authoritative (PlaylistPersistenceError)
+        # with the atomic save_state compound write, and PlaylistArtworkStorePort
+        # declares the immutable candidate protocol (prepare_cover/prepare_hero/
+        # delete_managed_asset). Audio/transport semantics untouched.
+        # PLAYLISTS R3 SEAL (2026-08-30, R3-02) authorized reopening:
+        # PlaylistsPort writes are all ABSTRACT (no silent no-op defaults)
+        # and save_state is mandatory — optional persistence is represented
+        # by playlists_port=None. Audio/transport semantics untouched.
+        # PLAYLISTS R3 SEAL REVIEW (2026-08-30): delete_managed_asset abstract
+        # signature aligned to the ownership-verified (playlist_id, role,
+        # path) contract. Audio/transport semantics untouched.
+        "src/michi/application/ports.py": "2e42f5056b3a3fce",
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.

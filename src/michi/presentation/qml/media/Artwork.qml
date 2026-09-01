@@ -38,7 +38,9 @@ Rectangle {
     Image {
         id: image
         anchors.fill: parent
-        source: root.hasArtwork ? "file://" + root.sourcePath : ""
+        // Qt resolves absolute local paths and already-normalized URLs;
+        // callers never concatenate or strip file:// prefixes themselves.
+        source: root.hasArtwork ? Qt.resolvedUrl(root.sourcePath) : ""
         sourceSize.width: root.requestedSize
         sourceSize.height: root.requestedSize
         asynchronous: true

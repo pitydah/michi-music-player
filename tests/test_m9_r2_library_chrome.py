@@ -27,12 +27,19 @@ def test_view_options_popup_consolidates_density_precision_zoom_sort() -> None:
     popup_src = _text("views/LibraryViewOptionsPopup.qml")
     assert "View options" in header_src
     assert "LibraryViewOptionsPopup" in header_src
-    assert 'objectName: "libraryDensityControl"' in popup_src
-    assert "Precision metadata" in popup_src
-    assert "zoom-out" in popup_src
-    assert "zoom-in" in popup_src
+    assert "viewPreferenceRequested" in popup_src
+    for view_id in (
+        "galleryOptions",
+        "flowOptions",
+        "vinylOptions",
+        "chronologyOptions",
+        "editorialOptions",
+        "studioOptions",
+    ):
+        assert f"id: {view_id}" in popup_src
+    assert "artworkSize" in popup_src
     assert "SORT & FILTER" in popup_src
-    assert "TIMELINE GROUPING" in popup_src
+    assert "CHRONOLOGY" in popup_src
 
 
 def test_toolbar_is_single_strip_with_source_popover() -> None:

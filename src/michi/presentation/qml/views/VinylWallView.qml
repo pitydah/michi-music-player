@@ -12,6 +12,32 @@ GridView {
 
     property var albumModel: library.albums
     property real albumZoom: 1.0
+    property var browseState: null
+    property string spacingMode: "standard"
+    property string revealMode: "standard"
+    property string metadataLevel: "standard"
+    property bool artworkLabel: true
+    MichiMaterial {
+        id: vinylMaterial
+        role: MichiMaterialRole.vinyl
+    }
+    Rectangle {
+        x: albumVinyl.contentX
+        y: albumVinyl.contentY
+        width: albumVinyl.width
+        height: albumVinyl.height
+        color: vinylMaterial.baseColor
+        z: -2
+    }
+    MichiMaterialTexture {
+        x: albumVinyl.contentX
+        y: albumVinyl.contentY
+        width: albumVinyl.width
+        height: albumVinyl.height
+        textureName: vinylMaterial.textureName
+        textureOpacity: vinylMaterial.textureOpacity
+        z: -1
+    }
     readonly property int minimumTileWidth: MichiThemeState.density === "compact"
         ? Math.round(164 * albumZoom)
         : MichiThemeState.density === "comfortable"
@@ -35,6 +61,26 @@ GridView {
     Accessible.name: qsTr("Albums on the vinyl wall")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open")
 
+    Component.onCompleted: if (browseState) Qt.callLater(function() {
+        var restoredIndex = browseState.vinylIndex
+        if (browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i) {
+                if (albumModel[i].key === browseState.currentKey) {
+                    restoredIndex = i
+                    break
+                }
+            }
+        }
+        albumVinyl.currentIndex = restoredIndex
+        albumVinyl.contentY = browseState.vinylContentY
+    })
+    onContentYChanged: if (browseState) browseState.vinylContentY = contentY
+    onCurrentIndexChanged: if (browseState) {
+        browseState.vinylIndex = currentIndex
+        if (currentIndex >= 0 && currentIndex < albumModel.length)
+            browseState.remember(albumModel[currentIndex].key)
+    }
+
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)
             library.select_album(albumModel[currentIndex].key)
@@ -51,13 +97,17 @@ GridView {
         required property int index
         required property var modelData
         property var album: modelData
+        AlbumPaletteBinding { id: paletteBinding; album: vinylTile.album }
         readonly property bool selected: GridView.isCurrentItem
         readonly property real stageSize: Math.min(width - MichiSpacing.xl,
             height - 76)
         readonly property real sleeveSize: stageSize * 0.76
-        width: albumVinyl.cellWidth - MichiThemeState.contentGap
-        height: albumVinyl.cellHeight - MichiThemeState.contentGap
-        activeFocusOnTab: true
+        readonly property int wallGap: albumVinyl.spacingMode === "tight"
+            ? MichiSpacing.sm : albumVinyl.spacingMode === "gallery"
+                ? MichiSpacing.xl : MichiThemeState.contentGap
+        width: albumVinyl.cellWidth - wallGap
+        height: albumVinyl.cellHeight - wallGap
+        activeFocusOnTab: false
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
         Accessible.selected: vinylTile.selected
@@ -67,12 +117,14 @@ GridView {
             anchors.fill: parent
             radius: MichiRadius.lg
             color: vinylTile.selected ? MichiSemanticColors.surfaceSelected
-                : hover.hovered ? MichiSemanticColors.surfaceHover : MichiSemanticColors.contentSurface
+                : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
             border.width: 1
             border.color: vinylTile.selected
-                ? MichiPalette.auroraCyan : hover.hovered ? MichiSemanticColors.borderStrong : MichiSemanticColors.borderSubtle
+                ? (paletteBinding.value.accentSafe || MichiPalette.auroraCyan)
+                : hover.hovered ? MichiSemanticColors.borderStrong : "transparent"
             MichiFocusRing {
-                visualFocus: vinylTile.activeFocus
+                visualFocus: (vinylTile.activeFocus
+                    || (albumVinyl.activeFocus && vinylTile.selected))
                     && MichiAccessibility.keyboardMode
             }
         }
@@ -85,65 +137,33 @@ GridView {
             width: vinylTile.stageSize
             height: vinylTile.stageSize
 
-            Rectangle {
+            MichiVinylDisc {
                 id: vinylDisc
                 width: vinylTile.sleeveSize
                 height: width
-                radius: width / 2
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.horizontalCenterOffset: hover.hovered || vinylTile.selected
-                    ? width * 0.16 : width * 0.04
-                color: MichiPalette.graphiteRaised
-                border.width: 1
-                border.color: MichiSemanticColors.borderStrong
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    radius: width / 2
-                    color: "transparent"
-                    border.width: 1
-                    border.color: MichiSemanticColors.innerHighlight
-                    opacity: 0.5
-                }
-
-                Repeater {
-                    model: 3
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: vinylDisc.width - MichiSpacing.md - index * vinylDisc.width * 0.18
-                        height: width
-                        radius: width / 2
-                        color: "transparent"
-                        border.width: 1
-                        border.color: MichiSemanticColors.borderSubtle
-                        opacity: 0.7
-                    }
-                }
-
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: parent.width * 0.32
-                    height: width
-                    radius: width / 2
-                    color: vinylTile.selected
-                        ? MichiPalette.auroraCyan : MichiPalette.graphiteRaised
-                    border.width: 1
-                    border.color: MichiSemanticColors.innerHighlight
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: MichiSpacing.xs
-                        height: width
-                        radius: width / 2
-                        color: MichiPalette.obsidian
-                    }
-                }
+                    ? width * (albumVinyl.revealMode === "subtle" ? 0.1
+                        : albumVinyl.revealMode === "pronounced" ? 0.24 : 0.16)
+                    : width * 0.04
+                selected: vinylTile.selected
+                labelColor: albumVinyl.artworkLabel
+                    ? (paletteBinding.value.accentSafe || MichiPalette.graphite)
+                    : MichiPalette.graphite
+                rotation: vinylTile.selected ? 1.5 : hover.hovered ? 0.8 : 0
 
                 Behavior on anchors.horizontalCenterOffset {
                     enabled: !MichiAccessibility.reducedMotion
                     NumberAnimation {
-                        duration: MichiMotion.artwork
+                        duration: MichiMotion.vinylReveal
+                        easing.type: MichiMotion.outCubic
+                    }
+                }
+                Behavior on rotation {
+                    enabled: !MichiAccessibility.reducedMotion
+                    NumberAnimation {
+                        duration: MichiMotion.vinylReveal
                         easing.type: MichiMotion.outCubic
                     }
                 }
@@ -160,6 +180,15 @@ GridView {
                 sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
                 fallbackText: modelData.title
                 requestedSize: Math.round(width * Screen.devicePixelRatio)
+            }
+            Rectangle {
+                anchors.top: sleeve.top
+                anchors.bottom: sleeve.bottom
+                anchors.right: sleeve.right
+                width: 3
+                color: MichiSemanticColors.innerHighlight
+                opacity: 0.34
+                z: 3
             }
         }
 
@@ -180,17 +209,20 @@ GridView {
             }
             MichiText {
                 Layout.fillWidth: true
+                visible: albumVinyl.metadataLevel !== "minimal"
                 text: modelData.technicalSummary || (modelData.trackCount
                     + (modelData.trackCount === 1 ? " track" : " tracks"))
                 role: "technical"
                 technical: true
                 color: vinylTile.selected
-                    ? MichiPalette.auroraCyan : MichiPalette.textMuted
+                    ? (paletteBinding.value.accentSafe || MichiPalette.auroraCyan)
+                    : MichiPalette.textMuted
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
             }
             MichiText {
                 Layout.fillWidth: true
+                visible: albumVinyl.metadataLevel === "detailed"
                 text: modelData.artist + (modelData.year > 0
                     ? " · " + modelData.year : "")
                 role: "secondary"
@@ -202,15 +234,12 @@ GridView {
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
         TapHandler {
             id: vinylTap
-            // First tap selects (showing the rich selected state: disc
-            // offset, cyan label); tapping the already-selected tile opens.
-            onTapped: {
-                var wasCurrent = albumVinyl.currentIndex === vinylTile.index
+            exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+            onSingleTapped: {
                 albumVinyl.currentIndex = vinylTile.index
                 vinylTile.forceActiveFocus()
-                if (wasCurrent)
-                    library.select_album(modelData.key)
             }
+            onDoubleTapped: library.select_album(modelData.key)
         }
         Keys.onReturnPressed: library.select_album(modelData.key)
         Keys.onEnterPressed: library.select_album(modelData.key)

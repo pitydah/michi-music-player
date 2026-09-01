@@ -11,18 +11,31 @@ PathView {
 
     property var albumModel: library.albums
     property real albumZoom: 1.0
+    property var browseState: null
+    property string visibleAlbums: "auto"
+    property string depthMode: "standard"
+    property bool ambientColor: true
+    property string metadataLevel: "standard"
+    property var cachedKnowledge: ({})
+    property bool hasCachedKnowledge: false
+    property string cachedAlbumKey: ""
     readonly property real coverSize: Math.max(176, Math.min(330,
         Math.min(width * 0.24 * albumZoom,
             Math.max(176, height - 156))))
     readonly property var currentAlbum: count > 0 && currentIndex >= 0
         ? albumModel[Math.min(currentIndex, albumModel.length - 1)] : null
+    AlbumPaletteBinding { id: currentPalette; album: albumsPath.currentAlbum }
 
     Layout.fillWidth: true
     Layout.fillHeight: true
     model: albumModel
     clip: true
     interactive: count > 1
-    pathItemCount: width >= 1500 ? 9 : width >= 1050 ? 7 : 5
+    pathItemCount: visibleAlbums === "auto"
+        ? (MichiBreakpoints.isXl(width) ? 9
+            : MichiBreakpoints.isWide(width) ? 7
+            : MichiBreakpoints.isMedium(width) ? 5 : 3)
+        : Number(visibleAlbums)
     cacheItemCount: pathItemCount + 2
     preferredHighlightBegin: 0.5
     preferredHighlightEnd: 0.5
@@ -31,8 +44,39 @@ PathView {
     activeFocusOnTab: true
     focus: true
     Accessible.role: Accessible.List
-    Accessible.name: qsTr("Albums in PathView")
+    Accessible.name: qsTr("Albums in album flow view")
     Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
+
+    Component.onCompleted: if (browseState) {
+        var restoredIndex = browseState.flowIndex
+        if (browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i) {
+                if (albumModel[i].key === browseState.currentKey) {
+                    restoredIndex = i
+                    break
+                }
+            }
+        }
+        currentIndex = restoredIndex
+    }
+    onCurrentIndexChanged: if (browseState) {
+        browseState.flowIndex = currentIndex
+        if (currentAlbum)
+            browseState.remember(currentAlbum.key)
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        z: -100
+        visible: albumsPath.ambientColor
+        color: currentPalette.value.dominant
+            || MichiSemanticColors.auroraCyanSurface
+        opacity: 0.34
+        Behavior on color {
+            enabled: !MichiAccessibility.reducedMotion
+            ColorAnimation { duration: MichiMotion.paletteCrossfade }
+        }
+    }
 
     Keys.onLeftPressed: decrementCurrentIndex()
     Keys.onRightPressed: incrementCurrentIndex()
@@ -107,9 +151,13 @@ PathView {
         required property int index
         required property var modelData
         property var album: modelData
+        AlbumPaletteBinding { album: pathAlbum.album }
         width: albumsPath.coverSize
         height: albumsPath.coverSize + 48
-        scale: PathView.isCurrentItem ? 1.0 : (PathView.itemScale || 0.58)
+        scale: PathView.isCurrentItem ? 1.0
+            : (PathView.itemScale || 0.58)
+                * (albumsPath.depthMode === "subtle" ? 1.08
+                    : albumsPath.depthMode === "immersive" ? 0.9 : 1.0)
         opacity: PathView.itemOpacity === undefined ? 1 : PathView.itemOpacity
         z: PathView.isCurrentItem ? 100 : Math.round(PathView.itemDepth || 0)
         Accessible.role: Accessible.Button
@@ -142,6 +190,13 @@ PathView {
             sourcePath: modelData.hasArtwork ? modelData.artworkPath : ""
             fallbackText: modelData.title
             requestedSize: Math.round(width * Screen.devicePixelRatio)
+        }
+
+        MichiFocusRing {
+            anchors.fill: artwork
+            visualFocus: (pathAlbum.activeFocus
+                || (albumsPath.activeFocus && PathView.isCurrentItem))
+                && MichiAccessibility.keyboardMode
         }
 
         // Ground reflection / floor shadow under cover
@@ -178,7 +233,8 @@ PathView {
         // Click selects + keeps keyboard focus; double-click opens.
         TapHandler {
             id: tap
-            onTapped: {
+            exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+            onSingleTapped: {
                 albumsPath.currentIndex = pathAlbum.index
                 pathAlbum.forceActiveFocus()
             }
@@ -202,11 +258,13 @@ PathView {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: MichiSpacing.lg
         width: Math.min(720, parent.width - MichiSpacing.xl * 2)
-        height: 76
+        height: albumsPath.metadataLevel === "detailed" ? 104
+            : albumsPath.metadataLevel === "minimal" ? 64 : 82
         elevation: "elevated"
         contentPadding: MichiSpacing.md
         accented: true
-        accentColor: MichiPalette.auroraCyan
+        accentColor: currentPalette.value.accentSafe || MichiPalette.auroraCyan
+        materialRole: MichiMaterialRole.elevated
         visible: albumsPath.currentAlbum !== null
         z: 1000
 
@@ -233,13 +291,39 @@ PathView {
                 }
             }
             MichiText {
+                visible: albumsPath.metadataLevel !== "minimal"
                 text: albumsPath.currentAlbum
                     ? albumsPath.currentAlbum.trackCount
                         + (albumsPath.currentAlbum.trackCount === 1 ? " track" : " tracks")
                     : ""
                 role: "technical"
                 technical: true
-                color: MichiPalette.auroraCyan
+                color: detailSurface.accentColor
+            }
+            MichiText {
+                visible: albumsPath.metadataLevel === "detailed"
+                    && albumsPath.currentAlbum
+                    && albumsPath.currentAlbum.technicalSummary.length > 0
+                text: albumsPath.currentAlbum
+                    ? albumsPath.currentAlbum.technicalSummary : ""
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
+            }
+            MichiText {
+                visible: albumsPath.metadataLevel !== "minimal"
+                    && albumsPath.hasCachedKnowledge
+                    && albumsPath.currentAlbum
+                    && albumsPath.cachedAlbumKey === albumsPath.currentAlbum.key
+                text: albumsPath.cachedKnowledge
+                    ? [albumsPath.cachedKnowledge.label || "",
+                        albumsPath.cachedKnowledge.genres
+                            ? albumsPath.cachedKnowledge.genres.join(" · ") : ""]
+                        .filter(value => value !== "").join(" — ") : ""
+                role: "caption"
+                Layout.maximumWidth: 180
+                color: MichiPalette.textMuted
+                elide: Text.ElideRight
             }
             Rectangle {
                 Layout.preferredWidth: 1
@@ -269,8 +353,7 @@ PathView {
                 accessibleName: qsTr("Play selected album")
                 onClicked: {
                     if (albumsPath.currentAlbum) {
-                        library.select_album(albumsPath.currentAlbum.key)
-                        library.play_all()
+                        library.play_album(albumsPath.currentAlbum.key)
                     }
                 }
             }

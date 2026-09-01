@@ -69,44 +69,97 @@ class LibraryPrefsPort(ABC):
 
 
 class PlaylistsPort(ABC):
-    """Playlist persistence (best effort; load never raises).
+    """Playlist persistence boundary (R3-02): a NON-None port implements
+    the FULL contract — LOAD is tolerant/safe-read, every WRITE is
+    authoritative (durable on success, raises PlaylistPersistenceError on
+    failure), and save_state is the MANDATORY atomic compound write.
+
+    There is NO silent no-op write: optional persistence is represented by
+    ``playlists_port=None`` at the service level, never by a port whose
+    writes could be ignored. Atomicity is part of the type contract.
 
     M8-R1: playlists persist with stable ids (V2); legacy V1 records decode
     to deterministic ids. Navigation metadata (pinned/recent) has its own
-    load/save pair. Default no-op implementations keep existing fakes and
-    optional wiring backward compatible."""
+    load/save pair."""
 
     @abstractmethod
-    def load(self) -> tuple[Playlist, ...]: ...
+    def load(self) -> tuple[Playlist, ...]:
+        """SAFE READ: tolerant; a corrupt/missing payload degrades to the
+        last valid state or empty — load NEVER raises."""
 
     @abstractmethod
-    def save(self, playlists: tuple[Playlist, ...]) -> None: ...
+    def save(self, playlists: tuple[Playlist, ...]) -> None:
+        """AUTHORITATIVE WRITE: durable on success; raises
+        PlaylistPersistenceError on failure."""
 
+    @abstractmethod
     def load_navigation(self) -> "PlaylistNavigationState":
-        """Pinned/recent state; optional key — absence degrades to empty."""
-        return PlaylistNavigationState()
+        """Pinned/recent state; absence degrades to empty."""
 
+    @abstractmethod
     def save_navigation(self, state: "PlaylistNavigationState") -> None:
-        """Best-effort persistence of pinned/recent state; default no-op.
+        """AUTHORITATIVE WRITE: durable on success; raises
+        PlaylistPersistenceError on failure."""
 
-        Concrete no-op (not abstract): legacy fakes and optional wiring stay
-        backward compatible without implementing navigation persistence."""
-        del state  # default no-op: navigation persistence is optional
+    @abstractmethod
+    def save_state(
+        self,
+        playlists: tuple[Playlist, ...],
+        navigation: "PlaylistNavigationState",
+    ) -> None:
+        """MANDATORY ATOMIC compound write (R2 P1-02): one logical
+        operation — NEVER two independent best-effort commits."""
 
 
 class PlaylistArtworkStorePort(ABC):
-    """Boundary for user-supplied playlist artwork storage (M9-R2.1).
-    Managed copies reside inside application data storage."""
+    """Boundary for user-supplied playlist visual asset storage (R2 P1-06).
+
+    The CANONICAL contract is the IMMUTABLE CANDIDATE protocol:
+    ``prepare_cover`` / ``prepare_hero`` materialize a content-versioned
+    final file that EXISTS before any database reference, and
+    ``delete_managed_asset`` retires a managed file by reference after the
+    database commit. The legacy deterministic-replacement API
+    (store_cover / store_hero / delete_cover / delete_hero) is NOT part of
+    this contract — a test-double implementing only this port must never
+    need those methods.
+    """
 
     @abstractmethod
-    def store_cover(self, playlist_id: str, source_path: Path | str) -> str | None:
-        """Copies source image atomically to managed storage. Returns managed path."""
+    def prepare_cover(self, playlist_id: str, source_path: Path | str) -> str | None:
+        """Materialize the immutable cover candidate; None on rejection."""
         ...
 
     @abstractmethod
-    def delete_cover(self, playlist_id: str) -> None:
-        """Deletes any managed cover file for the given playlist id."""
+    def prepare_hero(self, playlist_id: str, source_path: Path | str) -> str | None:
+        """Materialize the immutable hero candidate; None on rejection."""
         ...
+
+    @abstractmethod
+    def delete_managed_asset(
+        self, playlist_id: str, role: str, managed_path: str
+    ) -> bool:
+        """Fail-closed, OWNERSHIP-VERIFIED retirement of a managed file
+        (R3-01): authorizes unlink ONLY when the file belongs exactly to
+        ``playlist_id`` and ``role`` (cover | hero). Returns True when
+        actually removed."""
+        ...
+
+
+class PlaylistPaletteExtractorPort(ABC):
+    """Asynchronous, cacheable palette extraction for playlist artwork."""
+
+    @abstractmethod
+    def request_palette(
+        self,
+        source_paths: tuple[str, ...],
+        callback: Callable[[tuple[str, ...]], None],
+    ) -> None:
+        """Return a dark, text-safe palette without blocking the caller."""
+        ...
+
+    def close(self) -> None:
+        """Release worker resources; optional for lightweight test doubles."""
+        return None
 
 
 class AudioPort(ABC):

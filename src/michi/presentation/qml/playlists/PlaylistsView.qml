@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../controls"
 import "../patterns"
@@ -16,26 +15,17 @@ Item {
     property string searchQuery: ""
     property string sortMode: "name" // "name", "name_desc", "tracks", "duration", "pinned", "recent"
     property string displayMode: "grid" // "grid" | "list"
-    property string pendingCoverPlaylistId: ""
-
     signal createPlaylistRequested()
     signal openPlaylistRequested(string playlistId)
     signal playPlaylistRequested(string playlistId)
-    signal pinPlaylistRequested(string playlistId, bool pinned)
+    signal pinPlaylistRequested(string playlistId, bool pinned, string playlistName)
+    signal customizeAppearanceRequested(string playlistId)
     signal renamePlaylistRequested(string playlistId, string playlistName)
     signal deletePlaylistRequested(string playlistId, string playlistName)
 
-    FileDialog {
-        id: coverDialog
-        title: qsTr("Select Playlist Cover Image")
-        nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp)"]
-        onAccepted: {
-            if (root.pendingCoverPlaylistId) {
-                var path = selectedFile.toString()
-                playlists.set_custom_cover(root.pendingCoverPlaylistId, path)
-                root.pendingCoverPlaylistId = ""
-            }
-        }
+    function customizeAppearance(row) {
+        // R3-06: el panel ÚNICO vive en ContentHost.
+        root.customizeAppearanceRequested(row.playlistId)
     }
 
     readonly property var filteredPlaylists: {
@@ -70,88 +60,105 @@ Item {
         anchors.margins: MichiSpacing.xl
         spacing: MichiSpacing.lg
 
-        // Header Strip
-        RowLayout {
+        // Integrated page header: hierarchy and tools share one editorial
+        // region without becoming a giant card floating above the page.
+        Item {
             Layout.fillWidth: true
-            spacing: MichiSpacing.md
+            Layout.preferredHeight: 122
+
+            Rectangle {
+                anchors.fill: parent
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: MichiSemanticColors.contentAmbientBlue }
+                    GradientStop { position: 0.58; color: "transparent" }
+                    GradientStop { position: 1; color: MichiSemanticColors.contentAmbientPurple }
+                }
+            }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 1
+                color: MichiSemanticColors.borderSubtle
+            }
 
             ColumnLayout {
-                spacing: 2
-                MichiText {
-                    text: qsTr("Playlists")
-                    role: "section"
-                    color: MichiPalette.textPrimary
-                }
-                MichiText {
-                    text: {
-                        var count = playlists.playlists ? playlists.playlists.length : 0
-                        return count + " " + (count === 1 ? qsTr("playlist") : qsTr("playlists"))
+                anchors.fill: parent
+                anchors.leftMargin: MichiSpacing.sm
+                anchors.rightMargin: MichiSpacing.sm
+                anchors.bottomMargin: MichiSpacing.md
+                spacing: MichiSpacing.md
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        spacing: MichiSpacing.xxs
+                        MichiText {
+                            text: qsTr("Playlists")
+                            role: "title"
+                            color: MichiPalette.textPrimary
+                        }
+                        MichiText {
+                            text: {
+                                var count = playlists.playlists ? playlists.playlists.length : 0
+                                return count + " " + (count === 1 ? qsTr("playlist") : qsTr("playlists"))
+                            }
+                            role: "technical"
+                            technical: true
+                            color: MichiPalette.textSecondary
+                        }
                     }
-                    role: "technical"
-                    technical: true
-                    color: MichiPalette.textSecondary
-                }
-            }
-
-            Item { Layout.fillWidth: true }
-
-            MichiButton {
-                text: qsTr("New Playlist")
-                iconName: "plus"
-                variant: "primary"
-                accessibleName: qsTr("Create new playlist")
-                onClicked: root.createPlaylistRequested()
-            }
-        }
-
-        // Toolbar: Search + Sort + View Mode Switcher
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: MichiSpacing.md
-
-            MichiSearchField {
-                id: searchField
-                placeholderText: qsTr("Search playlists…")
-                Layout.preferredWidth: Math.min(320, Math.max(220, root.width * 0.35))
-                text: root.searchQuery
-                onTextChanged: root.searchQuery = text
-            }
-
-            MichiComboBox {
-                id: sortCombo
-                Layout.preferredWidth: 150
-                model: [
-                    qsTr("Name A–Z"),
-                    qsTr("Name Z–A"),
-                    qsTr("Track Count"),
-                    qsTr("Duration"),
-                    qsTr("Pinned First"),
-                    qsTr("Recently Opened")
-                ]
-                onCurrentIndexChanged: {
-                    var modes = ["name", "name_desc", "tracks", "duration", "pinned", "recent"]
-                    if (currentIndex >= 0 && currentIndex < modes.length)
-                        root.sortMode = modes[currentIndex]
-                }
-            }
-
-            Item { Layout.fillWidth: true }
-
-            RowLayout {
-                spacing: MichiSpacing.xxs
-
-                MichiIconButton {
-                    iconName: "view-grid"
-                    selected: root.displayMode === "grid"
-                    accessibleName: qsTr("Grid view")
-                    onClicked: root.displayMode = "grid"
+                    Item { Layout.fillWidth: true }
+                    MichiButton {
+                        text: qsTr("New Playlist")
+                        iconName: "plus"
+                        variant: "primary"
+                        accessibleName: qsTr("Create new playlist")
+                        onClicked: root.createPlaylistRequested()
+                    }
                 }
 
-                MichiIconButton {
-                    iconName: "view-list"
-                    selected: root.displayMode === "list"
-                    accessibleName: qsTr("List view")
-                    onClicked: root.displayMode = "list"
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: MichiSpacing.md
+
+                    MichiSearchField {
+                        id: searchField
+                        placeholderText: qsTr("Search playlists…")
+                        Layout.minimumWidth: 220
+                        Layout.preferredWidth: Math.min(420, Math.max(280, root.width * 0.34))
+                        text: root.searchQuery
+                        onTextChanged: root.searchQuery = text
+                    }
+
+                    MichiComboBox {
+                        id: sortCombo
+                        Layout.preferredWidth: root.width < 700 ? 132 : 160
+                        model: [
+                            qsTr("Name A–Z"), qsTr("Name Z–A"),
+                            qsTr("Track Count"), qsTr("Duration"),
+                            qsTr("Pinned First"), qsTr("Recently Opened")
+                        ]
+                        onCurrentIndexChanged: {
+                            var modes = ["name", "name_desc", "tracks", "duration", "pinned", "recent"]
+                            if (currentIndex >= 0 && currentIndex < modes.length)
+                                root.sortMode = modes[currentIndex]
+                        }
+                    }
+
+                    MichiSegmentedControl {
+                        compact: true
+                        currentValue: root.displayMode
+                        accessiblePrefix: qsTr("Playlist view")
+                        model: [
+                            { value: "grid", label: qsTr("Grid view"), icon: "view-grid" },
+                            { value: "list", label: qsTr("List view"), icon: "view-list" }
+                        ]
+                        onSelected: value => root.displayMode = value
+                    }
+
+                    Item { Layout.fillWidth: true }
                 }
             }
         }
@@ -181,12 +188,27 @@ Item {
         // Card grid mode
         GridView {
             id: gridView
+            objectName: "playlistGridView"
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: root.filteredPlaylists.length > 0 && root.displayMode === "grid"
             clip: true
-            cellWidth: Math.max(220, (root.width - MichiSpacing.xl * 2) / Math.max(1, Math.floor((root.width - MichiSpacing.xl) / 240)))
-            cellHeight: 260
+            // PL-10-FINAL-11: grid responsive REAL — cards ~280–320px en
+            // CUALQUIER ancho (hasta ultrawide), sin maxColumns artificial
+            // que deje gutters muertos. columnCount deriva del ancho
+            // disponible; el conjunto se centra con márgenes simétricos.
+            readonly property int targetCellWidth: MichiThemeState.density === "compact" ? 288 : 304
+            readonly property int minCellWidth: MichiThemeState.density === "compact" ? 264 : 280
+            readonly property int maxCellWidth: MichiThemeState.density === "compact" ? 304 : 320
+            readonly property int columnCount: Math.max(
+                1, Math.round(width / targetCellWidth))
+            readonly property real resolvedCellWidth: Math.min(
+                maxCellWidth,
+                Math.max(minCellWidth, width / columnCount))
+            cellWidth: resolvedCellWidth
+            cellHeight: 352
+            leftMargin: Math.max(0, (width - columnCount * cellWidth) / 2)
+            rightMargin: leftMargin
             model: root.filteredPlaylists
             keyNavigationEnabled: true
             keyNavigationWraps: false
@@ -226,14 +248,17 @@ Item {
                 height: gridView.cellHeight
 
                 PlaylistCard {
-                    anchors.fill: parent
-                    anchors.margins: MichiSpacing.lg / 2
-                    selected: playlistCell.current
+                    width: Math.min(304, parent.width - MichiSpacing.lg)
+                    height: 332
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: MichiSpacing.sm
+                    selected: playlistCell.current && gridView.activeFocus
                     playlistId: playlistCell.modelData.playlistId
                     playlistName: playlistCell.modelData.name
                     trackCount: playlistCell.modelData.trackCount
                     durationMs: playlistCell.modelData.durationMs || 0
-                    customCoverPath: playlistCell.modelData.customCoverPath || ""
+                    customCoverPath: playlistCell.modelData.effectiveCustomCoverPath || ""
                     mosaicArtworkPaths: playlistCell.modelData.mosaicArtworkPaths || []
                     pinned: playlistCell.modelData.pinned
                     onActiveFocusChanged: {
@@ -243,15 +268,15 @@ Item {
                     onOpenRequested: root.openPlaylistRequested(playlistCell.modelData.playlistId)
                     onPlayRequested: root.playPlaylistRequested(playlistCell.modelData.playlistId)
                     onPinToggled: {
-                        root.pinPlaylistRequested(playlistCell.modelData.playlistId, !playlistCell.modelData.pinned)
-                        window.showToast(playlistCell.modelData.pinned
-                            ? qsTr("Unpinned %1").arg(playlistCell.modelData.name)
-                            : qsTr("Pinned %1").arg(playlistCell.modelData.name))
+                        // R2 P1-12: feedback is shown by ContentHost ONLY
+                        // when the pin/unpin was durably committed.
+                        root.pinPlaylistRequested(
+                            playlistCell.modelData.playlistId,
+                            !playlistCell.modelData.pinned,
+                            playlistCell.modelData.name)
                     }
-                    onChangeCoverRequested: {
-                        root.pendingCoverPlaylistId = playlistCell.modelData.playlistId
-                        coverDialog.open()
-                    }
+                    onCustomizeAppearanceRequested:
+                        root.customizeAppearance(playlistCell.modelData)
                     onRenameRequested: root.renamePlaylistRequested(
                         playlistCell.modelData.playlistId, playlistCell.modelData.name)
                     onDeleteRequested: root.deletePlaylistRequested(
@@ -276,7 +301,9 @@ Item {
                 hoverEnabled: true
                 focusPolicy: Qt.StrongFocus
                 Accessible.role: Accessible.ListItem
-                Accessible.name: modelData.name + ", " + modelData.trackCount + " tracks"
+                Accessible.name: modelData.name + ", "
+                    + MichiFormat.formatPlaylistSummary(
+                        modelData.trackCount, modelData.durationMs)
 
                 contentItem: RowLayout {
                     spacing: MichiSpacing.md
@@ -287,7 +314,7 @@ Item {
                     PlaylistArtwork {
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
-                        customCoverPath: modelData.customCoverPath || ""
+                        customCoverPath: modelData.effectiveCustomCoverPath || ""
                         mosaicArtworkPaths: modelData.mosaicArtworkPaths || []
                         fallbackText: modelData.name
                         radius: MichiRadius.sm
@@ -309,40 +336,24 @@ Item {
                     MichiIcon {
                         visible: modelData.pinned
                         name: "pin"
-                        width: 14
-                        height: 14
+                        Layout.preferredWidth: 14
+                        Layout.preferredHeight: 14
                         iconColor: MichiPalette.auroraCyan
                     }
 
                     MichiText {
-                        text: modelData.trackCount + (modelData.trackCount === 1 ? " track" : " tracks")
+                        text: MichiFormat.formatPlaylistSummary(
+                            modelData.trackCount, modelData.durationMs)
                         role: "technical"
                         technical: true
-                        Layout.preferredWidth: 90
+                        Layout.preferredWidth: 150
                         color: MichiPalette.textSecondary
-                    }
-
-                    MichiText {
-                        text: MichiFormat.formatDuration(modelData.durationMs)
-                        role: "technical"
-                        technical: true
-                        Layout.preferredWidth: 70
-                        horizontalAlignment: Text.AlignRight
-                        color: MichiPalette.textMuted
                     }
 
                     MichiIconButton {
                         iconName: "play"
                         accessibleName: qsTr("Play ") + modelData.name
                         onClicked: root.playPlaylistRequested(modelData.playlistId)
-                    }
-
-                    MichiIconButton {
-                        iconName: modelData.pinned ? "pin" : "circle"
-                        accessibleName: modelData.pinned
-                            ? qsTr("Unpin ") + modelData.name
-                            : qsTr("Pin ") + modelData.name
-                        onClicked: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
                     }
 
                     MichiIconButton {
@@ -364,23 +375,15 @@ Item {
                     }
                     MenuItem {
                         text: qsTr("Add to Queue")
-                        onTriggered: playlists.enqueue_playlist(modelData.playlistId)
+                        onTriggered: playlists.queue_playlist(modelData.playlistId)
                     }
                     MenuItem {
                         text: modelData.pinned ? qsTr("Unpin") : qsTr("Pin")
-                        onTriggered: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned)
+                        onTriggered: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned, modelData.name)
                     }
                     MenuItem {
-                        text: qsTr("Change Cover…")
-                        onTriggered: {
-                            root.pendingCoverPlaylistId = modelData.playlistId
-                            coverDialog.open()
-                        }
-                    }
-                    MenuItem {
-                        text: qsTr("Use Automatic Mosaic")
-                        visible: (modelData.customCoverPath || "") !== ""
-                        onTriggered: playlists.remove_custom_cover(modelData.playlistId)
+                        text: qsTr("Customize appearance…")
+                        onTriggered: root.customizeAppearance(modelData)
                     }
                     MenuItem {
                         text: qsTr("Rename…")
@@ -409,4 +412,5 @@ Item {
             }
         }
     }
+
 }

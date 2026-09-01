@@ -24,29 +24,43 @@ def test_hero_uses_low_saturation_atmosphere_tokens():
     assert 'playlistHeroMid: "#13243D"' in palette
     assert 'playlistHeroBottom: "#0A0D14"' in palette
     hero = read("playlists/PlaylistHero.qml")
-    assert "MichiPalette.playlistHeroTop" in hero
-    assert "MichiPalette.playlistHeroBottom" in hero
+    background = read("playlists/PlaylistHeroBackground.qml")
+    assert "PlaylistHeroBackground" in hero
+    assert "autoColors" in hero
+    assert "MichiSemanticColors.scrim" in background
+    assert "MichiPalette.obsidian" in background
 
 
 def test_hero_typography_and_compact_actions():
     hero = read("playlists/PlaylistHero.qml")
     assert 'qsTr("PLAYLIST")' in hero  # eyebrow
-    assert "font.letterSpacing: 1.4" in hero
+    assert "font.letterSpacing: 1.35" in hero
     assert 'role: "display"' in hero  # dominant title
     assert "font.weight: Font.DemiBold" in hero
-    assert "maximumLineCount: 2" in hero  # description cap
-    assert "implicitWidth: 28" in hero  # compact secondary actions
+    # R3-14 + PL-FINAL-05: la description es REAL (metadata de dominio
+    # persistida) — el hero la muestra cuando no es vacía.
+    assert 'property string description: ""' in hero
+    assert "root.description.length > 0" in hero
+    assert "unavailableCount" in hero
+    assert "iconOnly: root.width < 920" in hero
     assert "implicitHeight: MichiMetrics.controlMedium" in hero  # Play 36px
-    assert "pinned" in hero  # pin toggle kept in hero
+    # R2 P2-01: pin lives in the More menu — the hero carries NO dead
+    # pinned/togglePinRequested wiring.
+    assert "pinned" not in hero
+    assert "togglePinRequested" not in hero
 
 
 def test_hero_cover_is_square_with_faint_shadow():
     hero = read("playlists/PlaylistHero.qml")
-    assert "Layout.preferredWidth: 136" in hero
-    assert "Layout.preferredHeight: 136" in hero
-    assert "radius: 10" in hero
-    assert "glassShadowFar" in hero
-    assert "opacity: 0.55" in hero
+    assert "readonly property real coverSize:" in hero
+    assert "width >= 1120 ? 180" in hero
+    assert "width >= 820 ? 172 : width >= 620 ? 156 : 144" in hero
+    assert "Layout.preferredWidth: root.coverSize" in hero
+    assert "Layout.preferredHeight: root.coverSize" in hero
+    assert "radius: MichiRadius.lg" in hero
+    assert "glassShadow" in hero
+    assert "opacity: 0.46" in hero
+    assert "glassShadowNear" in hero
 
 
 # ── PlaylistTrackList (dense table) ───────────────────────────────────────────
@@ -72,17 +86,24 @@ def test_playing_state_is_distinct_from_selected():
     assert "playback.currentPath === modelData.path" in table
     assert "MichiPlayingIndicator" in table
     assert "MichiPalette.auroraCyan" in table  # accent on the title
-    assert "root.selectedIndex === index" in table
+    # R4-02: isSelected = identidad por path (única autoridad).
+    assert "root.selectedTrackPath === modelData.path" in table
+    assert "selectedIndex" not in table
 
 
 def test_rows_activate_play_and_hide_actions_until_hover():
     table = read("playlists/PlaylistTrackList.qml")
     # M4-R1 authority: single-click row activation emits play (the
     # double-click model of the pre-M4-R1 branch was replaced).
+    # PL-FINAL-14: el target es SIEMPRE el índice CANONICO (filter-safe).
     assert "onDoubleClicked" not in table
-    assert "root.playTrackRequested(index)" in table
-    assert "Keys.onReturnPressed: root.playTrackRequested(index)" in table
-    assert "opacity: trackItem.hovered || trackItem.visualFocus ? 1 : 0" in table
+    assert "if (trackItem.canInteract)" in table
+    assert "root.playTrackRequested(trackItem.canonicalIndex)" in table
+    assert "Keys.onReturnPressed: {" in table
+    assert "if (trackItem.canInteract)" in table
+    # R3-09: reveal incluye el activeFocus de los propios controles.
+    assert "opacity: actionsVisible ? 1 : 0" in table
+    assert "favoriteButton.activeFocus || moreButton.activeFocus" in table
     assert "enabled: !MichiAccessibility.reducedMotion" in table  # gated fade
 
 
@@ -117,12 +138,25 @@ def test_page_connects_play_track_and_shuffle():
     page = read("playlists/PlaylistDetailView.qml")
     # M4-R1 authority: the row play intent routes DIRECTLY to the
     # PlaylistsBridge (play_playlist_track) — never a bare re-emit.
-    assert "onPlayTrackRequested: index => playlists.play_playlist_track(index)" in page
+    # R4-11: el Detail re-emite el INTENT; ContentHost traduce al Bridge.
+    assert "onPlayTrackRequested: index => root.playTrackRequested(index)" in page
     assert "onShuffleRequested: root.shuffleRequested()" in page  # R2.1-07 inline
     host = read("shell/ContentHost.qml")
-    assert "playlists.play_track(index)" in host
+    # R2 P2-01: the Detail playback intent routes through the canonical
+    # play_playlist_track — the dead play_track route is gone.
+    assert "playlists.play_track(index)" not in host
+    assert "playlists.play_playlist_track(index)" in host
     assert "onShuffleRequested" in host
-    assert 'navigation.navigate("library")' in host
+    # PL-FINAL-13: Add Tracks es un picker real dentro del contexto — la
+    # navegación vaga a Library desapareció.
+    assert 'navigation.navigate("library")' not in host
+    assert "PlaylistTrackPicker" in host
+    picker = read("playlists/PlaylistTrackPicker.qml")
+    assert "playlists.add_tracks(" in picker
+    # PL-10-FINAL-02: catálogo canónico — nunca LibraryBridge.songRows
+    # (filtrado por la búsqueda global de Library UI).
+    assert "playlists.addTrackCandidateRows" in picker
+    assert "library.songRows" not in picker
 
 
 def test_hero_self_sizes_and_page_never_collapses_it():
@@ -131,13 +165,16 @@ def test_hero_self_sizes_and_page_never_collapses_it():
     # page-side `implicitHeight: root.heroHeight` binding would resolve
     # `root` to the hero (component scope wins in property bindings) and
     # collapse the ListView header to zero — regression guard.
-    assert "implicitHeight: Math.max(240, Math.min(300," in hero
-    assert "(parent ? parent.height : 600) * 0.36)" in hero
+    assert "implicitHeight: Math.max(248, Math.min(300," in hero
+    assert "(parent ? parent.height : 760) * 0.36))" in hero
     page = read("playlists/PlaylistDetailView.qml")
     # the hero is instantiated inside a Component (ListView.header requires
     # QQmlComponent) with null-safe bridge bindings that re-evaluate on
     # playlists_changed — regression guard for the collapsed header
     assert "heroComponent: heroComponent" in page
+    assert 'objectName: "playlistHeroHeader"' in page
+    assert "width: root.width" in page
+    assert "height: root.heroHeight" in page
     assert 'playlistName: playlists ? playlists.selectedPlaylistName : ""' in page
 
 
@@ -155,10 +192,10 @@ def test_micro_type_role_exists_for_10px_labels():
 def test_hero_type_scale_matches_spec():
     hero = read("playlists/PlaylistHero.qml")
     # eyebrow 10-11px (caption), metadata 11-12px (technical)
-    assert 'role: "caption"' in hero
-    assert "font.letterSpacing: 1.4" in hero
+    assert 'role: "micro"' in hero
+    assert "font.letterSpacing: 1.35" in hero
     assert 'role: "technical"' in hero
-    assert "opacity: 0.65" in hero
+    assert "opacity: 0.78" in hero
 
 
 def test_row_metadata_uses_technical_scale():
@@ -221,10 +258,12 @@ def test_keyboard_navigation_updates_visible_selection():
     # arrow-key navigation moves currentIndex invisibly unless the focused
     # row also becomes the selected row — audit fix
     assert "onActiveFocusChanged: {" in table
-    assert "root.trackSelected(index)" in table
-    # both keyboard paths (row keys + list keys) reproduce from the index
-    assert "Keys.onReturnPressed: root.playTrackRequested(index)" in table
-    assert "root.playTrackRequested(currentIndex)" in table
+    assert "root.trackSelected(modelData.path)" in table
+    # both keyboard paths (row keys + list keys) reproduce from the
+    # CANONICAL index (PL-FINAL-14: filter-safe)
+    assert "Keys.onReturnPressed: {" in table
+    assert "if (trackItem.canInteract)" in table
+    assert "root.playTrackRequested(root.rows[currentIndex].canonicalIndex)" in table
 
 
 # ── Audit debt block (W1, W5, O2) ─────────────────────────────────────────────
@@ -245,16 +284,26 @@ def test_michi_format_is_locale_aware():
 
 def test_reorder_keeps_keyboard_cursor_on_moved_row():
     table = read("playlists/PlaylistTrackList.qml")
-    assert "root.trackSelected(index - 1)" in table
-    assert "trackList.currentIndex = index - 1" in table
-    assert "trackList.currentItem.forceActiveFocus()" in table
-    assert "root.trackSelected(index + 1)" in table
+    # R3-08: el reorder NO mueve la selección optimistamente — solo el
+    # intent; la selección por path sigue la fila cuando rows cambia.
+    # PL-FINAL-14: el reorder usa el índice CANONICO (gated por search).
+    assert (
+        "root.moveTrackRequested(\n"
+        "                            trackItem.canonicalIndex,"
+        " trackItem.canonicalIndex - 1)" in table
+    )
+    assert "onRowsChanged" in table
+    # R3-07: la selección por path es la identidad; el cursor del teclado
+    # se sincroniza desde rows (no se fuerza optimistamente).
+    assert "selectedTrackPath" in table
+    assert "trackList.currentIndex = i" in table
 
 
 def test_add_tracks_becomes_icon_only_on_narrow_windows():
     hero = read("playlists/PlaylistHero.qml")
-    assert 'text: parent.width < 700 ? "" : qsTr("Add tracks")' in hero
-    assert "implicitWidth: parent.width < 700 ? 30 : undefined" in hero
+    assert 'text: root.width >= 920 ? qsTr("Add tracks") : ""' in hero
+    assert "iconOnly: root.width < 920" in hero
+    assert "parent.width <" not in hero
 
 
 # ── Pending-feature block (drag reorder, queue undo, queue row action) ───────
@@ -262,10 +311,13 @@ def test_add_tracks_becomes_icon_only_on_narrow_windows():
 
 def test_drag_reorder_handle_and_drop_line():
     table = read("playlists/PlaylistTrackList.qml")
-    assert "Drag.active: dragHandler.active" in table
+    # PL-FINAL-14: el drag handle queda gateado por reorderEnabled (un
+    # filtro de búsqueda activo DESHABILITA el reorder por índice).
+    assert "Drag.active: root.reorderEnabled && dragHandler.active" in table
     assert '"application/x-michi-playlist-index": index' in table
     assert "DragHandler {" in table
     assert "DropArea {" in table
+    assert "enabled: root.reorderEnabled && !root.selectionMode" in table
     assert "trackList.indexAt(drag.x, drag.y)" in table
     assert "insertLine.visible = false" in table
     assert "root.moveTrackRequested(from, to)" in table

@@ -126,7 +126,8 @@ ColumnLayout {
             required property var modelData
             width: artistAlbumsGrid.cellWidth - MichiSpacing.sm
             album: modelData
-            onActivated: library.select_album(modelData.key)
+            onOpenRequested: library.select_album(modelData.key)
+            onPlayRequested: library.play_album(modelData.key)
         }
     }
 

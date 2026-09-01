@@ -5,7 +5,8 @@ independent from the display name. Renaming never changes identity.
 """
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import StrEnum
 
 # Fixed namespace for deterministic legacy (V1) playlist ids (UUIDv5).
 # Deliberately project-specific; never derived from user data beyond the
@@ -13,6 +14,37 @@ from dataclasses import dataclass
 _MICHI_PLAYLIST_NAMESPACE = uuid.UUID("6f2a1b8e-4c3d-4a5b-9e8f-0a1b2c3d4e5f")
 
 MAX_RECENT_PLAYLISTS = 5
+MAX_DESCRIPTION_LENGTH = 1000
+
+
+class PlaylistHeroMode(StrEnum):
+    """Persisted visual source for an individual playlist hero."""
+
+    AUTO = "auto"
+    SOLID = "solid"
+    GRADIENT = "gradient"
+    IMAGE = "image"
+
+
+@dataclass(frozen=True)
+class PlaylistAppearance:
+    """User-owned, persistent hero appearance metadata.
+
+    Cover artwork intentionally remains a separate ``Playlist`` field:
+    resetting or replacing either visual must never mutate the other.
+    Defaults are usable values even when ``hero_mode`` is ``AUTO`` so a
+    mode switch never exposes incomplete presentation state.
+    """
+
+    hero_mode: PlaylistHeroMode = PlaylistHeroMode.AUTO
+    hero_solid_color: str = "#152A45"
+    hero_gradient_colors: tuple[str, ...] = ("#152A45", "#13243D")
+    hero_gradient_angle: float = 135.0
+    hero_image_path: str = ""
+    # PL-FINAL-09: focal point of the hero IMAGE (0..1 normalized; the
+    # default 0.5/0.5 is the exact backward-compatible center crop).
+    hero_focal_x: float = 0.5
+    hero_focal_y: float = 0.5
 
 
 def legacy_playlist_id(name: str) -> str:
@@ -37,12 +69,17 @@ class Playlist:
     """A user-defined persistent ordered collection of track paths.
 
     playlist_id is the canonical identity; name is mutable user-visible
-    metadata. custom_cover_path is optional user-provided artwork."""
+    metadata. custom_cover_path and appearance are independent user-owned
+    visual metadata."""
 
     playlist_id: str
     name: str
     track_paths: tuple[str, ...] = ()
     custom_cover_path: str = ""
+    appearance: PlaylistAppearance = field(default_factory=PlaylistAppearance)
+    # PL-FINAL-05: playlist metadata (NOT appearance) — survives rename,
+    # track mutation and appearance changes; "" means no description.
+    description: str = ""
 
 
 @dataclass(frozen=True)

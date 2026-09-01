@@ -55,11 +55,14 @@ def test_material_texture_is_lightweight_packaged_and_quality_aware() -> None:
     glass = _text("primitives/MichiGlassSurface.qml")
     surface = _text("primitives/MichiSurface.qml")
     package = Path("pyproject.toml").read_text()
-    # M9-R2.3: procedural deterministic grain (Canvas tile) replaced the
-    # 64px SVG — no asset, no sub-pixel aliasing, per-surface seed.
-    assert "function makeRandom(seed)" in texture
-    assert "toDataURL" in texture
-    assert "width: 128" in texture
+    # Library Views 2.0: static catalog assets are decoded once by Qt and
+    # shared across surfaces; no Canvas/data URL is generated per instance.
+    assert "Canvas {" not in texture
+    assert "toDataURL" not in texture
+    assert 'return "../assets/" + resolved + ".svg"' in texture
+    assert (QML / "assets/grain-graphite-01.svg").is_file()
+    assert (QML / "assets/grain-glass-01.svg").is_file()
+    assert (QML / "assets/paper-editorial-01.svg").is_file()
     assert "property int tileSeed: 0" in texture
     assert 'MichiThemeState.glassQuality === "low" ? 0' in texture
     assert "property bool shadowed" in glass
@@ -87,6 +90,7 @@ def test_vinyl_wall_has_no_permanent_rotation() -> None:
 
 def test_six_canonical_album_views_remain_available() -> None:
     albums = _text("views/AlbumsView.qml")
+    header = _text("views/LibraryHeader.qml")
     expected = {
         "grid": "AlbumGridView.qml",
         "cover": "AlbumPathView.qml",
@@ -96,7 +100,8 @@ def test_six_canonical_album_views_remain_available() -> None:
         "list": "AlbumListView.qml",
     }
     for mode, filename in expected.items():
-        assert f'onClicked: albumMode = "{mode}"' in albums
+        assert f'value: "{mode}"' in header
+        assert f'case "{mode}": return' in albums or mode == "grid"
         assert (QML / "views" / filename).is_file()
     assert "CoverFlow" not in albums
 
@@ -166,7 +171,8 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     now_playing = _text("player/NowPlayingBar.qml")
     assert "property bool accented" in glass
     assert "Behavior on scale" in button
-    assert "MichiStatusChip" in toolbar
+    assert 'objectName: "stableLibrarySearchPane"' in toolbar
+    assert "? 82 : 48" in toolbar
     assert 'import "../controls"' in content
     assert 'text: qsTr("ADD TRACK TO")' in content
     assert "MichiIconButton" in content
@@ -227,10 +233,10 @@ def test_density_precision_and_inspector_are_real_surfaces() -> None:
     toolbar = _text("views/LibraryToolbar.qml")
     album_detail = _text("views/AlbumDetailView.qml")
     assert "View options" in header
-    assert 'objectName: "libraryDensityControl"' in popup
-    assert "MichiThemeState.density" in popup
-    assert "compact: true" in popup
-    assert "MichiThemeState.precisionMode" in popup
+    assert "viewPreferenceRequested" in popup
+    assert "galleryOptions" in popup
+    assert "studioOptions" in popup
+    assert "precisionMetadata" in popup
     assert "MichiThemeState.density" not in toolbar
     assert "MichiThemeState.precisionMode" not in toolbar
     assert "InspectorPanel" in album_detail
@@ -275,16 +281,17 @@ def test_album_artwork_zoom_is_real_and_persistent() -> None:
     path = _text("views/AlbumPathView.qml")
     icons = _text("primitives/MichiIcon.qml")
     assert "property real albumZoom: 1.0" in library
-    assert "onAlbumZoomRequested" in library
-    assert "zoom-out" in popup
-    assert "zoom-in" in popup
+    assert "libraryViews" in library
+    assert "set_library_views" in library
+    assert "artworkSize" in popup
+    assert "coverSize" in popup
+    assert "sleeveSize" in popup
     assert "albumZoom: root.albumZoom" in content
     assert albums.count("albumZoom: root.albumZoom") == 3
     for source in (grid, vinyl, path):
         assert "property real albumZoom: 1.0" in source
         assert "albumZoom" in source
-    assert 'root.name === "zoom-out"' in icons
-    assert 'root.name === "zoom-in"' in icons
+    assert 'root.name === "view-options"' in icons
 
 
 def test_album_grid_and_detail_have_premium_information_hierarchy() -> None:
@@ -295,7 +302,8 @@ def test_album_grid_and_detail_have_premium_information_hierarchy() -> None:
     assert "minimumCardWidth" in grid
     assert "maximumCardWidth" in grid
     assert "resolvedCardWidth" in grid
-    assert "root.album.technicalSummary" in card
+    assert "technicalText" in card
+    assert "album.technicalSummary" in card
     assert "root.album.trackCount" in card
     assert 'objectName: "albumHeroSurface"' in detail
     assert 'objectName: "albumTrackTableSurface"' in detail
@@ -316,7 +324,7 @@ def test_transport_microdetails_are_coherent_surfaces() -> None:
     assert bar.count("y: volumeSlider.topPadding") == 2
     repeat_branch = icons.split(
         '} else if (root.name === "repeat" || root.name === "repeat-one") {'
-    )[1].split('} else if (root.name === "sliders" || root.name === "equalizer") {')[0]
+    )[1].split('} else if (root.name === "view-options") {')[0]
     assert "ctx.arc" not in repeat_branch
 
 
@@ -399,11 +407,11 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert "albumViewsVisible" in header
     assert 'currentTab === "albums"' in header
     assert 'objectName: "albumViewSwitcher"' not in toolbar
-    assert 'objectName: "libraryNavigationSplitView"' in toolbar
-    assert 'objectName: "resizableLibrarySearchPane"' in toolbar
-    assert "SplitView.fillWidth: true" in toolbar
+    assert 'objectName: "stableLibrarySearchPane"' in toolbar
+    assert "SplitView" not in toolbar
+    assert "? 82 : 48" in toolbar
     assert toolbar.index("LibraryTabs {") < toolbar.index("MichiSearchField {")
-    assert "compact: true" in header
+    assert "compact: !MichiBreakpoints.isXl(root.width)" in header
     for icon in (
         "view-grid",
         "view-path",
@@ -416,7 +424,9 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert "albumModeRequested" in header
     assert "MichiSegmentedControl {" not in albums
     assert "onAlbumModeRequested" in library
-    assert "sourceComponent: root.componentForMode(root.albumMode)" in albums
+    assert "sourceComponent: root.componentForMode(root.loadedMode)" in albums
+    assert "MichiMotion.viewExit" in albums
+    assert "MichiMotion.viewEnter" in albums
     assert "root.currentValue = modelData.value" not in segmented
 
 
@@ -451,7 +461,9 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     assert "root.enabled && root.primary" in button
     assert "anchors.bottom: parent.bottom" not in tabs
     assert "visible: root.selected" not in icon_button
-    assert "zoom-out" in popup
+    assert "artworkSize" in popup
+    assert "coverSize" in popup
+    assert "sleeveSize" in popup
     quality = bar.split('objectName: "qualityBadge"', 1)[1].split(
         'objectName: "queueButton"', 1
     )[0]

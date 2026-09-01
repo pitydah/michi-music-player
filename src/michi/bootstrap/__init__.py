@@ -83,6 +83,7 @@ from michi.infrastructure.metadata_extractor import InfrastructureMetadataExtrac
 from michi.infrastructure.playlist_artwork_store import (
     FilesystemPlaylistArtworkStore,
 )
+from michi.infrastructure.playlist_palette import QtPlaylistPaletteExtractor
 from michi.infrastructure.playlists import SqlitePlaylistsRepository
 from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
@@ -92,7 +93,10 @@ from michi.presentation.audio_engine_bridge import (
     AudioEngineBridge,
     submit_audio_engine_probe,
 )
-from michi.presentation.enrichment_bridge import EnrichmentBridge
+from michi.presentation.enrichment_bridge import (
+    EnrichmentBridge,
+    LibraryEnrichmentProjection,
+)
 from michi.presentation.library_bridge import LibraryBridge
 from michi.presentation.navigation_bridge import NavigationBridge
 from michi.presentation.playback_bridge import PlaybackBridge
@@ -408,7 +412,11 @@ def _build_services(
     scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
     scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
 
-    lb = LibraryBridge(library, playback_coordinator=library_playback)
+    lb = LibraryBridge(
+        library,
+        playback_coordinator=library_playback,
+        palette_extractor=QtPlaylistPaletteExtractor(),
+    )
 
     return ServiceGraph(
         db_path=db_path,
@@ -617,6 +625,11 @@ class ApplicationContainer:
             library=library,
             asset_store=self._enrichment.asset_store,
         )
+        self._library_enrichment = LibraryEnrichmentProjection(
+            service=self._enrichment.service,
+            asset_store=self._enrichment.asset_store,
+        )
+        self._eb.changed.connect(self._library_enrichment.invalidate)
 
         # Library/settings coordination: restore last_directory, sync on scan
         lib_prefs = LibraryPreferencesCoordinator(library, settings)
@@ -692,6 +705,7 @@ class ApplicationContainer:
             navigation_service=navigation,
             library=library,
             playback_coordinator=graph.playlist_playback,
+            palette_extractor=QtPlaylistPaletteExtractor(),
         )
         sb = SettingsBridge(settings)
 
@@ -707,6 +721,7 @@ class ApplicationContainer:
         ctx.setContextProperty("settingsBridge", sb)
         ctx.setContextProperty("audioEngine", aeb)
         ctx.setContextProperty("enrichment", self._eb)
+        ctx.setContextProperty("libraryEnrichment", self._library_enrichment)
 
         # M6.9 policy wiring (composition root): SettingsBridge stays
         # Settings-only; the EnrichmentBridge reacts to the CURRENT value

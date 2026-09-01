@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 92 160">
+  <!--
+    MichiPeek: quiet side profile derived from the user's peeking-cat
+    reference. The cover occludes x=0..56; the exposed 36 px contain one
+    ear, a small almond eye, a continuous cheek and restrained whiskers.
+  -->
+  <path
+    fill="#06080D"
+    d="M8 160V66c0-17 6-31 18-43L24 8c-1-5 4-7 8-4l17 15c5-2 11-2 17 0L82 7c4-3 8 0 7 5l-5 24c7 10 10 22 8 36-2 16-9 30-20 41-7 7-11 13-13 22-3 12-8 21-16 25H8Z"/>
+  <path
+    fill="none"
+    stroke="#343B48"
+    stroke-linecap="round"
+    stroke-width="1"
+    opacity=".62"
+    d="M82 8c4-3 8 0 7 5l-5 23c7 10 10 22 8 36-2 16-9 30-20 41"/>
+  <path
+    fill="none"
+    stroke="#252C37"
+    stroke-linecap="round"
+    stroke-width=".8"
+    opacity=".55"
+    d="m84 14-3 18"/>
+  <path
+    fill="#DCE1E9"
+    opacity=".84"
+    d="M59 53c4-5 11-6 17-2-4 6-11 7-17 2Z"/>
+  <path
+    fill="#06080D"
+    d="M68 49c2 2 3 7 1 10-2-2-3-7-1-10Z"/>
+  <g
+    fill="none"
+    stroke="#DCE1E9"
+    stroke-linecap="round"
+    stroke-width=".8"
+    opacity=".46">
+    <path d="m80 73 12-4"/>
+    <path d="m80 77 12 1"/>
+    <path d="m79 81 11 5"/>
+  </g>
+</svg>

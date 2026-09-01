@@ -12,6 +12,20 @@ ListView {
 
     property var albumModel: library.timelineAlbums
     property bool groupByDecade: true
+    property var browseState: null
+    property string direction: "newest"
+    property string densityMode: "standard"
+    property string metadataLevel: "standard"
+    property bool showPeriodDensity: false
+
+    function sectionCount(sectionValue) {
+        var count = 0
+        for (var i = 0; i < albumModel.length; ++i) {
+            var value = groupByDecade ? albumModel[i].decade : albumModel[i].year
+            if (String(value) === String(sectionValue)) ++count
+        }
+        return count
+    }
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -33,6 +47,26 @@ ListView {
     Accessible.name: qsTr("Album timeline")
     Accessible.description: qsTr("Albums grouped chronologically")
 
+    Component.onCompleted: if (browseState) Qt.callLater(function() {
+        var restoredIndex = browseState.chronologyIndex
+        if (browseState.currentKey) {
+            for (var i = 0; i < albumModel.length; ++i) {
+                if (albumModel[i].key === browseState.currentKey) {
+                    restoredIndex = i
+                    break
+                }
+            }
+        }
+        albumTimeline.currentIndex = restoredIndex
+        albumTimeline.contentY = browseState.chronologyContentY
+    })
+    onContentYChanged: if (browseState) browseState.chronologyContentY = contentY
+    onCurrentIndexChanged: if (browseState) {
+        browseState.chronologyIndex = currentIndex
+        if (currentIndex >= 0 && currentIndex < albumModel.length)
+            browseState.remember(albumModel[currentIndex].key)
+    }
+
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)
             library.select_album(albumModel[currentIndex].key)
@@ -47,26 +81,26 @@ ListView {
     section.delegate: Item {
         required property string section
         width: albumTimeline.width
-        height: 48
+        height: 38
         z: 4
 
-        // Opaque base so the floating inline label covers rows scrolling
-        // underneath instead of letting them show through.
         Rectangle {
             anchors.fill: parent
             color: MichiPalette.obsidian
+            opacity: 0.94
+            border.width: 0
         }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 20
+            anchors.leftMargin: MichiSpacing.md
             anchors.rightMargin: MichiSpacing.lg
             spacing: MichiSpacing.md
 
             Rectangle {
-                Layout.preferredWidth: 14
-                Layout.preferredHeight: 14
-                radius: 7
+                Layout.preferredWidth: 8
+                Layout.preferredHeight: 8
+                radius: 4
                 color: MichiPalette.auroraCyan
                 border.width: 2
                 border.color: MichiPalette.obsidian
@@ -89,12 +123,14 @@ ListView {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 1
+                Layout.preferredHeight: 1
                 color: MichiSemanticColors.borderSubtle
             }
 
             MichiText {
-                text: albumTimeline.groupByDecade ? "DECADE" : "YEAR"
+                text: albumTimeline.showPeriodDensity
+                    ? qsTr("%1 albums").arg(albumTimeline.sectionCount(section))
+                    : albumTimeline.groupByDecade ? qsTr("DECADE") : qsTr("YEAR")
                 role: "technical"
                 technical: true
                 color: MichiPalette.textMuted
@@ -107,11 +143,12 @@ ListView {
         required property int index
         required property var modelData
         property var album: modelData
+        AlbumPaletteBinding { id: paletteBinding; album: timelineRow.album }
         readonly property bool selected: ListView.isCurrentItem
         width: albumTimeline.width
-        height: MichiThemeState.density === "compact" ? 58
-            : MichiThemeState.density === "comfortable" ? 82 : 70
-        activeFocusOnTab: true
+        height: albumTimeline.densityMode === "compact" ? 58
+            : albumTimeline.densityMode === "expanded" ? 86 : 70
+        activeFocusOnTab: false
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
         Accessible.selected: timelineRow.selected
@@ -130,7 +167,8 @@ ListView {
                 ColorAnimation { duration: MichiMotion.micro }
             }
             MichiFocusRing {
-                visualFocus: timelineRow.activeFocus
+                visualFocus: (timelineRow.activeFocus
+                    || (albumTimeline.activeFocus && timelineRow.selected))
                     && MichiAccessibility.keyboardMode
             }
         }
@@ -150,7 +188,8 @@ ListView {
             height: width
             radius: width / 2
             color: timelineRow.selected
-                ? MichiPalette.auroraCyan : MichiPalette.textMuted
+                ? (paletteBinding.value.accentSafe || MichiPalette.auroraCyan)
+                : MichiPalette.textMuted
             border.width: 2
             border.color: MichiPalette.obsidian
         }
@@ -195,7 +234,8 @@ ListView {
                     ? MichiPalette.textSecondary : MichiPalette.textMuted
             }
             MichiText {
-                visible: modelData.trackCount > 0
+                visible: albumTimeline.metadataLevel !== "minimal"
+                    && modelData.trackCount > 0
                 text: modelData.trackCount + (modelData.trackCount === 1 ? " track" : " tracks")
                 role: "technical"
                 technical: true
@@ -203,7 +243,9 @@ ListView {
             }
             Item { Layout.fillWidth: true }
             MichiText {
-                visible: modelData.technicalSummary ? (modelData.technicalSummary.length > 0) : false
+                visible: albumTimeline.metadataLevel === "detailed"
+                    && modelData.technicalSummary
+                    ? modelData.technicalSummary.length > 0 : false
                 text: modelData.technicalSummary || ""
                 role: "technical"
                 technical: true
@@ -213,11 +255,12 @@ ListView {
 
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
         TapHandler {
-            onTapped: {
+            exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
+            onSingleTapped: {
                 albumTimeline.currentIndex = timelineRow.index
                 timelineRow.forceActiveFocus()
-                library.select_album(modelData.key)
             }
+            onDoubleTapped: library.select_album(modelData.key)
         }
         Keys.onReturnPressed: library.select_album(modelData.key)
         Keys.onEnterPressed: library.select_album(modelData.key)

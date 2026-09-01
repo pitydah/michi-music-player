@@ -2,46 +2,72 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, Qt, Signal, Slot
 
 from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
+from michi.application.ports import PlaylistPaletteExtractorPort
 from michi.domain.library import (
     AlbumRef,
     ArtistRef,
     LibraryScanStatus,
     TrackRef,
+    build_album_technical_facts,
     build_timeline_projection,
     make_artist_key,
 )
+
+_DEFAULT_ALBUM_PALETTE = ("#152A45", "#13243D", "#0A0D14")
 
 
 class LibraryBridge(QObject):
     """Thin adapter: LibraryService state → QML properties, QML intent → service."""
 
     library_changed = Signal()
+    albumPaletteChanged = Signal(str, "QVariantMap")
+    _palette_ready = Signal(str, str, list)
 
     def __init__(
         self,
         service: LibraryService,
         playback_coordinator=None,
         parent: QObject | None = None,
+        palette_extractor: PlaylistPaletteExtractorPort | None = None,
     ) -> None:
         super().__init__(parent)
         self._service = service
         self._playback_coordinator = playback_coordinator
+        self._palette_extractor = palette_extractor
+        self._valid_album_keys = {album.key for album in service.state.albums}
+        self._album_palettes: dict[str, list[str]] = {}
+        self._palette_sources: dict[str, str] = {}
+        self._album_artwork_paths: dict[str, str] = {}
         self._selected_album_key: str = ""
         self._selected_album: AlbumRef | None = None
         self._album_track_refs: list[TrackRef] = []
         self._selected_artist_key: str = ""
         self._selected_artist: ArtistRef | None = None
         self._artist_track_refs: list[TrackRef] = []
+        self._palette_ready.connect(self._apply_palette, Qt.QueuedConnection)
         service.subscribe_changed(self._on_service_changed)
 
     def dispose(self) -> None:
         self._service.unsubscribe_changed(self._on_service_changed)
+        if self._palette_extractor is not None:
+            self._palette_extractor.close()
 
     def _on_service_changed(self) -> None:
+        valid_album_keys = {album.key for album in self._service.state.albums}
+        self._valid_album_keys = valid_album_keys
+        stale_palette_keys = (
+            set(self._palette_sources)
+            | set(self._album_palettes)
+            | set(self._album_artwork_paths)
+        ) - valid_album_keys
+        for stale_key in stale_palette_keys:
+            self._palette_sources.pop(stale_key, None)
+            self._album_palettes.pop(stale_key, None)
+            self._album_artwork_paths.pop(stale_key, None)
         # M6.6: the selection identity is the canonical album key; a selected
         # album that leaves the library clears the detail safely.
         if self._selected_album_key:
@@ -168,6 +194,144 @@ class LibraryBridge(QObject):
     def _get_artist_count(self) -> int:
         return len(self._service.state.artists)
 
+    @staticmethod
+    def _palette_source_key(artwork_path: str) -> str:
+        if not artwork_path:
+            return ""
+        try:
+            stat = Path(artwork_path).stat()
+        except OSError:
+            return artwork_path
+        return f"{artwork_path}\n{stat.st_size}\n{stat.st_mtime_ns}"
+
+    @staticmethod
+    def _hex_rgb(color: str) -> tuple[int, int, int]:
+        value = str(color).lstrip("#")
+        if len(value) != 6:
+            return 21, 42, 69
+        try:
+            return tuple(int(value[index : index + 2], 16) for index in (0, 2, 4))
+        except ValueError:
+            return 21, 42, 69
+
+    @classmethod
+    def _safe_accent(cls, color: str) -> str:
+        channels = list(cls._hex_rgb(color))
+        maximum = max(channels)
+        if maximum < 132:
+            scale = 132 / max(maximum, 1)
+            channels = [min(210, round(channel * scale)) for channel in channels]
+        channels = [round(channel * 0.82 + 255 * 0.18) for channel in channels]
+        return "#" + "".join(f"{channel:02X}" for channel in channels)
+
+    @classmethod
+    def _palette_row(cls, colors: list[str] | tuple[str, ...]) -> dict:
+        normalized = [str(color) for color in colors[:3]]
+        while len(normalized) < 3:
+            normalized.append(_DEFAULT_ALBUM_PALETTE[len(normalized)])
+        red, green, blue = cls._hex_rgb(normalized[0])
+        luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255
+        return {
+            "colors": normalized,
+            "dominant": normalized[0],
+            "secondary": normalized[1],
+            "backplane": normalized[2],
+            "accentSafe": cls._safe_accent(normalized[0]),
+            "luminance": luminance,
+            "warmth": (red - blue) / 255,
+        }
+
+    def _album_palette(self, album_key: str) -> dict:
+        """Return cached colors without starting work for every projected row."""
+        colors = self._album_palettes.get(album_key, list(_DEFAULT_ALBUM_PALETTE))
+        return self._palette_row(colors)
+
+    @Slot(str)
+    def request_album_palette(self, album_key: str) -> None:
+        """Warm one visible/selected album palette, deduplicated by artwork."""
+        if not album_key:
+            return
+        cached_artwork_path = self._album_artwork_paths.get(album_key)
+        if album_key not in self._valid_album_keys and cached_artwork_path is None:
+            return
+        # Resolve the source on every materialization request. Artwork may be
+        # added, replaced or removed while the album identity remains stable.
+        artwork_path = (
+            self._service.artwork_path_for(album_key) or ""
+            if album_key in self._valid_album_keys
+            else cached_artwork_path or ""
+        )
+        self._album_artwork_paths[album_key] = artwork_path
+        source_key = self._palette_source_key(artwork_path)
+        if self._palette_sources.get(album_key) == source_key:
+            return
+        self._palette_sources[album_key] = source_key
+        previous = self._album_palettes.pop(album_key, None)
+        if previous is not None:
+            self.albumPaletteChanged.emit(
+                album_key, self._palette_row(list(_DEFAULT_ALBUM_PALETTE))
+            )
+        if not artwork_path:
+            return
+        if self._palette_extractor is not None:
+            self._palette_extractor.request_palette(
+                (artwork_path,),
+                lambda colors: self._palette_ready.emit(
+                    album_key, source_key, list(colors)
+                ),
+            )
+
+    @Slot(str, str, list)
+    def _apply_palette(
+        self, album_key: str, source_key: str, colors: list[str]
+    ) -> None:
+        if self._palette_sources.get(album_key) != source_key:
+            return
+        normalized = [str(color) for color in colors[:3]]
+        if len(normalized) < 2 or normalized == self._album_palettes.get(album_key):
+            return
+        self._album_palettes[album_key] = normalized
+        self.albumPaletteChanged.emit(album_key, self._palette_row(normalized))
+
+    def _album_row(
+        self,
+        album: AlbumRef,
+        tracks_by_path: dict[Path, TrackRef],
+        favorite_paths: set[str],
+        recent_paths: set[str],
+    ) -> dict:
+        """Canonical album presentation row shared by every Library view."""
+        facts = build_album_technical_facts(
+            tracks_by_path[path] for path in album.track_paths if path in tracks_by_path
+        )
+        album_paths = {str(path) for path in album.track_paths}
+        artwork_path = self._service.artwork_path_for(album.key) or ""
+        self._album_artwork_paths[album.key] = artwork_path
+        return {
+            "key": album.key,
+            "title": album.title,
+            "artist": album.artist,
+            "trackCount": album.track_count,
+            "durationMs": album.duration_ms,
+            "discCount": album.disc_count,
+            "genres": list(album.genres),
+            "composers": list(album.composers),
+            "hasArtwork": album.has_artwork,
+            "artworkPath": artwork_path,
+            "artworkPalette": self._album_palette(album.key),
+            "year": album.year,
+            "technicalState": facts.state.name.lower(),
+            "technicalSummary": album.technical_summary,
+            "codecs": list(facts.codecs),
+            "maxSampleRateHz": facts.max_sample_rate_hz,
+            "maxBitDepth": facts.max_bit_depth,
+            "maxChannels": facts.max_channels,
+            "containsDsd": facts.contains_dsd,
+            "containsHighResolution": facts.contains_high_resolution,
+            "isFavorite": bool(album_paths & favorite_paths),
+            "isRecentlyAdded": bool(album_paths & recent_paths),
+        }
+
     def _album_rows(self) -> list[dict]:
         # M7: the unified search projection filters the album surface; the
         # canonical collections are the passthrough when search is inactive.
@@ -176,22 +340,15 @@ class LibraryBridge(QObject):
             if self._service.state.search_active
             else self._service.state.albums
         )
-        rows = []
-        for album in albums:
-            rows.append(
-                {
-                    "key": album.key,
-                    "title": album.title,
-                    "artist": album.artist,
-                    "trackCount": album.track_count,
-                    "durationMs": album.duration_ms,
-                    "hasArtwork": album.has_artwork,
-                    "artworkPath": self._service.artwork_path_for(album.key) or "",
-                    "year": album.year,
-                    "technicalSummary": album.technical_summary,
-                }
-            )
-        return rows
+        tracks_by_path = {
+            track.file_path: track for track in self._service.state.tracks
+        }
+        favorite_paths = set(self._service.state.favorite_paths)
+        recent_paths = set(self._service.state.recently_added_paths)
+        return [
+            self._album_row(album, tracks_by_path, favorite_paths, recent_paths)
+            for album in albums
+        ]
 
     def _get_timeline_albums(self) -> list[dict]:
         # M7: the timeline receives the SAME filtered album set as the other
@@ -203,21 +360,18 @@ class LibraryBridge(QObject):
         )
         rows = []
         albums_by_key = {a.key: a for a in albums}
+        tracks_by_path = {
+            track.file_path: track for track in self._service.state.tracks
+        }
+        favorite_paths = set(self._service.state.favorite_paths)
+        recent_paths = set(self._service.state.recently_added_paths)
         for projection in build_timeline_projection(albums):
             album = albums_by_key.get(projection.album_key)
-            rows.append(
-                {
-                    "key": projection.album_key,
-                    "title": projection.title,
-                    "artist": projection.artist,
-                    "year": projection.year,
-                    "decade": projection.decade,
-                    "hasArtwork": album.has_artwork if album is not None else False,
-                    "artworkPath": (
-                        self._service.artwork_path_for(projection.album_key) or ""
-                    ),
-                }
-            )
+            if album is None:
+                continue
+            row = self._album_row(album, tracks_by_path, favorite_paths, recent_paths)
+            row["decade"] = projection.decade
+            rows.append(row)
         return rows
 
     def _artist_rows(self) -> list[dict]:
@@ -325,6 +479,23 @@ class LibraryBridge(QObject):
 
     def _get_album_artwork(self) -> str:
         return self._service.artwork_path_for(self._selected_album_key) or ""
+
+    def _get_album_artwork_palette(self) -> dict:
+        return self._album_palette(self._selected_album_key)
+
+    def _get_album_presentation(self) -> dict:
+        """Return the same canonical facts row used by all album browsers."""
+        if self._selected_album is None:
+            return {}
+        tracks_by_path = {
+            track.file_path: track for track in self._service.state.tracks
+        }
+        return self._album_row(
+            self._selected_album,
+            tracks_by_path,
+            set(self._service.state.favorite_paths),
+            set(self._service.state.recently_added_paths),
+        )
 
     def _get_album_tracks(self) -> list[dict]:
         return [
@@ -538,6 +709,12 @@ class LibraryBridge(QObject):
         str, _get_album_technical_summary, notify=library_changed
     )
     albumArtwork = Property(str, _get_album_artwork, notify=library_changed)
+    albumArtworkPalette = Property(
+        "QVariantMap", _get_album_artwork_palette, notify=library_changed
+    )
+    albumPresentation = Property(
+        "QVariantMap", _get_album_presentation, notify=library_changed
+    )
     albumTracks = Property(list, _get_album_tracks, notify=library_changed)
     selectedArtistKey = Property(str, _get_selected_artist_key, notify=library_changed)
     artistName = Property(str, _get_artist_name, notify=library_changed)
@@ -628,6 +805,7 @@ class LibraryBridge(QObject):
             for path in album.track_paths
             if (ref := self._service.resolve_trackref(path)) is not None
         ]
+        self.request_album_palette(key)
         self.library_changed.emit()
 
     @Slot()

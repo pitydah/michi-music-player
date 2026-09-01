@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import "../patterns"
 import "../theme"
 
@@ -14,11 +15,44 @@ ColumnLayout {
     property string albumFilterMode: "all"
     property string albumTimelineGrouping: "decade"
     property real albumZoom: 1.0
+    property var viewPreferences: ({})
+    property var browseState: null
+    property string loadedMode: "grid"
+    property string pendingMode: "grid"
+    property bool transitionsReady: false
     signal sortModeRequested(string mode)
     signal sortDirectionRequested(bool descending)
     readonly property var presentationAlbums: buildPresentationAlbums(library.albums)
     readonly property var presentationTimelineAlbums: buildTimelineAlbums(
         library.timelineAlbums, presentationAlbums)
+    readonly property var editorialAlbums: buildEditorialAlbums(presentationAlbums)
+    readonly property var currentBrowseAlbum: findAlbumByKey(
+        browseState ? browseState.currentKey : "")
+    readonly property int enrichmentRevision: typeof libraryEnrichment !== "undefined"
+        && libraryEnrichment ? libraryEnrichment.revision : 0
+    readonly property var currentBrowseEnrichment: currentBrowseAlbum
+        && typeof libraryEnrichment !== "undefined" && libraryEnrichment
+        ? libraryEnrichment.album(currentBrowseAlbum.key, enrichmentRevision) : ({
+            albumKey: "", hasCachedKnowledge: false, knowledge: ({})
+        })
+
+    function findAlbumByKey(key) {
+        for (var i = 0; i < presentationAlbums.length; ++i)
+            if (presentationAlbums[i].key === key) return presentationAlbums[i]
+        return null
+    }
+
+    function inspectorEnabled() {
+        if (width < MichiBreakpoints.medium)
+            return false
+        if (albumMode === "grid") return viewPreferences.gallery
+            ? viewPreferences.gallery.inspector : true
+        if (albumMode === "vinyl") return viewPreferences.vinyl
+            ? viewPreferences.vinyl.inspector : true
+        if (albumMode === "list") return viewPreferences.studioList
+            ? viewPreferences.studioList.inspector : true
+        return false
+    }
 
     function normalized(value) {
         return String(value || "").toLocaleLowerCase()
@@ -31,11 +65,7 @@ ColumnLayout {
             case "dated": return Number(album.year || 0) > 0
             case "undated": return Number(album.year || 0) <= 0
             case "hires": {
-                var summary = normalized(album.technicalSummary)
-                return summary.indexOf("24-bit") !== -1
-                    || summary.indexOf("dsd") !== -1
-                    || summary.indexOf("192 khz") !== -1
-                    || summary.indexOf("96 khz") !== -1
+                return Boolean(album.containsHighResolution)
             }
             default: return true
         }
@@ -76,8 +106,38 @@ ColumnLayout {
         })
         rows.sort(function(left, right) {
             var yearOrder = Number(right.year || 0) - Number(left.year || 0)
+            if (root.viewPreferences.chronology
+                    && root.viewPreferences.chronology.direction === "oldest")
+                yearOrder = -yearOrder
             return yearOrder !== 0 ? yearOrder
                 : root.normalized(left.title).localeCompare(root.normalized(right.title))
+        })
+        return rows
+    }
+
+    function buildEditorialAlbums(source) {
+        var rows = source ? source.slice() : []
+        rows.sort(function(left, right) {
+            var recentOrder = Number(Boolean(right.isRecentlyAdded))
+                - Number(Boolean(left.isRecentlyAdded))
+            if (recentOrder !== 0)
+                return recentOrder
+            var favoriteOrder = Number(Boolean(right.isFavorite))
+                - Number(Boolean(left.isFavorite))
+            if (favoriteOrder !== 0)
+                return favoriteOrder
+            var fidelityOrder = Number(Boolean(right.containsHighResolution))
+                - Number(Boolean(left.containsHighResolution))
+            if (fidelityOrder !== 0)
+                return fidelityOrder
+            var artworkOrder = Number(Boolean(right.hasArtwork))
+                - Number(Boolean(left.hasArtwork))
+            if (artworkOrder !== 0)
+                return artworkOrder
+            var yearOrder = Number(right.year || 0) - Number(left.year || 0)
+            if (yearOrder !== 0)
+                return yearOrder
+            return root.normalized(left.title).localeCompare(root.normalized(right.title))
         })
         return rows
     }
@@ -102,27 +162,31 @@ ColumnLayout {
     }
 
     onAlbumModeChanged: {
-        // Loader releases the old item with deferred deletion. Clear its
-        // diagnostic identity synchronously so accessibility/tests never see
-        // two active projections during the transition.
-        if (modeLoader.item)
-            modeLoader.item.objectName = ""
+        pendingMode = albumMode
+        if (!transitionsReady || MichiAccessibility.reducedMotion
+                || root.Window.window === null) {
+            if (modeLoader.item)
+                modeLoader.item.objectName = ""
+            loadedMode = pendingMode
+            modeLoader.opacity = 1
+            modeLoader.scale = 1
+        } else {
+            modeEnter.stop()
+            modeExit.restart()
+        }
+    }
+
+    Component.onCompleted: {
+        loadedMode = albumMode
+        pendingMode = albumMode
+        transitionsReady = true
     }
 
     Layout.fillWidth: true
     Layout.fillHeight: true
     spacing: MichiTheme.space8
 
-    // The single visible mode switcher lives in LibraryToolbar. These local
-    // intent markers preserve the frozen M6 presentation-only contract:
-    // onClicked: albumMode = "grid"
-    // onClicked: albumMode = "cover"
-    // onClicked: albumMode = "vinyl"
-    // onClicked: albumMode = "timeline"
-    // onClicked: albumMode = "magazine"
-    // onClicked: albumMode = "list"
-
-    Item {
+    RowLayout {
         id: modeArea
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -131,24 +195,69 @@ ColumnLayout {
         Loader {
             id: modeLoader
             objectName: "albumModeLoader"
-            anchors.fill: parent
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            Layout.preferredWidth: Math.max(0, modeArea.width
+                - (albumInspector.visible ? 320 + modeArea.spacing : 0))
+            Layout.fillHeight: true
             active: modeArea.visible
             asynchronous: false
-            sourceComponent: root.componentForMode(root.albumMode)
-            opacity: status === Loader.Ready ? 1 : 0
+            sourceComponent: root.componentForMode(root.loadedMode)
+            opacity: 1
+            scale: 1
 
-            Behavior on opacity {
-                enabled: !MichiAccessibility.reducedMotion
-                NumberAnimation {
-                    duration: MichiMotion.standard
-                    easing.type: MichiMotion.outCubic
-                }
-            }
+        }
 
-            onLoaded: {
-                if (item)
-                    item.forceActiveFocus()
+        NumberAnimation {
+            id: modeExit
+            target: modeLoader
+            property: "opacity"
+            to: 0
+            duration: MichiMotion.viewExit
+            easing.type: MichiMotion.inOutCubic
+            onStopped: {
+                if (modeLoader.item)
+                    modeLoader.item.objectName = ""
+                root.loadedMode = root.pendingMode
+                modeLoader.scale = 0.985
+                Qt.callLater(function() { modeEnter.restart() })
             }
+        }
+        ParallelAnimation {
+            id: modeEnter
+            NumberAnimation {
+                target: modeLoader
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: MichiMotion.viewEnter
+                easing.type: MichiMotion.outCubic
+            }
+            NumberAnimation {
+                target: modeLoader
+                property: "scale"
+                from: 0.985
+                to: 1
+                duration: MichiMotion.viewEnter
+                easing.type: MichiMotion.outCubic
+            }
+        }
+
+        LibraryAlbumInspector {
+            id: albumInspector
+            Layout.preferredWidth: 320
+            Layout.fillHeight: true
+            visible: root.inspectorEnabled() && root.currentBrowseAlbum !== null
+            album: root.currentBrowseAlbum
+            hasCachedKnowledge: root.currentBrowseEnrichment.hasCachedKnowledge || false
+            cachedKnowledge: root.currentBrowseEnrichment.knowledge || ({})
+            showCachedContext: root.albumMode === "magazine"
+                ? root.viewPreferences.editorial.cachedEnrichmentVisible : true
+            onlineEnabled: typeof enrichment !== "undefined" && enrichment
+                ? enrichment.onlineEnabled : false
+            onOpenRequested: key => library.select_album(key)
+            onPlayRequested: key => library.play_album(key)
+            onEnrichmentRequested: key => enrichment.activate_album(key)
         }
     }
 
@@ -173,6 +282,15 @@ ColumnLayout {
             anchors.fill: parent
             albumModel: root.presentationAlbums
             albumZoom: root.albumZoom
+            browseState: root.browseState
+            spacingMode: root.viewPreferences.gallery
+                ? root.viewPreferences.gallery.spacing : "balanced"
+            metadataLevel: root.viewPreferences.gallery
+                ? root.viewPreferences.gallery.metadataLevel : "standard"
+            quickActions: root.viewPreferences.gallery
+                ? root.viewPreferences.gallery.quickActions : true
+            precisionMetadata: root.viewPreferences.gallery
+                ? root.viewPreferences.gallery.precisionMetadata : false
         }
     }
 
@@ -182,6 +300,18 @@ ColumnLayout {
             anchors.fill: parent
             albumModel: root.presentationAlbums
             albumZoom: root.albumZoom
+            browseState: root.browseState
+            visibleAlbums: root.viewPreferences.flow
+                ? root.viewPreferences.flow.visibleAlbums : "auto"
+            depthMode: root.viewPreferences.flow
+                ? root.viewPreferences.flow.depth : "standard"
+            ambientColor: root.viewPreferences.flow
+                ? root.viewPreferences.flow.ambientColor : true
+            metadataLevel: root.viewPreferences.flow
+                ? root.viewPreferences.flow.metadataLevel : "standard"
+            cachedKnowledge: root.currentBrowseEnrichment.knowledge || ({})
+            hasCachedKnowledge: root.currentBrowseEnrichment.hasCachedKnowledge || false
+            cachedAlbumKey: root.currentBrowseEnrichment.albumKey || ""
         }
     }
 
@@ -191,6 +321,15 @@ ColumnLayout {
             anchors.fill: parent
             albumModel: root.presentationAlbums
             albumZoom: root.albumZoom
+            browseState: root.browseState
+            spacingMode: root.viewPreferences.vinyl
+                ? root.viewPreferences.vinyl.spacing : "standard"
+            revealMode: root.viewPreferences.vinyl
+                ? root.viewPreferences.vinyl.reveal : "standard"
+            metadataLevel: root.viewPreferences.vinyl
+                ? root.viewPreferences.vinyl.metadataLevel : "standard"
+            artworkLabel: root.viewPreferences.vinyl
+                ? root.viewPreferences.vinyl.artworkLabel : true
         }
     }
 
@@ -200,6 +339,15 @@ ColumnLayout {
             anchors.fill: parent
             albumModel: root.presentationTimelineAlbums
             groupByDecade: root.albumTimelineGrouping === "decade"
+            browseState: root.browseState
+            direction: root.viewPreferences.chronology
+                ? root.viewPreferences.chronology.direction : "newest"
+            densityMode: root.viewPreferences.chronology
+                ? root.viewPreferences.chronology.density : "standard"
+            metadataLevel: root.viewPreferences.chronology
+                ? root.viewPreferences.chronology.metadataLevel : "standard"
+            showPeriodDensity: root.viewPreferences.chronology
+                ? root.viewPreferences.chronology.showPeriodDensity : false
         }
     }
 
@@ -207,7 +355,19 @@ ColumnLayout {
         id: magazineComponent
         MagazineView {
             anchors.fill: parent
-            albumModel: root.presentationAlbums
+            albumModel: root.editorialAlbums
+            browseState: root.browseState
+            heroVisible: root.viewPreferences.editorial
+                ? root.viewPreferences.editorial.heroVisible : true
+            informationRichness: root.viewPreferences.editorial
+                ? root.viewPreferences.editorial.informationRichness : "standard"
+            archiveLayout: root.viewPreferences.editorial
+                ? root.viewPreferences.editorial.archiveLayout : "list"
+            cachedKnowledge: root.currentBrowseEnrichment.knowledge || ({})
+            hasCachedKnowledge: root.currentBrowseEnrichment.hasCachedKnowledge || false
+            cachedAlbumKey: root.currentBrowseEnrichment.albumKey || ""
+            showCachedContext: root.viewPreferences.editorial
+                ? root.viewPreferences.editorial.cachedEnrichmentVisible : true
         }
     }
 
@@ -216,6 +376,8 @@ ColumnLayout {
         AlbumListView {
             anchors.fill: parent
             albumModel: root.presentationAlbums
+            browseState: root.browseState
+            viewPreferences: root.viewPreferences.studioList || ({})
             sortMode: root.albumSortMode
             sortDescending: root.albumSortDescending
             onSortRequested: mode => root.requestAlbumSort(mode)

@@ -27,6 +27,7 @@ michi = [
     "presentation/qml/dev/*.qml",
     "presentation/qml/media/*.qml",
     "presentation/qml/patterns/*.qml",
+    "presentation/qml/playlists/*.qml",
     "presentation/qml/player/*.qml",
     "presentation/qml/primitives/*.qml",
     "presentation/qml/shell/*.qml",
