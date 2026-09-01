@@ -1,6 +1,8 @@
 import QtQuick
+import QtQuick.Window
 
-// PL-FINAL-09 — reusable focal-aware crop renderer for hero imagery.
+// PL-FINAL-09 + PL-10-FINAL-10 — reusable focal-aware crop renderer for
+// hero imagery, DPR-aware.
 //
 // Model (per the playlist focal contract):
 //   - preserve the original aspect ratio;
@@ -10,17 +12,37 @@ import QtQuick
 //     anchor:  x = clamp(containerW*focalX - renderedW*focalX, ...)
 //     clamped so no blank region becomes visible.
 // Handles a not-yet-loaded source without warnings or NaN (scale 1,
-// neutral position), and never decodes more than maxWidth x maxHeight.
+// neutral position).
+//
+// Decode policy (PL-10-FINAL-10): requested sourceSize derives from the
+// VIEWPORT × devicePixelRatio, clamped to hard safety caps — a wide 4K
+// hero decodes enough detail without decoding the full original.
 Item {
     id: root
 
     property string source: ""
     property real focalX: 0.5
     property real focalY: 0.5
-    property int maxWidth: 3200
-    property int maxHeight: 1200
+    // DPR-aware decode caps (safe ceiling; viewport*DPR usually far below).
+    property real decodeDpr:
+        Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1.0
+    property int maxDecodeWidth: 5120
+    property int maxDecodeHeight: 2880
 
-    clip: true
+    readonly property int requestedDecodeWidth: Math.max(
+        1,
+        Math.min(
+            root.maxDecodeWidth,
+            Math.ceil(root.width * root.decodeDpr)
+        )
+    )
+    readonly property int requestedDecodeHeight: Math.max(
+        1,
+        Math.min(
+            root.maxDecodeHeight,
+            Math.ceil(root.height * root.decodeDpr)
+        )
+    )
 
     readonly property real _sourceW: img.sourceSize.width > 0
         ? img.sourceSize.width : 1
@@ -37,6 +59,8 @@ Item {
         root.height - root._renderedH,
         root.height * root.focalY - root._renderedH * root.focalY))
 
+    clip: true
+
     Image {
         id: img
         x: root._x
@@ -45,8 +69,8 @@ Item {
         height: root._renderedH
         visible: root.source.length > 0
         source: root.source
-        sourceSize.width: root.maxWidth
-        sourceSize.height: root.maxHeight
+        sourceSize.width: root.requestedDecodeWidth
+        sourceSize.height: root.requestedDecodeHeight
         asynchronous: true
         cache: true
         fillMode: Image.PreserveAspectFit

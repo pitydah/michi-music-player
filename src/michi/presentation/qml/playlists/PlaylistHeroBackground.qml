@@ -92,8 +92,8 @@ Item {
         source: visible ? root.heroImagePath : ""
         focalX: root.focalX
         focalY: root.focalY
-        maxWidth: Math.min(4096, Math.round(width * Screen.devicePixelRatio * 1.5))
-        maxHeight: Math.min(1200, Math.round(height * Screen.devicePixelRatio * 1.5))
+        // PL-10-FINAL-10: decode DPR-aware con caps de seguridad (el
+        // componente calcula requestedDecodeWidth/Height del viewport×DPR).
     }
 
     // A horizontal editorial scrim reserves a reliably calm reading field

@@ -188,19 +188,27 @@ Item {
         // Card grid mode
         GridView {
             id: gridView
+            objectName: "playlistGridView"
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: root.filteredPlaylists.length > 0 && root.displayMode === "grid"
             clip: true
-            // R3-16: density objetivo 5 cards en el área útil típica 1920
-            // con sidebar expandido (~1560px útiles): 1560/5 ≈ 312 → 304
-            // estándar / 288 compacto, máx 6 columnas.
+            // PL-10-FINAL-11: grid responsive REAL — cards ~280–320px en
+            // CUALQUIER ancho (hasta ultrawide), sin maxColumns artificial
+            // que deje gutters muertos. columnCount deriva del ancho
+            // disponible; el conjunto se centra con márgenes simétricos.
             readonly property int targetCellWidth: MichiThemeState.density === "compact" ? 288 : 304
-            readonly property int maxColumns: 6
-            readonly property int columnCount: Math.min(
-                maxColumns, Math.max(1, Math.floor(width / targetCellWidth)))
-            cellWidth: width / columnCount
+            readonly property int minCellWidth: MichiThemeState.density === "compact" ? 264 : 280
+            readonly property int maxCellWidth: MichiThemeState.density === "compact" ? 304 : 320
+            readonly property int columnCount: Math.max(
+                1, Math.round(width / targetCellWidth))
+            readonly property real resolvedCellWidth: Math.min(
+                maxCellWidth,
+                Math.max(minCellWidth, width / columnCount))
+            cellWidth: resolvedCellWidth
             cellHeight: 352
+            leftMargin: Math.max(0, (width - columnCount * cellWidth) / 2)
+            rightMargin: leftMargin
             model: root.filteredPlaylists
             keyNavigationEnabled: true
             keyNavigationWraps: false

@@ -153,7 +153,10 @@ def test_page_connects_play_track_and_shuffle():
     assert "PlaylistTrackPicker" in host
     picker = read("playlists/PlaylistTrackPicker.qml")
     assert "playlists.add_tracks(" in picker
-    assert "library.songRows" in picker
+    # PL-10-FINAL-02: catálogo canónico — nunca LibraryBridge.songRows
+    # (filtrado por la búsqueda global de Library UI).
+    assert "playlists.addTrackCandidateRows" in picker
+    assert "library.songRows" not in picker
 
 
 def test_hero_self_sizes_and_page_never_collapses_it():

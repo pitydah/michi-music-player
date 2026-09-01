@@ -7,8 +7,10 @@ import re
 import uuid
 from pathlib import Path
 
-from michi.application.playlist_asset_contract import PreparedPlaylistAsset
-from michi.application.ports import PlaylistArtworkStorePort
+from michi.application.playlist_asset_contract import (
+    PlaylistArtworkStoreContract,
+    PreparedPlaylistAsset,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +150,7 @@ def inspect_image(
     )
 
 
-class FilesystemPlaylistArtworkStore(PlaylistArtworkStorePort):
+class FilesystemPlaylistArtworkStore(PlaylistArtworkStoreContract):
     """Manages custom visual files inside the application data directory.
 
     R2 P2-02: managed assets are IMMUTABLE CONTENT-ADDRESSED candidates —
