@@ -200,7 +200,38 @@ Item {
                     root.selectionMode = true
                 }
             }
-            // PL-FINAL-15: en selection mode — remove batch (por PATH) + done.
+            // PL-FINAL-15/10-10-FINAL-04: en selection mode — select all
+            // visible (UNION), clear, remove batch (por PATH) + done.
+            MichiButton {
+                visible: root.selectionMode
+                text: qsTr("Select all visible")
+                variant: "ghost"
+                implicitHeight: MichiMetrics.controlMedium
+                enabled: (playlists.playlistTrackRows || []).length > 0
+                accessibleName: qsTr("Select every visible track")
+                onClicked: {
+                    // PL-10-FINAL-04: UNION — nunca reemplaza la selección
+                    // existente (paths de otros filtros se conservan).
+                    var rows = playlists.playlistTrackRows || []
+                    var visible = []
+                    for (var i = 0; i < rows.length; ++i)
+                        visible.push(rows[i].path)
+                    root.checkedTrackPaths = root._unionPaths(
+                        root.checkedTrackPaths, visible)
+                }
+            }
+            MichiButton {
+                visible: root.selectionMode
+                text: qsTr("Clear")
+                variant: "ghost"
+                implicitHeight: MichiMetrics.controlMedium
+                enabled: root.hasChecked
+                accessibleName: qsTr("Clear selection")
+                onClicked: {
+                    root.checkedTrackPaths = []
+                    root.shiftAnchorPath = ""
+                }
+            }
             MichiButton {
                 visible: root.selectionMode
                 text: qsTr("Remove %1").arg(root.checkedTrackPaths.length)
@@ -367,6 +398,10 @@ Item {
         id: detailMenu
         MenuItem {
             text: qsTr("Shuffle Play")
+            // PL-10-FINAL-06: con 0 tracks reproducibles el shuffle está
+            // deshabilitado (el handler defensivo de ContentHost tampoco
+            // ejecuta nada).
+            enabled: playlists && playlists.playlistAvailableTrackCount > 0
             onTriggered: root.shuffleRequested()
         }
         MenuItem {

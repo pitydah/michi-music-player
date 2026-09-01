@@ -25,7 +25,10 @@ from michi.application.errors import (
     PlaylistNameInvalidError,
     PlaylistPersistenceError,
 )
-from michi.application.playlist_asset_contract import PreparedPlaylistAsset
+from michi.application.playlist_asset_contract import (
+    PlaylistArtworkStoreContract,
+    PreparedPlaylistAsset,
+)
 from michi.application.ports import PlaylistArtworkStorePort, PlaylistsPort
 from michi.domain.playlist import (
     MAX_DESCRIPTION_LENGTH,
@@ -63,6 +66,16 @@ class PlaylistService:
         artwork_store: PlaylistArtworkStorePort | None = None,
     ) -> None:
         self._port = playlists_port
+        if artwork_store is not None and not isinstance(
+            artwork_store, PlaylistArtworkStoreContract
+        ):
+            # PL-10-FINAL-01: fail fast — un store que no implementa el
+            # contrato canónico NO puede usarse (nunca getattr fallback
+            # que invente ownership).
+            raise TypeError(
+                "artwork_store must implement "
+                "PlaylistArtworkStoreContract.prepare_candidate"
+            )
         self._artwork_store = artwork_store
         self._playlists: list[Playlist] = list(
             playlists_port.load() if playlists_port is not None else ()
@@ -459,23 +472,13 @@ class PlaylistService:
     def _prepare_asset(
         self, playlist_id: str, source_path, role: str
     ) -> PreparedPlaylistAsset | None:
-        """PL-FINAL-A07: UN solo contrato — el store DEBE implementar
-        ``prepare_candidate`` con content-addressed truth (reused files
-        marcados created_by_operation=False). NO existe fallback que
-        invente ownership: si el store no expone el contrato completo, la
-        operación falla cerrado (asset_rejected) — nunca se asume que un
-        path fue creado por esta operación."""
+        """PL-10-FINAL-01: llamada DIRECTA al contrato canónico. Sin
+        getattr, sin fallback que invente created_by_operation — el
+        constructor ya garantiza el contrato (TypeError fail-fast)."""
         store = self._artwork_store
         if store is None:
             return None
-        prepare_candidate = getattr(store, "prepare_candidate", None)
-        if prepare_candidate is None:
-            logger.warning(
-                "artwork store does not implement prepare_candidate — "
-                "refusing asset operation (fail-closed ownership)"
-            )
-            return None
-        return prepare_candidate(playlist_id, source_path, role)
+        return store.prepare_candidate(playlist_id, source_path, role)
 
     def set_custom_cover(self, playlist_id: str, cover_path: Path | str) -> str | None:
         """Sets managed custom cover. Validates, copies to app storage and persists."""

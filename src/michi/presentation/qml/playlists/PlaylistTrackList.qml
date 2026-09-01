@@ -196,7 +196,33 @@ Item {
 
             // Distinct states: selected = quiet elevation; playing = accent
             // title + animated indicator; both combine cleanly.
-            contentItem: RowLayout {
+            // PL-10-FINAL-03: la row interaction surface (MouseArea) vive
+            // DETRÁS del RowLayout de controles — el hit test QML salta el
+            // layout (sin handlers) y entrega el click del fondo al
+            // MouseArea con los modifiers REALES; los controles interactivos
+            // (checkbox/favorite/more) consumen los suyos.
+            contentItem: Item {
+                anchors.fill: parent
+
+                MouseArea {
+                    id: rowSurface
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: mouse => {
+                        if (root.selectionMode) {
+                            root.selectionToggleRequested(
+                                modelData.path,
+                                (mouse.modifiers & Qt.ShiftModifier) !== 0)
+                            return
+                        }
+                        root.trackSelected(modelData.path)
+                        if (trackItem.canInteract)
+                            root.playTrackRequested(trackItem.canonicalIndex)
+                    }
+                }
+
+                RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: MichiSpacing.md
                 anchors.rightMargin: MichiSpacing.sm
@@ -385,22 +411,9 @@ Item {
                     }
                     onClicked: trackMenu.popup()
                 }
+                }
             }
 
-            // Canonical product contract: one click both selects and plays —
-            // EXCEPT in selection mode (click toggles selection, NO
-            // playback) and for unavailable tracks (select only, NO play —
-            // PL-FINAL-A04 canInteract). Target identity is ALWAYS the
-            // canonical path (filter-safe).
-            onClicked: {
-                if (root.selectionMode) {
-                    root.selectionToggleRequested(modelData.path, false)
-                    return
-                }
-                root.trackSelected(modelData.path)
-                if (trackItem.canInteract)
-                    root.playTrackRequested(trackItem.canonicalIndex)
-            }
             // Keyboard navigation feedback: arrow keys move the ListView
             // currentIndex, so the focused row must also become the visible
             // selected row (otherwise the cursor moves invisibly)
@@ -416,9 +429,13 @@ Item {
                 if (trackItem.canInteract)
                     root.playTrackRequested(trackItem.canonicalIndex)
             }
-            Keys.onSpacePressed: {
+            Keys.onSpacePressed: event => {
                 if (root.selectionMode) {
-                    root.selectionToggleRequested(modelData.path, false)
+                    // PL-10-FINAL-03: Shift+Space = rango sobre las rows
+                    // visibles; el Detail calcula el rango por PATH.
+                    root.selectionToggleRequested(
+                        modelData.path,
+                        (event.modifiers & Qt.ShiftModifier) !== 0)
                     event.accepted = true
                 }
             }

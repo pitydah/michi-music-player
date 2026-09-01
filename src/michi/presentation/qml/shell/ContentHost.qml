@@ -130,6 +130,10 @@ Item {
                 }
                 onPlayRequested: playlists.play_selected_playlist()
                 onShuffleRequested: {
+                    // PL-10-FINAL-06: defensivo — sin tracks reproducibles
+                    // el shuffle no toca el motor ni el playback state.
+                    if (!playlists || playlists.playlistAvailableTrackCount <= 0)
+                        return
                     if (typeof playback !== "undefined" && playback)
                         playback.shuffle = true
                     playlists.play_selected_playlist()
@@ -148,14 +152,21 @@ Item {
                     descriptionDialog.open()
                 }
                 onRemoveTracksRequested: paths => {
-                    // PL-FINAL-A01: batch remove por PATH IDENTITY — el
-                    // bridge resuelve posiciones del snapshot canónico.
+                    // PL-10-FINAL-05: batch remove por PATH IDENTITY con
+                    // resultado estructurado TRUTHFUL — el toast usa el
+                    // conteo REAL de removidos, nunca la longitud del
+                    // intent (paths ya desaparecidos = missingCount).
                     var result = playlists.remove_tracks_by_paths(paths)
-                    if (result === "removed") {
+                    if (result.status === "removed") {
                         playlistDetail.checkedTrackPaths = []
                         playlistDetail.shiftAnchorPath = ""
                         playlistDetail.selectionMode = false
-                        window.showToast(qsTr("%n tracks removed", "", paths.length))
+                        var message = qsTr("%n tracks removed", "",
+                            result.removedCount)
+                        if (result.missingCount > 0)
+                            message += qsTr(" · %n no longer present", "",
+                                result.missingCount)
+                        window.showToast(message)
                     }
                     // "persistence_failed": connector reports exactly once.
                 }

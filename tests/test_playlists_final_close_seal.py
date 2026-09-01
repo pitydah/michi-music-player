@@ -30,6 +30,9 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtTest import QTest
 
 from michi.application.errors import PlaylistPersistenceError
+from michi.application.playlist_asset_contract import (
+    PlaylistArtworkStoreContract,
+)
 from michi.application.playlist_service import PlaylistService
 from michi.infrastructure.playlist_artwork_store import (
     FilesystemPlaylistArtworkStore,
@@ -176,11 +179,13 @@ class TestBridgeMetaobject:
         port = bridge._playlist_service._port
         writes_before = len(port.saved)
 
-        # Orden arbitrario + path inexistente → resuelve contra el snapshot
-        # canónico actual; el path desaparecido se saltea truthful.
+        # PL-10-FINAL-05: resultado estructurado TRUTHFUL — el path
+        # desaparecido se cuenta como missing, nunca se silencia.
         result = bridge.remove_tracks_by_paths(["/d.flac", "/zzz.flac", "/a.flac"])
 
-        assert result == "removed"
+        assert result["status"] == "removed"
+        assert result["removedCount"] == 2
+        assert result["missingCount"] == 1
         assert service.get_playlist(playlist.playlist_id).track_paths == (
             "/b.flac",
             "/c.flac",
@@ -194,11 +199,16 @@ class TestBridgeMetaobject:
         bridge._coordinator.open_playlist(playlist.playlist_id)
         port = bridge._playlist_service._port
         writes_before = len(port.saved)
-        assert bridge.remove_tracks_by_paths(["/ghost.flac"]) == "no_change"
-        assert bridge.remove_tracks_by_paths([]) == "invalid"
+        no_change = bridge.remove_tracks_by_paths(["/ghost.flac"])
+        assert no_change["status"] == "no_change"
+        assert no_change["removedCount"] == 0
+        assert no_change["missingCount"] == 1
+        invalid = bridge.remove_tracks_by_paths([])
+        assert invalid["status"] == "invalid"
         assert len(port.saved) == writes_before, "cero writes en no-op/invalid"
         bridge.set_playlist_search_query("x")
-        assert bridge.remove_tracks_by_paths(["/a.flac"]) == "removed", (
+        removed = bridge.remove_tracks_by_paths(["/a.flac"])
+        assert removed["status"] == "removed" and removed["removedCount"] == 1, (
             "paths no dependen del filtro"
         )
 
@@ -216,7 +226,9 @@ class TestBridgeMetaobject:
         bridge, coord, nav = _make_bridge(service)
         coord.open_playlist(playlist.playlist_id)
         port._remaining = 1
-        assert bridge.remove_tracks_by_paths(["/a.flac"]) == "persistence_failed"
+        failed = bridge.remove_tracks_by_paths(["/a.flac"])
+        assert failed["status"] == "persistence_failed"
+        assert failed["removedCount"] == 0
         assert service.get_playlist(playlist.playlist_id).track_paths == (
             "/a.flac",
             "/b.flac",
@@ -356,22 +368,37 @@ class TestPickerCanonicalMembership:
 # ==========================================================================
 
 
-class _LegacyStore:
-    """Store que NO implementa prepare_candidate — el service debe
-    rechazar la operación fail-closed (nunca inventar ownership)."""
+class _IncompleteStore:
+    """NO implementa el contrato canónico — el Service debe rechazarlo
+    fail-fast en la construcción (TypeError), nunca getattr fallback."""
 
     def prepare_cover(self, playlist_id, source):
         return "/fake/cover.png"
 
-    def prepare_hero(self, playlist_id, source):
-        return "/fake/hero.png"
+
+class _LegacyStore(PlaylistArtworkStoreContract):
+    """Store que implementa el contrato pero rechaza candidates — el
+    Service nunca usa fallbacks que inventen ownership."""
+
+    def prepare_candidate(self, playlist_id, source, role):
+        return None
 
     def delete_managed_asset(self, playlist_id, role, path):
         return True
 
 
 class TestAssetContractSingle:
-    def test_service_refuses_store_without_prepare_candidate(self, tmp_path):
+    def test_service_refuses_store_without_contract_fail_fast(self, tmp_path):
+        with pytest.raises(TypeError):
+            PlaylistService(
+                playlists_port=FakePlaylistsPort(),
+                artwork_store=_IncompleteStore(),
+            )
+
+    def test_service_accepts_contract_store_and_rejects_candidates(
+        self,
+        tmp_path,
+    ):
         service = PlaylistService(
             playlists_port=FakePlaylistsPort(), artwork_store=_LegacyStore()
         )
@@ -385,7 +412,7 @@ class TestAssetContractSingle:
                 hero_mode="auto",
             )
             == "asset_rejected"
-        ), "sin prepare_candidate → fail-closed, nunca ownership inventada"
+        ), "candidate rechazado → asset_rejected, nunca ownership inventada"
         assert service.get_playlist(playlist.playlist_id).custom_cover_path == ""
         assert service.set_custom_cover(playlist.playlist_id, src) is None
 
@@ -597,13 +624,11 @@ class TestPickerRuntime:
         engine = QQmlEngine()
         engine.addImportPath(str(QML_DIR))
 
-        class _FakeLibrary:
-            # N815: proyección canónica expuesta a QML (convención UI).
-            songRows = library_rows  # noqa: N815
-
-        engine.rootContext().setContextProperty("library", _FakeLibrary())
-
         class _FakePlaylists:
+            # PL-10-FINAL-02: catálogo canónico (addTrackCandidateRows).
+            def __init__(self, rows):
+                self.addTrackCandidateRows = rows  # noqa: N815
+
             def add_tracks(self, playlist_id, paths):
                 self.added = list(paths)
                 return {
@@ -612,7 +637,7 @@ class TestPickerRuntime:
                     "alreadyPresentCount": 0,
                 }
 
-        fake = _FakePlaylists()
+        fake = _FakePlaylists(library_rows)
         engine.rootContext().setContextProperty("playlists", fake)
         component = QQmlComponent(engine)
         qml_path = QML_DIR / "playlists" / "PlaylistTrackPicker.qml"

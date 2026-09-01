@@ -35,6 +35,9 @@ from PySide6.QtWidgets import QApplication
 
 from michi.application.errors import PlaylistPersistenceError
 from michi.application.navigation_service import NavigationService
+from michi.application.playlist_asset_contract import (
+    PlaylistArtworkStoreContract,
+)
 from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
@@ -140,9 +143,9 @@ def _bridge(
     return service, nav, coord, pb
 
 
-class _StoreStub:
-    """Duck-typed artwork store — PL-FINAL-A07: implements the canonical
-    prepare_candidate contract (the service refuses stores without it)."""
+class _StoreStub(PlaylistArtworkStoreContract):
+    """Duck-typed artwork store — PL-10-FINAL-01: implements the canonical
+    prepare_candidate contract (the Service refuses stores without it)."""
 
     def prepare_cover(self, playlist_id, source):
         return None
@@ -153,8 +156,8 @@ class _StoreStub:
     def prepare_candidate(self, playlist_id, source_path, role):
         return None
 
-    def delete_managed_asset(self, managed_path):
-        del managed_path
+    def delete_managed_asset(self, playlist_id, role, managed_path):
+        return False
 
 
 def _engine_with(bridge, window=None, playback=None, queue=None):
@@ -486,7 +489,6 @@ class TestFailureFeedback:
         from michi.application.playlist_navigation_coordinator import (
             PlaylistNavigationCoordinator,
         )
-        from michi.application.playlist_service import PlaylistService
         from michi.presentation.playlists_bridge import PlaylistsBridge
 
         service = PlaylistService(playlists_port=FakePlaylistsPort())

@@ -79,36 +79,59 @@ MichiDialog {
                 : root.customCoverPath
     property url draftCoverImageUrl: ""
     property string errorText: ""
-    // PL-FINAL-B02: palette del DRAFT cover — preview WYSIWYG real. El
-    // generation token descarta callbacks stale (draft A nunca sobrescribe
-    // B). NUNCA se persiste; mientras no llega, palette neutral.
+    // PL-FINAL-B02/10-10-FINAL-07: palette del DRAFT cover — preview
+    // WYSIWYG real. El generation token descarta callbacks stale (draft A
+    // nunca sobrescribe B). NUNCA se persiste; mientras está pendiente el
+    // preview usa la palette NEUTRAL (nunca la persistida de otro artwork).
     property int draftPaletteGeneration: 0
+    property bool draftPalettePending: false
     property var draftPaletteColors: []
     readonly property var previewAutoColors:
-        root.draftPaletteColors.length >= 2
-            ? root.draftPaletteColors
-            : root.autoHeroColors
+        root.draftPalettePending
+            ? root._neutralPalette
+            : root.draftPaletteColors.length >= 2
+                ? root.draftPaletteColors
+                : root._neutralPalette
     readonly property var _neutralPalette:
         [MichiPalette.playlistHeroTopHex, MichiPalette.playlistHeroMidHex,
          MichiPalette.playlistHeroBottomHex]
 
+    // PL-10-FINAL-07: las fuentes EXACTAS del draft cover —
+    //   replace → [draftCoverImageUrl]
+    //   auto (mosaic) → mosaicArtworkPaths[:4]
+    //   keep con custom → [customCoverPath]
+    //   keep sin custom → mosaicArtworkPaths[:4]
+    function _draftPaletteSources() {
+        if (root.draftCoverAction === "replace"
+                && root.draftCoverImageUrl.toString().length > 0)
+            return [root.draftCoverImageUrl.toString()]
+        if (root.draftCoverAction === "auto")
+            return (root.mosaicArtworkPaths || []).slice(0, 4)
+        if (root.customCoverPath.length > 0)
+            return [root.customCoverPath]
+        return (root.mosaicArtworkPaths || []).slice(0, 4)
+    }
+
     function _requestDraftPalette() {
-        root.draftPaletteColors = []
         root.draftPaletteGeneration += 1
-        var gen = root.draftPaletteGeneration
-        var cover = root.draftPreviewCoverPath
-        if (cover.length > 0)
-            playlists.request_draft_palette(cover, gen)
+        root.draftPalettePending = true
+        root.draftPaletteColors = []
+        playlists.request_draft_palette(
+            root._draftPaletteSources(),
+            root.draftPaletteGeneration)
     }
 
     onDraftPreviewCoverPathChanged: root._requestDraftPalette()
-
     Connections {
         target: typeof playlists !== "undefined" ? playlists : null
-        function onDraftPaletteReady(generation, colors) {            // PL-FINAL-B02: SOLO el generation actual gana.
-            if (generation === root.draftPaletteGeneration && colors
-                    && colors.length >= 2)
-                root.draftPaletteColors = colors
+        function onDraftPaletteReady(generation, colors) {
+            // PL-FINAL-B02/10-10-FINAL-07: SOLO el generation actual gana;
+            // al llegar (o fallar a neutral), el pending termina.
+            if (generation === root.draftPaletteGeneration) {
+                root.draftPaletteColors = (colors && colors.length >= 2)
+                    ? colors : root._neutralPalette
+                root.draftPalettePending = false
+            }
         }
     }
 

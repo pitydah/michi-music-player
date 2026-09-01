@@ -6,13 +6,13 @@ import "../media"
 import "../primitives"
 import "../theme"
 
-// PL-FINAL-13 — Playlist Add Tracks picker: real workflow, stays in the
-// playlist context. Reuses the CANONICAL library track projection
-// (library.songRows) — no second scanner, no independent metadata source.
-// Multi-select, search, Select All (visible filtered), existing playlist
-// tracks visibly marked and not addable, keyboard accessible, Esc closes,
-// Add disabled with zero new selections, batch add (ONE persist) via
-// playlists.add_tracks.
+// PL-FINAL-13 + PL-10-FINAL-02: Playlist Add Tracks picker: real workflow,
+// stays in the playlist context. The catalog is the CANONICAL playlist
+// projection (playlists.addTrackCandidateRows over LibraryService.state
+// .tracks) — NEVER LibraryBridge.songRows, which is filtered by the global
+// Library search UI. Local search, multi-select, Select All visible
+// (UNION), existing playlist tracks visibly marked and not addable,
+// keyboard accessible, Esc closes, batch add (ONE persist).
 MichiDialog {
     id: root
 
@@ -59,13 +59,31 @@ MichiDialog {
     }
 
     function _refresh() {
-        var all = (typeof library !== "undefined" && library) ? library.songRows : []
+        var all = (typeof playlists !== "undefined" && playlists)
+            ? playlists.addTrackCandidateRows : []
         var out = []
         for (var i = 0; i < all.length; ++i) {
             if (root._matches(all[i]))
                 out.push(all[i])
         }
         root.visibleRows = out
+        // PL-10-FINAL-15: si el CATÁLOGO cambió mientras el diálogo está
+        // abierto, los paths que desaparecieron se podan de la selección
+        // (nunca selecciones fantasma); los que siguen, se mantienen.
+        root._pruneSelection(all)
+    }
+
+    function _pruneSelection(all) {
+        var catalog = {}
+        for (var i = 0; i < all.length; ++i)
+            catalog[all[i].path] = true
+        var kept = []
+        for (var j = 0; j < root.selectedPaths.length; ++j) {
+            if (catalog[root.selectedPaths[j]])
+                kept.push(root.selectedPaths[j])
+        }
+        if (kept.length !== root.selectedPaths.length)
+            root.selectedPaths = kept
     }
 
     function _rebuildPresentMap() {
@@ -129,6 +147,12 @@ MichiDialog {
     Connections {
         target: typeof library !== "undefined" ? library : null
         function onLibrary_changed() { root._refresh() }
+    }
+    Connections {
+        // PL-10-FINAL-02: el picker solo reacciona al CATÁLOGO CANÓNICO —
+        // la búsqueda global de Library no lo afecta.
+        target: typeof playlists !== "undefined" ? playlists : null
+        function onTrackCatalogChanged() { root._refresh() }
     }
 
     contentItem: ColumnLayout {
