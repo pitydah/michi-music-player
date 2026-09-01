@@ -396,7 +396,8 @@ class TestAssetContractSingle:
             )
 
     def test_service_accepts_contract_store_and_rejects_candidates(
-        self, tmp_path,
+        self,
+        tmp_path,
     ):
         service = PlaylistService(
             playlists_port=FakePlaylistsPort(), artwork_store=_LegacyStore()
