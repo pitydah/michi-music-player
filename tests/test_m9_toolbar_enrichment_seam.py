@@ -1,13 +1,16 @@
 """POST-MERGE MICRO-FIX — toolbar R4 + M6.9 enrichment layout seam.
 
 P0-07 runtime geometry: Search/Scan/Enrich real x/y/width/height at
-1920/1440/1200/900 — no overlap, positive dimensions, inside toolbar,
-zero layout warnings.
+1920/1440/1200/900 — positive dimensions, INSIDE the toolbar bounds
+(x+w <= toolbar_w + EPSILON), no overlap, zero layout warnings.
 P0-08 parenting: libraryEnrichButton.parent != libraryScanSplitButton
-and both are siblings under the same GridLayout.
+and both are siblings under libraryNavigationGrid.
 P0-09 compact Enrich icon: width=900 + Online ON + IDLE → visible,
 iconOnly, sparkles icon, valid accessibleName.
-P0-10 scan active: enrich hidden while scanning.
+P0-01..05 scan visibility: a REAL scan through the productive intent
+(performScan → scan_all_sources → SourceScanLifecycle → manual
+pipeline) transitions scanActive False→True and enrich.visible True→False
+with exactly 1 lifecycle submission.
 """
 
 import os
@@ -16,7 +19,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
-from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot  # noqa: F401
 from PySide6.QtQuick import QQuickView
 from PySide6.QtTest import QTest
 
@@ -25,6 +28,10 @@ from michi.application.ports import LibraryPrefsPort
 from michi.application.source_scan_coordinator import SourceScanCoordinator
 from michi.application.source_scan_lifecycle import SourceScanLifecycle
 from michi.domain.library import LibraryPrefs
+from michi.domain.library_catalog import (
+    LibrarySource,
+    new_library_source_id,
+)
 from michi.infrastructure.filesystem_source_scanner import (
     FilesystemLibrarySourceScanner,
 )
@@ -33,6 +40,8 @@ from michi.infrastructure.library_media_cache import SqliteLibraryMediaCache
 from michi.presentation.library_bridge import LibraryBridge
 
 QML_DIR = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
+
+EPSILON = 1.0
 
 
 class _Prefs(LibraryPrefsPort):
@@ -43,20 +52,29 @@ class _Prefs(LibraryPrefsPort):
         del prefs
 
 
-class _Pipeline:
+class _ManualPipeline:
+    """P0-03: pipeline que NO ejecuta el work — el lifecycle permanece
+    ACTIVO mientras el test inspecciona scanActive. Nunca se llama
+    on_done() antes de verificar la invisibilidad de Enrich."""
+
     def __init__(self):
         self.submissions = []
 
     def submit(self, generation, work, on_progress, on_done):
-        self.submissions.append((1, work))
+        self.submissions.append(
+            {
+                "generation": generation,
+                "work": work,
+                "on_progress": on_progress,
+                "on_done": on_done,
+            }
+        )
 
     def cancel(self, generation):
         pass
 
 
 class _FakeEnrichment(QObject):  # noqa: N815 (QML properties)
-    """QML-compatible enrichment double (Properties, no fake Python attrs)."""
-
     changed = Signal()
 
     def __init__(self):
@@ -65,9 +83,6 @@ class _FakeEnrichment(QObject):  # noqa: N815 (QML properties)
         self._state = "IDLE"
         self._processed = 0
         self._total = 0
-
-    def _online(self):
-        return self._online
 
     onlineEnabled = Property(bool, lambda self: self._online, notify=changed)
     enrichmentJobState = Property(str, lambda self: self._state, notify=changed)
@@ -87,7 +102,9 @@ class _FakePlayback(QObject):
     currentPath = Property(str, lambda self: "")
 
 
-def _world(tmp_path):
+def _world(tmp_path, with_source=False):
+    """Real world: LibraryBridge + SourceScanLifecycle + Coordinator +
+    manual pipeline (mismo patrón que los gates P1.1/R4)."""
     db_path = tmp_path / "michi.db"
     catalog = SqliteLibraryCatalogRepository(db_path)
     library = LibraryService(FilesystemLibrarySourceScanner(), library_prefs=_Prefs())
@@ -97,18 +114,29 @@ def _world(tmp_path):
         FilesystemLibrarySourceScanner(),
         media_cache=SqliteLibraryMediaCache(db_path),
     )
-    lifecycle = SourceScanLifecycle(coord, _Pipeline())
+    pipeline = _ManualPipeline()
+    lifecycle = SourceScanLifecycle(coord, pipeline)
     bridge = LibraryBridge(
         library, source_coordinator=coord, source_scan_lifecycle=lifecycle
     )
-    return bridge
+    if with_source:
+        source_dir = tmp_path / "music"
+        source_dir.mkdir(exist_ok=True)
+        (source_dir / "a.flac").write_bytes(b"x")
+        source = LibrarySource(
+            library_source_id=new_library_source_id(),
+            display_name="Music",
+            root_path=str(source_dir),
+        )
+        catalog.upsert_source(source)
+        coord.list_sources()
+        bridge.library_changed.emit()
+    return bridge, pipeline
 
 
-def _toolbar(qapp, tmp_path, width, scan_active=False):
-    bridge = _world(tmp_path)
+def _toolbar(qapp, tmp_path, width, with_source=False):
+    bridge, pipeline = _world(tmp_path, with_source=with_source)
     enrichment = _FakeEnrichment()
-    if scan_active:
-        bridge._scan_state = None
     view = QQuickView()
     view.engine().addImportPath(str(QML_DIR))
     view.rootContext().setContextProperty("library", bridge)
@@ -120,7 +148,7 @@ def _toolbar(qapp, tmp_path, width, scan_active=False):
     view.resize(width, 400)
     view.show()
     QTest.qWait(30)
-    return view, bridge, enrichment
+    return view, bridge, pipeline, enrichment
 
 
 def _geo(view, object_name):
@@ -138,11 +166,12 @@ def _no_overlap(a, b):
     return ax + aw <= bx or bx + bw <= ax or ay + ah <= by or by + bh <= ay
 
 
-def test_toolbar_runtime_geometry_no_overlap(qapp, tmp_path):
-    """P0-07: en los 4 anchos los controles visibles tienen dimensiones
-    positivas, no se superponen y quedan dentro del toolbar."""
+def test_toolbar_runtime_geometry_inside_bounds_no_overlap(qapp, tmp_path):
+    """P0-06/07: en los 4 anchos los controles visibles tienen
+    dimensiones positivas, quedan DENTRO del toolbar (con tolerancia
+    mínima EPSILON) y no se superponen."""
     for width in (1920, 1440, 1200, 900):
-        view, bridge, enrichment = _toolbar(qapp, tmp_path, width)
+        view, bridge, pipeline, enrichment = _toolbar(qapp, tmp_path, width)
         scan = _geo(view, "libraryScanSplitButton")
         enrich = _geo(view, "libraryEnrichButton")
         search = _geo(view, "resizableLibrarySearchPane")
@@ -150,21 +179,30 @@ def test_toolbar_runtime_geometry_no_overlap(qapp, tmp_path):
         assert scan is not None, f"{width}: scan presente"
         assert enrich is not None, f"{width}: enrich presente"
         assert search is not None, f"{width}: search presente"
-        assert scan[2] > 0 and scan[3] > 0, f"{width}: scan dimensiones > 0"
+        assert scan[2] > 0 and scan[3] > 0, f"{width}: scan > 0"
         assert enrich[2] > 0 and enrich[3] > 0, f"{width}: enrich > 0"
         assert search[2] > 0 and search[3] > 0, f"{width}: search > 0"
-        assert _no_overlap(scan, enrich), f"{width}: scan/enrich no se superponen"
-        assert _no_overlap(search, scan), f"{width}: search/scan no se superponen"
-        assert _no_overlap(search, enrich), f"{width}: search/enrich no se superponen"
+        toolbar_w = view.width()
+        toolbar_h = view.height()
         for name, geo in (("scan", scan), ("enrich", enrich), ("search", search)):
-            assert geo[0] >= 0 and geo[1] >= 0, f"{width}: {name} dentro del toolbar"
+            x, y, w, h = geo
+            assert x >= 0 and y >= 0, f"{width}: {name} x/y >= 0"
+            assert x + w <= toolbar_w + EPSILON, (
+                f"{width}: {name} dentro del ancho del toolbar ({x}+{w} <= {toolbar_w})"
+            )
+            assert y + h <= toolbar_h + EPSILON, (
+                f"{width}: {name} dentro del alto del toolbar"
+            )
+        assert _no_overlap(scan, enrich), f"{width}: scan/enrich sin overlap"
+        assert _no_overlap(search, scan), f"{width}: search/scan sin overlap"
+        assert _no_overlap(search, enrich), f"{width}: search/enrich sin overlap"
         view.close()
 
 
 def test_enrich_button_is_sibling_of_scan_button(qapp, tmp_path):
     """P0-08: libraryEnrichButton NO es hijo de libraryScanSplitButton —
-    ambos son hermanos bajo el GridLayout (el bug estructural sellado)."""
-    view, bridge, enrichment = _toolbar(qapp, tmp_path, 1440)
+    ambos son hermanos bajo libraryNavigationGrid."""
+    view, bridge, pipeline, enrichment = _toolbar(qapp, tmp_path, 1440)
     root = view.rootObject()
     enrich = root.findChild(QObject, "libraryEnrichButton")
     scan = root.findChild(QObject, "libraryScanSplitButton")
@@ -180,7 +218,7 @@ def test_enrich_button_is_sibling_of_scan_button(qapp, tmp_path):
 def test_compact_enrich_icon_visible_with_sparkles(qapp, tmp_path):
     """P0-09: width=900 + Online ON + IDLE → visible, iconOnly, sparkles,
     accessibleName válido (nunca un botón icon-only vacío)."""
-    view, bridge, enrichment = _toolbar(qapp, tmp_path, 900)
+    view, bridge, pipeline, enrichment = _toolbar(qapp, tmp_path, 900)
     root = view.rootObject()
     enrich = root.findChild(QObject, "libraryEnrichButton")
     assert enrich.property("visible") is True
@@ -190,18 +228,38 @@ def test_compact_enrich_icon_visible_with_sparkles(qapp, tmp_path):
     view.close()
 
 
-def test_enrich_hidden_while_scanning(qapp, tmp_path):
-    """P0-10: scan activo → enrich invisible (no compite con el scan)."""
-    view, bridge, enrichment = _toolbar(qapp, tmp_path, 1440)
+def test_scan_active_hides_enrich_through_real_scan(qapp, tmp_path):
+    """P0-01..05: un scan REAL (intención productiva → scan_all_sources
+    → SourceScanLifecycle → pipeline manual pendiente) transiciona
+    scanActive False→True y enrich.visible True→False, con exactamente
+    1 submission al lifecycle. Sin estado privado simulado."""
+    view, bridge, pipeline, enrichment = _toolbar(
+        qapp, tmp_path, 1440, with_source=True
+    )
     root = view.rootObject()
     enrich = root.findChild(QObject, "libraryEnrichButton")
-    # La property visible del botón incluye !root.scanning (gate).
-    toolbar_src = (QML_DIR / "views" / "LibraryToolbar.qml").read_text()
-    visible_block = toolbar_src.split("id: enrichButton", 1)[1].split("text: {", 1)[0]
-    assert "!root.scanning" in visible_block
-    # scanActive es UNA truth del bridge (lifecycle) — nunca terminal
-    # strings inferidos en QML.
-    assert "library.scanActive" in toolbar_src
-    # Con el bridge en reposo (scanActive False) enrich sigue visible.
+
+    # Estado inicial: reposo.
+    assert bridge.scanActive is False
     assert enrich.property("visible") is True
+
+    # Intención productiva: primary del split button → performScan →
+    # scan_all_sources() (el slot canónico del Bridge).
+    scan = root.findChild(QObject, "libraryScanSplitButton")
+    meta = scan.metaObject()
+    primary_index = meta.indexOfMethod("primaryClicked()")
+    assert primary_index >= 0, "MichiSplitButton.primaryClicked disponible"
+    meta.method(primary_index).invoke(scan)
+    QTest.qWait(30)
+
+    # El scan quedó PENDIENTE (pipeline manual no ejecuta on_done).
+    assert len(pipeline.submissions) == 1, (
+        "la intención llegó al lifecycle: exactamente 1 submission"
+    )
+    assert bridge.scanActive is True, "scanActive publica True (autoridad real)"
+    assert enrich.property("visible") is False, "enrich oculto durante el scan activo"
+
+    # El scan sigue activo (on_done nunca se llamó) — el estado se
+    # mantiene coherente.
+    assert bridge.scanActive is True
     view.close()
