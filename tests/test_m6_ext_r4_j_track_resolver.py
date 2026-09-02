@@ -302,7 +302,6 @@ class TestSelectionResolverStableIds:
             LibraryPlaylistCoordinator,
         )
         from michi.application.playlist_service import PlaylistService
-        from michi.domain.playlist import PlaylistTrackReference
 
         t1 = _track("/a.flac", "T1")
         library, session, backend, resolver, coordinator, history, prefs = _harness(

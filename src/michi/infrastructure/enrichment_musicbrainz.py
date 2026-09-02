@@ -9,12 +9,18 @@ ascending) — provider score never influences identity.
 Policy: central rate limiter (<= 1 request/sec), bounded retries only
 for 429/502/503/504 (max 3 attempts; Retry-After honored; else 1s/2s),
 provider response cache with TTLs (search 7d / lookup 30d), max 5
-artist candidates and 50 release groups inspected per candidate.
+artist candidates and bounded release-group browse paging.
+
+M6.9 REOPENED (provider contract completion): the release-group browse
+endpoint never passes ``type=release-group`` (the endpoint entity is not
+a valid value of the ``type`` filter). Lucene query syntax is escaped
+separately from URL encoding; every request URL is built through the
+central helpers so a request is auditable without re-interpolating.
 """
 
 import json
 import time
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from michi.application.enrichment_ports import (
     EnrichmentProviderError,
@@ -42,9 +48,19 @@ from michi.infrastructure.enrichment_provider_cache import (
 
 API_ROOT = "https://musicbrainz.org/ws/2"
 MAX_ARTIST_CANDIDATES = 5
-MAX_RELEASE_GROUPS_PER_CANDIDATE = 50
+# M6.9 REOPENED: release-group browse pagination (bounded). A page that
+# returns fewer than PAGE_SIZE items is the last one; never download a
+# full discography by default.
+RELEASE_GROUP_PAGE_SIZE = 100
+MAX_RELEASE_GROUP_PAGES = 3
+MAX_RELEASE_GROUPS_TOTAL = 300
 _MAX_RELEASE_EDITION_LOOKUPS = 5
 _RETRYABLE_STATUS = (429, 502, 503, 504)
+
+# Lucene special characters in the MusicBrainz search syntax. These must
+# be backslash-escaped INSIDE a field value — urllib.parse.quote() only
+# handles URL encoding and does NOT make a value safe for Lucene.
+_LUCENE_SPECIALS = set('+-&|!(){}[]^"~*?:\\/')
 
 
 def _require_str(payload: dict, key: str) -> str:
@@ -54,6 +70,29 @@ def _require_str(payload: dict, key: str) -> str:
             f"provider payload field {key!r} missing or not a non-blank str"
         )
     return value
+
+
+def escape_musicbrainz_lucene(value: str) -> str:
+    """M6.9 REOPENED: escape MusicBrainz Lucene query syntax.
+
+    URL-encoding (quote) does NOT make a value safe inside a Lucene
+    query: characters like ``:``, ``/``, ``+``, ``(``, ``)``, ``"`` are
+    syntax in the search dialect. Every special character is prefixed
+    with a backslash; the result is a valid literal for a field query.
+    """
+    return "".join(f"\\{ch}" if ch in _LUCENE_SPECIALS else ch for ch in value)
+
+
+def _musicbrainz_query_url(
+    endpoint: str, params: dict[str, str], ttl_category: str
+) -> str:
+    """M6.9 REOPENED: central request construction — one auditable place.
+
+    ``params`` values are URL-encoded with urlencode (no manual
+    interpolation of local input); the endpoint is a fixed allowlisted
+    path under API_ROOT."""
+    query = urlencode(params)
+    return f"{API_ROOT}/{endpoint}?{query}"
 
 
 def _require_list(payload: dict, key: str) -> list:
@@ -154,10 +193,11 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
     def find_artist_candidates(
         self, evidence: ArtistIdentityEvidence
     ) -> tuple[ArtistCandidate, ...]:
-        url = (
-            f"{API_ROOT}/artist/?query="
-            f"{quote(f'artist:{evidence.local_artist_name}')}"
-            "&fmt=json&limit=25"
+        escaped = escape_musicbrainz_lucene(evidence.local_artist_name)
+        url = _musicbrainz_query_url(
+            "artist/",
+            {"query": f"artist:{escaped}", "fmt": "json", "limit": "25"},
+            "musicbrainz_search",
         )
         payload = self._get_json(url, "musicbrainz_search")
         artists = _require_list(payload, "artists")
@@ -188,23 +228,48 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
         return tuple(sorted(candidates, key=lambda c: c.external_artist_id))
 
     def _known_albums_for(self, artist_id: str) -> tuple[LocalAlbumEvidence, ...]:
-        url = (
-            f"{API_ROOT}/release-group/?artist={quote(artist_id)}"
-            "&type=release-group&fmt=json&limit="
-            f"{MAX_RELEASE_GROUPS_PER_CANDIDATE}"
-        )
-        payload = self._get_json(url, "musicbrainz_lookup")
-        groups = _require_list(payload, "release-groups")
+        """M6.9 REOPENED: release-group browse with the REAL contract.
+
+        Endpoint: /ws/2/release-group/?artist=<MBID>&fmt=json&limit=100
+        The ``type`` filter is NOT passed — ``release-group`` is the
+        endpoint entity, not a valid value of the ``type`` parameter.
+        Bounded pagination: up to MAX_RELEASE_GROUP_PAGES pages of
+        RELEASE_GROUP_PAGE_SIZE, stopping early when a page comes back
+        short (no further pages); results are deduplicated by title."""
         albums: list[LocalAlbumEvidence] = []
-        for raw in groups:
-            if not isinstance(raw, dict):
-                continue
-            title = _optional_str(raw, "title")
-            if not title:
-                continue
-            albums.append(
-                LocalAlbumEvidence(title=title, year=_first_release_year(raw))
+        seen_titles: set[str] = set()
+        offset = 0
+        for _page in range(MAX_RELEASE_GROUP_PAGES):
+            url = _musicbrainz_query_url(
+                "release-group/",
+                {
+                    "artist": artist_id,
+                    "fmt": "json",
+                    "limit": str(RELEASE_GROUP_PAGE_SIZE),
+                    "offset": str(offset),
+                },
+                "musicbrainz_lookup",
             )
+            payload = self._get_json(url, "musicbrainz_lookup")
+            groups = _require_list(payload, "release-groups")
+            for raw in groups:
+                if not isinstance(raw, dict):
+                    continue
+                title = _optional_str(raw, "title")
+                if not title:
+                    continue
+                normalized = title.casefold()
+                if normalized in seen_titles:
+                    continue
+                seen_titles.add(normalized)
+                albums.append(
+                    LocalAlbumEvidence(title=title, year=_first_release_year(raw))
+                )
+                if len(albums) >= MAX_RELEASE_GROUPS_TOTAL:
+                    return tuple(albums)
+            if len(groups) < RELEASE_GROUP_PAGE_SIZE:
+                break  # short page = last page
+            offset += len(groups)
         return tuple(albums)
 
     # -- release-group candidates ------------------------------------------
@@ -212,10 +277,16 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
     def find_release_group_candidates(
         self, evidence: AlbumIdentityEvidence
     ) -> tuple[ReleaseGroupCandidate, ...]:
-        query = f"releasegroup:{evidence.local_album_title}"
+        escaped_title = escape_musicbrainz_lucene(evidence.local_album_title)
+        query = f"releasegroup:{escaped_title}"
         if evidence.local_album_artist_name:
-            query += f" AND artist:{evidence.local_album_artist_name}"
-        url = f"{API_ROOT}/release-group/?query={quote(query)}&fmt=json&limit=25"
+            escaped_artist = escape_musicbrainz_lucene(evidence.local_album_artist_name)
+            query += f" AND artist:{escaped_artist}"
+        url = _musicbrainz_query_url(
+            "release-group/",
+            {"query": query, "fmt": "json", "limit": "25"},
+            "musicbrainz_search",
+        )
         payload = self._get_json(url, "musicbrainz_search")
         groups = _require_list(payload, "release-groups")
         candidates: list[ReleaseGroupCandidate] = []

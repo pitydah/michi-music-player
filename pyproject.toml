@@ -15,6 +15,11 @@ test = ["pytest>=8", "ruff>=0.9", "build>=1"]
 [project.scripts]
 michi = "michi.__main__:main"
 
+[tool.pytest.ini_options]
+markers = [
+    "live_network: opt-in live provider contract tests (MICHI_RUN_LIVE_NETWORK_TESTS=1)",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
@@ -47,6 +52,8 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
 "**/presentation/*bridge.py" = ["N815", "E501"]
 "**/test_settings_view.py" = ["N815"]
 "**/test_m6_9_presentation_qml.py" = ["N815", "E501"]
+"src/michi/application/library_enrichment_job.py" = ["N815"]
+"tests/test_m6_9_enrichment_job.py" = ["N815"]
 "**/infrastructure/sqlite_settings.py" = ["E501"]
 "**/infrastructure/qt_backend.py" = ["SIM105"]
 "**/bootstrap/__init__.py" = ["E501"]

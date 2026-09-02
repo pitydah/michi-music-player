@@ -233,8 +233,7 @@ class TestToolbarContract:
         """FREEZE AUDIT P1 GATE (runtime): invocar performScan() del
         toolbar REAL con un source configurado somete al
         SourceScanLifecycle (scan_all_sources) — nunca al pipeline legacy."""
-        from PySide6.QtCore import QUrl
-        from PySide6.QtQml import QQmlComponent, QQmlEngine
+        from PySide6.QtQml import QQmlEngine
 
         library, catalog, coordinator, lifecycle, pipeline, bridge = _world(tmp_path)
         source = _source(tmp_path, "a")

@@ -28,7 +28,6 @@ from michi.domain.library_catalog import (
     new_media_file_id,
     new_track_id,
 )
-from michi.domain.playlist import PlaylistTrackReference
 from michi.infrastructure.filesystem_source_scanner import (
     FilesystemLibrarySourceScanner,
 )

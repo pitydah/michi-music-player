@@ -191,6 +191,40 @@ MichiGlassSurface {
                     variant: "secondary"
                     onClicked: { if (root.libraryAvailable) library.cancel_scan() }
                 }
+
+                // M6.9 REOPENED — Enrich Library: acción global EXPLÍCITA
+                // (nunca automática tras scan; Online Library Enrichment
+                // debe estar ON). Progreso real del backend, no fabricado.
+                MichiButton {
+                    id: enrichButton
+                    visible: !root.scanning
+                        && typeof enrichment !== "undefined" && enrichment
+                        && enrichment.onlineEnabled
+                    text: {
+                        if (enrichment.enrichmentJobState === "RUNNING"
+                                || enrichment.enrichmentJobState === "PREPARING"
+                                || enrichment.enrichmentJobState === "CANCELLING")
+                            return qsTr("Enriching Library… %1 / %2")
+                                .arg(enrichment.enrichmentJobProcessed)
+                                .arg(enrichment.enrichmentJobTotal)
+                        return qsTr("Enrich Library")
+                    }
+                    iconName: enrichment.enrichmentJobState === "IDLE"
+                        ? "sparkles" : ""
+                    variant: "ghost"
+                    iconOnly: MichiBreakpoints.isCompact(root.width)
+                        && enrichment.enrichmentJobState === "IDLE"
+                    enabled: root.libraryAvailable
+                    accessibleName: qsTr("Enrich entire library")
+                    onClicked: {
+                        if (enrichment.enrichmentJobState === "RUNNING"
+                                || enrichment.enrichmentJobState === "PREPARING"
+                                || enrichment.enrichmentJobState === "CANCELLING")
+                            enrichment.cancel_library_enrichment()
+                        else
+                            enrichment.start_library_enrichment()
+                    }
+                }
             }
         }
     }

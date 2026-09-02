@@ -1,6 +1,5 @@
 """M9-R3 P0 gates: scan convergence, precision-mode removal and visual canon."""
 
-import hashlib
 from pathlib import Path
 
 QML = Path("src/michi/presentation/qml")

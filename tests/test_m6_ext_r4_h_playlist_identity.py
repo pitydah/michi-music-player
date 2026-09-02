@@ -14,7 +14,6 @@ design. Invariants preserved without weakening assertions:
 from michi.application.playlist_service import PlaylistService
 from michi.domain.playlist import Playlist, legacy_playlist_id
 from michi.infrastructure.playlists import (
-    PLAYLIST_PERSISTENCE_VERSION,
     SqlitePlaylistsRepository,
 )
 

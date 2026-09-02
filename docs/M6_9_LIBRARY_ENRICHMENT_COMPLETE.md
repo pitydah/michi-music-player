@@ -1,9 +1,15 @@
 # M6.9 — Library Enrichment (Implementation Record)
 
-Status: **COMPLETE — M6.9A FOUNDATION DONE/TESTED/FROZEN; M6.9 BACKEND
-DONE/TESTED/MERGED/FROZEN; M6.9 PRESENTATION DONE/TESTED**. This
-document records the implemented runtime truth of the full user-facing
-feature.
+Status: **M6.9 — REOPENED (provider contract + Library Enrichment
+product completion)**. Superseded in part by
+`docs/M6_9_REOPENED_PROVIDER_CONTRACT.md` (2026-09): the historical
+records below remain accurate for the pre-reopen architecture. The
+current runtime truth is: the MusicBrainz release-group browse uses the
+REAL contract (no `type=release-group`), deterministic contract tests
+and an opt-in live provider suite exist, a `LibraryEnrichmentJob`
+provides the explicit **Enrich Library** product operation, and the
+`enrichment_doctor` tool verifies provider reachability. See the
+reopen document for the exact deltas.
 
 ## Architecture
 
@@ -84,9 +90,13 @@ ZERO. No authority change was made by the Presentation WP.
 
 ## Privacy gates (deterministic tests, fake providers)
 
-startup = 0 network · scan = 0 · lists = 0 · search = 0 · detail OFF =
-0 · detail ON + cached = 0 · detail ON + no cache = allowed · refresh
-ON = allowed · review OFF = 0.
+startup = 0 network · scan = 0 · search = 0 · detail OFF = 0 ·
+detail ON + cached = 0 · detail ON + no cache = allowed · refresh ON =
+allowed · review OFF = 0 · **lists = 0 with ONE explicit exception**:
+Artist Gallery may perform its bounded portrait prefetch (queue <= 12,
+concurrency <= 2, cache-first, deduplicated) ONLY while Online Library
+Enrichment is ON; Online OFF → zero prefetch network. **Enrich Library**
+is an explicit user intent and the only bulk network operation.
 
 ## Validation (real numbers)
 
@@ -135,7 +145,12 @@ asset provenance, delegate structure, queue/playback firewall).
 
 ## Known limitations (documented truth)
 
-- No live-network tests in CI (fixtures only).
-- `album_artist_ids` matching is not implemented (deferred).
+- No live-network tests in CI (fixtures only) — **an opt-in live
+  provider contract suite exists** (`tests/integration/
+  test_enrichment_live_contracts.py`, `MICHI_RUN_LIVE_NETWORK_TESTS=1`)
+  and was run successfully against real services (9/10, one rate-limit
+  skip).
+- `album_artist_ids` matching: **implemented** in the reopen
+  (see `docs/M6_9_REOPENED_PROVIDER_CONTRACT.md`).
 - Provider-specific UUID syntax validation belongs to provider boundary
   (deferred).

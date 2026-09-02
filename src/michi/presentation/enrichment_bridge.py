@@ -187,6 +187,11 @@ class EnrichmentBridge(QObject):
 
     changed = Signal()
     onlineEnabledChanged = Signal()
+    # M6.9 REOPENED — Library Enrichment Job (bulk, explicit user intent).
+    enrichmentJobProgressChanged = Signal()
+    # Coalesced projection invalidation request (the bootstrap connects
+    # this to the production LibraryEnrichmentProjection.invalidate).
+    enrichmentCacheInvalidated = Signal()
 
     def __init__(
         self,
@@ -251,6 +256,25 @@ class EnrichmentBridge(QObject):
         self._artist_candidates: list = []
         self._album_candidates: list = []
 
+        # M6.9 REOPENED — Library Enrichment Job state (application-owned;
+        # the bridge only projects).
+        from michi.application.library_enrichment_job import (
+            LibraryEnrichmentJob,
+            LibraryEnrichmentJobState,
+        )
+
+        self._job_class = LibraryEnrichmentJob
+        self._job_state_enum = LibraryEnrichmentJobState
+        self._job: LibraryEnrichmentJob | None = None
+        self._job_state = LibraryEnrichmentJobState.IDLE.name
+        self._job_current_entity = ""
+        self._job_processed = 0
+        self._job_total = 0
+        self._job_matched = 0
+        self._job_ambiguous = 0
+        self._job_not_found = 0
+        self._job_failed = 0
+
     # ------------------------------------------------------------------
     # QML properties
     # ------------------------------------------------------------------
@@ -258,11 +282,80 @@ class EnrichmentBridge(QObject):
     onlineEnabled = Property(
         bool, lambda self: self._online_enabled, notify=onlineEnabledChanged
     )
+
+    # M6.9 REOPENED — bulk job projection (truthful backend counters).
+    enrichmentJobState = Property(
+        str, lambda self: self._job_state, notify=enrichmentJobProgressChanged
+    )
+    enrichmentJobCurrentEntity = Property(
+        str,
+        lambda self: self._job_current_entity,
+        notify=enrichmentJobProgressChanged,
+    )
+    enrichmentJobProcessed = Property(
+        int, lambda self: self._job_processed, notify=enrichmentJobProgressChanged
+    )
+    enrichmentJobTotal = Property(
+        int, lambda self: self._job_total, notify=enrichmentJobProgressChanged
+    )
+    enrichmentJobMatched = Property(
+        int, lambda self: self._job_matched, notify=enrichmentJobProgressChanged
+    )
+    enrichmentJobAmbiguous = Property(
+        int, lambda self: self._job_ambiguous, notify=enrichmentJobProgressChanged
+    )
+    enrichmentJobNotFound = Property(
+        int, lambda self: self._job_not_found, notify=enrichmentJobProgressChanged
+    )
+    enrichmentJobFailed = Property(
+        int, lambda self: self._job_failed, notify=enrichmentJobProgressChanged
+    )
     busy = Property(
         bool,
         lambda self: self._state in ("RESOLVING_IDENTITY", "FETCHING_KNOWLEDGE"),
         notify=changed,
     )
+
+    # M6.9 REOPENED — explicit bulk job intents (never triggered by
+    # scan/search/views; Online must be ON).
+    @Slot()
+    def start_library_enrichment(self) -> None:
+        if self._disposed or not self._online_enabled:
+            return
+        if self._job is not None:
+            state = self._job.progress.state.name
+            if state in ("RUNNING", "PREPARING", "CANCELLING"):
+                return
+        albums = tuple(self._library.state.albums)
+        artists = tuple(getattr(self._library.state, "artists", ()))
+        self._job = self._job_class(
+            self._coordinator,
+            self._service,
+            albums=albums,
+            artists=artists,
+            on_progress=self._on_job_progress,
+            on_invalidate=self.enrichmentCacheInvalidated.emit,
+        )
+        self._job.start()
+
+    @Slot()
+    def cancel_library_enrichment(self) -> None:
+        if self._job is not None:
+            self._job.cancel()
+
+    def _on_job_progress(self, progress) -> None:
+        # Project the application truth (never fabricated): counters are
+        # committed outcomes from the coordinator callbacks.
+        self._job_state = progress.state.name
+        self._job_current_entity = progress.currentEntity
+        self._job_processed = progress.processedEntities
+        self._job_total = progress.totalEntities
+        self._job_matched = progress.matchedEntities
+        self._job_ambiguous = progress.ambiguousEntities
+        self._job_not_found = progress.notFoundEntities
+        self._job_failed = progress.failedEntities
+        self.enrichmentJobProgressChanged.emit()
+
     activeKind = Property(str, lambda self: self._active_kind, notify=changed)
     activeKey = Property(str, lambda self: self._active_key, notify=changed)
     state = Property(str, lambda self: self._state, notify=changed)
@@ -685,6 +778,11 @@ class EnrichmentBridge(QObject):
         if self._disposed:
             return
         self._disposed = True
+        # M6.9 REOPENED: el bulk job se cancela con el bridge (nunca un
+        # callback huérfano tras dispose).
+        if self._job is not None:
+            self._job.shutdown()
+            self._job = None
         self._portrait_prefetch_queue.clear()
         self._portrait_prefetch_inflight.clear()
         self._presentation_intent_id += 1

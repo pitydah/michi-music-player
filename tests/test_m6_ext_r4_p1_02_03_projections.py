@@ -266,9 +266,7 @@ class TestEffectiveAvailabilityAuthority:
 class TestPlaylistRowsStableIdentity:
     def test_moved_member_visible_at_current_path(self, tmp_path) -> None:
         """P1-02/03 in playlist rows: a moved member resolves by TrackId."""
-        from michi.application.library_track_resolver import LibraryTrackResolver
         from michi.application.playlist_service import PlaylistService
-        from michi.domain.playlist import PlaylistTrackReference
         from michi.presentation.playlists_bridge import PlaylistsBridge
 
         library, catalog, source, user = _harness(tmp_path)
@@ -295,9 +293,7 @@ class TestPlaylistRowsStableIdentity:
         assert rows[0]["unavailableReason"] == "not_in_library"
 
     def test_member_row_availability_is_effective(self, tmp_path) -> None:
-        from michi.application.library_track_resolver import LibraryTrackResolver
         from michi.application.playlist_service import PlaylistService
-        from michi.domain.playlist import PlaylistTrackReference
         from michi.presentation.playlists_bridge import PlaylistsBridge
 
         library, catalog, source, user = _harness(tmp_path)
