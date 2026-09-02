@@ -130,7 +130,6 @@ def test_column_state_is_the_single_geometry_authority() -> None:
     header = Path(
         "src/michi/presentation/qml/media/ResizableTrackHeader.qml"
     ).read_text()
-    row = Path("src/michi/presentation/qml/media/TrackRow.qml").read_text()
     table = Path("src/michi/presentation/qml/media/MichiTrackTable.qml").read_text()
 
     assert "pragma Singleton" in state

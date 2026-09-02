@@ -105,8 +105,12 @@ def test_high_contrast_lifts_secondary_text_tiers():
 
 
 def test_flat_views_have_empty_states():
+    """POST-MERGE SEMANTIC RECOVERY: SongsView es MichiTrackTable
+    (empty state interno via emptyTitle/emptyIcon). Las demás vistas
+    planas mantienen EmptyState propio."""
+    table = read("media/MichiTrackTable.qml")
+    assert "EmptyState" in table
     for rel_path, icon in [
-        ("views/SongsView.qml", "track"),
         ("views/FavoritesView.qml", "heart"),
         ("views/HistoryView.qml", "history"),
         ("views/RecentlyAddedView.qml", "recent"),
@@ -117,6 +121,9 @@ def test_flat_views_have_empty_states():
         assert "EmptyState" in content, rel_path
         assert f'iconName: "{icon}"' in content, rel_path
         assert "visible: root.count === 0" in content, rel_path
+    songs = read("views/SongsView.qml")
+    assert "MichiTrackTable" in songs
+    assert "emptyTitle:" in songs
 
 
 def test_empty_library_has_scan_cta():
@@ -152,7 +159,6 @@ def test_flat_lists_have_scrollbars():
     (main authority) — they are detail pages, not flat lists, so they are
     excluded from this gate."""
     for rel_path in [
-        "views/SongsView.qml",
         "views/FavoritesView.qml",
         "views/HistoryView.qml",
         "views/RecentlyAddedView.qml",

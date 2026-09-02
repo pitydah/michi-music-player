@@ -57,11 +57,18 @@ def test_vinyl_wall_uses_a_reusable_non_spinning_disc_and_opens_on_tap() -> None
 
 
 def test_artists_gallery_uses_circular_portrait_cards_without_copy() -> None:
+    """POST-MERGE SEMANTIC RECOVERY (P0-01): la galería de artistas usa
+    el retrato circular DEDICADO (ArtistPortraitCard + ArtistPortraitArtwork
+    con maskSource) — nunca una copia del layout rectangular de Albums."""
     view = _qml("views/ArtistsView.qml")
+    portrait_card = _qml("media/ArtistPortraitCard.qml")
+    portrait_artwork = _qml("media/ArtistPortraitArtwork.qml")
 
-    assert "ArtistCard" in view
-    # SEMANTIC INTEGRATION: main muestra el prompt de selección vacía
-    # (invariante R4: nunca una copia del layout de albums).
+    assert "ArtistPortraitCard" in view, "el delegate debe ser circular"
+    assert "ArtistCard" not in view, "no debe reutilizar la card rectangular"
+    assert "ArtistPortraitArtwork" in portrait_card
+    assert "maskSource:" in portrait_artwork, "máscara circular real"
+    assert "maskEnabled: true" in portrait_artwork
 
 
 def test_artist_portrait_prefetch_is_bounded_and_separate() -> None:

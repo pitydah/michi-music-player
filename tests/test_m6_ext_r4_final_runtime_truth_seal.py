@@ -151,7 +151,7 @@ class TestRootValidationProductive:
     def test_missing_root_in_cancellable_path_is_missing_root(self, tmp_path):
         library, catalog, coordinator, lifecycle, pipeline = _env(tmp_path)
         source = _source(tmp_path, "a")
-        media = _seed_media(catalog, source, "song1.flac")
+        _seed_media(catalog, source, "song1.flac")
         root = Path(source.root_path)
         (root / "song1.flac").write_bytes(b"x")
         coordinator.list_sources()
@@ -247,8 +247,9 @@ class TestStatFailClosed:
         root = Path(source.root_path)
         (root / "a.flac").write_bytes(b"x")
         (root / "b.flac").write_bytes(b"x")
-        media_a = _seed_media(catalog, source, "a.flac")
-        media_b = _seed_media(catalog, source, "b.flac")
+        # Side effect necesario: crea los MediaFileRecords del catalog.
+        _seed_media(catalog, source, "a.flac")
+        _seed_media(catalog, source, "b.flac")
 
         real_stat = Path.stat
 
@@ -282,10 +283,10 @@ class TestStatFailClosed:
         self._fault_run(tmp_path, PermissionError, LibraryDiagnosticCode.ACCESS_FAILURE)
 
     def test_stat_generic_oserror_fails_closed(self, tmp_path):
-        class _EIO(OSError):
+        class _EIOError(OSError):
             errno = 5
 
-        self._fault_run(tmp_path, _EIO, LibraryDiagnosticCode.IO_FAILURE)
+        self._fault_run(tmp_path, _EIOError, LibraryDiagnosticCode.IO_FAILURE)
 
 
 # ==========================================================================
@@ -588,10 +589,8 @@ class TestRelocateNormalizedRoot:
 
 class TestSourceOperationError:
     def _bridge(self, tmp_path):
-        from michi.application.navigation_service import NavigationService
 
         library, catalog, coordinator, lifecycle, pipeline = _env(tmp_path)
-        nav = NavigationService()
         bridge = LibraryBridge(
             library,
             source_coordinator=coordinator,

@@ -566,7 +566,6 @@ class TestLoadingStateRuntime:
         )
         errs = [e.toString() for e in component.errors()]
         assert component.status() == QQmlComponent.Ready, errs[:2]
-        host = component.create()
         engine._keepalive = [component]
         qapp.processEvents()
         # SEMANTIC INTEGRATION: main's LoadingState (patterns component) no
@@ -680,7 +679,6 @@ class TestRetireInvalidatesArtwork:
         catalog.upsert_source(source)
         coordinator.scan_source(source)
         assert len(library.state.albums) == 1
-        album_key = library.state.albums[0].key
 
         cache = _RecordingCache()
         runner = _ManualArtworkRunner()

@@ -43,10 +43,23 @@ def test_view_options_popup_consolidates_density_precision_zoom_sort() -> None:
 
 
 def test_toolbar_is_single_strip_with_source_popover() -> None:
+    """POST-MERGE SEMANTIC RECOVERY: el toolbar premium R4 usa el
+    FolderDialog DIRECTO (mismo seam P1.1: selectedFolder →
+    add_and_scan_music_source_url) en lugar del popover premium; el
+    gate verifica el seam contractual exacto y el MusicSourcesDialog."""
     toolbar_src = _text("views/LibraryToolbar.qml")
     assert "LibraryTabs" in toolbar_src
     assert "MichiSearchField" in toolbar_src
-    assert "LibrarySourcePopover" in toolbar_src
+    # P1.1 seam: FolderDialog.selectedFolder → add_and_scan_music_source_url
+    assert "FolderDialog" in toolbar_src
+    assert 'objectName: "libraryFolderDialog"' in toolbar_src
+    assert (
+        "library.add_and_scan_music_source_url(folderDialog.selectedFolder)"
+        in toolbar_src
+    )
+    assert "MusicSourcesDialog" in toolbar_src
+    assert "QUrl.fromLocalFile" not in toolbar_src
+    assert "library.scan(" not in toolbar_src
     # Permanent second albums row is removed from toolbar
     assert 'objectName: "albumOrganizationControl"' not in toolbar_src
     assert 'objectName: "albumSizeControl"' not in toolbar_src

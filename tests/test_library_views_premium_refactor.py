@@ -123,7 +123,7 @@ def test_library_qml_truth_contracts_are_explicit() -> None:
     assert "onSingleTapped:" in card and "root.selectedRequested()" in card
     assert "exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap" in card
     assert "onDoubleTapped:" in card and "root.openRequested()" in card
-    assert 'objectName: "stableLibrarySearchPane"' in toolbar
+    assert 'objectName: "resizableLibrarySearchPane"' in toolbar
     assert "SplitView" not in toolbar
     assert 'root.displayedMode !== "timeline"' in popup
     assert 'iconName: "view-options"' in header

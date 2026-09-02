@@ -20,25 +20,21 @@ def test_overview_header_and_grid_share_a_left_axis() -> None:
 
 def test_detail_navigation_is_integrated_into_the_hero() -> None:
     detail = read("playlists/PlaylistDetailView.qml")
-    hero = read("playlists/PlaylistHero.qml")
-    # SEMANTIC INTEGRATION: la navegación del detail premium vive en la
-    # top bar (botón back) — el hero se mantiene limpio.
     assert 'iconName: "back"' in detail
+    assert "quiet back affordance only" in detail
     assert "quiet back affordance only" in detail
 
 
 def test_hero_keeps_only_primary_actions_visible() -> None:
     hero = read("playlists/PlaylistHero.qml")
-    detail = read("playlists/PlaylistDetailView.qml")
     assert 'qsTr("Play")' in hero
     assert 'qsTr("Shuffle")' in hero
     assert 'qsTr("Add tracks")' in hero
-    assert 'qsTr("Customize appearance…")' in detail
+    assert 'qsTr("Customize appearance…")' in read("playlists/PlaylistDetailView.qml")
 
 
 def test_track_table_prioritizes_artwork_and_readable_metadata() -> None:
     table = read("playlists/PlaylistTrackList.qml")
-    header = read("playlists/PlaylistColumnHeader.qml")
     assert 'sourcePath: modelData.artworkPath || ""' in table
     assert "Artwork" in table
 
