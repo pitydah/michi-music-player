@@ -465,7 +465,12 @@ class TestFavoriteTrackIdBridge:
         assert "onQueueRequested: root.queueRequested(trackId)" in table
         assert "root.selectionToggleRequested(trackId)" in table
         assert "root.trackActivated(trackId, modelData.path, index)" in table
-        assert "onAddToPlaylistRequested: root.addToPlaylistRequested(trackId)" in table
+        # PR #231 REVIEW SEAL (P1-01): el intento add-to-playlist lleva el
+        # TrackId estable (identidad) JUNTO al path factual — el seam
+        # histórico de playlists persiste el path, nunca el UUID.
+        assert "signal addToPlaylistRequested(string trackId, string path)" in table
+        assert "root.addToPlaylistRequested(" in table
+        assert "trackId, modelData.path" in table
 
 
 # ==========================================================================
