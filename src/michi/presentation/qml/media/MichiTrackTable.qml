@@ -44,7 +44,11 @@ Item {
     signal trackActivated(string trackId, string path, int index)
     signal favoriteRequested(string trackId)
     signal queueRequested(string trackId)
-    signal addToPlaylistRequested(string trackId)
+    // PR #231 REVIEW SEAL (P1-01): the playlist seam is a HISTORICALLY
+    // path-based API — carry the factual path next to the TrackId so the
+    // durable playlist entry is the audio file location, never the UUID.
+    // TrackId remains the identity authority for activation/favorite/queue.
+    signal addToPlaylistRequested(string trackId, string path)
     signal propertiesRequested(var track)
     signal goToAlbumRequested(string albumKey)
     signal goToArtistRequested(string artistKey)
@@ -205,7 +209,8 @@ Item {
             }
             onFavoriteToggled: root.favoriteRequested(trackId)
             onQueueRequested: root.queueRequested(trackId)
-            onAddToPlaylistRequested: root.addToPlaylistRequested(trackId)
+            onAddToPlaylistRequested: root.addToPlaylistRequested(
+                trackId, modelData.path)
             onInspectorRequested: root.propertiesRequested(modelData)
             onGoToAlbumRequested: root.goToAlbumRequested(modelData.albumKey)
             onGoToArtistRequested: root.goToArtistRequested(modelData.artistKey)
