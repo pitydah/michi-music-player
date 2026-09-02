@@ -17,6 +17,8 @@ import os
 import threading
 from pathlib import Path
 
+import pytest
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
@@ -50,6 +52,15 @@ from michi.infrastructure.filesystem_source_scanner import (
 from michi.infrastructure.library_catalog import SqliteLibraryCatalogRepository
 from michi.infrastructure.library_media_cache import SqliteLibraryMediaCache
 from michi.presentation.library_bridge import LibraryBridge
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance() or QGuiApplication([])
+    yield app
 
 
 class _Prefs(LibraryPrefsPort):

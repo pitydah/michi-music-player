@@ -50,6 +50,15 @@ from michi.presentation.library_bridge import LibraryBridge
 QML_DIR = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
 
 
+@pytest.fixture(scope="module")
+def qapp():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance() or QGuiApplication([])
+    yield app
+
+
 class _Prefs(LibraryPrefsPort):
     def load(self):
         return LibraryPrefs()
