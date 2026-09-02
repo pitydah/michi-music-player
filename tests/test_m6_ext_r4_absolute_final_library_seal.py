@@ -586,9 +586,9 @@ class TestLoadingStateRuntime:
         assert bridge.property("fileCount") == 0
         assert bridge.property("scanActive") is True
         # El loading es invisible porque libraryTrackCount > 0 (estructural).
-        assert (
-            "fileCount" not in loading_block.split("visible:")[1].split("&&")[0]
-        ), "la visibilidad del loading NO depende de la proyección filtrada"
+        assert "fileCount" not in loading_block.split("visible:")[1].split("&&")[0], (
+            "la visibilidad del loading NO depende de la proyección filtrada"
+        )
 
 
 # ==========================================================================

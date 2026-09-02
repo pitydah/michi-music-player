@@ -113,9 +113,7 @@ class TestPlaylistServiceIdentityOps:
     def test_remove_and_move_keep_order_aligned(self) -> None:
         service = PlaylistService(playlists_port=_MemoryPlaylistsPort())
         playlist = service.create_playlist("Mix")
-        service.add_tracks(
-            playlist.playlist_id, ["/a.flac", "/b.flac", "/c.flac"]
-        )
+        service.add_tracks(playlist.playlist_id, ["/a.flac", "/b.flac", "/c.flac"])
         assert service.move_track(playlist.playlist_id, 2, 0)
         assert service.get_playlist(playlist.playlist_id).track_paths == (
             "/c.flac",

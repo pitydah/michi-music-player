@@ -207,7 +207,11 @@ class TestToolbarContract:
 
         # 1) El toolbar productivo nunca toca el pipeline legacy
         # (solo comentarios que lo prohíben).
-        code_lines = [l for l in toolbar.splitlines() if l.strip() and not l.strip().startswith("//")]
+        code_lines = [
+            l
+            for l in toolbar.splitlines()
+            if l.strip() and not l.strip().startswith("//")
+        ]
         assert "library.scan(" not in "".join(code_lines)
         assert "library.currentDir" not in toolbar
         # 2) El estado de Sources es la proyección moderna del Bridge.
@@ -216,7 +220,11 @@ class TestToolbarContract:
         assert "library.scan_all_sources()" in toolbar
         # 4) Agregar carpeta usa add_and_scan_music_source_url.
         assert "library.add_and_scan_music_source_url(" in popover
-        popover_code = [l for l in popover.splitlines() if l.strip() and not l.strip().startswith("//")]
+        popover_code = [
+            l
+            for l in popover.splitlines()
+            if l.strip() and not l.strip().startswith("//")
+        ]
         assert "library.scan(" not in "".join(popover_code)
         # 5) El popover no depende del estado legacy currentDir.
         assert "library.currentDir" not in popover

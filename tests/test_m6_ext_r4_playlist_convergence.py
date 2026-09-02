@@ -243,6 +243,7 @@ class TestPlaylistAssetDurableOrdering:
         service = PlaylistService(
             playlists_port=_FailingPlaylistsPort(), artwork_store=store
         )
+
         # _FailingPlaylistsPort.save siempre falla → no puede haber success;
         # usamos un port OK para probar el retire post-commit.
         class _OkPort:
