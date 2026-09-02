@@ -198,6 +198,14 @@ class QaLibrary(QObject):
     albumCount = Property(int, lambda self: len(self._albums), notify=library_changed)
     artistCount = Property(int, lambda self: 11, notify=library_changed)
     currentDir = Property(str, lambda self: "/qa/music", notify=library_changed)
+    # P1.1/R4 recovered toolbar contract: the productive LibraryToolbar
+    # reads these Bridge properties (real LibraryBridge exposes them);
+    # the QA harness must model them to render warning-free.
+    configuredSourceCount = Property(
+        int, lambda self: 0 if self._state == "empty" else 1, notify=library_changed
+    )
+    sourceOperationError = Property(str, lambda self: "", notify=library_changed)
+    scanCurrentPath = Property(str, lambda self: "", notify=library_changed)
     selectedAlbumKey = Property(str, lambda self: "", notify=library_changed)
     selectedArtistKey = Property(str, lambda self: "", notify=library_changed)
     searchActive = Property(
