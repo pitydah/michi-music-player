@@ -34,8 +34,26 @@ Item {
         }
     }
 
+    // PR #231 REVIEW SEAL (P1-06): UNICA autoridad — los botones
+    // 82/100/122 % escriben la MISMA preferencia persistente que lee el
+    // ComboBox (gallery.artworkSize / flow.coverSize / vinyl.sleeveSize
+    // según albumMode). albumZoom es solo la proyección; cualquier otra
+    // opción o un reload re-deriva el MISMO valor.
     function requestAlbumZoom(value) {
-        albumZoom = Math.max(0.82, Math.min(1.22, value))
+        value = Math.max(0.82, Math.min(1.22, value))
+        albumZoom = value
+        var section = albumMode === "grid" ? "gallery"
+            : albumMode === "cover" ? "flow"
+            : albumMode === "vinyl" ? "vinyl" : ""
+        if (section === "")
+            return
+        var key = albumMode === "grid" ? "artworkSize"
+            : albumMode === "cover" ? "coverSize" : "sleeveSize"
+        // gallery: small/medium/large · flow/vinyl: small/standard/large.
+        var sizeName = value >= 1.22 ? "large"
+            : value <= 0.82 ? "small"
+            : albumMode === "grid" ? "medium" : "standard"
+        root.updateViewPreference(section, key, sizeName)
     }
 
     function defaultViewPreferences() {
