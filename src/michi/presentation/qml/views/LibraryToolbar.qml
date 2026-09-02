@@ -28,11 +28,13 @@ MichiGlassSurface {
     implicitHeight: toolbarContent.implicitHeight + MichiSpacing.md * 2
 
     function searchPlaceholder() {
-        if (currentTab === "albums") return "Search albums or album artists…"
-        if (currentTab === "artists") return "Search artists…"
-        if (currentTab === "genres") return "Search genres…"
-        if (currentTab === "playlists") return "Search tracks or playlists…"
-        return "Search title, artist, album, genre or composer…"
+        // PR #231 REVIEW SEAL (P1-04): translated placeholders — nunca
+        // literales raw en un locale no-inglés.
+        if (currentTab === "albums") return qsTr("Search albums or album artists…")
+        if (currentTab === "artists") return qsTr("Search artists…")
+        if (currentTab === "genres") return qsTr("Search genres…")
+        if (currentTab === "playlists") return qsTr("Search tracks or playlists…")
+        return qsTr("Search title, artist, album, genre or composer…")
     }
 
     function clampSearchWidth(candidate) {
@@ -59,20 +61,6 @@ MichiGlassSurface {
             return
         }
         library.scan_all_sources()
-    }
-
-    // P1-08 R4: el error de operación de source es UNA autoridad del
-    // Bridge — QML solo lo renderiza con el sistema de diseño existente.
-    MichiStatusChip {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.topMargin: MichiSpacing.xs
-        anchors.rightMargin: MichiSpacing.md
-        visible: typeof library !== "undefined" && library
-            && library.sourceOperationError.length > 0
-        text: typeof library !== "undefined" && library
-            ? library.sourceOperationError : ""
-        tone: "error"
     }
 
     // P1-LIB-03: URL → local path translation lives in the Bridge.
@@ -106,6 +94,33 @@ MichiGlassSurface {
         id: toolbarContent
         anchors.fill: parent
         spacing: MichiSpacing.sm
+
+    // P1-08 R4: el error de operación de source es UNA autoridad del
+    // Bridge — QML solo lo renderiza con el sistema de diseño existente.
+    // PR #231 REVIEW SEAL (P1-05): el chip vive en SU PROPIA fila del
+    // ColumnLayout (nunca anclado flotante sobre controles): siempre
+    // visible, dentro del toolbar y sin overlap con tabs/search/scan/
+    // enrich — layout explícito, no z arbitraria.
+    RowLayout {
+        objectName: "librarySourceErrorRow"
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible ? implicitHeight : 0
+        visible: typeof library !== "undefined" && library
+            && library.sourceOperationError.length > 0
+        spacing: MichiSpacing.sm
+
+        MichiStatusChip {
+            objectName: "librarySourceErrorChip"
+            text: typeof library !== "undefined" && library
+                ? library.sourceOperationError : ""
+            tone: "error"
+            Accessible.name: typeof library !== "undefined" && library
+                ? library.sourceOperationError : ""
+        }
+        Item {
+            Layout.fillWidth: true
+        }
+    }
 
         GridLayout {
             objectName: "libraryNavigationGrid"
