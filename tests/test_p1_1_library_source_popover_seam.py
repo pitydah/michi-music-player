@@ -111,7 +111,15 @@ def test_folder_dialog_acceptance_routes_to_one_modern_worker(qapp, tmp_path):
 
     selected_folder = QUrl.fromLocalFile(str(music_root))
     assert selected_folder.isLocalFile()
+    # QtQuick.Dialogs solo persiste selectedFolder con el diálogo ABIERTO
+    # (el setter programático se descarta en estado cerrado).
+    folder_dialog.open()
+    qapp.processEvents()
     assert folder_dialog.setProperty("selectedFolder", selected_folder)
+    assert (
+        folder_dialog.property("selectedFolder").toLocalFile()
+        == str(music_root)
+    )
 
     meta = folder_dialog.metaObject()
     accepted_index = meta.indexOfSignal("accepted()")
