@@ -875,25 +875,28 @@ class TestWriteOrder:
 class FakeQGuiApplication:
     """Minimal QGuiApplication fake for bootstrap startup order tests."""
 
+    def __init__(self, *args, **kwargs):
+        self._icon = None
+
     @staticmethod
     def setAttribute(*_args, **_kwargs):  # noqa: N802 — Qt API name
         pass
 
+    def setWindowIcon(self, icon):  # noqa: N802 — Qt API name
+        self._icon = icon
+
+    def setApplicationName(self, name):  # noqa: N802 — Qt API name
+        self._name = name
+
+    def setApplicationVersion(self, version):  # noqa: N802 — Qt API name
+        self._version = version
+
+    def setOrganizationName(self, org):  # noqa: N802 — Qt API name
+        self._org = org
+
     @staticmethod
     def instance():
         return None
-
-    def __init__(self, _argv):
-        pass
-
-    def setApplicationName(self, _name):  # noqa: N802 — Qt API name
-        pass
-
-    def setApplicationVersion(self, _version):  # noqa: N802 — Qt API name
-        pass
-
-    def setOrganizationName(self, _name):  # noqa: N802 — Qt API name
-        pass
 
     def quit(self):
         pass
