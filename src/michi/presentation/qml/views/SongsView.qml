@@ -25,7 +25,10 @@ MichiTrackTable {
     canFavorite: true
     canQueue: library.canQueueTracks
     canAddToPlaylist: library.canAddTracksToPlaylists
-    canInspect: true
+    // PR #231 REVIEW SEAL (P1-02): no existe superficie Inspectora
+    // productiva en el árbol — NO se ofrece una acción Properties sin
+    // resultado observable. Rehabilitar canInspect solo con un consumer.
+    canInspect: false
     canNavigateEntities: true
     emptyTitle: qsTr("No songs in your library")
     emptyMessage: qsTr("Scan a music folder from the toolbar to populate your library.")
@@ -34,7 +37,11 @@ MichiTrackTable {
     onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
     onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
     onQueueRequested: trackId => library.queue_track_by_id(trackId)
-    onAddToPlaylistRequested: trackId => root.addTargetPath = trackId
+    // PR #231 REVIEW SEAL (P1-01): TrackId = identidad · path = ubicación
+    // factual. El seam histórico de Playlists persiste paths canónicos —
+    // el picker recibe el PATH factual (nunca el UUID) mientras todas las
+    // demás intenciones (activar/favorito/cola) siguen por TrackId.
+    onAddToPlaylistRequested: (trackId, path) => root.addTargetPath = path
     onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     onGoToArtistRequested: artistKey => library.select_artist(artistKey)
     onSortRequested: column => library.sort_tracks(column)
