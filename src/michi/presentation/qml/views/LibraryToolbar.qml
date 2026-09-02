@@ -110,7 +110,10 @@ MichiGlassSurface {
         GridLayout {
             objectName: "libraryNavigationGrid"
             Layout.fillWidth: true
-            columns: root.width < 1100 ? 2 : 4
+            // POST-MERGE MICRO-FIX (P0-02): 5 columnas desktop
+            // (Tabs / handle / Search / Scan / Enrich), 3 compact
+            // (Search / Scan / Enrich).
+            columns: root.width < 1100 ? 3 : 5
             // Desktop Tabs → handle → Search totals 8 + 10 + 8 = 26 px:
             // compact perceptual separation without shrinking the hitbox.
             columnSpacing: MichiSpacing.sm
@@ -121,7 +124,7 @@ MichiGlassSurface {
                 Layout.fillWidth: true
                 Layout.row: 0
                 Layout.column: 0
-                Layout.columnSpan: root.width < 1100 ? 2 : 1
+                Layout.columnSpan: root.width < 1100 ? 3 : 1
                 Layout.minimumWidth: Math.min(300, root.width)
                 Layout.preferredHeight: MichiMetrics.controlLarge
                 currentTab: root.currentTab
@@ -283,16 +286,24 @@ MichiGlassSurface {
                             onTriggered: root.openSourcesDialog()
                         }
                     }
-                // M6.9 REOPENED — Enrich Library: acción global EXPLÍCITA
-                // (nunca automática tras scan; Online Library Enrichment
-                // debe estar ON). Progreso real del backend, no fabricado.
+                }
+
+                // POST-MERGE MICRO-FIX (P0-01): enrichButton es HERMANO de
+                // scanButton — ambos hijos directos del GridLayout. Sus
+                // Layout.row/column aplican al grid real. M6.9: acción
+                // global EXPLÍCITA (nunca automática tras scan; Online
+                // Library Enrichment debe estar ON). Progreso real del
+                // backend, no fabricado.
                 MichiButton {
                     id: enrichButton
+                    objectName: "libraryEnrichButton"
                     Layout.row: root.width < 1100 ? 1 : 0
                     Layout.column: root.width < 1100 ? 2 : 4
                     Layout.preferredHeight: MichiMetrics.controlMedium
                     Layout.alignment: Qt.AlignVCenter
-                    visible: typeof enrichment !== "undefined" && enrichment
+                    // P0-04: no compite visualmente con el scan activo.
+                    visible: !root.scanning
+                        && typeof enrichment !== "undefined" && enrichment
                         && enrichment.onlineEnabled
                     text: {
                         if (enrichment.enrichmentJobState === "RUNNING"
@@ -303,6 +314,10 @@ MichiGlassSurface {
                                 .arg(enrichment.enrichmentJobTotal)
                         return qsTr("Enrich Library")
                     }
+                    // P0-03: icono visible en compact IDLE (nunca un
+                    // botón icon-only vacío).
+                    iconName: enrichment.enrichmentJobState === "IDLE"
+                        ? "sparkles" : ""
                     variant: "ghost"
                     iconOnly: root.width < 1100
                         && enrichment.enrichmentJobState === "IDLE"
@@ -318,8 +333,6 @@ MichiGlassSurface {
                     }
                 }
             }
-        }
-
         // Transient thin progress row during active scan
         RowLayout {
             Layout.fillWidth: true

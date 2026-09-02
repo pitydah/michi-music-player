@@ -38,11 +38,23 @@ def test_album_and_artist_cards_do_not_scale_on_hover() -> None:
 
 
 def test_library_toolbar_has_resizable_search_and_one_split_scan_control() -> None:
+    """POST-MERGE MICRO-FIX (P0-06): gate fuerte — search resizable real,
+    split scan con primary/secondary, sin sourceBtn standalone."""
     toolbar = _qml("views/LibraryToolbar.qml")
-    # SEMANTIC INTEGRATION: el toolbar premium de main (PR #224-228)
-    # usa su propio layout con search y performScan.
-    assert "performScan" in toolbar
-    assert "search" in toolbar.lower()
+    split = _qml("controls/MichiSplitButton.qml")
+    assert "property real searchPanePreferredWidth" in toolbar
+    assert 'objectName: "librarySearchResizeHandle"' in toolbar
+    assert "DragHandler" in toolbar
+    assert "onDoubleTapped" in toolbar
+    assert "Keys.onLeftPressed" in toolbar
+    assert "Keys.onRightPressed" in toolbar
+    assert "MichiSplitButton" in toolbar
+    assert 'objectName: "libraryScanSplitButton"' in toolbar
+    assert "onPrimaryClicked: root.performScan()" in toolbar
+    assert "onSecondaryClicked: sourceMenu.popup()" in toolbar
+    assert "id: sourceBtn" not in toolbar
+    assert "signal primaryClicked()" in split
+    assert "signal secondaryClicked()" in split
     assert "scanAllSources" not in toolbar
 
 

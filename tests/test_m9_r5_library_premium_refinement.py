@@ -20,12 +20,24 @@ def test_library_header_is_contextual_without_duplicate_views_label() -> None:
 
 
 def test_search_and_scan_have_independent_toolbar_geometry() -> None:
+    """POST-MERGE MICRO-FIX (P0-06): search resizable, scan split y
+    enrich conviven como HERMANOS en el GridLayout — enrich NO puede ser
+    hijo del split button."""
     toolbar = _qml("views/LibraryToolbar.qml")
-
-    # SEMANTIC INTEGRATION: search y scan conviven en el toolbar premium
-    # de main con geometría independiente.
-    assert "performScan" in toolbar
-    assert "search" in toolbar.lower()
+    split_end = toolbar.index("onSecondaryClicked: sourceMenu.popup()")
+    enrich_block_start = toolbar.index("id: enrichButton")
+    assert "searchPanePreferredWidth" in toolbar
+    assert 'objectName: "resizableLibrarySearchPane"' in toolbar
+    assert 'objectName: "librarySearchResizeHandle"' in toolbar
+    assert "DragHandler" in toolbar
+    assert "MichiSplitButton" in toolbar
+    assert 'objectName: "libraryScanSplitButton"' in toolbar
+    assert 'objectName: "libraryEnrichButton"' in toolbar
+    assert "id: sourceBtn" not in toolbar
+    # P0-01: enrich es HERMANO del split (fuera de su bloque).
+    assert enrich_block_start > split_end, (
+        "enrichButton debe estar FUERA del bloque MichiSplitButton"
+    )
 
 
 def test_artist_portraits_use_a_dedicated_true_mask() -> None:
