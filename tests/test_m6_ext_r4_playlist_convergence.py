@@ -33,6 +33,18 @@ from michi.domain.library_catalog import MediaAvailability
 from michi.domain.playlist import Playlist, PlaylistAppearance
 
 
+@pytest.fixture(scope="module")
+def qapp():
+    import os
+    import sys
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+    yield app
+
+
 class _StubScanner:
     def validate_file(self, path: Path) -> None:
         return None
