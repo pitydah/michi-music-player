@@ -4,6 +4,11 @@ import "../theme"
 Item {
     id: root
     property var album: null
+    // Explicit host capabilities. Defaults are fail-closed so reconnecting
+    // the historical context surface can never resurrect a dead action.
+    property bool canAddToPlaylist: false
+    property bool canCreatePlaylist: false
+    property bool canShowProperties: false
     signal contextRequested()
 
     function openMenu() {
@@ -33,5 +38,11 @@ Item {
             root.openMenu()
         }
     }
-    AlbumContextMenu { id: menu; album: root.album }
+    AlbumContextMenu {
+        id: menu
+        album: root.album
+        canAddToPlaylist: root.canAddToPlaylist
+        canCreatePlaylist: root.canCreatePlaylist
+        canShowProperties: root.canShowProperties
+    }
 }
