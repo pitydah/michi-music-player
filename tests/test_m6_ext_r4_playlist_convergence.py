@@ -857,3 +857,180 @@ class TestConvergenceUndoAndBatch:
         assert captured["paths"] == ("/B/song.flac",), (
             "la paleta automática usa el artwork ACTUAL, no el fallback /A"
         )
+
+
+# ==========================================================================
+# PR #232 REVIEW SEAL — threads de Codex:
+#   P1  convergencia V2→V3 post-catálogo (upgrade path-only al arranque)
+#   P2  dedupe/upgrade de adds identificados contra miembros legacy
+#   P2  notificación de availability de sources al bridge de playlists
+#   P2  mutaciones por índice en playlists id-only
+# ==========================================================================
+
+
+def _playlist_ref(track_id: str = "", path: str = ""):
+    from michi.domain.playlist import PlaylistTrackReference
+
+    return PlaylistTrackReference(track_id=track_id, fallback_path=path)
+
+
+class TestReviewUpgradeLegacy:
+    def test_convergence_upgrades_path_only_members_against_catalog(
+        self, tmp_path
+    ) -> None:
+        """V2 (path-only) + catálogo existente → la convergencia de
+        arranque resuelve los paths a TrackIds canónicos (durable V3);
+        los paths fuera del catálogo quedan legacy honestos; playlists ya
+        con ids intactas."""
+        from michi.application.playlist_legacy_convergence import (
+            converge_legacy_playlist_membership,
+        )
+        from michi.infrastructure.playlists import SqlitePlaylistsRepository
+
+        library = _library_with_albums(
+            tmp_path, [_state_track("/a.flac", "T1"), _state_track("/c.flac", "T3")]
+        )
+        repo = SqlitePlaylistsRepository(tmp_path / "michi.db")
+        playlists = PlaylistService(playlists_port=repo)
+        # Dos playlists V2 path-only + una V3 ya convergida.
+        mix = playlists.create_playlist("Mix")
+        playlists.add_tracks(mix.playlist_id, ["/a.flac", "/ghost.flac"])
+        second = playlists.create_playlist("Second")
+        playlists.add_tracks(second.playlist_id, ["/c.flac"])
+        already = playlists.create_playlist_with_references(
+            "Already", [_playlist_ref("T9", "/nine.flac")]
+        )
+
+        upgraded = converge_legacy_playlist_membership(playlists, library)
+
+        assert upgraded == 2, "Mix y Second convergen; Already no"
+        assert playlists.get_playlist(mix.playlist_id).track_ids == ("T1", ""), (
+            "/a.flac resuelve a T1; /ghost.flac queda legacy honesto"
+        )
+        assert playlists.get_playlist(second.playlist_id).track_ids == ("T3",)
+        assert playlists.get_playlist(already.playlist_id).track_ids == ("T9",)
+        raw = repo._load_raw("playlists")
+        by_id = {entry["id"]: entry for entry in raw}
+        assert by_id[mix.playlist_id]["version"] == 3
+        assert by_id[mix.playlist_id]["tracks"][0]["track_id"] == "T1"
+        # Idempotente: una segunda corrida no escribe nada.
+        assert converge_legacy_playlist_membership(playlists, library) == 0
+
+    def test_identified_add_upgrades_legacy_member_instead_of_duplicating(
+        self, tmp_path
+    ) -> None:
+        """Playlist V1/V2 con ('', /a.flac): agregar el mismo track ya
+        identificado (T1, /a.flac) UPGRADEA el miembro legacy — nunca
+        persiste dos membresías para el mismo track físico."""
+        bridge, playlists, _, _, library = _identity_harness(
+            tmp_path, [_state_track("/a.flac", "T1")]
+        )
+        playlist = playlists.create_playlist("Mix")
+        # Entrada legacy (V2): el miembro nace sin identidad.
+        assert playlists.add_track(playlist.playlist_id, "/a.flac")
+        assert playlists.get_playlist(playlist.playlist_id).track_ids == ("",)
+
+        # El mismo track llega identificado: upgrade, no duplicado.
+        result = bridge.add_track_to_playlist(playlist.playlist_id, "/a.flac")
+        assert result == "already_present"
+        persisted = playlists.get_playlist(playlist.playlist_id)
+        assert persisted.track_ids == ("T1",), "el miembro legacy se upgraded"
+        assert persisted.track_paths == ("/a.flac",)
+        assert len(persisted.references()) == 1, "una sola membresía"
+
+    def test_distinct_ids_shared_path_still_do_not_collapse(self) -> None:
+        """El upgrade NO aplica cuando el dueño del path tiene OTRO id
+        no vacío: T1@/same agregado con T2@/same ya presente → dos
+        miembros (identidad decide, path snapshot nunca colapsa)."""
+        from test_m6_ext_r4_h_playlist_identity import _CapturePort
+
+        port = _CapturePort()
+        service = PlaylistService(playlists_port=port)
+        playlist = service.create_playlist_with_references(
+            "Mix", [_playlist_ref("T2", "/same.flac")]
+        )
+        added = service.add_track_references(
+            playlist.playlist_id, [_playlist_ref("T1", "/same.flac")]
+        )
+        assert added == 1
+        persisted = service.get_playlist(playlist.playlist_id)
+        assert persisted.track_ids == ("T2", "T1")
+        assert len(persisted.references()) == 2
+
+
+class TestReviewAvailabilityNotify:
+    def test_bridge_refreshes_when_library_bridge_signal_emits(self, qapp) -> None:
+        """El plb se suscribe a la señal del LibraryBridge (retire/disable/
+        source failures cambian la availability efectiva sin notificar a
+        LibraryService): al emitir, la proyección cacheada se invalida."""
+        from PySide6.QtCore import QObject, Signal
+
+        bridge, playlists, _, _, _ = _identity_harness(
+            tmp_path_dummy(), [_state_track("/a.flac", "T1")]
+        )
+        playlist = playlists.create_playlist("Mix")
+        bridge.open_playlist(playlist.playlist_id)
+
+        # El hook _on_library_changed (conectado a la señal del LibraryBridge
+        # en bootstrap) invalida la proyección y NOTIFICA playlists_changed
+        # para que el QML re-lea rows/counts/Play.
+        notified = []
+
+        bridge.playlists_changed.connect(lambda: notified.append(True))
+
+        class _Emitter(QObject):
+            library_changed = Signal()
+
+        emitter = _Emitter()
+        emitter.library_changed.connect(bridge._on_library_changed)
+        emitter.library_changed.emit()
+        assert notified, "la señal del LibraryBridge refresca playlists_changed"
+        emitter.deleteLater()
+
+
+def tmp_path_dummy():
+    import tempfile
+    from pathlib import Path
+
+    return Path(tempfile.mkdtemp(prefix="michi-review-"))
+
+
+class TestReviewIdOnlyMutations:
+    def test_remove_tracks_works_on_id_only_playlists(self, tmp_path) -> None:
+        """Una playlist V3 id-only (track_ids poblados, fallbacks "" —
+        track_paths normalizado a ()) es mutable por índice: remove_tracks
+        valida contra la membresía canónica, no contra len(track_paths)."""
+        from test_m6_ext_r4_h_playlist_identity import _CapturePort
+
+        from michi.application.navigation_service import NavigationService
+        from michi.application.playlist_navigation_coordinator import (
+            PlaylistNavigationCoordinator,
+        )
+        from michi.presentation.playlists_bridge import PlaylistsBridge
+
+        port = _CapturePort(
+            [
+                {
+                    "version": 3,
+                    "id": "p1",
+                    "name": "IdOnly",
+                    "tracks": [
+                        {"track_id": "T1", "fallback_path": ""},
+                        {"track_id": "T2", "fallback_path": ""},
+                        {"track_id": "T3", "fallback_path": ""},
+                    ],
+                }
+            ]
+        )
+        playlists = PlaylistService(playlists_port=port)
+        assert playlists.get_playlist("p1").track_paths == (), "id-only"
+        nav = NavigationService()
+        playlists.set_on_playlist_deleted(nav.forget_playlist)
+        nav_coord = PlaylistNavigationCoordinator(playlists, nav)
+        bridge = PlaylistsBridge(
+            playlists, playlist_navigation=nav_coord, navigation_service=nav
+        )
+        bridge.open_playlist("p1")
+        assert bridge.remove_tracks([1]) == "removed"
+        assert playlists.get_playlist("p1").track_ids == ("T1", "T3")
+        bridge.dispose()
