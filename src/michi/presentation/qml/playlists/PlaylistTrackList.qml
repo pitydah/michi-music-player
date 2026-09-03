@@ -23,8 +23,8 @@ Item {
     // DESHABILITA (un índice filtrado nunca debe reordenar la playlist).
     property bool selectionMode: false
     property bool reorderEnabled: true
-    // PL-FINAL-A01: selección por PATH (identidad estable). El Detail es
-    // el dueño del Set; esta lista solo proyecta checkboxes.
+    // PL-FINAL-A01: selección por PATH. Esta es todavía una proyección UI;
+    // la membership durable permanece TrackId-first en el Bridge/Service.
     property var checkedPaths: []
     // The header must be a COMPONENT: ListView.header assigns to its
     // internal QQmlComponent slot — passing a pre-instantiated Item (typed
@@ -36,7 +36,7 @@ Item {
     property bool showArtistColumn: true
     property bool showAlbumColumn: true
     property bool showFormatColumn: false
-    property bool narrow: false            // <700px: title/artist grouped
+    property bool narrow: false
     readonly property real contentY: trackList.contentY
 
     signal playTrackRequested(int index)
@@ -45,8 +45,6 @@ Item {
     signal moveTrackRequested(int fromIndex, int toIndex)
     signal selectionToggleRequested(string path, bool shiftHeld)
 
-    // R3-07/08: rows-driven selection sync — cuando rows cambia (move
-    // exitoso), el path seleccionado sigue a su nueva posición.
     function _syncSelectedIndex() {
         if (root.selectedTrackPath.length === 0)
             return
@@ -61,8 +59,6 @@ Item {
     onRowsChanged: root._syncSelectedIndex()
 
     function resetForPlaylist() {
-        // R4-02: el child NO escribe selection (autoridad del parent) —
-        // solo cursor/presentación. selectedTrackPath es identidad.
         trackList.positionViewAtBeginning()
         trackList.currentIndex = root.rows.length > 0 ? 0 : -1
     }
@@ -91,8 +87,6 @@ Item {
         ScrollBar.vertical: MichiScrollBar { }
 
         Keys.onReturnPressed: {
-            // PL-FINAL-14/A04: la tecla global del ListView apunta al
-            // índice CANONICO (filter-safe) y respeta canInteract.
             if (currentIndex >= 0 && currentIndex < root.rows.length
                     && root.rows[currentIndex].canonicalIndex !== undefined
                     && root.rows[currentIndex].available !== false)
@@ -105,10 +99,6 @@ Item {
                 root.playTrackRequested(root.rows[currentIndex].canonicalIndex)
         }
 
-        // Reorder by drag & drop: drop line + move to the target row.
-        // PL-FINAL-14: con filtro de búsqueda activo el reorder se
-        // deshabilita por completo (drop nunca reordena posiciones
-        // filtradas).
         DropArea {
             anchors.fill: parent
             keys: ["application/x-michi-playlist-index"]
@@ -137,7 +127,6 @@ Item {
             }
         }
 
-        // Insertion indicator for the drag reorder
         Rectangle {
             id: insertLine
             visible: false
@@ -162,54 +151,61 @@ Item {
             Accessible.role: Accessible.ListItem
             Accessible.name: modelData.title + " — " + modelData.artist
 
-            // PL-FINAL-14: TODA acción que llega al Bridge usa el INDEX
-            // CANONICO del modelo (la posición real en la playlist). Con
-            // un filtro de búsqueda activo, `index` es la posición en la
-            // lista FILTRADA y nunca debe usarse como identidad.
             readonly property int canonicalIndex:
                 modelData.canonicalIndex !== undefined
                     ? modelData.canonicalIndex : index
-
             readonly property bool isPlaying: typeof playback !== "undefined"
                 && playback && modelData.path
                 && playback.currentPath === modelData.path
             readonly property bool isSelected:
                 root.selectedTrackPath === modelData.path
-            // PL-FINAL-16: un track que la biblioteca no resuelve nunca se
-            // borra silenciosamente: queda visible, marcado y sin playback.
             readonly property bool unavailable: modelData.available === false
                 || modelData.unavailableReason !== undefined
                 && modelData.unavailableReason !== ""
-            // PL-FINAL-A04: UNA SOLA autoridad de interacción — canInteract
-            // define el permiso para play/queue. Todas las rutas (click,
-            // teclado, menú, shortcuts) usan ESTA propiedad.
             readonly property bool canInteract: !trackItem.unavailable
-
-            // R3-09: reveal incluye el focus de los PROPIOS controles —
-            // un keyboard user que tabee hasta ellos los ve (opacity 1
-            // con activeFocus del child, aunque trackItem no tenga
-            // visualFocus). NO se sacan del tab order.
+            readonly property bool hasStableTrackId:
+                modelData.trackId !== undefined && String(modelData.trackId).length > 0
+            readonly property bool isFavorite: typeof library !== "undefined"
+                && library && (trackItem.hasStableTrackId
+                    ? library.favoriteTrackIds.indexOf(String(modelData.trackId)) !== -1
+                    : library.favoritePaths.indexOf(modelData.path) !== -1)
             readonly property bool actionsVisible:
                 trackItem.hovered || trackItem.visualFocus
                 || favoriteButton.activeFocus || moreButton.activeFocus
                 || trackMenu.visible
 
-            // Distinct states: selected = quiet elevation; playing = accent
-            // title + animated indicator; both combine cleanly.
-            // PL-10-FINAL-03: la row interaction surface (MouseArea) vive
-            // DETRÁS del RowLayout de controles — el hit test QML salta el
-            // layout (sin handlers) y entrega el click del fondo al
-            // MouseArea con los modifiers REALES; los controles interactivos
-            // (checkbox/favorite/more) consumen los suyos.
+            function selectExactTarget() {
+                root.trackSelected(modelData.path)
+                trackList.currentIndex = trackItem.index
+                trackItem.forceActiveFocus()
+            }
+
+            function toggleFavorite() {
+                if (typeof library === "undefined" || !library)
+                    return
+                if (trackItem.hasStableTrackId)
+                    library.toggle_favorite_by_id(String(modelData.trackId))
+                else
+                    library.toggle_favorite(modelData.path)
+            }
+
             contentItem: Item {
                 anchors.fill: parent
 
                 MouseArea {
                     id: rowSurface
                     anchors.fill: parent
-                    acceptedButtons: Qt.LeftButton
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
                     cursorShape: Qt.PointingHandCursor
                     onClicked: mouse => {
+                        // M9-R3 CONTEXTUAL RECOVERY: right-click targets the
+                        // exact row and NEVER triggers playback/selection-mode
+                        // toggling as a side effect.
+                        if (mouse.button === Qt.RightButton) {
+                            trackItem.selectExactTarget()
+                            trackMenu.popup()
+                            return
+                        }
                         if (root.selectionMode) {
                             root.selectionToggleRequested(
                                 modelData.path,
@@ -228,15 +224,10 @@ Item {
                 anchors.rightMargin: MichiSpacing.sm
                 spacing: MichiSpacing.md
 
-                // Track number / playing indicator (36-40px) — doubles as
-                // the drag handle for reordering (M7)
                 Item {
                     Layout.preferredWidth: root.selectionMode ? 40 : 36
                     Layout.preferredHeight: 40
 
-                    // PL-FINAL-15: en selection mode el handle de drag
-                    // desaparece y entra el checkbox; el drag reorder solo
-                    // es válido sin filtro de búsqueda activo.
                     CheckBox {
                         visible: root.selectionMode
                         anchors.centerIn: parent
@@ -258,12 +249,7 @@ Item {
                         enabled: root.reorderEnabled && !root.selectionMode
                         acceptedButtons: Qt.LeftButton
                         cursorShape: Qt.OpenHandCursor
-                        onActiveChanged: {
-                            if (active)
-                                trackItem.opacity = 0.45
-                            else
-                                trackItem.opacity = 1
-                        }
+                        onActiveChanged: trackItem.opacity = active ? 0.45 : 1
                     }
 
                     MichiText {
@@ -285,7 +271,6 @@ Item {
                     }
                 }
 
-                // Track artwork 36px, radius 4, 8-12px gap to title
                 Artwork {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
@@ -294,7 +279,6 @@ Item {
                     radius: 4
                 }
 
-                // Title (heavier) + grouped artist on narrow widths
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.preferredWidth: root.narrow ? 0 : trackList.width * 0.36
@@ -347,8 +331,6 @@ Item {
 
                 MichiText {
                     visible: root.showFormatColumn
-                    // PL-FINAL-24: 72px truncaba "FLAC · 24/96" — mínimo
-                    // responsivo para no cortar etiquetas reales.
                     Layout.preferredWidth: Math.max(96, trackList.width * 0.13)
                     Layout.minimumWidth: 96
                     Layout.maximumWidth: 200
@@ -359,8 +341,6 @@ Item {
                     elide: Text.ElideRight
                 }
 
-                // PL-FINAL-16: estado explícito de track no disponible —
-                // nunca borrado silencioso, nunca playback roto.
                 MichiText {
                     visible: trackItem.unavailable
                     text: qsTr("Unavailable")
@@ -383,20 +363,15 @@ Item {
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
                     iconName: "heart"
-                    accessibleName: typeof library !== "undefined" && library
-                        && library.favoritePaths.indexOf(modelData.path) !== -1
+                    accessibleName: trackItem.isFavorite
                         ? qsTr("Remove from favorites") : qsTr("Add to favorites")
-                    selected: typeof library !== "undefined" && library
-                        && library.favoritePaths.indexOf(modelData.path) !== -1
+                    selected: trackItem.isFavorite
                     opacity: actionsVisible ? 1 : 0
                     Behavior on opacity {
                         enabled: !MichiAccessibility.reducedMotion
                         NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
                     }
-                    onClicked: {
-                        if (typeof library !== "undefined" && library)
-                            library.toggle_favorite(modelData.path)
-                    }
+                    onClicked: trackItem.toggleFavorite()
                 }
                 MichiIconButton {
                     id: moreButton
@@ -409,14 +384,14 @@ Item {
                         enabled: !MichiAccessibility.reducedMotion
                         NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
                     }
-                    onClicked: trackMenu.popup()
+                    onClicked: {
+                        trackItem.selectExactTarget()
+                        trackMenu.popup()
+                    }
                 }
                 }
             }
 
-            // Keyboard navigation feedback: arrow keys move the ListView
-            // currentIndex, so the focused row must also become the visible
-            // selected row (otherwise the cursor moves invisibly)
             onActiveFocusChanged: {
                 if (activeFocus)
                     root.trackSelected(modelData.path)
@@ -431,11 +406,19 @@ Item {
             }
             Keys.onSpacePressed: event => {
                 if (root.selectionMode) {
-                    // PL-10-FINAL-03: Shift+Space = rango sobre las rows
-                    // visibles; el Detail calcula el rango por PATH.
                     root.selectionToggleRequested(
                         modelData.path,
                         (event.modifiers & Qt.ShiftModifier) !== 0)
+                    event.accepted = true
+                }
+            }
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Menu
+                        || (event.key === Qt.Key_F10
+                            && (event.modifiers & Qt.ShiftModifier))) {
+                    MichiAccessibility.noteKeyboard()
+                    trackItem.selectExactTarget()
+                    trackMenu.popup()
                     event.accepted = true
                 }
             }
@@ -443,9 +426,6 @@ Item {
                 if (event.modifiers & Qt.AltModifier && root.reorderEnabled
                         && !root.selectionMode) {
                     if (trackItem.canonicalIndex > 0) {
-                        // R3-08: SOLO el intent. La selección se mantiene
-                        // por path; rows cambia → onRowsChanged sincroniza
-                        // currentIndex con la posición del path seleccionado.
                         root.moveTrackRequested(
                             trackItem.canonicalIndex, trackItem.canonicalIndex - 1)
                         event.accepted = true
@@ -453,7 +433,6 @@ Item {
                         event.accepted = false
                     }
                 } else {
-                    // R3-F1: Up/Down plain → keyNavigation nativo del ListView.
                     event.accepted = false
                 }
             }
@@ -472,8 +451,6 @@ Item {
                 }
             }
 
-            // Quiet states: normal transparent, hover +0.035, selected +0.06,
-            // pressed adds the standard press surface
             background: Rectangle {
                 radius: 5
                 color: trackItem.pressed ? MichiSemanticColors.surfacePressed
@@ -485,10 +462,12 @@ Item {
                     enabled: !MichiAccessibility.reducedMotion
                     ColorAnimation { duration: MichiMotion.micro }
                 }
-                MichiFocusRing { visualFocus: trackItem.visualFocus && MichiAccessibility.keyboardMode }
+                MichiFocusRing {
+                    visualFocus: trackItem.visualFocus
+                        && MichiAccessibility.keyboardMode
+                }
             }
 
-            // Hairline separator, near-invisible
             Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
@@ -500,39 +479,61 @@ Item {
                 visible: !trackItem.isSelected
             }
 
-            MichiMenu {
+            PlaylistTrackContextMenu {
                 id: trackMenu
-                MenuItem {
-                    text: qsTr("Play")
-                    enabled: trackItem.canInteract
-                    onTriggered: root.playTrackRequested(trackItem.canonicalIndex)
+                titleText: modelData.title || modelData.displayName || ""
+                artistText: modelData.artist || ""
+                albumText: modelData.album || ""
+                artworkPath: modelData.artworkPath || ""
+                formatKey: modelData.codec
+                    ? String(modelData.codec).toLowerCase() : "unknown"
+                formatLabel: modelData.qualityLabel || (modelData.codec
+                    ? String(modelData.codec).toUpperCase() : "UNKNOWN")
+                favorite: trackItem.isFavorite
+                canPlayNow: trackItem.canInteract
+                canQueue: trackItem.canInteract && (
+                    trackItem.hasStableTrackId
+                        ? (typeof library !== "undefined" && library
+                            && library.canQueueTracks)
+                        : (typeof queue !== "undefined" && queue))
+                // Shared Library→Playlist picker/create/properties consumers
+                // are not wired productively yet. Fail closed: no dead items.
+                canAddToPlaylist: false
+                canAddToNewPlaylist: false
+                canFavorite: typeof library !== "undefined" && library
+                canGoToAlbum: false
+                canGoToArtist: false
+                canShowProperties: false
+                canMoveUp: trackItem.canonicalIndex > 0
+                    && root.reorderEnabled && !root.selectionMode
+                canMoveDown: trackItem.canonicalIndex < root.rows.length - 1
+                    && root.reorderEnabled && !root.selectionMode
+
+                onPlayNowRequested: if (trackItem.canInteract)
+                    root.playTrackRequested(trackItem.canonicalIndex)
+                onQueueRequested: {
+                    if (!trackItem.canInteract)
+                        return
+                    if (trackItem.hasStableTrackId
+                            && typeof library !== "undefined" && library
+                            && library.canQueueTracks) {
+                        // PR #232 contract: preserve stable identity in Queue.
+                        library.queue_track_by_id(String(modelData.trackId))
+                    } else if (!trackItem.hasStableTrackId
+                            && typeof queue !== "undefined" && queue) {
+                        // Explicit legacy fallback only; never preferred.
+                        queue.add_file(modelData.path)
+                    }
                 }
-                MenuItem {
-                    text: qsTr("Add to Queue")
-                    // PL-FINAL-A04: canQueue == canInteract — un track
-                    // unavailable nunca entra a la queue.
-                    enabled: trackItem.canInteract
-                    onTriggered: queue.add_file(modelData.path)
-                }
-                MichiSeparator { }
-                MenuItem {
-                    text: qsTr("Remove from playlist")
-                    onTriggered: root.removeTrackRequested(trackItem.canonicalIndex)
-                }
-                MenuItem {
-                    text: qsTr("Move Up")
-                    enabled: trackItem.canonicalIndex > 0 && root.reorderEnabled
-                        && !root.selectionMode
-                    onTriggered: root.moveTrackRequested(
+                onFavoriteRequested: trackItem.toggleFavorite()
+                onRemoveRequested:
+                    root.removeTrackRequested(trackItem.canonicalIndex)
+                onMoveUpRequested: if (trackItem.canonicalIndex > 0)
+                    root.moveTrackRequested(
                         trackItem.canonicalIndex, trackItem.canonicalIndex - 1)
-                }
-                MenuItem {
-                    text: qsTr("Move Down")
-                    enabled: trackItem.canonicalIndex < root.rows.length - 1
-                        && root.reorderEnabled && !root.selectionMode
-                    onTriggered: root.moveTrackRequested(
+                onMoveDownRequested: if (trackItem.canonicalIndex < root.rows.length - 1)
+                    root.moveTrackRequested(
                         trackItem.canonicalIndex, trackItem.canonicalIndex + 1)
-                }
             }
         }
     }
