@@ -18,6 +18,10 @@ MichiMenu {
     property bool canPlayNow: true
     property bool canQueue: false
     property bool canAddToPlaylist: false
+    // PR #231 REVIEW SEAL (P1-03): "Add to New Playlist…" no tiene consumer
+    // productivo (new_playlist_target_requested no se conecta en ningún
+    // lado) — la acción queda oculta hasta que exista un flujo real.
+    property bool canAddToNewPlaylist: false
     property bool canFavorite: false
     property bool canGoToAlbum: false
     property bool canGoToArtist: false
@@ -105,7 +109,8 @@ MichiMenu {
     MichiMenuItem {
         text: qsTr("Add to New Playlist…")
         icon.name: "plus"
-        visible: root.canAddToPlaylist
+        // P1-03: gated — nunca una acción visible sin consumer.
+        visible: root.canAddToPlaylist && root.canAddToNewPlaylist
         onTriggered: root.addToNewPlaylistRequested()
     }
     MichiMenuItem {

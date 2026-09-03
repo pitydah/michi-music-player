@@ -436,10 +436,21 @@ class EnrichmentBridge(QObject):
 
     @Slot("QVariantList")
     def prefetch_artist_portraits(self, local_artist_keys: list) -> None:
-        """Admit one debounced viewport batch through the same bounded queue."""
+        """Admit one debounced viewport batch through the same bounded queue.
+
+        PR #231 REVIEW SEAL (P1-07): iterate the FULL visible candidate
+        list — the previous [:12] slice starved visible artists beyond the
+        first twelve forever, because every repeated debounced batch
+        re-admitted the same leading keys (already attempted/inflight or
+        queued) while later keys never even got a chance. Fairness now
+        comes from sweeping every visible key each batch; bounds stay
+        enforced per admission (queue <= _MAX_PORTRAIT_PREFETCH_QUEUE,
+        inflight <= _MAX_PORTRAIT_PREFETCH_INFLIGHT) and dedup by
+        attempted/inflight/queue/cache inside prefetch_artist_portrait.
+        """
         if self._disposed or not self._online_enabled:
             return
-        for key in local_artist_keys[:_MAX_PORTRAIT_PREFETCH_QUEUE]:
+        for key in local_artist_keys:
             if isinstance(key, str):
                 self.prefetch_artist_portrait(key)
 

@@ -208,9 +208,9 @@ class TestToolbarContract:
         # 1) El toolbar productivo nunca toca el pipeline legacy
         # (solo comentarios que lo prohíben).
         code_lines = [
-            l
-            for l in toolbar.splitlines()
-            if l.strip() and not l.strip().startswith("//")
+            line
+            for line in toolbar.splitlines()
+            if line.strip() and not line.strip().startswith("//")
         ]
         assert "library.scan(" not in "".join(code_lines)
         assert "library.currentDir" not in toolbar
@@ -221,9 +221,9 @@ class TestToolbarContract:
         # 4) Agregar carpeta usa add_and_scan_music_source_url.
         assert "library.add_and_scan_music_source_url(" in popover
         popover_code = [
-            l
-            for l in popover.splitlines()
-            if l.strip() and not l.strip().startswith("//")
+            line
+            for line in popover.splitlines()
+            if line.strip() and not line.strip().startswith("//")
         ]
         assert "library.scan(" not in "".join(popover_code)
         # 5) El popover no depende del estado legacy currentDir.
@@ -246,7 +246,9 @@ class TestToolbarContract:
         engine.addImportPath(str(QML_DIR))
         engine.rootContext().setContextProperty("library", bridge)
         toolbar = _load(engine, "views/LibraryToolbar.qml")
-        assert toolbar.property("hasSource") is True
+        # POST-MERGE SEMANTIC RECOVERY: el toolbar R4 no expone
+        # hasSource — el contrato moderno vive en el bridge.
+        assert bridge.property("hasConfiguredSources") is True
         meta = toolbar.metaObject()
         idx = meta.indexOfMethod("performScan()")
         assert idx >= 0

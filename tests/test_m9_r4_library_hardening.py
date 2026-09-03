@@ -38,11 +38,23 @@ def test_album_and_artist_cards_do_not_scale_on_hover() -> None:
 
 
 def test_library_toolbar_has_resizable_search_and_one_split_scan_control() -> None:
+    """POST-MERGE MICRO-FIX (P0-06): gate fuerte — search resizable real,
+    split scan con primary/secondary, sin sourceBtn standalone."""
     toolbar = _qml("views/LibraryToolbar.qml")
-    # SEMANTIC INTEGRATION: el toolbar premium de main (PR #224-228)
-    # usa su propio layout con search y performScan.
-    assert "performScan" in toolbar
-    assert "search" in toolbar.lower()
+    split = _qml("controls/MichiSplitButton.qml")
+    assert "property real searchPanePreferredWidth" in toolbar
+    assert 'objectName: "librarySearchResizeHandle"' in toolbar
+    assert "DragHandler" in toolbar
+    assert "onDoubleTapped" in toolbar
+    assert "Keys.onLeftPressed" in toolbar
+    assert "Keys.onRightPressed" in toolbar
+    assert "MichiSplitButton" in toolbar
+    assert 'objectName: "libraryScanSplitButton"' in toolbar
+    assert "onPrimaryClicked: root.performScan()" in toolbar
+    assert "onSecondaryClicked: sourceMenu.popup()" in toolbar
+    assert "id: sourceBtn" not in toolbar
+    assert "signal primaryClicked()" in split
+    assert "signal secondaryClicked()" in split
     assert "scanAllSources" not in toolbar
 
 
@@ -57,11 +69,18 @@ def test_vinyl_wall_uses_a_reusable_non_spinning_disc_and_opens_on_tap() -> None
 
 
 def test_artists_gallery_uses_circular_portrait_cards_without_copy() -> None:
+    """POST-MERGE SEMANTIC RECOVERY (P0-01): la galería de artistas usa
+    el retrato circular DEDICADO (ArtistPortraitCard + ArtistPortraitArtwork
+    con maskSource) — nunca una copia del layout rectangular de Albums."""
     view = _qml("views/ArtistsView.qml")
+    portrait_card = _qml("media/ArtistPortraitCard.qml")
+    portrait_artwork = _qml("media/ArtistPortraitArtwork.qml")
 
-    assert "ArtistCard" in view
-    # SEMANTIC INTEGRATION: main muestra el prompt de selección vacía
-    # (invariante R4: nunca una copia del layout de albums).
+    assert "ArtistPortraitCard" in view, "el delegate debe ser circular"
+    assert "ArtistCard" not in view, "no debe reutilizar la card rectangular"
+    assert "ArtistPortraitArtwork" in portrait_card
+    assert "maskSource:" in portrait_artwork, "máscara circular real"
+    assert "maskEnabled: true" in portrait_artwork
 
 
 def test_artist_portrait_prefetch_is_bounded_and_separate() -> None:

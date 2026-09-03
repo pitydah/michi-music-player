@@ -34,23 +34,21 @@ Item {
                 tone: "neutral"
             }
             Item { Layout.fillWidth: true }
-            MichiText {
-                visible: library.artists.length > 0
-                text: qsTr("Select an artist to explore albums and tracks")
-                role: "caption"
-                color: MichiPalette.textMuted
-            }
         }
 
         GridView {
             id: artistGrid
             objectName: "artistGridView"
+            // POST-MERGE SEMANTIC RECOVERY (P0-01): identidad visual
+            // DIFERENCIADA de Albums — retrato circular dedicado
+            // (ArtistPortraitCard/ArtistPortraitArtwork), geometría
+            // density-responsive.
             readonly property int minimumCardWidth:
-                MichiThemeState.density === "compact" ? 150
-                : MichiThemeState.density === "comfortable" ? 210 : 180
+                MichiThemeState.density === "compact" ? 126
+                : MichiThemeState.density === "comfortable" ? 172 : 150
             readonly property int maximumCardWidth:
-                MichiThemeState.density === "compact" ? 176
-                : MichiThemeState.density === "comfortable" ? 236 : 208
+                MichiThemeState.density === "compact" ? 138
+                : MichiThemeState.density === "comfortable" ? 196 : 164
             readonly property int cardGap: MichiThemeState.contentGap
             readonly property int columnCount: Math.max(1, Math.floor(
                 (width + cardGap) / (minimumCardWidth + cardGap)))
@@ -62,18 +60,68 @@ Item {
             visible: library.artists.length > 0
             model: library.artists
             cellWidth: width / columnCount
-            cellHeight: MichiThemeState.density === "compact" ? 210
-                : MichiThemeState.density === "comfortable" ? 258 : 232
+            cellHeight: MichiThemeState.density === "compact" ? 142
+                : MichiThemeState.density === "comfortable" ? 216 : 190
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             keyNavigationEnabled: true
             keyNavigationWraps: false
             activeFocusOnTab: true
             focus: true
-            cacheBuffer: cellHeight * 2
+            cacheBuffer: cellHeight
             Accessible.role: Accessible.List
             Accessible.name: qsTr("Artists gallery")
             Accessible.description: qsTr("Use arrow keys to browse and Enter to open an artist")
+
+            function schedulePortraitPrefetch() {
+                portraitPrefetchTimer.restart()
+            }
+
+            function visibleArtistKeys() {
+                if (library.artists.length === 0 || cellHeight <= 0)
+                    return []
+                var firstVisibleRow = Math.max(0,
+                    Math.floor(contentY / cellHeight) - 1)
+                var lastVisibleRow = Math.min(
+                    Math.ceil(library.artists.length / columnCount) - 1,
+                    Math.floor((contentY + height) / cellHeight) + 1)
+                var firstIndex = firstVisibleRow * columnCount
+                var lastIndex = Math.min(library.artists.length,
+                    (lastVisibleRow + 1) * columnCount)
+                var keys = []
+                for (var index = firstIndex; index < lastIndex; ++index)
+                    keys.push(library.artists[index].key)
+                return keys
+            }
+
+            onContentYChanged: schedulePortraitPrefetch()
+            onWidthChanged: schedulePortraitPrefetch()
+            onHeightChanged: schedulePortraitPrefetch()
+            onCountChanged: schedulePortraitPrefetch()
+            Component.onCompleted: schedulePortraitPrefetch()
+
+            Timer {
+                id: portraitPrefetchTimer
+                interval: 180
+                repeat: false
+                onTriggered: {
+                    // POST-MERGE SEMANTIC RECOVERY: bounded viewport
+                    // prefetch (queue <= 12, concurrency <= 2, cache-first)
+                    // — solo si Online Library Enrichment está ON.
+                    if (typeof enrichment !== "undefined" && enrichment
+                            && enrichment.onlineEnabled)
+                        enrichment.prefetch_artist_portraits(
+                            artistGrid.visibleArtistKeys())
+                }
+            }
+
+            Connections {
+                target: typeof enrichment !== "undefined" ? enrichment : null
+                function onOnlineEnabledChanged() {
+                    if (enrichment.onlineEnabled)
+                        artistGrid.schedulePortraitPrefetch()
+                }
+            }
 
             Keys.onReturnPressed: {
                 if (currentIndex >= 0 && currentIndex < library.artists.length)
@@ -97,12 +145,16 @@ Item {
                 width: artistGrid.cellWidth
                 height: artistGrid.cellHeight
 
-                ArtistCard {
+                ArtistPortraitCard {
                     anchors.top: parent.top
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: artistGrid.resolvedCardWidth
                     height: parent.height - artistGrid.cardGap
                     artist: artistCell.modelData
+                    portraitPath: (typeof enrichment !== "undefined" && enrichment
+                        && enrichment.artistPortraits
+                        && enrichment.artistPortraits[artistCell.modelData.key])
+                        || artistCell.modelData.artworkPath
                     selected: artistCell.current
                     onActiveFocusChanged: {
                         if (activeFocus)
@@ -112,6 +164,7 @@ Item {
                         artistGrid.currentIndex = artistCell.index
                         library.select_artist(artistCell.modelData.key)
                     }
+                    onSelectedRequested: artistGrid.currentIndex = artistCell.index
                 }
             }
         }
@@ -129,7 +182,17 @@ Item {
 
     ArtistDetailView {
         anchors.fill: parent
+        // POST-MERGE SEMANTIC RECOVERY: el add-to-playlist del detail se
+        // propaga al host (patrón del ContentHost con los views).
         addTargetPath: root.addTargetPath
         onAddTargetPathChanged: root.addTargetPath = addTargetPath
+    }
+
+    Connections {
+        target: library
+        function onSelectedArtistKeyChanged() {
+            if (library.selectedArtistKey !== "")
+                root.addTargetPath = ""
+        }
     }
 }

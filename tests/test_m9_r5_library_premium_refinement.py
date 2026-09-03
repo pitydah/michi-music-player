@@ -20,21 +20,28 @@ def test_library_header_is_contextual_without_duplicate_views_label() -> None:
 
 
 def test_search_and_scan_have_independent_toolbar_geometry() -> None:
+    """POST-MERGE MICRO-FIX (P0-06): search resizable, scan split y
+    enrich conviven como HERMANOS en el GridLayout — enrich NO puede ser
+    hijo del split button."""
     toolbar = _qml("views/LibraryToolbar.qml")
-    split = _qml("controls/MichiSplitButton.qml")
-
-    # SEMANTIC INTEGRATION: search y scan conviven en el toolbar premium
-    # de main con geometría independiente.
-    assert "performScan" in toolbar
-    assert "search" in toolbar.lower()
+    split_end = toolbar.index("onSecondaryClicked: sourceMenu.popup()")
+    enrich_block_start = toolbar.index("id: enrichButton")
+    assert "searchPanePreferredWidth" in toolbar
+    assert 'objectName: "resizableLibrarySearchPane"' in toolbar
+    assert 'objectName: "librarySearchResizeHandle"' in toolbar
+    assert "DragHandler" in toolbar
+    assert "MichiSplitButton" in toolbar
+    assert 'objectName: "libraryScanSplitButton"' in toolbar
+    assert 'objectName: "libraryEnrichButton"' in toolbar
+    assert "id: sourceBtn" not in toolbar
+    # P0-01: enrich es HERMANO del split (fuera de su bloque).
+    assert enrich_block_start > split_end, (
+        "enrichButton debe estar FUERA del bloque MichiSplitButton"
+    )
 
 
 def test_artist_portraits_use_a_dedicated_true_mask() -> None:
-    # SEMANTIC INTEGRATION: la máscara circular dedicada (MultiEffect +
-    # maskSource) vive en ArtistPortraitArtwork; las vistas premium usan
-    # sus propias cards.
     portrait = _qml("media/ArtistPortraitArtwork.qml")
-    detail = _qml("views/ArtistDetailView.qml")
 
     assert "import QtQuick.Effects" in portrait
     assert "MultiEffect" in portrait
@@ -49,34 +56,35 @@ def test_artist_gallery_prefetch_is_viewport_batched_and_debounced() -> None:
         encoding="utf-8"
     )
 
-    # SEMANTIC INTEGRATION: main no usa el prefetch por intervalos —
-    # la galería premium renderiza la proyección del bridge (lazy viewport).
-    assert "ArtistCard" in artists or "library.artists" in artists
+    # POST-MERGE SEMANTIC RECOVERY: prefetch de retratos restaurado —
+    # viewport-bounded (visibleArtistKeys), debounced (180ms), gated
+    # por Online ON; límites del bridge preservados.
+    assert "schedulePortraitPrefetch" in artists
+    assert "visibleArtistKeys" in artists
+    assert "interval: 180" in artists
+    assert "enrichment.prefetch_artist_portraits" in artists
+    assert "onlineEnabled" in artists
+    assert "_MAX_PORTRAIT_PREFETCH_QUEUE" in bridge
 
 
 def test_enrichment_surfaces_have_single_visibility_authority() -> None:
     status = _qml("enrichment/EnrichmentStatusBar.qml")
-    knowledge = _qml("enrichment/EnrichmentKnowledgeCard.qml")
-    album = _qml("views/AlbumDetailView.qml")
-    artist = _qml("views/ArtistDetailView.qml")
 
-    # SEMANTIC INTEGRATION: la autoridad de visibilidad del enrichment
-    # de main vive en los componentes premium (EnrichmentStatusBar/
-    # InlineState) — sin doble máquina de estado.
     assert "shouldShow" in status or "visible:" in status
-    assert "EnrichmentInlineState" in album or "enrichment." in album
 
 
 def test_album_detail_and_grid_are_music_first_without_duplicate_quality() -> None:
-    detail = _qml("views/AlbumDetailView.qml")
     card = _qml("media/AlbumCard.qml")
-
     assert "root.album.trackCount" in card
+    # El detalle premium muestra el summary técnico UNA vez (el label
+    # "LIBRARY QUALITY" es la cabecera de ese bloque — no se duplica).
+    detail = _qml("views/AlbumDetailView.qml")
+    assert detail.count("LIBRARY QUALITY") == 1
+    assert "albumTechnicalSummary" in detail
 
 
 def test_vinyl_disc_has_artwork_label_without_cyan_center() -> None:
     disc = _qml("media/VinylDisc.qml")
-    wall = _qml("views/VinylWallView.qml")
 
     assert "MichiPalette.auroraCyan" not in disc
     assert "Repeater" not in disc

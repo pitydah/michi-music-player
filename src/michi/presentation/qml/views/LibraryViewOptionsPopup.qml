@@ -383,6 +383,54 @@ Popup {
         ColumnLayout {
             spacing: MichiSpacing.sm
             OptionLabel { text: qsTr("GALLERY") }
+            // POST-MERGE SEMANTIC RECOVERY (P1-01): control directo de
+            // ARTWORK SIZE — el zoom modifica la geometría REAL de las
+            // cards (82% / 100% / 122% vía albumZoomRequested →
+            // LibraryView.requestAlbumZoom).
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: MichiSpacing.xs
+
+                MichiIconButton {
+                    iconName: "zoom-out"
+                    accessibleName: qsTr("Make artwork smaller")
+                    enabled: root.albumZoom > 0.83
+                    onClicked: root.albumZoomRequested(
+                        root.albumZoom > 1.01 ? 1.0 : 0.82)
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 28
+                    radius: MichiRadius.md
+                    color: root.albumZoom === 1.0
+                        ? MichiSemanticColors.controlSurface
+                        : MichiSemanticColors.auroraCyanSurface
+                    border.width: 1
+                    border.color: root.albumZoom === 1.0
+                        ? MichiSemanticColors.borderSubtle
+                        : MichiSemanticColors.auroraCyanBorderSubtle
+
+                    MichiText {
+                        anchors.centerIn: parent
+                        text: Math.round(root.albumZoom * 100) + "%"
+                        role: "technical"
+                        technical: true
+                        color: root.albumZoom === 1.0
+                            ? MichiPalette.textSecondary
+                            : MichiPalette.auroraCyan
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MichiIconButton {
+                    iconName: "zoom-in"
+                    accessibleName: qsTr("Make artwork larger")
+                    enabled: root.albumZoom < 1.21
+                    onClicked: root.albumZoomRequested(
+                        root.albumZoom < 0.99 ? 1.0 : 1.22)
+                }
+            }
             MichiComboBox {
                 Layout.fillWidth: true
                 model: [qsTr("Small artwork"), qsTr("Medium artwork"), qsTr("Large artwork")]

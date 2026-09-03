@@ -342,12 +342,13 @@ class TestLibraryPageOrchestration:
 
             window.setWidth(900)
             obj.setProperty("width", 900)
+
             _process_events()
             assert not bool(compact.property("visible"))
             assert bool(segmented.property("visible"))
 
             toolbar = obj.findChild(QObject, "libraryToolbar")
-            chooser = obj.findChild(QObject, "librarySourcePopover")
+            chooser = obj.findChild(QObject, "libraryFolderDialog")
             assert toolbar is not None and chooser is not None
             assert QMetaObject.invokeMethod(toolbar, "performScan", Qt.DirectConnection)
             _process_events()

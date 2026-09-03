@@ -50,6 +50,15 @@ from michi.presentation.library_bridge import LibraryBridge
 QML_DIR = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
 
 
+@pytest.fixture(scope="module")
+def qapp():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance() or QGuiApplication([])
+    yield app
+
+
 class _Prefs(LibraryPrefsPort):
     def load(self):
         return LibraryPrefs()
@@ -566,7 +575,6 @@ class TestLoadingStateRuntime:
         )
         errs = [e.toString() for e in component.errors()]
         assert component.status() == QQmlComponent.Ready, errs[:2]
-        host = component.create()
         engine._keepalive = [component]
         qapp.processEvents()
         # SEMANTIC INTEGRATION: main's LoadingState (patterns component) no
@@ -680,7 +688,6 @@ class TestRetireInvalidatesArtwork:
         catalog.upsert_source(source)
         coordinator.scan_source(source)
         assert len(library.state.albums) == 1
-        album_key = library.state.albums[0].key
 
         cache = _RecordingCache()
         runner = _ManualArtworkRunner()

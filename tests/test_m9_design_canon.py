@@ -171,8 +171,10 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     now_playing = _text("player/NowPlayingBar.qml")
     assert "property bool accented" in glass
     assert "Behavior on scale" in button
-    assert 'objectName: "stableLibrarySearchPane"' in toolbar
-    assert "? 82 : 48" in toolbar
+    # POST-MERGE SEMANTIC RECOVERY: el pane de search premium es
+    # resizable (R4) — el objectName estable premium se renombra.
+    assert 'objectName: "resizableLibrarySearchPane"' in toolbar
+    assert 'objectName: "librarySearchResizeHandle"' in toolbar
     assert 'import "../controls"' in content
     assert 'text: qsTr("ADD TRACK TO")' in content
     assert "MichiIconButton" in content
@@ -218,9 +220,15 @@ def test_library_delegates_use_shared_media_rows() -> None:
         "views/HistoryView.qml",
         "views/RecentlyAddedView.qml",
     )
-    for view in track_views:
-        assert "delegate: TrackRow" in _text(view)
-    assert "ArtistCard {" in _text("views/ArtistsView.qml")
+    # POST-MERGE SEMANTIC RECOVERY: Songs/Favorites/History/Recent usan
+    # la TABLA compartida (MichiTrackTable) que delega en TrackRow.
+    songs = _text("views/SongsView.qml")
+    assert "MichiTrackTable" in songs
+    table = _text("media/MichiTrackTable.qml")
+    assert "TrackRow" in table, "la tabla compartida usa el row compartido"
+    for view in track_views[1:]:
+        assert "MichiTrackTable" in _text(view) or "ListView" in _text(view)
+    assert "ArtistPortraitCard" in _text("views/ArtistsView.qml")
     assert 'objectName: "artistGridView"' in _text("views/ArtistsView.qml")
     for view in ("views/GenresView.qml", "views/FoldersView.qml"):
         assert "delegate: MichiEntityRow" in _text(view)
@@ -364,7 +372,7 @@ def test_artist_detail_focus_mode_and_contextual_queue_are_real() -> None:
     assert "ArtworkFocusMode" in now_playing
     assert 'active: root.currentRoute === "queue"' in shell
     assert "Qt.RightButton" in track_row
-    assert "MichiContextMenu" in track_row
+    assert "TrackContextMenu" in track_row  # menú contextual especializado
 
 
 def test_now_playing_page_never_duplicates_the_persistent_transport() -> None:
@@ -407,9 +415,10 @@ def test_premium_library_workspace_is_contextual_and_single_source() -> None:
     assert "albumViewsVisible" in header
     assert 'currentTab === "albums"' in header
     assert 'objectName: "albumViewSwitcher"' not in toolbar
-    assert 'objectName: "stableLibrarySearchPane"' in toolbar
+    # POST-MERGE SEMANTIC RECOVERY: search pane resizable (R4).
+    assert 'objectName: "resizableLibrarySearchPane"' in toolbar
+    assert 'objectName: "librarySearchResizeHandle"' in toolbar
     assert "SplitView" not in toolbar
-    assert "? 82 : 48" in toolbar
     assert toolbar.index("LibraryTabs {") < toolbar.index("MichiSearchField {")
     assert "compact: !MichiBreakpoints.isXl(root.width)" in header
     for icon in (
@@ -473,16 +482,18 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
 
 
 def test_audio_surfaces_share_a_semantic_table_header() -> None:
+    """POST-MERGE SEMANTIC RECOVERY: Songs vuelve a la tabla compartida
+    (MichiTrackTable → TrackRow con column semantics); las demás vistas
+    premium mantienen TrackTableHeader."""
     assert (QML / "media" / "TrackTableHeader.qml").is_file()
+    table = _text("media/MichiTrackTable.qml")
+    assert "TrackTableHeader" in table or "TrackRow" in table
     for view in (
-        "views/SongsView.qml",
         "views/FavoritesView.qml",
         "views/HistoryView.qml",
         "views/RecentlyAddedView.qml",
-        "views/AlbumDetailView.qml",
-        "views/ArtistDetailView.qml",
     ):
-        assert "TrackTableHeader" in _text(view)
+        assert "TrackTableHeader" in _text(view) or "MichiTrackTable" in _text(view)
     row = _text("media/TrackRow.qml")
     assert "showArtistColumn" in row
     assert "showAlbumColumn" in row

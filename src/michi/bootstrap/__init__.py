@@ -688,6 +688,21 @@ class ApplicationContainer:
         self._app.setApplicationName("Michi Music Player")
         self._app.setApplicationVersion("0.1.0")
         self._app.setOrganizationName("Michi")
+        # POST-MERGE SEMANTIC RECOVERY (P1-03): UNA fuente canónica del
+        # icono de aplicación/ventana — el feline crest
+        # (presentation/qml/assets/michi-logo.svg, empaquetado via
+        # package-data). El crest interno del QML es independiente.
+        _michi_icon = (
+            Path(__file__).resolve().parents[1]
+            / "presentation"
+            / "qml"
+            / "assets"
+            / "michi-logo.svg"
+        )
+        if _michi_icon.is_file():
+            from PySide6.QtGui import QIcon
+
+            self._app.setWindowIcon(QIcon(str(_michi_icon)))
 
         db_path = _data_dir() / "michi.db"
         repo = SQLiteSettingsRepository.open_for_startup(db_path)

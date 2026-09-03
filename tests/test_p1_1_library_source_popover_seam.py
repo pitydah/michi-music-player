@@ -106,7 +106,7 @@ def test_folder_dialog_acceptance_routes_to_one_modern_worker(qapp, tmp_path):
     engine.rootContext().setContextProperty("library", bridge)
     toolbar = _load(engine, "views/LibraryToolbar.qml")
 
-    folder_dialog = toolbar.findChild(QObject, "librarySourceFolderDialog")
+    folder_dialog = toolbar.findChild(QObject, "libraryFolderDialog")
     assert folder_dialog is not None, "real LibrarySourcePopover FolderDialog missing"
 
     selected_folder = QUrl.fromLocalFile(str(music_root))
