@@ -200,10 +200,17 @@ def _new_window(component, properties: dict, width: int, height: int):
     return engine, root, window
 
 
+_KEEP: list = []
+
+
 def _render_overview(app, output, results, width, state):
     view = QQuickView()
     view.engine().addImportPath(str(QML))
-    view.rootContext().setContextProperty("playlists", QaPlaylists(_make_rows()).bridge)
+    qa = QaPlaylists(_make_rows())
+    # Retener el fake Python: el GC no-determinista destruía el wrapper y el
+    # bridge quedaba null en el contexto (reproducido en CI, no en local).
+    _KEEP.append(qa)
+    view.rootContext().setContextProperty("playlists", qa.bridge)
     view.setSource(QUrl.fromLocalFile(str(QML / "playlists" / "PlaylistsView.qml")))
     if view.status() != QQuickView.Ready:
         raise RuntimeError("; ".join(e.toString() for e in view.errors()))
