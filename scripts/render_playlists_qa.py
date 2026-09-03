@@ -227,6 +227,8 @@ def _render_detail(app, output, results, width, state):
     if state == "search-empty":
         tracks = []
     qa = QaPlaylists(_make_rows(), track_rows=tracks)
+    # Retener el fake Python (GC no determinista CI vs local).
+    _KEEP.append(qa)
     view = QQuickView()
     view.engine().addImportPath(str(QML))
     view.rootContext().setContextProperty("playlists", qa.bridge)
