@@ -999,6 +999,20 @@ class PlaylistsBridge(QObject):
             return []
         return [ref.track_id for ref in playlist.references() if ref.track_id]
 
+    def _get_selected_playlist_legacy_member_paths(self) -> list[str]:
+        """REVIEW SEAL: paths de miembros LEGACY (track_id vacío) — el
+        único caso en que el path decide 'already present' en el picker
+        (un miembro con id que el catálogo conoce NUNCA se compara por
+        snapshot: dos ids distintos pueden compartir path)."""
+        playlist = self._selected()
+        if playlist is None:
+            return []
+        return [
+            ref.fallback_path
+            for ref in playlist.references()
+            if not ref.track_id and ref.fallback_path
+        ]
+
     def _get_add_track_candidate_rows(self) -> list[dict]:
         """PL-10-FINAL-02: canonical Add Tracks catalog — LibraryService
         .state.tracks (the REAL library), never visible_tracks/search
@@ -1112,6 +1126,10 @@ class PlaylistsBridge(QObject):
     # 2.1: membership UI truth por TrackId (picker 'already present').
     selectedPlaylistTrackIds = Property(
         list, _get_selected_playlist_track_ids, notify=playlists_changed
+    )
+    # REVIEW SEAL: paths de miembros legacy (sin id) para el picker.
+    selectedPlaylistLegacyMemberPaths = Property(
+        list, _get_selected_playlist_legacy_member_paths, notify=playlists_changed
     )
     # PL-10-FINAL-02: catálogo canónico de Add Tracks (independiente de la
     # búsqueda global de Library).
@@ -1607,7 +1625,10 @@ class PlaylistsBridge(QObject):
         playlist = self._playlist_service.get_playlist(playlist_id)
         if playlist is None:
             return "not_found"
-        valid = [i for i in indices if 0 <= i < len(playlist.track_paths)]
+        # Valida contra la membresía CANÓNICA (references) — una playlist
+        # id-only (track_paths normalizado a ()) sigue siendo mutable.
+        member_count = len(playlist.references())
+        valid = [i for i in indices if 0 <= i < member_count]
         if not valid:
             return "invalid_index"
         result = self._run_mutation(

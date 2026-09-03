@@ -381,7 +381,9 @@ Item {
         playlistId: ""
         // PL-FINAL-A08: membership CANÓNICA — nunca la proyección filtrada
         // por la búsqueda local del Detail.
-        presentPaths: playlists.selectedPlaylistTrackPaths || []
+        // REVIEW SEAL: la verdad por PATH solo aplica a miembros legacy
+        // sin TrackId; la verdad primaria es presentTrackIds (identidad).
+        presentPaths: playlists.selectedPlaylistLegacyMemberPaths || []
         // 2.1: 'already present' por TrackId (relocation-safe).
         presentTrackIds: playlists.selectedPlaylistTrackIds || []
         onAddCompleted: (added, alreadyPresent) => {
