@@ -274,6 +274,7 @@ class PlaylistService:
         seen_ids = set(track_ids)
         seen_paths = set(track_paths)
         added = 0
+        upgraded = False
         for ref in references:
             if ref.track_id:
                 if ref.track_id in seen_ids:
@@ -284,11 +285,30 @@ class PlaylistService:
                 # comparación por path solo aplica a refs sin TrackId —
                 # nunca deja que el path (snapshot) sea autoridad global.
                 continue
+            if ref.track_id and ref.fallback_path and ref.fallback_path in seen_paths:
+                # REVIEW SEAL (P2): el path ya pertenece a un miembro SIN
+                # identidad (legacy V1/V2) — es el MISMO track físico que
+                # ahora conoce su TrackId: se UPGRADEA el id en vez de
+                # duplicar la membresía. Si el dueño del path tiene OTRO
+                # id no vacío, la identidad decide: el ref es un miembro
+                # distinto (dos ids estables pueden compartir snapshot).
+                upgraded_slot = False
+                for slot, (existing_id, existing_path) in enumerate(
+                    zip(track_ids, track_paths, strict=False)
+                ):
+                    if existing_id == "" and existing_path == ref.fallback_path:
+                        track_ids[slot] = ref.track_id
+                        upgraded = True
+                        upgraded_slot = True
+                        break
+                if upgraded_slot:
+                    continue
+                # Dueño con OTRO id no vacío: cae al append (miembro nuevo).
             seen_paths.add(ref.fallback_path)
             track_ids.append(ref.track_id)
             track_paths.append(ref.fallback_path)
             added += 1
-        if added == 0:
+        if added == 0 and not upgraded:
             return 0
         if not self._publish_membership(playlist_id, track_ids, track_paths):
             return 0
@@ -299,6 +319,25 @@ class PlaylistService:
     ) -> bool:
         """Single-member convenience over add_track_references."""
         return self.add_track_references(playlist_id, (reference,)) == 1
+
+    def replace_membership(
+        self, playlist_id: str, references: Iterable[PlaylistTrackReference]
+    ) -> bool:
+        """Replace the WHOLE membership of one playlist (convergencia
+        legacy → identidad). Persiste y notifica una sola vez. True solo
+        si el estado durable cambió."""
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return False
+        playlist = self._playlists[index]
+        ids: list[str] = []
+        paths: list[str] = []
+        for ref in references:
+            ids.append(ref.track_id)
+            paths.append(ref.fallback_path)
+        if tuple(ids) == playlist.track_ids and tuple(paths) == playlist.track_paths:
+            return False  # nada que converger
+        return self._publish_membership(playlist_id, ids, paths)
 
     def get_playlist(self, playlist_id: str) -> Playlist | None:
         """Public query: returns the playlist for a valid id, None for an
