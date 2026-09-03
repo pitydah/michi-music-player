@@ -165,6 +165,10 @@ MichiDialog {
         searchField.forceActiveFocus()
     }
     onPresentPathsChanged: root._rebuildPresentMap()
+    // PLAYLISTS IDENTITY RECOVERY (2.1): presentTrackIds es la autoridad
+    // de 'already present' — si cambian mientras el diálogo está abierto
+    // el presentIdMap no puede quedar stale aunque los paths no cambien.
+    onPresentTrackIdsChanged: root._rebuildPresentMap()
 
     Connections {
         target: typeof library !== "undefined" ? library : null
