@@ -90,3 +90,17 @@ jobs:
           name: library-views-visual-qa
           path: artifacts/library-views
           if-no-files-found: error
+
+      - name: Render Playlists visual QA
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python scripts/render_playlists_qa.py \
+            --output artifacts/playlists-views
+
+      - name: Upload Playlists visual QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlists-views-visual-qa
+          path: artifacts/playlists-views
+          if-no-files-found: error
