@@ -49,6 +49,9 @@ from michi.application.playback_history_coordinator import (
 )
 from michi.application.playback_service import PlaybackService
 from michi.application.playback_session_service import PlaybackSessionService
+from michi.application.playlist_legacy_convergence import (
+    converge_legacy_playlist_membership,
+)
 from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
@@ -454,6 +457,11 @@ def _build_services(
     # on an empty catalog is a cheap no-op. Source probing happens later on
     # user intent (scan source / scan all).
     source_coordinator.hydrate_catalog()
+    # PLAYLISTS IDENTITY RECOVERY (REVIEW SEAL): convergencia de arranque —
+    # las playlists path-only (V2 de instalaciones existentes) se resuelven
+    # contra el catálogo ya hidratado; el TrackId del track que ocupa cada
+    # path (nunca inventado); los no-resueltos quedan legacy honesto.
+    converge_legacy_playlist_membership(playlist_service, library)
     # M6-EXT-R4 FINAL SEAL P1-01: ALL productive source scans go through
     # ONE async lifecycle (worker compute via the M6.4 pipeline; owner
     # commit after the generation gate; sources serialized). The bridge
@@ -875,6 +883,11 @@ class ApplicationContainer:
             track_resolver=graph.track_resolver,
             palette_extractor=QtPlaylistPaletteExtractor(),
         )
+        # REVIEW SEAL: retire/disable de fuentes y fallos de source cambian
+        # la availability efectiva (resolver) SIN notificar a LibraryService
+        # — el bridge de playlists se suscribe a la señal del LibraryBridge
+        # para refrescar rows/counts/Play cuando eso ocurre.
+        graph.bridge.library_changed.connect(plb._on_library_changed)
         sb = SettingsBridge(settings)
 
         engine = QQmlApplicationEngine()
