@@ -427,24 +427,47 @@ class PlaylistService:
 
     def insert_track(self, playlist_id: str, index: int, file_path) -> bool:
         """RESTORE REMOVED TRACK AT ITS EXACT ORIGINAL POSITION (P0-01).
+        LEGACY path-only intent: delega en insert_track_reference con una
+        referencia sin TrackId (los callers que conocen la identidad usan
+        insert_track_reference — el undo tras relocation NUNCA debe pasar
+        solo el path)."""
+        return self.insert_track_reference(
+            playlist_id,
+            index,
+            PlaylistTrackReference(track_id="", fallback_path=str(Path(file_path))),
+        )
+
+    def insert_track_reference(
+        self,
+        playlist_id: str,
+        index: int,
+        reference: PlaylistTrackReference,
+    ) -> bool:
+        """RESTORE REMOVED TRACK AT ITS EXACT ORIGINAL POSITION, identity-
+        safe (PLAYLISTS IDENTITY RECOVERY 2.1): el caller entrega la
+        REFERENCIA congelada (track_id + path actual) capturada al remover
+        — un undo después de relocation restaura la MISMA identidad (T1),
+        nunca un miembro path-only nuevo.
 
         The caller supplies the FROZEN original playlist_id + index +
-        path captured at removal time — this operation NEVER consults any
-        "selected" playlist. Safe degradation: a playlist deleted before
-        Undo is a no-op (False). Exact-position restore never duplicates:
-        an already-present path is skipped (False). Aligned membership."""
+        reference captured at removal time — this operation NEVER consults
+        any "selected" playlist. Safe degradation: a playlist deleted
+        before Undo is a no-op (False). Exact-position restore never
+        duplicates: when the identity (track_id, else fallback path) is
+        already present, the insert is skipped (False). Aligned
+        membership."""
         playlist_index = self._find_by_id(playlist_id)
         if playlist_index < 0:
             return False  # playlist deleted before Undo: safe degradation
         playlist = self._playlists[playlist_index]
-        key = str(Path(file_path))
-        if key in playlist.track_paths:
-            return False  # duplicate policy: exact path already present
         track_ids, track_paths = self._aligned_membership(playlist)
+        identity = reference.track_id or reference.fallback_path
+        if identity and (identity in track_ids or identity in track_paths):
+            return False  # duplicate policy: exact identity already present
         count = len(track_paths)
         clamped = max(0, min(index, count))
-        track_ids.insert(clamped, "")
-        track_paths.insert(clamped, key)
+        track_ids.insert(clamped, reference.track_id)
+        track_paths.insert(clamped, reference.fallback_path)
         return self._publish_membership(playlist_id, track_ids, track_paths)
 
     def add_tracks(self, playlist_id: str, file_paths) -> tuple[int, int]:

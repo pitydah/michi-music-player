@@ -188,10 +188,11 @@ def test_playlist_coordinator_creates_from_canonical_album_atomically() -> None:
 
     assert playlist is not None
     assert playlist.track_paths == tuple(str(track.file_path) for track in tracks[:2])
-    # SEMANTIC INTEGRATION: main persiste create + add (2 writes
-    # autoritativos) — el invariante es la consistencia final, no el
-    # número de writes del diseño R4.
-    assert len(port.saved) == 2
+    # PLAYLISTS IDENTITY RECOVERY (2.1): create_playlist_with_references —
+    # UN solo write atómico con los TrackIds estables desde el primer
+    # estado durable (antes: create + add en 2 writes path-only).
+    assert len(port.saved) == 1
+    assert playlist.track_ids == tuple(track.track_id for track in tracks[:2])
     assert coordinator.create_from_album("Missing", "missing") is None
 
 

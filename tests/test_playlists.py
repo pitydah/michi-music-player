@@ -477,9 +477,11 @@ class TestPlaylistBridge:
         ] == [("Road Trip", 2, True, True, True)]
         bridge.open_playlist(trip.playlist_id)
         assert bridge.property("selectedPlaylistName") == "Road Trip"
+        # Identity recovery: las filas del detalle ahora transportan
+        # trackId (vacío para tracks legacy/harness sin catálogo).
         assert bridge.property("playlistTracks") == [
-            {"displayName": "T one", "path": str(p1)},
-            {"displayName": "T two", "path": str(p2)},
+            {"displayName": "T one", "path": str(p1), "trackId": ""},
+            {"displayName": "T two", "path": str(p2), "trackId": ""},
         ]
         bridge.open_all_playlists()
         assert bridge.property("selectedPlaylistName") == ""

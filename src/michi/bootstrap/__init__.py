@@ -512,8 +512,9 @@ def _build_services(
     library_playback = LibraryPlaybackCoordinator(
         library, playback_session, resolver=track_resolver
     )
-    # SEMANTIC INTEGRATION: el PlaylistPlaybackCoordinator de main (PR
-    # #223/#229) es path-based — el resolver R4 ya no aplica a playlists.
+    # PLAYLISTS IDENTITY RECOVERY: el coordinator recibe secuencias YA
+    # resueltas por el PlaylistsBridge (con track_resolver) — la sesión
+    # transporta library_track_id; el coordinator nunca resuelve por sí.
     playlist_playback = PlaylistPlaybackCoordinator(
         playlist_service, playback_session, queue
     )
@@ -862,15 +863,16 @@ class ApplicationContainer:
         nb = NavigationBridge(navigation, playlist_navigation=playlist_nav)
         # M9-R1: first-class Playlists presentation bridge — canonical
         # playlist projection lives here, not in LibraryBridge.
-        # SEMANTIC INTEGRATION: PlaylistsBridge de main (PR #229) es
-        # path-based — no acepta track_resolver (la resolución por
-        # identidad R4 fue reemplazada por la autoridad track_paths).
+        # PLAYLISTS IDENTITY RECOVERY: el bridge resuelve cada miembro
+        # por TrackId a través del LibraryTrackResolver canónico (la ONE
+        # authority TrackId ↔ path/availability del graph).
         plb = PlaylistsBridge(
             playlist_service,
             playlist_navigation=playlist_nav,
             navigation_service=navigation,
             library=library,
             playback_coordinator=graph.playlist_playback,
+            track_resolver=graph.track_resolver,
             palette_extractor=QtPlaylistPaletteExtractor(),
         )
         sb = SettingsBridge(settings)

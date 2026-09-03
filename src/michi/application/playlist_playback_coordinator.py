@@ -112,9 +112,11 @@ class PlaylistPlaybackCoordinator:
     ) -> None:
         """EXPLICIT Queue intent carrying (current path, stable TrackId)
         pairs (identity recovery, Iteración 2): Queue content stays
-        temporary but each entry preserves its library identity so a
-        relocated track resolves at playback time. Uses
-        QueueService.add_many_entries (one batch notification)."""
+        temporary but each entry preserves its library identity for
+        history/session consumers. El path se resuelve a la ubicación
+        ACTUAL al insertar (el caller resuelve; no hay re-resolución
+        tardía en Queue/Session — late relocation es deuda separada).
+        Uses QueueService.add_many_entries (one batch notification)."""
         del playlist_id
         if not path_id_pairs:
             return

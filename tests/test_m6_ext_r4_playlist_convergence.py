@@ -577,3 +577,283 @@ class TestIdentityRecoveryMembership:
         assert rows[0]["trackId"] == "T1"
         assert rows[0]["available"] is True
         assert bridge.property("playlistUnavailableCount") == 0
+
+
+# ==========================================================================
+# PLAYLISTS IDENTITY RECOVERY (2.1) — CONVERGENCE SEAL: LibraryTrackResolver
+# como autoridad, effective availability, adversarial no-rebinding, undo
+# identity-safe, batch remove relocation-safe, picker truth por TrackId,
+# auto palette current, coordinator TrackId-native.
+# ==========================================================================
+
+
+def _state_track(
+    path: str,
+    track_id: str,
+    *,
+    title: str = "",
+    artist: str = "Beta",
+    album: str = "First Set",
+    album_artist: str = "Beta",
+    availability=MediaAvailability.AVAILABLE,
+) -> TrackRef:
+    return TrackRef(
+        Path(path),
+        title=title or Path(path).stem,
+        artist=artist,
+        album=album,
+        album_artist=album_artist,
+        track_id=track_id,
+        media_file_id=f"media-{track_id}",
+        library_source_id="s1" if track_id else "",
+        availability=availability,
+    )
+
+
+def _library_with_albums(tmp_path, tracks):
+    from michi.application.library_service import LibraryService
+
+    library = LibraryService(_StubScanner(), library_prefs=_StubPrefs())
+    library._state.tracks = list(tracks)
+    library._rebuild_derived_library_state()
+    return library
+
+
+class TestConvergenceAvailability:
+    def test_offline_track_retained_but_never_plays_or_queues(self, tmp_path) -> None:
+        """T1 SOURCE_OFFLINE: la row sigue visible (membership retained)
+        pero unavailable; play y queue son no-ops."""
+        bridge, playlists, session, queue, library = _identity_harness(
+            tmp_path,
+            [
+                _state_track(
+                    "/A/song.flac", "T1", availability=MediaAvailability.SOURCE_OFFLINE
+                )
+            ],
+        )
+        playlist = playlists.create_playlist("Mix")
+        bridge.add_track_to_playlist(playlist.playlist_id, "/A/song.flac")
+
+        bridge.open_playlist(playlist.playlist_id)
+        rows = bridge.property("playlistTrackRows")
+        assert len(rows) == 1
+        assert rows[0]["trackId"] == "T1"
+        assert rows[0]["available"] is False, "offline → no reproducible"
+        assert rows[0]["unavailableReason"] == "not_playable"
+        assert bridge.property("playlistUnavailableCount") == 1
+
+        bridge.play_playlist(playlist.playlist_id)
+        assert session._pending is None, "offline nunca llega al motor"
+        bridge.queue_playlist(playlist.playlist_id)
+        assert len(queue.state.tracks) == 0, "offline nunca entra a Queue"
+
+    def test_missing_track_retained_but_never_plays(self, tmp_path) -> None:
+        bridge, playlists, session, queue, library = _identity_harness(
+            tmp_path,
+            [
+                _state_track(
+                    "/A/song.flac", "T1", availability=MediaAvailability.MISSING
+                )
+            ],
+        )
+        playlist = playlists.create_playlist("Mix")
+        bridge.add_track_to_playlist(playlist.playlist_id, "/A/song.flac")
+
+        bridge.open_playlist(playlist.playlist_id)
+        rows = bridge.property("playlistTrackRows")
+        assert rows[0]["available"] is False
+        assert rows[0]["trackId"] == "T1"
+
+        bridge.play_playlist(playlist.playlist_id)
+        assert session._pending is None
+        bridge.queue_playlist(playlist.playlist_id)
+        assert len(queue.state.tracks) == 0
+        # Membership durable intacta.
+        assert playlists.get_playlist(playlist.playlist_id).track_ids == ("T1",)
+
+    def test_member_track_id_never_rebinds_to_another_track(self, tmp_path) -> None:
+        """ADVERSARIAL: T1 ya no existe en el catálogo y T2 ahora ocupa el
+        viejo fallback /A — el miembro (T1, /A) NUNCA se presenta como T2:
+        con TrackId estable, el fallback no reidentifica."""
+        bridge, playlists, session, _, _ = _identity_harness(
+            tmp_path, [_state_track("/A/song.flac", "T1")]
+        )
+        playlist = playlists.create_playlist("Mix")
+        bridge.add_track_to_playlist(playlist.playlist_id, "/A/song.flac")
+        # El catálogo cambia: T1 desaparece; T2 (otro track) ocupa /A.
+        library = bridge._library
+        library._state.tracks = [_state_track("/A/song.flac", "T2")]
+        library._rebuild_derived_library_state()
+        library._notify()
+
+        bridge.open_playlist(playlist.playlist_id)
+        rows = bridge.property("playlistTrackRows")
+        assert len(rows) == 1
+        assert rows[0]["trackId"] == "T1", "el miembro conserva su identidad"
+        assert rows[0]["available"] is False, "T2 jamás se presenta como T1"
+        bridge.play_playlist(playlist.playlist_id)
+        assert session._pending is None
+
+
+class TestConvergenceCoordinator:
+    def _coordinator_harness(self, tmp_path, tracks):
+        from michi.application.library_collection_coordinators import (
+            LibraryPlaylistCoordinator,
+        )
+        from michi.infrastructure.playlists import SqlitePlaylistsRepository
+
+        library = _library_with_albums(tmp_path, tracks)
+        repo = SqlitePlaylistsRepository(tmp_path / "michi.db")
+        playlists = PlaylistService(playlists_port=repo)
+        coordinator = LibraryPlaylistCoordinator(library, playlists)
+        return library, playlists, coordinator, repo
+
+    def test_add_album_writes_durable_track_ids(self, tmp_path) -> None:
+        from michi.infrastructure.playlists import SqlitePlaylistsRepository
+
+        _, playlists, coordinator, _ = self._coordinator_harness(
+            tmp_path,
+            [
+                _state_track("/a.flac", "T1", title="A"),
+                _state_track("/b.flac", "T2", title="B"),
+            ],
+        )
+        playlist = playlists.create_playlist("Mix")
+        assert coordinator.add_album(playlist.playlist_id, "9::first set::beta") == 2
+        persisted = playlists.get_playlist(playlist.playlist_id)
+        assert persisted.track_ids == ("T1", "T2"), (
+            "Add Album → references reales, no ids vacíos"
+        )
+        reloaded = PlaylistService(
+            playlists_port=SqlitePlaylistsRepository(tmp_path / "michi.db")
+        ).get_playlist(playlist.playlist_id)
+        assert reloaded.track_ids == ("T1", "T2")
+
+    def test_add_artist_writes_durable_track_ids(self, tmp_path) -> None:
+        _, playlists, coordinator, _ = self._coordinator_harness(
+            tmp_path,
+            [
+                _state_track("/a.flac", "T1", title="A"),
+                _state_track("/b.flac", "T2", title="B"),
+            ],
+        )
+        playlist = playlists.create_playlist("Mix")
+        from michi.domain.library import make_artist_key
+
+        assert (
+            coordinator.add_artist(playlist.playlist_id, make_artist_key("Beta")) == 2
+        )
+        assert playlists.get_playlist(playlist.playlist_id).track_ids == ("T1", "T2")
+
+    def test_create_from_album_first_durable_state_has_ids(self, tmp_path) -> None:
+        from michi.infrastructure.playlists import SqlitePlaylistsRepository
+
+        _, playlists, coordinator, _ = self._coordinator_harness(
+            tmp_path,
+            [
+                _state_track("/a.flac", "T1", title="A"),
+                _state_track("/b.flac", "T2", title="B"),
+            ],
+        )
+        playlist = coordinator.create_from_album("New Mix", "9::first set::beta")
+        assert playlist is not None
+        assert playlist.track_ids == ("T1", "T2"), "IDs desde el primer estado durable"
+        raw = SqlitePlaylistsRepository(tmp_path / "michi.db")._load_raw("playlists")
+        assert raw[0]["version"] == 3
+        assert raw[0]["tracks"][0]["track_id"] == "T1"
+
+
+class TestConvergenceUndoAndBatch:
+    def test_undo_after_relocation_restores_identity(self, tmp_path) -> None:
+        """T1 /A → relocate /B → remove → undo → posición original con
+        track_id T1 (restart incluido)."""
+        from michi.infrastructure.playlists import SqlitePlaylistsRepository
+
+        bridge, playlists, _, _, library = _identity_harness(
+            tmp_path, [_state_track("/A/song.flac", "T1")]
+        )
+        playlist = playlists.create_playlist("Mix")
+        bridge.add_track_to_playlist(playlist.playlist_id, "/A/song.flac")
+        _relocate(library, "T1", "/B/song.flac")
+        bridge.open_playlist(playlist.playlist_id)
+        rows = bridge.property("playlistTrackRows")
+        assert rows[0]["path"] == "/B/song.flac"
+
+        # Remove (canonical index 0) + undo con la referencia congelada.
+        assert bridge.remove_track(0) == "removed"
+        assert playlists.get_playlist(playlist.playlist_id).references() == ()
+        assert (
+            bridge.insert_track_reference(
+                playlist.playlist_id, 0, rows[0]["trackId"], rows[0]["path"]
+            )
+            == "restored"
+        )
+        restored = playlists.get_playlist(playlist.playlist_id)
+        assert restored.track_ids == ("T1",), "el undo conserva la identidad"
+        assert restored.track_paths == ("/B/song.flac",)
+        reloaded = PlaylistService(
+            playlists_port=SqlitePlaylistsRepository(tmp_path / "michi.db")
+        ).get_playlist(playlist.playlist_id)
+        assert reloaded.track_ids == ("T1",), "T1 sobrevive al restart"
+
+    def test_batch_remove_by_current_path_after_relocation(self, tmp_path) -> None:
+        """La selección multi llega con el path PROYECTADO (/B); el remove
+        resuelve la membership canónica y remueve — no falla como missing
+        contra el fallback persistido (/A)."""
+        bridge, playlists, _, _, library = _identity_harness(
+            tmp_path, [_state_track("/A/song.flac", "T1")]
+        )
+        playlist = playlists.create_playlist("Mix")
+        bridge.add_track_to_playlist(playlist.playlist_id, "/A/song.flac")
+        _relocate(library, "T1", "/B/song.flac")
+        bridge.open_playlist(playlist.playlist_id)
+
+        result = bridge.remove_tracks_by_paths(["/B/song.flac"])
+        assert result["status"] == "removed"
+        assert result["removedCount"] == 1
+        assert playlists.get_playlist(playlist.playlist_id).references() == ()
+
+    def test_picker_membership_truth_after_relocation(self, tmp_path) -> None:
+        """Tras relocation el picker 'already present' decide por TrackId:
+        selectedPlaylistTrackIds contiene T1 y la row candidata de T1 (con
+        su path ACTUAL /B y trackId) está presente."""
+        bridge, playlists, _, _, library = _identity_harness(
+            tmp_path, [_state_track("/A/song.flac", "T1")]
+        )
+        playlist = playlists.create_playlist("Mix")
+        bridge.add_track_to_playlist(playlist.playlist_id, "/A/song.flac")
+        _relocate(library, "T1", "/B/song.flac")
+
+        bridge.open_playlist(playlist.playlist_id)
+        assert bridge.property("selectedPlaylistTrackIds") == ["T1"]
+        candidates = bridge.property("addTrackCandidateRows")
+        row = next(r for r in candidates if r.get("trackId") == "T1")
+        assert row["path"] == "/B/song.flac"
+        # El dedupe por TrackId del servicio coincide con la UI truth.
+        assert (
+            bridge.add_track_to_playlist(playlist.playlist_id, "/B/song.flac")
+            == "already_present"
+        )
+
+    def test_auto_hero_palette_sources_use_current_paths(self, tmp_path) -> None:
+        """La fuente de la paleta automática del hero son los paths ACTUALES
+        de los miembros (relocation-safe), nunca los fallbacks persistidos."""
+        bridge, playlists, _, _, library = _identity_harness(
+            tmp_path, [_state_track("/A/song.flac", "T1")]
+        )
+        playlist = playlists.create_playlist("Mix")
+        bridge.add_track_to_playlist(playlist.playlist_id, "/A/song.flac")
+        _relocate(library, "T1", "/B/song.flac")
+        bridge.open_playlist(playlist.playlist_id)
+
+        captured = {}
+
+        def _spy_mosaic(paths, index=None):
+            captured["paths"] = tuple(paths)
+            return []
+
+        bridge._mosaic_for_paths = _spy_mosaic  # type: ignore[method-assign]
+        bridge.property("selectedPlaylistAutoHeroColors")
+        assert captured["paths"] == ("/B/song.flac",), (
+            "la paleta automática usa el artwork ACTUAL, no el fallback /A"
+        )
