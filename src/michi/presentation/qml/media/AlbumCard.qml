@@ -34,6 +34,10 @@ Item {
     Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); openRequested(); activated() }
     Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); openRequested(); activated() }
     Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); playRequested() }
+    // POST-MERGE CONTEXTUAL RECOVERY: keyboard context invocation is the
+    // same exact-target action as right-click; selection is established
+    // before the menu opens.
+    Keys.onPressed: event => albumContext.handleContextKey(event)
 
     function albumDescription() {
         var details = []
@@ -211,5 +215,14 @@ Item {
             root.openRequested()
             root.activated()
         }
+    }
+
+    AlbumContextArea {
+        id: albumContext
+        anchors.fill: parent
+        album: root.album
+        // Picker/create/properties remain fail-closed until their shared
+        // productive consumers are restored. Open/Play/Queue/Artist are real.
+        onContextRequested: root.selectedRequested()
     }
 }
