@@ -152,6 +152,9 @@ ListView {
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
         Accessible.selected: timelineRow.selected
+        Keys.onReturnPressed: library.select_album(modelData.key)
+        Keys.onEnterPressed: library.select_album(modelData.key)
+        Keys.onPressed: event => albumContext.handleContextKey(event)
 
         Rectangle {
             anchors.fill: parent
@@ -228,8 +231,6 @@ ListView {
                 text: modelData.year > 0 ? String(modelData.year) : "—"
                 role: "technical"
                 technical: true
-                // One accent per surface: cyan is reserved for the active
-                // state (selected dot/row), not for every row's year.
                 color: modelData.year > 0
                     ? MichiPalette.textSecondary : MichiPalette.textMuted
             }
@@ -262,7 +263,14 @@ ListView {
             }
             onDoubleTapped: library.select_album(modelData.key)
         }
-        Keys.onReturnPressed: library.select_album(modelData.key)
-        Keys.onEnterPressed: library.select_album(modelData.key)
+        AlbumContextArea {
+            id: albumContext
+            anchors.fill: parent
+            album: modelData
+            onContextRequested: {
+                albumTimeline.currentIndex = timelineRow.index
+                timelineRow.forceActiveFocus()
+            }
+        }
     }
 }
