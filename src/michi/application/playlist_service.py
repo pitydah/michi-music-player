@@ -238,7 +238,11 @@ class PlaylistService:
                 if ref.track_id in seen_ids:
                     continue
                 seen_ids.add(ref.track_id)
-            if ref.fallback_path and ref.fallback_path in seen_paths:
+            elif ref.fallback_path and ref.fallback_path in seen_paths:
+                # Solo un ref LEGACY (sin TrackId) dedupe por path: cuando
+                # el TrackId estable está presente, la identidad decide —
+                # un path compartido por dos tracks distintos (T1 y T2 en
+                # el mismo snapshot) NUNCA los colapsa.
                 continue
             seen_paths.add(ref.fallback_path)
             track_ids.append(ref.track_id)
@@ -275,7 +279,10 @@ class PlaylistService:
                 if ref.track_id in seen_ids:
                     continue
                 seen_ids.add(ref.track_id)
-            if ref.fallback_path and ref.fallback_path in seen_paths:
+            elif ref.fallback_path and ref.fallback_path in seen_paths:
+                # Igual política que create_playlist_with_references: la
+                # comparación por path solo aplica a refs sin TrackId —
+                # nunca deja que el path (snapshot) sea autoridad global.
                 continue
             seen_paths.add(ref.fallback_path)
             track_ids.append(ref.track_id)
