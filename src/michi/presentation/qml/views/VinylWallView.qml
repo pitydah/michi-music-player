@@ -112,6 +112,9 @@ GridView {
         Accessible.name: modelData.title + " by " + modelData.artist
         Accessible.selected: vinylTile.selected
         Accessible.description: qsTr("Open album")
+        Keys.onReturnPressed: library.select_album(modelData.key)
+        Keys.onEnterPressed: library.select_album(modelData.key)
+        Keys.onPressed: event => albumContext.handleContextKey(event)
 
         Rectangle {
             anchors.fill: parent
@@ -241,7 +244,14 @@ GridView {
             }
             onDoubleTapped: library.select_album(modelData.key)
         }
-        Keys.onReturnPressed: library.select_album(modelData.key)
-        Keys.onEnterPressed: library.select_album(modelData.key)
+        AlbumContextArea {
+            id: albumContext
+            anchors.fill: parent
+            album: modelData
+            onContextRequested: {
+                albumVinyl.currentIndex = vinylTile.index
+                vinylTile.forceActiveFocus()
+            }
+        }
     }
 }
