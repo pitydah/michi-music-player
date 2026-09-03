@@ -194,10 +194,15 @@ class TestHistoricalMigration:
             "SELECT value FROM library_prefs WHERE key = 'playlists'"
         ).fetchone()
         payload = json.loads(row[0])
-        # SEMANTIC INTEGRATION: main's persistence shape es V2
-        # ({"id","name","track_paths"}) — el migration escribe el mismo
-        # shape con identidades determinísticas.
-        assert payload[0]["version"] == 2
+        # PLAYLISTS POST-MERGE IDENTITY RECOVERY: el migration escribe V3
+        # ({"version": 3, "tracks": [{"track_id", "fallback_path"}]}) con
+        # los MISMOS ids determinísticos asignados a tracks/media — la
+        # proyección track_paths queda derivada de la misma membresía.
+        assert payload[0]["version"] == 3
+        assert payload[0]["tracks"] == [
+            {"track_id": legacy_track_id(A), "fallback_path": A},
+            {"track_id": legacy_track_id(B), "fallback_path": B},
+        ]
         assert payload[0]["track_paths"] == [A, B]
 
         # --- SESSION (V3 with the SAME ids) ------------------------------

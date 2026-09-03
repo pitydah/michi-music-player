@@ -715,3 +715,38 @@ class TestPickerRuntime:
         result = gone.add_tracks("p1", ["/a.flac"])
         assert result["status"] == "not_found"
         engine.deleteLater()
+
+    def test_present_track_ids_refresh_identity_map_live(self, qapp):
+        """PLAYLISTS IDENTITY RECOVERY (2.1): si presentTrackIds cambia
+        mientras el diálogo está abierto (relocation/otra mutación), el
+        presentIdMap se reconstruye — un T1 ya presente nunca se ofrece
+        como addable aunque su path haya cambiado."""
+        rows = [
+            {
+                "title": "A",
+                "artist": "X",
+                "album": "Y",
+                "path": "/B/song.flac",
+                "trackId": "T1",
+            },
+            {
+                "title": "C",
+                "artist": "X",
+                "album": "Y",
+                "path": "/c.flac",
+                "trackId": "T2",
+            },
+        ]
+        # El diálogo abre con la playlist que aún NO contiene a T1...
+        engine, obj, _holder = self._picker(qapp, ["/A/song.flac"], rows)
+        obj.setProperty("visibleRows", rows)
+        # T1 agregado por OTRO camino mientras el diálogo está abierto:
+        # presentTrackIds cambia (sin que presentPaths cambie: el fallback
+        # persistido sigue /A).
+        obj.setProperty("presentTrackIds", ["T1"])
+        # El map por identidad se refrescó: T1 (path /B) NO es addable.
+        assert obj.toggleIfAddable(rows[0]) is False, (
+            "T1 ya presente por identidad → bloqueado aunque path difiera"
+        )
+        assert obj.toggleIfAddable(rows[1]) is True, "T2 sigue addable"
+        engine.deleteLater()

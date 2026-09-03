@@ -23,22 +23,30 @@ MichiDialog {
     height: Math.min(600, parent ? parent.height - MichiSpacing.xl * 2 : 600)
 
     property string playlistId: ""
-    property var presentPaths: []   // paths ya en la playlist (no addable)
+    property var presentPaths: []   // paths persistidos (fallback legacy)
+    // PLAYLISTS IDENTITY RECOVERY (2.1): membership UI truth = TrackId —
+    // un track relocado (mismo id, path nuevo) sigue 'already present'.
+    property var presentTrackIds: []
     property var selectedPaths: []  // paths nuevos seleccionados
     property string query: ""
     property var visibleRows: []
     // PL-FINAL-A11: membership map O(1) — construido UNA vez por estado;
     // nunca indexOf() repetido dentro de delegates con bibliotecas grandes.
     property var presentMap: ({})
+    property var presentIdMap: ({})
 
     signal addCompleted(int added, int alreadyPresent)
 
     // PL-FINAL-A09: UNA sola entrada de toggle — mouse, checkbox, Space,
     // Enter y Return comparten EXACTAMENTE la misma regla: un track ya
     // presente NO es addable y jamás entra a selectedPaths.
-    function toggleIfAddable(path) {
-        if (root.presentMap[path])
+    function toggleIfAddable(row) {
+        // Acepta la row completa o un path string legacy (seals).
+        if (typeof row === "string")
+            row = { path: row }
+        if (root._isPresentRow(row))
             return false
+        var path = row.path
         var i = root.selectedPaths.indexOf(path)
         if (i === -1)
             root.selectedPaths = root.selectedPaths.concat([path])
@@ -91,6 +99,19 @@ MichiDialog {
         for (var i = 0; i < root.presentPaths.length; ++i)
             map[root.presentPaths[i]] = true
         root.presentMap = map
+        var ids = {}
+        for (var j = 0; j < root.presentTrackIds.length; ++j)
+            ids[root.presentTrackIds[j]] = true
+        root.presentIdMap = ids
+    }
+
+    // 2.1: presente por IDENTIDAD cuando la row la conoce (el path
+    // proyectado del catálogo puede diferir del fallback persistido);
+    // solo las rows legacy (sin trackId) caen al map por path.
+    function _isPresentRow(row) {
+        if (row && row.trackId)
+            return root.presentIdMap[row.trackId] === true
+        return row ? root.presentMap[row.path] === true : false
     }
 
     function _isSelected(path) {
@@ -102,9 +123,9 @@ MichiDialog {
         // solo se agregan los tracks visibles actuales addable (dedupe).
         var sel = root.selectedPaths.slice()
         for (var i = 0; i < root.visibleRows.length; ++i) {
-            var path = root.visibleRows[i].path
-            if (!root.presentMap[path] && sel.indexOf(path) === -1)
-                sel.push(path)
+            var row = root.visibleRows[i]
+            if (!root._isPresentRow(row) && sel.indexOf(row.path) === -1)
+                sel.push(row.path)
         }
         root.selectedPaths = sel
     }
@@ -120,6 +141,7 @@ MichiDialog {
                 ++count
         }
         return count
+
     }
 
     function _add() {
@@ -143,6 +165,10 @@ MichiDialog {
         searchField.forceActiveFocus()
     }
     onPresentPathsChanged: root._rebuildPresentMap()
+    // PLAYLISTS IDENTITY RECOVERY (2.1): presentTrackIds es la autoridad
+    // de 'already present' — si cambian mientras el diálogo está abierto
+    // el presentIdMap no puede quedar stale aunque los paths no cambien.
+    onPresentTrackIdsChanged: root._rebuildPresentMap()
 
     Connections {
         target: typeof library !== "undefined" ? library : null
@@ -227,7 +253,7 @@ MichiDialog {
                     Accessible.name: modelData.title + " — " + modelData.artist
 
                     readonly property bool alreadyPresent:
-                        root.presentMap[modelData.path] === true
+                        root._isPresentRow(modelData)
                     readonly property bool isChecked: root._isSelected(modelData.path)
 
                     contentItem: RowLayout {
@@ -240,7 +266,7 @@ MichiDialog {
                             checked: pickItem.isChecked
                             enabled: !pickItem.alreadyPresent
                             Accessible.name: qsTr("Select ") + modelData.title
-                            onToggled: root.toggleIfAddable(modelData.path)
+                            onToggled: root.toggleIfAddable(modelData)
                         }
 
                         Artwork {
@@ -293,13 +319,13 @@ MichiDialog {
 
                     onClicked: {
                         // PL-FINAL-A09: misma regla que checkbox/keys.
-                        root.toggleIfAddable(modelData.path)
+                        root.toggleIfAddable(modelData)
                     }
-                    Keys.onReturnPressed: root.toggleIfAddable(modelData.path)
-                    Keys.onEnterPressed: root.toggleIfAddable(modelData.path)
+                    Keys.onReturnPressed: root.toggleIfAddable(modelData)
+                    Keys.onEnterPressed: root.toggleIfAddable(modelData)
                     Keys.onSpacePressed: {
                         if (!pickItem.alreadyPresent)
-                            root.toggleIfAddable(modelData.path)
+                            root.toggleIfAddable(modelData)
                     }
                 }
             }

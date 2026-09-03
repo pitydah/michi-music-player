@@ -61,6 +61,19 @@ class PlaylistPlaybackCoordinator:
             PlaybackSequenceEntry(file_path=Path(path), title="")
             for path in available_paths
         ]
+        self.play_playlist_entries(playlist_id, entries, start_index)
+
+    def play_playlist_entries(
+        self,
+        playlist_id: str,
+        entries: list[PlaybackSequenceEntry],
+        start_index: int = 0,
+    ) -> None:
+        """PLAYLIST snapshot over RESOLVED sequence entries (identity
+        recovery, Iteración 2): every entry carries its CURRENT factual
+        path plus the stable ``library_track_id`` when the library knows
+        it — relocation-safe playback (the library resolves TrackId →
+        current TrackRef → current path at intent time)."""
         if not entries:
             return
         if not (0 <= start_index < len(entries)):
@@ -91,3 +104,20 @@ class PlaylistPlaybackCoordinator:
         if not available_paths:
             return
         self._queue.add_many([Path(path) for path in available_paths])
+
+    def queue_playlist_entries(
+        self,
+        playlist_id: str,
+        path_id_pairs: list[tuple[Path, str | None]],
+    ) -> None:
+        """EXPLICIT Queue intent carrying (current path, stable TrackId)
+        pairs (identity recovery, Iteración 2): Queue content stays
+        temporary but each entry preserves its library identity for
+        history/session consumers. El path se resuelve a la ubicación
+        ACTUAL al insertar (el caller resuelve; no hay re-resolución
+        tardía en Queue/Session — late relocation es deuda separada).
+        Uses QueueService.add_many_entries (one batch notification)."""
+        del playlist_id
+        if not path_id_pairs:
+            return
+        self._queue.add_many_entries(path_id_pairs)

@@ -49,6 +49,9 @@ from michi.application.playback_history_coordinator import (
 )
 from michi.application.playback_service import PlaybackService
 from michi.application.playback_session_service import PlaybackSessionService
+from michi.application.playlist_legacy_convergence import (
+    converge_legacy_playlist_membership,
+)
 from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
@@ -454,6 +457,11 @@ def _build_services(
     # on an empty catalog is a cheap no-op. Source probing happens later on
     # user intent (scan source / scan all).
     source_coordinator.hydrate_catalog()
+    # PLAYLISTS IDENTITY RECOVERY (REVIEW SEAL): convergencia de arranque —
+    # las playlists path-only (V2 de instalaciones existentes) se resuelven
+    # contra el catálogo ya hidratado; el TrackId del track que ocupa cada
+    # path (nunca inventado); los no-resueltos quedan legacy honesto.
+    converge_legacy_playlist_membership(playlist_service, library)
     # M6-EXT-R4 FINAL SEAL P1-01: ALL productive source scans go through
     # ONE async lifecycle (worker compute via the M6.4 pipeline; owner
     # commit after the generation gate; sources serialized). The bridge
@@ -512,8 +520,9 @@ def _build_services(
     library_playback = LibraryPlaybackCoordinator(
         library, playback_session, resolver=track_resolver
     )
-    # SEMANTIC INTEGRATION: el PlaylistPlaybackCoordinator de main (PR
-    # #223/#229) es path-based — el resolver R4 ya no aplica a playlists.
+    # PLAYLISTS IDENTITY RECOVERY: el coordinator recibe secuencias YA
+    # resueltas por el PlaylistsBridge (con track_resolver) — la sesión
+    # transporta library_track_id; el coordinator nunca resuelve por sí.
     playlist_playback = PlaylistPlaybackCoordinator(
         playlist_service, playback_session, queue
     )
@@ -862,17 +871,23 @@ class ApplicationContainer:
         nb = NavigationBridge(navigation, playlist_navigation=playlist_nav)
         # M9-R1: first-class Playlists presentation bridge — canonical
         # playlist projection lives here, not in LibraryBridge.
-        # SEMANTIC INTEGRATION: PlaylistsBridge de main (PR #229) es
-        # path-based — no acepta track_resolver (la resolución por
-        # identidad R4 fue reemplazada por la autoridad track_paths).
+        # PLAYLISTS IDENTITY RECOVERY: el bridge resuelve cada miembro
+        # por TrackId a través del LibraryTrackResolver canónico (la ONE
+        # authority TrackId ↔ path/availability del graph).
         plb = PlaylistsBridge(
             playlist_service,
             playlist_navigation=playlist_nav,
             navigation_service=navigation,
             library=library,
             playback_coordinator=graph.playlist_playback,
+            track_resolver=graph.track_resolver,
             palette_extractor=QtPlaylistPaletteExtractor(),
         )
+        # REVIEW SEAL: retire/disable de fuentes y fallos de source cambian
+        # la availability efectiva (resolver) SIN notificar a LibraryService
+        # — el bridge de playlists se suscribe a la señal del LibraryBridge
+        # para refrescar rows/counts/Play cuando eso ocurre.
+        graph.bridge.library_changed.connect(plb._on_library_changed)
         sb = SettingsBridge(settings)
 
         engine = QQmlApplicationEngine()

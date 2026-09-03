@@ -25,13 +25,23 @@ from michi.application.errors import (
     PlaylistPersistenceError,
 )
 from michi.application.library_service import LibraryService
+from michi.application.library_track_resolver import LibraryTrackResolver
 from michi.application.navigation_service import NavigationService
 from michi.application.playlist_navigation_coordinator import (
     PlaylistNavigationCoordinator,
 )
 from michi.application.playlist_service import PlaylistService
 from michi.application.ports import PlaylistPaletteExtractorPort
-from michi.domain.playlist import MAX_DESCRIPTION_LENGTH, PlaylistHeroMode
+from michi.domain.library_catalog import (
+    MediaAvailability,
+    media_playback_blocked,
+)
+from michi.domain.playback_session import PlaybackSequenceEntry
+from michi.domain.playlist import (
+    MAX_DESCRIPTION_LENGTH,
+    PlaylistHeroMode,
+    PlaylistTrackReference,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +101,7 @@ class PlaylistsBridge(QObject):
         navigation_service: NavigationService | None = None,
         library: LibraryService | None = None,
         playback_coordinator=None,
+        track_resolver: LibraryTrackResolver | None = None,
         parent: QObject | None = None,
         palette_extractor: PlaylistPaletteExtractorPort | None = None,
     ) -> None:
@@ -100,6 +111,13 @@ class PlaylistsBridge(QObject):
         self._navigation = navigation_service
         self._library = library
         self._playback_coordinator = playback_coordinator
+        # PLAYLISTS IDENTITY RECOVERY (2.1): LibraryTrackResolver es la ONE
+        # authority de resolución TrackId ↔ path/availability — el bridge
+        # NUNCA implementa una resolución paralela. Sin resolver inyectado
+        # (tests/headless) se construye sobre la misma library.
+        self._track_resolver = track_resolver
+        if self._track_resolver is None and library is not None:
+            self._track_resolver = LibraryTrackResolver(library)
         self._palette_extractor = palette_extractor
         self._auto_palettes: dict[str, list[str]] = {}
         self._palette_sources: dict[str, str] = {}
@@ -198,6 +216,184 @@ class PlaylistsBridge(QObject):
                     index.setdefault(str(track.file_path), track)
             self._trackref_index = index
         return self._trackref_index
+
+    # PLAYLISTS POST-MERGE IDENTITY RECOVERY (2.1): LibraryTrackResolver
+    # es la ÚNICA autoridad de resolución. Política (R4):
+    #   track_id presente  → resolver.resolve_ref(track_id); si no resuelve
+    #                       → UNAVAILABLE. El fallback path NUNCA se usa
+    #                       para reidentificar (adversarial: T2 ocupando el
+    #                       viejo path de T1 jamás se presenta como T1).
+    #   track_id vacío     → miembro legacy (V1/V2): fallback path lookup.
+    #
+    # Playable = resolvable AND effective availability no bloqueada
+    # (source observation + media observation compuestas por el resolver).
+
+    @staticmethod
+    def _stable_track_id(track) -> str:
+        """Stable catalog identity of a TrackRef — '' when the record (or
+        a legacy test harness fake) predates the catalog."""
+        return getattr(track, "track_id", "") or ""
+
+    def _resolve_member_track(self, ref) -> object | None:
+        """TrackRef actual de UN miembro (identidad o legacy por path) —
+        SIN considerar playability. None si la identidad no resuelve."""
+        resolver = self._track_resolver
+        if resolver is None:
+            return None
+        if ref.track_id:
+            # NUNCA rebinding por fallback: identidad estable decide.
+            return resolver.resolve_ref(ref.track_id)
+        if ref.fallback_path:
+            # Legacy path-only: lookup por el índice cache (O(P) — nunca
+            # resolve lineal por miembro). El índice es la MISMA fuente
+            # del resolver (state.tracks), no una autoridad paralela.
+            return self._build_trackref_index().get(ref.fallback_path)
+        return None
+
+    def _track_playback_blocked(self, track) -> bool:
+        """Availability compuesta vía resolver; para refs legacy/harness
+        que no exponen source id, la observación media directa (UNKNOWN →
+        no bloqueado). El resolver sigue siendo la autoridad para tracks
+        con contrato TrackRef completo."""
+        resolver = self._track_resolver
+        if resolver is None:
+            return False
+        if not hasattr(track, "library_source_id"):
+            availability = getattr(track, "availability", MediaAvailability.UNKNOWN)
+            return media_playback_blocked(availability)
+        return media_playback_blocked(resolver.effective_availability(track))
+
+    def _member_is_playable(self, ref, track) -> bool:
+        """Effective availability del miembro: el resolver compone media +
+        source; un track con id que no es playable se marca unavailable."""
+        resolver = self._track_resolver
+        if resolver is None:
+            return True  # sin library truth: snapshot crudo (headless)
+        if ref.track_id:
+            return resolver.resolve_playable_path(ref.track_id) is not None
+        if track is not None:
+            return not self._track_playback_blocked(track)
+        return False
+
+    def _resolve_playable_member(self, ref):
+        """(track, current_path) cuando el miembro es PLAYABLE; None
+        cuando no resuelve o su availability bloquea la reproducción
+        (MISSING / SOURCE_OFFLINE / ACCESS_DENIED / IO_ERROR)."""
+        resolver = self._track_resolver
+        if resolver is None:
+            return None
+        if ref.track_id:
+            path = resolver.resolve_playable_path(ref.track_id)
+            if path is None:
+                return None
+            track = resolver.resolve_ref(ref.track_id)
+            return track, str(path)
+        track = (
+            self._build_trackref_index().get(ref.fallback_path)
+            if ref.fallback_path
+            else None
+        )
+        if track is None:
+            return None
+        if self._track_playback_blocked(track):
+            return None
+        return track, str(track.file_path)
+
+    def _playlist_member_paths(self, playlist) -> list[str]:
+        """Membership paths WITH TrackId-first resolution: for every
+        member the CURRENT track path wins (relocation-safe); a member the
+        library cannot resolve keeps its persisted fallback path so the
+        visual row/count stays truthful about the membership."""
+        paths: list[str] = []
+        for ref in playlist.references():
+            track = self._resolve_member_track(ref)
+            if track is not None:
+                paths.append(str(track.file_path))
+            else:
+                paths.append(ref.fallback_path)
+        return paths
+
+    def _references_for_paths(self, paths) -> list[PlaylistTrackReference]:
+        """Library → Playlist entry seam (identity recovery, Iteración 2):
+        every incoming Library path becomes a REAL reference
+        ``PlaylistTrackReference(track_id=..., fallback_path=current path)``
+        — never a path-only member. A path the library cannot resolve stays
+        a legacy path-only reference ("" id, honest fallback); the system
+        never invents TrackIds."""
+        references: list[PlaylistTrackReference] = []
+        if self._library is None:
+            for raw in paths:
+                path = str(Path(raw))
+                references.append(
+                    PlaylistTrackReference(track_id="", fallback_path=path)
+                )
+            return references
+        index = self._build_trackref_index()
+        for raw in paths:
+            path = str(Path(raw))
+            track = index.get(path)
+            if track is not None:
+                references.append(
+                    PlaylistTrackReference(
+                        track_id=self._stable_track_id(track),
+                        fallback_path=str(track.file_path),
+                    )
+                )
+            else:
+                references.append(
+                    PlaylistTrackReference(track_id="", fallback_path=path)
+                )
+        return references
+
+    def _play_entries_for_playlist(self, playlist) -> list[PlaybackSequenceEntry]:
+        """Playable sequence entries for ONE playlist, TrackId-first:
+        every member resolves through the LibraryTrackResolver to its
+        CURRENT playable path (effective availability compuesta: source +
+        media) and carries its stable ``library_track_id``. Members that
+        do not resolve OR whose availability blocks playback (MISSING /
+        SOURCE_OFFLINE / ACCESS_DENIED / IO_ERROR) are skipped — never
+        sent to the engine; the membership itself is never deleted."""
+        if self._library is None:
+            return [
+                PlaybackSequenceEntry(file_path=Path(path), title="")
+                for path in playlist.track_paths
+            ]
+        entries: list[PlaybackSequenceEntry] = []
+        for ref in playlist.references():
+            resolved = self._resolve_playable_member(ref)
+            if resolved is None:
+                continue  # no resuelve o no playable → nunca al motor
+            track, current_path = resolved
+            entries.append(
+                PlaybackSequenceEntry(
+                    file_path=Path(current_path),
+                    title=track.title or track.display_name,
+                    library_track_id=self._stable_track_id(track)
+                    or (ref.track_id or None),
+                )
+            )
+        return entries
+
+    def _playlist_queue_pairs(self, playlist) -> list[tuple[Path, str | None]]:
+        """Queue pairs (current playable path, stable TrackId) — TrackId-
+        first resolution through the resolver; relocation-safe. Members
+        whose availability blocks playback are skipped (nunca entran a la
+        Queue)."""
+        if self._library is None:
+            return [(Path(path), None) for path in playlist.track_paths]
+        pairs: list[tuple[Path, str | None]] = []
+        for ref in playlist.references():
+            resolved = self._resolve_playable_member(ref)
+            if resolved is None:
+                continue
+            track, current_path = resolved
+            pairs.append(
+                (
+                    Path(current_path),
+                    self._stable_track_id(track) or (ref.track_id or None),
+                )
+            )
+        return pairs
 
     # ------------------------------------------------------------------
     # Row projection (canonical playlist row shape)
@@ -411,13 +607,17 @@ class PlaylistsBridge(QObject):
         recent_rank = {pid: rank for rank, pid in enumerate(nav.recent_ids)}
         rows = []
         for playlist in self._playlist_service.playlists:
-            mosaic = self._mosaic_for_paths(playlist.track_paths, index)
+            # Identity recovery: duración y mosaico resuelven la ubicación
+            # ACTUAL de cada miembro (TrackId-first); el path persistido es
+            # solo un snapshot.
+            current_paths = tuple(self._playlist_member_paths(playlist))
+            mosaic = self._mosaic_for_paths(current_paths, index)
             row = {
                 "playlistId": playlist.playlist_id,
                 "name": playlist.name,
                 "description": playlist.description,
-                "trackCount": len(playlist.track_paths),
-                "durationMs": self._duration_for_paths(playlist.track_paths),
+                "trackCount": len(playlist.references()),
+                "durationMs": self._duration_for_paths(current_paths),
                 "persistedCustomCoverPath": playlist.custom_cover_path,
                 "effectiveCustomCoverPath": self._effective_cover_path(playlist),
                 "coverAssetMissing": bool(playlist.custom_cover_path)
@@ -591,13 +791,16 @@ class PlaylistsBridge(QObject):
         playlist = self._selected()
         if playlist is None:
             return 0
-        return self._duration_for_paths(playlist.track_paths)
+        return self._duration_for_paths(tuple(self._playlist_member_paths(playlist)))
 
     def _get_selected_playlist_mosaic_artworks(self) -> list[str]:
         playlist = self._selected()
         if playlist is None:
             return []
-        return self._mosaic_for_paths(playlist.track_paths, self._build_artwork_index())
+        return self._mosaic_for_paths(
+            tuple(self._playlist_member_paths(playlist)),
+            self._build_artwork_index(),
+        )
 
     def _get_selected_playlist_pinned(self) -> bool:
         playlist_id = self._current_playlist_id()
@@ -617,8 +820,11 @@ class PlaylistsBridge(QObject):
         playlist = self._selected()
         if playlist is None:
             return list(_DEFAULT_HERO_PALETTE)
+        # 2.1: la paleta automática extrae del artwork ACTUAL de los
+        # miembros (relocation-safe) — nunca de los fallbacks persistidos.
         mosaic = self._mosaic_for_paths(
-            playlist.track_paths, self._build_artwork_index()
+            tuple(self._playlist_member_paths(playlist)),
+            self._build_artwork_index(),
         )
         return self._auto_palette_for(playlist, mosaic)
 
@@ -633,14 +839,22 @@ class PlaylistsBridge(QObject):
         if playlist is None:
             return []
         rows = []
-        for path in playlist.track_paths:
-            ref = self._trackref_for_path(path) if self._library is not None else None
+        for ref in playlist.references():
+            track = (
+                self._resolve_member_track(ref) if self._library is not None else None
+            )
+            current_path = (
+                str(track.file_path) if track is not None else ref.fallback_path
+            )
             rows.append(
                 {
                     "displayName": (
-                        ref.display_name if ref is not None else Path(path).stem
+                        track.display_name
+                        if track is not None
+                        else Path(current_path).stem
                     ),
-                    "path": path,
+                    "path": current_path,
+                    "trackId": ref.track_id,
                 }
             )
         return rows
@@ -651,28 +865,40 @@ class PlaylistsBridge(QObject):
         — NEVER the filtered-list index) and explicit availability
         metadata. When a local search query is active the rows are FILTERED
         (title/artist/album, case-insensitive) but every visible row keeps
-        its canonicalIndex; missing rows are never silently dropped."""
+        its canonicalIndex; missing rows are never silently dropped.
+
+        Identity recovery (Iteración 2): availability resolves TrackId-
+        FIRST — a member whose stable TrackId the library resolves renders
+        with the CURRENT track (path/title/artwork), even when its
+        persisted fallback path moved."""
         playlist = self._selected()
         if playlist is None:
             return []
         index = self._build_artwork_index()
         query = " ".join(self._playlist_search_query.casefold().split())
         rows = []
-        for canonical_index, path in enumerate(playlist.track_paths):
-            ref = self._trackref_for_path(path) if self._library is not None else None
-            if ref is not None:
-                row = self._track_row(ref, index, canonical_index)
-                row["available"] = True
-                row["unavailableReason"] = ""
+        for canonical_index, ref in enumerate(playlist.references()):
+            track = self._resolve_member_track(ref)
+            if track is not None:
+                row = self._track_row(track, index, canonical_index)
+                row["trackId"] = self._stable_track_id(track)
+                # 2.1: available = PLAYABLE (effective availability del
+                # resolver): un track offline/missing sigue visible pero no
+                # reproducible.
+                playable = self._member_is_playable(ref, track)
+                row["available"] = playable
+                row["unavailableReason"] = "" if playable else "not_playable"
             else:
-                stem = Path(path).stem
+                fallback = ref.fallback_path
+                stem = Path(fallback).stem if fallback else "Unknown track"
                 row = {
                     "displayName": stem,
                     "title": stem,
                     "artist": "",
                     "album": "",
                     "durationMs": 0,
-                    "path": path,
+                    "path": fallback,
+                    "trackId": ref.track_id,
                     "qualityLabel": "",
                     "codec": "",
                     "sampleRateHz": 0,
@@ -729,30 +955,63 @@ class PlaylistsBridge(QObject):
     def _get_playlist_unavailable_count(self) -> int:
         """PL-FINAL-16: honest count of tracks the library cannot resolve —
         the hero summary must explain '10 tracks · 36 min · 2 unavailable'.
-        PL-FINAL-A12: O(P) against the revision index."""
+        Identity recovery (Iteración 2): TrackId-first resolution."""
         playlist = self._selected()
         if playlist is None or self._library is None:
             return 0
-        index = self._build_trackref_index()
-        return sum(1 for path in playlist.track_paths if path not in index)
+        return sum(
+            1
+            for ref in playlist.references()
+            if self._resolve_playable_member(ref) is None
+        )
 
     def _get_playlist_available_count(self) -> int:
         """PL-FINAL-A05: count of tracks the library CAN resolve — the
-        hero Play/Shuffle contract operates only on playable tracks."""
+        hero Play/Shuffle contract operates only on playable tracks.
+        Identity recovery (Iteración 2): TrackId-first resolution."""
         playlist = self._selected()
         if playlist is None or self._library is None:
             return 0
-        index = self._build_trackref_index()
-        return sum(1 for path in playlist.track_paths if path in index)
+        return sum(
+            1
+            for ref in playlist.references()
+            if self._resolve_playable_member(ref) is not None
+        )
 
     def _get_playlist_track_paths(self) -> list[str]:
-        """PL-FINAL-A08: CANONICAL membership paths — NEVER filtered by
-        the local search. The Add Tracks picker derives 'In playlist'
-        from THIS property, not from the filtered rows projection."""
+        """PL-FINAL-A08: CANONICAL membership paths (legacy projection) —
+        NEVER filtered by the local search. The Add Tracks picker derives
+        'In playlist' from selectedPlaylistTrackIds PRIMERO (identidad) y
+        de esta proyección solo como fallback legacy."""
         playlist = self._selected()
         if playlist is None:
             return []
         return list(playlist.track_paths)
+
+    def _get_selected_playlist_track_ids(self) -> list[str]:
+        """PLAYLISTS IDENTITY RECOVERY (2.1): membership UI truth =
+        TrackId. Los ids estables de los miembros (sin "" legacy) — el Add
+        Tracks picker decide 'already present' por identidad, no por path
+        snapshot (un track relocado T1@/B sigue 'present' aunque su
+        fallback persistido diga /A)."""
+        playlist = self._selected()
+        if playlist is None:
+            return []
+        return [ref.track_id for ref in playlist.references() if ref.track_id]
+
+    def _get_selected_playlist_legacy_member_paths(self) -> list[str]:
+        """REVIEW SEAL: paths de miembros LEGACY (track_id vacío) — el
+        único caso en que el path decide 'already present' en el picker
+        (un miembro con id que el catálogo conoce NUNCA se compara por
+        snapshot: dos ids distintos pueden compartir path)."""
+        playlist = self._selected()
+        if playlist is None:
+            return []
+        return [
+            ref.fallback_path
+            for ref in playlist.references()
+            if not ref.track_id and ref.fallback_path
+        ]
 
     def _get_add_track_candidate_rows(self) -> list[dict]:
         """PL-10-FINAL-02: canonical Add Tracks catalog — LibraryService
@@ -769,6 +1028,7 @@ class PlaylistsBridge(QObject):
                 rows.append(
                     {
                         "path": path,
+                        "trackId": self._stable_track_id(track),
                         "displayName": track.display_name,
                         "title": track.title or track.display_name,
                         "artist": track.artist,
@@ -862,6 +1122,14 @@ class PlaylistsBridge(QObject):
     # PL-FINAL-A08: membership canónica SIN filtro (picker / undo / etc).
     selectedPlaylistTrackPaths = Property(
         list, _get_playlist_track_paths, notify=playlists_changed
+    )
+    # 2.1: membership UI truth por TrackId (picker 'already present').
+    selectedPlaylistTrackIds = Property(
+        list, _get_selected_playlist_track_ids, notify=playlists_changed
+    )
+    # REVIEW SEAL: paths de miembros legacy (sin id) para el picker.
+    selectedPlaylistLegacyMemberPaths = Property(
+        list, _get_selected_playlist_legacy_member_paths, notify=playlists_changed
     )
     # PL-10-FINAL-02: catálogo canónico de Add Tracks (independiente de la
     # búsqueda global de Library).
@@ -1077,17 +1345,25 @@ class PlaylistsBridge(QObject):
     def add_track(self, playlist_id: str, path: str) -> str:
         if self._playlist_service is None:
             return "not_found"
+        playlist = self._playlist_service.get_playlist(playlist_id)
+        if playlist is None:
+            return "not_found"
+        reference = self._references_for_paths([path])[0]
         result = self._run_mutation(
             "add_tracks",
-            lambda: self._playlist_service.add_track(playlist_id, Path(path)),
+            lambda: self._playlist_service.add_track_references(
+                playlist_id, (reference,)
+            ),
         )
         if result is None:
             return "persistence_failed"
-        return "added" if result else "already_present"
+        return "added" if result == 1 else "already_present"
 
     @Slot(str, int, str, result=str)
     def insert_track(self, playlist_id: str, index: int, path: str) -> str:
-        """P0-01: restore a removed track at its EXACT original position.
+        """P0-01 LEGACY path-only: restore a removed track at its EXACT
+        original position (sin identidad — el caller con TrackId debe usar
+        insert_track_reference).
         R3-04 codes: "restored" | "already_present" | "not_found" |
         "persistence_failed". EXACTLY this single signature (R2 P1-01).
 
@@ -1100,6 +1376,33 @@ class PlaylistsBridge(QObject):
         result = self._run_mutation(
             "insert_track",
             lambda: self._playlist_service.insert_track(playlist_id, index, path),
+        )
+        if result is None:
+            return "persistence_failed"
+        return "restored" if result else "already_present"
+
+    @Slot(str, int, str, str, result=str)
+    def insert_track_reference(
+        self, playlist_id: str, index: int, track_id: str, path: str
+    ) -> str:
+        """P0-01 IDENTITY-SAFE restore (PLAYLISTS IDENTITY RECOVERY 2.1):
+        el Undo restaura la REFERENCIA congelada (track_id + path actual)
+        capturada al remover — tras una relocation el track recupera su
+        MISMA identidad (T1), nunca un miembro path-only nuevo.
+        R3-04 codes: "restored" | "already_present" | "not_found" |
+        "persistence_failed"."""
+        if self._playlist_service is None:
+            return "not_found"
+        if not self._playlist_service.contains_playlist(playlist_id):
+            return "not_found"
+        reference = PlaylistTrackReference(
+            track_id=track_id or "", fallback_path=path or ""
+        )
+        result = self._run_mutation(
+            "insert_track",
+            lambda: self._playlist_service.insert_track_reference(
+                playlist_id, index, reference
+            ),
         )
         if result is None:
             return "persistence_failed"
@@ -1159,78 +1462,99 @@ class PlaylistsBridge(QObject):
         """PL-FINAL-A05: PLAYLIST playback operates ONLY on tracks the
         library can resolve. Missing/unavailable paths NEVER reach the
         audio engine — the coordinator receives the available snapshot.
-        Without a library (tests/headless) there is no availability truth
-        — the raw snapshot is used."""
-        if self._playback_coordinator is not None:
-            playlist = (
-                self._playlist_service.get_playlist(playlist_id)
-                if self._playlist_service is not None
-                else None
+        Identity recovery (Iteración 2): cada miembro se resuelve TrackId-
+        first a su ubicación ACTUAL y transporta su ``library_track_id``
+        hasta la sesión (relocation-safe). Without a library (tests/
+        headless) there is no availability truth — the raw snapshot is
+        used."""
+        if self._playback_coordinator is None:
+            return
+        playlist = (
+            self._playlist_service.get_playlist(playlist_id)
+            if self._playlist_service is not None
+            else None
+        )
+        if playlist is None:
+            return
+        if self._library is None:
+            self._playback_coordinator.play_playlist_paths(
+                playlist_id, list(playlist.track_paths)
             )
-            if playlist is None:
-                return
-            paths = list(playlist.track_paths)
-            if self._library is not None:
-                index = self._build_trackref_index()
-                available = [p for p in paths if p in index]
-                if not available:
-                    return
-                paths = available
-            self._playback_coordinator.play_playlist_paths(playlist_id, paths)
+            return
+        entries = self._play_entries_for_playlist(playlist)
+        if not entries:
+            return
+        self._playback_coordinator.play_playlist_entries(playlist_id, entries)
 
     @Slot(int)
     def play_playlist_track(self, index: int) -> None:
         """Playlist Detail track click → PLAYLIST context at index N.
         PL-FINAL-A05: un track no resoluble (unavailable) nunca se envía
-        al motor (cuando hay library truth)."""
-        if self._playback_coordinator is not None:
-            playlist_id = self._current_playlist_id()
-            playlist = (
-                self._playlist_service.get_playlist(playlist_id)
-                if playlist_id and self._playlist_service is not None
-                else None
-            )
-            if playlist is None:
-                return
-            if not (0 <= index < len(playlist.track_paths)):
-                # Legacy contract: un índice fuera de rango clamp a 0
-                # (comportamiento histórico del coordinator).
-                index = 0
-            paths = list(playlist.track_paths)
-            if self._library is not None:
-                path = paths[index]
-                index_map = self._build_trackref_index()
-                if path not in index_map:
-                    return
-                available = [p for p in paths if p in index_map]
-                start = available.index(path)
-                self._playback_coordinator.play_playlist_paths(
-                    playlist_id, available, start_index=start
-                )
-                return
+        al motor (cuando hay library truth). Identity recovery: el índice
+        es la posición CANÓNICA del miembro; la secuencia se resuelve
+        TrackId-first con identidad hasta la sesión."""
+        if self._playback_coordinator is None:
+            return
+        playlist_id = self._current_playlist_id()
+        playlist = (
+            self._playlist_service.get_playlist(playlist_id)
+            if playlist_id and self._playlist_service is not None
+            else None
+        )
+        if playlist is None:
+            return
+        count = len(playlist.references())
+        if not (0 <= index < count):
+            # Legacy contract: un índice fuera de rango clamp a 0
+            # (comportamiento histórico del coordinator).
+            index = 0
+        if self._library is None:
             self._playback_coordinator.play_playlist_paths(
-                playlist_id, paths, start_index=index
+                playlist_id, list(playlist.track_paths), start_index=index
             )
+            return
+        entries = self._play_entries_for_playlist(playlist)
+        if not entries:
+            return
+        # El miembro clickeado debe ser PLAYABLE para arrancar (2.1:
+        # availability efectiva — un track offline/missing no arranca).
+        references = playlist.references()
+        if self._resolve_playable_member(references[index]) is None:
+            return
+        # start = posición del miembro clickeado DENTRO de la secuencia
+        # playable (los unavailable previos no ocupan lugar en el motor).
+        start = sum(
+            1
+            for previous in references[:index]
+            if self._resolve_playable_member(previous) is not None
+        )
+        self._playback_coordinator.play_playlist_entries(
+            playlist_id, entries, start_index=start
+        )
 
     @Slot(str)
     def queue_playlist(self, playlist_id: str) -> None:
         """EXPLICIT Queue intent through the coordinator (no private
-        _queue access). PL-FINAL-A05: solo paths disponibles (con library
-        truth); sin library, snapshot crudo."""
-        if self._playback_coordinator is not None:
-            playlist = (
-                self._playlist_service.get_playlist(playlist_id)
-                if self._playlist_service is not None
-                else None
-            )
-            if playlist is None:
-                return
+        _queue access). PL-FINAL-A05: solo tracks disponibles (con library
+        truth); sin library, snapshot crudo. Identity recovery: cada track
+        entra a la Queue con su path ACTUAL + library_track_id estable."""
+        if self._playback_coordinator is None:
+            return
+        playlist = (
+            self._playlist_service.get_playlist(playlist_id)
+            if self._playlist_service is not None
+            else None
+        )
+        if playlist is None:
+            return
+        if self._library is None:
             paths = list(playlist.track_paths)
-            if self._library is not None:
-                index_map = self._build_trackref_index()
-                paths = [p for p in paths if p in index_map]
             if paths:
                 self._playback_coordinator.queue_playlist_paths(playlist_id, paths)
+            return
+        pairs = self._playlist_queue_pairs(playlist)
+        if pairs:
+            self._playback_coordinator.queue_playlist_entries(playlist_id, pairs)
 
     @Slot()
     def queue_selected_playlist(self) -> None:
@@ -1241,7 +1565,10 @@ class PlaylistsBridge(QObject):
     @Slot(str, list, result=dict)
     def add_tracks(self, playlist_id: str, paths: list) -> dict:
         """PL-FINAL-13: BATCH add tracks (one candidate, one persist, one
-        notify). Structured result for QML:
+        notify). Identity recovery (Iteración 2): cada path de Library se
+        convierte en una REFERENCIA real (track_id + fallback_path actual)
+        antes de entrar al servicio — nunca miembros path-only cuando la
+        identidad es conocida. Structured result for QML:
 
             {"status": "updated"|"no_change"|"not_found"|"persistence_failed",
              "addedCount": n, "alreadyPresentCount": m}
@@ -1252,8 +1579,21 @@ class PlaylistsBridge(QObject):
             return {"status": "not_found", "addedCount": 0, "alreadyPresentCount": 0}
         if not self._playlist_service.contains_playlist(playlist_id):
             return {"status": "not_found", "addedCount": 0, "alreadyPresentCount": 0}
+        references = self._references_for_paths(list(paths))
+        # Dedupe first-seen del input (misma semántica que el batch legacy):
+        # los duplicados internos no cuentan como already.
+        seen: set[str] = set()
+        unique_references = []
+        for ref in references:
+            identity = ref.track_id or ref.fallback_path
+            if identity in seen:
+                continue
+            seen.add(identity)
+            unique_references.append(ref)
         try:
-            added, already = self._playlist_service.add_tracks(playlist_id, paths)
+            added = self._playlist_service.add_track_references(
+                playlist_id, unique_references
+            )
         except PlaylistPersistenceError:
             self.persistenceFailed.emit("add_tracks")
             return {
@@ -1261,6 +1601,7 @@ class PlaylistsBridge(QObject):
                 "addedCount": 0,
                 "alreadyPresentCount": 0,
             }
+        already = max(0, len(unique_references) - added)
         if added == 0:
             return {
                 "status": "no_change",
@@ -1284,7 +1625,10 @@ class PlaylistsBridge(QObject):
         playlist = self._playlist_service.get_playlist(playlist_id)
         if playlist is None:
             return "not_found"
-        valid = [i for i in indices if 0 <= i < len(playlist.track_paths)]
+        # Valida contra la membresía CANÓNICA (references) — una playlist
+        # id-only (track_paths normalizado a ()) sigue siendo mutable.
+        member_count = len(playlist.references())
+        valid = [i for i in indices if 0 <= i < member_count]
         if not valid:
             return "invalid_index"
         result = self._run_mutation(
@@ -1317,12 +1661,29 @@ class PlaylistsBridge(QObject):
         unique = list(dict.fromkeys(str(p) for p in paths))
         if not unique:
             return {"status": "invalid", "removedCount": 0, "missingCount": 0}
+        # PLAYLISTS IDENTITY RECOVERY (2.1): la selección llega con los
+        # paths PROYECTADOS (ubicación actual de cada miembro tras
+        # relocation) — se resuelven contra la membership CANÓNICA
+        # (referencias por índice), nunca contra el snapshot persistido.
+        playlist_refs = playlist.references()
+        current_by_member: dict[str, int] = {}
+        for canonical_index, ref in enumerate(playlist_refs):
+            track = self._resolve_member_track(ref)
+            shown_path = (
+                str(track.file_path) if track is not None else (ref.fallback_path)
+            )
+            if shown_path:
+                current_by_member.setdefault(shown_path, canonical_index)
         canonical = list(playlist.track_paths)
         position_by_path = {path: i for i, path in enumerate(canonical)}
         indices = []
         missing = 0
         for path in unique:
-            if path in position_by_path:
+            canonical_index = current_by_member.get(path, -1)
+            if canonical_index >= 0:
+                indices.append(canonical_index)
+            elif path in position_by_path:
+                # Legacy: el path ES la membresía (V1/V2 path-only).
                 indices.append(position_by_path[path])
             else:
                 missing += 1
@@ -1350,7 +1711,13 @@ class PlaylistsBridge(QObject):
 
     @Slot(str, str, result=str)
     def add_track_to_playlist(self, playlist_id: str, path: str) -> str:
-        """Cross-feature (Library → Playlist): add a track by id.
+        """Cross-feature (Library → Playlist): add a track by its factual
+        path. Identity recovery (Iteración 2): el path se resuelve a una
+        REFERENCIA real (track_id + fallback_path actual) — el miembro
+        persistido lleva la identidad estable del catálogo, nunca queda
+        path-only cuando la identidad es conocida. El dedupe por TrackId
+        del servicio evita duplicar el mismo track aunque su path haya
+        cambiado.
         R3-04 codes: "added" | "already_present" | "not_found" |
         "persistence_failed"."""
         if self._playlist_service is None:
@@ -1358,12 +1725,13 @@ class PlaylistsBridge(QObject):
         playlist = self._playlist_service.get_playlist(playlist_id)
         if playlist is None:
             return "not_found"
-        if str(Path(path)) in playlist.track_paths:
-            return "already_present"
+        reference = self._references_for_paths([path])[0]
         result = self._run_mutation(
             "add_tracks",
-            lambda: self._playlist_service.add_track(playlist_id, Path(path)),
+            lambda: self._playlist_service.add_track_references(
+                playlist_id, (reference,)
+            ),
         )
         if result is None:
             return "persistence_failed"
-        return "added" if result else "already_present"
+        return "added" if result == 1 else "already_present"

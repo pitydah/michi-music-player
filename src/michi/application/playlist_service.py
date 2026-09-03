@@ -16,7 +16,7 @@ import contextlib
 import logging
 import math
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import replace
 from pathlib import Path
 
@@ -37,6 +37,7 @@ from michi.domain.playlist import (
     PlaylistAppearance,
     PlaylistHeroMode,
     PlaylistNavigationState,
+    PlaylistTrackReference,
     new_playlist_id,
     normalize_navigation_state,
 )
@@ -175,6 +176,169 @@ class PlaylistService:
                 return i
         return -1
 
+    # ------------------------------------------------------------------
+    # Identity recovery: aligned membership helpers (TrackId = identity,
+    # path = location snapshot). Never skew the two collections.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _aligned_membership(
+        playlist: Playlist,
+    ) -> tuple[list[str], list[str]]:
+        """Position-aligned editable copies of (track_ids, track_paths).
+
+        A path-only (V1/V2) record has track_ids == () — the shorter side
+        is padded with "" so every index operation touches BOTH collections
+        symmetrically (never skew)."""
+        ids = list(playlist.track_ids)
+        paths = list(playlist.track_paths)
+        count = max(len(ids), len(paths))
+        if len(ids) < count:
+            ids.extend("" for _ in range(count - len(ids)))
+        if len(paths) < count:
+            paths.extend("" for _ in range(count - len(paths)))
+        return ids, paths
+
+    def _publish_membership(
+        self, playlist_id: str, ids: list[str], paths: list[str]
+    ) -> bool:
+        """Replace the aligned membership of one playlist (persist once,
+        notify once). False when nothing changed."""
+        candidate = tuple(
+            replace(p, track_ids=tuple(ids), track_paths=tuple(paths))
+            if p.playlist_id == playlist_id
+            else p
+            for p in self._playlists
+        )
+        changed = self._commit_playlists(candidate)
+        if not changed:
+            return False
+        self._notify()
+        return True
+
+    def create_playlist_with_references(
+        self,
+        name: str,
+        references: Iterable[PlaylistTrackReference],
+    ) -> Playlist:
+        """Create one playlist and publish its initial ordered membership
+        once (identity recovery contract: stable TrackIds + location
+        snapshot). Dedupe by TrackId when present, else by path."""
+        cleaned = name.strip()
+        if not cleaned:
+            raise PlaylistNameInvalidError("playlist name must not be empty")
+        if any(p.name == cleaned for p in self._playlists):
+            raise PlaylistNameConflictError(f"playlist already exists: {cleaned!r}")
+        seen_ids: set[str] = set()
+        seen_paths: set[str] = set()
+        track_ids: list[str] = []
+        track_paths: list[str] = []
+        for ref in references:
+            if ref.track_id:
+                if ref.track_id in seen_ids:
+                    continue
+                seen_ids.add(ref.track_id)
+            elif ref.fallback_path and ref.fallback_path in seen_paths:
+                # Solo un ref LEGACY (sin TrackId) dedupe por path: cuando
+                # el TrackId estable está presente, la identidad decide —
+                # un path compartido por dos tracks distintos (T1 y T2 en
+                # el mismo snapshot) NUNCA los colapsa.
+                continue
+            seen_paths.add(ref.fallback_path)
+            track_ids.append(ref.track_id)
+            track_paths.append(ref.fallback_path)
+        playlist = Playlist(
+            playlist_id=new_playlist_id(),
+            name=cleaned,
+            track_ids=tuple(track_ids),
+            track_paths=tuple(track_paths),
+        )
+        self._commit_playlists((*tuple(self._playlists), playlist))
+        self._notify()
+        return playlist
+
+    def add_track_references(
+        self, playlist_id: str, references: Iterable[PlaylistTrackReference]
+    ) -> int:
+        """Append a membership batch ONCE (identity recovery contract).
+
+        Dedupe by TrackId when present, else by fallback path — a track
+        that relocated (same TrackId, new path) NEVER duplicates. Keeps
+        track_ids and track_paths aligned by index. Returns the number of
+        members actually added; 0 → zero durable writes, zero notifies."""
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return 0
+        playlist = self._playlists[index]
+        track_ids, track_paths = self._aligned_membership(playlist)
+        seen_ids = set(track_ids)
+        seen_paths = set(track_paths)
+        added = 0
+        upgraded = False
+        for ref in references:
+            if ref.track_id:
+                if ref.track_id in seen_ids:
+                    continue
+                seen_ids.add(ref.track_id)
+            elif ref.fallback_path and ref.fallback_path in seen_paths:
+                # Igual política que create_playlist_with_references: la
+                # comparación por path solo aplica a refs sin TrackId —
+                # nunca deja que el path (snapshot) sea autoridad global.
+                continue
+            if ref.track_id and ref.fallback_path and ref.fallback_path in seen_paths:
+                # REVIEW SEAL (P2): el path ya pertenece a un miembro SIN
+                # identidad (legacy V1/V2) — es el MISMO track físico que
+                # ahora conoce su TrackId: se UPGRADEA el id en vez de
+                # duplicar la membresía. Si el dueño del path tiene OTRO
+                # id no vacío, la identidad decide: el ref es un miembro
+                # distinto (dos ids estables pueden compartir snapshot).
+                upgraded_slot = False
+                for slot, (existing_id, existing_path) in enumerate(
+                    zip(track_ids, track_paths, strict=False)
+                ):
+                    if existing_id == "" and existing_path == ref.fallback_path:
+                        track_ids[slot] = ref.track_id
+                        upgraded = True
+                        upgraded_slot = True
+                        break
+                if upgraded_slot:
+                    continue
+                # Dueño con OTRO id no vacío: cae al append (miembro nuevo).
+            seen_paths.add(ref.fallback_path)
+            track_ids.append(ref.track_id)
+            track_paths.append(ref.fallback_path)
+            added += 1
+        if added == 0 and not upgraded:
+            return 0
+        if not self._publish_membership(playlist_id, track_ids, track_paths):
+            return 0
+        return added
+
+    def add_track_reference(
+        self, playlist_id: str, reference: PlaylistTrackReference
+    ) -> bool:
+        """Single-member convenience over add_track_references."""
+        return self.add_track_references(playlist_id, (reference,)) == 1
+
+    def replace_membership(
+        self, playlist_id: str, references: Iterable[PlaylistTrackReference]
+    ) -> bool:
+        """Replace the WHOLE membership of one playlist (convergencia
+        legacy → identidad). Persiste y notifica una sola vez. True solo
+        si el estado durable cambió."""
+        index = self._find_by_id(playlist_id)
+        if index < 0:
+            return False
+        playlist = self._playlists[index]
+        ids: list[str] = []
+        paths: list[str] = []
+        for ref in references:
+            ids.append(ref.track_id)
+            paths.append(ref.fallback_path)
+        if tuple(ids) == playlist.track_ids and tuple(paths) == playlist.track_paths:
+            return False  # nada que converger
+        return self._publish_membership(playlist_id, ids, paths)
+
     def get_playlist(self, playlist_id: str) -> Playlist | None:
         """Public query: returns the playlist for a valid id, None for an
         unknown id. No mutation, no notification, no persistence."""
@@ -283,9 +447,11 @@ class PlaylistService:
         return True
 
     def add_track(self, playlist_id: str, file_path) -> bool:
-        """Returns True when the track was actually added; False when the
-        playlist is unknown or the path was ALREADY present (dedupe) —
-        callers can distinguish 'Added' from 'Already in playlist'."""
+        """LEGACY path-only intent → appended as a reference with no
+        TrackId (""): dedupe by path; track_ids stay aligned (padded "").
+        Returns True when actually added; False for unknown playlist or an
+        ALREADY present member (dedupe) — callers distinguish 'Added' from
+        'Already in playlist'."""
         index = self._find_by_id(playlist_id)
         if index < 0:
             return False
@@ -293,48 +459,63 @@ class PlaylistService:
         playlist = self._playlists[index]
         if path in playlist.track_paths:
             return False  # dedupe
-        updated = replace(playlist, track_paths=(*playlist.track_paths, path))
-        candidate = tuple(
-            updated if p.playlist_id == playlist_id else p for p in self._playlists
-        )
-        changed = self._commit_playlists(candidate)
-        if not changed:
-            return False
-        self._notify()
-        return True
+        track_ids, track_paths = self._aligned_membership(playlist)
+        track_ids.append("")
+        track_paths.append(path)
+        return self._publish_membership(playlist_id, track_ids, track_paths)
 
     def insert_track(self, playlist_id: str, index: int, file_path) -> bool:
         """RESTORE REMOVED TRACK AT ITS EXACT ORIGINAL POSITION (P0-01).
+        LEGACY path-only intent: delega en insert_track_reference con una
+        referencia sin TrackId (los callers que conocen la identidad usan
+        insert_track_reference — el undo tras relocation NUNCA debe pasar
+        solo el path)."""
+        return self.insert_track_reference(
+            playlist_id,
+            index,
+            PlaylistTrackReference(track_id="", fallback_path=str(Path(file_path))),
+        )
+
+    def insert_track_reference(
+        self,
+        playlist_id: str,
+        index: int,
+        reference: PlaylistTrackReference,
+    ) -> bool:
+        """RESTORE REMOVED TRACK AT ITS EXACT ORIGINAL POSITION, identity-
+        safe (PLAYLISTS IDENTITY RECOVERY 2.1): el caller entrega la
+        REFERENCIA congelada (track_id + path actual) capturada al remover
+        — un undo después de relocation restaura la MISMA identidad (T1),
+        nunca un miembro path-only nuevo.
 
         The caller supplies the FROZEN original playlist_id + index +
-        path captured at removal time — this operation NEVER consults any
-        "selected" playlist. Safe degradation: a playlist deleted before
-        Undo is a no-op (False). Exact-position restore never duplicates:
-        an already-present path is skipped (False)."""
+        reference captured at removal time — this operation NEVER consults
+        any "selected" playlist. Safe degradation: a playlist deleted
+        before Undo is a no-op (False). Exact-position restore never
+        duplicates: when the identity (track_id, else fallback path) is
+        already present, the insert is skipped (False). Aligned
+        membership."""
         playlist_index = self._find_by_id(playlist_id)
         if playlist_index < 0:
             return False  # playlist deleted before Undo: safe degradation
         playlist = self._playlists[playlist_index]
-        key = str(Path(file_path))
-        if key in playlist.track_paths:
-            return False  # duplicate policy: exact path already present
-        paths = list(playlist.track_paths)
-        clamped = max(0, min(index, len(paths)))
-        paths.insert(clamped, key)
-        updated = replace(playlist, track_paths=tuple(paths))
-        candidate = tuple(
-            updated if p.playlist_id == playlist_id else p for p in self._playlists
-        )
-        changed = self._commit_playlists(candidate)
-        if not changed:
-            return False
-        self._notify()
-        return True
+        track_ids, track_paths = self._aligned_membership(playlist)
+        identity = reference.track_id or reference.fallback_path
+        if identity and (identity in track_ids or identity in track_paths):
+            return False  # duplicate policy: exact identity already present
+        count = len(track_paths)
+        clamped = max(0, min(index, count))
+        track_ids.insert(clamped, reference.track_id)
+        track_paths.insert(clamped, reference.fallback_path)
+        return self._publish_membership(playlist_id, track_ids, track_paths)
 
     def add_tracks(self, playlist_id: str, file_paths) -> tuple[int, int]:
         """PL-FINAL-13: BATCH add — dedupe input preserving deterministic
         first-seen order, skip already-present tracks, produce ONE new
         Playlist candidate, persist ONCE, notify ONCE.
+
+        Legacy path-only batch: every member is a reference without
+        TrackId; track_ids stay aligned (padded "").
 
         Returns (added_count, already_present_count). Unknown playlist
         returns (0, 0). Zero new tracks → (0, already) with ZERO durable
@@ -343,7 +524,8 @@ class PlaylistService:
         if index < 0:
             return (0, 0)
         playlist = self._playlists[index]
-        existing = set(playlist.track_paths)
+        track_ids, track_paths = self._aligned_membership(playlist)
+        existing = set(track_paths)
         added: list[str] = []
         already = 0
         seen: set[str] = set()
@@ -358,14 +540,10 @@ class PlaylistService:
             added.append(path)
         if not added:
             return (0, already)
-        updated = replace(playlist, track_paths=(*playlist.track_paths, *added))
-        candidate = tuple(
-            updated if p.playlist_id == playlist_id else p for p in self._playlists
-        )
-        changed = self._commit_playlists(candidate)
-        if not changed:
+        track_ids.extend("" for _ in added)
+        track_paths.extend(added)
+        if not self._publish_membership(playlist_id, track_ids, track_paths):
             return (0, already)
-        self._notify()
         return (len(added), already)
 
     def remove_tracks(self, playlist_id: str, indices) -> bool:
@@ -373,69 +551,50 @@ class PlaylistService:
         mutating, removes from HIGHEST to LOWEST so canonical positions of
         remaining rows never shift mid-operation, ONE candidate, ONE
         persist, ONE notify. Invalid indices are skipped (never corrupt
-        positions)."""
+        positions). Removes from BOTH aligned collections (ids + paths)."""
         index = self._find_by_id(playlist_id)
         if index < 0:
             return False
         playlist = self._playlists[index]
+        track_ids, track_paths = self._aligned_membership(playlist)
+        count = len(track_paths)
         valid = sorted(
-            {i for i in indices if 0 <= i < len(playlist.track_paths)},
+            {i for i in indices if 0 <= i < count},
             reverse=True,
         )
         if not valid:
             return False
-        paths = list(playlist.track_paths)
         for i in valid:
-            del paths[i]
-        updated = replace(playlist, track_paths=tuple(paths))
-        candidate = tuple(
-            updated if p.playlist_id == playlist_id else p for p in self._playlists
-        )
-        changed = self._commit_playlists(candidate)
-        if not changed:
-            return False
-        self._notify()
-        return True
+            del track_ids[i]
+            del track_paths[i]
+        return self._publish_membership(playlist_id, track_ids, track_paths)
 
     def remove_track(self, playlist_id: str, index: int) -> bool:
         playlist_index = self._find_by_id(playlist_id)
         if playlist_index < 0:
             return False
         playlist = self._playlists[playlist_index]
-        if not (0 <= index < len(playlist.track_paths)):
+        track_ids, track_paths = self._aligned_membership(playlist)
+        if not (0 <= index < len(track_paths)):
             return False
-        paths = list(playlist.track_paths)
-        del paths[index]
-        updated = replace(playlist, track_paths=tuple(paths))
-        candidate = tuple(
-            updated if p.playlist_id == playlist_id else p for p in self._playlists
-        )
-        changed = self._commit_playlists(candidate)
-        if not changed:
-            return False
-        self._notify()
-        return True
+        del track_ids[index]
+        del track_paths[index]
+        return self._publish_membership(playlist_id, track_ids, track_paths)
 
     def move_track(self, playlist_id: str, from_index: int, to_index: int) -> bool:
         playlist_index = self._find_by_id(playlist_id)
         if playlist_index < 0:
             return False
         playlist = self._playlists[playlist_index]
-        paths = list(playlist.track_paths)
-        if not (0 <= from_index < len(paths)):
+        track_ids, track_paths = self._aligned_membership(playlist)
+        if not (0 <= from_index < len(track_paths)):
             return False
-        to_index = max(0, min(to_index, len(paths) - 1))
-        track = paths.pop(from_index)
-        paths.insert(to_index, track)
-        updated = replace(playlist, track_paths=tuple(paths))
-        candidate = tuple(
-            updated if p.playlist_id == playlist_id else p for p in self._playlists
-        )
-        changed = self._commit_playlists(candidate)
-        if not changed:
-            return False
-        self._notify()
-        return True
+        to_index = max(0, min(to_index, len(track_paths) - 1))
+        moved_id = track_ids.pop(from_index)
+        moved_path = track_paths.pop(from_index)
+        track_ids.insert(to_index, moved_id)
+        track_paths.insert(to_index, moved_path)
+        return self._publish_membership(playlist_id, track_ids, track_paths)
 
     def collect_orphan_assets(self) -> list[str]:
         """PL-FINAL-C03: production-safe orphan GC — maintenance helper

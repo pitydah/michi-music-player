@@ -217,8 +217,20 @@ Item {
                             window.showToastWithAction(
                                 qsTr("Removed from playlist"), qsTr("Undo"),
                                 function() {
-                                    playlists.insert_track(
-                                        removedPlaylistId, removedIndex, removed.path)
+                                    // PLAYLISTS IDENTITY RECOVERY (2.1):
+                                    // el Undo restaura la REFERENCIA congelada
+                                    // (trackId + path factual) — tras una
+                                    // relocation el track recupera su MISMA
+                                    // identidad, nunca un miembro path-only.
+                                    if (removed.trackId) {
+                                        playlists.insert_track_reference(
+                                            removedPlaylistId, removedIndex,
+                                            removed.trackId, removed.path)
+                                    } else {
+                                        playlists.insert_track(
+                                            removedPlaylistId, removedIndex,
+                                            removed.path)
+                                    }
                                 })
                         }
                     } else if (result === "invalid_index") {
@@ -369,7 +381,11 @@ Item {
         playlistId: ""
         // PL-FINAL-A08: membership CANÓNICA — nunca la proyección filtrada
         // por la búsqueda local del Detail.
-        presentPaths: playlists.selectedPlaylistTrackPaths || []
+        // REVIEW SEAL: la verdad por PATH solo aplica a miembros legacy
+        // sin TrackId; la verdad primaria es presentTrackIds (identidad).
+        presentPaths: playlists.selectedPlaylistLegacyMemberPaths || []
+        // 2.1: 'already present' por TrackId (relocation-safe).
+        presentTrackIds: playlists.selectedPlaylistTrackIds || []
         onAddCompleted: (added, alreadyPresent) => {
             var message = qsTr("%n tracks added", "", added)
             if (alreadyPresent > 0)
