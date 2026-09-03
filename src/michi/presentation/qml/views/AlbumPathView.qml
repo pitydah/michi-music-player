@@ -165,6 +165,7 @@ PathView {
         Accessible.selected: PathView.isCurrentItem
         Accessible.description: PathView.isCurrentItem
             ? "Selected album. Enter to open" : "Select album"
+        Keys.onPressed: event => albumContext.handleContextKey(event)
 
         Rectangle {
             anchors.fill: artwork
@@ -172,9 +173,6 @@ PathView {
             radius: MichiRadius.lg
             color: "transparent"
             border.width: PathView.isCurrentItem ? 2 : 1
-            // Single accent in the focal area: cyan matches the selection
-            // card and its track-count label below (was auroraBlue, which
-            // fought the cyan card).
             border.color: tap.pressed ? MichiPalette.auroraCyan
                 : PathView.isCurrentItem
                     ? MichiPalette.auroraCyan : MichiSemanticColors.borderSubtle
@@ -199,7 +197,6 @@ PathView {
                 && MichiAccessibility.keyboardMode
         }
 
-        // Ground reflection / floor shadow under cover
         Rectangle {
             anchors.top: artwork.bottom
             anchors.horizontalCenter: artwork.horizontalCenter
@@ -228,9 +225,6 @@ PathView {
         }
 
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-        // TapHandler (not MouseArea): it claims only the tap, leaving the
-        // PathView drag/flick intact when the gesture starts on a cover.
-        // Click selects + keeps keyboard focus; double-click opens.
         TapHandler {
             id: tap
             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
@@ -239,6 +233,15 @@ PathView {
                 pathAlbum.forceActiveFocus()
             }
             onDoubleTapped: library.select_album(modelData.key)
+        }
+        AlbumContextArea {
+            id: albumContext
+            anchors.fill: parent
+            album: modelData
+            onContextRequested: {
+                albumsPath.currentIndex = pathAlbum.index
+                pathAlbum.forceActiveFocus()
+            }
         }
 
         Behavior on scale {
