@@ -205,6 +205,9 @@ class QaLibrary(QObject):
         int, lambda self: 0 if self._state == "empty" else 1, notify=library_changed
     )
     sourceOperationError = Property(str, lambda self: "", notify=library_changed)
+    # M9-R3 context menus contract: capability surfaces del Bridge.
+    canQueueTracks = Property(bool, lambda self: True, notify=library_changed)
+    canAddTracksToPlaylists = Property(bool, lambda self: True, notify=library_changed)
     scanCurrentPath = Property(str, lambda self: "", notify=library_changed)
     selectedAlbumKey = Property(str, lambda self: "", notify=library_changed)
     selectedArtistKey = Property(str, lambda self: "", notify=library_changed)
@@ -356,6 +359,8 @@ def render(output: Path) -> list[dict]:
             artwork_paths = create_artwork_fixtures(Path(temp_dir))
             for view_name, mode in MODES.items():
                 for width, height, state in review_frames():
+                    if state == "album-context-menu" and mode != "magazine":
+                        continue  # frame editorial específico del menú
                     library = QaLibrary(state, artwork_paths)
                     _render_frame(
                         app,
@@ -534,7 +539,30 @@ def _render_frame(
             if popup is None:
                 raise RuntimeError("View Options popup not found")
             popup.setProperty("visible", True)
+        elif state == "album-context-menu":
+            if mode != "magazine":
+                raise RuntimeError(
+                    "album-context-menu QA frame requires the magazine mode"
+                )
+            # M9-R3: abre el menú contextual del álbum hero (select-before-
+            # menu + popup real) para el render de revisión perceptual.
+            hero = root.findChild(QObject, "magazineHeroContext")
+            if hero is None:
+                raise RuntimeError("magazineHeroContext not found")
+            meta = hero.metaObject()
+            index = meta.indexOfMethod("openMenu()")
+            if index < 0 or not meta.method(index).invoke(hero):
+                raise RuntimeError("magazineHeroContext.openMenu() failed")
         QTest.qWait(260 if state in {"view-options-open", "hover"} else 80)
+        if state == "album-context-menu":
+            visible_menus = [
+                item
+                for item in root.findChildren(QObject)
+                if item.property("visible") is True
+                and "Menu" in item.metaObject().className()
+            ]
+            if not visible_menus:
+                raise RuntimeError("album context menu did not open for QA")
 
         if state == "empty" and library.albumCount != 0:
             raise RuntimeError("empty QA state still contains albums")
@@ -584,7 +612,12 @@ def main() -> int:
         json.dumps({"schemaVersion": 1, "frames": frames}, indent=2) + "\n",
         encoding="utf-8",
     )
-    if len(frames) != len(MODES) * len(review_frames()):
+    expected = len(MODES) * len(review_frames())
+    editorial_only = sum(
+        1 for frame in review_frames() if frame[2] == "album-context-menu"
+    )
+    expected -= editorial_only * (len(MODES) - 1)
+    if len(frames) != expected:
         raise RuntimeError("incomplete visual QA matrix")
     return 0
 
