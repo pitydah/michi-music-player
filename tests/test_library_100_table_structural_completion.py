@@ -313,8 +313,8 @@ class TestBlock2TableConvergence:
         # El QML consume la fila con identidad (trackId del proyector).
         detail = _qml("views/AlbumDetailView.qml")
         assert "rows: library.albumTracks" in detail
-        assert "columnProfile: \"album\"" in detail
-        assert "numberingMode: \"disc-track\"" in detail
+        assert 'columnProfile: "album"' in detail
+        assert 'numberingMode: "disc-track"' in detail
 
     def test_tab28_29_detail_queue_is_track_id_first(self) -> None:
         """TAB28/29: el Queue del detalle (álbum/artista) es TrackId-first
@@ -339,3 +339,182 @@ class TestBlock2TableConvergence:
         detail = _qml("views/AlbumDetailView.qml")
         assert "library.activate_album_track_by_id(trackId)" in detail
         assert "activate_album_track(index)" not in detail
+
+
+# ---------------------------------------------------------------------------
+# BLOQUE 3 — column state API + presets + header context menu + sort + persist
+# ---------------------------------------------------------------------------
+
+
+class TestBlock3ColumnAuthority:
+    def test_tab06_title_cannot_be_hidden(self) -> None:
+        """TAB06: Title es estructural — setVisible("title", false) es
+        no-op; el menú no ofrece ocultarlo."""
+        state = _qml("theme/LibraryTrackColumnState.qml")
+        assert 'if (column === "title")' in state
+        assert "return false  // estructural" in state or "return false" in state
+        assert "titleLocked" in state
+        menu = _qml("media/TrackTableHeaderContextMenu.qml")
+        assert 'qsTr("Title (required)")' in menu
+        assert 'root.targetColumn !== "title"' in menu
+        # El menú viejo plano (MenuItem nativos) ya no existe.
+        header = _qml("media/ResizableTrackHeader.qml")
+        assert (
+            "MichiMenuItem" not in header.replace("TrackTableHeaderContextMenu", "")
+            or "columnsMenu" not in header
+        )
+
+    def test_tab07_08_09_header_context_sort_explicit(self) -> None:
+        """TAB07-09: el contexto del header distingue CELL (targetColumn)
+        con Sort Asc/Desc explícitos — nunca emula con dos toggles."""
+        header = _qml("media/ResizableTrackHeader.qml")
+        assert "function openColumnContext(column)" in header
+        assert "function openGlobalContext()" in header
+        assert "headerContextMenu.targetColumn = column" in header
+        menu = _qml("media/TrackTableHeaderContextMenu.qml")
+        assert 'qsTr("Sort Ascending")' in menu
+        assert 'qsTr("Sort Descending")' in menu
+        assert "sortAscendingRequested(root.targetColumn)" in menu
+        assert "sortDescendingRequested(root.targetColumn)" in menu
+        # El header conecta la dirección explícita.
+        assert "onSortAscendingRequested: column =>" in header
+        assert "onSortDescendingRequested: column =>" in header
+        assert "sortDirectionRequested(column, false)" in header
+        assert "sortDirectionRequested(column, true)" in header
+        # Right-click de la cell NO dispara sort: handlers separados.
+        cell = _qml("media/ResizableHeaderCell.qml")
+        assert "signal contextRequested(string columnKey)" in cell
+        assert "acceptedButtons: Qt.RightButton" in cell
+        assert "root.contextRequested(root.columnKey)" in cell
+        assert "root.sortRequested(root.columnKey)" in cell
+
+    def test_tab10_reset_selected_column_width(self) -> None:
+        header = _qml("media/ResizableTrackHeader.qml")
+        assert "onResetWidthRequested: column =>" in header
+        assert "LibraryTrackColumnState.resetWidth(column)" in header
+        menu = _qml("media/TrackTableHeaderContextMenu.qml")
+        assert 'qsTr("Reset %1 Width")' in menu
+        assert "resetWidthRequested(root.targetColumn)" in menu
+        # El reset doble-click del handle se mantiene independiente.
+        cell = _qml("media/ResizableHeaderCell.qml")
+        assert "onDoubleClicked" in cell
+        assert "resetRequested(root.columnKey)" in cell
+
+    def test_tab11_14_presets_are_real(self) -> None:
+        """TAB11-14: presets Essential/Audiophile/Metadata/Minimal cambian
+        el estado visible real del singleton."""
+        state = _qml("theme/LibraryTrackColumnState.qml")
+        assert "function applyPreset(name)" in state
+        assert '"essential": {' in state
+        assert '"audiophile": {' in state
+        assert '"metadata": {' in state
+        assert '"minimal": {' in state
+        # Audio columns en Audiophile; metadata en Metadata; minimal solo
+        # title/artist/duration/actions.
+        audiophile = state[
+            state.index('"audiophile": {') : state.index('"metadata": {')
+        ]
+        assert "sampleRate: true" in audiophile
+        assert "bitDepth: true" in audiophile
+        assert "genre: false" in audiophile
+        metadata = state[state.index('"metadata": {') : state.index('"minimal": {')]
+        assert "genre: true" in metadata and "composer: true" in metadata
+        minimal = state[state.index('"minimal": {') :]
+        assert "artwork: false" in minimal and "format: false" in minimal
+
+    def test_tab15_profiles_hide_implicit_album_artist(self) -> None:
+        """TAB15: el perfil oculta la columna implícita (album/artist) vía
+        showAlbumColumn/showArtistColumn del perfil — el preset nunca
+        reintroduce lo implícito."""
+        table = _qml("media/MichiTrackTable.qml")
+        assert "profileShowsAlbum" in table
+        assert "profileShowsArtist" in table
+        album_detail = _qml("views/AlbumDetailView.qml")
+        assert 'columnProfile: "album"' in album_detail
+        assert "showAlbumColumn: false" in album_detail
+        artist_detail = _qml("views/ArtistDetailView.qml")
+        assert 'columnProfile: "artist"' in artist_detail
+        assert "showArtistColumn: false" in artist_detail
+
+    def test_tab16_17_table_preferences_persist_debounced(self) -> None:
+        """TAB16/17: la config de la tabla viaja en settingsBridge.libraryViews
+        (trackTable) y la persistencia es debounced (timer 250 ms — nunca
+        por píxel de resize)."""
+        view = _qml("views/LibraryView.qml")
+        assert "LibraryTrackColumnState.snapshot()" in view
+        assert "LibraryTrackColumnState.applyConfiguration" in view
+        assert "trackTablePersistDebounce" in view
+        assert "interval: 250" in view
+        assert "trackTablePersistDebounce.restart()" in view
+        # Migración segura: la config ausente no corrompe los album settings.
+        assert "if (parsed && parsed.trackTable)" in view
+
+    def test_tab14_sort_columns_expanded_in_application(self) -> None:
+        """§14: columnas sortables ampliadas con comparación TIPADA y
+        tie-break TrackId — la aplicación es la autoridad."""
+        query = (
+            Path(__file__).resolve().parents[1]
+            / "src/michi/application/library_track_query.py"
+        ).read_text()
+        for column in (
+            "duration",
+            "year",
+            "genre",
+            "composer",
+            "sampleRate",
+            "bitDepth",
+            "bitrate",
+            "channels",
+            "fileSize",
+        ):
+            assert column in query, column
+        assert "_TEXT_COLUMNS" in query
+        assert "def set_sort_state(self, column: str, descending: bool)" in query
+        bridge_src = (
+            Path(__file__).resolve().parents[1]
+            / "src/michi/presentation/library_bridge.py"
+        ).read_text()
+        assert "def set_track_sort(self, column: str, descending: bool)" in bridge_src
+
+    def test_tab14_sort_typed_runtime(self, qapp) -> None:
+        """Runtime: sort por columna numérica (duration) usa valor numérico;
+        el tie-break TrackId es estable."""
+        from michi.application.library_track_query import (
+            LibraryTrackQueryService,
+        )
+        from michi.domain.library import TrackRef
+
+        tracks = [
+            TrackRef(
+                Path("/a.flac"),
+                title="A",
+                artist="X",
+                album="Al",
+                duration_ms=1000,
+                track_id="T1",
+            ),
+            TrackRef(
+                Path("/b.flac"),
+                title="B",
+                artist="X",
+                album="Bl",
+                duration_ms=3000,
+                track_id="T2",
+            ),
+            TrackRef(
+                Path("/c.flac"),
+                title="C",
+                artist="X",
+                album="Cl",
+                duration_ms=2000,
+                track_id="T3",
+            ),
+        ]
+        service = LibraryTrackQueryService()
+        assert service.set_sort_state("duration", True) is True
+        ordered = service.sort_tracks(tracks)
+        assert [t.track_id for t in ordered] == ["T2", "T3", "T1"]
+        assert service.set_sort_state("duration", False) is True
+        assert [t.track_id for t in service.sort_tracks(tracks)] == ["T1", "T3", "T2"]
+        # Columna inválida → no-op.
+        assert service.set_sort_state("nope", False) is False
