@@ -60,11 +60,31 @@ ListView {
         durationMs: modelData.durationMs
         quality: modelData.qualityLabel
         playing: playback.currentPath === modelData.path
-        favorite: modelData.trackId
-            ? library.favoriteTrackIds.indexOf(modelData.trackId) !== -1
-            : library.favoritePaths.indexOf(modelData.path) !== -1
+        favorite: {
+            // M9-R3 CONVERGENCE SEAL: el favorito puede vivir como id
+            // canónico (T1), como proyección legacy (legacy-path::<path>)
+            // o como path-only (pre-migración) — los tres se chequean.
+            if (typeof library === "undefined" || !library)
+                return false
+            if (modelData.trackId
+                    && library.favoriteTrackIds.indexOf(
+                        String(modelData.trackId)) !== -1)
+                return true
+            if (modelData.path) {
+                if (library.favoriteTrackIds.indexOf(
+                        "legacy-path::" + modelData.path) !== -1)
+                    return true
+                if (!modelData.trackId
+                        && library.favoritePaths.indexOf(
+                            modelData.path) !== -1)
+                    return true
+            }
+            return false
+        }
         showFavorite: true
-        canQueue: Boolean(modelData.trackId) && library.canQueueTracks
+        canQueue: Boolean(modelData.trackId)
+            && modelData.unavailable !== true
+            && library.canQueueTracks
         canGoToAlbum: albumKey.length > 0
         canGoToArtist: artistKey.length > 0
         onActivated: {

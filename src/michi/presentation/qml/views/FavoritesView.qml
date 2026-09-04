@@ -60,7 +60,9 @@ ListView {
         playing: playback.currentPath === modelData.path
         favorite: true
         showFavorite: true
-        canQueue: Boolean(modelData.trackId) && library.canQueueTracks
+        canQueue: Boolean(modelData.trackId)
+            && modelData.unavailable !== true
+            && library.canQueueTracks
         canGoToAlbum: albumKey.length > 0
         canGoToArtist: artistKey.length > 0
         onActivated: {

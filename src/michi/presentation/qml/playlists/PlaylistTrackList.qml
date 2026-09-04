@@ -165,10 +165,26 @@ Item {
             readonly property bool canInteract: !trackItem.unavailable
             readonly property bool hasStableTrackId:
                 modelData.trackId !== undefined && String(modelData.trackId).length > 0
-            readonly property bool isFavorite: typeof library !== "undefined"
-                && library && (trackItem.hasStableTrackId
-                    ? library.favoriteTrackIds.indexOf(String(modelData.trackId)) !== -1
-                    : library.favoritePaths.indexOf(modelData.path) !== -1)
+            readonly property bool isFavorite: {
+                // M9-R3 CONVERGENCE SEAL: id canónico, proyección legacy
+                // (legacy-path::<path>) o path-only — los tres chequean.
+                if (typeof library === "undefined" || !library)
+                    return false
+                if (trackItem.hasStableTrackId
+                        && library.favoriteTrackIds.indexOf(
+                            String(modelData.trackId)) !== -1)
+                    return true
+                if (modelData.path) {
+                    if (library.favoriteTrackIds.indexOf(
+                            "legacy-path::" + modelData.path) !== -1)
+                        return true
+                    if (!trackItem.hasStableTrackId
+                            && library.favoritePaths.indexOf(
+                                modelData.path) !== -1)
+                        return true
+                }
+                return false
+            }
             readonly property bool actionsVisible:
                 trackItem.hovered || trackItem.visualFocus
                 || favoriteButton.activeFocus || moreButton.activeFocus
