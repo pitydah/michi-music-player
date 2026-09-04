@@ -212,6 +212,15 @@ class QaLibrary(QObject):
         return sorted(self._albums, key=lambda row: (-row["year"], row["title"]))
 
     fileCount = Property(int, lambda self: 864, notify=library_changed)
+    # LIB-A: los checks ESTRUCTURALES usan libraryTrackCount; fileCount es
+    # la proyección filtrada. El harness modela ambos (864 estructural).
+    libraryTrackCount = Property(int, lambda self: 864, notify=library_changed)
+    selectedGenreKey = Property(str, lambda self: "", notify=library_changed)
+    selectedGenreName = Property(str, lambda self: "", notify=library_changed)
+    genreFilterActive = Property(bool, lambda self: False, notify=library_changed)
+    filteredAlbumCount = Property(
+        int, lambda self: len(self._albums), notify=library_changed
+    )
     albumCount = Property(int, lambda self: len(self._albums), notify=library_changed)
     artistCount = Property(int, lambda self: 11, notify=library_changed)
     currentDir = Property(str, lambda self: "/qa/music", notify=library_changed)
