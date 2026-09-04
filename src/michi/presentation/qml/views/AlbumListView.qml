@@ -10,6 +10,34 @@ ListView {
     objectName: "albumListView"
 
     property var albumModel: library.albums
+    // M9-R3 CONVERGENCE SEAL: target del contexto por teclado — el
+    // álbum del currentIndex (roving). El teclado vive en el VIEW, no en
+    // los delegates (activeFocusOnTab false): Menu/Shift+F10 abren el
+    // menú del álbum actual.
+    property var contextAlbum: null
+
+    function openCurrentAlbumContext() {
+        if (root.albumModel === undefined
+                || root.albumModel.length === 0
+                || root.currentIndex < 0
+                || root.currentIndex >= root.albumModel.length)
+            return
+        root.contextAlbum = root.albumModel[root.currentIndex]
+        if (root.browseState && root.contextAlbum)
+            root.browseState.remember(root.contextAlbum.key)
+        albumContextMenu.popup()
+    }
+
+    function handleAlbumContextKey(event) {
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            root.openCurrentAlbumContext()
+            event.accepted = true
+            return true
+        }
+        return false
+    }
     property string sortMode: "title"
     property bool sortDescending: false
     property var browseState: null
@@ -135,5 +163,12 @@ ListView {
             library.select_album(modelData.key)
         }
         onPlayRequested: library.play_album(modelData.key)
+    }
+
+    // M9-R3 CONVERGENCE SEAL: menú raíz del teclado (roving del view).
+    AlbumContextMenu {
+        id: albumContextMenu
+        album: root.contextAlbum
+        z: 300
     }
 }

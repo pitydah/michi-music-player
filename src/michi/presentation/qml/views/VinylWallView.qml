@@ -11,6 +11,34 @@ GridView {
     objectName: "albumVinylView"
 
     property var albumModel: library.albums
+    // M9-R3 CONVERGENCE SEAL: target del contexto por teclado — el
+    // álbum del currentIndex (roving). El teclado vive en el VIEW, no en
+    // los delegates (activeFocusOnTab false): Menu/Shift+F10 abren el
+    // menú del álbum actual.
+    property var contextAlbum: null
+
+    function openCurrentAlbumContext() {
+        if (albumVinyl.albumModel === undefined
+                || albumVinyl.albumModel.length === 0
+                || albumVinyl.currentIndex < 0
+                || albumVinyl.currentIndex >= albumVinyl.albumModel.length)
+            return
+        albumVinyl.contextAlbum = albumVinyl.albumModel[albumVinyl.currentIndex]
+        if (albumVinyl.browseState && albumVinyl.contextAlbum)
+            albumVinyl.browseState.remember(albumVinyl.contextAlbum.key)
+        albumContextMenu.popup()
+    }
+
+    function handleAlbumContextKey(event) {
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            albumVinyl.openCurrentAlbumContext()
+            event.accepted = true
+            return true
+        }
+        return false
+    }
     property real albumZoom: 1.0
     property var browseState: null
     property string spacingMode: "standard"
@@ -253,5 +281,12 @@ GridView {
                 vinylTile.forceActiveFocus()
             }
         }
+    }
+
+    // M9-R3 CONVERGENCE SEAL: menú raíz del teclado (roving del view).
+    AlbumContextMenu {
+        id: albumContextMenu
+        album: albumVinyl.contextAlbum
+        z: 300
     }
 }

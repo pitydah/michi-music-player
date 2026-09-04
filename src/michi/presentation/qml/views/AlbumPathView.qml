@@ -10,6 +10,34 @@ PathView {
     objectName: "albumCoverView"
 
     property var albumModel: library.albums
+    // M9-R3 CONVERGENCE SEAL: target del contexto por teclado — el
+    // álbum del currentIndex (roving). El teclado vive en el VIEW, no en
+    // los delegates (activeFocusOnTab false): Menu/Shift+F10 abren el
+    // menú del álbum actual.
+    property var contextAlbum: null
+
+    function openCurrentAlbumContext() {
+        if (albumsPath.albumModel === undefined
+                || albumsPath.albumModel.length === 0
+                || albumsPath.currentIndex < 0
+                || albumsPath.currentIndex >= albumsPath.albumModel.length)
+            return
+        albumsPath.contextAlbum = albumsPath.albumModel[albumsPath.currentIndex]
+        if (albumsPath.browseState && albumsPath.contextAlbum)
+            albumsPath.browseState.remember(albumsPath.contextAlbum.key)
+        albumContextMenu.popup()
+    }
+
+    function handleAlbumContextKey(event) {
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            albumsPath.openCurrentAlbumContext()
+            event.accepted = true
+            return true
+        }
+        return false
+    }
     property real albumZoom: 1.0
     property var browseState: null
     property string visibleAlbums: "auto"
@@ -89,6 +117,8 @@ PathView {
             library.select_album(currentAlbum.key)
     }
     Keys.onPressed: function(event) {
+        if (albumsPath.handleAlbumContextKey(event))
+            return
         if (event.key === Qt.Key_Home) {
             currentIndex = count > 0 ? 0 : -1
             event.accepted = true
@@ -371,5 +401,12 @@ PathView {
                 }
             }
         }
+    }
+
+    // M9-R3 CONVERGENCE SEAL: menú raíz del teclado (roving del view).
+    AlbumContextMenu {
+        id: albumContextMenu
+        album: albumsPath.contextAlbum
+        z: 300
     }
 }
