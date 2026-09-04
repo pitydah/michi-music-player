@@ -271,3 +271,71 @@ class TestBlock1Structural:
             src = _qml(surface)
             for token in forbidden:
                 assert token not in src, f"{surface}: {token}"
+
+
+# ---------------------------------------------------------------------------
+# BLOQUE 2 — convergencia de superficies en MichiTrackTable
+# ---------------------------------------------------------------------------
+
+
+class TestBlock2TableConvergence:
+    def test_tab18_22_all_track_surfaces_use_michi_track_table(self) -> None:
+        """TAB18-22: Favorites/History/RecentlyAdded/AlbumDetail/
+        ArtistDetail convergen en la autoridad compartida."""
+        for view in (
+            "views/SongsView.qml",
+            "views/FavoritesView.qml",
+            "views/HistoryView.qml",
+            "views/RecentlyAddedView.qml",
+            "views/AlbumDetailView.qml",
+            "views/ArtistDetailView.qml",
+        ):
+            assert "MichiTrackTable" in _qml(view), view
+
+    def test_tab23_no_productive_track_table_header(self) -> None:
+        """TAB23: TrackTableHeader legacy sin consumers productivos
+        (archivo eliminado; la tabla usa ResizableTrackHeader)."""
+        assert not (QML / "media" / "TrackTableHeader.qml").exists()
+        table = _qml("media/MichiTrackTable.qml")
+        assert "ResizableTrackHeader" in table
+
+    def test_tab24_27_album_detail_rows_are_canonical(self) -> None:
+        """TAB24-27: las filas del detalle de álbum usan la proyección
+        canónica (TrackId/artistKey/albumKey/availability efectiva)."""
+        bridge_src = (
+            Path(__file__).resolve().parents[1]
+            / "src/michi/presentation/library_bridge.py"
+        ).read_text()
+        assert "def _get_album_tracks(self)" in bridge_src
+        assert "self._track_rows_with_artwork(self._album_track_refs)" in (
+            bridge_src
+        ), "proyección canónica única — no schema manual reducido"
+        # El QML consume la fila con identidad (trackId del proyector).
+        detail = _qml("views/AlbumDetailView.qml")
+        assert "rows: library.albumTracks" in detail
+        assert "columnProfile: \"album\"" in detail
+        assert "numberingMode: \"disc-track\"" in detail
+
+    def test_tab28_29_detail_queue_is_track_id_first(self) -> None:
+        """TAB28/29: el Queue del detalle (álbum/artista) es TrackId-first
+        — nunca queue por path."""
+        album = _qml("views/AlbumDetailView.qml")
+        assert "library.queue_track_by_id(trackId)" in album
+        assert "library.queue_track_by_id" not in album.replace(
+            "library.queue_track_by_id(trackId)", ""
+        )
+        artist = _qml("views/ArtistDetailView.qml")
+        assert "library.queue_track_by_id(trackId)" in artist
+        assert "queue_album_track" not in album + artist
+
+    def test_tab24_album_detail_activation_keeps_album_context(self) -> None:
+        """La activación del detalle usa el seam TrackId-first del bridge
+        que preserva el CONTEXTO del álbum (nunca single ni índice)."""
+        bridge_src = (
+            Path(__file__).resolve().parents[1]
+            / "src/michi/presentation/library_bridge.py"
+        ).read_text()
+        assert "def activate_album_track_by_id(self, track_id: str)" in bridge_src
+        detail = _qml("views/AlbumDetailView.qml")
+        assert "library.activate_album_track_by_id(trackId)" in detail
+        assert "activate_album_track(index)" not in detail
