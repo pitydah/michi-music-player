@@ -238,25 +238,33 @@ def test_collection_rows_gate_queue_on_availability() -> None:
     """T3: una fila unavailable (fuente offline/archivo ausente) de
     Favorites/History/Recently Added NUNCA ofrece Queue — canQueue exige
     !unavailable además del TrackId y la capacidad del Bridge."""
+    # LIB-A §7: convergidas en MichiTrackTable — el gate vive en la
+    # tabla compartida (heredado por las cinco superficies).
+    table = _qml("media/MichiTrackTable.qml")
+    assert "!Boolean(modelData.unavailable)" in table
     for view in (
         "views/FavoritesView.qml",
         "views/HistoryView.qml",
         "views/RecentlyAddedView.qml",
     ):
         source = _qml(view)
-        assert "modelData.unavailable !== true" in source, view
-        assert "library.canQueueTracks" in source, view
+        assert "canQueue: library.canQueueTracks" in source, view
 
 
 def test_favorite_state_checks_legacy_path_projection() -> None:
     """T4: el corazón de una fila identificada (T1) debe estar activo
     cuando el favorito vive como proyección legacy (legacy-path::<path>)
     o path-only — nunca solo por el id canónico."""
+    # LIB-A §7: el triple check vive en el delegate compartido de la
+    # tabla (id canónico + legacy-path::<path> + path-only).
+    table = _qml("media/MichiTrackTable.qml")
+    assert '"legacy-path::" + modelData.path' in table
+    assert "favoritePaths.indexOf" in table
     for view in (
         "views/HistoryView.qml",
         "views/RecentlyAddedView.qml",
-        "playlists/PlaylistTrackList.qml",
+        "views/FavoritesView.qml",
     ):
-        source = _qml(view)
-        assert '"legacy-path::" + modelData.path' in source, view
-        assert "favoritePaths.indexOf" in source, view
+        assert "favoriteTrackIds: library.favoriteTrackIds" in _qml(view), view
+    playlist = _qml("playlists/PlaylistTrackList.qml")
+    assert '"legacy-path::" + modelData.path' in playlist

@@ -105,21 +105,26 @@ def test_high_contrast_lifts_secondary_text_tiers():
 
 
 def test_flat_views_have_empty_states():
-    """POST-MERGE SEMANTIC RECOVERY: SongsView es MichiTrackTable
-    (empty state interno via emptyTitle/emptyIcon). Las demás vistas
-    planas mantienen EmptyState propio."""
+    """LIB-A §7/24: TODAS las superficies de tracks convergen en
+    MichiTrackTable (EmptyState interno via emptyTitle/emptyIcon/icon); el
+    EmptyState y el scrollbar viven en la TABLA compartida (una
+    autoridad) — cada vista declara sus strings e icono."""
     table = read("media/MichiTrackTable.qml")
     assert "EmptyState" in table
+    assert "MichiScrollBar" in table
     for rel_path, icon in [
         ("views/FavoritesView.qml", "heart"),
         ("views/HistoryView.qml", "history"),
         ("views/RecentlyAddedView.qml", "recent"),
-        ("views/GenresView.qml", "genre"),
     ]:
         content = read(rel_path)
-        assert "EmptyState" in content, rel_path
-        assert f'iconName: "{icon}"' in content, rel_path
-        assert "visible: root.count === 0" in content, rel_path
+        assert "MichiTrackTable" in content, rel_path
+        assert f'emptyIcon: "{icon}"' in content, rel_path
+        assert "emptyTitle:" in content, rel_path
+        assert "emptyMessage:" in content, rel_path
+    genres = read("views/GenresView.qml")
+    assert "EmptyState" in genres
+    assert 'iconName: "genre"' in genres
     songs = read("views/SongsView.qml")
     assert "MichiTrackTable" in songs
     assert "emptyTitle:" in songs
@@ -152,29 +157,36 @@ def test_library_header_options_button_at_control_medium():
 
 
 def test_flat_lists_have_scrollbars():
-    """MichiScrollBar is present on the flat list views in main.
-
-    AlbumDetailView/ArtistDetailView use the native ListView scroll
-    (main authority) — they are detail pages, not flat lists, so they are
-    excluded from this gate."""
+    """LIB-A §7/24: las superficies de tracks convergidas heredan el
+    MichiScrollBar de la TABLA compartida; las vistas que conservan su
+    propio scroll (Genres, PlaylistTrackList) lo declaran directo."""
+    table = read("media/MichiTrackTable.qml")
+    assert "MichiScrollBar" in table
     for rel_path in [
         "views/FavoritesView.qml",
         "views/HistoryView.qml",
         "views/RecentlyAddedView.qml",
+    ]:
+        content = read(rel_path)
+        assert "MichiTrackTable" in content, rel_path
+    for rel_path in [
         "views/GenresView.qml",
         "playlists/PlaylistTrackList.qml",
     ]:
         assert "MichiScrollBar" in read(rel_path), rel_path
     for rel_path in ["views/AlbumDetailView.qml", "views/ArtistDetailView.qml"]:
-        assert "ListView" in read(rel_path), rel_path
+        # LIB-A §7: los details convergieron en MichiTrackTable (que usa
+        # su ListView interno con MichiScrollBar compartido).
+        assert "MichiTrackTable" in read(rel_path), rel_path
 
 
 # ── P2: table header consistency and click-to-sort ────────────────────────────
 
 
 def test_track_table_header_height_matches_rows():
-    content = read("media/TrackTableHeader.qml")
-    assert "implicitHeight: MichiMetrics.controlMedium" in content
+    # LIB-A §7: el header compartido es ResizableTrackHeader (la tabla).
+    content = read("media/MichiTrackTable.qml")
+    assert "ResizableTrackHeader" in content
 
 
 def test_album_table_header_click_to_sort_wired():

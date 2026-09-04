@@ -79,6 +79,9 @@ class _ProjectionLibrary:
             artists=model.artists,
             tracks=tuple(tracks),
             favorite_paths=(),
+            favorite_track_ids=(),
+            history_track_ids=(),
+            recently_added_track_ids=(),
             recently_added_paths=(),
             search_active=False,
             search_projection=None,
@@ -259,7 +262,12 @@ def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
             slowest_navigation = max(
                 slowest_navigation, time.perf_counter() - navigation_started
             )
-            assert len(albums_view.findChildren(QObject)) < 2_500
+            # Cota anti-fuga del host de álbumes con 10k. El contexto
+            # premium (menús de los cards del PR #233 + superficies
+            # convergidas LIB-A) suma objetos estables por delegate —
+            # valor medido estable ~2556 local. 2800 mantiene el margen
+            # sin esconder una fuga real (que crecería sin límite).
+            assert len(albums_view.findChildren(QObject)) < 2_800
 
         assert time.perf_counter() - started < 20.0
         assert slowest_navigation < 1.5
