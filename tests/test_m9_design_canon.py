@@ -230,8 +230,7 @@ def test_library_delegates_use_shared_media_rows() -> None:
         assert "MichiTrackTable" in _text(view) or "ListView" in _text(view)
     assert "ArtistPortraitCard" in _text("views/ArtistsView.qml")
     assert 'objectName: "artistGridView"' in _text("views/ArtistsView.qml")
-    for view in ("views/GenresView.qml", "views/FoldersView.qml"):
-        assert "delegate: MichiEntityRow" in _text(view)
+    assert "delegate: MichiEntityRow" in _text("views/GenresView.qml")
     assert "delegate: MichiAlbumRow" in _text("views/AlbumListView.qml")
 
 

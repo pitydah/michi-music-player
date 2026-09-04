@@ -115,7 +115,6 @@ def test_flat_views_have_empty_states():
         ("views/HistoryView.qml", "history"),
         ("views/RecentlyAddedView.qml", "recent"),
         ("views/GenresView.qml", "genre"),
-        ("views/FoldersView.qml", "folder"),
     ]:
         content = read(rel_path)
         assert "EmptyState" in content, rel_path
@@ -163,7 +162,6 @@ def test_flat_lists_have_scrollbars():
         "views/HistoryView.qml",
         "views/RecentlyAddedView.qml",
         "views/GenresView.qml",
-        "views/FoldersView.qml",
         "playlists/PlaylistTrackList.qml",
     ]:
         assert "MichiScrollBar" in read(rel_path), rel_path

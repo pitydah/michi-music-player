@@ -46,7 +46,6 @@ ColumnLayout {
             case "albums": component = albumsViewComponent; break
             case "artists": component = artistsViewComponent; break
             case "genres": component = genresViewComponent; break
-            case "folders": component = foldersViewComponent; break
             case "favorites": component = favoritesViewComponent; break
             case "history": component = historyViewComponent; break
             case "recently": component = recentlyViewComponent; break
@@ -64,7 +63,8 @@ ColumnLayout {
 
     ErrorState {
         visible: library.hasDiagnostic
-            || (library.scanStatus === "FAILED" && library.fileCount === 0)
+            || (library.scanStatus === "FAILED"
+                && library.libraryTrackCount === 0)
         title: library.hasDiagnostic ? "Library unavailable" : "Scan failed"
         message: library.hasDiagnostic
             ? library.diagnosticMessage
@@ -131,13 +131,57 @@ ColumnLayout {
         id: contentArea
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: library.fileCount > 0
+        visible: library.libraryTrackCount > 0
+    }
+
+    // LIB-A §34: strip de filtro de género (wayfinding + clear explícito).
+    // Filigrana fina, nunca una card grande; no desplaza el search field.
+    Rectangle {
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible ? 30 : 0
+        visible: library.genreFilterActive
+            && library.libraryTrackCount > 0
+        color: MichiSemanticColors.surfaceHover
+        radius: MichiRadius.sm
+        border.width: 1
+        border.color: MichiSemanticColors.borderSubtle
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: MichiSpacing.md
+            anchors.rightMargin: MichiSpacing.xs
+            spacing: MichiSpacing.sm
+
+            MichiText {
+                text: qsTr("Genre")
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
+            }
+            MichiText {
+                text: library.selectedGenreName
+                role: "body"
+                font.weight: Font.DemiBold
+                color: MichiPalette.textPrimary
+            }
+            Item {
+                Layout.fillWidth: true
+            }
+            MichiIconButton {
+                objectName: "clearGenreFilterButton"
+                iconName: "close"
+                accessibleName: qsTr("Clear genre filter")
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
+                onClicked: library.clear_genre_selection()
+            }
+        }
     }
 
     EmptyState {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: library.fileCount === 0
+        visible: library.libraryTrackCount === 0
             && (library.scanStatus === "" || library.scanStatus === "IDLE")
         title: qsTr("No music yet")
         message: qsTr("Scan a music folder to build your local library. Everything stays on your device.")
@@ -202,13 +246,6 @@ ColumnLayout {
     Component {
         id: genresViewComponent
         GenresView {
-            anchors.fill: parent
-        }
-    }
-
-    Component {
-        id: foldersViewComponent
-        FoldersView {
             anchors.fill: parent
         }
     }

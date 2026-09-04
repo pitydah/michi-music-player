@@ -13,7 +13,7 @@ moment; ``albumMode`` lives in the albums host (survives unload/reload) and
 objectNames preserved: ``albumGridView``, ``albumCoverView``,
 ``albumVinylView``, ``albumTimelineView``, ``albumMagazineView``,
 ``albumListView`` (in their new files) and the tab views gain
-``songsView``/``albumsView``/``artistsView``/``genresView``/``foldersView``/
+``songsView``/``albumsView``/``artistsView``/``genresView``/
 ``favoritesView``/``historyView``/``recentlyView`` plus
 ``albumDetailView``.
 
@@ -66,7 +66,6 @@ TAB_VIEWS = [
     ("albums", "albumsView"),
     ("artists", "artistsView"),
     ("genres", "genresView"),
-    ("folders", "foldersView"),
     ("favorites", "favoritesView"),
     ("history", "historyView"),
     ("recently", "recentlyView"),
@@ -106,7 +105,6 @@ COMPONENT_FILES = [
     "AlbumDetailView.qml",
     "ArtistsView.qml",
     "GenresView.qml",
-    "FoldersView.qml",
     "FavoritesView.qml",
     "HistoryView.qml",
     "RecentlyAddedView.qml",

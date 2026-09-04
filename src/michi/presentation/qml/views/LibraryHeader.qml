@@ -101,7 +101,7 @@ PageHeader {
             case "favorites": return "Favorites"
             case "history": return "History"
             case "recently": return "Recently Added"
-            case "folders": return "Folders"
+
             default: return "Songs"
         }
     }
@@ -132,9 +132,18 @@ PageHeader {
             return qsTr("%1 results matching “%2”")
                 .arg(library.searchTotalCount).arg(library.searchQuery)
         }
-        if (library.fileCount > 0)
+        // LIB-A §35: scope-correct counts — nunca mezclar proyecciones
+        // filtradas con totales sin etiquetas.
+        if (library.genreFilterActive)
+            return qsTr("%1 tracks in %2")
+                .arg(library.fileCount).arg(library.selectedGenreName)
+        if (root.albumFilterMode !== "all")
+            return qsTr("%1 of %2 albums")
+                .arg(library.searchAlbumCount
+                     || library.filteredAlbumCount).arg(library.albumCount)
+        if (library.libraryTrackCount > 0)
             return qsTr("%1 tracks · %2 albums · %3 artists")
-                .arg(library.fileCount).arg(library.albumCount).arg(library.artistCount)
+                .arg(library.libraryTrackCount).arg(library.albumCount).arg(library.artistCount)
         return qsTr("Your local music collection")
     }
 
