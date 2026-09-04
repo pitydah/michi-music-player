@@ -4,6 +4,9 @@ import "../theme"
 Item {
     id: root
     property var artist: null
+    // Fail-closed: el host decide si "Add Artist to Playlist" tiene
+    // consumer productivo (PR D). Por defecto FALSE.
+    property bool canAddToPlaylist: false
     signal contextRequested()
     function openMenu() {
         if (!root.artist)
@@ -30,5 +33,9 @@ Item {
             root.openMenu()
         }
     }
-    ArtistContextMenu { id: menu; artist: root.artist }
+    ArtistContextMenu {
+        id: menu
+        artist: root.artist
+        canAddToPlaylist: root.canAddToPlaylist
+    }
 }
