@@ -23,40 +23,52 @@ def _qml(relative: str) -> str:
 
 
 def test_album_context_actions_cover_all_six_projections() -> None:
-    # Las views premium de main integran acciones de álbum (play/open)
-    # en cada proyección — nunca sin acciones.
+    # M9-R3 CONTEXTUAL RECOVERY: cada proyección de álbum consume el
+    # componente de contexto REAL (AlbumContextArea) — un token suelto
+    # de play/open no prueba soporte contextual. Ninguna vista es
+    # "pasiva": VinylWall/Timeline/Magazine integran su propio contexto.
     for view in (
         "media/AlbumCard.qml",
         "media/MichiAlbumRow.qml",
         "views/AlbumPathView.qml",
+        "views/VinylWallView.qml",
+        "views/TimelineView.qml",
         "views/MagazineView.qml",
     ):
         text = _qml(view)
-        assert any(
-            token in text
-            for token in ("playAlbum", "play_album", "activated", "openRequested")
-        ), view
-    # VinylWallView y TimelineView son vistas pasivas en main (sin
-    # acciones propias) — la interacción vive en AlbumCard/rows premium.
+        assert "AlbumContextArea" in text, (
+            f"{view}: consumer contextual productivo ausente"
+        )
 
 
 def test_artist_context_actions_are_capability_driven() -> None:
-    # ArtistCard premium: la acción de artista existe (play/open).
-    artist = _qml("media/ArtistCard.qml")
-    assert any(
-        token in artist
-        for token in ("playArtist", "play_artist", "activated", "openRequested")
-    )
+    # M9-R3: la card de artista (portrait) integra ArtistContextArea y la
+    # acción Add-to-Playlist está fail-closed (canAddToPlaylist false).
+    card = _qml("media/ArtistPortraitCard.qml")
+    assert "ArtistContextArea" in card
+    menu = _qml("media/ArtistContextMenu.qml")
+    assert "property bool canAddToPlaylist: false" in menu
+    assert "visible: root.artist !== null && root.canAddToPlaylist" in menu
 
 
 def test_collection_actions_never_call_queue_service_bridge_directly() -> None:
-    # El intent de queue SIEMPRE va por el bridge — nunca QueueService.
-    # SEMANTIC INTEGRATION: el intent de queue pasa SIEMPRE por un
-    # Bridge (queue.add_file es el slot del QueueBridge en main; el
-    # PlaylistTrackList de main lo usa en su menú contextual).
+    # M9-R3 + PR #232: el intent de queue del track identificado SIEMPRE
+    # va por identidad (library.queue_track_by_id); queue.add_file queda
+    # SOLO para miembros legacy explícitos. Nunca queue.add_many ciego.
     playlist_tracks = _qml("playlists/PlaylistTrackList.qml")
-    assert "queue.add_file" in playlist_tracks
+    assert "library.queue_track_by_id" in playlist_tracks
     assert "queue.add_many" not in playlist_tracks
+    # El uso legacy (add_file) debe estar condicionado a la ausencia de
+    # identidad — nunca la ruta por defecto del miembro identificado.
+    legacy_block = playlist_tracks[
+        playlist_tracks.index("queue.add_file") - 400 : playlist_tracks.index(
+            "queue.add_file"
+        )
+        + 120
+    ]
+    assert "trackId" in legacy_block or "legacy" in legacy_block, (
+        "add_file solo en la rama legacy explícita"
+    )
 
 
 def test_picker_and_properties_components_are_real_and_wired() -> None:

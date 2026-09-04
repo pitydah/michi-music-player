@@ -358,7 +358,11 @@ class TestPlaylistTrackInteraction:
         import re
 
         assert re.search(r"\bid: rowSurface\b", text)
-        assert "onClicked: trackMenu.popup()" in text  # button keeps its own
+        # M9-R3: el right-click de fila selecciona el target exacto y abre
+        # el menú especializado — sin efectos de play/selection-toggle.
+        assert "trackItem.selectExactTarget()" in text
+        assert "trackMenu.popup()" in text
+        assert "if (mouse.button === Qt.RightButton)" in text
         # El click de FILA vive en rowSurface (modifiers reales) — el
         # ItemDelegate ya no tiene onClicked propio (una sola autoridad).
         assert "onClicked: mouse => {" in text

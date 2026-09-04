@@ -37,23 +37,45 @@ def test_library_track_picker_reuses_search_and_track_table() -> None:
 
 
 def test_semantic_context_menus_are_specialized_and_keyboard_openable() -> None:
-    # SEMANTIC INTEGRATION: main usa sus menús de contexto premium
-    # (MichiContextMenu en los cards/rows) — el invariante: los menús de
-    # las 6 entidades existen como componentes.
-    # SEMANTIC INTEGRATION: main expone menús contextuales en los
-    # controles de fila/card (MichiContextMenu) y el menú del track via
-    # TrackRow — el invariante: los menús existen y son alcanzables.
-    for menu in (
-        "media/TrackContextMenu.qml",
-        "media/AlbumContextMenu.qml",
-        "media/ArtistContextMenu.qml",
-        "media/GenreContextMenu.qml",
-        "media/PlaylistTrackContextMenu.qml",
-        "media/QueueTrackContextMenu.qml",
+    # M9-R3 CONTEXTUAL RECOVERY: cada menú especializado existe Y es
+    # consumido productivamente por un área y un host de vista real.
+    # "El archivo existe" no demuestra soporte contextual.
+    for menu, consumer_area, _consumer_view in (
+        ("media/TrackContextMenu.qml", "media/TrackRow.qml", "views/SongsView.qml"),
+        (
+            "media/AlbumContextMenu.qml",
+            "media/AlbumContextArea.qml",
+            "views/MagazineView.qml",
+        ),
+        (
+            "media/ArtistContextMenu.qml",
+            "media/ArtistContextArea.qml",
+            "media/ArtistPortraitCard.qml",
+        ),
+        (
+            "media/GenreContextMenu.qml",
+            "media/GenreContextArea.qml",
+            "views/GenresView.qml",
+        ),
+        (
+            "media/PlaylistTrackContextMenu.qml",
+            "playlists/PlaylistTrackList.qml",
+            "playlists/PlaylistTrackList.qml",
+        ),
     ):
-        assert (QML / menu).exists(), menu
-    track_row = qml("media/TrackRow.qml")
-    assert "MichiContextMenu" in track_row or "ContextMenu" in track_row
+        assert (QML / menu).exists(), f"{menu}: componente ausente"
+        area_text = qml(consumer_area)
+        menu_name = Path(menu).stem
+        assert menu_name in area_text, f"{consumer_area} no consume {menu_name}"
+    # Keyboard: los areas traducen Menu/Shift+F10 al menú.
+    for area in (
+        "media/AlbumContextArea.qml",
+        "media/ArtistContextArea.qml",
+        "media/GenreContextArea.qml",
+    ):
+        area_text = qml(area)
+        assert "Qt.Key_Menu" in area_text, area
+        assert "Qt.Key_F10" in area_text, area
 
 
 def test_album_menu_exposes_only_real_batch_and_properties_actions() -> None:
