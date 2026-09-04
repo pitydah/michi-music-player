@@ -19,8 +19,8 @@
       "1440-empty", "1440-search-active", "1440-search-empty",
       "1440-selection-mode", "1440-selection-multi", "1440-unavailable",
       "1440-long-description", "1440-auto-hero", "1440-solid-hero",
-      "1440-gradient-hero", "1440-image-hero", "1440-focal-left",
-      "1440-focal-right"
+      "1440-gradient-hero", "1440-image-hero", "1440-focal-left", "1440-focal-right",
+      "1200-track-context-menu", "1200-unavailable-track-context-menu"
     ],
     "appearance": [
       "initial", "cover-replace-draft", "cover-auto-draft", "hero-auto",

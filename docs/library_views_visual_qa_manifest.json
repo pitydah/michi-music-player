@@ -142,5 +142,9 @@
     "Header and toolbar heights remain stable",
     "One keyboard entry point per collection",
     "Search, filter, empty and missing-artwork states remain legible"
+  ],
+  "standaloneContextFrames": [
+    "1200-genre-context-menu",
+    "1200-track-context-menu"
   ]
 }
