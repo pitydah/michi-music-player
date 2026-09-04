@@ -47,7 +47,7 @@ Rectangle {
     Keys.onEnterPressed: { MichiAccessibility.noteKeyboard(); root.openRequested(); root.activated() }
     Keys.onReturnPressed: { MichiAccessibility.noteKeyboard(); root.openRequested(); root.activated() }
     Keys.onSpacePressed: { MichiAccessibility.noteKeyboard(); root.playRequested() }
-
+    Keys.onPressed: event => albumContext.handleContextKey(event)
 
     RowLayout {
         anchors.fill: parent
@@ -150,6 +150,12 @@ Rectangle {
             root.openRequested()
             root.activated()
         }
+    }
+    AlbumContextArea {
+        id: albumContext
+        anchors.fill: parent
+        album: root.album
+        onContextRequested: root.selectedRequested()
     }
     MichiFocusRing {
         visualFocus: (root.activeFocus || root.collectionFocus)

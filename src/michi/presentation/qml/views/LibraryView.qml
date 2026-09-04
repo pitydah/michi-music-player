@@ -171,6 +171,15 @@ Item {
         function onLibrary_changed() { root.syncEntitySelection() }
     }
 
+    // M9-R3 CONVERGENCE SEAL: select_genre emite genre_selected — el
+    // resultado visible es el tab Songs con la proyección filtrada por el
+    // Bridge (contrato R4 restaurado: el usuario NUNCA queda en Genres
+    // sin respuesta tras activar un género).
+    Connections {
+        target: library
+        function onGenre_selected(_genreKey) { root.currentTab = "songs" }
+    }
+
     Connections {
         target: typeof settingsBridge !== "undefined" ? settingsBridge : null
         ignoreUnknownSignals: true

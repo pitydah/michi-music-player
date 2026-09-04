@@ -38,6 +38,43 @@ Item {
         ? albumModel.slice(7) : []
     readonly property var archiveRows: root.makeArchiveRows()
     property int rovingIndex: 0
+    // M9-R3 CONTEXTUAL RECOVERY: album del roving actual para el menú
+    // contextual por teclado (Menu / Shift+F10) — UN menú raíz, sin
+    // acceso frágil a delegates internos.
+    property var contextAlbum: null
+
+    // Mapa de índice global (canónico, nunca inventar offsets):
+    // hero 0 · medium i → i+1 · compact i → i+3 · archive list i → i+7
+    // archive compact (row, col) → row*2 + col + 7.
+    function albumAtRovingIndex() {
+        if (!root.albumModel || root.albumModel.length === 0)
+            return null
+        var index = Math.max(0,
+            Math.min(root.rovingIndex, root.albumModel.length - 1))
+        return root.albumModel[index]
+    }
+
+    function openRovingContext() {
+        var album = root.albumAtRovingIndex()
+        if (!album)
+            return
+        // SELECT-BEFORE-MENU: establece el target exacto antes del popup.
+        root.selectEditorial(root.rovingIndex, album.key)
+        root.contextAlbum = album
+        magazineContextMenu.album = album
+        magazineContextMenu.popup()
+    }
+
+    function handleContextKey(event) {
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            root.openRovingContext()
+            event.accepted = true
+            return true
+        }
+        return false
+    }
 
     MichiMaterial {
         id: editorialMaterial
@@ -108,6 +145,9 @@ Item {
                 root.positionRoving()
             }
         }
+        // M9-R3 CONTEXTUAL RECOVERY: Menu / Shift+F10 abren el contexto
+        // del álbum bajo el roving — misma semántica que el right-click.
+        Keys.onPressed: event => root.handleContextKey(event)
         Keys.onDownPressed: {
             if (root.albumModel.length > 0) {
                 root.rovingIndex = Math.min(root.albumModel.length - 1, root.rovingIndex + 1)
@@ -277,6 +317,20 @@ Item {
                     visualFocus: albumMagazine.activeFocus && root.rovingIndex === 0
                         && MichiAccessibility.keyboardMode
                 }
+                // M9-R3 CONTEXTUAL RECOVERY: right-click del hero →
+                // contexto del álbum hero (select-before-menu).
+                AlbumContextArea {
+                    id: heroContext
+                    objectName: "magazineHeroContext"
+                    anchors.fill: parent
+                    album: root.heroAlbum
+                    onContextRequested: {
+                        if (!root.heroAlbum)
+                            return
+                        root.selectEditorial(0, root.heroAlbum.key)
+                        albumMagazine.forceActiveFocus()
+                    }
+                }
             }
 
             // 2. Medium Features (2 larger cards)
@@ -363,6 +417,17 @@ Item {
                             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
                             onSingleTapped: root.selectEditorial(index + 1, modelData.key)
                             onDoubleTapped: library.select_album(modelData.key)
+                        }
+                        // M9-R3: right-click → contexto del álbum medium.
+                        AlbumContextArea {
+                            id: medContext
+                            objectName: "magazineMediumContext"
+                            anchors.fill: parent
+                            album: medFeature.modelData
+                            onContextRequested: {
+                                root.selectEditorial(index + 1, modelData.key)
+                                medFeature.forceActiveFocus()
+                            }
                         }
                         MichiFocusRing {
                             visualFocus: albumMagazine.activeFocus
@@ -459,6 +524,17 @@ Item {
                             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
                             onSingleTapped: root.selectEditorial(index + 3, modelData.key)
                             onDoubleTapped: library.select_album(modelData.key)
+                        }
+                        // M9-R3: right-click → contexto del álbum compact.
+                        AlbumContextArea {
+                            id: compContext
+                            objectName: "magazineCompactContext"
+                            anchors.fill: parent
+                            album: compactFeature.modelData
+                            onContextRequested: {
+                                root.selectEditorial(index + 3, modelData.key)
+                                compactFeature.forceActiveFocus()
+                            }
                         }
                         MichiFocusRing {
                             visualFocus: albumMagazine.activeFocus
@@ -557,5 +633,14 @@ Item {
                 }
             }
         }
+    }
+
+    // M9-R3: menú raíz ÚNICO para la invocación por teclado (roving);
+    // las áreas pointer de los delegates usan su propio menú anidado.
+    AlbumContextMenu {
+        id: magazineContextMenu
+        objectName: "magazineRovingContextMenu"
+        album: root.contextAlbum
+        z: 200
     }
 }

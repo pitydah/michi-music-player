@@ -10,6 +10,34 @@ GridView {
     objectName: "albumGridView"
 
     property var albumModel: library.albums
+    // M9-R3 CONVERGENCE SEAL: target del contexto por teclado — el
+    // álbum del currentIndex (roving). El teclado vive en el VIEW, no en
+    // los delegates (activeFocusOnTab false): Menu/Shift+F10 abren el
+    // menú del álbum actual.
+    property var contextAlbum: null
+
+    function openCurrentAlbumContext() {
+        if (albumGrid.albumModel === undefined
+                || albumGrid.albumModel.length === 0
+                || albumGrid.currentIndex < 0
+                || albumGrid.currentIndex >= albumGrid.albumModel.length)
+            return
+        albumGrid.contextAlbum = albumGrid.albumModel[albumGrid.currentIndex]
+        if (albumGrid.browseState && albumGrid.contextAlbum)
+            albumGrid.browseState.remember(albumGrid.contextAlbum.key)
+        albumContextMenu.popup()
+    }
+
+    function handleAlbumContextKey(event) {
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            albumGrid.openCurrentAlbumContext()
+            event.accepted = true
+            return true
+        }
+        return false
+    }
     property real albumZoom: 1.0
     property var browseState: null
     property string spacingMode: "balanced"
@@ -96,6 +124,8 @@ GridView {
             library.select_album(albumModel[currentIndex].key)
     }
     Keys.onPressed: function(event) {
+        if (albumGrid.handleAlbumContextKey(event))
+            return
         if (event.key === Qt.Key_Home) {
             currentIndex = count > 0 ? 0 : -1
             positionViewAtBeginning()
@@ -143,5 +173,12 @@ GridView {
             }
             onPlayRequested: library.play_album(albumCell.modelData.key)
         }
+    }
+
+    // M9-R3 CONVERGENCE SEAL: menú raíz del teclado (roving del view).
+    AlbumContextMenu {
+        id: albumContextMenu
+        album: albumGrid.contextAlbum
+        z: 300
     }
 }

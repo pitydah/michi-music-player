@@ -236,7 +236,11 @@ def test_add_tracks_action_in_hero():
 def test_row_favorite_and_pressed_state():
     table = read("playlists/PlaylistTrackList.qml")
     assert 'iconName: "heart"' in table
-    assert "library.favoritePaths.indexOf(modelData.path) !== -1" in table
+    # M9-R3 CONVERGENCE SEAL (T4): el corazón chequea la proyección legacy
+    # (legacy-path::<path>) y el path-only además del id canónico.
+    assert '"legacy-path::" + modelData.path' in table
+    assert "library.favoritePaths.indexOf(" in table
+    assert "library.toggle_favorite_by_id(String(modelData.trackId))" in table
     assert "library.toggle_favorite(modelData.path)" in table
     assert "trackItem.pressed ? MichiSemanticColors.surfacePressed" in table
     # more hit target 32px (spec 32-36)
@@ -324,9 +328,16 @@ def test_drag_reorder_handle_and_drop_line():
 
 
 def test_row_menu_adds_to_queue():
+    # M9-R3 + PR #232: el menú de la row es el PlaylistTrackContextMenu
+    # especializado (extiende TrackContextMenu). El queue del miembro
+    # identificado va por TrackId; add_file solo para legacy explícito.
     table = read("playlists/PlaylistTrackList.qml")
-    assert 'qsTr("Add to Queue")' in table
-    assert "queue.add_file(modelData.path)" in table
+    menu = read("media/PlaylistTrackContextMenu.qml")
+    base = read("media/TrackContextMenu.qml")
+    assert "PlaylistTrackContextMenu" in table
+    assert "TrackContextMenu" in menu
+    assert 'qsTr("Add to Queue")' in base
+    assert "library.queue_track_by_id" in table
 
 
 def test_queue_remove_offers_undo_and_detail_menu_adds_tracks():

@@ -10,6 +10,34 @@ PathView {
     objectName: "albumCoverView"
 
     property var albumModel: library.albums
+    // M9-R3 CONVERGENCE SEAL: target del contexto por teclado — el
+    // álbum del currentIndex (roving). El teclado vive en el VIEW, no en
+    // los delegates (activeFocusOnTab false): Menu/Shift+F10 abren el
+    // menú del álbum actual.
+    property var contextAlbum: null
+
+    function openCurrentAlbumContext() {
+        if (albumsPath.albumModel === undefined
+                || albumsPath.albumModel.length === 0
+                || albumsPath.currentIndex < 0
+                || albumsPath.currentIndex >= albumsPath.albumModel.length)
+            return
+        albumsPath.contextAlbum = albumsPath.albumModel[albumsPath.currentIndex]
+        if (albumsPath.browseState && albumsPath.contextAlbum)
+            albumsPath.browseState.remember(albumsPath.contextAlbum.key)
+        albumContextMenu.popup()
+    }
+
+    function handleAlbumContextKey(event) {
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            albumsPath.openCurrentAlbumContext()
+            event.accepted = true
+            return true
+        }
+        return false
+    }
     property real albumZoom: 1.0
     property var browseState: null
     property string visibleAlbums: "auto"
@@ -89,6 +117,8 @@ PathView {
             library.select_album(currentAlbum.key)
     }
     Keys.onPressed: function(event) {
+        if (albumsPath.handleAlbumContextKey(event))
+            return
         if (event.key === Qt.Key_Home) {
             currentIndex = count > 0 ? 0 : -1
             event.accepted = true
@@ -165,6 +195,7 @@ PathView {
         Accessible.selected: PathView.isCurrentItem
         Accessible.description: PathView.isCurrentItem
             ? "Selected album. Enter to open" : "Select album"
+        Keys.onPressed: event => albumContext.handleContextKey(event)
 
         Rectangle {
             anchors.fill: artwork
@@ -172,9 +203,6 @@ PathView {
             radius: MichiRadius.lg
             color: "transparent"
             border.width: PathView.isCurrentItem ? 2 : 1
-            // Single accent in the focal area: cyan matches the selection
-            // card and its track-count label below (was auroraBlue, which
-            // fought the cyan card).
             border.color: tap.pressed ? MichiPalette.auroraCyan
                 : PathView.isCurrentItem
                     ? MichiPalette.auroraCyan : MichiSemanticColors.borderSubtle
@@ -199,7 +227,6 @@ PathView {
                 && MichiAccessibility.keyboardMode
         }
 
-        // Ground reflection / floor shadow under cover
         Rectangle {
             anchors.top: artwork.bottom
             anchors.horizontalCenter: artwork.horizontalCenter
@@ -228,9 +255,6 @@ PathView {
         }
 
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-        // TapHandler (not MouseArea): it claims only the tap, leaving the
-        // PathView drag/flick intact when the gesture starts on a cover.
-        // Click selects + keeps keyboard focus; double-click opens.
         TapHandler {
             id: tap
             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
@@ -239,6 +263,15 @@ PathView {
                 pathAlbum.forceActiveFocus()
             }
             onDoubleTapped: library.select_album(modelData.key)
+        }
+        AlbumContextArea {
+            id: albumContext
+            anchors.fill: parent
+            album: modelData
+            onContextRequested: {
+                albumsPath.currentIndex = pathAlbum.index
+                pathAlbum.forceActiveFocus()
+            }
         }
 
         Behavior on scale {
@@ -368,5 +401,12 @@ PathView {
                 }
             }
         }
+    }
+
+    // M9-R3 CONVERGENCE SEAL: menú raíz del teclado (roving del view).
+    AlbumContextMenu {
+        id: albumContextMenu
+        album: albumsPath.contextAlbum
+        z: 300
     }
 }

@@ -168,6 +168,20 @@ def album_rows(
     return rows
 
 
+def _visual_items(item):
+    """Traversal visual (childItems) — los delegates de Repeater/ListView
+    no son alcanzables con findChildren."""
+    out = []
+
+    def visit(current):
+        for child in current.childItems():
+            out.append(child)
+            visit(child)
+
+    visit(item)
+    return out
+
+
 def visual_descendants(item):
     """Walk QQuickItem ownership, including view-managed delegate wrappers."""
     pending = list(item.childItems())
@@ -179,6 +193,9 @@ def visual_descendants(item):
 
 class QaLibrary(QObject):
     library_changed = Signal()
+    # M9-R3: select_genre emite genre_selected — el harness modela la
+    # señal para el Connections de LibraryView (0 warnings).
+    genre_selected = Signal(str)
     albumPaletteChanged = Signal(str, "QVariantMap")
 
     def __init__(self, state: str, artwork_paths: tuple[str, ...]) -> None:
@@ -205,6 +222,9 @@ class QaLibrary(QObject):
         int, lambda self: 0 if self._state == "empty" else 1, notify=library_changed
     )
     sourceOperationError = Property(str, lambda self: "", notify=library_changed)
+    # M9-R3 context menus contract: capability surfaces del Bridge.
+    canQueueTracks = Property(bool, lambda self: True, notify=library_changed)
+    canAddTracksToPlaylists = Property(bool, lambda self: True, notify=library_changed)
     scanCurrentPath = Property(str, lambda self: "", notify=library_changed)
     selectedAlbumKey = Property(str, lambda self: "", notify=library_changed)
     selectedArtistKey = Property(str, lambda self: "", notify=library_changed)
@@ -334,6 +354,9 @@ def knowledge_row() -> dict:
     }
 
 
+_KEEP: list = []
+
+
 def render(output: Path) -> list[dict]:
     app = QGuiApplication.instance() or QGuiApplication([])
     enrichment = QaEnrichment()
@@ -356,6 +379,8 @@ def render(output: Path) -> list[dict]:
             artwork_paths = create_artwork_fixtures(Path(temp_dir))
             for view_name, mode in MODES.items():
                 for width, height, state in review_frames():
+                    if state == "album-context-menu" and view_name != "editorial":
+                        continue  # frame del menú de álbum (editorial)
                     library = QaLibrary(state, artwork_paths)
                     _render_frame(
                         app,
@@ -370,6 +395,39 @@ def render(output: Path) -> list[dict]:
                         height,
                         state,
                     )
+            # M9-R3: menús contextuales aislados reales (genre/track) —
+            # los popups de los delegates de GridView/Repeaters no abren
+            # en offscreen; el componente del menú se renderiza abierto.
+            _render_standalone_menu(
+                app,
+                output,
+                results,
+                "genre-context-menu",
+                "media/GenreContextMenu.qml",
+                {
+                    "genre": {
+                        "key": "genre:jazz",
+                        "name": "Jazz",
+                        "albumCount": 24,
+                        "trackCount": 312,
+                    }
+                },
+            )
+            _render_standalone_menu(
+                app,
+                output,
+                results,
+                "track-context-menu",
+                "media/TrackContextMenu.qml",
+                {
+                    "titleText": "Nocturne",
+                    "artistText": "Artist",
+                    "albumText": "Album",
+                    "canAddToPlaylist": True,
+                    "canAddToNewPlaylist": True,
+                    "canShowProperties": True,
+                },
+            )
     finally:
         qInstallMessageHandler(previous_handler)
     if messages:
@@ -379,6 +437,114 @@ def render(output: Path) -> list[dict]:
             f"visual QA emitted {len(messages)} Qt warning(s)/error(s):\n{preview}"
         )
     return results
+
+
+def _render_standalone_menu(
+    app,
+    output,
+    results,
+    state: str,
+    component_path: str,
+    properties: dict,
+) -> None:
+    """M9-R3 CONVERGENCE SEAL: render del menú contextual REAL abierto
+    (componente productivo + datos) para inspección perceptual de
+    geometría/header/separadores/capacidades ocultas. FALLA si el menú
+    no abre. El Popup se ancla vía un Item anfitrión (los Popup no son
+    visual children por sí mismos)."""
+    from PySide6.QtCore import QObject, QUrl, Signal, Slot
+    from PySide6.QtQml import QQmlComponent, QQmlEngine
+    from PySide6.QtQuick import QQuickWindow
+    from PySide6.QtTest import QTest
+
+    class _Library(QObject):  # noqa: N815 (QML-facing)
+        changed = Signal()
+        canQueueTracks = Property(bool, lambda self: True, notify=changed)
+        canAddTracksToPlaylists = Property(bool, lambda self: True, notify=changed)
+
+        @Slot(str)
+        def select_album(self, key):
+            del key
+
+        @Slot(str)
+        def play_album(self, key):
+            del key
+
+        @Slot(str)
+        def queue_album(self, key):
+            del key
+
+        @Slot(str)
+        def select_artist(self, key):
+            del key
+
+        @Slot(str)
+        def select_genre(self, key):
+            del key
+
+        @Slot(str)
+        def request_album_playlist_target(self, key):
+            del key
+
+        @Slot(str)
+        def request_new_playlist_for_album(self, key):
+            del key
+
+        @Slot(str)
+        def request_album_properties(self, key):
+            del key
+
+    library = _Library()
+    _KEEP.append(library)
+    engine = QQmlEngine()
+    engine.addImportPath(str(QML))
+    engine.rootContext().setContextProperty("library", library)
+    component = QQmlComponent(engine)
+    component.setData(
+        (
+            "import QtQuick\n"
+            f'import "{QML.as_uri()}/media"\n'
+            "Item {\n"
+            "    id: host\n"
+            '    objectName: "menuHost"\n'
+            f"    {Path(component_path).stem} {{ id: theMenu }}\n"
+            "}\n"
+        ).encode(),
+        QUrl("menu_host.qml"),
+    )
+    if component.status() != QQmlComponent.Ready:
+        raise RuntimeError(
+            f"{state}: " + "; ".join(e.toString() for e in component.errors())
+        )
+    host = component.create()
+    _KEEP.extend([engine, component, host])
+    menu = None
+    for child in host.findChildren(QObject):
+        if Path(component_path).stem in child.metaObject().className():
+            menu = child
+            break
+    if menu is None:
+        raise RuntimeError(f"{state}: menú del host no encontrado")
+    for key, value in properties.items():
+        menu.setProperty(key, value)
+    window = QQuickWindow()
+    window.resize(1200, 900)
+    host.setParentItem(window.contentItem())
+    window.show()
+    QTest.qWait(100)
+    meta = menu.metaObject()
+    popup_index = meta.indexOfMethod("popup()")
+    if popup_index < 0 or not meta.method(popup_index).invoke(menu):
+        raise RuntimeError(f"{state}: popup() no invocable")
+    QTest.qWait(120)
+    if not menu.property("visible"):
+        raise RuntimeError(f"{state}: el menú no abrió para el QA")
+    image = window.grabWindow()
+    name = f"1200-{state}.png"
+    if image.isNull() or not image.save(str(output / name)):
+        raise RuntimeError(f"could not save {name}")
+    results.append({"frame": name, "w": 1200, "h": 900, "state": state})
+    window.close()
 
 
 def _render_frame(
@@ -534,7 +700,30 @@ def _render_frame(
             if popup is None:
                 raise RuntimeError("View Options popup not found")
             popup.setProperty("visible", True)
+        elif state == "album-context-menu":
+            # M9-R3: abre el menú contextual REAL del álbum hero del
+            # magazine para el render de revisión perceptual.
+            if view_name != "editorial":
+                raise RuntimeError(
+                    "album-context-menu QA frame requires the editorial mode"
+                )
+            hero = root.findChild(QObject, "magazineHeroContext")
+            if hero is None:
+                raise RuntimeError("magazineHeroContext not found")
+            meta = hero.metaObject()
+            index = meta.indexOfMethod("openMenu()")
+            if index < 0 or not meta.method(index).invoke(hero):
+                raise RuntimeError("album context openMenu() failed")
         QTest.qWait(260 if state in {"view-options-open", "hover"} else 80)
+        if state == "album-context-menu":
+            visible_menus = [
+                item
+                for item in root.findChildren(QObject)
+                if item.property("visible") is True
+                and "Menu" in item.metaObject().className()
+            ]
+            if not visible_menus:
+                raise RuntimeError("album context menu did not open for QA")
 
         if state == "empty" and library.albumCount != 0:
             raise RuntimeError("empty QA state still contains albums")
@@ -584,7 +773,13 @@ def main() -> int:
         json.dumps({"schemaVersion": 1, "frames": frames}, indent=2) + "\n",
         encoding="utf-8",
     )
-    if len(frames) != len(MODES) * len(review_frames()):
+    expected = len(MODES) * len(review_frames())
+    editorial_only = sum(
+        1 for frame in review_frames() if frame[2] == "album-context-menu"
+    )
+    expected -= editorial_only * (len(MODES) - 1)
+    expected += 2  # menús aislados genre/track del convergence seal
+    if len(frames) != expected:
         raise RuntimeError("incomplete visual QA matrix")
     return 0
 

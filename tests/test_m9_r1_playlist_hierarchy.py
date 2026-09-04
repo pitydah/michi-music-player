@@ -102,6 +102,10 @@ class TestHierarchy:
         assert "Music files will remain in your library" in content
 
     def test_remove_wording(self):
+        # M9-R3: el wording vive en el PlaylistTrackContextMenu
+        # especializado (removeText del TrackContextMenu base).
         track_list = _text("playlists/PlaylistTrackList.qml")
-        assert "Remove from playlist" in track_list
+        menu = _text("media/PlaylistTrackContextMenu.qml")
+        assert "PlaylistTrackContextMenu" in track_list
+        assert 'removeText: qsTr("Remove from this Playlist")' in menu
         assert "Delete track" not in track_list

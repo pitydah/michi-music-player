@@ -11,6 +11,34 @@ ListView {
     objectName: "albumTimelineView"
 
     property var albumModel: library.timelineAlbums
+    // M9-R3 CONVERGENCE SEAL: target del contexto por teclado — el
+    // álbum del currentIndex (roving). El teclado vive en el VIEW, no en
+    // los delegates (activeFocusOnTab false): Menu/Shift+F10 abren el
+    // menú del álbum actual.
+    property var contextAlbum: null
+
+    function openCurrentAlbumContext() {
+        if (albumTimeline.albumModel === undefined
+                || albumTimeline.albumModel.length === 0
+                || albumTimeline.currentIndex < 0
+                || albumTimeline.currentIndex >= albumTimeline.albumModel.length)
+            return
+        albumTimeline.contextAlbum = albumTimeline.albumModel[albumTimeline.currentIndex]
+        if (albumTimeline.browseState && albumTimeline.contextAlbum)
+            albumTimeline.browseState.remember(albumTimeline.contextAlbum.key)
+        albumContextMenu.popup()
+    }
+
+    function handleAlbumContextKey(event) {
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            albumTimeline.openCurrentAlbumContext()
+            event.accepted = true
+            return true
+        }
+        return false
+    }
     property bool groupByDecade: true
     property var browseState: null
     property string direction: "newest"
@@ -152,6 +180,9 @@ ListView {
         Accessible.role: Accessible.Button
         Accessible.name: modelData.title + " by " + modelData.artist
         Accessible.selected: timelineRow.selected
+        Keys.onReturnPressed: library.select_album(modelData.key)
+        Keys.onEnterPressed: library.select_album(modelData.key)
+        Keys.onPressed: event => albumContext.handleContextKey(event)
 
         Rectangle {
             anchors.fill: parent
@@ -228,8 +259,6 @@ ListView {
                 text: modelData.year > 0 ? String(modelData.year) : "—"
                 role: "technical"
                 technical: true
-                // One accent per surface: cyan is reserved for the active
-                // state (selected dot/row), not for every row's year.
                 color: modelData.year > 0
                     ? MichiPalette.textSecondary : MichiPalette.textMuted
             }
@@ -262,7 +291,21 @@ ListView {
             }
             onDoubleTapped: library.select_album(modelData.key)
         }
-        Keys.onReturnPressed: library.select_album(modelData.key)
-        Keys.onEnterPressed: library.select_album(modelData.key)
+        AlbumContextArea {
+            id: albumContext
+            anchors.fill: parent
+            album: modelData
+            onContextRequested: {
+                albumTimeline.currentIndex = timelineRow.index
+                timelineRow.forceActiveFocus()
+            }
+        }
+    }
+
+    // M9-R3 CONVERGENCE SEAL: menú raíz del teclado (roving del view).
+    AlbumContextMenu {
+        id: albumContextMenu
+        album: albumTimeline.contextAlbum
+        z: 300
     }
 }

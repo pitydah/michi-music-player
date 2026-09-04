@@ -47,15 +47,63 @@ ListView {
         required property var modelData
         width: root.width
         numberText: String(index + 1)
+        trackId: modelData.trackId || ""
+        filePath: modelData.path || ""
         title: modelData.title
         artist: modelData.artist
+        artistKey: modelData.artistKey || ""
         album: modelData.album
+        albumKey: modelData.albumKey || ""
+        artworkPath: modelData.artworkPath || ""
+        formatKey: modelData.formatKey || "unknown"
+        formatLabel: modelData.formatLabel || modelData.qualityLabel || "UNKNOWN"
         durationMs: modelData.durationMs
         quality: modelData.qualityLabel
         playing: playback.currentPath === modelData.path
-        favorite: library.favoritePaths.indexOf(modelData.path) !== -1
+        favorite: {
+            // M9-R3 CONVERGENCE SEAL: el favorito puede vivir como id
+            // canónico (T1), como proyección legacy (legacy-path::<path>)
+            // o como path-only (pre-migración) — los tres se chequean.
+            if (typeof library === "undefined" || !library)
+                return false
+            if (modelData.trackId
+                    && library.favoriteTrackIds.indexOf(
+                        String(modelData.trackId)) !== -1)
+                return true
+            if (modelData.path) {
+                if (library.favoriteTrackIds.indexOf(
+                        "legacy-path::" + modelData.path) !== -1)
+                    return true
+                if (!modelData.trackId
+                        && library.favoritePaths.indexOf(
+                            modelData.path) !== -1)
+                    return true
+            }
+            return false
+        }
         showFavorite: true
-        onActivated: library.activate_path(modelData.path)
-        onFavoriteToggled: library.toggle_favorite(modelData.path)
+        canQueue: Boolean(modelData.trackId)
+            && modelData.unavailable !== true
+            && library.canQueueTracks
+        canGoToAlbum: albumKey.length > 0
+        canGoToArtist: artistKey.length > 0
+        onActivated: {
+            if (modelData.trackId)
+                library.activate_track_by_id(modelData.trackId)
+            else
+                library.activate_path(modelData.path)
+        }
+        onFavoriteToggled: {
+            if (modelData.trackId)
+                library.toggle_favorite_by_id(modelData.trackId)
+            else
+                library.toggle_favorite(modelData.path)
+        }
+        onQueueRequested: if (modelData.trackId)
+            library.queue_track_by_id(modelData.trackId)
+        onGoToAlbumRequested: if (albumKey.length > 0)
+            library.select_album(albumKey)
+        onGoToArtistRequested: if (artistKey.length > 0)
+            library.select_artist(artistKey)
     }
 }

@@ -6,7 +6,8 @@ import "../media"
 import "../patterns"
 import "../theme"
 
-// GenresView — Audiophile Genre navigation with direct search filtering
+// GenresView — canonical Genre navigation. Genre.key is identity; a display
+// name is never substituted as a search query for an exact entity intent.
 ListView {
     id: root
     objectName: "genresView"
@@ -17,6 +18,8 @@ ListView {
     clip: true
     spacing: MichiSpacing.xs
     boundsBehavior: Flickable.StopAtBounds
+    keyNavigationEnabled: true
+    activeFocusOnTab: true
 
     ScrollBar.vertical: MichiScrollBar { }
 
@@ -30,12 +33,25 @@ ListView {
     }
 
     delegate: MichiEntityRow {
+        id: genreRow
+        required property int index
         required property var modelData
         width: root.width
         iconName: "genre"
         title: modelData.name
         technical: modelData.trackCount + (modelData.trackCount === 1 ? " track" : " tracks")
         interactive: true
-        onActivated: library.search(modelData.name)
+        onActivated: library.select_genre(modelData.key)
+        Keys.onPressed: event => genreContext.handleContextKey(event)
+
+        GenreContextArea {
+            id: genreContext
+            anchors.fill: parent
+            genre: modelData
+            onContextRequested: {
+                root.currentIndex = genreRow.index
+                genreRow.forceActiveFocus()
+            }
+        }
     }
 }

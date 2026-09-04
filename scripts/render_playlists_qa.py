@@ -178,6 +178,10 @@ def render(output: Path) -> list[dict]:
                 "focal-right",
             ):
                 _render_detail(app, output, results, 1440, state)
+
+            # M9-R3 CONVERGENCE SEAL: menú contextual de la tabla REAL.
+            for state in ("track-context-menu", "unavailable-track-context-menu"):
+                _render_track_context_menu(app, output, results, state)
     finally:
         qInstallMessageHandler(previous)
     if messages:
@@ -201,6 +205,164 @@ def _new_window(component, properties: dict, width: int, height: int):
 
 
 _KEEP: list = []
+
+
+class _TrackLibrary:
+    """Fake mínimo de library para la tabla contextual real: el miembro
+    identificado encola por TrackId (canQueueTracks true)."""
+
+    def __init__(self):
+        self.favoriteTrackIds = []  # noqa: N815 (QML property)
+        self.favoritePaths = []  # noqa: N815
+
+    def queue_track_by_id(self, track_id):
+        del track_id
+
+    def toggle_favorite_by_id(self, track_id):
+        del track_id
+
+    def toggle_favorite(self, path):
+        del path
+
+
+class _TrackQueue:
+    def add_file(self, path):
+        del path
+
+
+class _TrackPlayback:
+    currentPath = ""
+
+
+def _render_track_context_menu(app, output, results, state: str) -> None:
+    """M9-R3 CONVERGENCE SEAL: abre el PlaylistTrackContextMenu REAL del
+    primer delegate de la tabla productiva (identificado o unavailable) y
+    FALLA si el menú no abre. Frame de inspección perceptual."""
+    from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
+
+    class Library(QObject):  # noqa: N815 (QML-facing)
+        changed = Signal()
+        favoriteTrackIds = Property("QVariantList", lambda self: [], notify=changed)
+        favoritePaths = Property("QVariantList", lambda self: [], notify=changed)
+        canQueueTracks = Property(bool, lambda self: True, notify=changed)
+
+        @Slot(str)
+        def queue_track_by_id(self, track_id):
+            del track_id
+
+        @Slot(str)
+        def toggle_favorite_by_id(self, track_id):
+            del track_id
+
+        @Slot(str)
+        def toggle_favorite(self, path):
+            del path
+
+    class Queue(QObject):
+        @Slot(str)
+        def add_file(self, path):
+            del path
+
+    class Playback(QObject):
+        changed = Signal()
+        currentPath = Property(str, lambda self: "", notify=changed)
+
+    library = Library()
+    queue = Queue()
+    playback = Playback()
+    _KEEP.extend([library, queue, playback])
+
+    rows = []
+    for i in range(8):
+        unavailable = state == "unavailable-track-context-menu" and i == 0
+        rows.append(
+            {
+                "trackId": "" if unavailable else f"T{i}",
+                "path": f"/music/track{i}.flac",
+                "available": not unavailable,
+                "unavailableReason": "source_offline" if unavailable else "",
+                "title": f"Track {i}",
+                "artist": "Artist",
+                "album": "Album",
+                "canonicalIndex": i,
+                "artworkPath": "",
+                "codec": "flac",
+                "qualityLabel": "FLAC · 24/96",
+            }
+        )
+
+    view = QQuickView()
+    view.engine().addImportPath(str(QML))
+    ctx = view.rootContext()
+    ctx.setContextProperty("library", library)
+    ctx.setContextProperty("queue", queue)
+    ctx.setContextProperty("playback", playback)
+    view.setSource(QUrl.fromLocalFile(str(QML / "playlists/PlaylistTrackList.qml")))
+    if view.status() != QQuickView.Ready:
+        raise RuntimeError("; ".join(e.toString() for e in view.errors()))
+    from PySide6.QtTest import QTest
+
+    view.setResizeMode(QQuickView.SizeRootObjectToView)
+    view.resize(1200, 900)
+    view.show()
+    view.requestActivate()
+    QTest.qWait(120)
+    view.rootObject().setProperty("rows", rows)
+    QTest.qWait(200)
+
+    wanted_unavailable = state == "unavailable-track-context-menu"
+    menus = _find_delegate_menus(view.rootObject())
+    target = None
+    for menu in menus:
+        if menu.property("canQueue") is False and wanted_unavailable:
+            target = menu
+            break
+        if menu.property("canQueue") is True and not wanted_unavailable:
+            target = menu
+            break
+    if target is None:
+        raise RuntimeError(
+            f"{state}: menú del delegate esperado no existe (encontrados {len(menus)})"
+        )
+    meta = target.metaObject()
+    popup_index = meta.indexOfMethod("popup()")
+    if popup_index < 0 or not meta.method(popup_index).invoke(target):
+        raise RuntimeError(f"{state}: popup() del menú no invocable")
+    QTest.qWait(80)
+    if not target.property("visible"):
+        raise RuntimeError(f"{state}: el menú contextual no abrió")
+    image = view.grabWindow()
+    name = f"1200-{state}.png"
+    image.save(str(output / name))
+    results.append({"frame": name, "w": 1200, "h": 900})
+    view.close()
+
+
+def _find_delegate_menus(root):
+    """PlaylistTrackContextMenu reales de los delegates productivos.
+
+    Los delegates del ListView solo se alcanzan por childItems; el menú
+    (Popup) NO es un visual child del delegate — se busca en su árbol
+    QObject (findChildren), patrón del runtime seal."""
+    from PySide6.QtCore import QObject
+
+    delegates = []
+
+    def visit(item):
+        model = item.property("modelData")
+        if isinstance(model, dict) and "trackId" in model:
+            delegates.append(item)
+            return
+        for child in item.childItems():
+            visit(child)
+
+    visit(root)
+    menus = []
+    for delegate in delegates:
+        for child in delegate.findChildren(QObject):
+            if "PlaylistTrackContextMenu" in child.metaObject().className():
+                menus.append(child)
+    return menus
 
 
 def _render_overview(app, output, results, width, state):
@@ -247,7 +409,8 @@ def _render_detail(app, output, results, width, state):
     view.setResizeMode(QQuickView.SizeRootObjectToView)
     view.resize(width, 900)
     view.show()
-    app.processEvents()
+    for _ in range(6):
+        app.processEvents()
     image = view.grabWindow()
     name = f"detail-{width}-{state}.png"
     image.save(str(output / name))

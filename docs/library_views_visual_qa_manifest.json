@@ -22,29 +22,118 @@
     "long-metadata",
     "reduced-motion",
     "high-contrast",
-    "view-options-open"
+    "view-options-open",
+    "album-context-menu"
   ],
-  "widths": [680, 900, 1200, 1440, 1920, 2560],
+  "widths": [
+    680,
+    900,
+    1200,
+    1440,
+    1920,
+    2560
+  ],
   "requiredReviewFrames": [
-    {"width": 680, "height": 900, "state": "idle"},
-    {"width": 900, "height": 900, "state": "idle"},
-    {"width": 1200, "height": 900, "state": "idle"},
-    {"width": 1440, "height": 900, "state": "idle"},
-    {"width": 1920, "height": 1080, "state": "idle"},
-    {"width": 2560, "height": 1440, "state": "idle"},
-    {"width": 1440, "height": 900, "state": "hover"},
-    {"width": 1440, "height": 900, "state": "selected"},
-    {"width": 1440, "height": 900, "state": "keyboard-focus"},
-    {"width": 1440, "height": 900, "state": "precision-off"},
-    {"width": 1440, "height": 900, "state": "precision-on"},
-    {"width": 1440, "height": 900, "state": "filter-active"},
-    {"width": 1440, "height": 900, "state": "search-active"},
-    {"width": 1440, "height": 900, "state": "empty"},
-    {"width": 1440, "height": 900, "state": "missing-artwork"},
-    {"width": 1440, "height": 900, "state": "long-metadata"},
-    {"width": 1440, "height": 900, "state": "view-options-open"},
-    {"width": 1440, "height": 900, "state": "reduced-motion"},
-    {"width": 1440, "height": 900, "state": "high-contrast"}
+    {
+      "width": 680,
+      "height": 900,
+      "state": "idle"
+    },
+    {
+      "width": 900,
+      "height": 900,
+      "state": "idle"
+    },
+    {
+      "width": 1200,
+      "height": 900,
+      "state": "idle"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "idle"
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "state": "idle"
+    },
+    {
+      "width": 2560,
+      "height": 1440,
+      "state": "idle"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "hover"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "selected"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "keyboard-focus"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "precision-off"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "precision-on"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "filter-active"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "search-active"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "empty"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "missing-artwork"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "long-metadata"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "view-options-open"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "reduced-motion"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "high-contrast"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "state": "album-context-menu"
+    }
   ],
   "assertions": [
     "No stretched artwork wallpaper",
@@ -53,5 +142,9 @@
     "Header and toolbar heights remain stable",
     "One keyboard entry point per collection",
     "Search, filter, empty and missing-artwork states remain legible"
+  ],
+  "standaloneContextFrames": [
+    "1200-genre-context-menu",
+    "1200-track-context-menu"
   ]
 }
