@@ -194,7 +194,9 @@ Item {
             showFavorite: root.canFavorite
             showAddToPlaylist: root.canAddToPlaylist
             showInspector: root.canInspect
-            canQueue: root.canQueue
+            // LIB-A §6: unavailable → queue NO (la availability por fila
+            // no se pierde aunque el host permita queue).
+            canQueue: root.canQueue && !Boolean(modelData.unavailable)
             canGoToAlbum: root.canNavigateEntities && albumKey.length > 0
             canGoToArtist: root.canNavigateEntities && artistKey.length > 0
             onSelectedRequested: {

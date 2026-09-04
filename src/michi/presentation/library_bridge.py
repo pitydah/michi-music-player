@@ -335,6 +335,15 @@ class LibraryBridge(QObject):
     def _get_album_count(self) -> int:
         return len(self._service.state.albums)
 
+    def _get_filtered_album_count(self) -> int:
+        """Álbumes de la proyección ACTUAL (search/filtro aplicado) —
+        para conteos con scope correcto en el header."""
+        if self._service.state.search_active:
+            return len(self._service.state.search_projection.albums)
+        if self._album_query.mode != "all":
+            return len(self._album_query.project(self._service.state.albums))
+        return len(self._service.state.albums)
+
     def _get_artist_count(self) -> int:
         return len(self._service.state.artists)
 
@@ -455,6 +464,9 @@ class LibraryBridge(QObject):
             "key": album.key,
             "title": album.title,
             "artist": album.artist,
+            # LIB-A §26: identidad del artista como KEY canónico (nunca
+            # display-name) — el menú contextual 'Go to Artist' exacto.
+            "artistKey": make_artist_key(album.artist.strip() or "Unknown Artist"),
             "trackCount": album.track_count,
             "durationMs": album.duration_ms,
             "discCount": album.disc_count,
@@ -595,6 +607,25 @@ class LibraryBridge(QObject):
     def _get_selected_album_key(self) -> str:
         return self._selected_album_key
 
+    def _get_selected_genre_key(self) -> str:
+        return self._selected_genre_key
+
+    def _get_selected_genre_name(self) -> str:
+        if not self._selected_genre_key:
+            return ""
+        genre = next(
+            (
+                item
+                for item in self._service.state.genres
+                if item.key == self._selected_genre_key
+            ),
+            None,
+        )
+        return genre.name if genre is not None else ""
+
+    def _get_genre_filter_active(self) -> bool:
+        return bool(self._selected_genre_key)
+
     def _get_album_title(self) -> str:
         return self._selected_album.title if self._selected_album is not None else ""
 
@@ -690,24 +721,21 @@ class LibraryBridge(QObject):
         return self._track_rows_with_artwork(self._artist_track_refs)
 
     def _get_artist_albums(self) -> list[dict]:
+        """LIB-A §26: la MISMA proyección canónica _album_row (una sola
+        schema de álbum en todo el Bridge) — no un dict reducido."""
         artist_paths = {ref.file_path for ref in self._artist_track_refs}
         albums = [
             album
             for album in self._service.state.albums
             if artist_paths.intersection(album.track_paths)
         ]
+        tracks_by_path = {
+            track.file_path: track for track in self._service.state.tracks
+        }
+        favorite_paths = set(self._service.state.favorite_paths)
+        recent_paths = set(self._service.state.recently_added_paths)
         return [
-            {
-                "key": album.key,
-                "title": album.title,
-                "artist": album.artist,
-                "trackCount": album.track_count,
-                "durationMs": album.duration_ms,
-                "hasArtwork": album.has_artwork,
-                "artworkPath": self._service.artwork_path_for(album.key) or "",
-                "year": album.year,
-                "technicalSummary": album.technical_summary,
-            }
+            self._album_row(album, tracks_by_path, favorite_paths, recent_paths)
             for album in albums
         ]
 
@@ -989,6 +1017,9 @@ class LibraryBridge(QObject):
     )
     albumTracks = Property(list, _get_album_tracks, notify=library_changed)
     selectedArtistKey = Property(str, _get_selected_artist_key, notify=library_changed)
+    selectedGenreKey = Property(str, _get_selected_genre_key, notify=library_changed)
+    selectedGenreName = Property(str, _get_selected_genre_name, notify=library_changed)
+    genreFilterActive = Property(bool, _get_genre_filter_active, notify=library_changed)
     artistName = Property(str, _get_artist_name, notify=library_changed)
     artistTrackCount = Property(int, _get_artist_track_count, notify=library_changed)
     artistAlbumCount = Property(int, _get_artist_album_count, notify=library_changed)
@@ -1015,6 +1046,9 @@ class LibraryBridge(QObject):
         bool, _get_album_sort_descending, notify=library_changed
     )
     albumFilterMode = Property(str, _get_album_filter_mode, notify=library_changed)
+    filteredAlbumCount = Property(
+        int, _get_filtered_album_count, notify=library_changed
+    )
     canQueueTracks = Property(
         bool, lambda self: self._queue_coordinator is not None, constant=True
     )
