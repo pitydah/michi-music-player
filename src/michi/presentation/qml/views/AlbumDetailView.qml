@@ -13,6 +13,15 @@ ColumnLayout {
 
     property string addTargetPath: ""
     property var inspectedTrack: null
+    property int inspectedIndex: -1
+
+    function _albumIndexFor(row) {
+        for (var i = 0; i < library.albumTracks.length; ++i) {
+            if (library.albumTracks[i].path === row.path)
+                return i
+        }
+        return -1
+    }
     readonly property var albumFacts: library.albumPresentation || ({})
     AlbumPaletteBinding { id: paletteBinding; album: root.albumFacts }
     readonly property var albumFactRows: [
@@ -391,45 +400,37 @@ ColumnLayout {
             shadowed: false
             textured: false
 
-            ListView {
-                id: albumTracksList
+            MichiTrackTable {
+                id: albumTracksTable
+                objectName: "albumTracksTable"
                 anchors.fill: parent
-                model: library.albumTracks
-                clip: true
-                spacing: MichiSpacing.xs
-                boundsBehavior: Flickable.StopAtBounds
-                headerPositioning: ListView.InlineHeader
-
-                header: TrackTableHeader {
-                    width: albumTracksList.width
-                    showAlbumColumn: false
-                    actionColumnWidth: 116
-                }
-
-                delegate: TrackRow {
-                    required property int index
-                    required property var modelData
-                    width: albumTracksList.width
-                    numberText: modelData.discNumber > 1
-                        ? modelData.discNumber + "." + modelData.trackNumber
-                        : String(modelData.trackNumber > 0
-                            ? modelData.trackNumber : index + 1)
-                    title: modelData.title || modelData.displayName
-                    artist: modelData.artist
-                    showAlbumColumn: false
-                    durationMs: modelData.durationMs
-                    quality: modelData.qualityLabel
-                    playing: playback.currentPath === modelData.path
-                    favorite: library.favoritePaths.indexOf(modelData.path) !== -1
-                    showFavorite: true
-                    showAddToPlaylist: true
-                    showInspector: true
-                    selected: root.inspectedTrack
-                        && root.inspectedTrack.path === modelData.path
-                    onActivated: library.activate_album_track(index)
-                    onFavoriteToggled: library.toggle_favorite(modelData.path)
-                    onAddToPlaylistRequested: root.addTargetPath = modelData.path
-                    onInspectorRequested: root.inspectedTrack = modelData
+                rows: library.albumTracks
+                playingPath: typeof playback !== "undefined" && playback ? playback.currentPath : ""
+                favoriteTrackIds: library.favoriteTrackIds
+                favoritePaths: library.favoritePaths
+                // LIB-A §8/22: perfil de álbum (álbum implícito en el
+                // contexto de página) + numeración disco-track.
+                columnProfile: "album"
+                numberingMode: "disc-track"
+                showArtistColumn: true
+                showAlbumColumn: false
+                canFavorite: true
+                canQueue: library.canQueueTracks
+                canNavigateEntities: true
+                canInspect: false
+                selectedIndex: root.inspectedTrack !== null
+                    ? root.inspectedIndex : -1
+                // TrackId-first (el Bridge resuelve legacy-path::).
+                onTrackActivated: (trackId, path, index) =>
+                    library.activate_album_track_by_id(trackId)
+                onFavoriteRequested: trackId =>
+                    library.toggle_favorite_by_id(trackId)
+                onQueueRequested: trackId => library.queue_track_by_id(trackId)
+                onGoToArtistRequested: artistKey =>
+                    library.select_artist(artistKey)
+                onPropertiesRequested: modelData => {
+                    root.inspectedTrack = modelData
+                    root.inspectedIndex = root._albumIndexFor(modelData)
                 }
             }
         }
@@ -441,7 +442,10 @@ ColumnLayout {
                 && MichiBreakpoints.atLeastMedium(root.width)
             title: root.inspectedTrack ? root.inspectedTrack.title : "Track information"
             rows: root.inspectorRows
-            onCloseRequested: root.inspectedTrack = null
+            onCloseRequested: {
+                root.inspectedTrack = null
+                root.inspectedIndex = -1
+            }
         }
     }
 

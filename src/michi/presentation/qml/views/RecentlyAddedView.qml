@@ -1,109 +1,39 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import "../controls"
 import "../media"
 import "../patterns"
 import "../primitives"
 import "../theme"
 
-// RecentlyAddedView — Recently imported tracks with temporal section headers
-ListView {
+// RecentlyAddedView — LIB-A §7/24: converged on the shared MichiTrackTable
+// authority. Orden de proyección 'recientes' preservado.
+MichiTrackTable {
     id: root
     objectName: "recentlyView"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: library.recentlyAddedTrackRows
-    clip: true
-    spacing: MichiSpacing.xs
-    boundsBehavior: Flickable.StopAtBounds
-    headerPositioning: ListView.InlineHeader
+    rows: library.recentlyAddedTrackRows
+    playingPath: typeof playback !== "undefined" && playback ? playback.currentPath : ""
+    favoriteTrackIds: library.favoriteTrackIds
+    favoritePaths: library.favoritePaths
+    canFavorite: true
+    canQueue: library.canQueueTracks
+    canNavigateEntities: true
+    sortingEnabled: false
+    // LIB-A §30: empty state TRUTH.
+    emptyTitle: library.searchActive
+        ? qsTr("No recently added tracks match your search")
+        : qsTr("Nothing added recently")
+    emptyMessage: library.searchActive
+        ? qsTr("Try a different search or clear the current query.")
+        : qsTr("Tracks you add to your library will appear here.")
+    emptyIcon: "recent"
 
-    ScrollBar.vertical: MichiScrollBar { }
-
-    header: Item {
-        width: root.width
-        height: root.count > 0 ? recentlyTableHeader.implicitHeight : root.height
-
-        TrackTableHeader {
-            id: recentlyTableHeader
-            width: parent.width
-            actionColumnWidth: 32
-            visible: root.count > 0
-        }
-
-        EmptyState {
-            anchors.fill: parent
-            visible: root.count === 0
-            title: qsTr("Nothing added recently")
-            message: qsTr("Newly imported tracks will appear here.")
-            iconName: "recent"
-        }
-    }
-
-    delegate: TrackRow {
-        required property int index
-        required property var modelData
-        width: root.width
-        numberText: String(index + 1)
-        trackId: modelData.trackId || ""
-        filePath: modelData.path || ""
-        title: modelData.title
-        artist: modelData.artist
-        artistKey: modelData.artistKey || ""
-        album: modelData.album
-        albumKey: modelData.albumKey || ""
-        artworkPath: modelData.artworkPath || ""
-        formatKey: modelData.formatKey || "unknown"
-        formatLabel: modelData.formatLabel || modelData.qualityLabel || "UNKNOWN"
-        durationMs: modelData.durationMs
-        quality: modelData.qualityLabel
-        playing: playback.currentPath === modelData.path
-        favorite: {
-            // M9-R3 CONVERGENCE SEAL: el favorito puede vivir como id
-            // canónico (T1), como proyección legacy (legacy-path::<path>)
-            // o como path-only (pre-migración) — los tres se chequean.
-            if (typeof library === "undefined" || !library)
-                return false
-            if (modelData.trackId
-                    && library.favoriteTrackIds.indexOf(
-                        String(modelData.trackId)) !== -1)
-                return true
-            if (modelData.path) {
-                if (library.favoriteTrackIds.indexOf(
-                        "legacy-path::" + modelData.path) !== -1)
-                    return true
-                if (!modelData.trackId
-                        && library.favoritePaths.indexOf(
-                            modelData.path) !== -1)
-                    return true
-            }
-            return false
-        }
-        showFavorite: true
-        canQueue: Boolean(modelData.trackId)
-            && modelData.unavailable !== true
-            && library.canQueueTracks
-        canGoToAlbum: albumKey.length > 0
-        canGoToArtist: artistKey.length > 0
-        onActivated: {
-            if (modelData.trackId)
-                library.activate_track_by_id(modelData.trackId)
-            else
-                library.activate_path(modelData.path)
-        }
-        onFavoriteToggled: {
-            if (modelData.trackId)
-                library.toggle_favorite_by_id(modelData.trackId)
-            else
-                library.toggle_favorite(modelData.path)
-        }
-        onQueueRequested: if (modelData.trackId)
-            library.queue_track_by_id(modelData.trackId)
-        onGoToAlbumRequested: if (albumKey.length > 0)
-            library.select_album(albumKey)
-        onGoToArtistRequested: if (artistKey.length > 0)
-            library.select_artist(artistKey)
-    }
+    // TrackId-first (el Bridge resuelve legacy-path:: explícito).
+    onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
+    onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
+    onQueueRequested: trackId => library.queue_track_by_id(trackId)
+    onGoToAlbumRequested: albumKey => library.select_album(albumKey)
+    onGoToArtistRequested: artistKey => library.select_artist(artistKey)
 }

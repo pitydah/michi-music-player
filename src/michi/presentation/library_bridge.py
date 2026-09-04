@@ -4,7 +4,6 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Qt, QUrl, Signal, Slot
 
-from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_collection_coordinators import (
     LibraryPlaylistCoordinator,
     LibraryQueueCoordinator,
@@ -673,29 +672,11 @@ class LibraryBridge(QObject):
         )
 
     def _get_album_tracks(self) -> list[dict]:
-        # SEMANTIC INTEGRATION: contrato EXACTO de las views premium de
-        # main (PR #224-228) — las keys canónicas del album-tracks
-        # projection (la versión R4 con keys extra se descartó).
-        return [
-            {
-                "displayName": ref.display_name,
-                "title": ref.title,
-                "artist": ref.artist,
-                "durationMs": ref.duration_ms,
-                "path": str(ref.file_path),
-                "trackNumber": ref.track_number,
-                "discNumber": ref.disc_number,
-                "codec": ref.codec,
-                "container": ref.container,
-                "sampleRateHz": ref.sample_rate_hz,
-                "bitDepth": ref.bit_depth,
-                "channels": ref.channels,
-                "bitrateBps": ref.bitrate_bps,
-                "fileSize": ref.file_size,
-                "qualityLabel": make_track_quality_label(ref),
-            }
-            for ref in self._album_track_refs
-        ]
+        """LIB-A §21: la MISMA proyección canónica de filas que el resto
+        de las superficies (trackId, artistKey, albumKey, artwork,
+        availability efectiva, genre/composer/year) — nunca un schema
+        manual reducido."""
+        return self._track_rows_with_artwork(self._album_track_refs)
 
     def _get_selected_artist_key(self) -> str:
         return self._selected_artist_key
@@ -1633,9 +1614,24 @@ class LibraryBridge(QObject):
         # P2-01 final seal: no LibraryService playback fallback.
 
     @Slot(int)
+    @Slot(str)
+    def activate_album_track_by_id(self, track_id: str) -> None:
+        """LIB-A §22: Album Detail click TrackId-first → ALBUM context
+        desde el track clickeado (nunca single; nunca índice)."""
+        if self._playback_coordinator is None or not self._selected_album_key:
+            return
+        for index, ref in enumerate(self._album_track_refs):
+            ref_id = ref.track_id or f"legacy-path::{ref.file_path}"
+            if ref_id == track_id or ref.track_id == track_id:
+                self._playback_coordinator.play_album_track(
+                    self._selected_album_key, index
+                )
+                return
+
     def activate_album_track(self, index: int) -> None:
         """Album Detail track click → ALBUM context at the clicked index
-        (NOT SINGLE)."""
+        (NOT SINGLE). Legacy index seam — los nuevos consumers usan
+        activate_album_track_by_id (TrackId-first)."""
         if not (0 <= index < len(self._album_track_refs)):
             return
         if self._playback_coordinator is not None and self._selected_album_key:

@@ -185,12 +185,15 @@ Item {
                 ? root.selectedTrackIds.indexOf(trackId) !== -1
                 : root.selectedIndex === index
             favorite:
+                // LIB-A §7/24: triple check canónico — id estable, proyección
+                // legacy (legacy-path::<path>) y path-only (pre-migración).
                 root.favoriteTrackIds.indexOf(trackId) !== -1
-                || (
-                    (!modelData.trackId
+                || (modelData.path
+                    && root.favoriteTrackIds.indexOf(
+                        "legacy-path::" + modelData.path) !== -1)
+                || ((!modelData.trackId
                      || String(modelData.trackId).length === 0)
-                    && root.favoritePaths.indexOf(modelData.path) !== -1
-                )
+                    && root.favoritePaths.indexOf(modelData.path) !== -1)
             showFavorite: root.canFavorite
             showAddToPlaylist: root.canAddToPlaylist
             showInspector: root.canInspect

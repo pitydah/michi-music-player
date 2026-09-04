@@ -133,42 +133,29 @@ ColumnLayout {
 
     MichiText { text: "Tracks"; role: "section" }
 
-    ListView {
-        id: artistTracksList
+    MichiTrackTable {
+        id: artistTracksTable
+        objectName: "artistTracksTable"
         Layout.fillWidth: true
         Layout.fillHeight: true
-        model: library.artistTracks
-        clip: true
-        spacing: MichiSpacing.xs
-        boundsBehavior: Flickable.StopAtBounds
-        keyNavigationEnabled: true
-        headerPositioning: ListView.InlineHeader
-
-        header: TrackTableHeader {
-            width: artistTracksList.width
-            showArtistColumn: false
-            actionColumnWidth: 76
-        }
-
-        delegate: TrackRow {
-            required property int index
-            required property var modelData
-            width: artistTracksList.width
-            numberText: String(index + 1)
-            title: modelData.title
-            artist: modelData.artist
-            showArtistColumn: false
-            album: modelData.album
-            durationMs: modelData.durationMs
-            quality: modelData.qualityLabel
-            playing: playback.currentPath === modelData.path
-            favorite: library.favoritePaths.indexOf(modelData.path) !== -1
-            showFavorite: true
-            showAddToPlaylist: true
-            onActivated: library.activate_artist_track(index)
-            onFavoriteToggled: library.toggle_favorite(modelData.path)
-            onAddToPlaylistRequested: root.addTargetPath = modelData.path
-        }
+        rows: library.artistTracks
+        playingPath: typeof playback !== "undefined" && playback ? playback.currentPath : ""
+        favoriteTrackIds: library.favoriteTrackIds
+        favoritePaths: library.favoritePaths
+        // LIB-A §8/23: perfil de artista (artista implícito) + Go to Album.
+        columnProfile: "artist"
+        numberingMode: "index"
+        showArtistColumn: false
+        showAlbumColumn: true
+        canFavorite: true
+        canQueue: library.canQueueTracks
+        canNavigateEntities: true
+        canInspect: false
+        // TrackId-first (el Bridge resuelve legacy-path::).
+        onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
+        onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
+        onQueueRequested: trackId => library.queue_track_by_id(trackId)
+        onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     }
 
     /* M6.9 — manual review dialog */
