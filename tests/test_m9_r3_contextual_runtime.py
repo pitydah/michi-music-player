@@ -82,6 +82,22 @@ def _find_by_object_name(root, name):
     return visit(root)
 
 
+def _collect_by_object_name(root, name):
+    """TODAS las instancias con el objectName (los delegates de Repeater
+    no son alcanzables con findChildren; una instancia arbitraria no
+    basta para targets múltiples)."""
+    found = []
+
+    def visit(item):
+        if item.property("objectName") == name:
+            found.append(item)
+        for child in item.childItems():
+            visit(child)
+
+    visit(root)
+    return found
+
+
 def _visible_menus(root):
     return [
         child
@@ -192,6 +208,44 @@ class TestMagazineContextRuntime:
         assert context is not None
         assert context["key"] == "album-2", "target exacto del roving"
         assert _visible_menus(root), "menú raíz abierto"
+        assert not any(
+            call[0] in ("play_album", "select_album") for call in library.calls
+        )
+        view.close()
+
+    def test_medium_context_open_selects_index_1(self, qapp):
+        """El área medium REAL (instancia por traversal) selecciona su
+        índice exacto (index+1) vía openMenu() — cero playback/open."""
+        view, library = self._magazine(qapp, 10)
+        root = view.rootObject()
+        meds = _collect_by_object_name(root, "magazineMediumContext")
+        assert meds, "áreas medium reales instanciadas"
+        meta = meds[0].metaObject()
+        assert meta.indexOfMethod("openMenu()") >= 0
+        assert meta.method(meta.indexOfMethod("openMenu()")).invoke(meds[0])
+        QTest.qWait(40)
+        assert root.property("rovingIndex") == 1, (
+            "select-before-menu del medium (index+1)"
+        )
+        assert not any(
+            call[0] in ("play_album", "select_album") for call in library.calls
+        )
+        view.close()
+
+    def test_compact_context_open_selects_index_3(self, qapp):
+        """El área compact REAL selecciona su índice exacto (index+3)
+        vía openMenu() — cero playback/open."""
+        view, library = self._magazine(qapp, 10)
+        root = view.rootObject()
+        compacts = _collect_by_object_name(root, "magazineCompactContext")
+        assert compacts, "áreas compact reales instanciadas"
+        meta = compacts[0].metaObject()
+        assert meta.indexOfMethod("openMenu()") >= 0
+        assert meta.method(meta.indexOfMethod("openMenu()")).invoke(compacts[0])
+        QTest.qWait(40)
+        assert root.property("rovingIndex") == 3, (
+            "select-before-menu del compact (index+3)"
+        )
         assert not any(
             call[0] in ("play_album", "select_album") for call in library.calls
         )
@@ -333,3 +387,277 @@ class TestArtistMenuFailClosedRuntime:
             "acción oculta sin la capacidad explícita (dead UI prohibida)"
         )
         self._kept = [menu, library]
+
+
+# ==========================================================================
+# M9-R3 CONVERGENCE SEAL — PlaylistTrackList contextual runtime (componente
+# productivo REAL, cero copias de lógica).
+# ==========================================================================
+
+
+class _PlaylistLibrary(QObject):
+    """Fake de library para PlaylistTrackList: registra los intents
+    TrackId-first y de favorito."""
+
+    changed = Signal()
+
+    def __init__(self, favorite_track_ids=None, favorite_paths=None):
+        super().__init__()
+        self._favorite_track_ids = favorite_track_ids or []
+        self._favorite_paths = favorite_paths or []
+        self.calls: list[tuple[str, str]] = []
+
+    favoriteTrackIds = Property(
+        "QVariantList", lambda self: self._favorite_track_ids, notify=changed
+    )
+    favoritePaths = Property(
+        "QVariantList", lambda self: self._favorite_paths, notify=changed
+    )
+    canQueueTracks = Property(bool, lambda self: True)
+
+    @Slot(str)
+    def queue_track_by_id(self, track_id):
+        self.calls.append(("queue_track_by_id", track_id))
+
+    @Slot(str)
+    def toggle_favorite_by_id(self, track_id):
+        self.calls.append(("favorite_by_id", track_id))
+
+    @Slot(str)
+    def toggle_favorite(self, path):
+        self.calls.append(("favorite_path", path))
+
+    @Slot(str)
+    def select_album(self, key):
+        self.calls.append(("select_album", key))
+
+    @Slot(str)
+    def select_artist(self, key):
+        self.calls.append(("select_artist", key))
+
+
+class _PlaylistQueue(QObject):
+    def __init__(self):
+        super().__init__()
+        self.calls: list[tuple[str, str]] = []
+
+    @Slot(str)
+    def add_file(self, path):
+        self.calls.append(("add_file", path))
+
+    @Slot(list)
+    def add_many(self, paths):
+        self.calls.append(("add_many", str(paths)))
+
+
+class _PlaylistPlayback(QObject):
+    currentPath = Property(str, lambda self: "")
+
+
+def _track_row(
+    track_id,
+    path,
+    *,
+    available=True,
+    unavailable_reason="",
+    title="Track",
+    canonical_index=0,
+):
+    return {
+        "trackId": track_id,
+        "path": path,
+        "available": available,
+        "unavailableReason": unavailable_reason,
+        "title": title,
+        "artist": "Artist",
+        "album": "Album",
+        "canonicalIndex": canonical_index,
+        "artworkPath": "",
+        "codec": "flac",
+        "qualityLabel": "FLAC",
+    }
+
+
+def _mount_playlist_track_list(qapp, rows):
+    """PlaylistTrackList REAL en QQuickView con fakes mínimos."""
+    library = _PlaylistLibrary()
+    queue = _PlaylistQueue()
+    playback = _PlaylistPlayback()
+    view = QQuickView()
+    view.engine().addImportPath(str(QML_DIR))
+    ctx = view.rootContext()
+    ctx.setContextProperty("library", library)
+    ctx.setContextProperty("queue", queue)
+    ctx.setContextProperty("playback", playback)
+    view.setSource(QUrl.fromLocalFile(str(QML_DIR / "playlists/PlaylistTrackList.qml")))
+    assert view.status() == QQuickView.Ready, [e.toString() for e in view.errors()]
+    view.setResizeMode(QQuickView.SizeRootObjectToView)
+    view.resize(900, 400)
+    view.show()
+    view.requestActivate()
+    QTest.qWait(80)
+    root = view.rootObject()
+    root.setProperty("rows", rows)
+    QTest.qWait(200)
+    return view, root, library, queue
+
+
+def _playlist_delegates(root):
+    """Delegates del ListView (childItems traversal — findChildren no los
+    alcanza). Cada delegate expone modelData."""
+    found = []
+
+    def visit(item):
+        model = item.property("modelData")
+        if isinstance(model, dict) and "trackId" in model:
+            found.append(item)
+        for child in item.childItems():
+            visit(child)
+
+    visit(root)
+    return found
+
+
+def _delegate_menu(delegate):
+    """PlaylistTrackContextMenu real del delegate (Popup: QObject child,
+    no visual child)."""
+    for child in delegate.findChildren(QObject):
+        if "ContextMenu" in child.metaObject().className():
+            return child
+    return None
+
+
+def _delegate_for(delegate, track_id):
+    model = delegate.property("modelData")
+    return model.get("trackId") == track_id
+
+
+class TestPlaylistTrackContextRuntime:
+    def _menu_signal(self, menu, name):
+        meta = menu.metaObject()
+        index = meta.indexOfMethod(f"{name}()")
+        assert index >= 0, f"señal {name} del menú real"
+        return meta.method(index)
+
+    def test_contextual_queue_identified_uses_track_id(self, qapp):
+        """GOLDEN identificado: el menú del row T1 → 'Add to Queue' →
+        library.queue_track_by_id('T1') exactamente una vez; cero
+        add_file; cero playTrackRequested (contexto sin side effect)."""
+        view, root, library, queue = _mount_playlist_track_list(
+            qapp,
+            [_track_row("T1", "/current/B.flac", title="Identified")],
+        )
+        plays = []
+        root.playTrackRequested.connect(lambda index: plays.append(index))
+
+        delegate = next(d for d in _playlist_delegates(root) if _delegate_for(d, "T1"))
+        menu = _delegate_menu(delegate)
+        assert menu is not None, "menú real del row"
+        assert menu.property("canQueue") is True
+        # Abrir el menú real + activar la acción Queue (trigger real).
+        menu.metaObject().method(menu.metaObject().indexOfMethod("popup()")).invoke(
+            menu
+        )
+        QTest.qWait(30)
+        assert menu.property("visible") is True, "menú abierto"
+        self._menu_signal(menu, "queueRequested").invoke(menu)
+        QTest.qWait(30)
+
+        assert library.calls == [("queue_track_by_id", "T1")]
+        assert queue.calls == [], "legacy no se usa para tracks identificados"
+        assert plays == [], "contexto sin playback"
+        view.close()
+
+    def test_contextual_queue_legacy_uses_add_file(self, qapp):
+        """GOLDEN legacy: trackId vacío → queue.add_file(path) exactamente
+        una vez; cero queue_track_by_id (el path queda SOLO como fallback
+        legacy explícito)."""
+        view, root, library, queue = _mount_playlist_track_list(
+            qapp, [_track_row("", "/legacy.flac", title="Legacy")]
+        )
+        delegate = next(
+            d
+            for d in _playlist_delegates(root)
+            if d.property("modelData")["path"] == "/legacy.flac"
+        )
+        menu = _delegate_menu(delegate)
+        assert menu is not None
+        assert menu.property("canQueue") is True
+        self._menu_signal(menu, "queueRequested").invoke(menu)
+        QTest.qWait(30)
+
+        assert queue.calls == [("add_file", "/legacy.flac")]
+        assert library.calls == [], "identidad no inventada para legacy"
+        view.close()
+
+    def test_contextual_unavailable_member_menu_opens_but_queue_and_play_noop(
+        self, qapp
+    ):
+        """GOLDEN unavailable (source_offline): el menú SE ABRE (row
+        retenida, container operable), Remove sigue siendo capacidad real,
+        pero Queue/Play son no-ops — el miembro no resoluble nunca llega
+        al motor ni a la Queue."""
+        view, root, library, queue = _mount_playlist_track_list(
+            qapp,
+            [
+                _track_row(
+                    "T1",
+                    "/B.flac",
+                    available=False,
+                    unavailable_reason="source_offline",
+                )
+            ],
+        )
+        plays = []
+        removals = []
+        root.playTrackRequested.connect(lambda index: plays.append(index))
+        root.removeTrackRequested.connect(lambda index: removals.append(index))
+
+        delegate = next(d for d in _playlist_delegates(root) if _delegate_for(d, "T1"))
+        menu = _delegate_menu(delegate)
+        assert menu is not None
+        # El menú abre (nunca deshabilitado como un todo).
+        menu.metaObject().method(menu.metaObject().indexOfMethod("popup()")).invoke(
+            menu
+        )
+        QTest.qWait(30)
+        assert menu.property("visible") is True, "menú del unavailable abre"
+        # Acciones inválidas son no-ops (protección del delegate).
+        self._menu_signal(menu, "playNowRequested").invoke(menu)
+        self._menu_signal(menu, "queueRequested").invoke(menu)
+        QTest.qWait(30)
+        assert library.calls == []
+        assert queue.calls == []
+        assert plays == []
+        # Remove sigue siendo válido (capacidad del container).
+        self._menu_signal(menu, "removeRequested").invoke(menu)
+        QTest.qWait(30)
+        assert removals == [0], "remove del unavailable es capacidad real"
+        view.close()
+
+    def test_contextual_queue_duplicate_path_uses_row_identity(self, qapp):
+        """GOLDEN adversarial: T1 y T2 con el MISMO path snapshot — el
+        contexto de la row T2 encola T2 (identidad de la row exacta),
+        nunca T1 ni path identity."""
+        view, root, library, queue = _mount_playlist_track_list(
+            qapp,
+            [
+                _track_row("T1", "/same.flac", title="One", canonical_index=0),
+                _track_row("T2", "/same.flac", title="Two", canonical_index=1),
+            ],
+        )
+        delegates = [
+            d
+            for d in _playlist_delegates(root)
+            if _delegate_for(d, "T2") or _delegate_for(d, "T1")
+        ]
+        t2 = next(d for d in delegates if _delegate_for(d, "T2"))
+        menu = _delegate_menu(t2)
+        assert menu is not None
+        self._menu_signal(menu, "queueRequested").invoke(menu)
+        QTest.qWait(30)
+        assert library.calls == [("queue_track_by_id", "T2")], (
+            "la identidad de la row exacta decide, nunca el path"
+        )
+        assert queue.calls == []
+        view.close()
