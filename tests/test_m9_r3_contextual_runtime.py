@@ -120,6 +120,7 @@ class _AlbumLibrary(QObject):  # noqa: N815 (QML-facing properties)
         self.calls: list[tuple[str, str]] = []
 
     albums = Property("QVariantList", lambda self: self._albums, notify=changed)
+    timelineAlbums = Property("QVariantList", lambda self: self._albums, notify=changed)
     canQueueTracks = Property(bool, lambda self: True)
     canAddTracksToPlaylists = Property(bool, lambda self: True)
 
@@ -660,4 +661,62 @@ class TestPlaylistTrackContextRuntime:
             "la identidad de la row exacta decide, nunca el path"
         )
         assert queue.calls == []
+        view.close()
+
+
+class TestAlbumViewsKeyboardContextRuntime:
+    """T2 runtime: las vistas de álbum abren el contexto del álbum bajo el
+    currentIndex con el menú raíz real (sin hit-test sintético; la
+    invocación es la función productiva del view)."""
+
+    def test_grid_context_opens_current_index_album(self, qapp):
+        view = QQuickView()
+        view.engine().addImportPath(str(QML_DIR))
+        library = _AlbumLibrary([_album(f"album-{i}", f"Album {i}") for i in range(6)])
+        view.rootContext().setContextProperty("library", library)
+        view.setSource(QUrl.fromLocalFile(str(QML_DIR / "views/AlbumGridView.qml")))
+        assert view.status() == QQuickView.Ready, [e.toString() for e in view.errors()]
+        view.setResizeMode(QQuickView.SizeRootObjectToView)
+        view.resize(1200, 900)
+        view.show()
+        view.requestActivate()
+        QTest.qWait(150)
+        root = view.rootObject()
+        root.setProperty("currentIndex", 2)
+        mo = root.metaObject()
+        idx = mo.indexOfMethod("openCurrentAlbumContext()")
+        assert idx >= 0, "función productiva del view"
+        assert mo.method(idx).invoke(root)
+        QTest.qWait(40)
+        context = root.property("contextAlbum")
+        assert context is not None and context["key"] == "album-2", (
+            "el contexto es el álbum del currentIndex exacto"
+        )
+        view.close()
+
+    def test_timeline_context_opens_current_index_album(self, qapp):
+        from michi.domain.library import make_artist_key  # noqa: F401
+
+        view = QQuickView()
+        view.engine().addImportPath(str(QML_DIR))
+        library = _AlbumLibrary(
+            [_album(f"album-{i}", f"Album {i}", year=2000 + i) for i in range(6)]
+        )
+        view.rootContext().setContextProperty("library", library)
+        view.setSource(QUrl.fromLocalFile(str(QML_DIR / "views/TimelineView.qml")))
+        assert view.status() == QQuickView.Ready, [e.toString() for e in view.errors()]
+        view.setResizeMode(QQuickView.SizeRootObjectToView)
+        view.resize(1200, 900)
+        view.show()
+        view.requestActivate()
+        QTest.qWait(150)
+        root = view.rootObject()
+        root.setProperty("currentIndex", 1)
+        mo = root.metaObject()
+        idx = mo.indexOfMethod("openCurrentAlbumContext()")
+        assert idx >= 0
+        assert mo.method(idx).invoke(root)
+        QTest.qWait(40)
+        context = root.property("contextAlbum")
+        assert context is not None, "contextAlbum del timeline resuelto"
         view.close()

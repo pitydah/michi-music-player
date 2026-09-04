@@ -192,3 +192,71 @@ def test_context_invocation_has_no_playback_or_toggle_side_effect() -> None:
         assert "play_" not in block, area
         assert "select_album(" not in block, area
         assert "activated(" not in block, area
+
+
+# ==========================================================================
+# M9-R3 CONVERGENCE SEAL — review threads del PR #233:
+#   T1 genre activation navega a resultado visible (songs)
+#   T2 Menu/Shift+F10 en las vistas de álbum (roving del view)
+#   T3 queue de filas unavailable gated
+#   T4 favorito legacy por proyección (legacy-path::) chequeado
+# ==========================================================================
+
+
+def test_genre_activation_navigates_to_visible_track_surface() -> None:
+    """T1: select_genre emite genre_selected y LibraryView navega al tab
+    Songs (la proyección filtrada del Bridge es el resultado visible) —
+    el usuario nunca queda en Genres sin respuesta. Oracle R4 restaurado."""
+    library_view = _qml("views/LibraryView.qml")
+    assert 'function onGenre_selected(_genreKey) { root.currentTab = "songs" }' in (
+        library_view
+    ), "genre_selected navega a la superficie de tracks filtrados"
+
+
+def test_album_views_handle_context_key_on_the_roving_view() -> None:
+    """T2: los delegates de álbum tienen activeFocusOnTab false — el
+    teclado vive en el VIEW: Menu/Shift+F10 abren el contexto del álbum
+    bajo el currentIndex (patrón Magazine) en las 5 vistas."""
+    for view, root_id in (
+        ("views/AlbumGridView.qml", "albumGrid"),
+        ("views/AlbumListView.qml", "root"),
+        ("views/AlbumPathView.qml", "albumsPath"),
+        ("views/VinylWallView.qml", "albumVinyl"),
+        ("views/TimelineView.qml", "albumTimeline"),
+    ):
+        source = _qml(view)
+        assert "property var contextAlbum: null" in source, view
+        assert "function openCurrentAlbumContext()" in source, view
+        assert "albumContextMenu.popup()" in source, view
+        assert "id: albumContextMenu" in source, view
+        assert "Qt.Key_Menu" in source and "Qt.Key_F10" in source, view
+        assert "handleAlbumContextKey" in source, view
+        assert "currentIndex" in source, view
+
+
+def test_collection_rows_gate_queue_on_availability() -> None:
+    """T3: una fila unavailable (fuente offline/archivo ausente) de
+    Favorites/History/Recently Added NUNCA ofrece Queue — canQueue exige
+    !unavailable además del TrackId y la capacidad del Bridge."""
+    for view in (
+        "views/FavoritesView.qml",
+        "views/HistoryView.qml",
+        "views/RecentlyAddedView.qml",
+    ):
+        source = _qml(view)
+        assert "modelData.unavailable !== true" in source, view
+        assert "library.canQueueTracks" in source, view
+
+
+def test_favorite_state_checks_legacy_path_projection() -> None:
+    """T4: el corazón de una fila identificada (T1) debe estar activo
+    cuando el favorito vive como proyección legacy (legacy-path::<path>)
+    o path-only — nunca solo por el id canónico."""
+    for view in (
+        "views/HistoryView.qml",
+        "views/RecentlyAddedView.qml",
+        "playlists/PlaylistTrackList.qml",
+    ):
+        source = _qml(view)
+        assert '"legacy-path::" + modelData.path' in source, view
+        assert "favoritePaths.indexOf" in source, view

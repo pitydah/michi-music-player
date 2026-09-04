@@ -193,6 +193,9 @@ def visual_descendants(item):
 
 class QaLibrary(QObject):
     library_changed = Signal()
+    # M9-R3: select_genre emite genre_selected — el harness modela la
+    # señal para el Connections de LibraryView (0 warnings).
+    genre_selected = Signal(str)
     albumPaletteChanged = Signal(str, "QVariantMap")
 
     def __init__(self, state: str, artwork_paths: tuple[str, ...]) -> None:

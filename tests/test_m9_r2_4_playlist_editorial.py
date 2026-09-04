@@ -236,7 +236,11 @@ def test_add_tracks_action_in_hero():
 def test_row_favorite_and_pressed_state():
     table = read("playlists/PlaylistTrackList.qml")
     assert 'iconName: "heart"' in table
-    assert "library.favoritePaths.indexOf(modelData.path) !== -1" in table
+    # M9-R3 CONVERGENCE SEAL (T4): el corazón chequea la proyección legacy
+    # (legacy-path::<path>) y el path-only además del id canónico.
+    assert '"legacy-path::" + modelData.path' in table
+    assert "library.favoritePaths.indexOf(" in table
+    assert "library.toggle_favorite_by_id(String(modelData.trackId))" in table
     assert "library.toggle_favorite(modelData.path)" in table
     assert "trackItem.pressed ? MichiSemanticColors.surfacePressed" in table
     # more hit target 32px (spec 32-36)
