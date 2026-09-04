@@ -390,12 +390,29 @@ class TestBridgeViews:
             # y facts técnicos.
             keys = set(row.keys())
             assert {
-                "trackId", "artistKey", "albumKey", "path", "title",
-                "artist", "album", "artworkPath", "durationMs",
-                "trackNumber", "discNumber", "codec", "container",
-                "sampleRateHz", "bitDepth", "channels", "bitrateBps",
-                "fileSize", "qualityLabel", "unavailable", "genre",
-                "composer", "year",
+                "trackId",
+                "artistKey",
+                "albumKey",
+                "path",
+                "title",
+                "artist",
+                "album",
+                "artworkPath",
+                "durationMs",
+                "trackNumber",
+                "discNumber",
+                "codec",
+                "container",
+                "sampleRateHz",
+                "bitDepth",
+                "channels",
+                "bitrateBps",
+                "fileSize",
+                "qualityLabel",
+                "unavailable",
+                "genre",
+                "composer",
+                "year",
             }.issubset(keys), keys
         assert [r["path"] for r in rows] == [str(a1), str(a2)]
         assert all(r["title"] and r["displayName"] and r["artist"] for r in rows)
