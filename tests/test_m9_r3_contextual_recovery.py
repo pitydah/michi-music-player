@@ -217,12 +217,12 @@ def test_album_views_handle_context_key_on_the_roving_view() -> None:
     """T2: los delegates de álbum tienen activeFocusOnTab false — el
     teclado vive en el VIEW: Menu/Shift+F10 abren el contexto del álbum
     bajo el currentIndex (patrón Magazine) en las 5 vistas."""
-    for view, root_id in (
-        ("views/AlbumGridView.qml", "albumGrid"),
-        ("views/AlbumListView.qml", "root"),
-        ("views/AlbumPathView.qml", "albumsPath"),
-        ("views/VinylWallView.qml", "albumVinyl"),
-        ("views/TimelineView.qml", "albumTimeline"),
+    for view in (
+        "views/AlbumGridView.qml",
+        "views/AlbumListView.qml",
+        "views/AlbumPathView.qml",
+        "views/VinylWallView.qml",
+        "views/TimelineView.qml",
     ):
         source = _qml(view)
         assert "property var contextAlbum: null" in source, view
