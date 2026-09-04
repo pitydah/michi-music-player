@@ -58,23 +58,30 @@ def test_collection_actions_never_call_queue_service_bridge_directly() -> None:
     playlist_tracks = _qml("playlists/PlaylistTrackList.qml")
     assert "library.queue_track_by_id" in playlist_tracks
     assert "queue.add_many" not in playlist_tracks
-    # El uso legacy (add_file) debe estar condicionado a la ausencia de
-    # identidad — nunca la ruta por defecto del miembro identificado.
-    legacy_block = playlist_tracks[
-        playlist_tracks.index("queue.add_file") - 400 : playlist_tracks.index(
-            "queue.add_file"
+    # El uso legacy (add_file) debe estar condicionado EXPLÍCITAMENTE a la
+    # ausencia de identidad estable — nunca la ruta por defecto.
+    queue_handler = playlist_tracks[
+        playlist_tracks.index("onQueueRequested") : playlist_tracks.index(
+            "onFavoriteRequested"
         )
-        + 120
     ]
-    assert "trackId" in legacy_block or "legacy" in legacy_block, (
-        "add_file solo en la rama legacy explícita"
-    )
+    assert "hasStableTrackId" in queue_handler
+    assert "library.queue_track_by_id" in queue_handler
+    # add_file solo en el else-if legacy (después del branch identificado).
+    assert queue_handler.index("library.queue_track_by_id") < (
+        queue_handler.index("queue.add_file")
+    ), "identificado primero; legacy solo como fallback"
+    assert "!trackItem.hasStableTrackId" in queue_handler
 
 
-def test_picker_and_properties_components_are_real_and_wired() -> None:
+def test_picker_and_properties_components_exist_without_implying_context_host() -> None:
+    """Los componentes picker/properties existen como componentes — PERO el
+    host contextual compartido (playlist_target_requested /
+    album_properties_requested productivamente consumidos) NO está wired
+    todavía: llega en PR D. Este test no afirma un wiring inexistente."""
     library_host = _qml("views/LibraryContentHost.qml")
     shell_host = _qml("shell/ContentHost.qml")
-    # Los hosts premium referencian sus componentes de contexto/propiedades.
+    # Los hosts referencian sus componentes premium existentes.
     assert "Component" in library_host
     assert "PlaylistTrackPicker" in shell_host
     properties = _qml("media/TrackPropertiesView.qml")
@@ -90,6 +97,14 @@ def test_picker_and_properties_components_are_real_and_wired() -> None:
     ):
         assert fact in properties
     assert "Hi-Res" not in properties
+    # FAIL-CLOSED (PR D): los menús no exponen las acciones sin consumer
+    # compartido — nunca inferir capacidad del signal del Bridge.
+    album_menu = _qml("media/AlbumContextMenu.qml")
+    assert "property bool canAddToPlaylist: false" in album_menu
+    assert "property bool canCreatePlaylist: false" in album_menu
+    assert "property bool canShowProperties: false" in album_menu
+    artist_menu = _qml("media/ArtistContextMenu.qml")
+    assert "property bool canAddToPlaylist: false" in artist_menu
 
 
 def test_metadata_fallback_does_not_disable_collection_playback() -> None:

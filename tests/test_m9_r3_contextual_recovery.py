@@ -141,8 +141,14 @@ def test_genre_context_uses_identity_key_never_search() -> None:
     assert "library.select_genre(modelData.key)" in genres
     assert "GenreContextArea" in genres
     assert "library.search(modelData.name)" not in genres
+    # GenreContextArea NO ejecuta select_genre (responsabilidad del host/
+    # menú): consume el menú especializado y traduce pointer/teclado.
     area = _qml("media/GenreContextArea.qml")
-    assert area.count("select_genre") >= 0  # el área delega al host
+    assert "GenreContextMenu" in area, "el área consume el menú de género"
+    assert "Qt.Key_Menu" in area, "Menu key"
+    assert "Qt.Key_F10" in area, "Shift+F10"
+    assert "function openMenu()" in area
+    assert "Qt.RightButton" in area, "right-click real del área"
 
 
 def test_favorites_history_recently_added_keep_add_to_playlist_hidden() -> None:

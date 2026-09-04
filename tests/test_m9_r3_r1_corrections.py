@@ -37,36 +37,58 @@ def test_library_track_picker_reuses_search_and_track_table() -> None:
 
 
 def test_semantic_context_menus_are_specialized_and_keyboard_openable() -> None:
-    # M9-R3 CONTEXTUAL RECOVERY: cada menú especializado existe Y es
-    # consumido productivamente por un área y un host de vista real.
-    # "El archivo existe" no demuestra soporte contextual.
-    for menu, consumer_area, _consumer_view in (
-        ("media/TrackContextMenu.qml", "media/TrackRow.qml", "views/SongsView.qml"),
-        (
-            "media/AlbumContextMenu.qml",
-            "media/AlbumContextArea.qml",
-            "views/MagazineView.qml",
-        ),
-        (
-            "media/ArtistContextMenu.qml",
-            "media/ArtistContextArea.qml",
-            "media/ArtistPortraitCard.qml",
-        ),
-        (
-            "media/GenreContextMenu.qml",
-            "media/GenreContextArea.qml",
-            "views/GenresView.qml",
-        ),
-        (
-            "media/PlaylistTrackContextMenu.qml",
-            "playlists/PlaylistTrackList.qml",
-            "playlists/PlaylistTrackList.qml",
-        ),
-    ):
+    # M9-R3 CONTEXTUAL RECOVERY: la cadena completa se sella —
+    # COMPONENT EXISTS + AREA CONSUMES MENU + PRODUCTIVE SURFACE
+    # CONSUMES AREA = FEATURE EXISTS. "El archivo existe" NO demuestra
+    # soporte contextual; un consumer_view no verificado dejaría pasar
+    # Menu → Area → NINGÚN consumer productivo (la regresión M9-R3).
+    productive_consumers = {
+        "media/AlbumContextMenu.qml": {
+            "area": "media/AlbumContextArea.qml",
+            "surfaces": (
+                "media/AlbumCard.qml",
+                "media/MichiAlbumRow.qml",
+                "views/AlbumPathView.qml",
+                "views/VinylWallView.qml",
+                "views/TimelineView.qml",
+                "views/MagazineView.qml",
+            ),
+        },
+        "media/ArtistContextMenu.qml": {
+            "area": "media/ArtistContextArea.qml",
+            "surfaces": ("media/ArtistPortraitCard.qml",),
+        },
+        "media/GenreContextMenu.qml": {
+            "area": "media/GenreContextArea.qml",
+            "surfaces": ("views/GenresView.qml",),
+        },
+        "media/TrackContextMenu.qml": {
+            # TrackRow es a la vez consumidor del menú y superficie base de
+            # los hosts de tracks (el menú vive en la fila).
+            "area": "media/TrackRow.qml",
+            "surfaces": (
+                "media/PlaylistTrackContextMenu.qml",  # extensión real
+            ),
+        },
+        "media/PlaylistTrackContextMenu.qml": {
+            "area": "playlists/PlaylistTrackList.qml",
+            "surfaces": ("playlists/PlaylistTrackList.qml",),
+        },
+    }
+    for menu, spec in productive_consumers.items():
         assert (QML / menu).exists(), f"{menu}: componente ausente"
-        area_text = qml(consumer_area)
+        area_text = qml(spec["area"])
         menu_name = Path(menu).stem
-        assert menu_name in area_text, f"{consumer_area} no consume {menu_name}"
+        assert menu_name in area_text, f"{spec['area']} no consume {menu_name}"
+        for surface in spec["surfaces"]:
+            surface_text = qml(surface)
+            # la superficie productiva debe consumir el ÁREA (o el menú
+            # cuando el área es la propia fila base).
+            area_name = Path(spec["area"]).stem
+            assert area_name in surface_text or menu_name in surface_text, (
+                f"la superficie productiva {surface} no consume "
+                f"{area_name}/{menu_name} (Menu → Área → sin consumer)"
+            )
     # Keyboard: los areas traducen Menu/Shift+F10 al menú.
     for area in (
         "media/AlbumContextArea.qml",
@@ -137,9 +159,12 @@ def test_genre_results_open_canonical_track_projection() -> None:
 def test_queue_and_playlist_use_specialized_context_menus() -> None:
     queue = qml("components/QueuePanel.qml")
     playlist = qml("playlists/PlaylistTrackList.qml")
-    # SEMANTIC INTEGRATION: QueuePanel y PlaylistTrackList usan sus
-    # menús premium (los de la rama no existen en main).
-    assert "queue.add_file" in playlist
+    # PR #232: el queue contextual del track identificado va por TrackId;
+    # queue.add_file existe SOLO como fallback legacy explícito
+    # (!hasStableTrackId) — nunca la ruta por defecto.
+    assert "library.queue_track_by_id" in playlist
+    assert "queue.add_file(modelData.path)" in playlist
+    assert "!trackItem.hasStableTrackId" in playlist
     for action in ("toggle_favorite",):
         assert action in queue + playlist
 
