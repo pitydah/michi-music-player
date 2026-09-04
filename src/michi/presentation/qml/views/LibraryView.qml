@@ -108,6 +108,10 @@ Item {
             var parsed = JSON.parse(settingsBridge.libraryViews)
             viewPreferences = parsed
             applyViewPreferences(parsed)
+            // LIB-A §19: estado de columnas persistido (migración segura:
+            // config ausente o parcial → defaults; album settings intactos).
+            if (parsed && parsed.trackTable)
+                LibraryTrackColumnState.applyConfiguration(parsed.trackTable)
         } catch (error) {
             console.warn("Library view preferences could not be decoded")
         }
@@ -115,8 +119,11 @@ Item {
 
     function persistViewPreferences(preferences) {
         viewPreferences = preferences
-        if (typeof settingsBridge !== "undefined" && settingsBridge)
-            settingsBridge.set_library_views(JSON.stringify(preferences))
+        if (typeof settingsBridge !== "undefined" && settingsBridge) {
+            var next = JSON.parse(JSON.stringify(preferences))
+            next.trackTable = LibraryTrackColumnState.snapshot()
+            settingsBridge.set_library_views(JSON.stringify(next))
+        }
     }
 
     function updateCommonPreference(key, value) {
@@ -184,6 +191,26 @@ Item {
         target: typeof settingsBridge !== "undefined" ? settingsBridge : null
         ignoreUnknownSignals: true
         function onLibraryViewsChanged() { root.loadViewPreferences() }
+    }
+
+    // LIB-A §20: la persistencia de la tabla es DEBOUNCED (~250 ms) —
+    // durante el resize el singleton se actualiza al instante; el JSON se
+    // escribe una vez cuando el usuario se detiene. Nunca por píxel.
+    Timer {
+        id: trackTablePersistDebounce
+        interval: 250
+        repeat: false
+        onTriggered: root.persistViewPreferences(root.viewPreferences)
+    }
+
+    Connections {
+        target: LibraryTrackColumnState
+        function onConfigurationChanged() {
+            // Debounce: el estado del singleton ya cambió al instante;
+            // el JSON se escribe una vez, 250 ms después del ÚLTIMO
+            // cambio (drag de resize acumulado) — nunca por píxel.
+            trackTablePersistDebounce.restart()
+        }
     }
 
     Component.onCompleted: {

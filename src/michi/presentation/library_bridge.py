@@ -1389,6 +1389,13 @@ class LibraryBridge(QObject):
         if self._track_query.state != previous:
             self.library_changed.emit()
 
+    @Slot(str, bool)
+    def set_track_sort(self, column: str, descending: bool) -> None:
+        """LIB-A §15: dirección EXPLÍCITA del sort (contexto del header).
+        La aplicación sigue siendo la autoridad de ordenamiento."""
+        if self._track_query.set_sort_state(column, descending):
+            self.library_changed.emit()
+
     @Slot(str)
     def set_album_sort_mode(self, mode: str) -> None:
         if self._album_query.set_sort_mode(mode):

@@ -51,4 +51,7 @@ MichiTrackTable {
     onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     onGoToArtistRequested: artistKey => library.select_artist(artistKey)
     onSortRequested: column => library.sort_tracks(column)
+    // LIB-A §15: dirección explícita del menú del header → aplicación.
+    onSortDirectionRequested: (column, descending) =>
+        library.set_track_sort(column, descending)
 }

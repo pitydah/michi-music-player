@@ -53,6 +53,9 @@ Item {
     signal goToAlbumRequested(string albumKey)
     signal goToArtistRequested(string artistKey)
     signal sortRequested(string column)
+    // LIB-A §15: dirección EXPLÍCITA (el menú contextual nunca simula
+    // Sort Descending con dos toggles).
+    signal sortDirectionRequested(string column, bool descending)
     signal selectionToggleRequested(string trackId)
 
     function numberText(row, index) {
@@ -138,6 +141,8 @@ Item {
             sortColumn: root.sortColumn
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
+            onSortDirectionRequested: (column, descending) =>
+                root.sortDirectionRequested(column, descending)
         }
 
         delegate: TrackRow {

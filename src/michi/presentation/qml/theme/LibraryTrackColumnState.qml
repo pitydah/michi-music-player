@@ -1,8 +1,14 @@
 pragma Singleton
 import QtQuick
 
+// LIB-A §9/10/16/18: UNA autoridad de estado de columnas de la tabla.
+// Jerarquía semántica formal (grupos): identity / context / audio /
+// metadata / time / utility. Title es estructural (no ocultable); '#' es
+// estructural también (nunca una columna de contenido). Presets
+// productivos: essential / audiophile / metadata / minimal.
 QtObject {
     id: root
+
     readonly property real numberWidth: 28
 
     property real artworkWidth: 44
@@ -57,12 +63,65 @@ QtObject {
     property bool durationVisible: true
     property bool actionsVisible: true
 
+    // LIB-A §10: Title es ESTRUCTURAL — nunca ocultable. La columna puede
+    // redimensionarse pero no eliminarse.
+    readonly property bool titleLocked: true
+    // '#' es estructural (posición), no una columna de contenido.
+    readonly property bool numberStructural: true
+
+    // Columnas de contenido por grupo semántico (jerarquía formal §9).
+    readonly property var columnsByGroup: ({
+        identity: ["artwork", "title"],
+        context: ["artist", "album"],
+        audio: ["format", "sampleRate", "bitDepth", "dsdRate",
+                "bitrate", "channels", "fileSize"],
+        metadata: ["genre", "composer", "year"],
+        time: ["duration"],
+        utility: ["actions"]
+    })
+
+    // Columnas sortables (autoridad de la aplicación: library_track_query).
+    readonly property var sortableColumns: [
+        "title", "artist", "album", "format",
+        "duration", "year", "genre", "composer",
+        "sampleRate", "bitDepth", "bitrate", "channels", "fileSize"
+    ]
+
+    signal configurationChanged()
+
+    function _visibleDefault(column) {
+        return column === "artwork" || column === "title"
+            || column === "artist" || column === "album"
+            || column === "format" || column === "duration"
+            || column === "actions"
+    }
+
     function widthFor(column) {
         return root[column + "Width"]
     }
 
     function minimumWidthFor(column) {
         return root[column + "MinWidth"]
+    }
+
+    function isVisible(column) {
+        if (column === "title")
+            return true  // estructural: locked
+        return root[column + "Visible"] === true
+    }
+
+    function setVisible(column, visible) {
+        if (column === "title") {
+            // LIB-A §10: no-op — el título nunca se oculta.
+            return false
+        }
+        if (root[column + "Visible"] === undefined)
+            return false
+        if (root[column + "Visible"] === visible)
+            return false
+        root[column + "Visible"] = visible
+        root.configurationChanged()
+        return true
     }
 
     function setWidth(column, value) {
@@ -73,7 +132,10 @@ QtObject {
         var bounded = Math.max(minimumWidthFor(column), value)
         if (column === "artwork")
             bounded = Math.min(root.artworkMaxWidth, bounded)
-        root[column + "Width"] = bounded
+        if (root[column + "Width"] !== bounded) {
+            root[column + "Width"] = bounded
+            root.configurationChanged()
+        }
     }
 
     function resizeWithNeighbor(column, value, neighbor) {
@@ -93,6 +155,7 @@ QtObject {
             ? Math.min(delta, Math.max(0, neighborWidth - neighborMinimum)) : delta
         root[column + "Width"] = requested
         root[neighbor + "Width"] = neighborWidth - compensation
+        root.configurationChanged()
     }
 
     function resetWidth(column) {
@@ -102,8 +165,10 @@ QtObject {
             fileSize: 90, genre: 150, composer: 180, year: 68,
             duration: 80, actions: 74
         }
-        if (defaults[column] !== undefined && column !== "actions")
+        if (defaults[column] !== undefined && column !== "actions") {
             root[column + "Width"] = defaults[column]
+            root.configurationChanged()
+        }
     }
 
     function resetWidths() {
@@ -111,25 +176,161 @@ QtObject {
             "sampleRate", "bitDepth", "dsdRate", "bitrate", "channels", "fileSize",
             "genre", "composer", "year", "duration", "actions"]
         for (var index = 0; index < columns.length; ++index)
-            resetWidth(columns[index])
+            root.resetWidth(columns[index])
+    }
+
+    // LIB-A §16: presets productivos. El preset fija las columnas de
+    // contenido; las exclusiones de perfil (álbum/artista implícitos) las
+    // aplica el header con showAlbumColumn/showArtistColumn.
+    function _applyPresetVisible(preset) {
+        root.artworkVisible = preset.artwork
+        root.artistVisible = preset.artist
+        root.albumVisible = preset.album
+        root.formatVisible = preset.format
+        root.sampleRateVisible = preset.sampleRate
+        root.bitDepthVisible = preset.bitDepth
+        root.dsdRateVisible = preset.dsdRate
+        root.bitrateVisible = preset.bitrate
+        root.channelsVisible = preset.channels
+        root.fileSizeVisible = preset.fileSize
+        root.genreVisible = preset.genre
+        root.composerVisible = preset.composer
+        root.yearVisible = preset.year
+        root.durationVisible = preset.duration
+        root.actionsVisible = preset.actions
+        // title siempre visible (locked).
+        root.titleVisible = true
+        root.configurationChanged()
+    }
+
+    function applyPreset(name) {
+        var presets = {
+            "essential": {
+                artwork: true, artist: true, album: true, format: true,
+                sampleRate: false, bitDepth: false, dsdRate: false,
+                bitrate: false, channels: false, fileSize: false,
+                genre: false, composer: false, year: false,
+                duration: true, actions: true
+            },
+            "audiophile": {
+                artwork: false, artist: true, album: true, format: true,
+                sampleRate: true, bitDepth: true, dsdRate: true,
+                bitrate: true, channels: true, fileSize: false,
+                genre: false, composer: false, year: false,
+                duration: true, actions: true
+            },
+            "metadata": {
+                artwork: false, artist: true, album: true, format: true,
+                sampleRate: false, bitDepth: false, dsdRate: false,
+                bitrate: false, channels: false, fileSize: false,
+                genre: true, composer: true, year: true,
+                duration: true, actions: true
+            },
+            "minimal": {
+                artwork: false, artist: true, album: false, format: false,
+                sampleRate: false, bitDepth: false, dsdRate: false,
+                bitrate: false, channels: false, fileSize: false,
+                genre: false, composer: false, year: false,
+                duration: true, actions: true
+            }
+        }
+        if (presets[name] === undefined)
+            return false
+        root._applyPresetVisible(presets[name])
+        return true
     }
 
     function restoreDefaultColumns() {
-        artworkVisible = true
-        titleVisible = true
-        artistVisible = true
-        albumVisible = true
-        formatVisible = true
-        sampleRateVisible = false
-        bitDepthVisible = false
-        dsdRateVisible = false
-        bitrateVisible = false
-        channelsVisible = false
-        fileSizeVisible = false
-        genreVisible = false
-        composerVisible = false
-        yearVisible = false
-        durationVisible = true
-        actionsVisible = true
+        root.artworkVisible = true
+        root.titleVisible = true
+        root.artistVisible = true
+        root.albumVisible = true
+        root.formatVisible = true
+        root.sampleRateVisible = false
+        root.bitDepthVisible = false
+        root.dsdRateVisible = false
+        root.bitrateVisible = false
+        root.channelsVisible = false
+        root.fileSizeVisible = false
+        root.genreVisible = false
+        root.composerVisible = false
+        root.yearVisible = false
+        root.durationVisible = true
+        root.actionsVisible = true
+        root.configurationChanged()
+    }
+
+    function currentPreset() {
+        if (!root.artistVisible || !root.albumVisible || !root.formatVisible
+                || !root.durationVisible)
+            return root.artistVisible && !root.albumVisible
+                && !root.formatVisible && root.durationVisible
+                ? "minimal" : ""
+        if (!root.sampleRateVisible && !root.bitDepthVisible
+                && !root.dsdRateVisible && !root.bitrateVisible
+                && !root.channelsVisible && !root.fileSizeVisible
+                && !root.genreVisible && !root.composerVisible
+                && !root.yearVisible)
+            return "essential"
+        if (root.sampleRateVisible && root.bitDepthVisible
+                && root.dsdRateVisible && root.bitrateVisible
+                && root.channelsVisible && !root.genreVisible
+                && !root.composerVisible && !root.yearVisible)
+            return "audiophile"
+        if (root.genreVisible && root.composerVisible && root.yearVisible)
+            return "metadata"
+        return ""
+    }
+
+    // Snapshot para persistencia (§19) — configuración completa sin
+    // secrets internos.
+    function snapshot() {
+        var visible = {}
+        var widths = {}
+        var columns = ["artwork", "title", "artist", "album", "format",
+            "sampleRate", "bitDepth", "dsdRate", "bitrate", "channels", "fileSize",
+            "genre", "composer", "year", "duration", "actions"]
+        for (var index = 0; index < columns.length; ++index) {
+            var column = columns[index]
+            visible[column] = root[column + "Visible"]
+            widths[column] = root[column + "Width"]
+        }
+        return {
+            "preset": root.currentPreset(),
+            "visible": visible,
+            "widths": widths
+        }
+    }
+
+    // Aplica una configuración persistida (merge-safe: columnas faltantes
+    // conservan el estado actual; nunca oculta title).
+    function applyConfiguration(config) {
+        if (config === null || config === undefined)
+            return false
+        var visible = config["visible"]
+        var widths = config["widths"]
+        if (visible !== undefined && visible !== null) {
+            var keys = Object.keys(visible)
+            for (var i = 0; i < keys.length; ++i) {
+                var column = keys[i]
+                if (column === "title")
+                    continue  // locked
+                if (root[column + "Visible"] !== undefined)
+                    root[column + "Visible"] = !!visible[column]
+            }
+        }
+        if (widths !== undefined && widths !== null) {
+            var widthKeys = Object.keys(widths)
+            for (var j = 0; j < widthKeys.length; ++j) {
+                var widthColumn = widthKeys[j]
+                var value = widths[widthColumn]
+                if (typeof value === "number" && value > 0
+                        && root[widthColumn + "Width"] !== undefined
+                        && widthColumn !== "actions")
+                    root[widthColumn + "Width"] = value
+            }
+        }
+        root.configurationChanged()
+        return true
     }
 }

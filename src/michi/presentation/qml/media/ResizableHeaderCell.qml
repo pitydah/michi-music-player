@@ -17,6 +17,9 @@ Item {
     signal sortRequested(string columnKey)
     signal resizeRequested(string columnKey, real width)
     signal resetRequested(string columnKey)
+    // LIB-A §13: right-click sobre la CELL (contexto de la columna exacta)
+    // — nunca dispara sort. El sort queda para left-click.
+    signal contextRequested(string columnKey)
 
     implicitWidth: columnWidth
     implicitHeight: MichiMetrics.controlMedium
@@ -56,6 +59,17 @@ Item {
         onTapped: {
             MichiAccessibility.notePointer()
             root.sortRequested(root.columnKey)
+        }
+    }
+    // LIB-A §13: right-click abre el contexto de la COLUMNA (sort explícito
+    // asc/desc, hide excepto title, reset width) — independiente del click
+    // izquierdo de sort y del drag/handle de resize.
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        enabled: root.columnKey.length > 0
+        onTapped: {
+            MichiAccessibility.notePointer()
+            root.contextRequested(root.columnKey)
         }
     }
 

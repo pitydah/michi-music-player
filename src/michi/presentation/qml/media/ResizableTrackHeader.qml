@@ -17,6 +17,7 @@ Rectangle {
     property string sortColumn: ""
     property bool sortDescending: false
     signal sortRequested(string column)
+    signal sortDirectionRequested(string column, bool descending)
     readonly property string titleResizeNeighbor:
         showArtistColumn && LibraryTrackColumnState.artistVisible ? "artist"
         : showAlbumColumn && LibraryTrackColumnState.albumVisible ? "album"
@@ -56,6 +57,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.artworkWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.titleVisible
@@ -89,6 +91,7 @@ Rectangle {
             onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: root.showAlbumColumn && LibraryTrackColumnState.albumVisible
@@ -102,6 +105,7 @@ Rectangle {
             onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.formatVisible
@@ -115,6 +119,7 @@ Rectangle {
             onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.sampleRateVisible
@@ -124,6 +129,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.sampleRateWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.bitDepthVisible
@@ -133,6 +139,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.bitDepthWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.dsdRateVisible
@@ -142,6 +149,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.dsdRateWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.bitrateVisible
@@ -151,6 +159,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.bitrateWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.channelsVisible
@@ -160,6 +169,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.channelsWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.fileSizeVisible
@@ -169,6 +179,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.fileSizeWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.genreVisible
@@ -178,6 +189,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.genreWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.composerVisible
@@ -187,6 +199,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.composerWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.yearVisible
@@ -196,6 +209,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.yearWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.durationVisible
@@ -205,6 +219,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.durationWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: root.showActions && LibraryTrackColumnState.actionsVisible
@@ -215,38 +230,55 @@ Rectangle {
             resizable: false
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
+    }
+
+    // LIB-A §11/12/14: DOS intents contextuales — cell (targetColumn
+    // exacto con sort explícito) y región vacía (configuración global).
+    function openColumnContext(column) {
+        if (column.length === 0)
+            return
+        headerContextMenu.targetColumn = column
+        headerContextMenu.targetLabel = headerContextMenu.columnLabel(column)
+        headerContextMenu.targetSortable = root.sortingEnabled
+            && LibraryTrackColumnState.sortableColumns.indexOf(column) !== -1
+        headerContextMenu.open()
+    }
+
+    function openGlobalContext() {
+        headerContextMenu.targetColumn = ""
+        headerContextMenu.targetLabel = ""
+        headerContextMenu.targetSortable = false
+        headerContextMenu.open()
     }
 
     TapHandler {
         acceptedButtons: Qt.RightButton
         onTapped: {
             MichiAccessibility.notePointer()
-            columnsMenu.popup()
+            root.openGlobalContext()
         }
     }
 
-    MichiMenu {
-        id: columnsMenu
-        title: qsTr("Columns")
+    TrackTableHeaderContextMenu {
+        id: headerContextMenu
 
-        MenuItem { text: qsTr("Artwork"); checkable: true; checked: LibraryTrackColumnState.artworkVisible; onTriggered: LibraryTrackColumnState.artworkVisible = checked }
-        MenuItem { text: qsTr("Title"); checkable: true; checked: LibraryTrackColumnState.titleVisible; onTriggered: LibraryTrackColumnState.titleVisible = checked }
-        MenuItem { text: qsTr("Artist"); checkable: true; checked: LibraryTrackColumnState.artistVisible; onTriggered: LibraryTrackColumnState.artistVisible = checked }
-        MenuItem { text: qsTr("Album"); checkable: true; checked: LibraryTrackColumnState.albumVisible; onTriggered: LibraryTrackColumnState.albumVisible = checked }
-        MenuItem { text: qsTr("Format"); checkable: true; checked: LibraryTrackColumnState.formatVisible; onTriggered: LibraryTrackColumnState.formatVisible = checked }
-        MenuItem { text: qsTr("Sample Rate"); checkable: true; checked: LibraryTrackColumnState.sampleRateVisible; onTriggered: LibraryTrackColumnState.sampleRateVisible = checked }
-        MenuItem { text: qsTr("Bit Depth"); checkable: true; checked: LibraryTrackColumnState.bitDepthVisible; onTriggered: LibraryTrackColumnState.bitDepthVisible = checked }
-        MenuItem { text: qsTr("DSD Rate"); checkable: true; checked: LibraryTrackColumnState.dsdRateVisible; onTriggered: LibraryTrackColumnState.dsdRateVisible = checked }
-        MenuItem { text: qsTr("Bitrate"); checkable: true; checked: LibraryTrackColumnState.bitrateVisible; onTriggered: LibraryTrackColumnState.bitrateVisible = checked }
-        MenuItem { text: qsTr("Channels"); checkable: true; checked: LibraryTrackColumnState.channelsVisible; onTriggered: LibraryTrackColumnState.channelsVisible = checked }
-        MenuItem { text: qsTr("File Size"); checkable: true; checked: LibraryTrackColumnState.fileSizeVisible; onTriggered: LibraryTrackColumnState.fileSizeVisible = checked }
-        MenuItem { text: qsTr("Genre"); checkable: true; checked: LibraryTrackColumnState.genreVisible; onTriggered: LibraryTrackColumnState.genreVisible = checked }
-        MenuItem { text: qsTr("Composer"); checkable: true; checked: LibraryTrackColumnState.composerVisible; onTriggered: LibraryTrackColumnState.composerVisible = checked }
-        MenuItem { text: qsTr("Year"); checkable: true; checked: LibraryTrackColumnState.yearVisible; onTriggered: LibraryTrackColumnState.yearVisible = checked }
-        MenuItem { text: qsTr("Duration"); checkable: true; checked: LibraryTrackColumnState.durationVisible; onTriggered: LibraryTrackColumnState.durationVisible = checked }
-        MichiSeparator { }
-        MenuItem { text: qsTr("Reset Column Widths"); onTriggered: LibraryTrackColumnState.resetWidths() }
-        MenuItem { text: qsTr("Restore Default Columns"); onTriggered: LibraryTrackColumnState.restoreDefaultColumns() }
+        onSortAscendingRequested: column =>
+            root.sortDirectionRequested(column, false)
+        onSortDescendingRequested: column =>
+            root.sortDirectionRequested(column, true)
+        onHideColumnRequested: column =>
+            LibraryTrackColumnState.setVisible(column, false)
+        onResetWidthRequested: column =>
+            LibraryTrackColumnState.resetWidth(column)
+        onPresetRequested: name => LibraryTrackColumnState.applyPreset(name)
+        onToggleColumnRequested: column => {
+            // Title está locked en el singleton (no-op defensivo).
+            LibraryTrackColumnState.setVisible(
+                column, !LibraryTrackColumnState.isVisible(column))
+        }
+        onResetWidthsRequested: LibraryTrackColumnState.resetWidths()
+        onRestoreDefaultsRequested: LibraryTrackColumnState.restoreDefaultColumns()
     }
 }
