@@ -1241,7 +1241,10 @@ class TestLoadingStateAuthority:
         # solo cuando NO hay scan en curso ("" o IDLE); los terminales
         # FAILED/CANCELLED se manejan en ErrorState/volver al prompt.
         assert 'library.scanStatus === "" || library.scanStatus === "IDLE"' in empty
-        assert "library.fileCount === 0" in empty
+        # LIB-A §28: la vaciedad ESTRUCTURAL es libraryTrackCount — la
+        # proyección filtrada (fileCount) nunca define la estructura.
+        assert "library.libraryTrackCount === 0" in empty
+        assert "library.fileCount === 0" not in empty
 
 
 class TestRemoveUndoFrozenProvenance:
