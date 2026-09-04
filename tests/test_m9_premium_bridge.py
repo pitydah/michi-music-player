@@ -8,7 +8,14 @@ from types import SimpleNamespace
 
 import pytest
 from conftest import FakeAudioPort
-from PySide6.QtCore import Property, QCoreApplication, QMetaObject, QObject, Qt, Slot
+from PySide6.QtCore import (
+    Property,
+    QCoreApplication,
+    QMetaObject,
+    QObject,
+    Qt,
+    Slot,
+)
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickWindow
@@ -214,16 +221,19 @@ def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
         window.show()
         QTest.qWait(100)
 
-        albums_view.setProperty("albumFilterMode", "hires")
+        # LIB-A §37: el filtro/sort pasan por la AUTORIDAD (el Bridge →
+        # LibraryAlbumQueryService); la property espejo del view ya no
+        # proyecta.
+        bridge.set_album_filter_mode("hires")
         QCoreApplication.processEvents()
         filtered = albums_view.property("presentationAlbums")
         if hasattr(filtered, "toVariant"):
             filtered = filtered.toVariant()
         assert len(filtered) == 1429
 
-        albums_view.setProperty("albumSortMode", "year")
-        albums_view.setProperty("albumSortDescending", True)
-        albums_view.setProperty("albumFilterMode", "all")
+        bridge.set_album_sort_mode("year")
+        bridge.set_album_sort_descending(True)
+        bridge.set_album_filter_mode("all")
         QCoreApplication.processEvents()
         restored = albums_view.property("presentationAlbums")
         if hasattr(restored, "toVariant"):
@@ -263,11 +273,11 @@ def test_canonical_album_projection_handles_10k_albums(qapp) -> None:
                 slowest_navigation, time.perf_counter() - navigation_started
             )
             # Cota anti-fuga del host de álbumes con 10k. El contexto
-            # premium (menús de los cards del PR #233 + superficies
-            # convergidas LIB-A) suma objetos estables por delegate —
-            # valor medido estable ~2556 local. 2800 mantiene el margen
-            # sin esconder una fuga real (que crecería sin límite).
-            assert len(albums_view.findChildren(QObject)) < 2_800
+            # premium (menús contextuales + superficies convergidas)
+            # suma objetos estables por delegate — valor medido estable
+            # ~2927 local en el peor modo. 3400 mantiene el margen sin
+            # esconder una fuga real (que crecería sin límite).
+            assert len(albums_view.findChildren(QObject)) < 3_400
 
         assert time.perf_counter() - started < 20.0
         assert slowest_navigation < 1.5

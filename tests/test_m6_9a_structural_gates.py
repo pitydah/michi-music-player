@@ -117,6 +117,9 @@ class TestTrackMetadataSchemaFrozen:
     def test_album_artist_music_model_fields_unchanged(self):
         from michi.domain.library import AlbumRef, ArtistRef, MusicModel
 
+        # LIB-A §38: el flag factual contains_high_resolution (DSD OR
+        # depth>=24 OR rate>=96000) se suma al AlbumRef canónico — el
+        # filtro hi-res es de la aplicación, nunca de labels QML.
         assert set(AlbumRef.__dataclass_fields__) == {
             "key",
             "title",
@@ -131,6 +134,7 @@ class TestTrackMetadataSchemaFrozen:
             "genres",
             "composers",
             "technical_summary",
+            "contains_high_resolution",
         }
         assert set(ArtistRef.__dataclass_fields__) == {
             "key",

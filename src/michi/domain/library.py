@@ -193,6 +193,10 @@ class AlbumRef:
     genres: tuple[str, ...] = ()
     composers: tuple[str, ...] = ()
     technical_summary: str = ""
+    # LIB-A §38: flag factual del filtro hi-res (DSD OR bit_depth>=24 OR
+    # sample_rate>=96000) — derivado con build_album_technical_facts en el
+    # model; nunca inferido de labels.
+    contains_high_resolution: bool = False
 
 
 @dataclass(frozen=True)
@@ -522,6 +526,9 @@ def build_music_model(tracks) -> MusicModel:
                     genres=entry["genres"],
                     composers=entry["composers"],
                     technical_summary=entry["technical_summary"],
+                    contains_high_resolution=build_album_technical_facts(
+                        entry["tracks"]
+                    ).contains_high_resolution,
                 )
                 for entry in album_entries.values()
             ),

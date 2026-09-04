@@ -150,7 +150,9 @@ class LibraryAlbumQueryService:
     """Own sorting/filtering for every Library album projection."""
 
     _SORT_MODES = frozenset({"title", "artist", "year", "tracks", "duration"})
-    _FILTER_MODES = frozenset({"all", "artwork", "missingArtwork", "dated", "undated"})
+    _FILTER_MODES = frozenset(
+        {"all", "artwork", "missingArtwork", "dated", "undated", "hires"}
+    )
 
     def __init__(self) -> None:
         self._state = AlbumQueryState()
@@ -193,6 +195,7 @@ class LibraryAlbumQueryService:
             or (mode == "missingArtwork" and not album.has_artwork)
             or (mode == "dated" and album.year > 0)
             or (mode == "undated" and album.year <= 0)
+            or (mode == "hires" and album.contains_high_resolution)
         ]
 
         def key(album: AlbumRef):

@@ -151,19 +151,29 @@ Item {
         applyViewPreferences(next)
     }
 
+    // LIB-A §37: UNA autoridad — el sort/filtro semántico del álbum vive
+    // en la aplicación (LibraryAlbumQueryService); la preferencia
+    // persistida acompaña (misma fuente visual) pero el orden de la
+    // proyección lo aplica el Bridge.
     function requestAlbumSort(mode) {
         albumSortMode = mode
         updateCommonPreference("sortMode", mode)
+        if (typeof library !== "undefined" && library)
+            library.set_album_sort_mode(mode)
     }
 
     function requestAlbumSortDirection(descending) {
         albumSortDescending = descending
         updateCommonPreference("sortDescending", descending)
+        if (typeof library !== "undefined" && library)
+            library.set_album_sort_descending(descending)
     }
 
     function requestAlbumFilter(mode) {
         albumFilterMode = mode
         updateCommonPreference("filterMode", mode)
+        if (typeof library !== "undefined" && library)
+            library.set_album_filter_mode(mode)
     }
 
     function syncEntitySelection() {

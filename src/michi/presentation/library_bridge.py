@@ -1397,6 +1397,7 @@ class LibraryBridge(QObject):
             self.library_changed.emit()
 
     @Slot(str)
+    @Slot(str)
     def set_album_sort_mode(self, mode: str) -> None:
         if self._album_query.set_sort_mode(mode):
             self.library_changed.emit()

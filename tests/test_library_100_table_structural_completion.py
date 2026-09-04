@@ -518,3 +518,85 @@ class TestBlock3ColumnAuthority:
         assert [t.track_id for t in service.sort_tracks(tracks)] == ["T1", "T3", "T2"]
         # Columna inválida → no-op.
         assert service.set_sort_state("nope", False) is False
+
+
+# ---------------------------------------------------------------------------
+# BLOQUE 4 — sort/filter authority única + hi-res en la aplicación
+# ---------------------------------------------------------------------------
+
+
+class TestBlock4QueryAuthority:
+    def test_tab37_albums_view_has_no_local_query_authority(self) -> None:
+        """TAB37: AlbumsView no filtra/ordena localmente — la proyección
+        de la aplicación (library.albums) es la autoridad; el QML solo
+        conserva estrategias de presentación (timeline/editorial)."""
+        albums = _qml("views/AlbumsView.qml")
+        assert "albumMatchesFilter" not in albums
+        assert "compareAlbums" not in albums
+        assert "buildPresentationAlbums" not in albums
+        assert "readonly property var presentationAlbums: library.albums" in albums
+        # Las estrategias de presentación del view se conservan.
+        assert "buildTimelineAlbums" in albums
+        assert "buildEditorialAlbums" in albums
+
+    def test_tab37_library_view_routes_requests_to_bridge(self) -> None:
+        view = _qml("views/LibraryView.qml")
+        assert "library.set_album_sort_mode(mode)" in view
+        assert "library.set_album_sort_descending(descending)" in view
+        assert "library.set_album_filter_mode(mode)" in view
+
+    def test_tab38_hires_filter_is_application_owned(self) -> None:
+        """TAB38: el filtro hi-res vive en la aplicación con facts
+        canónicos (AlbumRef.contains_high_resolution = DSD OR depth>=24
+        OR rate>=96000) — nunca inferido de labels."""
+        query = (
+            Path(__file__).resolve().parents[1]
+            / "src/michi/application/library_track_query.py"
+        ).read_text()
+        assert '"hires"' in query
+        assert "album.contains_high_resolution" in query
+        domain = (
+            Path(__file__).resolve().parents[1] / "src/michi/domain/library.py"
+        ).read_text()
+        assert "contains_high_resolution: bool = False" in domain
+        # Definición factual exacta (DSD OR depth >= 24 OR rate >= 96000).
+        assert "track.bit_depth >= 24 or track.sample_rate_hz >= 96_000" in domain
+
+    def test_tab38_hires_filter_runtime(self, qapp) -> None:
+        """Runtime: álbumes con DSD/24-bit/96kHz pasan el filtro hires de
+        la aplicación; los demás no."""
+        from michi.application.library_track_query import (
+            LibraryAlbumQueryService,
+        )
+        from michi.domain.library import AlbumRef
+
+        hires_dsd = AlbumRef(
+            key="a1",
+            title="DSD",
+            artist="X",
+            track_count=1,
+            duration_ms=1000,
+            contains_high_resolution=True,
+        )
+        hires_depth = AlbumRef(
+            key="a2",
+            title="24bit",
+            artist="X",
+            track_count=1,
+            duration_ms=1000,
+            contains_high_resolution=True,
+        )
+        cd = AlbumRef(
+            key="a3",
+            title="CD",
+            artist="X",
+            track_count=1,
+            duration_ms=1000,
+            contains_high_resolution=False,
+        )
+        service = LibraryAlbumQueryService()
+        assert service.set_filter_mode("hires") is True
+        projected = service.project([hires_dsd, hires_depth, cd])
+        assert sorted(a.key for a in projected) == ["a1", "a2"]
+        assert service.set_filter_mode("all") is True
+        assert len(service.project([hires_dsd, cd])) == 2
