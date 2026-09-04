@@ -354,7 +354,9 @@ server.
   real playlist-target picker; unavailable persisted tracks retain truthful
   fallback metadata and disable actions that require Library membership.
 - Search, Queue, and Playlist rows reuse the same technical projection as
-  Library surfaces. `trackId` is the canonical path; navigation uses
+  Library surfaces. `trackId` is the STABLE Library identity; `path` is the
+  current factual media location (explicit `legacy-path::` fallback only for
+  pre-catalog records) — never a second identity authority. Navigation uses
   `albumKey`, `artistKey`, and `playlistId`.
 - The removed global Precision Mode has no replacement. Technical facts remain
   visible where useful without becoming an output-quality claim.

@@ -232,12 +232,12 @@ ColumnLayout {
         visible: library.selectedAlbumKey === ""
             && root.presentationAlbums.length === 0
         title: library.searchActive || root.albumFilterMode !== "all"
-            ? "No matching albums" : "No albums yet"
+            ? qsTr("No matching albums") : qsTr("No albums yet")
         message: library.searchActive
-            ? "Try a different search or clear the current query."
+            ? qsTr("Try a different search or clear the current query.")
             : root.albumFilterMode !== "all"
-                ? "Change or clear the active album filter."
-                : "Scan a music folder to build your album library."
+                ? qsTr("Change or clear the active album filter.")
+                : qsTr("Scan a music folder to build your album library.")
         iconName: "library"
     }
 

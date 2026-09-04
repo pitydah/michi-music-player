@@ -68,13 +68,13 @@ def test_toolbar_is_single_strip_with_source_popover() -> None:
 def test_library_tabs_has_7_tabs_and_no_folders() -> None:
     tabs_src = _text("views/LibraryTabs.qml")
     expected_tabs = [
-        '{ value: "songs", label: "Songs"',
-        '{ value: "albums", label: "Albums"',
-        '{ value: "artists", label: "Artists"',
-        '{ value: "genres", label: "Genres"',
-        '{ value: "favorites", label: "Favorites"',
-        '{ value: "history", label: "History"',
-        '{ value: "recently", label: "Recently Added"',
+        '{ value: "songs", label: qsTr("Songs")',
+        '{ value: "albums", label: qsTr("Albums")',
+        '{ value: "artists", label: qsTr("Artists")',
+        '{ value: "genres", label: qsTr("Genres")',
+        '{ value: "favorites", label: qsTr("Favorites")',
+        '{ value: "history", label: qsTr("History")',
+        '{ value: "recently", label: qsTr("Recently Added")',
     ]
     for tab in expected_tabs:
         assert tab in tabs_src

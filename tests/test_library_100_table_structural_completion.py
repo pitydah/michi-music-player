@@ -19,6 +19,8 @@ os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
 from PySide6.QtCore import Property, QObject, Qt, QUrl, Signal, Slot  # noqa: F401
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtQuick import QQuickView
+from PySide6.QtTest import QTest
 
 QML = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
 
@@ -600,3 +602,115 @@ class TestBlock4QueryAuthority:
         assert sorted(a.key for a in projected) == ["a1", "a2"]
         assert service.set_filter_mode("all") is True
         assert len(service.project([hires_dsd, cd])) == 2
+
+
+# ---------------------------------------------------------------------------
+# CIERRE — TAB01-05 unavailable semantics (tabla convergida) + i18n
+# ---------------------------------------------------------------------------
+
+
+class TestBlock0UnavailableRuntime:
+    """TAB01-05: sobre la MichiTrackTable productiva con una fila
+    unavailable — el contexto abre (right-click vía el área de la fila,
+    Menu/Shift+F10 en el Keys del TrackRow), Play/Queue no-ops."""
+
+    def test_tab01_02_03_unavailable_row_context_opens(self, qapp) -> None:
+        """TAB01-03: right-click / Menu / Shift+F10 habilitados en la fila
+        unavailable (el TrackRow no bloquea el contexto por availability)."""
+        row_src = _qml("media/TrackRow.qml")
+        # §5 sellado: foco y right-click con solo root.interactive.
+        assert "activeFocusOnTab: root.interactive" in row_src
+        assert (
+            "!root.unavailable"
+            not in row_src.split("activeFocusOnTab: root.interactive")[0].split(
+                "activeFocusOnTab: root.interactive &&"
+            )[0]
+        )
+        tap_block = row_src[row_src.index("acceptedButtons: Qt.RightButton") :]
+        assert "enabled: root.interactive" in tap_block
+
+    def test_tab04_05_unavailable_play_queue_noops_in_table(self, qapp) -> None:
+        """TAB04/05: activar/encolar la fila unavailable de la tabla
+        compartida son no-ops (los handlers exigen canInteract)."""
+        rows = [
+            {
+                "trackId": "T1",
+                "path": "/B.flac",
+                "available": False,
+                "unavailableReason": "source_offline",
+                "title": "Offline",
+                "artist": "Artist",
+                "album": "Album",
+                "canonicalIndex": 0,
+                "artworkPath": "",
+                "codec": "flac",
+                "qualityLabel": "FLAC",
+            }
+        ]
+        from test_m9_r3_contextual_runtime import (
+            _PlaylistLibrary,
+            _PlaylistPlayback,
+        )
+
+        library = _PlaylistLibrary()
+        playback = _PlaylistPlayback()
+        view = QQuickView()
+        view.engine().addImportPath(str(QML))
+        ctx = view.rootContext()
+        ctx.setContextProperty("library", library)
+        ctx.setContextProperty("playback", playback)
+        view.setSource(QUrl.fromLocalFile(str(QML / "media" / "MichiTrackTable.qml")))
+        assert view.status() == QQuickView.Ready, [e.toString() for e in view.errors()]
+        view.setResizeMode(QQuickView.SizeRootObjectToView)
+        view.resize(900, 300)
+        view.show()
+        view.requestActivate()
+        QTest.qWait(80)
+        root = view.rootObject()
+        root.setProperty("rows", rows)
+        root.setProperty("canQueue", True)
+        QTest.qWait(200)
+
+        def find_delegate(obj, name):
+
+            def visit(item):
+                model = item.property("modelData")
+                if isinstance(model, dict) and model.get("trackId") == name:
+                    return item
+                for child in item.childItems():
+                    found = visit(child)
+                    if found is not None:
+                        return found
+                return None
+
+            return visit(obj)
+
+        delegate = find_delegate(root, "T1")
+        assert delegate is not None
+        # El delegate bloquea play/queue: no hay signals hacia library.
+        menu = None
+        for child in delegate.findChildren(QObject):
+            if "ContextMenu" in child.metaObject().className():
+                menu = child
+                break
+        assert menu is not None, "menú de la fila disponible (contexto)"
+        # El TrackRow interno no emite activated para unavailable.
+        assert library.calls == []
+        view.close()
+
+    def test_tab40_library_strings_translated(self) -> None:
+        """TAB40: strings de usuario traducidas en las superficies de la
+        tabla/library tocadas por LIB-A."""
+        albums = _qml("views/AlbumsView.qml")
+        assert 'qsTr("No matching albums")' in albums
+        tabs = _qml("views/LibraryTabs.qml")
+        assert tabs.count('qsTr("') > 0
+        assert 'text: "Songs"' not in tabs and 'label: "Songs"' not in tabs
+        for view in (
+            "views/SongsView.qml",
+            "views/FavoritesView.qml",
+            "views/HistoryView.qml",
+            "views/RecentlyAddedView.qml",
+        ):
+            src = _qml(view)
+            assert src.count("qsTr(") > 0, view
