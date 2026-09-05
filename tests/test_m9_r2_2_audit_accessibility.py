@@ -405,7 +405,9 @@ def test_michi_format_singleton_registered_and_used():
 def test_library_header_names_active_tab():
     content = read("views/LibraryHeader.qml")
     assert "function tabTitle()" in content
-    assert 'case "albums": return "Albums"' in content
+    # LIB-A seal II: los títulos de tab viven bajo qsTr (i18n real).
+    assert 'case "albums": return qsTr("Albums")' in content
+    assert 'default: return qsTr("Songs")' in content
     assert "title: root.tabTitle()" in content
 
 

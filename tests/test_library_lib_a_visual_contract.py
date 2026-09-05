@@ -28,8 +28,8 @@ SURFACES = (
     "media/TrackRow.qml",
 )
 
-# Allowlist explícita y mínima: solo símbolos/valores técnicos inmutables/
-# claves internas (nunca frases de usuario).
+# Allowlist ESTRICTA: solo encabezados técnicos de columnas (códigos de
+# presentación, no copy). Cualquier prosa de usuario NUNCA se allowlista.
 _ALLOWLIST = {
     "ART",
     "TITLE",
@@ -46,39 +46,8 @@ _ALLOWLIST = {
     "COMPOSER",
     "YEAR",
     "DURATION",
-    "VIEWS",
-    "TRACKS",
-    "TRACK TABLE",
-    "IDENTITY",
-    "MUSICAL CONTEXT",
-    "AUDIO",
-    "METADATA",
-    "TIME",
-    "UTILITY",
-    "COLUMN LAYOUT",
-    "COLUMNS",
-    "CUSTOMIZE COLUMNS",
     "DISC",
-    "Back",
-    "Library",
-    "Unknown",
-    "Standard",
-    "Mixed formats",
-    "High-resolution PCM",
-    "Path",
-    "About this album",
-    "About the artist",
-    "Track information",
-    "LIBRARY QUALITY",
-    "Album facts",
-    "Format",
-    "Sample rate",
-    "Bit depth",
-    "Channels",
-    "File size",
-    "Album",
-    "Artist",
-    "Genre",
+    "VIEWS",
 }
 
 

@@ -445,7 +445,11 @@ class TestProfiles:
         assert 'qsTr("Restore Defaults")' in menu
         assert "root.restoreDefaultsRequested()" in menu
         header = (QML / "media" / "ResizableTrackHeader.qml").read_text()
+        # El header delega en restoreDefaults() (real: Essential + widths por
+        # defecto + UN configurationChanged). restoreDefaultColumns() queda
+        # como alias de compatibilidad en el singleton.
         assert (
-            "onRestoreDefaultsRequested: LibraryTrackColumnState.restoreDefaultColumns()"
+            "onRestoreDefaultsRequested: LibraryTrackColumnState.restoreDefaults()"
             in header
         )
+        assert "function restoreDefaultColumns()" in state
