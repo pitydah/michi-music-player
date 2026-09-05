@@ -1392,7 +1392,6 @@ class LibraryBridge(QObject):
         if self._track_query.set_sort_state(column, descending):
             self.library_changed.emit()
 
-    @Slot(str)
     @Slot(str, bool, str)
     def set_album_query_state(
         self, sort_mode: str, descending: bool, filter_mode: str
