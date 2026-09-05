@@ -66,7 +66,7 @@ Rectangle {
             columnKey: "title"
             columnWidth: root.titleColumnWidth
             resizeBaseWidth: LibraryTrackColumnState.titleWidth
-            sortable: root.sortingEnabled
+            sortable: root.columnSortable(columnKey)
             sortActive: root.sortColumn === columnKey
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
@@ -78,6 +78,9 @@ Rectangle {
                     root.resizeColumn(column, width)
             }
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            // LIB-A P2-A: right-click de Title abre el contexto EXACTO de
+            // la columna (targetColumn = "title" — nunca el global).
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: root.showArtistColumn && LibraryTrackColumnState.artistVisible
@@ -85,7 +88,7 @@ Rectangle {
             label: qsTr("ARTIST")
             columnKey: "artist"
             columnWidth: LibraryTrackColumnState.artistWidth
-            sortable: root.sortingEnabled
+            sortable: root.columnSortable(columnKey)
             sortActive: root.sortColumn === columnKey
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
@@ -99,7 +102,7 @@ Rectangle {
             label: qsTr("ALBUM")
             columnKey: "album"
             columnWidth: LibraryTrackColumnState.albumWidth
-            sortable: root.sortingEnabled
+            sortable: root.columnSortable(columnKey)
             sortActive: root.sortColumn === columnKey
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
@@ -113,7 +116,7 @@ Rectangle {
             label: qsTr("FORMAT")
             columnKey: "format"
             columnWidth: LibraryTrackColumnState.formatWidth
-            sortable: root.sortingEnabled
+            sortable: root.columnSortable(columnKey)
             sortActive: root.sortColumn === columnKey
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
@@ -127,6 +130,10 @@ Rectangle {
             label: qsTr("SAMPLE RATE")
             columnKey: "sampleRate"
             columnWidth: LibraryTrackColumnState.sampleRateWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -137,6 +144,10 @@ Rectangle {
             label: qsTr("BIT DEPTH")
             columnKey: "bitDepth"
             columnWidth: LibraryTrackColumnState.bitDepthWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -147,6 +158,10 @@ Rectangle {
             label: qsTr("DSD RATE")
             columnKey: "dsdRate"
             columnWidth: LibraryTrackColumnState.dsdRateWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -157,6 +172,10 @@ Rectangle {
             label: qsTr("BITRATE")
             columnKey: "bitrate"
             columnWidth: LibraryTrackColumnState.bitrateWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -167,6 +186,10 @@ Rectangle {
             label: qsTr("CHANNELS")
             columnKey: "channels"
             columnWidth: LibraryTrackColumnState.channelsWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -177,6 +200,10 @@ Rectangle {
             label: qsTr("FILE SIZE")
             columnKey: "fileSize"
             columnWidth: LibraryTrackColumnState.fileSizeWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -187,6 +214,10 @@ Rectangle {
             label: qsTr("GENRE")
             columnKey: "genre"
             columnWidth: LibraryTrackColumnState.genreWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -197,6 +228,10 @@ Rectangle {
             label: qsTr("COMPOSER")
             columnKey: "composer"
             columnWidth: LibraryTrackColumnState.composerWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -207,6 +242,10 @@ Rectangle {
             label: qsTr("YEAR")
             columnKey: "year"
             columnWidth: LibraryTrackColumnState.yearWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -217,6 +256,10 @@ Rectangle {
             label: qsTr("DURATION")
             columnKey: "duration"
             columnWidth: LibraryTrackColumnState.durationWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
@@ -231,6 +274,21 @@ Rectangle {
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
+        }
+        // LIB-A P2-A §36: el contexto GLOBAL vive en la región vacía del
+        // layout (Item hermano, no ancestro) — el right-click de una cell
+        // NUNCA compite con el global (sin doble-open ni overwrite).
+        Item {
+            objectName: "headerEmptyRegion"
+            Layout.fillWidth: true
+            Layout.minimumWidth: MichiSpacing.md
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: {
+                    MichiAccessibility.notePointer()
+                    root.openGlobalContext()
+                }
+            }
         }
     }
 
@@ -253,12 +311,11 @@ Rectangle {
         headerContextMenu.open()
     }
 
-    TapHandler {
-        acceptedButtons: Qt.RightButton
-        onTapped: {
-            MichiAccessibility.notePointer()
-            root.openGlobalContext()
-        }
+    // LIB-A P2-B: UNA predicción de columnas sortables (aplicación +
+    // singleton) — nunca conocimiento duplicado por cell.
+    function columnSortable(column) {
+        return root.sortingEnabled
+            && LibraryTrackColumnState.sortableColumns.indexOf(column) !== -1
     }
 
     TrackTableHeaderContextMenu {
