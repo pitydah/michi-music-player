@@ -90,8 +90,6 @@ PageHeader {
         return false
     }
 
-    // Wayfinding: the header names the active tab (was a static "Library")
-    // so users always know where they are inside the library.
     function tabTitle() {
         switch (root.currentTab) {
             case "albums": return qsTr("Albums")
@@ -101,7 +99,6 @@ PageHeader {
             case "favorites": return qsTr("Favorites")
             case "history": return qsTr("History")
             case "recently": return qsTr("Recently Added")
-
             default: return qsTr("Songs")
         }
     }
@@ -125,9 +122,8 @@ PageHeader {
     function contextualSubtitle() {
         if (typeof library === "undefined" || !library)
             return qsTr("Your local music collection")
+
         if (library.searchActive) {
-            // LIB-A §51: subtítulo con conteo SCOPED del tab activo —
-            // nunca mezclar conteos heterogéneos.
             switch (root.currentTab) {
             case "albums":
                 return qsTr("%1 albums matching “%2”")
@@ -155,31 +151,59 @@ PageHeader {
                     .arg(library.searchTrackCount).arg(library.searchQuery)
             }
         }
-        // LIB-A §35: scope-correct counts — nunca mezclar proyecciones
-        // filtradas con totales sin etiquetas.
+
         if (library.genreFilterActive)
             return qsTr("%1 tracks in %2")
                 .arg(library.fileCount).arg(library.selectedGenreName)
-        if (root.albumFilterMode !== "all")
+
+        if (root.currentTab === "albums" && root.albumFilterMode !== "all")
             return qsTr("%1 of %2 albums")
                 .arg(library.filteredAlbumCount).arg(library.albumCount)
-        if (library.libraryTrackCount > 0)
+
+        // Historical premium Library builds exposed the semantic identity of
+        // every tab here.  LIB-A's generic global total made History,
+        // Favorites and Recently Added feel like the same Songs table even
+        // though their data authority was correct.  Restore per-surface
+        // wayfinding while preserving the current search/filter truth above.
+        if (library.libraryTrackCount <= 0)
+            return qsTr("Your local music collection")
+
+        switch (root.currentTab) {
+        case "albums":
+            return library.albumCount === 1
+                ? qsTr("1 album · %1").arg(root.albumModeLabel())
+                : qsTr("%1 albums · %2").arg(library.albumCount).arg(root.albumModeLabel())
+        case "artists":
+            return library.artistCount === 1
+                ? qsTr("1 artist") : qsTr("%1 artists").arg(library.artistCount)
+        case "genres":
+            return library.genres.length === 1
+                ? qsTr("1 genre") : qsTr("%1 genres").arg(library.genres.length)
+        case "favorites":
+            return (library.favoriteTrackRows || []).length === 1
+                ? qsTr("1 favorite")
+                : qsTr("%1 favorites").arg((library.favoriteTrackRows || []).length)
+        case "history":
+            return (library.historyTrackRows || []).length === 1
+                ? qsTr("1 track in playback history")
+                : qsTr("%1 tracks in playback history")
+                    .arg((library.historyTrackRows || []).length)
+        case "recently":
+            return (library.recentlyAddedTrackRows || []).length === 1
+                ? qsTr("1 recently added track")
+                : qsTr("%1 recently added tracks")
+                    .arg((library.recentlyAddedTrackRows || []).length)
+        default:
             return qsTr("%1 tracks · %2 albums · %3 artists")
                 .arg(library.libraryTrackCount).arg(library.albumCount).arg(library.artistCount)
-        return qsTr("Your local music collection")
+        }
     }
 
     title: root.tabTitle()
     subtitle: root.contextualSubtitle()
 
-    MichiText {
-        visible: root.albumViewsVisible && MichiBreakpoints.isXl(root.width)
-        text: qsTr("VIEWS")
-        role: "technical"
-        technical: true
-        color: MichiPalette.textMuted
-    }
-
+    // R5 historical visual canon explicitly removed the redundant "VIEWS"
+    // eyebrow.  Keep the actual view selector as the discoverable control.
     MichiSegmentedControl {
         objectName: "albumViewSwitcher"
         visible: root.albumViewsVisible
@@ -187,7 +211,7 @@ PageHeader {
         model: root.albumViewModes
         currentValue: root.albumMode
         compact: !MichiBreakpoints.isXl(root.width)
-        accessiblePrefix: "Album view"
+        accessiblePrefix: qsTr("Album view")
         Accessible.name: qsTr("Album view")
         onSelected: value => root.albumModeRequested(value)
     }
@@ -275,15 +299,13 @@ PageHeader {
                 : qsTr("View options")
             selected: viewOptionsPopup.visible || root.hasNonDefaultOptions
             onClicked: {
-                if (viewOptionsPopup.visible) {
+                if (viewOptionsPopup.visible)
                     viewOptionsPopup.close()
-                } else {
+                else
                     viewOptionsPopup.open()
-                }
             }
         }
 
-        // Tiny Aurora status dot for non-default settings
         Rectangle {
             visible: root.hasNonDefaultOptions
             anchors.top: parent.top

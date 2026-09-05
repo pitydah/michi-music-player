@@ -44,8 +44,6 @@ Rectangle {
     property bool canGoToArtist: artistKey.length > 0
     property bool canMoveUp: false
     property bool canMoveDown: false
-    // Legacy surfaces keep their existing geometry/actions until they migrate
-    // to MichiTrackTable. Shared tables opt into the session-wide authority.
     property bool sharedGeometry: false
     property bool showTechnicalColumns: false
     property bool showActions: true
@@ -57,6 +55,9 @@ Rectangle {
     property bool showDurationColumn: true
     property string artworkPath: ""
     property bool showArtwork: true
+    // Video/perceptual recovery: action affordances remain quiet but visible.
+    // 0.18 made the heart/more controls read as disabled or absent.
+    readonly property real idleActionOpacity: 0.34
     signal activated()
     signal favoriteToggled()
     signal addToPlaylistRequested()
@@ -71,8 +72,6 @@ Rectangle {
     signal contextMenuRequested()
     readonly property string durationText: duration.length > 0
         ? duration : MichiFormat.formatDuration(durationMs)
-    // Minimum height keeps action icon-buttons (controlMedium = 36px)
-    // comfortably contained in every density, artwork rows add their own size.
     implicitHeight: showArtwork
         ? Math.max(MichiThemeState.rowHeight, 44)
         : Math.max(MichiThemeState.rowHeight, MichiMetrics.controlMedium)
@@ -83,8 +82,6 @@ Rectangle {
     border.color: playing ? MichiSemanticColors.auroraCyanBorder
         : MichiSemanticColors.auroraBorderSubtle
     opacity: unavailable ? 0.55 : 1
-    // LIB-A §5: unavailable = no PLAY no QUEUE. Foco, selección, menú
-    // contextual, favorite/playlist/properties/remove siguen activos.
     activeFocusOnTab: root.interactive
     Accessible.role: Accessible.ListItem
     Accessible.name: title + (artist.length > 0 ? " by " + artist : "")
@@ -108,7 +105,6 @@ Rectangle {
             event.accepted = true
         }
     }
-
 
     function moveByPage(direction) {
         var view = root.ListView.view
@@ -226,7 +222,7 @@ Rectangle {
                 MichiIconButton {
                     visible: root.showFavorite
                     opacity: hover.hovered || root.activeFocus || activeFocus
-                        || root.selected || root.favorite ? 1 : 0.18
+                        || root.selected || root.favorite ? 1 : root.idleActionOpacity
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
                     iconName: "heart"
@@ -237,7 +233,7 @@ Rectangle {
                 MichiIconButton {
                     visible: root.showRemove
                     opacity: hover.hovered || root.activeFocus || activeFocus
-                        || root.selected ? 1 : 0.18
+                        || root.selected ? 1 : root.idleActionOpacity
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
                     iconName: "trash"
@@ -250,7 +246,7 @@ Rectangle {
                         || root.canGoToAlbum || root.canGoToArtist
                         || root.canMoveUp || root.canMoveDown
                     opacity: hover.hovered || root.activeFocus || activeFocus
-                        || root.selected ? 1 : 0.18
+                        || root.selected ? 1 : root.idleActionOpacity
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
                     iconName: "more"
@@ -262,7 +258,7 @@ Rectangle {
         MichiIconButton {
             visible: !root.sharedGeometry && root.showFavorite
             opacity: hover.hovered || root.activeFocus || activeFocus
-                || root.selected || root.favorite ? 1 : 0.18
+                || root.selected || root.favorite ? 1 : root.idleActionOpacity
             Layout.preferredWidth: MichiMetrics.controlMedium
             Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "heart"
@@ -273,7 +269,7 @@ Rectangle {
         MichiIconButton {
             visible: !root.sharedGeometry && root.showAddToPlaylist
             opacity: hover.hovered || root.activeFocus || activeFocus
-                || root.selected ? 1 : 0.18
+                || root.selected ? 1 : root.idleActionOpacity
             Layout.preferredWidth: MichiMetrics.controlMedium
             Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "add"
@@ -283,7 +279,7 @@ Rectangle {
         MichiIconButton {
             visible: !root.sharedGeometry && root.showInspector
             opacity: hover.hovered || root.activeFocus || activeFocus
-                || root.selected ? 1 : 0.18
+                || root.selected ? 1 : root.idleActionOpacity
             Layout.preferredWidth: MichiMetrics.controlMedium
             Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "info"
@@ -293,7 +289,7 @@ Rectangle {
         MichiIconButton {
             visible: !root.sharedGeometry && root.showRemove
             opacity: hover.hovered || root.activeFocus || activeFocus
-                || root.selected ? 1 : 0.18
+                || root.selected ? 1 : root.idleActionOpacity
             Layout.preferredWidth: MichiMetrics.controlMedium
             Layout.preferredHeight: MichiMetrics.controlMedium
             iconName: "trash"
@@ -330,10 +326,7 @@ Rectangle {
         ColorAnimation { duration: MichiMotion.micro }
     }
     HoverHandler { id: hover; cursorShape: root.interactive ? Qt.PointingHandCursor : Qt.ArrowCursor }
-    // El click IZQUIERDO sigue bloqueado por unavailable (play nunca).
     TapHandler { enabled: root.interactive && !root.unavailable; onTapped: { MichiAccessibility.notePointer(); root.forceActiveFocus(); root.activated() } }
-    // El click DERECHO abre el contexto SIEMPRE que la fila sea
-    // interactiva (unavailable incluido).
     TapHandler {
         acceptedButtons: Qt.RightButton
         enabled: root.interactive

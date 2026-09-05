@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../primitives"
 import "../theme"
@@ -17,8 +18,6 @@ Item {
     signal sortRequested(string columnKey)
     signal resizeRequested(string columnKey, real width)
     signal resetRequested(string columnKey)
-    // LIB-A §13: right-click sobre la CELL (contexto de la columna exacta)
-    // — nunca dispara sort. El sort queda para left-click.
     signal contextRequested(string columnKey)
 
     implicitWidth: columnWidth
@@ -61,9 +60,6 @@ Item {
             root.sortRequested(root.columnKey)
         }
     }
-    // LIB-A §13: right-click abre el contexto de la COLUMNA (sort explícito
-    // asc/desc, hide excepto title, reset width) — independiente del click
-    // izquierdo de sort y del drag/handle de resize.
     TapHandler {
         acceptedButtons: Qt.RightButton
         enabled: root.columnKey.length > 0
@@ -104,15 +100,30 @@ Item {
             mouse.accepted = true
         }
 
+        // During drag, explain the operation rather than showing a heavy
+        // full-table guide.  This stays local to the column boundary and
+        // reflects the canonical clamped width in real time.
+        ToolTip.visible: pressed
+        ToolTip.delay: 0
+        ToolTip.text: qsTr("%1 · %2 px")
+            .arg(root.label.length > 0 ? root.label : root.columnKey)
+            .arg(Math.round(root.columnWidth))
+
         Rectangle {
             visible: root.resizable
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             width: 1
-            height: MichiSpacing.lg
+            height: 14
             color: resizeArea.containsMouse || resizeArea.pressed
                 ? MichiSemanticColors.auroraCyanBorder
                 : MichiSemanticColors.borderSubtle
+            opacity: resizeArea.containsMouse || resizeArea.pressed ? 1 : 0.34
+
+            Behavior on opacity {
+                enabled: !MichiAccessibility.reducedMotion
+                NumberAnimation { duration: MichiMotion.micro }
+            }
         }
     }
 }

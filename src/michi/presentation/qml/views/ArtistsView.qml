@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../controls"
 import "../media"
 import "../patterns"
 import "../primitives"
@@ -29,8 +30,7 @@ Item {
                 color: MichiPalette.textMuted
             }
             MichiStatusChip {
-                text: library.artists.length
-                    + (library.artists.length === 1 ? " artist" : " artists")
+                text: qsTr("%n artist(s)", "", library.artists.length)
                 tone: "neutral"
             }
             Item { Layout.fillWidth: true }
@@ -39,10 +39,6 @@ Item {
         GridView {
             id: artistGrid
             objectName: "artistGridView"
-            // POST-MERGE SEMANTIC RECOVERY (P0-01): identidad visual
-            // DIFERENCIADA de Albums — retrato circular dedicado
-            // (ArtistPortraitCard/ArtistPortraitArtwork), geometría
-            // density-responsive.
             readonly property int minimumCardWidth:
                 MichiThemeState.density === "compact" ? 126
                 : MichiThemeState.density === "comfortable" ? 172 : 150
@@ -105,9 +101,6 @@ Item {
                 interval: 180
                 repeat: false
                 onTriggered: {
-                    // POST-MERGE SEMANTIC RECOVERY: bounded viewport
-                    // prefetch (queue <= 12, concurrency <= 2, cache-first)
-                    // — solo si Online Library Enrichment está ON.
                     if (typeof enrichment !== "undefined" && enrichment
                             && enrichment.onlineEnabled)
                         enrichment.prefetch_artist_portraits(
@@ -151,10 +144,15 @@ Item {
                     width: artistGrid.resolvedCardWidth
                     height: parent.height - artistGrid.cardGap
                     artist: artistCell.modelData
+                    // Only a real cached/enriched artist portrait is allowed
+                    // to behave as a portrait.  Cropping an arbitrary album
+                    // sleeve into a circle produced visually inconsistent
+                    // faces; without a portrait, ArtistPortraitArtwork now
+                    // uses its deliberate Michi monogram fallback.
                     portraitPath: (typeof enrichment !== "undefined" && enrichment
                         && enrichment.artistPortraits
                         && enrichment.artistPortraits[artistCell.modelData.key])
-                        || artistCell.modelData.artworkPath
+                        || ""
                     selected: artistCell.current
                     onActiveFocusChanged: {
                         if (activeFocus)
@@ -174,16 +172,16 @@ Item {
             Layout.fillHeight: true
             visible: library.artists.length === 0
             iconName: "artist"
-            title: library.searchActive ? "No matching artists" : "No artists yet"
+            title: library.searchActive
+                ? qsTr("No matching artists") : qsTr("No artists yet")
             message: library.searchActive
-                ? "Try a broader search." : "Scan a music folder to build your artist gallery."
+                ? qsTr("Try a broader search or clear the current query.")
+                : qsTr("Scan a music folder to build your artist gallery.")
         }
     }
 
     ArtistDetailView {
         anchors.fill: parent
-        // POST-MERGE SEMANTIC RECOVERY: el add-to-playlist del detail se
-        // propaga al host (patrón del ContentHost con los views).
         addTargetPath: root.addTargetPath
         onAddTargetPathChanged: root.addTargetPath = addTargetPath
     }

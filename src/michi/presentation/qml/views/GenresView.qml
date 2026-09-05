@@ -6,52 +6,62 @@ import "../media"
 import "../patterns"
 import "../theme"
 
-// GenresView — canonical Genre navigation. Genre.key is identity; a display
-// name is never substituted as a search query for an exact entity intent.
-ListView {
+// Visible-recovery pass: Genre is a real Library surface, never a blank
+// viewport.  The old ListView.header empty-state reserved root.height even
+// when invisible, which could push every productive delegate below the view.
+Item {
     id: root
     objectName: "genresView"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: library.genres
-    clip: true
-    spacing: MichiSpacing.xs
-    boundsBehavior: Flickable.StopAtBounds
-    keyNavigationEnabled: true
-    activeFocusOnTab: true
 
-    ScrollBar.vertical: MichiScrollBar { }
+    ListView {
+        id: genreList
+        anchors.fill: parent
+        model: library.genres
+        visible: count > 0
+        clip: true
+        spacing: MichiSpacing.xs
+        boundsBehavior: Flickable.StopAtBounds
+        keyNavigationEnabled: true
+        keyNavigationWraps: false
+        activeFocusOnTab: true
 
-    header: EmptyState {
-        width: root.width
-        height: root.height
-        visible: root.count === 0
-        title: qsTr("No genres found")
-        message: qsTr("Scan a music folder to build genre navigation.")
-        iconName: "genre"
-    }
+        ScrollBar.vertical: MichiScrollBar { }
 
-    delegate: MichiEntityRow {
-        id: genreRow
-        required property int index
-        required property var modelData
-        width: root.width
-        iconName: "genre"
-        title: modelData.name
-        technical: modelData.trackCount + (modelData.trackCount === 1 ? " track" : " tracks")
-        interactive: true
-        onActivated: library.select_genre(modelData.key)
-        Keys.onPressed: event => genreContext.handleContextKey(event)
+        delegate: MichiEntityRow {
+            id: genreRow
+            required property int index
+            required property var modelData
+            width: genreList.width
+            iconName: "genre"
+            title: modelData.name
+            technical: qsTr("%n track(s)", "", Number(modelData.trackCount || 0))
+            interactive: true
+            onActivated: library.select_genre(modelData.key)
+            Keys.onPressed: event => genreContext.handleContextKey(event)
 
-        GenreContextArea {
-            id: genreContext
-            anchors.fill: parent
-            genre: modelData
-            onContextRequested: {
-                root.currentIndex = genreRow.index
-                genreRow.forceActiveFocus()
+            GenreContextArea {
+                id: genreContext
+                anchors.fill: parent
+                genre: modelData
+                onContextRequested: {
+                    genreList.currentIndex = genreRow.index
+                    genreRow.forceActiveFocus()
+                }
             }
         }
+    }
+
+    EmptyState {
+        anchors.fill: parent
+        visible: genreList.count === 0
+        title: library.searchActive
+            ? qsTr("No matching genres") : qsTr("No genres found")
+        message: library.searchActive
+            ? qsTr("Try a broader search or clear the current query.")
+            : qsTr("Scan a music folder to build genre navigation.")
+        iconName: "genre"
     }
 }

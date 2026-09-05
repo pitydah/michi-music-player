@@ -10,8 +10,6 @@ ColumnLayout {
 
     property string currentTab: "songs"
     property string addTargetPath: ""
-    // LibraryView owns presentation preferences; recreated tab content only
-    // receives their current projection so controls cannot break bindings.
     property string albumMode: "grid"
     property string albumSortMode: "title"
     property bool albumSortDescending: false
@@ -20,19 +18,11 @@ ColumnLayout {
     property real albumZoom: 1.0
     property var viewPreferences: ({})
     property var browseState: null
-    property var _content: null   // the current tab view
+    property var _content: null
     signal scanRequested()
     signal sortModeRequested(string mode)
     signal sortDirectionRequested(bool descending)
 
-    // M6.7: explicit per-tab management. The object tree must NOT keep the
-    // previous tab alive after a switch (the findChild unload contract in
-    // the offscreen harness only spins processEvents, which does not flush
-    // deferred deletes, and QML parent= does not detach the QObject parent)
-    // — so clear the objectName synchronously (removes it from
-    // findChild(QObject, name) matching), then detach + schedule the delete
-    // for memory hygiene. The component FILE keeps its objectName
-    // declaration (structural tests read files, unaffected).
     function _loadTab(tab) {
         if (_content) {
             _content.objectName = ""
@@ -65,10 +55,10 @@ ColumnLayout {
         visible: library.hasDiagnostic
             || (library.scanStatus === "FAILED"
                 && library.libraryTrackCount === 0)
-        title: library.hasDiagnostic ? "Library unavailable" : "Scan failed"
+        title: library.hasDiagnostic ? qsTr("Library unavailable") : qsTr("Scan failed")
         message: library.hasDiagnostic
             ? library.diagnosticMessage
-            : "The library could not be scanned. Check your music folder and try again."
+            : qsTr("The library could not be scanned. Check your music folder and try again.")
         actionText: qsTr("Retry scan")
         onActionRequested: root.scanRequested()
         Layout.fillWidth: true
@@ -101,11 +91,6 @@ ColumnLayout {
                     text: modelData.name
                     variant: "secondary"
                     onClicked: {
-                        // M9-R1 cross-feature: Library sends tracks to
-                        // Playlists by canonical id (PLAINTLIST-HIERARCHY-02).
-                        // R2 P1-12: success feedback ONLY on durable add;
-                        // an already-present track is never "Added".
-                        // R4: los result codes NO son truthy — comparación exacta.
                         var added = playlists.add_track_to_playlist(
                             modelData.playlistId, addTargetPath)
                         addTargetPath = ""
@@ -113,7 +98,6 @@ ColumnLayout {
                             window.showToast(qsTr("Added to %1").arg(modelData.name))
                         else if (added === "already_present")
                             window.showToast(qsTr("Already in %1").arg(modelData.name))
-                        // "persistence_failed": el persistence Connections informa.
                     }
                 }
             }
@@ -127,8 +111,6 @@ ColumnLayout {
         }
     }
 
-    // LIB-A §34: strip de filtro de género (wayfinding + clear explícito).
-    // Filigrana fina, nunca una card grande; no desplaza el search field.
     Rectangle {
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? 30 : 0
@@ -193,13 +175,6 @@ ColumnLayout {
     LoadingState {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        // FAILED/CANCELLED must NOT spin forever: the ErrorState (above)
-        // covers FAILED with a retry, and CANCELLED returns to the
-        // EmptyState prompt.
-        // SEMANTIC INTEGRATION (M6-EXT-R4 P1-05): EXISTENCIA ESTRUCTURAL
-        // (libraryTrackCount) — fileCount es la proyección FILTRADA (una
-        // búsqueda con 0 resultados no muestra "Building your library…"
-        // mientras el scan corre).
         visible: library.libraryTrackCount === 0
             && library.scanStatus !== "" && library.scanStatus !== "IDLE"
             && library.scanStatus !== "FAILED" && library.scanStatus !== "CANCELLED"

@@ -78,8 +78,6 @@ Rectangle {
                     root.resizeColumn(column, width)
             }
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
-            // LIB-A P2-A: right-click de Title abre el contexto EXACTO de
-            // la columna (targetColumn = "title" — nunca el global).
             onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
@@ -275,13 +273,31 @@ Rectangle {
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
         }
-        // LIB-A P2-A §36: el contexto GLOBAL vive en la región vacía del
-        // layout (Item hermano, no ancestro) — el right-click de una cell
-        // NUNCA compite con el global (sin doble-open ni overwrite).
+
+        // Keep right-click on the empty header region, but also expose an
+        // explicit visible affordance.  The rich table/preset work must not be
+        // an undiscoverable Easter egg.
         Item {
+            id: headerEmptyRegion
             objectName: "headerEmptyRegion"
             Layout.fillWidth: true
-            Layout.minimumWidth: MichiSpacing.md
+            Layout.minimumWidth: MichiMetrics.controlMedium
+            Layout.fillHeight: true
+
+            MichiIconButton {
+                id: tableOptionsButton
+                objectName: "trackTableOptionsButton"
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                width: MichiMetrics.controlMedium
+                height: MichiMetrics.controlMedium
+                iconName: "sliders"
+                accessibleName: qsTr("Table options")
+                selected: headerContextMenu.visible
+                    && headerContextMenu.targetColumn === ""
+                onClicked: root.openGlobalContext()
+            }
+
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: {
@@ -292,8 +308,6 @@ Rectangle {
         }
     }
 
-    // LIB-A §11/12/14: DOS intents contextuales — cell (targetColumn
-    // exacto con sort explícito) y región vacía (configuración global).
     function openColumnContext(column) {
         if (column.length === 0)
             return
@@ -311,8 +325,6 @@ Rectangle {
         headerContextMenu.open()
     }
 
-    // LIB-A P2-B: UNA predicción de columnas sortables (aplicación +
-    // singleton) — nunca conocimiento duplicado por cell.
     function columnSortable(column) {
         return root.sortingEnabled
             && LibraryTrackColumnState.sortableColumns.indexOf(column) !== -1
@@ -331,7 +343,6 @@ Rectangle {
             LibraryTrackColumnState.resetWidth(column)
         onPresetRequested: name => LibraryTrackColumnState.applyPreset(name)
         onToggleColumnRequested: column => {
-            // Title está locked en el singleton (no-op defensivo).
             LibraryTrackColumnState.setVisible(
                 column, !LibraryTrackColumnState.isVisible(column))
         }
