@@ -2,11 +2,15 @@
 open review threads (Codex). Every thread proved VALID against the code
 before this file was written; each gate here pins the fixed contract.
 
-P1-01 Songs → Playlist: the add-to-playlist intent transports the FACTUAL
-      file path (path = location) while TrackId stays the identity; the
-      durable playlist entry can never be a TrackId/UUID.
-P1-02 Songs Properties action: no inspector surface exists → the action
-      must be disabled (no visible action without an observable result).
+P1-01 Songs → Playlist: the add-to-playlist intent is TrackId-FIRST (the
+      A1 context host routes stable TrackIds through the Bridge; the path
+      stays a factual location and never decides membership).
+P1-02 Songs Properties action: the A1 context host provides the real
+      consumer (LibraryContextActionHost → TrackPropertiesView). The
+      SongsView FILE keeps the fail-closed default (canInspect: false) so
+      a bare instance without the host never shows a dead action; the
+      LibraryContentHost instance enables it only because the consumer is
+      real.
 P1-03 Add to New Playlist: no consumer exists repo-wide → the menu item
       must be hidden (no dead UI).
 P1-04 Toolbar search placeholders must be qsTr-wrapped (localization).
@@ -143,6 +147,16 @@ class _FakeLibrary(QObject):
 
     sourceOperationError = Property(str, lambda self: self._error, notify=changed)
 
+    def __init__(self, rows=None):
+        super().__init__()
+        self._rows = rows or []
+        self._error = ""
+        self.playlist_target_calls: list = []
+
+    @Slot(list)
+    def request_tracks_playlist_target(self, track_ids):
+        self.playlist_target_calls.append(list(track_ids))
+
     def set_error(self, text):
         self._error = text
         self.changed.emit()
@@ -255,15 +269,15 @@ def _geometry(obj):
 
 
 # ===========================================================================
-# P1-01 — Songs → Playlist transports the FACTUAL path (never the TrackId)
+# P1-01 — Songs → Playlist transports TrackId-first (A1 context host)
 # ===========================================================================
 
 
 def test_table_playlist_signal_carries_track_id_and_path(qapp):
     """Contract of the wire: MichiTrackTable.addToPlaylistRequested carries
     (trackId, path); the delegate forwards trackId + modelData.path; SongsView
-    routes the PATH into the historical path-based playlist picker while
-    TrackId remains the identity authority for every other action."""
+    routes the STABLE TrackId into the Bridge targeting seam
+    (request_tracks_playlist_target) while the path remains factual."""
     table = _qml_source("media/MichiTrackTable.qml")
     songs = _qml_source("views/SongsView.qml")
 
@@ -276,10 +290,14 @@ def test_table_playlist_signal_carries_track_id_and_path(qapp):
         table,
     ), "el delegate debe reenviar el path factual del modelData"
     assert re.search(
-        r"onAddToPlaylistRequested:\s*\(trackId, path\)\s*=>\s*root\.addTargetPath"
-        r" = path",
+        r"onAddToPlaylistRequested:\s*\(trackId, path\)\s*=>\s*"
+        r"library\.request_tracks_playlist_target\(\[trackId\]\)",
         songs,
-    ), "SongsView debe rutear el path factual al picker"
+    ), "SongsView debe rutear el TrackId estable al seam de targeting"
+    # El path nunca decide membership en el flujo nuevo.
+    assert "addTargetPath = path" not in songs, (
+        "el flujo A1 no alimenta el targeting legacy por path"
+    )
     # TrackId nunca se degrada: activación/favoritos/cola siguen por trackId.
     assert (
         "onTrackActivated: (trackId, path, index) =>"
@@ -291,12 +309,13 @@ def test_table_playlist_signal_carries_track_id_and_path(qapp):
     )
 
 
-def test_songs_add_to_playlist_runtime_routes_factual_path(qapp):
+def test_songs_add_to_playlist_runtime_routes_stable_track_id(qapp):
     """Runtime: pressing Add to Playlist on a catalog-backed row (stable
-    TrackId UUID + factual path) must set addTargetPath to the PATH — the
-    value the durable playlist service persists — never the UUID."""
+    TrackId UUID + factual path) must invoke the Bridge targeting seam with
+    the TrackId — never the path (membership identity)."""
     row = _track_row("uuid-123", "/music/a.flac")
     library = _FakeLibrary(rows=[row])
+    library.playlist_target_calls = []
     view = _mount("views/SongsView.qml", library=library)
     root = view.rootObject()
 
@@ -312,11 +331,13 @@ def test_songs_add_to_playlist_runtime_routes_factual_path(qapp):
     mo.method(idx).invoke(track_row)
     _process()
 
-    target = root.property("addTargetPath")
-    assert target == "/music/a.flac", (
-        f"picker debe recibir el path factual, recibió {target!r}"
+    assert library.playlist_target_calls == [["uuid-123"]], (
+        "el seam recibe el TrackId estable, nunca el path"
     )
-    assert target != "uuid-123"
+    # El targeting legacy por path ya no se alimenta desde Songs.
+    assert root.property("addTargetPath") == "", (
+        "addTargetPath debe permanecer vacío en el flujo A1"
+    )
     view.close()
 
 
@@ -326,13 +347,16 @@ def test_songs_add_to_playlist_runtime_routes_factual_path(qapp):
 
 
 def test_songs_properties_action_disabled_until_inspector_exists(qapp):
-    """No track inspector surface exists in the tree → canInspect: false so
-    the context-menu/row Properties action has an observable effect (none)."""
+    """The SongsView FILE stays fail-closed (canInspect: false): a bare
+    instance without the A1 context host never offers a dead Properties
+    action. LibraryContentHost enables it only because the consumer
+    (context host → TrackPropertiesView) is real — see the A1 runtime
+    seal."""
     row = _track_row("uuid-1", "/music/a.flac")
     view = _mount("views/SongsView.qml", library=_FakeLibrary(rows=[row]))
     root = view.rootObject()
     assert root.property("canInspect") is False, (
-        "SongsView no debe ofrecer Properties sin superficie inspectora"
+        "el archivo SongsView no ofrece Properties sin consumer (A1 host)"
     )
     track_row = _wait_for_property(root, "trackId", "uuid-1")
     assert track_row is not None
