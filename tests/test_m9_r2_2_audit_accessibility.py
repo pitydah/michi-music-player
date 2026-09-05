@@ -451,7 +451,15 @@ def test_no_hardcoded_visible_strings_in_mixed_files():
     assert 'text: qsTr("Cancel")' in toolbar
     header = read("views/LibraryHeader.qml")
     assert 'label: qsTr("Gallery")' in header
-    assert 'text: qsTr("VIEWS")' in header
+    # The redundant technical "VIEWS" eyebrow was removed by design (the
+    # segmented control is the discoverable control). Guard the i18n
+    # intent: no raw eyebrow may return and the per-tab wayfinding
+    # subtitles must stay translatable.
+    assert 'text: "VIEWS"' not in header
+    assert 'qsTr("Album view")' in header
+    assert 'qsTr("%1 tracks in playback history")' in header
+    assert 'qsTr("%1 recently added tracks")' in header
+    assert 'qsTr("%1 favorites")' in header
     settings = read("views/SettingsView.qml")
     assert 'title: qsTr("Settings")' in settings
     assert 'text: qsTr("High contrast")' in settings
