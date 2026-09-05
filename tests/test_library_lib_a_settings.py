@@ -139,12 +139,10 @@ class TestTrackTableDomainRoundtrip:
     def test_cor02_settings_service_roundtrip(self, tmp_path) -> None:
         """COR02: a través del servicio real (sqlite)."""
 
-        from michi.application.settings_service import SettingsService
         from michi.domain.settings import SettingsState
         from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 
         repo = SQLiteSettingsRepository.open_for_startup(tmp_path / "s.db")
-        service = SettingsService(repo)
         state = SettingsState()
         state.library_views = self._custom()
         repo.save(state)

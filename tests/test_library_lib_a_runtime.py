@@ -400,8 +400,6 @@ class TestSortingMatrixAndSearch:
         assert 'qsTr("%1 songs matching “%2”")' in header
         assert 'qsTr("%1 albums matching “%2”")' in header
         # El status vive DESPUÉS del campo (no lo desplaza).
-        search_field = toolbar[toolbar.index("id: searchInput") :]
-        status = toolbar[toolbar.index('objectName: "searchNoResultsText"') :]
         assert toolbar.index("id: searchInput") < toolbar.index(
             'objectName: "searchNoResultsText"'
         ), "el campo precede al slot de estado"
