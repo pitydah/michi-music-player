@@ -336,6 +336,6 @@ Rectangle {
                 column, !LibraryTrackColumnState.isVisible(column))
         }
         onResetWidthsRequested: LibraryTrackColumnState.resetWidths()
-        onRestoreDefaultsRequested: LibraryTrackColumnState.restoreDefaultColumns()
+        onRestoreDefaultsRequested: LibraryTrackColumnState.restoreDefaults()
     }
 }

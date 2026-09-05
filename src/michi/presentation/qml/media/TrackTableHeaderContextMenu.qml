@@ -42,8 +42,9 @@ MichiMenu {
         customizePopup.open()
     }
 
+    // LIB-A P1 §21/22: el menú emite el INTENT; el singleton (vía el
+    // header) es el único que muta el estado — nunca doble aplicación.
     function applyPreset(name) {
-        LibraryTrackColumnState.applyPreset(name)
         root.presetRequested(name)
     }
 

@@ -46,6 +46,23 @@ QtObject {
     readonly property real durationMinWidth: 76
     readonly property real actionsMinWidth: 74
 
+    // LIB-A P1 §17: UNA función de clamp (interactiva, persistida y de
+    // restore usan la misma) — ningún estado de sesión puede diferir del
+    // estado recargado.
+    readonly property real maxResizableWidth: 720
+
+    function clampWidth(column, value) {
+        if (root[column + "Width"] === undefined || value === undefined
+                || value === null || typeof value !== "number"
+                || !isFinite(value))
+            return value
+        var minimum = root.minimumWidthFor(column)
+        if (column === "artwork")
+            return Math.max(minimum,
+                Math.min(root.artworkMaxWidth, value))
+        return Math.max(minimum, Math.min(root.maxResizableWidth, value))
+    }
+
     property bool artworkVisible: true
     property bool titleVisible: true
     property bool artistVisible: true
@@ -129,9 +146,7 @@ QtObject {
             return
         if (column === "actions")
             return
-        var bounded = Math.max(minimumWidthFor(column), value)
-        if (column === "artwork")
-            bounded = Math.min(root.artworkMaxWidth, bounded)
+        var bounded = root.clampWidth(column, value)
         if (root[column + "Width"] !== bounded) {
             root[column + "Width"] = bounded
             root.configurationChanged()
@@ -145,38 +160,54 @@ QtObject {
                 || root[neighbor + "Width"] === undefined)
             return
         var oldWidth = root[column + "Width"]
-        var requested = Math.max(minimumWidthFor(column), value)
-        if (column === "artwork")
-            requested = Math.min(root.artworkMaxWidth, requested)
+        var requested = root.clampWidth(column, value)
         var delta = requested - oldWidth
         var neighborWidth = root[neighbor + "Width"]
-        var neighborMinimum = minimumWidthFor(neighbor)
-        var compensation = delta > 0
-            ? Math.min(delta, Math.max(0, neighborWidth - neighborMinimum)) : delta
+        var neighborClamped = root.clampWidth(neighbor, neighborWidth - delta)
+        var compensation = neighborWidth - neighborClamped
         root[column + "Width"] = requested
-        root[neighbor + "Width"] = neighborWidth - compensation
-        root.configurationChanged()
+        root[neighbor + "Width"] = neighborClamped
+        if (requested !== oldWidth || neighborClamped !== neighborWidth)
+            root.configurationChanged()
     }
 
-    function resetWidth(column) {
+    function _resetWidth(column, notify) {
         var defaults = {
             artwork: 44, title: 300, artist: 190, album: 230, format: 88,
             sampleRate: 100, bitDepth: 82, dsdRate: 92, bitrate: 90, channels: 82,
             fileSize: 90, genre: 150, composer: 180, year: 68,
             duration: 80, actions: 74
         }
-        if (defaults[column] !== undefined && column !== "actions") {
-            root[column + "Width"] = defaults[column]
-            root.configurationChanged()
+        if (defaults[column] === undefined || column === "actions")
+            return false
+        var value = defaults[column]
+        if (root[column + "Width"] !== value) {
+            root[column + "Width"] = value
+            if (notify)
+                root.configurationChanged()
+            return true
         }
+        return false
     }
 
-    function resetWidths() {
+    function resetWidth(column) {
+        root._resetWidth(column, true)
+    }
+
+    function _resetWidths(notify) {
+        var changed = false
         var columns = ["artwork", "title", "artist", "album", "format",
             "sampleRate", "bitDepth", "dsdRate", "bitrate", "channels", "fileSize",
             "genre", "composer", "year", "duration", "actions"]
         for (var index = 0; index < columns.length; ++index)
-            root.resetWidth(columns[index])
+            changed = root._resetWidth(columns[index], false) || changed
+        if (changed && notify)
+            root.configurationChanged()
+        return changed
+    }
+
+    function resetWidths() {
+        root._resetWidths(true)
     }
 
     // LIB-A P2-H: UNA definición canónica de presets — applyPreset() y
@@ -216,7 +247,7 @@ QtObject {
     // LIB-A §16: presets productivos. El preset fija las columnas de
     // contenido; las exclusiones de perfil (álbum/artista implícitos) las
     // aplica el header con showAlbumColumn/showArtistColumn.
-    function _applyPresetVisible(preset) {
+    function _applyPresetVisible(preset, notify) {
         root.artworkVisible = preset.artwork
         root.artistVisible = preset.artist
         root.albumVisible = preset.album
@@ -234,35 +265,31 @@ QtObject {
         root.actionsVisible = preset.actions
         // title siempre visible (locked).
         root.titleVisible = true
-        root.configurationChanged()
+        if (notify)
+            root.configurationChanged()
     }
 
     function applyPreset(name) {
         var preset = root.presetDefinitions[name]
         if (preset === undefined)
             return false
-        root._applyPresetVisible(preset)
+        root._applyPresetVisible(preset, true)
         return true
     }
 
-    function restoreDefaultColumns() {
-        root.artworkVisible = true
+    // LIB-A P1 §12/13: Restore Defaults = preset Essential (visibilidad)
+    // + TODOS los anchos por defecto + Title visible → UN configurationChanged.
+    function restoreDefaults() {
+        root._applyPresetVisible(root.presetDefinitions["essential"], false)
+        root._resetWidths(false)
         root.titleVisible = true
-        root.artistVisible = true
-        root.albumVisible = true
-        root.formatVisible = true
-        root.sampleRateVisible = false
-        root.bitDepthVisible = false
-        root.dsdRateVisible = false
-        root.bitrateVisible = false
-        root.channelsVisible = false
-        root.fileSizeVisible = false
-        root.genreVisible = false
-        root.composerVisible = false
-        root.yearVisible = false
-        root.durationVisible = true
-        root.actionsVisible = true
         root.configurationChanged()
+        return true
+    }
+
+    // Alias de compatibilidad (callers históricos) — misma semántica real.
+    function restoreDefaultColumns() {
+        return root.restoreDefaults()
     }
 
     function currentPreset() {
