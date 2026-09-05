@@ -1,87 +1,38 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import "../controls"
 import "../media"
 import "../patterns"
+import "../primitives"
 import "../theme"
 
-ListView {
+// FavoritesView — LIB-A §7/24: converged on the shared MichiTrackTable
+// authority. Orden de proyección de membresía preservado.
+MichiTrackTable {
     id: root
     objectName: "favoritesView"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    model: library.favoriteTrackRows
-    clip: true
-    spacing: MichiSpacing.xs
-    boundsBehavior: Flickable.StopAtBounds
-    headerPositioning: ListView.InlineHeader
+    rows: library.favoriteTrackRows
+    playingPath: typeof playback !== "undefined" && playback ? playback.currentPath : ""
+    favoriteTrackIds: library.favoriteTrackIds
+    favoritePaths: library.favoritePaths
+    canFavorite: true
+    canQueue: library.canQueueTracks
+    canNavigateEntities: true
+    sortingEnabled: false
+    // LIB-A §30: empty state TRUTH.
+    emptyTitle: library.searchActive ? qsTr("No matching favorites")
+        : qsTr("No favorites yet")
+    emptyMessage: library.searchActive
+        ? qsTr("Try a different search or clear the current query.")
+        : qsTr("Tap the heart on any track to keep it here.")
+    emptyIcon: "heart"
 
-    ScrollBar.vertical: MichiScrollBar { }
-
-    header: Item {
-        width: root.width
-        height: root.count > 0 ? favoritesTableHeader.implicitHeight : root.height
-
-        TrackTableHeader {
-            id: favoritesTableHeader
-            width: parent.width
-            actionColumnWidth: 32
-            visible: root.count > 0
-        }
-
-        EmptyState {
-            anchors.fill: parent
-            visible: root.count === 0
-            title: qsTr("No favorites yet")
-            message: qsTr("Tap the heart on any track to save it here.")
-            iconName: "heart"
-        }
-    }
-
-    delegate: TrackRow {
-        required property int index
-        required property var modelData
-        width: root.width
-        numberText: String(index + 1)
-        trackId: modelData.trackId || ""
-        filePath: modelData.path || ""
-        title: modelData.title
-        artist: modelData.artist
-        artistKey: modelData.artistKey || ""
-        album: modelData.album
-        albumKey: modelData.albumKey || ""
-        artworkPath: modelData.artworkPath || ""
-        formatKey: modelData.formatKey || "unknown"
-        formatLabel: modelData.formatLabel || modelData.qualityLabel || "UNKNOWN"
-        durationMs: modelData.durationMs
-        quality: modelData.qualityLabel
-        playing: playback.currentPath === modelData.path
-        favorite: true
-        showFavorite: true
-        canQueue: Boolean(modelData.trackId)
-            && modelData.unavailable !== true
-            && library.canQueueTracks
-        canGoToAlbum: albumKey.length > 0
-        canGoToArtist: artistKey.length > 0
-        onActivated: {
-            if (modelData.trackId)
-                library.activate_track_by_id(modelData.trackId)
-            else
-                library.activate_path(modelData.path)
-        }
-        onFavoriteToggled: {
-            if (modelData.trackId)
-                library.toggle_favorite_by_id(modelData.trackId)
-            else
-                library.toggle_favorite(modelData.path)
-        }
-        onQueueRequested: if (modelData.trackId)
-            library.queue_track_by_id(modelData.trackId)
-        onGoToAlbumRequested: if (albumKey.length > 0)
-            library.select_album(albumKey)
-        onGoToArtistRequested: if (artistKey.length > 0)
-            library.select_artist(artistKey)
-    }
+    // TrackId-first (el Bridge resuelve legacy-path:: explícito).
+    onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
+    onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
+    onQueueRequested: trackId => library.queue_track_by_id(trackId)
+    onGoToAlbumRequested: albumKey => library.select_album(albumKey)
+    onGoToArtistRequested: artistKey => library.select_artist(artistKey)
 }

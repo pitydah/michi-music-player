@@ -128,6 +128,7 @@ def test_library_qml_truth_contracts_are_explicit() -> None:
     assert 'root.displayedMode !== "timeline"' in popup
     assert 'iconName: "view-options"' in header
     assert 'iconName: "sliders"' not in header
-    assert "containsHighResolution" in albums
-    filter_body = albums.split("function albumMatchesFilter", 1)[1].split("}", 1)[0]
-    assert "technicalSummary" not in filter_body
+    # LIB-A §36/37: la autoridad de filtro/sort vive en la aplicación —
+    # el QML del AlbumsView ya no filtra localmente (ni por labels).
+    assert "function albumMatchesFilter" not in albums
+    assert "buildPresentationAlbums" not in albums

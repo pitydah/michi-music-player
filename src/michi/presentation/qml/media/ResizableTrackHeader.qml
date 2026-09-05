@@ -17,6 +17,7 @@ Rectangle {
     property string sortColumn: ""
     property bool sortDescending: false
     signal sortRequested(string column)
+    signal sortDirectionRequested(string column, bool descending)
     readonly property string titleResizeNeighbor:
         showArtistColumn && LibraryTrackColumnState.artistVisible ? "artist"
         : showAlbumColumn && LibraryTrackColumnState.albumVisible ? "album"
@@ -56,6 +57,7 @@ Rectangle {
             columnWidth: LibraryTrackColumnState.artworkWidth
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.titleVisible
@@ -64,7 +66,7 @@ Rectangle {
             columnKey: "title"
             columnWidth: root.titleColumnWidth
             resizeBaseWidth: LibraryTrackColumnState.titleWidth
-            sortable: root.sortingEnabled
+            sortable: root.columnSortable(columnKey)
             sortActive: root.sortColumn === columnKey
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
@@ -76,6 +78,9 @@ Rectangle {
                     root.resizeColumn(column, width)
             }
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            // LIB-A P2-A: right-click de Title abre el contexto EXACTO de
+            // la columna (targetColumn = "title" — nunca el global).
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: root.showArtistColumn && LibraryTrackColumnState.artistVisible
@@ -83,12 +88,13 @@ Rectangle {
             label: qsTr("ARTIST")
             columnKey: "artist"
             columnWidth: LibraryTrackColumnState.artistWidth
-            sortable: root.sortingEnabled
+            sortable: root.columnSortable(columnKey)
             sortActive: root.sortColumn === columnKey
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: root.showAlbumColumn && LibraryTrackColumnState.albumVisible
@@ -96,12 +102,13 @@ Rectangle {
             label: qsTr("ALBUM")
             columnKey: "album"
             columnWidth: LibraryTrackColumnState.albumWidth
-            sortable: root.sortingEnabled
+            sortable: root.columnSortable(columnKey)
             sortActive: root.sortColumn === columnKey
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.formatVisible
@@ -109,12 +116,13 @@ Rectangle {
             label: qsTr("FORMAT")
             columnKey: "format"
             columnWidth: LibraryTrackColumnState.formatWidth
-            sortable: root.sortingEnabled
+            sortable: root.columnSortable(columnKey)
             sortActive: root.sortColumn === columnKey
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.sampleRateVisible
@@ -122,8 +130,13 @@ Rectangle {
             label: qsTr("SAMPLE RATE")
             columnKey: "sampleRate"
             columnWidth: LibraryTrackColumnState.sampleRateWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.bitDepthVisible
@@ -131,8 +144,13 @@ Rectangle {
             label: qsTr("BIT DEPTH")
             columnKey: "bitDepth"
             columnWidth: LibraryTrackColumnState.bitDepthWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.dsdRateVisible
@@ -140,8 +158,13 @@ Rectangle {
             label: qsTr("DSD RATE")
             columnKey: "dsdRate"
             columnWidth: LibraryTrackColumnState.dsdRateWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.bitrateVisible
@@ -149,8 +172,13 @@ Rectangle {
             label: qsTr("BITRATE")
             columnKey: "bitrate"
             columnWidth: LibraryTrackColumnState.bitrateWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.channelsVisible
@@ -158,8 +186,13 @@ Rectangle {
             label: qsTr("CHANNELS")
             columnKey: "channels"
             columnWidth: LibraryTrackColumnState.channelsWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.fileSizeVisible
@@ -167,8 +200,13 @@ Rectangle {
             label: qsTr("FILE SIZE")
             columnKey: "fileSize"
             columnWidth: LibraryTrackColumnState.fileSizeWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.genreVisible
@@ -176,8 +214,13 @@ Rectangle {
             label: qsTr("GENRE")
             columnKey: "genre"
             columnWidth: LibraryTrackColumnState.genreWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.composerVisible
@@ -185,8 +228,13 @@ Rectangle {
             label: qsTr("COMPOSER")
             columnKey: "composer"
             columnWidth: LibraryTrackColumnState.composerWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.yearVisible
@@ -194,8 +242,13 @@ Rectangle {
             label: qsTr("YEAR")
             columnKey: "year"
             columnWidth: LibraryTrackColumnState.yearWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: LibraryTrackColumnState.durationVisible
@@ -203,8 +256,13 @@ Rectangle {
             label: qsTr("DURATION")
             columnKey: "duration"
             columnWidth: LibraryTrackColumnState.durationWidth
+            sortable: root.columnSortable(columnKey)
+            sortActive: root.sortColumn === columnKey
+            sortDescending: root.sortDescending
+            onSortRequested: column => root.sortRequested(column)
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
         }
         ResizableHeaderCell {
             visible: root.showActions && LibraryTrackColumnState.actionsVisible
@@ -215,38 +273,69 @@ Rectangle {
             resizable: false
             onResizeRequested: (column, width) => root.resizeColumn(column, width)
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
+            onContextRequested: column => root.openColumnContext(column)
+        }
+        // LIB-A P2-A §36: el contexto GLOBAL vive en la región vacía del
+        // layout (Item hermano, no ancestro) — el right-click de una cell
+        // NUNCA compite con el global (sin doble-open ni overwrite).
+        Item {
+            objectName: "headerEmptyRegion"
+            Layout.fillWidth: true
+            Layout.minimumWidth: MichiSpacing.md
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: {
+                    MichiAccessibility.notePointer()
+                    root.openGlobalContext()
+                }
+            }
         }
     }
 
-    TapHandler {
-        acceptedButtons: Qt.RightButton
-        onTapped: {
-            MichiAccessibility.notePointer()
-            columnsMenu.popup()
-        }
+    // LIB-A §11/12/14: DOS intents contextuales — cell (targetColumn
+    // exacto con sort explícito) y región vacía (configuración global).
+    function openColumnContext(column) {
+        if (column.length === 0)
+            return
+        headerContextMenu.targetColumn = column
+        headerContextMenu.targetLabel = headerContextMenu.columnLabel(column)
+        headerContextMenu.targetSortable = root.sortingEnabled
+            && LibraryTrackColumnState.sortableColumns.indexOf(column) !== -1
+        headerContextMenu.open()
     }
 
-    MichiMenu {
-        id: columnsMenu
-        title: qsTr("Columns")
+    function openGlobalContext() {
+        headerContextMenu.targetColumn = ""
+        headerContextMenu.targetLabel = ""
+        headerContextMenu.targetSortable = false
+        headerContextMenu.open()
+    }
 
-        MenuItem { text: qsTr("Artwork"); checkable: true; checked: LibraryTrackColumnState.artworkVisible; onTriggered: LibraryTrackColumnState.artworkVisible = checked }
-        MenuItem { text: qsTr("Title"); checkable: true; checked: LibraryTrackColumnState.titleVisible; onTriggered: LibraryTrackColumnState.titleVisible = checked }
-        MenuItem { text: qsTr("Artist"); checkable: true; checked: LibraryTrackColumnState.artistVisible; onTriggered: LibraryTrackColumnState.artistVisible = checked }
-        MenuItem { text: qsTr("Album"); checkable: true; checked: LibraryTrackColumnState.albumVisible; onTriggered: LibraryTrackColumnState.albumVisible = checked }
-        MenuItem { text: qsTr("Format"); checkable: true; checked: LibraryTrackColumnState.formatVisible; onTriggered: LibraryTrackColumnState.formatVisible = checked }
-        MenuItem { text: qsTr("Sample Rate"); checkable: true; checked: LibraryTrackColumnState.sampleRateVisible; onTriggered: LibraryTrackColumnState.sampleRateVisible = checked }
-        MenuItem { text: qsTr("Bit Depth"); checkable: true; checked: LibraryTrackColumnState.bitDepthVisible; onTriggered: LibraryTrackColumnState.bitDepthVisible = checked }
-        MenuItem { text: qsTr("DSD Rate"); checkable: true; checked: LibraryTrackColumnState.dsdRateVisible; onTriggered: LibraryTrackColumnState.dsdRateVisible = checked }
-        MenuItem { text: qsTr("Bitrate"); checkable: true; checked: LibraryTrackColumnState.bitrateVisible; onTriggered: LibraryTrackColumnState.bitrateVisible = checked }
-        MenuItem { text: qsTr("Channels"); checkable: true; checked: LibraryTrackColumnState.channelsVisible; onTriggered: LibraryTrackColumnState.channelsVisible = checked }
-        MenuItem { text: qsTr("File Size"); checkable: true; checked: LibraryTrackColumnState.fileSizeVisible; onTriggered: LibraryTrackColumnState.fileSizeVisible = checked }
-        MenuItem { text: qsTr("Genre"); checkable: true; checked: LibraryTrackColumnState.genreVisible; onTriggered: LibraryTrackColumnState.genreVisible = checked }
-        MenuItem { text: qsTr("Composer"); checkable: true; checked: LibraryTrackColumnState.composerVisible; onTriggered: LibraryTrackColumnState.composerVisible = checked }
-        MenuItem { text: qsTr("Year"); checkable: true; checked: LibraryTrackColumnState.yearVisible; onTriggered: LibraryTrackColumnState.yearVisible = checked }
-        MenuItem { text: qsTr("Duration"); checkable: true; checked: LibraryTrackColumnState.durationVisible; onTriggered: LibraryTrackColumnState.durationVisible = checked }
-        MichiSeparator { }
-        MenuItem { text: qsTr("Reset Column Widths"); onTriggered: LibraryTrackColumnState.resetWidths() }
-        MenuItem { text: qsTr("Restore Default Columns"); onTriggered: LibraryTrackColumnState.restoreDefaultColumns() }
+    // LIB-A P2-B: UNA predicción de columnas sortables (aplicación +
+    // singleton) — nunca conocimiento duplicado por cell.
+    function columnSortable(column) {
+        return root.sortingEnabled
+            && LibraryTrackColumnState.sortableColumns.indexOf(column) !== -1
+    }
+
+    TrackTableHeaderContextMenu {
+        id: headerContextMenu
+
+        onSortAscendingRequested: column =>
+            root.sortDirectionRequested(column, false)
+        onSortDescendingRequested: column =>
+            root.sortDirectionRequested(column, true)
+        onHideColumnRequested: column =>
+            LibraryTrackColumnState.setVisible(column, false)
+        onResetWidthRequested: column =>
+            LibraryTrackColumnState.resetWidth(column)
+        onPresetRequested: name => LibraryTrackColumnState.applyPreset(name)
+        onToggleColumnRequested: column => {
+            // Title está locked en el singleton (no-op defensivo).
+            LibraryTrackColumnState.setVisible(
+                column, !LibraryTrackColumnState.isVisible(column))
+        }
+        onResetWidthsRequested: LibraryTrackColumnState.resetWidths()
+        onRestoreDefaultsRequested: LibraryTrackColumnState.restoreDefaults()
     }
 }

@@ -193,6 +193,13 @@ class AlbumRef:
     genres: tuple[str, ...] = ()
     composers: tuple[str, ...] = ()
     technical_summary: str = ""
+    # LIB-A §38/P2-I: predicado FACTUAL del filtro de browse hi-res —
+    # (DSD OR bit_depth>=24 OR sample_rate>=96000), derivado con
+    # build_album_technical_facts en el model; nunca inferido de labels.
+    # Esto NO es un juicio de calidad de audio: no afirma nada sobre
+    # master quality, dynamic range, bit-perfect, comportamiento DAC o
+    # superioridad audible.
+    contains_high_resolution: bool = False
 
 
 @dataclass(frozen=True)
@@ -522,6 +529,9 @@ def build_music_model(tracks) -> MusicModel:
                     genres=entry["genres"],
                     composers=entry["composers"],
                     technical_summary=entry["technical_summary"],
+                    contains_high_resolution=build_album_technical_facts(
+                        entry["tracks"]
+                    ).contains_high_resolution,
                 )
                 for entry in album_entries.values()
             ),

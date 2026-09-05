@@ -10,13 +10,14 @@ Item {
     property string currentTab: "songs"
     signal tabRequested(string tab)
     readonly property var tabs: [
-        { value: "songs", label: "Songs", icon: "track" },
-        { value: "albums", label: "Albums", icon: "album" },
-        { value: "artists", label: "Artists", icon: "artist" },
-        { value: "genres", label: "Genres", icon: "genre" },
-        { value: "favorites", label: "Favorites", icon: "heart" },
-        { value: "history", label: "History", icon: "history" },
-        { value: "recently", label: "Recently Added", icon: "recent" }
+        // LIB-A §41: labels traducidos (los valores internos no cambian).
+        { value: "songs", label: qsTr("Songs"), icon: "track" },
+        { value: "albums", label: qsTr("Albums"), icon: "album" },
+        { value: "artists", label: qsTr("Artists"), icon: "artist" },
+        { value: "genres", label: qsTr("Genres"), icon: "genre" },
+        { value: "favorites", label: qsTr("Favorites"), icon: "heart" },
+        { value: "history", label: qsTr("History"), icon: "history" },
+        { value: "recently", label: qsTr("Recently Added"), icon: "recent" }
     ]
 
     objectName: "libraryNavigationRail"

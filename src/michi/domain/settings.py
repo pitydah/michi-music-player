@@ -81,6 +81,155 @@ class StudioListPreferences:
     format_column: bool = True
 
 
+# LIB-A P1-A: estado de columnas de la tabla de tracks, tipado en el
+# domain (nunca dicts arbitrarios). Title es estructural: title_visible
+# no puede deserializar a False. Widths se clampean al parsear (bounds
+# idénticos a los del resize interactivo).
+_TRACK_TABLE_MIN_WIDTHS = {
+    "artwork": 30,
+    "title": 220,
+    "artist": 120,
+    "album": 140,
+    "format": 68,
+    "sampleRate": 84,
+    "bitDepth": 70,
+    "dsdRate": 74,
+    "bitrate": 74,
+    "channels": 70,
+    "fileSize": 74,
+    "genre": 100,
+    "composer": 120,
+    "year": 58,
+    "duration": 76,
+}
+_TRACK_TABLE_MAX_WIDTH = 720  # todas las resizables salvo artwork
+_TRACK_TABLE_ARTWORK_MAX = 52
+_TRACK_TABLE_VISIBLE_COLUMNS = (
+    "artwork",
+    "title",
+    "artist",
+    "album",
+    "format",
+    "sampleRate",
+    "bitDepth",
+    "dsdRate",
+    "bitrate",
+    "channels",
+    "fileSize",
+    "genre",
+    "composer",
+    "year",
+    "duration",
+    "actions",
+)
+_TRACK_TABLE_PRESETS = frozenset({"essential", "audiophile", "metadata", "minimal", ""})
+_TRACK_TABLE_DEFAULT_VISIBLE = {
+    "artwork": True,
+    "title": True,
+    "artist": True,
+    "album": True,
+    "format": True,
+    "sampleRate": False,
+    "bitDepth": False,
+    "dsdRate": False,
+    "bitrate": False,
+    "channels": False,
+    "fileSize": False,
+    "genre": False,
+    "composer": False,
+    "year": False,
+    "duration": True,
+    "actions": True,
+}
+_TRACK_TABLE_DEFAULT_WIDTHS = {
+    "artwork": 44,
+    "title": 300,
+    "artist": 190,
+    "album": 230,
+    "format": 88,
+    "sampleRate": 100,
+    "bitDepth": 82,
+    "dsdRate": 92,
+    "bitrate": 90,
+    "channels": 82,
+    "fileSize": 90,
+    "genre": 150,
+    "composer": 180,
+    "year": 68,
+    "duration": 80,
+}
+
+
+_TRACK_TABLE_FIELD = {
+    "sampleRate": "sample_rate",
+    "bitDepth": "bit_depth",
+    "dsdRate": "dsd_rate",
+    "fileSize": "file_size",
+}
+
+
+def _track_table_field(column: str) -> str:
+    return _TRACK_TABLE_FIELD.get(column, column)
+
+
+def _clamp_track_table_width(column: str, value: float) -> int:
+    """Único validador de anchos persistidos (bounds del resize)."""
+    if column == "artwork":
+        return int(
+            max(
+                _TRACK_TABLE_MIN_WIDTHS["artwork"], min(_TRACK_TABLE_ARTWORK_MAX, value)
+            )
+        )
+    minimum = _TRACK_TABLE_MIN_WIDTHS.get(column, 68)
+    return int(max(minimum, min(_TRACK_TABLE_MAX_WIDTH, value)))
+
+
+@dataclass(frozen=True)
+class LibraryTrackTablePreferences:
+    """Preferencias de columnas de la tabla de tracks (LIB-A P1-A)."""
+
+    preset: str = "essential"
+    artwork_visible: bool = True
+    title_visible: bool = True
+    artist_visible: bool = True
+    album_visible: bool = True
+    format_visible: bool = True
+    sample_rate_visible: bool = False
+    bit_depth_visible: bool = False
+    dsd_rate_visible: bool = False
+    bitrate_visible: bool = False
+    channels_visible: bool = False
+    file_size_visible: bool = False
+    genre_visible: bool = False
+    composer_visible: bool = False
+    year_visible: bool = False
+    duration_visible: bool = True
+    actions_visible: bool = True
+    artwork_width: int = 44
+    title_width: int = 300
+    artist_width: int = 190
+    album_width: int = 230
+    format_width: int = 88
+    sample_rate_width: int = 100
+    bit_depth_width: int = 82
+    dsd_rate_width: int = 92
+    bitrate_width: int = 90
+    channels_width: int = 82
+    file_size_width: int = 90
+    genre_width: int = 150
+    composer_width: int = 180
+    year_width: int = 68
+    duration_width: int = 80
+
+    @classmethod
+    def _default_visible(cls, column: str) -> bool:
+        return _TRACK_TABLE_DEFAULT_VISIBLE.get(column, False)
+
+    @classmethod
+    def _default_width(cls, column: str) -> int:
+        return _TRACK_TABLE_DEFAULT_WIDTHS.get(column, 80)
+
+
 @dataclass(frozen=True)
 class LibraryViewPreferences:
     active_mode: str = "grid"
@@ -93,6 +242,10 @@ class LibraryViewPreferences:
     chronology: ChronologyPreferences = field(default_factory=ChronologyPreferences)
     editorial: EditorialPreferences = field(default_factory=EditorialPreferences)
     studio_list: StudioListPreferences = field(default_factory=StudioListPreferences)
+    # LIB-A P1-A: estado de columnas de la tabla de tracks (persistido).
+    track_table: LibraryTrackTablePreferences = field(
+        default_factory=LibraryTrackTablePreferences
+    )
 
 
 @dataclass
@@ -169,6 +322,26 @@ def library_view_preferences_to_json(preferences: LibraryViewPreferences) -> str
                 "tracksColumn": preferences.studio_list.tracks_column,
                 "durationColumn": preferences.studio_list.duration_column,
                 "formatColumn": preferences.studio_list.format_column,
+            },
+            # LIB-A P1-A: estado de la tabla de tracks (preset + visibles
+            # + widths) — el dominio lo tipa, nunca dicts arbitrarios.
+            "trackTable": {
+                "preset": preferences.track_table.preset,
+                "visible": {
+                    column: getattr(
+                        preferences.track_table,
+                        f"{_track_table_field(column)}_visible",
+                    )
+                    for column in _TRACK_TABLE_VISIBLE_COLUMNS
+                },
+                "widths": {
+                    column: getattr(
+                        preferences.track_table,
+                        f"{_track_table_field(column)}_width",
+                    )
+                    for column in _TRACK_TABLE_VISIBLE_COLUMNS
+                    if column != "actions"
+                },
             },
         },
         separators=(",", ":"),
@@ -319,8 +492,57 @@ def library_view_preferences_from_json(
             duration_column=flag(studio, "durationColumn", True),
             format_column=flag(studio, "formatColumn", True),
         ),
+        track_table=_decode_track_table(parsed.get("trackTable")),
     )
     return preferences, malformed
+
+
+def _decode_track_table(raw: object) -> LibraryTrackTablePreferences:
+    """Field-isolated decode del estado de la tabla (LIB-A P1-A).
+
+    - sin trackTable → defaults seguros;
+    - campo ausente → default SOLO para ese campo;
+    - bool/width malformado → default SOLO para ese campo;
+    - claves futuras desconocidas ignoradas;
+    - Title NUNCA deserializa oculto (estructural);
+    - widths clampeados con el mismo rango del resize interactivo."""
+    if not isinstance(raw, dict):
+        return LibraryTrackTablePreferences()
+
+    visible_raw = raw.get("visible", {})
+    widths_raw = raw.get("widths", {})
+    if not isinstance(visible_raw, dict):
+        visible_raw = {}
+    if not isinstance(widths_raw, dict):
+        widths_raw = {}
+
+    preset = raw.get("preset", "essential")
+    if not isinstance(preset, str) or preset not in _TRACK_TABLE_PRESETS:
+        preset = "essential"
+
+    kwargs: dict[str, object] = {"preset": preset}
+    for column in _TRACK_TABLE_VISIBLE_COLUMNS:
+        field = _track_table_field(column)
+        if column == "title":
+            # Estructural: nunca oculto.
+            kwargs["title_visible"] = True
+            continue
+        default = LibraryTrackTablePreferences._default_visible(column)
+        value = visible_raw.get(column, default)
+        if isinstance(value, bool):
+            kwargs[f"{field}_visible"] = value
+        else:
+            kwargs[f"{field}_visible"] = default
+    for column in _TRACK_TABLE_VISIBLE_COLUMNS:
+        field = _track_table_field(column)
+        if column == "actions":
+            continue  # ancho estructural (diseño actual: fijo)
+        default = LibraryTrackTablePreferences._default_width(column)
+        value = widths_raw.get(column, default)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            value = default
+        kwargs[f"{field}_width"] = _clamp_track_table_width(column, float(value))
+    return LibraryTrackTablePreferences(**kwargs)
 
 
 def window_geometry_to_json(geometry: WindowGeometry) -> str:

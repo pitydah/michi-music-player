@@ -117,7 +117,10 @@ def test_album_query_owns_filtering_and_sorting_without_quality_inference() -> N
     assert [album.title for album in query.project(albums)] == ["Alpha", "Beta"]
     assert query.set_filter_mode("artwork") is True
     assert [album.key for album in query.project(albums)] == ["a"]
-    assert query.set_filter_mode("hires") is False
+    # LIB-A §38: el mismatch hi-res quedó cerrado — la aplicación soporta
+    # el filtro con facts canónicos (AlbumRef.contains_high_resolution).
+    assert query.set_filter_mode("hires") is True
+    assert [album.key for album in query.project(albums)] == []
     assert query.set_filter_mode("all") is True
     assert query.set_sort_mode("artist") is True
     assert [album.artist for album in query.project(albums)] == ["Alpha", "Zulu"]
@@ -161,8 +164,13 @@ def test_column_state_is_the_single_geometry_authority() -> None:
         "src/michi/presentation/qml/media/ResizableHeaderCell.qml"
     ).read_text()
     assert "Qt.SplitHCursor" in resize_cell
-    assert "Reset Column Widths" in header
-    assert "Restore Default Columns" in header
+    # LIB-A §11: el menú de la cabecera es el componente premium.
+    context_menu = Path(
+        "src/michi/presentation/qml/media/TrackTableHeaderContextMenu.qml"
+    ).read_text()
+    assert "Reset Column Widths" in context_menu
+    assert "Restore Defaults" in context_menu
+    assert "columnsMenu" not in header
 
 
 def test_shared_track_table_is_used_by_primary_library_track_views() -> None:

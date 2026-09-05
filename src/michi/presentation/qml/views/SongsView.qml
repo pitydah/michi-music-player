@@ -30,8 +30,16 @@ MichiTrackTable {
     // resultado observable. Rehabilitar canInspect solo con un consumer.
     canInspect: false
     canNavigateEntities: true
-    emptyTitle: qsTr("No songs in your library")
-    emptyMessage: qsTr("Scan a music folder from the toolbar to populate your library.")
+    // LIB-A §30: empty state TRUTH — search/género vacíos ≠ library vacía.
+    emptyTitle: library.searchActive ? qsTr("No matching songs")
+        : library.genreFilterActive
+            ? qsTr("No tracks in %1").arg(library.selectedGenreName)
+            : qsTr("No songs in your library")
+    emptyMessage: library.searchActive
+        ? qsTr("Try a different search or clear the current query.")
+        : library.genreFilterActive
+            ? qsTr("Clear the genre filter or choose another genre.")
+            : qsTr("Scan a music folder from the toolbar to populate your library.")
     emptyIcon: "track"
 
     onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
@@ -45,4 +53,7 @@ MichiTrackTable {
     onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     onGoToArtistRequested: artistKey => library.select_artist(artistKey)
     onSortRequested: column => library.sort_tracks(column)
+    // LIB-A §15: dirección explícita del menú del header → aplicación.
+    onSortDirectionRequested: (column, descending) =>
+        library.set_track_sort(column, descending)
 }

@@ -230,8 +230,7 @@ def test_library_delegates_use_shared_media_rows() -> None:
         assert "MichiTrackTable" in _text(view) or "ListView" in _text(view)
     assert "ArtistPortraitCard" in _text("views/ArtistsView.qml")
     assert 'objectName: "artistGridView"' in _text("views/ArtistsView.qml")
-    for view in ("views/GenresView.qml", "views/FoldersView.qml"):
-        assert "delegate: MichiEntityRow" in _text(view)
+    assert "delegate: MichiEntityRow" in _text("views/GenresView.qml")
     assert "delegate: MichiAlbumRow" in _text("views/AlbumListView.qml")
 
 
@@ -482,18 +481,22 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
 
 
 def test_audio_surfaces_share_a_semantic_table_header() -> None:
-    """POST-MERGE SEMANTIC RECOVERY: Songs vuelve a la tabla compartida
-    (MichiTrackTable → TrackRow con column semantics); las demás vistas
-    premium mantienen TrackTableHeader."""
-    assert (QML / "media" / "TrackTableHeader.qml").is_file()
+    """LIB-A §7/83: TODAS las superficies de tracks convergen en la
+    autoridad única MichiTrackTable → TrackRow + ResizableTrackHeader.
+    TrackTableHeader legacy quedó sin consumers productivos (borrado)."""
+    assert not (QML / "media" / "TrackTableHeader.qml").exists()
     table = _text("media/MichiTrackTable.qml")
-    assert "TrackTableHeader" in table or "TrackRow" in table
+    assert "TrackRow" in table
+    assert "ResizableTrackHeader" in table
     for view in (
+        "views/SongsView.qml",
         "views/FavoritesView.qml",
         "views/HistoryView.qml",
         "views/RecentlyAddedView.qml",
+        "views/AlbumDetailView.qml",
+        "views/ArtistDetailView.qml",
     ):
-        assert "TrackTableHeader" in _text(view) or "MichiTrackTable" in _text(view)
+        assert "MichiTrackTable" in _text(view), view
     row = _text("media/TrackRow.qml")
     assert "showArtistColumn" in row
     assert "showAlbumColumn" in row

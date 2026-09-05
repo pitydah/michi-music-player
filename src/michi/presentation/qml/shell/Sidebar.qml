@@ -167,10 +167,10 @@ MichiGlassSurface {
                     Layout.preferredWidth: 7
                     Layout.preferredHeight: 7
                     radius: 4
-                    color: (typeof library !== "undefined" && library && library.fileCount > 0)
+                    color: (typeof library !== "undefined" && library && library.libraryTrackCount > 0)
                         ? MichiPalette.auroraGreen : MichiPalette.textMuted
                     Accessible.role: Accessible.StaticText
-                    Accessible.name: (typeof library !== "undefined" && library && library.fileCount > 0)
+                    Accessible.name: (typeof library !== "undefined" && library && library.libraryTrackCount > 0)
                         ? "Library ready" : "Library empty"
                 }
             }
@@ -201,11 +201,11 @@ MichiGlassSurface {
                     Layout.preferredWidth: 6
                     Layout.preferredHeight: 6
                     radius: 3
-                    color: (typeof library !== "undefined" && library && library.fileCount > 0)
+                    color: (typeof library !== "undefined" && library && library.libraryTrackCount > 0)
                         ? MichiPalette.auroraGreen : MichiPalette.textMuted
                 }
                 MichiText {
-                    text: (typeof library !== "undefined" && library && library.fileCount > 0)
+                    text: (typeof library !== "undefined" && library && library.libraryTrackCount > 0)
                         ? "Local · " + library.fileCount + " tracks"
                         : "Local · Ready"
                     role: "caption"

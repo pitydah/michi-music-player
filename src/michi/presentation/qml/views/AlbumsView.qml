@@ -22,9 +22,13 @@ ColumnLayout {
     property bool transitionsReady: false
     signal sortModeRequested(string mode)
     signal sortDirectionRequested(bool descending)
-    readonly property var presentationAlbums: buildPresentationAlbums(library.albums)
+    // LIB-A §36/37: UNA autoridad — library.albums ya es la proyección
+    // de la aplicación (filtro semántico + sort del query service). El
+    // QML solo aplica estrategias de PRESENTACIÓN del view (cronología
+    // del timeline, ranking editorial del magazine).
+    readonly property var presentationAlbums: library.albums
     readonly property var presentationTimelineAlbums: buildTimelineAlbums(
-        library.timelineAlbums, presentationAlbums)
+        library.timelineAlbums, library.albums)
     readonly property var editorialAlbums: buildEditorialAlbums(presentationAlbums)
     readonly property var currentBrowseAlbum: findAlbumByKey(
         browseState ? browseState.currentKey : "")
@@ -56,45 +60,6 @@ ColumnLayout {
 
     function normalized(value) {
         return String(value || "").toLocaleLowerCase()
-    }
-
-    function albumMatchesFilter(album) {
-        switch (albumFilterMode) {
-            case "artwork": return Boolean(album.hasArtwork)
-            case "missingArtwork": return !album.hasArtwork
-            case "dated": return Number(album.year || 0) > 0
-            case "undated": return Number(album.year || 0) <= 0
-            case "hires": {
-                return Boolean(album.containsHighResolution)
-            }
-            default: return true
-        }
-    }
-
-    function compareAlbums(left, right) {
-        var result = 0
-        if (albumSortMode === "artist")
-            result = normalized(left.artist).localeCompare(normalized(right.artist))
-        else if (albumSortMode === "year")
-            result = Number(left.year || 0) - Number(right.year || 0)
-        else if (albumSortMode === "tracks")
-            result = Number(left.trackCount || 0) - Number(right.trackCount || 0)
-        else if (albumSortMode === "duration")
-            result = Number(left.durationMs || 0) - Number(right.durationMs || 0)
-        else
-            result = normalized(left.title).localeCompare(normalized(right.title))
-        if (result === 0)
-            result = normalized(left.title).localeCompare(normalized(right.title))
-        if (result === 0)
-            result = normalized(left.key).localeCompare(normalized(right.key))
-        return albumSortDescending ? -result : result
-    }
-
-    function buildPresentationAlbums(source) {
-        var rows = source ? source.slice() : []
-        rows = rows.filter(albumMatchesFilter)
-        rows.sort(compareAlbums)
-        return rows
     }
 
     function buildTimelineAlbums(source, visibleAlbums) {
@@ -267,12 +232,12 @@ ColumnLayout {
         visible: library.selectedAlbumKey === ""
             && root.presentationAlbums.length === 0
         title: library.searchActive || root.albumFilterMode !== "all"
-            ? "No matching albums" : "No albums yet"
+            ? qsTr("No matching albums") : qsTr("No albums yet")
         message: library.searchActive
-            ? "Try a different search or clear the current query."
+            ? qsTr("Try a different search or clear the current query.")
             : root.albumFilterMode !== "all"
-                ? "Change or clear the active album filter."
-                : "Scan a music folder to build your album library."
+                ? qsTr("Change or clear the active album filter.")
+                : qsTr("Scan a music folder to build your album library.")
         iconName: "library"
     }
 

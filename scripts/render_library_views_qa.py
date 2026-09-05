@@ -12,6 +12,7 @@ import tempfile
 from pathlib import Path
 
 from PySide6.QtCore import (
+    Q_ARG,
     Property,
     QCoreApplication,
     QEvent,
@@ -202,16 +203,64 @@ class QaLibrary(QObject):
         super().__init__()
         self._state = state
         self._albums = album_rows(state=state, artwork_paths=artwork_paths)
+        self._filter_mode = "all"
+
+    def _projected(self):
+        """LIB-A §37: el harness replica la proyección filtrada de la
+        aplicación (LibraryAlbumQueryService) sobre los rows canónicos."""
+        mode = self._filter_mode
+        if mode == "all":
+            return list(self._albums)
+        rows = [row for row in self._albums if row.get("year", 0) > 0]
+        if mode == "artwork":
+            return [row for row in self._albums if row.get("hasArtwork")]
+        if mode == "missingArtwork":
+            return [row for row in self._albums if not row.get("hasArtwork")]
+        if mode == "dated":
+            return [row for row in self._albums if row.get("year", 0) > 0]
+        if mode == "undated":
+            return [row for row in self._albums if row.get("year", 0) <= 0]
+        if mode == "hires":
+            return [
+                row
+                for row in self._albums
+                if row.get("containsHighResolution") or row.get("containsDsd")
+            ]
+        del rows
+        return list(self._albums)
 
     @Property(list, notify=library_changed)
     def albums(self):
-        return self._albums
+        return self._projected()
+
+    @Slot(str)
+    def set_album_filter_mode(self, mode: str) -> None:
+        if mode not in (
+            "all",
+            "artwork",
+            "missingArtwork",
+            "dated",
+            "undated",
+            "hires",
+        ):
+            return
+        self._filter_mode = mode
+        self.library_changed.emit()
 
     @Property(list, notify=library_changed)
     def timelineAlbums(self):
         return sorted(self._albums, key=lambda row: (-row["year"], row["title"]))
 
     fileCount = Property(int, lambda self: 864, notify=library_changed)
+    # LIB-A: los checks ESTRUCTURALES usan libraryTrackCount; fileCount es
+    # la proyección filtrada. El harness modela ambos (864 estructural).
+    libraryTrackCount = Property(int, lambda self: 864, notify=library_changed)
+    selectedGenreKey = Property(str, lambda self: "", notify=library_changed)
+    selectedGenreName = Property(str, lambda self: "", notify=library_changed)
+    genreFilterActive = Property(bool, lambda self: False, notify=library_changed)
+    filteredAlbumCount = Property(
+        int, lambda self: len(self._albums), notify=library_changed
+    )
     albumCount = Property(int, lambda self: len(self._albums), notify=library_changed)
     artistCount = Property(int, lambda self: 11, notify=library_changed)
     currentDir = Property(str, lambda self: "/qa/music", notify=library_changed)
@@ -600,7 +649,13 @@ def _render_frame(
 
         albums_host = root.findChild(QObject, "albumsView")
         if state == "filter-active" and albums_host is not None:
-            albums_host.setProperty("albumFilterMode", "hires")
+            # LIB-A §37: el filtro pasa por el flujo productivo (request →
+            # Bridge → LibraryAlbumQueryService 'hires') — nunca por la
+            # property espejo del view.
+            QMetaObject.invokeMethod(
+                root, "requestAlbumFilter", Q_ARG("QVariant", "hires")
+            )
+            QCoreApplication.processEvents()
             QCoreApplication.processEvents()
 
         active = root.findChild(QObject, ACTIVE_NAMES[mode])

@@ -94,15 +94,15 @@ PageHeader {
     // so users always know where they are inside the library.
     function tabTitle() {
         switch (root.currentTab) {
-            case "albums": return "Albums"
-            case "artists": return "Artists"
-            case "genres": return "Genres"
-            case "playlists": return "Playlists"
-            case "favorites": return "Favorites"
-            case "history": return "History"
-            case "recently": return "Recently Added"
-            case "folders": return "Folders"
-            default: return "Songs"
+            case "albums": return qsTr("Albums")
+            case "artists": return qsTr("Artists")
+            case "genres": return qsTr("Genres")
+            case "playlists": return qsTr("Playlists")
+            case "favorites": return qsTr("Favorites")
+            case "history": return qsTr("History")
+            case "recently": return qsTr("Recently Added")
+
+            default: return qsTr("Songs")
         }
     }
 
@@ -126,15 +126,46 @@ PageHeader {
         if (typeof library === "undefined" || !library)
             return qsTr("Your local music collection")
         if (library.searchActive) {
-            if (root.currentTab === "albums")
+            // LIB-A §51: subtítulo con conteo SCOPED del tab activo —
+            // nunca mezclar conteos heterogéneos.
+            switch (root.currentTab) {
+            case "albums":
                 return qsTr("%1 albums matching “%2”")
-                    .arg(library.searchAlbumCount).arg(library.searchQuery)
-            return qsTr("%1 results matching “%2”")
-                .arg(library.searchTotalCount).arg(library.searchQuery)
+                    .arg(library.filteredAlbumCount).arg(library.searchQuery)
+            case "artists":
+                return qsTr("%1 artists matching “%2”")
+                    .arg(library.searchArtistCount).arg(library.searchQuery)
+            case "genres":
+                return qsTr("%1 genres matching “%2”")
+                    .arg(library.searchGenreCount).arg(library.searchQuery)
+            case "favorites":
+                return qsTr("%1 favorites matching “%2”")
+                    .arg((library.favoriteTrackRows || []).length)
+                    .arg(library.searchQuery)
+            case "history":
+                return qsTr("%1 history items matching “%2”")
+                    .arg((library.historyTrackRows || []).length)
+                    .arg(library.searchQuery)
+            case "recently":
+                return qsTr("%1 recently added tracks matching “%2”")
+                    .arg((library.recentlyAddedTrackRows || []).length)
+                    .arg(library.searchQuery)
+            default:
+                return qsTr("%1 songs matching “%2”")
+                    .arg(library.searchTrackCount).arg(library.searchQuery)
+            }
         }
-        if (library.fileCount > 0)
+        // LIB-A §35: scope-correct counts — nunca mezclar proyecciones
+        // filtradas con totales sin etiquetas.
+        if (library.genreFilterActive)
+            return qsTr("%1 tracks in %2")
+                .arg(library.fileCount).arg(library.selectedGenreName)
+        if (root.albumFilterMode !== "all")
+            return qsTr("%1 of %2 albums")
+                .arg(library.filteredAlbumCount).arg(library.albumCount)
+        if (library.libraryTrackCount > 0)
             return qsTr("%1 tracks · %2 albums · %3 artists")
-                .arg(library.fileCount).arg(library.albumCount).arg(library.artistCount)
+                .arg(library.libraryTrackCount).arg(library.albumCount).arg(library.artistCount)
         return qsTr("Your local music collection")
     }
 

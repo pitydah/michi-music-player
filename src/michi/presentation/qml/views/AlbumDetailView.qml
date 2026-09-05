@@ -13,34 +13,45 @@ ColumnLayout {
 
     property string addTargetPath: ""
     property var inspectedTrack: null
+    property int inspectedIndex: -1
+
+    function _albumIndexFor(row) {
+        for (var i = 0; i < library.albumTracks.length; ++i) {
+            if (library.albumTracks[i].path === row.path)
+                return i
+        }
+        return -1
+    }
     readonly property var albumFacts: library.albumPresentation || ({})
     AlbumPaletteBinding { id: paletteBinding; album: root.albumFacts }
     readonly property var albumFactRows: [
-        { label: "Format", value: albumFacts.codecs && albumFacts.codecs.length
-            ? albumFacts.codecs.join(" · ") : "Unknown" },
-        { label: "Sample rate", value: albumFacts.maxSampleRateHz > 0
-            ? (albumFacts.maxSampleRateHz / 1000) + " kHz" : "Unknown" },
-        { label: "Bit depth", value: albumFacts.maxBitDepth > 0
-            ? albumFacts.maxBitDepth + "-bit" : "Unknown" },
-        { label: "Channels", value: albumFacts.maxChannels > 0
-            ? String(albumFacts.maxChannels) : "Unknown" },
-        { label: "Discs", value: albumFacts.discCount > 0
-            ? String(albumFacts.discCount) : "Unknown" },
-        { label: "Classification", value: albumFacts.containsDsd ? "DSD"
-            : albumFacts.containsHighResolution ? "High-resolution PCM"
-            : albumFacts.technicalState === "homogeneous" ? "Consistent"
-            : albumFacts.technicalState === "mixed" ? "Mixed formats" : "Standard" }
+        { label: qsTr("Format"), value: albumFacts.codecs && albumFacts.codecs.length
+            ? albumFacts.codecs.join(" · ") : qsTr("Unknown") },
+        { label: qsTr("Sample rate"), value: albumFacts.maxSampleRateHz > 0
+            ? (albumFacts.maxSampleRateHz / 1000) + " kHz" : qsTr("Unknown") },
+        { label: qsTr("Bit depth"), value: albumFacts.maxBitDepth > 0
+            ? albumFacts.maxBitDepth + "-bit" : qsTr("Unknown") },
+        { label: qsTr("Channels"), value: albumFacts.maxChannels > 0
+            ? String(albumFacts.maxChannels) : qsTr("Unknown") },
+        { label: qsTr("Discs"), value: albumFacts.discCount > 0
+            ? String(albumFacts.discCount) : qsTr("Unknown") },
+        { label: qsTr("Classification"), value: albumFacts.containsDsd
+            ? qsTr("DSD")
+            : albumFacts.containsHighResolution ? qsTr("High-resolution PCM")
+            : albumFacts.technicalState === "homogeneous" ? qsTr("Consistent")
+            : albumFacts.technicalState === "mixed" ? qsTr("Mixed formats")
+            : qsTr("Standard") }
     ]
     readonly property var inspectorRows: inspectedTrack ? [
-        { label: "Format", value: inspectedTrack.codec || "Unknown" },
-        { label: "Sample rate", value: inspectedTrack.sampleRateHz > 0
-            ? (inspectedTrack.sampleRateHz / 1000) + " kHz" : "Unknown" },
-        { label: "Bit depth", value: inspectedTrack.bitDepth > 0
-            ? inspectedTrack.bitDepth + "-bit" : "Unknown" },
-        { label: "Channels", value: inspectedTrack.channels > 0
-            ? String(inspectedTrack.channels) : "Unknown" },
-        { label: "File size", value: root.formatFileSize(inspectedTrack.fileSize) },
-        { label: "Path", value: inspectedTrack.path }
+        { label: qsTr("Format"), value: inspectedTrack.codec || qsTr("Unknown") },
+        { label: qsTr("Sample rate"), value: inspectedTrack.sampleRateHz > 0
+            ? (inspectedTrack.sampleRateHz / 1000) + " kHz" : qsTr("Unknown") },
+        { label: qsTr("Bit depth"), value: inspectedTrack.bitDepth > 0
+            ? inspectedTrack.bitDepth + "-bit" : qsTr("Unknown") },
+        { label: qsTr("Channels"), value: inspectedTrack.channels > 0
+            ? String(inspectedTrack.channels) : qsTr("Unknown") },
+        { label: qsTr("File size"), value: root.formatFileSize(inspectedTrack.fileSize) },
+        { label: qsTr("Path"), value: inspectedTrack.path }
     ] : []
 
     visible: library.selectedAlbumKey !== ""
@@ -66,7 +77,7 @@ ColumnLayout {
 
     function formatFileSize(bytes) {
         if (!bytes || bytes <= 0)
-            return "Unknown"
+            return qsTr("Unknown")
         if (bytes >= 1073741824)
             return (bytes / 1073741824).toFixed(2) + " GB"
         return (bytes / 1048576).toFixed(1) + " MB"
@@ -87,13 +98,13 @@ ColumnLayout {
         spacing: MichiSpacing.sm
 
         MichiButton {
-            text: "Back"
+            text: qsTr("Back")
             iconName: "back"
             variant: "ghost"
             onClicked: library.clear_album_selection()
         }
         MichiText {
-            text: "Library"
+            text: qsTr("Library")
             role: "secondary"
             color: MichiPalette.textMuted
         }
@@ -207,7 +218,7 @@ ColumnLayout {
                 RowLayout {
                     spacing: MichiSpacing.sm
                     MichiButton {
-                        text: "Play album"
+                        text: qsTr("Play album")
                         iconName: "play"
                         enabled: library.albumTracks.length > 0
                         onClicked: library.play_selected_album()
@@ -233,7 +244,7 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "DURATION"
+                        text: qsTr("DURATION")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -246,7 +257,7 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "TRACKS"
+                        text: qsTr("TRACKS")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -259,14 +270,15 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "LIBRARY QUALITY"
+                        text: qsTr("LIBRARY QUALITY")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
                     }
                     MichiText {
                         Layout.fillWidth: true
-                        text: library.albumTechnicalSummary || "Standard"
+                        text: library.albumTechnicalSummary
+                            || qsTr("Standard")
                         role: "secondary"
                         wrapMode: Text.Wrap
                     }
@@ -295,7 +307,7 @@ ColumnLayout {
         EnrichmentKnowledgeCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
-            title: "About this album"
+            title: qsTr("About this album")
             knowledge: enrichment.albumKnowledge
             hasKnowledge: enrichment.albumHasKnowledge
             sources: enrichment.albumAttributions
@@ -318,7 +330,7 @@ ColumnLayout {
                 spacing: MichiSpacing.md
 
                 MichiText {
-                    text: "Album facts"
+                    text: qsTr("Album facts")
                     role: "section"
                 }
 
@@ -372,7 +384,7 @@ ColumnLayout {
         Layout.preferredHeight: visible ? 210 : 0
         visible: root.inspectedTrack !== null
             && !MichiBreakpoints.atLeastMedium(root.width)
-        title: root.inspectedTrack ? root.inspectedTrack.title : "Track information"
+        title: root.inspectedTrack ? root.inspectedTrack.title : qsTr("Track information")
         rows: root.inspectorRows
         onCloseRequested: root.inspectedTrack = null
     }
@@ -391,45 +403,38 @@ ColumnLayout {
             shadowed: false
             textured: false
 
-            ListView {
-                id: albumTracksList
+            MichiTrackTable {
+                id: albumTracksTable
+                objectName: "albumTracksTable"
                 anchors.fill: parent
-                model: library.albumTracks
-                clip: true
-                spacing: MichiSpacing.xs
-                boundsBehavior: Flickable.StopAtBounds
-                headerPositioning: ListView.InlineHeader
-
-                header: TrackTableHeader {
-                    width: albumTracksList.width
-                    showAlbumColumn: false
-                    actionColumnWidth: 116
-                }
-
-                delegate: TrackRow {
-                    required property int index
-                    required property var modelData
-                    width: albumTracksList.width
-                    numberText: modelData.discNumber > 1
-                        ? modelData.discNumber + "." + modelData.trackNumber
-                        : String(modelData.trackNumber > 0
-                            ? modelData.trackNumber : index + 1)
-                    title: modelData.title || modelData.displayName
-                    artist: modelData.artist
-                    showAlbumColumn: false
-                    durationMs: modelData.durationMs
-                    quality: modelData.qualityLabel
-                    playing: playback.currentPath === modelData.path
-                    favorite: library.favoritePaths.indexOf(modelData.path) !== -1
-                    showFavorite: true
-                    showAddToPlaylist: true
-                    showInspector: true
-                    selected: root.inspectedTrack
-                        && root.inspectedTrack.path === modelData.path
-                    onActivated: library.activate_album_track(index)
-                    onFavoriteToggled: library.toggle_favorite(modelData.path)
-                    onAddToPlaylistRequested: root.addTargetPath = modelData.path
-                    onInspectorRequested: root.inspectedTrack = modelData
+                rows: library.albumTracks
+                playingPath: typeof playback !== "undefined" && playback ? playback.currentPath : ""
+                favoriteTrackIds: library.favoriteTrackIds
+                favoritePaths: library.favoritePaths
+                // LIB-A §8/22: perfil de álbum (álbum implícito en el
+                // contexto de página) + numeración disco-track.
+                columnProfile: "album"
+                numberingMode: "disc-track"
+                showArtistColumn: true
+                showAlbumColumn: false
+                canFavorite: true
+                canQueue: library.canQueueTracks
+                canNavigateEntities: true
+                // LIB-A §25: el InspectorPanel REAL existe en esta vista.
+                canInspect: true
+                selectedIndex: root.inspectedTrack !== null
+                    ? root.inspectedIndex : -1
+                // TrackId-first (el Bridge resuelve legacy-path::).
+                onTrackActivated: (trackId, path, index) =>
+                    library.activate_album_track_by_id(trackId)
+                onFavoriteRequested: trackId =>
+                    library.toggle_favorite_by_id(trackId)
+                onQueueRequested: trackId => library.queue_track_by_id(trackId)
+                onGoToArtistRequested: artistKey =>
+                    library.select_artist(artistKey)
+                onPropertiesRequested: modelData => {
+                    root.inspectedTrack = modelData
+                    root.inspectedIndex = root._albumIndexFor(modelData)
                 }
             }
         }
@@ -439,9 +444,12 @@ ColumnLayout {
             Layout.fillHeight: true
             visible: root.inspectedTrack !== null
                 && MichiBreakpoints.atLeastMedium(root.width)
-            title: root.inspectedTrack ? root.inspectedTrack.title : "Track information"
+            title: root.inspectedTrack ? root.inspectedTrack.title : qsTr("Track information")
             rows: root.inspectorRows
-            onCloseRequested: root.inspectedTrack = null
+            onCloseRequested: {
+                root.inspectedTrack = null
+                root.inspectedIndex = -1
+            }
         }
     }
 

@@ -83,7 +83,9 @@ Rectangle {
     border.color: playing ? MichiSemanticColors.auroraCyanBorder
         : MichiSemanticColors.auroraBorderSubtle
     opacity: unavailable ? 0.55 : 1
-    activeFocusOnTab: root.interactive && !root.unavailable
+    // LIB-A §5: unavailable = no PLAY no QUEUE. Foco, selección, menú
+    // contextual, favorite/playlist/properties/remove siguen activos.
+    activeFocusOnTab: root.interactive
     Accessible.role: Accessible.ListItem
     Accessible.name: title + (artist.length > 0 ? " by " + artist : "")
     Keys.onEnterPressed: if (root.interactive && !root.unavailable) { MichiAccessibility.noteKeyboard(); activated() }
@@ -327,11 +329,14 @@ Rectangle {
         enabled: !MichiAccessibility.reducedMotion
         ColorAnimation { duration: MichiMotion.micro }
     }
-    HoverHandler { id: hover; cursorShape: root.interactive && !root.unavailable ? Qt.PointingHandCursor : Qt.ArrowCursor }
+    HoverHandler { id: hover; cursorShape: root.interactive ? Qt.PointingHandCursor : Qt.ArrowCursor }
+    // El click IZQUIERDO sigue bloqueado por unavailable (play nunca).
     TapHandler { enabled: root.interactive && !root.unavailable; onTapped: { MichiAccessibility.notePointer(); root.forceActiveFocus(); root.activated() } }
+    // El click DERECHO abre el contexto SIEMPRE que la fila sea
+    // interactiva (unavailable incluido).
     TapHandler {
         acceptedButtons: Qt.RightButton
-        enabled: root.interactive && !root.unavailable
+        enabled: root.interactive
         onTapped: {
             MichiAccessibility.notePointer()
             root.forceActiveFocus()

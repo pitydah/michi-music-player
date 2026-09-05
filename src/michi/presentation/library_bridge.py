@@ -4,7 +4,6 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Qt, QUrl, Signal, Slot
 
-from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_collection_coordinators import (
     LibraryPlaylistCoordinator,
     LibraryQueueCoordinator,
@@ -332,8 +331,23 @@ class LibraryBridge(QObject):
             return source_state.last_diagnostic or ""
         return ""
 
+    def _current_album_refs(self):
+        """LIB-A P1-C: UNA proyección de álbumes (search/filtro/sort de
+        la aplicación) — nunca reconstruir el estado por separado."""
+        source = (
+            self._service.state.search_projection.albums
+            if self._service.state.search_active
+            else self._service.state.albums
+        )
+        return self._album_query.project(source)
+
     def _get_album_count(self) -> int:
         return len(self._service.state.albums)
+
+    def _get_filtered_album_count(self) -> int:
+        """LIB-A P1-C: conteo de la proyección VISIBLE (search + filtro
+        aplicados) — SIEMPRE igual a lo que renderiza library.albums."""
+        return len(self._current_album_refs())
 
     def _get_artist_count(self) -> int:
         return len(self._service.state.artists)
@@ -455,6 +469,9 @@ class LibraryBridge(QObject):
             "key": album.key,
             "title": album.title,
             "artist": album.artist,
+            # LIB-A §26: identidad del artista como KEY canónico (nunca
+            # display-name) — el menú contextual 'Go to Artist' exacto.
+            "artistKey": make_artist_key(album.artist.strip() or "Unknown Artist"),
             "trackCount": album.track_count,
             "durationMs": album.duration_ms,
             "discCount": album.disc_count,
@@ -477,13 +494,8 @@ class LibraryBridge(QObject):
         }
 
     def _album_rows(self) -> list[dict]:
-        # M7: the unified search projection filters the album surface; the
-        # canonical collections are the passthrough when search is inactive.
-        albums = self._album_query.project(
-            self._service.state.search_projection.albums
-            if self._service.state.search_active
-            else self._service.state.albums
-        )
+        # LIB-A P1-C: la MISMA proyección canónica (search/filtro/sort).
+        albums = self._current_album_refs()
         tracks_by_path = {
             track.file_path: track for track in self._service.state.tracks
         }
@@ -495,13 +507,8 @@ class LibraryBridge(QObject):
         ]
 
     def _get_timeline_albums(self) -> list[dict]:
-        # M7: the timeline receives the SAME filtered album set as the other
-        # five views — it never recomputes matching itself.
-        albums = self._album_query.project(
-            self._service.state.search_projection.albums
-            if self._service.state.search_active
-            else self._service.state.albums
-        )
+        # LIB-A P1-C: el timeline recibe la MISMA proyección filtrada.
+        albums = self._current_album_refs()
         rows = []
         albums_by_key = {a.key: a for a in albums}
         tracks_by_path = {
@@ -595,6 +602,25 @@ class LibraryBridge(QObject):
     def _get_selected_album_key(self) -> str:
         return self._selected_album_key
 
+    def _get_selected_genre_key(self) -> str:
+        return self._selected_genre_key
+
+    def _get_selected_genre_name(self) -> str:
+        if not self._selected_genre_key:
+            return ""
+        genre = next(
+            (
+                item
+                for item in self._service.state.genres
+                if item.key == self._selected_genre_key
+            ),
+            None,
+        )
+        return genre.name if genre is not None else ""
+
+    def _get_genre_filter_active(self) -> bool:
+        return bool(self._selected_genre_key)
+
     def _get_album_title(self) -> str:
         return self._selected_album.title if self._selected_album is not None else ""
 
@@ -642,29 +668,11 @@ class LibraryBridge(QObject):
         )
 
     def _get_album_tracks(self) -> list[dict]:
-        # SEMANTIC INTEGRATION: contrato EXACTO de las views premium de
-        # main (PR #224-228) — las keys canónicas del album-tracks
-        # projection (la versión R4 con keys extra se descartó).
-        return [
-            {
-                "displayName": ref.display_name,
-                "title": ref.title,
-                "artist": ref.artist,
-                "durationMs": ref.duration_ms,
-                "path": str(ref.file_path),
-                "trackNumber": ref.track_number,
-                "discNumber": ref.disc_number,
-                "codec": ref.codec,
-                "container": ref.container,
-                "sampleRateHz": ref.sample_rate_hz,
-                "bitDepth": ref.bit_depth,
-                "channels": ref.channels,
-                "bitrateBps": ref.bitrate_bps,
-                "fileSize": ref.file_size,
-                "qualityLabel": make_track_quality_label(ref),
-            }
-            for ref in self._album_track_refs
-        ]
+        """LIB-A §21: la MISMA proyección canónica de filas que el resto
+        de las superficies (trackId, artistKey, albumKey, artwork,
+        availability efectiva, genre/composer/year) — nunca un schema
+        manual reducido."""
+        return self._track_rows_with_artwork(self._album_track_refs)
 
     def _get_selected_artist_key(self) -> str:
         return self._selected_artist_key
@@ -690,24 +698,21 @@ class LibraryBridge(QObject):
         return self._track_rows_with_artwork(self._artist_track_refs)
 
     def _get_artist_albums(self) -> list[dict]:
+        """LIB-A §26: la MISMA proyección canónica _album_row (una sola
+        schema de álbum en todo el Bridge) — no un dict reducido."""
         artist_paths = {ref.file_path for ref in self._artist_track_refs}
         albums = [
             album
             for album in self._service.state.albums
             if artist_paths.intersection(album.track_paths)
         ]
+        tracks_by_path = {
+            track.file_path: track for track in self._service.state.tracks
+        }
+        favorite_paths = set(self._service.state.favorite_paths)
+        recent_paths = set(self._service.state.recently_added_paths)
         return [
-            {
-                "key": album.key,
-                "title": album.title,
-                "artist": album.artist,
-                "trackCount": album.track_count,
-                "durationMs": album.duration_ms,
-                "hasArtwork": album.has_artwork,
-                "artworkPath": self._service.artwork_path_for(album.key) or "",
-                "year": album.year,
-                "technicalSummary": album.technical_summary,
-            }
+            self._album_row(album, tracks_by_path, favorite_paths, recent_paths)
             for album in albums
         ]
 
@@ -989,6 +994,9 @@ class LibraryBridge(QObject):
     )
     albumTracks = Property(list, _get_album_tracks, notify=library_changed)
     selectedArtistKey = Property(str, _get_selected_artist_key, notify=library_changed)
+    selectedGenreKey = Property(str, _get_selected_genre_key, notify=library_changed)
+    selectedGenreName = Property(str, _get_selected_genre_name, notify=library_changed)
+    genreFilterActive = Property(bool, _get_genre_filter_active, notify=library_changed)
     artistName = Property(str, _get_artist_name, notify=library_changed)
     artistTrackCount = Property(int, _get_artist_track_count, notify=library_changed)
     artistAlbumCount = Property(int, _get_artist_album_count, notify=library_changed)
@@ -1015,6 +1023,9 @@ class LibraryBridge(QObject):
         bool, _get_album_sort_descending, notify=library_changed
     )
     albumFilterMode = Property(str, _get_album_filter_mode, notify=library_changed)
+    filteredAlbumCount = Property(
+        int, _get_filtered_album_count, notify=library_changed
+    )
     canQueueTracks = Property(
         bool, lambda self: self._queue_coordinator is not None, constant=True
     )
@@ -1374,6 +1385,26 @@ class LibraryBridge(QObject):
         if self._track_query.state != previous:
             self.library_changed.emit()
 
+    @Slot(str, bool)
+    def set_track_sort(self, column: str, descending: bool) -> None:
+        """LIB-A §15: dirección EXPLÍCITA del sort (contexto del header).
+        La aplicación sigue siendo la autoridad de ordenamiento."""
+        if self._track_query.set_sort_state(column, descending):
+            self.library_changed.emit()
+
+    @Slot(str, bool, str)
+    def set_album_query_state(
+        self, sort_mode: str, descending: bool, filter_mode: str
+    ) -> None:
+        """LIB-A P1-B: hydración atómica del estado de query del álbum
+        (autoridad de la aplicación) — un solo emit si algo cambió."""
+        changed = False
+        changed |= self._album_query.set_sort_mode(sort_mode)
+        changed |= self._album_query.set_sort_descending(descending)
+        changed |= self._album_query.set_filter_mode(filter_mode)
+        if changed:
+            self.library_changed.emit()
+
     @Slot(str)
     def set_album_sort_mode(self, mode: str) -> None:
         if self._album_query.set_sort_mode(mode):
@@ -1598,10 +1629,24 @@ class LibraryBridge(QObject):
             )
         # P2-01 final seal: no LibraryService playback fallback.
 
-    @Slot(int)
+    @Slot(str)
+    def activate_album_track_by_id(self, track_id: str) -> None:
+        """LIB-A §22: Album Detail click TrackId-first → ALBUM context
+        desde el track clickeado (nunca single; nunca índice)."""
+        if self._playback_coordinator is None or not self._selected_album_key:
+            return
+        for index, ref in enumerate(self._album_track_refs):
+            ref_id = ref.track_id or f"legacy-path::{ref.file_path}"
+            if ref_id == track_id or ref.track_id == track_id:
+                self._playback_coordinator.play_album_track(
+                    self._selected_album_key, index
+                )
+                return
+
     def activate_album_track(self, index: int) -> None:
         """Album Detail track click → ALBUM context at the clicked index
-        (NOT SINGLE)."""
+        (NOT SINGLE). Legacy index seam — los nuevos consumers usan
+        activate_album_track_by_id (TrackId-first)."""
         if not (0 <= index < len(self._album_track_refs)):
             return
         if self._playback_coordinator is not None and self._selected_album_key:

@@ -27,6 +27,36 @@ MichiGlassSurface {
     contentPadding: MichiSpacing.md
     implicitHeight: toolbarContent.implicitHeight + MichiSpacing.md * 2
 
+    // LIB-A §50: conteo del tab ACTIVO (nunca searchTotalCount global).
+    // -1 = sin búsqueda activa.
+    function activeSearchCount() {
+        if (typeof library === "undefined" || !library || !library.searchActive)
+            return -1
+        switch (root.currentTab) {
+            case "songs":
+                return library.searchTrackCount !== undefined
+                    ? library.searchTrackCount : 0
+            case "albums":
+                // LIB-A P1 §25: filteredAlbumCount es la proyección
+                // VISIBLE (search + filtro) — nunca searchAlbumCount solo.
+                return library.filteredAlbumCount !== undefined
+                    ? library.filteredAlbumCount : 0
+            case "artists":
+                return library.searchArtistCount !== undefined
+                    ? library.searchArtistCount : 0
+            case "genres":
+                return library.searchGenreCount !== undefined
+                    ? library.searchGenreCount : 0
+            case "favorites":
+                return (library.favoriteTrackRows || []).length
+            case "history":
+                return (library.historyTrackRows || []).length
+            case "recently":
+                return (library.recentlyAddedTrackRows || []).length
+        }
+        return library.searchTotalCount || 0
+    }
+
     function searchPlaceholder() {
         // PR #231 REVIEW SEAL (P1-04): translated placeholders — nunca
         // literales raw en un locale no-inglés.
@@ -217,25 +247,10 @@ MichiGlassSurface {
                         anchors.fill: parent
                         spacing: MichiSpacing.sm
 
-                        MichiStatusChip {
-                            objectName: "searchNoResultsText"
-                            visible: typeof library !== "undefined" && library
-                                && library.searchActive
-                                && library.searchTotalCount === 0
-                            text: qsTr("No results")
-                            tone: "warning"
-                        }
-
-                        MichiStatusChip {
-                            visible: typeof library !== "undefined" && library
-                                && library.searchActive
-                                && library.searchTotalCount > 0
-                            text: qsTr("%1 results").arg(
-                                typeof library !== "undefined" && library
-                                    ? library.searchTotalCount : 0)
-                            tone: "active"
-                        }
-
+                        // LIB-A P2-E §49: el CAMPO es estable — los
+                        // chips de estado viven en un slot final de ancho
+                        // fijo (96-120 px); nunca preceden al input ni lo
+                        // mueven mientras se escribe.
                         MichiSearchField {
                             id: searchInput
                             Layout.fillWidth: true
@@ -244,6 +259,34 @@ MichiGlassSurface {
                             placeholderText: root.searchPlaceholder()
                             onEdited: query => { if (typeof library !== "undefined" && library) library.search(query) }
                             onClearRequested: { if (typeof library !== "undefined" && library) library.clear_search() }
+                        }
+
+                        Item {
+                            Layout.preferredWidth: root.width < 1100 ? 40 : 120
+                            Layout.preferredHeight: MichiMetrics.controlMedium
+
+                            MichiStatusChip {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                objectName: "searchNoResultsText"
+                                visible: typeof library !== "undefined" && library
+                                    && library.searchActive
+                                    && root.activeSearchCount() === 0
+                                text: root.width < 1100 ? "0" : qsTr("No results")
+                                tone: "warning"
+                            }
+
+                            MichiStatusChip {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: typeof library !== "undefined" && library
+                                    && library.searchActive
+                                    && root.activeSearchCount() > 0
+                                text: root.width < 1100
+                                    ? String(root.activeSearchCount())
+                                    : qsTr("%1 results").arg(root.activeSearchCount())
+                                tone: "active"
+                            }
                         }
                     }
                 }

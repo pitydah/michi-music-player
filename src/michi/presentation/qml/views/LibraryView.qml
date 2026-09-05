@@ -108,6 +108,19 @@ Item {
             var parsed = JSON.parse(settingsBridge.libraryViews)
             viewPreferences = parsed
             applyViewPreferences(parsed)
+            // LIB-A P1-A/P1-B: el estado de columnas y la autoridad de
+            // query del álbum se restauran SIN emitir configurationChanged
+            // (hydration — nunca un loop de persistencia).
+            if (parsed && parsed.trackTable)
+                LibraryTrackColumnState.applyConfiguration(
+                    parsed.trackTable, false)
+            if (typeof library !== "undefined" && library
+                    && parsed) {
+                library.set_album_query_state(
+                    parsed.sortMode || "title",
+                    parsed.sortDescending === true,
+                    parsed.filterMode || "all")
+            }
         } catch (error) {
             console.warn("Library view preferences could not be decoded")
         }
@@ -115,8 +128,11 @@ Item {
 
     function persistViewPreferences(preferences) {
         viewPreferences = preferences
-        if (typeof settingsBridge !== "undefined" && settingsBridge)
-            settingsBridge.set_library_views(JSON.stringify(preferences))
+        if (typeof settingsBridge !== "undefined" && settingsBridge) {
+            var next = JSON.parse(JSON.stringify(preferences))
+            next.trackTable = LibraryTrackColumnState.snapshot()
+            settingsBridge.set_library_views(JSON.stringify(next))
+        }
     }
 
     function updateCommonPreference(key, value) {
@@ -144,19 +160,29 @@ Item {
         applyViewPreferences(next)
     }
 
+    // LIB-A §37: UNA autoridad — el sort/filtro semántico del álbum vive
+    // en la aplicación (LibraryAlbumQueryService); la preferencia
+    // persistida acompaña (misma fuente visual) pero el orden de la
+    // proyección lo aplica el Bridge.
     function requestAlbumSort(mode) {
         albumSortMode = mode
         updateCommonPreference("sortMode", mode)
+        if (typeof library !== "undefined" && library)
+            library.set_album_sort_mode(mode)
     }
 
     function requestAlbumSortDirection(descending) {
         albumSortDescending = descending
         updateCommonPreference("sortDescending", descending)
+        if (typeof library !== "undefined" && library)
+            library.set_album_sort_descending(descending)
     }
 
     function requestAlbumFilter(mode) {
         albumFilterMode = mode
         updateCommonPreference("filterMode", mode)
+        if (typeof library !== "undefined" && library)
+            library.set_album_filter_mode(mode)
     }
 
     function syncEntitySelection() {
@@ -184,6 +210,26 @@ Item {
         target: typeof settingsBridge !== "undefined" ? settingsBridge : null
         ignoreUnknownSignals: true
         function onLibraryViewsChanged() { root.loadViewPreferences() }
+    }
+
+    // LIB-A §20: la persistencia de la tabla es DEBOUNCED (~250 ms) —
+    // durante el resize el singleton se actualiza al instante; el JSON se
+    // escribe una vez cuando el usuario se detiene. Nunca por píxel.
+    Timer {
+        id: trackTablePersistDebounce
+        interval: 250
+        repeat: false
+        onTriggered: root.persistViewPreferences(root.viewPreferences)
+    }
+
+    Connections {
+        target: LibraryTrackColumnState
+        function onConfigurationChanged() {
+            // Debounce: el estado del singleton ya cambió al instante;
+            // el JSON se escribe una vez, 250 ms después del ÚLTIMO
+            // cambio (drag de resize acumulado) — nunca por píxel.
+            trackTablePersistDebounce.restart()
+        }
     }
 
     Component.onCompleted: {

@@ -17,11 +17,13 @@ Item {
     property bool showArtwork: true
     property bool showActions: true
     property string columnProfile: "songs"
-    property bool canFavorite: true
-    property bool canQueue: true
-    property bool canAddToPlaylist: true
-    property bool canInspect: true
-    property bool canNavigateEntities: true
+    // LIB-A P1-D: capabilities FAIL-CLOSED — cada host productivo opta
+    // explícitamente; nunca una acción visible sin consumer real.
+    property bool canFavorite: false
+    property bool canQueue: false
+    property bool canAddToPlaylist: false
+    property bool canInspect: false
+    property bool canNavigateEntities: false
     property bool sortingEnabled: false
     property string sortColumn: ""
     property bool sortDescending: false
@@ -33,7 +35,6 @@ Item {
     property bool selectionEnabled: false
     property var selectedTrackIds: []
     readonly property bool profileShowsArtwork: showArtwork
-        && columnProfile !== "album"
     readonly property bool profileShowsArtist: showArtistColumn
         && columnProfile !== "artist"
     readonly property bool profileShowsAlbum: showAlbumColumn
@@ -53,6 +54,9 @@ Item {
     signal goToAlbumRequested(string albumKey)
     signal goToArtistRequested(string artistKey)
     signal sortRequested(string column)
+    // LIB-A §15: dirección EXPLÍCITA (el menú contextual nunca simula
+    // Sort Descending con dos toggles).
+    signal sortDirectionRequested(string column, bool descending)
     signal selectionToggleRequested(string trackId)
 
     function numberText(row, index) {
@@ -138,6 +142,8 @@ Item {
             sortColumn: root.sortColumn
             sortDescending: root.sortDescending
             onSortRequested: column => root.sortRequested(column)
+            onSortDirectionRequested: (column, descending) =>
+                root.sortDirectionRequested(column, descending)
         }
 
         delegate: TrackRow {
@@ -185,16 +191,21 @@ Item {
                 ? root.selectedTrackIds.indexOf(trackId) !== -1
                 : root.selectedIndex === index
             favorite:
+                // LIB-A §7/24: triple check canónico — id estable, proyección
+                // legacy (legacy-path::<path>) y path-only (pre-migración).
                 root.favoriteTrackIds.indexOf(trackId) !== -1
-                || (
-                    (!modelData.trackId
+                || (modelData.path
+                    && root.favoriteTrackIds.indexOf(
+                        "legacy-path::" + modelData.path) !== -1)
+                || ((!modelData.trackId
                      || String(modelData.trackId).length === 0)
-                    && root.favoritePaths.indexOf(modelData.path) !== -1
-                )
+                    && root.favoritePaths.indexOf(modelData.path) !== -1)
             showFavorite: root.canFavorite
             showAddToPlaylist: root.canAddToPlaylist
             showInspector: root.canInspect
-            canQueue: root.canQueue
+            // LIB-A §6: unavailable → queue NO (la availability por fila
+            // no se pierde aunque el host permita queue).
+            canQueue: root.canQueue && !Boolean(modelData.unavailable)
             canGoToAlbum: root.canNavigateEntities && albumKey.length > 0
             canGoToArtist: root.canNavigateEntities && artistKey.length > 0
             onSelectedRequested: {

@@ -385,16 +385,22 @@ class TestBridgeViews:
             # M6.6 enriches the canonical album-tracks projection; the M6.6
             # RED test test_album_tracks_rows_include_canonical_numbers is
             # authoritative.
-            assert set(row.keys()) == {
-                "displayName",
+            # LIB-A §21: la proyección canónica ÚNICA (nunca el schema
+            # manual reducido): identidad, artwork, availability efectiva
+            # y facts técnicos.
+            keys = set(row.keys())
+            assert {
+                "trackId",
+                "artistKey",
+                "albumKey",
+                "path",
                 "title",
                 "artist",
+                "album",
+                "artworkPath",
                 "durationMs",
-                "path",
                 "trackNumber",
                 "discNumber",
-                # M6-PRODUCTION-INTEGRATION (spec §39-43): the canonical
-                # album-tracks projection carries the technical facts.
                 "codec",
                 "container",
                 "sampleRateHz",
@@ -403,7 +409,11 @@ class TestBridgeViews:
                 "bitrateBps",
                 "fileSize",
                 "qualityLabel",
-            }
+                "unavailable",
+                "genre",
+                "composer",
+                "year",
+            }.issubset(keys), keys
         assert [r["path"] for r in rows] == [str(a1), str(a2)]
         assert all(r["title"] and r["displayName"] and r["artist"] for r in rows)
         assert all(r["durationMs"] == 1000 for r in rows)
