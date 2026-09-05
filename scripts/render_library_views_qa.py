@@ -198,6 +198,11 @@ class QaLibrary(QObject):
     # señal para el Connections de LibraryView (0 warnings).
     genre_selected = Signal(str)
     albumPaletteChanged = Signal(str, "QVariantMap")
+    # A1: el LibraryContentHost conecta los intents de targeting del
+    # LibraryBridge — el harness declara las señales (0 warnings).
+    playlist_target_requested = Signal(dict)
+    new_playlist_target_requested = Signal(dict)
+    album_properties_requested = Signal(dict)
 
     def __init__(self, state: str, artwork_paths: tuple[str, ...]) -> None:
         super().__init__()
