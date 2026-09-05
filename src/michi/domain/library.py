@@ -193,9 +193,12 @@ class AlbumRef:
     genres: tuple[str, ...] = ()
     composers: tuple[str, ...] = ()
     technical_summary: str = ""
-    # LIB-A §38: flag factual del filtro hi-res (DSD OR bit_depth>=24 OR
-    # sample_rate>=96000) — derivado con build_album_technical_facts en el
-    # model; nunca inferido de labels.
+    # LIB-A §38/P2-I: predicado FACTUAL del filtro de browse hi-res —
+    # (DSD OR bit_depth>=24 OR sample_rate>=96000), derivado con
+    # build_album_technical_facts en el model; nunca inferido de labels.
+    # Esto NO es un juicio de calidad de audio: no afirma nada sobre
+    # master quality, dynamic range, bit-perfect, comportamiento DAC o
+    # superioridad audible.
     contains_high_resolution: bool = False
 
 
