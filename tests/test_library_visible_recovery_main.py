@@ -1,5 +1,6 @@
-from pathlib import Path
+"""Regression gates for the real-app Library visible recovery pass."""
 
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 QML = ROOT / "src" / "michi" / "presentation" / "qml"
@@ -50,7 +51,10 @@ def test_column_resize_feedback_is_local_and_truthful() -> None:
     assert "ToolTip.visible: pressed" in source
     assert 'qsTr("%1 · %2 px")' in source
     assert "height: 14" in source
-    assert "opacity: resizeArea.containsMouse || resizeArea.pressed ? 1 : 0.34" in source
+    assert (
+        "opacity: resizeArea.containsMouse || resizeArea.pressed ? 1 : 0.34"
+        in source
+    )
 
 
 def test_track_actions_are_discoverable_without_becoming_visual_noise() -> None:
@@ -72,7 +76,11 @@ def test_library_error_copy_remains_translatable() -> None:
     source = _read("views/LibraryContentHost.qml")
     assert 'qsTr("Library unavailable")' in source
     assert 'qsTr("Scan failed")' in source
-    assert 'qsTr("The library could not be scanned. Check your music folder and try again.")' in source
+    message = (
+        'qsTr("The library could not be scanned. '
+        'Check your music folder and try again.")'
+    )
+    assert message in source
 
 
 def test_visible_recovery_does_not_resurrect_file_browser() -> None:
