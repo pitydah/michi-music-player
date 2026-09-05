@@ -37,8 +37,10 @@ MichiGlassSurface {
                 return library.searchTrackCount !== undefined
                     ? library.searchTrackCount : 0
             case "albums":
-                return library.searchAlbumCount !== undefined
-                    ? library.searchAlbumCount : 0
+                // LIB-A P1 §25: filteredAlbumCount es la proyección
+                // VISIBLE (search + filtro) — nunca searchAlbumCount solo.
+                return library.filteredAlbumCount !== undefined
+                    ? library.filteredAlbumCount : 0
             case "artists":
                 return library.searchArtistCount !== undefined
                     ? library.searchArtistCount : 0

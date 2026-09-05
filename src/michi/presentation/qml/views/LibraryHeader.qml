@@ -131,7 +131,7 @@ PageHeader {
             switch (root.currentTab) {
             case "albums":
                 return qsTr("%1 albums matching “%2”")
-                    .arg(library.searchAlbumCount).arg(library.searchQuery)
+                    .arg(library.filteredAlbumCount).arg(library.searchQuery)
             case "artists":
                 return qsTr("%1 artists matching “%2”")
                     .arg(library.searchArtistCount).arg(library.searchQuery)
@@ -162,8 +162,7 @@ PageHeader {
                 .arg(library.fileCount).arg(library.selectedGenreName)
         if (root.albumFilterMode !== "all")
             return qsTr("%1 of %2 albums")
-                .arg(library.searchAlbumCount
-                     || library.filteredAlbumCount).arg(library.albumCount)
+                .arg(library.filteredAlbumCount).arg(library.albumCount)
         if (library.libraryTrackCount > 0)
             return qsTr("%1 tracks · %2 albums · %3 artists")
                 .arg(library.libraryTrackCount).arg(library.albumCount).arg(library.artistCount)
