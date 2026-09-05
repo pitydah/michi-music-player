@@ -12,7 +12,7 @@ def _read(relative: str) -> str:
 
 def test_genres_never_hide_rows_behind_full_height_header() -> None:
     source = _read("views/GenresView.qml")
-    assert "Item {\n    id: root\n    objectName: \"genresView\"" in source
+    assert 'Item {\n    id: root\n    objectName: "genresView"' in source
     assert "header: EmptyState" not in source
     assert "visible: genreList.count === 0" in source
     assert "visible: count > 0" in source
@@ -52,8 +52,7 @@ def test_column_resize_feedback_is_local_and_truthful() -> None:
     assert 'qsTr("%1 · %2 px")' in source
     assert "height: 14" in source
     assert (
-        "opacity: resizeArea.containsMouse || resizeArea.pressed ? 1 : 0.34"
-        in source
+        "opacity: resizeArea.containsMouse || resizeArea.pressed ? 1 : 0.34" in source
     )
 
 
