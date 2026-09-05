@@ -94,15 +94,15 @@ PageHeader {
     // so users always know where they are inside the library.
     function tabTitle() {
         switch (root.currentTab) {
-            case "albums": return "Albums"
-            case "artists": return "Artists"
-            case "genres": return "Genres"
-            case "playlists": return "Playlists"
-            case "favorites": return "Favorites"
-            case "history": return "History"
-            case "recently": return "Recently Added"
+            case "albums": return qsTr("Albums")
+            case "artists": return qsTr("Artists")
+            case "genres": return qsTr("Genres")
+            case "playlists": return qsTr("Playlists")
+            case "favorites": return qsTr("Favorites")
+            case "history": return qsTr("History")
+            case "recently": return qsTr("Recently Added")
 
-            default: return "Songs"
+            default: return qsTr("Songs")
         }
     }
 

@@ -56,7 +56,7 @@ ColumnLayout {
             Layout.fillWidth: true
             spacing: MichiSpacing.sm
             MichiButton {
-                text: "Back"
+                text: qsTr("Back")
                 variant: "ghost"
                 Layout.alignment: Qt.AlignLeft
                 onClicked: library.clear_artist_selection()
@@ -68,8 +68,10 @@ ColumnLayout {
                 elide: Text.ElideRight
             }
             MichiText {
-                text: library.artistAlbumCount + " albums · "
-                    + library.artistTrackCount + " tracks"
+                // LIB-A: plural-aware translation (%n).
+                text: qsTr("%n album(s)", "", library.artistAlbumCount)
+                    + " · "
+                    + qsTr("%n track(s)", "", library.artistTrackCount)
                 role: "secondary"
             }
         }
@@ -86,7 +88,7 @@ ColumnLayout {
 
     EnrichmentKnowledgeCard {
         Layout.fillWidth: true
-        title: "About the artist"
+        title: qsTr("About the artist")
         knowledge: enrichment.artistKnowledge
         hasKnowledge: enrichment.artistHasKnowledge
         sources: enrichment.artistAttributions
