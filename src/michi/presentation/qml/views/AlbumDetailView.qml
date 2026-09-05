@@ -33,9 +33,9 @@ ColumnLayout {
             ? albumFacts.maxBitDepth + "-bit" : "Unknown" },
         { label: "Channels", value: albumFacts.maxChannels > 0
             ? String(albumFacts.maxChannels) : "Unknown" },
-        { label: "Discs", value: albumFacts.discCount > 0
+        { label: qsTr("Discs"), value: albumFacts.discCount > 0
             ? String(albumFacts.discCount) : "Unknown" },
-        { label: "Classification", value: albumFacts.containsDsd ? "DSD"
+        { label: qsTr("Classification"), value: albumFacts.containsDsd ? "DSD"
             : albumFacts.containsHighResolution ? "High-resolution PCM"
             : albumFacts.technicalState === "homogeneous" ? "Consistent"
             : albumFacts.technicalState === "mixed" ? "Mixed formats" : "Standard" }
@@ -216,7 +216,7 @@ ColumnLayout {
                 RowLayout {
                     spacing: MichiSpacing.sm
                     MichiButton {
-                        text: "Play album"
+                        text: qsTr("Play album")
                         iconName: "play"
                         enabled: library.albumTracks.length > 0
                         onClicked: library.play_selected_album()
@@ -242,7 +242,7 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "DURATION"
+                        text: qsTr("DURATION")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -255,7 +255,7 @@ ColumnLayout {
                 ColumnLayout {
                     spacing: MichiSpacing.xxs
                     MichiText {
-                        text: "TRACKS"
+                        text: qsTr("TRACKS")
                         role: "technical"
                         technical: true
                         color: MichiPalette.textMuted
@@ -417,7 +417,8 @@ ColumnLayout {
                 canFavorite: true
                 canQueue: library.canQueueTracks
                 canNavigateEntities: true
-                canInspect: false
+                // LIB-A §25: el InspectorPanel REAL existe en esta vista.
+                canInspect: true
                 selectedIndex: root.inspectedTrack !== null
                     ? root.inspectedIndex : -1
                 // TrackId-first (el Bridge resuelve legacy-path::).

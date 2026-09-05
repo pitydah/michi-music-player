@@ -17,11 +17,13 @@ Item {
     property bool showArtwork: true
     property bool showActions: true
     property string columnProfile: "songs"
-    property bool canFavorite: true
-    property bool canQueue: true
-    property bool canAddToPlaylist: true
-    property bool canInspect: true
-    property bool canNavigateEntities: true
+    // LIB-A P1-D: capabilities FAIL-CLOSED — cada host productivo opta
+    // explícitamente; nunca una acción visible sin consumer real.
+    property bool canFavorite: false
+    property bool canQueue: false
+    property bool canAddToPlaylist: false
+    property bool canInspect: false
+    property bool canNavigateEntities: false
     property bool sortingEnabled: false
     property string sortColumn: ""
     property bool sortDescending: false
@@ -33,7 +35,6 @@ Item {
     property bool selectionEnabled: false
     property var selectedTrackIds: []
     readonly property bool profileShowsArtwork: showArtwork
-        && columnProfile !== "album"
     readonly property bool profileShowsArtist: showArtistColumn
         && columnProfile !== "artist"
     readonly property bool profileShowsAlbum: showAlbumColumn

@@ -107,7 +107,7 @@ ColumnLayout {
     }
 
     MichiText {
-        text: "Albums"
+        text: qsTr("Albums")
         role: "section"
         visible: library.artistAlbums.length > 0
     }
@@ -131,7 +131,7 @@ ColumnLayout {
         }
     }
 
-    MichiText { text: "Tracks"; role: "section" }
+    MichiText { text: qsTr("Tracks"); role: "section" }
 
     MichiTrackTable {
         id: artistTracksTable
