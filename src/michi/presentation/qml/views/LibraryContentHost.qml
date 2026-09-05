@@ -160,6 +160,27 @@ ColumnLayout {
         visible: library.libraryTrackCount > 0
     }
 
+    // LIBRARY CONTEXT ACTION HOST (A1): router de Presentation — UNA
+    // instancia, escucha los intents del Bridge y abre pickers/dialogs/
+    // properties premium. No es Domain ni un segundo backend. Vive como
+    // hijo del layout sin geometría (sus popups se centran en el window).
+    LibraryContextActionHost {
+        id: contextHost
+    }
+
+    Connections {
+        target: library
+        function onPlaylist_target_requested(payload) {
+            contextHost.openPlaylistTarget(payload)
+        }
+        function onNew_playlist_target_requested(payload) {
+            contextHost.openNewPlaylist(payload)
+        }
+        function onAlbum_properties_requested(snapshot) {
+            contextHost.inspectAlbum(snapshot)
+        }
+    }
+
     EmptyState {
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -187,6 +208,10 @@ ColumnLayout {
             anchors.fill: parent
             addTargetPath: root.addTargetPath
             onAddTargetPathChanged: root.addTargetPath = addTargetPath
+            // A1: el consumer de Properties es real (contextHost → vista
+            // premium) — la acción deja de estar fail-closed en Songs.
+            canInspect: true
+            onPropertiesRequested: modelData => contextHost.inspectTrack(modelData)
         }
     }
 

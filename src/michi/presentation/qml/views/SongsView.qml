@@ -45,11 +45,12 @@ MichiTrackTable {
     onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
     onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
     onQueueRequested: trackId => library.queue_track_by_id(trackId)
-    // PR #231 REVIEW SEAL (P1-01): TrackId = identidad · path = ubicación
-    // factual. El seam histórico de Playlists persiste paths canónicos —
-    // el picker recibe el PATH factual (nunca el UUID) mientras todas las
-    // demás intenciones (activar/favorito/cola) siguen por TrackId.
-    onAddToPlaylistRequested: (trackId, path) => root.addTargetPath = path
+    // A1 (context host): el targeting es TrackId-first — el Bridge valida
+    // contra el catálogo y emite playlist_target_requested; el host abre el
+    // picker premium. El path de la firma sigue como dato factual durante
+    // la migración (B1 elimina addTargetPath) y nunca decide membership.
+    onAddToPlaylistRequested: (trackId, path) =>
+        library.request_tracks_playlist_target([trackId])
     onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     onGoToArtistRequested: artistKey => library.select_artist(artistKey)
     onSortRequested: column => library.sort_tracks(column)
