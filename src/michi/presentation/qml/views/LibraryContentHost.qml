@@ -127,13 +127,6 @@ ColumnLayout {
         }
     }
 
-    Item {
-        id: contentArea
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        visible: library.libraryTrackCount > 0
-    }
-
     // LIB-A §34: strip de filtro de género (wayfinding + clear explícito).
     // Filigrana fina, nunca una card grande; no desplaza el search field.
     Rectangle {
@@ -176,6 +169,13 @@ ColumnLayout {
                 onClicked: library.clear_genre_selection()
             }
         }
+    }
+
+    Item {
+        id: contentArea
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: library.libraryTrackCount > 0
     }
 
     EmptyState {

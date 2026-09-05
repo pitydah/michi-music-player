@@ -126,11 +126,34 @@ PageHeader {
         if (typeof library === "undefined" || !library)
             return qsTr("Your local music collection")
         if (library.searchActive) {
-            if (root.currentTab === "albums")
+            // LIB-A §51: subtítulo con conteo SCOPED del tab activo —
+            // nunca mezclar conteos heterogéneos.
+            switch (root.currentTab) {
+            case "albums":
                 return qsTr("%1 albums matching “%2”")
                     .arg(library.searchAlbumCount).arg(library.searchQuery)
-            return qsTr("%1 results matching “%2”")
-                .arg(library.searchTotalCount).arg(library.searchQuery)
+            case "artists":
+                return qsTr("%1 artists matching “%2”")
+                    .arg(library.searchArtistCount).arg(library.searchQuery)
+            case "genres":
+                return qsTr("%1 genres matching “%2”")
+                    .arg(library.searchGenreCount).arg(library.searchQuery)
+            case "favorites":
+                return qsTr("%1 favorites matching “%2”")
+                    .arg((library.favoriteTrackRows || []).length)
+                    .arg(library.searchQuery)
+            case "history":
+                return qsTr("%1 history items matching “%2”")
+                    .arg((library.historyTrackRows || []).length)
+                    .arg(library.searchQuery)
+            case "recently":
+                return qsTr("%1 recently added tracks matching “%2”")
+                    .arg((library.recentlyAddedTrackRows || []).length)
+                    .arg(library.searchQuery)
+            default:
+                return qsTr("%1 songs matching “%2”")
+                    .arg(library.searchTrackCount).arg(library.searchQuery)
+            }
         }
         // LIB-A §35: scope-correct counts — nunca mezclar proyecciones
         // filtradas con totales sin etiquetas.

@@ -35,9 +35,11 @@ MichiTrackTable {
         : library.genreFilterActive
             ? qsTr("No tracks in %1").arg(library.selectedGenreName)
             : qsTr("No songs in your library")
-    emptyMessage: library.searchActive || library.genreFilterActive
+    emptyMessage: library.searchActive
         ? qsTr("Try a different search or clear the current query.")
-        : qsTr("Scan a music folder from the toolbar to populate your library.")
+        : library.genreFilterActive
+            ? qsTr("Clear the genre filter or choose another genre.")
+            : qsTr("Scan a music folder from the toolbar to populate your library.")
     emptyIcon: "track"
 
     onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
