@@ -119,6 +119,7 @@ class _FakeLibrary(QObject):
         super().__init__()
         self._rows = rows or []
         self._error = ""
+        self.playlist_target_calls: list = []
 
     # Toolbar / ContentHost surfaces
     fileCount = Property(int, lambda self: 0)
@@ -146,12 +147,6 @@ class _FakeLibrary(QObject):
     trackSortDescending = Property(bool, lambda self: False)
 
     sourceOperationError = Property(str, lambda self: self._error, notify=changed)
-
-    def __init__(self, rows=None):
-        super().__init__()
-        self._rows = rows or []
-        self._error = ""
-        self.playlist_target_calls: list = []
 
     @Slot(list)
     def request_tracks_playlist_target(self, track_ids):
