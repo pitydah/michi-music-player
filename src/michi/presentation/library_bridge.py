@@ -331,17 +331,23 @@ class LibraryBridge(QObject):
             return source_state.last_diagnostic or ""
         return ""
 
+    def _current_album_refs(self):
+        """LIB-A P1-C: UNA proyección de álbumes (search/filtro/sort de
+        la aplicación) — nunca reconstruir el estado por separado."""
+        source = (
+            self._service.state.search_projection.albums
+            if self._service.state.search_active
+            else self._service.state.albums
+        )
+        return self._album_query.project(source)
+
     def _get_album_count(self) -> int:
         return len(self._service.state.albums)
 
     def _get_filtered_album_count(self) -> int:
-        """Álbumes de la proyección ACTUAL (search/filtro aplicado) —
-        para conteos con scope correcto en el header."""
-        if self._service.state.search_active:
-            return len(self._service.state.search_projection.albums)
-        if self._album_query.mode != "all":
-            return len(self._album_query.project(self._service.state.albums))
-        return len(self._service.state.albums)
+        """LIB-A P1-C: conteo de la proyección VISIBLE (search + filtro
+        aplicados) — SIEMPRE igual a lo que renderiza library.albums."""
+        return len(self._current_album_refs())
 
     def _get_artist_count(self) -> int:
         return len(self._service.state.artists)
@@ -488,13 +494,8 @@ class LibraryBridge(QObject):
         }
 
     def _album_rows(self) -> list[dict]:
-        # M7: the unified search projection filters the album surface; the
-        # canonical collections are the passthrough when search is inactive.
-        albums = self._album_query.project(
-            self._service.state.search_projection.albums
-            if self._service.state.search_active
-            else self._service.state.albums
-        )
+        # LIB-A P1-C: la MISMA proyección canónica (search/filtro/sort).
+        albums = self._current_album_refs()
         tracks_by_path = {
             track.file_path: track for track in self._service.state.tracks
         }
@@ -506,13 +507,8 @@ class LibraryBridge(QObject):
         ]
 
     def _get_timeline_albums(self) -> list[dict]:
-        # M7: the timeline receives the SAME filtered album set as the other
-        # five views — it never recomputes matching itself.
-        albums = self._album_query.project(
-            self._service.state.search_projection.albums
-            if self._service.state.search_active
-            else self._service.state.albums
-        )
+        # LIB-A P1-C: el timeline recibe la MISMA proyección filtrada.
+        albums = self._current_album_refs()
         rows = []
         albums_by_key = {a.key: a for a in albums}
         tracks_by_path = {
@@ -1397,6 +1393,19 @@ class LibraryBridge(QObject):
             self.library_changed.emit()
 
     @Slot(str)
+    @Slot(str, bool, str)
+    def set_album_query_state(
+        self, sort_mode: str, descending: bool, filter_mode: str
+    ) -> None:
+        """LIB-A P1-B: hydración atómica del estado de query del álbum
+        (autoridad de la aplicación) — un solo emit si algo cambió."""
+        changed = False
+        changed |= self._album_query.set_sort_mode(sort_mode)
+        changed |= self._album_query.set_sort_descending(descending)
+        changed |= self._album_query.set_filter_mode(filter_mode)
+        if changed:
+            self.library_changed.emit()
+
     @Slot(str)
     def set_album_sort_mode(self, mode: str) -> None:
         if self._album_query.set_sort_mode(mode):
@@ -1621,7 +1630,6 @@ class LibraryBridge(QObject):
             )
         # P2-01 final seal: no LibraryService playback fallback.
 
-    @Slot(int)
     @Slot(str)
     def activate_album_track_by_id(self, track_id: str) -> None:
         """LIB-A §22: Album Detail click TrackId-first → ALBUM context

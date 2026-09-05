@@ -108,10 +108,19 @@ Item {
             var parsed = JSON.parse(settingsBridge.libraryViews)
             viewPreferences = parsed
             applyViewPreferences(parsed)
-            // LIB-A §19: estado de columnas persistido (migración segura:
-            // config ausente o parcial → defaults; album settings intactos).
+            // LIB-A P1-A/P1-B: el estado de columnas y la autoridad de
+            // query del álbum se restauran SIN emitir configurationChanged
+            // (hydration — nunca un loop de persistencia).
             if (parsed && parsed.trackTable)
-                LibraryTrackColumnState.applyConfiguration(parsed.trackTable)
+                LibraryTrackColumnState.applyConfiguration(
+                    parsed.trackTable, false)
+            if (typeof library !== "undefined" && library
+                    && parsed) {
+                library.set_album_query_state(
+                    parsed.sortMode || "title",
+                    parsed.sortDescending === true,
+                    parsed.filterMode || "all")
+            }
         } catch (error) {
             console.warn("Library view preferences could not be decoded")
         }

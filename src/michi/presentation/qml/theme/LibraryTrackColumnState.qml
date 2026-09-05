@@ -179,6 +179,40 @@ QtObject {
             root.resetWidth(columns[index])
     }
 
+    // LIB-A P2-H: UNA definición canónica de presets — applyPreset() y
+    // currentPreset() comparan contra la MISMA fuente (nunca inferencia
+    // duplicada por separado).
+    readonly property var presetDefinitions: ({
+        "essential": {
+            artwork: true, artist: true, album: true, format: true,
+            sampleRate: false, bitDepth: false, dsdRate: false,
+            bitrate: false, channels: false, fileSize: false,
+            genre: false, composer: false, year: false,
+            duration: true, actions: true
+        },
+        "audiophile": {
+            artwork: false, artist: true, album: true, format: true,
+            sampleRate: true, bitDepth: true, dsdRate: true,
+            bitrate: true, channels: true, fileSize: false,
+            genre: false, composer: false, year: false,
+            duration: true, actions: true
+        },
+        "metadata": {
+            artwork: false, artist: true, album: true, format: true,
+            sampleRate: false, bitDepth: false, dsdRate: false,
+            bitrate: false, channels: false, fileSize: false,
+            genre: true, composer: true, year: true,
+            duration: true, actions: true
+        },
+        "minimal": {
+            artwork: false, artist: true, album: false, format: false,
+            sampleRate: false, bitDepth: false, dsdRate: false,
+            bitrate: false, channels: false, fileSize: false,
+            genre: false, composer: false, year: false,
+            duration: true, actions: true
+        }
+    })
+
     // LIB-A §16: presets productivos. El preset fija las columnas de
     // contenido; las exclusiones de perfil (álbum/artista implícitos) las
     // aplica el header con showAlbumColumn/showArtistColumn.
@@ -204,39 +238,10 @@ QtObject {
     }
 
     function applyPreset(name) {
-        var presets = {
-            "essential": {
-                artwork: true, artist: true, album: true, format: true,
-                sampleRate: false, bitDepth: false, dsdRate: false,
-                bitrate: false, channels: false, fileSize: false,
-                genre: false, composer: false, year: false,
-                duration: true, actions: true
-            },
-            "audiophile": {
-                artwork: false, artist: true, album: true, format: true,
-                sampleRate: true, bitDepth: true, dsdRate: true,
-                bitrate: true, channels: true, fileSize: false,
-                genre: false, composer: false, year: false,
-                duration: true, actions: true
-            },
-            "metadata": {
-                artwork: false, artist: true, album: true, format: true,
-                sampleRate: false, bitDepth: false, dsdRate: false,
-                bitrate: false, channels: false, fileSize: false,
-                genre: true, composer: true, year: true,
-                duration: true, actions: true
-            },
-            "minimal": {
-                artwork: false, artist: true, album: false, format: false,
-                sampleRate: false, bitDepth: false, dsdRate: false,
-                bitrate: false, channels: false, fileSize: false,
-                genre: false, composer: false, year: false,
-                duration: true, actions: true
-            }
-        }
-        if (presets[name] === undefined)
+        var preset = root.presetDefinitions[name]
+        if (preset === undefined)
             return false
-        root._applyPresetVisible(presets[name])
+        root._applyPresetVisible(preset)
         return true
     }
 
@@ -261,24 +266,30 @@ QtObject {
     }
 
     function currentPreset() {
-        if (!root.artistVisible || !root.albumVisible || !root.formatVisible
-                || !root.durationVisible)
-            return root.artistVisible && !root.albumVisible
-                && !root.formatVisible && root.durationVisible
-                ? "minimal" : ""
-        if (!root.sampleRateVisible && !root.bitDepthVisible
-                && !root.dsdRateVisible && !root.bitrateVisible
-                && !root.channelsVisible && !root.fileSizeVisible
-                && !root.genreVisible && !root.composerVisible
-                && !root.yearVisible)
-            return "essential"
-        if (root.sampleRateVisible && root.bitDepthVisible
-                && root.dsdRateVisible && root.bitrateVisible
-                && root.channelsVisible && !root.genreVisible
-                && !root.composerVisible && !root.yearVisible)
-            return "audiophile"
-        if (root.genreVisible && root.composerVisible && root.yearVisible)
-            return "metadata"
+        // Compara el estado visible actual contra la MISMA definición
+        // canónica de applyPreset (P2-H) — el preset es el que coincide
+        // exactamente; customizaciones → "".
+        var names = ["essential", "audiophile", "metadata", "minimal"]
+        for (var index = 0; index < names.length; ++index) {
+            var name = names[index]
+            var definition = root.presetDefinitions[name]
+            if (root.artworkVisible === definition.artwork
+                    && root.artistVisible === definition.artist
+                    && root.albumVisible === definition.album
+                    && root.formatVisible === definition.format
+                    && root.sampleRateVisible === definition.sampleRate
+                    && root.bitDepthVisible === definition.bitDepth
+                    && root.dsdRateVisible === definition.dsdRate
+                    && root.bitrateVisible === definition.bitrate
+                    && root.channelsVisible === definition.channels
+                    && root.fileSizeVisible === definition.fileSize
+                    && root.genreVisible === definition.genre
+                    && root.composerVisible === definition.composer
+                    && root.yearVisible === definition.year
+                    && root.durationVisible === definition.duration
+                    && root.actionsVisible === definition.actions)
+                return name
+        }
         return ""
     }
 
@@ -303,10 +314,13 @@ QtObject {
     }
 
     // Aplica una configuración persistida (merge-safe: columnas faltantes
-    // conservan el estado actual; nunca oculta title).
-    function applyConfiguration(config) {
+    // conservan el estado actual; nunca oculta title). Todos los anchos
+    // pasan por el MISMO clamp que el resize interactivo. emitChange=false
+    // durante la hydration de arranque (nunca un loop de persistencia).
+    function applyConfiguration(config, emitChange) {
         if (config === null || config === undefined)
             return false
+        var notify = emitChange !== false
         var visible = config["visible"]
         var widths = config["widths"]
         if (visible !== undefined && visible !== null) {
@@ -315,8 +329,11 @@ QtObject {
                 var column = keys[i]
                 if (column === "title")
                     continue  // locked
-                if (root[column + "Visible"] !== undefined)
-                    root[column + "Visible"] = !!visible[column]
+                if (typeof visible[column] !== "boolean")
+                    continue
+                if (root[column + "Visible"] !== undefined
+                        && root[column + "Visible"] !== visible[column])
+                    root[column + "Visible"] = visible[column]
             }
         }
         if (widths !== undefined && widths !== null) {
@@ -324,13 +341,23 @@ QtObject {
             for (var j = 0; j < widthKeys.length; ++j) {
                 var widthColumn = widthKeys[j]
                 var value = widths[widthColumn]
-                if (typeof value === "number" && value > 0
-                        && root[widthColumn + "Width"] !== undefined
-                        && widthColumn !== "actions")
-                    root[widthColumn + "Width"] = value
+                if (typeof value !== "number" || !isFinite(value)
+                        || root[widthColumn + "Width"] === undefined
+                        || widthColumn === "actions")
+                    continue
+                // Clamp único: mínimo de la columna; máximo general 720
+                // (artwork conserva su techo propio).
+                var bounded = Math.max(root.minimumWidthFor(widthColumn), value)
+                if (widthColumn === "artwork")
+                    bounded = Math.min(root.artworkMaxWidth, bounded)
+                else
+                    bounded = Math.min(720, bounded)
+                if (root[widthColumn + "Width"] !== bounded)
+                    root[widthColumn + "Width"] = bounded
             }
         }
-        root.configurationChanged()
+        if (notify)
+            root.configurationChanged()
         return true
     }
 }
