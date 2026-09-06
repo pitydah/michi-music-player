@@ -1266,7 +1266,7 @@ class TestF42AdapterContract:
         # localizar la divergencia física/canónica de playback. CERO cambio
         # de semántica de transporte.
         "src/michi/infrastructure/audio_engines/mpd.py": "c1a0b47f5e2da0fa",
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "0c9d72dc726ff913",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "fc7a6efa1be5808b",
         "src/michi/infrastructure/qt_backend.py": "4b005d149c4b8fd1",
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
         "src/michi/application/audio_transport_router.py": "a02c67e2b0dbaf75",
