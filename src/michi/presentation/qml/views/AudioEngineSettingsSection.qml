@@ -193,6 +193,10 @@ Item {
                             return qsTr("Preferred")
                         if (!card.modelData.canActivate)
                             return qsTr("Not available")
+                        if (!card.modelData.selectionAllowed
+                                && card.modelData.selectionBlocker)
+                            return qsTr("Switch blocked — %1")
+                                .arg(card.modelData.selectionBlocker)
                         return ""
                     }
 

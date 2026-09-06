@@ -326,6 +326,53 @@ class TestPopupBehavioral:
         assert window.property("switchCount") == 0
         popup.close()
 
+    def test_blocked_rows_show_visible_switch_reason(self, qapp):
+        """R0 §11: rows with canActivate=true but selectionAllowed=false
+        (switch in flight) render 'Switch blocked — <truthful reason>' —
+        never an inert row. The reason must be VISIBLE text, not only
+        Accessible.description."""
+        h = _build(qapp, POPUP_HARNESS, "player/harness.qml")
+        service, window = h.service, h.window
+        popup = _by_name(window, "enginePopup")
+        popup.open()
+        _run(qapp, 300)
+        service.mark_initializing(AudioEngineId.GSTREAMER)
+        _run(qapp, 200)
+        # Competing rows (Qt, MPD) are blocked by the switch transaction.
+        qt_status = _by_name(window, "enginePopupRowStatus_qt_multimedia")
+        mpd_status = _by_name(window, "enginePopupRowStatus_mpd")
+        for status in (qt_status, mpd_status):
+            assert "Switch blocked" in _text(status), (
+                "la row bloqueada muestra la razón visible, recibió: " + _text(status)
+            )
+            assert "in progress" in _text(status), (
+                "la razón es truthful (bloqueador real del coordinator)"
+            )
+        # El target muestra Switching… (no el mensaje de bloqueo).
+        gst_status = _by_name(window, "enginePopupRowStatus_gstreamer")
+        assert "Switching" in _text(gst_status)
+        popup.close()
+
+    def test_blocked_row_click_never_requests_switch(self, qapp):
+        """La row bloqueada está disabled: click/Enter no emiten intent."""
+        h = _build(qapp, POPUP_HARNESS, "player/harness.qml")
+        service, window = h.service, h.window
+        popup = _by_name(window, "enginePopup")
+        popup.open()
+        _run(qapp, 300)
+        service.mark_initializing(AudioEngineId.GSTREAMER)
+        _run(qapp, 200)
+        qt_row = _by_name(window, "enginePopupRow_qt_multimedia")
+        assert qt_row.property("enabled") is False
+        qt_row.forceActiveFocus()
+        _run(qapp)
+        QTest.keyClick(window, Qt.Key_Return)
+        _run(qapp)
+        assert window.property("switchCount") == 0, (
+            "la row bloqueada nunca emite un intent de switch"
+        )
+        popup.close()
+
     def test_esc_closes_popup(self, qapp):
         h = _build(qapp, POPUP_HARNESS, "player/harness.qml")
         window = h.window
@@ -457,6 +504,27 @@ class TestPopupBehavioral:
         QTest.keyClick(window, Qt.Key_Escape)
         _run(qapp, 300)
         assert popup.property("opened") is False
+
+
+class TestSettingsBlockedCardVisibleReason:
+    def test_blocked_card_shows_visible_switch_reason(self, qapp):
+        """R0 §11 en Settings: la card bloqueada (no activa, no
+        seleccionada) muestra la razón visible de por qué no puede
+        elegirse; la card seleccionada conserva su estado 'Preferred'."""
+        h = _build(qapp, SETTINGS_HARNESS, "views/harness.qml")
+        service, window = h.service, h.window
+        service.mark_initializing(AudioEngineId.GSTREAMER)
+        _run(qapp, 200)
+        mpd_status = _by_name(window, "engineSettingsCardStatus_mpd")
+        assert "Switch blocked" in _text(mpd_status), (
+            "la card bloqueada (elegible) muestra la razón visible: "
+            + _text(mpd_status)
+        )
+        assert "in progress" in _text(mpd_status), "razón truthful"
+        # La card seleccionada (Qt, la preferida actual) conserva su
+        # estado: no está bloqueada para nada — describe la preferencia.
+        qt_status = _by_name(window, "engineSettingsCardStatus_qt_multimedia")
+        assert "Preferred" in _text(qt_status)
 
 
 class TestSettingsBehavioral:

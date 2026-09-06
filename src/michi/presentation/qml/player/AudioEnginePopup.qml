@@ -132,6 +132,12 @@ Popup {
                         return qsTr("Preferred")
                     if (!row.modelData.canActivate)
                         return qsTr("Not available")
+                    // R0 (§11): canActivate pero bloqueado — la razón es
+                    // VISIBLE, nunca una row inerte sin explicación.
+                    if (!row.modelData.selectionAllowed
+                            && row.modelData.selectionBlocker)
+                        return qsTr("Switch blocked — %1")
+                            .arg(row.modelData.selectionBlocker)
                     return ""
                 }
 
