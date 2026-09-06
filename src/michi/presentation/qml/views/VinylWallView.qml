@@ -286,7 +286,10 @@ GridView {
     // M9-R3 CONVERGENCE SEAL: menú raíz del teclado (roving del view).
     AlbumContextMenu {
         id: albumContextMenu
-        album: albumVinyl.contextAlbum
+                album: albumVinyl.contextAlbum
+        canAddToPlaylist: true
+        canCreatePlaylist: true
+        canShowProperties: true
         z: 300
     }
 }

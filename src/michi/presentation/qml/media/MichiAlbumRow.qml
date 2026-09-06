@@ -155,6 +155,10 @@ Rectangle {
         id: albumContext
         anchors.fill: parent
         album: root.album
+        // R3 (shared host A1): consumer real → capacidades de batch.
+        canAddToPlaylist: true
+        canCreatePlaylist: true
+        canShowProperties: true
         onContextRequested: root.selectedRequested()
     }
     MichiFocusRing {

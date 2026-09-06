@@ -178,7 +178,14 @@ GridView {
     // M9-R3 CONVERGENCE SEAL: menú raíz del teclado (roving del view).
     AlbumContextMenu {
         id: albumContextMenu
-        album: albumGrid.contextAlbum
+                album: albumGrid.contextAlbum
+        // R3 (shared host A1): consumer real de playlist/create/properties
+        // (request_album_playlist_target / new_playlist / properties →
+        // host → picker/dialog/view). El archivo del menú conserva los
+        // defaults false (fail-closed sin host).
+        canAddToPlaylist: true
+        canCreatePlaylist: true
+        canShowProperties: true
         z: 300
     }
 }

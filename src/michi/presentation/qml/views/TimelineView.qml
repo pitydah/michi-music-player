@@ -305,7 +305,10 @@ ListView {
     // M9-R3 CONVERGENCE SEAL: menú raíz del teclado (roving del view).
     AlbumContextMenu {
         id: albumContextMenu
-        album: albumTimeline.contextAlbum
+                album: albumTimeline.contextAlbum
+        canAddToPlaylist: true
+        canCreatePlaylist: true
+        canShowProperties: true
         z: 300
     }
 }

@@ -27,6 +27,8 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
+from contextlib import suppress
+
 from PySide6.QtCore import (  # noqa: F401
     Property,
     QObject,
@@ -143,6 +145,15 @@ class _AlbumLibrary(QObject):  # noqa: N815 (QML-facing properties)
     @Slot(str)
     def request_album_playlist_target(self, key):
         self.calls.append(("album_target", key))
+
+    album_properties_requested = Signal(dict)
+
+    @Slot(str)
+    def request_album_properties(self, key):
+        self.calls.append(("album_properties", key))
+        self.album_properties_requested.emit(
+            {"kind": "album", "albumKey": key, "album": {"key": key}}
+        )
 
     @Slot(str)
     def request_new_playlist_for_album(self, key):
@@ -347,6 +358,151 @@ Item {{
         QTest.qWait(30)
         assert obj.property("menuOpened") is True, "Shift+F10 abre el contexto"
         window.close()
+
+
+def _find_text(root, text):
+    """Primer objeto vivo con el texto dado (items de menú incluidos)."""
+    try:
+        children = list(root.findChildren(QObject))
+    except RuntimeError:
+        return None
+    for child in children:
+        try:
+            if child.property("text") == text:
+                return child
+        except RuntimeError:
+            continue
+    return None
+
+
+def _trigger(menu, text):
+    """Trigger real del item de menú con el texto dado (reintento si el
+    objeto muere entre el find y el emit)."""
+    for _ in range(20):
+        item = _find_text(menu, text)
+        if item is None:
+            return
+        try:
+            item.triggered.emit()
+            return
+        except RuntimeError:
+            continue
+    raise AssertionError(f"item {text!r} no pudo activarse")
+
+
+class TestAlbumBatchContextR3:
+    """R3: capacidades de batch del álbum (shared host A1) — items visibles
+    y ruteo al Bridge en el menú REAL abierto (MagazineView); componente
+    pelado fail-closed; seis proyecciones activan sus instancias."""
+
+    def test_hero_menu_batch_items_visible_and_route(self, qapp):
+        """Right-click real sobre el hero: el menú del álbum muestra Add to
+        Playlist / Create from Album / Properties (capacidad activa) y sus
+        triggers llegan a los seams del Bridge."""
+        view, library = self._magazine(qapp, 4)
+        root = view.rootObject()
+        QTest.mouseClick(
+            view,
+            Qt.MouseButton.RightButton,
+            Qt.KeyboardModifier.NoModifier,
+            pos=QPoint(600, 120),
+        )
+        QTest.qWait(120)
+        menus = _visible_menus(root)
+        assert menus, "menú contextual abierto"
+        menu = menus[0]
+        items = {
+            "Add Album to Playlist": None,
+            "Create Playlist from Album…": None,
+            "Album Properties": None,
+        }
+        for child in menu.findChildren(QObject):
+            try:
+                text = child.property("text")
+                has_trigger = hasattr(child, "triggered")
+            except RuntimeError:
+                continue
+            if text in items and child.property("visible") is True and has_trigger:
+                items[text] = child
+        for label, item in items.items():
+            assert item is not None, f"item {label!r} visible (capacidad R3)"
+        # triggers → seams del Bridge (el host escucha las señales).
+        for label in items:
+            with suppress(RuntimeError):
+                items[label].triggered.emit()
+        QTest.qWait(40)
+        assert ("album_target", "album-0") in library.calls, library.calls
+        assert ("new_playlist", "album-0") in library.calls, library.calls
+        assert ("album_properties", "album-0") in library.calls, library.calls
+        view.close()
+
+    def test_bare_menu_stays_fail_closed(self, qapp):
+        """El componente pelado conserva los defaults false (fail-closed):
+        ningún item de batch se muestra sin la capacidad activa."""
+        from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+        library = _AlbumLibrary([])
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML_DIR))
+        engine.rootContext().setContextProperty("library", library)
+        component = QQmlComponent(
+            engine, str(QML_DIR / "media" / "AlbumContextMenu.qml")
+        )
+        assert component.status() == QQmlComponent.Ready, [
+            e.toString() for e in component.errors()
+        ]
+        menu = component.create()
+        assert menu.property("canAddToPlaylist") is False
+        assert menu.property("canCreatePlaylist") is False
+        assert menu.property("canShowProperties") is False
+
+    def test_six_projection_menus_activate_capability(self, qapp):
+        """Las seis proyecciones activan las capacidades en su instancia
+        productiva del AlbumContextMenu (bajo el host A1)."""
+        for view in (
+            "AlbumGridView",
+            "AlbumListView",
+            "AlbumPathView",
+            "MagazineView",
+            "TimelineView",
+            "VinylWallView",
+        ):
+            src = Path(QML_DIR / "views" / (view + ".qml")).read_text(
+                encoding="utf-8", errors="ignore"
+            )
+            seg = src[src.index("AlbumContextMenu {") :]
+            seg = seg[: seg.index("}")] if "}" in seg else seg
+            assert "canAddToPlaylist: true" in seg, view
+            assert "canCreatePlaylist: true" in seg, view
+            assert "canShowProperties: true" in seg, view
+
+    def test_cards_activate_batch_area(self, qapp):
+        """AlbumCard y MichiAlbumRow activan sus áreas de batch."""
+        for path in (
+            QML_DIR / "media" / "AlbumCard.qml",
+            QML_DIR / "media" / "MichiAlbumRow.qml",
+        ):
+            src = path.read_text(encoding="utf-8", errors="ignore")
+            assert "canAddToPlaylist: true" in src, path.name
+            assert "canCreatePlaylist: true" in src, path.name
+            assert "canShowProperties: true" in src, path.name
+
+    def _magazine(self, qapp, album_count=10):
+        library = _AlbumLibrary(
+            [_album(f"album-{i}", f"Album {i}") for i in range(album_count)]
+        )
+        view = QQuickView()
+        view.engine().addImportPath(str(QML_DIR))
+        view.rootContext().setContextProperty("library", library)
+        view.setSource(QUrl.fromLocalFile(str(QML_DIR / "views" / "MagazineView.qml")))
+        assert view.status() == QQuickView.Ready, [e.toString() for e in view.errors()]
+        view.setResizeMode(QQuickView.SizeRootObjectToView)
+        view.resize(1200, 900)
+        view.show()
+        view.requestActivate()
+        QTest.qWait(80)
+        self._kept = library
+        return view, library
 
 
 class TestArtistMenuFailClosedRuntime:

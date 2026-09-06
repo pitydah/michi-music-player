@@ -324,6 +324,10 @@ Item {
                     objectName: "magazineHeroContext"
                     anchors.fill: parent
                     album: root.heroAlbum
+                    // R3 (shared host A1): capacidades de batch activas.
+                    canAddToPlaylist: true
+                    canCreatePlaylist: true
+                    canShowProperties: true
                     onContextRequested: {
                         if (!root.heroAlbum)
                             return
@@ -424,6 +428,10 @@ Item {
                             objectName: "magazineMediumContext"
                             anchors.fill: parent
                             album: medFeature.modelData
+                    // R3 (shared host A1): batch capabilities active.
+                    canAddToPlaylist: true
+                    canCreatePlaylist: true
+                    canShowProperties: true
                             onContextRequested: {
                                 root.selectEditorial(index + 1, modelData.key)
                                 medFeature.forceActiveFocus()
@@ -531,6 +539,10 @@ Item {
                             objectName: "magazineCompactContext"
                             anchors.fill: parent
                             album: compactFeature.modelData
+                    // R3 (shared host A1): batch capabilities active.
+                    canAddToPlaylist: true
+                    canCreatePlaylist: true
+                    canShowProperties: true
                             onContextRequested: {
                                 root.selectEditorial(index + 3, modelData.key)
                                 compactFeature.forceActiveFocus()
@@ -640,7 +652,10 @@ Item {
     AlbumContextMenu {
         id: magazineContextMenu
         objectName: "magazineRovingContextMenu"
-        album: root.contextAlbum
+                album: root.contextAlbum
+        canAddToPlaylist: true
+        canCreatePlaylist: true
+        canShowProperties: true
         z: 200
     }
 }

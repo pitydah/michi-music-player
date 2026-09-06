@@ -221,8 +221,11 @@ Item {
         id: albumContext
         anchors.fill: parent
         album: root.album
-        // Picker/create/properties remain fail-closed until their shared
-        // productive consumers are restored. Open/Play/Queue/Artist are real.
+        // R3 (shared host A1): consumer real → capacidades de batch
+        // activas (el menú interno conserva los gating del library).
+        canAddToPlaylist: true
+        canCreatePlaylist: true
+        canShowProperties: true
         onContextRequested: root.selectedRequested()
     }
 }
