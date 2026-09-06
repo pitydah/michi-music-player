@@ -13,7 +13,13 @@ ApplicationWindow {
     title: "Michi Music Player"
     color: MichiTheme.backgroundBase
 
-    Shortcut { sequence: "Space"; enabled: !activeFocusControl; onActivated: { MichiAccessibility.inputModality = "keyboard"; playback.status === "playing" ? playback.pause() : playback.play() } }
+    // PLAYBACK-P0-03: UNA autoridad de toggle — el Space usa la MISMA
+    // semántica de tres estados que el botón central
+    // (toggle_play_pause: STOPPED→play, PLAYING→pause, PAUSED→resume).
+    // El ternario previo (playing ? pause : play) era una segunda
+    // semántica: rompía PAUSED→resume y podía reenviar play a un backend
+    // ya PLAYING (ningún estado nuevo → el modelo nunca convergía).
+    Shortcut { sequence: "Space"; enabled: !activeFocusControl; onActivated: { MichiAccessibility.inputModality = "keyboard"; playback.toggle_play_pause() } }
     Shortcut { sequence: "Left"; enabled: !activeFocusControl; onActivated: { MichiAccessibility.inputModality = "keyboard"; playbackSession.previous_track() } }
     Shortcut { sequence: "Right"; enabled: !activeFocusControl; onActivated: { MichiAccessibility.inputModality = "keyboard"; playbackSession.next_track() } }
     Shortcut { sequence: "Ctrl+Q"; onActivated: window.close() }

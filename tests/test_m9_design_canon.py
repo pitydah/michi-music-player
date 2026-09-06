@@ -213,6 +213,26 @@ def test_search_and_playback_errors_are_actionable_surfaces() -> None:
     assert "Keys.onEscapePressed" in overlay
 
 
+def test_space_shortcut_uses_single_toggle_authority() -> None:
+    """PLAYBACK-P0-03: el shortcut Space usa la MISMA autoridad de toggle
+    que el botón central (toggle_play_pause de tres estados). El ternario
+    previo (playing ? pause : play) era una segunda semántica: rompía
+    PAUSED→resume y podía reenviar play a un backend ya PLAYING sin
+    generar ningún evento de estado (el modelo nunca convergía)."""
+    main = Path("src/michi/presentation/main.qml").read_text()
+    now_playing = _text("player/NowPlayingBar.qml")
+    assert 'sequence: "Space"' in main
+    assert "playback.toggle_play_pause()" in main
+    assert 'playback.status === "playing" ? playback.pause() : playback.play()' not in (
+        main
+    ), "el Space no puede tener una segunda semántica de toggle"
+    # El botón central comparte la misma autoridad (intent → toggle).
+    assert "playPauseRequested" in now_playing
+    assert "toggle_play_pause" not in now_playing, (
+        "el botón emite el intent; AppShell lo enruta al toggle único"
+    )
+
+
 def test_library_delegates_use_shared_media_rows() -> None:
     track_views = (
         "views/SongsView.qml",
