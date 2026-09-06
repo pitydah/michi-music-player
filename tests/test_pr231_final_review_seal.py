@@ -382,13 +382,27 @@ def test_add_to_new_playlist_fail_closed_until_productive_host_activates():
     row = _qml_source("media/TrackRow.qml")
     assert "showAddToNewPlaylist" in row
     assert "library.request_new_playlist_for_tracks([root.trackId])" in row
-    # El ÚNICO activador productivo es la instancia de Songs dentro del
-    # LibraryContentHost (el host contextual A1). El resto del árbol nunca
-    # activa la capacidad sin su consumer.
+    # Los activadores productivos viven ÚNICAMENTE bajo el host contextual
+    # A1 (LibraryContentHost + las superficies que aloja: colecciones en sus
+    # instancias, AlbumDetail y ArtistDetail con el host en el árbol).
+    # El resto del árbol nunca activa la capacidad sin su consumer.
     content_host = _qml_source("views/LibraryContentHost.qml")
     assert "canAddToNewPlaylist: true" in content_host
+    allowed_activators = {
+        "LibraryContentHost.qml",  # instancias Songs + colecciones (R1/R2)
+        "AlbumDetailView.qml",  # R2: bajo el host (Add/New)
+        "ArtistDetailView.qml",  # R2: bajo el host (contextActionHost)
+        "AlbumsView.qml",  # R2: aloja el AlbumDetail (canInspect/New)
+        "ArtistsView.qml",  # R2: aloja el ArtistDetail (host inject)
+        "FavoritesView.qml",  # R2: colección bajo el host
+        "HistoryView.qml",  # R2: colección bajo el host
+        "RecentlyAddedView.qml",  # R2: colección bajo el host
+    }
+    # Las VISTAS de colecciones no activan New directamente en el archivo
+    # (lo hace la instancia del host); Favorites/History/Recently conservan
+    # canAddToNewPlaylist: false como archivo (fail-closed bare).
     for qml_file in Path(QML_DIR).rglob("*.qml"):
-        if qml_file.name == "LibraryContentHost.qml":
+        if qml_file.name in allowed_activators:
             continue
         src = qml_file.read_text(encoding="utf-8", errors="ignore")
         assert "canAddToNewPlaylist: true" not in src, (
@@ -398,6 +412,8 @@ def test_add_to_new_playlist_fail_closed_until_productive_host_activates():
     # conservan el fail-closed por defecto.
     table = _qml_source("media/MichiTrackTable.qml")
     assert "property bool canAddToNewPlaylist: false" in table
+    # El archivo del componente del menú conserva el default false.
+    assert re.search(r"property bool canAddToNewPlaylist: false", menu)
 
 
 # ===========================================================================

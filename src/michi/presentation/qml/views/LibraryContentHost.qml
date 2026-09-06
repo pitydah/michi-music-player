@@ -242,6 +242,7 @@ ColumnLayout {
         id: artistsViewComponent
         ArtistsView {
             anchors.fill: parent
+            contextActionHost: contextHost
             addTargetPath: root.addTargetPath
             onAddTargetPathChanged: root.addTargetPath = addTargetPath
         }
@@ -258,6 +259,11 @@ ColumnLayout {
         id: favoritesViewComponent
         FavoritesView {
             anchors.fill: parent
+            // R2 (shared host): consumer real → capabilities activas.
+            canInspect: true
+            canAddToNewPlaylist: true
+            onPropertiesRequested: modelData =>
+                contextHost.inspectTrack(modelData)
         }
     }
 
@@ -265,6 +271,10 @@ ColumnLayout {
         id: historyViewComponent
         HistoryView {
             anchors.fill: parent
+            canInspect: true
+            canAddToNewPlaylist: true
+            onPropertiesRequested: modelData =>
+                contextHost.inspectTrack(modelData)
         }
     }
 
@@ -272,6 +282,10 @@ ColumnLayout {
         id: recentlyViewComponent
         RecentlyAddedView {
             anchors.fill: parent
+            canInspect: true
+            canAddToNewPlaylist: true
+            onPropertiesRequested: modelData =>
+                contextHost.inspectTrack(modelData)
         }
     }
 }

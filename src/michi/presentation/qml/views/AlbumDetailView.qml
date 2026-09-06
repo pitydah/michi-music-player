@@ -419,9 +419,13 @@ ColumnLayout {
                 showAlbumColumn: false
                 canFavorite: true
                 canQueue: library.canQueueTracks
+                canAddToPlaylist: library.canAddTracksToPlaylists
                 canNavigateEntities: true
                 // LIB-A §25: el InspectorPanel REAL existe en esta vista.
                 canInspect: true
+                // R2 (shared host): el consumer New Playlist es real (A1) —
+                // el Bridge emite new_playlist_target_requested → host.
+                canAddToNewPlaylist: true
                 selectedIndex: root.inspectedTrack !== null
                     ? root.inspectedIndex : -1
                 // TrackId-first (el Bridge resuelve legacy-path::).
@@ -430,6 +434,10 @@ ColumnLayout {
                 onFavoriteRequested: trackId =>
                     library.toggle_favorite_by_id(trackId)
                 onQueueRequested: trackId => library.queue_track_by_id(trackId)
+                // R2: targeting TrackId-first (el host escucha la señal del
+                // Bridge; el InspectorPanel interno cubre Properties).
+                onAddToPlaylistRequested: (trackId, path) =>
+                    library.request_tracks_playlist_target([trackId])
                 onGoToArtistRequested: artistKey =>
                     library.select_artist(artistKey)
                 onPropertiesRequested: modelData => {

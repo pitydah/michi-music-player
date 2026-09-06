@@ -19,6 +19,7 @@ MichiTrackTable {
     favoritePaths: library.favoritePaths
     canFavorite: true
     canQueue: library.canQueueTracks
+    canAddToPlaylist: library.canAddTracksToPlaylists
     canNavigateEntities: true
     sortingEnabled: false
     // LIB-A §30: empty state TRUTH.
@@ -34,6 +35,11 @@ MichiTrackTable {
     onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
     onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
     onQueueRequested: trackId => library.queue_track_by_id(trackId)
+    // R2 (shared context host): targeting TrackId-first — el
+    // Bridge emite playlist_target_requested y el host abre el
+    // picker premium (el path nunca decide membership).
+    onAddToPlaylistRequested: (trackId, path) =>
+        library.request_tracks_playlist_target([trackId])
     onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     onGoToArtistRequested: artistKey => library.select_artist(artistKey)
 }

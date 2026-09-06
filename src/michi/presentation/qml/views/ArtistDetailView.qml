@@ -10,6 +10,9 @@ import "../theme"
 ColumnLayout {
     id: root
     objectName: "artistDetailView"
+    // R2: el host contextual compartido (inyectado por ArtistsView, que a
+    // su vez lo recibe del LibraryContentHost) — consumer de Properties.
+    property var contextActionHost: null
     property string addTargetPath: ""
 
     spacing: MichiThemeState.contentGap
@@ -151,12 +154,23 @@ ColumnLayout {
         showAlbumColumn: true
         canFavorite: true
         canQueue: library.canQueueTracks
+        canAddToPlaylist: library.canAddTracksToPlaylists
         canNavigateEntities: true
-        canInspect: false
+        // R2: Properties con consumer real (host compartido, A1) cuando el
+        // host está presente; fail-closed sin él.
+        canInspect: root.contextActionHost !== null
+        // R2 (shared host): New Playlist consumer real (A1).
+        canAddToNewPlaylist: true
         // TrackId-first (el Bridge resuelve legacy-path::).
         onTrackActivated: (trackId, path, index) => library.activate_track_by_id(trackId)
         onFavoriteRequested: trackId => library.toggle_favorite_by_id(trackId)
         onQueueRequested: trackId => library.queue_track_by_id(trackId)
+        onAddToPlaylistRequested: (trackId, path) =>
+            library.request_tracks_playlist_target([trackId])
+        onPropertiesRequested: modelData => {
+            if (root.contextActionHost !== null)
+                root.contextActionHost.inspectTrack(modelData)
+        }
         onGoToAlbumRequested: albumKey => library.select_album(albumKey)
     }
 

@@ -9,6 +9,8 @@ import "../theme"
 
 Item {
     id: root
+    // R2: host contextual compartido (inyectado por LibraryContentHost).
+    property var contextActionHost: null
     objectName: "artistsView"
     property string addTargetPath: ""
 
@@ -182,6 +184,7 @@ Item {
 
     ArtistDetailView {
         anchors.fill: parent
+        contextActionHost: root.contextActionHost
         addTargetPath: root.addTargetPath
         onAddTargetPathChanged: root.addTargetPath = addTargetPath
     }

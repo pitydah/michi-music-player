@@ -252,6 +252,22 @@ class _Library(QObject):
     genreFilterActive = Property(bool, lambda self: False, notify=changed)
     selectedGenreName = Property(str, lambda self: "", notify=changed)
     songRows = Property("QVariantList", lambda self: self._rows, notify=changed)
+    favoriteTrackRows = Property(
+        "QVariantList",
+        lambda self: [r for r in self._rows if r["trackId"] != "T-2"],
+        notify=changed,
+    )
+    historyTrackRows = Property("QVariantList", lambda self: self._rows, notify=changed)
+    recentlyAddedTrackRows = Property(
+        "QVariantList", lambda self: self._rows, notify=changed
+    )
+    albumTracks = Property("QVariantList", lambda self: self._rows, notify=changed)
+    artistTracks = Property("QVariantList", lambda self: self._rows, notify=changed)
+    selectedAlbumKey = Property(str, lambda self: "album-one", notify=changed)
+    selectedArtistKey = Property(str, lambda self: "artist-one", notify=changed)
+    albumCount = Property(int, lambda self: 1, notify=changed)
+    artistCount = Property(int, lambda self: 1, notify=changed)
+    fileCount = Property(int, lambda self: 2, notify=changed)
     favoriteTrackIds = Property("QVariantList", lambda self: [], notify=changed)
     favoritePaths = Property("QVariantList", lambda self: [], notify=changed)
     canQueueTracks = Property(bool, lambda self: True, notify=changed)
@@ -636,6 +652,155 @@ class TestUnavailableAddAndPropertiesRuntime:
         assert track.get("path") == "/music/offline.flac", (
             "la ubicación factual se muestra aunque el archivo esté offline"
         )
+        view.close()
+
+
+class TestCollectionSurfacesR2:
+    """R2: Favorites/History/Recently — Add Playlist + Properties con el
+    host compartido (TrackId-first), por el menú contextual real."""
+
+    TAB_VIEW = {
+        "favorites": "favoritesView",
+        "history": "historyView",
+        "recently": "recentlyView",
+    }
+
+    def _mount_tab(self, qapp, tab):
+        view, library = _mount(qapp, [_row(), _unavailable_row()])
+        root = view.rootObject()
+        # alternar el tab (los componentes se crean en _loadTab).
+        root.setProperty("currentTab", "songs")
+        QTest.qWait(60)
+        root.setProperty("currentTab", tab)
+        QTest.qWait(250)
+        return view, library, root
+
+    def test_collection_add_to_playlist_track_id(self, qapp):
+        """Add to Playlist desde cada colección → targeting TrackId."""
+        for tab in ("favorites", "history", "recently"):
+            view, library, root = self._mount_tab(qapp, tab)
+            surface = _find_any(
+                root,
+                lambda c, t=tab: c.objectName() == self.TAB_VIEW[t],
+            )
+            assert surface is not None, f"superficie {tab} no cargada"
+
+            row = _wait_for(surface, "trackId", "T-1")
+            assert row is not None, f"fila T-1 en {tab}"
+            center = row.mapToScene(QPointF(row.width() / 2, row.height() / 2))
+            QTest.mouseClick(
+                view,
+                Qt.MouseButton.RightButton,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(int(center.x()), int(center.y())),
+            )
+            QTest.qWait(80)
+            _activate_menu_item(row, "Add to Playlist")
+
+            assert library.target_calls and library.target_calls[-1] == ["T-1"], (
+                f"{tab}: targeting TrackId estable"
+            )
+            picker = _picker(root)
+            assert picker is not None
+            payload = picker.property("selectionPayload")
+            assert _variant(_pk(payload, "kind")) == "tracks"
+            view.close()
+
+    def test_collection_properties_reach_host_view(self, qapp):
+        """Properties desde una colección → TrackPropertiesView poblada."""
+        for tab in ("favorites", "history", "recently"):
+            view, library, root = self._mount_tab(qapp, tab)
+            surface = _find_any(
+                root,
+                lambda c, t=tab: c.objectName() == self.TAB_VIEW[t],
+            )
+            assert surface is not None, f"superficie {tab} no cargada"
+            row = _wait_for(surface, "trackId", "T-1")
+            assert row is not None, f"fila T-1 en {tab}"
+            center = row.mapToScene(QPointF(row.width() / 2, row.height() / 2))
+            QTest.mouseClick(
+                view,
+                Qt.MouseButton.RightButton,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(int(center.x()), int(center.y())),
+            )
+            QTest.qWait(80)
+            _activate_menu_item(row, "Properties")
+            props = _find_any(
+                root, lambda c: c.objectName() == "libraryContextTrackProperties"
+            )
+            assert props is not None, f"Properties host no hallado en {tab}"
+            QTest.qWait(60)
+            track = _variant(props.property("track")) or {}
+            assert track.get("trackId") == "T-1", (
+                f"{tab}: la vista recibe el row canónico"
+            )
+            view.close()
+
+
+class TestDetailSurfacesR2:
+    def test_album_detail_track_add_to_playlist(self, qapp):
+        """R2 AlbumDetail: el track del álbum ofrece Add Playlist/New —
+        targeting TrackId (el InspectorPanel interno cubre Properties)."""
+        view, library = _mount(qapp, [_row()])
+        root = view.rootObject()
+        # navegar: songs → albums → detalle del álbum seleccionado.
+        root.setProperty("currentTab", "albums")
+        QTest.qWait(250)
+        detail = _find_any(root, lambda c: c.objectName() == "albumDetailView")
+        assert detail is not None, "AlbumDetailView no cargada"
+        row = _wait_for(detail, "trackId", "T-1")
+        assert row is not None, "fila del detalle de álbum"
+        center = row.mapToScene(QPointF(row.width() / 2, row.height() / 2))
+        QTest.mouseClick(
+            view,
+            Qt.MouseButton.RightButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(int(center.x()), int(center.y())),
+        )
+        QTest.qWait(80)
+        _activate_menu_item(row, "Add to Playlist")
+        assert library.target_calls and library.target_calls[-1] == ["T-1"], (
+            "AlbumDetail: targeting TrackId estable"
+        )
+        view.close()
+
+    def test_artist_detail_track_add_and_properties(self, qapp):
+        """R2 ArtistDetail: Add Playlist + Properties vía host compartido
+        (contextActionHost inyectado por ArtistsView)."""
+        view, library = _mount(qapp, [_row()])
+        root = view.rootObject()
+        root.setProperty("currentTab", "artists")
+        QTest.qWait(250)
+        detail = _find_any(root, lambda c: c.objectName() == "artistDetailView")
+        assert detail is not None, "ArtistDetailView no cargada"
+        assert detail.property("contextActionHost") is not None, (
+            "el host compartido llega al detail"
+        )
+        row = _wait_for(detail, "trackId", "T-1")
+        assert row is not None, "fila del detalle de artista"
+        center = row.mapToScene(QPointF(row.width() / 2, row.height() / 2))
+        QTest.mouseClick(
+            view,
+            Qt.MouseButton.RightButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(int(center.x()), int(center.y())),
+        )
+        QTest.qWait(80)
+        _activate_menu_item(row, "Add to Playlist")
+        assert library.target_calls and library.target_calls[-1] == ["T-1"], (
+            "ArtistDetail: targeting TrackId estable"
+        )
+        # Properties → vista del host.
+        _right_click_row(view, root, "T-1")
+        _activate_menu_item(row, "Properties")
+        props = _find_any(
+            root, lambda c: c.objectName() == "libraryContextTrackProperties"
+        )
+        assert props is not None, "Properties host no hallado (ArtistDetail)"
+        QTest.qWait(60)
+        track = _variant(props.property("track")) or {}
+        assert track.get("trackId") == "T-1"
         view.close()
 
 
