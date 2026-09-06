@@ -204,6 +204,17 @@ class GStreamerBindings:
     def message_is_from_pipeline(self, message, pipeline) -> bool:
         return message.src is pipeline
 
+    def describe_source(self, message) -> str:
+        """Identidad observable del src de un mensaje (traza P0: tipo e id
+        del wrapper PyGObject — permite ver si la identidad `is` del
+        filtro STATE_CHANGED falla por wrappers distintos)."""
+        src = getattr(message, "src", None)
+        if src is not None:
+            return f"{type(src).__name__}@{id(src)}"
+        if message is not None:
+            return f"{type(message).__name__}@{id(message)}"
+        return "None"
+
     def state_of(self, message):
         """Nuevo estado de un mensaje STATE_CHANGED (o None si no aplica).
 
@@ -1026,6 +1037,19 @@ class GStreamerAudioPort(AudioPort):
                             status=status,
                         )
                     )
+            else:
+                # PLAYBACK-P0-01 trace: un STATE_CHANGED del bus que no
+                # proviene del pipeline capturado se descarta — si la
+                # identidad `is` de PyGObject fallara (wrappers distintos
+                # para el mismo pipeline), TODOS los STATE_CHANGED caerían
+                # aquí y el estado físico nunca alcanzaría el modelo.
+                _logger.debug(
+                    "gst pump: dropped STATE_CHANGED not from captured "
+                    "pipeline (generation=%s); src=%s pipeline=%s",
+                    captured_generation,
+                    self._bindings.describe_source(message),
+                    self._bindings.describe_source(captured_pipeline),
+                )
         elif msg_type == mt.DURATION_CHANGED:
             # sin query en el pump: el owner consulta en el commit point
             self._bridge.sig_event.emit(
@@ -1156,6 +1180,10 @@ class GStreamerAudioPort(AudioPort):
         (se difiere por generación). Preroll PAUSED con candidato pendiente
         no es user PAUSED."""
         status = event.status
+        _logger.debug(
+            "gst owner: state commit %s (generation=%s pending_path=%s)",
+            status.value, event.generation, self._pending_path is not None,
+        )
         if status == PlaybackStatus.PLAYING:
             if self._pending_path is not None and self._current_path is None:
                 # PLAYING temprano: diferir hasta la aceptación (R6.5)

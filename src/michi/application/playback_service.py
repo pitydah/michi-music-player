@@ -821,6 +821,12 @@ class PlaybackService:
         # Anything else is a stale, unknown, or duplicate callback: ignored.
 
     def _on_playback_state_changed(self, status: PlaybackStatus) -> None:
+        # PLAYBACK-P0-01 trace: cada evento físico del backend con las
+        # guardas que lo procesan (punto de convergencia física/canónica).
+        logger.debug(
+            "playback backend event status=%s intent=%s accepted=%s model=%s",
+            status.value, self._intent, self._accepted, self._state.status.value,
+        )
         # INV-AUDIO-NO-GHOST-PLAYBACK (R2 PRODUCTION REALITY): a backend
         # reporting non-STOPPED (PLAYING/PAUSED) WITHOUT a valid playback
         # intent is an observable authority violation — never silently
@@ -830,16 +836,27 @@ class PlaybackService:
         # (seekid on a stopped song starts playback) while the model kept
         # showing STOPPED and the Play button kept issuing play().
         if not self._intent and status != PlaybackStatus.STOPPED:
+            logger.debug(
+                "playback converge: backend %s without intent -> safety stop",
+                status.value,
+            )
             self._converge_unexpected_backend_state(status)
             return
         if status == PlaybackStatus.PLAYING and not self._accepted:
             # acceptance pending: PLAYING before media acceptance is not a
             # legitimate model state either — converge (safety) instead of
             # silently dropping the audio the backend may be producing.
+            logger.debug(
+                "playback converge: PLAYING before media acceptance -> safety stop"
+            )
             self._converge_unexpected_backend_state(status)
             return
         if self._state.status == status:
             return
+        logger.debug(
+            "playback publish: backend %s -> canonical model",
+            status.value,
+        )
         self._state.status = status
         self._notify()
 
@@ -867,6 +884,11 @@ class PlaybackService:
 
     def play(self) -> None:
         self._ensure_no_engine_switch_lease("play")
+        logger.debug(
+            "playback command play: intent=%s accepted=%s model=%s pending=%s",
+            self._intent, self._accepted, self._state.status.value,
+            self._pending_path is not None,
+        )
         # M11.3C-R6.1: si no hay media aceptada en el backend pero existe un
         # track lógico commiteado y no hay candidato pendiente, recargar el
         # track por el camino canónico. load_and_play() ya invoca
@@ -889,6 +911,10 @@ class PlaybackService:
 
     def pause(self) -> None:
         self._ensure_no_engine_switch_lease("pause")
+        logger.debug(
+            "playback command pause: intent=%s accepted=%s model=%s",
+            self._intent, self._accepted, self._state.status.value,
+        )
         self._audio.pause()
 
     def resume(self) -> None:

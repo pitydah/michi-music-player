@@ -1259,8 +1259,14 @@ class TestF42AdapterContract:
         # KCR-CORE-HARDENING R1.1 authorized reopening: mpd deferred-seek
         # provenance + atomicity, coordinator quiescent-switch rehydration
         # (KCR-021), PlaybackService snapshot/transfer APIs.
+        # PLAYBACK-P0-01 (2026-09-05) authorized DIAGNOSTIC reopening:
+        # gstreamer.py ganó observación de traza únicamente — describe_source
+        # (identidad del wrapper del src) y logs DEBUG del descarte de
+        # STATE_CHANGED en el pump y del commit de estado del owner — para
+        # localizar la divergencia física/canónica de playback. CERO cambio
+        # de semántica de transporte.
         "src/michi/infrastructure/audio_engines/mpd.py": "c1a0b47f5e2da0fa",
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "87a7760701a28167",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "0c9d72dc726ff913",
         "src/michi/infrastructure/qt_backend.py": "4b005d149c4b8fd1",
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
         "src/michi/application/audio_transport_router.py": "a02c67e2b0dbaf75",

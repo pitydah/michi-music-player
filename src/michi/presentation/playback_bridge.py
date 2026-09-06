@@ -203,6 +203,12 @@ class PlaybackBridge(QObject):
         (The previous QML ternary PLAYING ? pause : play sent playid again
         for a paused MPD instead of pause 0.)"""
         status = self._service.state.status
+        logger.debug(
+            "playback toggle: canonical=%s -> command=%s",
+            status.value,
+            "pause" if status is PlaybackStatus.PLAYING
+            else "resume" if status is PlaybackStatus.PAUSED else "play",
+        )
         if status is PlaybackStatus.PLAYING:
             self.pause()
         elif status is PlaybackStatus.PAUSED:

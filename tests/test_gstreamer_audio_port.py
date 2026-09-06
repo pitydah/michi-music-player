@@ -313,6 +313,14 @@ class FakeBindings:
     def message_is_from_pipeline(self, message, pipeline):
         return message.src is pipeline
 
+    def describe_source(self, message):
+        src = getattr(message, "src", None)
+        if src is not None:
+            return f"{type(src).__name__}@{id(src)}"
+        if message is not None:
+            return f"{type(message).__name__}@{id(message)}"
+        return "None"
+
     def state_of(self, message):
         return message._new_state
 
