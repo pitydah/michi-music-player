@@ -1182,7 +1182,9 @@ class GStreamerAudioPort(AudioPort):
         status = event.status
         _logger.debug(
             "gst owner: state commit %s (generation=%s pending_path=%s)",
-            status.value, event.generation, self._pending_path is not None,
+            status.value,
+            event.generation,
+            self._pending_path is not None,
         )
         if status == PlaybackStatus.PLAYING:
             if self._pending_path is not None and self._current_path is None:

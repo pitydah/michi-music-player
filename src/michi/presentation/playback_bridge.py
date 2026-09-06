@@ -206,8 +206,11 @@ class PlaybackBridge(QObject):
         logger.debug(
             "playback toggle: canonical=%s -> command=%s",
             status.value,
-            "pause" if status is PlaybackStatus.PLAYING
-            else "resume" if status is PlaybackStatus.PAUSED else "play",
+            "pause"
+            if status is PlaybackStatus.PLAYING
+            else "resume"
+            if status is PlaybackStatus.PAUSED
+            else "play",
         )
         if status is PlaybackStatus.PLAYING:
             self.pause()

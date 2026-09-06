@@ -825,7 +825,10 @@ class PlaybackService:
         # guardas que lo procesan (punto de convergencia física/canónica).
         logger.debug(
             "playback backend event status=%s intent=%s accepted=%s model=%s",
-            status.value, self._intent, self._accepted, self._state.status.value,
+            status.value,
+            self._intent,
+            self._accepted,
+            self._state.status.value,
         )
         # INV-AUDIO-NO-GHOST-PLAYBACK (R2 PRODUCTION REALITY): a backend
         # reporting non-STOPPED (PLAYING/PAUSED) WITHOUT a valid playback
@@ -886,7 +889,9 @@ class PlaybackService:
         self._ensure_no_engine_switch_lease("play")
         logger.debug(
             "playback command play: intent=%s accepted=%s model=%s pending=%s",
-            self._intent, self._accepted, self._state.status.value,
+            self._intent,
+            self._accepted,
+            self._state.status.value,
             self._pending_path is not None,
         )
         # M11.3C-R6.1: si no hay media aceptada en el backend pero existe un
@@ -913,7 +918,9 @@ class PlaybackService:
         self._ensure_no_engine_switch_lease("pause")
         logger.debug(
             "playback command pause: intent=%s accepted=%s model=%s",
-            self._intent, self._accepted, self._state.status.value,
+            self._intent,
+            self._accepted,
+            self._state.status.value,
         )
         self._audio.pause()
 
