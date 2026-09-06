@@ -449,7 +449,7 @@ class TestBridgeViews:
         assert bridge.property("albumTracks") == []
         bridge.dispose()
 
-    def test_activate_album_track_adds_to_queue(self, tmp_path):
+    def test_activate_album_track_album_context_queue_never_receives(self, tmp_path):
         a1 = tmp_path / "a1.mp3"
         a2 = tmp_path / "a2.mp3"
         for p in (a1, a2):
