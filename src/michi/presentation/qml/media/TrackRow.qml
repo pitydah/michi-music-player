@@ -37,6 +37,7 @@ Rectangle {
     property bool favorite: false
     property bool showFavorite: false
     property bool showAddToPlaylist: false
+    property bool showAddToNewPlaylist: false
     property bool showInspector: false
     property bool showRemove: false
     property bool canQueue: false
@@ -349,6 +350,7 @@ Rectangle {
         favorite: root.favorite
         canFavorite: root.showFavorite
         canAddToPlaylist: root.showAddToPlaylist
+        canAddToNewPlaylist: root.showAddToNewPlaylist
         canGoToAlbum: root.canGoToAlbum
         canGoToArtist: root.canGoToArtist
         canShowProperties: root.showInspector

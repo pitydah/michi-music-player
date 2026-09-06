@@ -75,10 +75,11 @@ def test_collection_actions_never_call_queue_service_bridge_directly() -> None:
 
 
 def test_picker_and_properties_components_exist_without_implying_context_host() -> None:
-    """Los componentes picker/properties existen como componentes — PERO el
-    host contextual compartido (playlist_target_requested /
-    album_properties_requested productivamente consumidos) NO está wired
-    todavía: llega en PR D. Este test no afirma un wiring inexistente."""
+    """Los componentes picker/properties existen como componentes. El host
+    contextual compartido (LibraryContextActionHost) está wired para TRACKS
+    desde A1 (playlist_target_requested / album_properties_requested con
+    consumers reales); Album/Artist siguen capability-gated hasta R3/R4.
+    Este test no afirma un wiring inexistente."""
     library_host = _qml("views/LibraryContentHost.qml")
     shell_host = _qml("shell/ContentHost.qml")
     # Los hosts referencian sus componentes premium existentes.
@@ -97,8 +98,9 @@ def test_picker_and_properties_components_exist_without_implying_context_host() 
     ):
         assert fact in properties
     assert "Hi-Res" not in properties
-    # FAIL-CLOSED (PR D): los menús no exponen las acciones sin consumer
-    # compartido — nunca inferir capacidad del signal del Bridge.
+    # FAIL-CLOSED (R3/R4): los menús de Album/Artist no exponen las
+    # acciones hasta que la fase correspondiente active los consumers —
+    # nunca inferir capacidad del signal del Bridge.
     album_menu = _qml("media/AlbumContextMenu.qml")
     assert "property bool canAddToPlaylist: false" in album_menu
     assert "property bool canCreatePlaylist: false" in album_menu

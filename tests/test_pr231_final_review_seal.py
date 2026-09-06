@@ -364,24 +364,40 @@ def test_songs_properties_action_disabled_until_inspector_exists(qapp):
 # ===========================================================================
 
 
-def test_add_to_new_playlist_item_hidden_without_consumer():
-    """Repo-wide there is no consumer for new_playlist_target_requested /
-    request_new_playlist_for_tracks wiring, so the menu item must be gated
-    behind a capability that nothing enables (no dead UI)."""
+def test_add_to_new_playlist_fail_closed_until_productive_host_activates():
+    """R1 contract: the bare component stays fail-closed (default false);
+    the PRODUCTIVE host (LibraryContentHost Songs instance) activates the
+    capability because the consumer is real (context host →
+    SelectionPlaylistCreateDialog, sealed by the A1 runtime); a bare
+    instance without the host never shows a dead action."""
     menu = _qml_source("media/TrackContextMenu.qml")
     assert re.search(r"property bool canAddToNewPlaylist: false", menu), (
-        "capacidad desactivada por defecto"
+        "capacidad desactivada por defecto (bare component fail-closed)"
     )
     assert re.search(
         r"visible: root\.canAddToPlaylist && root\.canAddToNewPlaylist",
         menu,
     ), "el item Add to New Playlist debe requerir la capacidad"
-    # Ningún surface productivo la activa hoy (no hay consumer).
+    # La cadena del row llega al seam del bridge (nunca un no-op).
+    row = _qml_source("media/TrackRow.qml")
+    assert "showAddToNewPlaylist" in row
+    assert "library.request_new_playlist_for_tracks([root.trackId])" in row
+    # El ÚNICO activador productivo es la instancia de Songs dentro del
+    # LibraryContentHost (el host contextual A1). El resto del árbol nunca
+    # activa la capacidad sin su consumer.
+    content_host = _qml_source("views/LibraryContentHost.qml")
+    assert "canAddToNewPlaylist: true" in content_host
     for qml_file in Path(QML_DIR).rglob("*.qml"):
+        if qml_file.name == "LibraryContentHost.qml":
+            continue
         src = qml_file.read_text(encoding="utf-8", errors="ignore")
         assert "canAddToNewPlaylist: true" not in src, (
-            f"{qml_file.name} activa una acción sin consumer"
+            f"{qml_file.name} activa New Playlist sin el host productivo"
         )
+    # Las tablas (superficies aún no cubiertas por el host en esta fase)
+    # conservan el fail-closed por defecto.
+    table = _qml_source("media/MichiTrackTable.qml")
+    assert "property bool canAddToNewPlaylist: false" in table
 
 
 # ===========================================================================

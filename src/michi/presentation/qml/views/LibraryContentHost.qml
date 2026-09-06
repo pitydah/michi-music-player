@@ -212,6 +212,10 @@ ColumnLayout {
             // premium) — la acción deja de estar fail-closed en Songs.
             canInspect: true
             onPropertiesRequested: modelData => contextHost.inspectTrack(modelData)
+            // R1: el consumer de New Playlist es real desde A1
+            // (contextHost.openNewPlaylist → createDialog) — la capacidad
+            // del menú directo se activa en la instancia productiva.
+            canAddToNewPlaylist: true
         }
     }
 

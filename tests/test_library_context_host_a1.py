@@ -295,6 +295,14 @@ class _Library(QObject):
             return 0  # ya presentes → el bridge reporta 0 agregados
         return 1
 
+    @Slot(list)
+    def request_new_playlist_for_tracks(self, track_ids):
+        valid = [str(t) for t in track_ids if str(t).startswith("T-")]
+        if valid:
+            self.new_playlist_target_requested.emit(
+                {"kind": "tracks", "trackIds": valid}
+            )
+
     @Slot(str, list, result=str)
     def create_playlist_from_tracks(self, name, track_ids):
         self.create_calls.append((name, list(track_ids)))
@@ -528,6 +536,37 @@ class TestTrackNewPlaylistRuntime:
         # inline vía complete(false)).
         assert not any("Created" in text for text, _tone in feedback), (
             f"fake success prohibido, recibido {feedback}"
+        )
+        view.close()
+
+    def test_track_menu_direct_new_playlist_reaches_host_dialog(self, qapp):
+        """R1: el item 'Add to New Playlist…' del menú del track (Songs, con
+        la capacidad activada por el host productivo) llega al
+        SelectionPlaylistCreateDialog vía request_new_playlist_for_tracks —
+        la cadena completa del menú, sin pasar por el picker."""
+        view, library = _mount(qapp, [_row()])
+        root = view.rootObject()
+        _host_and_feedback(root)
+
+        row = _right_click_row(view, root, "T-1")
+        # R1: la capacidad está ACTIVA en la instancia productiva (el
+        # consumer host.openNewPlaylist existe desde A1).
+        table = _find_any(
+            root, lambda c: c.metaObject().indexOfProperty("canAddToNewPlaylist") >= 0
+        )
+        assert table is not None
+        # El ítem del menú existe y es visible (capacidad activada).
+        _activate_menu_item(row, "Add to New Playlist…")
+
+        dialog = _find_any(
+            root, lambda c: c.objectName() == "libraryContextCreateDialog"
+        )
+        assert dialog is not None, "SelectionPlaylistCreateDialog no hallado"
+        QTest.qWait(60)
+        payload = dialog.property("selectionPayload")
+        assert _variant(_pk(payload, "kind")) == "tracks", payload
+        assert _str_array(_pk(payload, "trackIds")) == ["T-1"], (
+            "el payload del menú directo lleva el TrackId estable"
         )
         view.close()
 

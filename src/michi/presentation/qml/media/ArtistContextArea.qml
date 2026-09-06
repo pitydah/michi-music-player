@@ -5,7 +5,7 @@ Item {
     id: root
     property var artist: null
     // Fail-closed: el host decide si "Add Artist to Playlist" tiene
-    // consumer productivo (PR D). Por defecto FALSE.
+    // consumer productivo (fase R4). Por defecto FALSE.
     property bool canAddToPlaylist: false
     signal contextRequested()
     function openMenu() {

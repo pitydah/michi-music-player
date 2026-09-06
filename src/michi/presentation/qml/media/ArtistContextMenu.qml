@@ -10,7 +10,7 @@ MichiMenu {
     property var artist: null
     // M9-R3 CONTEXTUAL RECOVERY (fail-closed): nunca exponer una acción
     // solo porque el Bridge tenga un signal. "Add Artist to Playlist"
-    // requiere un consumer productivo compartido (PR D instala el host);
+    // requiere un consumer productivo compartido (fase R4 lo activa);
     // hasta entonces la capacidad permanece FALSE por defecto.
     property bool canAddToPlaylist: false
 

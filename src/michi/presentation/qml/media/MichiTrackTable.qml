@@ -22,6 +22,7 @@ Item {
     property bool canFavorite: false
     property bool canQueue: false
     property bool canAddToPlaylist: false
+    property bool canAddToNewPlaylist: false
     property bool canInspect: false
     property bool canNavigateEntities: false
     property bool sortingEnabled: false
@@ -202,6 +203,7 @@ Item {
                     && root.favoritePaths.indexOf(modelData.path) !== -1)
             showFavorite: root.canFavorite
             showAddToPlaylist: root.canAddToPlaylist
+            showAddToNewPlaylist: root.canAddToNewPlaylist
             showInspector: root.canInspect
             // LIB-A §6: unavailable → queue NO (la availability por fila
             // no se pierde aunque el host permita queue).

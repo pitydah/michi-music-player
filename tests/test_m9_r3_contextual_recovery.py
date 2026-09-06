@@ -9,7 +9,7 @@ consumer per projection plus the fail-closed capability policy:
   and MagazineView additionally routes keyboard roving (Menu/Shift+F10)
   through ONE root AlbumContextMenu with canonical offsets;
 - "Add Artist to Playlist" stays fail-closed (canAddToPlaylist false)
-  until PR D installs the shared playlist-target host;
+  until phase R4 activates it through the shared context host (A1);
 - Album menu batch actions stay capability-gated (never inferred from
   signal existence);
 - Genre navigation uses the identity key (never a display-name search);
@@ -99,7 +99,7 @@ def test_magazine_context_selects_target_before_menu() -> None:
 def test_artist_add_to_playlist_is_fail_closed() -> None:
     """'Add Artist to Playlist' requiere canAddToPlaylist (default false):
     no se muestra porque exista el signal del Bridge. Ningún surface
-    productivo la activa hasta PR D."""
+    productivo la activa (fase R4 pendiente: host + capability)."""
     menu = _qml("media/ArtistContextMenu.qml")
     assert "property bool canAddToPlaylist: false" in menu
     assert "visible: root.artist !== null && root.canAddToPlaylist" in menu
@@ -107,7 +107,7 @@ def test_artist_add_to_playlist_is_fail_closed() -> None:
     area = _qml("media/ArtistContextArea.qml")
     assert "property bool canAddToPlaylist: false" in area
     assert "canAddToPlaylist: root.canAddToPlaylist" in area
-    # Ningún productivo activa la capacidad (fail-close hasta PR D).
+    # Ningún productivo activa la capacidad (fail-close hasta R4).
     for qml_file in Path(QML).rglob("*.qml"):
         if qml_file.name in ("ArtistContextArea.qml", "ArtistContextMenu.qml"):
             continue
@@ -152,9 +152,9 @@ def test_genre_context_uses_identity_key_never_search() -> None:
 
 
 def test_favorites_history_recently_added_keep_add_to_playlist_hidden() -> None:
-    """Estos hosts no activan showAddToPlaylist: el único consumer real de
-    single-track add sigue siendo Songs (seam PR #231); el resto espera
-    PR D (shared host)."""
+    """Estos hosts no activan showAddToPlaylist: la cobertura compartida de
+    tracks (Favorites/History/Recently/Playlist) es la fase R2 — hasta
+    entonces conservan el fail-closed (el host A1 ya existe)."""
     for view in (
         "views/FavoritesView.qml",
         "views/HistoryView.qml",
