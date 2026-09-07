@@ -274,3 +274,52 @@ def test_scan_active_hides_enrich_through_real_scan(qapp, tmp_path):
     # mantiene coherente.
     assert bridge.scanActive is True
     view.close()
+
+
+class TestEnrichmentUxR16:
+    def test_status_labels_are_translated_and_truthful(self, qapp, tmp_path):
+        """R16 (§57): los labels de estado del enrichment son qsTr y
+        nombran los estados truthy (Partial/Offline/Failed/Review needed/
+        No match/Cancelled/Disabled)."""
+        src = Path("src/michi/presentation/qml/enrichment/EnrichmentStatusBar.qml").read_text(
+            encoding="utf-8", errors="ignore"
+        )
+        for token in (
+            'return qsTr("Partial")', 'return qsTr("Offline")',
+            'return qsTr("Failed")', 'return qsTr("Review needed")',
+            'return qsTr("No match")', 'return qsTr("Cancelled")',
+            'return qsTr("Disabled")',
+        ):
+            assert token in src, f"label crudo: {token}"
+        # Sin labels crudos (string plano sin qsTr) en el switch del estado.
+        import re
+
+        raw = re.findall(r'return "([A-Z][a-z]+ ?[a-z]*)"', src)
+        assert raw == [], f"labels crudos: {raw}"
+
+    def test_online_is_opt_in_cache_first(self, qapp, tmp_path):
+        """R16 (§84): la navegación pasiva no dispara red — onlineEnabled
+        arranca OFF (cache-first) y el refresh es explícito del usuario."""
+        bridge_src = Path("src/michi/presentation/enrichment_bridge.py").read_text(
+            encoding="utf-8", errors="ignore"
+        )
+        assert "self._online_enabled = False" in bridge_src, (
+            "online arranca OFF (cache-only por defecto)"
+        )
+        toolbar = Path("src/michi/presentation/qml/views/LibraryToolbar.qml").read_text(
+            encoding="utf-8", errors="ignore"
+        )
+        assert "onlineEnabled" in toolbar
+
+    def test_cancel_reachable_while_enriching(self, qapp, tmp_path):
+        """R16 (§83): el botón del job mantiene Cancel alcanzable durante
+        el enrichment activo (RUNNING/PREPARING/CANCELLING)."""
+        toolbar = Path("src/michi/presentation/qml/views/LibraryToolbar.qml").read_text(
+            encoding="utf-8", errors="ignore"
+        )
+        assert 'qsTr("Enriching Library… %1 / %2")' in toolbar
+        assert "enrichment.cancel_library_enrichment()" in toolbar
+        bridge_src = Path("src/michi/presentation/enrichment_bridge.py").read_text(
+            encoding="utf-8", errors="ignore"
+        )
+        assert "def cancel_library_enrichment" in bridge_src

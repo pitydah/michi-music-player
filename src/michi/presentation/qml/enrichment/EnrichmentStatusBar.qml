@@ -32,15 +32,15 @@ RowLayout {
 
     function _label() {
         switch (root.state) {
-        case "DISABLED": return "Disabled"
-        case "RESOLVING_IDENTITY": return "Finding"
-        case "FETCHING_KNOWLEDGE": return "Loading"
-        case "PARTIAL": return "Partial"
-        case "OFFLINE": return "Offline"
-        case "FAILED": return "Failed"
-        case "AMBIGUOUS": return "Review needed"
-        case "NOT_FOUND": return "No match"
-        case "CANCELLED": return "Cancelled"
+        case "DISABLED": return qsTr("Disabled")
+        case "RESOLVING_IDENTITY": return qsTr("Finding")
+        case "FETCHING_KNOWLEDGE": return qsTr("Loading")
+        case "PARTIAL": return qsTr("Partial")
+        case "OFFLINE": return qsTr("Offline")
+        case "FAILED": return qsTr("Failed")
+        case "AMBIGUOUS": return qsTr("Review needed")
+        case "NOT_FOUND": return qsTr("No match")
+        case "CANCELLED": return qsTr("Cancelled")
         default: return root.state
         }
     }
