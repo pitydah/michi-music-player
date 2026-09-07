@@ -30,6 +30,7 @@ michi = [
     "presentation/qml/assets/*.svg",
     "presentation/qml/controls/*.qml",
     "presentation/qml/dev/*.qml",
+    "presentation/qml/enrichment/*.qml",
     "presentation/qml/media/*.qml",
     "presentation/qml/patterns/*.qml",
     "presentation/qml/playlists/*.qml",
