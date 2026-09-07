@@ -13,18 +13,19 @@ repository file leaks into the import path.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Property, QObject, QUrl, QtMsgType, Signal  # noqa: E402
-from PySide6.QtGui import QGuiApplication  # noqa: E402
-from PySide6.QtQml import QQmlComponent, QQmlEngine, qmlRegisterType  # noqa: E402
-from PySide6.QtCore import (  # noqa: E402
-    QMessageLogContext,
+from PySide6.QtCore import (  # noqa: E402  # noqa: E402
+    Property,
+    QObject,
+    QtMsgType,
+    Signal,
     qInstallMessageHandler,
 )
+from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtQml import QQmlComponent, QQmlEngine  # noqa: E402
 
 import michi  # noqa: E402
 
@@ -33,8 +34,11 @@ _CURRENT: list[str] = [""]
 
 
 def _handler(msg_type, context, message):
-    if msg_type in (QtMsgType.QtWarningMsg, QtMsgType.QtCriticalMsg,
-                    QtMsgType.QtFatalMsg):
+    if msg_type in (
+        QtMsgType.QtWarningMsg,
+        QtMsgType.QtCriticalMsg,
+        QtMsgType.QtFatalMsg,
+    ):
         _QML_WARNINGS.append(f"[{_CURRENT[0]}] {message}")
 
 
@@ -48,13 +52,15 @@ class _Signal(QObject):
 
 def _obj(props: dict) -> QObject:
     """QObject con properties QML-facing (lectura) a partir de un dict."""
+
     class _Fake(QObject):
         pass
 
     fake = _Fake()
     for name, value in props.items():
-        setattr(type(fake), name, Property(type(value),
-                                           (lambda v: (lambda self: v))(value)))
+        setattr(
+            type(fake), name, Property(type(value), (lambda v: lambda self: v)(value))
+        )
     return fake
 
 
@@ -89,8 +95,7 @@ class _Library(QObject):
     genreFilterActive = Property(bool, lambda self: False, notify=changed)
     selectedGenreName = Property(str, lambda self: "", notify=changed)
     canQueueTracks = Property(bool, lambda self: True, notify=changed)
-    canAddTracksToPlaylists = Property(bool, lambda self: True,
-                                       notify=changed)
+    canAddTracksToPlaylists = Property(bool, lambda self: True, notify=changed)
     selectedAlbumKey = Property(str, lambda self: "", notify=changed)
     selectedArtistKey = Property(str, lambda self: "", notify=changed)
     artistName = Property(str, lambda self: "Artist", notify=changed)
@@ -181,8 +186,10 @@ def _instantiate(engine, qml_root, relative: str) -> bool:
     path = qml_root / relative
     component = QQmlComponent(engine, str(path))
     if component.status() != QQmlComponent.Ready:
-        raise RuntimeError(f"{relative}: compile failed: "
-                           f"{'; '.join(e.toString() for e in component.errors())}")
+        raise RuntimeError(
+            f"{relative}: compile failed: "
+            f"{'; '.join(e.toString() for e in component.errors())}"
+        )
     root = component.create()
     if root is None:
         raise RuntimeError(f"{relative}: could not instantiate")
@@ -228,8 +235,7 @@ def main() -> int:
         "views/AlbumDetailView.qml",
         "patterns/SearchOverlay.qml",
     )
-    missing = [relative for relative in required
-               if not (qml_root / relative).is_file()]
+    missing = [relative for relative in required if not (qml_root / relative).is_file()]
     if missing:
         raise RuntimeError(f"wheel is missing resources: {missing}")
 
@@ -286,8 +292,10 @@ def main() -> int:
         for warning in _QML_WARNINGS[:10]:
             print(f"  {warning}")
         return 1
-    print(f"Installed-wheel productive QML smoke PASS ({len(required)} "
-          "components from the installed package)")
+    print(
+        f"Installed-wheel productive QML smoke PASS ({len(required)} "
+        "components from the installed package)"
+    )
     return 0
 
 
