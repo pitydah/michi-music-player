@@ -105,7 +105,7 @@ def test_artist_context_menu_has_identity_header_and_only_real_actions() -> None
 
     # R10: la cabecera de identidad es el MichiMenuInfoHeader menu-aware.
     assert "MichiMenuInfoHeader {" in menu
-    assert "headline: root.artist ? root.artist.name : """ in menu
+    assert "headline: root.artist ? root.artist.name : " in menu
     assert "library.select_artist(root.artist.key)" in menu
     assert "library.queue_artist(root.artist.key)" in menu
     assert "library.request_artist_playlist_target(root.artist.key)" in menu

@@ -209,6 +209,66 @@ class TestTrackMenuGeometry:
         window.close()
 
 
+class TestHeaderMenuNestedSubmenu:
+    def test_nested_columns_submenu_has_geometry(self, qapp):
+        """R10.2 (§14.3): el submenú Columns del menú del header es un
+        submenú NATIVO real con geometría usable — nunca un popup
+        colapsado ni un item muerto."""
+        window = _mount(qapp, "TrackTableHeaderContextMenu")
+        menu = _open_menu(window)
+        assert menu is not None, "menú del header abierto"
+        assert_menu_geometry(menu, min_width=260, min_height=120)
+
+        # El submenú Columns: instancia nativa MichiMenu dentro del root.
+        submenu = None
+        for child in window.findChildren(QObject):
+            if child.property("title") == "Columns":
+                submenu = child
+                break
+        assert submenu is not None, "submenú Columns no hallado"
+        meta = submenu.metaObject()
+        idx = meta.indexOfMethod("popup()")
+        assert idx >= 0
+        assert meta.method(idx).invoke(submenu)
+        QTest.qWait(180)
+        assert submenu.property("visible") is True
+        w = float(submenu.property("width") or 0)
+        h = float(submenu.property("height") or 0)
+        assert w >= 260, f"submenú colapsado: {w}px"
+        assert h > 60, f"submenú sin contenido: {h}px"
+        # Items accionables dentro del submenú (Artwork/Artist checks).
+        items = _visible_actionable_items(submenu)
+        assert len(items) >= 3, f"items del submenú: {items}"
+        # Dentro de la ventana.
+        x = float(submenu.property("x") or 0)
+        y = float(submenu.property("y") or 0)
+        assert x + w > 0 and y + h > 0
+        assert x < 900 and y < 700
+        window.close()
+
+    def test_nested_preset_submenu_lists_all_presets(self, qapp):
+        window = _mount(qapp, "TrackTableHeaderContextMenu")
+        menu = _open_menu(window)
+        assert menu is not None
+        submenu = None
+        for child in window.findChildren(QObject):
+            if child.property("title") == "Preset":
+                submenu = child
+                break
+        assert submenu is not None, "submenú Preset no hallado"
+        meta = submenu.metaObject()
+        assert meta.method(meta.indexOfMethod("popup()")).invoke(submenu)
+        QTest.qWait(180)
+        labels = {
+            str(c.property("text"))
+            for c in submenu.findChildren(QObject)
+            if isinstance(c.property("text"), str) and c.property("text")
+        }
+        for preset in ("Essential", "Audiophile", "Metadata", "Minimal"):
+            assert preset in labels, f"preset {preset} ausente del submenú"
+        window.close()
+
+
 class TestAlbumArtistGenreGeometry:
     def test_album_menu_geometry(self, qapp):
         window = _mount(
