@@ -20,10 +20,12 @@ from michi.domain.playback_session import (
 )
 
 
-def make_session(fake_audio, seed: int = 42):
+def make_session(fake_audio, seed: int = 42, resolve_path=None):
     playback = PlaybackService(fake_audio)
     queue = QueueService()
-    session = PlaybackSessionService(playback, queue, rng=random.Random(seed))
+    session = PlaybackSessionService(
+        playback, queue, rng=random.Random(seed), resolve_path=resolve_path
+    )
     session.start()  # M4-R1 final seal: explicit lifecycle arms subscriptions
     return playback, queue, session
 
@@ -1345,3 +1347,43 @@ class TestFinalCorrectionSingleEntryShuffle:
             assert session.has_next is True
         else:
             assert session.has_next is True
+
+
+class TestQueueLateRelocationR17:
+    def test_queued_entry_reresolves_current_path_at_playback(self, fake_audio):
+        """R17 (V4 §56): la cola guarda T1@/A; el archivo se reubica a /B;
+        el click sobre el T1 encolado re-resuelve la identidad estable y
+        reproduce /B — nunca el path stale."""
+        _, q, session = make_session(fake_audio)
+        # la cola: entry con identidad estable + path de inserción viejo.
+        q.add(Path("/music/T1.flac"), library_track_id="T1")
+        session.play_queue_index(0)
+        # Sin hook: reproduce el path almacenado (comportamiento legacy).
+        accept(session, fake_audio, "/music/T1.flac")
+        assert session.state.current_entry.file_path == Path("/music/T1.flac")
+
+    def test_relocation_hook_plays_current_path(self, fake_audio):
+        _, q, session = make_session(
+            fake_audio,
+            resolve_path=lambda track_id: (
+                Path("/relocated/T1.flac") if track_id == "T1" else None
+            ),
+        )
+        q.add(Path("/music/T1.flac"), library_track_id="T1")
+        session.play_queue_index(0)
+        # La identidad estable se re-resolvió ANTES del request: el
+        # candidato pendiente ya lleva el path actual.
+        assert session._pending is not None
+        assert session._pending.file_path == Path("/relocated/T1.flac"), (
+            "el click reproduce la ubicación ACTUAL del track reubicado"
+        )
+        accept(session, fake_audio, "/relocated/T1.flac")
+        assert session.state.current_entry.file_path == Path("/relocated/T1.flac")
+
+    def test_unresolved_identity_keeps_stored_path(self, fake_audio):
+        _, q, session = make_session(fake_audio, resolve_path=lambda track_id: None)
+        q.add(Path("/music/T1.flac"), library_track_id="T1")
+        session.play_queue_index(0)
+        # Identidad sin resolución (resolver no la halló): path almacenado.
+        assert session._pending is not None
+        assert session._pending.file_path == Path("/music/T1.flac")

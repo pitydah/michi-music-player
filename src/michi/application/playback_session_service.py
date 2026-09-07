@@ -59,9 +59,16 @@ class PlaybackSessionService:
         queue_service: QueueService,
         rng=None,
         shuffle_seed: int | None = None,
+        resolve_path=None,
     ) -> None:
+        """``resolve_path(track_id) -> Path | None`` — R17 (V4 §56): late
+        relocation hook. When provided, QUEUE entries with a stable
+        library identity are re-resolved at playback time through the
+        LibraryTrackResolver, so a relocation between insertion and play
+        uses the CURRENT path (legacy entries keep their stored path)."""
         self._playback = playback_service
         self._queue = queue_service
+        self._resolve_path = resolve_path
         self._rng = rng if rng is not None else random.Random()
         self._shuffle_seed = (
             shuffle_seed if shuffle_seed is not None else random.randrange(1, 2**31)
@@ -242,16 +249,33 @@ class PlaybackSessionService:
     def _queue_entries(self) -> list[PlaybackSequenceEntry]:
         """The LIVE Queue as PlaybackSequenceEntry values, preserving exact
         entry identity (Track.entry_id) and the optional library identity
-        (M6-EXT-R4-I). Used by every QUEUE path."""
-        return [
-            PlaybackSequenceEntry(
-                file_path=t.file_path,
-                title=t.title,
-                entry_id=t.entry_id,
-                library_track_id=t.library_track_id,
+        (M6-EXT-R4-I). Used by every QUEUE path.
+
+        R17 (V4 §56): entries with a stable library identity are
+        re-resolved at playback time through the injected resolver hook —
+        a library relocation between insertion and click plays the
+        CURRENT path, never a stale one. Unresolved identities keep the
+        stored path (legacy)."""
+        entries: list[PlaybackSequenceEntry] = []
+        for t in self._queue.state.tracks:
+            file_path = t.file_path
+            if t.library_track_id and self._resolve_path is not None:
+                try:
+                    current = self._resolve_path(t.library_track_id)
+                except Exception:  # noqa: BLE001 — resolver failures fall
+                    # back to the stored path (robustness only).
+                    current = None
+                if current is not None:
+                    file_path = current
+            entries.append(
+                PlaybackSequenceEntry(
+                    file_path=file_path,
+                    title=t.title,
+                    entry_id=t.entry_id,
+                    library_track_id=t.library_track_id,
+                )
             )
-            for t in self._queue.state.tracks
-        ]
+        return entries
 
     def _index_of_queue_entry_id(self, entry_id: str) -> int:
         for i, t in enumerate(self._queue.state.tracks):

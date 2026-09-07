@@ -511,11 +511,19 @@ def _build_services(
     # reads Queue content (one-way dependency; Queue never commands
     # playback). Intent coordinators translate Library/Playlist user
     # intents into session requests.
-    playback_session = PlaybackSessionService(playback, queue)
     track_resolver = LibraryTrackResolver(
         library,
         catalog=catalog_repo,
         source_availability_provider=source_coordinator.observed_availability,
+    )
+
+    # R17 (V4 §56): la cola re-resuelve su identidad estable al reproducir.
+    def _resolve_queue_path(track_id: str):
+        ref = track_resolver.resolve_ref(track_id)
+        return ref.file_path if ref is not None else None
+
+    playback_session = PlaybackSessionService(
+        playback, queue, resolve_path=_resolve_queue_path
     )
     library_playback = LibraryPlaybackCoordinator(
         library, playback_session, resolver=track_resolver
