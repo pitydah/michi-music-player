@@ -68,8 +68,7 @@ def test_r11_shell_layout_frozen() -> None:
     LibraryContentHost — las posiciones son intencionales y se congelan."""
     library = _read("views/LibraryView.qml")
     assert library.index("LibraryHeader {") < library.index("LibraryToolbar {")
-    assert library.index("LibraryToolbar {") < library.index(
-        "LibraryContentHost {")
+    assert library.index("LibraryToolbar {") < library.index("LibraryContentHost {")
     # Sin zonas de navegación/estado nuevas que reorganicen el shell.
     assert "LibraryStateStrip" not in library
     assert "LibraryAlbumViewTools" not in library

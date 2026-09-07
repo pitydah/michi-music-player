@@ -38,8 +38,8 @@ def test_track_resize_uses_persisted_baseline_and_neighbor_compensation() -> Non
     # HIER-03: la columna de actions ya no es una ResizableHeaderCell — el
     # ancho lo da el singleton y las opciones viven dentro (sin resize).
     assert "resizable: false" in header or (
-        'Layout.preferredWidth: LibraryTrackColumnState.actionsWidth'
-        in header and "trackTableOptionsButton" in header
+        "Layout.preferredWidth: LibraryTrackColumnState.actionsWidth" in header
+        and "trackTableOptionsButton" in header
     )
 
 
