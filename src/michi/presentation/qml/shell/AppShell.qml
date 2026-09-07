@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import "../controls"
+import "../media"
 import "../patterns"
 import "../playlists"
 import "../player"
@@ -167,6 +168,14 @@ Item {
         opened: root.searchOpened
         onCloseRequested: root.searchOpened = false
         onNavigationRequested: routeId => root.navigationRequested(routeId)
+        // R5 (§14): Properties del track del search → vista premium (el
+        // overlay es global del shell; el host vive en Library).
+        onTrackInspectionRequested: trackRow => searchTrackProperties.inspect(trackRow)
+    }
+
+    TrackPropertiesView {
+        id: searchTrackProperties
+        objectName: "searchTrackProperties"
     }
 
     ToastHost {

@@ -12,13 +12,14 @@ Item {
     readonly property int visibleTrackCount: Math.min(6, library.searchTrackCount)
     readonly property int visibleAlbumCount: Math.min(6, library.searchAlbumCount)
     readonly property int visibleArtistCount: Math.min(6, library.searchArtistCount)
+    readonly property int visibleGenreCount: Math.min(6, library.searchGenreCount)
     readonly property int visiblePlaylistCount: Math.min(6, playlists.searchPlaylistCount)
     // M9-R1J: M7 total + playlist local projection = the UI total. This is
     // PRESENTATION AGGREGATION — LibraryBridge total stays M7-only.
     readonly property int combinedResultCount:
         library.searchDisplayTotalCount + playlists.searchPlaylistCount
     readonly property int actionableResultCount: visibleTrackCount + visibleAlbumCount
-        + visibleArtistCount + visiblePlaylistCount
+        + visibleArtistCount + visibleGenreCount + visiblePlaylistCount
     signal closeRequested()
     signal navigationRequested(string routeId)
     // Qt 6 lazy bindings: `visible: opacity > 0` en el root dejaba el
@@ -37,6 +38,26 @@ Item {
         if (actionableResultCount <= 0)
             return
         resultIndex = (resultIndex + delta + actionableResultCount) % actionableResultCount
+    }
+
+    // R5: el overlay expone el row de Properties al host compartido vía
+    // la señal del bridge (album_properties no aplica): el row se abre en
+    // la TrackPropertiesView del host usando la señal del overlay.
+    signal trackInspectionRequested(var trackRow)
+
+    function inspectTrack(trackRow) {
+        searchOverlay.trackInspectionRequested(trackRow)
+    }
+
+    function _favoriteAt(index) {
+        var trackId = library.songRows[index].trackId
+        if (!trackId || String(trackId).length === 0)
+            return library.favoritePaths.indexOf(library.songRows[index].path) !== -1
+        return library.favoriteTrackIds.indexOf(trackId) !== -1
+    }
+
+    function _favoritesChanged() {
+        // El bridge notifica library_changed: no se necesita nada local.
     }
 
     function activateResult() {
@@ -60,7 +81,15 @@ Item {
             navigationRequested("library")
             return
         }
-        var playlistIndex = artistIndex - visibleArtistCount
+        var genreIndex = artistIndex - visibleArtistCount
+        if (genreIndex >= 0 && genreIndex < visibleGenreCount) {
+            // R5: género → filtro exact-key de Library (Songs tab).
+            library.select_genre(library.genres[genreIndex].key)
+            closeRequested()
+            navigationRequested("library")
+            return
+        }
+        var playlistIndex = genreIndex - visibleGenreCount
         if (playlistIndex >= 0 && playlistIndex < visiblePlaylistCount) {
             // M9-R1I: playlist results open the FIRST-CLASS PLAYLISTS route
             // (validated open intent) — never fall back to Library. Mouse
@@ -120,11 +149,11 @@ Item {
             }
             MichiStatusChip {
                 visible: library.searchActive
-                text: searchOverlay.combinedResultCount + " results · "
-                    + library.searchTrackCount + " tracks · "
-                    + library.searchAlbumCount + " albums · "
-                    + library.searchArtistCount + " artists · "
-                    + playlists.searchPlaylistCount + " playlists"
+                text: qsTr("%n result(s)", "", searchOverlay.combinedResultCount)
+                    + " · " + qsTr("%n track(s)", "", library.searchTrackCount)
+                    + " · " + qsTr("%n album(s)", "", library.searchAlbumCount)
+                    + " · " + qsTr("%n artist(s)", "", library.searchArtistCount)
+                    + " · " + qsTr("%n playlist(s)", "", playlists.searchPlaylistCount)
                 tone: "active"
                 Layout.alignment: Qt.AlignLeft
             }
@@ -133,10 +162,10 @@ Item {
                 objectName: "searchEmptyState"
                 Layout.fillWidth: true; Layout.fillHeight: true
                 visible: !library.searchActive || searchOverlay.combinedResultCount === 0
-                title: library.searchActive ? "No results" : "Search your library"
+                title: library.searchActive ? qsTr("No results") : qsTr("Search your library")
                 message: library.searchActive
-                    ? "Try a title, artist, album, playlist, genre or composer."
-                    : "Results are grouped by musical entity and remain fully local."
+                    ? qsTr("Try a title, artist, album, playlist, genre or composer.")
+                    : qsTr("Results are grouped by musical entity and remain fully local.")
             }
             MichiScrollView {
                 objectName: "searchResultsScroll"
@@ -149,66 +178,134 @@ Item {
                     width: parent.width
                     spacing: MichiSpacing.md
 
-                    MichiText { text: "Tracks"; role: "section"; visible: library.searchTrackCount > 0 }
+                    MichiText { text: qsTr("Tracks"); role: "section"; visible: library.searchTrackCount > 0 }
                     Repeater {
                         model: searchOverlay.visibleTrackCount
                         delegate: TrackRow {
                             required property int index
                             Layout.fillWidth: true
+                            trackId: library.songRows[index].trackId
                             title: library.songRows[index].title
                             artist: library.songRows[index].artist
                             album: library.songRows[index].album
+                            albumKey: library.songRows[index].albumKey || ""
+                            artistKey: library.songRows[index].artistKey || ""
                             durationMs: library.songRows[index].durationMs
                             quality: library.songRows[index].qualityLabel
                             artworkPath: library.songRows[index].artworkPath || ""
                             showArtwork: true
                             playing: playback.currentPath === library.songRows[index].path
                             selected: searchOverlay.resultIndex === index
+                            // R5 (§14): contexto de track completo — las
+                            // acciones de la fila y del menú usan la
+                            // identidad estable (TrackId), nunca el índice.
+                            showFavorite: true
+                            favorite: searchOverlay._favoriteAt(index)
+                            canQueue: library.canQueueTracks
+                            showAddToPlaylist: library.canAddTracksToPlaylists
+                            showAddToNewPlaylist: true
+                            showInspector: true
+                            unavailable: Boolean(library.songRows[index].unavailable)
                             onActivated: {
                                 library.activate(index)
                                 searchOverlay.closeRequested()
                                 searchOverlay.navigationRequested("now_playing")
                             }
+                            onFavoriteToggled: {
+                                library.toggle_favorite_by_id(library.songRows[index].trackId)
+                                searchOverlay._favoritesChanged()
+                            }
+                            onQueueRequested: library.queue_track_by_id(library.songRows[index].trackId)
+                            onAddToPlaylistRequested: library.request_tracks_playlist_target([library.songRows[index].trackId])
+                            onInspectorRequested: searchOverlay.inspectTrack(library.songRows[index])
+                            onGoToAlbumRequested: {
+                                library.select_album(library.songRows[index].albumKey)
+                                searchOverlay.closeRequested()
+                                searchOverlay.navigationRequested("library")
+                            }
+                            onGoToArtistRequested: {
+                                library.select_artist(library.songRows[index].artistKey)
+                                searchOverlay.closeRequested()
+                                searchOverlay.navigationRequested("library")
+                            }
                         }
                     }
 
-                    MichiText { text: "Albums"; role: "section"; visible: library.searchAlbumCount > 0 }
+                    MichiText { text: qsTr("Albums"); role: "section"; visible: library.searchAlbumCount > 0 }
                     Repeater {
                         model: searchOverlay.visibleAlbumCount
-                        delegate: MichiButton {
+                        delegate: Item {
                             required property int index
                             Layout.fillWidth: true
-                            text: library.albums[index].title + " · " + library.albums[index].artist
-                            variant: "ghost"
-                            selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount + index
-                            onClicked: {
-                                library.select_album(library.albums[index].key)
-                                searchOverlay.closeRequested()
-                                searchOverlay.navigationRequested("library")
+                            Layout.preferredHeight: 40
+                            MichiButton {
+                                anchors.fill: parent
+                                text: library.albums[index].title + " · " + library.albums[index].artist
+                                variant: "ghost"
+                                selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount + index
+                                onClicked: {
+                                    library.select_album(library.albums[index].key)
+                                    searchOverlay.closeRequested()
+                                    searchOverlay.navigationRequested("library")
+                                }
+                            }
+                            // R5 (§15): el resultado del álbum es una ENTIDAD
+                            // contextual — right-click/Menu/Shift+F10 abren
+                            // el menú del álbum (Open/Play/Queue/Add/Create/
+                            // Go Artist/Properties) con la key exacta.
+                            AlbumContextArea {
+                                anchors.fill: parent
+                                album: library.albums[index]
+                                canAddToPlaylist: true
+                                canCreatePlaylist: true
+                                canShowProperties: true
+                                onContextRequested: {
+                                    // selección exacta del resultado.
+                                    searchOverlay.resultIndex = searchOverlay.visibleTrackCount + index
+                                }
                             }
                         }
                     }
 
-                    MichiText { text: "Artists"; role: "section"; visible: library.searchArtistCount > 0 }
+                    MichiText { text: qsTr("Artists"); role: "section"; visible: library.searchArtistCount > 0 }
                     Repeater {
                         model: searchOverlay.visibleArtistCount
-                        delegate: MichiEntityRow {
+                        delegate: Item {
                             required property int index
                             Layout.fillWidth: true
-                            iconName: "artist"
-                            title: library.artists[index].name
-                            technical: library.artists[index].trackCount + (library.artists[index].trackCount === 1 ? " track" : " tracks")
-                            selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount
-                                + searchOverlay.visibleAlbumCount + index
-                            onActivated: {
-                                library.select_artist(library.artists[index].key)
-                                searchOverlay.closeRequested()
-                                searchOverlay.navigationRequested("library")
+                            Layout.preferredHeight: 44
+                            MichiEntityRow {
+                                anchors.fill: parent
+                                iconName: "artist"
+                                title: library.artists[index].name
+                                technical: qsTr("%n track(s)", "",
+                                    library.artists[index].trackCount)
+                                selected: searchOverlay.resultIndex
+                                    === searchOverlay.visibleTrackCount
+                                    + searchOverlay.visibleAlbumCount + index
+                                onActivated: {
+                                    library.select_artist(library.artists[index].key)
+                                    searchOverlay.closeRequested()
+                                    searchOverlay.navigationRequested("library")
+                                }
+                            }
+                            // R5 (§15): el artista es una entidad contextual —
+                            // Open/Queue/Add/Create vía el menú exacto.
+                            ArtistContextArea {
+                                anchors.fill: parent
+                                artist: library.artists[index]
+                                canAddToPlaylist: true
+                                canCreatePlaylist: true
+                                onContextRequested: {
+                                    searchOverlay.resultIndex
+                                        = searchOverlay.visibleTrackCount
+                                        + searchOverlay.visibleAlbumCount + index
+                                }
                             }
                         }
                     }
 
-                    MichiText { text: "Playlists"; role: "section"; visible: playlists.searchPlaylistCount > 0 }
+                    MichiText { text: qsTr("Playlists"); role: "section"; visible: playlists.searchPlaylistCount > 0 }
                     Repeater {
                         id: playlistsRepeater
                         objectName: "playlistSearchRepeater"
@@ -219,7 +316,8 @@ Item {
                             Layout.fillWidth: true
                             iconName: "queue"
                             title: playlists.searchPlaylists[index].name
-                            technical: playlists.searchPlaylists[index].trackCount + (playlists.searchPlaylists[index].trackCount === 1 ? " track" : " tracks")
+                            technical: qsTr("%n track(s)", "",
+                                playlists.searchPlaylists[index].trackCount)
                             selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount
                                 + searchOverlay.visibleAlbumCount
                                 + searchOverlay.visibleArtistCount + index
@@ -233,16 +331,29 @@ Item {
                         }
                     }
 
-                    MichiText { text: "Genres"; role: "section"; visible: library.searchGenreCount > 0 }
+                    MichiText { text: qsTr("Genres"); role: "section"; visible: library.searchGenreCount > 0 }
                     Repeater {
-                        model: Math.min(6, library.searchGenreCount)
+                        model: searchOverlay.visibleGenreCount
                         delegate: MichiEntityRow {
                             required property int index
                             Layout.fillWidth: true
                             iconName: "genre"
                             title: library.genres[index].name
-                            technical: library.genres[index].trackCount + (library.genres[index].trackCount === 1 ? " track" : " tracks")
-                            interactive: false
+                            technical: qsTr("%n track(s)", "",
+                                library.genres[index].trackCount)
+                            // R5: el género es accionable con su EXACT KEY
+                            // (select_genre) — el filtro de Library se aplica
+                            // con la entidad exacta, nunca con el nombre.
+                            interactive: true
+                            selected: searchOverlay.resultIndex
+                                === searchOverlay.visibleTrackCount
+                                + searchOverlay.visibleAlbumCount
+                                + searchOverlay.visibleArtistCount + index
+                            onActivated: {
+                                library.select_genre(library.genres[index].key)
+                                searchOverlay.closeRequested()
+                                searchOverlay.navigationRequested("library")
+                            }
                         }
                     }
                 }

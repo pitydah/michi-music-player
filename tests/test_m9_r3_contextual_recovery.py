@@ -110,15 +110,19 @@ def test_artist_add_to_playlist_fail_closed_until_productive_card() -> None:
     area = _qml("media/ArtistContextArea.qml")
     assert "property bool canAddToPlaylist: false" in area
     assert "canAddToPlaylist: root.canAddToPlaylist" in area
-    # El único activador productivo: ArtistPortraitCard (bajo el host A1).
+    # Activadores productivos (bajo el host A1 / shell con el host):
+    # ArtistPortraitCard (galería) y SearchOverlay (resultados del shell).
     card = _qml("media/ArtistPortraitCard.qml")
     assert "canAddToPlaylist: true" in card
     assert "canCreatePlaylist: true" in card
+    overlay = _qml("patterns/SearchOverlay.qml")
+    assert "canCreatePlaylist: true" in overlay
     for qml_file in Path(QML).rglob("*.qml"):
         if qml_file.name in (
             "ArtistContextArea.qml",
             "ArtistContextMenu.qml",
             "ArtistPortraitCard.qml",
+            "SearchOverlay.qml",
         ):
             continue
         src = qml_file.read_text(encoding="utf-8", errors="ignore")
