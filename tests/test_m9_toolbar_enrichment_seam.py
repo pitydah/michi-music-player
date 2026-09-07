@@ -281,13 +281,16 @@ class TestEnrichmentUxR16:
         """R16 (§57): los labels de estado del enrichment son qsTr y
         nombran los estados truthy (Partial/Offline/Failed/Review needed/
         No match/Cancelled/Disabled)."""
-        src = Path("src/michi/presentation/qml/enrichment/EnrichmentStatusBar.qml").read_text(
-            encoding="utf-8", errors="ignore"
-        )
+        src = Path(
+            "src/michi/presentation/qml/enrichment/EnrichmentStatusBar.qml"
+        ).read_text(encoding="utf-8", errors="ignore")
         for token in (
-            'return qsTr("Partial")', 'return qsTr("Offline")',
-            'return qsTr("Failed")', 'return qsTr("Review needed")',
-            'return qsTr("No match")', 'return qsTr("Cancelled")',
+            'return qsTr("Partial")',
+            'return qsTr("Offline")',
+            'return qsTr("Failed")',
+            'return qsTr("Review needed")',
+            'return qsTr("No match")',
+            'return qsTr("Cancelled")',
             'return qsTr("Disabled")',
         ):
             assert token in src, f"label crudo: {token}"
