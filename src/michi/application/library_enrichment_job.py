@@ -114,6 +114,9 @@ class LibraryEnrichmentJob:
         self._pending: list[tuple[str, object]] = []
         self._inflight = 0
         self._commits_since_invalidate = 0
+        # R15 (V4 §55): entidades cuyo TERMINAL ya llegó (evento del
+        # provider o fallo local) — un slot se libera exactamente una vez.
+        self._terminal_entities: set[str] = set()
         # Phase-1 artist resolutions (local artist key → external MBID),
         # reused by album evidence — never a second authority.
         self._resolved_artist_external_ids: dict[str, str] = {}
@@ -244,8 +247,10 @@ class LibraryEnrichmentJob:
                 self._cond.wait(timeout=0.05)
 
     def _run_entity(self, kind: str, entity) -> None:
+        key = str(getattr(entity, "key", "") or id(entity))
         try:
             if self._cancel_event.is_set():
+                self._release_local_slot(key)
                 return
             if kind == "artist":
                 self._enrich_artist(entity)
@@ -253,6 +258,9 @@ class LibraryEnrichmentJob:
                 self._enrich_album(entity)
         except Exception as exc:  # noqa: BLE001 — job continues per entity
             logger.warning("enrichment job entity failed: %s", exc)
+            # Fallo local sin evento terminal del provider: el slot se
+            # libera igual (nunca un slot colgado).
+            self._release_local_slot(key)
 
     def _enrich_artist(self, artist) -> None:
         albums = tuple(
@@ -308,6 +316,7 @@ class LibraryEnrichmentJob:
             return
 
     def _commit_entity(self, local_key: str, outcome: str) -> None:
+        release_slot = False
         with self._lock:
             if self._progress.state not in (
                 LibraryEnrichmentJobState.RUNNING,
@@ -316,6 +325,14 @@ class LibraryEnrichmentJob:
                 return
             if self._cancel_event.is_set() and outcome != "cancelled":
                 return  # stale commit after cancel: never counted
+            # R15 (V4 §55): el TERMINAL del provider libera el slot — la
+            # operación física terminó (READY/PARTIAL/AMBIGUOUS/NOT_FOUND/
+            # FAILED/CANCELLED), nunca la submission al executor. La
+            # barrera artista→álbum y el max_pending acotan operaciones
+            # reales en vuelo.
+            if local_key not in self._terminal_entities:
+                self._terminal_entities.add(local_key)
+                release_slot = True
             self._progress.processedEntities += 1
             self._progress.currentEntity = local_key
             if outcome == "matched":
@@ -332,13 +349,30 @@ class LibraryEnrichmentJob:
             coalesce = self._commits_since_invalidate >= self._invalidate_batch
             if coalesce:
                 self._commits_since_invalidate = 0
+        if release_slot:
+            with self._cond:
+                self._inflight -= 1
+                self._cond.notify_all()
         if coalesce and self._on_invalidate is not None:
             self._on_invalidate()
         self._publish()
 
-    def _entity_done(self, future) -> None:
+    def _release_local_slot(self, key: str) -> None:
+        """Fallo local (excepción del run o cancel previo al arranque):
+        sin evento terminal del provider — el slot se libera igual."""
+        with self._lock:
+            if key in self._terminal_entities:
+                return
+            self._terminal_entities.add(key)
         with self._cond:
             self._inflight -= 1
+            self._cond.notify_all()
+
+    def _entity_done(self, future) -> None:
+        # R15: la submission NO libera el slot — el terminal del provider
+        # (o el fallo local) lo libera. El done solo despierta el drain
+        # por si la entidad terminó sin evento (defensa).
+        with self._cond:
             self._cond.notify_all()
 
     def _finalize(self) -> None:

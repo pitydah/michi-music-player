@@ -364,6 +364,68 @@ class _SlowCoordinator(_FakeCoordinator):
             )
 
 
+class _AsyncTerminalCoordinator:
+    """Coordinator que emite el terminal DESPUÉS del return del enrich
+    (el contrato real del pool): reproduce la divergencia submission vs
+    completion que R15 corrige."""
+
+    def __init__(self):
+        self.artist_calls: list[str] = []
+        self.album_calls: list[str] = []
+        self.artist_terminals = 0
+        self.album_terminals = 0
+        self._events: list = []
+
+    def enrich_artist(self, artist, albums, tracks, on_state=None):
+        self.artist_calls.append(artist.key)
+
+        # simula el pool: la operación corre y emite su terminal después.
+        def _deliver():
+            self.artist_terminals += 1
+            on_state(_Event(_Kind(True), artist.key, EnrichmentOperationState.READY))
+
+        threading.Thread(target=_deliver, daemon=True).start()
+
+    def enrich_album(self, album, resolved_artist_external_id="", on_state=None):
+        self.album_calls.append(album.key)
+        self.album_artist_evidence = {}
+        self.album_artist_evidence[album.key] = resolved_artist_external_id
+
+        def _deliver():
+            self.album_terminals += 1
+            on_state(_Event(_Kind(False), album.key, EnrichmentOperationState.READY))
+
+        threading.Thread(target=_deliver, daemon=True).start()
+
+    def cancel_all(self):
+        pass
+
+
+def test_r15_artist_barrier_waits_for_real_terminals():
+    """R15 (§26/§55): la fase de álbumes NO admite ninguna entidad hasta
+    que TODOS los artistas emitieron su terminal — la submission al pool
+    del coordinator nunca cuenta como completion."""
+    coordinator = _AsyncTerminalCoordinator()
+    service = _FakeService()
+    artists = [_Album(f"artist-{i}", f"Artist {i}") for i in range(3)]
+    albums = [_Album(f"album-{i}", f"Album {i}") for i in range(3)]
+    job = LibraryEnrichmentJob(
+        coordinator,
+        service,
+        artists=artists,
+        albums=albums,
+        max_workers=3,
+        max_pending=3,
+    )
+    job.start()
+    assert job.progress.state is LibraryEnrichmentJobState.COMPLETED
+    assert coordinator.artist_terminals == 3, "los 3 artistas terminaron"
+    assert coordinator.album_terminals == 3
+    # El job esperó los terminales reales: nunca finalizó con artistas
+    # en vuelo (la barrera es por completion, no por submission).
+    assert job.progress.processedEntities == 6
+
+
 def test_job_10k_scheduling_seal():
     """10.000 albums: bounded working set, NOT 10.000 Futures, cancel
     responsive, progress truthful."""
