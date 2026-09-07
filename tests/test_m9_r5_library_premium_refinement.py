@@ -112,9 +112,9 @@ def test_context_menus_use_deterministic_michi_menu_items() -> None:
     ):
         assert "MichiMenuItem" in _qml(relative)
 
-    assert 'removeText: qsTr("Remove from Queue")' in _qml(
-        "media/QueueTrackContextMenu.qml"
-    )
+    # R6: el menú huérfano QueueTrackContextMenu fue removido; su contrato
+    # mínimo (Remove from Queue) vive en el QueuePanel (fila de cola).
+    assert 'removeText: qsTr("Remove from Queue")' in _qml("components/QueuePanel.qml")
     assert 'removeText: qsTr("Remove from this Playlist")' in _qml(
         "media/PlaylistTrackContextMenu.qml"
     )

@@ -13,19 +13,11 @@ MichiGlassSurface {
     property var trackRows: []
     property int currentIndex: -1
     property int count: 0
-    property bool hasPrev: false
-    property bool hasNext: false
-    property string repeatMode: "NONE"
-    property bool shuffleEnabled: false
 
     signal trackClicked(int index)
     signal moveRequested(int fromIndex, int toIndex)
     signal removeRequested(int index)
     signal clearClicked()
-    signal previousRequested()
-    signal nextRequested()
-    signal repeatModeRequested(string mode)
-    signal shuffleRequested(bool enabled)
     signal closeRequested()
 
     elevation: "subtle"
@@ -65,7 +57,10 @@ MichiGlassSurface {
             Layout.fillHeight: true
             visible: root.count === 0
             title: qsTr("Queue is empty")
-            message: qsTr("Play a track from the library to start listening.")
+            // R6: la cola es una pila TEMPORAL explícita — reproducir
+            // desde Library nunca la alimenta.
+            message: qsTr("The queue is a temporary stack. Add tracks to "
+                + "queue from any list — direct playback never fills it.")
         }
 
         ListView {
@@ -103,6 +98,9 @@ MichiGlassSurface {
                     // queueList.isCurrentItem is undefined -> bool warning
                     selected: ListView.isCurrentItem
                     showRemove: true
+                    removeText: qsTr("Remove from Queue")
+                    canMoveUp: index > 0
+                    canMoveDown: index + 1 < root.count
                     showArtistColumn: root.width >= 460
                     showAlbumColumn: false
                     showQualityColumn: false
@@ -113,6 +111,8 @@ MichiGlassSurface {
                     }
                     onActivated: root.trackClicked(index)
                     onRemoveRequested: root.removeRequested(index)
+                    onMoveUpRequested: root.moveRequested(index, index - 1)
+                    onMoveDownRequested: root.moveRequested(index, index + 1)
                 }
                 // Reorder affordances reveal on row hover, matching the
                 // row's own hover-reveal trash (TrackRow opacity pattern).

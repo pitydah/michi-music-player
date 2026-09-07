@@ -38,18 +38,10 @@ Item {
                 trackRows: queue.trackRows
                 currentIndex: playbackSession.contextType === "queue" ? playbackSession.currentIndex : -1
                 count: queue.count
-                hasPrev: playbackSession.hasPrevious
-                hasNext: playbackSession.hasNext
-                repeatMode: playbackSession.repeatMode
-                shuffleEnabled: playbackSession.shuffleEnabled
                 onTrackClicked: index => playbackSession.play_queue_index(index)
                 onMoveRequested: (fromIndex, toIndex) => queue.move_track(fromIndex, toIndex)
                 onRemoveRequested: index => queue.remove_track(index)
                 onClearClicked: queue.clear_queue()
-                onPreviousRequested: playbackSession.previous_track()
-                onNextRequested: playbackSession.next_track()
-                onRepeatModeRequested: mode => playbackSession.set_repeat_mode(mode)
-                onShuffleRequested: enabled => playbackSession.set_shuffle_enabled(enabled)
                 onCloseRequested: root.closeRequested()
                 Behavior on x {
                     enabled: !MichiAccessibility.reducedMotion

@@ -40,6 +40,7 @@ Rectangle {
     property bool showAddToNewPlaylist: false
     property bool showInspector: false
     property bool showRemove: false
+    property string removeText: qsTr("Remove")
     property bool canQueue: false
     property bool canGoToAlbum: albumKey.length > 0
     property bool canGoToArtist: artistKey.length > 0
@@ -355,6 +356,7 @@ Rectangle {
         canGoToArtist: root.canGoToArtist
         canShowProperties: root.showInspector
         canRemove: root.showRemove
+        removeText: root.removeText
         canMoveUp: root.canMoveUp
         canMoveDown: root.canMoveDown
         onPlayNowRequested: root.activated()
