@@ -341,11 +341,18 @@ def test_row_menu_adds_to_queue():
 
 
 def test_queue_remove_offers_undo_and_detail_menu_adds_tracks():
-    # M4-R1 authority: QueueView routes navigation to the Session, not Queue.
+    # M4-R1 authority + R6 cleanup: QueueView is the temporary-stack panel —
+    # transport navigation lives in the Session, driven by the NowPlaying
+    # transport; the panel wires ONLY stack semantics (play index, move,
+    # remove, clear).
     queue = read("views/QueueView.qml")
-    assert "playbackSession.previous_track()" in queue
-    assert "playbackSession.next_track()" in queue
+    assert "onTrackClicked: index => playbackSession.play_queue_index(index)" in queue
+    assert "onMoveRequested" in queue
+    assert "onRemoveRequested" in queue
     assert "queue.play_index" not in queue
+    assert "playbackSession.previous_track()" not in queue, (
+        "R6: la navegación de transporte no vive en el panel de cola"
+    )
     page = read("playlists/PlaylistDetailView.qml")
     assert 'qsTr("Add tracks…")' in page
     assert "onTriggered: root.addMusicRequested()" in page
