@@ -146,7 +146,6 @@ def test_r10_productive_menus_use_michi_primitives() -> None:
     )
     for section in (
         "TRACK TABLE",
-        "CUSTOMIZE COLUMNS",
         "IDENTITY",
         "MUSICAL CONTEXT",
         "AUDIO",
@@ -156,6 +155,11 @@ def test_r10_productive_menus_use_michi_primitives() -> None:
     ):
         assert f'qsTr("{section}")' in menu, section
     assert "MichiMenuHeader {" in menu
+    # R10.2: submenús nativos reales (Qt crea el proxy con subMenu
+    # read-only); el customizePopup hermano desapareció.
+    assert 'title: qsTr("Preset")' in menu
+    assert 'title: qsTr("Columns")' in menu
+    assert "openCustomize" not in menu
 
 
 def test_temporal_model_stays_truthful_no_fabricated_timestamps() -> None:
