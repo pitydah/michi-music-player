@@ -107,14 +107,19 @@ class TestSearchOverlayCanonicalOrderR4:
         src = (QML / "patterns" / "SearchOverlay.qml").read_text(
             encoding="utf-8", errors="ignore"
         )
-        order = [src.index(x) for x in (
-            'qsTr("Tracks")', 'qsTr("Albums")', 'qsTr("Artists")',
-            'qsTr("Playlists")', 'qsTr("Genres")')]
-        assert order == sorted(order), (
-            "el render sigue el orden canónico único"
-        )
+        order = [
+            src.index(x)
+            for x in (
+                'qsTr("Tracks")',
+                'qsTr("Albums")',
+                'qsTr("Artists")',
+                'qsTr("Playlists")',
+                'qsTr("Genres")',
+            )
+        ]
+        assert order == sorted(order), "el render sigue el orden canónico único"
         # El activateResult recorre el MISMO orden (playlists antes de genres).
-        act = src[src.index("function activateResult"):]
+        act = src[src.index("function activateResult") :]
         assert act.index("visiblePlaylistCount") < act.index("visibleGenreCount"), (
             "la activación recorre el MISMO orden que el render"
         )
@@ -146,7 +151,6 @@ class TestSearchOverlayCanonicalOrderR4:
             # total-1 es el género, y la activación usa su exact key.
             total = overlay.property("actionableResultCount")
             assert total >= 4
-            genre_key = projection.genres[0].key
             overlay.setProperty("resultIndex", total - 1)
             overlay.activateResult()
             _process()

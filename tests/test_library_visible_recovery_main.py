@@ -95,11 +95,55 @@ def test_collections_share_one_table_with_semantic_configuration() -> None:
         assert "ListView {" not in source, f"{view} duplica la tabla"
 
 
-def test_context_menu_v2_primitives_and_section_headers() -> None:
-    """R10 (V4 §36-42): los menús contextuales usan headers de sección
-    reales (MichiMenuHeader) — la jerarquía no depende solo de
-    separadores mudos; los primitivos V2 existen para submenús."""
-    menu = _read("media/TrackTableHeaderContextMenu.qml")
+def test_r10_menu_primitives_have_geometry_authority() -> None:
+    """R10 (V4 §9/§16): primitivos con geometría determinista; el wrapper
+    con subMenu escribible (MichiSubMenuItem) está AUSENTE."""
+    qml = Path("src/michi/presentation/qml")
+    assert not (qml / "controls" / "MichiSubMenuItem.qml").exists(), (
+        "el wrapper con writable subMenu fue eliminado (V4 §9.5)"
+    )
+    menu = (qml / "controls" / "MichiMenu.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    item = (qml / "controls" / "MichiMenuItem.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    header = (qml / "controls" / "MichiMenuHeader.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    assert "minimumMenuWidth" in menu
+    assert "implicitWidth:" in item
+    assert "implicitHeight:" in header
+    assert 'property: "y"' not in menu, (
+        "la animación no puede mutar el posicionamiento del popup"
+    )
+    assert "minimumMenuWidth" in menu and "maximumMenuWidth" in menu
+    # MichiMenuInfoHeader: la cabecera de información menu-aware.
+    assert (qml / "media" / "MichiMenuInfoHeader.qml").exists()
+
+
+def test_r10_productive_menus_use_michi_primitives() -> None:
+    """R10 (§11/§13): los menús productivos usan los primitivos Michi;
+    sin raw MenuItem fuera de los primitivos; género con MichiMenuItem."""
+    qml = Path("src/michi/presentation/qml")
+
+    for rel in (
+        "media/TrackContextMenu.qml",
+        "media/AlbumContextMenu.qml",
+        "media/ArtistContextMenu.qml",
+    ):
+        src = (qml / rel).read_text(encoding="utf-8", errors="ignore")
+        assert "MichiMenuInfoHeader {" in src, rel
+        assert "MichiMenuHeader {" in src, rel
+    genre = (qml / "media" / "GenreContextMenu.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    assert "MichiMenuItem {" in genre
+    assert "MenuItem {" not in genre.replace("MichiMenuItem {", "")
+    # El header de la tabla usa headers de sección reales.
+    menu = (qml / "media" / "TrackTableHeaderContextMenu.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
     for section in (
         "TRACK TABLE",
         "CUSTOMIZE COLUMNS",
@@ -112,11 +156,6 @@ def test_context_menu_v2_primitives_and_section_headers() -> None:
     ):
         assert f'qsTr("{section}")' in menu, section
     assert "MichiMenuHeader {" in menu
-    # El menú usa el header V2, no items deshabilitados que finjan headers.
-    assert 'MichiMenuItem { text: qsTr("TRACK TABLE")' not in menu
-    # Los primitivos V2 existen (base del sistema de submenús).
-    for rel in ("controls/MichiMenuHeader.qml", "controls/MichiSubMenuItem.qml"):
-        assert (Path("src/michi/presentation/qml") / rel).exists(), rel
 
 
 def test_temporal_model_stays_truthful_no_fabricated_timestamps() -> None:

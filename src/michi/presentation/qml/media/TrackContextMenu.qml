@@ -43,48 +43,23 @@ MichiMenu {
     signal moveUpRequested()
     signal moveDownRequested()
 
-    Item {
-        implicitWidth: 284
-        implicitHeight: 56
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: MichiSpacing.sm
-            anchors.rightMargin: MichiSpacing.sm
-            spacing: MichiSpacing.sm
-
-            Artwork {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-                sourcePath: root.artworkPath
-                fallbackText: root.albumText || root.titleText || "T"
-                requestedSize: 72
-            }
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 0
-                MichiText {
-                    Layout.fillWidth: true
-                    text: root.titleText
-                    role: "body"
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                }
-                MichiText {
-                    Layout.fillWidth: true
-                    text: [root.artistText, root.albumText].filter(value => value.length > 0).join(" · ")
-                    role: "caption"
-                    color: MichiPalette.textSecondary
-                    elide: Text.ElideRight
-                }
-            }
-            MichiFormatBadge {
-                formatKey: root.formatKey
-                displayLabel: root.formatLabel
-            }
-        }
+    MichiMenuInfoHeader {
+        headline: root.titleText
+        supportingText: [root.artistText, root.albumText]
+            .filter(value => value.length > 0)
+            .join(" · ")
+        artworkPath: root.artworkPath
+        fallbackText: root.albumText || root.titleText || "T"
+        showFormatBadge: true
+        formatKey: root.formatKey
+        formatLabel: root.formatLabel
     }
     MichiSeparator { }
+    // ── R10 grupos semánticos (V4 §11.1) ─────────────────────────────
+    MichiMenuHeader {
+        text: qsTr("PLAYBACK")
+        visible: root.canPlayNow || root.canQueue
+    }
     MichiMenuItem {
         text: qsTr("Play Now")
         icon.name: "play"
@@ -97,7 +72,9 @@ MichiMenu {
         visible: root.canQueue
         onTriggered: root.queueRequested()
     }
-    MichiSeparator {
+
+    MichiMenuHeader {
+        text: qsTr("COLLECTION")
         visible: root.canAddToPlaylist || root.canFavorite
     }
     MichiMenuItem {
@@ -119,7 +96,9 @@ MichiMenu {
         visible: root.canFavorite
         onTriggered: root.favoriteRequested()
     }
-    MichiSeparator {
+
+    MichiMenuHeader {
+        text: qsTr("NAVIGATE")
         visible: root.canGoToAlbum || root.canGoToArtist
     }
     MichiMenuItem {
@@ -134,19 +113,21 @@ MichiMenu {
         visible: root.canGoToArtist
         onTriggered: root.goToArtistRequested()
     }
-    MichiSeparator { visible: root.canShowProperties }
+
+    MichiMenuHeader {
+        text: qsTr("DETAILS")
+        visible: root.canShowProperties
+    }
     MichiMenuItem {
         text: qsTr("Properties")
         icon.name: "info"
         visible: root.canShowProperties
         onTriggered: root.propertiesRequested()
     }
-    MichiSeparator { visible: root.canRemove }
-    MichiMenuItem {
-        text: root.removeText
-        icon.name: "trash"
-        visible: root.canRemove
-        onTriggered: root.removeRequested()
+
+    MichiMenuHeader {
+        text: qsTr("EDIT")
+        visible: root.canMoveUp || root.canMoveDown
     }
     MichiMenuItem {
         text: qsTr("Move Up")
@@ -159,5 +140,17 @@ MichiMenu {
         icon.name: "down"
         visible: root.canMoveDown
         onTriggered: root.moveDownRequested()
+    }
+
+    MichiMenuHeader {
+        text: qsTr("REMOVE")
+        visible: root.canRemove
+    }
+    MichiMenuItem {
+        text: root.removeText
+        icon.name: "trash"
+        danger: true
+        visible: root.canRemove
+        onTriggered: root.removeRequested()
     }
 }

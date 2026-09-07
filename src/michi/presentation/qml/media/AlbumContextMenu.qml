@@ -15,43 +15,22 @@ MichiMenu {
     property bool canCreatePlaylist: false
     property bool canShowProperties: false
 
-    Item {
-        implicitWidth: 284
-        implicitHeight: 56
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: MichiSpacing.sm
-            anchors.rightMargin: MichiSpacing.sm
-            spacing: MichiSpacing.sm
-            Artwork {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-                sourcePath: root.album && root.album.hasArtwork
-                    ? root.album.artworkPath : ""
-                fallbackText: root.album ? root.album.title : "A"
-                requestedSize: 72
-            }
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 0
-                MichiText {
-                    Layout.fillWidth: true
-                    text: root.album ? root.album.title : ""
-                    role: "body"
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                }
-                MichiText {
-                    Layout.fillWidth: true
-                    text: root.album ? root.album.artist
-                        + (root.album.year > 0 ? " · " + root.album.year : "") : ""
-                    role: "caption"
-                    elide: Text.ElideRight
-                }
-            }
-        }
+    MichiMenuInfoHeader {
+        headline: root.album ? root.album.title : ""
+        supportingText: root.album
+            ? root.album.artist
+                + (root.album.year > 0 ? " · " + root.album.year : "")
+            : ""
+        artworkPath: root.album && root.album.hasArtwork
+            ? root.album.artworkPath : ""
+        fallbackText: root.album ? root.album.title : "A"
     }
     MichiSeparator { }
+    // ── R10 grupos semánticos (V4 §11.2) ─────────────────────────────
+    MichiMenuHeader {
+        text: qsTr("PLAYBACK")
+        visible: root.album !== null
+    }
     MichiMenuItem {
         text: qsTr("Open Album")
         icon.name: "album"
@@ -70,10 +49,11 @@ MichiMenu {
         visible: root.album !== null && library.canQueueTracks
         onTriggered: library.queue_album(root.album.key)
     }
-    MichiSeparator {
-        visible: root.album !== null
-            && ((root.canAddToPlaylist || root.canCreatePlaylist)
-                && library.canAddTracksToPlaylists)
+
+    MichiMenuHeader {
+        text: qsTr("COLLECTION")
+        visible: root.album !== null && root.canAddToPlaylist
+            && library.canAddTracksToPlaylists
     }
     MichiMenuItem {
         text: qsTr("Add Album to Playlist")
@@ -89,14 +69,22 @@ MichiMenu {
             && library.canAddTracksToPlaylists
         onTriggered: library.request_new_playlist_for_album(root.album.key)
     }
-    MichiSeparator { visible: root.album !== null && Boolean(root.album.artistKey) }
+
+    MichiMenuHeader {
+        text: qsTr("NAVIGATE")
+        visible: root.album !== null && Boolean(root.album.artistKey)
+    }
     MichiMenuItem {
         text: qsTr("Go to Artist")
         icon.name: "artist"
         visible: root.album !== null && Boolean(root.album.artistKey)
         onTriggered: library.select_artist(root.album.artistKey)
     }
-    MichiSeparator { visible: root.album !== null && root.canShowProperties }
+
+    MichiMenuHeader {
+        text: qsTr("DETAILS")
+        visible: root.album !== null && root.canShowProperties
+    }
     MichiMenuItem {
         text: qsTr("Album Properties")
         icon.name: "info"

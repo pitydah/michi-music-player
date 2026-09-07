@@ -104,7 +104,11 @@ def test_context_menus_use_deterministic_michi_menu_items() -> None:
     item = _qml("controls/MichiMenuItem.qml")
 
     assert "MenuItem" in item
-    assert "implicitHeight: 36" in item
+    # R10 (V4 §9.2): geometría determinista: implicitHeight por el token
+    # de métrica + implicitWidth con autoridad mínima/máxima.
+    assert "implicitHeight: MichiMetrics.controlMedium" in item
+    assert "minimumItemWidth" in item
+    assert "maximumItemWidth" in item
     for relative in (
         "media/TrackContextMenu.qml",
         "media/AlbumContextMenu.qml",

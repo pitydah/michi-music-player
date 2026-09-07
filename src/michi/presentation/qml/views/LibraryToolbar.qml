@@ -3,6 +3,7 @@ import QtQuick.Controls.Basic
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../controls"
+import "../media"
 import "../primitives"
 import "../theme"
 
@@ -313,29 +314,13 @@ MichiGlassSurface {
                         x: Math.max(0, parent.width - width)
                         y: parent.height + MichiSpacing.xs
 
-                        Item {
-                            implicitWidth: 284
-                            implicitHeight: 56
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.margins: MichiSpacing.sm
-                                spacing: MichiSpacing.xxs
-                                MichiText {
-                                    text: qsTr("Music sources")
-                                    role: "caption"
-                                    color: MichiPalette.textSecondary
-                                }
-                                MichiText {
-                                    Layout.fillWidth: true
-                                    // P1-LIB-04: truthful multi-source count —
-                                    // currentDir is NOT library authority.
-                                    text: typeof library !== "undefined" && library
-                                        ? qsTr("%n source(s) configured", "", library.configuredSourceCount)
-                                        : qsTr("No sources configured")
-                                    role: "caption"
-                                    elide: Text.ElideMiddle
-                                }
-                            }
+                        MichiMenuInfoHeader {
+                            headline: qsTr("Music sources")
+                            supportingText: typeof library !== "undefined" && library
+                                ? qsTr("%n source(s) configured", "", library.configuredSourceCount)
+                                : qsTr("No sources configured")
+                            fallbackText: "M"
+                            artworkPath: ""
                         }
                         MichiSeparator { }
                         MichiMenuItem {

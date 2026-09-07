@@ -199,11 +199,11 @@ def _instantiate(engine, qml_root, relative: str) -> bool:
 
 def _teardown():
     """Destrucción ordenada: roots primero (engine vivo), luego engines."""
+    from contextlib import suppress
+
     for root, component in reversed(_INSTANTIATED):
-        try:
+        with suppress(RuntimeError):
             root.deleteLater()
-        except RuntimeError:
-            pass
         del component
     from PySide6.QtCore import QCoreApplication
 

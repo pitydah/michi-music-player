@@ -365,31 +365,31 @@ Item {
 
                 MichiMenu {
                     id: listRowMenu
-                    MenuItem {
+                    MichiMenuItem {
                         text: qsTr("Open")
                         onTriggered: root.openPlaylistRequested(modelData.playlistId)
                     }
-                    MenuItem {
+                    MichiMenuItem {
                         text: qsTr("Play Now")
                         onTriggered: root.playPlaylistRequested(modelData.playlistId)
                     }
-                    MenuItem {
+                    MichiMenuItem {
                         text: qsTr("Add to Queue")
                         onTriggered: playlists.queue_playlist(modelData.playlistId)
                     }
-                    MenuItem {
+                    MichiMenuItem {
                         text: modelData.pinned ? qsTr("Unpin") : qsTr("Pin")
                         onTriggered: root.pinPlaylistRequested(modelData.playlistId, !modelData.pinned, modelData.name)
                     }
-                    MenuItem {
+                    MichiMenuItem {
                         text: qsTr("Customize appearance…")
                         onTriggered: root.customizeAppearance(modelData)
                     }
-                    MenuItem {
+                    MichiMenuItem {
                         text: qsTr("Rename…")
                         onTriggered: root.renamePlaylistRequested(modelData.playlistId, modelData.name)
                     }
-                    MenuItem {
+                    MichiMenuItem {
                         text: qsTr("Delete…")
                         onTriggered: root.deletePlaylistRequested(modelData.playlistId, modelData.name)
                     }

@@ -220,21 +220,23 @@ Item {
 
     MichiMenu {
         id: contextMenu
-        MenuItem { text: qsTr("Open"); onTriggered: root.openRequested() }
-        MenuItem { text: qsTr("Play now"); onTriggered: root.playRequested() }
-        MenuItem {
+        MichiMenuItem { text: qsTr("Open"); onTriggered: root.openRequested() }
+        MichiMenuItem { text: qsTr("Play now"); onTriggered: root.playRequested() }
+        MichiMenuItem {
             text: qsTr("Add to queue")
             onTriggered: playlists.queue_playlist(root.playlistId)
         }
-        MenuItem {
+        MichiMenuItem {
             text: root.pinned ? qsTr("Unpin") : qsTr("Pin")
             onTriggered: root.pinToggled()
         }
-        MenuItem {
+        MichiMenuItem {
             text: qsTr("Customize appearance…")
             onTriggered: root.customizeAppearanceRequested()
         }
-        MenuItem { text: qsTr("Rename…"); onTriggered: root.renameRequested() }
-        MenuItem { text: qsTr("Delete…"); onTriggered: root.deleteRequested() }
+        MichiMenuItem { text: qsTr("Rename…"); onTriggered: root.renameRequested() }
+        MichiMenuItem { text: qsTr("Delete…")
+            icon.name: "trash"
+            danger: true; onTriggered: root.deleteRequested() }
     }
 }
