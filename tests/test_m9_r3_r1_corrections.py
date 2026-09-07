@@ -33,8 +33,9 @@ def test_playlist_target_picker_has_semantic_sections_search_and_new() -> None:
 def test_library_track_picker_orphan_removed_r18() -> None:
     """R18: LibraryTrackPicker era un superseded sin consumidores — el
     productive Add Tracks flow usa PlaylistTargetPicker (host A1)."""
-    assert not (Path("src/michi/presentation/qml") / "playlists"
-                / "LibraryTrackPicker.qml").exists()
+    assert not (
+        Path("src/michi/presentation/qml") / "playlists" / "LibraryTrackPicker.qml"
+    ).exists()
 
 
 def test_semantic_context_menus_are_specialized_and_keyboard_openable() -> None:

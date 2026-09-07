@@ -66,7 +66,9 @@ def world(tmp_path):
         playlist_coordinator=playlist_coord,
     )
     return {
-        "library": library, "bridge": bridge, "playlists": playlists,
+        "library": library,
+        "bridge": bridge,
+        "playlists": playlists,
         "tmp": tmp_path,
     }
 
@@ -90,10 +92,18 @@ def _reload(world):
 
 
 class TestTrackSurfacesV3RoundTrip:
-    @pytest.mark.parametrize("surface", [
-        "songs", "favorites", "history", "recently", "album-detail",
-        "artist-detail", "search",
-    ])
+    @pytest.mark.parametrize(
+        "surface",
+        [
+            "songs",
+            "favorites",
+            "history",
+            "recently",
+            "album-detail",
+            "artist-detail",
+            "search",
+        ],
+    )
     def test_track_add_persists_and_reloads_same_identity(self, world, surface):
         """La cadena del menú de cada superficie de tracks: el seam que la
         superficie llama → membership V3 → persistencia → reload."""
@@ -111,7 +121,8 @@ class TestTrackSurfacesV3RoundTrip:
         target = next(p for p in lists if p.name == f"R8-{surface}")
         members = target.references()
         refs = [
-            m for m in members
+            m
+            for m in members
             if (m.track_id and m.track_id == track_id)
             or m.fallback_path.endswith("a1.mp3")
         ]
@@ -144,9 +155,7 @@ class TestTrackSurfacesV3RoundTrip:
         """Create Playlist from Track (el flujo del diálogo del host)."""
         library = world["library"]
         track_id = _track_id_of(library, world["tmp"] / "a1.mp3")
-        pid = world["bridge"].create_playlist_from_tracks(
-            "R8-create", [track_id]
-        )
+        pid = world["bridge"].create_playlist_from_tracks("R8-create", [track_id])
         assert pid != ""
         reloaded = _reload(world)
         members = reloaded.get_playlist(pid).references()
