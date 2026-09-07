@@ -419,19 +419,23 @@ def test_toast_host_supports_action_and_is_wired():
     assert "ToastHost" in shell
     assert "function showToast(text, tone)" in shell
     assert "function showToastWithAction(text, action, handler, tone)" in shell
-    lib_host = read("views/LibraryContentHost.qml")
-    assert "window.showToast" in lib_host
+    # B1: el feedback del contexto vive en el host A1 (window.showToast
+    # desde LibraryContextActionHost); la barra legacy fue removida.
+    action_host = read("views/LibraryContextActionHost.qml")
+    assert "window.showToast(text, tone" in action_host
+    assert "feedbackRequested" in action_host
 
 
 def test_action_feedback_call_sites():
-    lib_host = read("views/LibraryContentHost.qml")
-    assert 'qsTr("Added to %1")' in lib_host  # R2: .arg() substitution
-    assert "modelData.name)" in lib_host
-    # P0-01: the Undo path in ContentHost now uses insert_track with FROZEN
-    # provenance; the user-facing "Add to playlist" call-site with toast
-    # feedback lives in LibraryContentHost and stays audited here.
+    # B1: los call-sites de feedback de playlist son los del host A1
+    # (Added to / Already in / Created) — el flujo legacy por path fue
+    # removido del LibraryContentHost.
+    action_host = read("views/LibraryContextActionHost.qml")
+    assert 'qsTr("Added to %1")' in action_host  # R2: .arg() substitution
+    assert 'qsTr("Already in %1")' in action_host
+    assert 'qsTr("Created %1")' in action_host
     library_host = read("views/LibraryContentHost.qml")
-    assert "add_track_to_playlist(" in library_host
+    assert "add_track_to_playlist(" not in library_host
 
 
 # ── Phase 4: full qsTr coverage (no intra-file mixes) ─────────────────────────
