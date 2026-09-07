@@ -176,7 +176,10 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert 'objectName: "resizableLibrarySearchPane"' in toolbar
     assert 'objectName: "librarySearchResizeHandle"' in toolbar
     assert 'import "../controls"' in content
-    assert 'text: qsTr("ADD TRACK TO")' in content
+    # B1: la barra legacy ADD TRACK TO fue removida (el flujo moderno va
+    # por el host A1: Bridge → picker premium).
+    assert 'qsTr("ADD TRACK TO")' not in content
+    assert "addTargetPath" not in content
     assert "MichiIconButton" in content
     assert "property bool revealed" in queue
     assert "Gradient.Horizontal" in now_playing

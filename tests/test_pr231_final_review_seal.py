@@ -329,9 +329,9 @@ def test_songs_add_to_playlist_runtime_routes_stable_track_id(qapp):
     assert library.playlist_target_calls == [["uuid-123"]], (
         "el seam recibe el TrackId estable, nunca el path"
     )
-    # El targeting legacy por path ya no se alimenta desde Songs.
-    assert root.property("addTargetPath") == "", (
-        "addTargetPath debe permanecer vacío en el flujo A1"
+    # B1: la propiedad legacy ya no existe en la superficie.
+    assert root.metaObject().indexOfProperty("addTargetPath") < 0, (
+        "el legacy addTargetPath fue removido de SongsView"
     )
     view.close()
 

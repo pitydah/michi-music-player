@@ -9,7 +9,6 @@ ColumnLayout {
     objectName: "albumsView"
 
     property string albumMode: "grid"
-    property string addTargetPath: ""
     property string albumSortMode: "title"
     property bool albumSortDescending: false
     property string albumFilterMode: "all"
@@ -353,7 +352,5 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         visible: library.selectedAlbumKey !== ""
-        addTargetPath: root.addTargetPath
-        onAddTargetPathChanged: root.addTargetPath = addTargetPath
     }
 }

@@ -9,7 +9,6 @@ ColumnLayout {
     id: root
 
     property string currentTab: "songs"
-    property string addTargetPath: ""
     property string albumMode: "grid"
     property string albumSortMode: "title"
     property bool albumSortDescending: false
@@ -63,52 +62,6 @@ ColumnLayout {
         onActionRequested: root.scanRequested()
         Layout.fillWidth: true
         Layout.preferredHeight: visible ? implicitHeight : 0
-    }
-
-    MichiGlassSurface {
-        Layout.fillWidth: true
-        Layout.preferredHeight: visible ? 48 : 0
-        visible: addTargetPath !== ""
-        elevation: "subtle"
-        contentPadding: MichiSpacing.sm
-        accented: true
-        accentColor: MichiPalette.auroraPurple
-
-        RowLayout {
-            anchors.fill: parent
-            spacing: MichiSpacing.sm
-            MichiText {
-                text: qsTr("ADD TRACK TO")
-                role: "technical"
-                technical: true
-                color: MichiPalette.auroraPurple
-                font.weight: Font.DemiBold
-            }
-
-            Repeater {
-                model: playlists.playlists
-                delegate: MichiButton {
-                    text: modelData.name
-                    variant: "secondary"
-                    onClicked: {
-                        var added = playlists.add_track_to_playlist(
-                            modelData.playlistId, addTargetPath)
-                        addTargetPath = ""
-                        if (added === "added")
-                            window.showToast(qsTr("Added to %1").arg(modelData.name))
-                        else if (added === "already_present")
-                            window.showToast(qsTr("Already in %1").arg(modelData.name))
-                    }
-                }
-            }
-
-            Item { Layout.fillWidth: true }
-            MichiIconButton {
-                iconName: "close"
-                accessibleName: qsTr("Cancel playlist selection")
-                onClicked: addTargetPath = ""
-            }
-        }
     }
 
     Rectangle {
@@ -206,8 +159,6 @@ ColumnLayout {
         id: songsViewComponent
         SongsView {
             anchors.fill: parent
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
             // A1: el consumer de Properties es real (contextHost → vista
             // premium) — la acción deja de estar fail-closed en Songs.
             canInspect: true
@@ -223,8 +174,6 @@ ColumnLayout {
         id: albumsViewComponent
         AlbumsView {
             anchors.fill: parent
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
             albumMode: root.albumMode
             albumSortMode: root.albumSortMode
             albumSortDescending: root.albumSortDescending
@@ -243,8 +192,6 @@ ColumnLayout {
         ArtistsView {
             anchors.fill: parent
             contextActionHost: contextHost
-            addTargetPath: root.addTargetPath
-            onAddTargetPathChanged: root.addTargetPath = addTargetPath
         }
     }
 

@@ -10,8 +10,6 @@ import "../media"
 MichiTrackTable {
     id: root
     objectName: "songsView"
-    property string addTargetPath: ""
-
     Layout.fillWidth: true
     Layout.fillHeight: true
     rows: library.songRows
@@ -47,8 +45,8 @@ MichiTrackTable {
     onQueueRequested: trackId => library.queue_track_by_id(trackId)
     // A1 (context host): el targeting es TrackId-first — el Bridge valida
     // contra el catálogo y emite playlist_target_requested; el host abre el
-    // picker premium. El path de la firma sigue como dato factual durante
-    // la migración (B1 elimina addTargetPath) y nunca decide membership.
+    // picker premium. El path de la firma es factual y nunca decide
+    // membership.
     onAddToPlaylistRequested: (trackId, path) =>
         library.request_tracks_playlist_target([trackId])
     onGoToAlbumRequested: albumKey => library.select_album(albumKey)

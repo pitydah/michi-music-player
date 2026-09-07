@@ -11,7 +11,6 @@ ColumnLayout {
     id: root
     objectName: "albumDetailView"
 
-    property string addTargetPath: ""
     property var inspectedTrack: null
     property int inspectedIndex: -1
 

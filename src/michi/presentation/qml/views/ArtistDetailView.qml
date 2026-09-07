@@ -13,7 +13,6 @@ ColumnLayout {
     // R2: el host contextual compartido (inyectado por ArtistsView, que a
     // su vez lo recibe del LibraryContentHost) — consumer de Properties.
     property var contextActionHost: null
-    property string addTargetPath: ""
 
     spacing: MichiThemeState.contentGap
     visible: library.selectedArtistKey !== ""
