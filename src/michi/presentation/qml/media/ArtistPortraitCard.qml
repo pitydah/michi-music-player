@@ -92,6 +92,9 @@ Item {
         id: artistContext
         anchors.fill: parent
         artist: root.artist
+        // R4 (shared host A1): capacidades de batch del artista activas.
+        canAddToPlaylist: true
+        canCreatePlaylist: true
         onContextRequested: root.selectedRequested()
     }
 }

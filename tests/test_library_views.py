@@ -42,6 +42,9 @@ except ImportError:  # pragma: no cover - fallback path
     QQuickPathView = QObject  # type: ignore[assignment,misc]
     QQuickListView = QObject  # type: ignore[assignment,misc]
 
+from michi.application.library_playback_coordinator import (
+    LibraryPlaybackCoordinator,
+)
 from michi.application.library_port import LibraryFilesystemError
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import PlaybackService
@@ -144,6 +147,42 @@ def _dir_genre_factory():
         )
 
     return factory
+
+
+class TestR4ArtistPlaylistSeam:
+    def test_request_new_playlist_for_artist_emits_canonical_payload(self, tmp_path):
+        """R4 seam mínimo: request_new_playlist_for_artist valida contra el
+        catálogo y emite new_playlist_target_requested con kind=artist."""
+        a1 = tmp_path / "a1.mp3"
+        a2 = tmp_path / "a2.mp3"
+        for p in (a1, a2):
+            p.write_bytes(b"x")
+        library, queue, session, _, audio = _make_library(
+            FakeScanner([a1, a2]), FakeExtractor(factory=_album_genre_factory())
+        )
+        library.scan(str(tmp_path))
+        # Coordinator de playlists presente (objeto simple: los seams solo
+        # lo usan como puerta; los métodos de membership se prueban en el
+        # coordinator de playlists).
+        bridge = LibraryBridge(
+            library,
+            playback_coordinator=LibraryPlaybackCoordinator(library, session),
+            playlist_coordinator=object(),
+        )
+        emitted = []
+        bridge.new_playlist_target_requested.connect(
+            lambda payload: emitted.append(payload)
+        )
+        # El artista existe (Artist One del factory).
+        artist = library.state.artists[0]
+        bridge.request_new_playlist_for_artist(artist.key)
+        assert emitted and emitted[0]["kind"] == "artist", emitted
+        assert emitted[0]["artistKey"] == artist.key, emitted
+        # Artista inexistente: no emite.
+        emitted.clear()
+        bridge.request_new_playlist_for_artist("no-such-artist")
+        assert emitted == []
+        bridge.dispose()
 
 
 class TestGenreExtraction:

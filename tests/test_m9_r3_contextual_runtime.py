@@ -360,6 +360,9 @@ Item {{
         window.close()
 
 
+_KEPT_MENUS: list = []
+
+
 def _find_text(root, text):
     """Primer objeto vivo con el texto dado (items de menú incluidos)."""
     try:
@@ -503,6 +506,160 @@ class TestAlbumBatchContextR3:
         QTest.qWait(80)
         self._kept = library
         return view, library
+
+
+class _ArtistBatchLibrary(_AlbumLibrary):
+    """Fake de library para ArtistContextMenu con seams de batch."""
+
+    def __init__(self, artists):
+        super().__init__([])
+        self._artists = artists
+        self.calls = []
+
+    artists = Property("QVariantList", lambda self: self._artists, notify=object())
+
+    @Slot(str)
+    def select_artist(self, key):
+        self.calls.append(("select_artist", key))
+
+    @Slot(str)
+    def queue_artist(self, key):
+        self.calls.append(("queue_artist", key))
+
+    @Slot(str)
+    def request_artist_playlist_target(self, key):
+        self.calls.append(("artist_target", key))
+
+    @Slot(str)
+    def request_new_playlist_for_artist(self, key):
+        self.calls.append(("new_playlist", key))
+
+
+def _artist_menu(qapp, library, capabilities=True):
+    from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+    engine = QQmlEngine()
+    engine.addImportPath(str(QML_DIR))
+    engine.rootContext().setContextProperty("library", library)
+    component = QQmlComponent(engine, str(QML_DIR / "media" / "ArtistContextMenu.qml"))
+    assert component.status() == QQmlComponent.Ready, [
+        e.toString() for e in component.errors()
+    ]
+    menu = component.create()
+    _KEPT_MENUS.append((engine, component, menu))
+    if capabilities:
+        menu.setProperty(
+            "artist",
+            {
+                "key": "artist-1",
+                "name": "Artist One",
+                "albumCount": 2,
+                "trackCount": 20,
+                "artworkPath": "",
+            },
+        )
+    if capabilities:
+        menu.setProperty("canAddToPlaylist", True)
+        menu.setProperty("canCreatePlaylist", True)
+    return menu
+
+
+class TestArtistBatchContextR4:
+    """R4: Add Artist to Playlist + Create Playlist from Artist (shared
+    host A1): items visibles y ruteo al Bridge; pelado fail-closed."""
+
+    def test_batch_items_visible_and_route_to_bridge(self, qapp):
+        """Right-click real sobre la ArtistPortraitCard (superficie
+        productiva bajo el host): el menú del área muestra los items de
+        batch y sus triggers llegan a los seams del Bridge."""
+        library = _ArtistBatchLibrary(
+            [
+                {
+                    "key": "artist-1",
+                    "name": "Artist One",
+                    "albumCount": 2,
+                    "trackCount": 20,
+                    "artworkPath": "",
+                },
+            ]
+        )
+        view = QQuickView()
+        view.engine().addImportPath(str(QML_DIR))
+        view.rootContext().setContextProperty("library", library)
+        view.setSource(
+            QUrl.fromLocalFile(str(QML_DIR / "media" / "ArtistPortraitCard.qml"))
+        )
+        assert view.status() == QQuickView.Ready, [e.toString() for e in view.errors()]
+        view.setResizeMode(QQuickView.SizeRootObjectToView)
+        view.resize(320, 420)
+        view.show()
+        view.requestActivate()
+        QTest.qWait(150)
+        root = view.rootObject()
+        root.setProperty(
+            "artist",
+            {
+                "key": "artist-1",
+                "name": "Artist One",
+                "albumCount": 2,
+                "trackCount": 20,
+                "artworkPath": "",
+            },
+        )
+        QTest.qWait(80)
+        center = QPoint(int(root.width() / 2), int(root.height() / 2))
+        QTest.mouseClick(
+            view,
+            Qt.MouseButton.RightButton,
+            Qt.KeyboardModifier.NoModifier,
+            pos=center,
+        )
+        QTest.qWait(150)
+        menus = _visible_menus(root)
+        assert menus, "menú del artista abierto"
+        found = {
+            "Add Artist to Playlist": None,
+            "Create Playlist from Artist…": None,
+        }
+        for menu in menus:
+            for child in menu.findChildren(QObject):
+                try:
+                    text = child.property("text")
+                    has_trigger = hasattr(child, "triggered")
+                except RuntimeError:
+                    continue
+                if text in found and child.property("visible") is True and has_trigger:
+                    found[text] = child
+        for label, item in found.items():
+            assert item is not None, f"item {label!r} visible (capacidad R4)"
+        for label in found:
+            with suppress(RuntimeError):
+                found[label].triggered.emit()
+        QTest.qWait(40)
+        assert ("artist_target", "artist-1") in library.calls, library.calls
+        assert ("new_playlist", "artist-1") in library.calls, library.calls
+        view.close()
+
+    def test_bare_menu_stays_fail_closed(self, qapp):
+        """El componente pelado conserva los defaults false (sin artista,
+        sin capacidades: fail-closed del archivo)."""
+        library = _ArtistBatchLibrary([])
+        menu = _artist_menu(qapp, library, capabilities=False)
+        assert menu.property("canAddToPlaylist") is False
+        assert menu.property("canCreatePlaylist") is False
+
+    def test_portrait_card_activates_batch_area(self, qapp):
+        """ArtistPortraitCard activa las capacidades de su área (bajo el
+        árbol del host A1 en LibraryContentHost)."""
+        src = Path(QML_DIR / "media" / "ArtistPortraitCard.qml").read_text(
+            encoding="utf-8", errors="ignore"
+        )
+        assert "canAddToPlaylist: true" in src
+        assert "canCreatePlaylist: true" in src
+        area = Path(QML_DIR / "media" / "ArtistContextArea.qml").read_text(
+            encoding="utf-8", errors="ignore"
+        )
+        assert "canCreatePlaylist: root.canCreatePlaylist" in area
 
 
 class TestArtistMenuFailClosedRuntime:

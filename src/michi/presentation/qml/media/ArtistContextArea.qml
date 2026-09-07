@@ -7,6 +7,7 @@ Item {
     // Fail-closed: el host decide si "Add Artist to Playlist" tiene
     // consumer productivo (fase R4). Por defecto FALSE.
     property bool canAddToPlaylist: false
+    property bool canCreatePlaylist: false
     signal contextRequested()
     function openMenu() {
         if (!root.artist)
@@ -37,5 +38,6 @@ Item {
         id: menu
         artist: root.artist
         canAddToPlaylist: root.canAddToPlaylist
+        canCreatePlaylist: root.canCreatePlaylist
     }
 }

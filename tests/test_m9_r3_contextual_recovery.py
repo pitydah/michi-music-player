@@ -96,20 +96,30 @@ def test_magazine_context_selects_target_before_menu() -> None:
     assert roving.index("root.selectEditorial(") < roving.index("popup()")
 
 
-def test_artist_add_to_playlist_is_fail_closed() -> None:
+def test_artist_add_to_playlist_fail_closed_until_productive_card() -> None:
     """'Add Artist to Playlist' requiere canAddToPlaylist (default false):
-    no se muestra porque exista el signal del Bridge. Ningún surface
-    productivo la activa (fase R4 pendiente: host + capability)."""
+    no se muestra porque exista el signal del Bridge. R4: el ÚNICO
+    activador productivo es la tarjeta (ArtistPortraitCard) bajo el host
+    A1 — el resto del árbol conserva el fail-closed."""
     menu = _qml("media/ArtistContextMenu.qml")
     assert "property bool canAddToPlaylist: false" in menu
+    assert "property bool canCreatePlaylist: false" in menu
     assert "visible: root.artist !== null && root.canAddToPlaylist" in menu
     assert "library.canAddTracksToPlaylists" in menu
+    assert 'qsTr("Create Playlist from Artist…")' in menu
     area = _qml("media/ArtistContextArea.qml")
     assert "property bool canAddToPlaylist: false" in area
     assert "canAddToPlaylist: root.canAddToPlaylist" in area
-    # Ningún productivo activa la capacidad (fail-close hasta R4).
+    # El único activador productivo: ArtistPortraitCard (bajo el host A1).
+    card = _qml("media/ArtistPortraitCard.qml")
+    assert "canAddToPlaylist: true" in card
+    assert "canCreatePlaylist: true" in card
     for qml_file in Path(QML).rglob("*.qml"):
-        if qml_file.name in ("ArtistContextArea.qml", "ArtistContextMenu.qml"):
+        if qml_file.name in (
+            "ArtistContextArea.qml",
+            "ArtistContextMenu.qml",
+            "ArtistPortraitCard.qml",
+        ):
             continue
         src = qml_file.read_text(encoding="utf-8", errors="ignore")
         if "ArtistContextArea" in src or "ArtistContextMenu" in src:

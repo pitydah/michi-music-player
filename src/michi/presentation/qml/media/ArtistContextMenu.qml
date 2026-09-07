@@ -13,6 +13,7 @@ MichiMenu {
     // requiere un consumer productivo compartido (fase R4 lo activa);
     // hasta entonces la capacidad permanece FALSE por defecto.
     property bool canAddToPlaylist: false
+    property bool canCreatePlaylist: false
 
     Item {
         implicitWidth: 284
@@ -63,5 +64,13 @@ MichiMenu {
         visible: root.artist !== null && root.canAddToPlaylist
             && library.canAddTracksToPlaylists
         onTriggered: library.request_artist_playlist_target(root.artist.key)
+    }
+    MichiMenuItem {
+        text: qsTr("Create Playlist from Artist…")
+        icon.name: "plus"
+        // R4: seam request_new_playlist_for_artist → host (A1) → dialog.
+        visible: root.artist !== null && root.canCreatePlaylist
+            && library.canAddTracksToPlaylists
+        onTriggered: library.request_new_playlist_for_artist(root.artist.key)
     }
 }

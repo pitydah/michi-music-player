@@ -1515,6 +1515,17 @@ class LibraryBridge(QObject):
                 {"kind": "album", "albumKey": album_key}
             )
 
+    @Slot(str)
+    def request_new_playlist_for_artist(self, artist_key: str) -> None:
+        """R4 seam mínimo: Create Playlist from Artist (el coordinator de
+        playlists y el host A1 ya soportan kind=artist)."""
+        if self._playlist_coordinator is None:
+            return
+        if any(artist.key == artist_key for artist in self._service.state.artists):
+            self.new_playlist_target_requested.emit(
+                {"kind": "artist", "artistKey": artist_key}
+            )
+
     @Slot(list)
     def request_new_playlist_for_tracks(self, track_ids: list) -> None:
         """CORRECTIVE SEAL §12: validate by STABLE TrackId."""
