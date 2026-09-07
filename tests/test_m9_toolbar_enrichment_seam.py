@@ -21,7 +21,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
-from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot  # noqa: F401
+from PySide6.QtCore import Property, QObject, Qt, QUrl, Signal, Slot  # noqa: F401
 from PySide6.QtQuick import QQuickView
 from PySide6.QtTest import QTest
 
@@ -181,6 +181,9 @@ def test_toolbar_runtime_geometry_inside_bounds_no_overlap(qapp, tmp_path):
     """P0-06/07: en los 4 anchos los controles visibles tienen
     dimensiones positivas, quedan DENTRO del toolbar (con tolerancia
     mínima EPSILON) y no se superponen."""
+    # R11 TOOL-01: el Enrich global se removió del toolbar (product
+    # decision V4 §22.5) — la geometría cubre scan + search en los 4
+    # anchos, sin overlap.
     for width in (1920, 1440, 1200, 900):
         view, bridge, pipeline, enrichment = _toolbar(qapp, tmp_path, width)
         scan = _geo(view, "libraryScanSplitButton")
@@ -188,14 +191,13 @@ def test_toolbar_runtime_geometry_inside_bounds_no_overlap(qapp, tmp_path):
         search = _geo(view, "resizableLibrarySearchPane")
 
         assert scan is not None, f"{width}: scan presente"
-        assert enrich is not None, f"{width}: enrich presente"
+        assert enrich is None, f"{width}: enrich AUSENTE del toolbar (TOOL-01)"
         assert search is not None, f"{width}: search presente"
         assert scan[2] > 0 and scan[3] > 0, f"{width}: scan > 0"
-        assert enrich[2] > 0 and enrich[3] > 0, f"{width}: enrich > 0"
         assert search[2] > 0 and search[3] > 0, f"{width}: search > 0"
         toolbar_w = view.width()
         toolbar_h = view.height()
-        for name, geo in (("scan", scan), ("enrich", enrich), ("search", search)):
+        for name, geo in (("scan", scan), ("search", search)):
             x, y, w, h = geo
             assert x >= 0 and y >= 0, f"{width}: {name} x/y >= 0"
             assert x + w <= toolbar_w + EPSILON, (
@@ -204,55 +206,40 @@ def test_toolbar_runtime_geometry_inside_bounds_no_overlap(qapp, tmp_path):
             assert y + h <= toolbar_h + EPSILON, (
                 f"{width}: {name} dentro del alto del toolbar"
             )
-        assert _no_overlap(scan, enrich), f"{width}: scan/enrich sin overlap"
         assert _no_overlap(search, scan), f"{width}: search/scan sin overlap"
-        assert _no_overlap(search, enrich), f"{width}: search/enrich sin overlap"
         view.close()
 
 
-def test_enrich_button_is_sibling_of_scan_button(qapp, tmp_path):
-    """P0-08: libraryEnrichButton NO es hijo de libraryScanSplitButton —
-    ambos son hermanos bajo libraryNavigationGrid."""
+def test_toolbar_enrich_absent_negative_contract(qapp, tmp_path):
+    """R11 TOOL-01 / §22.5: el Enrich global no vive en el LibraryToolbar
+    (product decision) — ni botón ni llamadas bulk."""
+    toolbar = Path("src/michi/presentation/qml/views/LibraryToolbar.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    assert 'objectName: "libraryEnrichButton"' not in toolbar
+    assert "start_library_enrichment" not in toolbar
+    assert "cancel_library_enrichment" not in toolbar
+    assert 'qsTr("Enrich Library")' not in toolbar
+    # El backend bulk y el policy online siguen vivos (no se tocan).
     view, bridge, pipeline, enrichment = _toolbar(qapp, tmp_path, 1440)
     root = view.rootObject()
-    enrich = root.findChild(QObject, "libraryEnrichButton")
     scan = root.findChild(QObject, "libraryScanSplitButton")
-    assert enrich is not None and scan is not None
-    assert enrich.parent() != scan, "enrich NO puede ser hijo del split button"
-    assert enrich.parent() == scan.parent(), (
-        "ambos deben ser hermanos del mismo layout container"
-    )
+    assert scan is not None
     assert scan.parent().objectName() == "libraryNavigationGrid"
     view.close()
 
 
-def test_compact_enrich_icon_visible_with_sparkles(qapp, tmp_path):
-    """P0-09: width=900 + Online ON + IDLE → visible, iconOnly, sparkles,
-    accessibleName válido (nunca un botón icon-only vacío)."""
-    view, bridge, pipeline, enrichment = _toolbar(qapp, tmp_path, 900)
-    root = view.rootObject()
-    enrich = root.findChild(QObject, "libraryEnrichButton")
-    assert enrich.property("visible") is True
-    assert enrich.property("iconOnly") is True
-    assert enrich.property("iconName") == "sparkles"
-    assert enrich.property("accessibleName") == "Enrich entire library"
-    view.close()
-
-
-def test_scan_active_hides_enrich_through_real_scan(qapp, tmp_path):
+def test_scan_active_through_real_scan(qapp, tmp_path):
     """P0-01..05: un scan REAL (intención productiva → scan_all_sources
     → SourceScanLifecycle → pipeline manual pendiente) transiciona
-    scanActive False→True y enrich.visible True→False, con exactamente
-    1 submission al lifecycle. Sin estado privado simulado."""
+    scanActive False→True con exactamente 1 submission al lifecycle."""
     view, bridge, pipeline, enrichment = _toolbar(
         qapp, tmp_path, 1440, with_source=True
     )
     root = view.rootObject()
-    enrich = root.findChild(QObject, "libraryEnrichButton")
 
     # Estado inicial: reposo.
     assert bridge.scanActive is False
-    assert enrich.property("visible") is True
 
     # Intención productiva: primary del split button → performScan →
     # scan_all_sources() (el slot canónico del Bridge).
@@ -268,12 +255,79 @@ def test_scan_active_hides_enrich_through_real_scan(qapp, tmp_path):
         "la intención llegó al lifecycle: exactamente 1 submission"
     )
     assert bridge.scanActive is True, "scanActive publica True (autoridad real)"
-    assert enrich.property("visible") is False, "enrich oculto durante el scan activo"
 
     # El scan sigue activo (on_done nunca se llamó) — el estado se
     # mantiene coherente.
     assert bridge.scanActive is True
     view.close()
+
+
+class TestSearchResizerR11:
+    def test_search_resizer_changes_rendered_width(self, qapp, tmp_path):
+        """R11 TOOL-02 (§18.4): el ancho RENDERIZADO del search cambia con
+        la autoridad incremental — nunca solo la property preferida."""
+        view, bridge, pipeline, enrichment = _toolbar(qapp, tmp_path, 1400)
+        root = view.rootObject()
+        meta = root.metaObject()
+        # clamp conocido: default 420 → +80 → 500 → -220 → 280?? clamp 300:
+        idx = meta.indexOfMethod("resizeSearchBy(QVariant)")
+        assert idx >= 0, "resizeSearchBy expuesta"
+        # 1) preferido 340 → render cerca de 340 (ancho desktop: el search
+        # NO llena: usa el elegido).
+        set_idx = meta.indexOfProperty("searchPanePreferredWidth")
+        meta.property(set_idx).write(root, 340)
+        QTest.qWait(60)
+        search = root.findChild(QObject, "resizableLibrarySearchPane")
+        assert search is not None
+        w1 = float(search.property("width") or 0)
+        assert w1 >= 300, f"render del search colapsado: {w1}"
+        # 2) +80 → el ancho renderizado aumenta materialmente.
+        from PySide6.QtCore import Q_ARG
+
+        assert meta.method(idx).invoke(root, Q_ARG("QVariant", 80))
+        QTest.qWait(60)
+        w2 = float(search.property("width") or 0)
+        assert w2 > w1 + 40, f"el ancho RENDERIZADO debe cambiar: {w1} -> {w2}"
+        # 3) clamp superior ~560.
+        for _ in range(8):
+            meta.method(idx).invoke(root, Q_ARG("QVariant", 120))
+        QTest.qWait(60)
+        assert float(search.property("width") or 0) <= 575, "clamp superior del search"
+        # 4) clamp inferior ~300.
+        for _ in range(12):
+            meta.method(idx).invoke(root, Q_ARG("QVariant", -120))
+        QTest.qWait(60)
+        assert float(search.property("width") or 0) >= 290, "clamp inferior del search"
+        # 5) el scan sigue dentro del toolbar y los tabs siguen visibles.
+        scan = root.findChild(QObject, "libraryScanSplitButton")
+        tabs = None
+        for child in root.findChildren(QObject):
+            if "LibraryTabs" in child.metaObject().className():
+                tabs = child
+                break
+        assert scan is not None and tabs is not None
+        assert scan.x() + scan.width() <= 1400 + 1
+        assert float(tabs.property("width") or 0) > 0
+        view.close()
+
+    def test_search_resizer_keyboard_path(self, qapp, tmp_path):
+        """§18.4: Left/Right del teclado en el handle cambia el render."""
+        view, bridge, pipeline, enrichment = _toolbar(qapp, tmp_path, 1400)
+        root = view.rootObject()
+        handle = root.findChild(QObject, "librarySearchResizeHandle")
+        search = root.findChild(QObject, "resizableLibrarySearchPane")
+        assert handle is not None and search is not None
+        w1 = float(search.property("width") or 0)
+        handle.forceActiveFocus()
+        QTest.keyClick(view, Qt.Key_Left)
+        QTest.qWait(60)
+        w2 = float(search.property("width") or 0)
+        assert w2 > w1 + 10, f"Left agranda el search renderizado: {w1} -> {w2}"
+        QTest.keyClick(view, Qt.Key_Right)
+        QTest.qWait(60)
+        w3 = float(search.property("width") or 0)
+        assert w3 < w2 - 10, f"Right reduce el search renderizado: {w2} -> {w3}"
+        view.close()
 
 
 class TestEnrichmentUxR16:
@@ -309,19 +363,23 @@ class TestEnrichmentUxR16:
         assert "self._online_enabled = False" in bridge_src, (
             "online arranca OFF (cache-only por defecto)"
         )
+        # TOOL-01: el global Enrich no vive en el toolbar (product
+        # decision); la política online vive en Settings y el refresh
+        # explícito en los detalles.
         toolbar = Path("src/michi/presentation/qml/views/LibraryToolbar.qml").read_text(
             encoding="utf-8", errors="ignore"
         )
-        assert "onlineEnabled" in toolbar
+        assert "onlineEnabled" not in toolbar
 
-    def test_cancel_reachable_while_enriching(self, qapp, tmp_path):
-        """R16 (§83): el botón del job mantiene Cancel alcanzable durante
-        el enrichment activo (RUNNING/PREPARING/CANCELLING)."""
+    def test_cancel_seam_survives_outside_toolbar(self, qapp, tmp_path):
+        """R16 (§83/§22.5): la cancelación del job es alcanzable en el
+        bridge; el TOOL-01 removió el botón global del toolbar pero el
+        seam backend (y la reentrada futura de UI dedicada) se conserva."""
         toolbar = Path("src/michi/presentation/qml/views/LibraryToolbar.qml").read_text(
             encoding="utf-8", errors="ignore"
         )
-        assert 'qsTr("Enriching Library… %1 / %2")' in toolbar
-        assert "enrichment.cancel_library_enrichment()" in toolbar
+        assert 'qsTr("Enriching Library… %1 / %2")' not in toolbar
+        assert "cancel_library_enrichment()" not in toolbar
         bridge_src = Path("src/michi/presentation/enrichment_bridge.py").read_text(
             encoding="utf-8", errors="ignore"
         )
