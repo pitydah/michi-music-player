@@ -63,6 +63,56 @@ def test_track_actions_are_discoverable_without_becoming_visual_noise() -> None:
     assert source.count("root.idleActionOpacity") >= 7
 
 
+def test_artist_detail_never_uses_album_sleeve_as_portrait() -> None:
+    """R12 (§33): ArtistDetail converged — enriched portrait wins; the
+    fallback is the deliberate monogram, never an album sleeve cropped
+    into a circular portrait."""
+    source = _read("views/ArtistDetailView.qml")
+    assert "artistAlbums[0].artworkPath" not in source, (
+        "la portada de un álbum no puede ser el retrato del artista"
+    )
+    assert "enrichment.artistArtworkPath.length > 0" in source
+    assert "fallbackText: library.artistName" in source
+
+
+def test_collections_share_one_table_with_semantic_configuration() -> None:
+    """R13 (§45): las colecciones usan la ÚNICA MichiTrackTable con
+    configuración semántica por vista (sin duplicar la tabla)."""
+    for view in ("FavoritesView", "HistoryView", "RecentlyAddedView"):
+        source = _read(f"views/{view}.qml")
+        assert "MichiTrackTable {" in source, view
+        assert "rows: library." in source, view
+        # empty states semánticos por colección (no un genérico de Songs).
+        assert (
+            "No matching" in source
+            or "No favorites yet" in source
+            or "Nothing added recently" in source
+            or "history" in source
+        ), view
+    # Ninguna vista de colección construye un ListView propio para tracks.
+    for view in ("FavoritesView", "HistoryView", "RecentlyAddedView"):
+        source = _read(f"views/{view}.qml")
+        assert "ListView {" not in source, f"{view} duplica la tabla"
+
+
+def test_temporal_model_stays_truthful_no_fabricated_timestamps() -> None:
+    """R14 (§46-47): History/Recently NO inventan datos temporales —
+    last_played_at/play_count/first_seen_at son NEW_DESIGN si llegan; el
+    QML nunca simula timestamps (ni mtime como 'added')."""
+    for view in ("HistoryView", "RecentlyAddedView"):
+        source = _read(f"views/{view}.qml")
+        assert "mtime" not in source, view
+        assert "lastPlayed" not in source and "last_played" not in source, view
+        assert "playCount" not in source and "play_count" not in source, view
+        assert "firstSeen" not in source and "addedAt" not in source, view
+    # El modelo expone SOLO los datos reales (secuencia), nunca pseudo-datos.
+
+    bridge = Path("src/michi/presentation/library_bridge.py").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    assert "historyTrackRows = Property(" in bridge
+
+
 def test_artist_gallery_does_not_crop_album_sleeves_as_portraits() -> None:
     source = _read("views/ArtistsView.qml")
     assert "|| artistCell.modelData.artworkPath" not in source

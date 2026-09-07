@@ -45,12 +45,11 @@ ColumnLayout {
                 anchors.margins: 3
                 radius: width / 2
                 requestedSize: 192
-                /* M6.9: external artist portrait wins when present;
-                 * local representative artwork is the fallback. */
+                /* R12 (V4 §33): el portrait ENRIQUECIDO real gana; sin él,
+                 * el fallback es el monograma deliberado — NUNCA una
+                 * portada de álbum recortada como retrato circular. */
                 sourcePath: enrichment.artistArtworkPath.length > 0
-                    ? enrichment.artistArtworkPath
-                    : (library.artistAlbums.length > 0
-                        ? library.artistAlbums[0].artworkPath : "")
+                    ? enrichment.artistArtworkPath : ""
                 fallbackText: library.artistName
             }
         }
