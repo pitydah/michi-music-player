@@ -63,6 +63,54 @@ def test_track_actions_are_discoverable_without_becoming_visual_noise() -> None:
     assert source.count("root.idleActionOpacity") >= 7
 
 
+def test_r11_shell_layout_frozen() -> None:
+    """R11-SHELL-01 (§21.5): LibraryHeader sobre LibraryToolbar sobre
+    LibraryContentHost — las posiciones son intencionales y se congelan."""
+    library = _read("views/LibraryView.qml")
+    assert library.index("LibraryHeader {") < library.index("LibraryToolbar {")
+    assert library.index("LibraryToolbar {") < library.index(
+        "LibraryContentHost {")
+    # Sin zonas de navegación/estado nuevas que reorganicen el shell.
+    assert "LibraryStateStrip" not in library
+    assert "LibraryAlbumViewTools" not in library
+
+
+def test_r11_scrollbar_navigation_matrix() -> None:
+    """R11 NAV-11: surfaces continuas con MichiScrollBar; Artists sin raw
+    ScrollBar; tabla con barras nombradas + Home/End; AlbumFlow discreto
+    con indicador de posición."""
+    artists = _read("views/ArtistsView.qml")
+    assert "MichiScrollBar" in artists
+    assert "artistsNavigationScrollBar" in artists
+    assert "ScrollBar: ScrollBar" not in artists
+    detail = _read("views/ArtistDetailView.qml")
+    assert "artistAlbumsNavigationScrollBar" in detail
+    table = _read("media/MichiTrackTable.qml")
+    assert "trackTableVerticalScrollBar" in table
+    assert "trackTableHorizontalScrollBar" in table
+    assert "Qt.Key_Home" in table and "Qt.Key_End" in table
+    path = _read("views/AlbumPathView.qml")
+    assert "ScrollBar" not in path, "AlbumFlow discreto: sin scrollbar"
+    assert 'qsTr("%1 / %2")' in path
+    scrollbar = _read("controls/MichiScrollBar.qml")
+    assert "minimumSize: 0.04" in scrollbar
+    assert "implicitWidth: root.vertical ? 12 : 48" in scrollbar
+
+
+def test_r11_track_hierarchy_visual_contract() -> None:
+    """HIER-04..08: tres estados visuales; título Medium; badge quiet;
+    numéricas a la derecha; sin doble separación."""
+    row = _read("media/TrackRow.qml")
+    assert "auroraCyanSurface" in row, "playing con superficie propia"
+    assert "Font.DemiBold : Font.Medium" in row, "título Medium default"
+    assert "compactQuiet: true" in row
+    assert "horizontalAlignment: Text.AlignRight" in row
+    badge = _read("media/MichiFormatBadge.qml")
+    assert "property bool compactQuiet: false" in badge
+    table = _read("media/MichiTrackTable.qml")
+    assert "spacing: 0" in table
+
+
 def test_artist_detail_never_uses_album_sleeve_as_portrait() -> None:
     """R12 (§33): ArtistDetail converged — enriched portrait wins; the
     fallback is the deliberate monogram, never an album sleeve cropped
