@@ -49,9 +49,8 @@ MichiMenu {
     }
 
     // ── A) Contexto de CELL (compacto) ────────────────────────────────────
-    MichiMenuItem {
+    MichiMenuHeader {
         text: qsTr("TRACK TABLE")
-        enabled: false
         visible: root.targetColumn !== ""
     }
     MichiMenuItem {
@@ -118,7 +117,7 @@ MichiMenu {
         }
         onAboutToShow: rebuild()
 
-        MichiMenuItem { text: qsTr("CUSTOMIZE COLUMNS"); enabled: false }
+        MichiMenuHeader { text: qsTr("CUSTOMIZE COLUMNS") }
         MichiMenuItem {
             id: presetEssential
             text: qsTr("Essential")
@@ -144,7 +143,7 @@ MichiMenu {
             onTriggered: root.applyPreset("minimal")
         }
         MichiSeparator { }
-        MichiMenuItem { text: qsTr("IDENTITY"); enabled: false }
+        MichiMenuHeader { text: qsTr("IDENTITY") }
         MichiMenuItem {
             text: qsTr("Artwork")
             checkable: true
@@ -157,7 +156,7 @@ MichiMenu {
             icon.name: "lock"
         }
         MichiSeparator { }
-        MichiMenuItem { text: qsTr("MUSICAL CONTEXT"); enabled: false }
+        MichiMenuHeader { text: qsTr("MUSICAL CONTEXT") }
         MichiMenuItem {
             text: qsTr("Artist")
             checkable: true
@@ -171,7 +170,7 @@ MichiMenu {
             onTriggered: root.toggleColumnRequested("album")
         }
         MichiSeparator { }
-        MichiMenuItem { text: qsTr("AUDIO"); enabled: false }
+        MichiMenuHeader { text: qsTr("AUDIO") }
         MichiMenuItem {
             text: qsTr("Format")
             checkable: true
@@ -215,7 +214,7 @@ MichiMenu {
             onTriggered: root.toggleColumnRequested("fileSize")
         }
         MichiSeparator { }
-        MichiMenuItem { text: qsTr("METADATA"); enabled: false }
+        MichiMenuHeader { text: qsTr("METADATA") }
         MichiMenuItem {
             text: qsTr("Genre")
             checkable: true
@@ -235,7 +234,7 @@ MichiMenu {
             onTriggered: root.toggleColumnRequested("year")
         }
         MichiSeparator { }
-        MichiMenuItem { text: qsTr("TIME"); enabled: false }
+        MichiMenuHeader { text: qsTr("TIME") }
         MichiMenuItem {
             text: qsTr("Duration")
             checkable: true
@@ -243,7 +242,7 @@ MichiMenu {
             onTriggered: root.toggleColumnRequested("duration")
         }
         MichiSeparator { }
-        MichiMenuItem { text: qsTr("UTILITY"); enabled: false }
+        MichiMenuHeader { text: qsTr("UTILITY") }
         MichiMenuItem {
             text: qsTr("Actions")
             checkable: true

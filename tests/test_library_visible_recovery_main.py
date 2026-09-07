@@ -95,6 +95,30 @@ def test_collections_share_one_table_with_semantic_configuration() -> None:
         assert "ListView {" not in source, f"{view} duplica la tabla"
 
 
+def test_context_menu_v2_primitives_and_section_headers() -> None:
+    """R10 (V4 §36-42): los menús contextuales usan headers de sección
+    reales (MichiMenuHeader) — la jerarquía no depende solo de
+    separadores mudos; los primitivos V2 existen para submenús."""
+    menu = _read("media/TrackTableHeaderContextMenu.qml")
+    for section in (
+        "TRACK TABLE",
+        "CUSTOMIZE COLUMNS",
+        "IDENTITY",
+        "MUSICAL CONTEXT",
+        "AUDIO",
+        "METADATA",
+        "TIME",
+        "UTILITY",
+    ):
+        assert f'qsTr("{section}")' in menu, section
+    assert "MichiMenuHeader {" in menu
+    # El menú usa el header V2, no items deshabilitados que finjan headers.
+    assert 'MichiMenuItem { text: qsTr("TRACK TABLE")' not in menu
+    # Los primitivos V2 existen (base del sistema de submenús).
+    for rel in ("controls/MichiMenuHeader.qml", "controls/MichiSubMenuItem.qml"):
+        assert (Path("src/michi/presentation/qml") / rel).exists(), rel
+
+
 def test_temporal_model_stays_truthful_no_fabricated_timestamps() -> None:
     """R14 (§46-47): History/Recently NO inventan datos temporales —
     last_played_at/play_count/first_seen_at son NEW_DESIGN si llegan; el
