@@ -93,4 +93,3 @@ class TestOfflineZeroProviderCalls:
             "el Fetch explícito es la única puerta de red "
             f"(calls={_count_calls(service)})"
         )
-
