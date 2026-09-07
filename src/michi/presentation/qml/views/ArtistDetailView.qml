@@ -23,7 +23,9 @@ ColumnLayout {
     readonly property string selectedArtistKey: library.selectedArtistKey
     onSelectedArtistKeyChanged: {
         if (root.selectedArtistKey.length > 0)
-            enrichment.activate_artist(root.selectedArtistKey)
+            // R4 §22.3: abrir el detail es cache-only — el Fetch
+            // explícito del usuario inicia la red.
+            enrichment.open_artist_cached(root.selectedArtistKey)
     }
 
     RowLayout {
