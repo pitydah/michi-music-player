@@ -162,20 +162,24 @@ Item {
         anchors.left: parent.left
         anchors.leftMargin: 1
         anchors.verticalCenter: parent.verticalCenter
-        width: root.overflowButtonWidth - 2
+        width: 32
         height: MichiMetrics.controlMedium
         focusPolicy: Qt.StrongFocus
         hoverEnabled: true
         Accessible.role: Accessible.Button
         Accessible.name: qsTr("Show previous library tabs")
         onClicked: root.scrollTabs(-Math.max(140, navigationFlickable.width * 0.55))
-        contentItem: MichiText {
-            text: "‹"
-            role: "section"
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            color: leftOverflowButton.enabled
-                ? MichiPalette.textSecondary : MichiPalette.textDisabled
+        contentItem: Item {
+            implicitWidth: 28
+            implicitHeight: 28
+            MichiIcon {
+                anchors.centerIn: parent
+                width: 16
+                height: 16
+                name: "chevron-left"
+                iconColor: leftOverflowButton.enabled
+                    ? MichiPalette.textSecondary : MichiPalette.textDisabled
+            }
         }
         background: Rectangle {
             radius: MichiRadius.md
@@ -199,20 +203,24 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 1
         anchors.verticalCenter: parent.verticalCenter
-        width: root.overflowButtonWidth - 2
+        width: 32
         height: MichiMetrics.controlMedium
         focusPolicy: Qt.StrongFocus
         hoverEnabled: true
         Accessible.role: Accessible.Button
         Accessible.name: qsTr("Show more library tabs")
         onClicked: root.scrollTabs(Math.max(140, navigationFlickable.width * 0.55))
-        contentItem: MichiText {
-            text: "›"
-            role: "section"
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            color: rightOverflowButton.enabled
-                ? MichiPalette.textSecondary : MichiPalette.textDisabled
+        contentItem: Item {
+            implicitWidth: 28
+            implicitHeight: 28
+            MichiIcon {
+                anchors.centerIn: parent
+                width: 16
+                height: 16
+                name: "chevron-right"
+                iconColor: rightOverflowButton.enabled
+                    ? MichiPalette.textSecondary : MichiPalette.textDisabled
+            }
         }
         background: Rectangle {
             radius: MichiRadius.md

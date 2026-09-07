@@ -363,6 +363,17 @@ PathView {
                 Layout.preferredHeight: 30
                 color: MichiSemanticColors.borderSubtle
             }
+            // R11 NAV-09: consciencia de posición del carrusel (sin
+            // scrollbar convencional: es un PathView discreto).
+            MichiText {
+                visible: albumsPath.count > 1
+                text: qsTr("%1 / %2")
+                    .arg(albumsPath.currentIndex + 1)
+                    .arg(albumsPath.count)
+                role: "technical"
+                technical: true
+                color: MichiPalette.textMuted
+            }
             MichiIconButton {
                 Layout.preferredWidth: MichiMetrics.controlMedium
                 Layout.preferredHeight: MichiMetrics.controlMedium

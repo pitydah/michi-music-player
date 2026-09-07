@@ -125,6 +125,12 @@ ColumnLayout {
         cellHeight: 214
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        keyNavigationEnabled: true
+        keyNavigationWraps: false
+        activeFocusOnTab: true
+        ScrollBar.vertical: MichiScrollBar {
+            objectName: "artistAlbumsNavigationScrollBar"
+        }
         delegate: AlbumCard {
             required property var modelData
             width: artistAlbumsGrid.cellWidth - MichiSpacing.sm

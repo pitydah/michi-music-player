@@ -8,6 +8,11 @@ Rectangle {
 
     property string formatKey: "unknown"
     property string displayLabel: "UNKNOWN"
+    // R11 HIER-06: modo silencioso de tabla — conserva la identidad de
+    // familia pero reduce la prominencia de superficie (las tablas
+    // densas no compiten con el título); el badge fuerte sigue en
+    // Properties/detalles.
+    property bool compactQuiet: false
 
     readonly property string family: {
         if (["flac", "wav", "aiff", "aif", "alac", "ape", "wavpack"].indexOf(formatKey) !== -1)
@@ -24,11 +29,12 @@ Rectangle {
     implicitWidth: label.implicitWidth + MichiSpacing.sm * 2
     implicitHeight: 24
     radius: MichiRadius.sm
+    opacity: root.compactQuiet ? 0.55 : 1
     color: family === "cyan" ? MichiSemanticColors.auroraCyanSurface
         : family === "purple" ? MichiSemanticColors.auroraPurpleSurface
         : family === "purple-soft" ? MichiSemanticColors.auroraPurpleSurfaceSoft
         : MichiSemanticColors.controlSurface
-    border.width: 1
+    border.width: root.compactQuiet ? 0 : 1
     border.color: family === "cyan" ? MichiSemanticColors.auroraCyanBorderSubtle
         : family === "blue" ? MichiSemanticColors.auroraBorderSubtle
         : family === "purple" ? MichiSemanticColors.auroraPurpleBorder
