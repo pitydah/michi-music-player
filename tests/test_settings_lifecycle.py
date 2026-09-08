@@ -113,7 +113,6 @@ class TestStudioListMetadataLevelRemovedFromSchema:
 
     def test_historical_json_with_metadata_level_decodes_and_resaves_clean(self):
         from michi.domain.settings import (
-            LibraryViewPreferences,
             library_view_preferences_from_json,
             library_view_preferences_to_json,
         )
@@ -148,9 +147,9 @@ class TestStudioListMetadataLevelRemovedFromSchema:
         service.save()
         reloaded = SettingsService(SQLiteSettingsRepository.open_for_startup(db))
         raw = reloaded.state.library_views
-        from michi.domain.settings import library_view_preferences_to_json
-
         import json as _json
+
+        from michi.domain.settings import library_view_preferences_to_json
 
         serialized = _json.loads(library_view_preferences_to_json(raw))
         assert "metadataLevel" not in serialized["studioList"], (

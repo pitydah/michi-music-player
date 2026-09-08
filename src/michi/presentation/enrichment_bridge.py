@@ -1270,7 +1270,7 @@ class EnrichmentBridge(QObject):
         artist, albums, tracks = self._artist_refs(key)
         if artist is None:
             self._state = "NOT_FOUND"
-            self._state_message = "No confident match found"
+            self._state_message = ""  # NOT_FOUND: chip QML
             self.changed.emit()
             return
         intent = self._presentation_intent_id
@@ -1289,7 +1289,7 @@ class EnrichmentBridge(QObject):
         album = self._album_refs(key)
         if album is None:
             self._state = "NOT_FOUND"
-            self._state_message = "No confident match found"
+            self._state_message = ""  # NOT_FOUND: chip QML
             self.changed.emit()
             return
         intent = self._presentation_intent_id
