@@ -457,9 +457,7 @@ class EnrichmentCoordinator:
     ) -> None:
         try:
             on_result(
-                self._search_album_candidates_sync(
-                    album_title, artist_name, show_all
-                )
+                self._search_album_candidates_sync(album_title, artist_name, show_all)
             )
         except EnrichmentProviderError as exc:
             if on_error is not None:
@@ -523,9 +521,7 @@ class EnrichmentCoordinator:
         if not self._enabled():
             return ()
         # POST-R4 E2: MBID/URL de release-group en el título → lookup.
-        mbid = parse_musicbrainz_identifier(
-            album_title, expected_kind="release-group"
-        )
+        mbid = parse_musicbrainz_identifier(album_title, expected_kind="release-group")
         if mbid:
             direct = self._resolver.release_group_candidate_by_id(mbid)
             if direct is not None:
