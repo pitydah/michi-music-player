@@ -51,6 +51,9 @@ from michi.infrastructure.enrichment_provider_cache import (
 
 API_ROOT = "https://musicbrainz.org/ws/2"
 MAX_ARTIST_CANDIDATES = 5
+# POST-R4 E1 (auditoría): hydratación de homónimos exactos hasta 8
+# (bounded network); >8 → sin hydratar (AMBIGUOUS + review manual).
+_MAX_ARTIST_HYDRATION_FINALISTS = 8
 # M6.9 REOPENED: release-group browse pagination (bounded). A page that
 # returns fewer than PAGE_SIZE items is the last one; never download a
 # full discography by default.
@@ -265,24 +268,26 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
         ]
         if hinted:
             return tuple(sorted(hinted, key=lambda c: c.external_artist_id))
-        # Bound del shortlist (11.3): la hydratación cara se acota a
-        # MAX_ARTIST_CANDIDATES finalistas determinísticos — el límite se
-        # aplica DESPUÉS del ranking por nombre, nunca antes (el correcto
-        # en la posición 6+ con nombre exacto sigue siendo elegible).
-        return tuple(
-            sorted(finalists, key=lambda c: c.external_artist_id)[
-                :MAX_ARTIST_CANDIDATES
-            ]
-        )
+        # POST-R4 E1 (auditoría): el shortlist NUNCA elimina finalistas en
+        # silencio — todos los homónimos exactos siguen siendo elegibles;
+        # la política de hydratación (1 / 2..8 / >8) vive en el hydrate.
+        return tuple(sorted(finalists, key=lambda c: c.external_artist_id))
 
     def hydrate_artist_candidates(
         self, candidates: tuple[ArtistCandidate, ...]
     ) -> tuple[ArtistCandidate, ...]:
-        """POST-R4 E1 — hydration SOLO del shortlist finalista.
+        """POST-R4 E1 (auditoría) — política de hydratación de los
+        homónimos exactos (nunca truncación silenciosa):
 
-        La discografía (release-group browse, bounded) se descarga
-        únicamente para los candidatos que sobrevivieron al ranking
-        barato — nunca 5 × browse por resolver una entidad."""
+        - 1 finalista exacto → hydrate 1;
+        - 2..8 finalistas exactos → hydrate TODOS (el scoring del dominio
+          decide con la discografía completa de los plausibles);
+        - >8 finalistas exactos → el sistema NO hidrata (los candidatos
+          vuelven con evidencia vacía: el dominio resuelve AMBIGUOUS y el
+          usuario elige en el review manual con show-more) — eliminar
+          finalistas en silencio dejaría fuera al correcto sin rastro."""
+        if len(candidates) > _MAX_ARTIST_HYDRATION_FINALISTS:
+            return candidates  # sin hydratar: AMBIGUOUS → review manual
         hydrated: list[ArtistCandidate] = []
         for candidate in candidates:
             hydrated.append(
