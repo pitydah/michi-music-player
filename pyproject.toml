@@ -7,6 +7,13 @@ name = "michi-music-player"
 version = "0.1.0"
 description = "Michi Music Player — audio-only desktop music player"
 requires-python = ">=3.11"
+# Minimum Qt runtime (POST-R4 P7, lane evidence):
+#   - 6.5.x   = UNSUPPORTED (font.features absent; libQt6QuickEffects not
+#               shipped by PySide6-Essentials before 6.6.0 on Linux wheels)
+#   - 6.6.0   = NOT accepted as a runtime gate (shiboken 6.6.0 breaks
+#               QMetaMethod.invoke on the QML runtime gates)
+#   - 6.6.2   = MINIMUM TESTED lane (CI min-qt pins PySide6==6.6.2)
+# Only 6.6.2+ is validated; the generic floor is >=6.6.0 for pip.
 dependencies = ["PySide6>=6.6", "mutagen>=1.47"]
 
 [project.optional-dependencies]
@@ -23,13 +30,18 @@ markers = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools]
+# POST-R4 P7: los datos viajan SOLO por package-data explícito — el
+# include automático (SCM/SOURCES) metía presentation/qml/dev/*.qml en
+# el wheel pese a la exclusión.
+include-package-data = false
+
 [tool.setuptools.package-data]
 michi = [
-    "presentation/*.qml",
+    "presentation/main.qml",
     "presentation/qml/components/*.qml",
     "presentation/qml/assets/*.svg",
     "presentation/qml/controls/*.qml",
-    "presentation/qml/dev/*.qml",
     "presentation/qml/enrichment/*.qml",
     "presentation/qml/media/*.qml",
     "presentation/qml/patterns/*.qml",
@@ -42,6 +54,20 @@ michi = [
     "presentation/qml/theme/qmldir",
     "presentation/qml/ui/*.qml",
 ]
+
+# POST-R4 P7: el runtime productivo jamás importa presentation/qml/dev
+# (MichiUIGallery es una galería de desarrollo): la exclusión es
+# EXPLÍCITA aunque un glob amplio o un archivo trackeado por git lo
+# arrastre (el parity gate bidireccional de verify_wheel_resources.py
+# también lo comprueba sobre el wheel construido).
+[tool.setuptools.exclude-package-data]
+michi = [
+    "presentation/qml/dev/*.qml",
+    "presentation/qml/dev/MichiUIGallery.qml",
+    "qml/dev/*.qml",
+    "qml/dev/MichiUIGallery.qml",
+]
+
 
 [tool.ruff]
 target-version = "py311"
