@@ -103,11 +103,12 @@ def test_artist_portrait_prefetch_is_bounded_and_separate() -> None:
 def test_artist_context_menu_has_identity_header_and_only_real_actions() -> None:
     menu = _qml("media/ArtistContextMenu.qml")
 
-    assert "RowLayout" in menu
-    assert "root.artist.name" in menu
-    assert "root.artist.albumCount" in menu
+    # R10: la cabecera de identidad es el MichiMenuInfoHeader menu-aware.
+    assert "MichiMenuInfoHeader {" in menu
+    assert "headline: root.artist ? root.artist.name : " in menu
     assert "library.select_artist(root.artist.key)" in menu
     assert "library.queue_artist(root.artist.key)" in menu
     assert "library.request_artist_playlist_target(root.artist.key)" in menu
+    assert "library.request_new_playlist_for_artist(root.artist.key)" in menu
     assert "library.play_artist" not in menu
     assert "request_artist_properties" not in menu

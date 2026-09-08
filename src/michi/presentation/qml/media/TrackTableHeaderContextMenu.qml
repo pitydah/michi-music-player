@@ -1,49 +1,32 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../primitives"
 import "../theme"
 
-// LIB-A P2-C: menú contextual premium y COMPACTO de la cabecera.
-// Dos intents (cell vs región global) con un menú principal reducido y un
-// popup dedicado de personalización (nunca un menú gigante que exceda la
-// altura de la ventana).
+// Track table header context menu — R10 V2 (V4 §12).
+//
+// El menú emite INTENTS; LibraryTrackColumnState (vía el header) es el
+// único que muta el estado — nunca doble aplicación.
 MichiMenu {
     id: root
 
-    property string targetColumn: ""       // "" = contexto global (B)
+    property string targetColumn: ""
     property string targetLabel: ""
     property bool targetSortable: false
+    property bool hasFallback: false
+    property bool isSelected: false
+
     signal sortAscendingRequested(string column)
     signal sortDescendingRequested(string column)
     signal hideColumnRequested(string column)
     signal resetWidthRequested(string column)
-    signal presetRequested(string name)
-    signal toggleColumnRequested(string column)
     signal resetWidthsRequested()
     signal restoreDefaultsRequested()
+    signal presetRequested(string name)
+    signal toggleColumnRequested(string column)
 
-    function columnLabel(column) {
-        var labels = {
-            artwork: qsTr("Artwork"), title: qsTr("Title"),
-            artist: qsTr("Artist"), album: qsTr("Album"),
-            format: qsTr("Format"), sampleRate: qsTr("Sample Rate"),
-            bitDepth: qsTr("Bit Depth"), dsdRate: qsTr("DSD Rate"),
-            bitrate: qsTr("Bitrate"), channels: qsTr("Channels"),
-            fileSize: qsTr("File Size"), genre: qsTr("Genre"),
-            composer: qsTr("Composer"), year: qsTr("Year"),
-            duration: qsTr("Duration"), actions: qsTr("Actions")
-        }
-        return labels[column] !== undefined ? labels[column] : column
-    }
-
-    function openCustomize() {
-        root.close()
-        customizePopup.open()
-    }
-
-    // LIB-A P1 §21/22: el menú emite el INTENT; el singleton (vía el
-    // header) es el único que muta el estado — nunca doble aplicación.
     function applyPreset(name) {
         root.presetRequested(name)
     }
@@ -65,47 +48,26 @@ MichiMenu {
         visible: root.targetColumn !== "" && root.targetSortable
         onTriggered: root.sortDescendingRequested(root.targetColumn)
     }
-    MichiSeparator {
-        visible: root.targetColumn !== "" && root.targetColumn !== "title"
-    }
     MichiMenuItem {
-        text: qsTr("Hide %1").arg(root.columnLabel(root.targetColumn))
+        text: qsTr("Hide %1").arg(root.targetLabel)
+        icon.name: "eye-off"
         visible: root.targetColumn !== "" && root.targetColumn !== "title"
         onTriggered: root.hideColumnRequested(root.targetColumn)
     }
     MichiMenuItem {
-        text: qsTr("Reset %1 Width").arg(root.columnLabel(root.targetColumn))
+        text: qsTr("Reset %1 Width").arg(root.targetLabel)
+        icon.name: "reset"
         visible: root.targetColumn !== "" && root.targetColumn !== "actions"
         onTriggered: root.resetWidthRequested(root.targetColumn)
     }
-
-    // ── B) Configuración global compacta ──────────────────────────────────
     MichiSeparator { visible: root.targetColumn !== "" }
 
-    MichiMenuItem {
-        text: qsTr("Customize Columns…")
-        icon.name: "sliders"
-        onTriggered: root.openCustomize()
-    }
-    MichiMenuItem {
-        text: qsTr("Reset Column Widths")
-        visible: root.targetColumn === ""
-        onTriggered: root.resetWidthsRequested()
-    }
-    MichiMenuItem {
-        text: qsTr("Restore Defaults")
-        visible: root.targetColumn === ""
-        onTriggered: root.restoreDefaultsRequested()
-    }
-
-    // Popup de personalización (jerarquía por grupos; altura acotada).
-    // Vive como hermano del menú para reusar el ancla; MichiMenu con
-    // scroll si el contenido excede la altura disponible.
+    // ── B) Preset (submenú nativo real) ───────────────────────────────────
     MichiMenu {
-        id: customizePopup
+        title: qsTr("Preset")
+        icon.name: "preset"
 
         function rebuild() {
-            // Lazy: los checks se leen al abrir.
             presetEssential.checked =
                 LibraryTrackColumnState.currentPreset() === "essential"
             presetAudiophile.checked =
@@ -117,32 +79,37 @@ MichiMenu {
         }
         onAboutToShow: rebuild()
 
-        MichiMenuHeader { text: qsTr("CUSTOMIZE COLUMNS") }
         MichiMenuItem {
             id: presetEssential
             text: qsTr("Essential")
             checkable: true
-            onTriggered: root.applyPreset("essential")
+            onTriggered: root.presetRequested("essential")
         }
         MichiMenuItem {
             id: presetAudiophile
             text: qsTr("Audiophile")
             checkable: true
-            onTriggered: root.applyPreset("audiophile")
+            onTriggered: root.presetRequested("audiophile")
         }
         MichiMenuItem {
             id: presetMetadata
             text: qsTr("Metadata")
             checkable: true
-            onTriggered: root.applyPreset("metadata")
+            onTriggered: root.presetRequested("metadata")
         }
         MichiMenuItem {
             id: presetMinimal
             text: qsTr("Minimal")
             checkable: true
-            onTriggered: root.applyPreset("minimal")
+            onTriggered: root.presetRequested("minimal")
         }
-        MichiSeparator { }
+    }
+
+    // ── C) Columns (submenú nativo real con la jerarquía de secciones) ───
+    MichiMenu {
+        title: qsTr("Columns")
+        icon.name: "sliders"
+
         MichiMenuHeader { text: qsTr("IDENTITY") }
         MichiMenuItem {
             text: qsTr("Artwork")
@@ -152,10 +119,10 @@ MichiMenu {
         }
         MichiMenuItem {
             text: qsTr("Title (required)")
-            enabled: false
             icon.name: "lock"
+            enabled: false
         }
-        MichiSeparator { }
+
         MichiMenuHeader { text: qsTr("MUSICAL CONTEXT") }
         MichiMenuItem {
             text: qsTr("Artist")
@@ -169,7 +136,7 @@ MichiMenu {
             checked: LibraryTrackColumnState.albumVisible
             onTriggered: root.toggleColumnRequested("album")
         }
-        MichiSeparator { }
+
         MichiMenuHeader { text: qsTr("AUDIO") }
         MichiMenuItem {
             text: qsTr("Format")
@@ -213,7 +180,7 @@ MichiMenu {
             checked: LibraryTrackColumnState.fileSizeVisible
             onTriggered: root.toggleColumnRequested("fileSize")
         }
-        MichiSeparator { }
+
         MichiMenuHeader { text: qsTr("METADATA") }
         MichiMenuItem {
             text: qsTr("Genre")
@@ -233,7 +200,7 @@ MichiMenu {
             checked: LibraryTrackColumnState.yearVisible
             onTriggered: root.toggleColumnRequested("year")
         }
-        MichiSeparator { }
+
         MichiMenuHeader { text: qsTr("TIME") }
         MichiMenuItem {
             text: qsTr("Duration")
@@ -241,7 +208,7 @@ MichiMenu {
             checked: LibraryTrackColumnState.durationVisible
             onTriggered: root.toggleColumnRequested("duration")
         }
-        MichiSeparator { }
+
         MichiMenuHeader { text: qsTr("UTILITY") }
         MichiMenuItem {
             text: qsTr("Actions")
@@ -249,14 +216,18 @@ MichiMenu {
             checked: LibraryTrackColumnState.actionsVisible
             onTriggered: root.toggleColumnRequested("actions")
         }
-        MichiSeparator { }
-        MichiMenuItem {
-            text: qsTr("Reset Column Widths")
-            onTriggered: root.resetWidthsRequested()
-        }
-        MichiMenuItem {
-            text: qsTr("Restore Defaults")
-            onTriggered: root.restoreDefaultsRequested()
-        }
+    }
+
+    MichiSeparator { }
+
+    MichiMenuItem {
+        text: qsTr("Reset Column Widths")
+        icon.name: "reset"
+        onTriggered: root.resetWidthsRequested()
+    }
+    MichiMenuItem {
+        text: qsTr("Restore Defaults")
+        icon.name: "restore"
+        onTriggered: root.restoreDefaultsRequested()
     }
 }

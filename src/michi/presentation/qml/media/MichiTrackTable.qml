@@ -118,7 +118,9 @@ Item {
         anchors.fill: parent
         model: root.rows
         clip: true
-        spacing: MichiSpacing.xs
+        // R11 HIER-08: una sola jerarquía — el divisor sutil de cada fila
+        // separa; el gap físico extra fragmentaba la lista en tarjetas.
+        spacing: 0
         boundsBehavior: Flickable.StopAtBounds
         keyNavigationEnabled: true
         keyNavigationWraps: false
@@ -129,8 +131,26 @@ Item {
         headerPositioning: ListView.OverlayHeader
         Accessible.role: Accessible.Table
         Accessible.name: qsTr("Tracks")
-        ScrollBar.vertical: MichiScrollBar { }
-        ScrollBar.horizontal: MichiScrollBar { }
+        ScrollBar.vertical: MichiScrollBar {
+            objectName: "trackTableVerticalScrollBar"
+        }
+        ScrollBar.horizontal: MichiScrollBar {
+            objectName: "trackTableHorizontalScrollBar"
+        }
+
+        // R11 NAV-08: Home/End al nivel de la tabla (Qt no expone
+        // onHomePressed/onEndPressed attached: handler genérico).
+        Keys.onPressed: event => {
+            if (event.key === Qt.Key_Home && count > 0) {
+                currentIndex = 0
+                positionViewAtIndex(0, ListView.Beginning)
+                event.accepted = true
+            } else if (event.key === Qt.Key_End && count > 0) {
+                currentIndex = count - 1
+                positionViewAtIndex(count - 1, ListView.End)
+                event.accepted = true
+            }
+        }
 
         header: ResizableTrackHeader {
             width: Math.max(trackList.width, root.tableContentWidth)

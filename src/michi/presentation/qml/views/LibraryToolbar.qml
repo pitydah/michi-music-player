@@ -3,6 +3,7 @@ import QtQuick.Controls.Basic
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../controls"
+import "../media"
 import "../primitives"
 import "../theme"
 
@@ -65,6 +66,13 @@ MichiGlassSurface {
         if (currentTab === "genres") return qsTr("Search genres…")
         if (currentTab === "playlists") return qsTr("Search tracks or playlists…")
         return qsTr("Search title, artist, album, genre or composer…")
+    }
+
+    // R11 TOOL-02: una sola autoridad de resize incremental (el drag
+    // izquierdo agranda el search; el derecho lo reduce).
+    function resizeSearchBy(delta) {
+        root.searchPanePreferredWidth = root.clampSearchWidth(
+            root.searchPanePreferredWidth + delta)
     }
 
     function clampSearchWidth(candidate) {
@@ -158,7 +166,9 @@ MichiGlassSurface {
             // POST-MERGE MICRO-FIX (P0-02): 5 columnas desktop
             // (Tabs / handle / Search / Scan / Enrich), 3 compact
             // (Search / Scan / Enrich).
-            columns: root.width < 1100 ? 3 : 5
+            // R11 TOOL-01: Enrich removido del toolbar — desktop
+            // (Tabs / handle / Search / Scan), compact (Search / Scan).
+            columns: root.width < 1100 ? 2 : 4
             // Desktop Tabs → handle → Search totals 8 + 10 + 8 = 26 px:
             // compact perceptual separation without shrinking the hitbox.
             columnSpacing: MichiSpacing.sm
@@ -169,7 +179,7 @@ MichiGlassSurface {
                 Layout.fillWidth: true
                 Layout.row: 0
                 Layout.column: 0
-                Layout.columnSpan: root.width < 1100 ? 3 : 1
+                Layout.columnSpan: root.width < 1100 ? 2 : 1
                 Layout.minimumWidth: Math.min(300, root.width)
                 Layout.preferredHeight: MichiMetrics.controlLarge
                 currentTab: root.currentTab
@@ -189,7 +199,6 @@ MichiGlassSurface {
                     Accessible.name: qsTr("Resize library search")
                     Accessible.description: qsTr("Use Left and Right arrows; double-click to reset")
 
-                    property real widthAtDragStart: root.searchPanePreferredWidth
 
                     Rectangle {
                         anchors.centerIn: parent
@@ -206,25 +215,24 @@ MichiGlassSurface {
                     DragHandler {
                         id: searchResizeDrag
                         target: null
+                        dragThreshold: 0
                         xAxis.enabled: true
                         yAxis.enabled: false
-                        onActiveChanged: {
-                            if (active)
-                                searchResizeHandle.widthAtDragStart = root.searchPanePreferredWidth
-                        }
-                        onActiveTranslationChanged: {
-                            root.searchPanePreferredWidth = root.clampSearchWidth(
-                                searchResizeHandle.widthAtDragStart - activeTranslation.x)
+                        // R11 TOOL-02: xAxis.onActiveValueChanged es el seam
+                        // INCREMENTAL (target: null) — nunca snapshot del
+                        // inicio: cada delta ajusta la autoridad única.
+                        xAxis.onActiveValueChanged: delta => {
+                            // Drag izquierdo => search más ancho.
+                            root.resizeSearchBy(-delta)
                         }
                     }
                     TapHandler {
                         acceptedButtons: Qt.LeftButton
-                        onDoubleTapped: root.searchPanePreferredWidth = root.defaultSearchWidth
+                        onDoubleTapped:
+                            root.searchPanePreferredWidth = root.defaultSearchWidth
                     }
-                    Keys.onLeftPressed: root.searchPanePreferredWidth =
-                        root.clampSearchWidth(root.searchPanePreferredWidth + 16)
-                    Keys.onRightPressed: root.searchPanePreferredWidth =
-                        root.clampSearchWidth(root.searchPanePreferredWidth - 16)
+                    Keys.onLeftPressed: root.resizeSearchBy(16)
+                    Keys.onRightPressed: root.resizeSearchBy(-16)
                     MichiFocusRing {
                         visualFocus: searchResizeHandle.activeFocus
                             && MichiAccessibility.keyboardMode
@@ -236,7 +244,9 @@ MichiGlassSurface {
                     objectName: "resizableLibrarySearchPane"
                     Layout.row: root.width < 1100 ? 1 : 0
                     Layout.column: root.width < 1100 ? 0 : 2
-                    Layout.fillWidth: true
+                    // R11 TOOL-02: a ancho desktop el search usa el ancho
+                    // ELEGIDO (los tabs absorben el espacio flexible).
+                    Layout.fillWidth: root.width < 1100
                     Layout.preferredWidth: root.width < 1100
                         ? -1 : root.clampSearchWidth(root.searchPanePreferredWidth)
                     Layout.minimumWidth: Math.min(root.width, 300)
@@ -313,29 +323,13 @@ MichiGlassSurface {
                         x: Math.max(0, parent.width - width)
                         y: parent.height + MichiSpacing.xs
 
-                        Item {
-                            implicitWidth: 284
-                            implicitHeight: 56
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.margins: MichiSpacing.sm
-                                spacing: MichiSpacing.xxs
-                                MichiText {
-                                    text: qsTr("Music sources")
-                                    role: "caption"
-                                    color: MichiPalette.textSecondary
-                                }
-                                MichiText {
-                                    Layout.fillWidth: true
-                                    // P1-LIB-04: truthful multi-source count —
-                                    // currentDir is NOT library authority.
-                                    text: typeof library !== "undefined" && library
-                                        ? qsTr("%n source(s) configured", "", library.configuredSourceCount)
-                                        : qsTr("No sources configured")
-                                    role: "caption"
-                                    elide: Text.ElideMiddle
-                                }
-                            }
+                        MichiMenuInfoHeader {
+                            headline: qsTr("Music sources")
+                            supportingText: typeof library !== "undefined" && library
+                                ? qsTr("%n source(s) configured", "", library.configuredSourceCount)
+                                : qsTr("No sources configured")
+                            fallbackText: "M"
+                            artworkPath: ""
                         }
                         MichiSeparator { }
                         MichiMenuItem {
@@ -345,52 +339,10 @@ MichiGlassSurface {
                         }
                     }
                 }
-
-                // POST-MERGE MICRO-FIX (P0-01): enrichButton es HERMANO de
-                // scanButton — ambos hijos directos del GridLayout. Sus
-                // Layout.row/column aplican al grid real. M6.9: acción
-                // global EXPLÍCITA (nunca automática tras scan; Online
-                // Library Enrichment debe estar ON). Progreso real del
-                // backend, no fabricado.
-                MichiButton {
-                    id: enrichButton
-                    objectName: "libraryEnrichButton"
-                    Layout.row: root.width < 1100 ? 1 : 0
-                    Layout.column: root.width < 1100 ? 2 : 4
-                    Layout.preferredHeight: MichiMetrics.controlMedium
-                    Layout.alignment: Qt.AlignVCenter
-                    // P0-04: no compite visualmente con el scan activo.
-                    visible: !root.scanning
-                        && typeof enrichment !== "undefined" && enrichment
-                        && enrichment.onlineEnabled
-                    text: {
-                        if (enrichment.enrichmentJobState === "RUNNING"
-                                || enrichment.enrichmentJobState === "PREPARING"
-                                || enrichment.enrichmentJobState === "CANCELLING")
-                            return qsTr("Enriching Library… %1 / %2")
-                                .arg(enrichment.enrichmentJobProcessed)
-                                .arg(enrichment.enrichmentJobTotal)
-                        return qsTr("Enrich Library")
-                    }
-                    // P0-03: icono visible en compact IDLE (nunca un
-                    // botón icon-only vacío).
-                    iconName: enrichment.enrichmentJobState === "IDLE"
-                        ? "sparkles" : ""
-                    variant: "ghost"
-                    iconOnly: root.width < 1100
-                        && enrichment.enrichmentJobState === "IDLE"
-                    accessibleName: qsTr("Enrich entire library")
-                    enabled: typeof library !== "undefined" && library
-                    onClicked: {
-                        if (enrichment.enrichmentJobState === "RUNNING"
-                                || enrichment.enrichmentJobState === "PREPARING"
-                                || enrichment.enrichmentJobState === "CANCELLING")
-                            enrichment.cancel_library_enrichment()
-                        else
-                            enrichment.start_library_enrichment()
-                    }
-                }
             }
+            // R11 TOOL-01: Enrich removido — el grid desktop es
+            // (Tabs / handle / Search / Scan), compact (Tabs / Search / Scan).
+
         // Transient thin progress row during active scan
         RowLayout {
             Layout.fillWidth: true

@@ -5,7 +5,7 @@ import "../controls"
 MichiMenu {
     id: root
     property var genre: null
-    MenuItem {
+    MichiMenuItem {
         text: qsTr("Open Genre")
         icon.name: "genre"
         visible: root.genre !== null

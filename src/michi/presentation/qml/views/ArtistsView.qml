@@ -126,9 +126,8 @@ Item {
                     library.select_artist(library.artists[currentIndex].key)
             }
 
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
-                width: MichiSpacing.sm
+            ScrollBar.vertical: MichiScrollBar {
+                objectName: "artistsNavigationScrollBar"
             }
 
             delegate: Item {

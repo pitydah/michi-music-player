@@ -7,7 +7,7 @@ name = "michi-music-player"
 version = "0.1.0"
 description = "Michi Music Player — audio-only desktop music player"
 requires-python = ">=3.11"
-dependencies = ["PySide6>=6.5", "mutagen>=1.47"]
+dependencies = ["PySide6>=6.6", "mutagen>=1.47"]
 
 [project.optional-dependencies]
 test = ["pytest>=8", "ruff>=0.9", "build>=1"]
@@ -30,6 +30,7 @@ michi = [
     "presentation/qml/assets/*.svg",
     "presentation/qml/controls/*.qml",
     "presentation/qml/dev/*.qml",
+    "presentation/qml/enrichment/*.qml",
     "presentation/qml/media/*.qml",
     "presentation/qml/patterns/*.qml",
     "presentation/qml/playlists/*.qml",
@@ -62,6 +63,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
 "tests/test_library_lib_a_settings.py" = ["N815"]
 "tests/test_library_lib_a_visual_contract.py" = ["N815"]
 "tests/test_library_lib_a_seal2.py" = ["N815"]
+"scripts/installed_wheel_smoke.py" = ["N815"]
 "tests/test_library_context_host_a1.py" = ["N815"]
 "**/infrastructure/sqlite_settings.py" = ["E501"]
 "**/infrastructure/qt_backend.py" = ["SIM105"]

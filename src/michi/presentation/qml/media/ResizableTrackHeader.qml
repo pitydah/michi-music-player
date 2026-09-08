@@ -262,26 +262,12 @@ Rectangle {
             onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
             onContextRequested: column => root.openColumnContext(column)
         }
-        ResizableHeaderCell {
+        // R11 HIER-03: la columna de actions YA existe en el modelo
+        // compartido — el botón de opciones vive DENTRO de su geometría
+        // (nunca una región extra que desalinea header y filas).
+        Item {
             visible: root.showActions && LibraryTrackColumnState.actionsVisible
             Layout.preferredWidth: LibraryTrackColumnState.actionsWidth
-            label: ""
-            columnKey: "actions"
-            columnWidth: LibraryTrackColumnState.actionsWidth
-            resizable: false
-            onResizeRequested: (column, width) => root.resizeColumn(column, width)
-            onResetRequested: column => LibraryTrackColumnState.resetWidth(column)
-            onContextRequested: column => root.openColumnContext(column)
-        }
-
-        // Keep right-click on the empty header region, but also expose an
-        // explicit visible affordance.  The rich table/preset work must not be
-        // an undiscoverable Easter egg.
-        Item {
-            id: headerEmptyRegion
-            objectName: "headerEmptyRegion"
-            Layout.fillWidth: true
-            Layout.minimumWidth: MichiMetrics.controlMedium
             Layout.fillHeight: true
 
             MichiIconButton {
@@ -298,6 +284,7 @@ Rectangle {
                 onClicked: root.openGlobalContext()
             }
 
+            // Right-click global (sin target de columna).
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: {
@@ -306,6 +293,41 @@ Rectangle {
                 }
             }
         }
+
+        // R11 HIER-03: la región vacía del header (espacio del viewport
+        // tras las columnas) conserva el right-click global — nunca una
+        // columna lógica extra en el modelo compartido.
+        Item {
+            id: headerEmptyRegion
+            objectName: "headerEmptyRegion"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: {
+                    MichiAccessibility.notePointer()
+                    root.openGlobalContext()
+                }
+            }
+        }
+    }
+
+    // R11 HIER-03: si la columna Actions está oculta, el affordance vive
+    // en el borde del header (sin añadir ninguna columna lógica).
+    MichiIconButton {
+        id: floatingTableOptionsButton
+        objectName: "trackTableOptionsButtonFloating"
+        visible: !(root.showActions && LibraryTrackColumnState.actionsVisible)
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        width: MichiMetrics.controlMedium
+        height: MichiMetrics.controlMedium
+        iconName: "sliders"
+        accessibleName: qsTr("Table options")
+        selected: headerContextMenu.visible
+            && headerContextMenu.targetColumn === ""
+        onClicked: root.openGlobalContext()
+        z: 2
     }
 
     function openColumnContext(column) {

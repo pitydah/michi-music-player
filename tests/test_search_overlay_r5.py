@@ -100,6 +100,69 @@ def _overlay_genre(tmp_path, query):
     return world, engine, errors, overlay
 
 
+class TestSearchOverlayCanonicalOrderR4:
+    def test_five_category_render_order_is_single_authority(self, tmp_path, qapp):
+        """P2 (D-R4-01): el ORDEN canónico único — Tracks → Albums →
+        Artists → Playlists → Genres — gobierna render y activación."""
+        src = (QML / "patterns" / "SearchOverlay.qml").read_text(
+            encoding="utf-8", errors="ignore"
+        )
+        order = [
+            src.index(x)
+            for x in (
+                'qsTr("Tracks")',
+                'qsTr("Albums")',
+                'qsTr("Artists")',
+                'qsTr("Playlists")',
+                'qsTr("Genres")',
+            )
+        ]
+        assert order == sorted(order), "el render sigue el orden canónico único"
+        # El activateResult recorre el MISMO orden (playlists antes de genres).
+        act = src[src.index("function activateResult") :]
+        assert act.index("visiblePlaylistCount") < act.index("visibleGenreCount"), (
+            "la activación recorre el MISMO orden que el render"
+        )
+
+    def test_five_category_activation_offsets_converge(self, tmp_path, qapp):
+        """P2: con playlists y géneros juntos en el resultado, el genre
+        vive al final del orden canónico (tras playlists): el índice
+        total-1 activa el género con su exact key — nunca un offset
+        divergente que deje el resultado inerte."""
+        world = _genre_world(tmp_path)
+        service = world["service"]
+        # Playlist que matchea la búsqueda (proyección de playlists).
+        service.create_playlist("Rock Trip")
+        bridge = world["lb"]
+        bridge.search("Rock")
+        engine = _engine(world)
+        errors = _QmlErrors()
+        try:
+            overlay = _load(engine, "patterns/SearchOverlay.qml", errors)
+            overlay.setProperty("opened", True)
+            _process()
+            _process()
+            projection = world["library"].state.search_projection
+            assert len(projection.genres) >= 1, "géneros proyectados"
+            assert world["pb"].property("searchPlaylistCount") >= 1, (
+                "playlist proyectada"
+            )
+            # El género: ÚLTIMA categoría (tras playlists) → el índice
+            # total-1 es el género, y la activación usa su exact key.
+            total = overlay.property("actionableResultCount")
+            assert total >= 4
+            overlay.setProperty("resultIndex", total - 1)
+            overlay.activateResult()
+            _process()
+            assert bridge.property("genreFilterActive") is True, (
+                "el género en el offset final se activa con su exact key"
+            )
+            assert bridge.property("selectedGenreName") == projection.genres[0].name
+            assert errors.drain() == []
+        finally:
+            engine.deleteLater()
+
+
 class TestGenreActionableR5:
     def test_genre_activate_uses_exact_key(self, tmp_path, qapp):
         """activateResult sobre el índice del género → select_genre con la

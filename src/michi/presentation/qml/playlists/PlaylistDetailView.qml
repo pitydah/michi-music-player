@@ -396,7 +396,7 @@ Item {
 
     MichiMenu {
         id: detailMenu
-        MenuItem {
+        MichiMenuItem {
             text: qsTr("Shuffle Play")
             // PL-10-FINAL-06: con 0 tracks reproducibles el shuffle está
             // deshabilitado (el handler defensivo de ContentHost tampoco
@@ -404,33 +404,35 @@ Item {
             enabled: playlists && playlists.playlistAvailableTrackCount > 0
             onTriggered: root.shuffleRequested()
         }
-        MenuItem {
+        MichiMenuItem {
             text: qsTr("Add tracks…")
             onTriggered: root.addMusicRequested()
         }
-        MenuItem {
+        MichiMenuItem {
             objectName: "playlistDetailEditDescriptionAction"
             text: qsTr("Edit description…")
             onTriggered: root.editDescriptionRequested(
                 root.playlistId, playlists.selectedPlaylistDescription)
         }
-        MenuItem {
+        MichiMenuItem {
             text: qsTr("Customize appearance…")
             onTriggered: root.customizeAppearanceRequested(root.playlistId)
         }
-        MenuItem {
+        MichiMenuItem {
             text: playlists.selectedPlaylistPinned ? qsTr("Unpin") : qsTr("Pin")
             onTriggered: root.togglePinRequested()
         }
-        MenuItem {
+        MichiMenuItem {
             objectName: "playlistDetailRenameAction"
             text: qsTr("Rename…")
             onTriggered: root.renameRequested(
                 root.playlistId, playlists.selectedPlaylistName)
         }
-        MenuItem {
+        MichiMenuItem {
             objectName: "playlistDetailDeleteAction"
             text: qsTr("Delete…")
+            icon.name: "trash"
+            danger: true
             onTriggered: root.deleteRequested(
                 root.playlistId, playlists.selectedPlaylistName)
         }

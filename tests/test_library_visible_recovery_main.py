@@ -63,6 +63,53 @@ def test_track_actions_are_discoverable_without_becoming_visual_noise() -> None:
     assert source.count("root.idleActionOpacity") >= 7
 
 
+def test_r11_shell_layout_frozen() -> None:
+    """R11-SHELL-01 (§21.5): LibraryHeader sobre LibraryToolbar sobre
+    LibraryContentHost — las posiciones son intencionales y se congelan."""
+    library = _read("views/LibraryView.qml")
+    assert library.index("LibraryHeader {") < library.index("LibraryToolbar {")
+    assert library.index("LibraryToolbar {") < library.index("LibraryContentHost {")
+    # Sin zonas de navegación/estado nuevas que reorganicen el shell.
+    assert "LibraryStateStrip" not in library
+    assert "LibraryAlbumViewTools" not in library
+
+
+def test_r11_scrollbar_navigation_matrix() -> None:
+    """R11 NAV-11: surfaces continuas con MichiScrollBar; Artists sin raw
+    ScrollBar; tabla con barras nombradas + Home/End; AlbumFlow discreto
+    con indicador de posición."""
+    artists = _read("views/ArtistsView.qml")
+    assert "MichiScrollBar" in artists
+    assert "artistsNavigationScrollBar" in artists
+    assert "ScrollBar: ScrollBar" not in artists
+    detail = _read("views/ArtistDetailView.qml")
+    assert "artistAlbumsNavigationScrollBar" in detail
+    table = _read("media/MichiTrackTable.qml")
+    assert "trackTableVerticalScrollBar" in table
+    assert "trackTableHorizontalScrollBar" in table
+    assert "Qt.Key_Home" in table and "Qt.Key_End" in table
+    path = _read("views/AlbumPathView.qml")
+    assert "ScrollBar" not in path, "AlbumFlow discreto: sin scrollbar"
+    assert 'qsTr("%1 / %2")' in path
+    scrollbar = _read("controls/MichiScrollBar.qml")
+    assert "minimumSize: 0.04" in scrollbar
+    assert "implicitWidth: root.vertical ? 12 : 48" in scrollbar
+
+
+def test_r11_track_hierarchy_visual_contract() -> None:
+    """HIER-04..08: tres estados visuales; título Medium; badge quiet;
+    numéricas a la derecha; sin doble separación."""
+    row = _read("media/TrackRow.qml")
+    assert "auroraCyanSurface" in row, "playing con superficie propia"
+    assert "Font.DemiBold : Font.Medium" in row, "título Medium default"
+    assert "compactQuiet: true" in row
+    assert "horizontalAlignment: Text.AlignRight" in row
+    badge = _read("media/MichiFormatBadge.qml")
+    assert "property bool compactQuiet: false" in badge
+    table = _read("media/MichiTrackTable.qml")
+    assert "spacing: 0" in table
+
+
 def test_artist_detail_never_uses_album_sleeve_as_portrait() -> None:
     """R12 (§33): ArtistDetail converged — enriched portrait wins; the
     fallback is the deliberate monogram, never an album sleeve cropped
@@ -95,14 +142,57 @@ def test_collections_share_one_table_with_semantic_configuration() -> None:
         assert "ListView {" not in source, f"{view} duplica la tabla"
 
 
-def test_context_menu_v2_primitives_and_section_headers() -> None:
-    """R10 (V4 §36-42): los menús contextuales usan headers de sección
-    reales (MichiMenuHeader) — la jerarquía no depende solo de
-    separadores mudos; los primitivos V2 existen para submenús."""
-    menu = _read("media/TrackTableHeaderContextMenu.qml")
+def test_r10_menu_primitives_have_geometry_authority() -> None:
+    """R10 (V4 §9/§16): primitivos con geometría determinista; el wrapper
+    con subMenu escribible (MichiSubMenuItem) está AUSENTE."""
+    qml = Path("src/michi/presentation/qml")
+    assert not (qml / "controls" / "MichiSubMenuItem.qml").exists(), (
+        "el wrapper con writable subMenu fue eliminado (V4 §9.5)"
+    )
+    menu = (qml / "controls" / "MichiMenu.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    item = (qml / "controls" / "MichiMenuItem.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    header = (qml / "controls" / "MichiMenuHeader.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    assert "minimumMenuWidth" in menu
+    assert "implicitWidth:" in item
+    assert "implicitHeight:" in header
+    assert 'property: "y"' not in menu, (
+        "la animación no puede mutar el posicionamiento del popup"
+    )
+    assert "minimumMenuWidth" in menu and "maximumMenuWidth" in menu
+    # MichiMenuInfoHeader: la cabecera de información menu-aware.
+    assert (qml / "media" / "MichiMenuInfoHeader.qml").exists()
+
+
+def test_r10_productive_menus_use_michi_primitives() -> None:
+    """R10 (§11/§13): los menús productivos usan los primitivos Michi;
+    sin raw MenuItem fuera de los primitivos; género con MichiMenuItem."""
+    qml = Path("src/michi/presentation/qml")
+
+    for rel in (
+        "media/TrackContextMenu.qml",
+        "media/AlbumContextMenu.qml",
+        "media/ArtistContextMenu.qml",
+    ):
+        src = (qml / rel).read_text(encoding="utf-8", errors="ignore")
+        assert "MichiMenuInfoHeader {" in src, rel
+        assert "MichiMenuHeader {" in src, rel
+    genre = (qml / "media" / "GenreContextMenu.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    assert "MichiMenuItem {" in genre
+    assert "MenuItem {" not in genre.replace("MichiMenuItem {", "")
+    # El header de la tabla usa headers de sección reales.
+    menu = (qml / "media" / "TrackTableHeaderContextMenu.qml").read_text(
+        encoding="utf-8", errors="ignore"
+    )
     for section in (
         "TRACK TABLE",
-        "CUSTOMIZE COLUMNS",
         "IDENTITY",
         "MUSICAL CONTEXT",
         "AUDIO",
@@ -112,11 +202,11 @@ def test_context_menu_v2_primitives_and_section_headers() -> None:
     ):
         assert f'qsTr("{section}")' in menu, section
     assert "MichiMenuHeader {" in menu
-    # El menú usa el header V2, no items deshabilitados que finjan headers.
-    assert 'MichiMenuItem { text: qsTr("TRACK TABLE")' not in menu
-    # Los primitivos V2 existen (base del sistema de submenús).
-    for rel in ("controls/MichiMenuHeader.qml", "controls/MichiSubMenuItem.qml"):
-        assert (Path("src/michi/presentation/qml") / rel).exists(), rel
+    # R10.2: submenús nativos reales (Qt crea el proxy con subMenu
+    # read-only); el customizePopup hermano desapareció.
+    assert 'title: qsTr("Preset")' in menu
+    assert 'title: qsTr("Columns")' in menu
+    assert "openCustomize" not in menu
 
 
 def test_temporal_model_stays_truthful_no_fabricated_timestamps() -> None:

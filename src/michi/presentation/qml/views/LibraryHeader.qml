@@ -90,19 +90,6 @@ PageHeader {
         return false
     }
 
-    function tabTitle() {
-        switch (root.currentTab) {
-            case "albums": return qsTr("Albums")
-            case "artists": return qsTr("Artists")
-            case "genres": return qsTr("Genres")
-            case "playlists": return qsTr("Playlists")
-            case "favorites": return qsTr("Favorites")
-            case "history": return qsTr("History")
-            case "recently": return qsTr("Recently Added")
-            default: return qsTr("Songs")
-        }
-    }
-
     function albumModeLabel() {
         for (var i = 0; i < root.albumViewModes.length; ++i) {
             if (root.albumViewModes[i].value === root.albumMode)
@@ -199,7 +186,10 @@ PageHeader {
         }
     }
 
-    title: root.tabTitle()
+    // R11 HIER-01: el header es la identidad ESTABLE de la página
+    // ("Library"); la subsección activa vive exclusivamente en los tabs
+    // del toolbar (nunca dos niveles con la misma identidad).
+    title: qsTr("Library")
     subtitle: root.contextualSubtitle()
 
     // R5 historical visual canon explicitly removed the redundant "VIEWS"

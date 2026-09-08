@@ -455,6 +455,39 @@ class EnrichmentBridge(QObject):
                 self.prefetch_artist_portrait(key)
 
     @Slot(str)
+    def open_artist_cached(self, local_artist_key: str) -> None:
+        """R4 §22.3: abrir el detail del artista es cache-only — la red
+        comienza SOLO con el Fetch/Refresh explícito del usuario."""
+        if self._disposed or not local_artist_key:
+            return
+        self._invalidate_review_session()
+        self._presentation_intent_id += 1
+        if (
+            self._active_kind == "artist"
+            and self._active_key
+            and self._active_key != local_artist_key
+        ):
+            self._coordinator.cancel_artist(self._active_key)
+        self._active_kind = "artist"
+        self._active_key = local_artist_key
+        self._reset_transient()
+        self._load_cached_artist()
+        if not self._online_enabled:
+            self._state = "READY" if self._artist_has_knowledge else "DISABLED"
+            self._state_message = (
+                "" if self._artist_has_knowledge else "Online info is disabled"
+            )
+        elif self._artist_has_knowledge:
+            self._state = "PARTIAL" if self._knowledge_stale else "READY"
+            self._state_message = (
+                "Saved information may be outdated" if self._knowledge_stale else ""
+            )
+        else:
+            self._state = "IDLE"
+            self._state_message = ""
+        self.changed.emit()
+
+    @Slot(str)
     def activate_artist(self, local_artist_key: str) -> None:
         if self._disposed or not local_artist_key:
             return

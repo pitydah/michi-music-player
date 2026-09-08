@@ -402,13 +402,15 @@ def test_michi_format_singleton_registered_and_used():
 # ── Phase 4: wayfinding titles and toast feedback ─────────────────────────────
 
 
-def test_library_header_names_active_tab():
+def test_library_header_stable_identity():
+    """R11 HIER-01: el header es la identidad estable (Library); la
+    subsección activa vive exclusivamente en los tabs del toolbar."""
     content = read("views/LibraryHeader.qml")
-    assert "function tabTitle()" in content
-    # LIB-A seal II: los títulos de tab viven bajo qsTr (i18n real).
-    assert 'case "albums": return qsTr("Albums")' in content
-    assert 'default: return qsTr("Songs")' in content
-    assert "title: root.tabTitle()" in content
+    assert 'title: qsTr("Library")' in content
+    assert "function tabTitle()" not in content, (
+        "la identidad por tab fue removida (duplicaba los tabs)"
+    )
+    assert "title: root.tabTitle()" not in content
 
 
 def test_toast_host_supports_action_and_is_wired():

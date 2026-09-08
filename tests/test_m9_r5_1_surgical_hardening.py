@@ -35,7 +35,12 @@ def test_track_resize_uses_persisted_baseline_and_neighbor_compensation() -> Non
     assert "titleResizeNeighbor" in header
     assert "Math.max(LibraryTrackColumnState.titleWidth" not in table
     assert "? LibraryTrackColumnState.titleWidth : 0" in table
-    assert "resizable: false" in header
+    # HIER-03: la columna de actions ya no es una ResizableHeaderCell — el
+    # ancho lo da el singleton y las opciones viven dentro (sin resize).
+    assert "resizable: false" in header or (
+        "Layout.preferredWidth: LibraryTrackColumnState.actionsWidth" in header
+        and "trackTableOptionsButton" in header
+    )
 
 
 def test_unknown_duration_has_explicit_timeline_state_without_geometry_change() -> None:

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../controls"
 import "../enrichment"
@@ -22,7 +23,9 @@ ColumnLayout {
     readonly property string selectedArtistKey: library.selectedArtistKey
     onSelectedArtistKeyChanged: {
         if (root.selectedArtistKey.length > 0)
-            enrichment.activate_artist(root.selectedArtistKey)
+            // R4 §22.3: abrir el detail es cache-only — el Fetch
+            // explícito del usuario inicia la red.
+            enrichment.open_artist_cached(root.selectedArtistKey)
     }
 
     RowLayout {
@@ -125,6 +128,12 @@ ColumnLayout {
         cellHeight: 214
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        keyNavigationEnabled: true
+        keyNavigationWraps: false
+        activeFocusOnTab: true
+        ScrollBar.vertical: MichiScrollBar {
+            objectName: "artistAlbumsNavigationScrollBar"
+        }
         delegate: AlbumCard {
             required property var modelData
             width: artistAlbumsGrid.cellWidth - MichiSpacing.sm

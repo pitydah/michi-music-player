@@ -67,15 +67,22 @@ jobs:
       - name: Build
         run: python -m build
 
-      - name: Installed wheel smoke
+      - name: Verify wheel resource parity
+        run: python scripts/verify_wheel_resources.py dist/*.whl
+
+      - name: Installed wheel smoke (clean venv, V4 §22CV)
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python -m venv --system-site-packages /tmp/michi-wheel-smoke
-          /tmp/michi-wheel-smoke/bin/pip install --no-deps --force-reinstall dist/*.whl
-          cd /tmp
-          /tmp/michi-wheel-smoke/bin/python \
-            "$GITHUB_WORKSPACE/scripts/installed_wheel_smoke.py"
+          rm -rf /tmp/michi-wheel-smoke /tmp/michi-wheel-smoke-run
+          python -m venv /tmp/michi-wheel-smoke
+          /tmp/michi-wheel-smoke/bin/python -m pip install --upgrade pip
+          /tmp/michi-wheel-smoke/bin/python -m pip install dist/*.whl
+          mkdir -p /tmp/michi-wheel-smoke-run
+          cp scripts/installed_wheel_smoke.py /tmp/michi-wheel-smoke-run/
+          cd /tmp/michi-wheel-smoke-run
+          env -u PYTHONPATH QT_QPA_PLATFORM=offscreen \
+            /tmp/michi-wheel-smoke/bin/python -I installed_wheel_smoke.py
 
       - name: Render Library visual QA
         env:
@@ -104,3 +111,30 @@ jobs:
           name: playlists-views-visual-qa
           path: artifacts/playlists-views
           if-no-files-found: error
+
+  min-qt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install system Qt
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qt6-base-dev qt6-multimedia-dev \
+            libqt6multimedia6 libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev
+      - name: Install project + test deps (minimum PySide6 6.6.2)
+        run: |
+          pip install -e ".[test]"
+          pip install --force-reinstall \
+            "PySide6==6.6.2" "PySide6-Essentials==6.6.2" \
+            "PySide6-Addons==6.6.2" "shiboken6==6.6.2"
+      - name: Minimum-Qt critical runtime gates (V4 §34C)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -c "import PySide6; print('PySide6', PySide6.__version__)"
+          python -m pytest tests/test_m9_r3_contextual_runtime.py -q
+          python -m pytest tests/test_m11_3_ui_qml_runtime.py -q
+          python -m pytest tests/test_library_visible_recovery_main.py -q

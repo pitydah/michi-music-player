@@ -81,21 +81,24 @@ Item {
             navigationRequested("library")
             return
         }
-        var genreIndex = artistIndex - visibleArtistCount
-        if (genreIndex >= 0 && genreIndex < visibleGenreCount) {
-            // R5: género → filtro exact-key de Library (Songs tab).
-            library.select_genre(library.genres[genreIndex].key)
-            closeRequested()
-            navigationRequested("library")
-            return
-        }
-        var playlistIndex = genreIndex - visibleGenreCount
+        // D-R4-01: UN orden canónico (Tracks → Albums → Artists →
+        // Playlists → Genres) gobierna render, selección y activación —
+        // nunca offsets independientes por grupo.
+        var playlistIndex = artistIndex - visibleArtistCount
         if (playlistIndex >= 0 && playlistIndex < visiblePlaylistCount) {
             // M9-R1I: playlist results open the FIRST-CLASS PLAYLISTS route
             // (validated open intent) — never fall back to Library. Mouse
             // and keyboard activation converge to the same state.
             playlists.open_playlist(playlists.searchPlaylists[playlistIndex].playlistId)
             closeRequested()
+            return
+        }
+        var genreIndex = playlistIndex - visiblePlaylistCount
+        if (genreIndex >= 0 && genreIndex < visibleGenreCount) {
+            // R5: género → filtro exact-key de Library (Songs tab).
+            library.select_genre(library.genres[genreIndex].key)
+            closeRequested()
+            navigationRequested("library")
             return
         }
     }

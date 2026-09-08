@@ -77,11 +77,19 @@ Rectangle {
     implicitHeight: showArtwork
         ? Math.max(MichiThemeState.rowHeight, 44)
         : Math.max(MichiThemeState.rowHeight, MichiMetrics.controlMedium)
-    color: selected || playing ? MichiSemanticColors.surfaceSelected
-        : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
+    // R11 HIER-04: tres estados jerárquicos — playing (acento más
+    // fuerte) > selected (neutral) > hover (transitorio).
+    color: root.playing
+        ? MichiSemanticColors.auroraCyanSurface
+        : root.selected
+            ? MichiSemanticColors.surfaceSelected
+            : hover.hovered
+                ? MichiSemanticColors.surfaceHover
+                : "transparent"
     radius: MichiRadius.sm
-    border.width: selected || playing ? 1 : 0
-    border.color: playing ? MichiSemanticColors.auroraCyanBorder
+    border.width: root.playing || root.selected ? 1 : 0
+    border.color: root.playing
+        ? MichiSemanticColors.auroraCyanBorder
         : MichiSemanticColors.auroraBorderSubtle
     opacity: unavailable ? 0.55 : 1
     activeFocusOnTab: root.interactive
@@ -168,7 +176,11 @@ Rectangle {
             Layout.preferredWidth: root.sharedGeometry ? root.titleColumnWidth : -1
             text: root.title
             role: "body"
-            font.weight: root.playing || root.selected ? Font.DemiBold : Font.Normal
+            // R11 HIER-05: autoridad primaria: DemiBold jugando/
+            // seleccionado, Medium por defecto (jerarquía por peso, no
+            // por inflar la fila).
+            font.weight: root.playing || root.selected
+                ? Font.DemiBold : Font.Medium
             elide: Text.ElideRight
         }
         MichiText {
@@ -199,14 +211,15 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 formatKey: root.formatKey
                 displayLabel: root.formatLabel
+                compactQuiet: true
             }
         }
-        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.sampleRateVisible; Layout.preferredWidth: LibraryTrackColumnState.sampleRateWidth; text: root.sampleRateHz > 0 ? (root.sampleRateHz / 1000) + " kHz" : ""; role: "technical"; technical: true; elide: Text.ElideRight }
-        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.bitDepthVisible; Layout.preferredWidth: LibraryTrackColumnState.bitDepthWidth; text: root.bitDepth > 0 ? root.bitDepth + "-bit" : ""; role: "technical"; technical: true; elide: Text.ElideRight }
-        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.dsdRateVisible; Layout.preferredWidth: LibraryTrackColumnState.dsdRateWidth; text: root.dsdRate; role: "technical"; technical: true; elide: Text.ElideRight }
-        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.bitrateVisible; Layout.preferredWidth: LibraryTrackColumnState.bitrateWidth; text: root.bitrateBps > 0 ? Math.round(root.bitrateBps / 1000) + " kbps" : ""; role: "technical"; technical: true; elide: Text.ElideRight }
-        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.channelsVisible; Layout.preferredWidth: LibraryTrackColumnState.channelsWidth; text: root.channels > 0 ? root.channels + " ch" : ""; role: "technical"; technical: true; elide: Text.ElideRight }
-        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.fileSizeVisible; Layout.preferredWidth: LibraryTrackColumnState.fileSizeWidth; text: root.fileSize > 0 ? MichiFormat.formatFileSize(root.fileSize) : ""; role: "technical"; technical: true; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.sampleRateVisible; Layout.preferredWidth: LibraryTrackColumnState.sampleRateWidth; text: root.sampleRateHz > 0 ? (root.sampleRateHz / 1000) + " kHz" : ""; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.bitDepthVisible; Layout.preferredWidth: LibraryTrackColumnState.bitDepthWidth; text: root.bitDepth > 0 ? root.bitDepth + "-bit" : ""; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.dsdRateVisible; Layout.preferredWidth: LibraryTrackColumnState.dsdRateWidth; text: root.dsdRate; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.bitrateVisible; Layout.preferredWidth: LibraryTrackColumnState.bitrateWidth; text: root.bitrateBps > 0 ? Math.round(root.bitrateBps / 1000) + " kbps" : ""; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.channelsVisible; Layout.preferredWidth: LibraryTrackColumnState.channelsWidth; text: root.channels > 0 ? root.channels + " ch" : ""; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight }
+        MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.fileSizeVisible; Layout.preferredWidth: LibraryTrackColumnState.fileSizeWidth; text: root.fileSize > 0 ? MichiFormat.formatFileSize(root.fileSize) : ""; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight }
         MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.genreVisible; Layout.preferredWidth: LibraryTrackColumnState.genreWidth; text: root.genre; role: "secondary"; elide: Text.ElideRight }
         MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.composerVisible; Layout.preferredWidth: LibraryTrackColumnState.composerWidth; text: root.composer; role: "secondary"; elide: Text.ElideRight }
         MichiText { visible: root.showTechnicalColumns && LibraryTrackColumnState.yearVisible; Layout.preferredWidth: LibraryTrackColumnState.yearWidth; text: root.year > 0 ? root.year : ""; role: "technical"; technical: true; horizontalAlignment: Text.AlignRight }

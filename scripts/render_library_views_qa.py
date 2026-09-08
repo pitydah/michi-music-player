@@ -482,6 +482,49 @@ def render(output: Path) -> list[dict]:
                     "canShowProperties": True,
                 },
             )
+            _render_standalone_menu(
+                app,
+                output,
+                results,
+                "album-context-menu",
+                "media/AlbumContextMenu.qml",
+                {
+                    "album": {
+                        "key": "a1",
+                        "title": "Kind of Blue",
+                        "artist": "Miles Davis",
+                        "year": 1959,
+                        "hasArtwork": False,
+                        "artistKey": "miles",
+                    },
+                    "canAddToPlaylist": True,
+                    "canCreatePlaylist": True,
+                    "canShowProperties": True,
+                },
+            )
+            _render_standalone_menu(
+                app,
+                output,
+                results,
+                "artist-context-menu",
+                "media/ArtistContextMenu.qml",
+                {
+                    "artist": {
+                        "key": "ar1",
+                        "name": "Miles Davis",
+                        "albumCount": 4,
+                        "trackCount": 120,
+                        "artworkPath": "",
+                    },
+                    "canAddToPlaylist": True,
+                    "canCreatePlaylist": True,
+                },
+            )
+            _render_table_header_menus(
+                app,
+                output,
+                results,
+            )
     finally:
         qInstallMessageHandler(previous_handler)
     if messages:
@@ -593,11 +636,96 @@ def _render_standalone_menu(
     QTest.qWait(120)
     if not menu.property("visible"):
         raise RuntimeError(f"{state}: el menú no abrió para el QA")
+    # R10 (V4 §15): la geometría es el gate de máquina — un popup
+    # colapsado (la regresión de la "línea horizontal") FALLA aquí.
+    menu_width = float(menu.property("width") or 0)
+    menu_height = float(menu.property("height") or 0)
+    min_height = 160 if state == "track-context-menu" else 36
+    if menu_width < 240:
+        raise RuntimeError(f"{state}: collapsed menu width {menu_width}px")
+    if menu_height < min_height:
+        raise RuntimeError(f"{state}: collapsed menu height {menu_height}px")
     image = window.grabWindow()
     name = f"1200-{state}.png"
     if image.isNull() or not image.save(str(output / name)):
         raise RuntimeError(f"could not save {name}")
     results.append({"frame": name, "w": 1200, "h": 900, "state": state})
+    window.close()
+
+
+def _render_table_header_menus(app, output, results) -> None:
+    """R10 (V4 §15): menú raíz del header de la tabla + submenú nativo de
+    Columns con geometría de máquina."""
+    from PySide6.QtCore import QObject, QUrl
+    from PySide6.QtQml import QQmlComponent, QQmlEngine
+    from PySide6.QtQuick import QQuickWindow
+    from PySide6.QtTest import QTest
+
+    engine = QQmlEngine()
+    engine.addImportPath(str(QML))
+    component = QQmlComponent(engine)
+    component.setData(
+        (
+            "import QtQuick\n"
+            f'import "{QML.as_uri()}/media"\n'
+            f'import "{QML.as_uri()}/theme"\n'
+            "Item {\n"
+            "    id: host\n"
+            '    objectName: "headerMenuHost"\n'
+            "    TrackTableHeaderContextMenu { id: theMenu }\n"
+            "}\n"
+        ).encode(),
+        QUrl("menu_host.qml"),
+    )
+    if component.status() != QQmlComponent.Ready:
+        raise RuntimeError("; ".join(e.toString() for e in component.errors()))
+    host = component.create()
+    _KEEP.extend([engine, component, host])
+    menu = None
+    for child in host.findChildren(QObject):
+        if "TrackTableHeaderContextMenu" in child.metaObject().className():
+            menu = child
+            break
+    if menu is None:
+        raise RuntimeError("menú del header no encontrado")
+    window = QQuickWindow()
+    window.resize(1200, 900)
+    host.setParentItem(window.contentItem())
+    window.show()
+    QTest.qWait(100)
+    meta = menu.metaObject()
+    assert meta.method(meta.indexOfMethod("popup()")).invoke(menu)
+    QTest.qWait(120)
+    assert menu.property("visible") is True
+    width = float(menu.property("width") or 0)
+    height = float(menu.property("height") or 0)
+    if width < 240 or height < 120:
+        raise RuntimeError(f"header menu collapsed: {width}x{height}")
+    image = window.grabWindow()
+    name = "1200-table-header-context-menu.png"
+    if not image.save(str(output / name)):
+        raise RuntimeError("could not save " + name)
+    results.append({"frame": name, "state": "table-header-context-menu"})
+    # Submenú Columns nativo: abrir + geometría + grab.
+    submenu = None
+    for child in host.findChildren(QObject):
+        if child.property("title") == "Columns":
+            submenu = child
+            break
+    if submenu is None:
+        raise RuntimeError("submenú Columns no encontrado")
+    smeta = submenu.metaObject()
+    assert smeta.method(smeta.indexOfMethod("popup()")).invoke(submenu)
+    QTest.qWait(150)
+    sw = float(submenu.property("width") or 0)
+    sh = float(submenu.property("height") or 0)
+    if sw < 240 or sh < 60:
+        raise RuntimeError(f"columns submenu collapsed: {sw}x{sh}")
+    image = window.grabWindow()
+    name = "1200-table-header-columns-submenu.png"
+    if not image.save(str(output / name)):
+        raise RuntimeError("could not save " + name)
+    results.append({"frame": name, "state": "table-header-columns-submenu"})
     window.close()
 
 
@@ -838,7 +966,10 @@ def main() -> int:
         1 for frame in review_frames() if frame[2] == "album-context-menu"
     )
     expected -= editorial_only * (len(MODES) - 1)
-    expected += 2  # menús aislados genre/track del convergence seal
+    # menús aislados del convergence seal + los renders R3/R10/R11:
+    # genre/track (M9-R3), album/artist (R3), table-header-root +
+    # columns-submenu (R10.2).
+    expected += 6
     if len(frames) != expected:
         raise RuntimeError("incomplete visual QA matrix")
     return 0

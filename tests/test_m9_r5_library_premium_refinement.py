@@ -20,24 +20,21 @@ def test_library_header_is_contextual_without_duplicate_views_label() -> None:
 
 
 def test_search_and_scan_have_independent_toolbar_geometry() -> None:
-    """POST-MERGE MICRO-FIX (P0-06): search resizable, scan split y
-    enrich conviven como HERMANOS en el GridLayout — enrich NO puede ser
-    hijo del split button."""
+    """P0-06 + R11 TOOL-01: search resizable y scan split conviven como
+    hermanos en el GridLayout; el Enrich global NO vive en el toolbar
+    (product decision §22.5)."""
     toolbar = _qml("views/LibraryToolbar.qml")
-    split_end = toolbar.index("onSecondaryClicked: sourceMenu.popup()")
-    enrich_block_start = toolbar.index("id: enrichButton")
     assert "searchPanePreferredWidth" in toolbar
     assert 'objectName: "resizableLibrarySearchPane"' in toolbar
     assert 'objectName: "librarySearchResizeHandle"' in toolbar
     assert "DragHandler" in toolbar
+    assert "resizeSearchBy" in toolbar
     assert "MichiSplitButton" in toolbar
     assert 'objectName: "libraryScanSplitButton"' in toolbar
-    assert 'objectName: "libraryEnrichButton"' in toolbar
+    assert 'objectName: "libraryEnrichButton"' not in toolbar
     assert "id: sourceBtn" not in toolbar
-    # P0-01: enrich es HERMANO del split (fuera de su bloque).
-    assert enrich_block_start > split_end, (
-        "enrichButton debe estar FUERA del bloque MichiSplitButton"
-    )
+    # El resizer desktop usa el seam incremental (nunca snapshot).
+    assert "xAxis.onActiveValueChanged" in toolbar
 
 
 def test_artist_portraits_use_a_dedicated_true_mask() -> None:
@@ -104,7 +101,11 @@ def test_context_menus_use_deterministic_michi_menu_items() -> None:
     item = _qml("controls/MichiMenuItem.qml")
 
     assert "MenuItem" in item
-    assert "implicitHeight: 36" in item
+    # R10 (V4 §9.2): geometría determinista: implicitHeight por el token
+    # de métrica + implicitWidth con autoridad mínima/máxima.
+    assert "implicitHeight: MichiMetrics.controlMedium" in item
+    assert "minimumItemWidth" in item
+    assert "maximumItemWidth" in item
     for relative in (
         "media/TrackContextMenu.qml",
         "media/AlbumContextMenu.qml",

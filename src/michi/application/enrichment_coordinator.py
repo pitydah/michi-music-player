@@ -43,6 +43,7 @@ from michi.application.enrichment_ports import (
     ExternalIdentityResolverPort,
     HttpRequest,
     HttpTransportPort,
+    ListenBrainzSupplementalProviderPort,
     MusicBrainzKnowledgeProviderPort,
     WikidataKnowledgeProviderPort,
     WikimediaCommonsProviderPort,
@@ -160,6 +161,7 @@ class EnrichmentCoordinator:
         executor: EnrichmentExecutorPort,
         transport: HttpTransportPort | None,
         enabled: Callable[[], bool],
+        lb_supplemental: ListenBrainzSupplementalProviderPort | None = None,
     ) -> None:
         self._service = service
         self._resolver = resolver
@@ -173,6 +175,8 @@ class EnrichmentCoordinator:
         self._executor = executor
         self._transport = transport
         self._enabled = enabled
+        # R4 §22C: ListenBrainz suplementario opcional (post-MBID).
+        self._lb_supplemental = lb_supplemental
         self._operations: dict[
             tuple[EnrichmentEntityKind, str], EnrichmentOperationToken
         ] = {}
@@ -588,6 +592,9 @@ class EnrichmentCoordinator:
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_artist_image(profile, external_id, partial)
+            profile, partial = self._apply_artist_supplemental(
+                profile, external_id, partial
+            )
             self._commit_artist(token, request, profile, partial, on_state)
         except EnrichmentProviderError as exc:
             self._terminal_failure(token, request, artist.key, exc, on_state)
@@ -596,6 +603,61 @@ class EnrichmentCoordinator:
             self._terminal_unexpected(token, request, artist.key, on_state)
         finally:
             self._end_operation(token)
+
+    def _apply_artist_supplemental(
+        self,
+        profile: ArtistKnowledgeProfile,
+        external_artist_id: str,
+        partial: bool,
+    ) -> tuple[ArtistKnowledgeProfile, bool]:
+        """R4 §22C: tags/popularity de ListenBrainz (opcional, post-MBID).
+        El provider es OPTIONAL: su fallo nunca rompe el flujo principal
+        (se registra y el perfil de MusicBrainz queda como está)."""
+        if self._lb_supplemental is None:
+            return profile, partial
+        try:
+            supplement = self._lb_supplemental.fetch_artist_metadata(external_artist_id)
+        except Exception as exc:  # noqa: BLE001 — optional provider only
+            logger.warning("listenbrainz artist supplemental skipped: %s", exc)
+            return profile, partial
+        if not supplement.tags and not supplement.popularity_percent:
+            return profile, partial
+        return (
+            replace(
+                profile,
+                listenbrainz_tags=supplement.tags,
+                listenbrainz_popularity_percent=supplement.popularity_percent,
+                listenbrainz_provenance=supplement.provenance,
+            ),
+            partial,
+        )
+
+    def _apply_album_supplemental(
+        self,
+        profile: AlbumKnowledgeProfile,
+        release_group_id: str,
+        partial: bool,
+    ) -> tuple[AlbumKnowledgeProfile, bool]:
+        if self._lb_supplemental is None:
+            return profile, partial
+        try:
+            supplement = self._lb_supplemental.fetch_release_group_metadata(
+                release_group_id
+            )
+        except Exception as exc:  # noqa: BLE001 — optional provider only
+            logger.warning("listenbrainz album supplemental skipped: %s", exc)
+            return profile, partial
+        if not supplement.tags and not supplement.popularity_percent:
+            return profile, partial
+        return (
+            replace(
+                profile,
+                listenbrainz_tags=supplement.tags,
+                listenbrainz_popularity_percent=supplement.popularity_percent,
+                listenbrainz_provenance=supplement.provenance,
+            ),
+            partial,
+        )
 
     def _commit_artist(
         self,
@@ -800,6 +862,9 @@ class EnrichmentCoordinator:
                 self._report(token, on_state, EnrichmentOperationState.CANCELLED)
                 return
             profile, partial = self._apply_cover(profile, partial)
+            profile, partial = self._apply_album_supplemental(
+                profile, request.external_entity_id, partial
+            )
             self._commit_album(token, request, profile, partial, on_state)
         except EnrichmentProviderError as exc:
             self._terminal_failure(token, request, album.key, exc, on_state)
