@@ -1269,7 +1269,7 @@ class TestF42AdapterContract:
         "src/michi/infrastructure/audio_engines/gstreamer.py": "fc7a6efa1be5808b",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
-        "src/michi/application/audio_transport_router.py": "a02c67e2b0dbaf75",
+        "src/michi/application/audio_transport_router.py": "937660b9c864e572",  # noqa: E501
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py
