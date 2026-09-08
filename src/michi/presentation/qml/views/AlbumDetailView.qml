@@ -425,8 +425,11 @@ ColumnLayout {
                 // R2 (shared host): el consumer New Playlist es real (A1) —
                 // el Bridge emite new_playlist_target_requested → host.
                 canAddToNewPlaylist: true
-                selectedIndex: root.inspectedTrack !== null
-                    ? root.inspectedIndex : -1
+                // POST-R4 P3: la selección del row inspeccionado se ata a
+                // su identidad (TrackId estable) — el índice queda solo
+                // para posición/scrolling.
+                selectedTrackId: root.inspectedTrack !== null
+                    ? albumTracksTable.idForRow(root.inspectedTrack) : ""
                 // TrackId-first (el Bridge resuelve legacy-path::).
                 onTrackActivated: (trackId, path, index) =>
                     library.activate_album_track_by_id(trackId)
