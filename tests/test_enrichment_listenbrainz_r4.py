@@ -25,6 +25,7 @@ def qapp():
     app = ensure_app()
     yield app
 
+
 from michi.infrastructure.enrichment_listenbrainz import (  # noqa: E402
     LB_API_ROOT,
     ListenBrainzSupplementalProvider,

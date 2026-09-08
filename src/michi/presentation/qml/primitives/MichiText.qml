@@ -25,6 +25,5 @@ Text {
         : role === "title" ? -0.18
         : role === "technical" ? 0.22
         : role === "micro" ? 0.35 : 0
-    font.features: (technical || role === "technical" || role === "caption" || role === "micro") ? ({ "tnum": 1 }) : ({})
     renderType: Text.NativeRendering
 }
