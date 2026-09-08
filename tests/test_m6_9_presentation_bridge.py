@@ -6,6 +6,7 @@ double anti-stale filter (presentation intent + backend generation),
 clear vs reset, refresh, policy OFF cancellation and dispose.
 """
 
+import time
 from dataclasses import replace
 
 import pytest
@@ -595,11 +596,19 @@ class TestPortraitOutcomePolicy:
         assert ARTIST_A_KEY not in bridge._portrait_prefetch_attempted, (
             "el transient NO bloquea el reintento"
         )
-        # segundo intento: la admisión vuelve a lanzar el enrich
+        # POST-R4 P10 (auditoría): el reintento respeta el COOLDOWN — la
+        # readmisión inmediata no vuelve a lanzar el enrich…
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        process_events(4)
+        assert len(holding.artist_calls) == 1, (
+            "el reintento inmediato espera el cooldown"
+        )
+        # …y tras el cooldown (el plazo vencido) readmite.
+        bridge._portrait_retry_after[ARTIST_A_KEY] = 0.0
         bridge.prefetch_artist_portrait(ARTIST_A_KEY)
         process_events(4)
         assert len(holding.artist_calls) == 2, (
-            "el reintento transitorio vuelve a admitir el artista"
+            "tras el cooldown el reintento transitorio readmite"
         )
 
     def test_not_found_is_terminal_for_the_session(self):
@@ -782,3 +791,57 @@ class TestManualReviewShowMore:
         process_events(12)
         assert bridge.property("artistCandidates") == []
         assert bridge.property("reviewLoading") is False
+
+
+class TestPortraitCooldownPolicy:
+    """POST-R4 P10 (auditoría): el reintento transitorio espera un
+    cooldown explícito (ni bloqueo de sesión ni reintento inmediato)."""
+
+    def test_failed_sets_cooldown_until_deadline(self):
+        bridge, *_ = make_bridge(online=True)
+        from michi.application.enrichment_coordinator import (
+            EnrichmentOperationState,
+        )
+        from michi.presentation.enrichment_bridge import (
+            _PORTRAIT_RETRY_COOLDOWN_S,
+        )
+
+        key = ARTIST_A_KEY
+        bridge._portrait_prefetch_inflight.add(key)  # el worker está vivo
+        bridge._apply_portrait_event(self._event(key, EnrichmentOperationState.FAILED))
+        deadline = bridge._portrait_retry_after.get(key)
+        assert deadline is not None
+        assert deadline - time.monotonic() <= _PORTRAIT_RETRY_COOLDOWN_S + 1
+        assert deadline > time.monotonic()
+
+    @staticmethod
+    def _event(key, state):
+        m = __import__(
+            "michi.application.enrichment_coordinator",
+            fromlist=["EnrichmentOperationEvent", "EnrichmentOperationState"],
+        )
+        kind = __import__(
+            "michi.domain.enrichment", fromlist=["EnrichmentEntityKind"]
+        ).EnrichmentEntityKind
+        return m.EnrichmentOperationEvent(
+            operation_id="op",
+            generation=1,
+            entity_kind=kind.ARTIST,
+            local_entity_key=key,
+            state=state,
+        )
+
+    def test_cancelled_allows_immediate_retry(self):
+        bridge, *_ = make_bridge(online=True)
+        from michi.application.enrichment_coordinator import (
+            EnrichmentOperationState,
+        )
+
+        key = ARTIST_A_KEY
+        bridge._portrait_prefetch_inflight.add(key)
+        bridge._apply_portrait_event(
+            self._event(key, EnrichmentOperationState.CANCELLED)
+        )
+        assert key not in bridge._portrait_retry_after, (
+            "CANCELLED: reintento libre sin cooldown"
+        )

@@ -30,6 +30,8 @@ A late CANCELLED/FAILED/READY from a previous artist can never change
 the UI of the currently selected artist.
 """
 
+import time
+
 from PySide6.QtCore import Property, QObject, Qt, Signal, Slot
 
 from michi.application.enrichment_coordinator import (
@@ -72,6 +74,9 @@ _TERMINAL_STATES = {
 }
 
 _MAX_PORTRAIT_PREFETCH_INFLIGHT = 2
+# POST-R4 P10 (auditoría): cooldown del reintento tras un FAILED
+# transitorio del portrait.
+_PORTRAIT_RETRY_COOLDOWN_S = 60.0
 _MAX_ARTIST_PORTRAITS = 512
 _MAX_PORTRAIT_PREFETCH_QUEUE = 12
 
@@ -244,6 +249,10 @@ class EnrichmentBridge(QObject):
         self._portrait_prefetch_queue: list[str] = []
         self._portrait_prefetch_inflight: set[str] = set()
         self._portrait_prefetch_attempted: set[str] = set()
+        # POST-R4 P10 (auditoría): cooldown de reintento por key tras un
+        # FAILED transitorio (monotonic deadline): ni bloqueo de sesión ni
+        # reintento inmediato en cada batch.
+        self._portrait_retry_after: dict[str, float] = {}
 
         # manual review
         self._review_open = False
@@ -427,6 +436,9 @@ class EnrichmentBridge(QObject):
             or local_artist_key in self._portrait_prefetch_attempted
             or local_artist_key in self._portrait_prefetch_inflight
             or local_artist_key in self._portrait_prefetch_queue
+            # POST-R4 P10 (auditoría): el reintento transitorio espera el
+            # cooldown (nunca inmediato en cada batch).
+            or time.monotonic() < self._portrait_retry_after.get(local_artist_key, 0.0)
         ):
             return
         if len(self._portrait_prefetch_queue) >= _MAX_PORTRAIT_PREFETCH_QUEUE:
@@ -1027,14 +1039,18 @@ class EnrichmentBridge(QObject):
             # SUCCESS: la knowledge cacheada gobierna las próximas
             # admisiones (sin red); el intento ya no bloquea nada.
             self._portrait_prefetch_attempted.discard(key)
-        elif event.state in (
-            EnrichmentOperationState.FAILED,
-            EnrichmentOperationState.CANCELLED,
-        ):
-            # POST-R4 P10 (13.1): TRANSIENT_FAILURE / CANCELLED →
-            # reintento permitido. Un único timeout NO puede condenar al
-            # artista por el resto de la sesión.
+        elif event.state is EnrichmentOperationState.FAILED:
+            # POST-R4 P10 (13.1 + auditoría): TRANSIENT_FAILURE →
+            # reintento permitido TRAS el cooldown: ni condena de sesión
+            # ni reintento inmediato en cada batch.
             self._portrait_prefetch_attempted.discard(key)
+            self._portrait_retry_after[key] = (
+                time.monotonic() + _PORTRAIT_RETRY_COOLDOWN_S
+            )
+        elif event.state is EnrichmentOperationState.CANCELLED:
+            # CANCELLED → reintento libre (sin cooldown).
+            self._portrait_prefetch_attempted.discard(key)
+            self._portrait_retry_after.pop(key, None)
         # NOT_FOUND / OFFLINE: outcome terminal de sesión (el artista no
         # existe en la fuente, o la política offline): cooldown largo vía
         # el registro de intentos (se limpia al reactivar el online).
