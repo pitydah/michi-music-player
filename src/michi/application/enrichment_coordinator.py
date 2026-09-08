@@ -51,7 +51,7 @@ from michi.application.enrichment_ports import (
     is_transient_provider_failure,
 )
 from michi.application.enrichment_service import EnrichmentService
-from michi.domain.enrichment import (
+from michi.domain.enrichment import (  # noqa: E402  (parse de identidad)
     AlbumIdentityEvidence,
     AlbumKnowledgeProfile,
     ArtistIdentityEvidence,
@@ -61,6 +61,7 @@ from michi.domain.enrichment import (
     EnrichmentEntityKind,
     IdentityResolutionStatus,
     KnowledgeProvenance,
+    parse_musicbrainz_identifier,
 )
 from michi.domain.library import AlbumRef, ArtistRef, TrackRef
 
@@ -460,6 +461,22 @@ class EnrichmentCoordinator:
     ) -> tuple[ArtistIdentityCandidateView, ...]:
         if not self._enabled():
             return ()
+        # POST-R4 E2 (12.2): el texto con formato de identidad controlada
+        # (MBID crudo o URL de MusicBrainz) hace un LOOKUP directo del
+        # candidato exacto — el texto arbitrario jamás se usa como
+        # identidad (parse devuelve "" y el flujo cae a la búsqueda).
+        mbid = parse_musicbrainz_identifier(artist_name, expected_kind="artist")
+        if mbid:
+            direct = self._resolver.artist_candidate_by_id(mbid)
+            if direct is not None:
+                return (
+                    ArtistIdentityCandidateView(
+                        external_artist_id=direct.external_artist_id,
+                        display_name=direct.canonical_name,
+                        disambiguation=direct.disambiguation,
+                    ),
+                )
+            return ()
         evidence = ArtistIdentityEvidence(
             local_artist_key="", local_artist_name=artist_name
         )
@@ -480,6 +497,22 @@ class EnrichmentCoordinator:
         self, album_title: str, artist_name: str
     ) -> tuple[AlbumIdentityCandidateView, ...]:
         if not self._enabled():
+            return ()
+        # POST-R4 E2: MBID/URL de release-group en el título → lookup.
+        mbid = parse_musicbrainz_identifier(
+            album_title, expected_kind="release-group"
+        )
+        if mbid:
+            direct = self._resolver.release_group_candidate_by_id(mbid)
+            if direct is not None:
+                return (
+                    AlbumIdentityCandidateView(
+                        external_release_group_id=direct.release_group_id,
+                        display_title=direct.title,
+                        artist_credit=", ".join(direct.artist_credit_names),
+                        year=direct.first_release_year,
+                    ),
+                )
             return ()
         evidence = AlbumIdentityEvidence(
             local_album_key="",

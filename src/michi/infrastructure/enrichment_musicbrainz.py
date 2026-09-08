@@ -295,6 +295,50 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
             )
         return tuple(hydrated)
 
+    def artist_candidate_by_id(self, mbid: str) -> ArtistCandidate | None:
+        """POST-R4 E2: lookup DIRECTO de un artista por MBID (validado
+        por el caller) — el candidato exacto, sin búsqueda por nombre."""
+        url = _musicbrainz_query_url(
+            f"artist/{mbid}",
+            {"fmt": "json"},
+            "musicbrainz_lookup",
+        )
+        payload = self._get_json(url, "musicbrainz_lookup")
+        try:
+            external_id = _require_str(payload, "id")
+            name = _optional_str(payload, "name")
+            disambiguation = _optional_str(payload, "disambiguation")
+        except EnrichmentProviderError:
+            return None
+        return ArtistCandidate(
+            external_artist_id=external_id,
+            canonical_name=name,
+            disambiguation=disambiguation,
+            known_albums=(),
+        )
+
+    def release_group_candidate_by_id(self, mbid: str) -> ReleaseGroupCandidate | None:
+        """POST-R4 E2: lookup DIRECTO de un release-group por MBID."""
+        url = _musicbrainz_query_url(
+            f"release-group/{mbid}",
+            {"fmt": "json"},
+            "musicbrainz_lookup",
+        )
+        payload = self._get_json(url, "musicbrainz_lookup")
+        try:
+            external_id = _require_str(payload, "id")
+            title = _optional_str(payload, "title")
+            credits = self._artist_credits(payload)
+        except EnrichmentProviderError:
+            return None
+        return ReleaseGroupCandidate(
+            release_group_id=external_id,
+            title=title,
+            artist_credit_external_ids=dedupe_identity_ids(credits[0]),
+            artist_credit_names=dedupe_identity_ids(credits[1]),
+            first_release_year=_first_release_year(payload),
+        )
+
     def _known_albums_for(self, artist_id: str) -> tuple[LocalAlbumEvidence, ...]:
         """M6.9 REOPENED: release-group browse with the REAL contract.
 

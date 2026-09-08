@@ -34,6 +34,7 @@ matches its original request context (``EnrichmentRequestLedger``).
 """
 
 import json
+import re
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
@@ -1297,3 +1298,35 @@ class SupplementalAlbumKnowledge:
 # misma norma — un rank con norma divergente filtraría candidatos que el
 # dominio aceptaría o hidrataría los que rechaza).
 normalize_identity_text = _normalize_identity_text
+
+_MBID_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+)
+
+
+def parse_musicbrainz_identifier(text: str, expected_kind: str = "") -> str:
+    """POST-R4 E2 (12.2): valida texto como identidad MusicBrainz
+    CONTROLADA. Acepta un MBID crudo (UUID) o una URL de musicbrainz.org
+    de artista/release-group/release. Devuelve el MBID normalizado, o ""
+    cuando el texto NO es una identidad válida — el texto arbitrario
+    jamás se trata como identidad (a lo sumo es un término de búsqueda)."""
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    lowered = raw.lower()
+    for prefix, kind in (
+        ("musicbrainz.org/artist/", "artist"),
+        ("musicbrainz.org/release-group/", "release-group"),
+        ("musicbrainz.org/release/", "release"),
+    ):
+        if prefix in lowered:
+            after = lowered.split(prefix, 1)[1].split("/")[0].split("?")[0]
+            if _MBID_UUID_RE.fullmatch(after):
+                if expected_kind and expected_kind != kind:
+                    return ""  # tipo de entidad equivocado
+                return after
+            return ""
+    # Texto crudo: solo un UUID completo es una identidad aceptable.
+    if _MBID_UUID_RE.fullmatch(lowered):
+        return lowered
+    return ""
