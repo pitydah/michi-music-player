@@ -15,9 +15,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from enrichment_presentation_fakes import (  # noqa: E402
-    process_events,
-)
+from enrichment_presentation_fakes import process_events  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    from enrichment_presentation_fakes import ensure_app
+
+    app = ensure_app()
+    yield app
 
 from michi.infrastructure.enrichment_listenbrainz import (  # noqa: E402
     LB_API_ROOT,
