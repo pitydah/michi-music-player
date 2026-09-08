@@ -191,6 +191,7 @@ ColumnLayout {
         artistCandidates: enrichment.artistCandidates
         onlineEnabled: enrichment.onlineEnabled
         onSearchRequested: function (name) { enrichment.search_artist(name) }
+        onSearchMoreRequested: enrichment.search_artist_show_more()
         onConfirmArtist: function (id) { enrichment.confirm_artist_candidate(id) }
         onClosed: enrichment.close_review()
     }

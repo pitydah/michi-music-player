@@ -147,3 +147,60 @@ class TestDirectLookupFlow:
         views = coordinator._search_artist_candidates_sync("Miles Davis")
         assert views and views[0].display_name == "Miles Davis"
         assert any("/artist/?query=" in u for u in transport.requests)
+
+
+class TestShowMoreContrast:
+    """POST-R4 E2 (12.1): con el resolver REAL, el search muestra el
+    shortlist del rank; el show-more lista TODOS los summaries."""
+
+    def test_artist_shortlist_vs_show_all(self):
+        from michi.application.enrichment_coordinator import EnrichmentCoordinator
+        from tests.test_m6_9c_resolver_hints import (
+            FakeHttpTransport,
+            artist_payload,
+            json_response,
+        )
+
+        transport = FakeHttpTransport()
+        artists = [
+            artist_payload("mb-a", "Artist A"),
+            artist_payload("mb-a2", "Artist A2"),
+            artist_payload("mb-b", "Artist B"),
+        ]
+        # dos rutas: el search normal + el show-more (el transport fake
+        # consume las rutas FIFO y el resolver real no cachea aquí)
+        transport.route(
+            "https://musicbrainz.org/ws/2/artist/?query=",
+            json_response({"artists": artists}),
+        )
+        transport.route(
+            "https://musicbrainz.org/ws/2/artist/?query=",
+            json_response({"artists": artists}),
+        )
+        from tests.test_enrichment_e1_discovery_hydration import _resolver
+
+        resolver = _resolver(transport)
+        coordinator = EnrichmentCoordinator(
+            service=None,  # type: ignore[arg-type]
+            resolver=resolver,
+            evidence_builder=None,
+            mb_knowledge=None,
+            wikidata=None,
+            wikipedia=None,
+            commons=None,
+            coverart=None,
+            asset_store=None,
+            executor=None,
+            transport=transport,
+            enabled=lambda: True,
+        )
+        shortlist = coordinator._search_artist_candidates_sync("Artist A")
+        assert [v.external_artist_id for v in shortlist] == ["mb-a"], (
+            "el search normal = shortlist del rank (nombre exacto)"
+        )
+        show_all = coordinator._search_artist_candidates_sync("Artist A", show_all=True)
+        assert {v.external_artist_id for v in show_all} == {
+            "mb-a",
+            "mb-a2",
+            "mb-b",
+        }, "el show-more = todos los summaries del discovery"

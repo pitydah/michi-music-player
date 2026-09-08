@@ -21,6 +21,8 @@ MichiDialog {
 
     signal searchRequested(string name)
     signal albumSearchRequested(string title, string artistName)
+    // POST-R4 E2 (12.1): pedir TODOS los summaries del discovery.
+    signal searchMoreRequested()
     signal confirmArtist(string externalArtistId)
     signal confirmAlbum(string externalReleaseGroupId)
 
@@ -73,6 +75,18 @@ MichiDialog {
                 onClicked: root.kind === "artist"
                     ? root.searchRequested(searchField.text)
                     : root.albumSearchRequested(searchField.text, artistField.text)
+            }
+            // POST-R4 E2 (12.1): show more — el review manual puede
+            // examinar TODOS los candidatos del discovery, no solo el
+            // shortlist automático.
+            MichiButton {
+                text: qsTr("Show more candidates")
+                variant: "ghost"
+                visible: root.onlineEnabled && !root.loading
+                    && (root.kind === "artist"
+                        ? root.artistCandidates.length > 0
+                        : root.albumCandidates.length > 0)
+                onClicked: root.searchMoreRequested()
             }
         }
 

@@ -702,3 +702,83 @@ class TestSemanticProjectionInvalidation:
         assert _wait_for(bridge, "READY")
         assert events, "el commit READY emitió la invalidación semántica"
         assert projection.property("revision") == rev + 1
+
+
+class TestManualReviewShowMore:
+    """POST-R4 E2 (12.1): el review manual puede pedir TODOS los
+    summaries del discovery (show more) — más allá del shortlist del
+    rank automático."""
+
+    def test_artist_show_more_lists_all_discovery_summaries(self):
+        from michi.domain.enrichment import ArtistCandidate, LocalAlbumEvidence
+        from tests.enrichment_presentation_fakes import CountingResolver
+
+        resolver = CountingResolver(
+            artists=(
+                ArtistCandidate(
+                    "mb-a",
+                    canonical_name="Artist A",
+                    known_albums=(LocalAlbumEvidence("Album X", 1980),),
+                ),
+                ArtistCandidate("mb-a2", canonical_name="Artist A2"),
+                ArtistCandidate("mb-b", canonical_name="Artist B"),
+            )
+        )
+        bridge, *_ = make_bridge(online=True, resolver=resolver)
+        bridge.activate_artist(ARTIST_A_KEY)
+        assert _wait_for(bridge, "READY")
+        bridge.open_review("artist")
+        bridge.search_artist("Artist A")
+        process_events(12)
+        bridge.search_artist_show_more()
+        process_events(12)
+        all_candidates = bridge.property("artistCandidates")
+        assert {c["externalArtistId"] for c in all_candidates} == {
+            "mb-a",
+            "mb-a2",
+            "mb-b",
+        }, "el show-more lista todos los summaries del discovery"
+        assert bridge.property("reviewOpen") is True
+        assert bridge.property("reviewLoading") is False
+
+    def test_album_show_more_lists_all_discovery_summaries(self):
+        from michi.domain.enrichment import ReleaseGroupCandidate
+        from tests.enrichment_presentation_fakes import CountingResolver
+
+        resolver = CountingResolver(
+            groups=(
+                ReleaseGroupCandidate(
+                    release_group_id="rg-x",
+                    title="Album X",
+                    artist_credit_names=("Artist A",),
+                    first_release_year=1980,
+                ),
+                ReleaseGroupCandidate(
+                    release_group_id="rg-y",
+                    title="Album Y",
+                    artist_credit_names=("Artist A",),
+                    first_release_year=1990,
+                ),
+            )
+        )
+        bridge, *_ = make_bridge(online=True, resolver=resolver)
+        bridge.activate_album(ALBUM_X_KEY)
+        assert _wait_for(bridge, "READY")
+        bridge.open_review("album")
+        bridge.search_album("Album X", "Artist A")
+        process_events(12)
+        bridge.search_album_show_more()
+        process_events(12)
+        all_candidates = bridge.property("albumCandidates")
+        assert {c["externalReleaseGroupId"] for c in all_candidates} == {
+            "rg-x",
+            "rg-y",
+        }
+
+    def test_show_more_without_query_is_noop(self):
+        bridge, *_ = make_bridge(online=True)
+        bridge.open_review("artist")
+        bridge.search_artist_show_more()
+        process_events(12)
+        assert bridge.property("artistCandidates") == []
+        assert bridge.property("reviewLoading") is False

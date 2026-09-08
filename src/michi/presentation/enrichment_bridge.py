@@ -258,6 +258,9 @@ class EnrichmentBridge(QObject):
         self._review_open = False
         self._review_kind = ""
         self._review_loading = False
+        # POST-R4 E2: última búsqueda manual (para el show-more).
+        self._last_manual_query = ""
+        self._last_manual_artist = ""
         self._review_error = ""
         self._artist_candidates: list = []
         self._album_candidates: list = []
@@ -656,6 +659,8 @@ class EnrichmentBridge(QObject):
         self._review_loading = True
         self._review_error = ""
         self._artist_candidates = []
+        self._last_manual_query = name
+        self._last_manual_artist = ""
 
         def on_result(candidates):
             self._relay.candidates_received.emit(kind, key, session, epoch, candidates)
@@ -664,6 +669,39 @@ class EnrichmentBridge(QObject):
             self._relay.search_error.emit(kind, key, session, epoch, error)
 
         self._coordinator.search_artist_candidates_async(name, on_result, on_error)
+        self.changed.emit()
+
+    @Slot()
+    def search_artist_show_more(self) -> None:
+        """POST-R4 E2 (12.1): lista TODOS los summaries del discovery
+        para la última búsqueda de artista (review manual más allá del
+        shortlist automático)."""
+        if self._disposed or not self._review_open or self._review_kind != "artist":
+            return
+        if not self._last_manual_query:
+            return
+        if not self._online_enabled:
+            self._review_error = "Online info is disabled"
+            self.changed.emit()
+            return
+        self._manual_search_epoch += 1
+        epoch = self._manual_search_epoch
+        session = self._review_session_id
+        kind = "artist"
+        key = self._active_key
+        self._review_loading = True
+        self._review_error = ""
+        self._artist_candidates = []
+
+        def on_result(candidates):
+            self._relay.candidates_received.emit(kind, key, session, epoch, candidates)
+
+        def on_error(error):
+            self._relay.search_error.emit(kind, key, session, epoch, error)
+
+        self._coordinator.search_artist_candidates_async(
+            self._last_manual_query, on_result, on_error, show_all=True
+        )
         self.changed.emit()
 
     @Slot(str, str)
@@ -685,6 +723,8 @@ class EnrichmentBridge(QObject):
         self._review_loading = True
         self._review_error = ""
         self._album_candidates = []
+        self._last_manual_query = title
+        self._last_manual_artist = artist_name.strip()
 
         def on_result(candidates):
             self._relay.candidates_received.emit(kind, key, session, epoch, candidates)
@@ -694,6 +734,42 @@ class EnrichmentBridge(QObject):
 
         self._coordinator.search_album_candidates_async(
             title, artist_name.strip(), on_result, on_error
+        )
+        self.changed.emit()
+
+    @Slot()
+    def search_album_show_more(self) -> None:
+        """POST-R4 E2 (12.1): show-more para la última búsqueda de
+        álbum (todos los summaries del discovery)."""
+        if self._disposed or not self._review_open or self._review_kind != "album":
+            return
+        if not self._last_manual_query:
+            return
+        if not self._online_enabled:
+            self._review_error = "Online info is disabled"
+            self.changed.emit()
+            return
+        self._manual_search_epoch += 1
+        epoch = self._manual_search_epoch
+        session = self._review_session_id
+        kind = "album"
+        key = self._active_key
+        self._review_loading = True
+        self._review_error = ""
+        self._album_candidates = []
+
+        def on_result(candidates):
+            self._relay.candidates_received.emit(kind, key, session, epoch, candidates)
+
+        def on_error(error):
+            self._relay.search_error.emit(kind, key, session, epoch, error)
+
+        self._coordinator.search_album_candidates_async(
+            self._last_manual_query,
+            self._last_manual_artist,
+            on_result,
+            on_error,
+            show_all=True,
         )
         self.changed.emit()
 

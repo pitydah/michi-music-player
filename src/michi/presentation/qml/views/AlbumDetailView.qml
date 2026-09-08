@@ -476,6 +476,7 @@ ColumnLayout {
         onAlbumSearchRequested: function (title, artistName) {
             enrichment.search_album(title, artistName)
         }
+        onSearchMoreRequested: enrichment.search_album_show_more()
         onConfirmAlbum: function (id) { enrichment.confirm_album_candidate(id) }
         onClosed: enrichment.close_review()
     }

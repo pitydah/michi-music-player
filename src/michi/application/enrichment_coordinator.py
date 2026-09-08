@@ -406,12 +406,16 @@ class EnrichmentCoordinator:
         artist_name: str,
         on_result: ResultCallback,
         on_error: ErrorCallback | None = None,
+        show_all: bool = False,
     ) -> bool:
         """Returns True when the job was accepted; False when the
         coordinator is shutting down. Provider failures reach
-        ``on_error`` — never an empty success."""
+        ``on_error`` — never an empty success. ``show_all`` (POST-R4 E2)
+        lista todos los summaries del discovery para el review manual."""
         return self._submit_if_running(
-            lambda: self._search_artist_worker(artist_name, on_result, on_error)
+            lambda: self._search_artist_worker(
+                artist_name, on_result, on_error, show_all
+            )
         )
 
     def search_album_candidates_async(
@@ -420,10 +424,11 @@ class EnrichmentCoordinator:
         artist_name: str,
         on_result: ResultCallback,
         on_error: ErrorCallback | None = None,
+        show_all: bool = False,
     ) -> bool:
         return self._submit_if_running(
             lambda: self._search_album_worker(
-                album_title, artist_name, on_result, on_error
+                album_title, artist_name, on_result, on_error, show_all
             )
         )
 
@@ -432,9 +437,10 @@ class EnrichmentCoordinator:
         artist_name: str,
         on_result: ResultCallback,
         on_error: ErrorCallback | None,
+        show_all: bool = False,
     ) -> None:
         try:
-            on_result(self._search_artist_candidates_sync(artist_name))
+            on_result(self._search_artist_candidates_sync(artist_name, show_all))
         except EnrichmentProviderError as exc:
             if on_error is not None:
                 on_error(exc)
@@ -447,9 +453,14 @@ class EnrichmentCoordinator:
         artist_name: str,
         on_result: ResultCallback,
         on_error: ErrorCallback | None,
+        show_all: bool = False,
     ) -> None:
         try:
-            on_result(self._search_album_candidates_sync(album_title, artist_name))
+            on_result(
+                self._search_album_candidates_sync(
+                    album_title, artist_name, show_all
+                )
+            )
         except EnrichmentProviderError as exc:
             if on_error is not None:
                 on_error(exc)
@@ -457,7 +468,7 @@ class EnrichmentCoordinator:
                 logger.warning("async album search failed: %s", exc)
 
     def _search_artist_candidates_sync(
-        self, artist_name: str
+        self, artist_name: str, show_all: bool = False
     ) -> tuple[ArtistIdentityCandidateView, ...]:
         if not self._enabled():
             return ()
@@ -481,6 +492,19 @@ class EnrichmentCoordinator:
             local_artist_key="", local_artist_name=artist_name
         )
         candidates = self._resolver.find_artist_candidates(evidence)
+        if show_all:
+            # POST-R4 E2 (12.1 show-more): el review manual muestra TODOS
+            # los summaries del discovery (paginables en la UI), sin
+            # hydratar discografías — el usuario examina candidatos más
+            # allá del shortlist automático.
+            return tuple(
+                ArtistIdentityCandidateView(
+                    external_artist_id=c.external_artist_id,
+                    display_name=c.canonical_name,
+                    disambiguation=c.disambiguation,
+                )
+                for c in candidates
+            )
         # POST-R4 E1: la vista de búsqueda manual muestra el shortlist
         # finalista (sin hydratar discografías para listar).
         finalists = self._resolver.rank_artist_candidates(candidates, evidence)
@@ -494,7 +518,7 @@ class EnrichmentCoordinator:
         )
 
     def _search_album_candidates_sync(
-        self, album_title: str, artist_name: str
+        self, album_title: str, artist_name: str, show_all: bool = False
     ) -> tuple[AlbumIdentityCandidateView, ...]:
         if not self._enabled():
             return ()
@@ -520,6 +544,18 @@ class EnrichmentCoordinator:
             local_album_artist_name=artist_name,
         )
         candidates = self._resolver.find_release_group_candidates(evidence)
+        if show_all:
+            # POST-R4 E2 (12.1 show-more): todos los summaries del
+            # discovery para el review manual.
+            return tuple(
+                AlbumIdentityCandidateView(
+                    external_release_group_id=c.release_group_id,
+                    display_title=c.title,
+                    artist_credit=", ".join(c.artist_credit_names),
+                    year=c.first_release_year,
+                )
+                for c in candidates
+            )
         return tuple(
             AlbumIdentityCandidateView(
                 external_release_group_id=c.release_group_id,
