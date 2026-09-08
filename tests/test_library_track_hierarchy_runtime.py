@@ -203,11 +203,6 @@ class TestHeaderRowAlignment:
         from PySide6.QtCore import QObject
 
         bars = root.findChildren(QObject)
-        hbar = None
-        for child in bars:
-            if child.property("objectName") == "trackTableHorizontalScrollBar":
-                hbar = child
-                break
         # deslizar el contenido horizontal: los anchors del header al
         # content del ListView hacen que el header acompañe al row
         # (OverlayHeader + contenido ancho).
