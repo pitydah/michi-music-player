@@ -139,7 +139,7 @@ class UrllibHttpTransport(HttpTransportPort):
                 f"provider request failed for {request.url}: {exc}"
             ) from exc
         try:
-            body = self._read_bounded(response)
+            body = self._read_bounded(response, request.max_response_bytes)
             status = getattr(response, "status", None)
             if not isinstance(status, int):
                 status = response.getcode()
@@ -163,12 +163,16 @@ class UrllibHttpTransport(HttpTransportPort):
         )
 
     @staticmethod
-    def _read_bounded(response) -> bytes:
+    def _read_bounded(response, max_bytes: int) -> bytes:
         """R1.1: EVERY body-read failure (TimeoutError, OSError,
         http.client.IncompleteRead, other transport-read errors) is
         normalized to EnrichmentTransportError and participates in the
         same bounded retry policy. Invalid JSON / oversized bodies /
-        unsafe redirects / validation failures are NOT transport errors."""
+        unsafe redirects / validation failures are NOT transport errors.
+
+        POST-R4 P10 (13.6): el límite es POR REQUEST
+        (request.max_response_bytes): JSON 8 MiB por defecto, requests de
+        imagen 10 MiB explícito."""
         chunks: list[bytes] = []
         total = 0
         try:
@@ -177,7 +181,7 @@ class UrllibHttpTransport(HttpTransportPort):
                 if not chunk:
                     break
                 total += len(chunk)
-                if total > MAX_PROVIDER_BODY_BYTES:
+                if total > max_bytes:
                     # R1.2: oversized is NOT a transport failure — never
                     # transient, never retried, never stale-eligible.
                     raise EnrichmentResponseLimitError(

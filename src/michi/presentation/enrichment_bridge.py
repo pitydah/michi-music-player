@@ -81,6 +81,7 @@ _TERMINAL_STATES = {
 }
 
 _MAX_PORTRAIT_PREFETCH_INFLIGHT = 2
+_MAX_ARTIST_PORTRAITS = 512
 _MAX_PORTRAIT_PREFETCH_QUEUE = 12
 
 
@@ -243,7 +244,12 @@ class EnrichmentBridge(QObject):
         self._album_has_knowledge = False
         self._album_artwork_path = ""
         self._album_attributions: list = []
-        self._artist_portraits: dict[str, str] = {}
+        # POST-R4 P10: proyección de portraits BOUNDED (LRU determinístico
+        # de _MAX_ARTIST_PORTRAITS): un dict ilimitado crecería con cada
+        # artista visto en la sesión.
+        from collections import OrderedDict
+
+        self._artist_portraits: OrderedDict[str, str] = OrderedDict()
         self._portrait_prefetch_queue: list[str] = []
         self._portrait_prefetch_inflight: set[str] = set()
         self._portrait_prefetch_attempted: set[str] = set()
@@ -863,6 +869,10 @@ class EnrichmentBridge(QObject):
             or event.state is EnrichmentOperationState.PARTIAL
         ):
             self._reload_active_cached()
+            # POST-R4 P10 (13.3): el commit de knowledge/identity del
+            # enrich activo MUTA el cache: la proyección pasiva se
+            # invalida por la señal semántica (nunca el changed genérico).
+            self.enrichmentCacheInvalidated.emit()
         elif event.state is EnrichmentOperationState.CANCELLED:
             self._state = "CANCELLED"
             self._state_message = "Operation cancelled"
@@ -955,6 +965,20 @@ class EnrichmentBridge(QObject):
                 self._set_artist_portrait(
                     key, self._artwork_path_for(profile.artwork_asset_id)
                 )
+            # SUCCESS: la knowledge cacheada gobierna las próximas
+            # admisiones (sin red); el intento ya no bloquea nada.
+            self._portrait_prefetch_attempted.discard(key)
+        elif event.state in (
+            EnrichmentOperationState.FAILED,
+            EnrichmentOperationState.CANCELLED,
+        ):
+            # POST-R4 P10 (13.1): TRANSIENT_FAILURE / CANCELLED →
+            # reintento permitido. Un único timeout NO puede condenar al
+            # artista por el resto de la sesión.
+            self._portrait_prefetch_attempted.discard(key)
+        # NOT_FOUND / OFFLINE: outcome terminal de sesión (el artista no
+        # existe en la fuente, o la política offline): cooldown largo vía
+        # el registro de intentos (se limpia al reactivar el online).
         self._pump_portrait_prefetch()
 
     # ------------------------------------------------------------------
@@ -984,7 +1008,10 @@ class EnrichmentBridge(QObject):
     def _set_artist_portrait(self, key: str, path: str) -> None:
         if not path or self._artist_portraits.get(key) == path:
             return
-        self._artist_portraits = {**self._artist_portraits, key: path}
+        self._artist_portraits[key] = path
+        self._artist_portraits.move_to_end(key)
+        while len(self._artist_portraits) > _MAX_ARTIST_PORTRAITS:
+            self._artist_portraits.popitem(last=False)  # LRU: evict el viejo
         self.changed.emit()
 
     def _pump_portrait_prefetch(self) -> None:

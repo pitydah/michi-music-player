@@ -806,9 +806,11 @@ class ApplicationContainer:
             service=self._enrichment.service,
             asset_store=self._enrichment.asset_store,
         )
-        self._eb.changed.connect(self._library_enrichment.invalidate)
-        # M6.9 REOPENED: el bulk Library Enrichment Job invalida la
-        # projection con coalescing (nunca una tormenta de updates).
+        # POST-R4 P10 (13.3): la proyección pasiva se invalida SOLO con la
+        # señal semántica de cache mutation (commits de knowledge/assets,
+        # clear/reset, bulk job coalesced) — NUNCA con el changed genérico
+        # del bridge (loading/busy/review/candidates/texto de estado no
+        # tocan el cache y no deben re-proyectar los browse).
         self._eb.enrichmentCacheInvalidated.connect(self._library_enrichment.invalidate)
 
         # Library/settings coordination: restore last_directory, sync on scan

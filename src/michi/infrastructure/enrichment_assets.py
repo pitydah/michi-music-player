@@ -291,7 +291,13 @@ class FilesystemEnrichmentAssetStore(EnrichmentAssetStorePort):
     def path_for(self, asset_id: str) -> Path | None:
         """Resolve through the MANIFEST only: a file merely existing on
         disk is never enough. Returns the managed object path when the
-        manifest is valid AND the referenced object exists."""
+        manifest is valid, the referenced object exists AND its content
+        still matches the recorded checksum.
+
+        POST-R4 P10 (13.5): un archivo corrompido DESPUÉS de guardarse no
+        se proyecta como válido (checksum verificado en la lectura); el
+        asset queda inválido y la política normal de re-obtención puede
+        recuperarlo."""
         if not _validate_asset_id(asset_id):
             return None
         record = self.record_for(asset_id)
@@ -300,7 +306,14 @@ class FilesystemEnrichmentAssetStore(EnrichmentAssetStorePort):
         if not _OBJECT_NAME_PATTERN.fullmatch(record.managed_object):
             return None
         target = self._root / record.managed_object
-        return target if target.is_file() else None
+        if not target.is_file():
+            return None
+        try:
+            if _sha256(target.read_bytes()) != record.checksum:
+                return None  # contenido corrompido: inválido, no proyectar
+        except OSError:
+            return None
+        return target
 
     def clear(self) -> None:
         """Delete manifests AND objects (including unreferenced orphans);

@@ -315,12 +315,18 @@ class EnrichmentAssetStorePort(ABC):
 
 @dataclass(frozen=True)
 class HttpRequest:
-    """Immutable enrichment HTTP request (M6.9B). GET only for M6.9."""
+    """Immutable enrichment HTTP request (M6.9B). GET only for M6.9.
+
+    POST-R4 P10 (13.6): ``max_response_bytes`` distingue los contratos de
+    tamaño — JSON normal de provider = 8 MiB por defecto; las requests de
+    imagen fijan explícitamente su techo (10 MiB). Nunca una única
+    constante global para contratos distintos."""
 
     url: str
     method: str = "GET"
     headers: tuple[tuple[str, str], ...] = ()
     timeout_seconds: float = 10.0
+    max_response_bytes: int = 8 * 1024 * 1024
 
 
 @dataclass(frozen=True)

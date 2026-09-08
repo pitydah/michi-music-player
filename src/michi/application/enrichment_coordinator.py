@@ -921,7 +921,14 @@ class EnrichmentCoordinator:
             if not cover.image_url:
                 return profile, partial or cover.is_stale
             partial = partial or cover.is_stale
-            response = self._transport.get(HttpRequest(url=cover.image_url))
+            # POST-R4 P10 (13.6): download de imagen con techo EXPLÍCITO
+            # de 10 MiB (el default de 8 MiB es para respuestas JSON).
+            response = self._transport.get(
+                HttpRequest(
+                    url=cover.image_url,
+                    max_response_bytes=10 * 1024 * 1024,
+                )
+            )
         except (EnrichmentProviderError, ValueError):
             return profile, True
         entity_id = profile.release_id or profile.release_group_id
