@@ -89,9 +89,38 @@ PathView {
     }
     onCurrentIndexChanged: if (browseState) {
         browseState.flowIndex = currentIndex
-        if (currentAlbum)
+        if (!browseReconcileInProgress && currentAlbum)
             browseState.remember(currentAlbum.key)
     }
+
+    // POST-R4 P6: la autoridad del browse es la KEY del álbum — el
+    // índice SIEMPRE es la proyección del currentKey en el modelo
+    // vigente. Sort/filter/search/scan cambian el modelo: si el álbum
+    // sigue existiendo, el índice se resuelve de nuevo; si ya no
+    // existe, la selección se limpia (posición determinística segura,
+    // nunca un salto a otro álbum).
+    function reconcileBrowseKey() {
+        if (!browseState || !albumModel)
+            return
+        if (browseState.currentKey === "")
+            return
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === browseState.currentKey) {
+                albumsPath.currentIndex = i
+                return
+            }
+        }
+        browseState.currentKey = ""
+        browseState.flowIndex = -1
+        if (albumModel.length > 0) {
+            albumsPath.browseReconcileInProgress = true
+            albumsPath.currentIndex = 0
+            albumsPath.browseReconcileInProgress = false
+        }
+        albumsPath.contentY = 0
+    }
+    onAlbumModelChanged: if ( browseState && browseState.currentKey !== "")
+        Qt.callLater(function() { albumsPath.reconcileBrowseKey() })
 
     Rectangle {
         anchors.fill: parent

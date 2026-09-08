@@ -40,6 +40,9 @@ GridView {
     }
     property real albumZoom: 1.0
     property var browseState: null
+    // POST-R4 P6: el reconcile por key no debe re-grabar la key del
+    // índice determinístico (el clear sería inmediatamente pisado).
+    property bool browseReconcileInProgress: false
     property string spacingMode: "balanced"
     property string metadataLevel: "standard"
     property bool quickActions: true
@@ -111,9 +114,39 @@ GridView {
     onContentYChanged: if (browseState) browseState.galleryContentY = contentY
     onCurrentIndexChanged: if (browseState) {
         browseState.galleryIndex = currentIndex
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (!browseReconcileInProgress && currentIndex >= 0
+                && currentIndex < albumModel.length)
             browseState.remember(albumModel[currentIndex].key)
     }
+
+    // POST-R4 P6: la autoridad del browse es la KEY del álbum — el
+    // índice SIEMPRE es la proyección del currentKey en el modelo
+    // vigente. Sort/filter/search/scan cambian el modelo: si el álbum
+    // sigue existiendo, el índice se resuelve de nuevo; si ya no
+    // existe, la selección se limpia (posición determinística segura,
+    // nunca un salto a otro álbum).
+    function reconcileBrowseKey() {
+        if (!browseState || !albumModel)
+            return
+        if (browseState.currentKey === "")
+            return
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === browseState.currentKey) {
+                albumGrid.currentIndex = i
+                return
+            }
+        }
+        browseState.currentKey = ""
+        browseState.galleryIndex = -1
+        if (albumModel.length > 0) {
+            albumGrid.browseReconcileInProgress = true
+            albumGrid.currentIndex = 0
+            albumGrid.browseReconcileInProgress = false
+        }
+        albumGrid.contentY = 0
+    }
+    onAlbumModelChanged: if (albumGrid.layoutReady && browseState && browseState.currentKey !== "")
+        Qt.callLater(function() { albumGrid.reconcileBrowseKey() })
 
     Keys.onReturnPressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)

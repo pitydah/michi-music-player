@@ -42,6 +42,9 @@ ListView {
     property string sortMode: "title"
     property bool sortDescending: false
     property var browseState: null
+    // POST-R4 P6: el reconcile por key no debe re-grabar la key del
+    // índice determinístico (el clear sería inmediatamente pisado).
+    property bool browseReconcileInProgress: false
     property var viewPreferences: ({})
     signal sortRequested(string mode)
     readonly property var columnPlan: resolveColumnPlan(width, viewPreferences)
@@ -110,9 +113,39 @@ ListView {
     onContentYChanged: if (browseState) browseState.listContentY = contentY
     onCurrentIndexChanged: if (browseState) {
         browseState.listIndex = currentIndex
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (!browseReconcileInProgress && currentIndex >= 0
+                && currentIndex < albumModel.length)
             browseState.remember(albumModel[currentIndex].key)
     }
+
+    // POST-R4 P6: la autoridad del browse es la KEY del álbum — el
+    // índice SIEMPRE es la proyección del currentKey en el modelo
+    // vigente. Sort/filter/search/scan cambian el modelo: si el álbum
+    // sigue existiendo, el índice se resuelve de nuevo; si ya no
+    // existe, la selección se limpia (posición determinística segura,
+    // nunca un salto a otro álbum).
+    function reconcileBrowseKey() {
+        if (!browseState || !albumModel)
+            return
+        if (browseState.currentKey === "")
+            return
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === browseState.currentKey) {
+                root.currentIndex = i
+                return
+            }
+        }
+        browseState.currentKey = ""
+        browseState.listIndex = -1
+        if (albumModel.length > 0) {
+            root.browseReconcileInProgress = true
+            root.currentIndex = 0
+            root.browseReconcileInProgress = false
+        }
+        root.contentY = 0
+    }
+    onAlbumModelChanged: if ( browseState && browseState.currentKey !== "")
+        Qt.callLater(function() { root.reconcileBrowseKey() })
 
     header: AlbumTableHeader {
         width: root.width

@@ -130,13 +130,46 @@ Item {
         albumZoom = zoomForMode(preferences, albumMode)
     }
 
+    // POST-R4 P6: deep-merge de preferencias persistidas contra el
+    // schema ACTUAL — secciones ausentes reciben defaults, overrides
+    // existentes se preservan y las keys desconocidas se descartan
+    // (una instalación V1 sin flow/vinyl/chronology/editorial/studioList
+    // carga sin properties undefined).
+    function deepMergePreferences(stored, defaults) {
+        var merged = JSON.parse(JSON.stringify(defaults))
+        if (!stored || typeof stored !== "object")
+            return merged
+        var rootKeys = ["activeMode", "sortMode", "sortDescending", "filterMode"]
+        for (var r = 0; r < rootKeys.length; ++r) {
+            if (typeof stored[rootKeys[r]] !== "undefined")
+                merged[rootKeys[r]] = stored[rootKeys[r]]
+        }
+        for (var section in defaults) {
+            var defaultSection = defaults[section]
+            if (!defaultSection || typeof defaultSection !== "object")
+                continue
+            var storedSection = stored[section]
+            if (!storedSection || typeof storedSection !== "object")
+                continue
+            for (var key in defaultSection) {
+                if (typeof storedSection[key] !== "undefined")
+                    merged[section][key] = storedSection[key]
+            }
+        }
+        return merged
+    }
+
     function loadViewPreferences() {
         if (typeof settingsBridge === "undefined" || !settingsBridge)
             return
         try {
             var parsed = JSON.parse(settingsBridge.libraryViews)
-            viewPreferences = parsed
-            applyViewPreferences(parsed)
+            // POST-R4 P6: nunca `viewPreferences = parsed` directo — el
+            // deep-merge con defaults + validación da a las secciones
+            // ausentes sus valores por defecto.
+            viewPreferences = deepMergePreferences(
+                parsed, defaultViewPreferences())
+            applyViewPreferences(viewPreferences)
             // LIB-A P1-A/P1-B: el estado de columnas y la autoridad de
             // query del álbum se restauran SIN emitir configurationChanged
             // (hydration — nunca un loop de persistencia).

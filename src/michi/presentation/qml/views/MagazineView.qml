@@ -105,6 +105,28 @@ Item {
             browseState.remember(key)
     }
 
+    // POST-R4 P6: la autoridad del browse es la KEY del álbum — el
+    // índice editorial se re-resuelve cuando cambia el modelo.
+    function reconcileBrowseKey() {
+        if (!browseState || !albumModel)
+            return
+        if (browseState.currentKey === "")
+            return
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === browseState.currentKey) {
+                rovingIndex = i
+                positionRoving()
+                return
+            }
+        }
+        browseState.currentKey = ""
+        browseState.editorialIndex = -1
+        rovingIndex = 0
+        positionRoving()
+    }
+    onAlbumModelChanged: if (browseState && browseState.currentKey !== "")
+        Qt.callLater(function() { root.reconcileBrowseKey() })
+
     function positionRoving() {
         if (rovingIndex < 7) {
             albumMagazine.positionViewAtBeginning()
