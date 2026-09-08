@@ -38,6 +38,7 @@ DEFAULT_TIMEOUT_SECONDS = 10.0
 # Host allowlist: exact hosts or ".suffix" entries (any subdomain).
 _ALLOWED_HOSTS = (
     "musicbrainz.org",
+    ".listenbrainz.org",
     "www.wikidata.org",
     ".wikipedia.org",
     "commons.wikimedia.org",

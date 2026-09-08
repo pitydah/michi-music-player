@@ -83,6 +83,9 @@ from michi.infrastructure.enrichment_knowledge import (
     WikimediaCommonsProvider,
     WikipediaBiographyProvider,
 )
+from michi.infrastructure.enrichment_listenbrainz import (
+    ListenBrainzSupplementalProvider,
+)
 from michi.infrastructure.enrichment_musicbrainz import MusicBrainzIdentityResolver
 from michi.infrastructure.enrichment_provider_cache import FilesystemProviderCache
 from michi.infrastructure.enrichment_repository import SqliteEnrichmentRepository
@@ -219,6 +222,7 @@ def _build_enrichment_graph(
     wikipedia = WikipediaBiographyProvider(transport, cache)
     commons = WikimediaCommonsProvider(transport, cache)
     coverart = CoverArtArchiveProvider(transport, cache)
+    listenbrainz = ListenBrainzSupplementalProvider(transport, cache)
     hint_extractor = MutagenIdentityHintExtractor()
     evidence_builder = LibraryEnrichmentEvidenceBuilder(hint_extractor)
     executor = ThreadPoolEnrichmentExecutor(max_workers=2)
@@ -235,6 +239,7 @@ def _build_enrichment_graph(
         executor=executor,
         transport=transport,
         enabled=enabled,
+        lb_supplemental=listenbrainz,
     )
     return EnrichmentGraph(
         coordinator=coordinator,

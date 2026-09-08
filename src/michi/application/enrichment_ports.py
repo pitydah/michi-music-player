@@ -34,6 +34,8 @@ from michi.domain.enrichment import (
     ExternalIdentityHints,
     ReleaseEditionCandidate,
     ReleaseGroupCandidate,
+    SupplementalAlbumKnowledge,
+    SupplementalArtistKnowledge,
     WikidataArtistClaims,
 )
 
@@ -412,6 +414,25 @@ class MusicBrainzKnowledgeProviderPort(ABC):
     def fetch_release_group(
         self, local_album_key: str, release_group_id: str, release_id: str = ""
     ) -> AlbumKnowledgeProfile: ...
+
+
+class ListenBrainzSupplementalProviderPort(ABC):
+    """R4 §22C: ListenBrainz supplementary metadata (post-MBID only).
+
+    Never an identity authority; never a resolver; never writes listens.
+    MBID metadata endpoints must stay usable without a user token. If an
+    endpoint starts requiring auth, fail optional-provider-only — core
+    enrichment must stay usable."""
+
+    @abstractmethod
+    def fetch_artist_metadata(
+        self, artist_mbid: str
+    ) -> SupplementalArtistKnowledge: ...
+
+    @abstractmethod
+    def fetch_release_group_metadata(
+        self, release_group_mbid: str
+    ) -> SupplementalAlbumKnowledge: ...
 
 
 class WikidataKnowledgeProviderPort(ABC):

@@ -769,6 +769,13 @@ class ArtistKnowledgeProfile:
     wikidata_provenance: KnowledgeProvenance = field(
         default_factory=KnowledgeProvenance
     )
+    # R4 §22C: ListenBrainz suplementario (post-MBID; nunca identidad,
+    # nunca canónico). Provenance propia por provider.
+    listenbrainz_tags: tuple[str, ...] = ()
+    listenbrainz_popularity_percent: int = 0
+    listenbrainz_provenance: KnowledgeProvenance = field(
+        default_factory=KnowledgeProvenance
+    )
 
 
 @dataclass(frozen=True)
@@ -792,6 +799,12 @@ class AlbumKnowledgeProfile:
     label: str = ""
     artwork_asset_id: str = ""
     provenance: KnowledgeProvenance = field(default_factory=KnowledgeProvenance)
+    # R4 §22C: ListenBrainz suplementario (post-RGID; nunca canónico).
+    listenbrainz_tags: tuple[str, ...] = ()
+    listenbrainz_popularity_percent: int = 0
+    listenbrainz_provenance: KnowledgeProvenance = field(
+        default_factory=KnowledgeProvenance
+    )
 
     def __post_init__(self) -> None:
         if not self.release_id and (self.release_year or self.label):
@@ -1205,7 +1218,16 @@ def _decode_profile(
     return model(**kwargs)
 
 
+_ALBUM_OPTIONAL_FIELDS = {
+    "listenbrainz_tags",
+    "listenbrainz_popularity_percent",
+    "listenbrainz_provenance",
+}
+
 _ARTIST_OPTIONAL_FIELDS = {
+    "listenbrainz_tags",
+    "listenbrainz_popularity_percent",
+    "listenbrainz_provenance",
     "sort_name",
     "artist_type",
     "area",
@@ -1244,4 +1266,27 @@ def decode_album_profile(raw: str) -> AlbumKnowledgeProfile | None:
         _ALBUM_INT_FIELDS,
         _ALBUM_TUPLE_FIELDS,
         _NESTED_PROVENANCE_FIELDS,
+        _ALBUM_OPTIONAL_FIELDS,
     )
+
+
+@dataclass(frozen=True)
+class SupplementalArtistKnowledge:
+    """ListenBrainz supplementary payload for a RESOLVED artist MBID.
+
+    Post-identity only: never used to resolve or mutate identity; tags
+    are external community context (never canonical local genres)."""
+
+    tags: tuple[str, ...] = ()
+    popularity_percent: int = 0
+    provenance: KnowledgeProvenance = field(default_factory=KnowledgeProvenance)
+
+
+@dataclass(frozen=True)
+class SupplementalAlbumKnowledge:
+    """ListenBrainz supplementary payload for a RESOLVED release-group
+    MBID (post-identity only)."""
+
+    tags: tuple[str, ...] = ()
+    popularity_percent: int = 0
+    provenance: KnowledgeProvenance = field(default_factory=KnowledgeProvenance)
