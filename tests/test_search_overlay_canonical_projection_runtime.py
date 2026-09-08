@@ -307,7 +307,6 @@ class TestTrackActivationTrackId:
         cero activate(index), cero mutaciones de Queue."""
         world, view, overlay = _overlay_all_five(tmp_path)
         try:
-            lb = world["lb"]
             calls = world["playback_coordinator"].calls
             first_track_id = world["library"].visible_tracks()[0].track_id
             assert first_track_id, "track id real"
