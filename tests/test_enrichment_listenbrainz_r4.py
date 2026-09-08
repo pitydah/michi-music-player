@@ -30,19 +30,23 @@ from michi.infrastructure.enrichment_listenbrainz import (  # noqa: E402
     LB_API_ROOT,
     ListenBrainzSupplementalProvider,
     _parse_tags,
+    _provider_url,
 )
 
 
 class _StaticTransport:
     """Devuelve el payload configurado (sin red real)."""
 
-    def __init__(self, payload=None, status=200):
+    def __init__(self, payload=None, status=200, error=None):
         self._payload = payload if payload is not None else {}
         self._status = status
+        self._error = error
         self.request_urls = []
 
     def get(self, request):
         self.request_urls.append(request.url)
+        if self._error is not None:
+            raise self._error
         if self._status >= 400:
             raise RuntimeError(f"http {self._status}")
         return _FakeResponse(self._payload)
@@ -51,6 +55,8 @@ class _StaticTransport:
 class _FakeResponse:
     def __init__(self, payload):
         self.body = _json_bytes(payload)
+        self.headers = {}
+        self.status_code = 200
 
     @property
     def status(self):
@@ -162,3 +168,92 @@ class TestCoordinatorMerge:
         stored = repository.load_artist_profile("artist a")
         assert stored is not None, "el fallo del LB opcional no impide el perfil de MB"
         assert stored.listenbrainz_tags == ()
+
+
+class TestStaleProvenanceP11:
+    """POST-R4 P11: el estado stale del fallback del cache se proyecta en
+    la provenance — fresh cache → fresh; stale fallback → stale."""
+
+    def _provider_with_cache(self, tmp_path, state):
+        from michi.infrastructure.enrichment_provider_cache import (
+            FilesystemProviderCache,
+        )
+        from michi.application.enrichment_ports import HttpResponse
+
+        cache = FilesystemProviderCache(tmp_path / "cache", clock=lambda: state["now"])
+        cache.put(
+            "listenbrainz_artist_metadata",
+            _provider_url("artist", "mb-art-1"),
+            HttpResponse(
+                200,
+                {},
+                _json_bytes(_ARTIST_PAYLOAD),
+                _provider_url("artist", "mb-art-1"),
+            ),
+            ttl_seconds=3600,
+        )
+        return cache
+
+    def test_fresh_cache_is_fresh(self, qapp, tmp_path):
+        from michi.infrastructure.enrichment_provider_cache import (
+            FilesystemProviderCache,
+        )
+        from michi.application.enrichment_ports import HttpResponse
+
+        state = {"now": 1000.0}
+        cache = FilesystemProviderCache(tmp_path / "cache", clock=lambda: state["now"])
+        cache.put(
+            "listenbrainz_artist_metadata",
+            _provider_url("artist", "mb-art-1"),
+            HttpResponse(
+                200,
+                {},
+                _json_bytes(_ARTIST_PAYLOAD),
+                _provider_url("artist", "mb-art-1"),
+            ),
+            ttl_seconds=3600,
+        )
+        # cache vigente + transporte que fallaría si se llamara
+        transport = _StaticTransport(_ARTIST_PAYLOAD)
+        provider = ListenBrainzSupplementalProvider(transport=transport, cache=cache)
+        supplement = provider.fetch_artist_metadata("mb-art-1")
+        assert supplement.provenance.is_stale is False, "cache fresh → fresh"
+        assert transport.request_urls == [], "cache hit sin red"
+
+    def test_stale_fallback_is_marked_stale(self, qapp, tmp_path):
+        from michi.infrastructure.enrichment_provider_cache import (
+            FilesystemProviderCache,
+        )
+        from michi.application.enrichment_ports import (
+            EnrichmentTransportError,
+            HttpResponse,
+        )
+
+        state = {"now": 1000.0}
+        cache = FilesystemProviderCache(tmp_path / "cache", clock=lambda: state["now"])
+        cache.put(
+            "listenbrainz_artist_metadata",
+            _provider_url("artist", "mb-art-1"),
+            HttpResponse(
+                200,
+                {},
+                _json_bytes(_ARTIST_PAYLOAD),
+                _provider_url("artist", "mb-art-1"),
+            ),
+            ttl_seconds=3600,
+        )
+
+        class _OfflineTransport:
+            def get(self, request):
+                raise EnrichmentTransportError("offline")
+
+        state["now"] = 9000.0  # entrada expirada
+
+        provider = ListenBrainzSupplementalProvider(
+            transport=_OfflineTransport(), cache=cache
+        )
+        supplement = provider.fetch_artist_metadata("mb-art-1")
+        assert supplement.tags == ("jazz", "modal-jazz"), "fallback stale"
+        assert supplement.provenance.is_stale is True, (
+            "el fallback stale se proyecta como stale (nunca fresh)"
+        )
