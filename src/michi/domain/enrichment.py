@@ -1290,3 +1290,10 @@ class SupplementalAlbumKnowledge:
     tags: tuple[str, ...] = ()
     popularity_percent: int = 0
     provenance: KnowledgeProvenance = field(default_factory=KnowledgeProvenance)
+
+
+# POST-R4 E1: la normalización de identidad es la autoridad del matching
+# (el gate del resolve y el shortlist del resolver usan EXACTAMENTE la
+# misma norma — un rank con norma divergente filtraría candidatos que el
+# dominio aceptaría o hidrataría los que rechaza).
+normalize_identity_text = _normalize_identity_text

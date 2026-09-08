@@ -120,6 +120,28 @@ class ExternalIdentityResolverPort(ABC):
         self, evidence: ArtistIdentityEvidence
     ) -> tuple[ArtistCandidate, ...]: ...
 
+    def rank_artist_candidates(
+        self,
+        candidates: tuple[ArtistCandidate, ...],
+        evidence: ArtistIdentityEvidence,
+    ) -> tuple[ArtistCandidate, ...]:
+        """POST-R4 E1 — shortlist por evidencia barata (sin discografía).
+
+        Implementación por defecto: identity — los fakes y resolvers
+        legacy que ya entregan candidatos finales no cambian de
+        comportamiento. El resolver productivo filtra por la misma norma
+        de nombre del dominio y desempata por hints locales de MBID."""
+        return candidates
+
+    def hydrate_artist_candidates(
+        self, candidates: tuple[ArtistCandidate, ...]
+    ) -> tuple[ArtistCandidate, ...]:
+        """POST-R4 E1 — hydration acotada del shortlist finalista.
+
+        Default: identity (los fakes ya traen su evidencia). El resolver
+        productivo descarga la discografía SOLO para los finalistas."""
+        return candidates
+
     @abstractmethod
     def find_release_group_candidates(
         self, evidence: AlbumIdentityEvidence

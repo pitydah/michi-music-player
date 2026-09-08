@@ -38,6 +38,9 @@ from michi.domain.enrichment import (
     ReleaseGroupCandidate,
     dedupe_identity_ids,
 )
+from michi.domain.enrichment import (
+    normalize_identity_text as _normalize_identity_text,
+)
 from michi.infrastructure.enrichment_http import (
     MusicBrainzRateLimiter,
     ProviderRequestExecutor,
@@ -193,6 +196,13 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
     def find_artist_candidates(
         self, evidence: ArtistIdentityEvidence
     ) -> tuple[ArtistCandidate, ...]:
+        """POST-R4 E1 — DISCOVERY phase: candidate SUMMARIES baratos.
+
+        Fetch 25 artist results and parse ALL of them (no first-five
+        truncation before any local evidence): a correct candidate at raw
+        position 6+ stays eligible. Expensive discography hydration never
+        happens here — `rank_artist_candidates` +
+        `hydrate_artist_candidates` run AFTER local scoring."""
         escaped = escape_musicbrainz_lucene(evidence.local_artist_name)
         url = _musicbrainz_query_url(
             "artist/",
@@ -202,7 +212,7 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
         payload = self._get_json(url, "musicbrainz_search")
         artists = _require_list(payload, "artists")
         candidates: list[ArtistCandidate] = []
-        for raw in artists[:MAX_ARTIST_CANDIDATES]:
+        for raw in artists:
             if not isinstance(raw, dict):
                 continue  # candidate-local malformed: skip only this one
             try:
@@ -211,21 +221,79 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
                 disambiguation = _optional_str(raw, "disambiguation")
             except EnrichmentProviderError:
                 continue  # candidate-local malformed: skip only this one
-            # R1 FALSE-UNIQUENESS GATE: a support-evidence (album browse)
-            # failure ABORTS the whole resolution — it must never make a
-            # failed candidate disappear and fake uniqueness.
-            known_albums = self._known_albums_for(external_id)
+            # NO hydration here: known_albums stays empty until the
+            # shortlist is decided (bounded network contract §11.3).
             candidates.append(
                 ArtistCandidate(
                     external_artist_id=external_id,
                     canonical_name=name,
                     disambiguation=disambiguation,
-                    known_albums=known_albums,
+                    known_albums=(),
                 )
             )
         # Deterministic: external ID ascending (provider order/score is
         # never identity authority).
         return tuple(sorted(candidates, key=lambda c: c.external_artist_id))
+
+    def rank_artist_candidates(
+        self,
+        candidates: tuple[ArtistCandidate, ...],
+        evidence: ArtistIdentityEvidence,
+    ) -> tuple[ArtistCandidate, ...]:
+        """POST-R4 E1 — shortlist con evidencia BARATA (sin discografía).
+
+        El gate de elegibilidad del dominio es el nombre normalizado
+        exacto; la discografía remota solo decide entre finalistas. Los
+        candidatos cuyo nombre no matchea jamás ganan el resolve: no se
+        hidratan. Orden determinístico por id externo."""
+        local_name = _normalize_identity_text(evidence.local_artist_name)
+        if not local_name:
+            return ()
+        finalists = [
+            c
+            for c in candidates
+            if _normalize_identity_text(c.canonical_name) == local_name
+        ]
+        # Los hints locales de MBID desempatan sin hidratar: si un
+        # finalista lleva el id sugerido localmente, es el único que
+        # necesita evidencia discográfica.
+        hinted = [
+            c
+            for c in finalists
+            if c.external_artist_id
+            in dedupe_identity_ids(evidence.identity_hints.artist_ids)
+        ]
+        if hinted:
+            return tuple(sorted(hinted, key=lambda c: c.external_artist_id))
+        # Bound del shortlist (11.3): la hydratación cara se acota a
+        # MAX_ARTIST_CANDIDATES finalistas determinísticos — el límite se
+        # aplica DESPUÉS del ranking por nombre, nunca antes (el correcto
+        # en la posición 6+ con nombre exacto sigue siendo elegible).
+        return tuple(
+            sorted(finalists, key=lambda c: c.external_artist_id)[
+                :MAX_ARTIST_CANDIDATES
+            ]
+        )
+
+    def hydrate_artist_candidates(
+        self, candidates: tuple[ArtistCandidate, ...]
+    ) -> tuple[ArtistCandidate, ...]:
+        """POST-R4 E1 — hydration SOLO del shortlist finalista.
+
+        La discografía (release-group browse, bounded) se descarga
+        únicamente para los candidatos que sobrevivieron al ranking
+        barato — nunca 5 × browse por resolver una entidad."""
+        hydrated: list[ArtistCandidate] = []
+        for candidate in candidates:
+            hydrated.append(
+                ArtistCandidate(
+                    external_artist_id=candidate.external_artist_id,
+                    canonical_name=candidate.canonical_name,
+                    disambiguation=candidate.disambiguation,
+                    known_albums=self._known_albums_for(candidate.external_artist_id),
+                )
+            )
+        return tuple(hydrated)
 
     def _known_albums_for(self, artist_id: str) -> tuple[LocalAlbumEvidence, ...]:
         """M6.9 REOPENED: release-group browse with the REAL contract.

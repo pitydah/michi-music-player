@@ -464,13 +464,16 @@ class EnrichmentCoordinator:
             local_artist_key="", local_artist_name=artist_name
         )
         candidates = self._resolver.find_artist_candidates(evidence)
+        # POST-R4 E1: la vista de búsqueda manual muestra el shortlist
+        # finalista (sin hydratar discografías para listar).
+        finalists = self._resolver.rank_artist_candidates(candidates, evidence)
         return tuple(
             ArtistIdentityCandidateView(
                 external_artist_id=c.external_artist_id,
                 display_name=c.canonical_name,
                 disambiguation=c.disambiguation,
             )
-            for c in candidates
+            for c in finalists
         )
 
     def _search_album_candidates_sync(
