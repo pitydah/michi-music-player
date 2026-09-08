@@ -879,12 +879,17 @@ class TestPlayPauseButtonGolden:
                 QApplication.processEvents(QEventLoop.AllEvents, 20)
                 time.sleep(0.01)
 
-        # STOPPED → click → play exactly once
+        # POST-R4 P12: load_and_play dejó el backend físicamente PLAYING
+        # con media aceptada y el canónico STOPPED (el evento PLAYING del
+        # backend aún no llegó al modelo). El primer click NO re-emite un
+        # play() redundante: el sistema CONVERGE al canónico PLAYING con
+        # la evidencia del estado físico.
         click()
         assert audio.state == "playing"
-        assert commands == ["play"]
-        assert playback._intent is True
-        # backend truth → PLAYING → button shows pause (icon)
+        assert commands == [], "sin play redundante: el estado físico ya era PLAYING"
+        assert playback._state.status is PlaybackStatus.PLAYING
+        assert pb.status == "playing"
+        # backend truth confirmada → button shows pause (icon)
         playback._on_playback_state_changed(PlaybackStatus.PLAYING)
         assert pb.status == "playing"
         assert _by_name(window, "nowPlayingBar").property("status") == "playing"
@@ -894,7 +899,7 @@ class TestPlayPauseButtonGolden:
         # PLAYING → click → pause exactly once
         click()
         assert audio.state == "paused"
-        assert commands == ["play", "pause"]
+        assert commands == ["pause"]
         playback._on_playback_state_changed(PlaybackStatus.PAUSED)
         assert pb.status == "paused"
         assert _by_name(window, "nowPlayingBar").property("status") == "paused"
@@ -902,13 +907,13 @@ class TestPlayPauseButtonGolden:
         # PAUSED → click → resume exactly once (NOT play)
         click()
         assert audio.state == "playing"
-        assert commands == ["play", "pause", "resume"]
+        assert commands == ["pause", "resume"]
         playback._on_playback_state_changed(PlaybackStatus.PLAYING)
         assert pb.status == "playing"
         # and the cycle continues
         click()
         assert audio.state == "paused"
-        assert commands == ["play", "pause", "resume", "pause"]
+        assert commands == ["pause", "resume", "pause"]
         window.close()
         pb.dispose()
         bridge.dispose()

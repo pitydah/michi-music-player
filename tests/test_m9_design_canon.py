@@ -527,13 +527,19 @@ def test_audio_surfaces_share_a_semantic_table_header() -> None:
 
 
 def test_album_table_header_and_rows_share_responsive_columns() -> None:
+    """POST-R4 P5: header y row consumen UNA autoridad de métricas
+    (AlbumListColumnMetrics) — prohibido recalcular por lado."""
     header = _text("media/AlbumTableHeader.qml")
     row = _text("media/MichiAlbumRow.qml")
+    metrics = _text("theme/AlbumListColumnMetrics.qml")
     for source in (header, row):
-        assert "titleColumnRatio" in source
+        assert "AlbumListColumnMetrics.titleWidth(" in source
+        assert "AlbumListColumnMetrics.artistWidth(" in source
         assert "titleColumnWidth" in source
         assert "artistColumnWidth" in source
-        assert "Layout.minimumWidth: 150" in source
+    assert "function titleWidth" in metrics
+    assert "function artistWidth" in metrics
+    assert "function artworkWidth" in metrics
 
 
 def test_queue_respects_the_player_and_quality_status_is_not_duplicated() -> None:

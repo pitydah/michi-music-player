@@ -272,8 +272,11 @@ class TestSearchParity:
 
     def test_search_overlay_has_no_library_fallback_for_playlists(self):
         overlay = (QML_DIR / "patterns" / "SearchOverlay.qml").read_text()
-        start = overlay.index("var playlistIndex")
-        end = overlay.index("    }\n", start)  # close of activateResult
+        # POST-R4 P1: la rama playlist del activateResult (por la
+        # autoridad de offsets) abre la ruta PLAYLISTS — sin fallback a
+        # Library en el mismo branch.
+        start = overlay.index('if (kind === "playlist") {')
+        end = overlay.index("    }\n", start)  # close of the branch
         branch = overlay[start:end]
         assert "open_playlist" in branch
         assert 'navigationRequested("library")' not in branch

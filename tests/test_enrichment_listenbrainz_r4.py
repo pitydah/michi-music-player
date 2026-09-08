@@ -175,10 +175,10 @@ class TestStaleProvenanceP11:
     la provenance — fresh cache → fresh; stale fallback → stale."""
 
     def _provider_with_cache(self, tmp_path, state):
+        from michi.application.enrichment_ports import HttpResponse
         from michi.infrastructure.enrichment_provider_cache import (
             FilesystemProviderCache,
         )
-        from michi.application.enrichment_ports import HttpResponse
 
         cache = FilesystemProviderCache(tmp_path / "cache", clock=lambda: state["now"])
         cache.put(
@@ -195,10 +195,10 @@ class TestStaleProvenanceP11:
         return cache
 
     def test_fresh_cache_is_fresh(self, qapp, tmp_path):
+        from michi.application.enrichment_ports import HttpResponse
         from michi.infrastructure.enrichment_provider_cache import (
             FilesystemProviderCache,
         )
-        from michi.application.enrichment_ports import HttpResponse
 
         state = {"now": 1000.0}
         cache = FilesystemProviderCache(tmp_path / "cache", clock=lambda: state["now"])
@@ -221,12 +221,12 @@ class TestStaleProvenanceP11:
         assert transport.request_urls == [], "cache hit sin red"
 
     def test_stale_fallback_is_marked_stale(self, qapp, tmp_path):
-        from michi.infrastructure.enrichment_provider_cache import (
-            FilesystemProviderCache,
-        )
         from michi.application.enrichment_ports import (
             EnrichmentTransportError,
             HttpResponse,
+        )
+        from michi.infrastructure.enrichment_provider_cache import (
+            FilesystemProviderCache,
         )
 
         state = {"now": 1000.0}

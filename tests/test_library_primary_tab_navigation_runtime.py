@@ -18,16 +18,13 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
-from PySide6.QtCore import QCoreApplication, QObject, QUrl  # noqa: E402
 from PySide6.QtQml import QQmlComponent, QQmlEngine  # noqa: E402
 
 from tests.test_search_overlay_canonical_projection_runtime import (  # noqa: E402
     _five_category_world,
 )
 
-QML_DIR = (
-    Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
-)
+QML_DIR = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
 
 
 @pytest.fixture(scope="module")
@@ -110,9 +107,7 @@ class TestPrimaryTabNavigation:
         _pump()
         assert view.property("currentTab") == "albums"
 
-    def test_artist_detail_to_favorites_clears_artist_selection(
-        self, tmp_path, qapp
-    ):
+    def test_artist_detail_to_favorites_clears_artist_selection(self, tmp_path, qapp):
         world = _mount_library_view(tmp_path)
         lb = world["lb"]
         view = world["view"]
@@ -143,7 +138,7 @@ class TestPrimaryTabNavigation:
         _pump()
         assert view.property("currentTab") == "artists"
 
-    def test_toolbar_routes_through_requestTab(self, tmp_path, qapp):
+    def test_toolbar_routes_through_request_tab(self, tmp_path, qapp):
         """El toolbar consume requestTab — nunca vuelve a escribir
         root.currentTab directamente."""
         src = (QML_DIR / "views" / "LibraryView.qml").read_text(

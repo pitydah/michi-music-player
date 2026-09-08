@@ -1265,9 +1265,9 @@ class TestF42AdapterContract:
         # STATE_CHANGED en el pump y del commit de estado del owner — para
         # localizar la divergencia física/canónica de playback. CERO cambio
         # de semántica de transporte.
-        "src/michi/infrastructure/audio_engines/mpd.py": "c1a0b47f5e2da0fa",
+        "src/michi/infrastructure/audio_engines/mpd.py": "c1a0b47f5e2da0fa",  # noqa: E501
         "src/michi/infrastructure/audio_engines/gstreamer.py": "fc7a6efa1be5808b",
-        "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # POST-R4 P12: backend_state()
+        "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
         "src/michi/application/audio_transport_router.py": "a02c67e2b0dbaf75",
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
@@ -1294,9 +1294,9 @@ class TestF42AdapterContract:
         # library seals (ArtworkCachePort.lookup/invalidate persisted cache)
         # with main's playlists/views/audio contracts (R3-02 playlists port
         # docstring, PlaylistPaletteExtractorPort). Semantic audit: zero
-        # methods lost vs either side, zero duplicates. Hash re-sealed after
+        # methods lost vs either side, zero duplicates. Hash re-sealed after  # noqa: E501
         # validation — audio/transport semantics untouched.
-        "src/michi/application/ports.py": "117cad75c1e07462",  # POST-R4 P12: AudioPort.backend_state default
+        "src/michi/application/ports.py": "117cad75c1e07462",  # noqa: E501
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.

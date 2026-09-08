@@ -40,6 +40,9 @@ PathView {
     }
     property real albumZoom: 1.0
     property var browseState: null
+    // POST-R4 P6: el reconcile por key no debe re-grabar la key del
+    // índice determinístico (el clear sería inmediatamente pisado).
+    property bool browseReconcileInProgress: false
     property string visibleAlbums: "auto"
     property string depthMode: "standard"
     property bool ambientColor: true

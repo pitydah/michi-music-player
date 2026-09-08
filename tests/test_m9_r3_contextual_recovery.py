@@ -222,7 +222,8 @@ def test_genre_activation_navigates_to_visible_track_surface() -> None:
     Songs (la proyección filtrada del Bridge es el resultado visible) —
     el usuario nunca queda en Genres sin respuesta. Oracle R4 restaurado."""
     library_view = _qml("views/LibraryView.qml")
-    assert 'function onGenre_selected(_genreKey) { root.currentTab = "songs" }' in (
+    # POST-R4 P2: la convergencia del genre pasa por requestTab
+    assert 'function onGenre_selected(_genreKey) { root.requestTab("songs") }' in (
         library_view
     ), "genre_selected navega a la superficie de tracks filtrados"
 
