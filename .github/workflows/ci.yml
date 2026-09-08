@@ -123,9 +123,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq qt6-base-dev qt6-multimedia-dev \
-            libqt6multimedia6 libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev \
-            libqt6quickcontrols2-6 libqt6quicktemplates2-6 libqt6quickeffects6 \
-            qml6-module-qtquick-effects
+            libqt6multimedia6 libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev
       - name: Install project + test deps (minimum PySide6 6.5.0)
         run: |
           pip install -e ".[test]"
