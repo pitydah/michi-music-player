@@ -658,6 +658,23 @@ def _shutdown_audio_runtime(router, engine_service, registry) -> None:
 class ApplicationContainer:
     """Creates and owns all long-lived components. Explicit wiring only."""
 
+    def _managed_album_artwork(self, album_key: str) -> str:
+        """POST-R4 P10 (13.4): managed external cached artwork para el
+        row canónico del álbum — perfil de enrichment con asset + archivo
+        válido del asset store. Fail-open: el enrichment jamás rompe la
+        librería."""
+        enrichment = self._enrichment
+        if enrichment is None:
+            return ""
+        try:
+            profile = enrichment.service.get_album_knowledge(album_key)
+            if profile is None or not profile.artwork_asset_id:
+                return ""
+            path = enrichment.asset_store.path_for(profile.artwork_asset_id)
+            return str(path) if path is not None else ""
+        except Exception:
+            return ""
+
     def __init__(self) -> None:
         self._app: QGuiApplication | None = None
         self._engine: QQmlApplicationEngine | None = None
@@ -954,6 +971,10 @@ class ApplicationContainer:
         self._qb = qb
         self._psb = psb
         self._lb = lb
+        # POST-R4 P10 (13.4): la política de artwork (managed external
+        # cached sobre el vacío local) vive en el row canónico del bridge;
+        # el enrichment se inyecta SIN acoplar el LibraryBridge al módulo.
+        self._lb.set_artwork_override_resolver(self._managed_album_artwork)
         self._plb = plb
         self._nb = nb
         self._sb = sb
