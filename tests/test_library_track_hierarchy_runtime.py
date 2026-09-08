@@ -149,18 +149,13 @@ def _walk_all(obj, predicate):
 
 
 class TestHeaderRowAlignment:
-    """HIER-03 tracking: la geometría del contenido NO tiene columnas
-    fantasma; la alineación fina del texto título (header vs row) mostró
-    un drift residual de ~5px en los layouts internos — registrado como
-    hallazgo del gate (fix de producto pendiente: la tolerancia del plan
-    es ±1px)."""
+    """HIER-03 tracking: header y row consumen la MISMA geometría de
+    columnas — el drift residual quedó cerrado por el fix estructural del
+    TrackRow (absorbedor final del espacio sobrante, análogo al
+    headerEmptyRegion del header): ±1px en 900/1200/1600 y en las
+    posiciones de scroll horizontal (start/middle/end)."""
 
-    @pytest.mark.parametrize("width", [900, 1200, 1600])
-    def test_content_geometry_measured(self, qapp, width):
-        """El drift header/row se MIDE y se reporta: si supera la
-        tolerancia del plan (±1px), este test falla — hoy documenta el
-        drift residual para que el fix del producto lo cierre."""
-        view, root = _mount(qapp, width)
+    def _measure_drift(self, root):
         header = _walk(
             root,
             lambda c: "ResizableTrackHeader" in c.metaObject().className(),
@@ -185,14 +180,60 @@ class TestHeaderRowAlignment:
         )
         assert title_text is not None
         row_x = float(title_text.mapToScene(_QPointF(0, 0)).x())
-        # Gate del plan: ±1px. El drift residual (~5px a 1200/1600) está
-        # registrado como hallazgo HIER-03: falla por diseño hasta el fix
-        # del layout del producto (el ancho 900 se alinea hoy).
-        drift = abs(header_x - row_x)
-        if width == 900:
-            assert drift <= 1.0, f"drift a 900px: {drift:.1f}"
+        title_text_w = float(title_text.width())
+        header_w = float(title_cell.width())
+        return abs(header_x - row_x), abs(header_w - title_text_w)
+
+    @pytest.mark.parametrize("width", [900, 1200, 1600])
+    def test_content_geometry_measured(self, qapp, width):
+        """Drift header/row <= ±1px en 900/1200/1600 — cero xfail (el
+        defecto HIER-03 está corregido en el producto)."""
+        view, root = _mount(qapp, width)
+        x_drift, w_drift = self._measure_drift(root)
+        assert x_drift <= 1.0, f"drift x a {width}px: {x_drift:.1f}"
+        assert w_drift <= 1.0, f"drift width a {width}px: {w_drift:.1f}"
+        view.close()
+
+    @pytest.mark.parametrize("width", [900, 1200, 1600])
+    def test_content_geometry_aligned_through_horizontal_scroll(self, qapp, width):
+        """El mismo gate con scroll horizontal: el contenido de la tabla
+        (tableContentWidth > viewport) se desplaza y header/row siguen
+        alineados en start/middle/end."""
+        view, root = _mount(qapp, width)
+        from PySide6.QtCore import QObject
+
+        bars = root.findChildren(QObject)
+        hbar = None
+        for child in bars:
+            if child.property("objectName") == "trackTableHorizontalScrollBar":
+                hbar = child
+                break
+        # deslizar el contenido horizontal: los anchors del header al
+        # content del ListView hacen que el header acompañe al row
+        # (OverlayHeader + contenido ancho).
+        list_view = None
+        for child in bars:
+            if child.property("objectName") == "michiTrackTable":
+                list_view = child
+                break
+        assert list_view is not None
+        content_w = float(list_view.property("contentWidth"))
+        viewport_w = float(list_view.width())
+        positions = []
+        if content_w > viewport_w:
+            positions = [0.0, (content_w - viewport_w) / 2, content_w - viewport_w]
         else:
-            pytest.xfail(f"HIER-03: drift residual {drift:.1f}px a {width}px")
+            positions = [0.0]
+        for pos in positions:
+            list_view.setProperty("contentX", float(pos))
+            QTest.qWait(60)
+            x_drift, w_drift = self._measure_drift(root)
+            assert x_drift <= 1.0, (
+                f"drift x a {width}px contentX={pos:.0f}: {x_drift:.1f}"
+            )
+            assert w_drift <= 1.0, (
+                f"drift width a {width}px contentX={pos:.0f}: {w_drift:.1f}"
+            )
         view.close()
 
     @pytest.mark.parametrize("width", [900, 1200, 1600])
