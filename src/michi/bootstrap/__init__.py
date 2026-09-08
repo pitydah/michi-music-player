@@ -978,6 +978,13 @@ class ApplicationContainer:
         # POST-R4 E2 (12.4): la elección persistida del usuario (image
         # picker) alimenta la política del row canónico.
         self._lb.set_artwork_choice_provider(self._settings.album_artwork_source)
+        # POST-R4 E2 (auditoría): REACTIVIDAD — la elección persiste y
+        # re-proyecta INMEDIATAMENTE (la señal del settings repinta la
+        # proyección canónica: Gallery/Studio/Flow/Detail cambian sin
+        # esperar otro evento de librería).
+        sb.albumArtworkSourceChanged.connect(
+            lambda _album_key: self._lb.library_changed.emit()
+        )
         self._plb = plb
         self._nb = nb
         self._sb = sb

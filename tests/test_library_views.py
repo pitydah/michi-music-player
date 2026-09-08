@@ -1163,3 +1163,83 @@ class TestArtworkUserChoicePolicy:
             )
         finally:
             bridge.dispose()
+
+
+class TestArtworkChoiceReactivity:
+    """POST-R4 E2 (auditoría): la elección persistida re-proyecta
+    INMEDIATAMENTE a través del wiring productivo (la señal del settings
+    bridge repinta el LibraryBridge) — el test NUNCA emite
+    library_changed a mano."""
+
+    def _world_with_wiring(self, tmp_path):
+        """Bridge + settings con el MISMO wiring del bootstrap: la señal
+        albumArtworkSourceChanged del settings bridge repinta el lb."""
+        from michi.application.settings_service import SettingsService
+        from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+        from michi.presentation.settings_bridge import SettingsBridge
+
+        paths = [tmp_path / "a1.mp3"]
+        for p in paths:
+            p.write_bytes(b"x")
+        provider = FakeArtworkProvider(
+            artwork=Artwork(b"x", "image/png")
+        )
+        cache = FakeArtworkCache()
+        library, *_, session = _make_library(
+            FakeScanner(paths),
+            FakeExtractor(factory=_album_genre_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        bridge = _bridge_with_coordinator(library, session)
+        settings = SettingsService(
+            SQLiteSettingsRepository.open_for_startup(tmp_path / "settings.db")
+        )
+        sb = SettingsBridge(settings)
+        # el wiring productivo (bootstrap): la elección repinta el bridge.
+        sb.albumArtworkSourceChanged.connect(
+            lambda _key: bridge.library_changed.emit()
+        )
+        bridge.set_artwork_override_resolver(
+            lambda album_key: "/managed/external.jpg"
+        )
+        bridge.set_artwork_choice_provider(settings.album_artwork_source)
+        return bridge, sb
+
+    def test_choice_changes_row_immediately(self, tmp_path):
+        bridge, sb = self._world_with_wiring(tmp_path)
+        try:
+            key = bridge.property("albums")[0]["key"]
+            local_path = bridge.property("albums")[0]["artworkPath"]
+            assert local_path, "el álbum tiene arte local"
+            # elegir External: la persistencia + la señal re-proyectan
+            sb.set_album_artwork_source(key, "external")
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == "/managed/external.jpg", (
+                "el row cambia INMEDIATAMENTE tras la elección (sin "
+                "library_changed sintético del test)"
+            )
+            # "Automatic" (source "") restaura la default local
+            sb.set_album_artwork_source(key, "")
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == local_path, (
+                "Automatic devuelve el local inmediatamente"
+            )
+            # la elección persiste a través del reinicio del settings
+            sb.set_album_artwork_source(key, "external")
+            from michi.application.settings_service import SettingsService
+            from michi.infrastructure.sqlite_settings import (
+                SQLiteSettingsRepository,
+            )
+
+            reloaded = SettingsService(
+                SQLiteSettingsRepository.open_for_startup(
+                    tmp_path / "settings.db"
+                )
+            )
+            assert reloaded.album_artwork_source(key) == "external", (
+                "tras reiniciar, External sigue seleccionado"
+            )
+        finally:
+            bridge.dispose()

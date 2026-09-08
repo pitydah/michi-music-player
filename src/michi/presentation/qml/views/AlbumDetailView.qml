@@ -14,23 +14,6 @@ ColumnLayout {
     property var inspectedTrack: null
     property int inspectedIndex: -1
 
-// POST-R4 E2 (12.4): el hero respeta la elección persistida
-// del usuario (image picker) sobre la política default.
-function detailArtworkPath() {
-    var local = library.albumArtwork.length > 0
-        ? library.albumArtwork : ""
-    var external = enrichment.albumArtworkPath.length > 0
-        ? enrichment.albumArtworkPath : ""
-    var choice = typeof settingsBridge !== "undefined"
-        && settingsBridge ? settingsBridge.album_artwork_source(
-            library.selectedAlbumKey) : ""
-    if (choice === "local")
-        return local
-    if (choice === "external")
-        return external.length > 0 ? external : local
-    return local.length > 0 ? local : external
-}
-
     function _albumIndexFor(row) {
         for (var i = 0; i < library.albumTracks.length; ++i) {
             if (library.albumTracks[i].path === row.path)
@@ -178,7 +161,11 @@ function detailArtworkPath() {
 
             Artwork {
                 id: heroArtwork
-                sourcePath: root.detailArtworkPath()
+                // POST-R4 E2 (auditoría): UNA autoridad — el hero consume
+                // la proyección canónica efectiva del bridge (choice del
+                // usuario + local + external), nunca reconstruye la
+                // precedencia localmente.
+                sourcePath: root.albumFacts.artworkPath
                 fallbackText: library.albumTitle
                 Layout.preferredWidth: Math.min(232, Math.max(164, root.width * .19))
                 Layout.preferredHeight: Layout.preferredWidth
