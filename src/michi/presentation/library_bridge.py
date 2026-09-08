@@ -87,6 +87,7 @@ class LibraryBridge(QObject):
         # gestionado (enrichment cache) — el bridge no depende del módulo
         # de enrichment; recibe una función key -> path ("" = sin arte).
         self._artwork_override_resolver = None
+        self._artwork_choice_provider = None
         self._selected_album_key: str = ""
         self._selected_album: AlbumRef | None = None
         self._album_track_refs: list[TrackRef] = []
@@ -460,6 +461,22 @@ class LibraryBridge(QObject):
         externo gestionado (composition root del bootstrap)."""
         self._artwork_override_resolver = resolver
 
+    def set_artwork_choice_provider(self, provider) -> None:
+        """POST-R4 E2 (12.4): inyección de la elección PERSISTIDA del
+        usuario por álbum (album_key -> ""|"local"|"external"). Sin
+        provider, la política default aplica (local gana, el external
+        llena los vacíos)."""
+        self._artwork_choice_provider = provider
+
+    def _artwork_choice(self, album_key: str) -> str:
+        if self._artwork_choice_provider is None:
+            return ""
+        try:
+            choice = str(self._artwork_choice_provider(album_key) or "")
+            return choice if choice in ("local", "external") else ""
+        except Exception:
+            return ""
+
     def _managed_external_artwork(self, album_key: str) -> str:
         """POST-R4 P10 (13.4): managed external cached artwork para una
         key de álbum. El resolver es opcional y fail-open: cualquier
@@ -486,15 +503,21 @@ class LibraryBridge(QObject):
         local_artwork = self._service.artwork_path_for(album.key) or ""
         # POST-R4 P10 (13.4): UNA política en el row canónico que todas
         # las superficies consumen (Gallery/Flow/Wall/Chronology/Editorial/
-        # Studio/Inspector): el user/local artwork (embedded + folder.jpg
-        # del usuario) GANA; el managed external cached (enrichment) llena
-        # SOLO los álbumes sin arte local — nunca pisa una portada
-        # existente (12.4); el fallback (inicial QML) para los sin nada.
-        managed_external = ""
-        if not local_artwork:
-            managed_external = self._managed_external_artwork(album.key)
-        artwork_path = managed_external or local_artwork
-        has_artwork = bool(managed_external) or album.has_artwork
+        # Studio/Inspector):
+        #   1. elección explícita del usuario (image picker, 12.4):
+        #      "external" muestra la portada oficial aunque exista arte
+        #      local; "local" la fija al arte del usuario;
+        #   2. sin elección: el user/local artwork (embedded + folder.jpg)
+        #      GANA; el managed external cached llena SOLO los álbumes sin
+        #      arte local — nunca pisa una portada existente;
+        #   3. el fallback (inicial QML) para los que no tienen nada.
+        choice = self._artwork_choice(album.key)
+        managed_external = self._managed_external_artwork(album.key)
+        external_effective = ""
+        if choice == "external" or choice != "local" and not local_artwork:
+            external_effective = managed_external
+        artwork_path = external_effective or local_artwork
+        has_artwork = bool(external_effective) or album.has_artwork
         self._album_artwork_paths[album.key] = artwork_path
         return {
             "key": album.key,
@@ -510,7 +533,7 @@ class LibraryBridge(QObject):
             "composers": list(album.composers),
             "hasArtwork": has_artwork,
             "artworkPath": artwork_path,
-            "artworkManagedExternal": bool(managed_external),
+            "artworkManagedExternal": bool(external_effective),
             "artworkPalette": self._album_palette(album.key),
             "year": album.year,
             "technicalState": facts.state.name.lower(),

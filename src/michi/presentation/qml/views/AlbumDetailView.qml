@@ -159,14 +159,53 @@ ColumnLayout {
             anchors.fill: parent
             spacing: MichiSpacing.xl
 
+            // POST-R4 E2 (12.4): el hero respeta la elección persistida
+            // del usuario (image picker) sobre la política default.
+            function detailArtworkPath() {
+                var local = library.albumArtwork.length > 0
+                    ? library.albumArtwork : ""
+                var external = enrichment.albumArtworkPath.length > 0
+                    ? enrichment.albumArtworkPath : ""
+                var choice = typeof settingsBridge !== "undefined"
+                    && settingsBridge ? settingsBridge.album_artwork_source(
+                        library.selectedAlbumKey) : ""
+                if (choice === "local")
+                    return local
+                if (choice === "external")
+                    return external.length > 0 ? external : local
+                return local.length > 0 ? local : external
+            }
             Artwork {
-                sourcePath: library.albumArtwork.length > 0
-                    ? library.albumArtwork : enrichment.albumArtworkPath
+                id: heroArtwork
+                sourcePath: root.detailArtworkPath()
                 fallbackText: library.albumTitle
                 Layout.preferredWidth: Math.min(232, Math.max(164, root.width * .19))
                 Layout.preferredHeight: Layout.preferredWidth
                 Layout.alignment: Qt.AlignTop
                 requestedSize: 512
+            }
+            // POST-R4 E2 (12.4): acceso al picker cuando existe arte local
+            // o la portada oficial cacheada.
+            MichiIconButton {
+                visible: enrichment.albumArtworkPath.length > 0
+                    || library.albumArtwork.length > 0
+                anchors.left: heroArtwork.right
+                anchors.top: heroArtwork.top
+                anchors.leftMargin: MichiSpacing.sm
+                width: MichiMetrics.controlSmall
+                height: MichiMetrics.controlSmall
+                iconName: "image"
+                accessibleName: qsTr("Choose artwork source")
+                onClicked: {
+                    artworkDialog.albumTitle = library.albumTitle
+                    artworkDialog.localPath = library.albumArtwork
+                    artworkDialog.externalPath = enrichment.albumArtworkPath
+                    artworkDialog.currentSource = typeof settingsBridge
+                        !== "undefined" && settingsBridge
+                        ? settingsBridge.album_artwork_source(
+                            library.selectedAlbumKey) : ""
+                    artworkDialog.open()
+                }
             }
 
             ColumnLayout {
@@ -479,5 +518,17 @@ ColumnLayout {
         onSearchMoreRequested: enrichment.search_album_show_more()
         onConfirmAlbum: function (id) { enrichment.confirm_album_candidate(id) }
         onClosed: enrichment.close_review()
+    }
+
+    // POST-R4 E2 (12.4): image picker — la elección se persiste en el
+    // settings y la política del row canónico (todas las superficies) y
+    // el hero la respetan. "Automatic" (source "") restaura la default.
+    ArtworkSourceDialog {
+        id: artworkDialog
+        onSourceChosen: function (source) {
+            if (typeof settingsBridge !== "undefined" && settingsBridge)
+                settingsBridge.set_album_artwork_source(
+                    library.selectedAlbumKey, source)
+        }
     }
 }

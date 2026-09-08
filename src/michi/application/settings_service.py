@@ -66,6 +66,31 @@ class SettingsService:
             self.state.audio_engine_id = previous
             raise
 
+    def set_album_artwork_source(self, album_key: str, source: str) -> None:
+        """POST-R4 E2 (12.4): persiste la fuente de artwork elegida por
+        el usuario para un álbum ("local"/"external"/"" = quitar la
+        elección). Misma verdad transaccional que set_audio_engine: un
+        save fallido restaura el estado anterior."""
+        album_key = (album_key or "").strip()
+        source = (source or "").strip()
+        if source not in ("local", "external", ""):
+            return
+        previous = dict(self.state.album_artwork_source)
+        if source:
+            self.state.album_artwork_source[album_key] = source
+        else:
+            self.state.album_artwork_source.pop(album_key, None)
+        if self.state.album_artwork_source == previous:
+            return
+        try:
+            self.save()
+        except Exception:
+            self.state.album_artwork_source = previous
+            raise
+
+    def album_artwork_source(self, album_key: str) -> str:
+        return self.state.album_artwork_source.get(album_key, "")
+
     def set_online_enrichment(self, enabled: bool) -> None:
         """Persist the Online Library Enrichment policy (M6.9 Presentation).
 

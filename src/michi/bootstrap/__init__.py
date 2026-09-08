@@ -975,6 +975,9 @@ class ApplicationContainer:
         # cached sobre el vacío local) vive en el row canónico del bridge;
         # el enrichment se inyecta SIN acoplar el LibraryBridge al módulo.
         self._lb.set_artwork_override_resolver(self._managed_album_artwork)
+        # POST-R4 E2 (12.4): la elección persistida del usuario (image
+        # picker) alimenta la política del row canónico.
+        self._lb.set_artwork_choice_provider(self._settings.album_artwork_source)
         self._plb = plb
         self._nb = nb
         self._sb = sb

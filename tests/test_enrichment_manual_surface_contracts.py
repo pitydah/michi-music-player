@@ -111,3 +111,89 @@ class TestAuditableCandidates:
             "el candidato del review lleva su provider"
         )
         assert '"externalArtistId": c.external_artist_id' in bridge_src
+
+
+class TestArtworkSourceDialog:
+    """POST-R4 E2 (12.4): el image picker muestra los candidatos reales
+    con preview + fuente; los strings visibles son traducibles."""
+
+    def _load(self, local_path, external_path, current=""):
+
+        from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+        from tests.test_m9_r1j_playlist_interactions import _process
+
+        engine = QQmlEngine()
+        engine.addImportPath(str(QML))
+        comp = QQmlComponent(
+            engine, str(QML / "enrichment" / "ArtworkSourceDialog.qml")
+        )
+        assert comp.status() == QQmlComponent.Ready, [
+            e.toString() for e in comp.errors()
+        ]
+        obj = comp.create()
+        assert obj is not None
+        engine._held = comp
+        obj.setProperty("localPath", local_path)
+        obj.setProperty("externalPath", external_path)
+        obj.setProperty("currentSource", current)
+        _process()
+        return engine, obj
+
+    def _all_texts(self, obj):
+        from PySide6.QtCore import QObject
+
+        texts = []
+        for child in obj.findChildren(QObject):
+            try:
+                t = child.property("text")
+                if isinstance(t, str) and t:
+                    texts.append(t)
+            except RuntimeError:
+                continue
+        return texts
+
+    def test_both_candidates_rendered(self, qapp):
+        engine, obj = self._load("/local/folder.jpg", "/managed/external.jpg")
+        try:
+            texts = self._all_texts(obj)
+            joined = " | ".join(texts)
+            assert "Cover Art Archive" in joined, texts
+            assert "Local artwork" in joined, texts
+            assert obj.property("objectName") == "artworkSourceDialog"
+        finally:
+            obj.deleteLater()
+            engine.deleteLater()
+
+    def test_current_external_is_marked(self, qapp):
+        from PySide6.QtCore import QObject
+
+        engine, obj = self._load(
+            "/local/folder.jpg", "/managed/external.jpg", "external"
+        )
+        try:
+            # el marcador "In use" existe para la elección vigente (el
+            # binding lo muestra cuando currentSource == external)
+            in_use = [
+                c for c in obj.findChildren(QObject) if c.property("text") == "In use"
+            ]
+            assert in_use, "la fuente vigente se marca"
+        finally:
+            obj.deleteLater()
+            engine.deleteLater()
+
+    def test_visible_strings_translated(self):
+        import re
+
+        src = _qml("enrichment/ArtworkSourceDialog.qml")
+        for raw in (
+            "Choose artwork",
+            "Cover Art Archive",
+            "Local artwork",
+            "In use",
+            "Automatic",
+            "Cancel",
+        ):
+            bare = re.findall(r'(?<!qsTr\()"' + re.escape(raw) + r'"', src)
+            assert not bare, f"raw string sin qsTr: {raw!r}"
+        assert src.count("qsTr(") >= 8

@@ -1075,6 +1075,15 @@ class SQLiteSettingsRepository(SettingsRepository):
                         "invalid persisted setting 'library_view_preferences'; "
                         "using safe field defaults"
                     )
+            elif key == "album_artwork_source":
+                state.album_artwork_source, malformed = _decode_album_artwork_source(
+                    value
+                )
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'album_artwork_source'; "
+                        "using empty defaults"
+                    )
         return state
 
     def save(self, state: SettingsState) -> None:
@@ -1090,6 +1099,16 @@ class SQLiteSettingsRepository(SettingsRepository):
             (
                 "library_view_preferences",
                 library_view_preferences_to_json(state.library_views),
+            ),
+            (
+                "album_artwork_source",
+                json.dumps(
+                    {
+                        key: value
+                        for key, value in state.album_artwork_source.items()
+                        if value in ("local", "external")
+                    }
+                ),
             ),
         ]
         # Explicit close (M5-PRODUCTION-LIFECYCLE-GATE): the with-conn only
@@ -1109,6 +1128,24 @@ def _decode_online_enrichment(raw: object) -> tuple[bool, bool]:
     if isinstance(raw, str) and raw.strip().lower() in {"true", "false"}:
         return raw.strip().lower() == "true", False
     return False, True
+
+
+def _decode_album_artwork_source(raw: object) -> tuple[dict[str, str], bool]:
+    """POST-R4 E2 (12.4): decode estricto del mapa album -> source."""
+    if not isinstance(raw, str):
+        return {}, True
+    try:
+        parsed = json.loads(raw)
+    except ValueError:
+        return {}, True
+    if not isinstance(parsed, dict):
+        return {}, True
+    valid = {
+        str(key): str(value)
+        for key, value in parsed.items()
+        if isinstance(value, str) and value in ("local", "external")
+    }
+    return valid, False
 
 
 def _decode_audio_engine_id(raw: object) -> tuple[AudioEngineId, bool]:

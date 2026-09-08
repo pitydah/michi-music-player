@@ -1069,3 +1069,97 @@ class TestManagedExternalArtworkPolicy:
             )
         finally:
             bridge.dispose()
+
+
+class TestArtworkUserChoicePolicy:
+    """POST-R4 E2 (12.4): la elección PERSISTIDA del usuario (image
+    picker) alimenta la política del row canónico: "external" muestra la
+    portada oficial aunque exista arte local; "local" la fija al arte del
+    usuario; sin elección: la default (local gana)."""
+
+    def _world(self, tmp_path, with_local_artwork):
+        paths = [tmp_path / "a1.mp3"]
+        for p in paths:
+            p.write_bytes(b"x")
+        provider = FakeArtworkProvider(
+            artwork=Artwork(b"x", "image/png") if with_local_artwork else None
+        )
+        cache = FakeArtworkCache()
+        library, *_, session = _make_library(
+            FakeScanner(paths),
+            FakeExtractor(factory=_album_genre_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        bridge = _bridge_with_coordinator(library, session)
+        return library, bridge
+
+    def test_user_choice_external_overrides_local(self, tmp_path):
+        """Con arte local presente, la elección "external" muestra la
+        portada oficial (el usuario la pidió explícitamente)."""
+        library, bridge = self._world(tmp_path, with_local_artwork=True)
+        try:
+            key = library.state.albums[0].key
+            local_path = bridge.property("albums")[0]["artworkPath"]
+            assert local_path
+            bridge.set_artwork_override_resolver(
+                lambda album_key: "/managed/external.jpg"
+            )
+            bridge.set_artwork_choice_provider(
+                lambda album_key: "external" if album_key == key else ""
+            )
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == "/managed/external.jpg", (
+                "la elección external del usuario gana sobre el local"
+            )
+            assert row["artworkManagedExternal"] is True
+        finally:
+            bridge.dispose()
+
+    def test_user_choice_external_without_external_falls_back(self, tmp_path):
+        library, bridge = self._world(tmp_path, with_local_artwork=True)
+        try:
+            key = library.state.albums[0].key
+            local_path = bridge.property("albums")[0]["artworkPath"]
+            bridge.set_artwork_choice_provider(lambda album_key: "external")
+            # sin resolver: no hay external: el local sigue visible
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == local_path
+        finally:
+            bridge.dispose()
+
+    def test_user_choice_local_never_shows_external(self, tmp_path):
+        """Elección "local" sin arte local: el external NO aparece (la
+        elección es explícita)."""
+        library, bridge = self._world(tmp_path, with_local_artwork=False)
+        try:
+            key = library.state.albums[0].key
+            bridge.set_artwork_override_resolver(
+                lambda album_key: "/managed/external.jpg"
+            )
+            bridge.set_artwork_choice_provider(lambda album_key: "local")
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == ""
+            assert row["hasArtwork"] is False
+        finally:
+            bridge.dispose()
+
+    def test_choice_provider_failure_is_fail_open(self, tmp_path):
+        library, bridge = self._world(tmp_path, with_local_artwork=False)
+        try:
+            key = library.state.albums[0].key
+            bridge.set_artwork_override_resolver(
+                lambda album_key: "/managed/external.jpg"
+            )
+
+            def broken(_key):
+                raise RuntimeError("settings exploded")
+
+            bridge.set_artwork_choice_provider(broken)
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == "/managed/external.jpg", (
+                "provider roto = política default"
+            )
+        finally:
+            bridge.dispose()

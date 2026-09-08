@@ -89,3 +89,14 @@ class SettingsBridge(QObject):
         self._service.set_library_view_preferences(preferences)
         self.libraryViewsChanged.emit()
         return True
+
+    # POST-R4 E2 (12.4): fuente de artwork elegida por álbum (image
+    # picker). El bridge expone consulta + mutación; el QML no conoce la
+    # persistencia.
+    @Slot(str, result=str)
+    def album_artwork_source(self, album_key: str) -> str:
+        return self._service.album_artwork_source(album_key)
+
+    @Slot(str, str)
+    def set_album_artwork_source(self, album_key: str, source: str) -> None:
+        self._service.set_album_artwork_source(album_key, source)

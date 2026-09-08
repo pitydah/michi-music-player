@@ -263,6 +263,11 @@ class SettingsState:
     library_views: LibraryViewPreferences = field(
         default_factory=LibraryViewPreferences
     )
+    # POST-R4 E2 (12.4): elección del usuario de la fuente de artwork por
+    # álbum — "local" | "external" | "" (sin elección: política default).
+    # El image picker persiste aquí su selección; la política del row
+    # canónico la consume.
+    album_artwork_source: dict[str, str] = field(default_factory=dict)
 
 
 def library_view_preferences_to_json(preferences: LibraryViewPreferences) -> str:
