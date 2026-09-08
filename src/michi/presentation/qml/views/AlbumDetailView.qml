@@ -164,8 +164,9 @@ ColumnLayout {
                 // POST-R4 E2 (auditoría): UNA autoridad — el hero consume
                 // la proyección canónica efectiva del bridge (choice del
                 // usuario + local + external), nunca reconstruye la
-                // precedencia localmente.
-                sourcePath: root.albumFacts.artworkPath
+                // precedencia localmente. `|| ""` cubre el contexto sin
+                // álbum seleccionado (undefined → cadena vacía).
+                sourcePath: root.albumFacts.artworkPath || ""
                 fallbackText: library.albumTitle
                 Layout.preferredWidth: Math.min(232, Math.max(164, root.width * .19))
                 Layout.preferredHeight: Layout.preferredWidth
