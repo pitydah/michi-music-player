@@ -34,14 +34,13 @@ from michi.presentation.library_bridge import LibraryBridge  # noqa: E402
 from michi.presentation.navigation_bridge import NavigationBridge  # noqa: E402
 from michi.presentation.playlists_bridge import PlaylistsBridge  # noqa: E402
 from tests.conftest import FakeAudioPort, FakeSettingsRepo  # noqa: E402
-from tests.test_library_metadata import FakeExtractor, FakeScanner  # noqa: E402
+from tests.test_library_metadata import FakeExtractor  # noqa: E402
 from tests.test_m9_r1j_playlist_interactions import (  # noqa: E402
-    _engine,
-    _load,
     _process,
-    _QmlErrors,
 )
-from tests.test_playlists import FakePlaylistsPort, _make_library_and_queue  # noqa: E402
+from tests.test_playlists import (  # noqa: E402
+    FakePlaylistsPort,
+)
 
 QML = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
 
@@ -97,9 +96,9 @@ def _five_category_world(tmp_path):
     El catálogo es REAL (SqliteLibraryCatalogRepository + scan del
     SourceScanCoordinator): los tracks llevan TrackId estables — el
     contrato TrackId del seam exige identidades reales, no vacías."""
+    from michi.application.source_scan_coordinator import SourceScanCoordinator
     from michi.infrastructure.library_catalog import SqliteLibraryCatalogRepository
     from michi.infrastructure.library_media_cache import SqliteLibraryMediaCache
-    from michi.application.source_scan_coordinator import SourceScanCoordinator
 
     paths = []
     for name in ("rock-1.mp3", "rock-2.mp3"):
