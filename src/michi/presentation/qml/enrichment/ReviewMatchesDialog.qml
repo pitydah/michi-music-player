@@ -90,8 +90,13 @@ MichiDialog {
             }
         }
 
+        // POST-R4 E2 (i18n): errorText del bridge = código estructurado
+        // ("search_failed"/"online_disabled") — la copy se traduce aquí.
         MichiText {
-            text: root.errorText
+            text: root.errorText === "search_failed"
+                ? qsTr("Could not search — please try again later")
+                : root.errorText === "online_disabled"
+                    ? qsTr("Online info is disabled") : root.errorText
             role: "secondary"
             color: MichiPalette.error
             visible: root.errorText.length > 0

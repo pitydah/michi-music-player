@@ -628,7 +628,7 @@ class TestPresentationIntentBarrier:
         knowledge.release_fetch.set()  # worker wakes -> CANCELLED (stale)
         coordinator.shutdown()
         assert self._settle(bridge) == "DISABLED"
-        assert bridge.property("stateMessage") == "Online info is disabled"
+        assert bridge.property("stateMessage") == "online_disabled"
 
     def test_fs17_clear_cancels_worker_and_profile_stays_deleted(self):
         """worker parked -> CLEAR -> worker released: the late delivery is

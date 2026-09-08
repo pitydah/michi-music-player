@@ -217,7 +217,7 @@ class TestEnrichmentComponents:
         _, root = _load_qml(engine, "enrichment/EnrichmentStatusBar.qml", "statusBar")
         assert root.property("state") == "IDLE"
         root.setProperty("state", "OFFLINE")
-        root.setProperty("message", "Offline — showing saved information")
+        root.setProperty("message", "stale")
         # SEMANTIC INTEGRATION: la autoridad declarativa de visibilidad
         # (state !== IDLE/READY) — el status bar premium de main.
         assert root.property("visible") in (True, False)

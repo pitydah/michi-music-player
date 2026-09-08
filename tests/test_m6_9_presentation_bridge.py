@@ -143,7 +143,7 @@ class TestActivationSemantics:
         bridge.activate_artist(ARTIST_A_KEY)
         process_events(8)
         assert bridge.property("state") == "DISABLED"
-        assert bridge.property("stateMessage") == "Online info is disabled"
+        assert bridge.property("stateMessage") == "online_disabled"
         assert resolver.calls == calls_before
 
     def test_activate_uncached_artist_on_runs_enrichment(self):
@@ -196,7 +196,7 @@ class TestActivationSemantics:
         assert (
             bridge.property("artistKnowledge")["biography"] == "Biography of Artist A."
         )
-        assert bridge.property("stateMessage") == "Offline — showing saved information"
+        assert bridge.property("stateMessage") == ""
 
 
 class TestArtistPortraitPrefetch:
@@ -472,7 +472,7 @@ class TestManualReview:
         bridge.open_review("artist")
         bridge.search_artist("Artist A")
         process_events(8)
-        assert bridge.property("reviewError") == "Online info is disabled"
+        assert bridge.property("reviewError") == "online_disabled"
         assert resolver.calls == calls_before
 
 

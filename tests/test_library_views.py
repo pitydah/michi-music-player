@@ -1181,9 +1181,7 @@ class TestArtworkChoiceReactivity:
         paths = [tmp_path / "a1.mp3"]
         for p in paths:
             p.write_bytes(b"x")
-        provider = FakeArtworkProvider(
-            artwork=Artwork(b"x", "image/png")
-        )
+        provider = FakeArtworkProvider(artwork=Artwork(b"x", "image/png"))
         cache = FakeArtworkCache()
         library, *_, session = _make_library(
             FakeScanner(paths),
@@ -1198,12 +1196,8 @@ class TestArtworkChoiceReactivity:
         )
         sb = SettingsBridge(settings)
         # el wiring productivo (bootstrap): la elección repinta el bridge.
-        sb.albumArtworkSourceChanged.connect(
-            lambda _key: bridge.library_changed.emit()
-        )
-        bridge.set_artwork_override_resolver(
-            lambda album_key: "/managed/external.jpg"
-        )
+        sb.albumArtworkSourceChanged.connect(lambda _key: bridge.library_changed.emit())
+        bridge.set_artwork_override_resolver(lambda album_key: "/managed/external.jpg")
         bridge.set_artwork_choice_provider(settings.album_artwork_source)
         return bridge, sb
 
@@ -1234,9 +1228,7 @@ class TestArtworkChoiceReactivity:
             )
 
             reloaded = SettingsService(
-                SQLiteSettingsRepository.open_for_startup(
-                    tmp_path / "settings.db"
-                )
+                SQLiteSettingsRepository.open_for_startup(tmp_path / "settings.db")
             )
             assert reloaded.album_artwork_source(key) == "external", (
                 "tras reiniciar, External sigue seleccionado"
