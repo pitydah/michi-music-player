@@ -49,7 +49,8 @@ MichiDialog {
                 radius: MichiRadius.md
                 color: root.currentSource === "external"
                     ? MichiSemanticColors.surfaceSelected
-                    : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
+                    : hoverExternal.hovered
+                        ? MichiSemanticColors.surfaceHover : "transparent"
                 border.width: root.currentSource === "external" ? 1 : 0
                 border.color: MichiSemanticColors.auroraCyanBorderSubtle
             }
@@ -115,7 +116,8 @@ MichiDialog {
                 radius: MichiRadius.md
                 color: root.currentSource === "local"
                     ? MichiSemanticColors.surfaceSelected
-                    : hover.hovered ? MichiSemanticColors.surfaceHover : "transparent"
+                    : hoverLocal.hovered
+                        ? MichiSemanticColors.surfaceHover : "transparent"
                 border.width: root.currentSource === "local" ? 1 : 0
                 border.color: MichiSemanticColors.auroraCyanBorderSubtle
             }

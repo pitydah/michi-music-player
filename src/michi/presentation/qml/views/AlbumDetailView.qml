@@ -14,6 +14,23 @@ ColumnLayout {
     property var inspectedTrack: null
     property int inspectedIndex: -1
 
+// POST-R4 E2 (12.4): el hero respeta la elección persistida
+// del usuario (image picker) sobre la política default.
+function detailArtworkPath() {
+    var local = library.albumArtwork.length > 0
+        ? library.albumArtwork : ""
+    var external = enrichment.albumArtworkPath.length > 0
+        ? enrichment.albumArtworkPath : ""
+    var choice = typeof settingsBridge !== "undefined"
+        && settingsBridge ? settingsBridge.album_artwork_source(
+            library.selectedAlbumKey) : ""
+    if (choice === "local")
+        return local
+    if (choice === "external")
+        return external.length > 0 ? external : local
+    return local.length > 0 ? local : external
+}
+
     function _albumIndexFor(row) {
         for (var i = 0; i < library.albumTracks.length; ++i) {
             if (library.albumTracks[i].path === row.path)
@@ -159,22 +176,6 @@ ColumnLayout {
             anchors.fill: parent
             spacing: MichiSpacing.xl
 
-            // POST-R4 E2 (12.4): el hero respeta la elección persistida
-            // del usuario (image picker) sobre la política default.
-            function detailArtworkPath() {
-                var local = library.albumArtwork.length > 0
-                    ? library.albumArtwork : ""
-                var external = enrichment.albumArtworkPath.length > 0
-                    ? enrichment.albumArtworkPath : ""
-                var choice = typeof settingsBridge !== "undefined"
-                    && settingsBridge ? settingsBridge.album_artwork_source(
-                        library.selectedAlbumKey) : ""
-                if (choice === "local")
-                    return local
-                if (choice === "external")
-                    return external.length > 0 ? external : local
-                return local.length > 0 ? local : external
-            }
             Artwork {
                 id: heroArtwork
                 sourcePath: root.detailArtworkPath()
@@ -185,27 +186,30 @@ ColumnLayout {
                 requestedSize: 512
             }
             // POST-R4 E2 (12.4): acceso al picker cuando existe arte local
-            // o la portada oficial cacheada.
-            MichiIconButton {
-                visible: enrichment.albumArtworkPath.length > 0
-                    || library.albumArtwork.length > 0
-                anchors.left: heroArtwork.right
-                anchors.top: heroArtwork.top
-                anchors.leftMargin: MichiSpacing.sm
-                width: MichiMetrics.controlSmall
-                height: MichiMetrics.controlSmall
-                iconName: "image"
-                accessibleName: qsTr("Choose artwork source")
-                onClicked: {
-                    artworkDialog.albumTitle = library.albumTitle
-                    artworkDialog.localPath = library.albumArtwork
-                    artworkDialog.externalPath = enrichment.albumArtworkPath
-                    artworkDialog.currentSource = typeof settingsBridge
-                        !== "undefined" && settingsBridge
-                        ? settingsBridge.album_artwork_source(
-                            library.selectedAlbumKey) : ""
-                    artworkDialog.open()
+            // o la portada oficial cacheada (Layout.alignment: el botón
+            // vive dentro del RowLayout del hero — nunca anchors).
+            ColumnLayout {
+                spacing: MichiSpacing.xs
+                Layout.alignment: Qt.AlignTop
+                MichiIconButton {
+                    visible: enrichment.albumArtworkPath.length > 0
+                        || library.albumArtwork.length > 0
+                    Layout.preferredWidth: MichiMetrics.controlSmall
+                    Layout.preferredHeight: MichiMetrics.controlSmall
+                    iconName: "image"
+                    accessibleName: qsTr("Choose artwork source")
+                    onClicked: {
+                        artworkDialog.albumTitle = library.albumTitle
+                        artworkDialog.localPath = library.albumArtwork
+                        artworkDialog.externalPath = enrichment.albumArtworkPath
+                        artworkDialog.currentSource = typeof settingsBridge
+                            !== "undefined" && settingsBridge
+                            ? settingsBridge.album_artwork_source(
+                                library.selectedAlbumKey) : ""
+                        artworkDialog.open()
+                    }
                 }
+                Item { Layout.fillHeight: true }
             }
 
             ColumnLayout {
