@@ -100,6 +100,19 @@ def _collect_by_object_name(root, name):
     return found
 
 
+def _open_menu(menu, wait_ms=30):
+    """Abre el Popup del menú real. PySide6 6.6 (lane Minimum-Qt) no
+    expone popup() en el metaObject del QMLTYPE; open() es el Q_INVOKABLE
+    equivalente del QQuickPopup."""
+    meta = menu.metaObject()
+    index = meta.indexOfMethod("popup()")
+    if index < 0:
+        index = meta.indexOfMethod("open()")
+    assert index >= 0, "método de apertura del Popup (popup/open)"
+    assert meta.method(index).invoke(menu)
+    QTest.qWait(wait_ms)
+
+
 def _visible_menus(root):
     return [
         child
@@ -107,6 +120,14 @@ def _visible_menus(root):
         if child.property("visible") is True
         and "Menu" in child.metaObject().className()
     ]
+
+
+def _as_dict(value):
+    """Las properties QML de tipo objeto vuelven como dict en PySide6
+    moderno y como QJSValue en los 6.6 (el lane Minimum-Qt)."""
+    if hasattr(value, "toVariant"):
+        value = value.toVariant()
+    return value
 
 
 class _AlbumLibrary(QObject):  # noqa: N815 (QML-facing properties)
@@ -216,7 +237,7 @@ class TestMagazineContextRuntime:
         assert mo.method(idx).invoke(root)
         QTest.qWait(40)
 
-        context = root.property("contextAlbum")
+        context = _as_dict(root.property("contextAlbum"))
         assert context is not None
         assert context["key"] == "album-2", "target exacto del roving"
         assert _visible_menus(root), "menú raíz abierto"
@@ -822,7 +843,7 @@ def _playlist_delegates(root):
     found = []
 
     def visit(item):
-        model = item.property("modelData")
+        model = _as_dict(item.property("modelData"))
         if isinstance(model, dict) and "trackId" in model:
             found.append(item)
         for child in item.childItems():
@@ -842,7 +863,7 @@ def _delegate_menu(delegate):
 
 
 def _delegate_for(delegate, track_id):
-    model = delegate.property("modelData")
+    model = _as_dict(delegate.property("modelData"))
     return model.get("trackId") == track_id
 
 
@@ -869,10 +890,7 @@ class TestPlaylistTrackContextRuntime:
         assert menu is not None, "menú real del row"
         assert menu.property("canQueue") is True
         # Abrir el menú real + activar la acción Queue (trigger real).
-        menu.metaObject().method(menu.metaObject().indexOfMethod("popup()")).invoke(
-            menu
-        )
-        QTest.qWait(30)
+        _open_menu(menu)
         assert menu.property("visible") is True, "menú abierto"
         self._menu_signal(menu, "queueRequested").invoke(menu)
         QTest.qWait(30)
@@ -892,7 +910,7 @@ class TestPlaylistTrackContextRuntime:
         delegate = next(
             d
             for d in _playlist_delegates(root)
-            if d.property("modelData")["path"] == "/legacy.flac"
+            if _as_dict(d.property("modelData"))["path"] == "/legacy.flac"
         )
         menu = _delegate_menu(delegate)
         assert menu is not None
@@ -931,10 +949,7 @@ class TestPlaylistTrackContextRuntime:
         menu = _delegate_menu(delegate)
         assert menu is not None
         # El menú abre (nunca deshabilitado como un todo).
-        menu.metaObject().method(menu.metaObject().indexOfMethod("popup()")).invoke(
-            menu
-        )
-        QTest.qWait(30)
+        _open_menu(menu)
         assert menu.property("visible") is True, "menú del unavailable abre"
         # Acciones inválidas son no-ops (protección del delegate).
         self._menu_signal(menu, "playNowRequested").invoke(menu)
@@ -1001,7 +1016,7 @@ class TestAlbumViewsKeyboardContextRuntime:
         assert idx >= 0, "función productiva del view"
         assert mo.method(idx).invoke(root)
         QTest.qWait(40)
-        context = root.property("contextAlbum")
+        context = _as_dict(root.property("contextAlbum"))
         assert context is not None and context["key"] == "album-2", (
             "el contexto es el álbum del currentIndex exacto"
         )
