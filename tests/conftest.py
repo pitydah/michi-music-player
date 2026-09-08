@@ -37,6 +37,9 @@ class FakeAudioPort:
         for cb in list(self._pos):
             cb(ms)
 
+    def backend_state(self):
+        return self.state
+
     def play(self):
         self.state = "playing"
 

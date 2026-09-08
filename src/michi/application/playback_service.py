@@ -894,6 +894,25 @@ class PlaybackService:
             self._state.status.value,
             self._pending_path is not None,
         )
+        # POST-R4 P12 (15.3-A): divergencia física↔canónica — media
+        # legítima aceptada con el canónico STOPPED y el backend YA
+        # PLAYING físicamente (evento PLAYING perdido en el camino):
+        # play() del backend sería un no-op sin evento y la divergencia
+        # quedaría estable. El sistema CONVERGE al canónico PLAYING con
+        # la evidencia del estado físico (evento legítimo aceptado); la
+        # decisión la toma la legitimidad (intent+accepted), no el botón.
+        if (
+            self._accepted
+            and self._state.status is PlaybackStatus.STOPPED
+            and getattr(self._audio, "backend_state", lambda: None)() == "playing"
+        ):
+            logger.debug(
+                "playback converge: physical PLAYING with accepted media "
+                "-> canonical PLAYING (no redundant play)"
+            )
+            self._state.status = PlaybackStatus.PLAYING
+            self._notify()
+            return
         # M11.3C-R6.1: si no hay media aceptada en el backend pero existe un
         # track lógico commiteado y no hay candidato pendiente, recargar el
         # track por el camino canónico. load_and_play() ya invoca

@@ -202,6 +202,13 @@ class PlaylistPaletteExtractorPort(ABC):
 class AudioPort(ABC):
     """Abstract audio backend. Infrastructure implements this."""
 
+    def backend_state(self) -> str | None:
+        """POST-R4 P12: estado físico observado del backend
+        ("playing"/"paused"/"stopped") o None cuando el backend no
+        puede reportarlo. Permite converger la divergencia física↔canónica
+        con evidencia, no con un timer ni con el botón."""
+        return None
+
     @abstractmethod
     def load(self, file_path: Path) -> None: ...
 

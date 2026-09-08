@@ -57,6 +57,17 @@ class QtMultimediaBackend(AudioPort):
         self._current_source = file_path
         self._player.setSource(QUrl.fromLocalFile(str(file_path)))
 
+    def backend_state(self) -> str | None:
+        try:
+            state = self._player.playbackState()
+        except RuntimeError:
+            return None
+        return {
+            QMediaPlayer.PlayingState: "playing",
+            QMediaPlayer.PausedState: "paused",
+            QMediaPlayer.StoppedState: "stopped",
+        }.get(state)
+
     def play(self) -> None:
         self._require_open()
         self._player.play()
