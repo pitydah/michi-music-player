@@ -14,12 +14,22 @@ Item {
     readonly property int visibleArtistCount: Math.min(6, library.searchArtistCount)
     readonly property int visibleGenreCount: Math.min(6, library.searchGenreCount)
     readonly property int visiblePlaylistCount: Math.min(6, playlists.searchPlaylistCount)
+    // POST-R4 P1: UNA autoridad de offsets del resultado canónico
+    // (Tracks → Albums → Artists → Playlists → Genres). Render,
+    // selección y activación consumen ESTAS propiedades encadenadas —
+    // nunca sumas manuales por grupo (el genre omitiendo
+    // visiblePlaylistCount seleccionaba playlist y genre a la vez).
+    readonly property int trackStart: 0
+    readonly property int albumStart: trackStart + visibleTrackCount
+    readonly property int artistStart: albumStart + visibleAlbumCount
+    readonly property int playlistStart: artistStart + visibleArtistCount
+    readonly property int genreStart: playlistStart + visiblePlaylistCount
+    readonly property int resultEnd: genreStart + visibleGenreCount
     // M9-R1J: M7 total + playlist local projection = the UI total. This is
     // PRESENTATION AGGREGATION — LibraryBridge total stays M7-only.
     readonly property int combinedResultCount:
         library.searchDisplayTotalCount + playlists.searchPlaylistCount
-    readonly property int actionableResultCount: visibleTrackCount + visibleAlbumCount
-        + visibleArtistCount + visibleGenreCount + visiblePlaylistCount
+    readonly property int actionableResultCount: resultEnd
     signal closeRequested()
     signal navigationRequested(string routeId)
     // Qt 6 lazy bindings: `visible: opacity > 0` en el root dejaba el
@@ -60,47 +70,79 @@ Item {
         // El bridge notifica library_changed: no se necesita nada local.
     }
 
+    function resultKindAt(globalIndex) {
+        if (globalIndex < trackStart || globalIndex >= resultEnd)
+            return ""
+        if (globalIndex < albumStart)
+            return "track"
+        if (globalIndex < artistStart)
+            return "album"
+        if (globalIndex < playlistStart)
+            return "artist"
+        if (globalIndex < genreStart)
+            return "playlist"
+        return "genre"
+    }
+
+    function localIndexFor(globalIndex, start) {
+        return globalIndex - start
+    }
+
+    // POST-R4 P1: seam ÚNICO de activación de track — TrackId es la
+    // identidad (el índice visual jamás activa). Para registros legacy
+    // sin TrackId el contrato aprobado del bridge activa por PATH
+    // resuelto (activate_path → resolve_trackref): nunca el índice.
+    function activateTrack(row) {
+        var trackId = row && row.trackId ? String(row.trackId) : ""
+        if (trackId.length > 0) {
+            library.activate_track_by_id(trackId)
+        } else {
+            library.activate_path(row ? String(row.path) : "")
+        }
+        searchOverlay.closeRequested()
+        searchOverlay.navigationRequested("now_playing")
+    }
+
     function activateResult() {
-        if (resultIndex < visibleTrackCount) {
-            library.activate(resultIndex)
-            closeRequested()
-            navigationRequested("now_playing")
+        var kind = resultKindAt(resultIndex)
+        if (kind === "")
+            return
+        if (kind === "track") {
+            searchOverlay.activateTrack(
+                library.songRows[localIndexFor(resultIndex, trackStart)]
+            )
             return
         }
-        var albumIndex = resultIndex - visibleTrackCount
-        if (albumIndex >= 0 && albumIndex < visibleAlbumCount) {
-            library.select_album(library.albums[albumIndex].key)
-            closeRequested()
-            navigationRequested("library")
-            return
-        }
-        var artistIndex = albumIndex - visibleAlbumCount
-        if (artistIndex >= 0 && artistIndex < visibleArtistCount) {
-            library.select_artist(library.artists[artistIndex].key)
+        if (kind === "album") {
+            var albumLocal = localIndexFor(resultIndex, albumStart)
+            library.select_album(library.albums[albumLocal].key)
             closeRequested()
             navigationRequested("library")
             return
         }
-        // D-R4-01: UN orden canónico (Tracks → Albums → Artists →
-        // Playlists → Genres) gobierna render, selección y activación —
-        // nunca offsets independientes por grupo.
-        var playlistIndex = artistIndex - visibleArtistCount
-        if (playlistIndex >= 0 && playlistIndex < visiblePlaylistCount) {
+        if (kind === "artist") {
+            var artistLocal = localIndexFor(resultIndex, artistStart)
+            library.select_artist(library.artists[artistLocal].key)
+            closeRequested()
+            navigationRequested("library")
+            return
+        }
+        if (kind === "playlist") {
             // M9-R1I: playlist results open the FIRST-CLASS PLAYLISTS route
             // (validated open intent) — never fall back to Library. Mouse
             // and keyboard activation converge to the same state.
-            playlists.open_playlist(playlists.searchPlaylists[playlistIndex].playlistId)
+            var playlistLocal = localIndexFor(resultIndex, playlistStart)
+            playlists.open_playlist(
+                playlists.searchPlaylists[playlistLocal].playlistId
+            )
             closeRequested()
             return
         }
-        var genreIndex = playlistIndex - visiblePlaylistCount
-        if (genreIndex >= 0 && genreIndex < visibleGenreCount) {
-            // R5: género → filtro exact-key de Library (Songs tab).
-            library.select_genre(library.genres[genreIndex].key)
-            closeRequested()
-            navigationRequested("library")
-            return
-        }
+        // R5: género → filtro exact-key de Library (Songs tab).
+        var genreLocal = localIndexFor(resultIndex, genreStart)
+        library.select_genre(library.genres[genreLocal].key)
+        closeRequested()
+        navigationRequested("library")
     }
 
     Rectangle {
@@ -198,7 +240,8 @@ Item {
                             artworkPath: library.songRows[index].artworkPath || ""
                             showArtwork: true
                             playing: playback.currentPath === library.songRows[index].path
-                            selected: searchOverlay.resultIndex === index
+                            selected: searchOverlay.resultIndex
+                                === searchOverlay.trackStart + index
                             // R5 (§14): contexto de track completo — las
                             // acciones de la fila y del menú usan la
                             // identidad estable (TrackId), nunca el índice.
@@ -209,11 +252,12 @@ Item {
                             showAddToNewPlaylist: true
                             showInspector: true
                             unavailable: Boolean(library.songRows[index].unavailable)
-                            onActivated: {
-                                library.activate(index)
-                                searchOverlay.closeRequested()
-                                searchOverlay.navigationRequested("now_playing")
-                            }
+                            // POST-R4 P1: el mouse recorre el MISMO seam de
+                            // activación que el teclado (TrackId, nunca
+                            // índice).
+                            onActivated: searchOverlay.activateTrack(
+                                library.songRows[index]
+                            )
                             onFavoriteToggled: {
                                 library.toggle_favorite_by_id(library.songRows[index].trackId)
                                 searchOverlay._favoritesChanged()
@@ -245,7 +289,8 @@ Item {
                                 anchors.fill: parent
                                 text: library.albums[index].title + " · " + library.albums[index].artist
                                 variant: "ghost"
-                                selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount + index
+                                selected: searchOverlay.resultIndex
+                                    === searchOverlay.albumStart + index
                                 onClicked: {
                                     library.select_album(library.albums[index].key)
                                     searchOverlay.closeRequested()
@@ -264,7 +309,7 @@ Item {
                                 canShowProperties: true
                                 onContextRequested: {
                                     // selección exacta del resultado.
-                                    searchOverlay.resultIndex = searchOverlay.visibleTrackCount + index
+                                    searchOverlay.resultIndex = searchOverlay.albumStart + index
                                 }
                             }
                         }
@@ -284,8 +329,7 @@ Item {
                                 technical: qsTr("%n track(s)", "",
                                     library.artists[index].trackCount)
                                 selected: searchOverlay.resultIndex
-                                    === searchOverlay.visibleTrackCount
-                                    + searchOverlay.visibleAlbumCount + index
+                                    === searchOverlay.artistStart + index
                                 onActivated: {
                                     library.select_artist(library.artists[index].key)
                                     searchOverlay.closeRequested()
@@ -301,8 +345,7 @@ Item {
                                 canCreatePlaylist: true
                                 onContextRequested: {
                                     searchOverlay.resultIndex
-                                        = searchOverlay.visibleTrackCount
-                                        + searchOverlay.visibleAlbumCount + index
+                                        = searchOverlay.artistStart + index
                                 }
                             }
                         }
@@ -321,9 +364,8 @@ Item {
                             title: playlists.searchPlaylists[index].name
                             technical: qsTr("%n track(s)", "",
                                 playlists.searchPlaylists[index].trackCount)
-                            selected: searchOverlay.resultIndex === searchOverlay.visibleTrackCount
-                                + searchOverlay.visibleAlbumCount
-                                + searchOverlay.visibleArtistCount + index
+                            selected: searchOverlay.resultIndex
+                                === searchOverlay.playlistStart + index
                             onActivated: {
                                 // M9-R1: playlist result opens the first-class
                                 // PLAYLISTS route (validated + Recent) — never
@@ -349,9 +391,7 @@ Item {
                             // con la entidad exacta, nunca con el nombre.
                             interactive: true
                             selected: searchOverlay.resultIndex
-                                === searchOverlay.visibleTrackCount
-                                + searchOverlay.visibleAlbumCount
-                                + searchOverlay.visibleArtistCount + index
+                                === searchOverlay.genreStart + index
                             onActivated: {
                                 library.select_genre(library.genres[index].key)
                                 searchOverlay.closeRequested()

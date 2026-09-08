@@ -215,7 +215,10 @@ class TestGenreActionableR5:
             encoding="utf-8", errors="ignore"
         )
         assert "visibleGenreCount" in src
-        assert "visibleArtistCount + visibleGenreCount + visiblePlaylistCount" in src
+        # POST-R4 P1: actionableResultCount = resultEnd (la autoridad única
+        # encadena TODAS las categorías — los géneros nunca quedan fuera).
+        assert "readonly property int resultEnd: genreStart + visibleGenreCount" in src
+        assert "readonly property int actionableResultCount: resultEnd" in src
 
 
 class TestTrackContextR5:
