@@ -966,7 +966,10 @@ def main() -> int:
         1 for frame in review_frames() if frame[2] == "album-context-menu"
     )
     expected -= editorial_only * (len(MODES) - 1)
-    expected += 2  # menús aislados genre/track del convergence seal
+    # menús aislados del convergence seal + los renders R3/R10/R11:
+    # genre/track (M9-R3), album/artist (R3), table-header-root +
+    # columns-submenu (R10.2).
+    expected += 6
     if len(frames) != expected:
         raise RuntimeError("incomplete visual QA matrix")
     return 0
