@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import "../controls"
 import "../media"
 import "../theme"
+// POST-R4 P5: packing y render consumen AlbumListColumnMetrics.
 
 ListView {
     id: root
@@ -51,24 +52,28 @@ ListView {
     readonly property bool showTechnicalColumn: columnPlan.format
 
     function resolveColumnPlan(availableWidth, preferences) {
+        // POST-R4 P5: que una columna costosa no quepa (p.ej. Artist) NO
+        // impide probar las siguientes (Year/Tracks/Duration/Format):
+        // continue, nunca break — el packing recorre el orden completo.
         var remaining = Math.max(0, availableWidth - 360)
         var result = { artist: false, year: false, tracks: false,
             duration: false, format: false }
         var ordered = [
-            { key: "artist", pref: "artistColumn", cost: 210 },
-            { key: "year", pref: "yearColumn", cost: 70 },
-            { key: "tracks", pref: "tracksColumn", cost: 64 },
-            { key: "duration", pref: "durationColumn", cost: 74 },
-            { key: "format", pref: "formatColumn", cost: 170 }
+            { key: "artist", pref: "artistColumn" },
+            { key: "year", pref: "yearColumn" },
+            { key: "tracks", pref: "tracksColumn" },
+            { key: "duration", pref: "durationColumn" },
+            { key: "format", pref: "formatColumn" }
         ]
         for (var index = 0; index < ordered.length; ++index) {
             var column = ordered[index]
             if (preferences[column.pref] === false)
                 continue
-            if (remaining < column.cost)
-                break
+            var cost = AlbumListColumnMetrics.columnCost(column.key)
+            if (remaining < cost)
+                continue
             result[column.key] = true
-            remaining -= column.cost
+            remaining -= cost
         }
         return result
     }
@@ -111,6 +116,7 @@ ListView {
 
     header: AlbumTableHeader {
         width: root.width
+        artworkSize: root.viewPreferences.artworkSize || "small"
         showArtist: root.showArtistColumn
         showYear: root.showYearColumn
         showTrackCount: root.showTrackCountColumn

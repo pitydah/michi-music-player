@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import "../primitives"
 import "../theme"
+// POST-R4 P5: la geometría la define AlbumListColumnMetrics (header y
+// row consumen la MISMA autoridad).
 
 Rectangle {
     id: root
@@ -24,12 +26,10 @@ Rectangle {
     signal playRequested()
     signal activated()
 
-    readonly property real titleColumnRatio: root.showTechnical ? 0.34 : 0.45
-    readonly property int titleColumnWidth: Math.min(
-        root.showTechnical ? 560 : 720,
-        Math.max(220, Math.round(root.width * root.titleColumnRatio)))
-    readonly property int artistColumnWidth: Math.min(
-        300, Math.max(150, Math.round(root.width * 0.20)))
+    readonly property int titleColumnWidth: AlbumListColumnMetrics.titleWidth(
+        root.width, root.showTechnical)
+    readonly property int artistColumnWidth: AlbumListColumnMetrics.artistWidth(
+        root.width)
 
     implicitHeight: rowDensity === "compact" ? 44
         : rowDensity === "comfortable" ? 64 : 52
@@ -57,7 +57,8 @@ Rectangle {
 
         Artwork {
             visible: root.artworkSize !== "none"
-            Layout.preferredWidth: root.artworkSize === "standard" ? 44 : 34
+            Layout.preferredWidth: AlbumListColumnMetrics.artworkWidth(
+                root.artworkSize)
             Layout.preferredHeight: Layout.preferredWidth
             sourcePath: root.album && root.album.hasArtwork ? root.album.artworkPath : ""
             fallbackText: root.album ? root.album.title : "?"
@@ -83,7 +84,7 @@ Rectangle {
         }
         MichiText {
             visible: root.showYear
-            Layout.preferredWidth: 54
+            Layout.preferredWidth: AlbumListColumnMetrics.yearColumnWidth
             text: root.album && root.album.year > 0 ? root.album.year : "—"
             role: "technical"
             technical: true
@@ -93,7 +94,7 @@ Rectangle {
         }
         MichiText {
             visible: root.showTrackCount
-            Layout.preferredWidth: 48
+            Layout.preferredWidth: AlbumListColumnMetrics.tracksColumnWidth
             text: root.album ? root.album.trackCount : ""
             role: "technical"
             technical: true
@@ -101,7 +102,7 @@ Rectangle {
         }
         MichiText {
             visible: root.showDuration
-            Layout.preferredWidth: 58
+            Layout.preferredWidth: AlbumListColumnMetrics.durationColumnWidth
             text: root.album ? MichiFormat.formatDuration(root.album.durationMs) : ""
             role: "technical"
             technical: true
@@ -109,7 +110,7 @@ Rectangle {
         }
         MichiText {
             visible: root.showTechnical
-            Layout.preferredWidth: 160
+            Layout.preferredWidth: AlbumListColumnMetrics.formatColumnWidth
             text: !root.album ? ""
                 : root.precisionMetadata ? (root.album.technicalSummary || "")
                 : root.album.codecs && root.album.codecs.length > 0

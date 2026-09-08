@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import "../primitives"
 import "../theme"
+// POST-R4 P5: la geometría la define AlbumListColumnMetrics (header y
+// row consumen la MISMA autoridad).
 
 Rectangle {
     id: root
@@ -15,12 +17,13 @@ Rectangle {
     property int focusColumn: 0
     signal sortRequested(string mode)
 
-    readonly property real titleColumnRatio: root.showTechnical ? 0.34 : 0.45
-    readonly property int titleColumnWidth: Math.min(
-        root.showTechnical ? 560 : 720,
-        Math.max(220, Math.round(root.width * root.titleColumnRatio)))
-    readonly property int artistColumnWidth: Math.min(
-        300, Math.max(150, Math.round(root.width * 0.20)))
+    // El tamaño de artwork del header acompaña al row (none/small/
+    // standard) — el view lo propaga desde las preferencias.
+    property string artworkSize: "small"
+    readonly property int titleColumnWidth: AlbumListColumnMetrics.titleWidth(
+        root.width, root.showTechnical)
+    readonly property int artistColumnWidth: AlbumListColumnMetrics.artistWidth(
+        root.width)
 
     implicitHeight: MichiMetrics.controlMedium
     color: MichiSemanticColors.controlSurfaceStrong
@@ -75,7 +78,9 @@ Rectangle {
         anchors.rightMargin: MichiSpacing.sm
         spacing: MichiSpacing.md
         Item {
-            Layout.preferredWidth: MichiThemeState.density === "comfortable" ? 40 : 34
+            visible: root.artworkSize !== "none"
+            Layout.preferredWidth: AlbumListColumnMetrics.artworkWidth(
+                root.artworkSize)
         }
         Item {
             Layout.preferredWidth: root.titleColumnWidth
@@ -88,7 +93,6 @@ Rectangle {
             }
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: MichiSpacing.xs
                 spacing: MichiSpacing.xs
                 MichiText {
                     text: qsTr("ALBUM")
@@ -121,7 +125,6 @@ Rectangle {
             }
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: MichiSpacing.xs
                 spacing: MichiSpacing.xs
                 MichiText {
                     text: qsTr("ALBUM ARTIST")
@@ -143,7 +146,7 @@ Rectangle {
         }
         Item {
             visible: root.showYear
-            Layout.preferredWidth: 54
+            Layout.preferredWidth: AlbumListColumnMetrics.yearColumnWidth
             Layout.preferredHeight: root.implicitHeight
 
             HoverHandler { id: yearHover; cursorShape: Qt.PointingHandCursor }
@@ -152,7 +155,6 @@ Rectangle {
             }
             RowLayout {
                 anchors.fill: parent
-                anchors.rightMargin: MichiSpacing.xs
                 spacing: MichiSpacing.xs
                 Item { Layout.fillWidth: true }
                 MichiText {
@@ -174,7 +176,7 @@ Rectangle {
         }
         Item {
             visible: root.showTrackCount
-            Layout.preferredWidth: 48
+            Layout.preferredWidth: AlbumListColumnMetrics.tracksColumnWidth
             Layout.preferredHeight: root.implicitHeight
 
             HoverHandler { id: tracksHover; cursorShape: Qt.PointingHandCursor }
@@ -183,7 +185,6 @@ Rectangle {
             }
             RowLayout {
                 anchors.fill: parent
-                anchors.rightMargin: MichiSpacing.xs
                 spacing: MichiSpacing.xs
                 Item { Layout.fillWidth: true }
                 MichiText {
@@ -206,7 +207,7 @@ Rectangle {
         }
         Item {
             visible: root.showDuration
-            Layout.preferredWidth: 58
+            Layout.preferredWidth: AlbumListColumnMetrics.durationColumnWidth
             Layout.preferredHeight: root.implicitHeight
 
             HoverHandler { id: durationHover; cursorShape: Qt.PointingHandCursor }
@@ -215,7 +216,6 @@ Rectangle {
             }
             RowLayout {
                 anchors.fill: parent
-                anchors.rightMargin: MichiSpacing.xs
                 spacing: MichiSpacing.xs
                 Item { Layout.fillWidth: true }
                 MichiText {
@@ -238,11 +238,10 @@ Rectangle {
         }
         Item {
             visible: root.showTechnical
-            Layout.preferredWidth: 160
+            Layout.preferredWidth: AlbumListColumnMetrics.formatColumnWidth
             Layout.preferredHeight: root.implicitHeight
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: MichiSpacing.xs
                 MichiText {
                     text: qsTr("FORMAT")
                     role: "technical"

@@ -104,9 +104,9 @@ Item {
             editorial: { heroVisible: true, informationRichness: "standard",
                 cachedEnrichmentVisible: true, archiveLayout: "list" },
             studioList: { density: "standard", artworkSize: "small",
-                metadataLevel: "standard", precisionMetadata: true,
-                inspector: true, artistColumn: true, yearColumn: true,
-                tracksColumn: true, durationColumn: true, formatColumn: true }
+                precisionMetadata: true, inspector: true, artistColumn: true,
+                yearColumn: true, tracksColumn: true, durationColumn: true,
+                formatColumn: true }
         }
     }
 
