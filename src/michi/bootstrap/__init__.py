@@ -502,14 +502,20 @@ def _build_services(
     )
 
     artwork_dispatcher = LibraryArtworkDispatcher(artwork_refresh)
-    artwork_relay.done.connect(artwork_dispatcher.on_done, Qt.QueuedConnection)
+    artwork_runner.connect_relay(
+        artwork_relay.done, artwork_dispatcher.on_done, Qt.QueuedConnection
+    )
     source_coordinator._artwork_refresh = artwork_refresh
     source_scan_lifecycle = SourceScanLifecycle(source_coordinator, source_scan_runner)
-    source_scan_relay.done.connect(
-        source_scan_lifecycle.handle_done, Qt.QueuedConnection
+    source_scan_runner.connect_relay(
+        source_scan_relay.done,
+        source_scan_lifecycle.handle_done,
+        Qt.QueuedConnection,
     )
-    source_scan_relay.progress.connect(
-        source_scan_lifecycle.handle_progress, Qt.QueuedConnection
+    source_scan_runner.connect_relay(
+        source_scan_relay.progress,
+        source_scan_lifecycle.handle_progress,
+        Qt.QueuedConnection,
     )
 
     # M4-R1: the active playback session sits ABOVE PlaybackService and
@@ -550,8 +556,12 @@ def _build_services(
     # progress/done to the owner (GUI) thread where the dispatcher delegates
     # to the service. The service never touches Qt.
     scan_dispatcher = LibraryScanDispatcher(library)
-    scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
-    scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
+    scan_runner.connect_relay(
+        scan_relay.done, scan_dispatcher.on_done, Qt.QueuedConnection
+    )
+    scan_runner.connect_relay(
+        scan_relay.progress, scan_dispatcher.on_progress, Qt.QueuedConnection
+    )
 
     lb = LibraryBridge(
         library,

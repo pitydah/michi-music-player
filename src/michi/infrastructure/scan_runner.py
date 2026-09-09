@@ -48,6 +48,9 @@ class ThreadScanRunner(ScanPipelinePort):
     def __init__(self, relay: ScanRelay) -> None:
         self._relay = relay
         self._tokens: dict[int, ScanCancelToken] = {}
+        # KCR-010 (POST-R4 microfix): conexiones relay registradas por
+        # connect_relay() — el teardown desconecta SOLO estas.
+        self._relay_connections: list[tuple[object, object]] = []
         self._closed = False
         self._lock = threading.Lock()
 
@@ -94,24 +97,33 @@ class ThreadScanRunner(ScanPipelinePort):
         if token is not None:
             token.cancelled = True  # cooperative: the worker checks in between
 
-    def disconnect_relay(self) -> None:
-        """KCR-010: disconnect production relay signals during owner
-        teardown (public API — bootstrap never touches the private relay)."""
-        if self._relay is None:
-            return
-        import warnings
+    def connect_relay(self, signal, slot, connection_type=None) -> None:
+        """KCR-010 (POST-R4 microfix): conectar + REGISTRAR en una sola
+        operación atómica — el teardown desconecta exactamente lo que
+        esta operación conectó (nunca un disconnect() global)."""
+        if connection_type is not None:
+            signal.connect(slot, connection_type)
+        else:
+            signal.connect(slot)
+        self._relay_connections.append((signal, slot))
 
-        for signal in (self._relay.done, self._relay.progress):
-            # El disconnect() global recorre TODOS los receivers: los ya
-            # destruidos (el teardown del owner pudo haberlos liberado
-            # antes) emiten 'Failed to disconnect (None)' de libpyside —
-            # esperado en un cierre best-effort: filtrado.
-            with (
-                contextlib.suppress(TypeError, RuntimeError),
-                warnings.catch_warnings(),
-            ):
-                warnings.simplefilter("ignore", RuntimeWarning)
-                signal.disconnect()
+    def disconnect_relay(self) -> None:
+        """KCR-010: disconnect EXACTLY the registered relay connections
+        during owner teardown (public API — bootstrap never touches the
+        private relay).
+
+        El disconnect() global de una señal sin receptores emite el
+        RuntimeWarning de libpyside ('Failed to disconnect (None)') —
+        aquí cada desconexión es por SLOT conocido: la operación inválida
+        (desconectar lo que nunca se conectó) no existe. Idempotente: la
+        lista se drena ANTES del loop, una segunda llamada es no-op."""
+        connections = self._relay_connections
+        self._relay_connections = []
+        for signal, slot in connections:
+            with contextlib.suppress(TypeError, RuntimeError):
+                # el slot pudo haber sido retirado externamente: un
+                # disconnect exacto fallido es un no-op legítimo.
+                signal.disconnect(slot)
 
     def shutdown(self) -> None:
         """Freeze the runner: reject new submits and cancel every active
