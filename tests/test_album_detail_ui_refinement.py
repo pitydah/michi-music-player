@@ -1,7 +1,7 @@
 """Regression seals for the Album Detail UI/UX refinement.
 
-These gates intentionally protect both sides of the patch: visual hierarchy
-and the productive seams that must not regress while presentation changes.
+These gates protect both sides of the patch: visual hierarchy and the
+productive seams that must not regress while presentation changes.
 """
 
 from pathlib import Path
@@ -25,18 +25,31 @@ def test_album_detail_compacts_duplicate_metadata_into_one_hero() -> None:
     assert "Album facts" not in detail
     assert "AudioQualityBadge" not in detail
     assert "MichiStatusChip" not in detail
-    assert "formatDurationPrecise" in detail
+    assert "compactTechnicalSummary" not in detail
     assert 'qsTr("Stereo")' in detail
     assert 'qsTr("N/A")' in detail
 
 
-def test_album_detail_reserves_a_real_track_viewport_without_forking_table() -> None:
+def test_album_detail_uses_shared_formatting_authority() -> None:
     detail = _qml("views/AlbumDetailView.qml")
 
+    assert "MichiFormat.formatDuration(" in detail
+    assert "MichiFormat.formatFileSize(" in detail
+    assert "function formatDuration" not in detail
+    assert "function formatFileSize" not in detail
+
+
+def test_album_detail_bounds_context_and_preserves_track_viewport() -> None:
+    detail = _qml("views/AlbumDetailView.qml")
+
+    assert "MichiScrollView" in detail
+    assert 'objectName: "albumContextScroll"' in detail
+    assert "albumContextColumn.implicitHeight" in detail
+    assert "root.height * 0.42" in detail
     assert 'objectName: "albumTrackTableSurface"' in detail
     assert 'objectName: "albumTracksTable"' in detail
     assert "MichiTrackTable" in detail
-    assert "Layout.minimumHeight: Math.min(190" in detail
+    assert "Layout.minimumHeight: Math.min(132" in detail
     assert 'columnProfile: "album"' in detail
     assert 'numberingMode: "disc-track"' in detail
     assert "showArtwork: false" in detail
@@ -53,6 +66,16 @@ def test_album_detail_reserves_a_real_track_viewport_without_forking_table() -> 
         assert seam in detail
 
 
+def test_album_detail_hero_does_not_create_an_inset_card_inside_glass() -> None:
+    detail = _qml("views/AlbumDetailView.qml")
+    hero = detail.split('objectName: "albumHeroSurface"', 1)[1].split(
+        "// ── Editorial knowledge", 1
+    )[0]
+
+    assert "accentLineVisible: true" in hero
+    assert "gradient: Gradient" not in hero
+
+
 def test_album_detail_enrichment_stays_cache_only_but_fetch_is_reachable() -> None:
     detail = _qml("views/AlbumDetailView.qml")
     inline = _qml("enrichment/EnrichmentInlineState.qml")
@@ -65,6 +88,7 @@ def test_album_detail_enrichment_stays_cache_only_but_fetch_is_reachable() -> No
     assert "showTitle: false" in detail
     assert 'state === "IDLE" || state === "READY"' in inline
     assert 'qsTr("Fetch information")' in inline
+    assert 'enrichment.activeKind === "album"\n                    && enrichment.albumHasKnowledge' in detail
 
 
 def test_album_detail_more_menu_reuses_productive_album_context_ia() -> None:
@@ -90,5 +114,6 @@ def test_decorative_material_texture_never_renders_broken_image_placeholder() ->
 
     assert "status === Image.Ready" in texture
     assert "textureReady" in texture
-    assert "visible: textureOpacity > 0 && root.textureReady" in texture
+    assert "visible: textureOpacity > 0" in texture
+    assert "visible: textureOpacity > 0 && root.textureReady" not in texture
     assert "opacity: root.textureReady ? textureOpacity : 0" in texture
