@@ -73,11 +73,18 @@ def test_enrichment_surfaces_have_single_visibility_authority() -> None:
 def test_album_detail_and_grid_are_music_first_without_duplicate_quality() -> None:
     card = _qml("media/AlbumCard.qml")
     assert "root.album.trackCount" in card
-    # El detalle premium muestra el summary técnico UNA vez (el label
-    # "LIBRARY QUALITY" es la cabecera de ese bloque — no se duplica).
+
+    # Album Detail keeps ONE canonical technical summary in the identity
+    # column; the old repeated pills / LIBRARY QUALITY / Album facts panel
+    # were the source of the screenshot's triple metadata duplication.
     detail = _qml("views/AlbumDetailView.qml")
-    assert detail.count("LIBRARY QUALITY") == 1
     assert "albumTechnicalSummary" in detail
+    assert "LIBRARY QUALITY" not in detail
+    assert "albumTechnicalFacts" not in detail
+    assert "AudioQualityBadge" not in detail
+    assert "EnrichmentInlineState" in detail
+    assert 'showArtwork: false' in detail
+    assert "formatDurationPrecise" in detail
 
 
 def test_vinyl_disc_has_artwork_label_without_cyan_center() -> None:
