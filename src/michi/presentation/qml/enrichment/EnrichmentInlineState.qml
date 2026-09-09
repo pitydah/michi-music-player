@@ -21,10 +21,13 @@ RowLayout {
     signal resetRequested()
 
     readonly property bool shouldShowStatus: state !== "IDLE" && state !== "READY"
+    // Detail pages hydrate CACHE ONLY.  Therefore IDLE + no cached knowledge
+    // is a legitimate steady state and must expose the explicit Fetch CTA;
+    // opening the page itself still never starts network I/O.
     readonly property bool shouldShowPrimary: onlineEnabled && !busy
         && (state === "AMBIGUOUS" || state === "NOT_FOUND"
             || state === "FAILED" || state === "OFFLINE" || state === "PARTIAL"
-            || (state === "READY" && !hasKnowledge))
+            || ((state === "IDLE" || state === "READY") && !hasKnowledge))
 
     Layout.fillWidth: true
     spacing: MichiSpacing.sm
@@ -40,8 +43,10 @@ RowLayout {
     Item { Layout.fillWidth: !root.shouldShowStatus }
 
     MichiButton {
-        text: root.state === "AMBIGUOUS" ? qsTr("Review match")
-            : root.state === "READY" && !root.hasKnowledge
+        text: root.state === "AMBIGUOUS" || root.state === "NOT_FOUND"
+            ? qsTr("Review match")
+            : (root.state === "IDLE" || root.state === "READY")
+                && !root.hasKnowledge
                 ? qsTr("Fetch information") : qsTr("Retry")
         variant: "ghost"
         visible: root.shouldShowPrimary
