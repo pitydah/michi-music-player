@@ -88,7 +88,8 @@ def test_album_detail_enrichment_stays_cache_only_but_fetch_is_reachable() -> No
     assert "showTitle: false" in detail
     assert 'state === "IDLE" || state === "READY"' in inline
     assert 'qsTr("Fetch information")' in inline
-    assert 'enrichment.activeKind === "album"\n                    && enrichment.albumHasKnowledge' in detail
+    assert 'hasKnowledge: enrichment.activeKind === "album"' in detail
+    assert "&& enrichment.albumHasKnowledge" in detail
 
 
 def test_album_detail_more_menu_reuses_productive_album_context_ia() -> None:
@@ -112,8 +113,12 @@ def test_album_detail_more_menu_reuses_productive_album_context_ia() -> None:
 def test_decorative_material_texture_never_renders_broken_image_placeholder() -> None:
     texture = _qml("primitives/MichiMaterialTexture.qml")
 
-    assert "status === Image.Ready" in texture
-    assert "textureReady" in texture
-    assert "visible: textureOpacity > 0" in texture
-    assert "visible: textureOpacity > 0 && root.textureReady" not in texture
-    assert "opacity: root.textureReady ? textureOpacity : 0" in texture
+    # The component root stays present while its internal asynchronous Image
+    # loads. Presentation visibility is isolated from loading state, so
+    # Loading/Error never paints a platform broken-image placeholder.
+    assert "Item {\n    id: root" in texture
+    assert "Image {" in texture
+    assert "texture.status === Image.Ready" in texture
+    assert "readonly property bool textureReady" in texture
+    assert "visible: root.textureOpacity > 0 && root.textureReady" in texture
+    assert "opacity: root.textureReady ? root.textureOpacity : 0" in texture
