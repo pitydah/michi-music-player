@@ -17,6 +17,25 @@ MichiGlassSurface {
     property bool hasKnowledge: false
     property var sources: []
 
+    /* External identity can be resolved with provider IDs only. Those IDs are
+     * useful internally but are not user-facing album/artist information.
+     * Keep the card truthful by distinguishing a real cached match from data
+     * that can actually be presented, and render a sober empty-result line
+     * instead of a visually blank glass card. */
+    readonly property bool hasDisplayableKnowledge: !!(
+        (root.knowledge.biography || "").length > 0
+        || root.knowledge.country
+        || root.knowledge.area
+        || root.knowledge.beginYear
+        || root.knowledge.endYear
+        || root.knowledge.artistType
+        || root.knowledge.website
+        || root.knowledge.label
+        || root.knowledge.releaseYear
+        || root.knowledge.firstReleaseYear
+        || (root.knowledge.genres && root.knowledge.genres.length > 0)
+    )
+
     Layout.fillWidth: true
     elevation: "standard"
 
@@ -145,12 +164,22 @@ MichiGlassSurface {
             }
         }
 
+        MichiText {
+            Layout.fillWidth: true
+            visible: root.hasKnowledge && !root.hasDisplayableKnowledge
+            text: qsTr("A matching online record was found, but it contains no additional displayable details.")
+            role: "secondary"
+            color: MichiPalette.textMuted
+            wrapMode: Text.WordWrap
+        }
+
         EnrichmentAttribution {
             sources: root.sources
         }
     }
 
-    /* empty surface: keep layout quiet — the view decides whether to
-     * show a CTA via EnrichmentActions / EnrichmentInlineState */
+    /* Keep the matched surface present even when the provider returns only
+     * identity/provenance data; the explicit empty-result line above avoids
+     * presenting a blank card while preserving Refresh/Clear/Reset semantics. */
     visible: root.hasKnowledge
 }
