@@ -15,6 +15,15 @@ Item {
     property real textureOpacity: MichiThemeState.glassQuality === "high" ? 0.36
         : MichiThemeState.glassQuality === "low" ? 0 : 0.22
 
+    /* Preserve the original component contract: consumers historically use
+     * `opacity > 0` as the material-presence predicate.  The root changed
+     * from Image to Item only so decode/loading failure can be isolated; its
+     * observable opacity/visibility semantics must remain identical. */
+    opacity: root.textureOpacity
+    visible: opacity > 0
+    implicitWidth: 128
+    implicitHeight: 128
+
     readonly property bool textureReady: texture.status === Image.Ready
 
     Image {
@@ -34,13 +43,11 @@ Item {
         smooth: true
         mipmap: false
 
-        // Keep the loader alive independently of presentation visibility.
-        // Qt may transition Loading -> Error/Ready asynchronously; the image
-        // paints only after Ready, so neither Loading nor Error can expose
-        // the platform broken-image placeholder. The material below remains
-        // the complete visual fallback.
-        opacity: root.textureReady ? root.textureOpacity : 0
-        visible: root.textureOpacity > 0 && root.textureReady
+        // Loading/Error never paints Qt's broken-image placeholder.  The
+        // parent keeps the historical material opacity; this child is either
+        // fully present after a successful decode or visually absent.
+        opacity: root.textureReady ? 1 : 0
+        visible: root.textureReady
         Accessible.ignored: true
     }
 
