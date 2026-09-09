@@ -11,7 +11,7 @@ import "../theme"
 MichiGlassSurface {
     id: root
 
-    property string title: "Online information"
+    property string title: qsTr("Online information")
     property bool showTitle: true
     property var knowledge: ({})
     property bool hasKnowledge: false
@@ -60,7 +60,7 @@ MichiGlassSurface {
 
             MichiButton {
                 text: parent.biography.length > 420
-                    ? (parent.expanded ? "Show less" : "Show more")
+                    ? (parent.expanded ? qsTr("Show less") : qsTr("Show more"))
                     : ""
                 variant: "ghost"
                 visible: text.length > 0
@@ -89,6 +89,7 @@ MichiGlassSurface {
                     || root.knowledge.website
                     || root.knowledge.label
                     || root.knowledge.releaseYear
+                    || root.knowledge.firstReleaseYear
                     || (root.knowledge.genres
                         && root.knowledge.genres.length > 0)
                 )
@@ -106,15 +107,16 @@ MichiGlassSurface {
 
             Repeater {
                 model: [
-                    facts.fact("Country", root.knowledge.country),
-                    facts.fact("Area", root.knowledge.area),
-                    facts.fact("Active from", root.knowledge.beginYear),
-                    facts.fact("Active until", root.knowledge.endYear),
-                    facts.fact("Type", root.knowledge.artistType),
-                    facts.fact("Website", root.knowledge.website),
-                    facts.fact("Label", root.knowledge.label),
-                    facts.fact("Release year", root.knowledge.releaseYear),
-                    facts.fact("Genres", root.knowledge.genres
+                    facts.fact(qsTr("Country"), root.knowledge.country),
+                    facts.fact(qsTr("Area"), root.knowledge.area),
+                    facts.fact(qsTr("Active from"), root.knowledge.beginYear),
+                    facts.fact(qsTr("Active until"), root.knowledge.endYear),
+                    facts.fact(qsTr("Type"), root.knowledge.artistType),
+                    facts.fact(qsTr("Website"), root.knowledge.website),
+                    facts.fact(qsTr("Label"), root.knowledge.label),
+                    facts.fact(qsTr("Release year"),
+                        root.knowledge.releaseYear || root.knowledge.firstReleaseYear),
+                    facts.fact(qsTr("Genres"), root.knowledge.genres
                                ? root.knowledge.genres.join(", ") : ""),
                 ]
                 delegate: Item {
