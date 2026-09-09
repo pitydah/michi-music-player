@@ -9,6 +9,7 @@
 """
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,15 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
 QML = Path(__file__).resolve().parents[1] / "src" / "michi" / "presentation" / "qml"
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    """QGuiApplication module-scoped (los tests del dialog montan QML)."""
+    from PySide6.QtGui import QGuiApplication
+
+    app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+    yield app
 
 
 def _qml(rel):
