@@ -41,9 +41,7 @@ def qapp():
         (1600, 900),
     ],
 )
-def test_album_detail_track_viewport_survives_context_pressure(
-    qapp, width, height
-):
+def test_album_detail_track_viewport_survives_context_pressure(qapp, width, height):
     view, _library = _mount(qapp, [_row()])
     view.resize(width, height)
     QTest.qWait(80)
@@ -55,9 +53,7 @@ def test_album_detail_track_viewport_survives_context_pressure(
     detail = _find_any(host, lambda c: c.objectName() == "albumDetailView")
     assert detail is not None, "AlbumDetailView must be mounted"
 
-    context_scroll = _find_any(
-        detail, lambda c: c.objectName() == "albumContextScroll"
-    )
+    context_scroll = _find_any(detail, lambda c: c.objectName() == "albumContextScroll")
     table = _find_any(detail, lambda c: c.objectName() == "albumTracksTable")
     row = _wait_for(detail, "trackId", "T-1")
 
