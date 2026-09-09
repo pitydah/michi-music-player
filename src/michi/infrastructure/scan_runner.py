@@ -99,8 +99,18 @@ class ThreadScanRunner(ScanPipelinePort):
         teardown (public API — bootstrap never touches the private relay)."""
         if self._relay is None:
             return
+        import warnings
+
         for signal in (self._relay.done, self._relay.progress):
-            with contextlib.suppress(TypeError, RuntimeError):
+            # El disconnect() global recorre TODOS los receivers: los ya
+            # destruidos (el teardown del owner pudo haberlos liberado
+            # antes) emiten 'Failed to disconnect (None)' de libpyside —
+            # esperado en un cierre best-effort: filtrado.
+            with (
+                contextlib.suppress(TypeError, RuntimeError),
+                warnings.catch_warnings(),
+            ):
+                warnings.simplefilter("ignore", RuntimeWarning)
                 signal.disconnect()
 
     def shutdown(self) -> None:
