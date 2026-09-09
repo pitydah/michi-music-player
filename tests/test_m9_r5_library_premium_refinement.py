@@ -83,7 +83,7 @@ def test_album_detail_and_grid_are_music_first_without_duplicate_quality() -> No
     assert "albumTechnicalFacts" not in detail
     assert "AudioQualityBadge" not in detail
     assert "EnrichmentInlineState" in detail
-    assert 'showArtwork: false' in detail
+    assert "showArtwork: false" in detail
     assert "formatDurationPrecise" in detail
 
 
