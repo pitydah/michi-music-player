@@ -170,5 +170,5 @@ def test_decorative_material_texture_never_renders_broken_image_placeholder() ->
     assert "implicitHeight: 128" in texture
     assert "opacity: root.textureReady ? 1 : 0" in texture
     assert "visible: root.textureReady" in texture
-    assert "visible: root.level === \"content\" && opacity > 0" in surface
+    assert 'visible: root.level === "content" && opacity > 0' in surface
     assert "visible: root.textured && opacity > 0" in glass
