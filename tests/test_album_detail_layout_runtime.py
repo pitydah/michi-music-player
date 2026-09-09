@@ -11,15 +11,20 @@ application's minimum-height window.
 import os
 import sys
 
-import pytest
-from PySide6.QtCore import QPointF
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtTest import QTest
-
-from test_library_context_host_a1 import _find_any, _mount, _row, _wait_for
-
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_BACKEND", "software")
+
+import pytest  # noqa: E402
+from PySide6.QtCore import QPointF  # noqa: E402
+from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtTest import QTest  # noqa: E402
+
+from test_library_context_host_a1 import (  # noqa: E402
+    _find_any,
+    _mount,
+    _row,
+    _wait_for,
+)
 
 
 @pytest.fixture(scope="module")
