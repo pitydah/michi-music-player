@@ -12,6 +12,7 @@ MichiGlassSurface {
     id: root
 
     property string title: "Online information"
+    property bool showTitle: true
     property var knowledge: ({})
     property bool hasKnowledge: false
     property var sources: []
@@ -33,6 +34,7 @@ MichiGlassSurface {
         MichiText {
             text: root.title
             role: "section"
+            visible: root.showTitle
         }
 
         /* biography — plain text, bounded preview, no remote markup */
@@ -147,6 +149,6 @@ MichiGlassSurface {
     }
 
     /* empty surface: keep layout quiet — the view decides whether to
-     * show a CTA via EnrichmentActions */
+     * show a CTA via EnrichmentActions / EnrichmentInlineState */
     visible: root.hasKnowledge
 }
