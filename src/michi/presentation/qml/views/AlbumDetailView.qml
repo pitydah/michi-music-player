@@ -18,6 +18,7 @@ ColumnLayout {
     readonly property bool showMetricRail: MichiBreakpoints.atLeastWide(root.width)
     readonly property string preciseDurationText: MichiFormat.formatDuration(
         library.albumDurationMs)
+    readonly property string technicalSummaryText: library.albumTechnicalSummary || ""
     readonly property string sampleRateText: root.formatSampleRate(
         albumFacts.maxSampleRateHz || 0)
     readonly property string channelsText: root.formatChannels(
@@ -26,7 +27,11 @@ ColumnLayout {
     readonly property var heroMetricRows: [
         { label: qsTr("TRACKS"), value: String(library.albumTracks.length) },
         { label: qsTr("DURATION"), value: root.preciseDurationText },
-        { label: qsTr("SAMPLE RATE"), value: root.sampleRateText },
+        // technicalSummary is the canonical quality projection and normally
+        // already includes sample rate. Only surface the structured fact as
+        // a fallback when that projection is absent; never show it twice.
+        { label: qsTr("SAMPLE RATE"), value: root.technicalSummaryText.length === 0
+            ? root.sampleRateText : "" },
         { label: qsTr("CHANNELS"), value: root.channelsText },
         { label: qsTr("DISCS"), value: albumFacts.discCount > 1
             ? String(albumFacts.discCount) : "" }
@@ -145,20 +150,20 @@ ColumnLayout {
         Item { Layout.fillWidth: true }
     }
 
-    /* Context region is independently scrollable. This is intentional: the
-     * application supports a 480 px minimum window height and the Library
-     * shell consumes part of it. Letting hero/enrichment compete directly
-     * with the track table is what collapsed the table to its scrollbar.
-     * The bounded context viewport keeps tracks productive at every height
-     * while all album/enrichment information remains reachable. */
+    /* Context region is independently scrollable. At minimum-height windows
+     * it keeps the conservative 42% budget that protects the track table.
+     * Once there is normal desktop height, it may use 54% (still capped at
+     * 440 px) so cached/editorial album information is actually visible
+     * instead of forcing an immediate nested scroll. */
     MichiScrollView {
         id: albumContextScroll
         objectName: "albumContextScroll"
         Layout.fillWidth: true
         Layout.minimumWidth: 0
+        readonly property real contextFraction: root.height < 560 ? 0.42 : 0.54
         readonly property real boundedHeight: Math.min(
             albumContextColumn.implicitHeight,
-            Math.min(440, Math.max(80, root.height * 0.42)))
+            Math.min(440, Math.max(80, root.height * contextFraction)))
         Layout.preferredHeight: boundedHeight
         Layout.minimumHeight: Math.min(80, boundedHeight)
         Layout.maximumHeight: boundedHeight
@@ -249,7 +254,7 @@ ColumnLayout {
                         MichiText {
                             Layout.fillWidth: true
                             Layout.topMargin: MichiSpacing.xs
-                            text: library.albumTechnicalSummary || ""
+                            text: root.technicalSummaryText
                             role: "technical"
                             technical: true
                             color: MichiPalette.textSecondary
