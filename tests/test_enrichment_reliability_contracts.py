@@ -30,22 +30,32 @@ def _store(tmp_path):
     return FilesystemEnrichmentAssetStore(tmp_path)
 
 
-_JPEG = Path("/tmp/r7probe/img-jpg.bin").read_bytes()
-_PNG = Path("/tmp/r7probe/img-png.bin").read_bytes()
+# POST-R4 P10: PNG 4x4 válido hardcodeado (el decode usa QImageReader,
+# no Pillow): el test es autónomo — nunca lee ficheros de un entorno
+# local (el CI los tendría ausentes).
+_PNG_4X4 = bytes.fromhex(
+    "89504e470d0a1a0a0000000d494844520000000400000004080200000026930929"
+    "0000001349444154789c63e4129163800126380b2f07000ca80044326d0da30000"
+    "000049454e44ae426082"
+)
+
+
+def _record(asset_id, mime_type):
+    return EnrichmentAssetRecord(
+        asset_id=asset_id,
+        entity_kind=EnrichmentEntityKind.ALBUM,
+        external_entity_id=asset_id,
+        mime_type=mime_type,
+        provider="coverartarchive",
+    )
 
 
 class TestAssetReadIntegrity:
     def test_valid_asset_resolves(self, tmp_path):
         store = _store(tmp_path)
         stored = store.store(
-            EnrichmentAssetRecord(
-                asset_id="album-rg-1",
-                entity_kind=EnrichmentEntityKind.ALBUM,
-                external_entity_id="rg-1",
-                mime_type="image/jpeg",
-                provider="coverartarchive",
-            ),
-            _JPEG,
+            _record("album-rg-1", "image/png"),
+            _PNG_4X4,
         )
         assert stored is not None
         path = store.path_for("album-rg-1")
@@ -57,14 +67,8 @@ class TestAssetReadIntegrity:
         corrupto como válido)."""
         store = _store(tmp_path)
         stored = store.store(
-            EnrichmentAssetRecord(
-                asset_id="album-rg-2",
-                entity_kind=EnrichmentEntityKind.ALBUM,
-                external_entity_id="rg-2",
-                mime_type="image/jpeg",
-                provider="coverartarchive",
-            ),
-            _JPEG,
+            _record("album-rg-2", "image/png"),
+            _PNG_4X4,
         )
         assert stored is not None
         path = store.path_for("album-rg-2")
@@ -78,19 +82,13 @@ class TestAssetReadIntegrity:
     def test_truncated_asset_is_invalid(self, tmp_path):
         store = _store(tmp_path)
         stored = store.store(
-            EnrichmentAssetRecord(
-                asset_id="album-rg-3",
-                entity_kind=EnrichmentEntityKind.ALBUM,
-                external_entity_id="rg-3",
-                mime_type="image/png",
-                provider="coverartarchive",
-            ),
-            _PNG,
+            _record("album-rg-3", "image/png"),
+            _PNG_4X4,
         )
         assert stored is not None
         path = store.path_for("album-rg-3")
         assert path is not None
-        path.write_bytes(_PNG[:10])  # truncado
+        path.write_bytes(_PNG_4X4[:10])  # truncado
         assert store.path_for("album-rg-3") is None
 
 
