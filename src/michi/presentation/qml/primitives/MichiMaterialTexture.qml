@@ -1,7 +1,7 @@
 import QtQuick
 import "../theme"
 
-Image {
+Item {
     id: root
 
     // Per-surface seed de-synchronizes the tile alignment between adjacent
@@ -15,27 +15,35 @@ Image {
     property real textureOpacity: MichiThemeState.glassQuality === "high" ? 0.36
         : MichiThemeState.glassQuality === "low" ? 0 : 0.22
 
-    source: {
-        var resolved = root.textureName
-        if (resolved === "grain-graphite-01" && root.tileSeed % 2 !== 0)
-            resolved = "grain-graphite-02"
-        return "../assets/" + resolved + ".svg"
-    }
-    sourceSize.width: 128
-    sourceSize.height: 128
-    fillMode: Image.Tile
-    asynchronous: true
-    cache: true
-    smooth: true
-    mipmap: false
+    readonly property bool textureReady: texture.status === Image.Ready
 
-    // Decorative textures are strictly fail-closed. A missing SVG decoder,
-    // transient resource failure, Loading state or Image.Error must never
-    // expose Qt's broken-image placeholder. Keep the Image itself eligible
-    // for loading and suppress only its paint until Ready.
-    readonly property bool textureReady: status === Image.Ready
-    opacity: root.textureReady ? textureOpacity : 0
-    visible: textureOpacity > 0
+    Image {
+        id: texture
+        anchors.fill: parent
+        source: {
+            var resolved = root.textureName
+            if (resolved === "grain-graphite-01" && root.tileSeed % 2 !== 0)
+                resolved = "grain-graphite-02"
+            return "../assets/" + resolved + ".svg"
+        }
+        sourceSize.width: 128
+        sourceSize.height: 128
+        fillMode: Image.Tile
+        asynchronous: true
+        cache: true
+        smooth: true
+        mipmap: false
+
+        // Keep the loader alive independently of presentation visibility.
+        // Qt may transition Loading -> Error/Ready asynchronously; the image
+        // paints only after Ready, so neither Loading nor Error can expose
+        // the platform broken-image placeholder. The material below remains
+        // the complete visual fallback.
+        opacity: root.textureReady ? root.textureOpacity : 0
+        visible: root.textureOpacity > 0 && root.textureReady
+        Accessible.ignored: true
+    }
+
     Accessible.ignored: true
 
     // Static repository assets are decoded once by Qt's image cache and
