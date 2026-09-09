@@ -8,6 +8,10 @@ import "../theme"
 MichiMenu {
     id: root
     property var album: null
+    // The same menu is used from album cards and from Album Detail.  Cards
+    // need Open Album; inside the already-open detail that action is a
+    // redundant no-op, so the caller may suppress it without forking IA.
+    property bool showOpenAction: true
     // POST-MERGE CONTEXTUAL RECOVERY: never expose an action merely
     // because a backend signal exists. The host must explicitly prove a
     // productive consumer for picker/create/properties flows.
@@ -34,7 +38,7 @@ MichiMenu {
     MichiMenuItem {
         text: qsTr("Open Album")
         icon.name: "album"
-        visible: root.album !== null
+        visible: root.album !== null && root.showOpenAction
         onTriggered: library.select_album(root.album.key)
     }
     MichiMenuItem {
