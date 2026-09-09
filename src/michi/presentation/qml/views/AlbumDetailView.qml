@@ -19,19 +19,11 @@ ColumnLayout {
     readonly property string preciseDurationText: MichiFormat.formatDuration(
         library.albumDurationMs)
     readonly property string technicalSummaryText: library.albumTechnicalSummary || ""
-    readonly property string sampleRateText: root.formatSampleRate(
-        albumFacts.maxSampleRateHz || 0)
-    readonly property string channelsText: root.formatChannels(
-        albumFacts.maxChannels || 0)
+    readonly property string channelsText: root.albumChannelsText()
     readonly property string compactAlbumSummary: root.albumSummaryText()
     readonly property var heroMetricRows: [
         { label: qsTr("TRACKS"), value: String(library.albumTracks.length) },
         { label: qsTr("DURATION"), value: root.preciseDurationText },
-        // technicalSummary is the canonical quality projection and normally
-        // already includes sample rate. Only surface the structured fact as
-        // a fallback when that projection is absent; never show it twice.
-        { label: qsTr("SAMPLE RATE"), value: root.technicalSummaryText.length === 0
-            ? root.sampleRateText : "" },
         { label: qsTr("CHANNELS"), value: root.channelsText },
         { label: qsTr("DISCS"), value: albumFacts.discCount > 1
             ? String(albumFacts.discCount) : "" }
@@ -109,6 +101,24 @@ ColumnLayout {
         return qsTr("%1 ch").arg(count)
     }
 
+    function albumChannelsText() {
+        var tracks = library.albumTracks || []
+        if (tracks.length === 0)
+            return ""
+        var channelCount = 0
+        for (var i = 0; i < tracks.length; ++i) {
+            var current = Number(tracks[i].channels || 0)
+            // An unknown member makes an album-wide channel claim unsafe.
+            if (current <= 0)
+                return ""
+            if (channelCount === 0)
+                channelCount = current
+            else if (channelCount !== current)
+                return qsTr("Mixed")
+        }
+        return root.formatChannels(channelCount)
+    }
+
     function _lossyCodec(codec) {
         var normalized = String(codec || "").toLowerCase()
         return normalized.indexOf("mp3") >= 0
@@ -153,7 +163,7 @@ ColumnLayout {
     /* Context region is independently scrollable. At minimum-height windows
      * it keeps the conservative 42% budget that protects the track table.
      * Once there is normal desktop height, it may use 54% (still capped at
-     * 440 px) so cached/editorial album information is actually visible
+     * 440 px) so cached/factual album information is actually visible
      * instead of forcing an immediate nested scroll. */
     MichiScrollView {
         id: albumContextScroll
@@ -250,7 +260,9 @@ ColumnLayout {
                         }
 
                         // Canonical facts-only quality projection. Never parse
-                        // it to drive behavior or classification.
+                        // it to drive behavior or classification. EXACT labels
+                        // carry codec/rate/depth or bitrate; MIXED is explicit;
+                        // PARTIAL/UNKNOWN stay empty rather than fabricating.
                         MichiText {
                             Layout.fillWidth: true
                             Layout.topMargin: MichiSpacing.xs
@@ -356,14 +368,14 @@ ColumnLayout {
                 }
             }
 
-            // ── Editorial knowledge / Library Enrichment ───────────────
+            // ── Factual knowledge / Library Enrichment ─────────────────
             RowLayout {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 spacing: MichiSpacing.md
 
                 MichiText {
-                    text: qsTr("About this album")
+                    text: qsTr("Album information")
                     role: "section"
                 }
 
@@ -388,7 +400,7 @@ ColumnLayout {
                 objectName: "albumKnowledgeCard"
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                title: qsTr("About this album")
+                title: qsTr("Album information")
                 showTitle: false
                 knowledge: enrichment.albumKnowledge
                 // Never render stale knowledge while another entity kind is
