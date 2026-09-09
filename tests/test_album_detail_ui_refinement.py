@@ -16,6 +16,9 @@ def _qml(relative: str) -> str:
 
 def test_album_detail_compacts_duplicate_metadata_into_one_hero() -> None:
     detail = _qml("views/AlbumDetailView.qml")
+    metric_source = detail.split("readonly property var heroMetricRows:", 1)[1].split(
+        "AlbumPaletteBinding", 1
+    )[0]
 
     assert 'objectName: "albumHeroSurface"' in detail
     assert "heroMetricRows" in detail
@@ -30,10 +33,12 @@ def test_album_detail_compacts_duplicate_metadata_into_one_hero() -> None:
     assert 'qsTr("Stereo")' in detail
     assert 'qsTr("N/A")' in detail
 
-    # The canonical technical summary commonly already carries sample rate.
-    # Structured sample rate is a fallback only, never a second copy.
-    assert "root.technicalSummaryText.length === 0" in detail
-    assert '? root.sampleRateText : ""' in detail
+    # The canonical technical summary owns codec/rate/depth or bitrate. The
+    # metric rail must not repeat sample rate. Channels are derived from all
+    # album members and may say Mixed only when that is factually observed.
+    assert "SAMPLE RATE" not in metric_source
+    assert "albumChannelsText()" in detail
+    assert 'return qsTr("Mixed")' in detail
 
 
 def test_album_detail_uses_shared_formatting_authority() -> None:
@@ -76,16 +81,29 @@ def test_album_detail_bounds_context_and_preserves_track_viewport() -> None:
 def test_album_detail_hero_does_not_create_an_inset_card_inside_glass() -> None:
     detail = _qml("views/AlbumDetailView.qml")
     hero = detail.split('objectName: "albumHeroSurface"', 1)[1].split(
-        "// ── Editorial knowledge", 1
+        "// ── Factual knowledge", 1
     )[0]
 
     assert "accentLineVisible: true" in hero
     assert "gradient: Gradient" not in hero
 
 
+def test_album_information_matches_the_actual_enrichment_contract() -> None:
+    detail = _qml("views/AlbumDetailView.qml")
+    card = _qml("enrichment/EnrichmentKnowledgeCard.qml")
+
+    assert 'qsTr("Album information")' in detail
+    assert "firstReleaseYear" in card
+    assert "root.knowledge.releaseYear || root.knowledge.firstReleaseYear" in card
+    assert 'qsTr("Release year")' in card
+    assert 'qsTr("Show more")' in card
+    assert 'qsTr("Show less")' in card
+
+
 def test_album_detail_enrichment_stays_cache_only_but_fetch_is_reachable() -> None:
     detail = _qml("views/AlbumDetailView.qml")
     inline = _qml("enrichment/EnrichmentInlineState.qml")
+    status = _qml("enrichment/EnrichmentStatusBar.qml")
 
     assert "enrichment.open_album_cached(root.selectedAlbumKey)" in detail
     assert "enrichment.refresh_album()" in detail
@@ -97,6 +115,12 @@ def test_album_detail_enrichment_stays_cache_only_but_fetch_is_reachable() -> No
     assert 'qsTr("Fetch information")' in inline
     assert 'hasKnowledge: enrichment.activeKind === "album"' in detail
     assert "&& enrichment.albumHasKnowledge" in detail
+
+    # A freshly-created IDLE status bar must be hidden declaratively; relying
+    # on change handlers leaves a stray IDLE chip when no signal fires.
+    assert 'readonly property bool shouldShow: state !== "IDLE"' in status
+    assert "visible: root.shouldShow" in status
+    assert "onStateChanged: root.visible" not in status
 
 
 def test_album_detail_more_menu_reuses_productive_album_context_ia() -> None:
@@ -115,6 +139,17 @@ def test_album_detail_more_menu_reuses_productive_album_context_ia() -> None:
         "library.request_album_properties(root.album.key)",
     ):
         assert action in menu
+
+
+def test_library_chrome_is_detail_aware_without_losing_global_actions() -> None:
+    header = _qml("views/LibraryHeader.qml")
+    toolbar = _qml("views/LibraryToolbar.qml")
+
+    assert 'library.selectedAlbumKey !== ""' in header
+    assert 'qsTr("Album details")' in header
+    assert 'qsTr("Search library…")' in toolbar
+    assert 'qsTr("Search albums or album artists…")' in toolbar
+    assert 'objectName: "libraryScanSplitButton"' in toolbar
 
 
 def test_decorative_material_texture_never_renders_broken_image_placeholder() -> None:
