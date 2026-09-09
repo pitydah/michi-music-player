@@ -29,13 +29,13 @@ Image {
     smooth: true
     mipmap: false
 
-    // Decorative textures are strictly fail-closed.  A missing SVG decoder,
-    // a transient package/resource problem, or an Image.Error must NEVER let
-    // Qt's broken-image placeholder become visible inside a premium surface.
-    // The material underneath remains the complete visual fallback.
+    // Decorative textures are strictly fail-closed. A missing SVG decoder,
+    // transient resource failure, Loading state or Image.Error must never
+    // expose Qt's broken-image placeholder. Keep the Image itself eligible
+    // for loading and suppress only its paint until Ready.
     readonly property bool textureReady: status === Image.Ready
     opacity: root.textureReady ? textureOpacity : 0
-    visible: textureOpacity > 0 && root.textureReady
+    visible: textureOpacity > 0
     Accessible.ignored: true
 
     // Static repository assets are decoded once by Qt's image cache and
