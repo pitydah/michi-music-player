@@ -59,6 +59,12 @@ MichiGlassSurface {
     }
 
     function searchPlaceholder() {
+        // Album Detail keeps this field global. Make that scope explicit so
+        // it can never be mistaken for a filter over the open album's tracks.
+        if (currentTab === "albums"
+                && typeof library !== "undefined" && library
+                && library.selectedAlbumKey !== "")
+            return qsTr("Search library…")
         // PR #231 REVIEW SEAL (P1-04): translated placeholders — nunca
         // literales raw en un locale no-inglés.
         if (currentTab === "albums") return qsTr("Search albums or album artists…")
