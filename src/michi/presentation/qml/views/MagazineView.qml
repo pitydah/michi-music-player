@@ -38,6 +38,9 @@ Item {
         ? albumModel.slice(7) : []
     readonly property var archiveRows: root.makeArchiveRows()
     property int rovingIndex: 0
+    // R7-01: currentKey es la identidad canónica; la restauración del
+    // roving editorial nunca la escribe (TRUE desde la construcción).
+    property bool browseRestoreInProgress: true
     // M9-R3 CONTEXTUAL RECOVERY: album del roving actual para el menú
     // contextual por teclado (Menu / Shift+F10) — UN menú raíz, sin
     // acceso frágil a delegates internos.
@@ -101,31 +104,59 @@ Item {
 
     function selectEditorial(index, key) {
         rovingIndex = Math.max(0, Math.min(index, albumModel.length - 1))
-        if (browseState && key)
+        if (browseState && key && !browseRestoreInProgress)
             browseState.remember(key)
     }
 
-    // POST-R4 P6: la autoridad del browse es la KEY del álbum — el
-    // índice editorial se re-resuelve cuando cambia el modelo.
-    function reconcileBrowseKey() {
+    function findIndexByKey(key) {
+        if (!key)
+            return -1
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === key)
+                return i
+        }
+        return -1
+    }
+
+    // R7-01: lifecycle determinístico de restauración/proyección del
+    // roving editorial (identidad por key; el índice del list es solo
+    // posición de scroll).
+    function restoreBrowseSelection() {
         if (!browseState || !albumModel)
             return
-        if (browseState.currentKey === "")
-            return
-        for (var i = 0; i < albumModel.length; ++i) {
-            if (albumModel[i].key === browseState.currentKey) {
-                rovingIndex = i
-                positionRoving()
-                return
-            }
-        }
-        browseState.currentKey = ""
-        browseState.editorialIndex = -1
-        rovingIndex = 0
+        if (albumModel.length === 0)
+            return  // restauración pendiente (modelo tardío)
+        browseRestoreInProgress = true
+        var resolvedIndex = browseState.currentKey !== ""
+            ? root.findIndexByKey(browseState.currentKey)
+            : browseState.editorialIndex
+        if (resolvedIndex < 0)
+            resolvedIndex = 0
+        if (resolvedIndex >= albumModel.length)
+            resolvedIndex = albumModel.length - 1
+        rovingIndex = resolvedIndex
         positionRoving()
+        if (browseState.currentKey !== ""
+                && albumModel[resolvedIndex].key !== browseState.currentKey) {
+            // key desaparecida del modelo activo: fallback explícito.
+            browseState.currentKey = ""
+            browseState.editorialIndex = -1
+            rovingIndex = 0
+            if (albumModel.length > 0)
+                browseState.remember(albumModel[0].key)
+            positionRoving()
+        }
+        browseRestoreInProgress = false
     }
-    onAlbumModelChanged: if (browseState && browseState.currentKey !== "")
-        Qt.callLater(function() { root.reconcileBrowseKey() })
+        Timer {
+        id: browseRestoreTimer
+        interval: 0
+        repeat: false
+        onTriggered: root.restoreBrowseSelection()
+    }
+    Component.onCompleted: browseRestoreTimer.start()
+    onAlbumModelChanged: if (browseState && albumModel.length > 0)
+        browseRestoreTimer.start()
 
     function positionRoving() {
         if (rovingIndex < 7) {

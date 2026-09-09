@@ -42,9 +42,10 @@ ListView {
     property string sortMode: "title"
     property bool sortDescending: false
     property var browseState: null
-    // POST-R4 P6: el reconcile por key no debe re-grabar la key del
-    // índice determinístico (el clear sería inmediatamente pisado).
-    property bool browseReconcileInProgress: false
+    // R7-01: currentKey es la identidad canónica del browse; las
+    // transiciones de currentIndex durante la restauración nunca la
+    // escriben. TRUE desde la construcción.
+    property bool browseRestoreInProgress: true
     property var viewPreferences: ({})
     signal sortRequested(string mode)
     readonly property var columnPlan: resolveColumnPlan(width, viewPreferences)
@@ -97,55 +98,60 @@ ListView {
     Accessible.role: Accessible.Table
     Accessible.name: qsTr("Albums in list view")
 
-    Component.onCompleted: if (browseState) Qt.callLater(function() {
-        var restoredIndex = browseState.listIndex
-        if (browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i) {
-                if (albumModel[i].key === browseState.currentKey) {
-                    restoredIndex = i
-                    break
-                }
-            }
+    function findIndexByKey(key) {
+        if (!key)
+            return -1
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === key)
+                return i
         }
-        root.currentIndex = restoredIndex
+        return -1
+    }
+
+    // R7-01: lifecycle determinístico de restauración/proyección.
+    function restoreBrowseSelection() {
+        if (!browseState || !albumModel)
+            return
+        if (albumModel.length === 0)
+            return  // restauración pendiente (modelo tardío)
+        browseRestoreInProgress = true
+        var resolvedIndex = browseState.currentKey !== ""
+            ? root.findIndexByKey(browseState.currentKey)
+            : browseState.listIndex
+        if (resolvedIndex < 0)
+            resolvedIndex = 0
+        if (resolvedIndex >= albumModel.length)
+            resolvedIndex = albumModel.length - 1
+        root.currentIndex = resolvedIndex
         root.contentY = browseState.listContentY
-    })
+        if (browseState.currentKey !== ""
+                && albumModel[resolvedIndex].key !== browseState.currentKey) {
+            browseState.currentKey = ""
+            browseState.listIndex = -1
+            if (albumModel.length > 0) {
+                root.currentIndex = 0
+                browseState.remember(albumModel[0].key)
+            }
+            root.contentY = 0
+        }
+        browseRestoreInProgress = false
+    }
+        Timer {
+        id: browseRestoreTimer
+        interval: 0
+        repeat: false
+        onTriggered: root.restoreBrowseSelection()
+    }
+    Component.onCompleted: browseRestoreTimer.start()
+    onAlbumModelChanged: if (browseState && albumModel.length > 0)
+        browseRestoreTimer.start()
     onContentYChanged: if (browseState) browseState.listContentY = contentY
     onCurrentIndexChanged: if (browseState) {
         browseState.listIndex = currentIndex
-        if (!browseReconcileInProgress && currentIndex >= 0
+        if (!browseRestoreInProgress && currentIndex >= 0
                 && currentIndex < albumModel.length)
             browseState.remember(albumModel[currentIndex].key)
     }
-
-    // POST-R4 P6: la autoridad del browse es la KEY del álbum — el
-    // índice SIEMPRE es la proyección del currentKey en el modelo
-    // vigente. Sort/filter/search/scan cambian el modelo: si el álbum
-    // sigue existiendo, el índice se resuelve de nuevo; si ya no
-    // existe, la selección se limpia (posición determinística segura,
-    // nunca un salto a otro álbum).
-    function reconcileBrowseKey() {
-        if (!browseState || !albumModel)
-            return
-        if (browseState.currentKey === "")
-            return
-        for (var i = 0; i < albumModel.length; ++i) {
-            if (albumModel[i].key === browseState.currentKey) {
-                root.currentIndex = i
-                return
-            }
-        }
-        browseState.currentKey = ""
-        browseState.listIndex = -1
-        if (albumModel.length > 0) {
-            root.browseReconcileInProgress = true
-            root.currentIndex = 0
-            root.browseReconcileInProgress = false
-        }
-        root.contentY = 0
-    }
-    onAlbumModelChanged: if ( browseState && browseState.currentKey !== "")
-        Qt.callLater(function() { root.reconcileBrowseKey() })
 
     header: AlbumTableHeader {
         width: root.width
@@ -192,13 +198,13 @@ ListView {
         rowDensity: root.viewPreferences.density || "standard"
         onActiveFocusChanged: {
             if (activeFocus)
-                root.currentIndex = index
+                root.browseTo(index)
         }
         onSelectedRequested: {
-            root.currentIndex = index
+            root.browseTo(index)
         }
         onOpenRequested: {
-            root.currentIndex = index
+            root.browseTo(index)
             library.select_album(modelData.key)
         }
         onPlayRequested: library.play_album(modelData.key)

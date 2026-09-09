@@ -303,10 +303,11 @@ class TestLibraryPageOrchestration:
             QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
             _process_events()
             assert len(obj.findChildren(QObject)) <= baseline_objects + 8
-            assert (
-                browse_state.property("currentKey")
-                == bridge.property("albums")[0]["key"]
-            )
+            # R7-01: 100 switches SIN intención del usuario no crean
+            # selección: la key canónica queda vacía (el comportamiento
+            # viejo la auto-inicializaba al álbum del índice 0 del
+            # arranque — exactamente la contaminación prohibida).
+            assert browse_state.property("currentKey") == ""
             assert messages == [], "QML warnings during 100 switches: " + "; ".join(
                 messages
             )

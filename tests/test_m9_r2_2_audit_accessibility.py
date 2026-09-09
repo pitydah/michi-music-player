@@ -251,7 +251,7 @@ def test_cover_flow_tap_preserves_drag_and_focus():
 
 def test_vinyl_wall_selects_on_tap_and_opens_on_double_tap():
     content = read("views/VinylWallView.qml")
-    assert "albumVinyl.currentIndex = vinylTile.index" in content
+    assert "albumVinyl.browseTo(vinylTile.index)" in content
     assert "onDoubleTapped: library.select_album(modelData.key)" in content
 
 

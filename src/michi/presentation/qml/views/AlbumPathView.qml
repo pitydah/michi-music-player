@@ -40,9 +40,10 @@ PathView {
     }
     property real albumZoom: 1.0
     property var browseState: null
-    // POST-R4 P6: el reconcile por key no debe re-grabar la key del
-    // índice determinístico (el clear sería inmediatamente pisado).
-    property bool browseReconcileInProgress: false
+    // R7-01: currentKey es la identidad canónica del browse; las
+    // transiciones de currentIndex durante la restauración nunca la
+    // escriben. TRUE desde la construcción.
+    property bool browseRestoreInProgress: true
     property string visibleAlbums: "auto"
     property string depthMode: "standard"
     property bool ambientColor: true
@@ -78,52 +79,70 @@ PathView {
     Accessible.name: qsTr("Albums in album flow view")
     Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
 
-    Component.onCompleted: if (browseState) {
-        var restoredIndex = browseState.flowIndex
-        if (browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i) {
-                if (albumModel[i].key === browseState.currentKey) {
-                    restoredIndex = i
-                    break
-                }
+    function findIndexByKey(key) {
+        if (!key)
+            return -1
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === key)
+                return i
+        }
+        return -1
+    }
+
+    // R7-01: lifecycle determinístico de restauración/proyección.
+    function restoreBrowseSelection() {
+        if (!browseState || !albumModel)
+            return
+        if (albumModel.length === 0)
+            return  // restauración pendiente (modelo tardío)
+        browseKeyboardArmed = false
+        browseRestoreInProgress = true
+        var resolvedIndex = browseState.currentKey !== ""
+            ? albumsPath.findIndexByKey(browseState.currentKey)
+            : browseState.flowIndex
+        if (resolvedIndex < 0)
+            resolvedIndex = 0
+        if (resolvedIndex >= albumModel.length)
+            resolvedIndex = albumModel.length - 1
+        albumsPath.currentIndex = resolvedIndex
+        if (browseState.currentKey !== ""
+                && albumModel[resolvedIndex].key !== browseState.currentKey) {
+            // key desaparecida del modelo activo: fallback explícito.
+            browseState.currentKey = ""
+            browseState.flowIndex = -1
+            if (albumModel.length > 0) {
+                albumsPath.currentIndex = 0
+                browseState.remember(albumModel[0].key)
             }
         }
-        currentIndex = restoredIndex
+        browseRestoreInProgress = false
+    }
+        Timer {
+        id: browseRestoreTimer
+        interval: 0
+        repeat: false
+        onTriggered: albumsPath.restoreBrowseSelection()
+    }
+    Component.onCompleted: browseRestoreTimer.start()
+    onAlbumModelChanged: if (browseState && albumModel.length > 0)
+        browseRestoreTimer.start()
+    // R7-01: el remember exige intención (teclas o acciones explícitas).
+    property bool browseKeyboardArmed: false
+    function browseTo(index) {
+        if (index < 0 || index >= albumModel.length)
+            return
+        albumsPath.currentIndex = index
+        if (browseState && !browseRestoreInProgress && currentAlbum)
+            browseState.remember(currentAlbum.key)
     }
     onCurrentIndexChanged: if (browseState) {
         browseState.flowIndex = currentIndex
-        if (!browseReconcileInProgress && currentAlbum)
+        if (browseKeyboardArmed && !browseRestoreInProgress
+                && currentAlbum) {
+            browseKeyboardArmed = false
             browseState.remember(currentAlbum.key)
-    }
-
-    // POST-R4 P6: la autoridad del browse es la KEY del álbum — el
-    // índice SIEMPRE es la proyección del currentKey en el modelo
-    // vigente. Sort/filter/search/scan cambian el modelo: si el álbum
-    // sigue existiendo, el índice se resuelve de nuevo; si ya no
-    // existe, la selección se limpia (posición determinística segura,
-    // nunca un salto a otro álbum).
-    function reconcileBrowseKey() {
-        if (!browseState || !albumModel)
-            return
-        if (browseState.currentKey === "")
-            return
-        for (var i = 0; i < albumModel.length; ++i) {
-            if (albumModel[i].key === browseState.currentKey) {
-                albumsPath.currentIndex = i
-                return
-            }
         }
-        browseState.currentKey = ""
-        browseState.flowIndex = -1
-        if (albumModel.length > 0) {
-            albumsPath.browseReconcileInProgress = true
-            albumsPath.currentIndex = 0
-            albumsPath.browseReconcileInProgress = false
-        }
-        albumsPath.contentY = 0
     }
-    onAlbumModelChanged: if ( browseState && browseState.currentKey !== "")
-        Qt.callLater(function() { albumsPath.reconcileBrowseKey() })
 
     Rectangle {
         anchors.fill: parent
@@ -152,11 +171,14 @@ PathView {
         if (albumsPath.handleAlbumContextKey(event))
             return
         if (event.key === Qt.Key_Home) {
-            currentIndex = count > 0 ? 0 : -1
+            albumsPath.browseTo(0)
             event.accepted = true
         } else if (event.key === Qt.Key_End) {
-            currentIndex = count > 0 ? count - 1 : -1
+            albumsPath.browseTo(count - 1)
             event.accepted = true
+        } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+            // la navegación built-in moverá el índice: armar la intención.
+            albumsPath.browseKeyboardArmed = true
         }
     }
 
@@ -291,7 +313,7 @@ PathView {
             id: tap
             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
             onSingleTapped: {
-                albumsPath.currentIndex = pathAlbum.index
+                albumsPath.browseTo(pathAlbum.index)
                 pathAlbum.forceActiveFocus()
             }
             onDoubleTapped: library.select_album(modelData.key)
