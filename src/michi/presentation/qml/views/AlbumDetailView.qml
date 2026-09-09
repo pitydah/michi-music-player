@@ -170,13 +170,14 @@ ColumnLayout {
 
     // ── Album identity / primary action ────────────────────────────────
     MichiGlassSurface {
+        id: albumHeroSurface
         objectName: "albumHeroSurface"
         Layout.fillWidth: true
         Layout.minimumWidth: 0
         Layout.preferredHeight: heroContent.implicitHeight
-            + root.heroPadding * 2
+            + albumHeroSurface.heroPadding * 2
         elevation: "elevated"
-        contentPadding: root.heroPadding
+        contentPadding: albumHeroSurface.heroPadding
         accented: true
         accentColor: paletteBinding.value.accentSafe || MichiPalette.auroraBlue
         textured: true
@@ -380,6 +381,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.minimumWidth: 0
         title: qsTr("About this album")
+        showTitle: false
         knowledge: enrichment.albumKnowledge
         hasKnowledge: enrichment.albumHasKnowledge
         sources: enrichment.albumAttributions
