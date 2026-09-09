@@ -98,6 +98,8 @@ def test_album_information_matches_the_actual_enrichment_contract() -> None:
     assert 'qsTr("Release year")' in card
     assert 'qsTr("Show more")' in card
     assert 'qsTr("Show less")' in card
+    assert "hasDisplayableKnowledge" in card
+    assert "A matching online record was found" in card
 
 
 def test_album_detail_enrichment_stays_cache_only_but_fetch_is_reachable() -> None:
