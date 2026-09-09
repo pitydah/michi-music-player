@@ -18,7 +18,6 @@ import pytest  # noqa: E402
 from PySide6.QtCore import QPointF  # noqa: E402
 from PySide6.QtGui import QGuiApplication  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
-
 from test_library_context_host_a1 import (  # noqa: E402
     _find_any,
     _mount,
