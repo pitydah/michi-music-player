@@ -16,14 +16,13 @@ ColumnLayout {
 
     readonly property var albumFacts: library.albumPresentation || ({})
     readonly property bool showMetricRail: MichiBreakpoints.atLeastWide(root.width)
-    readonly property string preciseDurationText: root.formatDurationPrecise(
+    readonly property string preciseDurationText: MichiFormat.formatDuration(
         library.albumDurationMs)
     readonly property string sampleRateText: root.formatSampleRate(
         albumFacts.maxSampleRateHz || 0)
     readonly property string channelsText: root.formatChannels(
         albumFacts.maxChannels || 0)
-    readonly property string heroTechnicalText: root.compactTechnicalSummary(
-        library.albumTechnicalSummary || "")
+    readonly property string compactAlbumSummary: root.albumSummaryText()
     readonly property var heroMetricRows: [
         { label: qsTr("TRACKS"), value: String(library.albumTracks.length) },
         { label: qsTr("DURATION"), value: root.preciseDurationText },
@@ -43,7 +42,8 @@ ColumnLayout {
             inspectedTrack.bitDepth || 0, inspectedTrack.codec || "") },
         { label: qsTr("Channels"), value: root.formatChannels(
             inspectedTrack.channels || 0) || qsTr("Unknown") },
-        { label: qsTr("File size"), value: root.formatFileSize(inspectedTrack.fileSize) },
+        { label: qsTr("File size"), value: MichiFormat.formatFileSize(
+            inspectedTrack.fileSize) },
         { label: qsTr("Path"), value: inspectedTrack.path }
     ] : []
 
@@ -53,8 +53,9 @@ ColumnLayout {
     Layout.fillHeight: true
     spacing: MichiThemeState.contentGap
 
-    /* Opening detail is deliberately CACHE ONLY.  This invariant is part of
-     * R16: passive navigation must never start provider/network work. */
+    /* Opening detail is deliberately CACHE ONLY. Passive navigation must
+     * never start provider/network work. Explicit refresh/review below are
+     * the only network-capable presentation intents. */
     readonly property string selectedAlbumKey: library.selectedAlbumKey
     onSelectedAlbumKeyChanged: {
         if (root.selectedAlbumKey.length > 0)
@@ -79,28 +80,6 @@ ColumnLayout {
                 return i
         }
         return -1
-    }
-
-    function formatFileSize(bytes) {
-        if (!bytes || bytes <= 0)
-            return qsTr("Unknown")
-        if (bytes >= 1073741824)
-            return (bytes / 1073741824).toFixed(2) + " GB"
-        return (bytes / 1048576).toFixed(1) + " MB"
-    }
-
-    function formatDurationPrecise(milliseconds) {
-        var totalSeconds = Math.max(0, Math.floor((milliseconds || 0) / 1000))
-        if (totalSeconds <= 0)
-            return ""
-        var seconds = totalSeconds % 60
-        var totalMinutes = Math.floor(totalSeconds / 60)
-        var minutes = totalMinutes % 60
-        var hours = Math.floor(totalMinutes / 60)
-        function two(value) { return value < 10 ? "0" + value : String(value) }
-        if (hours > 0)
-            return hours + ":" + two(minutes) + ":" + two(seconds)
-        return totalMinutes + ":" + two(seconds)
     }
 
     function formatSampleRate(hz) {
@@ -141,20 +120,18 @@ ColumnLayout {
         return root._lossyCodec(codec) ? qsTr("N/A") : qsTr("Unknown")
     }
 
-    function compactTechnicalSummary(summary) {
-        var raw = String(summary || "")
-        if (raw.length === 0 || !root.showMetricRail)
-            return raw
-        // Wide layout owns sample rate in the metric rail.  Strip only that
-        // presentation fragment from the canonical summary; format/codec,
-        // bitrate, bit depth and Mixed formats remain untouched.
-        return raw.split(" · ").filter(function(segment) {
-            return segment.toLowerCase().indexOf("hz") < 0
-        }).join(" · ")
+    function albumSummaryText() {
+        var count = library.albumTracks.length
+        var countText = qsTr("%1 track").arg(count)
+        if (count !== 1)
+            countText = qsTr("%1 tracks").arg(count)
+        if (root.preciseDurationText.length === 0)
+            return countText
+        return countText + " · " + root.preciseDurationText
     }
 
-    // One compact navigation authority.  LibraryHeader already owns the
-    // global "Library" identity, and the hero owns the album title.
+    // LibraryHeader owns the page identity and the hero owns album identity.
+    // Keep navigation to one compact, unambiguous back affordance.
     RowLayout {
         Layout.fillWidth: true
         spacing: MichiSpacing.sm
@@ -168,256 +145,290 @@ ColumnLayout {
         Item { Layout.fillWidth: true }
     }
 
-    // ── Album identity / primary action ────────────────────────────────
-    MichiGlassSurface {
-        id: albumHeroSurface
-        objectName: "albumHeroSurface"
+    /* Context region is independently scrollable. This is intentional: the
+     * application supports a 480 px minimum window height and the Library
+     * shell consumes part of it. Letting hero/enrichment compete directly
+     * with the track table is what collapsed the table to its scrollbar.
+     * The bounded context viewport keeps tracks productive at every height
+     * while all album/enrichment information remains reachable. */
+    MichiScrollView {
+        id: albumContextScroll
+        objectName: "albumContextScroll"
         Layout.fillWidth: true
         Layout.minimumWidth: 0
-        Layout.preferredHeight: heroContent.implicitHeight
-            + albumHeroSurface.heroPadding * 2
-        elevation: "elevated"
-        contentPadding: albumHeroSurface.heroPadding
-        accented: true
-        accentColor: paletteBinding.value.accentSafe || MichiPalette.auroraBlue
-        textured: true
-        materialRole: MichiMaterialRole.hero
-        glintMode: "michi"
-        readonly property int heroPadding: root.width < MichiBreakpoints.mediumMin
-            ? MichiSpacing.md : MichiSpacing.lg
+        readonly property real boundedHeight: Math.min(
+            albumContextColumn.implicitHeight,
+            Math.min(440, Math.max(80, root.height * 0.42)))
+        Layout.preferredHeight: boundedHeight
+        Layout.minimumHeight: Math.min(80, boundedHeight)
+        Layout.maximumHeight: boundedHeight
+        contentWidth: availableWidth
 
-        Rectangle {
-            anchors.fill: parent
-            radius: MichiRadius.lg
-            opacity: 0.22
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop {
-                    position: 0
-                    color: paletteBinding.value.dominant || MichiPalette.playlistHeroTop
-                }
-                GradientStop {
-                    position: 1
-                    color: paletteBinding.value.backplane || MichiPalette.playlistHeroBottom
-                }
-            }
-            Behavior on opacity {
-                enabled: !MichiAccessibility.reducedMotion
-                NumberAnimation { duration: MichiMotion.paletteCrossfade }
-            }
-        }
+        ColumnLayout {
+            id: albumContextColumn
+            width: albumContextScroll.availableWidth
+            spacing: MichiThemeState.contentGap
 
-        RowLayout {
-            id: heroContent
-            anchors.fill: parent
-            spacing: root.width < MichiBreakpoints.mediumMin
-                ? MichiSpacing.md : MichiSpacing.xl
-
-            Artwork {
-                sourcePath: library.albumArtwork.length > 0
-                    ? library.albumArtwork : enrichment.albumArtworkPath
-                fallbackText: library.albumTitle
-                Layout.preferredWidth: Math.min(204,
-                    Math.max(136, root.width * 0.15))
-                Layout.preferredHeight: Layout.preferredWidth
-                Layout.alignment: Qt.AlignTop
-                requestedSize: 512
-            }
-
-            ColumnLayout {
+            // ── Album identity / primary action ────────────────────────
+            MichiGlassSurface {
+                id: albumHeroSurface
+                objectName: "albumHeroSurface"
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                Layout.alignment: Qt.AlignTop
-                spacing: MichiSpacing.xs
+                Layout.preferredHeight: heroContent.implicitHeight
+                    + albumHeroSurface.heroPadding * 2
+                elevation: "elevated"
+                contentPadding: albumHeroSurface.heroPadding
+                accented: true
+                accentLineVisible: true
+                accentColor: paletteBinding.value.accentSafe
+                    || MichiPalette.auroraBlue
+                textured: true
+                materialRole: MichiMaterialRole.hero
+                glintMode: "michi"
+                readonly property int heroPadding:
+                    root.width < MichiBreakpoints.mediumMin
+                        ? MichiSpacing.md : MichiSpacing.lg
 
-                MichiText {
-                    Layout.fillWidth: true
-                    text: library.albumTitle
-                    role: "display"
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                }
-                MichiText {
-                    Layout.fillWidth: true
-                    text: library.albumArtist
-                    role: "section"
-                    color: MichiPalette.textSecondary
-                    elide: Text.ElideRight
-                }
-                MichiText {
-                    Layout.fillWidth: true
-                    text: [library.albumGenres, library.albumYear > 0
-                        ? library.albumYear : ""].filter(function(value) {
-                            return String(value).length > 0
-                        }).join(" · ")
-                    role: "secondary"
-                    color: MichiPalette.textMuted
-                    visible: text.length > 0
-                    elide: Text.ElideRight
-                }
-
-                MichiText {
-                    Layout.fillWidth: true
-                    Layout.topMargin: MichiSpacing.xs
-                    text: root.heroTechnicalText
-                    role: "technical"
-                    technical: true
-                    color: MichiPalette.textSecondary
-                    visible: text.length > 0
-                    elide: Text.ElideRight
-                }
-
+                /* Do not insert another full-card Rectangle here. Children
+                 * of MichiGlassSurface are hosted inside contentPadding, so
+                 * such a rectangle becomes an inset card-within-card. The
+                 * canonical hero material + artwork-derived accent owns the
+                 * surface; artwork remains the contextual colour source. */
                 RowLayout {
-                    Layout.topMargin: MichiSpacing.md
-                    spacing: MichiSpacing.sm
+                    id: heroContent
+                    anchors.fill: parent
+                    spacing: root.width < MichiBreakpoints.mediumMin
+                        ? MichiSpacing.md : MichiSpacing.xl
 
-                    MichiButton {
-                        text: qsTr("Play album")
-                        iconName: "play"
-                        variant: "primary"
-                        enabled: library.albumTracks.length > 0
-                        onClicked: library.play_selected_album()
+                    Artwork {
+                        sourcePath: library.albumArtwork.length > 0
+                            ? library.albumArtwork : enrichment.albumArtworkPath
+                        fallbackText: library.albumTitle
+                        Layout.preferredWidth: Math.min(204,
+                            Math.max(128, root.width * 0.15))
+                        Layout.preferredHeight: Layout.preferredWidth
+                        Layout.alignment: Qt.AlignTop
+                        requestedSize: 512
                     }
 
-                    MichiIconButton {
-                        id: albumMoreButton
-                        iconName: "more"
-                        accessibleName: qsTr("More album options")
-                        onClicked: albumDetailMenu.popup()
-
-                        AlbumContextMenu {
-                            id: albumDetailMenu
-                            x: Math.max(0, parent.width - width)
-                            y: parent.height + MichiSpacing.xs
-                            album: root.albumFacts
-                            showOpenAction: false
-                            // Productive LibraryContentHost consumes these
-                            // Bridge intents; retain fail-closed gating inside
-                            // the shared menu for the backend capabilities.
-                            canAddToPlaylist: true
-                            canCreatePlaylist: true
-                            canShowProperties: true
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                visible: root.showMetricRail
-                Layout.preferredWidth: 1
-                Layout.fillHeight: true
-                Layout.topMargin: MichiSpacing.xs
-                Layout.bottomMargin: MichiSpacing.xs
-                color: MichiSemanticColors.borderSubtle
-            }
-
-            GridLayout {
-                visible: root.showMetricRail
-                Layout.preferredWidth: 252
-                Layout.minimumWidth: 220
-                Layout.alignment: Qt.AlignTop
-                columns: 2
-                columnSpacing: MichiSpacing.xl
-                rowSpacing: MichiSpacing.md
-
-                Repeater {
-                    model: root.heroMetricRows
-                    delegate: ColumnLayout {
-                        id: metricDelegate
-                        required property var modelData
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: MichiSpacing.xxs
+                        Layout.minimumWidth: 0
+                        Layout.alignment: Qt.AlignTop
+                        spacing: MichiSpacing.xs
 
                         MichiText {
-                            text: metricDelegate.modelData.label
-                            role: "technical"
-                            technical: true
-                            color: MichiPalette.textMuted
+                            Layout.fillWidth: true
+                            text: library.albumTitle
+                            role: "display"
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
                         }
                         MichiText {
                             Layout.fillWidth: true
-                            text: metricDelegate.modelData.value
-                            role: "secondary"
-                            font.weight: Font.Medium
-                            color: MichiPalette.textPrimary
+                            text: library.albumArtist
+                            role: "section"
+                            color: MichiPalette.textSecondary
                             elide: Text.ElideRight
+                        }
+                        MichiText {
+                            Layout.fillWidth: true
+                            text: [library.albumGenres, library.albumYear > 0
+                                ? library.albumYear : ""].filter(function(value) {
+                                    return String(value).length > 0
+                                }).join(" · ")
+                            role: "secondary"
+                            color: MichiPalette.textMuted
+                            visible: text.length > 0
+                            elide: Text.ElideRight
+                        }
+
+                        // Canonical facts-only quality projection. Never parse
+                        // it to drive behavior or classification.
+                        MichiText {
+                            Layout.fillWidth: true
+                            Layout.topMargin: MichiSpacing.xs
+                            text: library.albumTechnicalSummary || ""
+                            role: "technical"
+                            technical: true
+                            color: MichiPalette.textSecondary
+                            visible: text.length > 0
+                            elide: Text.ElideRight
+                        }
+
+                        // Wide owns these facts in the metric rail. Compact
+                        // and medium retain them here instead of silently
+                        // dropping track count/duration.
+                        MichiText {
+                            Layout.fillWidth: true
+                            text: root.compactAlbumSummary
+                            role: "secondary"
+                            color: MichiPalette.textMuted
+                            visible: !root.showMetricRail && text.length > 0
+                            elide: Text.ElideRight
+                        }
+
+                        RowLayout {
+                            Layout.topMargin: MichiSpacing.md
+                            spacing: MichiSpacing.sm
+
+                            MichiButton {
+                                text: qsTr("Play album")
+                                iconName: "play"
+                                variant: "primary"
+                                enabled: library.albumTracks.length > 0
+                                onClicked: library.play_selected_album()
+                            }
+
+                            MichiIconButton {
+                                id: albumMoreButton
+                                iconName: "more"
+                                accessibleName: qsTr("More album options")
+                                onClicked: albumDetailMenu.popup()
+
+                                AlbumContextMenu {
+                                    id: albumDetailMenu
+                                    x: Math.max(0, parent.width - width)
+                                    y: parent.height + MichiSpacing.xs
+                                    album: root.albumFacts
+                                    showOpenAction: false
+                                    // LibraryContentHost always composes A1,
+                                    // the productive consumer for these
+                                    // Bridge intents. Menu defaults remain
+                                    // fail-closed everywhere else.
+                                    canAddToPlaylist: true
+                                    canCreatePlaylist: true
+                                    canShowProperties: true
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        visible: root.showMetricRail
+                        Layout.preferredWidth: 1
+                        Layout.fillHeight: true
+                        Layout.topMargin: MichiSpacing.xs
+                        Layout.bottomMargin: MichiSpacing.xs
+                        color: MichiSemanticColors.borderSubtle
+                    }
+
+                    GridLayout {
+                        visible: root.showMetricRail
+                        Layout.preferredWidth: 252
+                        Layout.minimumWidth: 220
+                        Layout.alignment: Qt.AlignTop
+                        columns: 2
+                        columnSpacing: MichiSpacing.xl
+                        rowSpacing: MichiSpacing.md
+
+                        Repeater {
+                            model: root.heroMetricRows
+                            delegate: ColumnLayout {
+                                id: metricDelegate
+                                required property var modelData
+                                Layout.fillWidth: true
+                                spacing: MichiSpacing.xxs
+
+                                MichiText {
+                                    text: metricDelegate.modelData.label
+                                    role: "technical"
+                                    technical: true
+                                    color: MichiPalette.textMuted
+                                }
+                                MichiText {
+                                    Layout.fillWidth: true
+                                    text: metricDelegate.modelData.value
+                                    role: "secondary"
+                                    font.weight: Font.Medium
+                                    color: MichiPalette.textPrimary
+                                    elide: Text.ElideRight
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
-    }
 
-    // ── Editorial knowledge / Library Enrichment ───────────────────────
-    RowLayout {
-        Layout.fillWidth: true
-        Layout.minimumWidth: 0
-        spacing: MichiSpacing.md
+            // ── Editorial knowledge / Library Enrichment ───────────────
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                spacing: MichiSpacing.md
 
-        MichiText {
-            text: qsTr("About this album")
-            role: "section"
-        }
+                MichiText {
+                    text: qsTr("About this album")
+                    role: "section"
+                }
 
-        EnrichmentInlineState {
-            Layout.fillWidth: true
-            Layout.minimumWidth: 0
-            kind: "album"
-            state: enrichment.state
-            message: enrichment.stateMessage
-            busy: enrichment.busy
-            onlineEnabled: enrichment.onlineEnabled
-            hasKnowledge: enrichment.albumHasKnowledge
-            active: enrichment.activeKind === "album"
-            onRefreshRequested: enrichment.refresh_album()
-            onReviewRequested: enrichment.open_review("album")
-            onClearRequested: enrichment.clear_knowledge()
-            onResetRequested: enrichment.reset_identity()
-        }
-    }
+                EnrichmentInlineState {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    kind: "album"
+                    state: enrichment.state
+                    message: enrichment.stateMessage
+                    busy: enrichment.busy
+                    onlineEnabled: enrichment.onlineEnabled
+                    hasKnowledge: enrichment.albumHasKnowledge
+                    active: enrichment.activeKind === "album"
+                    onRefreshRequested: enrichment.refresh_album()
+                    onReviewRequested: enrichment.open_review("album")
+                    onClearRequested: enrichment.clear_knowledge()
+                    onResetRequested: enrichment.reset_identity()
+                }
+            }
 
-    EnrichmentKnowledgeCard {
-        objectName: "albumKnowledgeCard"
-        Layout.fillWidth: true
-        Layout.minimumWidth: 0
-        title: qsTr("About this album")
-        showTitle: false
-        knowledge: enrichment.albumKnowledge
-        hasKnowledge: enrichment.albumHasKnowledge
-        sources: enrichment.albumAttributions
-        materialRole: MichiMaterialRole.editorial
-        elevation: "subtle"
-        shadowed: false
-        // The card already owns one lg inset internally.  Avoid the old
-        // double-padding that made the album information block balloon.
-        contentPadding: 0
-    }
+            EnrichmentKnowledgeCard {
+                objectName: "albumKnowledgeCard"
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                title: qsTr("About this album")
+                showTitle: false
+                knowledge: enrichment.albumKnowledge
+                // Never render stale knowledge while another entity kind is
+                // still active during a navigation transition.
+                hasKnowledge: enrichment.activeKind === "album"
+                    && enrichment.albumHasKnowledge
+                sources: enrichment.albumAttributions
+                materialRole: MichiMaterialRole.editorial
+                elevation: "subtle"
+                shadowed: false
+                // The card owns an internal lg inset; zero surface padding
+                // avoids the historical double inset on this host.
+                contentPadding: 0
+            }
 
-    MichiText {
-        Layout.fillWidth: true
-        Layout.leftMargin: MichiSpacing.xs
-        Layout.rightMargin: MichiSpacing.xs
-        visible: enrichment.activeKind === "album"
-            && !enrichment.albumHasKnowledge
-        text: enrichment.onlineEnabled
-            ? qsTr("No additional album information has been fetched yet.")
-            : qsTr("Online album information is disabled. Local metadata remains available.")
-        role: "secondary"
-        color: MichiPalette.textMuted
-        wrapMode: Text.WordWrap
-    }
+            MichiText {
+                Layout.fillWidth: true
+                Layout.leftMargin: MichiSpacing.xs
+                Layout.rightMargin: MichiSpacing.xs
+                visible: enrichment.activeKind === "album"
+                    && !enrichment.albumHasKnowledge
+                text: enrichment.onlineEnabled
+                    ? qsTr("No additional album information has been fetched yet.")
+                    : qsTr("Online album information is disabled. Local metadata remains available.")
+                role: "secondary"
+                color: MichiPalette.textMuted
+                wrapMode: Text.WordWrap
+            }
 
-    InspectorPanel {
-        Layout.fillWidth: true
-        Layout.preferredHeight: visible ? 160 : 0
-        Layout.maximumHeight: 160
-        visible: root.inspectedTrack !== null
-            && !MichiBreakpoints.atLeastMedium(root.width)
-        title: root.inspectedTrack ? root.inspectedTrack.title : qsTr("Track information")
-        rows: root.inspectorRows
-        onCloseRequested: {
-            root.inspectedTrack = null
-            root.inspectedIndex = -1
+            // At compact widths the inspector joins the bounded context
+            // scroller instead of stealing height from the track viewport.
+            InspectorPanel {
+                Layout.fillWidth: true
+                Layout.preferredHeight: visible ? 160 : 0
+                Layout.maximumHeight: 160
+                visible: root.inspectedTrack !== null
+                    && !MichiBreakpoints.atLeastMedium(root.width)
+                title: root.inspectedTrack
+                    ? root.inspectedTrack.title : qsTr("Track information")
+                rows: root.inspectorRows
+                onCloseRequested: {
+                    root.inspectedTrack = null
+                    root.inspectedIndex = -1
+                }
+            }
         }
     }
 
@@ -431,8 +442,8 @@ ColumnLayout {
         id: trackArea
         Layout.fillWidth: true
         Layout.fillHeight: true
-        Layout.minimumHeight: Math.min(190,
-            Math.max(144, root.height * 0.24))
+        Layout.minimumHeight: Math.min(132,
+            Math.max(88, root.height * 0.20))
         spacing: MichiSpacing.lg
 
         MichiGlassSurface {
@@ -454,9 +465,9 @@ ColumnLayout {
                     ? playback.currentPath : ""
                 favoriteTrackIds: library.favoriteTrackIds
                 favoritePaths: library.favoritePaths
-                // Album identity and artwork are already authoritative in
-                // the hero.  Repeating cover thumbnails in every track row
-                // wastes width and is a major source of horizontal overflow.
+                // Album identity/artwork are already authoritative above.
+                // Repeating covers in every row wastes width and competes
+                // with technical columns.
                 columnProfile: "album"
                 numberingMode: "disc-track"
                 showArtwork: false
@@ -471,7 +482,7 @@ ColumnLayout {
                 selectedIndex: root.inspectedTrack !== null
                     ? root.inspectedIndex : -1
 
-                // Keep the canonical TrackId-first action seams intact.
+                // Canonical TrackId-first action seams remain untouched.
                 onTrackActivated: (trackId, path, index) =>
                     library.activate_album_track_by_id(trackId)
                 onFavoriteRequested: trackId =>
@@ -493,7 +504,8 @@ ColumnLayout {
             Layout.fillHeight: true
             visible: root.inspectedTrack !== null
                 && MichiBreakpoints.atLeastMedium(root.width)
-            title: root.inspectedTrack ? root.inspectedTrack.title : qsTr("Track information")
+            title: root.inspectedTrack
+                ? root.inspectedTrack.title : qsTr("Track information")
             rows: root.inspectorRows
             onCloseRequested: {
                 root.inspectedTrack = null
@@ -502,7 +514,7 @@ ColumnLayout {
         }
     }
 
-    /* Manual review remains the same productive enrichment seam. */
+    /* Manual review remains the existing productive enrichment seam. */
     ReviewMatchesDialog {
         id: reviewDialog
         visible: enrichment.reviewOpen && enrichment.reviewKind === "album"
