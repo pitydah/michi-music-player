@@ -343,7 +343,11 @@ GridView {
                 albumVinyl.browseTo(vinylTile.index)
                 vinylTile.forceActiveFocus()
             }
-            onDoubleTapped: library.select_album(modelData.key)
+            onDoubleTapped: {
+                // R7-11: identidad/proyección primero, después abrir.
+                albumVinyl.browseTo(vinylTile.index)
+                library.select_album(modelData.key)
+            }
         }
         AlbumContextArea {
             id: albumContext

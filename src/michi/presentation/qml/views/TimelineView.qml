@@ -362,7 +362,11 @@ ListView {
                 albumTimeline.browseTo(timelineRow.index)
                 timelineRow.forceActiveFocus()
             }
-            onDoubleTapped: library.select_album(modelData.key)
+            onDoubleTapped: {
+                // R7-11: identidad/proyección primero, después abrir.
+                albumTimeline.browseTo(timelineRow.index)
+                library.select_album(modelData.key)
+            }
         }
         AlbumContextArea {
             id: albumContext

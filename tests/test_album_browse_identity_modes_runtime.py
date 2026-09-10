@@ -907,3 +907,525 @@ class TestCoverFlowKillcritic:
                 _assert_visual_identity(world, mode, index_prop)
         finally:
             world["view"].close()
+
+
+def _path_delegates(item):
+    """Delegates del PathView por traversal childItems (findChildren no
+    alcanza los items creados por el PathView)."""
+    out = []
+
+    def visit(node):
+        try:
+            md = _variant(node.property("modelData"))
+            if isinstance(md, dict) and "key" in md:
+                out.append(node)
+            for child in node.childItems():
+                visit(child)
+        except RuntimeError:
+            pass
+
+    visit(item)
+    return out
+
+
+def _variant(value):
+    """QJSValue -> variante Python (los delegates del PathView exponen
+    modelData como QJSValue)."""
+    return value.toVariant() if hasattr(value, "toVariant") else value
+
+
+def _bounded_wait(app_condition, timeout_ms=3000, step_ms=25):
+    """Espera acotada con diagnóstico (nunca un qWait ciego)."""
+    import time as _time
+
+    deadline = _time.monotonic() + timeout_ms / 1000.0
+    while _time.monotonic() < deadline:
+        _process()
+        if app_condition():
+            return True
+        QTest.qWait(step_ms)
+    return False
+
+
+class TestCoverFlowUserIntentPaths:
+    """R7-01 (auditoría final): TODAS las rutas de intención humana del
+    Cover Flow deben transferir la identidad canónica."""
+
+    def _cover(self, tmp_path):
+        world = _mount_albums_view(tmp_path)
+        _switch_mode(world, "cover")
+        return world
+
+    def _model(self, world):
+        item = _loaded_view(world)
+        model = item.property("albumModel")
+        return model.toVariant() if hasattr(model, "toVariant") else model
+
+    def _find_button(self, world, accessible_name):
+        item = _loaded_view(world)
+        for candidate in item.findChildren(object):
+            try:
+                if candidate.property("accessibleName") == accessible_name:
+                    return candidate
+            except RuntimeError:
+                continue
+        return None
+
+    def _click_item(self, world, item, button=None):
+        from PySide6.QtCore import QPoint, Qt
+
+        content = world["view"].contentItem()
+        mapped = item.mapToItem(content, 0, 0)
+        x = mapped.x() + item.width() / 2
+        y = mapped.y() + item.height() / 2
+        QTest.mouseClick(
+            world["view"],
+            button or Qt.LeftButton,
+            Qt.NoModifier,
+            QPoint(int(x), int(y)),
+        )
+        QTest.qWait(250)
+        _process()
+
+    def test_previous_button_transfers_identity(self, tmp_path, qapp):
+        """TEST A (R7-08): Previous mueve índice 1→0 y la identidad."""
+        world = self._cover(tmp_path)
+        try:
+            model = self._model(world)
+            state = world["state"]
+            state.setProperty("currentKey", model[1]["key"])
+            QTest.qWait(200)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 1)
+            QTest.qWait(200)
+            button = self._find_button(world, "Previous album")
+            assert button is not None, "botón Previous no encontrado"
+            self._click_item(world, button)
+            index = _assert_visual_identity(world, "cover")
+            assert index == 0, f"Previous no movió el índice: {index}"
+            assert state.property("currentKey") == model[0]["key"], (
+                f"Previous no transfirió identidad: {state.property('currentKey')}"
+            )
+        finally:
+            world["view"].close()
+
+    def test_next_button_transfers_identity(self, tmp_path, qapp):
+        """TEST B (R7-08): Next mueve índice 0→1 y la identidad."""
+        world = self._cover(tmp_path)
+        try:
+            model = self._model(world)
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(200)
+            button = self._find_button(world, "Next album")
+            assert button is not None, "botón Next no encontrado"
+            self._click_item(world, button)
+            index = _assert_visual_identity(world, "cover")
+            assert index == 1, f"Next no movió el índice: {index}"
+            assert state.property("currentKey") == model[1]["key"], (
+                f"Next no transfirió identidad: {state.property('currentKey')}"
+            )
+        finally:
+            world["view"].close()
+
+    def test_boundary_buttons_are_truthful(self, tmp_path, qapp):
+        """TEST C (R7-08): Previous deshabilitado en el primero; Next
+        deshabilitado en el último; sin wrap."""
+        world = self._cover(tmp_path)
+        try:
+            model = self._model(world)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(200)
+            prev = self._find_button(world, "Previous album")
+            nxt = self._find_button(world, "Next album")
+            assert prev.property("enabled") is False, (
+                "Previous habilitado en el primer álbum"
+            )
+            assert nxt.property("enabled") is True
+            item.setProperty("currentIndex", len(model) - 1)
+            QTest.qWait(200)
+            assert nxt.property("enabled") is False, (
+                "Next habilitado en el último álbum"
+            )
+            assert prev.property("enabled") is True
+        finally:
+            world["view"].close()
+
+    def test_context_target_transfers_identity(self, tmp_path, qapp):
+        """TEST I (R7-10): el context del delegate B mueve identidad y
+        proyección a B (ruta productiva del clic derecho)."""
+        from PySide6.QtCore import Qt
+
+        world = self._cover(tmp_path)
+        try:
+            model = self._model(world)
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(200)
+            # el delegate del álbum B (índice 1)
+            delegate = next(
+                (
+                    d
+                    for d in _path_delegates(item)
+                    if _variant(d.property("modelData")).get("key") == model[1]["key"]
+                ),
+                None,
+            )
+            assert delegate is not None, "delegate B no encontrado"
+            self._click_item(world, delegate, Qt.RightButton)
+            assert state.property("currentKey") == model[1]["key"], (
+                f"el context no transfirió identidad: {state.property('currentKey')}"
+            )
+            assert item.property("currentIndex") == 1, (
+                "el context no movió la proyección a B"
+            )
+        finally:
+            world["view"].close()
+
+    def test_double_click_transfers_identity_and_opens(self, tmp_path, qapp):
+        """TEST J (R7-11): el gesto double click sobre el delegate activo
+        ejecuta browseTo (identidad == proyección, verificadas con la
+        vista viva) y abre el álbum en la librería (el detail toma el
+        relevo: la vista de albums se descarga después)."""
+        from PySide6.QtCore import QPoint, Qt
+
+        world = self._cover(tmp_path)
+        try:
+            model = self._model(world)
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(250)
+            delegate = next(
+                (
+                    d
+                    for d in _path_delegates(item)
+                    if _variant(d.property("modelData")).get("key") == model[0]["key"]
+                ),
+                None,
+            )
+            assert delegate is not None, "delegate activo no encontrado"
+            content = world["view"].contentItem()
+            mapped = delegate.mapToItem(content, 0, 0)
+            pos = QPoint(
+                int(mapped.x() + delegate.width() / 2),
+                int(mapped.y() + delegate.height() / 2),
+            )
+            # 1) el gesto arranca con el single (browseTo): identidad y
+            # proyección convergen con la vista aún viva.
+            QTest.mouseClick(world["view"], Qt.LeftButton, Qt.NoModifier, pos)
+            QTest.qWait(500)
+            _process()
+            assert state.property("currentKey") == model[0]["key"], (
+                f"el gesto desincronizó la identidad: {state.property('currentKey')}"
+            )
+            _assert_visual_identity(world, "cover")
+            # 2) el double ejecuta el open: el bridge registra la
+            # intención exacta (la vista se descarga al abrir el detail).
+            selected = []
+            world["lb"].library_changed.connect(
+                lambda: selected.append(world["lb"].property("selectedAlbumKey"))
+            )
+            QTest.mouseDClick(world["view"], Qt.LeftButton, Qt.NoModifier, pos)
+            assert _bounded_wait(
+                lambda: model[0]["key"] in selected, timeout_ms=2000
+            ), f"el double click no abrió el álbum visual: {selected}"
+        finally:
+            world["view"].close()
+
+
+def _delegates_with_model(item):
+    """Delegates con modelData (childItems: alcanza GridView/ListView/
+    PathView aunque findChildren no lo haga)."""
+    out = []
+
+    def visit(node):
+        try:
+            md = _variant(node.property("modelData"))
+            if isinstance(md, dict) and "key" in md:
+                out.append(node)
+            for child in node.childItems():
+                visit(child)
+        except RuntimeError:
+            pass
+
+    visit(item)
+    return out
+
+
+class TestDoubleTapOtherViews:
+    """R7-01 (auditoría final): el double tap de vinyl/timeline/magazine
+    también transfiere identidad y abre el álbum (mismo contrato que el
+    Cover Flow)."""
+
+    @pytest.mark.parametrize("mode", ["vinyl", "timeline"])
+    def test_double_tap_transfers_and_opens(self, tmp_path, qapp, mode):
+        from PySide6.QtCore import QPoint, Qt
+
+        world = _mount_albums_view(tmp_path)
+        try:
+            _switch_mode(world, mode)
+            item = _loaded_view(world)
+            model = item.property("albumModel")
+            if hasattr(model, "toVariant"):
+                model = model.toVariant()
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(250)
+            delegate = next(
+                (
+                    d
+                    for d in _delegates_with_model(item)
+                    if _variant(d.property("modelData")).get("key") == model[0]["key"]
+                ),
+                None,
+            )
+            assert delegate is not None, f"{mode}: delegate no encontrado"
+            content = world["view"].contentItem()
+            mapped = delegate.mapToItem(content, 0, 0)
+            pos = QPoint(
+                int(mapped.x() + delegate.width() / 2),
+                int(mapped.y() + delegate.height() / 2),
+            )
+            selected = []
+            world["lb"].library_changed.connect(
+                lambda: selected.append(world["lb"].property("selectedAlbumKey"))
+            )
+            QTest.mouseClick(world["view"], Qt.LeftButton, Qt.NoModifier, pos)
+            QTest.qWait(450)
+            _process()
+            assert state.property("currentKey") == model[0]["key"], (
+                f"{mode}: el tap desincronizó la identidad"
+            )
+            QTest.mouseDClick(world["view"], Qt.LeftButton, Qt.NoModifier, pos)
+            QTest.qWait(300)
+            _process()
+            # la identidad converge con la proyección (el browseTo del
+            # handler, determinista); el select_album del mismo handler
+            # queda sellado por el static seal (el flujo productivo
+            # completo está cubierto runtime en el path: test J).
+            assert state.property("currentKey") == model[0]["key"], (
+                f"{mode}: el double tap desincronizó la identidad"
+            )
+            seal = (
+                Path(__file__).resolve().parents[1]
+                / "src"
+                / "michi"
+                / "presentation"
+                / "qml"
+                / "views"
+                / ("VinylWallView.qml" if mode == "vinyl" else "TimelineView.qml")
+            ).read_text(encoding="utf-8")
+            delegate_segment = seal[seal.index("onDoubleTapped: {") :]
+            delegate_segment = delegate_segment[: delegate_segment.index("}")]
+            assert "browseTo(" in delegate_segment, (
+                f"{mode}: el double tap no transfiere identidad"
+            )
+            assert "select_album" in delegate_segment, (
+                f"{mode}: el double tap no abre el álbum"
+            )
+        finally:
+            world["view"].close()
+
+    def test_magazine_hero_double_tap_transfers_and_opens(self, tmp_path, qapp):
+        from PySide6.QtCore import QPoint, Qt
+
+        world = _mount_albums_view(tmp_path)
+        try:
+            _switch_mode(world, "magazine")
+            item = _loaded_view(world)
+            model = item.property("albumModel")
+            if hasattr(model, "toVariant"):
+                model = model.toVariant()
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(250)
+            # el hero: el item padre del área contextual del hero
+            hero = None
+            for candidate in item.findChildren(object):
+                try:
+                    if candidate.property("objectName") == "magazineHeroContext":
+                        hero = candidate.property("parent")
+                        break
+                except RuntimeError:
+                    continue
+            assert hero is not None, "hero no encontrado"
+            content = world["view"].contentItem()
+            mapped = hero.mapToItem(content, 0, 0)
+            pos = QPoint(
+                int(mapped.x() + hero.width() / 2),
+                int(mapped.y() + hero.height() / 2),
+            )
+            selected = []
+            world["lb"].library_changed.connect(
+                lambda: selected.append(world["lb"].property("selectedAlbumKey"))
+            )
+            QTest.mouseClick(world["view"], Qt.LeftButton, Qt.NoModifier, pos)
+            QTest.qWait(450)
+            _process()
+            assert state.property("currentKey") == model[0]["key"], (
+                "magazine: el tap del hero desincronizó la identidad"
+            )
+            QTest.mouseDClick(world["view"], Qt.LeftButton, Qt.NoModifier, pos)
+            QTest.qWait(300)
+            _process()
+            assert state.property("currentKey") == model[0]["key"], (
+                "magazine: el double del hero desincronizó la identidad"
+            )
+            seal = (
+                Path(__file__).resolve().parents[1]
+                / "src"
+                / "michi"
+                / "presentation"
+                / "qml"
+                / "views"
+                / "MagazineView.qml"
+            ).read_text(encoding="utf-8")
+            hero_segment = seal[seal.index("onDoubleTapped: {") :]
+            hero_segment = hero_segment[: hero_segment.index("}") + 1]
+            assert "selectEditorial(0" in hero_segment, (
+                "magazine: el double del hero no transfiere identidad"
+            )
+            assert "select_album" in hero_segment, (
+                "magazine: el double del hero no abre el álbum"
+            )
+        finally:
+            world["view"].close()
+
+
+class TestPointerIntent:
+    """R7-01 (auditoría final): el drag/flick es intención — el commit
+    ocurre al asentarse, nunca por cada currentIndexChanged; la
+    identidad externa gana la race; no queda intención residual."""
+
+    def _cover(self, tmp_path):
+        world = _mount_albums_view(tmp_path)
+        _switch_mode(world, "cover")
+        return world
+
+    def _invoke(self, item, name):
+        meta = item.metaObject()
+        index = meta.indexOfMethod(f"{name}()")
+        assert index >= 0, f"{name} no existe en el view"
+        assert meta.method(index).invoke(item)
+
+    def test_drag_settles_identity(self, tmp_path, qapp):
+        """TEST D: drag real (press/moves/release) mueve el índice y al
+        asentarse (moving/flicking false) la identidad lo sigue."""
+        from PySide6.QtCore import QPoint, Qt
+
+        world = self._cover(tmp_path)
+        try:
+            item = _loaded_view(world)
+            model = item.property("albumModel")
+            if hasattr(model, "toVariant"):
+                model = model.toVariant()
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            item.setProperty("currentIndex", 0)
+            item.forceActiveFocus()
+            QTest.qWait(200)
+            center = item.mapToItem(world["view"].contentItem(), 0, 0)
+            cx = int(center.x() + item.width() / 2)
+            cy = int(center.y() + item.height() / 2)
+            QTest.mousePress(
+                world["view"], Qt.LeftButton, Qt.NoModifier, QPoint(cx, cy)
+            )
+            for step in range(1, 11):
+                QTest.mouseMove(world["view"], QPoint(cx - step * 28, cy))
+                QTest.qWait(25)
+            QTest.mouseRelease(
+                world["view"],
+                Qt.LeftButton,
+                Qt.NoModifier,
+                QPoint(cx - 280, cy),
+            )
+            assert _bounded_wait(
+                lambda: (
+                    item.property("moving") is False
+                    and item.property("flicking") is False
+                ),
+                timeout_ms=3000,
+            ), "el movimiento no se asentó"
+            QTest.qWait(200)
+            _process()
+            index = _assert_visual_identity(world, "cover")
+            assert index != 0, "el drag no movió el índice (falso verde)"
+            assert state.property("currentKey") == model[index]["key"], (
+                "el settle no transfirió la identidad final"
+            )
+        finally:
+            world["view"].close()
+
+    def test_external_identity_wins_pointer_race(self, tmp_path, qapp):
+        """TEST H: si la identidad externa cambia durante el gesto, el
+        settle NO la pisa: gana la intención externa."""
+        world = self._cover(tmp_path)
+        try:
+            item = _loaded_view(world)
+            model = item.property("albumModel")
+            if hasattr(model, "toVariant"):
+                model = model.toVariant()
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(200)
+            # el gesto arranca desde A…
+            self._invoke(item, "beginPointerIntent")
+            assert item.property("browsePointerIntentActive") is True
+            # …y una intención externa sustituye la identidad por X.
+            state.setProperty("currentKey", model[2]["key"])
+            QTest.qWait(250)
+            _process()
+            # el gesto termina: NO debe pisar X
+            self._invoke(item, "settlePointerIntent")
+            QTest.qWait(200)
+            _process()
+            assert state.property("currentKey") == model[2]["key"], (
+                "el gesto obsoleto pisó la identidad externa"
+            )
+            assert item.property("browsePointerIntentActive") is False
+            index = _assert_visual_identity(world, "cover")
+            assert model[index]["key"] == model[2]["key"], (
+                "la proyección no terminó en la identidad externa"
+            )
+        finally:
+            world["view"].close()
+
+    def test_no_residual_pointer_intent(self, tmp_path, qapp):
+        """TEST G: tras asentarse, no queda intención sticky: un cambio
+        programático posterior no transfiere identidad."""
+        world = self._cover(tmp_path)
+        try:
+            item = _loaded_view(world)
+            model = item.property("albumModel")
+            if hasattr(model, "toVariant"):
+                model = model.toVariant()
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            self._invoke(item, "beginPointerIntent")
+            self._invoke(item, "settlePointerIntent")
+            assert item.property("browsePointerIntentActive") is False
+            assert item.property("browsePointerStartKey") == ""
+            item.setProperty("currentIndex", 2)
+            QTest.qWait(250)
+            _process()
+            assert state.property("currentKey") == model[0]["key"], (
+                "quedó intención residual capaz de transferir identidad"
+            )
+        finally:
+            world["view"].close()

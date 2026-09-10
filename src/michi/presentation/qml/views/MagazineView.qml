@@ -372,8 +372,11 @@ Item {
                             root.selectEditorial(0, root.heroAlbum.key)
                     }
                     onDoubleTapped: {
-                        if (root.heroAlbum)
+                        if (root.heroAlbum) {
+                            // R7-11: identidad/proyección primero.
+                            root.selectEditorial(0, root.heroAlbum.key)
                             library.select_album(root.heroAlbum.key)
+                        }
                     }
                 }
                 MichiFocusRing {
@@ -483,7 +486,10 @@ Item {
                             id: medTap
                             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
                             onSingleTapped: root.selectEditorial(index + 1, modelData.key)
-                            onDoubleTapped: library.select_album(modelData.key)
+                            onDoubleTapped: {
+                                root.selectEditorial(index + 1, modelData.key)
+                                library.select_album(modelData.key)
+                            }
                         }
                         // M9-R3: right-click → contexto del álbum medium.
                         AlbumContextArea {
@@ -594,7 +600,10 @@ Item {
                             id: compTap
                             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
                             onSingleTapped: root.selectEditorial(index + 3, modelData.key)
-                            onDoubleTapped: library.select_album(modelData.key)
+                            onDoubleTapped: {
+                                root.selectEditorial(index + 3, modelData.key)
+                                library.select_album(modelData.key)
+                            }
                         }
                         // M9-R3: right-click → contexto del álbum compact.
                         AlbumContextArea {
@@ -675,7 +684,10 @@ Item {
                         albumMagazine.currentIndex = archiveDelegate.index
                         root.selectEditorial(archiveDelegate.index + 7, album.key)
                     }
-                    onOpenRequested: library.select_album(album.key)
+                    onOpenRequested: {
+                        root.selectEditorial(archiveDelegate.index + 7, album.key)
+                        library.select_album(album.key)
+                    }
                     onPlayRequested: library.play_album(album.key)
                 }
             }
@@ -697,7 +709,12 @@ Item {
                             collectionFocus: albumMagazine.activeFocus && selected
                             onSelectedRequested: root.selectEditorial(
                                 archiveDelegate.index * 2 + index + 7, modelData.key)
-                            onOpenRequested: library.select_album(modelData.key)
+                            onOpenRequested: {
+                                root.selectEditorial(
+                                    archiveDelegate.index * 2 + index + 7,
+                                    modelData.key)
+                                library.select_album(modelData.key)
+                            }
                             onPlayRequested: library.play_album(modelData.key)
                         }
                     }
