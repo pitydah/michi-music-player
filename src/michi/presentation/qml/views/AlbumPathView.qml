@@ -95,7 +95,6 @@ PathView {
             return
         if (albumModel.length === 0)
             return  // restauración pendiente (modelo tardío)
-        browseKeyboardArmed = false
         browseRestoreInProgress = true
         var resolvedIndex = browseState.currentKey !== ""
             ? albumsPath.findIndexByKey(browseState.currentKey)
@@ -136,8 +135,7 @@ PathView {
     }
     onAlbumModelChanged: if (browseState && albumModel.length > 0)
         browseRestoreTimer.start()
-    // R7-01: el remember exige intención (teclas o acciones explícitas).
-    property bool browseKeyboardArmed: false
+    // R7-01: ÚNICA ruta de intención explícita — índice + identidad.
     function browseTo(index) {
         if (index < 0 || index >= albumModel.length)
             return
@@ -145,14 +143,10 @@ PathView {
         if (browseState && !browseRestoreInProgress && currentAlbum)
             browseState.remember(currentAlbum.key)
     }
-    onCurrentIndexChanged: if (browseState) {
+    // el cambio de índice solo proyecta la posición: la identidad la
+    // escriben exclusivamente browseTo/restore/fallback.
+    onCurrentIndexChanged: if (browseState)
         browseState.flowIndex = currentIndex
-        if (browseKeyboardArmed && !browseRestoreInProgress
-                && currentAlbum) {
-            browseKeyboardArmed = false
-            browseState.remember(currentAlbum.key)
-        }
-    }
 
     Rectangle {
         anchors.fill: parent
@@ -167,8 +161,11 @@ PathView {
         }
     }
 
-    Keys.onLeftPressed: decrementCurrentIndex()
-    Keys.onRightPressed: incrementCurrentIndex()
+    // R7-01 (microfix Cover Flow): Left/Right usan la ruta canónica de
+    // intención — índice Y identidad se mueven juntos (los handlers
+    // específicos corren antes que cualquier otro camino).
+    Keys.onLeftPressed: albumsPath.browseTo(albumsPath.currentIndex - 1)
+    Keys.onRightPressed: albumsPath.browseTo(albumsPath.currentIndex + 1)
     Keys.onReturnPressed: {
         if (currentAlbum)
             library.select_album(currentAlbum.key)
@@ -186,15 +183,7 @@ PathView {
         } else if (event.key === Qt.Key_End) {
             albumsPath.browseTo(count - 1)
             event.accepted = true
-        } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-            // la navegación built-in moverá el índice: armar la intención.
-            albumsPath.browseKeyboardArmed = true
         }
-    }
-    // R7-01: intención one-shot — el release desarma SIEMPRE (si el
-    // built-in no movió el índice, el armed no sobrevive a la tecla).
-    Keys.onReleased: function(event) {
-        albumsPath.browseKeyboardArmed = false
     }
 
     path: Path {

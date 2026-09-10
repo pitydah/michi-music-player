@@ -629,3 +629,281 @@ class TestKeyboardIntentOneShot:
             )
         finally:
             world["view"].close()
+
+
+def _assert_visual_identity(world, mode, index_prop="currentIndex"):
+    """R7-01: IDENTIDAD == PROYECCIÓN VISUAL en el view cargado."""
+    item = _loaded_view(world)
+    assert item is not None, f"{mode}: vista no cargada"
+    model = item.property("albumModel")
+    if hasattr(model, "toVariant"):
+        model = model.toVariant()
+    index = item.property(index_prop)
+    assert index is not None and 0 <= index < len(model), (
+        f"{mode}: índice {index} fuera del modelo"
+    )
+    state = world["state"]
+    assert model[index]["key"] == state.property("currentKey"), (
+        f"{mode}: visual {model[index]['key']} != identidad "
+        f"{state.property('currentKey')}"
+    )
+    return index
+
+
+class TestCoverFlowKeyboardNavigation:
+    """R7-01 (microfix Cover Flow): Left/Right DEBEN transferir la
+    identidad — la navegación legítima mueve índice Y key."""
+
+    def _cover_world(self, tmp_path):
+        world = _mount_albums_view(tmp_path)
+        _switch_mode(world, "cover")
+        return world
+
+    def _cover_items(self, world):
+        """(A, B) keys según el orden del modelo del cover."""
+        item = _loaded_view(world)
+        model = item.property("albumModel")
+        if hasattr(model, "toVariant"):
+            model = model.toVariant()
+        assert len(model) >= 2
+        return model[0]["key"], model[1]["key"]
+
+    def test_right_transfers_identity(self, tmp_path, qapp):
+        """TEST A: Right mueve índice 0→1 y la identidad al álbum B."""
+        from PySide6.QtCore import Qt
+
+        world = self._cover_world(tmp_path)
+        try:
+            a_key, b_key = self._cover_items(world)
+            state = world["state"]
+            state.setProperty("currentKey", a_key)
+            QTest.qWait(250)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(150)
+            item.forceActiveFocus()
+            QTest.qWait(80)
+            QTest.keyClick(world["view"], Qt.Key_Right)
+            QTest.qWait(250)
+            _process()
+            index = _assert_visual_identity(world, "cover")
+            assert index == 1, f"Right no movió el índice: {index}"
+            assert state.property("currentKey") == b_key, (
+                f"Right no transfirió la identidad: "
+                f"{state.property('currentKey')} != {b_key}"
+            )
+        finally:
+            world["view"].close()
+
+    def test_left_transfers_identity(self, tmp_path, qapp):
+        """TEST B: Left mueve índice 1→0 y la identidad al álbum A."""
+        from PySide6.QtCore import Qt
+
+        world = self._cover_world(tmp_path)
+        try:
+            a_key, b_key = self._cover_items(world)
+            state = world["state"]
+            state.setProperty("currentKey", b_key)
+            QTest.qWait(250)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 1)
+            QTest.qWait(150)
+            item.forceActiveFocus()
+            QTest.qWait(80)
+            QTest.keyClick(world["view"], Qt.Key_Left)
+            QTest.qWait(250)
+            _process()
+            index = _assert_visual_identity(world, "cover")
+            assert index == 0, f"Left no movió el índice: {index}"
+            assert state.property("currentKey") == a_key, (
+                f"Left no transfirió la identidad: "
+                f"{state.property('currentKey')} != {a_key}"
+            )
+        finally:
+            world["view"].close()
+
+    def test_boundary_arrow_leaves_no_residual_intent(self, tmp_path, qapp):
+        """TEST C: Left en el borde no mueve nada y no deja intención
+        residual: un cambio programático posterior no transfiere."""
+        from PySide6.QtCore import Qt
+
+        world = self._cover_world(tmp_path)
+        try:
+            a_key, _b_key = self._cover_items(world)
+            state = world["state"]
+            state.setProperty("currentKey", a_key)
+            QTest.qWait(250)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(150)
+            item.forceActiveFocus()
+            QTest.qWait(80)
+            QTest.keyClick(world["view"], Qt.Key_Left)
+            QTest.qWait(250)
+            _process()
+            assert item.property("currentIndex") == 0
+            assert state.property("currentKey") == a_key
+            # cambio programático posterior: NO transfiere identidad
+            item.setProperty("currentIndex", 2)
+            QTest.qWait(250)
+            _process()
+            assert state.property("currentKey") == a_key, (
+                "el cambio programático transfirió la identidad"
+            )
+        finally:
+            world["view"].close()
+
+
+class TestKeyboardMatrix:
+    """R7-01 (microfix, TEST E): navegación por teclado real en cada
+    representación: el índice se mueve DE VERDAD (oldIndex != newIndex)
+    y la identidad sigue a la proyección."""
+
+    @pytest.mark.parametrize(
+        ("mode", "key_name", "index_prop"),
+        [
+            ("grid", "Key_Right", "currentIndex"),
+            ("cover", "Key_Right", "currentIndex"),
+            ("vinyl", "Key_Right", "currentIndex"),
+            ("timeline", "Key_Down", "currentIndex"),
+            ("list", "Key_Down", "currentIndex"),
+            ("magazine", "Key_Down", "rovingIndex"),
+        ],
+    )
+    def test_arrow_moves_index_and_identity(
+        self, tmp_path, qapp, mode, key_name, index_prop
+    ):
+        from PySide6.QtCore import Qt
+
+        world = _mount_albums_view(tmp_path)
+        try:
+            _switch_mode(world, mode)
+            item = _loaded_view(world)
+            assert item is not None, f"{mode}: vista no cargada"
+            model = item.property("albumModel")
+            if hasattr(model, "toVariant"):
+                model = model.toVariant()
+            assert len(model) >= 2, f"{mode}: modelo insuficiente"
+            state = world["state"]
+            # estado inicial determinista: índice 0 + su identidad
+            item.setProperty(index_prop, 0)
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            focus_item = item
+            if mode == "magazine":
+                # la navegación editorial vive en el ListView interno
+                for candidate in item.findChildren(object):
+                    if candidate.property("objectName") == "albumMagazineList":
+                        focus_item = candidate
+                        break
+            focus_item.forceActiveFocus()
+            QTest.qWait(80)
+            QTest.keyClick(world["view"], getattr(Qt, key_name))
+            QTest.qWait(300)
+            _process()
+            new_index = _assert_visual_identity(world, mode, index_prop)
+            assert new_index != 0, (
+                f"{mode}: la tecla {key_name} no movió el índice "
+                f"(el test sería un falso verde)"
+            )
+            assert state.property("currentKey") == model[new_index]["key"]
+        finally:
+            world["view"].close()
+
+
+class TestCoverFlowKillcritic:
+    """R7-01: escenarios del killcritic del microfix Cover Flow."""
+
+    def _cover(self, tmp_path):
+        world = _mount_albums_view(tmp_path)
+        _switch_mode(world, "cover")
+        return world
+
+    def _model(self, world):
+        item = _loaded_view(world)
+        model = item.property("albumModel")
+        return model.toVariant() if hasattr(model, "toVariant") else model
+
+    def test_right_at_last_leaves_no_residual_intent(self, tmp_path, qapp):
+        from PySide6.QtCore import Qt
+
+        world = self._cover(tmp_path)
+        try:
+            model = self._model(world)
+            last = len(model) - 1
+            state = world["state"]
+            state.setProperty("currentKey", model[last]["key"])
+            QTest.qWait(200)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", last)
+            QTest.qWait(150)
+            item.forceActiveFocus()
+            QTest.qWait(80)
+            QTest.keyClick(world["view"], Qt.Key_Right)
+            QTest.qWait(250)
+            _process()
+            assert item.property("currentIndex") == last
+            assert state.property("currentKey") == model[last]["key"]
+            # sin intención residual: el programático posterior no transfiere
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(250)
+            _process()
+            assert state.property("currentKey") == model[last]["key"]
+        finally:
+            world["view"].close()
+
+    def test_repeated_arrows_track_identity(self, tmp_path, qapp):
+        from PySide6.QtCore import Qt
+
+        world = self._cover(tmp_path)
+        try:
+            model = self._model(world)
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(150)
+            item.forceActiveFocus()
+            QTest.qWait(80)
+            for expected in (1, 2):
+                QTest.keyClick(world["view"], Qt.Key_Right)
+                QTest.qWait(220)
+                _process()
+                assert item.property("currentIndex") == expected
+                assert state.property("currentKey") == model[expected]["key"], (
+                    f"tras {expected} Right: identidad {state.property('currentKey')}"
+                )
+        finally:
+            world["view"].close()
+
+    def test_keyboard_pick_survives_mode_switches(self, tmp_path, qapp):
+        """El escenario del smoke humano: elegir con el teclado en Cover
+        Flow y cambiar por todas las vistas: la identidad se mantiene."""
+        from PySide6.QtCore import Qt
+
+        world = self._cover(tmp_path)
+        try:
+            model = self._model(world)
+            state = world["state"]
+            state.setProperty("currentKey", model[0]["key"])
+            QTest.qWait(200)
+            item = _loaded_view(world)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(150)
+            item.forceActiveFocus()
+            QTest.qWait(80)
+            QTest.keyClick(world["view"], Qt.Key_Right)
+            QTest.qWait(250)
+            _process()
+            picked = state.property("currentKey")
+            assert picked == model[1]["key"], "la elección por teclado falló"
+            for mode in ["grid", "vinyl", "timeline", "magazine", "list", "cover"]:
+                _switch_mode(world, mode)
+                assert state.property("currentKey") == picked, (
+                    f"{mode}: la elección por teclado se perdió"
+                )
+                index_prop = "rovingIndex" if mode == "magazine" else "currentIndex"
+                _assert_visual_identity(world, mode, index_prop)
+        finally:
+            world["view"].close()
