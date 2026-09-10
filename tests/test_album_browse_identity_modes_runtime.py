@@ -259,9 +259,22 @@ class TestModeSwitchPreservesIdentity:
         finally:
             world["view"].close()
 
+    # R7-01 (auditoría): por modo, la PROYECCIÓN VISUAL debe coincidir
+    # con la identidad canónica — la property del índice activo por
+    # representación (magazine usa el roving editorial).
+    INDEX_PROP = {
+        "grid": "currentIndex",
+        "cover": "currentIndex",
+        "vinyl": "currentIndex",
+        "timeline": "currentIndex",
+        "magazine": "rovingIndex",
+        "list": "currentIndex",
+    }
+
     def test_loaded_view_index_projects_kick(self, tmp_path, qapp):
-        """Cuando el índice local es accesible: albumModel[currentIndex]
-        del view cargado == Kick (la proyección coincide con la key)."""
+        """IDENTIDAD == PROYECCIÓN: por cada modo,
+        albumModel[indexProp] del view cargado es Kick (no alcanza con
+        que currentKey sea Kick: la representación debe mostrarlo)."""
         world = _mount_albums_view(tmp_path)
         try:
             kick = _kick_key(world)
@@ -273,6 +286,18 @@ class TestModeSwitchPreservesIdentity:
                 view_item = _loaded_view(world)
                 assert view_item is not None, f"{mode}: vista no cargada"
                 assert state.property("currentKey") == kick
+                index_prop = self.INDEX_PROP[mode]
+                index = view_item.property(index_prop)
+                model = view_item.property("albumModel")
+                if hasattr(model, "toVariant"):
+                    model = model.toVariant()
+                assert index is not None and 0 <= index < len(model), (
+                    f"{mode}: índice {index} fuera del modelo"
+                )
+                assert model[index]["key"] == kick, (
+                    f"{mode}: la representación muestra "
+                    f"{model[index]['key']} en vez de Kick"
+                )
         finally:
             world["view"].close()
 
@@ -395,3 +420,212 @@ class TestLifecycleEdgeCases:
             )
         finally:
             view.close()
+
+
+class TestStudioListInteractions:
+    """R7-01 (auditoría): interacción REAL en Studio List — la ruta
+    productiva de los delegates (selectedRequested/open) debe ejecutar
+    browseTo() sin TypeError y transferir la identidad al álbum tocado."""
+
+    def _list_row(self, world, title):
+        """El delegate (MichiAlbumRow) del list para un título."""
+        item = _loaded_view(world)
+        assert item is not None
+
+        def visit(node, out):
+            try:
+                md = node.property("modelData")
+                if isinstance(md, dict) and md.get("title") == title:
+                    out.append(node)
+                for child in node.childItems():
+                    visit(child, out)
+            except RuntimeError:
+                pass
+
+        out = []
+        visit(item, out)
+        return out[0] if out else None
+
+    def _select_row(self, world, row):
+        from PySide6.QtCore import QPoint, Qt
+
+        content = world["view"].contentItem()
+        mapped = row.mapToItem(content, 0, 0)
+        x = mapped.x() + row.width() / 2
+        y = mapped.y() + row.height() / 2
+        QTest.mouseClick(
+            world["view"],
+            Qt.RightButton,
+            Qt.NoModifier,
+            QPoint(int(x), int(y)),
+        )
+        QTest.qWait(200)
+        _process()
+
+    def test_row_selection_updates_identity(self, tmp_path, qapp):
+        """TEST A: seleccionar explícitamente otra fila mueve currentKey
+        al álbum seleccionado (sin TypeError/ReferenceError)."""
+        world = _mount_albums_view(tmp_path)
+        try:
+            kick = _kick_key(world)
+            state = world["state"]
+            state.setProperty("currentKey", kick)
+            QTest.qWait(150)
+            _switch_mode(world, "list")
+            assert state.property("currentKey") == kick
+            voices = next(
+                a.key
+                for a in world["library"].state.albums
+                if a.title == "Voices Carry"
+            )
+            row = self._list_row(world, "Voices Carry")
+            assert row is not None, "fila de Voices Carry no encontrada"
+            self._select_row(world, row)
+            assert state.property("currentKey") == voices, (
+                f"la selección no transfirió la identidad: "
+                f"{state.property('currentKey')}"
+            )
+        finally:
+            world["view"].close()
+
+    def test_programmatic_index_change_does_not_transfer_identity(self, tmp_path, qapp):
+        """TEST C: un cambio programático de currentIndex NO transfiere
+        currentKey (solo posición)."""
+        world = _mount_albums_view(tmp_path)
+        try:
+            kick = _kick_key(world)
+            state = world["state"]
+            state.setProperty("currentKey", kick)
+            QTest.qWait(150)
+            _switch_mode(world, "list")
+            assert state.property("currentKey") == kick
+            item = _loaded_view(world)
+            # cambio programático del índice (sin intención del usuario)
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(250)
+            _process()
+            assert state.property("currentKey") == kick, (
+                "el cambio programático de índice transfirió la identidad"
+            )
+        finally:
+            world["view"].close()
+
+
+class TestSortReorderSurvives:
+    """R7-01 (auditoría, hallazgo 6): la KEY sobrevive al reorder; el
+    índice se reproyecta. Prohibido: el índice viejo redefine la key."""
+
+    @pytest.mark.parametrize("mode", ["grid", "list"])
+    def test_reorder_keeps_key_reprojects_index(self, tmp_path, qapp, mode):
+        world = _mount_albums_view(tmp_path)
+        try:
+            kick = _kick_key(world)
+            state = world["state"]
+            state.setProperty("currentKey", kick)
+            QTest.qWait(150)
+            _switch_mode(world, mode)
+            assert state.property("currentKey") == kick
+            # reorder: Kick pasa al frente (el índice de Kick cambia)
+            albums = world["root"].property("presentationAlbums")
+            if hasattr(albums, "toVariant"):
+                albums = albums.toVariant()
+            kick_row = next(a for a in albums if a["key"] == kick)
+            reordered = [kick_row] + [a for a in albums if a["key"] != kick]
+            world["root"].setProperty("presentationAlbums", reordered)
+            QTest.qWait(400)
+            _process()
+            assert state.property("currentKey") == kick, (
+                f"{mode}: el reorder transfirió la identidad"
+            )
+            view_item = _loaded_view(world)
+            model = view_item.property("albumModel")
+            if hasattr(model, "toVariant"):
+                model = model.toVariant()
+            index = view_item.property("currentIndex")
+            assert 0 <= index < len(model)
+            assert model[index]["key"] == kick, (
+                f"{mode}: el índice no reproyecta Kick tras el reorder"
+            )
+        finally:
+            world["view"].close()
+
+
+class TestStudioListOpen:
+    """R7-01 (auditoría, TEST B): abrir una fila del Studio List
+    establece la identidad y entrega el álbum correcto a la librería."""
+
+    def test_open_row_selects_album_and_identity(self, tmp_path, qapp):
+        world = _mount_albums_view(tmp_path)
+        try:
+            kick = _kick_key(world)
+            state = world["state"]
+            state.setProperty("currentKey", kick)
+            QTest.qWait(150)
+            _switch_mode(world, "list")
+            voices = next(
+                a.key
+                for a in world["library"].state.albums
+                if a.title == "Voices Carry"
+            )
+            # la fila del delegate (mismo helper que las interacciones)
+            from tests.test_album_browse_identity_modes_runtime import (
+                TestStudioListInteractions,
+            )
+
+            row = TestStudioListInteractions()._list_row(world, "Voices Carry")
+            assert row is not None
+            # open productivo: el handler del delegate ejecuta browseTo +
+            # select_album — invocamos la señal del row tal como el doble
+            # click la dispara.
+            meta = row.metaObject()
+            index = meta.indexOfSignal("openRequested()")
+            assert index >= 0, "el delegate no expone openRequested"
+            meta.method(index).invoke(row)
+            QTest.qWait(250)
+            _process()
+            assert state.property("currentKey") == voices, (
+                "el open no estableció la identidad"
+            )
+            assert world["lb"].property("selectedAlbumKey") == voices, (
+                "la librería no recibió el álbum abierto"
+            )
+        finally:
+            world["view"].close()
+
+
+class TestKeyboardIntentOneShot:
+    """R7-01 (auditoría, hallazgo 3): el armed del teclado es one-shot —
+    una flecha en el borde no deja intención residual que confunda un
+    cambio programático posterior."""
+
+    def test_edge_arrow_does_not_leave_armed(self, tmp_path, qapp):
+        world = _mount_albums_view(tmp_path)
+        try:
+            kick = _kick_key(world)
+            state = world["state"]
+            state.setProperty("currentKey", kick)
+            QTest.qWait(150)
+            _switch_mode(world, "grid")
+            item = _loaded_view(world)
+            # moverse al borde izquierdo del grid y pulsar Right (puede
+            # o no moverse; el release debe desarmar SIEMPRE)
+            from PySide6.QtCore import Qt
+
+            item.setProperty("currentIndex", 0)
+            QTest.qWait(150)
+            QTest.keyClick(world["view"], Qt.Key_Left)
+            QTest.qWait(120)
+            _process()
+            assert item.property("browseKeyboardArmed") is False, (
+                "el armed sobrevivió a la tecla (intención stale)"
+            )
+            # un cambio programático posterior NO debe transferir identidad
+            current_key = state.property("currentKey")
+            item.setProperty("currentIndex", 2 if current_key != "x" else 1)
+            QTest.qWait(250)
+            _process()
+            assert state.property("currentKey") == kick, (
+                "la intención stale transfirió la identidad"
+            )
+        finally:
+            world["view"].close()

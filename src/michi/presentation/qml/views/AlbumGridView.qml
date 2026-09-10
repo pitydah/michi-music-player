@@ -159,6 +159,16 @@ GridView {
         albumGrid.forceLayout()
         browseRestoreTimer.start()
     }
+    // R7-01: la identidad puede cambiar por una intención en OTRA
+    // superficie (search, detail, fallback): la vista activa re-proyecta
+    // el índice — sin re-escribir la key (el flag del restore protege).
+    Connections {
+        target: albumGrid.browseState
+        function onCurrentKeyChanged() {
+            if (albumGrid.browseState && albumGrid.browseState.currentKey !== "")
+                browseRestoreTimer.start()
+        }
+    }
     // modelo tardío o cambios del modelo (sort/filter/search/scan):
     // re-proyectar la key (o completar la restauración pendiente).
     onAlbumModelChanged: if (browseState && albumModel.length > 0)
@@ -211,6 +221,11 @@ GridView {
             // la navegación built-in moverá el índice: armar la intención.
             albumGrid.browseKeyboardArmed = true
         }
+    }
+    // R7-01: intención one-shot — el release desarma SIEMPRE (si el
+    // built-in no movió el índice, el armed no sobrevive a la tecla).
+    Keys.onReleased: function(event) {
+        albumGrid.browseKeyboardArmed = false
     }
 
     ScrollBar.vertical: MichiScrollBar { }

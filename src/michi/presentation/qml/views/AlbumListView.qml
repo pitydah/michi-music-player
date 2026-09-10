@@ -114,6 +114,7 @@ ListView {
             return
         if (albumModel.length === 0)
             return  // restauración pendiente (modelo tardío)
+        browseKeyboardArmed = false
         browseRestoreInProgress = true
         var resolvedIndex = browseState.currentKey !== ""
             ? root.findIndexByKey(browseState.currentKey)
@@ -143,14 +144,35 @@ ListView {
         onTriggered: root.restoreBrowseSelection()
     }
     Component.onCompleted: browseRestoreTimer.start()
+    // R7-01: la identidad puede cambiar por una intención en OTRA
+    // superficie (search, detail, fallback): la vista activa re-proyecta
+    // el índice — sin re-escribir la key (el flag del restore protege).
+    Connections {
+        target: root.browseState
+        function onCurrentKeyChanged() {
+            if (root.browseState && root.browseState.currentKey !== "")
+                browseRestoreTimer.start()
+        }
+    }
     onAlbumModelChanged: if (browseState && albumModel.length > 0)
         browseRestoreTimer.start()
+    // R7-01: la identidad exige INTENCIÓN — ruta única explícita.
+    property bool browseKeyboardArmed: false
+    function browseTo(index) {
+        if (index < 0 || index >= albumModel.length)
+            return
+        root.currentIndex = index
+        if (browseState && !browseRestoreInProgress)
+            browseState.remember(albumModel[index].key)
+    }
     onContentYChanged: if (browseState) browseState.listContentY = contentY
     onCurrentIndexChanged: if (browseState) {
         browseState.listIndex = currentIndex
-        if (!browseRestoreInProgress && currentIndex >= 0
-                && currentIndex < albumModel.length)
+        if (browseKeyboardArmed && !browseRestoreInProgress
+                && currentIndex >= 0 && currentIndex < albumModel.length) {
+            browseKeyboardArmed = false
             browseState.remember(albumModel[currentIndex].key)
+        }
     }
 
     header: AlbumTableHeader {
@@ -167,12 +189,26 @@ ListView {
     }
 
     Keys.onReturnPressed: {
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (currentIndex >= 0 && currentIndex < albumModel.length) {
+            root.browseTo(currentIndex)
             library.select_album(albumModel[currentIndex].key)
+        }
     }
     Keys.onEnterPressed: {
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (currentIndex >= 0 && currentIndex < albumModel.length) {
+            root.browseTo(currentIndex)
             library.select_album(albumModel[currentIndex].key)
+        }
+    }
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Up || event.key === Qt.Key_Down)
+            root.browseKeyboardArmed = true
+    }
+    // R7-01: intención one-shot — el release desarma SIEMPRE (si el
+    // built-in no movió el índice, el armed no sobrevive a la tecla).
+    Keys.onReleased: function(event) {
+        if (event.key === Qt.Key_Up || event.key === Qt.Key_Down)
+            root.browseKeyboardArmed = false
     }
     Keys.onSpacePressed: {
         if (currentIndex >= 0 && currentIndex < albumModel.length)

@@ -124,6 +124,16 @@ PathView {
         onTriggered: albumsPath.restoreBrowseSelection()
     }
     Component.onCompleted: browseRestoreTimer.start()
+    // R7-01: la identidad puede cambiar por una intención en OTRA
+    // superficie (search, detail, fallback): la vista activa re-proyecta
+    // el índice — sin re-escribir la key (el flag del restore protege).
+    Connections {
+        target: root.browseState
+        function onCurrentKeyChanged() {
+            if (root.browseState && root.browseState.currentKey !== "")
+                browseRestoreTimer.start()
+        }
+    }
     onAlbumModelChanged: if (browseState && albumModel.length > 0)
         browseRestoreTimer.start()
     // R7-01: el remember exige intención (teclas o acciones explícitas).
@@ -180,6 +190,11 @@ PathView {
             // la navegación built-in moverá el índice: armar la intención.
             albumsPath.browseKeyboardArmed = true
         }
+    }
+    // R7-01: intención one-shot — el release desarma SIEMPRE (si el
+    // built-in no movió el índice, el armed no sobrevive a la tecla).
+    Keys.onReleased: function(event) {
+        albumsPath.browseKeyboardArmed = false
     }
 
     path: Path {

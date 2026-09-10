@@ -138,6 +138,16 @@ GridView {
         onTriggered: albumVinyl.restoreBrowseSelection()
     }
     Component.onCompleted: browseRestoreTimer.start()
+    // R7-01: la identidad puede cambiar por una intención en OTRA
+    // superficie (search, detail, fallback): la vista activa re-proyecta
+    // el índice — sin re-escribir la key (el flag del restore protege).
+    Connections {
+        target: root.browseState
+        function onCurrentKeyChanged() {
+            if (root.browseState && root.browseState.currentKey !== "")
+                browseRestoreTimer.start()
+        }
+    }
     onAlbumModelChanged: if (browseState && albumModel.length > 0)
         browseRestoreTimer.start()
     // R7-01: el remember exige intención (teclas o acciones explícitas).
@@ -175,6 +185,10 @@ GridView {
         if (event.key === Qt.Key_Up || event.key === Qt.Key_Down
                 || event.key === Qt.Key_Left || event.key === Qt.Key_Right)
             albumVinyl.browseKeyboardArmed = true
+    }
+    // R7-01: intención one-shot — el release desarma SIEMPRE.
+    Keys.onReleased: function(event) {
+        albumVinyl.browseKeyboardArmed = false
     }
 
     ScrollBar.vertical: MichiScrollBar { }
