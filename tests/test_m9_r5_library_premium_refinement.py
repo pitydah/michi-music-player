@@ -90,7 +90,11 @@ def test_album_detail_and_grid_are_music_first_without_duplicate_quality() -> No
     assert "EnrichmentInlineState" in detail
     assert "showArtwork: false" in detail
     assert "MichiFormat.formatDuration(" in detail
-    assert "root.technicalSummaryText.length === 0" in detail
+    # El summary técnico canónico se muestra UNA vez con visibilidad
+    # condicionada a tener contenido (el literal del gate previo quedó
+    # stale respecto al rediseño: el patrón real es text/visible).
+    assert "text: root.technicalSummaryText" in detail
+    assert "visible: text.length > 0" in detail
 
 
 def test_vinyl_disc_has_artwork_label_without_cyan_center() -> None:
