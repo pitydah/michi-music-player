@@ -150,15 +150,17 @@ PathView {
         albumsPath.currentIndex = index
         albumsPath.commitCurrentVisualIdentity()
     }
-    // R7-09: el drag/flick es intención del usuario, pero el commit
-    // ocurre al ASENTARSE el gesto (nunca por cada currentIndexChanged
-    // durante el movimiento: eso pelearía con el snapping/restore).
-    // browsePointerStartKey registra la identidad al iniciar: si otra
-    // intención externa la sustituye durante el gesto, el settle NO la
-    // pisa (la identidad externa gana).
+    // R7-12: un movimiento físico posee EXACTAMENTE un pointer-intent.
+    // PathView puede entrar en flick dentro del mismo movimiento; ese
+    // cambio de fase no puede re-armar ni reescribir startKey. El commit
+    // ocurre una sola vez en movementEnded, después del flick opcional.
     property bool browsePointerIntentActive: false
     property string browsePointerStartKey: ""
     function beginPointerIntent() {
+        // Defensa adicional: incluso una invocación duplicada futura no
+        // puede perder la identidad observada al inicio del gesto.
+        if (browsePointerIntentActive)
+            return
         browsePointerIntentActive = true
         browsePointerStartKey = browseState ? browseState.currentKey : ""
     }
@@ -178,10 +180,9 @@ PathView {
         }
         albumsPath.commitCurrentVisualIdentity()
     }
+    // Flick es una fase posible del mismo movement, no un segundo gesto.
     onMovementStarted: albumsPath.beginPointerIntent()
     onMovementEnded: albumsPath.settlePointerIntent()
-    onFlickStarted: albumsPath.beginPointerIntent()
-    onFlickEnded: albumsPath.settlePointerIntent()
     // el cambio de índice solo proyecta la posición: la identidad la
     // escriben exclusivamente browseTo/restore/fallback/pointer-settle.
     onCurrentIndexChanged: if (browseState)
