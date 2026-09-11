@@ -21,7 +21,7 @@ import re
 import subprocess
 import sys
 import tomllib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,9 +65,7 @@ def _check(check_id: str, ok: bool, detail: str, assumption: bool = False) -> No
 
 
 def _git(*args: str) -> str:
-    result = subprocess.run(
-        ["git", *args], cwd=ROOT, capture_output=True, text=True
-    )
+    result = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
     return result.stdout.strip()
 
 
@@ -80,12 +78,34 @@ def main() -> int:
     dirty = bool(_git("status", "--porcelain"))
 
     # ── §0F baseline seal ────────────────────────────────────────────
-    _check(
-        "head-matches-baseline",
-        head == BASELINE_HEAD,
-        f"HEAD={head} baseline={BASELINE_HEAD} ({BASELINE_DATE})",
-        assumption=True,
-    )
+    # El baseline se ancla en el commit del §0F; los WPs DAC avanzan el
+    # HEAD legítimamente (la spec exige re-leer los archivos críticos,
+    # no congelar el árbol). Divergencia real (no descendiente) = CHANGED.
+    if head == BASELINE_HEAD:
+        _check(
+            "head-matches-baseline",
+            True,
+            f"HEAD={head} == baseline",
+            assumption=True,
+        )
+    else:
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", BASELINE_HEAD, "HEAD"],
+            cwd=ROOT,
+            capture_output=True,
+        )
+        descends = ancestor.returncode == 0
+        _check(
+            "head-descends-from-baseline",
+            descends,
+            (
+                f"HEAD={head} evolved from baseline={BASELINE_HEAD} "
+                "via DAC work packages (critical files re-read)"
+                if descends
+                else f"HEAD={head} DIVERGED from baseline={BASELINE_HEAD}"
+            ),
+            assumption=True,
+        )
     _check("working-tree", not dirty, "dirty" if dirty else "clean")
 
     # ── critical files: existencia + hash ────────────────────────────
@@ -118,7 +138,9 @@ def main() -> int:
     _check("pyside-floor", pyside != "?", f"{pyside}")
 
     # ── AudioEngineSettingsSection remains separate ──────────────────
-    engine_qml = ROOT / "src/michi/presentation/qml/views/AudioEngineSettingsSection.qml"
+    engine_qml = (
+        ROOT / "src/michi/presentation/qml/views/AudioEngineSettingsSection.qml"
+    )
     settings_view = (
         ROOT / "src/michi/presentation/qml/views/SettingsView.qml"
     ).read_text(encoding="utf-8")
@@ -139,7 +161,9 @@ def main() -> int:
     router_src = (ROOT / "src/michi/application/audio_transport_router.py").read_text(
         encoding="utf-8"
     )
-    bridge_ok = bool(re.search(r"def set_volume.*?self\._service\.set_volume", bridge_src, re.S))
+    bridge_ok = bool(
+        re.search(r"def set_volume.*?self\._service\.set_volume", bridge_src, re.S)
+    )
     service_ok = bool(re.search(r"self\._audio\.set_volume", service_src))
     router_ok = "def set_volume" in router_src
     _check(
@@ -150,9 +174,9 @@ def main() -> int:
     )
 
     # ── GStreamer adapter stays playbin3-based ───────────────────────
-    gst_src = (
-        ROOT / "src/michi/infrastructure/audio_engines/gstreamer.py"
-    ).read_text(encoding="utf-8")
+    gst_src = (ROOT / "src/michi/infrastructure/audio_engines/gstreamer.py").read_text(
+        encoding="utf-8"
+    )
     _check(
         "gstreamer-playbin3",
         "playbin3" in gst_src,
@@ -174,7 +198,7 @@ def main() -> int:
         "aligned": aligned,
         "changed_assumptions": changed,
         "findings": FINDINGS,
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_at_utc": datetime.now(UTC).isoformat(),
     }
     (OUT_DIR / "dac_repository_alignment.json").write_text(
         json.dumps(report, indent=2) + "\n", encoding="utf-8"
