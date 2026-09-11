@@ -13,9 +13,14 @@ RowLayout {
     property string message: ""
     property bool busy: false
 
+    /* Declarative visibility is essential here. The previous imperative
+     * onStateChanged/onMessageChanged handlers could leave a freshly-created
+     * IDLE bar visible because assigning IDLE to an IDLE default emits no
+     * change signal, producing a stray "IDLE" chip beside Fetch. */
+    readonly property bool shouldShow: state !== "IDLE" && state !== "READY"
+
     spacing: MichiSpacing.md
-    onStateChanged: root.visible = root.state !== "IDLE" && root.state !== "READY"
-    onMessageChanged: root.visible = root.state !== "IDLE" && root.state !== "READY"
+    visible: root.shouldShow
 
     function _tone() {
         switch (root.state) {

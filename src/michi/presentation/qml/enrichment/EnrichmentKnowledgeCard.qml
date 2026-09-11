@@ -11,10 +11,30 @@ import "../theme"
 MichiGlassSurface {
     id: root
 
-    property string title: "Online information"
+    property string title: qsTr("Online information")
+    property bool showTitle: true
     property var knowledge: ({})
     property bool hasKnowledge: false
     property var sources: []
+
+    /* External identity can be resolved with provider IDs only. Those IDs are
+     * useful internally but are not user-facing album/artist information.
+     * Keep the card truthful by distinguishing a real cached match from data
+     * that can actually be presented, and render a sober empty-result line
+     * instead of a visually blank glass card. */
+    readonly property bool hasDisplayableKnowledge: !!(
+        (root.knowledge.biography || "").length > 0
+        || root.knowledge.country
+        || root.knowledge.area
+        || root.knowledge.beginYear
+        || root.knowledge.endYear
+        || root.knowledge.artistType
+        || root.knowledge.website
+        || root.knowledge.label
+        || root.knowledge.releaseYear
+        || root.knowledge.firstReleaseYear
+        || (root.knowledge.genres && root.knowledge.genres.length > 0)
+    )
 
     Layout.fillWidth: true
     elevation: "standard"
@@ -33,6 +53,7 @@ MichiGlassSurface {
         MichiText {
             text: root.title
             role: "section"
+            visible: root.showTitle
         }
 
         /* biography — plain text, bounded preview, no remote markup */
@@ -58,7 +79,7 @@ MichiGlassSurface {
 
             MichiButton {
                 text: parent.biography.length > 420
-                    ? (parent.expanded ? "Show less" : "Show more")
+                    ? (parent.expanded ? qsTr("Show less") : qsTr("Show more"))
                     : ""
                 variant: "ghost"
                 visible: text.length > 0
@@ -87,6 +108,7 @@ MichiGlassSurface {
                     || root.knowledge.website
                     || root.knowledge.label
                     || root.knowledge.releaseYear
+                    || root.knowledge.firstReleaseYear
                     || (root.knowledge.genres
                         && root.knowledge.genres.length > 0)
                 )
@@ -104,15 +126,16 @@ MichiGlassSurface {
 
             Repeater {
                 model: [
-                    facts.fact("Country", root.knowledge.country),
-                    facts.fact("Area", root.knowledge.area),
-                    facts.fact("Active from", root.knowledge.beginYear),
-                    facts.fact("Active until", root.knowledge.endYear),
-                    facts.fact("Type", root.knowledge.artistType),
-                    facts.fact("Website", root.knowledge.website),
-                    facts.fact("Label", root.knowledge.label),
-                    facts.fact("Release year", root.knowledge.releaseYear),
-                    facts.fact("Genres", root.knowledge.genres
+                    facts.fact(qsTr("Country"), root.knowledge.country),
+                    facts.fact(qsTr("Area"), root.knowledge.area),
+                    facts.fact(qsTr("Active from"), root.knowledge.beginYear),
+                    facts.fact(qsTr("Active until"), root.knowledge.endYear),
+                    facts.fact(qsTr("Type"), root.knowledge.artistType),
+                    facts.fact(qsTr("Website"), root.knowledge.website),
+                    facts.fact(qsTr("Label"), root.knowledge.label),
+                    facts.fact(qsTr("Release year"),
+                        root.knowledge.releaseYear || root.knowledge.firstReleaseYear),
+                    facts.fact(qsTr("Genres"), root.knowledge.genres
                                ? root.knowledge.genres.join(", ") : ""),
                 ]
                 delegate: Item {
@@ -141,12 +164,22 @@ MichiGlassSurface {
             }
         }
 
+        MichiText {
+            Layout.fillWidth: true
+            visible: root.hasKnowledge && !root.hasDisplayableKnowledge
+            text: qsTr("A matching online record was found, but it contains no additional displayable details.")
+            role: "secondary"
+            color: MichiPalette.textMuted
+            wrapMode: Text.WordWrap
+        }
+
         EnrichmentAttribution {
             sources: root.sources
         }
     }
 
-    /* empty surface: keep layout quiet — the view decides whether to
-     * show a CTA via EnrichmentActions */
+    /* Keep the matched surface present even when the provider returns only
+     * identity/provenance data; the explicit empty-result line above avoids
+     * presenting a blank card while preserving Refresh/Clear/Reset semantics. */
     visible: root.hasKnowledge
 }

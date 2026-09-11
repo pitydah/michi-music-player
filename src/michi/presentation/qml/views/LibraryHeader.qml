@@ -110,6 +110,12 @@ PageHeader {
         if (typeof library === "undefined" || !library)
             return qsTr("Your local music collection")
 
+        // Album Detail is its own navigation state. Never leak the browse
+        // mode/count/search subtitle (for example "27 albums · Album Flow")
+        // into an already-open album where the hero owns entity identity.
+        if (root.currentTab === "albums" && library.selectedAlbumKey !== "")
+            return qsTr("Album details")
+
         if (library.searchActive) {
             switch (root.currentTab) {
             case "albums":

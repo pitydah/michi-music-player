@@ -8,6 +8,10 @@ import "../theme"
 MichiMenu {
     id: root
     property var album: null
+    // The same menu is used from album cards and from Album Detail.  Cards
+    // need Open Album; inside the already-open detail that action is a
+    // redundant no-op, so the caller may suppress it without forking IA.
+    property bool showOpenAction: true
     // POST-MERGE CONTEXTUAL RECOVERY: never expose an action merely
     // because a backend signal exists. The host must explicitly prove a
     // productive consumer for picker/create/properties flows.
@@ -16,14 +20,17 @@ MichiMenu {
     property bool canShowProperties: false
 
     MichiMenuInfoHeader {
-        headline: root.album ? root.album.title : ""
-        supportingText: root.album
+        // Guards sobre el CAMPO (no solo sobre el objeto): un album
+        // transitorio sin title/artist no puede emitir
+        // "Unable to assign [undefined] to QString" en el header.
+        headline: root.album && root.album.title ? root.album.title : ""
+        supportingText: root.album && root.album.artist
             ? root.album.artist
                 + (root.album.year > 0 ? " · " + root.album.year : "")
             : ""
         artworkPath: root.album && root.album.hasArtwork
             ? root.album.artworkPath : ""
-        fallbackText: root.album ? root.album.title : "A"
+        fallbackText: root.album && root.album.title ? root.album.title : "A"
     }
     MichiSeparator { }
     // ── R10 grupos semánticos (V4 §11.2) ─────────────────────────────
@@ -34,7 +41,7 @@ MichiMenu {
     MichiMenuItem {
         text: qsTr("Open Album")
         icon.name: "album"
-        visible: root.album !== null
+        visible: root.album !== null && root.showOpenAction
         onTriggered: library.select_album(root.album.key)
     }
     MichiMenuItem {

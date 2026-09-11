@@ -39,8 +39,11 @@ def test_m9_r3_frozen_visual_canon_hashes() -> None:
         "theme/MichiSemanticColors.qml": (
             "4293def77539e4f50530a7bc3fa5522d2daa672747fd95c9455127edeac599a3"
         ),
+        # Deliberate re-seal: the root is now a contract-preserving Item that
+        # isolates async Image decode failure, preventing broken-image glyphs
+        # without changing the material opacity seen by existing consumers.
         "primitives/MichiMaterialTexture.qml": (
-            "24e26fd8b3081b52624debf45eb0e3a12bc85e7dd19644a675db2f37ceb22702"
+            "cdd85a098d6fa423749f1c791d1dd1572d93c67c452c15deee6588cff904d460"
         ),
         "primitives/MichiGlassSurface.qml": (
             "1102d687399f07160bddb1730182495dea06058f9a223f8e44a5f5a5a759dc4e"

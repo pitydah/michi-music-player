@@ -15,8 +15,12 @@ def test_library_header_is_contextual_without_duplicate_views_label() -> None:
     # contextualiza por ruta — sin label duplicado de "VIEWS".
     assert "library." in header
     # SEMANTIC INTEGRATION: el label "VIEWS" de main es CONTEXTUAL
-    # (visible solo en album views XL) — nunca un duplicado permanente.
+    # (visible solo in album views XL) — never un duplicado permanente.
     assert "albumViewsVisible" in header
+    # Album Detail has its own navigation state; browse mode/count must not
+    # leak into an already-open entity detail.
+    assert 'library.selectedAlbumKey !== ""' in header
+    assert 'qsTr("Album details")' in header
 
 
 def test_search_and_scan_have_independent_toolbar_geometry() -> None:
@@ -33,7 +37,7 @@ def test_search_and_scan_have_independent_toolbar_geometry() -> None:
     assert 'objectName: "libraryScanSplitButton"' in toolbar
     assert 'objectName: "libraryEnrichButton"' not in toolbar
     assert "id: sourceBtn" not in toolbar
-    # El resizer desktop usa el seam incremental (nunca snapshot).
+    # El resizer desktop usa el seam incremental (never snapshot).
     assert "xAxis.onActiveValueChanged" in toolbar
 
 
@@ -73,11 +77,24 @@ def test_enrichment_surfaces_have_single_visibility_authority() -> None:
 def test_album_detail_and_grid_are_music_first_without_duplicate_quality() -> None:
     card = _qml("media/AlbumCard.qml")
     assert "root.album.trackCount" in card
-    # El detalle premium muestra el summary técnico UNA vez (el label
-    # "LIBRARY QUALITY" es la cabecera de ese bloque — no se duplica).
+
+    # Album Detail keeps ONE canonical technical summary in the identity
+    # column; the old repeated pills / LIBRARY QUALITY / Album facts panel
+    # were the source of the screenshot's triple metadata duplication.
     detail = _qml("views/AlbumDetailView.qml")
-    assert detail.count("LIBRARY QUALITY") == 1
     assert "albumTechnicalSummary" in detail
+    assert "technicalSummaryText" in detail
+    assert "LIBRARY QUALITY" not in detail
+    assert "albumTechnicalFacts" not in detail
+    assert "AudioQualityBadge" not in detail
+    assert "EnrichmentInlineState" in detail
+    assert "showArtwork: false" in detail
+    assert "MichiFormat.formatDuration(" in detail
+    # El summary técnico canónico se muestra UNA vez con visibilidad
+    # condicionada a tener contenido (el literal del gate previo quedó
+    # stale respecto al rediseño: el patrón real es text/visible).
+    assert "text: root.technicalSummaryText" in detail
+    assert "visible: text.length > 0" in detail
 
 
 def test_vinyl_disc_has_artwork_label_without_cyan_center() -> None:
