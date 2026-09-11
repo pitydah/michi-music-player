@@ -62,3 +62,14 @@ class ExactProbeResult:
     alsa_error_code: int | None
     detail: str | None
     evidence_ref: str
+
+
+@dataclass(frozen=True, slots=True)
+class DecodedSourceSignal:
+    """Señal de fuente decodificada (§16). Stable first target: PCM estéreo."""
+
+    encoding: str
+    rate_hz: int
+    significant_bits: int | None
+    channels: int
+    channel_positions: tuple[str, ...] | None

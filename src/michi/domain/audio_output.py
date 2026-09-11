@@ -13,6 +13,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from michi.domain.audio_device import AudioDeviceBinding
+from michi.domain.audio_evidence import PcmTuple
+
 
 class OutputPathPreference(Enum):
     DESKTOP = "desktop"
@@ -79,3 +82,80 @@ def stable_direct_preset(profile_id: str, stable_device_id: str) -> AudioOutputP
         allow_processing=False,
         fallback=FallbackKind.STOP,
     )
+
+
+class PathSemantics(Enum):
+    HARDWARE_RAW = "hardware_raw"
+    ALSA_PLUGIN = "alsa_plugin"
+    SYSTEM_SERVER = "system_server"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class OutputPlan:
+    """El objeto más importante de Stable (§17). Inmutable."""
+
+    plan_id: str
+
+    stable_device_id: str
+    binding: AudioDeviceBinding
+
+    path_semantics: PathSemantics
+    requested_pcm: PcmTuple
+
+    engine_id: str
+
+    volume_policy: VolumePolicy
+
+    allow_resample: bool
+    allow_remix: bool
+    allow_processing: bool
+
+    fallback: FallbackKind
+
+    evidence_refs: tuple[str, ...]
+    decision_codes: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class GstSinkSpec:
+    """Sink estricto derivado del plan (§20). El factory consume el plan;
+    nunca decide política."""
+
+    factory: str
+    properties: dict[str, object]
+
+
+def sink_spec_for(plan: OutputPlan) -> GstSinkSpec:
+    if plan.path_semantics is not PathSemantics.HARDWARE_RAW:
+        raise ValueError("Stable Direct requires hardware-raw path")
+    return GstSinkSpec(
+        factory="alsasink",
+        properties={"device": plan.binding.locator},
+    )
+
+
+class OutputSessionState(Enum):
+    IDLE = "idle"
+    ACQUIRING = "acquiring"
+    CONFIGURING = "configuring"
+    READY = "ready"
+    RUNNING = "running"
+    PAUSED = "paused"
+    RECONFIGURING = "reconfiguring"
+    RECOVERING = "recovering"
+    LOST = "lost"
+    FAILED = "failed"
+    RELEASING = "releasing"
+
+
+@dataclass(frozen=True, slots=True)
+class OutputSelectionState:
+    selected_device_id: str | None
+    selected_profile_id: str | None
+
+    active_device_id: str | None
+    active_plan_id: str | None
+
+    session_state: OutputSessionState
+    error_code: str | None
