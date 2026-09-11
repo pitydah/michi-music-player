@@ -28,3 +28,6 @@ src/michi_music_player.egg-info/
 dist/
 build/
 .opencode/
+
+# DAC verification artifacts (reports/verdicts, never committed)
+artifacts/
