@@ -14,7 +14,13 @@ requires-python = ">=3.11"
 #               QMetaMethod.invoke on the QML runtime gates)
 #   - 6.6.2   = MINIMUM TESTED lane (CI min-qt pins PySide6==6.6.2)
 # Only 6.6.2+ is validated; the generic floor is >=6.6.0 for pip.
-dependencies = ["PySide6>=6.6", "mutagen>=1.47"]
+dependencies = [
+    "PySide6>=6.6",
+    "mutagen>=1.47",
+    # DAC-V35-010 (§0G.2): hotplug observation only — never identity,
+    # output policy, formats or playback authority.
+    "pyudev>=0.24; sys_platform == 'linux'",
+]
 
 [project.optional-dependencies]
 test = ["pytest>=8", "ruff>=0.9", "build>=1"]
