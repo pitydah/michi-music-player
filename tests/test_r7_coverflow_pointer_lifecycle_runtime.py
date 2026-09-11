@@ -145,7 +145,9 @@ class TestPointerLifecycleContract:
 
 
 class TestRealPointerEvidence:
-    def test_real_flick_emits_flick_signal_and_commits_after_movement(self, tmp_path, qapp):
+    def test_real_flick_emits_flick_signal_and_commits_after_movement(
+        self, tmp_path, qapp
+    ):
         """A genuine mouse flick must emit flickStarted, settle, and leave
         visual identity == canonical identity.  Merely waiting for
         flicking == false is not accepted as evidence that a flick occurred."""
@@ -189,7 +191,10 @@ class TestRealPointerEvidence:
             )
             assert movement_started.count() >= 1
             assert _bounded_wait(
-                lambda: movement_ended.count() >= 1 and item.property("moving") is False,
+                lambda: (
+                    movement_ended.count() >= 1
+                    and item.property("moving") is False
+                ),
                 timeout_ms=4000,
             ), "el movimiento/flick no terminó"
             QTest.qWait(120)
