@@ -55,9 +55,12 @@ def test_album_detail_bounds_context_and_preserves_track_viewport() -> None:
 
     assert "MichiScrollView" in detail
     assert 'objectName: "albumContextScroll"' in detail
-    assert "albumContextColumn.implicitHeight" in detail
-    assert "contextFraction: root.height < 560 ? 0.42 : 0.54" in detail
-    assert "Math.min(440" in detail
+    # R7-13: el presupuesto se mide contra la VENTANA (estable); medirlo
+    # contra el root realimentaba el arrange y Qt abortaba el layout como
+    # "recursive rearrange".
+    assert "boundedHeight" in detail
+    assert "root.Window.height < 560" in detail
+    assert "440, Math.max(80, root.Window.height * contextFraction)" in detail
     assert 'objectName: "albumTrackTableSurface"' in detail
     assert 'objectName: "albumTracksTable"' in detail
     assert "MichiTrackTable" in detail

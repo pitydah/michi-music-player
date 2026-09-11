@@ -170,10 +170,15 @@ ColumnLayout {
         objectName: "albumContextScroll"
         Layout.fillWidth: true
         Layout.minimumWidth: 0
-        readonly property real contextFraction: root.height < 560 ? 0.42 : 0.54
+        // R7-13: el root recibe su height DEL LAYOUT del host: medirlo
+        // aquí realimenta el arrange (el scroll define su altura por
+        // layout → root.height → boundedHeight → layout) y Qt lo aborta
+        // como "recursive rearrange". La ventana es estable y preserva el
+        // presupuesto 42/54% (80..440px); el contenido scrollea interno.
+        readonly property real contextFraction: root.Window.height < 560
+            ? 0.42 : 0.54
         readonly property real boundedHeight: Math.min(
-            albumContextColumn.implicitHeight,
-            Math.min(440, Math.max(80, root.height * contextFraction)))
+            440, Math.max(80, root.Window.height * contextFraction))
         Layout.preferredHeight: boundedHeight
         Layout.minimumHeight: Math.min(80, boundedHeight)
         Layout.maximumHeight: boundedHeight
@@ -460,7 +465,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         Layout.minimumHeight: Math.min(132,
-            Math.max(88, root.height * 0.20))
+            Math.max(88, root.Window.height * 0.20))
         spacing: MichiSpacing.lg
 
         MichiGlassSurface {
