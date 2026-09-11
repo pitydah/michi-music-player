@@ -191,10 +191,7 @@ class TestRealPointerEvidence:
             )
             assert movement_started.count() >= 1
             assert _bounded_wait(
-                lambda: (
-                    movement_ended.count() >= 1
-                    and item.property("moving") is False
-                ),
+                lambda: (movement_ended.count() >= 1 and item.property("moving") is False),
                 timeout_ms=4000,
             ), "el movimiento/flick no terminó"
             QTest.qWait(120)
@@ -235,8 +232,9 @@ class TestRealPointerEvidence:
             # Deliberately NO QTest.mouseClick() before mouseDClick().
             QTest.mouseDClick(world["view"], Qt.LeftButton, Qt.NoModifier, pos)
             assert _bounded_wait(
-                lambda: b_key in opened
-                or world["lb"].property("selectedAlbumKey") == b_key,
+                lambda: (
+                    b_key in opened or world["lb"].property("selectedAlbumKey") == b_key
+                ),
                 timeout_ms=2000,
             ), f"double click directo no abrió B: {opened}"
             assert state.property("currentKey") == b_key, (
