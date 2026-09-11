@@ -1,9 +1,10 @@
-"""M5.C1 schema versioning + migration 0->1 — RED/GREEN tests.
+"""M5.C1 schema versioning + migrations 0->1->2 — RED/GREEN tests.
 
 The settings key/value table carries the schema version row
-(`schema_version = "1"`). Version interpretation:
+(`schema_version = "2"` after the DAC-V35-030 v1->v2 migration). Version
+interpretation:
 - row absent or non-integer value -> version 0 (malformed -> WARNING and
-  treated as v0; the canonical "1" overwrites it during migration);
+  treated as v0; the canonical version overwrites it during migration);
 - integer value > CURRENT_SCHEMA_VERSION -> fail closed with a typed
   SchemaVersionError (never downgrade, never rewrite);
 - migration runs ONLY on the writable open path (the repository
@@ -63,7 +64,7 @@ def _remove_wal_sidecars(db_path):
             sidecar.unlink()
 
 
-def test_v0_migrates_to_v1_preserving_settings(tmp_path):
+def test_v0_migrates_to_v2_preserving_settings(tmp_path):
     db = tmp_path / "michi.db"
     _write_raw_rows(db, _V0_ROWS)
     assert "schema_version" not in _read_raw_settings(db)
@@ -71,25 +72,26 @@ def test_v0_migrates_to_v1_preserving_settings(tmp_path):
     SQLiteSettingsRepository(db)
 
     rows = _read_raw_settings(db)
-    assert rows["schema_version"] == "1"
+    assert rows["schema_version"] == "2"
     assert rows["volume"] == "37"
     assert rows["muted"] == "true"
     assert rows["last_directory"] == "/music"
     assert rows["recent_files"] == json.dumps(["a.mp3", "b.mp3"])
 
 
-def test_v1_open_is_noop(tmp_path):
+def test_v1_open_migrates_to_v2_preserving_rows(tmp_path):
     db = tmp_path / "michi.db"
     rows = [("schema_version", "1")] + _V0_ROWS
     _write_raw_rows(db, rows)
-    before = _read_raw_rows(db)
 
     SQLiteSettingsRepository(db)
-    after_first = _read_raw_rows(db)
-    assert after_first == before
+    after_first = _read_raw_settings(db)
+    assert after_first["schema_version"] == "2"
+    assert after_first["volume"] == "37", "la migración v1->v2 preserva filas"
 
+    # Segundo open: noop (ya está en v2).
     SQLiteSettingsRepository(db)
-    assert _read_raw_rows(db) == before
+    assert _read_raw_settings(db) == after_first
 
 
 def test_migration_failure_rolls_back(tmp_path, monkeypatch):
@@ -144,7 +146,7 @@ def test_malformed_schema_version_falls_back(tmp_path, caplog):
         SQLiteSettingsRepository(db)
 
     rows = _read_raw_settings(db)
-    assert rows["schema_version"] == "1"
+    assert rows["schema_version"] == "2"
     assert rows["volume"] == "37"
     assert rows["muted"] == "true"
     assert any("Malformed schema_version" in r.message for r in caplog.records)
@@ -154,7 +156,7 @@ def test_fresh_install_has_schema_version(tmp_path):
     db = tmp_path / "michi.db"
     repo = SQLiteSettingsRepository(db)
 
-    assert _read_raw_settings(db)["schema_version"] == "1"
+    assert _read_raw_settings(db)["schema_version"] == "2"
     state = repo.load()
     assert state.volume == 80
     assert state.muted is False
@@ -182,7 +184,7 @@ def test_lkg_v0_recovery_migrates(tmp_path):
     assert isinstance(repo, SQLiteSettingsRepository)
     # The v0 LKG copy was installed, then the writable open migrated it.
     rows = _read_raw_settings(db)
-    assert rows["schema_version"] == "1"
+    assert rows["schema_version"] == "2"
     assert rows["volume"] == "37"
     assert rows["muted"] == "true"
     assert rows["last_directory"] == "/music"
@@ -208,7 +210,7 @@ def test_readonly_preflight_does_not_migrate(tmp_path):
     # The writable open performs the migration.
     SQLiteSettingsRepository(db)
     rows = _read_raw_settings(db)
-    assert rows["schema_version"] == "1"
+    assert rows["schema_version"] == "2"
     assert rows["volume"] == "42"
     assert rows["muted"] == "true"
 
@@ -224,5 +226,5 @@ def test_defaults_preserved_on_migrated_db(tmp_path):
     assert state.muted is True
     assert state.last_directory == "/music"
     assert state.recent_files == ["a.mp3", "b.mp3"]
-    assert CURRENT_SCHEMA_VERSION == 1
-    assert _read_raw_settings(db)["schema_version"] == "1"
+    assert CURRENT_SCHEMA_VERSION == 2
+    assert _read_raw_settings(db)["schema_version"] == "2"

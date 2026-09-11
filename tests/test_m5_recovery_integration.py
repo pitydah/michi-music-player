@@ -173,7 +173,7 @@ class TestLkgV1RecoveryPreservesSession:
     def test_lkg_v1_recovery_preserves_session(self, tmp_path):
         db = tmp_path / "michi.db"
         _make_healthy_with_lkg(db)
-        assert _read_raw_settings(db)["schema_version"] == "1"
+        assert _read_raw_settings(db)["schema_version"] == "2"
         session_a = _snapshot("A")
         SqliteSessionRepository(db).save(session_a)
         assert (
@@ -183,7 +183,8 @@ class TestLkgV1RecoveryPreservesSession:
         lkg = SQLiteSettingsRepository.last_known_good_path(db)
         # LKG captured the session snapshot AND the schema_version row.
         assert _session_from(lkg) == session_a
-        assert _read_raw_settings(lkg)["schema_version"] == "1"
+        # El primary ya migró a v2 antes de capturar el LKG.
+        assert _read_raw_settings(lkg)["schema_version"] == "2"
         lkg_bytes = lkg.read_bytes()
 
         corrupt = _corrupt_primary(db)
@@ -194,9 +195,10 @@ class TestLkgV1RecoveryPreservesSession:
             SQLiteSettingsRepository.inspect_path(db).health
             is PersistenceHealth.HEALTHY
         )
-        # The session snapshot survived recovery; the schema stayed v1.
+        # The session snapshot survived recovery; the writable open
+        # migrated the recovered v1 database to schema v2.
         assert _session_from(db) == session_a
-        assert _read_raw_settings(db)["schema_version"] == "1"
+        assert _read_raw_settings(db)["schema_version"] == "2"
         assert (
             _read_raw_settings(db)["session_snapshot"]
             == _read_raw_settings(lkg)["session_snapshot"]
@@ -432,7 +434,7 @@ class TestGarbageDbPolicy:
             is PersistenceHealth.HEALTHY
         )
         assert _session_from(db) == session
-        assert _read_raw_settings(db)["schema_version"] == "1"
+        assert _read_raw_settings(db)["schema_version"] == "2"
         assert lkg.read_bytes() == lkg_bytes
         assert not SQLiteSettingsRepository.recovery_candidate_path(db).exists()
 
@@ -470,7 +472,7 @@ class TestV0LkgRecovery:
         # The v0 LKG copy was installed, then the writable open migrated it.
         assert isinstance(recovered, SQLiteSettingsRepository)
         rows = _read_raw_settings(db)
-        assert rows["schema_version"] == "1"
+        assert rows["schema_version"] == "2"
         assert rows["volume"] == "37"
         assert rows["muted"] == "true"
         # No session was ever persisted: fresh, never corruption.

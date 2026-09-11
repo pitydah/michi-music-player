@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # Persisted settings schema version (the settings key/value row
 # `schema_version`). Absent or non-integer rows are treated as version 0.
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 # SQLite primary result codes (standard constants from sqlite3 module)
 _SQLITE_BUSY = sqlite3.SQLITE_BUSY
@@ -226,6 +226,8 @@ _AUTHORITATIVE_TABLES = (
     "library_favorites",
     "library_history",
     "library_recently_added",
+    "audio_output_profiles",
+    "audio_output_selection",
 )
 # Every table born in M6-EXT-R4 is optional ONLY for PRE-R4 databases
 # (absent == empty); settings stays required (settings-less is never an
@@ -242,6 +244,8 @@ _OPTIONAL_AUTHORITATIVE_TABLES = frozenset(
         "library_favorites",
         "library_history",
         "library_recently_added",
+        "audio_output_profiles",
+        "audio_output_selection",
     }
 )
 
@@ -256,6 +260,16 @@ _R4_ERA_TABLES = frozenset(
         "library_favorites",
         "library_history",
         "library_recently_added",
+    }
+)
+
+# V2-era DAC tables (§0I): optional ONLY for pre-v2 databases; once the
+# marker exists, a missing table is corruption (fail closed), never empty.
+_V2_ERA_MARKER = "audio_output_profiles"
+_V2_ERA_TABLES = frozenset(
+    {
+        "audio_output_profiles",
+        "audio_output_selection",
     }
 )
 
@@ -288,6 +302,15 @@ _AUTHORITATIVE_QUERIES = {
     "library_recently_added": (
         "SELECT position, track_id FROM library_recently_added ORDER BY position"
     ),
+    "audio_output_profiles": (
+        "SELECT profile_id, stable_device_id, path, rate_policy, volume_policy, "
+        "fallback_kind, fallback_device_id, resync_delay_ms, created_at_ms, "
+        "updated_at_ms FROM audio_output_profiles ORDER BY profile_id"
+    ),
+    "audio_output_selection": (
+        "SELECT singleton, selected_profile_id, selected_device_id, updated_at_ms "
+        "FROM audio_output_selection ORDER BY singleton"
+    ),
 }
 
 
@@ -313,6 +336,7 @@ def _read_authoritative_state(path: Path) -> dict[str, list[tuple]]:
             ).fetchall()
         }
         r4_era = _R4_ERA_MARKER in existing
+        v2_era = _V2_ERA_MARKER in existing
         for table in _AUTHORITATIVE_TABLES:
             try:
                 rows = conn.execute(_AUTHORITATIVE_QUERIES[table]).fetchall()
@@ -321,6 +345,7 @@ def _read_authoritative_state(path: Path) -> dict[str, list[tuple]]:
                     "no such table" in str(exc).lower()
                     and table in _OPTIONAL_AUTHORITATIVE_TABLES
                     and not (r4_era and table in _R4_ERA_TABLES)
+                    and not (v2_era and table in _V2_ERA_TABLES)
                 ):
                     rows = []  # absent optional authoritative table == empty
                 else:
@@ -464,6 +489,82 @@ def _migrate_0_to_1(conn: sqlite3.Connection) -> None:
         raise
 
 
+_V2_SCHEMA_STATEMENTS = (
+    """
+    CREATE TABLE IF NOT EXISTS audio_output_profiles (
+        profile_id TEXT PRIMARY KEY,
+        stable_device_id TEXT,
+        path TEXT NOT NULL CHECK(path IN ('desktop','managed','hardware_direct')),
+        rate_policy TEXT NOT NULL CHECK(rate_policy IN ('source_native','system')),
+        volume_policy TEXT NOT NULL CHECK(volume_policy IN ('fixed','software','hardware')),
+        fallback_kind TEXT NOT NULL CHECK(fallback_kind IN ('stop','ask','desktop_default','specific_device')),
+        fallback_device_id TEXT,
+        resync_delay_ms INTEGER NOT NULL DEFAULT 0 CHECK(resync_delay_ms >= 0),
+        created_at_ms INTEGER NOT NULL,
+        updated_at_ms INTEGER NOT NULL
+    )
+    """,
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_audio_output_profiles_device
+    ON audio_output_profiles(stable_device_id)
+    WHERE stable_device_id IS NOT NULL
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS audio_output_selection (
+        singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+        selected_profile_id TEXT,
+        selected_device_id TEXT,
+        updated_at_ms INTEGER NOT NULL,
+        FOREIGN KEY(selected_profile_id) REFERENCES audio_output_profiles(profile_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS dac_qualification_cache (
+        stable_device_id TEXT NOT NULL,
+        environment_fingerprint TEXT NOT NULL,
+        rate_hz INTEGER NOT NULL,
+        transport_format TEXT NOT NULL,
+        channels INTEGER NOT NULL,
+        significant_bits INTEGER,
+        supported INTEGER,
+        strength TEXT NOT NULL,
+        source TEXT NOT NULL,
+        observed_at_ns INTEGER NOT NULL,
+        evidence_json TEXT NOT NULL,
+        PRIMARY KEY (
+            stable_device_id,
+            environment_fingerprint,
+            rate_hz,
+            transport_format,
+            channels,
+            significant_bits
+        )
+    )
+    """,
+)
+
+
+def _migrate_1_to_2(conn: sqlite3.Connection) -> None:
+    """Apply the v1 -> v2 migration (§0I) in a single transaction.
+
+    Crea las tablas autoritativas de output profile/selection y la cache
+    rebuildable de qualification. Mismo contrato que _migrate_0_to_1:
+    autocommit connection, BEGIN/COMMIT/ROLLBACK propios.
+    """
+    conn.execute("BEGIN")
+    try:
+        for statement in _V2_SCHEMA_STATEMENTS:
+            conn.execute(statement)
+        conn.execute(
+            "INSERT INTO settings(key, value) VALUES('schema_version', '2') "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+        )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+
+
 class SQLiteSettingsRepository(SettingsRepository):
     """Infrastructure adapter: persists settings to SQLite."""
 
@@ -526,7 +627,11 @@ class SQLiteSettingsRepository(SettingsRepository):
                     f"database schema version {current} is newer than "
                     f"supported {CURRENT_SCHEMA_VERSION}; refusing to open"
                 )
-            _migrate_0_to_1(conn)
+            if current == 0:
+                _migrate_0_to_1(conn)
+                current = 1
+            if current == 1:
+                _migrate_1_to_2(conn)
         finally:
             conn.close()
 
@@ -574,6 +679,15 @@ class SQLiteSettingsRepository(SettingsRepository):
                         return PersistenceDiagnostic(
                             PersistenceHealth.MALFORMED_DATA,
                             f"R4 identity tables missing: {missing_r4}",
+                        )
+                # §0I: an already-v2 database (audio_output_profiles
+                # present) REQUIRES the authoritative DAC tables.
+                if _V2_ERA_MARKER in table_names:
+                    missing_v2 = sorted(_V2_ERA_TABLES - table_names)
+                    if missing_v2:
+                        return PersistenceDiagnostic(
+                            PersistenceHealth.MALFORMED_DATA,
+                            f"V2 DAC tables missing: {missing_v2}",
                         )
                 rows = conn.execute("SELECT key, value FROM settings").fetchall()
             finally:
