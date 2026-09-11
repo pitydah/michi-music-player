@@ -27,6 +27,9 @@ test = ["pytest>=8", "ruff>=0.9", "build>=1"]
 
 [project.scripts]
 michi = "michi.__main__:main"
+# DAC-V35-020 (§13): alias para humanos/CI; el producto invoca el módulo
+# con sys.executable para provenance determinística.
+michi-alsa-probe = "michi.infrastructure.audio_devices.alsa_probe_cli:main"
 
 [tool.pytest.ini_options]
 markers = [
