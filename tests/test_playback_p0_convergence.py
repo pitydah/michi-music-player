@@ -98,12 +98,13 @@ class TestPhysicalCanonicalConvergence:
 
 
 class TestDivergenceSeam:
-    def test_toggle_from_diverged_canonical_state_does_not_loop_play(self):
-        """P0 failure mode: el backend suena (físico PLAYING) pero el
-        canónico quedó STOPPED (evento perdido). El toggle decide sobre el
-        canónico: hoy envía play() — este test documenta la decisión del
-        seam para que el diagnóstico real (traza) confirme dónde se pierde
-        el evento antes de proponer convergencia activa."""
+    def test_diverged_physical_playing_converges_to_canonical_playing(self):
+        """POST-R4 P12 (15.3-A): el backend suena (físico PLAYING) y el
+        canónico quedó STOPPED (evento perdido) con media legítima
+        aceptada. El toggle NO emite un play() no-op que eterniza la
+        divergencia: el sistema converge al canónico PLAYING con la
+        evidencia del estado físico (la decisión la toma intent+accepted,
+        nunca el botón)."""
         audio, service, bridge = _chain()
         service.load_and_play(Path("/m/a.flac"))
         audio.trigger_media_accepted(Path("/m/a.flac"))
@@ -114,12 +115,140 @@ class TestDivergenceSeam:
         assert bridge.status == "stopped"
 
         bridge.toggle_play_pause()
-        # Comportamiento actual documentado: sin conocer el físico, el
-        # canónico STOPPED elige play() (no pausa): el backend sigue
-        # sonando y el modelo sigue sin PLAYING (no hubo transición
-        # física nueva que publicar). El diagnóstico real (traza P0)
-        # confirma dónde se pierde el evento antes de la convergencia.
-        assert audio.state == "playing", (
-            "el toggle no pausó: decidió play() sobre un canónico divergido"
+        # A: convergencia a PLAYING (evento legítimo aceptado): el estado
+        # estable divergido (físico PLAYING / canónico STOPPED) NO existe.
+        assert service.state.status is PlaybackStatus.PLAYING, (
+            "el canónico converge a PLAYING con la evidencia física"
         )
+        assert bridge.status == "playing"
+
+        # El siguiente toggle opera sobre la verdad canónica: pause exacto.
+        bridge.toggle_play_pause()
+        assert audio.state == "paused"
+        audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        assert service.state.status is PlaybackStatus.PAUSED
+
+    def test_play_from_diverged_state_does_not_replay(self):
+        """El play() directo desde la divergencia (sin toggle) tampoco
+        re-emite play(): converge a PLAYING y el backend no recibe una
+        orden redundante."""
+        audio, service, bridge = _chain()
+        service.load_and_play(Path("/m/a.flac"))
+        audio.trigger_media_accepted(Path("/m/a.flac"))
+        audio.state = "playing"
         assert service.state.status is PlaybackStatus.STOPPED
+
+        service.play()
+        assert audio.state == "playing", "sin orden redundante al backend"
+        assert service.state.status is PlaybackStatus.PLAYING
+
+    def test_diverged_without_accepted_media_still_safety_stops(self):
+        """Sin media aceptada, el PLAYING físico sigue siendo ilegítimo:
+        el toggle mantiene la convergencia de seguridad (B: ghost
+        playback → STOPPED físico)."""
+        audio, service, bridge = _chain()
+        service.load_and_play(Path("/m/a.flac"))
+        # sin trigger_media_accepted: el backend "arrancó solo" (ghost)
+        audio.state = "playing"
+        assert service.state.status is PlaybackStatus.STOPPED
+
+        bridge.toggle_play_pause()
+        # el toggle elige play(); sin accepted, el fix no converge: el
+        # play() ordena al backend; el evento PLAYING que sigue sin
+        # accepted dispara la convergencia de seguridad (R2).
+        audio.trigger_playback_state(PlaybackStatus.PLAYING)
+        assert audio.state == "stopped", "ghost playback converge físicamente a STOPPED"
+        assert service.state.status is PlaybackStatus.STOPPED
+
+
+class TestRouterTopologyConvergence:
+    """POST-R4 P12 (auditoría): el regression corre sobre la TOPOLOGÍA
+    PRODUCTIVA — backend → AudioTransportRouter.bind → PlaybackService →
+    PlaybackBridge. Probar PlaybackService(FakeAudioPort) directo no
+    atraviesa el router que el bootstrap inyecta en producción: sin la
+    delegación de backend_state() el mecanismo de convergencia nunca se
+    activaría en la app real."""
+
+    def _production_chain(self):
+        from michi.application.audio_transport_router import (
+            AudioTransportRouter,
+        )
+        from michi.domain.audio_engine import AudioEngineId
+
+        audio = FakeAudioPort()
+        router = AudioTransportRouter()
+        router.bind(AudioEngineId.QT_MULTIMEDIA, audio)
+        service = PlaybackService(router)
+        coordinator = PlaybackCoordinator(router, service)
+        coordinator.start()
+        bridge = PlaybackBridge(service)
+        return audio, router, service, bridge
+
+    def test_router_delegates_backend_state(self):
+        audio, router, _, _ = self._production_chain()
+        audio.state = "playing"
+        assert router.backend_state() == "playing", (
+            "el router observa el estado físico del backend enlazado"
+        )
+        audio.state = "paused"
+        assert router.backend_state() == "paused"
+
+    def test_unbound_router_reports_unknown(self):
+        from michi.application.audio_transport_router import (
+            AudioTransportRouter,
+        )
+
+        assert AudioTransportRouter().backend_state() is None
+
+    def test_diverged_physical_playing_converges_through_the_router(self):
+        """El escenario P0 completo sobre la topología productiva: media
+        aceptada, backend físicamente PLAYING, canónico STOPPED (evento
+        perdido). El toggle converge a PLAYING sin re-enviar play(); el
+        siguiente toggle pausa exactamente una vez."""
+        audio, router, service, bridge = self._production_chain()
+        service.load_and_play(Path("/m/a.flac"))
+        audio.trigger_media_accepted(Path("/m/a.flac"))
+        # El backend ya está PLAYING físicamente (ghost/evento perdido)…
+        audio.state = "playing"
+        assert router.backend_state() == "playing"
+        assert service.state.status is PlaybackStatus.STOPPED
+        assert bridge.status == "stopped"
+
+        bridge.toggle_play_pause()
+        assert service.state.status is PlaybackStatus.PLAYING, (
+            "la convergencia atraviesa el router (backend_state delegado)"
+        )
+        assert bridge.status == "playing"
+        assert audio.state == "playing", "sin play() redundante al backend"
+
+        # el siguiente toggle: pause exacto
+        bridge.toggle_play_pause()
+        assert audio.state == "paused"
+        audio.trigger_playback_state(PlaybackStatus.PAUSED)
+        assert service.state.status is PlaybackStatus.PAUSED
+
+    def test_play_intent_converges_without_second_backend_play(self):
+        """play() directo desde la divergencia: converge a PLAYING y el
+        backend NO recibe una segunda orden play()."""
+        audio, router, service, _ = self._production_chain()
+        commands = []
+        for command_name in ("play",):
+            original = getattr(audio, command_name)
+
+            def recording(original=original, command_name=command_name):
+                commands.append(command_name)
+                original()
+
+            setattr(audio, command_name, recording)
+        service.load_and_play(Path("/m/a.flac"))
+        audio.trigger_media_accepted(Path("/m/a.flac"))
+        commands.clear()  # el play legítimo del load no cuenta
+        audio.state = "playing"
+        assert service.state.status is PlaybackStatus.STOPPED
+
+        service.play()
+        assert service.state.status is PlaybackStatus.PLAYING
+        assert commands == [], (
+            "cero órdenes play() redundantes: la convergencia usa la "
+            "observación del estado físico vía el router"
+        )

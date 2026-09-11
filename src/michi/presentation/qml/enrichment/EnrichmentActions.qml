@@ -43,23 +43,23 @@ RowLayout {
     }
 
     MichiButton {
-        text: root.hasKnowledge ? "Refresh" : "Fetch online info"
+        text: root.hasKnowledge ? qsTr("Refresh") : qsTr("Fetch online info")
         variant: "ghost"
         visible: root._showRefresh()
-        Accessible.name: root.hasKnowledge ? "Refresh online information" : "Fetch online information"
+        Accessible.name: root.hasKnowledge ? qsTr("Refresh online information") : qsTr("Fetch online information")
         onClicked: root.refreshRequested()
     }
 
     MichiButton {
-        text: "Clear online info"
+        text: qsTr("Clear online info")
         variant: "ghost"
         visible: root.hasKnowledge
-        Accessible.name: "Clear online information"
+        Accessible.name: qsTr("Clear online information")
         onClicked: root.clearRequested()
     }
 
     MichiButton {
-        text: "Reset match"
+        text: qsTr("Reset match")
         variant: "ghost"
         Accessible.name: "Reset " + root.kind + " match"
         onClicked: root.resetRequested()

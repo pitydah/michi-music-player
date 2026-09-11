@@ -38,6 +38,9 @@ Item {
         ? albumModel.slice(7) : []
     readonly property var archiveRows: root.makeArchiveRows()
     property int rovingIndex: 0
+    // R7-01: currentKey es la identidad canónica; la restauración del
+    // roving editorial nunca la escribe (TRUE desde la construcción).
+    property bool browseRestoreInProgress: true
     // M9-R3 CONTEXTUAL RECOVERY: album del roving actual para el menú
     // contextual por teclado (Menu / Shift+F10) — UN menú raíz, sin
     // acceso frágil a delegates internos.
@@ -101,9 +104,69 @@ Item {
 
     function selectEditorial(index, key) {
         rovingIndex = Math.max(0, Math.min(index, albumModel.length - 1))
-        if (browseState && key)
+        if (browseState && key && !browseRestoreInProgress)
             browseState.remember(key)
     }
+
+    function findIndexByKey(key) {
+        if (!key)
+            return -1
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === key)
+                return i
+        }
+        return -1
+    }
+
+    // R7-01: lifecycle determinístico de restauración/proyección del
+    // roving editorial (identidad por key; el índice del list es solo
+    // posición de scroll).
+    function restoreBrowseSelection() {
+        if (!browseState || !albumModel)
+            return
+        if (albumModel.length === 0)
+            return  // restauración pendiente (modelo tardío)
+        browseRestoreInProgress = true
+        var resolvedIndex = browseState.currentKey !== ""
+            ? root.findIndexByKey(browseState.currentKey)
+            : browseState.editorialIndex
+        if (resolvedIndex < 0)
+            resolvedIndex = 0
+        if (resolvedIndex >= albumModel.length)
+            resolvedIndex = albumModel.length - 1
+        rovingIndex = resolvedIndex
+        positionRoving()
+        if (browseState.currentKey !== ""
+                && albumModel[resolvedIndex].key !== browseState.currentKey) {
+            // key desaparecida del modelo activo: fallback explícito.
+            browseState.currentKey = ""
+            browseState.editorialIndex = -1
+            rovingIndex = 0
+            if (albumModel.length > 0)
+                browseState.remember(albumModel[0].key)
+            positionRoving()
+        }
+        browseRestoreInProgress = false
+    }
+        Timer {
+        id: browseRestoreTimer
+        interval: 0
+        repeat: false
+        onTriggered: root.restoreBrowseSelection()
+    }
+    Component.onCompleted: browseRestoreTimer.start()
+    // R7-01: la identidad puede cambiar por una intención en OTRA
+    // superficie (search, detail, fallback): la vista activa re-proyecta
+    // el índice — sin re-escribir la key (el flag del restore protege).
+    Connections {
+        target: root.browseState
+        function onCurrentKeyChanged() {
+            if (root.browseState && root.browseState.currentKey !== "")
+                browseRestoreTimer.start()
+        }
+    }
+    onAlbumModelChanged: if (browseState && albumModel.length > 0)
+        browseRestoreTimer.start()
 
     function positionRoving() {
         if (rovingIndex < 7) {
@@ -309,8 +372,11 @@ Item {
                             root.selectEditorial(0, root.heroAlbum.key)
                     }
                     onDoubleTapped: {
-                        if (root.heroAlbum)
+                        if (root.heroAlbum) {
+                            // R7-11: identidad/proyección primero.
+                            root.selectEditorial(0, root.heroAlbum.key)
                             library.select_album(root.heroAlbum.key)
+                        }
                     }
                 }
                 MichiFocusRing {
@@ -420,7 +486,10 @@ Item {
                             id: medTap
                             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
                             onSingleTapped: root.selectEditorial(index + 1, modelData.key)
-                            onDoubleTapped: library.select_album(modelData.key)
+                            onDoubleTapped: {
+                                root.selectEditorial(index + 1, modelData.key)
+                                library.select_album(modelData.key)
+                            }
                         }
                         // M9-R3: right-click → contexto del álbum medium.
                         AlbumContextArea {
@@ -531,7 +600,10 @@ Item {
                             id: compTap
                             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
                             onSingleTapped: root.selectEditorial(index + 3, modelData.key)
-                            onDoubleTapped: library.select_album(modelData.key)
+                            onDoubleTapped: {
+                                root.selectEditorial(index + 3, modelData.key)
+                                library.select_album(modelData.key)
+                            }
                         }
                         // M9-R3: right-click → contexto del álbum compact.
                         AlbumContextArea {
@@ -612,7 +684,10 @@ Item {
                         albumMagazine.currentIndex = archiveDelegate.index
                         root.selectEditorial(archiveDelegate.index + 7, album.key)
                     }
-                    onOpenRequested: library.select_album(album.key)
+                    onOpenRequested: {
+                        root.selectEditorial(archiveDelegate.index + 7, album.key)
+                        library.select_album(album.key)
+                    }
                     onPlayRequested: library.play_album(album.key)
                 }
             }
@@ -634,7 +709,12 @@ Item {
                             collectionFocus: albumMagazine.activeFocus && selected
                             onSelectedRequested: root.selectEditorial(
                                 archiveDelegate.index * 2 + index + 7, modelData.key)
-                            onOpenRequested: library.select_album(modelData.key)
+                            onOpenRequested: {
+                                root.selectEditorial(
+                                    archiveDelegate.index * 2 + index + 7,
+                                    modelData.key)
+                                library.select_album(modelData.key)
+                            }
                             onPlayRequested: library.play_album(modelData.key)
                         }
                     }

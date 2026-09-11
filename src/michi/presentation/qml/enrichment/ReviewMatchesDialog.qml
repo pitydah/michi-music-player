@@ -21,10 +21,12 @@ MichiDialog {
 
     signal searchRequested(string name)
     signal albumSearchRequested(string title, string artistName)
+    // POST-R4 E2 (12.1): pedir TODOS los summaries del discovery.
+    signal searchMoreRequested()
     signal confirmArtist(string externalArtistId)
     signal confirmAlbum(string externalReleaseGroupId)
 
-    title: root.kind === "artist" ? "Review artist match" : "Review album match"
+    title: root.kind === "artist" ? qsTr("Review artist match") : qsTr("Review album match")
     width: Math.min(560, parent ? parent.width - MichiSpacing.xl * 2 : 560)
     height: Math.min(560, parent ? parent.height - MichiSpacing.xl * 2 : 560)
     objectName: "reviewMatchesDialog"
@@ -35,8 +37,8 @@ MichiDialog {
 
         MichiText {
             text: root.kind === "artist"
-                ? "Search online databases to confirm who this artist is."
-                : "Search online databases to confirm which release this album is."
+                ? qsTr("Search online databases to confirm who this artist is.")
+                : qsTr("Search online databases to confirm which release this album is.")
             role: "secondary"
             wrapMode: Text.WordWrap
         }
@@ -49,9 +51,9 @@ MichiDialog {
                 id: searchField
                 Layout.fillWidth: true
                 accessibleName: root.kind === "artist"
-                    ? "Artist name" : "Album title"
+                    ? qsTr("Artist name") : qsTr("Album title")
                 placeholderText: root.kind === "artist"
-                    ? "Artist name" : "Album title"
+                    ? qsTr("Artist name") : qsTr("Album title")
                 enabled: root.onlineEnabled && !root.loading
                 onAccepted: root.searchRequested(text)
             }
@@ -60,24 +62,41 @@ MichiDialog {
                 id: artistField
                 Layout.fillWidth: true
                 visible: root.kind === "album"
-                accessibleName: "Album artist"
-                placeholderText: "Album artist (optional)"
+                accessibleName: qsTr("Album artist")
+                placeholderText: qsTr("Album artist (optional)")
                 enabled: root.onlineEnabled && !root.loading
                 onAccepted: root.albumSearchRequested(searchField.text, text)
             }
 
             MichiButton {
-                text: "Search"
+                text: qsTr("Search")
                 enabled: root.onlineEnabled && !root.loading
                     && searchField.text.trim().length > 0
                 onClicked: root.kind === "artist"
                     ? root.searchRequested(searchField.text)
                     : root.albumSearchRequested(searchField.text, artistField.text)
             }
+            // POST-R4 E2 (12.1): show more — el review manual puede
+            // examinar TODOS los candidatos del discovery, no solo el
+            // shortlist automático.
+            MichiButton {
+                text: qsTr("Show more candidates")
+                variant: "ghost"
+                visible: root.onlineEnabled && !root.loading
+                    && (root.kind === "artist"
+                        ? root.artistCandidates.length > 0
+                        : root.albumCandidates.length > 0)
+                onClicked: root.searchMoreRequested()
+            }
         }
 
+        // POST-R4 E2 (i18n): errorText del bridge = código estructurado
+        // ("search_failed"/"online_disabled") — la copy se traduce aquí.
         MichiText {
-            text: root.errorText
+            text: root.errorText === "search_failed"
+                ? qsTr("Could not search — please try again later")
+                : root.errorText === "online_disabled"
+                    ? qsTr("Online info is disabled") : root.errorText
             role: "secondary"
             color: MichiPalette.error
             visible: root.errorText.length > 0
@@ -85,7 +104,7 @@ MichiDialog {
         }
 
         MichiText {
-            text: root.onlineEnabled ? "" : "Online info is disabled"
+            text: root.onlineEnabled ? "" : qsTr("Online info is disabled")
             role: "secondary"
             color: MichiPalette.textMuted
             visible: !root.onlineEnabled
@@ -144,20 +163,40 @@ MichiDialog {
                                 role: "body"
                                 elide: Text.ElideRight
                             }
+                            // POST-R4 E2: resultado AUDITABLE — el usuario
+                            // ve disambiguation/año/artist-credit, la
+                            // identidad del provider y el id externo, no
+                            // una lista opaca de nombre + botón.
                             MichiText {
                                 text: root.kind === "artist"
-                                    ? modelData.disambiguation || modelData.provider
-                                    : [modelData.artistCredit, modelData.year]
+                                    ? [modelData.disambiguation, modelData.provider]
+                                        .filter(function (v) { return v }).join(" · ")
+                                    : [modelData.artistCredit, modelData.year,
+                                        modelData.provider]
                                         .filter(function (v) { return v }).join(" · ")
                                 role: "caption"
                                 color: MichiPalette.textMuted
                                 elide: Text.ElideRight
                                 visible: text.length > 0
                             }
+                            MichiText {
+                                text: root.kind === "artist"
+                                    ? qsTr("MusicBrainz ID: %1")
+                                        .arg(modelData.externalArtistId || "")
+                                    : qsTr("MusicBrainz release-group: %1")
+                                        .arg(modelData.externalReleaseGroupId || "")
+                                role: "micro"
+                                color: MichiPalette.textMuted
+                                elide: Text.ElideRight
+                                visible: root.kind === "artist"
+                                    ? Boolean(modelData.externalArtistId)
+                                    : Boolean(modelData.externalReleaseGroupId)
+                                Accessible.name: text
+                            }
                         }
 
                         MichiButton {
-                            text: "Use this match"
+                            text: qsTr("Use this match")
                             variant: "ghost"
                             /* button keeps its own event handling — the
                              * row delegate click must NOT swallow it */
@@ -193,7 +232,7 @@ MichiDialog {
 
         MichiText {
             Layout.alignment: Qt.AlignHCenter
-            text: root.loading ? "Searching…" : ""
+            text: root.loading ? qsTr("Searching…") : ""
             role: "secondary"
             color: MichiPalette.textMuted
         }
@@ -203,7 +242,7 @@ MichiDialog {
             Layout.topMargin: MichiSpacing.sm
             Item { Layout.fillWidth: true }
             MichiButton {
-                text: "Cancel"
+                text: qsTr("Cancel")
                 variant: "ghost"
                 onClicked: root.close()
             }

@@ -152,6 +152,14 @@ def test_artist_search_escapes_lucene_not_only_url():
 # ==========================================================================
 
 
+def _find_rank_hydrate(resolver, evidence):
+    """POST-R4 E1: discovery (summaries) → shortlist → hydration — el
+    browse ocurre en la hydration, no en el find."""
+    candidates = resolver.find_artist_candidates(evidence)
+    finalists = resolver.rank_artist_candidates(candidates, evidence)
+    return resolver.hydrate_artist_candidates(finalists)
+
+
 def test_release_group_browse_contract():
     transport = _RecordingTransport()
     resolver = _resolver(transport)
@@ -165,10 +173,11 @@ def test_release_group_browse_contract():
         _release_groups_response([_release_group("rg-1", "OK Computer", "1997-05-21")]),
     )
 
-    candidates = resolver.find_artist_candidates(
+    candidates = _find_rank_hydrate(
+        resolver,
         ArtistIdentityEvidence(
             local_artist_key="artist-one", local_artist_name="Artist One"
-        )
+        ),
     )
 
     (browse,) = transport.requests_for("/ws/2/release-group/")
@@ -196,10 +205,11 @@ def test_browse_never_uses_type_release_group():
         f"{API_ROOT}/release-group/?artist=mb-artist-1&fmt=json&limit=100&offset=0",
         _release_groups_response([]),
     )
-    resolver.find_artist_candidates(
+    _find_rank_hydrate(
+        resolver,
         ArtistIdentityEvidence(
             local_artist_key="artist-one", local_artist_name="Artist One"
-        )
+        ),
     )
     for url in transport.requests:
         parsed, query = _parse(url)
@@ -217,10 +227,11 @@ def test_browse_pagination_stops_on_short_page():
         f"{API_ROOT}/release-group/?artist=mb-artist-1&fmt=json&limit=100&offset=0",
         _release_groups_response([_release_group("rg-1", "OK Computer", "1997-05-21")]),
     )
-    resolver.find_artist_candidates(
+    _find_rank_hydrate(
+        resolver,
         ArtistIdentityEvidence(
             local_artist_key="artist-one", local_artist_name="Artist One"
-        )
+        ),
     )
     browse_requests = transport.requests_for("/ws/2/release-group/")
     assert len(browse_requests) == 1
@@ -242,10 +253,11 @@ def test_browse_pagination_fetches_second_page_when_full():
             [_release_group("rg-extra", "Later Album", "2001-01-01")]
         ),
     )
-    candidates = resolver.find_artist_candidates(
+    candidates = _find_rank_hydrate(
+        resolver,
         ArtistIdentityEvidence(
             local_artist_key="artist-one", local_artist_name="Artist One"
-        )
+        ),
     )
     browse_requests = transport.requests_for("/ws/2/release-group/")
     assert len(browse_requests) == 2
@@ -293,10 +305,11 @@ def test_browse_pagination_max_pages_bounded():
                 ]
             ),
         )
-    candidates = resolver.find_artist_candidates(
+    candidates = _find_rank_hydrate(
+        resolver,
         ArtistIdentityEvidence(
             local_artist_key="artist-one", local_artist_name="Artist One"
-        )
+        ),
     )
     browse_requests = transport.requests_for("/ws/2/release-group/")
     assert len(browse_requests) == 3, "máximo 3 páginas (bounded)"

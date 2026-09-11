@@ -13,3 +13,4 @@ singleton MichiTheme 1.0 MichiTheme.qml
 singleton MichiFormat 1.0 MichiFormat.qml
 singleton MichiMaterialRole 1.0 MichiMaterialRole.qml
 singleton LibraryTrackColumnState 1.0 LibraryTrackColumnState.qml
+singleton AlbumListColumnMetrics 1.0 AlbumListColumnMetrics.qml

@@ -28,6 +28,12 @@ def expected_runtime_resources(source_root: Path) -> set[str]:
     return expected
 
 
+# POST-R4 P7: directorios de DESARROLLO prohibidos en el wheel (el
+# runtime productivo jamás los importa). Si un día `dev` necesita viajar,
+# la exclusión se revisa con evidencia de consumer productivo.
+_FORBIDDEN_SOURCE_DIRS = {"dev"}
+
+
 def wheel_runtime_resources(wheel: Path) -> set[str]:
     with ZipFile(wheel) as archive:
         return {
@@ -36,6 +42,17 @@ def wheel_runtime_resources(wheel: Path) -> set[str]:
             if name.startswith("michi/presentation/")
             and _is_runtime_resource(Path(name))
         }
+
+
+def wheel_forbidden_resources(wheel: Path) -> list[str]:
+    """Recursos de desarrollo que NO deben empaquetarse (dev ∩ wheel)."""
+    with ZipFile(wheel) as archive:
+        return sorted(
+            name
+            for name in archive.namelist()
+            if name.startswith("michi/presentation/")
+            and any(f"/{d}/" in f"/{name}" for d in _FORBIDDEN_SOURCE_DIRS)
+        )
 
 
 def main() -> int:
@@ -54,9 +71,18 @@ def main() -> int:
             print(f"  {item}")
         return 1
 
+    # POST-R4 P7: DIRECCIÓN 2 — recursos de desarrollo prohibidos fuera.
+    forbidden = wheel_forbidden_resources(args.wheel.resolve())
+    if forbidden:
+        print("Forbidden development resources PRESENT in wheel:")
+        for item in forbidden:
+            print(f"  {item}")
+        return 1
+
     print(
         "Runtime-resource wheel parity PASS: "
-        f"{len(expected)} required resources present"
+        f"{len(expected)} required resources present, "
+        f"{len(forbidden)} forbidden dev resources"
     )
     return 0
 

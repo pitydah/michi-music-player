@@ -45,6 +45,9 @@ GridView {
     property string revealMode: "standard"
     property string metadataLevel: "standard"
     property bool artworkLabel: true
+    // R7-01: currentKey es la identidad canónica; las transiciones de
+    // currentIndex durante la restauración nunca la escriben.
+    property bool browseRestoreInProgress: true
     MichiMaterial {
         id: vinylMaterial
         role: MichiMaterialRole.vinyl
@@ -89,33 +92,103 @@ GridView {
     Accessible.name: qsTr("Albums on the vinyl wall")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open")
 
-    Component.onCompleted: if (browseState) Qt.callLater(function() {
-        var restoredIndex = browseState.vinylIndex
-        if (browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i) {
-                if (albumModel[i].key === browseState.currentKey) {
-                    restoredIndex = i
-                    break
-                }
-            }
+    function findIndexByKey(key) {
+        if (!key)
+            return -1
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === key)
+                return i
         }
-        albumVinyl.currentIndex = restoredIndex
+        return -1
+    }
+
+    // R7-01: lifecycle determinístico de restauración/proyección.
+    function restoreBrowseSelection() {
+        if (!browseState || !albumModel)
+            return
+        if (albumModel.length === 0)
+            return  // restauración pendiente (modelo tardío)
+        browseKeyboardArmed = false
+        browseRestoreInProgress = true
+        var resolvedIndex = browseState.currentKey !== ""
+            ? albumVinyl.findIndexByKey(browseState.currentKey)
+            : browseState.vinylIndex
+        if (resolvedIndex < 0)
+            resolvedIndex = 0
+        if (resolvedIndex >= albumModel.length)
+            resolvedIndex = albumModel.length - 1
+        albumVinyl.currentIndex = resolvedIndex
         albumVinyl.contentY = browseState.vinylContentY
-    })
+        if (browseState.currentKey !== ""
+                && albumModel[resolvedIndex].key !== browseState.currentKey) {
+            browseState.currentKey = ""
+            browseState.vinylIndex = -1
+            if (albumModel.length > 0) {
+                albumVinyl.currentIndex = 0
+                browseState.remember(albumModel[0].key)
+            }
+            albumVinyl.contentY = 0
+        }
+        browseRestoreInProgress = false
+    }
+        Timer {
+        id: browseRestoreTimer
+        interval: 0
+        repeat: false
+        onTriggered: albumVinyl.restoreBrowseSelection()
+    }
+    Component.onCompleted: browseRestoreTimer.start()
+    // R7-01: la identidad puede cambiar por una intención en OTRA
+    // superficie (search, detail, fallback): la vista activa re-proyecta
+    // el índice — sin re-escribir la key (el flag del restore protege).
+    Connections {
+        target: root.browseState
+        function onCurrentKeyChanged() {
+            if (root.browseState && root.browseState.currentKey !== "")
+                browseRestoreTimer.start()
+        }
+    }
+    onAlbumModelChanged: if (browseState && albumModel.length > 0)
+        browseRestoreTimer.start()
+    // R7-01: el remember exige intención (teclas o acciones explícitas).
+    property bool browseKeyboardArmed: false
+    function browseTo(index) {
+        if (index < 0 || index >= albumModel.length)
+            return
+        albumVinyl.currentIndex = index
+        if (browseState && !browseRestoreInProgress)
+            browseState.remember(albumModel[index].key)
+    }
     onContentYChanged: if (browseState) browseState.vinylContentY = contentY
     onCurrentIndexChanged: if (browseState) {
         browseState.vinylIndex = currentIndex
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (browseKeyboardArmed && !browseRestoreInProgress
+                && currentIndex >= 0 && currentIndex < albumModel.length) {
+            browseKeyboardArmed = false
             browseState.remember(albumModel[currentIndex].key)
+        }
     }
 
     Keys.onReturnPressed: {
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (currentIndex >= 0 && currentIndex < albumModel.length) {
+            albumVinyl.browseTo(currentIndex)
             library.select_album(albumModel[currentIndex].key)
+        }
     }
     Keys.onEnterPressed: {
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (currentIndex >= 0 && currentIndex < albumModel.length) {
+            albumVinyl.browseTo(currentIndex)
             library.select_album(albumModel[currentIndex].key)
+        }
+    }
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Up || event.key === Qt.Key_Down
+                || event.key === Qt.Key_Left || event.key === Qt.Key_Right)
+            albumVinyl.browseKeyboardArmed = true
+    }
+    // R7-01: intención one-shot — el release desarma SIEMPRE.
+    Keys.onReleased: function(event) {
+        albumVinyl.browseKeyboardArmed = false
     }
 
     ScrollBar.vertical: MichiScrollBar { }
@@ -267,17 +340,21 @@ GridView {
             id: vinylTap
             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
             onSingleTapped: {
-                albumVinyl.currentIndex = vinylTile.index
+                albumVinyl.browseTo(vinylTile.index)
                 vinylTile.forceActiveFocus()
             }
-            onDoubleTapped: library.select_album(modelData.key)
+            onDoubleTapped: {
+                // R7-11: identidad/proyección primero, después abrir.
+                albumVinyl.browseTo(vinylTile.index)
+                library.select_album(modelData.key)
+            }
         }
         AlbumContextArea {
             id: albumContext
             anchors.fill: parent
             album: modelData
             onContextRequested: {
-                albumVinyl.currentIndex = vinylTile.index
+                albumVinyl.browseTo(vinylTile.index)
                 vinylTile.forceActiveFocus()
             }
         }

@@ -30,6 +30,8 @@ A late CANCELLED/FAILED/READY from a previous artist can never change
 the UI of the currently selected artist.
 """
 
+import time
+
 from PySide6.QtCore import Property, QObject, Qt, Signal, Slot
 
 from michi.application.enrichment_coordinator import (
@@ -55,19 +57,10 @@ class _EnrichmentRelay(QObject):
     portrait_event_received = Signal(object)
 
 
-_STATE_MESSAGES = {
-    "DISABLED": "Online info is disabled",
-    "RESOLVING_IDENTITY": "Finding {kind}…",
-    "FETCHING_KNOWLEDGE": "Loading {kind} information…",
-    "PARTIAL": "Some information could not be updated",
-    "OFFLINE": "Offline — showing saved information",
-    "FAILED": "Could not update {kind} information",
-    "AMBIGUOUS": "{kind} match needs review",
-    "NOT_FOUND": "No confident match found",
-    "CANCELLED": "Operation cancelled",
-}
+# POST-R4 E2 (auditoría, i18n): el bridge NUNCA genera copy visible —
+# expone estado + códigos estructurados; el QML traduce (qsTr). Códigos
+# del message: "" | "stale" | "online_disabled".
 
-_KIND_LABEL = {"artist": "artist", "album": "album"}
 
 _TERMINAL_STATES = {
     EnrichmentOperationState.READY,
@@ -81,6 +74,10 @@ _TERMINAL_STATES = {
 }
 
 _MAX_PORTRAIT_PREFETCH_INFLIGHT = 2
+# POST-R4 P10 (auditoría): cooldown del reintento tras un FAILED
+# transitorio del portrait.
+_PORTRAIT_RETRY_COOLDOWN_S = 60.0
+_MAX_ARTIST_PORTRAITS = 512
 _MAX_PORTRAIT_PREFETCH_QUEUE = 12
 
 
@@ -243,15 +240,27 @@ class EnrichmentBridge(QObject):
         self._album_has_knowledge = False
         self._album_artwork_path = ""
         self._album_attributions: list = []
-        self._artist_portraits: dict[str, str] = {}
+        # POST-R4 P10: proyección de portraits BOUNDED (LRU determinístico
+        # de _MAX_ARTIST_PORTRAITS): un dict ilimitado crecería con cada
+        # artista visto en la sesión.
+        from collections import OrderedDict
+
+        self._artist_portraits: OrderedDict[str, str] = OrderedDict()
         self._portrait_prefetch_queue: list[str] = []
         self._portrait_prefetch_inflight: set[str] = set()
         self._portrait_prefetch_attempted: set[str] = set()
+        # POST-R4 P10 (auditoría): cooldown de reintento por key tras un
+        # FAILED transitorio (monotonic deadline): ni bloqueo de sesión ni
+        # reintento inmediato en cada batch.
+        self._portrait_retry_after: dict[str, float] = {}
 
         # manual review
         self._review_open = False
         self._review_kind = ""
         self._review_loading = False
+        # POST-R4 E2: última búsqueda manual (para el show-more).
+        self._last_manual_query = ""
+        self._last_manual_artist = ""
         self._review_error = ""
         self._artist_candidates: list = []
         self._album_candidates: list = []
@@ -427,6 +436,9 @@ class EnrichmentBridge(QObject):
             or local_artist_key in self._portrait_prefetch_attempted
             or local_artist_key in self._portrait_prefetch_inflight
             or local_artist_key in self._portrait_prefetch_queue
+            # POST-R4 P10 (auditoría): el reintento transitorio espera el
+            # cooldown (nunca inmediato en cada batch).
+            or time.monotonic() < self._portrait_retry_after.get(local_artist_key, 0.0)
         ):
             return
         if len(self._portrait_prefetch_queue) >= _MAX_PORTRAIT_PREFETCH_QUEUE:
@@ -475,13 +487,11 @@ class EnrichmentBridge(QObject):
         if not self._online_enabled:
             self._state = "READY" if self._artist_has_knowledge else "DISABLED"
             self._state_message = (
-                "" if self._artist_has_knowledge else "Online info is disabled"
+                "" if self._artist_has_knowledge else "online_disabled"
             )
         elif self._artist_has_knowledge:
             self._state = "PARTIAL" if self._knowledge_stale else "READY"
-            self._state_message = (
-                "Saved information may be outdated" if self._knowledge_stale else ""
-            )
+            self._state_message = "stale" if self._knowledge_stale else ""
         else:
             self._state = "IDLE"
             self._state_message = ""
@@ -506,15 +516,13 @@ class EnrichmentBridge(QObject):
         if not self._online_enabled:
             self._state = "READY" if self._artist_has_knowledge else "DISABLED"
             self._state_message = (
-                "" if self._artist_has_knowledge else "Online info is disabled"
+                "" if self._artist_has_knowledge else "online_disabled"
             )
             self.changed.emit()
             return
         if self._artist_has_knowledge:
             self._state = "PARTIAL" if self._knowledge_stale else "READY"
-            self._state_message = (
-                "Saved information may be outdated" if self._knowledge_stale else ""
-            )
+            self._state_message = "stale" if self._knowledge_stale else ""
             self.changed.emit()
             return
         self._start_artist_operation(local_artist_key)
@@ -537,16 +545,12 @@ class EnrichmentBridge(QObject):
         self._load_cached_album()
         if not self._online_enabled:
             self._state = "READY" if self._album_has_knowledge else "DISABLED"
-            self._state_message = (
-                "" if self._album_has_knowledge else "Online info is disabled"
-            )
+            self._state_message = "" if self._album_has_knowledge else "online_disabled"
             self.changed.emit()
             return
         if self._album_has_knowledge:
             self._state = "PARTIAL" if self._knowledge_stale else "READY"
-            self._state_message = (
-                "Saved information may be outdated" if self._knowledge_stale else ""
-            )
+            self._state_message = "stale" if self._knowledge_stale else ""
             self.changed.emit()
             return
         self._start_album_operation(local_album_key)
@@ -639,7 +643,40 @@ class EnrichmentBridge(QObject):
         if not name:
             return
         if not self._online_enabled:
-            self._review_error = "Online info is disabled"
+            self._review_error = "online_disabled"
+            self.changed.emit()
+            return
+        self._manual_search_epoch += 1
+        epoch = self._manual_search_epoch
+        session = self._review_session_id
+        kind = "artist"
+        key = self._active_key
+        self._review_loading = True
+        self._review_error = ""
+        self._artist_candidates = []
+        self._last_manual_query = name
+        self._last_manual_artist = ""
+
+        def on_result(candidates):
+            self._relay.candidates_received.emit(kind, key, session, epoch, candidates)
+
+        def on_error(error):
+            self._relay.search_error.emit(kind, key, session, epoch, error)
+
+        self._coordinator.search_artist_candidates_async(name, on_result, on_error)
+        self.changed.emit()
+
+    @Slot()
+    def search_artist_show_more(self) -> None:
+        """POST-R4 E2 (12.1): lista TODOS los summaries del discovery
+        para la última búsqueda de artista (review manual más allá del
+        shortlist automático)."""
+        if self._disposed or not self._review_open or self._review_kind != "artist":
+            return
+        if not self._last_manual_query:
+            return
+        if not self._online_enabled:
+            self._review_error = "online_disabled"
             self.changed.emit()
             return
         self._manual_search_epoch += 1
@@ -657,7 +694,9 @@ class EnrichmentBridge(QObject):
         def on_error(error):
             self._relay.search_error.emit(kind, key, session, epoch, error)
 
-        self._coordinator.search_artist_candidates_async(name, on_result, on_error)
+        self._coordinator.search_artist_candidates_async(
+            self._last_manual_query, on_result, on_error, show_all=True
+        )
         self.changed.emit()
 
     @Slot(str, str)
@@ -668,7 +707,41 @@ class EnrichmentBridge(QObject):
         if not title:
             return
         if not self._online_enabled:
-            self._review_error = "Online info is disabled"
+            self._review_error = "online_disabled"
+            self.changed.emit()
+            return
+        self._manual_search_epoch += 1
+        epoch = self._manual_search_epoch
+        session = self._review_session_id
+        kind = "album"
+        key = self._active_key
+        self._review_loading = True
+        self._review_error = ""
+        self._album_candidates = []
+        self._last_manual_query = title
+        self._last_manual_artist = artist_name.strip()
+
+        def on_result(candidates):
+            self._relay.candidates_received.emit(kind, key, session, epoch, candidates)
+
+        def on_error(error):
+            self._relay.search_error.emit(kind, key, session, epoch, error)
+
+        self._coordinator.search_album_candidates_async(
+            title, artist_name.strip(), on_result, on_error
+        )
+        self.changed.emit()
+
+    @Slot()
+    def search_album_show_more(self) -> None:
+        """POST-R4 E2 (12.1): show-more para la última búsqueda de
+        álbum (todos los summaries del discovery)."""
+        if self._disposed or not self._review_open or self._review_kind != "album":
+            return
+        if not self._last_manual_query:
+            return
+        if not self._online_enabled:
+            self._review_error = "online_disabled"
             self.changed.emit()
             return
         self._manual_search_epoch += 1
@@ -687,7 +760,11 @@ class EnrichmentBridge(QObject):
             self._relay.search_error.emit(kind, key, session, epoch, error)
 
         self._coordinator.search_album_candidates_async(
-            title, artist_name.strip(), on_result, on_error
+            self._last_manual_query,
+            self._last_manual_artist,
+            on_result,
+            on_error,
+            show_all=True,
         )
         self.changed.emit()
 
@@ -801,13 +878,13 @@ class EnrichmentBridge(QObject):
                 self._load_cached_artist()
                 self._state = "READY" if self._artist_has_knowledge else "DISABLED"
                 self._state_message = (
-                    "" if self._artist_has_knowledge else "Online info is disabled"
+                    "" if self._artist_has_knowledge else "online_disabled"
                 )
             elif self._active_kind == "album":
                 self._load_cached_album()
                 self._state = "READY" if self._album_has_knowledge else "DISABLED"
                 self._state_message = (
-                    "" if self._album_has_knowledge else "Online info is disabled"
+                    "" if self._album_has_knowledge else "online_disabled"
                 )
         self.changed.emit()
 
@@ -863,9 +940,13 @@ class EnrichmentBridge(QObject):
             or event.state is EnrichmentOperationState.PARTIAL
         ):
             self._reload_active_cached()
+            # POST-R4 P10 (13.3): el commit de knowledge/identity del
+            # enrich activo MUTA el cache: la proyección pasiva se
+            # invalida por la señal semántica (nunca el changed genérico).
+            self.enrichmentCacheInvalidated.emit()
         elif event.state is EnrichmentOperationState.CANCELLED:
             self._state = "CANCELLED"
-            self._state_message = "Operation cancelled"
+            self._state_message = ""  # CANCELLED: el chip QML lo traduce
             self.changed.emit()
             return
         self._state = event.state.name
@@ -929,7 +1010,7 @@ class EnrichmentBridge(QObject):
         ):
             return
         self._review_loading = False
-        self._review_error = "Could not search — please try again later"
+        self._review_error = "search_failed"
         self.changed.emit()
 
     def _apply_portrait_event(self, event: EnrichmentOperationEvent) -> None:
@@ -955,6 +1036,24 @@ class EnrichmentBridge(QObject):
                 self._set_artist_portrait(
                     key, self._artwork_path_for(profile.artwork_asset_id)
                 )
+            # SUCCESS: la knowledge cacheada gobierna las próximas
+            # admisiones (sin red); el intento ya no bloquea nada.
+            self._portrait_prefetch_attempted.discard(key)
+        elif event.state is EnrichmentOperationState.FAILED:
+            # POST-R4 P10 (13.1 + auditoría): TRANSIENT_FAILURE →
+            # reintento permitido TRAS el cooldown: ni condena de sesión
+            # ni reintento inmediato en cada batch.
+            self._portrait_prefetch_attempted.discard(key)
+            self._portrait_retry_after[key] = (
+                time.monotonic() + _PORTRAIT_RETRY_COOLDOWN_S
+            )
+        elif event.state is EnrichmentOperationState.CANCELLED:
+            # CANCELLED → reintento libre (sin cooldown).
+            self._portrait_prefetch_attempted.discard(key)
+            self._portrait_retry_after.pop(key, None)
+        # NOT_FOUND / OFFLINE: outcome terminal de sesión (el artista no
+        # existe en la fuente, o la política offline): cooldown largo vía
+        # el registro de intentos (se limpia al reactivar el online).
         self._pump_portrait_prefetch()
 
     # ------------------------------------------------------------------
@@ -984,7 +1083,10 @@ class EnrichmentBridge(QObject):
     def _set_artist_portrait(self, key: str, path: str) -> None:
         if not path or self._artist_portraits.get(key) == path:
             return
-        self._artist_portraits = {**self._artist_portraits, key: path}
+        self._artist_portraits[key] = path
+        self._artist_portraits.move_to_end(key)
+        while len(self._artist_portraits) > _MAX_ARTIST_PORTRAITS:
+            self._artist_portraits.popitem(last=False)  # LRU: evict el viejo
         self.changed.emit()
 
     def _pump_portrait_prefetch(self) -> None:
@@ -1163,10 +1265,9 @@ class EnrichmentBridge(QObject):
         attributions.append(entry)
 
     def _message_for(self, kind: str, state: EnrichmentOperationState) -> str:
-        template = _STATE_MESSAGES.get(state.name, "")
-        if not template:
-            return ""
-        return template.format(kind=_KIND_LABEL.get(kind, "entity"))
+        # POST-R4 E2 (i18n): la copy vive en el QML (qsTr por estado); el
+        # bridge no compone frases visibles.
+        return ""
 
     def _artist_refs(self, key: str):
         artist = self._library.artist_by_key(key)
@@ -1185,7 +1286,7 @@ class EnrichmentBridge(QObject):
         artist, albums, tracks = self._artist_refs(key)
         if artist is None:
             self._state = "NOT_FOUND"
-            self._state_message = "No confident match found"
+            self._state_message = ""  # NOT_FOUND: chip QML
             self.changed.emit()
             return
         intent = self._presentation_intent_id
@@ -1204,7 +1305,7 @@ class EnrichmentBridge(QObject):
         album = self._album_refs(key)
         if album is None:
             self._state = "NOT_FOUND"
-            self._state_message = "No confident match found"
+            self._state_message = ""  # NOT_FOUND: chip QML
             self.changed.emit()
             return
         intent = self._presentation_intent_id

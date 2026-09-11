@@ -983,3 +983,255 @@ class TestM4R1FinalSealLibraryCleanup:
         bridge.activate(0)
         assert session.state.context_type.name == "NONE"
         assert audio.loaded is None
+
+
+class TestManagedExternalArtworkPolicy:
+    """POST-R4 P10 (13.4): el row canónico del álbum aplica la política
+    ÚNICA de artwork — el managed external cached (enrichment) llena los
+    álbumes SIN arte local; el user/local artwork (embedded/folder.jpg)
+    nunca se pisa; sin resolver, sin cambio de comportamiento."""
+
+    def _world(self, tmp_path, with_local_artwork):
+        paths = [tmp_path / "a1.mp3"]
+        for p in paths:
+            p.write_bytes(b"x")
+        provider = FakeArtworkProvider(
+            artwork=Artwork(b"x", "image/png") if with_local_artwork else None
+        )
+        cache = FakeArtworkCache()
+        library, *_, session = _make_library(
+            FakeScanner(paths),
+            FakeExtractor(factory=_album_genre_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        bridge = _bridge_with_coordinator(library, session)
+        return library, bridge
+
+    def test_external_artwork_fills_albums_without_local_art(self, tmp_path):
+        library, bridge = self._world(tmp_path, with_local_artwork=False)
+        try:
+            key = library.state.albums[0].key
+            assert bridge.property("albums")[0]["hasArtwork"] is False
+            bridge.set_artwork_override_resolver(
+                lambda album_key: "/managed/external.jpg" if album_key == key else ""
+            )
+            rows = bridge.property("albums")
+            row = next(r for r in rows if r["key"] == key)
+            assert row["artworkPath"] == "/managed/external.jpg", (
+                "el artwork externo gestionado aparece en el row canónico"
+            )
+            assert row["hasArtwork"] is True
+            assert row["artworkManagedExternal"] is True
+        finally:
+            bridge.dispose()
+
+    def test_local_artwork_never_overridden_by_external(self, tmp_path):
+        library, bridge = self._world(tmp_path, with_local_artwork=True)
+        try:
+            key = library.state.albums[0].key
+            local_path = bridge.property("albums")[0]["artworkPath"]
+            assert local_path, "el álbum tiene arte local"
+            bridge.set_artwork_override_resolver(
+                lambda album_key: "/managed/external.jpg"
+            )
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == local_path, (
+                "el user/local artwork gana: el external no pisa portadas"
+            )
+            assert row["artworkManagedExternal"] is False
+        finally:
+            bridge.dispose()
+
+    def test_without_resolver_behavior_is_unchanged(self, tmp_path):
+        library, bridge = self._world(tmp_path, with_local_artwork=False)
+        try:
+            row = bridge.property("albums")[0]
+            assert row["hasArtwork"] is False
+            assert row["artworkPath"] == ""
+            assert "artworkManagedExternal" in row
+            assert row["artworkManagedExternal"] is False
+        finally:
+            bridge.dispose()
+
+    def test_resolver_failure_is_fail_open(self, tmp_path):
+        library, bridge = self._world(tmp_path, with_local_artwork=False)
+        try:
+
+            def broken(_album_key):
+                raise RuntimeError("enrichment exploded")
+
+            bridge.set_artwork_override_resolver(broken)
+            row = bridge.property("albums")[0]
+            assert row["artworkPath"] == "", (
+                "el fallo del enrichment jamás rompe la proyección"
+            )
+        finally:
+            bridge.dispose()
+
+
+class TestArtworkUserChoicePolicy:
+    """POST-R4 E2 (12.4): la elección PERSISTIDA del usuario (image
+    picker) alimenta la política del row canónico: "external" muestra la
+    portada oficial aunque exista arte local; "local" la fija al arte del
+    usuario; sin elección: la default (local gana)."""
+
+    def _world(self, tmp_path, with_local_artwork):
+        paths = [tmp_path / "a1.mp3"]
+        for p in paths:
+            p.write_bytes(b"x")
+        provider = FakeArtworkProvider(
+            artwork=Artwork(b"x", "image/png") if with_local_artwork else None
+        )
+        cache = FakeArtworkCache()
+        library, *_, session = _make_library(
+            FakeScanner(paths),
+            FakeExtractor(factory=_album_genre_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        bridge = _bridge_with_coordinator(library, session)
+        return library, bridge
+
+    def test_user_choice_external_overrides_local(self, tmp_path):
+        """Con arte local presente, la elección "external" muestra la
+        portada oficial (el usuario la pidió explícitamente)."""
+        library, bridge = self._world(tmp_path, with_local_artwork=True)
+        try:
+            key = library.state.albums[0].key
+            local_path = bridge.property("albums")[0]["artworkPath"]
+            assert local_path
+            bridge.set_artwork_override_resolver(
+                lambda album_key: "/managed/external.jpg"
+            )
+            bridge.set_artwork_choice_provider(
+                lambda album_key: "external" if album_key == key else ""
+            )
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == "/managed/external.jpg", (
+                "la elección external del usuario gana sobre el local"
+            )
+            assert row["artworkManagedExternal"] is True
+        finally:
+            bridge.dispose()
+
+    def test_user_choice_external_without_external_falls_back(self, tmp_path):
+        library, bridge = self._world(tmp_path, with_local_artwork=True)
+        try:
+            key = library.state.albums[0].key
+            local_path = bridge.property("albums")[0]["artworkPath"]
+            bridge.set_artwork_choice_provider(lambda album_key: "external")
+            # sin resolver: no hay external: el local sigue visible
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == local_path
+        finally:
+            bridge.dispose()
+
+    def test_user_choice_local_never_shows_external(self, tmp_path):
+        """Elección "local" sin arte local: el external NO aparece (la
+        elección es explícita)."""
+        library, bridge = self._world(tmp_path, with_local_artwork=False)
+        try:
+            key = library.state.albums[0].key
+            bridge.set_artwork_override_resolver(
+                lambda album_key: "/managed/external.jpg"
+            )
+            bridge.set_artwork_choice_provider(lambda album_key: "local")
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == ""
+            assert row["hasArtwork"] is False
+        finally:
+            bridge.dispose()
+
+    def test_choice_provider_failure_is_fail_open(self, tmp_path):
+        library, bridge = self._world(tmp_path, with_local_artwork=False)
+        try:
+            key = library.state.albums[0].key
+            bridge.set_artwork_override_resolver(
+                lambda album_key: "/managed/external.jpg"
+            )
+
+            def broken(_key):
+                raise RuntimeError("settings exploded")
+
+            bridge.set_artwork_choice_provider(broken)
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == "/managed/external.jpg", (
+                "provider roto = política default"
+            )
+        finally:
+            bridge.dispose()
+
+
+class TestArtworkChoiceReactivity:
+    """POST-R4 E2 (auditoría): la elección persistida re-proyecta
+    INMEDIATAMENTE a través del wiring productivo (la señal del settings
+    bridge repinta el LibraryBridge) — el test NUNCA emite
+    library_changed a mano."""
+
+    def _world_with_wiring(self, tmp_path):
+        """Bridge + settings con el MISMO wiring del bootstrap: la señal
+        albumArtworkSourceChanged del settings bridge repinta el lb."""
+        from michi.application.settings_service import SettingsService
+        from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+        from michi.presentation.settings_bridge import SettingsBridge
+
+        paths = [tmp_path / "a1.mp3"]
+        for p in paths:
+            p.write_bytes(b"x")
+        provider = FakeArtworkProvider(artwork=Artwork(b"x", "image/png"))
+        cache = FakeArtworkCache()
+        library, *_, session = _make_library(
+            FakeScanner(paths),
+            FakeExtractor(factory=_album_genre_factory()),
+            artwork_provider=provider,
+            artwork_cache=cache,
+        )
+        library.scan(str(tmp_path))
+        bridge = _bridge_with_coordinator(library, session)
+        settings = SettingsService(
+            SQLiteSettingsRepository.open_for_startup(tmp_path / "settings.db")
+        )
+        sb = SettingsBridge(settings)
+        # el wiring productivo (bootstrap): la elección repinta el bridge.
+        sb.albumArtworkSourceChanged.connect(lambda _key: bridge.library_changed.emit())
+        bridge.set_artwork_override_resolver(lambda album_key: "/managed/external.jpg")
+        bridge.set_artwork_choice_provider(settings.album_artwork_source)
+        return bridge, sb
+
+    def test_choice_changes_row_immediately(self, tmp_path):
+        bridge, sb = self._world_with_wiring(tmp_path)
+        try:
+            key = bridge.property("albums")[0]["key"]
+            local_path = bridge.property("albums")[0]["artworkPath"]
+            assert local_path, "el álbum tiene arte local"
+            # elegir External: la persistencia + la señal re-proyectan
+            sb.set_album_artwork_source(key, "external")
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == "/managed/external.jpg", (
+                "el row cambia INMEDIATAMENTE tras la elección (sin "
+                "library_changed sintético del test)"
+            )
+            # "Automatic" (source "") restaura la default local
+            sb.set_album_artwork_source(key, "")
+            row = next(r for r in bridge.property("albums") if r["key"] == key)
+            assert row["artworkPath"] == local_path, (
+                "Automatic devuelve el local inmediatamente"
+            )
+            # la elección persiste a través del reinicio del settings
+            sb.set_album_artwork_source(key, "external")
+            from michi.application.settings_service import SettingsService
+            from michi.infrastructure.sqlite_settings import (
+                SQLiteSettingsRepository,
+            )
+
+            reloaded = SettingsService(
+                SQLiteSettingsRepository.open_for_startup(tmp_path / "settings.db")
+            )
+            assert reloaded.album_artwork_source(key) == "external", (
+                "tras reiniciar, External sigue seleccionado"
+            )
+        finally:
+            bridge.dispose()

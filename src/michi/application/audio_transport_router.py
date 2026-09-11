@@ -114,6 +114,23 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
     def binding_generation(self) -> int:
         return self._binding_generation
 
+    def backend_state(self) -> str | None:
+        """POST-R4 P12 (audit): observación DELEGADA del estado físico
+        del backend enlazado. PlaybackService consulta esta observación
+        para converger la divergencia física↔canónica; si el router
+        devolviera None (default del ABC), la convergencia jamás se
+        activaría en la topología productiva (backend → router →
+        service)."""
+        backend = self._bound
+        if backend is None:
+            return None
+        # getattr: los fakes/backends legacy sin la observación devuelven
+        # desconocido (None) — nunca rompen la delegación.
+        observer = getattr(backend, "backend_state", None)
+        if observer is None:
+            return None
+        return observer()
+
     def _attach(self, generation: int) -> None:
         """Subscribe per-binding wrappers capturing (backend, generation).
 

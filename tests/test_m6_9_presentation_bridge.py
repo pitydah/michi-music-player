@@ -6,6 +6,7 @@ double anti-stale filter (presentation intent + backend generation),
 clear vs reset, refresh, policy OFF cancellation and dispose.
 """
 
+import time
 from dataclasses import replace
 
 import pytest
@@ -143,7 +144,7 @@ class TestActivationSemantics:
         bridge.activate_artist(ARTIST_A_KEY)
         process_events(8)
         assert bridge.property("state") == "DISABLED"
-        assert bridge.property("stateMessage") == "Online info is disabled"
+        assert bridge.property("stateMessage") == "online_disabled"
         assert resolver.calls == calls_before
 
     def test_activate_uncached_artist_on_runs_enrichment(self):
@@ -196,7 +197,7 @@ class TestActivationSemantics:
         assert (
             bridge.property("artistKnowledge")["biography"] == "Biography of Artist A."
         )
-        assert bridge.property("stateMessage") == "Offline — showing saved information"
+        assert bridge.property("stateMessage") == ""
 
 
 class TestArtistPortraitPrefetch:
@@ -472,7 +473,7 @@ class TestManualReview:
         bridge.open_review("artist")
         bridge.search_artist("Artist A")
         process_events(8)
-        assert bridge.property("reviewError") == "Online info is disabled"
+        assert bridge.property("reviewError") == "online_disabled"
         assert resolver.calls == calls_before
 
 
@@ -535,3 +536,312 @@ class TestClearResetRefreshPolicy:
         bridge.refresh_artist()
         process_events(8)
         assert resolver.calls == calls_before
+
+
+class TestPortraitOutcomePolicy:
+    """POST-R4 P10 (13.1/13.2): portrait outcomes modelados — un timeout
+    transitorio NO condena al artista por la sesión; la proyección de
+    portraits es bounded (LRU 512)."""
+
+    def _holding(self):
+        class HoldingCoordinator:
+            def __init__(self, inner):
+                self.inner = inner
+                self.artist_calls = []
+
+            def __getattr__(self, name):
+                return getattr(self.inner, name)
+
+            def enrich_artist(self, artist, albums, tracks, on_state=None):
+                self.artist_calls.append((artist.key, on_state))
+
+        return HoldingCoordinator
+
+    def _portrait_event(self, key, state):
+        m = __import__(
+            "michi.application.enrichment_coordinator",
+            fromlist=["EnrichmentOperationEvent", "EnrichmentOperationState"],
+        )
+        kind = __import__(
+            "michi.domain.enrichment", fromlist=["EnrichmentEntityKind"]
+        ).EnrichmentEntityKind
+        return m.EnrichmentOperationEvent(
+            operation_id="op",
+            generation=1,
+            entity_kind=kind.ARTIST,
+            local_entity_key=key,
+            state=state,
+        )
+
+    def test_transient_failure_allows_retry(self):
+        """FAILED (transient: timeout) → la key queda re-admisible: un
+        segundo prefetch vuelve a intentar el enrich — el bug viejo la
+        bloqueaba por toda la sesión."""
+        bridge, *_ = make_bridge(online=True)
+        holding_cls = self._holding()
+
+        holding = holding_cls(bridge._coordinator)
+        bridge._coordinator = holding
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        assert [k for k, _ in holding.artist_calls] == [ARTIST_A_KEY]
+        # el worker falla con un timeout transitorio
+        key, on_state = holding.artist_calls[0]
+        from michi.application.enrichment_coordinator import (
+            EnrichmentOperationState,
+        )
+
+        ev = self._portrait_event(key, EnrichmentOperationState.FAILED)
+        bridge._apply_portrait_event(ev)
+        process_events(4)
+        assert ARTIST_A_KEY not in bridge._portrait_prefetch_attempted, (
+            "el transient NO bloquea el reintento"
+        )
+        # POST-R4 P10 (auditoría): el reintento respeta el COOLDOWN — la
+        # readmisión inmediata no vuelve a lanzar el enrich…
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        process_events(4)
+        assert len(holding.artist_calls) == 1, (
+            "el reintento inmediato espera el cooldown"
+        )
+        # …y tras el cooldown (el plazo vencido) readmite.
+        bridge._portrait_retry_after[ARTIST_A_KEY] = 0.0
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        process_events(4)
+        assert len(holding.artist_calls) == 2, (
+            "tras el cooldown el reintento transitorio readmite"
+        )
+
+    def test_not_found_is_terminal_for_the_session(self):
+        """NOT_FOUND → cooldown largo: no se reintenta en la sesión (el
+        artista no existe en la fuente)."""
+        bridge, *_ = make_bridge(online=True)
+        holding_cls = self._holding()
+        holding = holding_cls(bridge._coordinator)
+        bridge._coordinator = holding
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        key, _ = holding.artist_calls[0]
+        from michi.application.enrichment_coordinator import (
+            EnrichmentOperationState,
+        )
+
+        bridge._apply_portrait_event(
+            self._portrait_event(key, EnrichmentOperationState.NOT_FOUND)
+        )
+        process_events(4)
+        assert ARTIST_A_KEY in bridge._portrait_prefetch_attempted, (
+            "NOT_FOUND conserva el cooldown de sesión"
+        )
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        process_events(4)
+        assert len(holding.artist_calls) == 1, (
+            "sin reintento para NOT_FOUND en la sesión"
+        )
+
+    def test_cancelled_allows_retry(self):
+        bridge, *_ = make_bridge(online=True)
+        holding_cls = self._holding()
+        holding = holding_cls(bridge._coordinator)
+        bridge._coordinator = holding
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        key, _ = holding.artist_calls[0]
+        from michi.application.enrichment_coordinator import (
+            EnrichmentOperationState,
+        )
+
+        bridge._apply_portrait_event(
+            self._portrait_event(key, EnrichmentOperationState.CANCELLED)
+        )
+        process_events(4)
+        assert ARTIST_A_KEY not in bridge._portrait_prefetch_attempted
+        bridge.prefetch_artist_portrait(ARTIST_A_KEY)
+        process_events(4)
+        assert len(holding.artist_calls) == 2
+
+    def test_portrait_projection_is_lru_bounded(self):
+        from michi.presentation.enrichment_bridge import _MAX_ARTIST_PORTRAITS
+
+        bridge, *_ = make_bridge(online=True)
+        for index in range(_MAX_ARTIST_PORTRAITS + 40):
+            bridge._set_artist_portrait(f"artist-{index:04d}", f"/p/{index}")
+        portraits = bridge.property("artistPortraits")
+        assert len(portraits) == _MAX_ARTIST_PORTRAITS, "bound respetado"
+        # los 40 más viejos fueron evictados (LRU)
+        assert "artist-0000" not in portraits
+        assert f"artist-{_MAX_ARTIST_PORTRAITS + 39:04d}" in portraits
+
+
+class TestSemanticProjectionInvalidation:
+    """POST-R4 P10 (13.3): la proyección pasiva se invalida SOLO por la
+    señal semántica de cache mutation — los changed genéricos del bridge
+    (estados transitorios, review, candidatos) NO re-proyectan."""
+
+    def test_generic_changed_never_invalidates_passive_projection(self):
+        bridge, *_ = make_bridge(online=True)
+        # la proyección pasiva real conectada como en el bootstrap
+        from michi.presentation.enrichment_bridge import (
+            LibraryEnrichmentProjection,
+        )
+
+        service = bridge._service
+        store = bridge._asset_store
+        projection = LibraryEnrichmentProjection(service, store)
+        revision_before = projection.property("revision")
+        # decenas de cambios transitorios del bridge (loading/review/...)
+        for _ in range(10):
+            bridge.changed.emit()
+        assert projection.property("revision") == revision_before, (
+            "el changed genérico del bridge NO invalida la proyección pasiva"
+        )
+
+    def test_commit_invalidates_passive_projection(self):
+        bridge, service, _, _, _, _, _ = make_bridge(online=True)
+        from michi.presentation.enrichment_bridge import (
+            LibraryEnrichmentProjection,
+        )
+
+        projection = LibraryEnrichmentProjection(service, bridge._asset_store)
+        rev = projection.property("revision")
+        # el enrich de un álbum (commit): el evento READY emite la señal
+        # semántica → la proyección se invalida.
+        events = []
+        bridge.enrichmentCacheInvalidated.connect(
+            lambda: events.append(projection.invalidate())
+        )
+        bridge.activate_album(ALBUM_X_KEY)
+        assert _wait_for(bridge, "READY")
+        assert events, "el commit READY emitió la invalidación semántica"
+        assert projection.property("revision") == rev + 1
+
+
+class TestManualReviewShowMore:
+    """POST-R4 E2 (12.1): el review manual puede pedir TODOS los
+    summaries del discovery (show more) — más allá del shortlist del
+    rank automático."""
+
+    def test_artist_show_more_lists_all_discovery_summaries(self):
+        from michi.domain.enrichment import ArtistCandidate, LocalAlbumEvidence
+        from tests.enrichment_presentation_fakes import CountingResolver
+
+        resolver = CountingResolver(
+            artists=(
+                ArtistCandidate(
+                    "mb-a",
+                    canonical_name="Artist A",
+                    known_albums=(LocalAlbumEvidence("Album X", 1980),),
+                ),
+                ArtistCandidate("mb-a2", canonical_name="Artist A2"),
+                ArtistCandidate("mb-b", canonical_name="Artist B"),
+            )
+        )
+        bridge, *_ = make_bridge(online=True, resolver=resolver)
+        bridge.activate_artist(ARTIST_A_KEY)
+        assert _wait_for(bridge, "READY")
+        bridge.open_review("artist")
+        bridge.search_artist("Artist A")
+        process_events(12)
+        bridge.search_artist_show_more()
+        process_events(12)
+        all_candidates = bridge.property("artistCandidates")
+        assert {c["externalArtistId"] for c in all_candidates} == {
+            "mb-a",
+            "mb-a2",
+            "mb-b",
+        }, "el show-more lista todos los summaries del discovery"
+        assert bridge.property("reviewOpen") is True
+        assert bridge.property("reviewLoading") is False
+
+    def test_album_show_more_lists_all_discovery_summaries(self):
+        from michi.domain.enrichment import ReleaseGroupCandidate
+        from tests.enrichment_presentation_fakes import CountingResolver
+
+        resolver = CountingResolver(
+            groups=(
+                ReleaseGroupCandidate(
+                    release_group_id="rg-x",
+                    title="Album X",
+                    artist_credit_names=("Artist A",),
+                    first_release_year=1980,
+                ),
+                ReleaseGroupCandidate(
+                    release_group_id="rg-y",
+                    title="Album Y",
+                    artist_credit_names=("Artist A",),
+                    first_release_year=1990,
+                ),
+            )
+        )
+        bridge, *_ = make_bridge(online=True, resolver=resolver)
+        bridge.activate_album(ALBUM_X_KEY)
+        assert _wait_for(bridge, "READY")
+        bridge.open_review("album")
+        bridge.search_album("Album X", "Artist A")
+        process_events(12)
+        bridge.search_album_show_more()
+        process_events(12)
+        all_candidates = bridge.property("albumCandidates")
+        assert {c["externalReleaseGroupId"] for c in all_candidates} == {
+            "rg-x",
+            "rg-y",
+        }
+
+    def test_show_more_without_query_is_noop(self):
+        bridge, *_ = make_bridge(online=True)
+        bridge.open_review("artist")
+        bridge.search_artist_show_more()
+        process_events(12)
+        assert bridge.property("artistCandidates") == []
+        assert bridge.property("reviewLoading") is False
+
+
+class TestPortraitCooldownPolicy:
+    """POST-R4 P10 (auditoría): el reintento transitorio espera un
+    cooldown explícito (ni bloqueo de sesión ni reintento inmediato)."""
+
+    def test_failed_sets_cooldown_until_deadline(self):
+        bridge, *_ = make_bridge(online=True)
+        from michi.application.enrichment_coordinator import (
+            EnrichmentOperationState,
+        )
+        from michi.presentation.enrichment_bridge import (
+            _PORTRAIT_RETRY_COOLDOWN_S,
+        )
+
+        key = ARTIST_A_KEY
+        bridge._portrait_prefetch_inflight.add(key)  # el worker está vivo
+        bridge._apply_portrait_event(self._event(key, EnrichmentOperationState.FAILED))
+        deadline = bridge._portrait_retry_after.get(key)
+        assert deadline is not None
+        assert deadline - time.monotonic() <= _PORTRAIT_RETRY_COOLDOWN_S + 1
+        assert deadline > time.monotonic()
+
+    @staticmethod
+    def _event(key, state):
+        m = __import__(
+            "michi.application.enrichment_coordinator",
+            fromlist=["EnrichmentOperationEvent", "EnrichmentOperationState"],
+        )
+        kind = __import__(
+            "michi.domain.enrichment", fromlist=["EnrichmentEntityKind"]
+        ).EnrichmentEntityKind
+        return m.EnrichmentOperationEvent(
+            operation_id="op",
+            generation=1,
+            entity_kind=kind.ARTIST,
+            local_entity_key=key,
+            state=state,
+        )
+
+    def test_cancelled_allows_immediate_retry(self):
+        bridge, *_ = make_bridge(online=True)
+        from michi.application.enrichment_coordinator import (
+            EnrichmentOperationState,
+        )
+
+        key = ARTIST_A_KEY
+        bridge._portrait_prefetch_inflight.add(key)
+        bridge._apply_portrait_event(
+            self._event(key, EnrichmentOperationState.CANCELLED)
+        )
+        assert key not in bridge._portrait_retry_after, (
+            "CANCELLED: reintento libre sin cooldown"
+        )

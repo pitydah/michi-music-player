@@ -40,6 +40,10 @@ PathView {
     }
     property real albumZoom: 1.0
     property var browseState: null
+    // R7-01: currentKey es la identidad canónica del browse; las
+    // transiciones de currentIndex durante la restauración nunca la
+    // escriben. TRUE desde la construcción.
+    property bool browseRestoreInProgress: true
     property string visibleAlbums: "auto"
     property string depthMode: "standard"
     property bool ambientColor: true
@@ -75,23 +79,114 @@ PathView {
     Accessible.name: qsTr("Albums in album flow view")
     Accessible.description: qsTr("Use Left and Right to browse and Enter to open")
 
-    Component.onCompleted: if (browseState) {
-        var restoredIndex = browseState.flowIndex
-        if (browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i) {
-                if (albumModel[i].key === browseState.currentKey) {
-                    restoredIndex = i
-                    break
-                }
+    function findIndexByKey(key) {
+        if (!key)
+            return -1
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === key)
+                return i
+        }
+        return -1
+    }
+
+    // R7-01: lifecycle determinístico de restauración/proyección.
+    function restoreBrowseSelection() {
+        if (!browseState || !albumModel)
+            return
+        if (albumModel.length === 0)
+            return  // restauración pendiente (modelo tardío)
+        browseRestoreInProgress = true
+        var resolvedIndex = browseState.currentKey !== ""
+            ? albumsPath.findIndexByKey(browseState.currentKey)
+            : browseState.flowIndex
+        if (resolvedIndex < 0)
+            resolvedIndex = 0
+        if (resolvedIndex >= albumModel.length)
+            resolvedIndex = albumModel.length - 1
+        albumsPath.currentIndex = resolvedIndex
+        if (browseState.currentKey !== ""
+                && albumModel[resolvedIndex].key !== browseState.currentKey) {
+            // key desaparecida del modelo activo: fallback explícito.
+            browseState.currentKey = ""
+            browseState.flowIndex = -1
+            if (albumModel.length > 0) {
+                albumsPath.currentIndex = 0
+                browseState.remember(albumModel[0].key)
             }
         }
-        currentIndex = restoredIndex
+        browseRestoreInProgress = false
     }
-    onCurrentIndexChanged: if (browseState) {
+        Timer {
+        id: browseRestoreTimer
+        interval: 0
+        repeat: false
+        onTriggered: albumsPath.restoreBrowseSelection()
+    }
+    Component.onCompleted: browseRestoreTimer.start()
+    // R7-01: la identidad puede cambiar por una intención en OTRA
+    // superficie (search, detail, fallback): la vista activa re-proyecta
+    // el índice — sin re-escribir la key (el flag del restore protege).
+    Connections {
+        target: root.browseState
+        function onCurrentKeyChanged() {
+            if (root.browseState && root.browseState.currentKey !== "")
+                browseRestoreTimer.start()
+        }
+    }
+    onAlbumModelChanged: if (browseState && albumModel.length > 0)
+        browseRestoreTimer.start()
+    // R7-01: commit de la proyección visual actual a la identidad
+    // canónica — la única función que escribe la identidad por
+    // intención (browseTo y el settle del pointer la reutilizan).
+    function commitCurrentVisualIdentity() {
+        if (!browseState || browseRestoreInProgress || !currentAlbum)
+            return false
+        browseState.remember(currentAlbum.key)
+        return true
+    }
+    function browseTo(index) {
+        if (index < 0 || index >= albumModel.length)
+            return
+        albumsPath.currentIndex = index
+        albumsPath.commitCurrentVisualIdentity()
+    }
+    // R7-12: un movimiento físico posee EXACTAMENTE un pointer-intent.
+    // PathView puede entrar en flick dentro del mismo movimiento; ese
+    // cambio de fase no puede re-armar ni reescribir startKey. El commit
+    // ocurre una sola vez en movementEnded, después del flick opcional.
+    property bool browsePointerIntentActive: false
+    property string browsePointerStartKey: ""
+    function beginPointerIntent() {
+        // Defensa adicional: incluso una invocación duplicada futura no
+        // puede perder la identidad observada al inicio del gesto.
+        if (browsePointerIntentActive)
+            return
+        browsePointerIntentActive = true
+        browsePointerStartKey = browseState ? browseState.currentKey : ""
+    }
+    function settlePointerIntent() {
+        if (!browsePointerIntentActive)
+            return
+        browsePointerIntentActive = false
+        var startKey = browsePointerStartKey
+        browsePointerStartKey = ""
+        if (!browseState)
+            return
+        if (browseState.currentKey !== startKey) {
+            // la identidad cambió durante el gesto (intención externa):
+            // re-proyectar ESA identidad, jamás pisarla con el gesto.
+            albumsPath.restoreBrowseSelection()
+            return
+        }
+        albumsPath.commitCurrentVisualIdentity()
+    }
+    // Flick es una fase posible del mismo movement, no un segundo gesto.
+    onMovementStarted: albumsPath.beginPointerIntent()
+    onMovementEnded: albumsPath.settlePointerIntent()
+    // el cambio de índice solo proyecta la posición: la identidad la
+    // escriben exclusivamente browseTo/restore/fallback/pointer-settle.
+    onCurrentIndexChanged: if (browseState)
         browseState.flowIndex = currentIndex
-        if (currentAlbum)
-            browseState.remember(currentAlbum.key)
-    }
 
     Rectangle {
         anchors.fill: parent
@@ -106,8 +201,11 @@ PathView {
         }
     }
 
-    Keys.onLeftPressed: decrementCurrentIndex()
-    Keys.onRightPressed: incrementCurrentIndex()
+    // R7-01 (microfix Cover Flow): Left/Right usan la ruta canónica de
+    // intención — índice Y identidad se mueven juntos (los handlers
+    // específicos corren antes que cualquier otro camino).
+    Keys.onLeftPressed: albumsPath.browseTo(albumsPath.currentIndex - 1)
+    Keys.onRightPressed: albumsPath.browseTo(albumsPath.currentIndex + 1)
     Keys.onReturnPressed: {
         if (currentAlbum)
             library.select_album(currentAlbum.key)
@@ -120,10 +218,10 @@ PathView {
         if (albumsPath.handleAlbumContextKey(event))
             return
         if (event.key === Qt.Key_Home) {
-            currentIndex = count > 0 ? 0 : -1
+            albumsPath.browseTo(0)
             event.accepted = true
         } else if (event.key === Qt.Key_End) {
-            currentIndex = count > 0 ? count - 1 : -1
+            albumsPath.browseTo(count - 1)
             event.accepted = true
         }
     }
@@ -259,17 +357,22 @@ PathView {
             id: tap
             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
             onSingleTapped: {
-                albumsPath.currentIndex = pathAlbum.index
+                albumsPath.browseTo(pathAlbum.index)
                 pathAlbum.forceActiveFocus()
             }
-            onDoubleTapped: library.select_album(modelData.key)
+            onDoubleTapped: {
+                // R7-11: primero identidad/proyección, después abrir.
+                albumsPath.browseTo(pathAlbum.index)
+                library.select_album(modelData.key)
+            }
         }
         AlbumContextArea {
             id: albumContext
             anchors.fill: parent
             album: modelData
             onContextRequested: {
-                albumsPath.currentIndex = pathAlbum.index
+                // R7-10: el target del contexto transfiere identidad.
+                albumsPath.browseTo(pathAlbum.index)
                 pathAlbum.forceActiveFocus()
             }
         }
@@ -374,21 +477,23 @@ PathView {
                 technical: true
                 color: MichiPalette.textMuted
             }
+            // R7-08: intención explícita — índice + identidad juntos;
+            // enabled refleja la navegación REAL (sin wrap).
             MichiIconButton {
                 Layout.preferredWidth: MichiMetrics.controlMedium
                 Layout.preferredHeight: MichiMetrics.controlMedium
                 iconName: "chevron-left"
                 accessibleName: qsTr("Previous album")
-                enabled: albumsPath.count > 1
-                onClicked: albumsPath.decrementCurrentIndex()
+                enabled: albumsPath.currentIndex > 0
+                onClicked: albumsPath.browseTo(albumsPath.currentIndex - 1)
             }
             MichiIconButton {
                 Layout.preferredWidth: MichiMetrics.controlMedium
                 Layout.preferredHeight: MichiMetrics.controlMedium
                 iconName: "chevron-right"
                 accessibleName: qsTr("Next album")
-                enabled: albumsPath.count > 1
-                onClicked: albumsPath.incrementCurrentIndex()
+                enabled: albumsPath.currentIndex < albumsPath.count - 1
+                onClicked: albumsPath.browseTo(albumsPath.currentIndex + 1)
             }
             MichiButton {
                 text: qsTr("Play")

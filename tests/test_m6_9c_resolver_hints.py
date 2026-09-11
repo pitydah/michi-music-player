@@ -132,9 +132,14 @@ class TestMusicBrainzArtistResolution:
         evidence = ArtistIdentityEvidence(
             local_artist_key="john williams", local_artist_name="John Williams"
         )
+        # POST-R4 E1: find = discovery de summaries (sin discografía);
+        # rank → shortlist; hydrate → evidencia del finalista.
         candidates = resolver.find_artist_candidates(evidence)
         assert [c.external_artist_id for c in candidates] == ["mb-a"]
-        assert candidates[0].known_albums == (LocalAlbumEvidence("Star Wars", 1977),)
+        assert candidates[0].known_albums == (), "el discovery NO hidrata discografías"
+        finalists = resolver.rank_artist_candidates(candidates, evidence)
+        hydrated = resolver.hydrate_artist_candidates(finalists)
+        assert hydrated[0].known_albums == (LocalAlbumEvidence("Star Wars", 1977),)
 
     def test_homonym_candidates_deterministic_order(self):
         transport = FakeHttpTransport()

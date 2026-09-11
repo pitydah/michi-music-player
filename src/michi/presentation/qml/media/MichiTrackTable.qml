@@ -31,10 +31,53 @@ Item {
     property string emptyTitle: qsTr("No tracks")
     property string emptyMessage: ""
     property string emptyIcon: "track"
+    // POST-R4 P3: la selección simple se ata al TrackId (AUTHORITY). El
+    // índice visual es SOLO una proyección temporal (selectedIndex se
+    // mantiene por compatibilidad de lectura y se re-deriva con el
+    // modelo: rows/sort/filter nunca transfieren la selección).
+    property string selectedTrackId: ""
     property int selectedIndex: -1
     property string numberingMode: "index"
     property bool selectionEnabled: false
     property var selectedTrackIds: []
+
+    // POST-R4 P3: identidad estable del row — TrackId real, o el id
+    // legacy derivado del path para registros pre-migración. Los hosts
+    // (p.ej. el AlbumDetailView del row inspeccionado) consumen ESTA
+    // misma función: una sola identidad por row.
+    function idForRow(row) {
+        if (!row)
+            return ""
+        var raw = row.trackId ? String(row.trackId) : ""
+        return raw.length > 0 ? raw : "legacy-path::" + String(row.path || "")
+    }
+
+    function indexForTrackId(trackId) {
+        if (!trackId || String(trackId).length === 0)
+            return -1
+        for (var i = 0; i < root.rows.length; i++) {
+            if (root.idForRow(root.rows[i]) === trackId)
+                return i
+        }
+        return -1
+    }
+
+    // POST-R4 P3: política explícita de reconciliación — si el TrackId
+    // seleccionado ya no existe en el modelo (filtro/sort/scan), la
+    // selección se limpia: NUNCA se transfiere a otro row.
+    function reconcileSelectedTrackId() {
+        if (root.selectedTrackId === "")
+            return
+        var index = root.indexForTrackId(root.selectedTrackId)
+        if (index === -1) {
+            root.selectedTrackId = ""
+            root.selectedIndex = -1
+        } else {
+            root.selectedIndex = index
+        }
+    }
+
+    onRowsChanged: root.reconcileSelectedTrackId()
     readonly property bool profileShowsArtwork: showArtwork
     readonly property bool profileShowsArtist: showArtistColumn
         && columnProfile !== "artist"
@@ -176,10 +219,7 @@ Item {
             showTechnicalColumns: true
             showActions: root.showActions
             numberText: root.numberText(modelData, index)
-            trackId: modelData.trackId
-                && String(modelData.trackId).length > 0
-                ? String(modelData.trackId)
-                : "legacy-path::" + String(modelData.path)
+            trackId: root.idForRow(modelData)
             filePath: modelData.path
             title: modelData.title || modelData.displayName
             artist: modelData.artist || ""
@@ -210,7 +250,7 @@ Item {
             playing: root.playingPath === modelData.path
             selected: root.selectionEnabled
                 ? root.selectedTrackIds.indexOf(trackId) !== -1
-                : root.selectedIndex === index
+                : root.selectedTrackId !== "" && root.selectedTrackId === trackId
             favorite:
                 // LIB-A §7/24: triple check canónico — id estable, proyección
                 // legacy (legacy-path::<path>) y path-only (pre-migración).
@@ -231,6 +271,7 @@ Item {
             canGoToAlbum: root.canNavigateEntities && albumKey.length > 0
             canGoToArtist: root.canNavigateEntities && artistKey.length > 0
             onSelectedRequested: {
+                root.selectedTrackId = trackId
                 root.selectedIndex = index
                 trackList.currentIndex = index
             }

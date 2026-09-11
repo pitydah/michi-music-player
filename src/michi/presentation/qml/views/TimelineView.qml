@@ -41,6 +41,9 @@ ListView {
     }
     property bool groupByDecade: true
     property var browseState: null
+    // R7-01: currentKey es la identidad canónica; las transiciones de
+    // currentIndex durante la restauración nunca la escriben.
+    property bool browseRestoreInProgress: true
     property string direction: "newest"
     property string densityMode: "standard"
     property string metadataLevel: "standard"
@@ -75,33 +78,103 @@ ListView {
     Accessible.name: qsTr("Album timeline")
     Accessible.description: qsTr("Albums grouped chronologically")
 
-    Component.onCompleted: if (browseState) Qt.callLater(function() {
-        var restoredIndex = browseState.chronologyIndex
-        if (browseState.currentKey) {
-            for (var i = 0; i < albumModel.length; ++i) {
-                if (albumModel[i].key === browseState.currentKey) {
-                    restoredIndex = i
-                    break
-                }
-            }
+    function findIndexByKey(key) {
+        if (!key)
+            return -1
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === key)
+                return i
         }
-        albumTimeline.currentIndex = restoredIndex
+        return -1
+    }
+
+    // R7-01: lifecycle determinístico de restauración/proyección.
+    function restoreBrowseSelection() {
+        if (!browseState || !albumModel)
+            return
+        if (albumModel.length === 0)
+            return  // restauración pendiente (modelo tardío)
+        browseKeyboardArmed = false
+        browseRestoreInProgress = true
+        var resolvedIndex = browseState.currentKey !== ""
+            ? albumTimeline.findIndexByKey(browseState.currentKey)
+            : browseState.chronologyIndex
+        if (resolvedIndex < 0)
+            resolvedIndex = 0
+        if (resolvedIndex >= albumModel.length)
+            resolvedIndex = albumModel.length - 1
+        albumTimeline.currentIndex = resolvedIndex
         albumTimeline.contentY = browseState.chronologyContentY
-    })
+        if (browseState.currentKey !== ""
+                && albumModel[resolvedIndex].key !== browseState.currentKey) {
+            browseState.currentKey = ""
+            browseState.chronologyIndex = -1
+            if (albumModel.length > 0) {
+                albumTimeline.currentIndex = 0
+                browseState.remember(albumModel[0].key)
+            }
+            albumTimeline.contentY = 0
+        }
+        browseRestoreInProgress = false
+    }
+        Timer {
+        id: browseRestoreTimer
+        interval: 0
+        repeat: false
+        onTriggered: albumTimeline.restoreBrowseSelection()
+    }
+    Component.onCompleted: browseRestoreTimer.start()
+    // R7-01: la identidad puede cambiar por una intención en OTRA
+    // superficie (search, detail, fallback): la vista activa re-proyecta
+    // el índice — sin re-escribir la key (el flag del restore protege).
+    Connections {
+        target: root.browseState
+        function onCurrentKeyChanged() {
+            if (root.browseState && root.browseState.currentKey !== "")
+                browseRestoreTimer.start()
+        }
+    }
+    onAlbumModelChanged: if (browseState && albumModel.length > 0)
+        browseRestoreTimer.start()
+    // R7-01: el remember exige intención (teclas o acciones explícitas).
+    property bool browseKeyboardArmed: false
+    function browseTo(index) {
+        if (index < 0 || index >= albumModel.length)
+            return
+        albumTimeline.currentIndex = index
+        if (browseState && !browseRestoreInProgress)
+            browseState.remember(albumModel[index].key)
+    }
     onContentYChanged: if (browseState) browseState.chronologyContentY = contentY
     onCurrentIndexChanged: if (browseState) {
         browseState.chronologyIndex = currentIndex
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (browseKeyboardArmed && !browseRestoreInProgress
+                && currentIndex >= 0 && currentIndex < albumModel.length) {
+            browseKeyboardArmed = false
             browseState.remember(albumModel[currentIndex].key)
+        }
     }
 
     Keys.onReturnPressed: {
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (currentIndex >= 0 && currentIndex < albumModel.length) {
+            albumTimeline.browseTo(currentIndex)
             library.select_album(albumModel[currentIndex].key)
+        }
     }
     Keys.onEnterPressed: {
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (currentIndex >= 0 && currentIndex < albumModel.length) {
+            albumTimeline.browseTo(currentIndex)
             library.select_album(albumModel[currentIndex].key)
+        }
+    }
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Up || event.key === Qt.Key_Down
+                || event.key === Qt.Key_Left || event.key === Qt.Key_Right)
+            albumTimeline.browseKeyboardArmed = true
+    }
+    // R7-01: intención one-shot — el release desarma SIEMPRE.
+    Keys.onReleased: function(event) {
+        albumTimeline.browseKeyboardArmed = false
     }
 
     ScrollBar.vertical: MichiScrollBar { }
@@ -286,17 +359,21 @@ ListView {
         TapHandler {
             exclusiveSignals: TapHandler.SingleTap | TapHandler.DoubleTap
             onSingleTapped: {
-                albumTimeline.currentIndex = timelineRow.index
+                albumTimeline.browseTo(timelineRow.index)
                 timelineRow.forceActiveFocus()
             }
-            onDoubleTapped: library.select_album(modelData.key)
+            onDoubleTapped: {
+                // R7-11: identidad/proyección primero, después abrir.
+                albumTimeline.browseTo(timelineRow.index)
+                library.select_album(modelData.key)
+            }
         }
         AlbumContextArea {
             id: albumContext
             anchors.fill: parent
             album: modelData
             onContextRequested: {
-                albumTimeline.currentIndex = timelineRow.index
+                albumTimeline.browseTo(timelineRow.index)
                 timelineRow.forceActiveFocus()
             }
         }

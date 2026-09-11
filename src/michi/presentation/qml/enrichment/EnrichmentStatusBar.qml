@@ -51,9 +51,15 @@ RowLayout {
         dotVisible: root.busy
     }
 
+    // POST-R4 E2 (i18n): el message del bridge es un CÓDIGO estructurado
+    // ("stale"/"online_disabled") — la copy visible se traduce aquí.
     MichiText {
         Layout.fillWidth: true
-        text: root.message
+        text: root.message === "stale"
+            ? qsTr("Saved information may be outdated")
+            : root.message === "online_disabled"
+                ? qsTr("Online info is disabled")
+                : root.message
         role: "secondary"
         elide: Text.ElideRight
         visible: root.message.length > 0

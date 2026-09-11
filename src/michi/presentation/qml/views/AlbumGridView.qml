@@ -40,6 +40,12 @@ GridView {
     }
     property real albumZoom: 1.0
     property var browseState: null
+    // R7-01: currentKey es la identidad canónica del browse. Durante la
+    // restauración inicial (y los fallbacks controlados), las
+    // transiciones de currentIndex NUNCA escriben la identidad — solo la
+    // interacción del usuario la muta. TRUE desde la construcción: el
+    // índice inicial/default de la vista no puede contaminar la key.
+    property bool browseRestoreInProgress: true
     property string spacingMode: "balanced"
     property string metadataLevel: "standard"
     property bool quickActions: true
@@ -87,32 +93,108 @@ GridView {
     Accessible.name: qsTr("Albums in grid view")
     Accessible.description: qsTr("Use arrow keys to browse and Enter to open an album")
 
-    Component.onCompleted: {
-        Qt.callLater(function() {
-            layoutReady = true
-            albumGrid.forceLayout()
-            if (browseState) {
-                var restoredIndex = browseState.galleryIndex
-                if (browseState.currentKey) {
-                    for (var i = 0; i < albumModel.length; ++i) {
-                        if (albumModel[i].key === browseState.currentKey) {
-                            restoredIndex = i
-                            break
-                        }
-                    }
-                }
-                albumGrid.currentIndex = restoredIndex
-                albumGrid.contentY = browseState.galleryContentY
-            }
-        })
+    function findIndexByKey(key) {
+        if (!key)
+            return -1
+        for (var i = 0; i < albumModel.length; ++i) {
+            if (albumModel[i].key === key)
+                return i
+        }
+        return -1
     }
+
+    // R7-01: lifecycle determinístico de restauración/proyección.
+    // 1) identidad: currentKey → índice en el modelo vigente;
+    // 2) posición visual local (nunca impone identidad);
+    // 3) fallback explícito cuando la key ya no existe en el modelo
+    //    activo (clear + índice 0 + nueva key establecida de forma
+    //    controlada — jamás por efecto colateral del índice viejo).
+    // Con el modelo aún vacío la restauración queda PENDIENTE: la key
+    // nunca se borra por un estado transitorio (onAlbumModelChanged la
+    // completa cuando el modelo llega).
+    function restoreBrowseSelection() {
+        if (!browseState || !albumModel)
+            return
+        if (albumModel.length === 0)
+            return  // restauración pendiente: browseRestoreInProgress sigue true
+        browseKeyboardArmed = false
+        browseRestoreInProgress = true
+        var resolvedIndex = -1
+        if (browseState.currentKey !== "")
+            resolvedIndex = albumGrid.findIndexByKey(browseState.currentKey)
+        else
+            resolvedIndex = browseState.galleryIndex
+        if (resolvedIndex < 0)
+            resolvedIndex = 0
+        if (resolvedIndex >= albumModel.length)
+            resolvedIndex = albumModel.length - 1
+        albumGrid.currentIndex = resolvedIndex
+        albumGrid.contentY = browseState.galleryContentY
+        if (browseState.currentKey !== ""
+                && albumModel[resolvedIndex].key !== browseState.currentKey) {
+            // la key desapareció del modelo activo: fallback explícito
+            // determinístico (índice 0), con la nueva key establecida
+            // de forma controlada.
+            browseState.currentKey = ""
+            browseState.galleryIndex = -1
+            if (albumModel.length > 0) {
+                albumGrid.currentIndex = 0
+                browseState.remember(albumModel[0].key)
+            }
+            albumGrid.contentY = 0
+        }
+        browseRestoreInProgress = false
+    }
+    // R7-01: el defer de un ciclo (restauración tras el update del
+    // modelo del view) usa un Timer de 0 ms: se destruye con la vista —
+    // el callLater evalúa en un contexto inválido durante el teardown.
+    Timer {
+        id: browseRestoreTimer
+        interval: 0
+        repeat: false
+        onTriggered: albumGrid.restoreBrowseSelection()
+    }
+    Component.onCompleted: {
+        albumGrid.layoutReady = true
+        albumGrid.forceLayout()
+        browseRestoreTimer.start()
+    }
+    // R7-01: la identidad puede cambiar por una intención en OTRA
+    // superficie (search, detail, fallback): la vista activa re-proyecta
+    // el índice — sin re-escribir la key (el flag del restore protege).
+    Connections {
+        target: albumGrid.browseState
+        function onCurrentKeyChanged() {
+            if (albumGrid.browseState && albumGrid.browseState.currentKey !== "")
+                browseRestoreTimer.start()
+        }
+    }
+    // modelo tardío o cambios del modelo (sort/filter/search/scan):
+    // re-proyectar la key (o completar la restauración pendiente).
+    onAlbumModelChanged: if (browseState && albumModel.length > 0)
+        browseRestoreTimer.start()
     onCellWidthChanged: if (layoutReady) albumGrid.forceLayout()
     onCellHeightChanged: if (layoutReady) albumGrid.forceLayout()
     onContentYChanged: if (browseState) browseState.galleryContentY = contentY
+    // R7-01: el remember exige INTENCIÓN — el armed lo pone la
+    // navegación por teclado (flechas) antes del movimiento built-in; el
+    // handler lo consume y desarma. Los cambios de índice del layout/
+    // restauración nunca escriben la identidad.
+    property bool browseKeyboardArmed: false
+    function browseTo(index) {
+        if (index < 0 || index >= albumModel.length)
+            return
+        albumGrid.currentIndex = index
+        if (browseState && !browseRestoreInProgress)
+            browseState.remember(albumModel[index].key)
+    }
     onCurrentIndexChanged: if (browseState) {
         browseState.galleryIndex = currentIndex
-        if (currentIndex >= 0 && currentIndex < albumModel.length)
+        if (browseKeyboardArmed && !browseRestoreInProgress
+                && currentIndex >= 0 && currentIndex < albumModel.length) {
+            browseKeyboardArmed = false
             browseState.remember(albumModel[currentIndex].key)
+        }
     }
 
     Keys.onReturnPressed: {
@@ -127,14 +209,23 @@ GridView {
         if (albumGrid.handleAlbumContextKey(event))
             return
         if (event.key === Qt.Key_Home) {
-            currentIndex = count > 0 ? 0 : -1
+            albumGrid.browseTo(0)
             positionViewAtBeginning()
             event.accepted = true
         } else if (event.key === Qt.Key_End) {
-            currentIndex = count > 0 ? count - 1 : -1
+            albumGrid.browseTo(count - 1)
             positionViewAtEnd()
             event.accepted = true
+        } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down
+                || event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+            // la navegación built-in moverá el índice: armar la intención.
+            albumGrid.browseKeyboardArmed = true
         }
+    }
+    // R7-01: intención one-shot — el release desarma SIEMPRE (si el
+    // built-in no movió el índice, el armed no sobrevive a la tecla).
+    Keys.onReleased: function(event) {
+        albumGrid.browseKeyboardArmed = false
     }
 
     ScrollBar.vertical: MichiScrollBar { }
@@ -162,13 +253,13 @@ GridView {
             precisionMetadata: albumGrid.precisionMetadata
             onActiveFocusChanged: {
                 if (activeFocus)
-                    albumGrid.currentIndex = albumCell.index
+                    albumGrid.browseTo(albumCell.index)
             }
             onSelectedRequested: {
-                albumGrid.currentIndex = albumCell.index
+                albumGrid.browseTo(albumCell.index)
             }
             onOpenRequested: {
-                albumGrid.currentIndex = albumCell.index
+                albumGrid.browseTo(albumCell.index)
                 library.select_album(albumCell.modelData.key)
             }
             onPlayRequested: library.play_album(albumCell.modelData.key)

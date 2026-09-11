@@ -69,9 +69,12 @@ class EditorialPreferences:
 
 @dataclass(frozen=True)
 class StudioListPreferences:
+    # POST-R4 P5 (auditoría): metadata_level ELIMINADO de la autoridad —
+    # era un setting persistido sin consumidor productivo (el studio list
+    # usa precision_metadata/artwork_size/density). El decoder tolera el
+    # JSON histórico con metadataLevel pero ya no lo emite.
     density: str = "standard"
     artwork_size: str = "small"
-    metadata_level: str = "standard"
     precision_metadata: bool = True
     inspector: bool = True
     artist_column: bool = True
@@ -263,6 +266,11 @@ class SettingsState:
     library_views: LibraryViewPreferences = field(
         default_factory=LibraryViewPreferences
     )
+    # POST-R4 E2 (12.4): elección del usuario de la fuente de artwork por
+    # álbum — "local" | "external" | "" (sin elección: política default).
+    # El image picker persiste aquí su selección; la política del row
+    # canónico la consume.
+    album_artwork_source: dict[str, str] = field(default_factory=dict)
 
 
 def library_view_preferences_to_json(preferences: LibraryViewPreferences) -> str:
@@ -314,7 +322,6 @@ def library_view_preferences_to_json(preferences: LibraryViewPreferences) -> str
             "studioList": {
                 "density": preferences.studio_list.density,
                 "artworkSize": preferences.studio_list.artwork_size,
-                "metadataLevel": preferences.studio_list.metadata_level,
                 "precisionMetadata": preferences.studio_list.precision_metadata,
                 "inspector": preferences.studio_list.inspector,
                 "artistColumn": preferences.studio_list.artist_column,
@@ -483,7 +490,8 @@ def library_view_preferences_from_json(
             artwork_size=choice(
                 studio, "artworkSize", "small", {"none", "small", "standard"}
             ),
-            metadata_level=choice(studio, "metadataLevel", "standard", metadata),
+            # metadataLevel histórico: presente en JSON viejos: se IGNORA
+            # (sin consumidor productivo desde POST-R4 P5).
             precision_metadata=flag(studio, "precisionMetadata", True),
             inspector=flag(studio, "inspector", True),
             artist_column=flag(studio, "artistColumn", True),

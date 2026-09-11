@@ -459,8 +459,13 @@ class TestFavoriteTrackIdBridge:
         a TrackId, and never an empty id."""
         table = Path("src/michi/presentation/qml/media/MichiTrackTable.qml").read_text()
         assert "property var favoriteTrackIds: []" in table
-        assert '"legacy-path::" + String(modelData.path)' in table
-        assert "? String(modelData.trackId)" in table
+        # POST-R4 P3: la identidad normalizada vive en idForRow (la
+        # autoridad única que consume el delegate, el favorite y la
+        # selección) — nunca un path crudo como TrackId.
+        assert '"legacy-path::" + String(row.path || "")' in table
+        assert "function idForRow(row)" in table
+        # POST-R4 P3: el delegate recibe su identidad de idForRow
+        assert "trackId: root.idForRow(modelData)" in table
         assert "onFavoriteToggled: root.favoriteRequested(trackId)" in table
         assert "onQueueRequested: root.queueRequested(trackId)" in table
         assert "root.selectionToggleRequested(trackId)" in table

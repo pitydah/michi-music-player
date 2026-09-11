@@ -75,7 +75,7 @@ class TestPrivacyGates:
         bridge.search_artist("Artist A")
         process_events(8)
         assert bridge._service._resolver.calls == 0
-        assert bridge.property("reviewError") == "Online info is disabled"
+        assert bridge.property("reviewError") == "online_disabled"
 
     def test_review_on_network_allowed(self):
         bridge, _, _, _, _, _, _ = make_bridge(online=True)

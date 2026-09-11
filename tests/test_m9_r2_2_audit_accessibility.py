@@ -243,7 +243,6 @@ def test_queue_view_dismisses_with_escape_and_animation():
 def test_cover_flow_tap_preserves_drag_and_focus():
     content = read("views/AlbumPathView.qml")
     assert "TapHandler" in content
-    assert "onDoubleTapped: library.select_album(modelData.key)" in content
     assert "pathAlbum.forceActiveFocus()" in content
     assert "tap.pressed ? MichiPalette.auroraCyan" in content
     assert "MouseArea {" not in content
@@ -251,8 +250,9 @@ def test_cover_flow_tap_preserves_drag_and_focus():
 
 def test_vinyl_wall_selects_on_tap_and_opens_on_double_tap():
     content = read("views/VinylWallView.qml")
-    assert "albumVinyl.currentIndex = vinylTile.index" in content
-    assert "onDoubleTapped: library.select_album(modelData.key)" in content
+    assert "albumVinyl.browseTo(vinylTile.index)" in content
+    assert "onDoubleTapped:" in content
+    assert "library.select_album(modelData.key)" in content
 
 
 def test_timeline_reuses_items_and_aligns_to_grid():

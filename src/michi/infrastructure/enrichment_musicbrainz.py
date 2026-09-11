@@ -38,6 +38,9 @@ from michi.domain.enrichment import (
     ReleaseGroupCandidate,
     dedupe_identity_ids,
 )
+from michi.domain.enrichment import (
+    normalize_identity_text as _normalize_identity_text,
+)
 from michi.infrastructure.enrichment_http import (
     MusicBrainzRateLimiter,
     ProviderRequestExecutor,
@@ -48,6 +51,9 @@ from michi.infrastructure.enrichment_provider_cache import (
 
 API_ROOT = "https://musicbrainz.org/ws/2"
 MAX_ARTIST_CANDIDATES = 5
+# POST-R4 E1 (auditoría): hydratación de homónimos exactos hasta 8
+# (bounded network); >8 → sin hydratar (AMBIGUOUS + review manual).
+_MAX_ARTIST_HYDRATION_FINALISTS = 8
 # M6.9 REOPENED: release-group browse pagination (bounded). A page that
 # returns fewer than PAGE_SIZE items is the last one; never download a
 # full discography by default.
@@ -193,6 +199,13 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
     def find_artist_candidates(
         self, evidence: ArtistIdentityEvidence
     ) -> tuple[ArtistCandidate, ...]:
+        """POST-R4 E1 — DISCOVERY phase: candidate SUMMARIES baratos.
+
+        Fetch 25 artist results and parse ALL of them (no first-five
+        truncation before any local evidence): a correct candidate at raw
+        position 6+ stays eligible. Expensive discography hydration never
+        happens here — `rank_artist_candidates` +
+        `hydrate_artist_candidates` run AFTER local scoring."""
         escaped = escape_musicbrainz_lucene(evidence.local_artist_name)
         url = _musicbrainz_query_url(
             "artist/",
@@ -202,7 +215,7 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
         payload = self._get_json(url, "musicbrainz_search")
         artists = _require_list(payload, "artists")
         candidates: list[ArtistCandidate] = []
-        for raw in artists[:MAX_ARTIST_CANDIDATES]:
+        for raw in artists:
             if not isinstance(raw, dict):
                 continue  # candidate-local malformed: skip only this one
             try:
@@ -211,21 +224,125 @@ class MusicBrainzIdentityResolver(ExternalIdentityResolverPort):
                 disambiguation = _optional_str(raw, "disambiguation")
             except EnrichmentProviderError:
                 continue  # candidate-local malformed: skip only this one
-            # R1 FALSE-UNIQUENESS GATE: a support-evidence (album browse)
-            # failure ABORTS the whole resolution — it must never make a
-            # failed candidate disappear and fake uniqueness.
-            known_albums = self._known_albums_for(external_id)
+            # NO hydration here: known_albums stays empty until the
+            # shortlist is decided (bounded network contract §11.3).
             candidates.append(
                 ArtistCandidate(
                     external_artist_id=external_id,
                     canonical_name=name,
                     disambiguation=disambiguation,
-                    known_albums=known_albums,
+                    known_albums=(),
                 )
             )
         # Deterministic: external ID ascending (provider order/score is
         # never identity authority).
         return tuple(sorted(candidates, key=lambda c: c.external_artist_id))
+
+    def rank_artist_candidates(
+        self,
+        candidates: tuple[ArtistCandidate, ...],
+        evidence: ArtistIdentityEvidence,
+    ) -> tuple[ArtistCandidate, ...]:
+        """POST-R4 E1 — shortlist con evidencia BARATA (sin discografía).
+
+        El gate de elegibilidad del dominio es el nombre normalizado
+        exacto; la discografía remota solo decide entre finalistas. Los
+        candidatos cuyo nombre no matchea jamás ganan el resolve: no se
+        hidratan. Orden determinístico por id externo."""
+        local_name = _normalize_identity_text(evidence.local_artist_name)
+        if not local_name:
+            return ()
+        finalists = [
+            c
+            for c in candidates
+            if _normalize_identity_text(c.canonical_name) == local_name
+        ]
+        # Los hints locales de MBID desempatan sin hidratar: si un
+        # finalista lleva el id sugerido localmente, es el único que
+        # necesita evidencia discográfica.
+        hinted = [
+            c
+            for c in finalists
+            if c.external_artist_id
+            in dedupe_identity_ids(evidence.identity_hints.artist_ids)
+        ]
+        if hinted:
+            return tuple(sorted(hinted, key=lambda c: c.external_artist_id))
+        # POST-R4 E1 (auditoría): el shortlist NUNCA elimina finalistas en
+        # silencio — todos los homónimos exactos siguen siendo elegibles;
+        # la política de hydratación (1 / 2..8 / >8) vive en el hydrate.
+        return tuple(sorted(finalists, key=lambda c: c.external_artist_id))
+
+    def hydrate_artist_candidates(
+        self, candidates: tuple[ArtistCandidate, ...]
+    ) -> tuple[ArtistCandidate, ...]:
+        """POST-R4 E1 (auditoría) — política de hydratación de los
+        homónimos exactos (nunca truncación silenciosa):
+
+        - 1 finalista exacto → hydrate 1;
+        - 2..8 finalistas exactos → hydrate TODOS (el scoring del dominio
+          decide con la discografía completa de los plausibles);
+        - >8 finalistas exactos → el sistema NO hidrata (los candidatos
+          vuelven con evidencia vacía: el dominio resuelve AMBIGUOUS y el
+          usuario elige en el review manual con show-more) — eliminar
+          finalistas en silencio dejaría fuera al correcto sin rastro."""
+        if len(candidates) > _MAX_ARTIST_HYDRATION_FINALISTS:
+            return candidates  # sin hydratar: AMBIGUOUS → review manual
+        hydrated: list[ArtistCandidate] = []
+        for candidate in candidates:
+            hydrated.append(
+                ArtistCandidate(
+                    external_artist_id=candidate.external_artist_id,
+                    canonical_name=candidate.canonical_name,
+                    disambiguation=candidate.disambiguation,
+                    known_albums=self._known_albums_for(candidate.external_artist_id),
+                )
+            )
+        return tuple(hydrated)
+
+    def artist_candidate_by_id(self, mbid: str) -> ArtistCandidate | None:
+        """POST-R4 E2: lookup DIRECTO de un artista por MBID (validado
+        por el caller) — el candidato exacto, sin búsqueda por nombre."""
+        url = _musicbrainz_query_url(
+            f"artist/{mbid}",
+            {"fmt": "json"},
+            "musicbrainz_lookup",
+        )
+        payload = self._get_json(url, "musicbrainz_lookup")
+        try:
+            external_id = _require_str(payload, "id")
+            name = _optional_str(payload, "name")
+            disambiguation = _optional_str(payload, "disambiguation")
+        except EnrichmentProviderError:
+            return None
+        return ArtistCandidate(
+            external_artist_id=external_id,
+            canonical_name=name,
+            disambiguation=disambiguation,
+            known_albums=(),
+        )
+
+    def release_group_candidate_by_id(self, mbid: str) -> ReleaseGroupCandidate | None:
+        """POST-R4 E2: lookup DIRECTO de un release-group por MBID."""
+        url = _musicbrainz_query_url(
+            f"release-group/{mbid}",
+            {"fmt": "json"},
+            "musicbrainz_lookup",
+        )
+        payload = self._get_json(url, "musicbrainz_lookup")
+        try:
+            external_id = _require_str(payload, "id")
+            title = _optional_str(payload, "title")
+            credits = self._artist_credits(payload)
+        except EnrichmentProviderError:
+            return None
+        return ReleaseGroupCandidate(
+            release_group_id=external_id,
+            title=title,
+            artist_credit_external_ids=dedupe_identity_ids(credits[0]),
+            artist_credit_names=dedupe_identity_ids(credits[1]),
+            first_release_year=_first_release_year(payload),
+        )
 
     def _known_albums_for(self, artist_id: str) -> tuple[LocalAlbumEvidence, ...]:
         """M6.9 REOPENED: release-group browse with the REAL contract.

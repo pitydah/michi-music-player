@@ -331,8 +331,13 @@ class EnrichmentService:
         if current_hints:
             resolution = resolve_artist_identity((), evidence)
         else:
+            # POST-R4 E1: discovery (summaries) → shortlist por evidencia
+            # barata → hydration acotada → gates del dominio. El orden
+            # protege el contrato de red: nunca 5 × browse por entidad.
             candidates = self._resolver.find_artist_candidates(evidence)
-            resolution = resolve_artist_identity(candidates, evidence)
+            finalists = self._resolver.rank_artist_candidates(candidates, evidence)
+            hydrated = self._resolver.hydrate_artist_candidates(finalists)
+            resolution = resolve_artist_identity(hydrated, evidence)
 
         # AUTHORITY COMMIT GATE (R1.2): short locked section — generation
         # gate, identity transition, exact request registration.

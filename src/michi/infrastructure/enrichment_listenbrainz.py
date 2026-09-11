@@ -137,6 +137,9 @@ class ListenBrainzSupplementalProvider(ListenBrainzSupplementalProviderPort):
                 external_entity_id=artist_mbid,
                 source_url=url,
                 retrieved_at=retrieved_at,
+                # POST-R4 P11: el fallback stale del cache se proyecta —
+                # la provenance dice la verdad sobre la edad del dato.
+                is_stale=is_stale,
             ),
         )
 
@@ -159,5 +162,6 @@ class ListenBrainzSupplementalProvider(ListenBrainzSupplementalProviderPort):
                 external_entity_id=release_group_mbid,
                 source_url=url,
                 retrieved_at=retrieved_at,
+                is_stale=is_stale,
             ),
         )

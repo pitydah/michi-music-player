@@ -160,13 +160,44 @@ ColumnLayout {
             spacing: MichiSpacing.xl
 
             Artwork {
-                sourcePath: library.albumArtwork.length > 0
-                    ? library.albumArtwork : enrichment.albumArtworkPath
+                id: heroArtwork
+                // POST-R4 E2 (auditoría): UNA autoridad — el hero consume
+                // la proyección canónica efectiva del bridge (choice del
+                // usuario + local + external), nunca reconstruye la
+                // precedencia localmente. `|| ""` cubre el contexto sin
+                // álbum seleccionado (undefined → cadena vacía).
+                sourcePath: root.albumFacts.artworkPath || ""
                 fallbackText: library.albumTitle
                 Layout.preferredWidth: Math.min(232, Math.max(164, root.width * .19))
                 Layout.preferredHeight: Layout.preferredWidth
                 Layout.alignment: Qt.AlignTop
                 requestedSize: 512
+            }
+            // POST-R4 E2 (12.4): acceso al picker cuando existe arte local
+            // o la portada oficial cacheada (Layout.alignment: el botón
+            // vive dentro del RowLayout del hero — nunca anchors).
+            ColumnLayout {
+                spacing: MichiSpacing.xs
+                Layout.alignment: Qt.AlignTop
+                MichiIconButton {
+                    visible: enrichment.albumArtworkPath.length > 0
+                        || library.albumArtwork.length > 0
+                    Layout.preferredWidth: MichiMetrics.controlSmall
+                    Layout.preferredHeight: MichiMetrics.controlSmall
+                    iconName: "image"
+                    accessibleName: qsTr("Choose artwork source")
+                    onClicked: {
+                        artworkDialog.albumTitle = library.albumTitle
+                        artworkDialog.localPath = library.albumArtwork
+                        artworkDialog.externalPath = enrichment.albumArtworkPath
+                        artworkDialog.currentSource = typeof settingsBridge
+                            !== "undefined" && settingsBridge
+                            ? settingsBridge.album_artwork_source(
+                                library.selectedAlbumKey) : ""
+                        artworkDialog.open()
+                    }
+                }
+                Item { Layout.fillHeight: true }
             }
 
             ColumnLayout {
@@ -425,8 +456,11 @@ ColumnLayout {
                 // R2 (shared host): el consumer New Playlist es real (A1) —
                 // el Bridge emite new_playlist_target_requested → host.
                 canAddToNewPlaylist: true
-                selectedIndex: root.inspectedTrack !== null
-                    ? root.inspectedIndex : -1
+                // POST-R4 P3: la selección del row inspeccionado se ata a
+                // su identidad (TrackId estable) — el índice queda solo
+                // para posición/scrolling.
+                selectedTrackId: root.inspectedTrack !== null
+                    ? albumTracksTable.idForRow(root.inspectedTrack) : ""
                 // TrackId-first (el Bridge resuelve legacy-path::).
                 onTrackActivated: (trackId, path, index) =>
                     library.activate_album_track_by_id(trackId)
@@ -473,7 +507,20 @@ ColumnLayout {
         onAlbumSearchRequested: function (title, artistName) {
             enrichment.search_album(title, artistName)
         }
+        onSearchMoreRequested: enrichment.search_album_show_more()
         onConfirmAlbum: function (id) { enrichment.confirm_album_candidate(id) }
         onClosed: enrichment.close_review()
+    }
+
+    // POST-R4 E2 (12.4): image picker — la elección se persiste en el
+    // settings y la política del row canónico (todas las superficies) y
+    // el hero la respetan. "Automatic" (source "") restaura la default.
+    ArtworkSourceDialog {
+        id: artworkDialog
+        onSourceChosen: function (source) {
+            if (typeof settingsBridge !== "undefined" && settingsBridge)
+                settingsBridge.set_album_artwork_source(
+                    library.selectedAlbumKey, source)
+        }
     }
 }

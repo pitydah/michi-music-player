@@ -51,7 +51,7 @@ from michi.application.enrichment_ports import (
     is_transient_provider_failure,
 )
 from michi.application.enrichment_service import EnrichmentService
-from michi.domain.enrichment import (
+from michi.domain.enrichment import (  # noqa: E402  (parse de identidad)
     AlbumIdentityEvidence,
     AlbumKnowledgeProfile,
     ArtistIdentityEvidence,
@@ -61,6 +61,7 @@ from michi.domain.enrichment import (
     EnrichmentEntityKind,
     IdentityResolutionStatus,
     KnowledgeProvenance,
+    parse_musicbrainz_identifier,
 )
 from michi.domain.library import AlbumRef, ArtistRef, TrackRef
 
@@ -405,12 +406,16 @@ class EnrichmentCoordinator:
         artist_name: str,
         on_result: ResultCallback,
         on_error: ErrorCallback | None = None,
+        show_all: bool = False,
     ) -> bool:
         """Returns True when the job was accepted; False when the
         coordinator is shutting down. Provider failures reach
-        ``on_error`` — never an empty success."""
+        ``on_error`` — never an empty success. ``show_all`` (POST-R4 E2)
+        lista todos los summaries del discovery para el review manual."""
         return self._submit_if_running(
-            lambda: self._search_artist_worker(artist_name, on_result, on_error)
+            lambda: self._search_artist_worker(
+                artist_name, on_result, on_error, show_all
+            )
         )
 
     def search_album_candidates_async(
@@ -419,10 +424,11 @@ class EnrichmentCoordinator:
         artist_name: str,
         on_result: ResultCallback,
         on_error: ErrorCallback | None = None,
+        show_all: bool = False,
     ) -> bool:
         return self._submit_if_running(
             lambda: self._search_album_worker(
-                album_title, artist_name, on_result, on_error
+                album_title, artist_name, on_result, on_error, show_all
             )
         )
 
@@ -431,9 +437,10 @@ class EnrichmentCoordinator:
         artist_name: str,
         on_result: ResultCallback,
         on_error: ErrorCallback | None,
+        show_all: bool = False,
     ) -> None:
         try:
-            on_result(self._search_artist_candidates_sync(artist_name))
+            on_result(self._search_artist_candidates_sync(artist_name, show_all))
         except EnrichmentProviderError as exc:
             if on_error is not None:
                 on_error(exc)
@@ -446,9 +453,12 @@ class EnrichmentCoordinator:
         artist_name: str,
         on_result: ResultCallback,
         on_error: ErrorCallback | None,
+        show_all: bool = False,
     ) -> None:
         try:
-            on_result(self._search_album_candidates_sync(album_title, artist_name))
+            on_result(
+                self._search_album_candidates_sync(album_title, artist_name, show_all)
+            )
         except EnrichmentProviderError as exc:
             if on_error is not None:
                 on_error(exc)
@@ -456,27 +466,73 @@ class EnrichmentCoordinator:
                 logger.warning("async album search failed: %s", exc)
 
     def _search_artist_candidates_sync(
-        self, artist_name: str
+        self, artist_name: str, show_all: bool = False
     ) -> tuple[ArtistIdentityCandidateView, ...]:
         if not self._enabled():
+            return ()
+        # POST-R4 E2 (12.2): el texto con formato de identidad controlada
+        # (MBID crudo o URL de MusicBrainz) hace un LOOKUP directo del
+        # candidato exacto — el texto arbitrario jamás se usa como
+        # identidad (parse devuelve "" y el flujo cae a la búsqueda).
+        mbid = parse_musicbrainz_identifier(artist_name, expected_kind="artist")
+        if mbid:
+            direct = self._resolver.artist_candidate_by_id(mbid)
+            if direct is not None:
+                return (
+                    ArtistIdentityCandidateView(
+                        external_artist_id=direct.external_artist_id,
+                        display_name=direct.canonical_name,
+                        disambiguation=direct.disambiguation,
+                    ),
+                )
             return ()
         evidence = ArtistIdentityEvidence(
             local_artist_key="", local_artist_name=artist_name
         )
         candidates = self._resolver.find_artist_candidates(evidence)
+        if show_all:
+            # POST-R4 E2 (12.1 show-more): el review manual muestra TODOS
+            # los summaries del discovery (paginables en la UI), sin
+            # hydratar discografías — el usuario examina candidatos más
+            # allá del shortlist automático.
+            return tuple(
+                ArtistIdentityCandidateView(
+                    external_artist_id=c.external_artist_id,
+                    display_name=c.canonical_name,
+                    disambiguation=c.disambiguation,
+                )
+                for c in candidates
+            )
+        # POST-R4 E1: la vista de búsqueda manual muestra el shortlist
+        # finalista (sin hydratar discografías para listar).
+        finalists = self._resolver.rank_artist_candidates(candidates, evidence)
         return tuple(
             ArtistIdentityCandidateView(
                 external_artist_id=c.external_artist_id,
                 display_name=c.canonical_name,
                 disambiguation=c.disambiguation,
             )
-            for c in candidates
+            for c in finalists
         )
 
     def _search_album_candidates_sync(
-        self, album_title: str, artist_name: str
+        self, album_title: str, artist_name: str, show_all: bool = False
     ) -> tuple[AlbumIdentityCandidateView, ...]:
         if not self._enabled():
+            return ()
+        # POST-R4 E2: MBID/URL de release-group en el título → lookup.
+        mbid = parse_musicbrainz_identifier(album_title, expected_kind="release-group")
+        if mbid:
+            direct = self._resolver.release_group_candidate_by_id(mbid)
+            if direct is not None:
+                return (
+                    AlbumIdentityCandidateView(
+                        external_release_group_id=direct.release_group_id,
+                        display_title=direct.title,
+                        artist_credit=", ".join(direct.artist_credit_names),
+                        year=direct.first_release_year,
+                    ),
+                )
             return ()
         evidence = AlbumIdentityEvidence(
             local_album_key="",
@@ -484,6 +540,18 @@ class EnrichmentCoordinator:
             local_album_artist_name=artist_name,
         )
         candidates = self._resolver.find_release_group_candidates(evidence)
+        if show_all:
+            # POST-R4 E2 (12.1 show-more): todos los summaries del
+            # discovery para el review manual.
+            return tuple(
+                AlbumIdentityCandidateView(
+                    external_release_group_id=c.release_group_id,
+                    display_title=c.title,
+                    artist_credit=", ".join(c.artist_credit_names),
+                    year=c.first_release_year,
+                )
+                for c in candidates
+            )
         return tuple(
             AlbumIdentityCandidateView(
                 external_release_group_id=c.release_group_id,
@@ -918,7 +986,14 @@ class EnrichmentCoordinator:
             if not cover.image_url:
                 return profile, partial or cover.is_stale
             partial = partial or cover.is_stale
-            response = self._transport.get(HttpRequest(url=cover.image_url))
+            # POST-R4 P10 (13.6): download de imagen con techo EXPLÍCITO
+            # de 10 MiB (el default de 8 MiB es para respuestas JSON).
+            response = self._transport.get(
+                HttpRequest(
+                    url=cover.image_url,
+                    max_response_bytes=10 * 1024 * 1024,
+                )
+            )
         except (EnrichmentProviderError, ValueError):
             return profile, True
         entity_id = profile.release_id or profile.release_group_id

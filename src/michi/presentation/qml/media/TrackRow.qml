@@ -311,6 +311,15 @@ Rectangle {
             accessibleName: qsTr("Remove")
             onClicked: root.removeRequested()
         }
+        // POST-R4 P4: el espacio sobrante del viewport lo absorbe UN item
+        // final (análogo al headerEmptyRegion del header): las columnas
+        // quedan en las MISMAS x que el header a cualquier ancho; el
+        // RowLayout nunca redistribuye los gaps entre columnas.
+        Item {
+            visible: root.sharedGeometry
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+        }
     }
     Rectangle {
         visible: root.playing

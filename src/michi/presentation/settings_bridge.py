@@ -27,6 +27,10 @@ class SettingsBridge(QObject):
 
     onlineEnrichmentChanged = Signal()
     libraryViewsChanged = Signal()
+    # POST-R4 E2 (12.4, auditoría): la elección de artwork de un álbum
+    # cambió (album_key) — el composition root la re-proyecta al
+    # LibraryBridge; las superficies cambian SIN esperar otro evento.
+    albumArtworkSourceChanged = Signal(str)
 
     def __init__(self, service: SettingsService, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -89,3 +93,17 @@ class SettingsBridge(QObject):
         self._service.set_library_view_preferences(preferences)
         self.libraryViewsChanged.emit()
         return True
+
+    # POST-R4 E2 (12.4): fuente de artwork elegida por álbum (image
+    # picker). El bridge expone consulta + mutación; el QML no conoce la
+    # persistencia.
+    @Slot(str, result=str)
+    def album_artwork_source(self, album_key: str) -> str:
+        return self._service.album_artwork_source(album_key)
+
+    @Slot(str, str)
+    def set_album_artwork_source(self, album_key: str, source: str) -> None:
+        album_key = (album_key or "").strip()
+        self._service.set_album_artwork_source(album_key, source)
+        if album_key:
+            self.albumArtworkSourceChanged.emit(album_key)

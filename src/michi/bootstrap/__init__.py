@@ -502,14 +502,20 @@ def _build_services(
     )
 
     artwork_dispatcher = LibraryArtworkDispatcher(artwork_refresh)
-    artwork_relay.done.connect(artwork_dispatcher.on_done, Qt.QueuedConnection)
+    artwork_runner.connect_relay(
+        artwork_relay.done, artwork_dispatcher.on_done, Qt.QueuedConnection
+    )
     source_coordinator._artwork_refresh = artwork_refresh
     source_scan_lifecycle = SourceScanLifecycle(source_coordinator, source_scan_runner)
-    source_scan_relay.done.connect(
-        source_scan_lifecycle.handle_done, Qt.QueuedConnection
+    source_scan_runner.connect_relay(
+        source_scan_relay.done,
+        source_scan_lifecycle.handle_done,
+        Qt.QueuedConnection,
     )
-    source_scan_relay.progress.connect(
-        source_scan_lifecycle.handle_progress, Qt.QueuedConnection
+    source_scan_runner.connect_relay(
+        source_scan_relay.progress,
+        source_scan_lifecycle.handle_progress,
+        Qt.QueuedConnection,
     )
 
     # M4-R1: the active playback session sits ABOVE PlaybackService and
@@ -550,8 +556,12 @@ def _build_services(
     # progress/done to the owner (GUI) thread where the dispatcher delegates
     # to the service. The service never touches Qt.
     scan_dispatcher = LibraryScanDispatcher(library)
-    scan_relay.done.connect(scan_dispatcher.on_done, Qt.QueuedConnection)
-    scan_relay.progress.connect(scan_dispatcher.on_progress, Qt.QueuedConnection)
+    scan_runner.connect_relay(
+        scan_relay.done, scan_dispatcher.on_done, Qt.QueuedConnection
+    )
+    scan_runner.connect_relay(
+        scan_relay.progress, scan_dispatcher.on_progress, Qt.QueuedConnection
+    )
 
     lb = LibraryBridge(
         library,
@@ -657,6 +667,23 @@ def _shutdown_audio_runtime(router, engine_service, registry) -> None:
 
 class ApplicationContainer:
     """Creates and owns all long-lived components. Explicit wiring only."""
+
+    def _managed_album_artwork(self, album_key: str) -> str:
+        """POST-R4 P10 (13.4): managed external cached artwork para el
+        row canónico del álbum — perfil de enrichment con asset + archivo
+        válido del asset store. Fail-open: el enrichment jamás rompe la
+        librería."""
+        enrichment = self._enrichment
+        if enrichment is None:
+            return ""
+        try:
+            profile = enrichment.service.get_album_knowledge(album_key)
+            if profile is None or not profile.artwork_asset_id:
+                return ""
+            path = enrichment.asset_store.path_for(profile.artwork_asset_id)
+            return str(path) if path is not None else ""
+        except Exception:
+            return ""
 
     def __init__(self) -> None:
         self._app: QGuiApplication | None = None
@@ -806,9 +833,11 @@ class ApplicationContainer:
             service=self._enrichment.service,
             asset_store=self._enrichment.asset_store,
         )
-        self._eb.changed.connect(self._library_enrichment.invalidate)
-        # M6.9 REOPENED: el bulk Library Enrichment Job invalida la
-        # projection con coalescing (nunca una tormenta de updates).
+        # POST-R4 P10 (13.3): la proyección pasiva se invalida SOLO con la
+        # señal semántica de cache mutation (commits de knowledge/assets,
+        # clear/reset, bulk job coalesced) — NUNCA con el changed genérico
+        # del bridge (loading/busy/review/candidates/texto de estado no
+        # tocan el cache y no deben re-proyectar los browse).
         self._eb.enrichmentCacheInvalidated.connect(self._library_enrichment.invalidate)
 
         # Library/settings coordination: restore last_directory, sync on scan
@@ -952,6 +981,20 @@ class ApplicationContainer:
         self._qb = qb
         self._psb = psb
         self._lb = lb
+        # POST-R4 P10 (13.4): la política de artwork (managed external
+        # cached sobre el vacío local) vive en el row canónico del bridge;
+        # el enrichment se inyecta SIN acoplar el LibraryBridge al módulo.
+        self._lb.set_artwork_override_resolver(self._managed_album_artwork)
+        # POST-R4 E2 (12.4): la elección persistida del usuario (image
+        # picker) alimenta la política del row canónico.
+        self._lb.set_artwork_choice_provider(self._settings.album_artwork_source)
+        # POST-R4 E2 (auditoría): REACTIVIDAD — la elección persiste y
+        # re-proyecta INMEDIATAMENTE (la señal del settings repinta la
+        # proyección canónica: Gallery/Studio/Flow/Detail cambian sin
+        # esperar otro evento de librería).
+        sb.albumArtworkSourceChanged.connect(
+            lambda _album_key: self._lb.library_changed.emit()
+        )
         self._plb = plb
         self._nb = nb
         self._sb = sb

@@ -25,6 +25,35 @@ Item {
     readonly property var albumModes: [
         "grid", "cover", "vinyl", "timeline", "magazine", "list"
     ]
+    readonly property var primaryTabs: [
+        "songs", "albums", "artists", "genres", "favorites", "history",
+        "recently"
+    ]
+    // POST-R4 P2: transición de navegación por primary tab en curso —
+    // syncEntitySelection() jamás revierte la decisión del usuario durante
+    // las señales intermedias (library_changed del clear_*_selection).
+    property bool primaryTabNavigationInProgress: false
+
+    // POST-R4 P2: ÚNICA autoridad de navegación hacia un primary tab.
+    // Retira cualquier selección de detalle incompatible (Album/Artist
+    // detail) y establece el tab; click sobre Albums/Artists desde su
+    // propio detail = volver al browse raíz.
+    function requestTab(tab) {
+        if (primaryTabs.indexOf(tab) === -1)
+            return
+        primaryTabNavigationInProgress = true
+        try {
+            if (typeof library !== "undefined" && library) {
+                if (library.selectedAlbumKey !== "")
+                    library.clear_album_selection()
+                if (library.selectedArtistKey !== "")
+                    library.clear_artist_selection()
+            }
+            currentTab = tab
+        } finally {
+            primaryTabNavigationInProgress = false
+        }
+    }
 
     function requestAlbumMode(mode) {
         if (albumModes.indexOf(mode) !== -1) {
@@ -75,9 +104,9 @@ Item {
             editorial: { heroVisible: true, informationRichness: "standard",
                 cachedEnrichmentVisible: true, archiveLayout: "list" },
             studioList: { density: "standard", artworkSize: "small",
-                metadataLevel: "standard", precisionMetadata: true,
-                inspector: true, artistColumn: true, yearColumn: true,
-                tracksColumn: true, durationColumn: true, formatColumn: true }
+                precisionMetadata: true, inspector: true, artistColumn: true,
+                yearColumn: true, tracksColumn: true, durationColumn: true,
+                formatColumn: true }
         }
     }
 
@@ -101,13 +130,46 @@ Item {
         albumZoom = zoomForMode(preferences, albumMode)
     }
 
+    // POST-R4 P6: deep-merge de preferencias persistidas contra el
+    // schema ACTUAL — secciones ausentes reciben defaults, overrides
+    // existentes se preservan y las keys desconocidas se descartan
+    // (una instalación V1 sin flow/vinyl/chronology/editorial/studioList
+    // carga sin properties undefined).
+    function deepMergePreferences(stored, defaults) {
+        var merged = JSON.parse(JSON.stringify(defaults))
+        if (!stored || typeof stored !== "object")
+            return merged
+        var rootKeys = ["activeMode", "sortMode", "sortDescending", "filterMode"]
+        for (var r = 0; r < rootKeys.length; ++r) {
+            if (typeof stored[rootKeys[r]] !== "undefined")
+                merged[rootKeys[r]] = stored[rootKeys[r]]
+        }
+        for (var section in defaults) {
+            var defaultSection = defaults[section]
+            if (!defaultSection || typeof defaultSection !== "object")
+                continue
+            var storedSection = stored[section]
+            if (!storedSection || typeof storedSection !== "object")
+                continue
+            for (var key in defaultSection) {
+                if (typeof storedSection[key] !== "undefined")
+                    merged[section][key] = storedSection[key]
+            }
+        }
+        return merged
+    }
+
     function loadViewPreferences() {
         if (typeof settingsBridge === "undefined" || !settingsBridge)
             return
         try {
             var parsed = JSON.parse(settingsBridge.libraryViews)
-            viewPreferences = parsed
-            applyViewPreferences(parsed)
+            // POST-R4 P6: nunca `viewPreferences = parsed` directo — el
+            // deep-merge con defaults + validación da a las secciones
+            // ausentes sus valores por defecto.
+            viewPreferences = deepMergePreferences(
+                parsed, defaultViewPreferences())
+            applyViewPreferences(viewPreferences)
             // LIB-A P1-A/P1-B: el estado de columnas y la autoridad de
             // query del álbum se restauran SIN emitir configurationChanged
             // (hydration — nunca un loop de persistencia).
@@ -186,6 +248,8 @@ Item {
     }
 
     function syncEntitySelection() {
+        if (primaryTabNavigationInProgress)
+            return
         if (library.selectedAlbumKey !== "")
             currentTab = "albums"
         else if (library.selectedArtistKey !== "")
@@ -200,10 +264,12 @@ Item {
     // M9-R3 CONVERGENCE SEAL: select_genre emite genre_selected — el
     // resultado visible es el tab Songs con la proyección filtrada por el
     // Bridge (contrato R4 restaurado: el usuario NUNCA queda en Genres
-    // sin respuesta tras activar un género).
+    // sin respuesta tras activar un género). POST-R4 P2: la transición
+    // pasa por requestTab — retira selecciones de detalle incompatibles y
+    // syncEntitySelection no revierte la decisión.
     Connections {
         target: library
-        function onGenre_selected(_genreKey) { root.currentTab = "songs" }
+        function onGenre_selected(_genreKey) { root.requestTab("songs") }
     }
 
     Connections {
@@ -266,7 +332,7 @@ Item {
             id: libraryToolbar
             Layout.fillWidth: true
             currentTab: root.currentTab
-            onCurrentTabRequested: tab => root.currentTab = tab
+            onCurrentTabRequested: tab => root.requestTab(tab)
         }
 
         LibraryContentHost {
