@@ -20,14 +20,17 @@ MichiMenu {
     property bool canShowProperties: false
 
     MichiMenuInfoHeader {
-        headline: root.album ? root.album.title : ""
-        supportingText: root.album
+        // Guards sobre el CAMPO (no solo sobre el objeto): un album
+        // transitorio sin title/artist no puede emitir
+        // "Unable to assign [undefined] to QString" en el header.
+        headline: root.album && root.album.title ? root.album.title : ""
+        supportingText: root.album && root.album.artist
             ? root.album.artist
                 + (root.album.year > 0 ? " · " + root.album.year : "")
             : ""
         artworkPath: root.album && root.album.hasArtwork
             ? root.album.artworkPath : ""
-        fallbackText: root.album ? root.album.title : "A"
+        fallbackText: root.album && root.album.title ? root.album.title : "A"
     }
     MichiSeparator { }
     // ── R10 grupos semánticos (V4 §11.2) ─────────────────────────────
