@@ -78,6 +78,10 @@ def _delegate_center_in_view(world, delegate):
     )
 
 
+def _movement_settled(item, movement_ended):
+    return movement_ended.count() >= 1 and item.property("moving") is False
+
+
 class TestPointerLifecycleContract:
     def test_qml_has_one_movement_authority_and_idempotent_begin(self):
         """Static topology seal: flick phases may not arm/settle identity."""
@@ -191,7 +195,7 @@ class TestRealPointerEvidence:
             )
             assert movement_started.count() >= 1
             assert _bounded_wait(
-                lambda: (movement_ended.count() >= 1 and item.property("moving") is False),
+                lambda: _movement_settled(item, movement_ended),
                 timeout_ms=4000,
             ), "el movimiento/flick no terminó"
             QTest.qWait(120)
