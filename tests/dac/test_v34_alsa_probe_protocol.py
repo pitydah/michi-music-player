@@ -193,3 +193,74 @@ def test_adapter_oversized_stdout_is_bounded() -> None:
         channels=2,
     )
     assert result.disposition == "protocol_error"
+
+
+# ── DAC-C05: retry-once atado al rechazo exacto ──────────────────────
+
+
+def test_retry_once_only_for_exact_setter_rejection(monkeypatch) -> None:
+    import argparse
+
+    from michi.infrastructure.audio_devices import alsa_ctypes, alsa_probe_cli
+
+    calls: list[str] = []
+
+    def fake_probe(locator, *, rate_hz, transport_format, channels):
+        calls.append(locator)
+        if len(calls) == 1:
+            raise alsa_ctypes.AlsaProbeError("set_format", 22, "fmt")
+        return alsa_ctypes.NegotiatedPcm(
+            access=3,
+            channels=channels,
+            format_id=10,
+            rate_hz=rate_hz,
+            significant_bits=24,
+        )
+
+    monkeypatch.setattr(alsa_ctypes, "probe_exact", fake_probe)
+    args = argparse.Namespace(
+        device="hw:CARD=DX5,DEV=0", rate=96000, format="S32_LE", channels=2
+    )
+    envelope, _ = alsa_probe_cli._run_probe(args)
+    assert len(calls) == 2, "EINVAL en setter exacto -> retry-once"
+    assert envelope["ok"] is True
+
+
+def test_no_retry_for_hw_params_negotiation_failure(monkeypatch) -> None:
+    import argparse
+
+    from michi.infrastructure.audio_devices import alsa_ctypes, alsa_probe_cli
+
+    calls: list[str] = []
+
+    def fake_probe(locator, *, rate_hz, transport_format, channels):
+        calls.append(locator)
+        raise alsa_ctypes.AlsaProbeError("hw_params", 22, "combinación")
+
+    monkeypatch.setattr(alsa_ctypes, "probe_exact", fake_probe)
+    args = argparse.Namespace(
+        device="hw:CARD=DX5,DEV=0", rate=96000, format="S32_LE", channels=2
+    )
+    envelope, _ = alsa_probe_cli._run_probe(args)
+    assert len(calls) == 1, "negotiation_failed NO es rechazo exacto: sin retry"
+    assert envelope["error"]["category"] == "negotiation_failed"
+
+
+def test_persistent_exact_rejection_is_confirmed_by_retry(monkeypatch) -> None:
+    import argparse
+
+    from michi.infrastructure.audio_devices import alsa_ctypes, alsa_probe_cli
+
+    calls: list[str] = []
+
+    def fake_probe(locator, *, rate_hz, transport_format, channels):
+        calls.append(locator)
+        raise alsa_ctypes.AlsaProbeError("set_format", 22, "fmt")
+
+    monkeypatch.setattr(alsa_ctypes, "probe_exact", fake_probe)
+    args = argparse.Namespace(
+        device="hw:CARD=DX5,DEV=0", rate=96000, format="S32_LE", channels=2
+    )
+    envelope, _ = alsa_probe_cli._run_probe(args)
+    assert len(calls) == 2
+    assert envelope["error"]["category"] == "unsupported_format"

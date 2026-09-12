@@ -1,8 +1,40 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
-Implementation contract for audiophile output infrastructure. Status: **NOT
-STARTED** (authorized 2026-08-21; scheduled after M11.3). Contracts, not
-implementation. This is playback/output infrastructure — **not** Audio Lab.
+Implementation contract for audiophile output infrastructure. Status: **IN
+PROGRESS** (DAC-V35 implementation authorized 2026-09-11).
+
+**Canonical implementation authority**: the normative V3.5 spec
+`docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
+(work packages `DAC-V35-*`, §0E manifest, §0F baseline seal, §0K DoD).
+This document remains the M11.4 contract overview; where they differ, the
+V3.5 spec governs implementation and acceptance.
+
+## Implementation status (DAC-V35)
+
+- `DAC-V35-000` repository/agent alignment — AGENTS.md + canonical spec
+  installed + alignment gate (`scripts/verify_dac_repository_alignment.py`).
+- `DAC-V35-010` device identity + discovery — Linux-real sysfs topology
+  (`/sys/devices` + `/sys/bus/usb/devices` + `/sys/class/sound`
+  symlinks), stable identity precedence, generation-safe registry,
+  zero-or-more playback bindings (never synthesized `DEV=0`).
+- `DAC-V35-020` exact ALSA qualification — `michi-alsa-probe` contract
+  (§13): exact open/readback, layer-aware error classification,
+  BUSY/REMOVED/TIMEOUT never negative evidence.
+- `DAC-V35-030` persistence / output profile — schema v2 (§0I) in the
+  same SQLite database and recovery/LKG model.
+- `DAC-V35-040` output plan / transaction — immutable `OutputPlan`
+  (§403 completeness), pure planner with significant-bit truth,
+  `OutputSessionService` implementing `PlaybackOutputTransactionPort`.
+- Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
+  DAC-V35-010..040.
+
+**Explicitly NOT claimed**: no physical DAC qualification, no
+"bit-perfect"/Michi-Verified claim, no Signal Truth runtime verdict, no
+M11.5 promotion. `DAC-V35-050`+ are not started; physical qualification
+(`DAC-V35-110`) remains pending.
+
+Contracts, not implementation. This is playback/output infrastructure —
+**not** Audio Lab.
 
 ## Canonical separation
 

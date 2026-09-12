@@ -104,7 +104,9 @@ def test_exact_open_and_readback_is_supported_opened() -> None:
     )
     assert evidence.supported is True
     assert evidence.strength is EvidenceStrength.OPENED
-    assert evidence.tuple == TUPLE
+    assert evidence.tuple == PcmTuple(96000, "S32_LE", 2, 24), (
+        "C05: el tuple del evidence lleva el sbits negociado"
+    )
     assert evidence.evidence_refs == ("probe:test",)
     assert evidence.environment_fingerprint == "test-fingerprint"
     assert evidence.observed_at_ns == 123
@@ -136,3 +138,57 @@ def test_negotiation_failed_is_no_claim_not_false() -> None:
     assert evidence.supported is None, (
         "solo ALSA puede probar mismatch exacto; conservador por defecto"
     )
+
+
+# ── DAC-C04/C05: readback, sbits negociado, retry exacto ─────────────
+
+
+def test_readback_failure_is_never_unsupported() -> None:
+    """C04: un fallo de readback es negotiation/protocol, nunca soporte."""
+    for step in (
+        "readback_access",
+        "readback_channels",
+        "readback_format",
+        "readback_rate",
+        "readback_sbits",
+    ):
+        category = classify_error(AlsaProbeError(step, 5, "EIO"))
+        assert category == "negotiation_failed", f"{step} -> {category}"
+        assert category != "unsupported_format"
+
+
+def test_readback_einval_is_not_exact_rejection() -> None:
+    """C04: EINVAL en readback NO es un rechazo exacto de formato."""
+    assert (
+        classify_error(AlsaProbeError("readback_format", 22, "einval"))
+        == "negotiation_failed"
+    )
+
+
+def test_eio_runtime_ambiguity_stays_no_claim() -> None:
+    """C05: EIO/entorno ambiguo permanece supported=None."""
+    service = _service()
+    for disposition in ("internal_error", "unknown", "alsa_runtime_missing"):
+        evidence = service.evidence_from(_result(disposition), stable_device_id="dac")
+        assert evidence.supported is None
+
+
+def test_service_preserves_negotiated_sbits_in_evidence() -> None:
+    """C05: el sbits negociado (readback) se preserva en CapabilityEvidence."""
+    service = _service()
+    negotiated = PcmTuple(96000, "S32_LE", 2, 24)
+    evidence = service.evidence_from(
+        _result("OPENED", negotiated=negotiated), stable_device_id="dac"
+    )
+    assert evidence.tuple.significant_bits == 24, (
+        "el evidence debe llevar el sbits negociado, no el pedido (None)"
+    )
+
+
+def test_service_preserves_none_when_readback_lacks_sbits() -> None:
+    service = _service()
+    negotiated = PcmTuple(96000, "S32_LE", 2, None)
+    evidence = service.evidence_from(
+        _result("OPENED", negotiated=negotiated), stable_device_id="dac"
+    )
+    assert evidence.tuple.significant_bits is None

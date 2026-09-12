@@ -10,6 +10,7 @@ conserva, el active pasa a None y la sesión queda LOST (§22).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -144,8 +145,21 @@ class SharedOutputTransaction:
 
 
 class OutputSessionService:
-    def __init__(self, planner: OutputPlanner) -> None:
+    """Implementa el PlaybackOutputTransactionPort canónico (§0H.2).
+
+    `prepare_for_media(path)` NO recibe OutputPlan: el assembly de
+    planning/device/evidencia ocurre detrás de este subsistema vía el
+    `facts_provider` inyectado por el wiring productivo.
+    """
+
+    def __init__(
+        self,
+        planner: OutputPlanner,
+        *,
+        facts_provider: Callable[[Path], PlannerFacts] | None = None,
+    ) -> None:
         self._planner = planner
+        self._facts_provider = facts_provider
         self._state = OutputSessionState.IDLE
         self._generation = 0
         self._session_id: str | None = None
@@ -188,8 +202,26 @@ class OutputSessionService:
         return self._planner.plan(facts)
 
     # ── PlaybackOutputTransactionPort (§0H.2) ─────────────────────────
-    def prepare_for_media(self, plan: OutputPlan, path: Path) -> str:
-        """Devuelve un token opaco; la sesión queda READY."""
+    def prepare_for_media(self, path: Path) -> str:
+        """Planifica internamente y devuelve un token opaco (READY).
+
+        Firma EXACTA del port: PlaybackService nunca ve un OutputPlan.
+        """
+        facts = self._facts_for(path)
+        result = self._planner.plan(facts)
+        if isinstance(result, PlannerRefusal):
+            raise OutputSessionError(result.code, result.detail)
+        return self._begin_session(result)
+
+    def _facts_for(self, path: Path) -> PlannerFacts:
+        if self._facts_provider is None:
+            raise OutputSessionError(
+                "no_plan_source",
+                "OutputSessionService sin facts_provider configurado",
+            )
+        return self._facts_provider(path)
+
+    def _begin_session(self, plan: OutputPlan) -> str:
         if self._state is not OutputSessionState.IDLE:
             if self._state in (OutputSessionState.READY, OutputSessionState.RUNNING):
                 # re-preparación explícita: reconfigure.

@@ -324,3 +324,58 @@ def test_service_validates_invariants(tmp_path: Path) -> None:
         )
     service.save_profile(stable_direct_preset("p1", DEVICE))
     assert len(service.load_profiles()) == 1
+
+
+# ── DAC-C07: ownership de la cache de qualification ──────────────────
+
+
+def test_profile_service_has_no_cache_authority(tmp_path: Path) -> None:
+    db = tmp_path / "settings.db"
+    SQLiteSettingsRepository(db)
+    service = AudioOutputProfileService(SqliteAudioOutputRepository(db))
+    assert not hasattr(service, "replace_qualification_cache"), (
+        "C07: la cache no se muta desde el servicio de profiles"
+    )
+    assert not hasattr(service, "load_qualification_cache")
+
+
+def test_repository_satisfies_both_ports(tmp_path: Path) -> None:
+    from michi.application.audio_output_ports import (
+        AudioOutputProfileRepositoryPort,
+        QualificationCachePort,
+    )
+
+    db = tmp_path / "settings.db"
+    SQLiteSettingsRepository(db)
+    repo = SqliteAudioOutputRepository(db)
+    assert isinstance(repo, AudioOutputProfileRepositoryPort)
+    assert isinstance(repo, QualificationCachePort), (
+        "el storage concreto puede compartirse; los puertos son explícitos"
+    )
+
+
+def test_dac_qualification_service_owns_cache_mutation(tmp_path: Path) -> None:
+    from michi.application.dac_qualification_service import DacQualificationService
+    from michi.domain.audio_evidence import (
+        CapabilityEvidence,
+        EvidenceStrength,
+        PcmTuple,
+    )
+
+    db = tmp_path / "settings.db"
+    SQLiteSettingsRepository(db)
+    repo = SqliteAudioOutputRepository(db)
+    service = DacQualificationService(object(), cache=repo)
+
+    evidence = CapabilityEvidence(
+        stable_device_id=DEVICE,
+        tuple=PcmTuple(96000, "S32_LE", 2, 24),
+        supported=True,
+        strength=EvidenceStrength.OPENED,
+        source="michi-alsa-probe",
+        observed_at_ns=9,
+        environment_fingerprint="fp",
+        evidence_refs=("probe:9",),
+    )
+    service.cache_evidence(DEVICE, (evidence,))
+    assert service.cached_evidence(DEVICE) == (evidence,)

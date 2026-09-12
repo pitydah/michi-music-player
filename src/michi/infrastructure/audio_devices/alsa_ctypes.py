@@ -261,13 +261,37 @@ def probe_exact(
             got_format = ctypes.c_int(0)
             got_rate = ctypes.c_uint(0)
             direction = ctypes.c_int(0)
-            lib.snd_pcm_hw_params_get_access(params, ctypes.byref(access))
-            lib.snd_pcm_hw_params_get_channels(params, ctypes.byref(got_channels))
-            lib.snd_pcm_hw_params_get_format(params, ctypes.byref(got_format))
-            lib.snd_pcm_hw_params_get_rate(
-                params, ctypes.byref(got_rate), ctypes.byref(direction)
+            # C04: CADA readback se chequea; un fallo es
+            # UNKNOWN/protocol/negotiation, nunca soporte.
+            _raise_if(
+                lib,
+                lib.snd_pcm_hw_params_get_access(params, ctypes.byref(access)),
+                "readback_access",
+            )
+            _raise_if(
+                lib,
+                lib.snd_pcm_hw_params_get_channels(params, ctypes.byref(got_channels)),
+                "readback_channels",
+            )
+            _raise_if(
+                lib,
+                lib.snd_pcm_hw_params_get_format(params, ctypes.byref(got_format)),
+                "readback_format",
+            )
+            _raise_if(
+                lib,
+                lib.snd_pcm_hw_params_get_rate(
+                    params, ctypes.byref(got_rate), ctypes.byref(direction)
+                ),
+                "readback_rate",
             )
             significant_bits = int(lib.snd_pcm_hw_params_get_sbits(params))
+            if significant_bits < 0:
+                raise AlsaProbeError(
+                    "readback_sbits",
+                    -significant_bits,
+                    "sbits no disponible tras hw_params",
+                )
             return NegotiatedPcm(
                 access=access.value,
                 channels=int(got_channels.value),

@@ -1,10 +1,8 @@
-"""DAC-V35-010 — device identity gates (§400).
+"""DAC-V35-010 — device identity gates (§400 + DAC-C01..C03).
 
-- same DAC replug -> same stable id cuando la evidencia lo permite;
-- dos devices simultáneos idénticos (VID/PID) NO se fusionan;
-- serial duplicado simultáneo NO identifica;
-- remove -> unavailable sin borrar el intent seleccionado;
-- resultado async con generation vieja -> STALE, sin mutación.
+Topología Linux REAL (C01): /sys/devices + /sys/bus/usb/devices symlink +
+/sys/class/sound symlink. Los tests atraviesan los adapters productivos
+(sysfs_snapshot) y el registry productivo, no hojas fake.
 """
 
 from __future__ import annotations
@@ -13,88 +11,189 @@ from pathlib import Path
 
 from michi.application.audio_device_registry import AudioDeviceRegistry
 from michi.domain.audio_device import BindingKind, IdentityConfidence
-from tests.dac._fixtures import build_sysfs, make_roots
+from michi.infrastructure.audio_devices.sysfs_snapshot import (
+    read_alsa_cards,
+    read_usb_devices,
+)
+from tests.dac._fixtures import (
+    AlsaCard,
+    UsbDevice,
+    build_linux_sysfs,
+    make_roots,
+    remove_alsa_card,
+    remove_usb_device,
+)
 
-DX5 = ("2-1", "2622", "0105", "DX5ABC123")
+DX5 = UsbDevice(
+    devpath="2-1",
+    vendor_id="2622",
+    product_id="0105",
+    serial="DX5ABC123",
+    bcd_device="0x0105",
+)
+CARD_DX5 = AlsaCard(card_index=1, card_id="DX5", usb_devpath="2-1")
 
 
-def _ingest(registry: AudioDeviceRegistry, sysfs_root: Path, dev_root: Path) -> None:
-    from michi.infrastructure.audio_devices.sysfs_snapshot import (
-        read_alsa_cards,
-        read_usb_devices,
+def _ingest(registry: AudioDeviceRegistry, sysfs_root: Path) -> None:
+    registry.ingest(read_usb_devices(sysfs_root) + read_alsa_cards(sysfs_root))
+
+
+def test_linux_topology_correlates_usb_dac_with_playback_endpoint(
+    tmp_path: Path,
+) -> None:
+    """C01: un DAC USB físico correlaciona con su endpoint ALSA playback."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(CARD_DX5,))
+    registry = AudioDeviceRegistry()
+
+    _ingest(registry, sysfs_root)
+
+    snapshot = registry.snapshot()
+    assert len(snapshot) == 1, "USB+ALSA del mismo DAC: una sola identidad"
+    identity = snapshot[0]
+    assert identity.stable_device_id == "usb:2622:0105:DX5ABC123"
+    assert identity.confidence is IdentityConfidence.HIGH
+    assert identity.physical_path == "2-1"
+    assert identity.bcd_device == "0x0105", "C03: bcdDevice es un hecho de identidad"
+    binding = registry.binding_for(identity.stable_device_id, BindingKind.ALSA_PCM)
+    assert binding is not None
+    assert binding.locator == "hw:CARD=DX5,DEV=0"
+    assert binding.card_index == 1
+    assert binding.currently_available is True
+
+
+def test_card_without_playback_pcm_produces_zero_bindings(tmp_path: Path) -> None:
+    """C02: card sin PCM de playback real -> CERO bindings de playback."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(
+        sysfs_root,
+        usb_devices=(DX5,),
+        cards=(
+            AlsaCard(
+                card_index=1,
+                card_id="DX5",
+                usb_devpath="2-1",
+                playback_pcms=(),
+            ),
+        ),
     )
+    registry = AudioDeviceRegistry()
 
-    registry.ingest(
-        read_usb_devices(sysfs_root) + read_alsa_cards(sysfs_root, dev_root)
+    _ingest(registry, sysfs_root)
+
+    alsa = read_alsa_cards(sysfs_root)
+    assert len(alsa) == 1 and alsa[0].binding is None, (
+        "la card sin playback se observa SIN binding"
     )
+    stable_id = "usb:2622:0105:DX5ABC123"
+    assert registry.binding_for(stable_id, BindingKind.ALSA_PCM) is None
+
+
+def test_multiple_playback_pcms_are_preserved(tmp_path: Path) -> None:
+    """C02: cero-o-más bindings: cada PCM de playback real se preserva."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(
+        sysfs_root,
+        usb_devices=(DX5,),
+        cards=(
+            AlsaCard(
+                card_index=1,
+                card_id="DX5",
+                usb_devpath="2-1",
+                playback_pcms=(0, 1),
+            ),
+        ),
+    )
+    alsa = read_alsa_cards(sysfs_root)
+    locators = sorted(item.binding.locator for item in alsa if item.binding)
+    assert locators == ["hw:CARD=DX5,DEV=0", "hw:CARD=DX5,DEV=1"]
+
+
+def test_never_synthesizes_dev_zero(tmp_path: Path) -> None:
+    """C02: si el único PCM es D1, el binding es DEV=1 (nunca DEV=0)."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(
+        sysfs_root,
+        usb_devices=(DX5,),
+        cards=(
+            AlsaCard(
+                card_index=1,
+                card_id="DX5",
+                usb_devpath="2-1",
+                playback_pcms=(1,),
+            ),
+        ),
+    )
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+
+    binding = registry.binding_for("usb:2622:0105:DX5ABC123", BindingKind.ALSA_PCM)
+    assert binding is not None
+    assert binding.locator == "hw:CARD=DX5,DEV=1"
+    assert binding.pcm_device == 1
 
 
 def test_replug_same_dac_preserves_stable_id(tmp_path: Path) -> None:
+    """C03: replug del mismo DAC preserva el stable_device_id."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(CARD_DX5,))
     registry = AudioDeviceRegistry()
-    sysfs_root, dev_root = make_roots(tmp_path)
-    build_sysfs(
-        sysfs_root,
-        usb_devices=(DX5,),
-        cards=((1, "DX5", "2-1"),),
-        dev_root=dev_root,
-    )
-    _ingest(registry, sysfs_root, dev_root)
-    snapshot = registry.snapshot()
-    assert len(snapshot) == 1
-    stable_id = snapshot[0].stable_device_id
+    _ingest(registry, sysfs_root)
+    stable_id = registry.snapshot()[0].stable_device_id
     assert stable_id == "usb:2622:0105:DX5ABC123"
-    assert snapshot[0].confidence is IdentityConfidence.HIGH
 
     # desconexión física
+    remove_usb_device(sysfs_root, "2-1")
+    remove_alsa_card(sysfs_root, 1)
     registry.handle_removed("2-1")
     assert registry.snapshot() == ()
-    assert registry.selected_device_id is None
 
-    # replug: mismo DAC, misma evidencia
-    _ingest(registry, sysfs_root, dev_root)
+    # replug: misma evidencia
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(CARD_DX5,))
+    _ingest(registry, sysfs_root)
     assert [i.stable_device_id for i in registry.snapshot()] == [stable_id]
 
 
 def test_identical_vid_pid_simultaneous_not_merged(tmp_path: Path) -> None:
-    registry = AudioDeviceRegistry()
-    sysfs_root, dev_root = make_roots(tmp_path)
-    build_sysfs(
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(
         sysfs_root,
         usb_devices=(
-            ("2-1", "2622", "0105", None),
-            ("2-2", "2622", "0105", None),
+            UsbDevice("2-1", "2622", "0105"),
+            UsbDevice("2-2", "2622", "0105"),
         ),
     )
-    _ingest(registry, sysfs_root, dev_root)
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
     ids = [i.stable_device_id for i in registry.snapshot()]
     assert len(ids) == 2, "dos DACs idénticos simultáneos no deben fusionarse"
     assert ids == ["usb:2622:0105:2-1", "usb:2622:0105:2-2"]
 
 
 def test_duplicated_serial_simultaneous_not_merged(tmp_path: Path) -> None:
-    registry = AudioDeviceRegistry()
-    sysfs_root, dev_root = make_roots(tmp_path)
-    build_sysfs(
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(
         sysfs_root,
         usb_devices=(
-            ("2-1", "2622", "0105", "SAME123"),
-            ("2-2", "2622", "0105", "SAME123"),
+            UsbDevice("2-1", "2622", "0105", serial="SAME123"),
+            UsbDevice("2-2", "2622", "0105", serial="SAME123"),
         ),
     )
-    _ingest(registry, sysfs_root, dev_root)
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
     ids = [i.stable_device_id for i in registry.snapshot()]
     assert len(ids) == 2, "un serial duplicado simultáneo no identifica"
     assert all("SAME123" not in stable_id for stable_id in ids)
 
 
 def test_generic_serial_not_used_for_identity(tmp_path: Path) -> None:
-    registry = AudioDeviceRegistry()
-    sysfs_root, dev_root = make_roots(tmp_path)
-    build_sysfs(
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(
         sysfs_root,
-        usb_devices=(("2-1", "2622", "0105", "00000000"),),
+        usb_devices=(UsbDevice("2-1", "2622", "0105", serial="00000000"),),
     )
-    _ingest(registry, sysfs_root, dev_root)
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
     identity = registry.snapshot()[0]
     assert identity.stable_device_id == "usb:2622:0105:2-1"
     assert identity.confidence is IdentityConfidence.MEDIUM
@@ -102,31 +201,23 @@ def test_generic_serial_not_used_for_identity(tmp_path: Path) -> None:
 
 
 def test_card_renumber_preserves_identity_updates_binding(tmp_path: Path) -> None:
+    """C03: renumber de card cambia binding/generation, no la identidad."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(CARD_DX5,))
     registry = AudioDeviceRegistry()
-    sysfs_root, dev_root = make_roots(tmp_path)
-    build_sysfs(
-        sysfs_root,
-        usb_devices=(DX5,),
-        cards=((1, "DX5", "2-1"),),
-        dev_root=dev_root,
-    )
-    _ingest(registry, sysfs_root, dev_root)
+    _ingest(registry, sysfs_root)
     stable_id = registry.snapshot()[0].stable_device_id
     binding = registry.binding_for(stable_id, BindingKind.ALSA_PCM)
     assert binding is not None and binding.card_index == 1
     generation_before = binding.generation
 
-    # renumber: la card pasa de índice 1 a 2 (mismo card id)
-    import shutil
-
-    shutil.rmtree(sysfs_root / "class" / "sound" / "card1")
-    build_sysfs(
+    remove_alsa_card(sysfs_root, 1)
+    build_linux_sysfs(
         sysfs_root,
-        usb_devices=(),
-        cards=((2, "DX5", "2-1"),),
-        dev_root=dev_root,
+        usb_devices=(DX5,),
+        cards=(AlsaCard(card_index=2, card_id="DX5", usb_devpath="2-1"),),
     )
-    _ingest(registry, sysfs_root, dev_root)
+    _ingest(registry, sysfs_root)
 
     assert [i.stable_device_id for i in registry.snapshot()] == [stable_id]
     binding = registry.binding_for(stable_id, BindingKind.ALSA_PCM)
@@ -135,16 +226,13 @@ def test_card_renumber_preserves_identity_updates_binding(tmp_path: Path) -> Non
     assert binding.generation > generation_before, "rebind -> generation nueva"
 
 
-def test_remove_marks_unavailable_and_preserves_selected_intent(tmp_path: Path) -> None:
+def test_remove_marks_unavailable_and_preserves_selected_intent(
+    tmp_path: Path,
+) -> None:
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(CARD_DX5,))
     registry = AudioDeviceRegistry()
-    sysfs_root, dev_root = make_roots(tmp_path)
-    build_sysfs(
-        sysfs_root,
-        usb_devices=(DX5,),
-        cards=((1, "DX5", "2-1"),),
-        dev_root=dev_root,
-    )
-    _ingest(registry, sysfs_root, dev_root)
+    _ingest(registry, sysfs_root)
     stable_id = registry.snapshot()[0].stable_device_id
     registry.select_device(stable_id)
 
@@ -158,31 +246,22 @@ def test_remove_marks_unavailable_and_preserves_selected_intent(tmp_path: Path) 
 
 
 def test_stale_generation_result_ignored(tmp_path: Path) -> None:
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(CARD_DX5,))
     registry = AudioDeviceRegistry()
-    sysfs_root, dev_root = make_roots(tmp_path)
-    build_sysfs(
-        sysfs_root,
-        usb_devices=(DX5,),
-        cards=((1, "DX5", "2-1"),),
-        dev_root=dev_root,
-    )
-    _ingest(registry, sysfs_root, dev_root)
+    _ingest(registry, sysfs_root)
     stable_id = registry.snapshot()[0].stable_device_id
     binding = registry.binding_for(stable_id, BindingKind.ALSA_PCM)
     assert binding is not None
     stale_generation = binding.generation
 
-    # rebind -> la generation avanza
-    import shutil
-
-    shutil.rmtree(sysfs_root / "class" / "sound" / "card1")
-    build_sysfs(
+    remove_alsa_card(sysfs_root, 1)
+    build_linux_sysfs(
         sysfs_root,
-        usb_devices=(),
-        cards=((2, "DX5", "2-1"),),
-        dev_root=dev_root,
+        usb_devices=(DX5,),
+        cards=(AlsaCard(card_index=2, card_id="DX5", usb_devpath="2-1"),),
     )
-    _ingest(registry, sysfs_root, dev_root)
+    _ingest(registry, sysfs_root)
 
     assert registry.apply_probe_result(stable_id, stale_generation) is False, (
         "un resultado de probe con generation vieja debe descartarse"

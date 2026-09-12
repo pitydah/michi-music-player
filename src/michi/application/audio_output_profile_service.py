@@ -1,7 +1,8 @@
 """DAC-V35-030 — AudioOutputProfileService (spec §402).
 
-Único caller de mutaciones autoritativas de profile/selection. La cache
-de qualification se muta por su puerto explícito (no vía profiles).
+Único caller de mutaciones autoritativas de profile/selection (C07).
+La cache de qualification se muta por su puerto explícito vía
+DacQualificationService; aquí no existe ni el método.
 """
 
 from __future__ import annotations
@@ -50,8 +51,5 @@ class AudioOutputProfileService:
             )
         self._repository.save_selection(selection)
 
-    def load_qualification_cache(self, stable_device_id: str):
-        return self._repository.load_qualification_cache(stable_device_id)
-
-    def replace_qualification_cache(self, stable_device_id: str, evidence) -> None:
-        self._repository.replace_qualification_cache(stable_device_id, evidence)
+    # C07: la cache de qualification NO se muta desde aquí: su autoridad
+    # es el DacQualificationService (QualificationCachePort).

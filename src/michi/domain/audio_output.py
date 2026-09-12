@@ -92,8 +92,22 @@ class PathSemantics(Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class GstSinkSpec:
+    """Sink estricto derivado del plan (§20). El factory consume el plan;
+    nunca decide política."""
+
+    factory: str
+    properties: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
 class OutputPlan:
-    """El objeto más importante de Stable (§17). Inmutable."""
+    """El objeto más importante de Stable (§17 + completitud §403).
+
+    Inmutable y autosuficiente para el executor (C09): incluye sink
+    estricto, resync delay, preconditions, binding generation, políticas
+    y evidence refs. El executor NO consulta profile/policy services.
+    """
 
     plan_id: str
 
@@ -113,26 +127,18 @@ class OutputPlan:
 
     fallback: FallbackKind
 
+    sink: GstSinkSpec
+    resync_delay_ms: int
+    preconditions: tuple[str, ...]
+
     evidence_refs: tuple[str, ...]
     decision_codes: tuple[str, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class GstSinkSpec:
-    """Sink estricto derivado del plan (§20). El factory consume el plan;
-    nunca decide política."""
-
-    factory: str
-    properties: dict[str, object]
 
 
 def sink_spec_for(plan: OutputPlan) -> GstSinkSpec:
     if plan.path_semantics is not PathSemantics.HARDWARE_RAW:
         raise ValueError("Stable Direct requires hardware-raw path")
-    return GstSinkSpec(
-        factory="alsasink",
-        properties={"device": plan.binding.locator},
-    )
+    return plan.sink
 
 
 class OutputSessionState(Enum):

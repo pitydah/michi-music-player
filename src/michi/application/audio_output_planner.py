@@ -24,6 +24,7 @@ from michi.domain.audio_evidence import (
 from michi.domain.audio_output import (
     AudioOutputProfile,
     FallbackKind,
+    GstSinkSpec,
     OutputPathPreference,
     OutputPlan,
     PathSemantics,
@@ -53,6 +54,7 @@ SOURCE_CHANNELS_UNSUPPORTED = "SOURCE_CHANNELS_UNSUPPORTED"
 EXACT_TUPLE_UNSUPPORTED = "EXACT_TUPLE_UNSUPPORTED"
 EXACT_TUPLE_UNKNOWN = "EXACT_TUPLE_UNKNOWN"
 BINDING_GENERATION_CHANGED = "BINDING_GENERATION_CHANGED"
+SIGNIFICANT_BITS_UNPROVEN = "SIGNIFICANT_BITS_UNPROVEN"
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,8 +174,6 @@ class OutputPlanner:
                 "sin prueba exacta no se adivina",
                 tuple(decisions),
             )
-        if requested.significant_bits == 24 and requested.transport_format == "S32_LE":
-            decisions.append(S32_CARRIER_PRESERVES_24_BITS)
 
         # 9. evidencia exacta del tuple
         matches = [
@@ -188,7 +188,8 @@ class OutputPlanner:
                 f"sin evidencia para {_tuple_key(requested)}: se requiere probe exacto",
                 tuple(decisions),
             )
-        if not any(item.supported is True for item in matches):
+        positive = [item for item in matches if item.supported is True]
+        if not positive:
             if any(item.supported is False for item in matches):
                 return PlannerRefusal(
                     EXACT_TUPLE_UNSUPPORTED,
@@ -198,6 +199,37 @@ class OutputPlanner:
             return PlannerRefusal(
                 EXACT_TUPLE_UNKNOWN,
                 "evidencia ambigua (BUSY/REMOVED/TIMEOUT): sin claim",
+                tuple(decisions),
+            )
+
+        # C06: la precisión significativa debe estar PROBADA por readback.
+        # El decision S32_CARRIER_PRESERVES_24_BITS solo se emite con
+        # evidencia de sbits suficientes; nunca por el pedido.
+        source_bits = facts.source.significant_bits
+        if requested.transport_format == "S32_LE" and source_bits == 24:
+            proven = [
+                item
+                for item in positive
+                if item.tuple.significant_bits is not None
+                and item.tuple.significant_bits >= 24
+            ]
+            if not proven:
+                return PlannerRefusal(
+                    SIGNIFICANT_BITS_UNPROVEN,
+                    "S32 carrier sin prueba de 24 significant bits "
+                    "(readback insuficiente o ausente)",
+                    tuple(decisions),
+                )
+            decisions.append(S32_CARRIER_PRESERVES_24_BITS)
+        elif any(
+            item.tuple.significant_bits is not None
+            and source_bits is not None
+            and item.tuple.significant_bits < source_bits
+            for item in positive
+        ):
+            return PlannerRefusal(
+                SIGNIFICANT_BITS_UNPROVEN,
+                f"readback con menos bits que la fuente ({source_bits})",
                 tuple(decisions),
             )
 
@@ -217,13 +249,23 @@ class OutputPlanner:
         if profile.fallback is FallbackKind.STOP:
             decisions.append(FALLBACK_STOP)
 
-        evidence_refs = tuple(
-            ref
-            for item in matches
-            if item.supported is True
-            for ref in item.evidence_refs
+        evidence_refs = tuple(ref for item in positive for ref in item.evidence_refs)
+        # C09: el plan es autosuficiente para el executor.
+        preconditions = (
+            "engine_gstreamer_direct",
+            "binding_alsa_hw_available",
+            f"binding_generation:{binding.generation}",
+            (
+                "exact_tuple_proven:"
+                f"{requested.rate_hz}:{requested.transport_format}:"
+                f"{requested.channels}"
+            ),
         )
-        plan_id = self._plan_id(facts, requested, binding)
+        sink = GstSinkSpec(
+            factory="alsasink",
+            properties={"device": binding.locator},
+        )
+        plan_id = self._plan_id(facts, requested, binding, profile, preconditions, sink)
         return OutputPlan(
             plan_id=plan_id,
             stable_device_id=facts.selected_device_id,
@@ -236,6 +278,9 @@ class OutputPlanner:
             allow_remix=False,
             allow_processing=False,
             fallback=profile.fallback,
+            sink=sink,
+            resync_delay_ms=profile.resync_delay_ms,
+            preconditions=preconditions,
             evidence_refs=evidence_refs,
             decision_codes=tuple(decisions),
         )
@@ -245,13 +290,29 @@ class OutputPlanner:
         facts: PlannerFacts,
         requested: PcmTuple,
         binding: AudioDeviceBinding,
+        profile: AudioOutputProfile,
+        preconditions: tuple[str, ...],
+        sink: GstSinkSpec,
     ) -> str:
-        digest = hashlib.sha256(
-            (
-                f"{facts.selected_device_id}|{binding.locator}|"
-                f"{binding.generation}|{requested.rate_hz}|"
-                f"{requested.transport_format}|{requested.channels}|"
-                f"{requested.significant_bits}|{facts.active_engine_id}"
-            ).encode()
-        ).hexdigest()
+        """C10: el plan_id cambia con TODA propiedad ejecutable."""
+        parts = (
+            f"device={facts.selected_device_id}",
+            f"locator={binding.locator}",
+            f"generation={binding.generation}",
+            f"rate={requested.rate_hz}",
+            f"format={requested.transport_format}",
+            f"channels={requested.channels}",
+            f"sbits={requested.significant_bits}",
+            f"engine={facts.active_engine_id}",
+            f"volume={profile.volume_policy.value}",
+            f"fallback={profile.fallback.value}",
+            f"fallback_device={profile.fallback_device_id}",
+            f"resync={profile.resync_delay_ms}",
+            "resample=false",
+            "remix=false",
+            "processing=false",
+            f"sink={sink.factory}:{sink.properties.get('device')}",
+            f"preconditions={';'.join(preconditions)}",
+        )
+        digest = hashlib.sha256("|".join(parts).encode()).hexdigest()
         return f"plan:{digest[:16]}"

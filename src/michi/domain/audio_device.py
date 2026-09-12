@@ -33,6 +33,8 @@ class AudioDeviceIdentity:
     physical_path: str | None
     bus: str | None
 
+    bcd_device: str | None
+
     confidence: IdentityConfidence
 
 
@@ -68,5 +70,6 @@ class DeviceObservation:
     product: str | None
 
     physical_path: str | None
+    bcd_device: str | None
 
     binding: AudioDeviceBinding | None

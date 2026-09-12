@@ -1296,7 +1296,11 @@ class TestF42AdapterContract:
         # docstring, PlaylistPaletteExtractorPort). Semantic audit: zero
         # methods lost vs either side, zero duplicates. Hash re-sealed after  # noqa: E501
         # validation — audio/transport semantics untouched.
-        "src/michi/application/ports.py": "117cad75c1e07462",  # noqa: E501
+        # DAC-V35-040-C08 (2026-09-11): additive PlaybackOutputTransactionPort
+        # (§0H.2 canonical pre-playback seam). No existing port signature
+        # changed; hash re-sealed after audit — audio/transport semantics
+        # untouched.
+        "src/michi/application/ports.py": "f8f5a3b6e6312bd7",  # noqa: E501
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.

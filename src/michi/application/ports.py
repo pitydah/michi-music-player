@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 from michi.domain.library import Artwork, LibraryPrefs, TrackMetadata
 from michi.domain.library_index import LibraryIndexEntry
@@ -197,6 +198,26 @@ class PlaylistPaletteExtractorPort(ABC):
     def close(self) -> None:
         """Release worker resources; optional for lightweight test doubles."""
         return None
+
+
+@runtime_checkable
+class PlaybackOutputTransactionPort(Protocol):
+    """Seam pre-playback canónico (spec §0H.2).
+
+    PlaybackService lo consume SIN conocer OutputPlan: el planning, la
+    selección, el device y el assembly de evidencia quedan detrás del
+    subsistema de output. El token es opaco.
+    """
+
+    def prepare_for_media(self, path: Path) -> str:
+        """Return opaque transaction token or raise typed output error."""
+        ...
+
+    def commit_media(self, token: str, path: Path) -> None: ...
+
+    def abort_media(self, token: str, reason: str) -> None: ...
+
+    def release_active(self, reason: str) -> None: ...
 
 
 class AudioPort(ABC):

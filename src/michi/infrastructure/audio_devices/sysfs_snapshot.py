@@ -1,15 +1,24 @@
-"""DAC-V35-010 — sysfs snapshot adapter (spec §9/§0G.2).
+"""DAC-V35-010/040-C01 — sysfs snapshot adapter (spec §9/§0G.2).
 
-Lee USB devices y ALSA cards del sysfs y emite DeviceObservation
-normalizadas. SOLO observación: nunca decide identidad canónica,
-formatos ni playback.
+Topología Linux REAL:
 
-El root del sysfs y el root de /dev son inyectables para tests (un
-árbol fake en tmp_path).
+    /sys/devices/pci.../usb2/2-1/            <- device USB (idVendor...)
+    /sys/devices/pci.../usb2/2-1/2-1:1.0/    <- interface
+    .../2-1:1.0/sound/card1/                 <- card ALSA
+    /sys/bus/usb/devices/2-1 -> symlink al device USB
+    /sys/class/sound/card1 -> symlink a la card
+    /sys/class/sound/pcmC1D0p -> symlink al PCM de playback
+
+El descubrimiento de PCMs de playback se hace por la sound class del
+sysfs (nunca por /dev). Cero-o-más bindings: una card sin PCM de
+playback REAL produce CERO bindings; DEV nunca se sintetiza.
+
+SOLO observación: nunca decide identidad canónica, formatos ni playback.
 """
 
 from __future__ import annotations
 
+import re
 import time
 from pathlib import Path
 
@@ -21,6 +30,8 @@ from michi.domain.audio_device import (
 
 SOURCE_SYSFS = "sysfs"
 
+_PCM_PLAYBACK_RE = re.compile(r"pcmC(\d+)D(\d+)p$")
+
 
 def _read_text(path: Path) -> str | None:
     try:
@@ -31,7 +42,7 @@ def _read_text(path: Path) -> str | None:
 
 
 def _usb_physical_path(sysfs_root: Path, device_dir: Path) -> str | None:
-    """devpath estable (p.ej. '2-1.3'), nunca el índice de bus."""
+    """devpath estable (p.ej. '2-1'), nunca el índice de bus."""
     try:
         relative = device_dir.relative_to(sysfs_root / "bus" / "usb" / "devices")
     except ValueError:
@@ -42,7 +53,7 @@ def _usb_physical_path(sysfs_root: Path, device_dir: Path) -> str | None:
 def read_usb_devices(
     sysfs_root: Path, *, observed_at_ns: int | None = None
 ) -> tuple[DeviceObservation, ...]:
-    """USB devices observados (VID/PID/serial/strings/path)."""
+    """USB devices observados (VID/PID/serial/strings/path/bcdDevice)."""
     devices_dir = sysfs_root / "bus" / "usb" / "devices"
     if not devices_dir.is_dir():
         return ()
@@ -65,6 +76,7 @@ def read_usb_devices(
                 manufacturer=_read_text(device_dir / "manufacturer"),
                 product=_read_text(device_dir / "product"),
                 physical_path=_usb_physical_path(sysfs_root, device_dir),
+                bcd_device=_read_text(device_dir / "bcdDevice"),
                 binding=None,
             )
         )
@@ -72,40 +84,57 @@ def read_usb_devices(
 
 
 def _usb_ancestor(sysfs_root: Path, card_dir: Path) -> str | None:
-    """El USB device del que cuelga la card ALSA, vía el link 'device'."""
+    """El device USB del que cuelga la card ALSA.
+
+    Linux-realista: el link `device` apunta al interface USB
+    (p.ej. `.../usb2/2-1/2-1:1.0`); se camina hacia arriba por
+    /sys/devices hasta el ancestro con idVendor/idProduct y se devuelve
+    su devpath (basename).
+    """
     link = card_dir / "device"
     try:
         resolved = link.resolve()
     except OSError:
         return None
-    usb_devices = (sysfs_root / "bus" / "usb" / "devices").resolve()
-    try:
-        relative = resolved.relative_to(usb_devices)
-    except ValueError:
-        return None
-    # el path del device USB es el primer componente tras devices/
-    return relative.parts[0] if relative.parts else None
-
-
-def _playback_pcm(dev_root: Path, card_index: int) -> tuple[int, int] | None:
-    """Primer PCM de playback de la card en /dev/snd."""
-    for candidate in sorted(dev_root.glob(f"pcmC{card_index}D*p")):
-        match = candidate.name
+    devices_root = (sysfs_root / "devices").resolve()
+    for candidate in (resolved, *resolved.parents):
         try:
-            pcm_device = int(match[len(f"pcmC{card_index}D") : -1])
+            candidate.relative_to(devices_root)
         except ValueError:
-            continue
-        return card_index, pcm_device
+            return None  # fuera de /sys/devices: no es un ancestro USB
+        if (candidate / "idVendor").is_file() and (candidate / "idProduct").is_file():
+            return candidate.name
     return None
+
+
+def _playback_pcms(sysfs_root: Path, card_index: int) -> tuple[int, ...]:
+    """PCMs de playback REALES de la card, por la sound class del sysfs.
+
+    Nunca sintetiza: una card sin `pcmC<card>D<p>p` produce tupla vacía.
+    """
+    sound_dir = sysfs_root / "class" / "sound"
+    if not sound_dir.is_dir():
+        return ()
+    devices: list[int] = []
+    for entry in sorted(sound_dir.iterdir()):
+        match = _PCM_PLAYBACK_RE.fullmatch(entry.name)
+        if match is None or int(match.group(1)) != card_index:
+            continue
+        devices.append(int(match.group(2)))
+    return tuple(devices)
 
 
 def read_alsa_cards(
     sysfs_root: Path,
-    dev_root: Path,
     *,
     observed_at_ns: int | None = None,
 ) -> tuple[DeviceObservation, ...]:
-    """ALSA cards observadas: binding hw:CARD=<id>,DEV=<n> + ancestry USB."""
+    """ALSA cards observadas: cero-o-más bindings de playback.
+
+    Cada PCM de playback real produce su propio binding
+    `hw:CARD=<id>,DEV=<n>` (nunca DEV sintetizado). Una card sin
+    playback produce UNA observación sin binding.
+    """
     cards_dir = sysfs_root / "class" / "sound"
     if not cards_dir.is_dir():
         return ()
@@ -119,26 +148,44 @@ def read_alsa_cards(
         except ValueError:
             continue
         card_id = _read_text(card_dir / "id") or str(card_index)
-        pcm = _playback_pcm(dev_root, card_index)
-        binding = AudioDeviceBinding(
-            kind=BindingKind.ALSA_PCM,
-            locator=f"hw:CARD={card_id},DEV={pcm[1] if pcm else 0}",
-            generation=0,
-            currently_available=True,
-            card_index=card_index,
-            pcm_device=pcm[1] if pcm else None,
-        )
-        observations.append(
-            DeviceObservation(
-                source="alsa",
-                observed_at_ns=stamp,
-                vendor_id=None,
-                product_id=None,
-                serial=None,
-                manufacturer=None,
-                product=card_id,
-                physical_path=_usb_ancestor(sysfs_root, card_dir),
-                binding=binding,
+        physical_path = _usb_ancestor(sysfs_root, card_dir)
+        playback_pcms = _playback_pcms(sysfs_root, card_index)
+        if not playback_pcms:
+            observations.append(
+                DeviceObservation(
+                    source="alsa",
+                    observed_at_ns=stamp,
+                    vendor_id=None,
+                    product_id=None,
+                    serial=None,
+                    manufacturer=None,
+                    product=card_id,
+                    physical_path=physical_path,
+                    bcd_device=None,
+                    binding=None,
+                )
             )
-        )
+            continue
+        for pcm_device in playback_pcms:
+            observations.append(
+                DeviceObservation(
+                    source="alsa",
+                    observed_at_ns=stamp,
+                    vendor_id=None,
+                    product_id=None,
+                    serial=None,
+                    manufacturer=None,
+                    product=card_id,
+                    physical_path=physical_path,
+                    bcd_device=None,
+                    binding=AudioDeviceBinding(
+                        kind=BindingKind.ALSA_PCM,
+                        locator=f"hw:CARD={card_id},DEV={pcm_device}",
+                        generation=0,
+                        currently_available=True,
+                        card_index=card_index,
+                        pcm_device=pcm_device,
+                    ),
+                )
+            )
     return tuple(observations)

@@ -31,6 +31,9 @@ OUT_DIR = ROOT / "artifacts"
 BASELINE_HEAD = "1b5e3f84d84d45873147ae7ad1a633de086a7e85"
 BASELINE_DATE = "2026-09-11"
 BASELINE_SCHEMA_VERSION = 1
+# §0I: V3.5 adds the v1 -> v2 migration (DAC-V35-030). El baseline del
+# §0F era v1; v2 es el siguiente secuencial previsto, nunca reutilizado.
+SUPPORTED_SCHEMA_VERSIONS = (BASELINE_SCHEMA_VERSION, 2)
 
 # §0F critical files (re-read if HEAD differs).
 CRITICAL_FILES = (
@@ -124,8 +127,9 @@ def main() -> int:
     schema = int(match.group(1)) if match else -1
     _check(
         "settings-schema-version",
-        schema == BASELINE_SCHEMA_VERSION,
-        f"schema={schema} baseline={BASELINE_SCHEMA_VERSION}",
+        schema in SUPPORTED_SCHEMA_VERSIONS,
+        f"schema={schema} baseline={BASELINE_SCHEMA_VERSION} "
+        "(v2 allocated by DAC-V35-030 per §0I)",
         assumption=True,
     )
 

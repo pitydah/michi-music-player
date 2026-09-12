@@ -21,6 +21,7 @@ from michi.application.audio_output_planner import (
     PATH_NOT_HARDWARE_DIRECT,
     S32_CARRIER_PRESERVES_24_BITS,
     SELECTED_DEVICE_MISSING,
+    SIGNIFICANT_BITS_UNPROVEN,
     SOURCE_RATE_UNKNOWN,
     STRICT_NO_REMIX,
     STRICT_NO_RESAMPLE,
@@ -37,9 +38,11 @@ from michi.domain.audio_evidence import (
     PcmTuple,
 )
 from michi.domain.audio_output import (
+    FallbackKind,
     OutputPathPreference,
     OutputPlan,
     PathSemantics,
+    VolumePolicy,
     sink_spec_for,
     stable_direct_preset,
 )
@@ -75,9 +78,10 @@ def _evidence(
     bits: int = 24,
     supported: bool | None = True,
     refs: tuple[str, ...] = ("probe:1",),
+    device: str = DEVICE,
 ):
     return CapabilityEvidence(
-        stable_device_id=DEVICE,
+        stable_device_id=device,
         tuple=PcmTuple(rate, fmt, channels, bits),
         supported=supported,
         strength=EvidenceStrength.OPENED if supported else EvidenceStrength.PROBED,
@@ -219,22 +223,167 @@ def test_sink_spec_consumes_plan_only() -> None:
 
 
 def test_sink_spec_rejects_non_hardware_raw() -> None:
+    import dataclasses
+
     plan = OutputPlanner().plan(_facts())
     assert isinstance(plan, OutputPlan)
-    plugin_plan = OutputPlan(
-        plan_id=plan.plan_id,
-        stable_device_id=plan.stable_device_id,
-        binding=plan.binding,
-        path_semantics=PathSemantics.ALSA_PLUGIN,
-        requested_pcm=plan.requested_pcm,
-        engine_id=plan.engine_id,
-        volume_policy=plan.volume_policy,
-        allow_resample=plan.allow_resample,
-        allow_remix=plan.allow_remix,
-        allow_processing=plan.allow_processing,
-        fallback=plan.fallback,
-        evidence_refs=plan.evidence_refs,
-        decision_codes=plan.decision_codes,
-    )
+    plugin_plan = dataclasses.replace(plan, path_semantics=PathSemantics.ALSA_PLUGIN)
     with pytest.raises(ValueError, match="hardware-raw"):
         sink_spec_for(plugin_plan)
+
+
+# ── DAC-C06: significant-bit truth ───────────────────────────────────
+
+
+def test_negotiated_sbits_24_is_eligible_with_decision() -> None:
+    plan = OutputPlanner().plan(_facts(evidence=(_evidence(bits=24),)))
+    assert isinstance(plan, OutputPlan)
+    assert S32_CARRIER_PRESERVES_24_BITS in plan.decision_codes
+
+
+def test_negotiated_sbits_20_is_refused() -> None:
+    refusal = OutputPlanner().plan(_facts(evidence=(_evidence(bits=20),)))
+    assert isinstance(refusal, PlannerRefusal)
+    assert refusal.code == SIGNIFICANT_BITS_UNPROVEN
+    assert S32_CARRIER_PRESERVES_24_BITS not in refusal.decision_codes
+
+
+def test_negotiated_sbits_16_is_refused() -> None:
+    refusal = OutputPlanner().plan(_facts(evidence=(_evidence(bits=16),)))
+    assert isinstance(refusal, PlannerRefusal)
+    assert refusal.code == SIGNIFICANT_BITS_UNPROVEN
+
+
+def test_negotiated_sbits_none_is_refused() -> None:
+    """Readback sin sbits: UNKNOWN/REFUSE, nunca decision de preservación."""
+    refusal = OutputPlanner().plan(_facts(evidence=(_evidence(bits=None),)))
+    assert isinstance(refusal, PlannerRefusal)
+    assert refusal.code == SIGNIFICANT_BITS_UNPROVEN
+    assert S32_CARRIER_PRESERVES_24_BITS not in refusal.decision_codes
+
+
+def test_no_s32_decision_without_proven_bits() -> None:
+    """Ningún camino emite S32_CARRIER_PRESERVES_24_BITS sin prueba."""
+    for bits in (None, 16, 20):
+        result = OutputPlanner().plan(_facts(evidence=(_evidence(bits=bits),)))
+        assert isinstance(result, PlannerRefusal)
+        assert S32_CARRIER_PRESERVES_24_BITS not in result.decision_codes
+
+
+# ── DAC-C09/C10: completitud del plan + plan_id ejecutable ───────────
+
+
+def test_plan_contains_strict_sink_spec() -> None:
+    """C09: el executor no construye ni consulta nada para el sink."""
+    plan = OutputPlanner().plan(_facts())
+    assert isinstance(plan, OutputPlan)
+    assert plan.sink.factory == "alsasink"
+    assert plan.sink.properties == {"device": "hw:CARD=DX5,DEV=0"}
+
+
+def test_plan_contains_resync_and_preconditions() -> None:
+    import dataclasses
+
+    profile = dataclasses.replace(
+        stable_direct_preset("p1", DEVICE), resync_delay_ms=250
+    )
+    plan = OutputPlanner().plan(_facts(profile=profile))
+    assert isinstance(plan, OutputPlan)
+    assert plan.resync_delay_ms == 250
+    assert "engine_gstreamer_direct" in plan.preconditions
+    assert "binding_alsa_hw_available" in plan.preconditions
+    assert f"binding_generation:{plan.binding.generation}" in plan.preconditions
+    assert any(p.startswith("exact_tuple_proven:") for p in plan.preconditions)
+
+
+def test_plan_is_self_sufficient_for_executor() -> None:
+    """C09: toda decisión ejecutable viaja en el plan inmutable."""
+    plan = OutputPlanner().plan(_facts())
+    assert isinstance(plan, OutputPlan)
+    # binding + generation
+    assert plan.binding.locator == "hw:CARD=DX5,DEV=0"
+    assert plan.binding.generation >= 1
+    # políticas
+    assert plan.volume_policy.value == "fixed"
+    assert plan.fallback is FallbackKind.STOP
+    assert plan.allow_resample is False
+    assert plan.allow_remix is False
+    assert plan.allow_processing is False
+    # evidencia
+    assert plan.evidence_refs == ("probe:1",)
+    # sink + resync + preconditions
+    assert plan.sink.factory == "alsasink"
+    assert plan.resync_delay_ms == 0
+    assert plan.preconditions
+
+
+def test_plan_id_changes_with_each_executable_property() -> None:
+    """C10: plan_id sensible a device/generation/tuple/engine/volumen/
+    fallback/resync/preconditions."""
+    import dataclasses
+
+    planner = OutputPlanner()
+    baseline = planner.plan(_facts())
+    assert isinstance(baseline, OutputPlan)
+
+    variants = []
+    # device distinto
+    variants.append(
+        planner.plan(
+            _facts(
+                selected_device_id="usb:other",
+                evidence=(_evidence(device="usb:other"),),
+            )
+        )
+    )
+    # generation distinta
+    variants.append(planner.plan(_facts(binding=_binding(generation=7))))
+    # tuple distinto (rate de fuente)
+    variants.append(
+        planner.plan(
+            _facts(
+                source=_source(rate=48000),
+                evidence=(_evidence(rate=48000),),
+            )
+        )
+    )
+    # volume policy distinta
+    variants.append(
+        planner.plan(
+            _facts(
+                profile=dataclasses.replace(
+                    stable_direct_preset("p1", DEVICE),
+                    volume_policy=VolumePolicy.SOFTWARE,
+                )
+            )
+        )
+    )
+    # fallback distinto
+    variants.append(
+        planner.plan(
+            _facts(
+                profile=dataclasses.replace(
+                    stable_direct_preset("p1", DEVICE),
+                    fallback=FallbackKind.ASK,
+                )
+            )
+        )
+    )
+    # resync distinto
+    variants.append(
+        planner.plan(
+            _facts(
+                profile=dataclasses.replace(
+                    stable_direct_preset("p1", DEVICE), resync_delay_ms=99
+                )
+            )
+        )
+    )
+
+    plan_ids = {baseline.plan_id}
+    for variant in variants:
+        assert isinstance(variant, OutputPlan), variant
+        assert variant.plan_id not in plan_ids, (
+            f"plan_id debe cambiar: {variant.plan_id}"
+        )
+        plan_ids.add(variant.plan_id)

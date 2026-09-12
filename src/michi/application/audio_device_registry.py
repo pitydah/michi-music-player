@@ -247,6 +247,7 @@ class AudioDeviceRegistry:
             product=observation.product,
             physical_path=observation.physical_path,
             bus="usb" if observation.vendor_id else None,
+            bcd_device=observation.bcd_device,
             confidence=confidence,
         )
         return _DeviceRecord(

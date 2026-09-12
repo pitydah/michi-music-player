@@ -19,6 +19,7 @@ import sys
 import time
 from collections.abc import Callable
 
+from michi.application.audio_output_ports import QualificationCachePort
 from michi.domain.audio_evidence import (
     CapabilityEvidence,
     EvidenceStrength,
@@ -59,12 +60,52 @@ class DacQualificationService:
         self,
         adapter: object,
         *,
+        cache: QualificationCachePort | None = None,
         environment_fingerprint: Callable[[], str] = default_environment_fingerprint,
         clock: Callable[[], int] = time.monotonic_ns,
     ) -> None:
         self._adapter = adapter
+        self._cache = cache
         self._environment_fingerprint = environment_fingerprint
         self._clock = clock
+
+    # ── C07: la mutación de la cache es autoridad de ESTE servicio ────
+    def cache_evidence(
+        self, stable_device_id: str, evidence: tuple[CapabilityEvidence, ...]
+    ) -> None:
+        if self._cache is None:
+            raise RuntimeError("qualification cache no configurada")
+        self._cache.replace_qualification_cache(stable_device_id, evidence)
+
+    def cached_evidence(self, stable_device_id: str) -> tuple[CapabilityEvidence, ...]:
+        if self._cache is None:
+            return ()
+        return self._cache.load_qualification_cache(stable_device_id)
+
+    def qualify_and_cache(
+        self,
+        *,
+        stable_device_id: str,
+        locator: str,
+        rate_hz: int,
+        transport_format: str,
+        channels: int,
+    ) -> CapabilityEvidence:
+        """Probe exacto + cache SOLO de resultados concluyentes.
+
+        La ambigüedad (BUSY/REMOVED/TIMEOUT/entorno) nunca se cachea como
+        claim (§0I/§12).
+        """
+        evidence = self.qualify_exact(
+            stable_device_id=stable_device_id,
+            locator=locator,
+            rate_hz=rate_hz,
+            transport_format=transport_format,
+            channels=channels,
+        )
+        if evidence.supported is not None and self._cache is not None:
+            self._cache.replace_qualification_cache(stable_device_id, (evidence,))
+        return evidence
 
     def qualify_exact(
         self,
@@ -89,9 +130,20 @@ class DacQualificationService:
         requested = result.requested
         exact = _exact_match(requested, result.negotiated)
         if result.disposition == "OPENED" and exact:
+            # C05: se preserva el sbits NEGOCIADO (readback real), no el pedido.
+            proven = PcmTuple(
+                rate_hz=requested.rate_hz,
+                transport_format=requested.transport_format,
+                channels=requested.channels,
+                significant_bits=(
+                    result.negotiated.significant_bits
+                    if result.negotiated is not None
+                    else None
+                ),
+            )
             return self._evidence(
                 stable_device_id,
-                requested,
+                proven,
                 supported=True,
                 strength=EvidenceStrength.OPENED,
                 evidence_ref=result.evidence_ref,

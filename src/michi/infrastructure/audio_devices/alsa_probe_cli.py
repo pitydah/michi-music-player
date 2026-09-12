@@ -41,6 +41,9 @@ def classify_error(error: AlsaProbeError) -> str:
         return "unsupported_format"
     if error.step == "hw_params":
         return "negotiation_failed"
+    if error.step.startswith("readback_"):
+        # C04: un readback fallido NUNCA es soporte; tampoco rechazo exacto.
+        return "negotiation_failed"
     if error.step == "validate":
         return "protocol_error"
     return "internal_error"
@@ -82,8 +85,16 @@ def _error_envelope(
     )
 
 
-def _probe_once(args: argparse.Namespace) -> dict:
-    """Un intento exacto; devuelve el envelope JSON del §13."""
+_EXACT_REJECTION_STEPS = ("set_format", "set_rate", "set_channels")
+
+
+def _probe_once(args: argparse.Namespace) -> tuple[dict, bool]:
+    """Un intento exacto; devuelve (envelope JSON, retryable).
+
+    `retryable` es True SOLO para el rechazo exacto EINVAL de los setters
+    (semántica de rechazo intencionada), nunca para cualquier categoría
+    genérica.
+    """
     try:
         negotiated = alsa_ctypes.probe_exact(
             args.device,
@@ -92,10 +103,12 @@ def _probe_once(args: argparse.Namespace) -> dict:
             channels=args.channels,
         )
     except AlsaRuntimeMissingError as exc:
-        return _error_envelope("probe", "alsa_runtime_missing", None, str(exc))
+        return _error_envelope("probe", "alsa_runtime_missing", None, str(exc)), False
     except AlsaProbeError as exc:
-        return _error_envelope(
-            "probe", classify_error(exc), exc.errno_code, exc.message
+        retryable = exc.errno_code == 22 and exc.step in _EXACT_REJECTION_STEPS
+        return (
+            _error_envelope("probe", classify_error(exc), exc.errno_code, exc.message),
+            retryable,
         )
     negotiated_payload = {
         "rate_hz": negotiated.rate_hz,
@@ -116,21 +129,24 @@ def _probe_once(args: argparse.Namespace) -> dict:
             None,
             f"negotiated {negotiated_payload} != requested {requested}",
         )
-    return _envelope(
-        "probe",
-        True,
-        {"requested": requested, "negotiated": negotiated_payload},
-        None,
+    return (
+        _envelope(
+            "probe",
+            True,
+            {"requested": requested, "negotiated": negotiated_payload},
+            None,
+        ),
+        False,
     )
 
 
 def _run_probe(args: argparse.Namespace) -> tuple[dict, int]:
-    envelope = _probe_once(args)
-    if not envelope["ok"] and envelope["error"]["category"] == "unsupported_format":
-        # Gate §401: EINVAL retry-once antes de emitir un rechazo.
-        logger.warning("EINVAL en probe exacto: retry-once del mismo tuple")
+    envelope, retryable = _probe_once(args)
+    if retryable:
+        # Gate §401: retry-once SOLO para el rechazo exacto de setters.
+        logger.warning("EINVAL en setter exacto: retry-once del mismo tuple")
         # El rechazo se conserva solo si el retry también lo confirma.
-        envelope = _probe_once(args)
+        envelope, _ = _probe_once(args)
     return envelope, 0 if envelope["ok"] else 1
 
 
@@ -149,7 +165,7 @@ def _run_enumerate() -> tuple[dict, int]:
 
     from michi.infrastructure.audio_devices.sysfs_snapshot import read_alsa_cards
 
-    cards = read_alsa_cards(Path("/sys"), Path("/dev"))
+    cards = read_alsa_cards(Path("/sys"))
     devices = [
         {
             "locator": card.binding.locator,

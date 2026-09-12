@@ -1,11 +1,13 @@
-"""DAC-V35-040 — OutputSessionService gates (§0H.2/§21/§22/§403).
+"""DAC-V35-040 — OutputSessionService gates (§0H.2/§21/§22/§403 + DAC-C08).
 
-prepare/commit/abort/release, state machine, generation guard (callbacks
-viejos descartados), selected vs active (§22) y Shared no-op.
+El servicio implementa la firma EXACTA del PlaybackOutputTransactionPort:
+`prepare_for_media(path) -> str`. PlaybackService nunca conoce ni
+construye OutputPlan: el assembly vive detrás del subsistema de output.
 """
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 
 import pytest
@@ -16,6 +18,7 @@ from michi.application.output_session_service import (
     OutputSessionService,
     SharedOutputTransaction,
 )
+from michi.application.ports import PlaybackOutputTransactionPort
 from michi.domain.audio_output import OutputPlan, OutputSessionState
 from tests.dac.test_v34_output_planner import _facts
 
@@ -26,13 +29,42 @@ def _plan() -> OutputPlan:
     return result
 
 
-def _service() -> OutputSessionService:
-    return OutputSessionService(OutputPlanner())
+def _service(*, engine: str = "gstreamer") -> OutputSessionService:
+    return OutputSessionService(
+        OutputPlanner(),
+        facts_provider=lambda path: _facts(active_engine_id=engine),
+    )
+
+
+def test_session_service_satisfies_canonical_port() -> None:
+    """C08: conformidad estructural con el port canónico."""
+    service = _service()
+    assert isinstance(service, PlaybackOutputTransactionPort)
+    signature = inspect.signature(OutputSessionService.prepare_for_media)
+    parameters = list(signature.parameters)
+    assert parameters == ["self", "path"], (
+        "prepare_for_media NO debe recibir OutputPlan (C08)"
+    )
+    assert signature.return_annotation in (str, "str")
+
+
+def test_prepare_without_plan_source_raises_typed_error() -> None:
+    service = OutputSessionService(OutputPlanner())
+    with pytest.raises(OutputSessionError) as exc_info:
+        service.prepare_for_media(Path("a.flac"))
+    assert exc_info.value.code == "no_plan_source"
+
+
+def test_prepare_refusal_raises_typed_error() -> None:
+    service = _service(engine="mpd")
+    with pytest.raises(OutputSessionError) as exc_info:
+        service.prepare_for_media(Path("a.flac"))
+    assert exc_info.value.code == "ENGINE_NOT_GSTREAMER"
 
 
 def test_prepare_commit_runs_session(tmp_path: Path) -> None:
     service = _service()
-    token = service.prepare_for_media(_plan(), tmp_path / "a.flac")
+    token = service.prepare_for_media(tmp_path / "a.flac")
     assert service.state is OutputSessionState.READY
     service.commit_media(token, tmp_path / "a.flac")
     assert service.state is OutputSessionState.RUNNING
@@ -43,7 +75,7 @@ def test_prepare_commit_runs_session(tmp_path: Path) -> None:
 
 def test_abort_returns_to_idle_with_reason(tmp_path: Path) -> None:
     service = _service()
-    token = service.prepare_for_media(_plan(), tmp_path / "a.flac")
+    token = service.prepare_for_media(tmp_path / "a.flac")
     service.abort_media(token, "media_rejected")
     assert service.state is OutputSessionState.IDLE
     assert service.plan is None
@@ -52,7 +84,7 @@ def test_abort_returns_to_idle_with_reason(tmp_path: Path) -> None:
 
 def test_release_active_returns_to_idle(tmp_path: Path) -> None:
     service = _service()
-    token = service.prepare_for_media(_plan(), tmp_path / "a.flac")
+    token = service.prepare_for_media(tmp_path / "a.flac")
     service.commit_media(token, tmp_path / "a.flac")
     service.release_active("stop")
     assert service.state is OutputSessionState.IDLE
@@ -61,9 +93,9 @@ def test_release_active_returns_to_idle(tmp_path: Path) -> None:
 
 def test_stale_generation_callbacks_are_discarded(tmp_path: Path) -> None:
     service = _service()
-    stale = service.prepare_for_media(_plan(), tmp_path / "a.flac")
+    stale = service.prepare_for_media(tmp_path / "a.flac")
     service.release_active("stop")
-    fresh = service.prepare_for_media(_plan(), tmp_path / "b.flac")
+    fresh = service.prepare_for_media(tmp_path / "b.flac")
     assert fresh != stale
     # El commit del token viejo NO debe mutar la sesión nueva.
     service.commit_media(stale, tmp_path / "a.flac")
@@ -77,7 +109,7 @@ def test_stale_generation_callbacks_are_discarded(tmp_path: Path) -> None:
 def test_device_lost_preserves_selected_and_clears_active(tmp_path: Path) -> None:
     service = _service()
     service.select(device_id="usb:2622:0105:DX5ABC123", profile_id="p1")
-    token = service.prepare_for_media(_plan(), tmp_path / "a.flac")
+    token = service.prepare_for_media(tmp_path / "a.flac")
     service.commit_media(token, tmp_path / "a.flac")
     service.device_lost()
     selection = service.selection_state()
@@ -98,8 +130,8 @@ def test_illegal_transition_raises() -> None:
 
 def test_reprepare_from_ready_reconfigures(tmp_path: Path) -> None:
     service = _service()
-    first = service.prepare_for_media(_plan(), tmp_path / "a.flac")
-    second = service.prepare_for_media(_plan(), tmp_path / "b.flac")
+    first = service.prepare_for_media(tmp_path / "a.flac")
+    second = service.prepare_for_media(tmp_path / "b.flac")
     assert second != first
     assert service.state is OutputSessionState.READY
 
@@ -114,6 +146,7 @@ def test_fail_records_error_code() -> None:
 def test_shared_transaction_is_noop_with_truthful_mode(tmp_path: Path) -> None:
     shared = SharedOutputTransaction()
     assert shared.mode == "shared"
+    assert isinstance(shared, PlaybackOutputTransactionPort)
     token = shared.prepare_for_media(tmp_path / "a.flac")
     shared.commit_media(token, tmp_path / "a.flac")
     shared.abort_media(token, "x")
