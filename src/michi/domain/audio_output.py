@@ -94,10 +94,14 @@ class PathSemantics(Enum):
 @dataclass(frozen=True, slots=True)
 class GstSinkSpec:
     """Sink estricto derivado del plan (§20). El factory consume el plan;
-    nunca decide política."""
+    nunca decide política.
+
+    DAC-E: profundamente inmutable — campos tipados, sin property bag
+    mutable. Para Stable el sink sólo necesita alsasink + device.
+    """
 
     factory: str
-    properties: dict[str, object]
+    device: str
 
 
 @dataclass(frozen=True, slots=True)

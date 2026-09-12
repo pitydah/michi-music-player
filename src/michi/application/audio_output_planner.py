@@ -263,7 +263,7 @@ class OutputPlanner:
         )
         sink = GstSinkSpec(
             factory="alsasink",
-            properties={"device": binding.locator},
+            device=binding.locator,
         )
         plan_id = self._plan_id(facts, requested, binding, profile, preconditions, sink)
         return OutputPlan(
@@ -311,7 +311,7 @@ class OutputPlanner:
             "resample=false",
             "remix=false",
             "processing=false",
-            f"sink={sink.factory}:{sink.properties.get('device')}",
+            f"sink={sink.factory}:{sink.device}",
             f"preconditions={';'.join(preconditions)}",
         )
         digest = hashlib.sha256("|".join(parts).encode()).hexdigest()

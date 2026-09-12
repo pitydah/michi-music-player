@@ -264,3 +264,63 @@ def test_persistent_exact_rejection_is_confirmed_by_retry(monkeypatch) -> None:
     envelope, _ = alsa_probe_cli._run_probe(args)
     assert len(calls) == 2
     assert envelope["error"]["category"] == "unsupported_format"
+
+
+# ── DAC-C2: pipeline productivo EIO -> sin evidencia negativa ────────
+
+
+def test_setter_eio_pipeline_produces_no_negative_evidence(monkeypatch) -> None:
+    """C2: AlsaProbeError(set_rate, EIO) -> classify real -> envelope ->
+    adapter productivo -> DacQualificationService => supported None."""
+    import argparse
+    import errno as errno_mod
+
+    from michi.application.dac_qualification_service import DacQualificationService
+    from michi.infrastructure.audio_devices import alsa_ctypes, alsa_probe_cli
+
+    def fake_probe(locator, *, rate_hz, transport_format, channels):
+        raise alsa_ctypes.AlsaProbeError("set_rate", errno_mod.EIO, "io error")
+
+    monkeypatch.setattr(alsa_ctypes, "probe_exact", fake_probe)
+    args = argparse.Namespace(
+        device="hw:CARD=DX5,DEV=0", rate=96000, format="S32_LE", channels=2
+    )
+    envelope, retryable = alsa_probe_cli._probe_once(args)
+    assert envelope["ok"] is False
+    assert envelope["error"]["category"] != "unsupported_format"
+    assert retryable is False, "EIO no es rechazo exacto: sin retry"
+
+    adapter = MichiAlsaProbeAdapter()
+    adapter._run = lambda argv: (json.dumps(envelope).encode(), b"", 1, False)
+    result = adapter.probe_exact(
+        locator="hw:CARD=DX5,DEV=0",
+        rate_hz=96000,
+        transport_format="S32_LE",
+        channels=2,
+    )
+    assert result.disposition != "unsupported_format"
+
+    service = DacQualificationService(adapter)
+    evidence = service.evidence_from(result, stable_device_id="dac")
+    assert evidence.supported is None, "EIO nunca produce supported=False"
+
+
+def test_no_retry_for_eio_setter(monkeypatch) -> None:
+    import argparse
+    import errno as errno_mod
+
+    from michi.infrastructure.audio_devices import alsa_ctypes, alsa_probe_cli
+
+    calls: list[str] = []
+
+    def fake_probe(locator, *, rate_hz, transport_format, channels):
+        calls.append(locator)
+        raise alsa_ctypes.AlsaProbeError("set_format", errno_mod.EIO, "io")
+
+    monkeypatch.setattr(alsa_ctypes, "probe_exact", fake_probe)
+    args = argparse.Namespace(
+        device="hw:CARD=DX5,DEV=0", rate=96000, format="S32_LE", channels=2
+    )
+    envelope, _ = alsa_probe_cli._run_probe(args)
+    assert len(calls) == 1, "EIO no dispara retry-once"
+    assert envelope["error"]["category"] != "unsupported_format"

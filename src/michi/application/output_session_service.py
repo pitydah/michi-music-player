@@ -11,7 +11,6 @@ conserva, el active pasa a None y la sesión queda LOST (§22).
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 
 from michi.application.audio_output_planner import (
@@ -119,29 +118,6 @@ class OutputSessionError(RuntimeError):
         super().__init__(f"{code}: {message}")
         self.code = code
         self.message = message
-
-
-@dataclass(frozen=True, slots=True)
-class SharedOutputTransaction:
-    """Shared/reference: minimal y no-op con evidencia truthful del modo.
-
-    Mantiene el constructor de PlaybackService determinístico: no hay
-    rama None/opcional en producción.
-    """
-
-    mode: str = "shared"
-
-    def prepare_for_media(self, path: Path) -> str:
-        return "shared:noop"
-
-    def commit_media(self, token: str, path: Path) -> None:
-        return None
-
-    def abort_media(self, token: str, reason: str) -> None:
-        return None
-
-    def release_active(self, reason: str) -> None:
-        return None
 
 
 class OutputSessionService:

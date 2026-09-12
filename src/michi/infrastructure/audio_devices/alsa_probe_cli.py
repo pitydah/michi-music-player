@@ -38,7 +38,11 @@ def classify_error(error: AlsaProbeError) -> str:
     if code in (1, 13):  # EPERM / EACCES
         return "permission_denied"
     if error.step in ("set_format", "set_rate", "set_channels"):
-        return "unsupported_format"
+        if error.errno_code == 22:  # EINVAL: rechazo exacto inequívoco
+            return "unsupported_format"
+        # EIO/runtime (o cualquier otro errno): el tuple NO queda probado
+        # como unsupported; la ambigüedad nunca produce evidencia negativa.
+        return "negotiation_failed"
     if error.step == "hw_params":
         return "negotiation_failed"
     if error.step.startswith("readback_"):

@@ -21,6 +21,7 @@ from tests.dac._fixtures import (
     build_linux_sysfs,
     make_roots,
     remove_alsa_card,
+    remove_playback_pcm,
     remove_usb_device,
 )
 
@@ -269,3 +270,149 @@ def test_stale_generation_result_ignored(tmp_path: Path) -> None:
     current = registry.binding_for(stable_id, BindingKind.ALSA_PCM)
     assert current is not None
     assert registry.apply_probe_result(stable_id, current.generation) is True
+
+
+# ── DAC-B: generation representa el SET de endpoints ─────────────────
+
+
+def _single_card(playback_pcms: tuple[int, ...]) -> AlsaCard:
+    return AlsaCard(
+        card_index=1,
+        card_id="DX5",
+        usb_devpath="2-1",
+        playback_pcms=playback_pcms,
+    )
+
+
+def test_g1_endpoint_disappears_invalidates_generation(tmp_path: Path) -> None:
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0,)),))
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+    stable_id = registry.snapshot()[0].stable_device_id
+    generation_before = registry.generation_for(stable_id)
+    assert generation_before is not None
+
+    # desaparece SOLO el endpoint ALSA; el USB sigue presente
+    remove_playback_pcm(sysfs_root, 1, 0)
+    _ingest(registry, sysfs_root)
+
+    assert [i.stable_device_id for i in registry.snapshot()] == [stable_id]
+    assert registry.bindings_for(stable_id, BindingKind.ALSA_PCM) == ()
+    assert registry.generation_for(stable_id) > generation_before
+    assert registry.apply_probe_result(stable_id, generation_before) is False, (
+        "un probe iniciado antes de perder el endpoint debe descartarse"
+    )
+
+
+def test_g2_endpoint_appears_invalidates_generation(tmp_path: Path) -> None:
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card(()),))
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+    stable_id = registry.snapshot()[0].stable_device_id
+    generation_before = registry.generation_for(stable_id)
+    assert registry.bindings_for(stable_id, BindingKind.ALSA_PCM) == ()
+
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0,)),))
+    _ingest(registry, sysfs_root)
+
+    assert registry.generation_for(stable_id) > generation_before
+    assert [b.locator for b in registry.bindings_for(stable_id)] == [
+        "hw:CARD=DX5,DEV=0"
+    ]
+
+
+def test_g3_second_endpoint_invalidates_generation(tmp_path: Path) -> None:
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0,)),))
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+    stable_id = registry.snapshot()[0].stable_device_id
+    generation_before = registry.generation_for(stable_id)
+
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0, 1)),))
+    _ingest(registry, sysfs_root)
+
+    assert registry.generation_for(stable_id) > generation_before
+    assert [b.locator for b in registry.bindings_for(stable_id)] == [
+        "hw:CARD=DX5,DEV=0",
+        "hw:CARD=DX5,DEV=1",
+    ]
+
+
+def test_g4_no_topology_change_keeps_generation(tmp_path: Path) -> None:
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0, 1)),))
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+    stable_id = registry.snapshot()[0].stable_device_id
+    generation_before = registry.generation_for(stable_id)
+
+    _ingest(registry, sysfs_root)
+    _ingest(registry, sysfs_root)
+
+    assert registry.generation_for(stable_id) == generation_before, (
+        "un rescan sin cambio topológico NO incrementa generation"
+    )
+
+
+def test_replug_with_multi_endpoints_restores_all(tmp_path: Path) -> None:
+    """§17: identidad + multi-binding + generation + selected intent."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0, 1)),))
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+    stable_id = registry.snapshot()[0].stable_device_id
+    generation_before = registry.generation_for(stable_id)
+    registry.select_device(stable_id)
+
+    remove_usb_device(sysfs_root, "2-1")
+    remove_alsa_card(sysfs_root, 1)
+    registry.handle_removed("2-1")
+    assert registry.snapshot() == ()
+    assert registry.selected_device_id == stable_id, "el intent sobrevive"
+
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0, 1)),))
+    _ingest(registry, sysfs_root)
+
+    assert [i.stable_device_id for i in registry.snapshot()] == [stable_id]
+    assert registry.generation_for(stable_id) > generation_before
+    assert [b.locator for b in registry.bindings_for(stable_id)] == [
+        "hw:CARD=DX5,DEV=0",
+        "hw:CARD=DX5,DEV=1",
+    ]
+
+
+def test_card_renumber_with_multi_endpoints_keeps_all(tmp_path: Path) -> None:
+    """§18: renumber no pierde endpoints ni identidad."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0, 1)),))
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+    stable_id = registry.snapshot()[0].stable_device_id
+    generation_before = registry.generation_for(stable_id)
+
+    remove_alsa_card(sysfs_root, 1)
+    build_linux_sysfs(
+        sysfs_root,
+        usb_devices=(DX5,),
+        cards=(
+            AlsaCard(
+                card_index=2,
+                card_id="DX5",
+                usb_devpath="2-1",
+                playback_pcms=(0, 1),
+            ),
+        ),
+    )
+    _ingest(registry, sysfs_root)
+
+    assert [i.stable_device_id for i in registry.snapshot()] == [stable_id]
+    assert registry.generation_for(stable_id) > generation_before
+    bindings = registry.bindings_for(stable_id, BindingKind.ALSA_PCM)
+    assert [b.locator for b in bindings] == [
+        "hw:CARD=DX5,DEV=0",
+        "hw:CARD=DX5,DEV=1",
+    ]
+    assert all(b.card_index == 2 for b in bindings), "card_index 1 -> 2"

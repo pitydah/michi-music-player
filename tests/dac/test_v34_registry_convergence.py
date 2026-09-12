@@ -145,3 +145,56 @@ def test_udev_observer_normalizes_events_to_registry(tmp_path: Path) -> None:
     observer.handle_event(action="remove", subsystem="usb", sys_name="2-1")
 
     assert registry.snapshot() == (), "remove udev -> unavailable vía registry"
+
+
+# ── DAC-A: multi-endpoint REAL en el registry canónico ───────────────
+
+
+def test_registry_preserves_all_playback_endpoints(tmp_path: Path) -> None:
+    """A-RED: un DAC físico con DEV0+DEV1 conserva AMBOS endpoints en la
+    autoridad canónica (no sólo en el adapter)."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(
+        sysfs_root,
+        usb_devices=(DX5,),
+        cards=(
+            AlsaCard(
+                card_index=1,
+                card_id="DX5",
+                usb_devpath="2-1",
+                playback_pcms=(0, 1),
+            ),
+        ),
+    )
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+
+    snapshot = registry.snapshot()
+    assert len(snapshot) == 1, "una sola identidad física"
+    stable_id = snapshot[0].stable_device_id
+    bindings = registry.bindings_for(stable_id, BindingKind.ALSA_PCM)
+    assert [b.locator for b in bindings] == [
+        "hw:CARD=DX5,DEV=0",
+        "hw:CARD=DX5,DEV=1",
+    ], "ningún endpoint puede perderse en la autoridad canónica"
+
+
+def test_bindings_for_without_kind_returns_all(tmp_path: Path) -> None:
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(
+        sysfs_root,
+        usb_devices=(DX5,),
+        cards=(
+            AlsaCard(
+                card_index=1,
+                card_id="DX5",
+                usb_devpath="2-1",
+                playback_pcms=(0, 1),
+            ),
+        ),
+    )
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+    stable_id = registry.snapshot()[0].stable_device_id
+    assert len(registry.bindings_for(stable_id)) == 2
+    assert registry.binding_for(stable_id, BindingKind.ALSA_PCM) is not None

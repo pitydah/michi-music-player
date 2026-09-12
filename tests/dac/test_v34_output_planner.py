@@ -219,7 +219,7 @@ def test_sink_spec_consumes_plan_only() -> None:
     assert isinstance(plan, OutputPlan)
     spec = sink_spec_for(plan)
     assert spec.factory == "alsasink"
-    assert spec.properties == {"device": "hw:CARD=DX5,DEV=0"}
+    assert spec.device == "hw:CARD=DX5,DEV=0"
 
 
 def test_sink_spec_rejects_non_hardware_raw() -> None:
@@ -278,7 +278,7 @@ def test_plan_contains_strict_sink_spec() -> None:
     plan = OutputPlanner().plan(_facts())
     assert isinstance(plan, OutputPlan)
     assert plan.sink.factory == "alsasink"
-    assert plan.sink.properties == {"device": "hw:CARD=DX5,DEV=0"}
+    assert plan.sink.device == "hw:CARD=DX5,DEV=0"
 
 
 def test_plan_contains_resync_and_preconditions() -> None:
@@ -387,3 +387,43 @@ def test_plan_id_changes_with_each_executable_property() -> None:
             f"plan_id debe cambiar: {variant.plan_id}"
         )
         plan_ids.add(variant.plan_id)
+
+
+# ── DAC-E: deep immutability del sink ejecutable ─────────────────────
+
+
+def test_sink_spec_is_deeply_immutable() -> None:
+    """E-RED: el sink del plan no puede mutarse de ninguna forma."""
+    import dataclasses
+
+    plan = OutputPlanner().plan(_facts())
+    assert isinstance(plan, OutputPlan)
+    # El endpoint vive en un campo tipado, no en un property bag.
+    assert plan.sink.device == "hw:CARD=DX5,DEV=0"
+    assert not hasattr(plan.sink, "properties"), (
+        "no debe existir un dict mutable de propiedades"
+    )
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        plan.sink.device = "hw:CARD=otra,DEV=9"  # type: ignore[misc]
+
+
+def test_plan_id_covers_sink_endpoint_identity() -> None:
+    """E: cambiar el endpoint cambia el plan_id."""
+    planner = OutputPlanner()
+    first = planner.plan(_facts())
+    second = planner.plan(
+        _facts(
+            binding=AudioDeviceBinding(
+                kind=BindingKind.ALSA_PCM,
+                locator="hw:CARD=DX5,DEV=1",
+                generation=1,
+                currently_available=True,
+                card_index=1,
+                pcm_device=1,
+            )
+        )
+    )
+    assert isinstance(first, OutputPlan) and isinstance(second, OutputPlan)
+    assert first.sink.device == "hw:CARD=DX5,DEV=0"
+    assert second.sink.device == "hw:CARD=DX5,DEV=1"
+    assert first.plan_id != second.plan_id

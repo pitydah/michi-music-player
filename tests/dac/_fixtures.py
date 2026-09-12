@@ -125,6 +125,19 @@ def remove_alsa_card(root: Path, card_index: int) -> None:
         link.unlink()
 
 
+def remove_playback_pcm(root: Path, card_index: int, pcm: int) -> None:
+    """Quita UN endpoint de playback (el USB permanece presente)."""
+    import shutil
+
+    name = f"pcmC{card_index}D{pcm}p"
+    link = root / "class" / "sound" / name
+    if link.is_symlink():
+        link.unlink()
+    for candidate in root.glob(f"**/{name}"):
+        if candidate.is_dir() and not candidate.is_symlink():
+            shutil.rmtree(candidate)
+
+
 def remove_usb_device(root: Path, devpath: str) -> None:
 
     link = root / "bus" / "usb" / "devices" / devpath
@@ -144,5 +157,6 @@ __all__ = [
     "make_registry",
     "make_roots",
     "remove_alsa_card",
+    "remove_playback_pcm",
     "remove_usb_device",
 ]

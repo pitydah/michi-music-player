@@ -192,3 +192,38 @@ def test_service_preserves_none_when_readback_lacks_sbits() -> None:
         _result("OPENED", negotiated=negotiated), stable_device_id="dac"
     )
     assert evidence.tuple.significant_bits is None
+
+
+# ── DAC-C2: EIO/runtime en setters NUNCA es unsupported ──────────────
+
+
+def test_setter_eio_is_not_unsupported_format() -> None:
+    """C2-RED: un fallo de runtime (EIO) no prueba que el tuple sea
+    unsupported."""
+    import errno as errno_mod
+
+    for step in ("set_format", "set_rate", "set_channels"):
+        category = classify_error(AlsaProbeError(step, errno_mod.EIO, "io"))
+        assert category != "unsupported_format", f"{step}+EIO -> {category}"
+
+
+def test_setter_runtime_errnos_stay_non_conclusive() -> None:
+    import errno as errno_mod
+
+    cases = (
+        ("set_format", errno_mod.EBUSY, "device_busy"),
+        ("set_rate", errno_mod.ENODEV, "device_removed"),
+        ("set_channels", errno_mod.EACCES, "permission_denied"),
+    )
+    for step, code, expected in cases:
+        assert classify_error(AlsaProbeError(step, code, "x")) == expected
+
+
+def test_only_exact_einval_setters_produce_unsupported() -> None:
+    import errno as errno_mod
+
+    for step in ("set_format", "set_rate", "set_channels"):
+        assert (
+            classify_error(AlsaProbeError(step, errno_mod.EINVAL, "exact"))
+            == "unsupported_format"
+        )

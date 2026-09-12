@@ -1300,7 +1300,11 @@ class TestF42AdapterContract:
         # (§0H.2 canonical pre-playback seam). No existing port signature
         # changed; hash re-sealed after audit — audio/transport semantics
         # untouched.
-        "src/michi/application/ports.py": "f8f5a3b6e6312bd7",  # noqa: E501
+        # PRE-050 SEAL (2026-09-11): additive SharedOutputTransaction no-op
+        # next to the port (§0H.2/§10: production always has an output
+        # transaction). No existing port signature changed; re-sealed after
+        # audit — audio/transport semantics untouched.
+        "src/michi/application/ports.py": "80c41a11741e16c5",  # noqa: E501
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.

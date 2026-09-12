@@ -220,6 +220,30 @@ class PlaybackOutputTransactionPort(Protocol):
     def release_active(self, reason: str) -> None: ...
 
 
+@dataclass(frozen=True, slots=True)
+class SharedOutputTransaction:
+    """Shared/reference: no-op explícito con evidencia truthful del modo.
+
+    Mantiene el constructor de PlaybackService determinístico: en
+    producción SIEMPRE existe un output transaction (§0H.2); no hay rama
+    None/opcional.
+    """
+
+    mode: str = "shared"
+
+    def prepare_for_media(self, path: Path) -> str:
+        return "shared:noop"
+
+    def commit_media(self, token: str, path: Path) -> None:
+        return None
+
+    def abort_media(self, token: str, reason: str) -> None:
+        return None
+
+    def release_active(self, reason: str) -> None:
+        return None
+
+
 class AudioPort(ABC):
     """Abstract audio backend. Infrastructure implements this."""
 

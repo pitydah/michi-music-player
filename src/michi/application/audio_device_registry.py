@@ -8,11 +8,16 @@ desconexiones.
 NO es responsabilidad: probar formatos, elegir output profile, abrir
 PCM, decidir GStreamer ni gestionar Queue.
 
-Reglas §400:
+Reglas §400 (seal pre-050):
+- un DAC físico puede poseer CERO-O-MÁS endpoints ALSA actuales: la
+  autoridad canónica los preserva TODOS (`bindings_for`), nunca trunca
+  al primero;
 - replug del mismo DAC -> mismo stable id cuando la evidencia lo permite;
 - dos devices simultáneos idénticos (VID/PID) NO se fusionan sin
   evidencia de identidad confiable;
-- renumber de card -> stable id preservado, binding actualizado;
+- la generation representa el SET canónico de bindings: cambia cuando el
+  conjunto cambia (A->(), ()->A, A->B, (A)->(A,B), ...) y NO cambia si
+  sólo cambia el orden incidental o nada cambia;
 - remove -> unavailable SIN borrar el intent seleccionado;
 - observación/probe tardío con generation vieja -> STALE, descartado.
 """
@@ -38,6 +43,10 @@ class AudioDeviceRegistryPort(Protocol):
         self, stable_device_id: str, kind: BindingKind
     ) -> AudioDeviceBinding | None: ...
 
+    def bindings_for(
+        self, stable_device_id: str, kind: BindingKind | None = None
+    ) -> tuple[AudioDeviceBinding, ...]: ...
+
 
 def _useful_serial(serial: str | None) -> str | None:
     """Seriales vacíos/genéricos no identifican (§7)."""
@@ -53,13 +62,31 @@ def _useful_serial(serial: str | None) -> str | None:
     return value
 
 
+def _binding_key(binding: AudioDeviceBinding) -> tuple:
+    """Key semántico/determinista de un binding (nunca identidad de
+    objeto)."""
+    return (
+        binding.kind.value,
+        binding.locator,
+        -1 if binding.card_index is None else binding.card_index,
+        -1 if binding.pcm_device is None else binding.pcm_device,
+        -1 if binding.pcm_subdevice is None else binding.pcm_subdevice,
+        binding.currently_available,
+    )
+
+
+def _bindings_key(bindings: tuple[AudioDeviceBinding, ...]) -> tuple:
+    """Key del SET canónico: el orden incidental no importa."""
+    return tuple(sorted(_binding_key(b) for b in bindings))
+
+
 @dataclass
 class _DeviceRecord:
     stable_device_id: str
     identity: AudioDeviceIdentity
     available: bool
     generation: int
-    binding: AudioDeviceBinding | None = None
+    bindings: tuple[AudioDeviceBinding, ...] = ()
 
 
 class AudioDeviceRegistry:
@@ -92,15 +119,34 @@ class AudioDeviceRegistry:
             if record.available
         )
 
+    def generation_for(self, stable_device_id: str) -> int | None:
+        record = self._records.get(stable_device_id)
+        return record.generation if record is not None else None
+
+    def bindings_for(
+        self, stable_device_id: str, kind: BindingKind | None = None
+    ) -> tuple[AudioDeviceBinding, ...]:
+        """TODOS los bindings actuales del device (API canónica).
+
+        Determinista: orden estable por kind/locator/card/pcm/subdevice.
+        """
+        record = self._records.get(stable_device_id)
+        if record is None or not record.available:
+            return ()
+        if kind is None:
+            return record.bindings
+        return tuple(b for b in record.bindings if b.kind is kind)
+
     def binding_for(
         self, stable_device_id: str, kind: BindingKind
     ) -> AudioDeviceBinding | None:
-        record = self._records.get(stable_device_id)
-        if record is None or not record.available or record.binding is None:
-            return None
-        if record.binding.kind is not kind:
-            return None
-        return record.binding
+        """Compatibilidad determinista: el PRIMER binding del kind.
+
+        La API canónica que preserva TODOS los endpoints es
+        `bindings_for()`.
+        """
+        bindings = self.bindings_for(stable_device_id, kind)
+        return bindings[0] if bindings else None
 
     def available_ids(self) -> tuple[str, ...]:
         return tuple(
@@ -116,6 +162,19 @@ class AudioDeviceRegistry:
         devices antes observados que ya no aparecen quedan unavailable
         (reconcile generation-safe).
         """
+        self._apply_observations(observations, reconcile=True)
+
+    def handle_added(self, observation: DeviceObservation) -> None:
+        """Re-add: comparte EXACTAMENTE la resolución canónica de ingest
+        (mismo algoritmo de identidad), sin reconciliar terceros."""
+        self._apply_observations((observation,), reconcile=False)
+
+    def _apply_observations(
+        self,
+        observations: tuple[DeviceObservation, ...],
+        *,
+        reconcile: bool,
+    ) -> None:
         usb = [o for o in observations if o.vendor_id and o.product_id]
         alsa = [o for o in observations if o.binding is not None]
 
@@ -126,12 +185,12 @@ class AudioDeviceRegistry:
             if serial is not None:
                 serial_counts[serial] = serial_counts.get(serial, 0) + 1
 
-        seen_ids: set[str] = set()
+        batch_ids: set[str] = set()
         seen_paths: set[str] = set()
         for observation in usb:
             if observation.physical_path:
                 seen_paths.add(observation.physical_path)
-            stable_id = self._identity_for(observation, serial_counts, seen_ids)
+            stable_id = self._identity_for(observation, serial_counts, batch_ids)
             self._records[stable_id] = self._publish(
                 stable_id,
                 observation,
@@ -142,9 +201,9 @@ class AudioDeviceRegistry:
         # cards ALSA huérfanas (sin ancestro USB observado): identidad local.
         for observation in alsa:
             correlated = any(
-                record.binding is not None
-                and record.binding.locator == observation.binding.locator
+                binding.locator == observation.binding.locator
                 for record in self._records.values()
+                for binding in record.bindings
             )
             if correlated:
                 continue
@@ -153,6 +212,8 @@ class AudioDeviceRegistry:
                 stable_id, observation, IdentityConfidence.LOW, ()
             )
 
+        if not reconcile:
+            return
         # Reconcile: USB records que ya no se observan -> unavailable.
         for record in self._records.values():
             identity = record.identity
@@ -162,17 +223,15 @@ class AudioDeviceRegistry:
                 and identity.physical_path not in seen_paths
             ):
                 record.available = False
-                record.generation = self._next_generation()
-                if record.binding is not None:
-                    record.binding = self._binding_state(
-                        record.binding, record.generation, available=False
-                    )
+                if record.bindings:
+                    record.bindings = ()
+                    record.generation = self._next_generation()
 
     def _identity_for(
         self,
         observation: DeviceObservation,
         serial_counts: dict[str, int],
-        seen_ids: set[str],
+        batch_ids: set[str],
     ) -> str:
         serial = _useful_serial(observation.serial)
         if serial is not None and serial_counts.get(serial, 0) > 1:
@@ -186,10 +245,10 @@ class AudioDeviceRegistry:
             )
         else:
             stable_id = f"sysfs:{observation.product or 'usb'}"
-        if stable_id in seen_ids:
-            # colisión (p.ej. mismo path reciclado): determinístico.
-            stable_id = f"{stable_id}#{len(seen_ids)}"
-        seen_ids.add(stable_id)
+        if stable_id in batch_ids:
+            # colisión DENTRO del batch (p.ej. mismo path reciclado).
+            stable_id = f"{stable_id}#{len(batch_ids)}"
+        batch_ids.add(stable_id)
         return stable_id
 
     def _confidence_for(
@@ -215,29 +274,28 @@ class AudioDeviceRegistry:
         alsa: list[DeviceObservation],
     ) -> _DeviceRecord:
         previous = self._records.get(stable_id)
-        generation = previous.generation if previous else self._next_generation()
-        binding: AudioDeviceBinding | None = None
+        # TODOS los endpoints del mismo DAC físico (nunca break al primero).
         if observation.binding is not None:
-            binding = self._bind(observation.binding, generation)
+            new_bindings: tuple[AudioDeviceBinding, ...] = (observation.binding,)
         elif observation.physical_path:
-            for card in alsa:
-                if card.physical_path == observation.physical_path:
-                    binding = self._bind(card.binding, generation)
-                    break
-        if (
-            previous is not None
-            and previous.binding is not None
-            and binding is not None
-        ):
-            old, new = previous.binding, binding
-            if (
-                old.locator != new.locator
-                or old.card_index != new.card_index
-                or old.pcm_device != new.pcm_device
-            ):
-                # Rebind (p.ej. renumber de card): generation nueva (§400).
-                generation = self._next_generation()
-                binding = self._bind(binding, generation)
+            new_bindings = tuple(
+                card.binding
+                for card in alsa
+                if card.physical_path == observation.physical_path
+            )
+        else:
+            new_bindings = ()
+        new_bindings = tuple(sorted(new_bindings, key=_binding_key))
+
+        # La generation representa el SET canónico de bindings.
+        set_changed = previous is None or _bindings_key(
+            previous.bindings
+        ) != _bindings_key(new_bindings)
+        generation = self._next_generation() if set_changed else previous.generation
+
+        bindings = tuple(
+            self._bindings_state(binding, generation) for binding in new_bindings
+        )
         identity = AudioDeviceIdentity(
             stable_device_id=stable_id,
             vendor_id=observation.vendor_id,
@@ -255,24 +313,17 @@ class AudioDeviceRegistry:
             identity=identity,
             available=True,
             generation=generation,
-            binding=binding,
+            bindings=bindings,
         )
 
-    def _bind(self, binding: AudioDeviceBinding, generation: int) -> AudioDeviceBinding:
-        return self._binding_state(binding, generation, available=True)
-
-    def _binding_state(
-        self,
-        binding: AudioDeviceBinding,
-        generation: int,
-        *,
-        available: bool,
+    def _bindings_state(
+        self, binding: AudioDeviceBinding, generation: int
     ) -> AudioDeviceBinding:
         return AudioDeviceBinding(
             kind=binding.kind,
             locator=binding.locator,
             generation=generation,
-            currently_available=available,
+            currently_available=True,
             card_index=binding.card_index,
             pcm_device=binding.pcm_device,
             pcm_subdevice=binding.pcm_subdevice,
@@ -289,27 +340,8 @@ class AudioDeviceRegistry:
             identity = record.identity
             if identity.physical_path == physical_path and record.available:
                 record.available = False
+                record.bindings = ()
                 record.generation = self._next_generation()
-                if record.binding is not None:
-                    record.binding = self._binding_state(
-                        record.binding, record.generation, available=False
-                    )
-
-    def handle_added(self, observation: DeviceObservation) -> None:
-        """Re-add: la identidad se re-resuelve (mismo id si la evidencia
-        lo permite) con generation nueva. Sin reconcile de terceros."""
-        serial_counts: dict[str, int] = {}
-        serial = _useful_serial(observation.serial)
-        if serial is not None:
-            serial_counts[serial] = 1
-        seen_ids: set[str] = set(self._records)
-        stable_id = self._identity_for(observation, serial_counts, seen_ids)
-        self._records[stable_id] = self._publish(
-            stable_id,
-            observation,
-            self._confidence_for(stable_id, observation, serial_counts),
-            [],
-        )
 
     # ── generation-safety ─────────────────────────────────────────────
     def apply_probe_result(

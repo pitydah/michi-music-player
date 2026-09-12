@@ -12,7 +12,12 @@ from michi.application.audio_engine_selection import (
     MediaRequestTerminalResult,
     MediaRequestTerminalStatus,
 )
-from michi.application.ports import AudioLoadError, AudioPort
+from michi.application.ports import (
+    AudioLoadError,
+    AudioPort,
+    PlaybackOutputTransactionPort,
+    SharedOutputTransaction,
+)
 from michi.domain.playback import PlaybackState, PlaybackStatus
 
 logger = logging.getLogger(__name__)
@@ -142,8 +147,19 @@ class PlaybackService:
     optimistic exception (safety command: STOPPED immediately).
     """
 
-    def __init__(self, audio_port: AudioPort) -> None:
+    def __init__(
+        self,
+        audio_port: AudioPort,
+        *,
+        output_tx: PlaybackOutputTransactionPort | None = None,
+    ) -> None:
         self._audio = audio_port
+        # §0H.2: en producción SIEMPRE existe un output transaction. El
+        # modo Shared/reference usa el no-op explícito; no hay rama None.
+        self._output_tx: PlaybackOutputTransactionPort = (
+            output_tx if output_tx is not None else SharedOutputTransaction()
+        )
+        self._output_token: str | None = None
         self._state = PlaybackState()
         self._subscribers: list[Callable[[], None]] = []
         self._eom_subscribers: list[Callable[[], None]] = []
@@ -294,6 +310,9 @@ class PlaybackService:
            converges to STOPPED, and a later play() reloads the last
            committed logical track through the canonical path.
         """
+        # §0H.2 PHASE 0 — OUTPUT TRANSACTION: prepare ANTES de tocar el
+        # backend. Un fallo aquí no llama load()/play() ni commitea nada.
+        self._output_token = self._output_tx.prepare_for_media(file_path)
         previous_intent = self._intent
         previous_accepted = self._accepted
         self._request_epoch += 1
@@ -324,6 +343,7 @@ class PlaybackService:
                 # state and propagate the lifecycle exception.
                 raise
             self._clear_pending()
+            self._abort_output_token("load_failed")
             if isinstance(exc, AudioLoadError) and not exc.previous_source_preserved:
                 self._intent = False
                 self._accepted = False
@@ -356,6 +376,7 @@ class PlaybackService:
             if my_epoch != self._request_epoch:
                 raise
             self._clear_pending()
+            self._abort_output_token("play_failed")
             self._intent = False
             self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
@@ -364,6 +385,20 @@ class PlaybackService:
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
         self._notify()
+
+    def _abort_output_token(self, reason: str) -> None:
+        """§0H.2: abort best-effort del output transaction pendiente.
+
+        Nunca enmascara el error original: el fallo del abort se registra.
+        """
+        token = self._output_token
+        self._output_token = None
+        if token is None:
+            return
+        try:
+            self._output_tx.abort_media(token, reason)
+        except Exception:  # pragma: no cover - el abort no debe enmascarar
+            logger.debug("output abort falló (reason=%s)", reason, exc_info=True)
 
     def _clear_pending(self) -> None:
         """Terminaliza el candidato pendiente sin invocar callbacks."""
@@ -431,6 +466,8 @@ class PlaybackService:
         """
         if position_ms < 0:
             position_ms = 0
+        # §0H.2: el seam de output también precede a este LOAD sin autoplay.
+        self._output_token = self._output_tx.prepare_for_media(file_path)
         previous_accepted = self._accepted
         self._request_epoch += 1  # M11.3C-R6.5.2: request identity
         my_epoch = self._request_epoch
@@ -532,6 +569,12 @@ class PlaybackService:
     def _on_media_accepted(self, file_path: Path) -> None:
         if self._pending_path is None or file_path != self._pending_path:
             return
+        # §0H.2 paso 5: el backend aceptó la media -> commit del output
+        # transaction ANTES del commit de acceptance del PlaybackService.
+        token = self._output_token
+        self._output_token = None
+        if token is not None:
+            self._output_tx.commit_media(token, file_path)
         on_accepted = self._pending_on_accepted
         purpose = self._pending_purpose
         self._pending_path = None
@@ -618,6 +661,9 @@ class PlaybackService:
         self._require_engine_switch_lease(lease)
         if self._state.status is not PlaybackStatus.STOPPED or self._intent:
             self._audio.stop()
+        # §0H.2: safety stop primero, release del output activo después.
+        self._output_token = None
+        self._output_tx.release_active("engine_switch")
         self._intent = False
         self._state.status = PlaybackStatus.STOPPED
         self._state.position_ms = lease.snapshot.confirmed_position_ms
@@ -627,6 +673,7 @@ class PlaybackService:
         self._require_engine_switch_lease(lease)
         self._request_epoch += 1
         self._clear_pending()
+        self._abort_output_token("engine_switch_invalidate")
         self._intent = False
         self._accepted = False
         self._converging_unexpected = False
@@ -794,6 +841,7 @@ class PlaybackService:
             self._pending_on_cancelled = None
             self._pending_resume_position_ms = None
             self._resume_prepared_pending = False
+            self._abort_output_token("media_rejected")
             self._intent = False
             self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
@@ -963,6 +1011,10 @@ class PlaybackService:
         on_cancelled = self._pending_on_cancelled
         cancelled_path = self._pending_path
         self._audio.stop()
+        # §0H.2: la semántica de safety del AudioPort va PRIMERO; luego se
+        # libera el output activo (release_active, nunca abort).
+        self._output_token = None
+        self._output_tx.release_active("stop")
         # SUCCESS COMMIT — backend accepted the safety command
         self._pending_path = None
         self._pending_purpose = None
@@ -1020,6 +1072,9 @@ class PlaybackService:
         self._accepted = False
         self._converging_unexpected = False  # R2 ghost-playback guard
         self._state.status = PlaybackStatus.STOPPED
+        # §0H.2: engine loss terminal -> el output activo se libera.
+        self._output_token = None
+        self._output_tx.release_active("engine_loss")
         # file_path / position_ms / volume / muted preserved on purpose.
         self._state.error_message = reason
         self._notify()
