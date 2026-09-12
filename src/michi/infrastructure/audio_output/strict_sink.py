@@ -11,7 +11,8 @@ from dataclasses import dataclass
 from michi.domain.audio_output import OutputPlan, PathSemantics
 
 # Mapping explícito y fail-closed ALSA -> GStreamer (nunca replace()).
-ALSA_TO_GST_FORMAT: dict[str, str] = {
+# Privado: ningún consumidor externo debe mutarlo.
+_ALSA_TO_GST_FORMAT: dict[str, str] = {
     "S16_LE": "S16LE",
     "S32_LE": "S32LE",
 }
@@ -77,7 +78,7 @@ def recipe_from_plan(plan: OutputPlan) -> StrictSinkRecipe:
     pcm = plan.requested_pcm
     if pcm.rate_hz <= 0 or pcm.channels <= 0:
         raise StrictSinkError("DIRECT_PLAN_INVALID", "tuple PCM inválido")
-    gst_format = ALSA_TO_GST_FORMAT.get(pcm.transport_format)
+    gst_format = _ALSA_TO_GST_FORMAT.get(pcm.transport_format)
     if gst_format is None:
         raise StrictSinkError(
             "DIRECT_PLAN_INVALID",

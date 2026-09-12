@@ -1266,7 +1266,12 @@ class TestF42AdapterContract:
         # localizar la divergencia física/canónica de playback. CERO cambio
         # de semántica de transporte.
         "src/michi/infrastructure/audio_engines/mpd.py": "c1a0b47f5e2da0fa",  # noqa: E501
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "fc7a6efa1be5808b",
+        # DAC-V35-050B (2026-09-12): additive strict Direct sink surface
+        # (DirectSinkBuildError + build_strict_audio_sink/set_audio_sink +
+        # stage_strict_sink seam). Shared M11.3 semantics untouched:
+        # zero changes to GLib pump, bus, generation, ASYNC_DONE or
+        # acceptance paths. Hash re-sealed after audit.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "3a881b9a84d1bede",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
         "src/michi/application/audio_transport_router.py": "937660b9c864e572",  # noqa: E501

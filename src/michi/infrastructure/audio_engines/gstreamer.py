@@ -34,6 +34,15 @@ _logger = logging.getLogger(__name__)
 _POSITION_POLL_MS = 500
 
 
+class DirectSinkBuildError(RuntimeError):
+    """Fall-closed del strict Direct sink (código estable, sin jerarquía)."""
+
+    def __init__(self, code: str, detail: str) -> None:
+        super().__init__(f"{code}: {detail}")
+        self.code = code
+        self.detail = detail
+
+
 class GStreamerBindings:
     """Lazy GObject Introspection facade for GStreamer (production).
 
@@ -91,6 +100,68 @@ class GStreamerBindings:
     def make_playbin3(self):
         self.ensure_loaded()
         return self._gst.ElementFactory.make("playbin3", "michi_gst_port")
+
+    # ------------------------------------------------------------------
+    # DAC-V35-050B: Strict Direct sink builder (GI confinado aquí)
+    # ------------------------------------------------------------------
+
+    def build_strict_audio_sink(self, recipe):
+        """GstBin estricto: capsfilter -> alsasink + ghost pad de entrada.
+
+        Sin audioresample/audioconvert/queue/DSP. Caps y device EXACTOS de
+        la receta inmutable. Fail-closed con códigos estables.
+        """
+        self.ensure_loaded()
+        gst = self._gst
+        sink_bin = gst.Bin.new("michi_direct_sink")
+        if sink_bin is None:
+            raise DirectSinkBuildError(
+                "DIRECT_SINK_BIN_CREATE_FAILED", "Gst.Bin.new devolvió None"
+            )
+        capsfilter = gst.ElementFactory.make("capsfilter", "michi_direct_caps")
+        if capsfilter is None:
+            raise DirectSinkBuildError(
+                "DIRECT_CAPSFILTER_CREATE_FAILED", "capsfilter no disponible"
+            )
+        try:
+            caps = gst.Caps.from_string(recipe.caps_string())
+        except Exception as exc:  # noqa: BLE001 — frontera de construcción
+            raise DirectSinkBuildError(
+                "DIRECT_CAPS_CREATE_FAILED", f"caps inválidos: {exc}"
+            ) from exc
+        if caps is None or caps.get_size() == 0:
+            raise DirectSinkBuildError(
+                "DIRECT_CAPS_CREATE_FAILED", "caps inválidos o vacíos"
+            )
+        capsfilter.set_property("caps", caps)
+        alsa = gst.ElementFactory.make(recipe.sink_factory, "michi_direct_alsa")
+        if alsa is None:
+            raise DirectSinkBuildError(
+                "DIRECT_ALSASINK_CREATE_FAILED", f"{recipe.sink_factory} no disponible"
+            )
+        alsa.set_property("device", recipe.device)
+        sink_bin.add(capsfilter)
+        sink_bin.add(alsa)
+        if not capsfilter.link(alsa):
+            raise DirectSinkBuildError(
+                "DIRECT_SINK_LINK_FAILED", "capsfilter -> alsasink link falló"
+            )
+        ghost = gst.GhostPad.new("sink", capsfilter.get_static_pad("sink"))
+        if ghost is None or not sink_bin.add_pad(ghost):
+            raise DirectSinkBuildError(
+                "DIRECT_GHOST_PAD_FAILED", "ghost pad del strict sink falló"
+            )
+        return sink_bin
+
+    def set_audio_sink(self, pipeline, sink) -> None:
+        """Instala el sink y verifica la instalación (identidad real)."""
+        pipeline.set_property("audio-sink", sink)
+        installed = pipeline.get_property("audio-sink")
+        if installed is not sink:
+            raise DirectSinkBuildError(
+                "DIRECT_SINK_INSTALL_FAILED",
+                "playbin3 no retuvo el custom audio-sink instalado",
+            )
 
     def set_state(self, pipeline, state) -> bool:
         self.ensure_loaded()
@@ -304,6 +375,9 @@ class GStreamerAudioPort(AudioPort):
         super().__init__()
         self._bridge = _EventBridge()
         self._bindings = bindings if bindings is not None else GStreamerBindings()
+        # DAC-V35-050B: receta strict Direct para el PRÓXIMO load (consumida
+        # una sola vez). None preserva EXACTAMENTE el comportamiento Shared.
+        self._pending_strict_sink_recipe = None
         self._generation = 0
         self._closed = False
         self._pending_path: Path | None = None
@@ -479,6 +553,14 @@ class GStreamerAudioPort(AudioPort):
     # AudioPort — transport commands (symbolic states only)
     # ------------------------------------------------------------------
 
+    def stage_strict_sink(self, recipe) -> None:
+        """Stagea la receta strict Direct para el próximo load().
+
+        La receta se consume (y se limpia) en ese load, aunque el ARM
+        falle: nunca se reaplica silenciosamente al track siguiente.
+        """
+        self._pending_strict_sink_recipe = recipe
+
     def load(self, file_path: Path) -> None:
         # KCR-008: a closed runtime rejects the command — never a silent
         # no-op return.
@@ -538,6 +620,13 @@ class GStreamerAudioPort(AudioPort):
             self._pipeline = pipeline
             self._bindings.set_volume(pipeline, self._volume)
             self._bindings.set_muted(pipeline, self._muted)
+            # DAC-V35-050B §17: strict Direct sink ANTES de URI/preroll.
+            # La receta se consume SIEMPRE (éxito o fallo del ARM).
+            strict_recipe = self._pending_strict_sink_recipe
+            self._pending_strict_sink_recipe = None
+            if strict_recipe is not None:
+                strict_sink = self._bindings.build_strict_audio_sink(strict_recipe)
+                self._bindings.set_audio_sink(pipeline, strict_sink)
             self._bus = self._bindings.get_bus(pipeline)
             self._bindings.set_uri(pipeline, Path(file_path).resolve().as_uri())
             if self._bindings.supports_pump():

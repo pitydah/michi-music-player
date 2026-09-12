@@ -59,6 +59,7 @@ class FakePipeline:
         self.closed = False
         self.bus = FakeBus(self)
         self.children = []
+        self.audio_sink = None
 
     def set_state(self, state):
         self.state = state
@@ -76,6 +77,13 @@ class FakePipeline:
             self.volume = value
         elif prop == "mute":
             self.muted = value
+        elif prop == "audio-sink":
+            self.audio_sink = value
+
+    def get_property(self, prop):
+        if prop == "audio-sink":
+            return self.audio_sink
+        return None
 
     def query_position(self, fmt):
         return True, 1_234_000_000
@@ -185,6 +193,11 @@ class FakeBindings:
         # inyección de excepciones de ARM (M11.3C-R6 P1-03, TEST ONLY)
         self.arm_exception_stage: str | None = None
         self.arm_exception: Exception | None = None
+        # DAC-V35-050B: strict Direct surface (fake, registra orden)
+        self.events: list[str] = []
+        self.built_recipes: list = []
+        self.installed_sinks: list = []
+        self.fail_strict_build = False
 
     def _raise_if_arm_stage(self, stage):
         if self.arm_exception_stage == stage:
@@ -204,14 +217,36 @@ class FakeBindings:
 
     def make_playbin3(self):
         self._raise_if_arm_stage("make_playbin3")
+        self.events.append("make_playbin3")
         p = FakePipeline(f"P{len(self.pipelines)}")
         self.pipelines.append(p)
         return p
+
+    # -- DAC-V35-050B: strict Direct surface (fake) ---------------------
+
+    def build_strict_audio_sink(self, recipe):
+        self.events.append("build_strict_sink")
+        if self.fail_strict_build:
+            from michi.infrastructure.audio_engines.gstreamer import (
+                DirectSinkBuildError,
+            )
+
+            raise DirectSinkBuildError(
+                "DIRECT_CAPSFILTER_CREATE_FAILED", "fake strict build failure"
+            )
+        self.built_recipes.append(recipe)
+        return f"strict-sink:{recipe.plan_id}"
+
+    def set_audio_sink(self, pipeline, sink) -> None:
+        self.events.append("install_audio_sink")
+        pipeline.set_property("audio-sink", sink)
+        self.installed_sinks.append(sink)
 
     def set_state(self, pipeline, state):
         if state == _FakeState.NULL:
             self.null_request_count += 1
         if state == _FakeState.PAUSED:
+            self.events.append("request_preroll")
             self._raise_if_arm_stage("set_state_paused")
         if state == _FakeState.PLAYING:
             self._raise_if_arm_stage("set_state_playing")
@@ -293,6 +328,7 @@ class FakeBindings:
         return pipeline.seek_simple(None, None, position_ns)
 
     def set_uri(self, pipeline, uri):
+        self.events.append("set_uri")
         self._raise_if_arm_stage("set_uri")
         pipeline.set_property("uri", uri)
 
@@ -4384,3 +4420,124 @@ class TestRuntimeHealthTelemetry:
         port.close()
         QTest.qWait(80)
         assert len(events) == 1
+
+
+# ---------------------------------------------------------------------------
+# DAC-V35-050B — Strict Direct sink staging en el port (P1..P6)
+# ---------------------------------------------------------------------------
+
+
+def _strict_recipe(rate: int = 44100, fmt: str = "S16_LE"):
+    from michi.infrastructure.audio_output.strict_sink import recipe_from_plan
+    from tests.dac.test_v35_strict_sink import _plan
+
+    return recipe_from_plan(_plan(rate=rate, fmt=fmt))
+
+
+class TestStrictSinkStaging:
+    def test_p1_shared_path_never_builds_strict_sink(self, qapp):
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        path = Path("/m/a.flac")
+        port.load(path)
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+        assert accepted == [path]
+        assert bindings.built_recipes == []
+        assert "build_strict_sink" not in bindings.events
+        port.close()
+
+    def test_p2_direct_sink_installed_before_uri_and_preroll(self, qapp):
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        port.stage_strict_sink(_strict_recipe())
+
+        port.load(Path("/m/a.flac"))
+
+        events = bindings.events
+        assert "build_strict_sink" in events
+        assert "install_audio_sink" in events
+        assert (
+            events.index("build_strict_sink")
+            < events.index("install_audio_sink")
+            < events.index("set_uri")
+            < events.index("request_preroll")
+        ), "el strict sink se instala ANTES de URI/preroll"
+        assert bindings.pipelines[-1].audio_sink is not None
+        port.close()
+
+    def test_p3_recipe_consumed_once(self, qapp):
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        port.stage_strict_sink(_strict_recipe())
+
+        port.load(Path("/m/a.flac"))
+        assert len(bindings.built_recipes) == 1
+
+        port.load(Path("/m/b.flac"))  # sin stage: Shared histórico
+
+        assert len(bindings.built_recipes) == 1, (
+            "la receta no puede reaplicarse al track siguiente"
+        )
+        assert bindings.pipelines[-1].audio_sink is None
+        port.close()
+
+    def test_p4_failed_build_does_not_leak_recipe(self, qapp):
+        from michi.application.ports import AudioLoadError
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        bindings.fail_strict_build = True
+        port.stage_strict_sink(_strict_recipe())
+
+        with pytest.raises(AudioLoadError):
+            port.load(Path("/m/a.flac"))
+
+        bindings.fail_strict_build = False
+        port.load(Path("/m/b.flac"))
+
+        assert len(bindings.built_recipes) == 0, (
+            "un build fallido no debe reintentar la receta vieja"
+        )
+        assert bindings.pipelines[-1].audio_sink is None
+        port.close()
+
+    def test_p5_failed_strict_build_uses_existing_rollback(self, qapp):
+        from michi.application.ports import AudioLoadError
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        bindings.fail_strict_build = True
+        port.stage_strict_sink(_strict_recipe())
+
+        with pytest.raises(AudioLoadError):
+            port.load(Path("/m/a.flac"))
+
+        assert port._pending_path is None, "el candidate pendiente quedó limpio"
+        assert port._current_path is None
+        assert port._pending_strict_sink_recipe is None
+
+        bindings.fail_strict_build = False
+        accepted = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        path = Path("/m/b.flac")
+        port.load(path)
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+        assert accepted == [path]
+        port.close()
+
+    def test_p6_single_glib_pump_across_shared_and_direct(self, qapp):
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+
+        port.load(Path("/m/a.flac"))  # Shared
+        port.stage_strict_sink(_strict_recipe())
+        port.load(Path("/m/b.flac"))  # Direct
+        port.stage_strict_sink(_strict_recipe(rate=96000, fmt="S32_LE"))
+        port.load(Path("/m/c.flac"))  # Direct
+
+        assert port._pump_start_count == 1, "UN solo pump GLib (M11.3)"
+        port.close()
