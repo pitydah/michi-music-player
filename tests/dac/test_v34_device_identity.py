@@ -416,3 +416,28 @@ def test_card_renumber_with_multi_endpoints_keeps_all(tmp_path: Path) -> None:
         "hw:CARD=DX5,DEV=1",
     ]
     assert all(b.card_index == 2 for b in bindings), "card_index 1 -> 2"
+
+
+def test_g13_availability_only_disappearance_invalidates_generation_once(
+    tmp_path: Path,
+) -> None:
+    """available=True + bindings=() -> reconcile sin device -> gen++ UNA vez."""
+    sysfs_root = make_roots(tmp_path)
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card(()),))
+    registry = AudioDeviceRegistry()
+    _ingest(registry, sysfs_root)
+    stable_id = registry.snapshot()[0].stable_device_id
+    generation_before = registry.generation_for(stable_id)
+    assert registry.bindings_for(stable_id) == ()
+
+    remove_usb_device(sysfs_root, "2-1")
+    _ingest(registry, sysfs_root)
+
+    assert registry.snapshot() == ()
+    assert registry.generation_for(stable_id) == generation_before + 1, (
+        "available True->False es un cambio topológico aunque bindings==()"
+    )
+
+    # segundo rescan con el device todavía ausente: NO incrementa de nuevo
+    _ingest(registry, sysfs_root)
+    assert registry.generation_for(stable_id) == generation_before + 1

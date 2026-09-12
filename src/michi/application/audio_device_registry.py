@@ -222,10 +222,13 @@ class AudioDeviceRegistry:
                 and record.available
                 and identity.physical_path not in seen_paths
             ):
+                # available True->False es un cambio topológico SIEMPRE,
+                # aunque bindings==(): generation++ exactamente una vez
+                # (el guard record.available evita repetir mientras siga
+                # ausente).
                 record.available = False
-                if record.bindings:
-                    record.bindings = ()
-                    record.generation = self._next_generation()
+                record.bindings = ()
+                record.generation = self._next_generation()
 
     def _identity_for(
         self,

@@ -336,3 +336,308 @@ def test_p9_engine_loss_releases_exactly_once(tmp_path: Path) -> None:
     service.converge_after_engine_loss("engine lost")
 
     assert events.count("release:engine_loss") == 1
+
+
+# ── PRE-050: lifecycle reentrante con fronteras de método ────────────
+
+
+class _SyncAcceptDuringLoadPort(FakeAudioPort):
+    """Aceptación reentrante DURANTE load(), antes de que retorne."""
+
+    def __init__(self, events: list[str]) -> None:
+        super().__init__()
+        self.events = events
+
+    def load(self, path):
+        self.events.append("load_enter")
+        FakeAudioPort.load(self, path)
+        self.trigger_media_accepted(path)  # callback ANTES del return
+        self.events.append("load_return")
+
+    def play(self):
+        self.events.append("play_enter")
+        FakeAudioPort.play(self)
+        self.events.append("play_return")
+
+
+class _SyncAcceptDuringLoadPlayFailPort(FakeAudioPort):
+    """Aceptación durante load() + play() que falla."""
+
+    def __init__(self, events: list[str]) -> None:
+        super().__init__()
+        self.events = events
+
+    def load(self, path):
+        self.events.append("load_enter")
+        FakeAudioPort.load(self, path)
+        self.trigger_media_accepted(path)
+        self.events.append("load_return")
+
+    def play(self):
+        self.events.append("play_enter")
+        raise RuntimeError("play failed")
+
+
+class _SyncAcceptDuringPlayPort(FakeAudioPort):
+    """Aceptación reentrante DENTRO de play(), antes de que retorne."""
+
+    def __init__(self, events: list[str]) -> None:
+        super().__init__()
+        self.events = events
+        self._loaded_path: Path | None = None
+
+    def load(self, path):
+        self.events.append("load_enter")
+        FakeAudioPort.load(self, path)
+        self._loaded_path = path
+        self.events.append("load_return")
+
+    def play(self):
+        self.events.append("play_enter")
+        FakeAudioPort.play(self)
+        assert self._loaded_path is not None
+        self.trigger_media_accepted(self._loaded_path)  # DENTRO de play()
+        self.events.append("play_return")
+
+
+class _FailSecondPrepareOutputTx(_RecordingOutputTx):
+    """El primer prepare funciona; el segundo falla (T10)."""
+
+    def __init__(self, events: list[str]) -> None:
+        super().__init__(events)
+        self._prepare_calls = 0
+
+    def prepare_for_media(self, path: Path) -> str:
+        self._prepare_calls += 1
+        if self._prepare_calls >= 2:
+            raise RuntimeError("prepare failed")
+        return super().prepare_for_media(path)
+
+
+def _service_for(audio, tx):
+    from michi.application.playback_service import PlaybackService
+
+    return PlaybackService(audio, output_tx=tx)
+
+
+def test_t1_sync_accept_during_load_commits_only_after_play(tmp_path: Path) -> None:
+    events: list[str] = []
+    audio = _SyncAcceptDuringLoadPort(events)
+    service = _service_for(audio, _RecordingOutputTx(events))
+    media = tmp_path / "a.flac"
+
+    service.load_and_play(media)
+
+    assert events == [
+        "prepare",
+        "load_enter",
+        "load_return",
+        "play_enter",
+        "play_return",
+        "commit",
+    ], "la aceptación durante load() debe quedar latched hasta el play exitoso"
+    assert service.state.file_path == media
+
+
+def test_t2_sync_accept_during_load_play_failure_never_commits(
+    tmp_path: Path,
+) -> None:
+    events: list[str] = []
+    audio = _SyncAcceptDuringLoadPlayFailPort(events)
+    service = _service_for(audio, _RecordingOutputTx(events))
+    media = tmp_path / "a.flac"
+
+    with pytest.raises(RuntimeError):
+        service.load_and_play(media)
+
+    assert events.count("commit") == 0
+    assert events.count("abort:play_failed") == 1
+    assert service.state.file_path != media
+    from michi.domain.playback import PlaybackStatus
+
+    assert service.state.status is PlaybackStatus.STOPPED
+
+    # stale acceptance posterior NO puede resucitar B
+    audio.trigger_media_accepted(media)
+    assert events.count("commit") == 0
+    assert service.state.file_path != media
+
+
+def test_t3_sync_accept_during_play_commits_only_after_return(
+    tmp_path: Path,
+) -> None:
+    events: list[str] = []
+    audio = _SyncAcceptDuringPlayPort(events)
+    service = _service_for(audio, _RecordingOutputTx(events))
+    media = tmp_path / "a.flac"
+
+    service.load_and_play(media)
+
+    assert events.index("commit") > events.index("play_return"), (
+        "el commit no puede ocurrir durante la ejecución parcial de play()"
+    )
+    assert events == [
+        "prepare",
+        "load_enter",
+        "load_return",
+        "play_enter",
+        "play_return",
+        "commit",
+    ]
+    assert service.state.file_path == media
+
+
+def test_t5_startup_restore_load_failure_aborts(tmp_path: Path) -> None:
+    from michi.application.ports import AudioLoadError
+
+    events: list[str] = []
+    audio = _SpyAudioPort(events, fail_load=True)
+    service = _service_for(audio, _RecordingOutputTx(events))
+
+    with pytest.raises(AudioLoadError):
+        service.prepare_for_resume(tmp_path / "a.flac", 0)
+
+    assert events.count("abort:startup_restore_load_failed") == 1
+    assert "commit" not in events
+
+
+def test_t6_engine_rehydration_load_failure_aborts(tmp_path: Path) -> None:
+    from michi.application.playback_service import (
+        EngineSwitchMediaSnapshot,
+        MediaRequestTerminalStatus,
+    )
+    from michi.domain.playback import PlaybackStatus
+
+    events: list[str] = []
+    audio = _SpyAudioPort(events, fail_load=True)
+    service = _service_for(audio, _RecordingOutputTx(events))
+    snapshot = EngineSwitchMediaSnapshot(
+        file_path=tmp_path / "a.flac",
+        confirmed_position_ms=0,
+        deferred_resume_target_ms=None,
+        previous_status=PlaybackStatus.STOPPED,
+        volume=80,
+        muted=False,
+    )
+
+    service.prepare_after_engine_switch(snapshot)
+
+    assert events.count("abort:engine_switch_load_failed") == 1
+    assert "commit" not in events
+    terminal = service.last_engine_switch_rehydration
+    assert terminal is not None
+    assert terminal.status is MediaRequestTerminalStatus.REJECTED
+
+
+def test_t7_engine_switch_timeout_aborts(tmp_path: Path) -> None:
+    from michi.application.playback_service import (
+        EngineSwitchMediaSnapshot,
+        MediaRequestTerminalStatus,
+    )
+    from michi.domain.playback import PlaybackStatus
+
+    events: list[str] = []
+    audio = _SpyAudioPort(events)
+    service = _service_for(audio, _RecordingOutputTx(events))
+    captured: list = []
+    service.set_engine_switch_timeout_scheduler(lambda ms, cb: captured.append(cb))
+    snapshot = EngineSwitchMediaSnapshot(
+        file_path=tmp_path / "a.flac",
+        confirmed_position_ms=0,
+        deferred_resume_target_ms=None,
+        previous_status=PlaybackStatus.STOPPED,
+        volume=80,
+        muted=False,
+    )
+    service.prepare_after_engine_switch(snapshot)
+    assert captured, "el timeout debe quedar agendado"
+
+    captured[0]()  # expira
+
+    assert events.count("abort:engine_switch_timeout") == 1
+    assert "commit" not in events
+    terminal = service.last_engine_switch_rehydration
+    assert terminal is not None
+    assert terminal.status is MediaRequestTerminalStatus.TIMEOUT
+
+
+def test_t8_engine_switch_cancel_aborts(tmp_path: Path) -> None:
+    from michi.application.playback_service import (
+        EngineSwitchMediaSnapshot,
+        MediaRequestTerminalStatus,
+    )
+    from michi.domain.playback import PlaybackStatus
+
+    events: list[str] = []
+    audio = _SpyAudioPort(events)
+    service = _service_for(audio, _RecordingOutputTx(events))
+    snapshot = EngineSwitchMediaSnapshot(
+        file_path=tmp_path / "a.flac",
+        confirmed_position_ms=0,
+        deferred_resume_target_ms=None,
+        previous_status=PlaybackStatus.STOPPED,
+        volume=80,
+        muted=False,
+    )
+    service.prepare_after_engine_switch(snapshot)
+
+    service._cancel_engine_switch_rehydration("superseded by a newer switch")
+
+    assert events.count("abort:engine_switch_cancelled") == 1
+    assert "commit" not in events
+    terminal = service.last_engine_switch_rehydration
+    assert terminal is not None
+    assert terminal.status is MediaRequestTerminalStatus.CANCELLED
+
+
+def test_t9_superseded_aborts_old_token(tmp_path: Path) -> None:
+    events: list[str] = []
+    audio = _SpyAudioPort(events)
+    service = _service_for(audio, _RecordingOutputTx(events))
+    first = tmp_path / "a.flac"
+    second = tmp_path / "b.flac"
+
+    service.load_and_play(first)
+    service.load_and_play(second)  # supersede A
+
+    assert events.count("abort:superseded") == 1, (
+        "el token A no puede quedar huérfano al superseder"
+    )
+    audio.trigger_media_accepted(first)  # aceptación vieja
+    assert "commit" not in events
+    audio.trigger_media_accepted(second)
+    assert events.count("commit") == 1
+
+
+def test_t10_failed_replacement_prepare_preserves_pending(tmp_path: Path) -> None:
+    """Contrato histórico: si el prepare de B falla antes de establecer el
+    nuevo request, A sigue siendo el pending (sin estado híbrido ni token
+    perdido)."""
+    events: list[str] = []
+    audio = _SpyAudioPort(events)
+    tx = _FailSecondPrepareOutputTx(events)
+    service = _service_for(audio, tx)
+    first = tmp_path / "a.flac"
+
+    service.load_and_play(first)
+    with pytest.raises(RuntimeError):
+        service.load_and_play(tmp_path / "b.flac")
+
+    assert events.count("abort:superseded") == 0
+    audio.trigger_media_accepted(first)
+    assert events.count("commit") == 1, (
+        "A debe seguir siendo el request vigente cuando el prepare de B falla"
+    )
+
+
+def test_t14_production_bootstrap_injects_shared_explicitly() -> None:
+    """El composition root productivo expresa el wiring Shared explícito."""
+    import inspect
+
+    from michi import bootstrap
+
+    source = inspect.getsource(bootstrap)
+    assert "output_tx=SharedOutputTransaction()" in source, (
+        "el bootstrap productivo debe inyectar SharedOutputTransaction "
+        "explícitamente, no depender del default del constructor"
+    )

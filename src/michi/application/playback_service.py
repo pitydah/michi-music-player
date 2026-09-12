@@ -160,6 +160,11 @@ class PlaybackService:
             output_tx if output_tx is not None else SharedOutputTransaction()
         )
         self._output_token: str | None = None
+        # PRE-050 lifecycle: aceptación temprana del backend para USER_PLAY
+        # (durante load/play) latched hasta que play() retorne con éxito.
+        # NO es una autoridad de media: _pending_path/epoch siguen mandando.
+        self._user_play_acceptance_latched: Path | None = None
+        self._user_play_play_phase_complete: bool = False
         self._state = PlaybackState()
         self._subscribers: list[Callable[[], None]] = []
         self._eom_subscribers: list[Callable[[], None]] = []
@@ -311,8 +316,13 @@ class PlaybackService:
            committed logical track through the canonical path.
         """
         # §0H.2 PHASE 0 — OUTPUT TRANSACTION: prepare ANTES de tocar el
-        # backend. Un fallo aquí no llama load()/play() ni commitea nada.
-        self._output_token = self._output_tx.prepare_for_media(file_path)
+        # backend. Si el prepare falla, el candidate anterior queda
+        # INTACTO (T10): sólo tras un prepare exitoso B pasa a ser dueño
+        # del output intent y el token viejo se termina como superseded.
+        new_token = self._output_tx.prepare_for_media(file_path)
+        self._abort_output_token("superseded")
+        self._output_token = new_token
+        self._reset_user_play_acceptance_latch()
         previous_intent = self._intent
         previous_accepted = self._accepted
         self._request_epoch += 1
@@ -370,6 +380,7 @@ class PlaybackService:
         # identidad lógica A y dejar el candidato B terminalizado; un
         # play() posterior recarga A por el camino canónico. Un
         # media_accepted(B) tardío no puede committear B (pending limpio).
+        self._user_play_play_phase_complete = False
         try:
             self._audio.play()
         except Exception:
@@ -382,9 +393,54 @@ class PlaybackService:
             self._state.status = PlaybackStatus.STOPPED
             self._notify()
             raise
+        # Sólo DESPUÉS de que play() retorne correctamente la fase está
+        # completa; una aceptación latched se finaliza aquí (nunca dentro
+        # de la ejecución parcial de play()).
+        self._user_play_play_phase_complete = True
+        latched = self._user_play_acceptance_latched
+        if latched is not None:
+            self._finalize_media_acceptance(latched)
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
         self._notify()
+
+    def _reset_user_play_acceptance_latch(self) -> None:
+        self._user_play_acceptance_latched = None
+        self._user_play_play_phase_complete = False
+
+    def _finalize_media_acceptance(self, file_path: Path) -> None:
+        """Único finalizador de acceptance (§0H.2).
+
+        OUTPUT COMMIT antes del commit de acceptance. El token sólo se
+        limpia DESPUÉS de que commit_media() retorne correctamente.
+        NO usa _clear_pending(): _pending_resume_position_ms debe
+        sobrevivir hasta _apply_prepare_seek().
+        """
+        if self._pending_path is None or file_path != self._pending_path:
+            return
+        token = self._output_token
+        if token is not None:
+            self._output_tx.commit_media(token, file_path)
+            self._output_token = None
+        on_accepted = self._pending_on_accepted
+        purpose = self._pending_purpose
+        self._pending_path = None
+        self._pending_purpose = None
+        self._pending_on_accepted = None
+        self._pending_on_rejected = None
+        self._pending_on_cancelled = None
+        self._reset_user_play_acceptance_latch()
+        self._state.file_path = file_path
+        self._state.error_message = None
+        self._accepted = True
+        self._notify()
+        if on_accepted is not None:
+            on_accepted(file_path)
+        self._apply_prepare_seek()
+        if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
+            self._complete_engine_switch_rehydration(
+                MediaRequestTerminalStatus.ACCEPTED, file_path
+            )
 
     def _abort_output_token(self, reason: str) -> None:
         """§0H.2: abort best-effort del output transaction pendiente.
@@ -402,6 +458,7 @@ class PlaybackService:
 
     def _clear_pending(self) -> None:
         """Terminaliza el candidato pendiente sin invocar callbacks."""
+        self._reset_user_play_acceptance_latch()
         self._pending_path = None
         self._pending_purpose = None
         self._pending_on_accepted = None
@@ -492,6 +549,7 @@ class PlaybackService:
                     "Audio engine switched, but the current track could not "
                     f"be prepared: {exc}"
                 )
+                self._abort_output_token("engine_switch_load_failed")
                 self._notify()
                 self._complete_engine_switch_rehydration(
                     MediaRequestTerminalStatus.REJECTED,
@@ -508,6 +566,7 @@ class PlaybackService:
             self._pending_on_rejected = None
             self._pending_on_cancelled = None
             self._pending_resume_position_ms = None
+            self._abort_output_token("startup_restore_load_failed")
             self._state.status = PlaybackStatus.STOPPED
             self._notify()
             raise
@@ -525,6 +584,7 @@ class PlaybackService:
             self._pending_on_cancelled = None
             self._pending_resume_position_ms = None
             self._resume_prepared_pending = False
+            self._abort_output_token("load_failed")
             # M11.3C-R6.1: misma disposición que load_and_play — un fallo
             # destructivo NO restaura aceptación previa (nunca autoplay,
             # nunca latche de resume armado).
@@ -569,30 +629,17 @@ class PlaybackService:
     def _on_media_accepted(self, file_path: Path) -> None:
         if self._pending_path is None or file_path != self._pending_path:
             return
-        # §0H.2 paso 5: el backend aceptó la media -> commit del output
-        # transaction ANTES del commit de acceptance del PlaybackService.
-        token = self._output_token
-        self._output_token = None
-        if token is not None:
-            self._output_tx.commit_media(token, file_path)
-        on_accepted = self._pending_on_accepted
-        purpose = self._pending_purpose
-        self._pending_path = None
-        self._pending_purpose = None
-        self._pending_on_accepted = None
-        self._pending_on_rejected = None
-        self._pending_on_cancelled = None
-        self._state.file_path = file_path
-        self._state.error_message = None
-        self._accepted = True
-        self._notify()
-        if on_accepted is not None:
-            on_accepted(file_path)
-        self._apply_prepare_seek()
-        if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
-            self._complete_engine_switch_rehydration(
-                MediaRequestTerminalStatus.ACCEPTED, file_path
-            )
+        # PRE-050: una aceptación temprana de USER_PLAY (dentro de load/play)
+        # es evidencia anticipada del backend: queda latched hasta que
+        # play() retorne con éxito. STARTUP_RESTORE/ENGINE_SWITCH no usan
+        # play(): finalizan directamente.
+        if (
+            self._pending_purpose is MediaRequestPurpose.USER_PLAY
+            and not self._user_play_play_phase_complete
+        ):
+            self._user_play_acceptance_latched = file_path
+            return
+        self._finalize_media_acceptance(file_path)
 
     def engine_switch_readiness(self) -> EngineSwitchReadiness:
         """Return the typed authority decision for a new explicit switch."""
@@ -723,6 +770,7 @@ class PlaybackService:
             ):
                 return
             self._request_epoch += 1
+            self._abort_output_token("engine_switch_timeout")
             self._clear_pending()
             self._accepted = False
             self._intent = False
@@ -763,6 +811,7 @@ class PlaybackService:
         ):
             return
         self._request_epoch += 1
+        self._abort_output_token("engine_switch_cancelled")
         self._clear_pending()
         self._accepted = False
         self._intent = False

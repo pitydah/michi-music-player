@@ -59,6 +59,7 @@ from michi.application.playlist_playback_coordinator import (
     PlaylistPlaybackCoordinator,
 )
 from michi.application.playlist_service import PlaylistService
+from michi.application.ports import SharedOutputTransaction
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.application.source_scan_coordinator import SourceScanCoordinator
@@ -356,7 +357,10 @@ def _build_services(
 
     # PlaybackService is needed by convergence (volume/mute restore) — the
     # graph wiring order is: services → convergence → startup activation.
-    playback = PlaybackService(router)
+    playback = PlaybackService(
+        router,
+        output_tx=SharedOutputTransaction(),
+    )
     convergence = AudioEngineConvergenceCoordinator(
         engine_service=engine_service,
         registry=registry,
