@@ -140,13 +140,27 @@ class GStreamerBindings:
                 "DIRECT_ALSASINK_CREATE_FAILED", f"{recipe.sink_factory} no disponible"
             )
         alsa.set_property("device", recipe.device)
-        sink_bin.add(capsfilter)
-        sink_bin.add(alsa)
+        if not sink_bin.add(capsfilter):
+            raise DirectSinkBuildError(
+                "DIRECT_SINK_ADD_FAILED",
+                "capsfilter could not be added to strict sink bin",
+            )
+        if not sink_bin.add(alsa):
+            raise DirectSinkBuildError(
+                "DIRECT_SINK_ADD_FAILED",
+                "alsasink could not be added to strict sink bin",
+            )
         if not capsfilter.link(alsa):
             raise DirectSinkBuildError(
                 "DIRECT_SINK_LINK_FAILED", "capsfilter -> alsasink link falló"
             )
-        ghost = gst.GhostPad.new("sink", capsfilter.get_static_pad("sink"))
+        sink_pad = capsfilter.get_static_pad("sink")
+        if sink_pad is None:
+            raise DirectSinkBuildError(
+                "DIRECT_GHOST_PAD_FAILED",
+                "capsfilter static sink pad unavailable",
+            )
+        ghost = gst.GhostPad.new("sink", sink_pad)
         if ghost is None or not sink_bin.add_pad(ghost):
             raise DirectSinkBuildError(
                 "DIRECT_GHOST_PAD_FAILED", "ghost pad del strict sink falló"
@@ -566,6 +580,13 @@ class GStreamerAudioPort(AudioPort):
         # no-op return.
         if self._closed:
             raise AudioTransportUnavailableError("GStreamer load on closed transport")
+        # DAC-V35-050B seal: la recipe staged pertenece EXACTAMENTE a este
+        # load attempt. Se reclama one-shot ANTES de cualquier teardown o
+        # callback público: un load reentrante posterior sin stage propio
+        # ve Shared; una recipe cuyo attempt falla muere con él y NUNCA
+        # se reaplica al track siguiente.
+        strict_recipe = self._pending_strict_sink_recipe
+        self._pending_strict_sink_recipe = None
         self._bindings.ensure_loaded()
         if not self._bindings.playbin3_available():
             raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
@@ -621,9 +642,7 @@ class GStreamerAudioPort(AudioPort):
             self._bindings.set_volume(pipeline, self._volume)
             self._bindings.set_muted(pipeline, self._muted)
             # DAC-V35-050B §17: strict Direct sink ANTES de URI/preroll.
-            # La receta se consume SIEMPRE (éxito o fallo del ARM).
-            strict_recipe = self._pending_strict_sink_recipe
-            self._pending_strict_sink_recipe = None
+            # `strict_recipe` es propiedad LOCAL reclamada al entry.
             if strict_recipe is not None:
                 strict_sink = self._bindings.build_strict_audio_sink(strict_recipe)
                 self._bindings.set_audio_sink(pipeline, strict_sink)

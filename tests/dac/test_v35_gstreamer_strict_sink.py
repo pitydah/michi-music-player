@@ -50,6 +50,8 @@ class _FakeElement:
         self.props[key] = value
 
     def get_static_pad(self, name):
+        if self._outer.flags.get("static_pad_missing"):
+            return None
         return _FakePad(name)
 
     def link(self, other) -> bool:
@@ -75,8 +77,9 @@ class _FakeBin(_FakeElement):
         self.children: list = []
         self.pads: list = []
 
-    def add(self, element) -> None:
+    def add(self, element) -> bool:
         self.children.append(element)
+        return self._outer.flags.get("add_fail") != element.factory_name
 
     def add_pad(self, pad) -> bool:
         self.pads.append(pad)
@@ -290,3 +293,36 @@ def test_b11_install_success_verifies_identity() -> None:
     pipeline = _FakePipelineForInstall()
     bindings.set_audio_sink(pipeline, sink)
     assert pipeline.get_property("audio-sink") is sink
+
+
+# ── B12..B14: fail-closed de add() y static pad (seal 050B) ──────────
+
+
+def test_b12_capsfilter_add_failure_fails_closed() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import DirectSinkBuildError
+
+    fake = FakeGstModule(add_fail="capsfilter")
+    bindings = _bindings_with(fake)
+    with pytest.raises(DirectSinkBuildError) as exc_info:
+        bindings.build_strict_audio_sink(_recipe())
+    assert exc_info.value.code == "DIRECT_SINK_ADD_FAILED"
+
+
+def test_b13_alsasink_add_failure_fails_closed() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import DirectSinkBuildError
+
+    fake = FakeGstModule(add_fail="alsasink")
+    bindings = _bindings_with(fake)
+    with pytest.raises(DirectSinkBuildError) as exc_info:
+        bindings.build_strict_audio_sink(_recipe())
+    assert exc_info.value.code == "DIRECT_SINK_ADD_FAILED"
+
+
+def test_b14_missing_static_sink_pad_fails_closed() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import DirectSinkBuildError
+
+    fake = FakeGstModule(static_pad_missing=True)
+    bindings = _bindings_with(fake)
+    with pytest.raises(DirectSinkBuildError) as exc_info:
+        bindings.build_strict_audio_sink(_recipe())
+    assert exc_info.value.code == "DIRECT_GHOST_PAD_FAILED"

@@ -1271,7 +1271,10 @@ class TestF42AdapterContract:
         # stage_strict_sink seam). Shared M11.3 semantics untouched:
         # zero changes to GLib pump, bus, generation, ASYNC_DONE or
         # acceptance paths. Hash re-sealed after audit.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "3a881b9a84d1bede",
+        # DAC-V35-050B seal (2026-09-12): one-shot recipe claim at load
+        # entry + Bin.add/static-pad fail-closed. Shared M11.3 semantics
+        # untouched. Hash re-sealed after audit.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "4216ae987efc1606",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
         "src/michi/application/audio_transport_router.py": "937660b9c864e572",  # noqa: E501

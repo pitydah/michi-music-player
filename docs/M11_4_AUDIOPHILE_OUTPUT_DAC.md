@@ -30,8 +30,12 @@ V3.5 spec governs implementation and acceptance.
 
 **Explicitly NOT claimed**: no physical DAC qualification, no
 "bit-perfect"/Michi-Verified claim, no Signal Truth runtime verdict, no
-M11.5 promotion. `DAC-V35-050`+ are not started; physical qualification
-(`DAC-V35-110`) remains pending.
+M11.5 promotion. `DAC-V35-050` is IN PROGRESS:
+`050A` (strict Direct recipe + runtime validator) and `050B` (strict
+GStreamer sink build + pre-preroll playbin3 injection) are
+CLOSED-AUTOMATED; `050C` (Direct runtime validation / executor
+integration) is NOT STARTED. Physical qualification (`DAC-V35-110`)
+remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —
 **not** Audio Lab.

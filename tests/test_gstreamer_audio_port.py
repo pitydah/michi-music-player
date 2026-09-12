@@ -4541,3 +4541,117 @@ class TestStrictSinkStaging:
 
         assert port._pump_start_count == 1, "UN solo pump GLib (M11.3)"
         port.close()
+
+
+# ---------------------------------------------------------------------------
+# DAC-V35-050B seal — ownership one-shot de la recipe (R1..R4)
+# ---------------------------------------------------------------------------
+
+
+def _play_state(port, bindings):
+    """Lleva el port a PLAYING observado (para que STOPPED sea un cambio).
+
+    Primero la aceptación (ASYNC_DONE) — sin ella PLAYING se difiere por
+    diseño M11.3 — y luego el STATE_CHANGED PLAYING.
+    """
+    pipeline = bindings.pipelines[-1]
+    msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+    _deliver(port, msg, gen)
+    msg, gen = msg_state(port, pipeline, _FakeState.PLAYING)
+    _deliver(port, msg, gen)
+
+
+class TestStrictRecipeOwnership:
+    def test_r1_reentrant_load_does_not_steal_recipe(self, qapp):
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        port.load(Path("/m/a.flac"))
+        _play_state(port, bindings)
+
+        port.stage_strict_sink(_strict_recipe())
+        fired: list[bool] = []
+
+        def _on_state(status):
+            if status is PlaybackStatus.STOPPED and not fired:
+                fired.append(True)
+                port.load(Path("/m/c.flac"))  # reentrante, SIN stage
+
+        port.subscribe_playback_state_changed(_on_state)
+        port.load(Path("/m/b.flac"))
+
+        assert fired, "el callback STOPPED debía reentrar"
+        assert bindings.built_recipes == [], (
+            "recipe_B no puede construir para C ni para sí misma tras superseder"
+        )
+        assert bindings.pipelines[-1].audio_sink is None, "C es Shared"
+        assert port._pending_strict_sink_recipe is None
+        port.close()
+
+    def test_r2_reentrant_load_may_own_its_own_recipe(self, qapp):
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        port.load(Path("/m/a.flac"))
+        _play_state(port, bindings)
+
+        recipe_b = _strict_recipe(rate=44100, fmt="S16_LE")
+        recipe_c = _strict_recipe(rate=96000, fmt="S32_LE")
+        fired: list[bool] = []
+
+        def _on_state(status):
+            if status is PlaybackStatus.STOPPED and not fired:
+                fired.append(True)
+                port.stage_strict_sink(recipe_c)
+                port.load(Path("/m/c.flac"))
+
+        port.subscribe_playback_state_changed(_on_state)
+        port.stage_strict_sink(recipe_b)
+        port.load(Path("/m/b.flac"))
+
+        assert fired
+        assert bindings.built_recipes == [recipe_c], (
+            "C recibe exclusivamente recipe_C; B (superseded) no construye"
+        )
+        assert bindings.built_recipes[0].device == recipe_c.device
+        assert bindings.built_recipes[0].rate_hz == 96000
+        port.close()
+
+    def test_r3_pre_arm_teardown_failure_does_not_leak(self, qapp):
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        port.load(Path("/m/a.flac"))  # crea pipeline A
+
+        port.stage_strict_sink(_strict_recipe())
+        bindings.failed_states.add(_FakeState.NULL)  # teardown A falla
+        with pytest.raises(RuntimeError):
+            port.load(Path("/m/b.flac"))
+
+        bindings.failed_states.discard(_FakeState.NULL)
+        port.load(Path("/m/d.flac"))  # sin stage
+
+        assert bindings.built_recipes == [], "recipe_B no reaparece"
+        assert bindings.pipelines[-1].audio_sink is None
+        assert port._pending_strict_sink_recipe is None
+        port.close()
+
+    def test_r4_pre_builder_failure_does_not_leak(self, qapp):
+        from michi.application.ports import AudioLoadError
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        port.load(Path("/m/a.flac"))
+
+        port.stage_strict_sink(_strict_recipe())
+        bindings.arm_exception_stage = "make_playbin3"
+        bindings.arm_exception = RuntimeError("make_playbin3 falló")
+        with pytest.raises(AudioLoadError):
+            port.load(Path("/m/b.flac"))
+
+        bindings.arm_exception_stage = None
+        bindings.arm_exception = None
+        port.load(Path("/m/d.flac"))  # sin stage
+
+        assert bindings.built_recipes == [], (
+            "el fallo pre-builder no filtra recipe_B al track siguiente"
+        )
+        assert bindings.pipelines[-1].audio_sink is None
+        port.close()
