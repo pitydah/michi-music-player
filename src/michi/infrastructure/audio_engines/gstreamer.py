@@ -13,6 +13,7 @@ thread-affinity as QtMultimediaBackend.
 NO GStreamer types leave this module.
 """
 
+import contextlib
 import logging
 import threading
 from collections.abc import Callable
@@ -176,6 +177,59 @@ class GStreamerBindings:
                 "DIRECT_SINK_INSTALL_FAILED",
                 "playbin3 no retuvo el custom audio-sink instalado",
             )
+
+    def snapshot_direct_runtime(
+        self, pipeline, recipe, *, execution_generation, port_generation
+    ):
+        """Snapshot normalizado del runtime real (strings/ints/tuples).
+
+        DAC-V35-050C2: lee el sink realmente instalado, el device efectivo
+        y los caps negociados del sink-pad, más las factories del grafo.
+        Nunca expone objetos Gst.
+        """
+        from michi.infrastructure.audio_output.runtime_inspector import (
+            DirectRuntimeSnapshot,
+        )
+
+        sink_bin = pipeline.get_property("audio-sink")
+        alsa = sink_bin.get_by_name("michi_direct_alsa") if sink_bin else None
+        sink_factory = "alsasink" if alsa is not None else ""
+        device = ""
+        fmt = rate = channels = None
+        if alsa is not None:
+            device = alsa.get_property("device") or ""
+            pad = alsa.get_static_pad("sink")
+            caps = pad.get_current_caps() if pad is not None else None
+            if caps is not None and caps.get_size() > 0:
+                struct = caps.get_structure(0)
+                fmt = struct.get_string("format")
+                ok_rate, rate_val = struct.get_int("rate")
+                ok_ch, ch_val = struct.get_int("channels")
+                rate = int(rate_val) if ok_rate else None
+                channels = int(ch_val) if ok_ch else None
+        factories: list[str] = []
+        try:
+            iterator = pipeline.iterate_recurse()
+            while True:
+                ok, element = iterator.next()
+                if ok != self._gst.IteratorResult.OK:
+                    break
+                factory = element.get_factory()
+                if factory is not None:
+                    factories.append(factory.get_name())
+        except Exception:  # pragma: no cover - iterador del runtime real
+            factories = []
+        return DirectRuntimeSnapshot(
+            execution_generation=execution_generation,
+            port_generation=port_generation,
+            plan_id=recipe.plan_id,
+            sink_factory=sink_factory,
+            sink_device=device,
+            negotiated_format=fmt,
+            negotiated_rate_hz=rate,
+            negotiated_channels=channels,
+            graph_factories=tuple(factories),
+        )
 
     def set_state(self, pipeline, state) -> bool:
         self.ensure_loaded()
@@ -385,13 +439,23 @@ class GStreamerAudioPort(AudioPort):
     policy. close() terminates everything (best-effort, first-error-wins).
     """
 
-    def __init__(self, bindings: GStreamerBindings | None = None) -> None:
+    def __init__(
+        self,
+        bindings: GStreamerBindings | None = None,
+        *,
+        direct_executor: object | None = None,
+    ) -> None:
         super().__init__()
         self._bridge = _EventBridge()
         self._bindings = bindings if bindings is not None else GStreamerBindings()
         # DAC-V35-050B: receta strict Direct para el PRÓXIMO load (consumida
         # una sola vez). None preserva EXACTAMENTE el comportamiento Shared.
         self._pending_strict_sink_recipe = None
+        # DAC-V35-050C2: sidecar opcional + handle Direct del próximo load
+        # y del pipeline vigente (el handle muere con su pipeline).
+        self._direct_executor = direct_executor
+        self._pending_direct_handle = None
+        self._active_direct_handle = None
         self._generation = 0
         self._closed = False
         self._pending_path: Path | None = None
@@ -575,6 +639,14 @@ class GStreamerAudioPort(AudioPort):
         """
         self._pending_strict_sink_recipe = recipe
 
+    def stage_direct_execution(self, handle) -> None:
+        """Stagea el handle de ejecución Direct para el próximo load().
+
+        One-shot, igual que la receta: consumido y limpiado en el entry
+        de load() aunque el attempt falle.
+        """
+        self._pending_direct_handle = handle
+
     def load(self, file_path: Path) -> None:
         # KCR-008: a closed runtime rejects the command — never a silent
         # no-op return.
@@ -587,6 +659,9 @@ class GStreamerAudioPort(AudioPort):
         # se reaplica al track siguiente.
         strict_recipe = self._pending_strict_sink_recipe
         self._pending_strict_sink_recipe = None
+        direct_handle = self._pending_direct_handle
+        self._pending_direct_handle = None
+        self._active_direct_handle = direct_handle
         self._bindings.ensure_loaded()
         if not self._bindings.playbin3_available():
             raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
@@ -1219,6 +1294,33 @@ class GStreamerAudioPort(AudioPort):
             return  # duplicado o ya commiteado (idempotente)
         candidate = self._pending_path
         generation = event.generation
+        # DAC-V35-050C2 §27: ASYNC_DONE != aceptación automática para
+        # Direct: el runtime real se inspecciona ANTES del commit de
+        # aceptación. El port_generation del snapshot ES la generación del
+        # evento (guard M11.3 ya validada por el caller); una validación
+        # fallida rehúsa el candidate con cleanup existente.
+        direct_handle = self._active_direct_handle
+        if self._direct_executor is not None and direct_handle is not None:
+            if generation != self._generation:
+                self._direct_preroll_failed(
+                    candidate,
+                    DirectSinkBuildError(
+                        "DIRECT_STALE_EXECUTION", "ASYNC_DONE de generación vieja"
+                    ),
+                )
+                return
+            try:
+                recipe = self._direct_executor.recipe_for_load(direct_handle)
+                snapshot = self._bindings.snapshot_direct_runtime(
+                    self._pipeline,
+                    recipe,
+                    execution_generation=direct_handle.generation,
+                    port_generation=generation,
+                )
+                self._direct_executor.verify_preroll(direct_handle, snapshot)
+            except Exception as exc:  # noqa: BLE001 — validación Direct
+                self._direct_preroll_failed(candidate, exc)
+                return
         self._current_path = candidate
         self._pending_path = None
         # estado interno ANTES del callback público (reentrancy-safe)
@@ -1239,6 +1341,24 @@ class GStreamerAudioPort(AudioPort):
             self._apply_deferred_eos(generation)
         if self._duration_refresh_generation == generation:
             self._apply_deferred_duration(generation)
+
+    def _direct_preroll_failed(self, candidate, exc) -> None:
+        """Cleanup failure-atomic del candidate Direct inválido.
+
+        Reutiliza la machinery M11.3: invalida la generación, libera el
+        pipeline pendiente y SÓLO DESPUÉS publica la rejection tipada.
+        El handle Direct muere con su pipeline.
+        """
+        reason = getattr(exc, "code", None) or "DIRECT_PREROLL_INVALID"
+        self._invalidate_generation()
+        self._pending_path = None
+        self._current_path = None
+        self._active_direct_handle = None
+        if self._direct_executor is not None:
+            self._direct_executor.release(reason)
+        with contextlib.suppress(Exception):
+            self._try_stop_pipeline()
+        self._deliver_rej(candidate, f"{reason}: {exc}")
 
     def _apply_deferred_playing(self, generation) -> None:
         """OWNER (directo, sin re-enqueue): PLAYING diferido tras la

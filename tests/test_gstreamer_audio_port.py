@@ -198,6 +198,8 @@ class FakeBindings:
         self.built_recipes: list = []
         self.installed_sinks: list = []
         self.fail_strict_build = False
+        # DAC-V35-050C2: snapshot overrides para mismatches
+        self.direct_snapshot_overrides: dict | None = None
 
     def _raise_if_arm_stage(self, stage):
         if self.arm_exception_stage == stage:
@@ -241,6 +243,26 @@ class FakeBindings:
         self.events.append("install_audio_sink")
         pipeline.set_property("audio-sink", sink)
         self.installed_sinks.append(sink)
+
+    def snapshot_direct_runtime(
+        self, pipeline, recipe, *, execution_generation, port_generation
+    ):
+        from michi.infrastructure.audio_output.runtime_inspector import (
+            DirectRuntimeSnapshot,
+        )
+
+        overrides = self.direct_snapshot_overrides or {}
+        return DirectRuntimeSnapshot(
+            execution_generation=execution_generation,
+            port_generation=port_generation,
+            plan_id=recipe.plan_id,
+            sink_factory=overrides.get("sink_factory", "alsasink"),
+            sink_device=overrides.get("sink_device", recipe.device),
+            negotiated_format=overrides.get("format", recipe.gst_format),
+            negotiated_rate_hz=overrides.get("rate", recipe.rate_hz),
+            negotiated_channels=overrides.get("channels", recipe.channels),
+            graph_factories=overrides.get("graph", ("capsfilter", "alsasink")),
+        )
 
     def set_state(self, pipeline, state):
         if state == _FakeState.NULL:
@@ -4654,4 +4676,140 @@ class TestStrictRecipeOwnership:
             "el fallo pre-builder no filtra recipe_B al track siguiente"
         )
         assert bindings.pipelines[-1].audio_sink is None
+        port.close()
+
+
+# ---------------------------------------------------------------------------
+# DAC-V35-050C2 — Direct runtime validation en ASYNC_DONE (G3..G7)
+# ---------------------------------------------------------------------------
+
+
+def _direct_c2_setup():
+    from michi.infrastructure.audio_output.direct_output_executor import (
+        GStreamerDirectOutputExecutor,
+    )
+
+    bindings = FakeBindings()
+    executor = GStreamerDirectOutputExecutor()
+    port = GStreamerAudioPort(bindings, direct_executor=executor)
+    return bindings, executor, port
+
+
+def _stage_direct(executor, port, rate: int = 96000, fmt: str = "S32_LE"):
+    from tests.dac.test_v35_direct_output_executor import _plan
+
+    handle = executor.stage(_plan())
+    port.stage_direct_execution(handle)
+    port.stage_strict_sink(executor.recipe_for_load(handle))
+    return handle
+
+
+class TestDirectRuntimeValidation:
+    def test_g3_async_done_inspects_before_acceptance(self, qapp):
+        bindings, executor, port = _direct_c2_setup()
+        accepted: list = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        handle = _stage_direct(executor, port)
+        path = Path("/m/a.flac")
+
+        port.load(path)
+        assert accepted == [], "el sink se instala antes del preroll"
+
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+
+        assert accepted == [path]
+        assert executor.is_preroll_verified(handle) is True
+        port.close()
+
+    def test_g4_runtime_mismatch_rejects_without_acceptance(self, qapp):
+        bindings, executor, port = _direct_c2_setup()
+        accepted: list = []
+        rejected: list = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_media_rejected(lambda p, m: rejected.append((p, m)))
+        _stage_direct(executor, port)
+        path = Path("/m/a.flac")
+        port.load(path)
+        bindings.direct_snapshot_overrides = {"rate": 48000}
+
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+
+        assert accepted == []
+        assert len(rejected) == 1
+        assert "DIRECT_RATE_MISMATCH" in rejected[0][1]
+        port.close()
+
+    def test_g5_stale_async_done_cannot_verify(self, qapp):
+        bindings, executor, port = _direct_c2_setup()
+        accepted: list = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        _stage_direct(executor, port)
+        port.load(Path("/m/a.flac"))
+        stale_pipeline = bindings.pipelines[-1]
+        stale_gen = port._generation
+
+        _stage_direct(executor, port)
+        port.load(Path("/m/b.flac"))
+
+        _deliver(
+            port,
+            FakeMessage(_FakeMsgType.ASYNC_DONE, stale_pipeline),
+            stale_gen,
+        )
+        assert accepted == [], "un ASYNC_DONE stale no acepta ni verifica"
+        port.close()
+
+    def test_g6_failed_validation_candidate_cannot_later_accept(self, qapp):
+        bindings, executor, port = _direct_c2_setup()
+        accepted: list = []
+        rejected: list = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        port.subscribe_media_rejected(lambda p, m: rejected.append((p, m)))
+        _stage_direct(executor, port)
+        path = Path("/m/a.flac")
+        port.load(path)
+        bindings.direct_snapshot_overrides = {"format": "S16LE"}
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+        assert accepted == []
+        assert len(rejected) == 1
+
+        _deliver(port, msg, gen)  # re-entrega
+        assert accepted == []
+        assert len(rejected) == 1, "el candidate fallido no puede aceptar después"
+        port.close()
+
+    def test_g7_new_load_after_failed_validation_works(self, qapp):
+        bindings, executor, port = _direct_c2_setup()
+        accepted: list = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        _stage_direct(executor, port)
+        port.load(Path("/m/a.flac"))
+        bindings.direct_snapshot_overrides = {"format": "S16LE"}
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+        assert accepted == []
+
+        bindings.direct_snapshot_overrides = None
+        _stage_direct(executor, port)
+        path_b = Path("/m/b.flac")
+        port.load(path_b)
+        msg_b, gen_b = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg_b, gen_b)
+
+        assert accepted == [path_b]
+        port.close()
+
+    def test_g8_shared_load_with_executor_never_inspects(self, qapp):
+        """Sin stage Direct, el executor presente no se usa."""
+        bindings, executor, port = _direct_c2_setup()
+        accepted: list = []
+        port.subscribe_media_accepted(lambda p: accepted.append(p))
+        path = Path("/m/a.flac")
+        port.load(path)
+        msg, gen = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
+        _deliver(port, msg, gen)
+        assert accepted == [path]
         port.close()

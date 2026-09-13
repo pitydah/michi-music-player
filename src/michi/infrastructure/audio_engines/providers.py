@@ -160,9 +160,12 @@ class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort
     runtime-dependent (GI/GStreamer installed). gi is never imported at
     module import time — the base Michi wheel stays usable without it."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, direct_executor: object | None = None) -> None:
         _RuntimeFailureRelayMixin.__init__(self)
         self._port: AudioPort | None = None
+        # DAC-V35-050C2: el MISMO sidecar para el único port owned hasta
+        # close(). None preserva el comportamiento Shared.
+        self._direct_executor = direct_executor
 
     @property
     def engine_id(self) -> AudioEngineId:
@@ -212,7 +215,7 @@ class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort
             GStreamerAudioPort,
         )
 
-        port = GStreamerAudioPort()
+        port = GStreamerAudioPort(direct_executor=self._direct_executor)
         port.activate()  # health gate: raises truthfully if the runtime
         # cannot come up (provider.open() failure → coordinator FAILED)
         self._port = port

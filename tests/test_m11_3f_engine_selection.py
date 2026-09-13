@@ -1274,9 +1274,16 @@ class TestF42AdapterContract:
         # DAC-V35-050B seal (2026-09-12): one-shot recipe claim at load
         # entry + Bin.add/static-pad fail-closed. Shared M11.3 semantics
         # untouched. Hash re-sealed after audit.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "4216ae987efc1606",
+        # DAC-V35-050C2 (2026-09-12): Direct runtime snapshot + ASYNC_DONE
+        # validation hook + stage_direct_execution seam. Shared M11.3
+        # semantics untouched (sin stage: flujo histórico). Re-sealed
+        # after audit.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "760b6375a8032091",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
-        "src/michi/infrastructure/audio_engines/providers.py": "13b02984a05679eb",
+                # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
+        # (mismo sidecar para el único port owned; None = Shared).
+        # Re-sealed after audit.
+        "src/michi/infrastructure/audio_engines/providers.py": "b3e470fb8f979928",
         "src/michi/application/audio_transport_router.py": "937660b9c864e572",  # noqa: E501
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).
