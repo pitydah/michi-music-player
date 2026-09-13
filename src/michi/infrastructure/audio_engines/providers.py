@@ -160,16 +160,32 @@ class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort
     runtime-dependent (GI/GStreamer installed). gi is never imported at
     module import time — the base Michi wheel stays usable without it."""
 
-    def __init__(self, *, direct_executor: object | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        direct_executor: object | None = None,
+        bindings: object | None = None,
+    ) -> None:
         _RuntimeFailureRelayMixin.__init__(self)
         self._port: AudioPort | None = None
         # DAC-V35-050C2: el MISMO sidecar para el único port owned hasta
         # close(). None preserva el comportamiento Shared.
         self._direct_executor = direct_executor
+        self._bindings = bindings
 
     @property
     def engine_id(self) -> AudioEngineId:
         return AudioEngineId.GSTREAMER
+
+    @property
+    def direct_executor(self):
+        """Composition evidence: the one executor injected into owned ports."""
+        return self._direct_executor
+
+    @property
+    def current_port(self):
+        """Currently owned port; never opens a hidden second runtime."""
+        return self._port
 
     def probe(self) -> AudioEngineDescriptor:
         """Truthful availability (M11.3C-R1): GI + Gst 1.0 + playbin3
@@ -181,7 +197,7 @@ class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort
                 GStreamerBindings,
             )
 
-            bindings = GStreamerBindings()
+            bindings = self._bindings or GStreamerBindings()
             bindings.ensure_loaded()
             if not bindings.playbin3_available():
                 reason = "playbin3 no disponible en el runtime GStreamer"
@@ -215,7 +231,7 @@ class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort
             GStreamerAudioPort,
         )
 
-        port = GStreamerAudioPort(direct_executor=self._direct_executor)
+        port = GStreamerAudioPort(self._bindings, direct_executor=self._direct_executor)
         port.activate()  # health gate: raises truthfully if the runtime
         # cannot come up (provider.open() failure → coordinator FAILED)
         self._port = port

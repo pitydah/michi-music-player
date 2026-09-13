@@ -353,8 +353,15 @@ class PlaybackService:
                 # state and propagate the lifecycle exception.
                 raise
             self._clear_pending()
-            self._abort_output_token("load_failed")
-            if isinstance(exc, AudioLoadError) and not exc.previous_source_preserved:
+            previous_source_preserved = not isinstance(exc, AudioLoadError) or (
+                exc.previous_source_preserved
+            )
+            abort_reason = "load_failed"
+            classify_failure = getattr(self._output_tx, "classify_load_failure", None)
+            if classify_failure is not None:
+                abort_reason = classify_failure(previous_source_preserved)
+            self._abort_output_token(abort_reason)
+            if not previous_source_preserved:
                 self._intent = False
                 self._accepted = False
                 self._state.status = PlaybackStatus.STOPPED
@@ -420,7 +427,31 @@ class PlaybackService:
             return
         token = self._output_token
         if token is not None:
-            self._output_tx.commit_media(token, file_path)
+            try:
+                self._output_tx.commit_media(token, file_path)
+            except Exception as exc:  # noqa: BLE001 - output commit boundary
+                # Backend acceptance is not sufficient: output commit is the
+                # final fail-closed gate. Retire the candidate and stop the
+                # accepted transport before publishing a typed rejection.
+                self._output_token = None
+                try:
+                    self._output_tx.abort_media(token, "output_commit_failed")
+                except Exception:  # pragma: no cover - secondary cleanup
+                    logger.debug("output commit abort failed", exc_info=True)
+                try:
+                    self._audio.stop()
+                except Exception:  # pragma: no cover - primary stays output
+                    logger.debug("output commit safety stop failed", exc_info=True)
+                on_rejected = self._pending_on_rejected
+                self._clear_pending()
+                self._intent = False
+                self._accepted = False
+                self._state.status = PlaybackStatus.STOPPED
+                self._state.error_message = str(exc)
+                self._notify()
+                if on_rejected is not None:
+                    on_rejected(file_path, str(exc))
+                return
             self._output_token = None
         on_accepted = self._pending_on_accepted
         purpose = self._pending_purpose
@@ -910,6 +941,17 @@ class PlaybackService:
                 or self._state.error_message != message
             )
         ):
+            if getattr(self._output_tx, "requires_release_on_media_loss", False):
+                # A Direct backend error cannot leave output authority active.
+                # Preserve the canonical safety order: transport stop first,
+                # then release output. Shared remains unchanged.
+                try:
+                    self._audio.stop()
+                except Exception as exc:  # pragma: no cover - backend-specific
+                    self._state.error_message = f"{message}; safety stop failed: {exc}"
+                    self._notify()
+                    return
+                self._output_tx.release_active("media_lost")
             self._intent = False
             self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
@@ -1064,6 +1106,11 @@ class PlaybackService:
         # libera el output activo (release_active, nunca abort).
         self._output_token = None
         self._output_tx.release_active("stop")
+        if getattr(self._output_tx, "release_invalidates_media", False):
+            # Shared retains the M11.3 replay semantics. Direct release
+            # invalidates backend acceptance so the next play must prepare a
+            # fresh plan/handle/recipe transaction.
+            self._accepted = False
         # SUCCESS COMMIT — backend accepted the safety command
         self._pending_path = None
         self._pending_purpose = None

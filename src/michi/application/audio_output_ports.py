@@ -14,8 +14,13 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_evidence import CapabilityEvidence
-from michi.domain.audio_output import AudioOutputProfile, AudioOutputSelection
+from michi.domain.audio_output import (
+    AudioOutputProfile,
+    AudioOutputSelection,
+    OutputPlan,
+)
 
 
 @runtime_checkable
@@ -38,3 +43,19 @@ class QualificationCachePort(Protocol):
     def replace_qualification_cache(
         self, stable_device_id: str, evidence: tuple[CapabilityEvidence, ...]
     ) -> None: ...
+
+
+@runtime_checkable
+class AudioOutputExecutorPort(Protocol):
+    """Executes one immutable output plan without performing policy lookups."""
+
+    @property
+    def engine_id(self) -> AudioEngineId: ...
+
+    def prepare(self, plan: OutputPlan) -> str: ...
+
+    def commit(self, receipt: str) -> None: ...
+
+    def abort(self, receipt: str, reason: str) -> None: ...
+
+    def release(self, reason: str) -> None: ...

@@ -18906,7 +18906,7 @@ src/michi/infrastructure/audio_devices/
     proc_pcm_witness.py
     alsa_control_adapter.py       # created only in DAC-V35-120 or earlier as dormant interface + fake; no unqualified product use
 
-src/michi/infrastructure/gstreamer_dac/
+src/michi/infrastructure/audio_output/
     __init__.py
     strict_sink.py
     direct_output_executor.py
@@ -19257,6 +19257,15 @@ If playbin3 or playsink inserts an unexpected resampler/converter that changes r
 
 The executor receives an already-built `OutputPlan`; it does not select devices, policies, formats, or fallbacks.
 
+**Implementation seal (2026-09-13): `CLOSED-AUTOMATED`.** The productive
+composition root owns one executor shared by `OutputSessionService` and the
+GStreamer provider. Automated gates cover atomic plan/handle/recipe staging,
+runtime verification before output commit, Direct/Shared transitions,
+stop/error/engine-loss/switch cleanup, stale identity rejection, and blocked
+automatic fallback for Direct `STOP`. This seal is not physical DAC
+qualification and does not authorize bit-perfect, Michi-Verified, or Signal
+Truth claims.
+
 ---
 
 # 405. `DAC-V35-060` — VOLUME AUTHORITY CLOSED SLICE
@@ -19513,4 +19522,3 @@ first-sample/tail/XRUN/reconnect tests meet declared acceptance criteria
 Hardware volume and DSD/DoP have their own promotion gates and may be pursued during pre-Stable development after the mandatory PCM path is green. Signed remote profile distribution remains POST-STABLE ONLY. None may be smuggled into the mandatory core merely to claim “100%”.
 
 **V3.5 KILLCRITIC verdict:** after this seal, an implementation agent should not need to invent a module name, technology stack, ownership boundary, volume path, persistence schema, composition strategy, UI placement, execution order, or software completion criterion. Remaining uncertainty is intentionally empirical hardware evidence, which no Markdown plan can honestly pre-compute.
-

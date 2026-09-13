@@ -82,6 +82,17 @@ class DacQualificationService:
             return ()
         return self._cache.load_qualification_cache(stable_device_id)
 
+    def cached_evidence_current(
+        self, stable_device_id: str
+    ) -> tuple[CapabilityEvidence, ...]:
+        """Return only cache evidence valid for the current environment."""
+        fingerprint = self._environment_fingerprint()
+        return tuple(
+            item
+            for item in self.cached_evidence(stable_device_id)
+            if item.environment_fingerprint == fingerprint
+        )
+
     def qualify_and_cache(
         self,
         *,

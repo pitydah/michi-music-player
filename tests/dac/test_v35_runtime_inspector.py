@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 
 from michi.infrastructure.audio_output.runtime_inspector import (
+    DIRECT_CONVERTER_PRESENT,
+    DIRECT_GRAPH_INSPECTION_FAILED,
     DirectRuntimeSnapshot,
     validate_runtime,
 )
@@ -163,3 +165,29 @@ def test_r9_audioresample_present() -> None:
             _snapshot(graph_factories=("capsfilter", "audioresample", "alsasink")),
         )
     assert exc_info.value.code == "DIRECT_RESAMPLER_PRESENT"
+
+
+def test_r10_incomplete_graph_inspection_fails_closed() -> None:
+    from michi.infrastructure.audio_output.runtime_inspector import (
+        DirectRuntimeValidationError,
+    )
+
+    with pytest.raises(DirectRuntimeValidationError) as exc_info:
+        validate_runtime(
+            _recipe(),
+            _snapshot(graph_factories=("__inspection_failed__",)),
+        )
+    assert exc_info.value.code == DIRECT_GRAPH_INSPECTION_FAILED
+
+
+def test_r11_audioconvert_present_fails_closed() -> None:
+    from michi.infrastructure.audio_output.runtime_inspector import (
+        DirectRuntimeValidationError,
+    )
+
+    with pytest.raises(DirectRuntimeValidationError) as exc_info:
+        validate_runtime(
+            _recipe(),
+            _snapshot(graph_factories=("capsfilter", "audioconvert", "alsasink")),
+        )
+    assert exc_info.value.code == DIRECT_CONVERTER_PRESENT

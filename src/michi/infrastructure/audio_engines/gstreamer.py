@@ -29,6 +29,9 @@ from michi.application.ports import (
     AudioTransportUnavailableError,  # canonical (ports.py)
 )
 from michi.domain.playback import PlaybackStatus
+from michi.infrastructure.audio_output.direct_output_executor import (
+    DirectLoadPreparation,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -172,7 +175,7 @@ class GStreamerBindings:
         """Instala el sink y verifica la instalación (identidad real)."""
         pipeline.set_property("audio-sink", sink)
         installed = pipeline.get_property("audio-sink")
-        if installed is not sink:
+        if installed != sink:
             raise DirectSinkBuildError(
                 "DIRECT_SINK_INSTALL_FAILED",
                 "playbin3 no retuvo el custom audio-sink instalado",
@@ -218,7 +221,7 @@ class GStreamerBindings:
                 if factory is not None:
                     factories.append(factory.get_name())
         except Exception:  # pragma: no cover - iterador del runtime real
-            factories = []
+            factories = ["__inspection_failed__"]
         return DirectRuntimeSnapshot(
             execution_generation=execution_generation,
             port_generation=port_generation,
@@ -450,11 +453,11 @@ class GStreamerAudioPort(AudioPort):
         self._bindings = bindings if bindings is not None else GStreamerBindings()
         # DAC-V35-050B: receta strict Direct para el PRÓXIMO load (consumida
         # una sola vez). None preserva EXACTAMENTE el comportamiento Shared.
-        self._pending_strict_sink_recipe = None
-        # DAC-V35-050C2: sidecar opcional + handle Direct del próximo load
-        # y del pipeline vigente (el handle muere con su pipeline).
+        # DAC-V35-050D: plan/handle/recipe travel as ONE immutable one-shot
+        # payload. Independent half-staging is intentionally impossible.
+        self._pending_direct_load: DirectLoadPreparation | None = None
+        # DAC-V35-050C2: sidecar opcional + handle del pipeline vigente.
         self._direct_executor = direct_executor
-        self._pending_direct_handle = None
         self._active_direct_handle = None
         self._generation = 0
         self._closed = False
@@ -631,21 +634,28 @@ class GStreamerAudioPort(AudioPort):
     # AudioPort — transport commands (symbolic states only)
     # ------------------------------------------------------------------
 
-    def stage_strict_sink(self, recipe) -> None:
-        """Stagea la receta strict Direct para el próximo load().
-
-        La receta se consume (y se limpia) en ese load, aunque el ARM
-        falle: nunca se reaplica silenciosamente al track siguiente.
-        """
-        self._pending_strict_sink_recipe = recipe
-
-    def stage_direct_execution(self, handle) -> None:
-        """Stagea el handle de ejecución Direct para el próximo load().
-
-        One-shot, igual que la receta: consumido y limpiado en el entry
-        de load() aunque el attempt falle.
-        """
-        self._pending_direct_handle = handle
+    def stage_direct_load(self, preparation, *, executor) -> None:
+        """Atomically stage one coherent Direct execution for the next load."""
+        if self._closed:
+            raise AudioTransportUnavailableError(
+                "cannot stage Direct output on a closed GStreamer transport"
+            )
+        if executor is not self._direct_executor:
+            raise DirectSinkBuildError(
+                "DIRECT_EXECUTOR_IDENTITY_MISMATCH",
+                "producer and GStreamer consumer do not share one executor",
+            )
+        if not isinstance(preparation, DirectLoadPreparation):
+            raise DirectSinkBuildError(
+                "DIRECT_STAGE_INVALID", "expected an atomic DirectLoadPreparation"
+            )
+        expected = executor.recipe_for_load(preparation.handle)
+        if expected != preparation.recipe:
+            raise DirectSinkBuildError(
+                "DIRECT_STAGE_IDENTITY_MISMATCH",
+                "staged recipe does not belong to the staged execution",
+            )
+        self._pending_direct_load = preparation
 
     def load(self, file_path: Path) -> None:
         # KCR-008: a closed runtime rejects the command — never a silent
@@ -657,11 +667,10 @@ class GStreamerAudioPort(AudioPort):
         # callback público: un load reentrante posterior sin stage propio
         # ve Shared; una recipe cuyo attempt falla muere con él y NUNCA
         # se reaplica al track siguiente.
-        strict_recipe = self._pending_strict_sink_recipe
-        self._pending_strict_sink_recipe = None
-        direct_handle = self._pending_direct_handle
-        self._pending_direct_handle = None
-        self._active_direct_handle = direct_handle
+        direct_load = self._pending_direct_load
+        self._pending_direct_load = None
+        strict_recipe = direct_load.recipe if direct_load is not None else None
+        direct_handle = direct_load.handle if direct_load is not None else None
         self._bindings.ensure_loaded()
         if not self._bindings.playbin3_available():
             raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
@@ -675,6 +684,9 @@ class GStreamerAudioPort(AudioPort):
         # dueño (pipeline + bus observables) y NO se crea B.
         if not self._try_stop_pipeline():
             raise RuntimeError("pipeline anterior no pudo transicionar a NULL")
+        # The new load owns Direct identity only after the previous transport
+        # is proven released. A Shared load clears Direct explicitly.
+        self._active_direct_handle = direct_handle
         self._current_path = None
         self._eos_emitted = False
         self._pending_play = False
@@ -752,6 +764,7 @@ class GStreamerAudioPort(AudioPort):
             self._current_path = None
             self._pending_play = False
             self._eos_emitted = False
+            self._active_direct_handle = None
             # M11.3C-R6.5.2 (BLOCKER A): el CLEANUP COMPLETO de B ocurre
             # ANTES del callback media_rejected — un subscriber reentrante
             # puede arrancar C y el cleanup viejo NUNCA debe tocar campos
@@ -854,6 +867,7 @@ class GStreamerAudioPort(AudioPort):
         self._current_path = None
         self._pending_play = False
         self._eos_emitted = False
+        self._active_direct_handle = None
         # Cleanup físico best-effort: NULL + detach. Tanto el retorno False
         # como un RAISE son fallos de limpieza — el ownership queda retenido
         # truthfully (retryable) y se registra un diagnóstico acotado.
@@ -911,6 +925,7 @@ class GStreamerAudioPort(AudioPort):
             self._pending_path = None
             self._pending_play = False
             self._eos_emitted = False
+            self._active_direct_handle = None
         else:
             # CASE B — ACCEPTED SOURCE (M11.3C-R6): stop = detener el
             # transporte, NO descargar la fuente. La fuente aceptada A
@@ -1042,6 +1057,8 @@ class GStreamerAudioPort(AudioPort):
                 self._context = None
         self._pending_path = None
         self._current_path = None
+        self._pending_direct_load = None
+        self._active_direct_handle = None
         self._eom = []
         self._pos = []
         self._dur = []
@@ -1053,6 +1070,8 @@ class GStreamerAudioPort(AudioPort):
         # ONLY after the full chain succeeded:
         self._closed = True
         self._closing = False
+        if self._direct_executor is not None:
+            self._direct_executor.release("gstreamer_close")
 
     def _try_stop_pipeline(self) -> bool:
         """Reemplazo normal (load): NULL PRIMERO, detach SOLO tras éxito.
@@ -1086,6 +1105,7 @@ class GStreamerAudioPort(AudioPort):
         self._current_path = None
         self._pending_play = False
         self._eos_emitted = False
+        self._active_direct_handle = None
         # 3. timer creado POR ESTE arm que nunca quedó válido/reutilizable:
         #    no dejar _timer_source != None con un timer nunca attachado
         if timer_before is None and self._timer_source is not None:
@@ -1464,6 +1484,7 @@ class GStreamerAudioPort(AudioPort):
         if candidate is not None:
             self._pending_path = None
             self._current_path = None
+            self._active_direct_handle = None
             self._deliver_rej(candidate, reason)
 
     def _publish_duration(self) -> None:

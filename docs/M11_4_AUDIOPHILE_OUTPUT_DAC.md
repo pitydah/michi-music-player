@@ -25,17 +25,19 @@ V3.5 spec governs implementation and acceptance.
 - `DAC-V35-040` output plan / transaction — immutable `OutputPlan`
   (§403 completeness), pure planner with significant-bit truth,
   `OutputSessionService` implementing `PlaybackOutputTransactionPort`.
+- `DAC-V35-050` GStreamer Direct executor — **CLOSED-AUTOMATED**. The
+  productive composition root owns one sidecar executor shared by the
+  GStreamer provider and `OutputSessionService`; Direct uses one atomic
+  plan/handle/recipe identity, exact strict-sink staging, runtime
+  sink/device/caps/graph validation before output commit, and fail-closed
+  lifecycle cleanup with `FallbackKind.STOP`.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 
 **Explicitly NOT claimed**: no physical DAC qualification, no
 "bit-perfect"/Michi-Verified claim, no Signal Truth runtime verdict, no
-M11.5 promotion. `DAC-V35-050` is IN PROGRESS:
-`050A` (strict Direct recipe + runtime validator) and `050B` (strict
-GStreamer sink build + pre-preroll playbin3 injection) are
-CLOSED-AUTOMATED; `050C` (Direct runtime validation / executor
-integration) is NOT STARTED. Physical qualification (`DAC-V35-110`)
-remains pending.
+M11.5 promotion. `DAC-V35-060` is NOT STARTED. Physical qualification
+(`DAC-V35-110`) remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —
 **not** Audio Lab.

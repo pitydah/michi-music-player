@@ -15,6 +15,7 @@ from conftest import FakeAudioPort
 
 from michi.application.audio_output_planner import OutputPlanner
 from michi.application.output_session_service import (
+    OutputRequest,
     OutputSessionError,
     OutputSessionService,
 )
@@ -24,6 +25,29 @@ from michi.application.ports import (
 )
 from michi.domain.audio_output import OutputPlan, OutputSessionState
 from tests.dac.test_v34_output_planner import _facts
+
+
+class _Executor:
+    engine_id = "gstreamer"
+
+    def __init__(self) -> None:
+        self.receipt = None
+        self.release_reasons: list[str] = []
+
+    def prepare(self, plan) -> str:
+        self.receipt = f"receipt:{plan.plan_id}"
+        return self.receipt
+
+    def commit(self, receipt: str) -> None:
+        assert receipt == self.receipt
+
+    def abort(self, receipt: str, reason: str) -> None:
+        if receipt == self.receipt:
+            self.receipt = None
+
+    def release(self, reason: str) -> None:
+        self.release_reasons.append(reason)
+        self.receipt = None
 
 
 def _plan() -> OutputPlan:
@@ -36,6 +60,7 @@ def _service(*, engine: str = "gstreamer") -> OutputSessionService:
     return OutputSessionService(
         OutputPlanner(),
         facts_provider=lambda path: _facts(active_engine_id=engine),
+        executors={"gstreamer": _Executor()},
     )
 
 
@@ -124,11 +149,29 @@ def test_device_lost_preserves_selected_and_clears_active(tmp_path: Path) -> Non
     assert selection.active_plan_id is None
 
 
-def test_illegal_transition_raises() -> None:
+def test_device_lost_from_ready_releases_and_preserves_stop_policy(
+    tmp_path: Path,
+) -> None:
+    executor = _Executor()
+    service = OutputSessionService(
+        OutputPlanner(),
+        facts_provider=lambda path: _facts(),
+        executors={"gstreamer": executor},
+    )
+    service.prepare_for_media(tmp_path / "pending.flac")
+
+    service.device_lost()
+
+    assert service.state is OutputSessionState.LOST
+    assert service.plan is None
+    assert executor.release_reasons == ["device_lost"]
+    assert service.allows_automatic_engine_fallback() is False
+
+
+def test_unknown_stale_token_is_discarded() -> None:
     service = _service()
-    with pytest.raises(OutputSessionError) as exc_info:
-        service.commit_media("output-tx:None:0", Path("x.flac"))
-    assert exc_info.value.code == "illegal_transition"
+    service.commit_media("output-tx:stale", Path("x.flac"))
+    assert service.state is OutputSessionState.IDLE
 
 
 def test_reprepare_from_ready_reconfigures(tmp_path: Path) -> None:
@@ -155,6 +198,38 @@ def test_shared_transaction_is_noop_with_truthful_mode(tmp_path: Path) -> None:
     shared.abort_media(token, "x")
     shared.release_active("y")
     assert token == "shared:noop"
+
+
+def test_shared_candidate_handles_prior_direct_lease_by_load_disposition(
+    tmp_path: Path,
+) -> None:
+    mode = "direct"
+    executor = _Executor()
+    service = OutputSessionService(
+        OutputPlanner(),
+        request_provider=lambda path: (
+            OutputRequest.direct(_facts())
+            if mode == "direct"
+            else OutputRequest.shared()
+        ),
+        executors={"gstreamer": executor},
+    )
+    direct_path = tmp_path / "direct.flac"
+    token = service.prepare_for_media(direct_path)
+    service.commit_media(token, direct_path)
+
+    mode = "shared"
+    preserved = service.prepare_for_media(tmp_path / "preserved.flac")
+    service.abort_media(preserved, "load_failed")
+    assert service.mode == "direct"
+    assert service.state is OutputSessionState.RUNNING
+    assert executor.receipt is not None
+
+    lost = service.prepare_for_media(tmp_path / "lost.flac")
+    service.abort_media(lost, "load_failed_source_lost")
+    assert service.mode == "shared"
+    assert service.state is OutputSessionState.IDLE
+    assert executor.release_reasons == ["load_failed_source_lost"]
 
 
 # ── DAC-D: PlaybackService consume el port productivamente (P1..P9) ──
@@ -630,14 +705,14 @@ def test_t10_failed_replacement_prepare_preserves_pending(tmp_path: Path) -> Non
     )
 
 
-def test_t14_production_bootstrap_injects_shared_explicitly() -> None:
-    """El composition root productivo expresa el wiring Shared explícito."""
+def test_t14_production_bootstrap_injects_output_session_explicitly() -> None:
+    """The productive root installs the output subsystem, not Shared-only."""
     import inspect
 
     from michi import bootstrap
 
     source = inspect.getsource(bootstrap)
-    assert "output_tx=SharedOutputTransaction()" in source, (
-        "el bootstrap productivo debe inyectar SharedOutputTransaction "
-        "explícitamente, no depender del default del constructor"
+    assert "output_tx=output_session" in source, (
+        "el bootstrap productivo debe inyectar OutputSessionService y resolver "
+        "Shared/Direct detrás del subsistema de output"
     )

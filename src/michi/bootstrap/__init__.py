@@ -16,6 +16,7 @@ from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
+from michi.application.audio_device_registry import AudioDeviceRegistry
 from michi.application.audio_engine_convergence_coordinator import (
     AudioEngineConvergenceCoordinator,
 )
@@ -24,8 +25,11 @@ from michi.application.audio_engine_selection_coordinator import (
     AudioEngineSelectionCoordinator,
 )
 from michi.application.audio_engine_service import AudioEngineService
+from michi.application.audio_output_planner import OutputPlanner
+from michi.application.audio_output_profile_service import AudioOutputProfileService
 from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.coordinator import PlaybackCoordinator
+from michi.application.dac_qualification_service import DacQualificationService
 from michi.application.enrichment_coordinator import EnrichmentCoordinator
 from michi.application.enrichment_evidence import LibraryEnrichmentEvidenceBuilder
 from michi.application.enrichment_executor import ThreadPoolEnrichmentExecutor
@@ -43,6 +47,10 @@ from michi.application.library_preferences_coordinator import (
 from michi.application.library_service import LibraryService
 from michi.application.library_track_resolver import LibraryTrackResolver
 from michi.application.navigation_service import NavigationService
+from michi.application.output_session_service import (
+    OutputSessionService,
+    ProductiveOutputRequestResolver,
+)
 from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.playback_history_coordinator import (
     PlaybackHistoryCoordinator,
@@ -59,17 +67,21 @@ from michi.application.playlist_playback_coordinator import (
     PlaylistPlaybackCoordinator,
 )
 from michi.application.playlist_service import PlaylistService
-from michi.application.ports import SharedOutputTransaction
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.application.source_scan_coordinator import SourceScanCoordinator
 from michi.application.source_scan_lifecycle import SourceScanLifecycle
 from michi.domain.audio_engine import AudioEngineId
 from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
+from michi.infrastructure.audio_devices.alsa_probe_adapter import MichiAlsaProbeAdapter
+from michi.infrastructure.audio_devices.udev_observer import UdevObserver
 from michi.infrastructure.audio_engines.providers import (
     GStreamerEngineProvider,
     MpdEngineProvider,
     QtEngineProvider,
+)
+from michi.infrastructure.audio_output.direct_output_executor import (
+    GStreamerDirectOutputExecutor,
 )
 from michi.infrastructure.enrichment_assets import FilesystemEnrichmentAssetStore
 from michi.infrastructure.enrichment_http import (
@@ -105,6 +117,9 @@ from michi.infrastructure.playlists import SqlitePlaylistsRepository
 from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
+from michi.infrastructure.sqlite_audio_output_repository import (
+    SqliteAudioOutputRepository,
+)
 from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 from michi.presentation.audio_engine_bridge import (
     AudioEngineBridge,
@@ -175,6 +190,13 @@ class ServiceGraph:
     audio_engine_service: AudioEngineService
     audio_engine_convergence: AudioEngineConvergenceCoordinator
     qt_engine_provider: QtEngineProvider
+    gstreamer_engine_provider: GStreamerEngineProvider
+    direct_output_executor: GStreamerDirectOutputExecutor
+    output_session: OutputSessionService
+    audio_output_profiles: AudioOutputProfileService
+    audio_device_registry: AudioDeviceRegistry
+    dac_qualification: DacQualificationService
+    udev_observer: UdevObserver
     scanner: object
     metadata_extractor: object
     artwork_provider: object
@@ -324,6 +346,7 @@ def _build_services(
     metadata_extractor=None,
     artwork_provider=_MISSING,
     artwork_cache=_MISSING,
+    gstreamer_bindings=None,
 ) -> ServiceGraph:
     """Build the PRODUCTION library service graph (composition root core).
 
@@ -343,29 +366,65 @@ def _build_services(
     when the selected engine cannot activate. ``backend`` (test seam) keeps
     the historical M11.3B reference-Qt path for composition tests.
     """
+    if metadata_extractor is None:
+        metadata_extractor = InfrastructureMetadataExtractor()
+
+    # Tests and production share this graph. Production already completed
+    # open_for_startup; a direct test graph still needs the same schema v2.
+    SQLiteSettingsRepository(Path(db_path))
+    output_repository = SqliteAudioOutputRepository(Path(db_path))
+    output_profiles = AudioOutputProfileService(output_repository)
+    audio_devices = AudioDeviceRegistry()
+    udev_observer = UdevObserver(audio_devices)
+    # Initial passive snapshot; netlink monitoring starts only after every
+    # consumer is wired by ApplicationContainer.
+    udev_observer.rescan()
+    qualification = DacQualificationService(
+        MichiAlsaProbeAdapter(), cache=output_repository
+    )
+
     # M11.3B-R1: ONE canonical Qt provider instance — the SAME object is
     # registered in the registry AND used as the productive provider
     # (registry.provider(QT) is qt_provider). M11.3G: selected-first —
     # restore the persisted SELECTED preference BEFORE any activation.
     qt_provider = QtEngineProvider()
-    gstreamer_provider = GStreamerEngineProvider()
+    direct_executor = GStreamerDirectOutputExecutor()
+    gstreamer_provider = GStreamerEngineProvider(
+        direct_executor=direct_executor,
+        bindings=gstreamer_bindings,
+    )
+    direct_executor.bind_port_provider(lambda: gstreamer_provider.current_port)
     mpd_provider = MpdEngineProvider()
     registry = AudioEngineRegistry([qt_provider, gstreamer_provider, mpd_provider])
     engine_service = AudioEngineService(registry)
     engine_service.restore_selected(startup_selected_engine)
     router = AudioTransportRouter()
 
+    output_resolver = ProductiveOutputRequestResolver(
+        profiles=output_profiles,
+        devices=audio_devices,
+        qualification=qualification,
+        engines=engine_service,
+        source_metadata=metadata_extractor,
+    )
+    output_session = OutputSessionService(
+        OutputPlanner(),
+        request_provider=output_resolver,
+        executors={AudioEngineId.GSTREAMER.value: direct_executor},
+    )
+
     # PlaybackService is needed by convergence (volume/mute restore) — the
     # graph wiring order is: services → convergence → startup activation.
     playback = PlaybackService(
         router,
-        output_tx=SharedOutputTransaction(),
+        output_tx=output_session,
     )
     convergence = AudioEngineConvergenceCoordinator(
         engine_service=engine_service,
         registry=registry,
         router=router,
         playback=playback,
+        automatic_fallback_allowed=output_session.allows_automatic_engine_fallback,
     )
     for provider in (qt_provider, gstreamer_provider, mpd_provider):
         convergence.subscribe_provider(provider)
@@ -390,8 +449,6 @@ def _build_services(
 
     if scanner is None:
         scanner = FilesystemLibraryScanner()
-    if metadata_extractor is None:
-        metadata_extractor = InfrastructureMetadataExtractor()
     if artwork_provider is _MISSING:
         artwork_provider = MutagenArtworkProvider()
     if cache_root is None:
@@ -605,6 +662,13 @@ def _build_services(
         audio_engine_registry=registry,
         audio_engine_service=engine_service,
         qt_engine_provider=qt_provider,
+        gstreamer_engine_provider=gstreamer_provider,
+        direct_output_executor=direct_executor,
+        output_session=output_session,
+        audio_output_profiles=output_profiles,
+        audio_device_registry=audio_devices,
+        dac_qualification=qualification,
+        udev_observer=udev_observer,
         scanner=scanner,
         metadata_extractor=metadata_extractor,
         artwork_provider=artwork_provider,
@@ -697,6 +761,9 @@ class ApplicationContainer:
         self._audio_engine_service: AudioEngineService | None = None
         self._audio_engine_convergence: AudioEngineConvergenceCoordinator | None = None
         self._qt_engine_provider: QtEngineProvider | None = None
+        self._output_session: OutputSessionService | None = None
+        self._udev_observer: UdevObserver | None = None
+        self._udev_poll_timer: QTimer | None = None
         self._engine_selection_coordinator: AudioEngineSelectionCoordinator | None = (
             None
         )
@@ -774,6 +841,8 @@ class ApplicationContainer:
         self._audio_engine_service = graph.audio_engine_service
         self._audio_engine_convergence = graph.audio_engine_convergence
         self._qt_engine_provider = graph.qt_engine_provider
+        self._output_session = graph.output_session
+        self._udev_observer = graph.udev_observer
 
         playback = graph.playback
         playback.set_engine_switch_timeout_scheduler(
@@ -1004,6 +1073,18 @@ class ApplicationContainer:
         self._sb = sb
         self._engine = engine
 
+        # §0H.4: hotplug observation starts LAST, after every consumer and
+        # context property exists. The Qt timer only drains already-normalized
+        # udev events; policy remains in the application services.
+        try:
+            self._udev_observer.start()
+            self._udev_poll_timer = QTimer()
+            self._udev_poll_timer.setInterval(250)
+            self._udev_poll_timer.timeout.connect(self._udev_observer.poll)
+            self._udev_poll_timer.start()
+        except Exception as exc:  # runtime capability may be unavailable
+            logger.warning("DAC hotplug observation unavailable: %s", exc)
+
     def load_qml(self) -> bool:
         """R2.1-05: TESTABLE PRODUCTION SEAM — loads the real production
         main.qml through the SAME engine path run() uses. run() =
@@ -1153,6 +1234,27 @@ class ApplicationContainer:
             try:
                 if bridge:
                     bridge.dispose()
+            except Exception as exc:
+                error = error or exc
+
+        # DAC §0H.4 shutdown: transport safety stop precedes output release;
+        # then observation stops before engine providers are detached/closed.
+        output_session = getattr(self, "_output_session", None)
+        if self._playback is not None and output_session is not None:
+            try:
+                if output_session.state.value != "idle":
+                    self._playback.stop()
+                output_session.release_active("shutdown")
+            except Exception as exc:
+                error = error or exc
+        udev_timer = getattr(self, "_udev_poll_timer", None)
+        if udev_timer is not None:
+            udev_timer.stop()
+            self._udev_poll_timer = None
+        udev_observer = getattr(self, "_udev_observer", None)
+        if udev_observer is not None:
+            try:
+                udev_observer.stop()
             except Exception as exc:
                 error = error or exc
 

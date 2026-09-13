@@ -1278,12 +1278,20 @@ class TestF42AdapterContract:
         # validation hook + stage_direct_execution seam. Shared M11.3
         # semantics untouched (sin stage: flujo histórico). Re-sealed
         # after audit.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "760b6375a8032091",
+        # DAC-V35-050 productive closure: the two independent Direct staging
+        # seams became one atomic plan/handle/recipe payload; Shared loads
+        # still execute the unchanged M11.3 path when no payload is staged.
+        # Killcritic hardening clears Direct identity on every terminal media
+        # path and makes runtime graph inspection/conversion fail closed.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "2fcb87dff02a70cb",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).
         # Re-sealed after audit.
-        "src/michi/infrastructure/audio_engines/providers.py": "b3e470fb8f979928",
+        # DAC-V35-050 productive closure: additive current-port/executor
+        # composition seams and injectable bindings for the production-graph
+        # test; provider ownership/open/close semantics remain unchanged.
+        "src/michi/infrastructure/audio_engines/providers.py": "13c2fea63c7a77d3",
         "src/michi/application/audio_transport_router.py": "937660b9c864e572",  # noqa: E501
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).

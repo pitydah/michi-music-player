@@ -16,6 +16,7 @@ loops — one failure event = one convergence attempt, then stop.
 """
 
 import logging
+from collections.abc import Callable
 from enum import Enum
 
 from michi.application.audio_engine_registry import AudioEngineRegistry
@@ -73,11 +74,13 @@ class AudioEngineConvergenceCoordinator:
         registry: AudioEngineRegistry,
         router: AudioTransportRouter,
         playback: PlaybackService,
+        automatic_fallback_allowed: Callable[[], bool] | None = None,
     ) -> None:
         self._engine_service = engine_service
         self._registry = registry
         self._router = router
         self._playback = playback
+        self._automatic_fallback_allowed = automatic_fallback_allowed or (lambda: True)
         self._recovery_in_progress = False
         self._shutdown = False
         self._failure_subscriptions: dict[AudioEngineId, RuntimeFailureCallback] = {}
@@ -333,6 +336,7 @@ class AudioEngineConvergenceCoordinator:
         """STEP1 Playback converge STOPPED → STEP2 router detach → STEP3
         close failed provider → Qt fallback ONLY when fully safe."""
         active = self._engine_service.state.active_engine_id
+        fallback_allowed = self._automatic_fallback_allowed()
         # STEP 1: Playback convergence (owned by PlaybackService).
         self._playback.converge_after_engine_loss(event.reason)
         # STEP 2: router detach.
@@ -360,6 +364,12 @@ class AudioEngineConvergenceCoordinator:
             self._engine_service.mark_convergence_failed(
                 f"Qt Multimedia runtime failed: {event.reason}; "
                 "no automatic alternate engine"
+            )
+            return
+        if not fallback_allowed:
+            self._engine_service.mark_convergence_failed(
+                f"{event.engine_id.value} runtime failed: {event.reason}; "
+                "automatic fallback blocked by output policy"
             )
             return
         self._try_qt_fallback(

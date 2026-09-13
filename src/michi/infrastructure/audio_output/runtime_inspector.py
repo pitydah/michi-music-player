@@ -17,6 +17,8 @@ DIRECT_FORMAT_MISMATCH = "DIRECT_FORMAT_MISMATCH"
 DIRECT_RATE_MISMATCH = "DIRECT_RATE_MISMATCH"
 DIRECT_CHANNEL_MISMATCH = "DIRECT_CHANNEL_MISMATCH"
 DIRECT_RESAMPLER_PRESENT = "DIRECT_RESAMPLER_PRESENT"
+DIRECT_CONVERTER_PRESENT = "DIRECT_CONVERTER_PRESENT"
+DIRECT_GRAPH_INSPECTION_FAILED = "DIRECT_GRAPH_INSPECTION_FAILED"
 
 
 class DirectRuntimeValidationError(RuntimeError):
@@ -107,10 +109,20 @@ def validate_runtime(
             DIRECT_CHANNEL_MISMATCH,
             f"channels {snapshot.negotiated_channels} != {recipe.channels}",
         )
+    if "__inspection_failed__" in snapshot.graph_factories:
+        raise DirectRuntimeValidationError(
+            DIRECT_GRAPH_INSPECTION_FAILED,
+            "runtime graph could not be inspected completely",
+        )
     if "audioresample" in snapshot.graph_factories:
         raise DirectRuntimeValidationError(
             DIRECT_RESAMPLER_PRESENT,
             "audioresample presente con allow_resample=False",
+        )
+    if "audioconvert" in snapshot.graph_factories:
+        raise DirectRuntimeValidationError(
+            DIRECT_CONVERTER_PRESENT,
+            "audioconvert presente con allow_processing=False",
         )
     return DirectPrerollEvidence(
         execution_generation=snapshot.execution_generation,

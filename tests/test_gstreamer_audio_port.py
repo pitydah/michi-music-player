@@ -4456,6 +4456,23 @@ def _strict_recipe(rate: int = 44100, fmt: str = "S16_LE"):
     return recipe_from_plan(_plan(rate=rate, fmt=fmt))
 
 
+def _strict_port(bindings):
+    from michi.infrastructure.audio_output.direct_output_executor import (
+        GStreamerDirectOutputExecutor,
+    )
+
+    executor = GStreamerDirectOutputExecutor()
+    port = GStreamerAudioPort(bindings, direct_executor=executor)
+    executor.bind_port_provider(lambda: port)
+    return port, executor
+
+
+def _stage_strict(executor, rate: int = 44100, fmt: str = "S16_LE"):
+    from tests.dac.test_v35_strict_sink import _plan
+
+    return executor.prepare(_plan(rate=rate, fmt=fmt))
+
+
 class TestStrictSinkStaging:
     def test_p1_shared_path_never_builds_strict_sink(self, qapp):
         bindings = FakeBindings()
@@ -4473,8 +4490,8 @@ class TestStrictSinkStaging:
 
     def test_p2_direct_sink_installed_before_uri_and_preroll(self, qapp):
         bindings = FakeBindings()
-        port = GStreamerAudioPort(bindings)
-        port.stage_strict_sink(_strict_recipe())
+        port, executor = _strict_port(bindings)
+        _stage_strict(executor)
 
         port.load(Path("/m/a.flac"))
 
@@ -4492,8 +4509,8 @@ class TestStrictSinkStaging:
 
     def test_p3_recipe_consumed_once(self, qapp):
         bindings = FakeBindings()
-        port = GStreamerAudioPort(bindings)
-        port.stage_strict_sink(_strict_recipe())
+        port, executor = _strict_port(bindings)
+        _stage_strict(executor)
 
         port.load(Path("/m/a.flac"))
         assert len(bindings.built_recipes) == 1
@@ -4510,9 +4527,9 @@ class TestStrictSinkStaging:
         from michi.application.ports import AudioLoadError
 
         bindings = FakeBindings()
-        port = GStreamerAudioPort(bindings)
+        port, executor = _strict_port(bindings)
         bindings.fail_strict_build = True
-        port.stage_strict_sink(_strict_recipe())
+        _stage_strict(executor)
 
         with pytest.raises(AudioLoadError):
             port.load(Path("/m/a.flac"))
@@ -4530,16 +4547,16 @@ class TestStrictSinkStaging:
         from michi.application.ports import AudioLoadError
 
         bindings = FakeBindings()
-        port = GStreamerAudioPort(bindings)
+        port, executor = _strict_port(bindings)
         bindings.fail_strict_build = True
-        port.stage_strict_sink(_strict_recipe())
+        _stage_strict(executor)
 
         with pytest.raises(AudioLoadError):
             port.load(Path("/m/a.flac"))
 
         assert port._pending_path is None, "el candidate pendiente quedó limpio"
         assert port._current_path is None
-        assert port._pending_strict_sink_recipe is None
+        assert port._pending_direct_load is None
 
         bindings.fail_strict_build = False
         accepted = []
@@ -4553,12 +4570,12 @@ class TestStrictSinkStaging:
 
     def test_p6_single_glib_pump_across_shared_and_direct(self, qapp):
         bindings = FakeBindings()
-        port = GStreamerAudioPort(bindings)
+        port, executor = _strict_port(bindings)
 
         port.load(Path("/m/a.flac"))  # Shared
-        port.stage_strict_sink(_strict_recipe())
+        _stage_strict(executor)
         port.load(Path("/m/b.flac"))  # Direct
-        port.stage_strict_sink(_strict_recipe(rate=96000, fmt="S32_LE"))
+        _stage_strict(executor, rate=96000, fmt="S32_LE")
         port.load(Path("/m/c.flac"))  # Direct
 
         assert port._pump_start_count == 1, "UN solo pump GLib (M11.3)"
@@ -4586,11 +4603,11 @@ def _play_state(port, bindings):
 class TestStrictRecipeOwnership:
     def test_r1_reentrant_load_does_not_steal_recipe(self, qapp):
         bindings = FakeBindings()
-        port = GStreamerAudioPort(bindings)
+        port, executor = _strict_port(bindings)
         port.load(Path("/m/a.flac"))
         _play_state(port, bindings)
 
-        port.stage_strict_sink(_strict_recipe())
+        _stage_strict(executor)
         fired: list[bool] = []
 
         def _on_state(status):
@@ -4606,27 +4623,26 @@ class TestStrictRecipeOwnership:
             "recipe_B no puede construir para C ni para sí misma tras superseder"
         )
         assert bindings.pipelines[-1].audio_sink is None, "C es Shared"
-        assert port._pending_strict_sink_recipe is None
+        assert port._pending_direct_load is None
         port.close()
 
     def test_r2_reentrant_load_may_own_its_own_recipe(self, qapp):
         bindings = FakeBindings()
-        port = GStreamerAudioPort(bindings)
+        port, executor = _strict_port(bindings)
         port.load(Path("/m/a.flac"))
         _play_state(port, bindings)
 
-        recipe_b = _strict_recipe(rate=44100, fmt="S16_LE")
         recipe_c = _strict_recipe(rate=96000, fmt="S32_LE")
         fired: list[bool] = []
 
         def _on_state(status):
             if status is PlaybackStatus.STOPPED and not fired:
                 fired.append(True)
-                port.stage_strict_sink(recipe_c)
+                _stage_strict(executor, rate=96000, fmt="S32_LE")
                 port.load(Path("/m/c.flac"))
 
         port.subscribe_playback_state_changed(_on_state)
-        port.stage_strict_sink(recipe_b)
+        _stage_strict(executor, rate=44100, fmt="S16_LE")
         port.load(Path("/m/b.flac"))
 
         assert fired
@@ -4639,10 +4655,10 @@ class TestStrictRecipeOwnership:
 
     def test_r3_pre_arm_teardown_failure_does_not_leak(self, qapp):
         bindings = FakeBindings()
-        port = GStreamerAudioPort(bindings)
+        port, executor = _strict_port(bindings)
         port.load(Path("/m/a.flac"))  # crea pipeline A
 
-        port.stage_strict_sink(_strict_recipe())
+        _stage_strict(executor)
         bindings.failed_states.add(_FakeState.NULL)  # teardown A falla
         with pytest.raises(RuntimeError):
             port.load(Path("/m/b.flac"))
@@ -4652,17 +4668,17 @@ class TestStrictRecipeOwnership:
 
         assert bindings.built_recipes == [], "recipe_B no reaparece"
         assert bindings.pipelines[-1].audio_sink is None
-        assert port._pending_strict_sink_recipe is None
+        assert port._pending_direct_load is None
         port.close()
 
     def test_r4_pre_builder_failure_does_not_leak(self, qapp):
         from michi.application.ports import AudioLoadError
 
         bindings = FakeBindings()
-        port = GStreamerAudioPort(bindings)
+        port, executor = _strict_port(bindings)
         port.load(Path("/m/a.flac"))
 
-        port.stage_strict_sink(_strict_recipe())
+        _stage_strict(executor)
         bindings.arm_exception_stage = "make_playbin3"
         bindings.arm_exception = RuntimeError("make_playbin3 falló")
         with pytest.raises(AudioLoadError):
@@ -4692,16 +4708,15 @@ def _direct_c2_setup():
     bindings = FakeBindings()
     executor = GStreamerDirectOutputExecutor()
     port = GStreamerAudioPort(bindings, direct_executor=executor)
+    executor.bind_port_provider(lambda: port)
     return bindings, executor, port
 
 
 def _stage_direct(executor, port, rate: int = 96000, fmt: str = "S32_LE"):
     from tests.dac.test_v35_direct_output_executor import _plan
 
-    handle = executor.stage(_plan())
-    port.stage_direct_execution(handle)
-    port.stage_strict_sink(executor.recipe_for_load(handle))
-    return handle
+    executor.prepare(_plan(rate=rate))
+    return executor.handle
 
 
 class TestDirectRuntimeValidation:
