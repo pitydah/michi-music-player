@@ -20,11 +20,17 @@ from michi.infrastructure.audio_output.direct_output_executor import (
 )
 from tests.dac.test_v34_output_planner import _facts
 
+_QT_APP = None
+
 
 @pytest.fixture(autouse=True)
-def _qt_runtime(qapp):
-    """Use pytest-qt's QApplication, never a process-wide QCoreApplication."""
-    return qapp
+def _qt_runtime():
+    """Install a GUI-capable Qt app without requiring pytest-qt in CI."""
+    global _QT_APP
+    from PySide6.QtWidgets import QApplication
+
+    _QT_APP = QApplication.instance() or QApplication([])
+    yield _QT_APP
 
 
 def _direct_graph(tmp_path: Path):
