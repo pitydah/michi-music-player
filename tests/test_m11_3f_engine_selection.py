@@ -1280,7 +1280,7 @@ class TestF42AdapterContract:
         # after audit.
         "src/michi/infrastructure/audio_engines/gstreamer.py": "760b6375a8032091",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
-                # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
+        # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).
         # Re-sealed after audit.
         "src/michi/infrastructure/audio_engines/providers.py": "b3e470fb8f979928",
