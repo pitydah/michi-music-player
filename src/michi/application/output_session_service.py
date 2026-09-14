@@ -19,7 +19,10 @@ from michi.application.audio_output_planner import (
     PlannerFacts,
     PlannerRefusal,
 )
-from michi.application.audio_output_ports import AudioOutputExecutorPort
+from michi.application.audio_output_ports import (
+    AudioOutputExecutorPort,
+    OutputExecutorAbortDisposition,
+)
 from michi.application.ports import SharedOutputTransaction
 from michi.domain.audio_device import BindingKind
 from michi.domain.audio_evidence import DecodedSourceSignal
@@ -409,17 +412,24 @@ class OutputSessionService:
             and self._executor_receipt is not None
         ):
             try:
-                restored = self._executor.abort(self._executor_receipt, "load_failed")
+                disposition = self._executor.abort(
+                    self._executor_receipt, "load_failed"
+                )
             except Exception as exc:
                 self._shared.abort_media(receipt, "direct_cancel_failed")
                 code = getattr(exc, "code", "DIRECT_EXECUTOR_ABORT_FAILED")
                 raise OutputSessionError(code, str(exc)) from exc
-            if previous_direct is not None and restored is False:
+            if disposition is OutputExecutorAbortDisposition.STALE:
                 self._shared.abort_media(receipt, "direct_restore_failed")
                 raise OutputSessionError(
-                    "DIRECT_ROLLBACK_LOST",
-                    "provisional Direct cancellation did not restore its predecessor",
+                    "DIRECT_EXECUTION_STALE",
+                    "provisional Direct candidate no longer owns the executor",
                 )
+            if disposition is OutputExecutorAbortDisposition.CANDIDATE_DISCARDED:
+                # The executor is the physical rollback authority. A logical
+                # snapshot may survive the destructive boundary, but it is no
+                # longer eligible to restore and must not follow Shared C.
+                previous_direct = None
         if old_shared_receipt is not None and old_shared_receipt != receipt:
             self._shared.abort_media(old_shared_receipt, "superseded")
         self._generation += 1
@@ -543,13 +553,13 @@ class OutputSessionService:
             self._clear_execution()
             return
         self._error_code = reason
-        restored = None
+        disposition = OutputExecutorAbortDisposition.STALE
         if self._executor is not None and self._executor_receipt is not None:
-            restored = self._executor.abort(self._executor_receipt, reason)
+            disposition = self._executor.abort(self._executor_receipt, reason)
         if (
             self._previous_direct is not None
             and reason == "load_failed"
-            and restored is not False
+            and disposition is OutputExecutorAbortDisposition.PREDECESSOR_RESTORED
         ):
             previous = self._previous_direct
             self._plan = previous.plan

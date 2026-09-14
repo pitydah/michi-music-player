@@ -700,7 +700,34 @@ class GStreamerAudioPort(AudioPort):
         # mutación de estado (generation/pending/current/pending_play) antes
         # del commit point: si el pipeline A no llega a NULL, A permanece
         # dueño (pipeline + bus observables) y NO se crea B.
+        previous_source_was_lost = (
+            self._pipeline is not None and self._current_path is None
+        )
         if not self._try_stop_pipeline():
+            if previous_source_was_lost:
+                # DAC-V35-050R2: B had already destroyed accepted source A,
+                # but B itself was never accepted (or survives only as an
+                # earlier retryable cleanup anchor). A failed teardown may
+                # retain that pipeline solely as a physical cleanup anchor;
+                # it must not re-authorize any prior logical source.
+                self._invalidate_generation()
+                self._pending_path = None
+                self._current_path = None
+                self._pending_play = False
+                self._eos_emitted = False
+                self._active_direct_handle = None
+                if self._direct_executor is not None and direct_handle is not None:
+                    self._direct_executor.abort(
+                        direct_handle,
+                        "superseding_load_teardown_failed",
+                    )
+                from michi.application.ports import AudioLoadError
+
+                raise AudioLoadError(
+                    Path(file_path),
+                    "pipeline candidato anterior no pudo transicionar a NULL",
+                    previous_source_preserved=False,
+                )
             raise RuntimeError("pipeline anterior no pudo transicionar a NULL")
         # DAC-V35-050R1: this is the destructive commit point. From here A
         # cannot be a rollback target, even while B still awaits acceptance.

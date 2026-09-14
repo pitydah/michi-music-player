@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol
 
+from michi.application.audio_output_ports import OutputExecutorAbortDisposition
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_output import OutputPlan
 from michi.infrastructure.audio_output.runtime_inspector import (
@@ -206,25 +207,29 @@ class GStreamerDirectOutputExecutor:
         self._state = DirectExecutionState.COMMITTED
         self._committed = None
 
-    def abort_receipt(self, receipt: str, reason: str) -> bool:
+    def abort_receipt(
+        self, receipt: str, reason: str
+    ) -> OutputExecutorAbortDisposition:
         if receipt != self._receipt:
-            return False
+            return OutputExecutorAbortDisposition.STALE
         handle = self._handle
         if handle is not None:
             return self._abort_current(handle, reason)
-        return False
+        return OutputExecutorAbortDisposition.STALE
 
     # AudioOutputExecutorPort signature. Kept separate from the C1 handle API
     # through a small dispatcher so existing generation tests remain valid.
-    def abort(self, handle_or_receipt, reason: str) -> bool:
+    def abort(self, handle_or_receipt, reason: str) -> OutputExecutorAbortDisposition:
         if isinstance(handle_or_receipt, str):
             return self.abort_receipt(handle_or_receipt, reason)
         handle = handle_or_receipt
         if self._handle is None or handle != self._handle:
-            return False
+            return OutputExecutorAbortDisposition.STALE
         return self._abort_current(handle, reason)
 
-    def _abort_current(self, handle: DirectExecutionHandle, reason: str) -> bool:
+    def _abort_current(
+        self, handle: DirectExecutionHandle, reason: str
+    ) -> OutputExecutorAbortDisposition:
         self._discard_staged_load(handle)
         committed = self._committed
         if (
@@ -234,9 +239,9 @@ class GStreamerDirectOutputExecutor:
         ):
             self._restore(committed)
             self._committed = None
-            return True
+            return OutputExecutorAbortDisposition.PREDECESSOR_RESTORED
         self._clear()
-        return False
+        return OutputExecutorAbortDisposition.CANDIDATE_DISCARDED
 
     def mark_previous_source_released(self) -> None:
         """Record the backend's destructive load boundary.

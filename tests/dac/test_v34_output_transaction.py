@@ -14,6 +14,7 @@ import pytest
 from conftest import FakeAudioPort
 
 from michi.application.audio_output_planner import OutputPlanner
+from michi.application.audio_output_ports import OutputExecutorAbortDisposition
 from michi.application.output_session_service import (
     OutputRequest,
     OutputSessionError,
@@ -41,9 +42,11 @@ class _Executor:
     def commit(self, receipt: str) -> None:
         assert receipt == self.receipt
 
-    def abort(self, receipt: str, reason: str) -> None:
+    def abort(self, receipt: str, reason: str) -> OutputExecutorAbortDisposition:
         if receipt == self.receipt:
             self.receipt = None
+            return OutputExecutorAbortDisposition.CANDIDATE_DISCARDED
+        return OutputExecutorAbortDisposition.STALE
 
     def release(self, reason: str) -> None:
         self.release_reasons.append(reason)

@@ -12,6 +12,7 @@ aplicación no.
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Protocol, runtime_checkable
 
 from michi.domain.audio_engine import AudioEngineId
@@ -45,6 +46,18 @@ class QualificationCachePort(Protocol):
     ) -> None: ...
 
 
+class OutputExecutorAbortDisposition(Enum):
+    """Transactional result of aborting one output-executor receipt.
+
+    The result distinguishes restoration from successful retirement and from
+    a stale caller. It exposes no executor-internal rollback representation.
+    """
+
+    PREDECESSOR_RESTORED = "predecessor_restored"
+    CANDIDATE_DISCARDED = "candidate_discarded"
+    STALE = "stale"
+
+
 @runtime_checkable
 class AudioOutputExecutorPort(Protocol):
     """Executes one immutable output plan without performing policy lookups."""
@@ -56,8 +69,8 @@ class AudioOutputExecutorPort(Protocol):
 
     def commit(self, receipt: str) -> None: ...
 
-    def abort(self, receipt: str, reason: str) -> bool | None:
-        """Abort candidate; True only when a committed predecessor was restored."""
+    def abort(self, receipt: str, reason: str) -> OutputExecutorAbortDisposition:
+        """Abort exactly one receipt and report its transactional disposition."""
         ...
 
     def owns_committed_receipt(self, receipt: str) -> bool:

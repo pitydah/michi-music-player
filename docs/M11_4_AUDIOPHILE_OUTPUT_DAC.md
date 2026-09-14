@@ -38,6 +38,12 @@ V3.5 spec governs implementation and acceptance.
   uses the complete versioned `qenv:v2` context fingerprint. Legacy or
   incomplete evidence remains historical. Gates: DR-01..08, ME-01..07,
   FP-01..11.
+- `DAC-V35-050R2` final supersession seal — **CLOSED-AUTOMATED / GO**.
+  Direct A→B→C uses typed executor abort dispositions as the sole physical
+  rollback authority. Shared/Direct C retire pending B without resurrecting A;
+  stale generations/receipts cannot reclaim ownership, and a failed teardown
+  after A was destroyed converges to STOPPED/IDLE with no false restore.
+  Productive gates: R2-01..R2-14 plus repeated cleanup-anchor failure.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 

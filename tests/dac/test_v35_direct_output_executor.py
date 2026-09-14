@@ -6,6 +6,7 @@ import dataclasses
 
 import pytest
 
+from michi.application.audio_output_ports import OutputExecutorAbortDisposition
 from michi.infrastructure.audio_output.direct_output_executor import (
     DirectExecutionState,
     DirectExecutorError,
@@ -254,8 +255,9 @@ def test_dr_01_pre_destructive_abort_restores_committed_execution() -> None:
     executor.commit(receipt_a)
 
     receipt_b = executor.prepare(_plan("plan:B"))
-    executor.abort(receipt_b, "load_failed")
+    disposition = executor.abort(receipt_b, "load_failed")
 
+    assert disposition is OutputExecutorAbortDisposition.PREDECESSOR_RESTORED
     assert executor.handle == handle_a
     assert executor.state is DirectExecutionState.COMMITTED
     assert executor.recipe_for_load(handle_a).plan_id == "plan:A"
@@ -270,8 +272,9 @@ def test_dr_02_post_destructive_abort_invalidates_both_executions() -> None:
     executor.commit(receipt_a)
 
     receipt_b = executor.prepare(_plan("plan:B"))
-    executor.abort(receipt_b, "load_failed_source_lost")
+    disposition = executor.abort(receipt_b, "load_failed_source_lost")
 
+    assert disposition is OutputExecutorAbortDisposition.CANDIDATE_DISCARDED
     assert executor.handle is None
     assert executor.state is DirectExecutionState.IDLE
 
@@ -286,8 +289,9 @@ def test_dr_03_successful_b_commit_retires_a_and_stale_receipts() -> None:
     receipt_b, handle_b = _prepare_verified(executor, port, "plan:B")
 
     executor.commit(receipt_b)
-    executor.abort(receipt_a, "late_a_abort")
+    disposition = executor.abort(receipt_a, "late_a_abort")
 
+    assert disposition is OutputExecutorAbortDisposition.STALE
     assert executor.handle == handle_b
     assert executor.state is DirectExecutionState.COMMITTED
     assert executor.evidence_for(handle_a) is None

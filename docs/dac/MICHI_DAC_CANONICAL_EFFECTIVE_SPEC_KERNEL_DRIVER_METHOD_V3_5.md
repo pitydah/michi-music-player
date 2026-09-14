@@ -624,9 +624,15 @@ class AudioOutputExecutorPort(Protocol):
         ...
 
     def commit(self, receipt: str) -> None: ...
-    def abort(self, receipt: str, reason: str) -> None: ...
+    def abort(
+        self, receipt: str, reason: str
+    ) -> OutputExecutorAbortDisposition: ...
     def release(self, reason: str) -> None: ...
 ```
+
+`OutputExecutorAbortDisposition` is the typed physical-authority result:
+`PREDECESSOR_RESTORED`, `CANDIDATE_DISCARDED`, or `STALE`. A logical snapshot
+alone never proves that a predecessor remains physically restorable.
 
 `OutputSessionService` receives an immutable mapping of engine id -> executor. Stable contains one Direct-capable entry: GStreamer. Missing mapping is a typed `ENGINE_UNSUPPORTED_FOR_DIRECT`, not a fallback.
 
@@ -19283,6 +19289,23 @@ mismatched, or incomplete contexts remain historical and never authorize an
 This corrective seal does not implement explicit endpoint selection, Volume
 Authority, full Signal Truth, or physical DAC qualification. `DAC-V35-060`
 remains NOT STARTED and `DAC-V35-110` remains pending.
+
+**Final supersession seal (2026-09-13): `DAC-V35-050R2 CLOSED-AUTOMATED / GO`.**
+Direct A→B→C supersession now has one physical rollback authority: the output
+executor. Its typed abort disposition distinguishes restored A from a
+successfully discarded post-destructive candidate and from stale ownership.
+Shared C and Direct C therefore retire pending B without interpreting a stale
+logical A snapshot as restorable. GStreamer generations fence late B events;
+same-plan replacements remain generation-distinct. If C cannot tear down an
+unaccepted B after A was destroyed, no prior source is re-authorized: the
+session converges to STOPPED/IDLE and retains B's pipeline only as a retryable
+physical cleanup anchor. Repeated teardown failures preserve that fail-closed
+disposition. Productive gates R2-01..R2-14 plus the teardown-failure extension,
+DR/ME/FP, M11.3, and the full automated suite seal this behavior.
+
+R2 does not weaken `FallbackKind.STOP`, introduce Shared fallback, modify
+PlaybackService ownership/order, or make physical DAC, bit-perfect,
+Michi-Verified, or Signal Truth claims. `DAC-V35-060` remains NOT STARTED.
 
 ---
 
