@@ -150,6 +150,19 @@ class OutputRequest:
         return cls(facts, facts.selected_device_id, profile_id)
 
 
+@dataclass(frozen=True, slots=True)
+class _DirectSessionSnapshot:
+    """Private rollback image of the one committed Direct session."""
+
+    plan: OutputPlan
+    executor: AudioOutputExecutorPort
+    receipt: str
+    state: OutputSessionState
+    path: Path | None
+    selected_device_id: str | None
+    selected_profile_id: str | None
+
+
 class ProductiveOutputRequestResolver:
     """Assembles planner facts from canonical read authorities only."""
 
@@ -206,9 +219,17 @@ class ProductiveOutputRequestResolver:
         available = False
         evidence = ()
         if selected_device_id is not None:
-            binding = self._devices.binding_for(
+            bindings = self._devices.bindings_for(
                 selected_device_id, BindingKind.ALSA_PCM
             )
+            if len(bindings) > 1:
+                raise OutputSessionError(
+                    "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS",
+                    f"device {selected_device_id!r} has {len(bindings)} current "
+                    "ALSA playback endpoints; explicit endpoint intent is required",
+                )
+            if bindings:
+                (binding,) = bindings  # exact-one proof; ambiguity rejected above
             expected_generation = self._devices.generation_for(selected_device_id)
             available = selected_device_id in self._devices.available_ids()
             evidence = self._qualification.cached_evidence_current(selected_device_id)
@@ -264,16 +285,7 @@ class OutputSessionService:
         self._executor: AudioOutputExecutorPort | None = None
         self._executor_receipt: str | None = None
         self._shared_receipt: str | None = None
-        self._previous_direct: (
-            tuple[
-                OutputPlan,
-                AudioOutputExecutorPort,
-                str,
-                OutputSessionState,
-                Path | None,
-            ]
-            | None
-        ) = None
+        self._previous_direct: _DirectSessionSnapshot | None = None
         self._lost_fallback: FallbackKind | None = None
         self._last_release_invalidated_media = False
 
@@ -305,7 +317,7 @@ class OutputSessionService:
     def allows_automatic_engine_fallback(self) -> bool:
         plan = self._plan
         if plan is None and self._previous_direct is not None:
-            plan = self._previous_direct[0]
+            plan = self._previous_direct.plan
         fallback = plan.fallback if plan is not None else self._lost_fallback
         return fallback is not FallbackKind.STOP
 
@@ -348,10 +360,11 @@ class OutputSessionService:
                 "illegal_transition", f"prepare desde {self._state.value}"
             )
         request = self._request_for(path)
+        previous_direct = self._committed_direct_snapshot()
         self._selected_device_id = request.selected_device_id
         self._selected_profile_id = request.selected_profile_id
         if request.facts is None:
-            return self._prepare_shared(path)
+            return self._prepare_shared(path, previous_direct=previous_direct)
         result = self._planner.plan(request.facts)
         if isinstance(result, PlannerRefusal):
             raise OutputSessionError(result.code, result.detail)
@@ -368,30 +381,45 @@ class OutputSessionService:
             raise OutputSessionError(code, str(exc)) from exc
         if self._mode == "shared" and self._shared_receipt is not None:
             self._shared.abort_media(self._shared_receipt, "superseded")
-        return self._begin_session(result, path, executor, receipt)
+        return self._begin_session(
+            result,
+            path,
+            executor,
+            receipt,
+            previous_direct=previous_direct,
+        )
 
     def _request_for(self, path: Path) -> OutputRequest:
         if self._request_provider is not None:
             return self._request_provider(path)
         return OutputRequest.direct(self._facts_for(path))
 
-    def _prepare_shared(self, path: Path) -> str:
+    def _prepare_shared(
+        self,
+        path: Path,
+        *,
+        previous_direct: _DirectSessionSnapshot | None,
+    ) -> str:
         old_shared_receipt = self._shared_receipt if self._mode == "shared" else None
-        previous_direct = self._previous_direct
+        receipt = self._shared.prepare_for_media(path)
         if (
             self._mode == "direct"
-            and self._plan is not None
+            and self._state is OutputSessionState.READY
             and self._executor is not None
             and self._executor_receipt is not None
         ):
-            previous_direct = (
-                self._plan,
-                self._executor,
-                self._executor_receipt,
-                self._state,
-                self._path,
-            )
-        receipt = self._shared.prepare_for_media(path)
+            try:
+                restored = self._executor.abort(self._executor_receipt, "load_failed")
+            except Exception as exc:
+                self._shared.abort_media(receipt, "direct_cancel_failed")
+                code = getattr(exc, "code", "DIRECT_EXECUTOR_ABORT_FAILED")
+                raise OutputSessionError(code, str(exc)) from exc
+            if previous_direct is not None and restored is False:
+                self._shared.abort_media(receipt, "direct_restore_failed")
+                raise OutputSessionError(
+                    "DIRECT_ROLLBACK_LOST",
+                    "provisional Direct cancellation did not restore its predecessor",
+                )
         if old_shared_receipt is not None and old_shared_receipt != receipt:
             self._shared.abort_media(old_shared_receipt, "superseded")
         self._generation += 1
@@ -424,6 +452,8 @@ class OutputSessionService:
         path: Path,
         executor: AudioOutputExecutorPort,
         receipt: str,
+        *,
+        previous_direct: _DirectSessionSnapshot | None = None,
     ) -> str:
         if self._state is not OutputSessionState.IDLE:
             if self._state in (OutputSessionState.READY, OutputSessionState.RUNNING):
@@ -443,7 +473,7 @@ class OutputSessionService:
         self._executor = executor
         self._executor_receipt = receipt
         self._shared_receipt = None
-        self._previous_direct = None
+        self._previous_direct = previous_direct
         self._session_id = f"session:{self._generation}"
         self._error_code = None
         self._transition(OutputSessionState.CONFIGURING)
@@ -462,7 +492,7 @@ class OutputSessionService:
             assert self._shared_receipt is not None
             self._shared.commit_media(self._shared_receipt, path)
             if self._previous_direct is not None:
-                self._previous_direct[1].release("switch_to_shared")
+                self._previous_direct.executor.release("switch_to_shared")
                 self._previous_direct = None
             self._plan = None
             self._state = OutputSessionState.IDLE
@@ -473,6 +503,7 @@ class OutputSessionService:
             )
         assert self._executor is not None and self._executor_receipt is not None
         self._executor.commit(self._executor_receipt)
+        self._previous_direct = None
         self._transition(OutputSessionState.RUNNING)
 
     def abort_media(self, token: str, reason: str) -> None:
@@ -481,13 +512,26 @@ class OutputSessionService:
         if self._mode == "shared":
             if self._shared_receipt is not None:
                 self._shared.abort_media(self._shared_receipt, reason)
-            if self._previous_direct is not None and reason == "load_failed":
-                plan, executor, receipt, state, previous_path = self._previous_direct
-                self._plan = plan
-                self._executor = executor
-                self._executor_receipt = receipt
-                self._state = state
-                self._path = previous_path
+            previous_is_live = True
+            if self._previous_direct is not None:
+                owns_committed = getattr(
+                    self._previous_direct.executor, "owns_committed_receipt", None
+                )
+                if owns_committed is not None:
+                    previous_is_live = owns_committed(self._previous_direct.receipt)
+            if (
+                self._previous_direct is not None
+                and reason == "load_failed"
+                and previous_is_live
+            ):
+                previous = self._previous_direct
+                self._plan = previous.plan
+                self._executor = previous.executor
+                self._executor_receipt = previous.receipt
+                self._state = previous.state
+                self._path = previous.path
+                self._selected_device_id = previous.selected_device_id
+                self._selected_profile_id = previous.selected_profile_id
                 self._mode = "direct"
                 self._token_value = None
                 self._shared_receipt = None
@@ -495,12 +539,29 @@ class OutputSessionService:
                 self._error_code = reason
                 return
             if self._previous_direct is not None:
-                self._previous_direct[1].release(reason)
+                self._previous_direct.executor.release(reason)
             self._clear_execution()
             return
         self._error_code = reason
+        restored = None
         if self._executor is not None and self._executor_receipt is not None:
-            self._executor.abort(self._executor_receipt, reason)
+            restored = self._executor.abort(self._executor_receipt, reason)
+        if (
+            self._previous_direct is not None
+            and reason == "load_failed"
+            and restored is not False
+        ):
+            previous = self._previous_direct
+            self._plan = previous.plan
+            self._executor = previous.executor
+            self._executor_receipt = previous.receipt
+            self._state = previous.state
+            self._path = previous.path
+            self._selected_device_id = previous.selected_device_id
+            self._selected_profile_id = previous.selected_profile_id
+            self._token_value = None
+            self._previous_direct = None
+            return
         self._transition(OutputSessionState.RELEASING)
         self._clear_execution(keep_error=True)
         self._transition(OutputSessionState.IDLE)
@@ -511,7 +572,7 @@ class OutputSessionService:
         if self._mode == "shared":
             self._shared.release_active(reason)
             if self._previous_direct is not None:
-                self._previous_direct[1].release(reason)
+                self._previous_direct.executor.release(reason)
             self._clear_execution()
             return
         if self._state is OutputSessionState.IDLE and not was_direct:
@@ -547,6 +608,30 @@ class OutputSessionService:
             self._transition(OutputSessionState.FAILED)
 
     # ── internos ──────────────────────────────────────────────────────
+    def _committed_direct_snapshot(self) -> _DirectSessionSnapshot | None:
+        # A second/third candidate never becomes rollback authority. While a
+        # candidate is READY, `_previous_direct` still identifies committed A.
+        if self._previous_direct is not None:
+            return self._previous_direct
+        if (
+            self._mode != "direct"
+            or self._state
+            not in (OutputSessionState.RUNNING, OutputSessionState.PAUSED)
+            or self._plan is None
+            or self._executor is None
+            or self._executor_receipt is None
+        ):
+            return None
+        return _DirectSessionSnapshot(
+            plan=self._plan,
+            executor=self._executor,
+            receipt=self._executor_receipt,
+            state=self._state,
+            path=self._path,
+            selected_device_id=self._selected_device_id,
+            selected_profile_id=self._selected_profile_id,
+        )
+
     def _token(self) -> str:
         return f"output-tx:{self._session_id}:{self._generation}"
 

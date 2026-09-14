@@ -6,6 +6,7 @@ el observer udev normaliza eventos hacia el registry (pyudev solo observa).
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from michi.application.audio_device_registry import AudioDeviceRegistry
@@ -53,6 +54,8 @@ def test_ingest_correlates_usb_and_alsa(tmp_path: Path) -> None:
     assert binding.locator == "hw:CARD=DX5,DEV=0"
     assert binding.currently_available is True
     assert binding.card_index == 1
+    assert snapshot[0].descriptor_sha256 == hashlib.sha256(DX5.descriptors).hexdigest()
+    assert binding.stable_endpoint_signature == "usb-interface:1.0:pcm:0:sub:0"
 
 
 def test_rescan_is_convergent(tmp_path: Path) -> None:

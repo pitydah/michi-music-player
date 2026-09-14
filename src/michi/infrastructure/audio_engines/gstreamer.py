@@ -92,6 +92,11 @@ class GStreamerBindings:
         """playbin3 factory exists in the installed runtime."""
         return self.element_factory_find("playbin3") is not None
 
+    def runtime_version(self) -> str:
+        """Exact GStreamer runtime version for qualification provenance."""
+        self.ensure_loaded()
+        return str(self._gst.version_string())
+
     def element_factory_find(self, name):
         """ElementFactory.find del runtime real (None si la factory falta)."""
         self.ensure_loaded()
@@ -657,6 +662,19 @@ class GStreamerAudioPort(AudioPort):
             )
         self._pending_direct_load = preparation
 
+    def discard_direct_load(self, handle, *, executor) -> bool:
+        """Discard only the still-pending preparation owned by ``handle``."""
+        if executor is not self._direct_executor:
+            raise DirectSinkBuildError(
+                "DIRECT_EXECUTOR_IDENTITY_MISMATCH",
+                "producer and GStreamer consumer do not share one executor",
+            )
+        pending = self._pending_direct_load
+        if pending is None or pending.handle != handle:
+            return False
+        self._pending_direct_load = None
+        return True
+
     def load(self, file_path: Path) -> None:
         # KCR-008: a closed runtime rejects the command — never a silent
         # no-op return.
@@ -684,6 +702,10 @@ class GStreamerAudioPort(AudioPort):
         # dueño (pipeline + bus observables) y NO se crea B.
         if not self._try_stop_pipeline():
             raise RuntimeError("pipeline anterior no pudo transicionar a NULL")
+        # DAC-V35-050R1: this is the destructive commit point. From here A
+        # cannot be a rollback target, even while B still awaits acceptance.
+        if self._direct_executor is not None:
+            self._direct_executor.mark_previous_source_released()
         # The new load owns Direct identity only after the previous transport
         # is proven released. A Shared load clears Direct explicitly.
         self._active_direct_handle = direct_handle
@@ -910,6 +932,12 @@ class GStreamerAudioPort(AudioPort):
             # a stop arriving during a load transition has no pipeline yet;
             # stopping nothing IS stopping). AR-02 applies to an ACTIVE
             # pipeline whose NULL request fails.
+            pending_direct = self._pending_direct_load
+            self._pending_direct_load = None
+            if self._direct_executor is not None and pending_direct is not None:
+                self._direct_executor.abort(
+                    pending_direct.handle, "gstreamer_stop_before_load"
+                )
             return
         if self._pending_path is not None and self._current_path is None:
             # CASE A — PENDING CANDIDATE (M11.3C-R6): stop = CANCEL del
@@ -917,6 +945,7 @@ class GStreamerAudioPort(AudioPort):
             # generación se invalida (mata aceptaciones tardías). Un fallo
             # del teardown es EXPLÍCITO (AR-02): stop() es safety-critical;
             # el caller debe poder distinguir "detenido" de "no pude".
+            direct_handle = self._active_direct_handle
             if not self._try_stop_pipeline():
                 raise AudioTransportCommandError(
                     "GStreamer stop could not tear down the pending candidate"
@@ -926,6 +955,8 @@ class GStreamerAudioPort(AudioPort):
             self._pending_play = False
             self._eos_emitted = False
             self._active_direct_handle = None
+            if self._direct_executor is not None and direct_handle is not None:
+                self._direct_executor.abort(direct_handle, "gstreamer_stop_candidate")
         else:
             # CASE B — ACCEPTED SOURCE (M11.3C-R6): stop = detener el
             # transporte, NO descargar la fuente. La fuente aceptada A
@@ -936,6 +967,13 @@ class GStreamerAudioPort(AudioPort):
                 # si el stop hubiera tenido éxito; el fallo es EXPLÍCITO
                 # (AR-02): el estado físico es incierto → fail closed.
                 raise AudioTransportCommandError("GStreamer stop could not reach NULL")
+            pending_direct = self._pending_direct_load
+            self._pending_direct_load = None
+            if self._direct_executor is not None and pending_direct is not None:
+                # The accepted source remains resumable in this retained
+                # pipeline, so cancelling a not-yet-loaded replacement may
+                # restore that committed execution.
+                self._direct_executor.abort(pending_direct.handle, "load_failed")
             self._pending_play = False
             self._eos_emitted = False  # stop explícito resetea el marcador EOS
         self._deliver_state_if(PlaybackStatus.STOPPED)
@@ -1482,9 +1520,12 @@ class GStreamerAudioPort(AudioPort):
         reason = event.reason or "gstreamer error"
         candidate = self._pending_path or self._current_path
         if candidate is not None:
+            direct_handle = self._active_direct_handle
             self._pending_path = None
             self._current_path = None
             self._active_direct_handle = None
+            if self._direct_executor is not None and direct_handle is not None:
+                self._direct_executor.abort(direct_handle, "gstreamer_error")
             self._deliver_rej(candidate, reason)
 
     def _publish_duration(self) -> None:

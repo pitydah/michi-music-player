@@ -10,9 +10,11 @@ import pytest
 from michi.application.audio_output_planner import OutputPlanner
 from michi.application.output_session_service import (
     OutputRequest,
+    OutputSessionError,
     OutputSessionService,
 )
 from michi.application.ports import PlaybackOutputTransactionPort
+from michi.domain.audio_device import AudioDeviceBinding, BindingKind, DeviceObservation
 from michi.domain.audio_output import OutputSessionState
 from michi.infrastructure.audio_output.direct_output_executor import (
     DirectExecutorError,
@@ -33,12 +35,9 @@ def _qt_runtime():
     yield _QT_APP
 
 
-def _direct_graph(tmp_path: Path):
+def _direct_graph(tmp_path: Path, *, playback_pcms: tuple[int, ...] = (0,)):
     from test_gstreamer_audio_port import FakeBindings
 
-    from michi.application.dac_qualification_service import (
-        default_environment_fingerprint,
-    )
     from michi.bootstrap import _build_services
     from michi.domain.audio_device import (
         AudioDeviceBinding,
@@ -87,25 +86,29 @@ def _direct_graph(tmp_path: Path):
                 physical_path=physical_path,
                 bcd_device="0100",
                 binding=None,
+                descriptor_sha256="a" * 64,
             ),
-            DeviceObservation(
-                source="alsa",
-                observed_at_ns=1,
-                vendor_id=None,
-                product_id=None,
-                serial=None,
-                manufacturer=None,
-                product="DX5",
-                physical_path=physical_path,
-                bcd_device=None,
-                binding=AudioDeviceBinding(
-                    kind=BindingKind.ALSA_PCM,
-                    locator="hw:CARD=DX5,DEV=0",
-                    generation=0,
-                    currently_available=True,
-                    card_index=1,
-                    pcm_device=0,
-                ),
+            *(
+                DeviceObservation(
+                    source="alsa",
+                    observed_at_ns=1,
+                    vendor_id=None,
+                    product_id=None,
+                    serial=None,
+                    manufacturer=None,
+                    product="DX5",
+                    physical_path=physical_path,
+                    bcd_device=None,
+                    binding=AudioDeviceBinding(
+                        kind=BindingKind.ALSA_PCM,
+                        locator=f"hw:CARD=DX5,DEV={pcm_device}",
+                        generation=0,
+                        currently_available=True,
+                        card_index=1,
+                        pcm_device=pcm_device,
+                    ),
+                )
+                for pcm_device in playback_pcms
             ),
         )
     )
@@ -124,7 +127,9 @@ def _direct_graph(tmp_path: Path):
                 strength=EvidenceStrength.OPENED,
                 source="michi-alsa-probe",
                 observed_at_ns=1,
-                environment_fingerprint=default_environment_fingerprint(),
+                environment_fingerprint=(
+                    graph.dac_qualification.current_environment_fingerprint(device_id)
+                ),
                 evidence_refs=("probe:productive",),
             ),
         ),
@@ -157,6 +162,14 @@ class _AtomicDirectPort:
     def stage_direct_load(self, preparation, *, executor) -> None:
         self.executor = executor
         self.preparation = preparation
+
+    def discard_direct_load(self, handle, *, executor) -> bool:
+        if executor is not self.executor:
+            return False
+        if self.preparation is None or self.preparation.handle != handle:
+            return False
+        self.preparation = None
+        return True
 
 
 def _direct_service(port: _AtomicDirectPort):
@@ -330,6 +343,28 @@ def test_p050_09_direct_to_shared_releases_direct_state(tmp_path: Path) -> None:
         _close_graph(graph)
 
 
+def test_r1_provisional_direct_then_shared_cannot_leak_strict_recipe(
+    tmp_path: Path,
+) -> None:
+    from michi.domain.audio_output import AudioOutputSelection
+
+    graph, bindings = _direct_graph(tmp_path)
+    try:
+        graph.output_session.prepare_for_media(tmp_path / "direct.flac")
+        port = graph.gstreamer_engine_provider.current_port
+        assert port is not None and port._pending_direct_load is not None
+
+        graph.audio_output_profiles.save_selection(AudioOutputSelection(None, None, 2))
+        graph.output_session.prepare_for_media(tmp_path / "shared.flac")
+
+        assert graph.direct_output_executor.handle is None
+        assert port._pending_direct_load is None
+        port.load(tmp_path / "shared.flac")
+        assert bindings.pipelines[-1].audio_sink is None
+    finally:
+        _close_graph(graph)
+
+
 def test_p050_10_shared_to_direct_stages_exact_new_plan(tmp_path: Path) -> None:
     from michi.domain.audio_output import AudioOutputSelection
 
@@ -447,5 +482,279 @@ def test_p050_14_direct_prepare_failure_never_loads_or_falls_back(
         assert bindings.pipelines == []
         assert graph.audio_router.bound_engine_id.value == "gstreamer"
         assert graph.direct_output_executor.handle is None
+    finally:
+        _close_graph(graph)
+
+
+def test_dr_04_productive_pre_destructive_failure_restores_direct_a(
+    tmp_path: Path,
+) -> None:
+    """R1: if GStreamer preserves A, every canonical layer restores A."""
+    from michi.application.ports import AudioLoadError
+
+    graph, bindings = _direct_graph(tmp_path)
+    media_a = tmp_path / "a.flac"
+    media_b = tmp_path / "b.flac"
+    try:
+        graph.playback.load_and_play(media_a)
+        _accept_current(graph, bindings)
+        plan_a = graph.output_session.plan
+        handle_a = graph.direct_output_executor.handle
+        pipeline_a = bindings.pipelines[-1]
+
+        bindings.failed_states.add(bindings.STATE.NULL)
+        with pytest.raises((AudioLoadError, RuntimeError)):
+            graph.playback.load_and_play(media_b)
+
+        assert graph.playback.state.file_path == media_a
+        assert graph.playback._accepted is True
+        assert graph.output_session.state is OutputSessionState.RUNNING
+        assert graph.output_session.plan == plan_a
+        assert graph.direct_output_executor.handle == handle_a
+        assert graph.gstreamer_engine_provider.current_port._pipeline is pipeline_a
+    finally:
+        bindings.failed_states.clear()
+        _close_graph(graph)
+
+
+def test_dr_05_post_destructive_arm_failure_never_resurrects_a(
+    tmp_path: Path,
+) -> None:
+    from michi.application.ports import AudioLoadError
+    from michi.domain.playback import PlaybackStatus
+
+    graph, bindings = _direct_graph(tmp_path)
+    media_a = tmp_path / "a.flac"
+    try:
+        graph.playback.load_and_play(media_a)
+        _accept_current(graph, bindings)
+        bindings.arm_exception_stage = "set_uri"
+        bindings.arm_exception = ValueError("synthetic post-destructive failure")
+
+        with pytest.raises(AudioLoadError) as caught:
+            graph.playback.load_and_play(tmp_path / "b.flac")
+
+        assert caught.value.previous_source_preserved is False
+        assert graph.playback.state.file_path == media_a  # logical history only
+        assert graph.playback.state.status is PlaybackStatus.STOPPED
+        assert graph.playback._accepted is False
+        assert graph.output_session.state is OutputSessionState.IDLE
+        assert graph.output_session.plan is None
+        assert graph.direct_output_executor.handle is None
+        port = graph.gstreamer_engine_provider.current_port
+        assert port._current_path is None and port._pending_path is None
+    finally:
+        bindings.arm_exception_stage = None
+        _close_graph(graph)
+
+
+def test_dr_06_successful_b_commit_has_one_direct_authority(tmp_path: Path) -> None:
+    from michi.infrastructure.audio_output.direct_output_executor import (
+        DirectExecutionState,
+    )
+
+    graph, bindings = _direct_graph(tmp_path)
+    try:
+        graph.playback.load_and_play(tmp_path / "a.flac")
+        _accept_current(graph, bindings)
+        handle_a = graph.direct_output_executor.handle
+
+        media_b = tmp_path / "b.flac"
+        graph.playback.load_and_play(media_b)
+        pipeline_b = bindings.pipelines[-1]
+        assert bindings.null_request_count == 1, "A is released exactly once"
+        _accept_current(graph, bindings)
+
+        handle_b = graph.direct_output_executor.handle
+        assert handle_b is not None and handle_b != handle_a
+        assert graph.direct_output_executor.state is DirectExecutionState.COMMITTED
+        assert graph.output_session.state is OutputSessionState.RUNNING
+        assert graph.output_session.plan.plan_id == handle_b.plan_id
+        assert graph.playback.state.file_path == media_b
+        assert graph.gstreamer_engine_provider.current_port._pipeline is pipeline_b
+    finally:
+        _close_graph(graph)
+
+
+def test_dr_07_play_failure_after_b_load_clears_a_and_b(tmp_path: Path) -> None:
+    from michi.domain.playback import PlaybackStatus
+
+    graph, bindings = _direct_graph(tmp_path)
+    media_a = tmp_path / "a.flac"
+    try:
+        graph.playback.load_and_play(media_a)
+        _accept_current(graph, bindings)
+        bindings.arm_exception_stage = "set_state_playing"
+        bindings.arm_exception = RuntimeError("synthetic B play failure")
+
+        with pytest.raises(RuntimeError, match="B play failure"):
+            graph.playback.load_and_play(tmp_path / "b.flac")
+
+        assert graph.playback.state.file_path == media_a
+        assert graph.playback.state.status is PlaybackStatus.STOPPED
+        assert graph.playback._accepted is False
+        assert graph.output_session.state is OutputSessionState.IDLE
+        assert graph.direct_output_executor.handle is None
+    finally:
+        bindings.arm_exception_stage = None
+        _close_graph(graph)
+
+
+def test_dr_08_stale_b_acceptance_cannot_reclaim_after_failure(tmp_path: Path) -> None:
+    from michi.application.ports import AudioLoadError
+
+    graph, bindings = _direct_graph(tmp_path)
+    media_a = tmp_path / "a.flac"
+    media_b = tmp_path / "b.flac"
+    try:
+        graph.playback.load_and_play(media_a)
+        _accept_current(graph, bindings)
+        bindings.arm_exception_stage = "set_uri"
+        bindings.arm_exception = ValueError("B arm failed")
+        with pytest.raises(AudioLoadError):
+            graph.playback.load_and_play(media_b)
+        failed_b = bindings.pipelines[-1]
+        failed_generation = graph.gstreamer_engine_provider.current_port._generation - 1
+        bindings.arm_exception_stage = None
+
+        from test_gstreamer_audio_port import _deliver, _FakeMsgType, _msg
+
+        port = graph.gstreamer_engine_provider.current_port
+        message, _generation = _msg(port, _FakeMsgType.ASYNC_DONE, failed_b)
+        _deliver(port, message, failed_generation)
+
+        assert graph.playback.state.file_path == media_a
+        assert graph.playback._accepted is False
+        assert graph.output_session.state is OutputSessionState.IDLE
+        assert graph.direct_output_executor.handle is None
+    finally:
+        _close_graph(graph)
+
+
+def test_me_01_zero_playback_endpoints_refuses_direct(tmp_path: Path) -> None:
+    graph, bindings = _direct_graph(tmp_path, playback_pcms=())
+    try:
+        with pytest.raises(Exception) as caught:
+            graph.playback.load_and_play(tmp_path / "zero.flac")
+        assert "NO_ALSA_HW_BINDING" in str(caught.value)
+        assert bindings.pipelines == []
+    finally:
+        _close_graph(graph)
+
+
+def test_me_02_one_playback_endpoint_uses_the_exact_binding(tmp_path: Path) -> None:
+    graph, bindings = _direct_graph(tmp_path, playback_pcms=(7,))
+    try:
+        graph.playback.load_and_play(tmp_path / "one.flac")
+        assert graph.output_session.plan is not None
+        assert graph.output_session.plan.binding.locator == "hw:CARD=DX5,DEV=7"
+        assert bindings.built_recipes[-1].device == "hw:CARD=DX5,DEV=7"
+    finally:
+        _close_graph(graph)
+
+
+def test_me_03_multiple_playback_endpoints_fail_closed(tmp_path: Path) -> None:
+    graph, bindings = _direct_graph(tmp_path, playback_pcms=(0, 1))
+    try:
+        with pytest.raises(Exception) as caught:
+            graph.playback.load_and_play(tmp_path / "ambiguous.flac")
+        assert "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS" in str(caught.value)
+        assert graph.output_session.plan is None
+        assert graph.direct_output_executor.handle is None
+        assert bindings.pipelines == []
+    finally:
+        _close_graph(graph)
+
+
+def test_me_04_ambiguity_refusal_is_independent_of_endpoint_order(
+    tmp_path: Path,
+) -> None:
+    graph, bindings = _direct_graph(tmp_path, playback_pcms=(9, 2))
+    try:
+        with pytest.raises(Exception) as caught:
+            graph.playback.load_and_play(tmp_path / "unordered.flac")
+        assert getattr(caught.value, "code", None) == "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS"
+        assert "DEV=2" not in str(caught.value) and "DEV=9" not in str(caught.value)
+        assert bindings.built_recipes == []
+    finally:
+        _close_graph(graph)
+
+
+def test_me_05_productive_resolver_never_uses_compatibility_binding_for(
+    tmp_path: Path,
+) -> None:
+    graph, bindings = _direct_graph(tmp_path, playback_pcms=(3,))
+    graph.audio_device_registry.binding_for = lambda *args: (_ for _ in ()).throw(
+        AssertionError("binding_for must not select a Direct endpoint")
+    )
+    try:
+        graph.playback.load_and_play(tmp_path / "canonical.flac")
+        assert graph.output_session.plan.binding.pcm_device == 3
+    finally:
+        _close_graph(graph)
+
+
+def test_me_06_ambiguous_direct_does_not_touch_backend_or_shared_fallback(
+    tmp_path: Path,
+) -> None:
+    graph, bindings = _direct_graph(tmp_path, playback_pcms=(0, 1))
+    try:
+        with pytest.raises(OutputSessionError):
+            graph.playback.load_and_play(tmp_path / "no-fallback.flac")
+        assert bindings.pipelines == []
+        assert graph.audio_router.bound_engine_id.value == "gstreamer"
+        assert graph.output_session.mode == "shared"
+    finally:
+        _close_graph(graph)
+
+
+def test_me_07_endpoint_set_change_advances_generation_but_never_guesses(
+    tmp_path: Path,
+) -> None:
+    graph, bindings = _direct_graph(tmp_path, playback_pcms=(0,))
+    device_id = "usb:2622:0105:DX5ABC123"
+    first_generation = graph.audio_device_registry.generation_for(device_id)
+    usb = DeviceObservation(
+        source="sysfs",
+        observed_at_ns=2,
+        vendor_id="2622",
+        product_id="0105",
+        serial="DX5ABC123",
+        manufacturer="MichiAudio",
+        product="DAC Test",
+        physical_path="2-1",
+        bcd_device="0100",
+        binding=None,
+        descriptor_sha256="a" * 64,
+    )
+
+    def endpoint(pcm_device: int) -> DeviceObservation:
+        return DeviceObservation(
+            source="alsa",
+            observed_at_ns=2,
+            vendor_id=None,
+            product_id=None,
+            serial=None,
+            manufacturer=None,
+            product="DX5",
+            physical_path="2-1",
+            bcd_device=None,
+            binding=AudioDeviceBinding(
+                kind=BindingKind.ALSA_PCM,
+                locator=f"hw:CARD=DX5,DEV={pcm_device}",
+                generation=0,
+                currently_available=True,
+                card_index=1,
+                pcm_device=pcm_device,
+            ),
+        )
+
+    graph.audio_device_registry.ingest((usb, endpoint(0), endpoint(1)))
+    try:
+        assert graph.audio_device_registry.generation_for(device_id) != first_generation
+        with pytest.raises(Exception) as caught:
+            graph.playback.load_and_play(tmp_path / "changed.flac")
+        assert "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS" in str(caught.value)
+        assert bindings.pipelines == []
     finally:
         _close_graph(graph)

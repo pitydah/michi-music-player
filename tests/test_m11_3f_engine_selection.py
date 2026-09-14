@@ -1283,7 +1283,10 @@ class TestF42AdapterContract:
         # still execute the unchanged M11.3 path when no payload is staged.
         # Killcritic hardening clears Direct identity on every terminal media
         # path and makes runtime graph inspection/conversion fail closed.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "2fcb87dff02a70cb",
+        # DAC-V35-050R1 (2026-09-13): the exact successful-NULL boundary now
+        # invalidates the private committed Direct rollback image; additive
+        # runtime_version provenance does not alter Shared transport behavior.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "d2c4bcca1f6ce99d",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

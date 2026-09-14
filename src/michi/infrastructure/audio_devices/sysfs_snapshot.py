@@ -18,6 +18,7 @@ SOLO observación: nunca decide identidad canónica, formatos ni playback.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import time
 from pathlib import Path
@@ -39,6 +40,14 @@ def _read_text(path: Path) -> str | None:
     except OSError:
         return None
     return value or None
+
+
+def _sha256_file(path: Path) -> str | None:
+    try:
+        payload = path.read_bytes()
+    except OSError:
+        return None
+    return hashlib.sha256(payload).hexdigest() if payload else None
 
 
 def _usb_physical_path(sysfs_root: Path, device_dir: Path) -> str | None:
@@ -78,6 +87,7 @@ def read_usb_devices(
                 physical_path=_usb_physical_path(sysfs_root, device_dir),
                 bcd_device=_read_text(device_dir / "bcdDevice"),
                 binding=None,
+                descriptor_sha256=_sha256_file(device_dir / "descriptors"),
             )
         )
     return tuple(observations)
@@ -122,6 +132,18 @@ def _playback_pcms(sysfs_root: Path, card_index: int) -> tuple[int, ...]:
             continue
         devices.append(int(match.group(2)))
     return tuple(devices)
+
+
+def _stable_endpoint_signature(card_dir: Path, pcm_device: int) -> str | None:
+    """USB interface + PCM identity, deliberately independent of cardN."""
+    try:
+        interface_name = (card_dir / "device").resolve().name
+    except OSError:
+        return None
+    _device_name, separator, interface = interface_name.partition(":")
+    if not separator or not interface:
+        return None
+    return f"usb-interface:{interface}:pcm:{pcm_device}:sub:0"
 
 
 def read_alsa_cards(
@@ -185,6 +207,9 @@ def read_alsa_cards(
                         currently_available=True,
                         card_index=card_index,
                         pcm_device=pcm_device,
+                        stable_endpoint_signature=_stable_endpoint_signature(
+                            card_dir, pcm_device
+                        ),
                     ),
                 )
             )

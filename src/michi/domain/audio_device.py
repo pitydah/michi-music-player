@@ -36,6 +36,7 @@ class AudioDeviceIdentity:
     bcd_device: str | None
 
     confidence: IdentityConfidence
+    descriptor_sha256: str | None = None
 
 
 class BindingKind(Enum):
@@ -55,6 +56,8 @@ class AudioDeviceBinding:
     card_index: int | None = None
     pcm_device: int | None = None
     pcm_subdevice: int | None = None
+    # Stable endpoint identity when evidence is stronger than transient cardN.
+    stable_endpoint_signature: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,3 +76,4 @@ class DeviceObservation:
     bcd_device: str | None
 
     binding: AudioDeviceBinding | None
+    descriptor_sha256: str | None = None

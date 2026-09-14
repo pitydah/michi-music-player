@@ -9,6 +9,7 @@ PlaybackService. PREROLL VERIFIED != RUNNING: la sesión no se toca.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -31,6 +32,7 @@ class DirectExecutionState(Enum):
     IDLE = "idle"
     STAGED = "staged"
     PREROLL_VERIFIED = "preroll_verified"
+    COMMITTED = "committed"
 
 
 class DirectExecutorError(RuntimeError):
@@ -63,6 +65,15 @@ class DirectLoadPreparation:
             )
 
 
+@dataclass(frozen=True, slots=True)
+class _ExecutionSnapshot:
+    state: DirectExecutionState
+    handle: DirectExecutionHandle
+    recipe: StrictSinkRecipe
+    evidence: DirectPrerollEvidence | None
+    receipt: str
+
+
 class DirectLoadStagePort(Protocol):
     def stage_direct_load(
         self,
@@ -70,6 +81,13 @@ class DirectLoadStagePort(Protocol):
         *,
         executor: GStreamerDirectOutputExecutor,
     ) -> None: ...
+
+    def discard_direct_load(
+        self,
+        handle: DirectExecutionHandle,
+        *,
+        executor: GStreamerDirectOutputExecutor,
+    ) -> bool: ...
 
 
 class GStreamerDirectOutputExecutor:
@@ -82,6 +100,10 @@ class GStreamerDirectOutputExecutor:
         self._recipe: StrictSinkRecipe | None = None
         self._evidence: DirectPrerollEvidence | None = None
         self._receipt: str | None = None
+        # DAC-V35-050R1: at most one committed execution survives while one
+        # replacement candidate is provisional. It is private rollback state,
+        # never a second output/session authority.
+        self._committed: _ExecutionSnapshot | None = None
         self._port_provider: Callable[[], DirectLoadStagePort | None] | None = None
 
     @property
@@ -129,6 +151,7 @@ class GStreamerDirectOutputExecutor:
         self._recipe = recipe
         self._evidence = None
         self._receipt = None
+        self._committed = None
         self._state = DirectExecutionState.STAGED
         return handle
 
@@ -148,14 +171,10 @@ class GStreamerDirectOutputExecutor:
         # Build/validate before replacing current execution. If recipe creation
         # fails, the previous execution remains untouched.
         recipe = recipe_from_plan(plan)
-        previous = (
-            self._generation,
-            self._state,
-            self._handle,
-            self._recipe,
-            self._evidence,
-            self._receipt,
-        )
+        previous = self._snapshot_current()
+        previous_rollback = self._committed
+        if self._state is DirectExecutionState.COMMITTED:
+            self._committed = previous
         self._generation += 1
         handle = DirectExecutionHandle(self._generation, plan.plan_id)
         preparation = DirectLoadPreparation(handle, recipe)
@@ -168,14 +187,10 @@ class GStreamerDirectOutputExecutor:
         try:
             port.stage_direct_load(preparation, executor=self)
         except Exception:
-            (
-                self._generation,
-                self._state,
-                self._handle,
-                self._recipe,
-                self._evidence,
-                self._receipt,
-            ) = previous
+            with contextlib.suppress(Exception):
+                port.discard_direct_load(handle, executor=self)
+            self._restore(previous)
+            self._committed = previous_rollback
             raise
         return receipt
 
@@ -188,24 +203,60 @@ class GStreamerDirectOutputExecutor:
                 "DIRECT_PREROLL_NOT_VERIFIED",
                 "output commit requires verified runtime preroll evidence",
             )
+        self._state = DirectExecutionState.COMMITTED
+        self._committed = None
 
-    def abort_receipt(self, receipt: str, reason: str) -> None:
+    def abort_receipt(self, receipt: str, reason: str) -> bool:
         if receipt != self._receipt:
-            return
+            return False
         handle = self._handle
         if handle is not None:
-            self.abort(handle, reason)
+            return self._abort_current(handle, reason)
+        return False
 
     # AudioOutputExecutorPort signature. Kept separate from the C1 handle API
     # through a small dispatcher so existing generation tests remain valid.
-    def abort(self, handle_or_receipt, reason: str) -> None:
+    def abort(self, handle_or_receipt, reason: str) -> bool:
         if isinstance(handle_or_receipt, str):
-            self.abort_receipt(handle_or_receipt, reason)
-            return
+            return self.abort_receipt(handle_or_receipt, reason)
         handle = handle_or_receipt
         if self._handle is None or handle != self._handle:
-            return
+            return False
+        return self._abort_current(handle, reason)
+
+    def _abort_current(self, handle: DirectExecutionHandle, reason: str) -> bool:
+        self._discard_staged_load(handle)
+        committed = self._committed
+        if (
+            reason == "load_failed"
+            and committed is not None
+            and committed.handle != handle
+        ):
+            self._restore(committed)
+            self._committed = None
+            return True
         self._clear()
+        return False
+
+    def mark_previous_source_released(self) -> None:
+        """Record the backend's destructive load boundary.
+
+        Called by the canonical GStreamer port only after the old pipeline
+        reached NULL. A provisional Direct candidate remains current, but its
+        rollback image is no longer physically valid. A committed Direct
+        execution crossed by a Shared load is removed altogether.
+        """
+        if self._state is DirectExecutionState.COMMITTED:
+            self._clear()
+            return
+        self._committed = None
+
+    def owns_committed_receipt(self, receipt: str) -> bool:
+        return (
+            self._state is DirectExecutionState.COMMITTED
+            and self._receipt == receipt
+            and self._handle is not None
+        )
 
     def recipe_for_load(self, handle: DirectExecutionHandle) -> StrictSinkRecipe:
         """Receta de la ejecución vigente; un handle stale jamás la roba."""
@@ -249,7 +300,10 @@ class GStreamerDirectOutputExecutor:
     def is_preroll_verified(self, handle: DirectExecutionHandle) -> bool:
         if self._handle is None or handle != self._handle:
             return False
-        if self._state is not DirectExecutionState.PREROLL_VERIFIED:
+        if self._state not in (
+            DirectExecutionState.PREROLL_VERIFIED,
+            DirectExecutionState.COMMITTED,
+        ):
             return False
         evidence = self._evidence
         if evidence is None:
@@ -264,21 +318,66 @@ class GStreamerDirectOutputExecutor:
     ) -> DirectPrerollEvidence | None:
         if self._handle is None or handle != self._handle:
             return None
-        if self._state is not DirectExecutionState.PREROLL_VERIFIED:
+        if self._state not in (
+            DirectExecutionState.PREROLL_VERIFIED,
+            DirectExecutionState.COMMITTED,
+        ):
             return None
         return self._evidence
 
     # ── terminación ───────────────────────────────────────────────────
     def release(self, reason: str) -> None:
         """Libera la ejecución actual (idempotente)."""
+        handle = self._handle
+        if handle is not None:
+            self._discard_staged_load(handle)
         self._clear()
+
+    def _discard_staged_load(self, handle: DirectExecutionHandle) -> None:
+        provider = self._port_provider
+        if provider is None:
+            return
+        port = provider()
+        if port is not None:
+            port.discard_direct_load(handle, executor=self)
 
     def _clear(self) -> None:
         self._handle = None
         self._recipe = None
         self._evidence = None
         self._receipt = None
+        self._committed = None
         self._state = DirectExecutionState.IDLE
+
+    def _snapshot_current(self) -> _ExecutionSnapshot | None:
+        if (
+            self._handle is None
+            or self._recipe is None
+            or self._receipt is None
+            or self._state is DirectExecutionState.IDLE
+        ):
+            return None
+        return _ExecutionSnapshot(
+            state=self._state,
+            handle=self._handle,
+            recipe=self._recipe,
+            evidence=self._evidence,
+            receipt=self._receipt,
+        )
+
+    def _restore(self, snapshot: _ExecutionSnapshot | None) -> None:
+        if snapshot is None:
+            self._handle = None
+            self._recipe = None
+            self._evidence = None
+            self._receipt = None
+            self._state = DirectExecutionState.IDLE
+            return
+        self._state = snapshot.state
+        self._handle = snapshot.handle
+        self._recipe = snapshot.recipe
+        self._evidence = snapshot.evidence
+        self._receipt = snapshot.receipt
 
     # ── internos ──────────────────────────────────────────────────────
     def _require_current(self, handle: DirectExecutionHandle) -> None:

@@ -29,7 +29,11 @@ from michi.application.audio_output_planner import OutputPlanner
 from michi.application.audio_output_profile_service import AudioOutputProfileService
 from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.coordinator import PlaybackCoordinator
-from michi.application.dac_qualification_service import DacQualificationService
+from michi.application.dac_qualification_service import (
+    DacQualificationService,
+    QualificationEnvironmentContext,
+    binding_topology_fingerprint,
+)
 from michi.application.enrichment_coordinator import EnrichmentCoordinator
 from michi.application.enrichment_evidence import LibraryEnrichmentEvidenceBuilder
 from michi.application.enrichment_executor import ThreadPoolEnrichmentExecutor
@@ -74,7 +78,11 @@ from michi.application.source_scan_lifecycle import SourceScanLifecycle
 from michi.domain.audio_engine import AudioEngineId
 from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
 from michi.infrastructure.audio_devices.alsa_probe_adapter import MichiAlsaProbeAdapter
+from michi.infrastructure.audio_devices.qualification_environment import (
+    read_qualification_host_environment,
+)
 from michi.infrastructure.audio_devices.udev_observer import UdevObserver
+from michi.infrastructure.audio_engines.gstreamer import GStreamerBindings
 from michi.infrastructure.audio_engines.providers import (
     GStreamerEngineProvider,
     MpdEngineProvider,
@@ -379,8 +387,42 @@ def _build_services(
     # Initial passive snapshot; netlink monitoring starts only after every
     # consumer is wired by ApplicationContainer.
     udev_observer.rescan()
+    runtime_gstreamer_bindings = gstreamer_bindings or GStreamerBindings()
+    qualification_host = read_qualification_host_environment()
+
+    def qualification_environment(stable_device_id: str):
+        identity = next(
+            (
+                item
+                for item in audio_devices.snapshot()
+                if item.stable_device_id == stable_device_id
+            ),
+            None,
+        )
+        try:
+            gstreamer_version = runtime_gstreamer_bindings.runtime_version()
+        except (ImportError, RuntimeError, ValueError):
+            gstreamer_version = None
+        bindings = audio_devices.bindings_for(stable_device_id)
+        return QualificationEnvironmentContext(
+            stable_device_id=stable_device_id,
+            usb_vendor_id=identity.vendor_id if identity is not None else None,
+            usb_product_id=identity.product_id if identity is not None else None,
+            usb_bcd_device=identity.bcd_device if identity is not None else None,
+            usb_descriptor_sha256=(
+                identity.descriptor_sha256 if identity is not None else None
+            ),
+            kernel_release=qualification_host.kernel_release,
+            snd_usb_audio_identity=qualification_host.snd_usb_audio_identity,
+            alsa_library_version=qualification_host.alsa_library_version,
+            gstreamer_version=gstreamer_version,
+            binding_topology_fingerprint=binding_topology_fingerprint(bindings),
+        )
+
     qualification = DacQualificationService(
-        MichiAlsaProbeAdapter(), cache=output_repository
+        MichiAlsaProbeAdapter(),
+        cache=output_repository,
+        environment_context=qualification_environment,
     )
 
     # M11.3B-R1: ONE canonical Qt provider instance — the SAME object is
@@ -391,7 +433,7 @@ def _build_services(
     direct_executor = GStreamerDirectOutputExecutor()
     gstreamer_provider = GStreamerEngineProvider(
         direct_executor=direct_executor,
-        bindings=gstreamer_bindings,
+        bindings=runtime_gstreamer_bindings,
     )
     direct_executor.bind_port_provider(lambda: gstreamer_provider.current_port)
     mpd_provider = MpdEngineProvider()

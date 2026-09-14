@@ -13,13 +13,15 @@ Nunca brute-force de matrices al startup (§14).
 
 from __future__ import annotations
 
-import os
+import hashlib
+import json
 import platform
-import sys
 import time
 from collections.abc import Callable
+from dataclasses import asdict, dataclass
 
 from michi.application.audio_output_ports import QualificationCachePort
+from michi.domain.audio_device import AudioDeviceBinding
 from michi.domain.audio_evidence import (
     CapabilityEvidence,
     EvidenceStrength,
@@ -28,6 +30,8 @@ from michi.domain.audio_evidence import (
 )
 
 SOURCE = "michi-alsa-probe"
+ENVIRONMENT_FINGERPRINT_SCHEMA_VERSION = 2
+QUALIFICATION_PROFILE_VERSION = "dac-v35-exact-open-v1"
 
 _NEGATIVE_DISPOSITIONS = {"unsupported_format"}
 # BUSY/REMOVED/TIMEOUT y fallos de entorno NUNCA son negativos (§12).
@@ -48,11 +52,101 @@ def _exact_match(requested: PcmTuple, negotiated: PcmTuple | None) -> bool:
     )
 
 
-def default_environment_fingerprint() -> str:
-    return (
-        f"{platform.system()}-{platform.release()}-{os.uname().machine}"
-        f"-py{sys.version_info.major}.{sys.version_info.minor}"
+@dataclass(frozen=True, slots=True)
+class QualificationEnvironmentContext:
+    """Canonical inputs that decide whether exact-open evidence is current."""
+
+    stable_device_id: str
+    usb_vendor_id: str | None
+    usb_product_id: str | None
+    usb_bcd_device: str | None
+    usb_descriptor_sha256: str | None
+    kernel_release: str
+    snd_usb_audio_identity: str | None
+    alsa_library_version: str | None
+    gstreamer_version: str | None
+    binding_topology_fingerprint: str
+    qualification_profile_version: str = QUALIFICATION_PROFILE_VERSION
+
+    @property
+    def complete_for_current_evidence(self) -> bool:
+        required = (
+            self.stable_device_id,
+            self.usb_vendor_id,
+            self.usb_product_id,
+            self.usb_bcd_device,
+            self.usb_descriptor_sha256,
+            self.kernel_release,
+            self.snd_usb_audio_identity,
+            self.alsa_library_version,
+            self.gstreamer_version,
+            self.binding_topology_fingerprint,
+            self.qualification_profile_version,
+        )
+        return all(value is not None and value != "" for value in required)
+
+
+def default_environment_context(
+    stable_device_id: str = "environment:unbound",
+) -> QualificationEnvironmentContext:
+    """Best available host context when no device registry is supplied."""
+    return QualificationEnvironmentContext(
+        stable_device_id=stable_device_id,
+        usb_vendor_id=None,
+        usb_product_id=None,
+        usb_bcd_device=None,
+        usb_descriptor_sha256=None,
+        kernel_release=platform.release(),
+        snd_usb_audio_identity=None,
+        alsa_library_version=None,
+        gstreamer_version=None,
+        binding_topology_fingerprint="topology:unbound",
     )
+
+
+def default_environment_fingerprint(
+    context: QualificationEnvironmentContext | None = None,
+) -> str:
+    """Versioned SHA-256 over canonical JSON; legacy strings never match."""
+    material = asdict(context or default_environment_context())
+    material["schema_version"] = ENVIRONMENT_FINGERPRINT_SCHEMA_VERSION
+    canonical = json.dumps(
+        material,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return f"qenv:v{ENVIRONMENT_FINGERPRINT_SCHEMA_VERSION}:sha256:{digest}"
+
+
+def binding_topology_fingerprint(
+    bindings: tuple[AudioDeviceBinding, ...],
+) -> str:
+    """Canonical endpoint-set hash; card renumber is ignored only with proof."""
+    endpoints: list[dict[str, object]] = []
+    for binding in bindings:
+        endpoint: dict[str, object] = {"kind": binding.kind.value}
+        if binding.stable_endpoint_signature is not None:
+            endpoint["stable_endpoint_signature"] = binding.stable_endpoint_signature
+        else:
+            # Without a superior signature, retain all runtime identity inputs;
+            # a renumber must invalidate rather than be guessed equivalent.
+            endpoint.update(
+                {
+                    "locator": binding.locator,
+                    "card_index": binding.card_index,
+                    "pcm_device": binding.pcm_device,
+                    "pcm_subdevice": binding.pcm_subdevice,
+                }
+            )
+        endpoints.append(endpoint)
+    canonical = json.dumps(
+        sorted(endpoints, key=lambda item: json.dumps(item, sort_keys=True)),
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return f"topology:v1:sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
 
 
 class DacQualificationService:
@@ -61,12 +155,20 @@ class DacQualificationService:
         adapter: object,
         *,
         cache: QualificationCachePort | None = None,
-        environment_fingerprint: Callable[[], str] = default_environment_fingerprint,
+        environment_fingerprint: Callable[[], str] | None = None,
+        environment_context: (
+            Callable[[str], QualificationEnvironmentContext] | None
+        ) = None,
         clock: Callable[[], int] = time.monotonic_ns,
     ) -> None:
+        if environment_fingerprint is not None and environment_context is not None:
+            raise ValueError(
+                "environment_fingerprint and environment_context are mutually exclusive"
+            )
         self._adapter = adapter
         self._cache = cache
         self._environment_fingerprint = environment_fingerprint
+        self._environment_context = environment_context
         self._clock = clock
 
     # ── C07: la mutación de la cache es autoridad de ESTE servicio ────
@@ -86,12 +188,32 @@ class DacQualificationService:
         self, stable_device_id: str
     ) -> tuple[CapabilityEvidence, ...]:
         """Return only cache evidence valid for the current environment."""
-        fingerprint = self._environment_fingerprint()
+        if self._environment_fingerprint is None:
+            context = (
+                self._environment_context(stable_device_id)
+                if self._environment_context is not None
+                else default_environment_context(stable_device_id)
+            )
+            if not context.complete_for_current_evidence:
+                return ()
+            fingerprint = default_environment_fingerprint(context)
+        else:
+            fingerprint = self.current_environment_fingerprint(stable_device_id)
         return tuple(
             item
             for item in self.cached_evidence(stable_device_id)
             if item.environment_fingerprint == fingerprint
         )
+
+    def current_environment_fingerprint(self, stable_device_id: str) -> str:
+        if self._environment_fingerprint is not None:
+            return self._environment_fingerprint()
+        context = (
+            self._environment_context(stable_device_id)
+            if self._environment_context is not None
+            else default_environment_context(stable_device_id)
+        )
+        return default_environment_fingerprint(context)
 
     def qualify_and_cache(
         self,
@@ -193,6 +315,8 @@ class DacQualificationService:
             strength=strength,
             source=SOURCE,
             observed_at_ns=self._clock(),
-            environment_fingerprint=self._environment_fingerprint(),
+            environment_fingerprint=self.current_environment_fingerprint(
+                stable_device_id
+            ),
             evidence_refs=(evidence_ref,),
         )

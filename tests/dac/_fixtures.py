@@ -27,6 +27,7 @@ class UsbDevice:
     serial: str | None = None
     bcd_device: str | None = None
     bus_path: str = _USB_BUS_PATH
+    descriptors: bytes = b"michi-test-usb-descriptors-v1"
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,7 @@ def build_linux_sysfs(
             _write_text(device_dir / "bcdDevice", device.bcd_device)
         _write_text(device_dir / "manufacturer", "MichiAudio")
         _write_text(device_dir / "product", "DAC Test")
+        (device_dir / "descriptors").write_bytes(device.descriptors)
         # interface USB
         _usb_interface_dir(root, device).mkdir(parents=True, exist_ok=True)
         # symlink del bus: /sys/bus/usb/devices/<devpath>

@@ -214,6 +214,9 @@ class FakeBindings:
     def playbin3_available(self):
         return self.playbin3_present and "playbin3" not in self.missing_factories
 
+    def runtime_version(self):
+        return "GStreamer 1.test"
+
     def element_factory_find(self, name):
         return None if name in self.missing_factories else object()
 
@@ -4601,6 +4604,75 @@ def _play_state(port, bindings):
 
 
 class TestStrictRecipeOwnership:
+    @pytest.mark.parametrize("cancel", ["abort", "release", "stop"])
+    def test_staged_direct_cancel_cannot_contaminate_shared_load(self, qapp, cancel):
+        bindings = FakeBindings()
+        port, executor = _strict_port(bindings)
+        receipt = _stage_strict(executor)
+
+        if cancel == "abort":
+            executor.abort(receipt, "cancelled_before_load")
+        elif cancel == "release":
+            executor.release("released_before_load")
+        else:
+            port.stop()
+
+        assert port._pending_direct_load is None
+        port.load(Path("/m/shared.flac"))
+        assert bindings.built_recipes == []
+        assert bindings.pipelines[-1].audio_sink is None
+        port.close()
+
+    def test_direct_error_clears_executor_before_reentrant_rejection(self, qapp):
+        from michi.infrastructure.audio_output.direct_output_executor import (
+            DirectExecutionState,
+        )
+
+        bindings = FakeBindings()
+        port, executor = _strict_port(bindings)
+        _stage_strict(executor)
+        port.load(Path("/m/bad.flac"))
+        states_at_rejection = []
+
+        def on_rejected(_path, _reason):
+            states_at_rejection.append(executor.state)
+            _stage_strict(executor, rate=96000, fmt="S32_LE")
+
+        port.subscribe_media_rejected(on_rejected)
+        pipeline = bindings.pipelines[-1]
+        message, generation = _msg(
+            port, _FakeMsgType.ERROR, pipeline, error_text="direct failed"
+        )
+        _deliver(port, message, generation)
+
+        assert states_at_rejection == [DirectExecutionState.IDLE]
+        assert executor.state is DirectExecutionState.STAGED
+        assert port._pending_direct_load is not None
+        port.close()
+
+    def test_stop_preserves_accepted_direct_and_discards_staged_replacement(self, qapp):
+        from michi.infrastructure.audio_output.direct_output_executor import (
+            DirectExecutionState,
+        )
+
+        bindings = FakeBindings()
+        port, executor = _strict_port(bindings)
+        receipt_a = _stage_strict(executor)
+        port.load(Path("/m/a.flac"))
+        pipeline = bindings.pipelines[-1]
+        message, generation = _msg(port, _FakeMsgType.ASYNC_DONE, pipeline)
+        _deliver(port, message, generation)
+        executor.commit(receipt_a)
+        handle_a = executor.handle
+
+        _stage_strict(executor, rate=96000, fmt="S32_LE")
+        port.stop()
+
+        assert port._pending_direct_load is None
+        assert executor.handle == handle_a
+        assert executor.state is DirectExecutionState.COMMITTED
+        port.close()
+
     def test_r1_reentrant_load_does_not_steal_recipe(self, qapp):
         bindings = FakeBindings()
         port, executor = _strict_port(bindings)

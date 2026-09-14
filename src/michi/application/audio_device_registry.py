@@ -71,6 +71,7 @@ def _binding_key(binding: AudioDeviceBinding) -> tuple:
         -1 if binding.card_index is None else binding.card_index,
         -1 if binding.pcm_device is None else binding.pcm_device,
         -1 if binding.pcm_subdevice is None else binding.pcm_subdevice,
+        binding.stable_endpoint_signature or "",
         binding.currently_available,
     )
 
@@ -310,6 +311,7 @@ class AudioDeviceRegistry:
             bus="usb" if observation.vendor_id else None,
             bcd_device=observation.bcd_device,
             confidence=confidence,
+            descriptor_sha256=observation.descriptor_sha256,
         )
         return _DeviceRecord(
             stable_device_id=stable_id,
@@ -330,6 +332,7 @@ class AudioDeviceRegistry:
             card_index=binding.card_index,
             pcm_device=binding.pcm_device,
             pcm_subdevice=binding.pcm_subdevice,
+            stable_endpoint_signature=binding.stable_endpoint_signature,
         )
 
     def _next_generation(self) -> int:

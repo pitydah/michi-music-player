@@ -210,3 +210,106 @@ def test_c1_11_handle_is_immutable() -> None:
     handle = executor.stage(_plan())
     with pytest.raises(dataclasses.FrozenInstanceError):
         handle.generation = 99  # type: ignore[misc]
+
+
+class _StagingPort:
+    def __init__(self) -> None:
+        self.preparations = []
+        self.pending = None
+        self.fail = False
+
+    def stage_direct_load(self, preparation, *, executor) -> None:
+        assert executor.recipe_for_load(preparation.handle) == preparation.recipe
+        if self.fail:
+            raise RuntimeError("synthetic stage failure")
+        self.pending = preparation
+        self.preparations.append(preparation)
+
+    def discard_direct_load(self, handle, *, executor) -> bool:
+        if self.pending is None or self.pending.handle != handle:
+            return False
+        self.pending = None
+        return True
+
+
+def _prepare_verified(executor, port, plan_id: str):
+    receipt = executor.prepare(_plan(plan_id))
+    handle = port.preparations[-1].handle
+    executor.verify_preroll(
+        handle,
+        _snapshot(
+            execution_generation=handle.generation,
+            plan_id=plan_id,
+        ),
+    )
+    return receipt, handle
+
+
+def test_dr_01_pre_destructive_abort_restores_committed_execution() -> None:
+    """A committed + provisional B + preserved-source failure => A owns again."""
+    port = _StagingPort()
+    executor = GStreamerDirectOutputExecutor()
+    executor.bind_port_provider(lambda: port)
+    receipt_a, handle_a = _prepare_verified(executor, port, "plan:A")
+    executor.commit(receipt_a)
+
+    receipt_b = executor.prepare(_plan("plan:B"))
+    executor.abort(receipt_b, "load_failed")
+
+    assert executor.handle == handle_a
+    assert executor.state is DirectExecutionState.COMMITTED
+    assert executor.recipe_for_load(handle_a).plan_id == "plan:A"
+
+
+def test_dr_02_post_destructive_abort_invalidates_both_executions() -> None:
+    """Once A's source is lost, aborting B must never resurrect A."""
+    port = _StagingPort()
+    executor = GStreamerDirectOutputExecutor()
+    executor.bind_port_provider(lambda: port)
+    receipt_a, _handle_a = _prepare_verified(executor, port, "plan:A")
+    executor.commit(receipt_a)
+
+    receipt_b = executor.prepare(_plan("plan:B"))
+    executor.abort(receipt_b, "load_failed_source_lost")
+
+    assert executor.handle is None
+    assert executor.state is DirectExecutionState.IDLE
+
+
+def test_dr_03_successful_b_commit_retires_a_and_stale_receipts() -> None:
+    """B commit is the only point that replaces committed Direct authority."""
+    port = _StagingPort()
+    executor = GStreamerDirectOutputExecutor()
+    executor.bind_port_provider(lambda: port)
+    receipt_a, handle_a = _prepare_verified(executor, port, "plan:A")
+    executor.commit(receipt_a)
+    receipt_b, handle_b = _prepare_verified(executor, port, "plan:B")
+
+    executor.commit(receipt_b)
+    executor.abort(receipt_a, "late_a_abort")
+
+    assert executor.handle == handle_b
+    assert executor.state is DirectExecutionState.COMMITTED
+    assert executor.evidence_for(handle_a) is None
+
+
+def test_stage_failure_restores_current_and_prior_rollback_image() -> None:
+    port = _StagingPort()
+    executor = GStreamerDirectOutputExecutor()
+    executor.bind_port_provider(lambda: port)
+    receipt_a, handle_a = _prepare_verified(executor, port, "plan:A")
+    executor.commit(receipt_a)
+    receipt_b = executor.prepare(_plan("plan:B"))
+    handle_b = executor.handle
+    port.fail = True
+
+    with pytest.raises(RuntimeError, match="stage failure"):
+        executor.prepare(_plan("plan:C"))
+    assert executor.handle == handle_b
+    assert port.pending is not None
+    assert port.pending.handle == handle_b
+
+    executor.abort(receipt_b, "load_failed")
+    assert executor.handle == handle_a
+    assert executor.state is DirectExecutionState.COMMITTED
+    assert port.pending is None

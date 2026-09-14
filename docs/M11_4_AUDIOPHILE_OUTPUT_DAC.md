@@ -31,6 +31,13 @@ V3.5 spec governs implementation and acceptance.
   plan/handle/recipe identity, exact strict-sink staging, runtime
   sink/device/caps/graph validation before output commit, and fail-closed
   lifecycle cleanup with `FallbackKind.STOP`.
+- `DAC-V35-050R1` corrective seal — **CLOSED-AUTOMATED / GO**. Direct A→B
+  retains one committed rollback image until the exact successful GStreamer
+  `NULL` boundary; post-boundary failures cannot resurrect A. Direct refuses
+  multiple ALSA playback endpoints instead of choosing one, and qualification
+  uses the complete versioned `qenv:v2` context fingerprint. Legacy or
+  incomplete evidence remains historical. Gates: DR-01..08, ME-01..07,
+  FP-01..11.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 

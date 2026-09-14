@@ -19266,6 +19266,24 @@ automatic fallback for Direct `STOP`. This seal is not physical DAC
 qualification and does not authorize bit-perfect, Michi-Verified, or Signal
 Truth claims.
 
+**Corrective seal (2026-09-13): `DAC-V35-050R1 CLOSED-AUTOMATED / GO`.**
+The executor and `OutputSessionService` now retain one private committed Direct
+rollback image while one replacement is provisional. A failure before the old
+GStreamer pipeline reaches `NULL` restores the committed execution; successful
+`NULL` is the destructive boundary and invalidates that rollback image, so a
+later arm/play failure cannot resurrect the old source. Productive Direct
+resolution accepts exactly one current ALSA playback endpoint and refuses
+multiple endpoints with `MULTIPLE_ALSA_PLAYBACK_ENDPOINTS`; it never chooses a
+first endpoint or falls back to Shared. Qualification evidence uses a versioned
+`qenv:v2` SHA-256 over canonical device, descriptor, kernel/driver, ALSA,
+GStreamer, binding-topology, and qualification-profile inputs. Legacy,
+mismatched, or incomplete contexts remain historical and never authorize an
+`OutputPlan`. Automated gates: DR-01..08, ME-01..07, and FP-01..11.
+
+This corrective seal does not implement explicit endpoint selection, Volume
+Authority, full Signal Truth, or physical DAC qualification. `DAC-V35-060`
+remains NOT STARTED and `DAC-V35-110` remains pending.
+
 ---
 
 # 405. `DAC-V35-060` — VOLUME AUTHORITY CLOSED SLICE
