@@ -133,6 +133,7 @@ from michi.presentation.audio_engine_bridge import (
     AudioEngineBridge,
     submit_audio_engine_probe,
 )
+from michi.presentation.audio_output_bridge import AudioOutputBridge
 from michi.presentation.enrichment_bridge import (
     EnrichmentBridge,
     LibraryEnrichmentProjection,
@@ -201,6 +202,7 @@ class ServiceGraph:
     gstreamer_engine_provider: GStreamerEngineProvider
     direct_output_executor: GStreamerDirectOutputExecutor
     output_session: OutputSessionService
+    volume_policy: object
     audio_output_profiles: AudioOutputProfileService
     audio_device_registry: AudioDeviceRegistry
     dac_qualification: DacQualificationService
@@ -454,12 +456,16 @@ def _build_services(
         request_provider=output_resolver,
         executors={AudioEngineId.GSTREAMER.value: direct_executor},
     )
+    from michi.application.volume_policy_service import VolumePolicyService
+
+    volume_policy = VolumePolicyService(router, output_session)
 
     # PlaybackService is needed by convergence (volume/mute restore) — the
     # graph wiring order is: services → convergence → startup activation.
     playback = PlaybackService(
         router,
         output_tx=output_session,
+        volume_port=volume_policy,
     )
     convergence = AudioEngineConvergenceCoordinator(
         engine_service=engine_service,
@@ -707,6 +713,7 @@ def _build_services(
         gstreamer_engine_provider=gstreamer_provider,
         direct_output_executor=direct_executor,
         output_session=output_session,
+        volume_policy=volume_policy,
         audio_output_profiles=output_profiles,
         audio_device_registry=audio_devices,
         dac_qualification=qualification,
@@ -815,6 +822,7 @@ class ApplicationContainer:
         self._history_coordinator: PlaybackHistoryCoordinator | None = None
         self._psb: PlaybackSessionBridge | None = None
         self._aeb: AudioEngineBridge | None = None
+        self._aob: AudioOutputBridge | None = None
         self._queue: QueueService | None = None
         self._library: LibraryService | None = None
         self._library_prefs: LibraryPreferencesCoordinator | None = None
@@ -1002,6 +1010,7 @@ class ApplicationContainer:
         graph.history_coordinator.start()
 
         pb = PlaybackBridge(playback, library)
+        aob = AudioOutputBridge(graph.volume_policy, playback)
         qb = QueueBridge(queue, library)
         psb = PlaybackSessionBridge(graph.playback_session)
         # M11.3-UI: ONE production AudioEngineBridge over the SAME
@@ -1058,6 +1067,7 @@ class ApplicationContainer:
         ctx.setContextProperty("playlists", plb)
         ctx.setContextProperty("settingsBridge", sb)
         ctx.setContextProperty("audioEngine", aeb)
+        ctx.setContextProperty("audioOutput", aob)
         ctx.setContextProperty("enrichment", self._eb)
         ctx.setContextProperty("libraryEnrichment", self._library_enrichment)
 
@@ -1078,6 +1088,7 @@ class ApplicationContainer:
         self._history_coordinator = graph.history_coordinator
         self._psb = psb
         self._aeb = aeb
+        self._aob = aob
         self._queue = queue
         self._library = library
         self._playlist_service = playlist_service
@@ -1268,6 +1279,7 @@ class ApplicationContainer:
             self._qb,
             self._psb,
             self._aeb,
+            getattr(self, "_aob", None),
             self._lb,
             self._plb,
             self._nb,

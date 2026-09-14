@@ -155,25 +155,30 @@ def main() -> int:
         assumption=True,
     )
 
-    # ── volume path: PlaybackBridge -> PlaybackService -> AudioPort ──
+    # ── volume path: Bridge -> Playback -> VolumePolicy -> AudioPort ──
     bridge_src = (ROOT / "src/michi/presentation/playback_bridge.py").read_text(
         encoding="utf-8"
     )
     service_src = (ROOT / "src/michi/application/playback_service.py").read_text(
         encoding="utf-8"
     )
+    volume_policy_src = (
+        ROOT / "src/michi/application/volume_policy_service.py"
+    ).read_text(encoding="utf-8")
     router_src = (ROOT / "src/michi/application/audio_transport_router.py").read_text(
         encoding="utf-8"
     )
     bridge_ok = bool(
         re.search(r"def set_volume.*?self\._service\.set_volume", bridge_src, re.S)
     )
-    service_ok = bool(re.search(r"self\._audio\.set_volume", service_src))
+    service_ok = "self._volume_port.apply_volume" in service_src
+    policy_ok = bool(re.search(r"self\._audio\.set_volume", volume_policy_src))
     router_ok = "def set_volume" in router_src
     _check(
         "volume-path",
-        bridge_ok and service_ok and router_ok,
-        f"bridge->service={bridge_ok} service->audio={service_ok} router={router_ok}",
+        bridge_ok and service_ok and policy_ok and router_ok,
+        f"bridge->service={bridge_ok} service->policy={service_ok} "
+        f"policy->audio={policy_ok} router={router_ok}",
         assumption=True,
     )
 

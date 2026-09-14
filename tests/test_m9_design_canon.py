@@ -345,13 +345,16 @@ def test_album_grid_and_detail_have_premium_information_hierarchy() -> None:
 
 def test_transport_microdetails_are_coherent_surfaces() -> None:
     bar = _text("player/NowPlayingBar.qml")
+    volume = _text("components/DacVolumeControl.qml")
     icons = _text("primitives/MichiIcon.qml")
-    assert 'objectName: "volumeControlRow"' in bar
+    assert 'objectName: "dacVolumeControl"' in bar
+    assert 'objectName: "volumeSlider"' in volume
     assert 'objectName: "volumeControlSurface"' not in bar
-    assert bar.count("height: root.sliderTrackHeight") == 2
+    assert bar.count("height: root.sliderTrackHeight") == 1
+    assert "height: 6" in volume
     assert "playPauseButton.hovered ? 1.025" in bar
-    assert bar.count("x: volumeSlider.leftPadding") == 2
-    assert bar.count("y: volumeSlider.topPadding") == 2
+    assert volume.count("x: volumeSlider.leftPadding") == 2
+    assert volume.count("y: volumeSlider.topPadding") == 2
     repeat_branch = icons.split(
         '} else if (root.name === "repeat" || root.name === "repeat-one") {'
     )[1].split('} else if (root.name === "view-options") {')[0]

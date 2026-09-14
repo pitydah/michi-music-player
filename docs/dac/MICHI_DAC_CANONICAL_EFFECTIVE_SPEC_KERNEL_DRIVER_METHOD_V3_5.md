@@ -221,7 +221,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 3 | `DAC-V35-030` Persistence + output profile | ACTIVE | YES | schema v2, selected DAC/profile persisted, qualification cache rebuildable |
 | 4 | `DAC-V35-040` Output planner + output transaction | ACTIVE | YES | deterministic plan before hardware/backend mutation |
 | 5 | `DAC-V35-050` GStreamer Direct executor | ACTIVE | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
-| 6 | `DAC-V35-060` Volume authority migration | ACTIVE | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
+| 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
 | 7 | `DAC-V35-070` Runtime evidence + Signal Truth | ACTIVE | YES | requested/decoded/effective/negotiated path with contradiction handling |
 | 8 | `DAC-V35-080` Disconnect/reconnect + transitions | ACTIVE | YES | deterministic failure/rebind; no speaker fallback |
 | 9 | `DAC-V35-090` Premium DAC UI | ACTIVE | YES | DAC controls separated from Audio Engine; mode-aware volume |
@@ -566,6 +566,44 @@ no hidden attenuation
 mute remains an explicit user command; while muted, Signal Truth verdict is MUTED/NO-AUDIBLE-SIGNAL, never BIT_PERFECT_ACTIVE
 unmute restores unity before the path can regain Direct-verification status
 ```
+
+### Shared preference across Direct FIXED (060 authority clarification)
+
+The persisted generic `settings.volume` remains the user's **Shared/reference
+software-volume preference**. It is not overwritten by Direct FIXED's effective
+unity projection.
+
+```text
+Shared 37 -> Direct FIXED 100 -> Shared 37
+```
+
+`PlaybackState.volume` still reports the currently effective playback-facing
+value: 37 while Shared is effective and 100 while Direct FIXED is effective.
+`VolumePolicyService` therefore owns the in-process Shared preference seeded by
+startup restore; persistence reads that preference rather than mistaking the
+temporary Direct unity projection for a new Shared preference. This reuses the
+existing settings field and schema; it does not add a second persisted volume.
+
+Candidate preparation is scoped, never a mutation of the old source:
+
+```text
+Shared candidate       -> initialize from Shared preference
+Direct FIXED candidate -> initialize gain at exactly 1.0
+```
+
+The GStreamer mechanism receives this already-resolved candidate rule through
+the Direct execution payload. It does not query output profiles or choose
+policy. Entering Direct must not call generic `AudioPort.set_volume(100)` on the
+old Shared pipeline. A Direct candidate that cannot establish unity is rejected
+before acceptance. Returning to Shared initializes the new Shared candidate
+from the preserved Shared preference, without first changing the active Direct
+pipeline.
+
+`DEVICE_EXTERNAL` is non-adjustable Michi-side: effective PCM gain remains
+unity, explicit mute remains separate, and non-idempotent volume requests raise
+`OutputVolumeLockedError`. `ALSA_HARDWARE` without a qualified mapping raises
+`DeviceControlUnavailableError`. `UNKNOWN` raises a typed fail-closed volume
+authority error and never delegates to software attenuation.
 
 ### Direct + DEVICE_HARDWARE
 
@@ -19312,6 +19350,18 @@ Michi-Verified, or Signal Truth claims. `DAC-V35-060` remains NOT STARTED.
 # 405. `DAC-V35-060` — VOLUME AUTHORITY CLOSED SLICE
 
 This slice is a **current pre-Stable M11.4 blocker** even though qualified hardware volume itself is conditional.
+
+**Implementation seal (2026-09-14): `DAC-V35-060 CLOSED-AUTOMATED / GO`.**
+The production graph owns one mandatory `VolumePolicyService`. Shared commands
+delegate to the active engine, while Direct FIXED candidates establish and
+verify unity before acceptance. Non-unity Direct commands fail with typed
+errors and never mutate pipeline or `PlaybackState` truth. The persisted Shared
+preference survives Direct projection (`37 -> 100 -> 37`), including
+mute/unmute and engine-switch snapshots. `AudioOutputBridge` exposes read-only
+volume mode/adjustability/label facts; the player uses one authority-aware
+`DacVolumeControl`, and Settings contains no duplicate gain/mute command path.
+Automated gates V60-01..V60-30 and the 050R2/M11.3 firewalls are green. This
+seal makes no physical DAC, Signal Truth, bit-perfect, or Michi-Verified claim.
 
 Code changes:
 

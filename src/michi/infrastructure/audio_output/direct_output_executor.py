@@ -17,7 +17,7 @@ from typing import Protocol
 
 from michi.application.audio_output_ports import OutputExecutorAbortDisposition
 from michi.domain.audio_engine import AudioEngineId
-from michi.domain.audio_output import OutputPlan
+from michi.domain.audio_output import OutputPlan, VolumePolicy
 from michi.infrastructure.audio_output.runtime_inspector import (
     DirectPrerollEvidence,
     DirectRuntimeSnapshot,
@@ -57,12 +57,18 @@ class DirectLoadPreparation:
 
     handle: DirectExecutionHandle
     recipe: StrictSinkRecipe
+    candidate_volume: float
 
     def __post_init__(self) -> None:
         if self.handle.plan_id != self.recipe.plan_id:
             raise DirectExecutorError(
                 "DIRECT_STAGE_IDENTITY_MISMATCH",
                 "handle and strict recipe belong to different plans",
+            )
+        if self.candidate_volume != 1.0:
+            raise DirectExecutorError(
+                "DIRECT_FIXED_UNITY_REQUIRED",
+                "Direct FIXED candidate volume must be exactly unity",
             )
 
 
@@ -169,6 +175,11 @@ class GStreamerDirectOutputExecutor:
                 "DIRECT_PORT_UNAVAILABLE", "GStreamer is not the open active engine"
             )
 
+        if plan.volume_policy is not VolumePolicy.FIXED:
+            raise DirectExecutorError(
+                "DIRECT_VOLUME_POLICY_UNAVAILABLE",
+                f"Direct volume policy {plan.volume_policy.value!r} is unavailable",
+            )
         # Build/validate before replacing current execution. If recipe creation
         # fails, the previous execution remains untouched.
         recipe = recipe_from_plan(plan)
@@ -178,7 +189,7 @@ class GStreamerDirectOutputExecutor:
             self._committed = previous
         self._generation += 1
         handle = DirectExecutionHandle(self._generation, plan.plan_id)
-        preparation = DirectLoadPreparation(handle, recipe)
+        preparation = DirectLoadPreparation(handle, recipe, candidate_volume=1.0)
         receipt = f"direct:{handle.generation}:{handle.plan_id}"
         self._state = DirectExecutionState.STAGED
         self._handle = handle

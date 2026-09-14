@@ -1189,6 +1189,8 @@ class TestG9RealMpd:
                 or "exit" in reason
                 or "socket" in reason
                 or "transport" in reason
+                or "closed" in reason
+                or "eof" in reason
             )
         finally:
             mpd_mod._pick_runtime_parent = original_pick

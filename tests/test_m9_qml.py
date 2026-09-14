@@ -92,8 +92,10 @@ class TestRoutedViewRootsNoAnchorsFill:
 
     def test_settings_view_ownership(self):
         content = Path("src/michi/presentation/qml/views/SettingsView.qml").read_text()
-        assert "playback.volume" in content
-        assert "playback.set_volume" in content
+        # DAC-V35-060: the authority-aware player control is canonical;
+        # Settings must not retain a generic duplicate volume bypass.
+        assert "playback.volume" not in content
+        assert "playback.set_volume" not in content
         assert "library.currentDir" in content
         # M6.9-PRESENTATION: the ONLY settings mutation the view performs
         # is the Online Library Enrichment policy switch; geometry/theme

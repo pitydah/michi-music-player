@@ -115,8 +115,9 @@ class TestPlaybackResilience:
         audio.fail_muted = True
         with pytest.raises(RuntimeError):
             svc.restore_volume(80, True)
-        # Both state fields preserved — commit only after both backends succeed
-        assert svc.state.volume == 40
+        # DAC-V35-060 reports last mechanism-confirmed partial truth: gain
+        # succeeded before mute failed, so only mute remains unchanged.
+        assert svc.state.volume == 80
         assert svc.state.muted is False
 
     def test_stop_is_idempotent(self):

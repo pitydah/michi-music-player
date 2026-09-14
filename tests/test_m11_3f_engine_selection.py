@@ -1289,7 +1289,10 @@ class TestF42AdapterContract:
         # DAC-V35-050R2 (2026-09-13): superseding an unaccepted candidate
         # invalidates its generation and retains failed-NULL pipelines only as
         # cleanup anchors; no prior source is logically re-authorized.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "b180a562b6760ba0",
+        # DAC-V35-060 (2026-09-14): candidate-scoped Direct FIXED unity and
+        # readback were added without changing Shared transport lifecycle;
+        # Direct unity commands preserve the Shared candidate gain default.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "c77ba6995197c6fa",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

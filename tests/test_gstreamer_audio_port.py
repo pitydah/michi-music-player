@@ -83,6 +83,8 @@ class FakePipeline:
     def get_property(self, prop):
         if prop == "audio-sink":
             return self.audio_sink
+        if prop == "volume":
+            return self.volume
         return None
 
     def query_position(self, fmt):
@@ -360,6 +362,9 @@ class FakeBindings:
     def set_volume(self, pipeline, volume):
         self._raise_if_arm_stage("set_volume")
         pipeline.set_property("volume", volume)
+
+    def volume(self, pipeline):
+        return pipeline.get_property("volume")
 
     def set_muted(self, pipeline, muted):
         self._raise_if_arm_stage("set_muted")

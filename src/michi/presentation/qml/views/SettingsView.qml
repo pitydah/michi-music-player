@@ -93,7 +93,9 @@ Item {
                 }
             }
 
-            // ── Playback ────────────────────────────────────
+            // DAC-V35-060: retain the Playback information panel, but remove
+            // the generic duplicate gain/mute controls. The authority-aware
+            // DacVolumeControl in the player is the single volume surface.
             MichiGlassSurface {
                 id: playbackPanel
                 objectName: "playbackSettingsPanel"
@@ -115,52 +117,12 @@ Item {
                         color: MichiTheme.textPrimary
                     }
 
-                    RowLayout {
+                    Text {
                         Layout.fillWidth: true
-                        spacing: MichiTheme.space12
-
-                        Text {
-                            text: qsTr("Volume")
-                            font.pixelSize: MichiTheme.fontSizeBody
-                            color: MichiTheme.textSecondary
-                            Layout.preferredWidth: 80
-                        }
-
-                        Controls.MichiSlider {
-                            Layout.fillWidth: true
-                            from: 0; to: 100
-                            value: playback.volume
-                            onMoved: playback.set_volume(value)
-                        }
-
-                        Text {
-                            text: playback.volume + "%"
-                            font.pixelSize: MichiTheme.fontSizeBody
-                            color: MichiTheme.textSecondary
-                            Layout.preferredWidth: 48
-                            horizontalAlignment: Text.AlignRight
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: MichiTheme.space12
-
-                        Text {
-                            text: qsTr("Mute")
-                            font.pixelSize: MichiTheme.fontSizeBody
-                            color: MichiTheme.textSecondary
-                            Layout.preferredWidth: 80
-                        }
-
-                        Controls.MichiButton {
-                            text: playback.muted ? "Unmute" : "Mute"
-                            variant: "secondary"
-                            checkable: true
-                            checked: playback.muted
-                            Layout.preferredWidth: 100
-                            onClicked: playback.set_muted(checked)
-                        }
+                        text: qsTr("Volume follows the active output mode and is controlled from the player bar.")
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: MichiTheme.fontSizeBody
+                        color: MichiTheme.textSecondary
                     }
                 }
             }

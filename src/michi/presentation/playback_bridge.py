@@ -5,6 +5,11 @@ from collections.abc import Callable
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from michi.application.audio_output_ports import (
+    DeviceControlUnavailableError,
+    OutputVolumeLockedError,
+    UnknownVolumeAuthorityError,
+)
 from michi.application.audio_quality import make_track_quality_label
 from michi.application.library_service import LibraryService
 from michi.application.playback_service import (
@@ -27,6 +32,12 @@ def _friendly_command_message(exc: Exception) -> str:
     backend internals."""
     if isinstance(exc, EngineSwitchLeaseHeldError):
         return "Michi is changing the audio engine. Try again in a moment."
+    if isinstance(exc, OutputVolumeLockedError):
+        return "This output is fixed at unity. Use the downstream volume control."
+    if isinstance(exc, DeviceControlUnavailableError):
+        return "Hardware volume is not available for this output."
+    if isinstance(exc, UnknownVolumeAuthorityError):
+        return "Volume control is unavailable until the output path is known."
     if isinstance(exc, AudioTransportUnavailableError):
         return "Playback is not available right now."
     if isinstance(exc, AudioTransportError):
@@ -38,6 +49,9 @@ def _friendly_command_message(exc: Exception) -> str:
 
 _EXPECTED_COMMAND_ERRORS = (
     EngineSwitchLeaseHeldError,
+    OutputVolumeLockedError,
+    DeviceControlUnavailableError,
+    UnknownVolumeAuthorityError,
     AudioTransportError,
     AudioLoadError,
 )

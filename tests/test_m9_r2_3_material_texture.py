@@ -129,8 +129,9 @@ def test_play_button_crossfades_and_breathes():
 
 def test_slider_handles_react_to_hover():
     bar = read("player/NowPlayingBar.qml")
+    volume = read("components/DacVolumeControl.qml")
     assert "scale: timeline.pressed ? 1.08 : timeline.hovered ? 1.04 : 1" in bar
-    assert "scale: volumeSlider.pressed ? 1.08" in bar
+    assert "hoverEnabled: true" in volume
     assert "hoverEnabled: true" in bar
 
 

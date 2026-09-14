@@ -22,6 +22,7 @@ from michi.application.audio_output_planner import (
 from michi.application.audio_output_ports import (
     AudioOutputExecutorPort,
     OutputExecutorAbortDisposition,
+    VolumeAuthority,
 )
 from michi.application.ports import SharedOutputTransaction
 from michi.domain.audio_device import BindingKind
@@ -32,6 +33,7 @@ from michi.domain.audio_output import (
     OutputPlan,
     OutputSelectionState,
     OutputSessionState,
+    VolumePolicy,
 )
 
 _ACTIVE_STATES = frozenset(
@@ -308,6 +310,25 @@ class OutputSessionService:
     @property
     def mode(self) -> str:
         return self._mode
+
+    @property
+    def volume_policy(self):
+        """Resolved immutable Direct policy; Shared has no Direct policy."""
+        return (
+            self._plan.volume_policy if self._mode == "direct" and self._plan else None
+        )
+
+    @property
+    def volume_authority(self) -> VolumeAuthority | None:
+        """Current Direct authority derived only from the resolved plan."""
+        policy = self.volume_policy
+        if policy is None:
+            return None
+        if policy is VolumePolicy.FIXED:
+            return VolumeAuthority.FIXED
+        if policy is VolumePolicy.HARDWARE:
+            return VolumeAuthority.ALSA_HARDWARE
+        return VolumeAuthority.UNKNOWN
 
     @property
     def release_invalidates_media(self) -> bool:

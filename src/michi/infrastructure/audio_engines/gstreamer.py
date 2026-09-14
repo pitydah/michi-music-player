@@ -336,6 +336,9 @@ class GStreamerBindings:
     def set_volume(self, pipeline, value: float) -> None:
         pipeline.set_property("volume", value)
 
+    def volume(self, pipeline) -> float:
+        return float(pipeline.get_property("volume"))
+
     def set_muted(self, pipeline, muted: bool) -> None:
         pipeline.set_property("mute", muted)
 
@@ -689,6 +692,9 @@ class GStreamerAudioPort(AudioPort):
         self._pending_direct_load = None
         strict_recipe = direct_load.recipe if direct_load is not None else None
         direct_handle = direct_load.handle if direct_load is not None else None
+        candidate_volume = (
+            direct_load.candidate_volume if direct_load is not None else self._volume
+        )
         self._bindings.ensure_loaded()
         if not self._bindings.playbin3_available():
             raise RuntimeError("playbin3 no disponible en el runtime GStreamer")
@@ -775,7 +781,12 @@ class GStreamerAudioPort(AudioPort):
             if pipeline is None:
                 raise RuntimeError("playbin3 no disponible")
             self._pipeline = pipeline
-            self._bindings.set_volume(pipeline, self._volume)
+            self._bindings.set_volume(pipeline, candidate_volume)
+            if direct_load is not None and self._bindings.volume(pipeline) != 1.0:
+                raise DirectSinkBuildError(
+                    "DIRECT_FIXED_UNITY_NOT_ESTABLISHED",
+                    "Direct FIXED candidate did not retain unity gain",
+                )
             self._bindings.set_muted(pipeline, self._muted)
             # DAC-V35-050B §17: strict Direct sink ANTES de URI/preroll.
             # `strict_recipe` es propiedad LOCAL reclamada al entry.
@@ -1011,9 +1022,14 @@ class GStreamerAudioPort(AudioPort):
             raise AudioTransportUnavailableError(
                 "GStreamer set_volume on closed transport"
             )
-        self._volume = value / 100.0
+        requested_gain = value / 100.0
+        # DAC-V35-060: `_volume` is the Shared/reference candidate default.
+        # A Direct command may validate/re-establish unity on the current
+        # pipeline, but must never replace the preserved Shared preference.
+        if self._active_direct_handle is None:
+            self._volume = requested_gain
         if self._pipeline is not None:
-            self._bindings.set_volume(self._pipeline, self._volume)
+            self._bindings.set_volume(self._pipeline, requested_gain)
 
     def set_muted(self, muted: bool) -> None:
         if self._closed:

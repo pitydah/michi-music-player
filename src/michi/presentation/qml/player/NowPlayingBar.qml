@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../components"
 import "../controls"
 import "../media"
 import "../primitives"
@@ -21,6 +22,9 @@ Item {
     property int duration: 0
     property int volume: 100
     property bool muted: false
+    property bool volumeAdjustable: true
+    property string volumeMode: "michi_software"
+    property string volumeModeLabel: "Software volume"
     property bool hasPrevious: false
     property bool hasNext: false
     property bool shuffleEnabled: false
@@ -468,107 +472,21 @@ Item {
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignTop
 
-            MichiIconButton {
-                objectName: "muteButton"
+            DacVolumeControl {
+                objectName: "dacVolumeControl"
                 Layout.row: 0
                 Layout.column: 0
-                Layout.preferredWidth: 34
-                Layout.preferredHeight: 34
-                iconName: root.muted || root.volume === 0 ? "mute" : "volume"
-                accessibleName: root.muted ? qsTr("Unmute") : qsTr("Mute")
-                onClicked: root.muteRequested(!root.muted)
-            }
-
-            RowLayout {
-                objectName: "volumeControlRow"
-                Layout.row: 0
-                Layout.column: 1
+                Layout.columnSpan: 2
                 Layout.fillWidth: true
                 Layout.minimumWidth: 130
                 Layout.preferredHeight: 34
-                spacing: MichiSpacing.xs
-
-                Slider {
-                    id: volumeSlider
-                    objectName: "volumeSlider"
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 72
-                    Layout.preferredHeight: 28
-                    from: 0
-                    to: 100
-                    value: root.volume
-                    focusPolicy: Qt.StrongFocus
-                    hoverEnabled: true
-                    Accessible.role: Accessible.Slider
-                    Accessible.name: qsTr("Volume")
-                    Accessible.description: qsTr("%1 percent")
-                        .arg(Math.round(value))
-                    onMoved: root.volumeRequested(Math.round(value))
-
-                    background: Rectangle {
-                        x: volumeSlider.leftPadding
-                        y: volumeSlider.topPadding
-                            + volumeSlider.availableHeight / 2 - height / 2
-                        width: volumeSlider.availableWidth
-                        height: root.sliderTrackHeight
-                        radius: height / 2
-                        color: MichiPalette.smokeRaised
-                        border.width: 1
-                        border.color: MichiSemanticColors.borderSubtle
-                        Rectangle {
-                            width: volumeSlider.visualPosition * parent.width
-                            height: parent.height
-                            radius: parent.radius
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0; color: MichiPalette.auroraBlue }
-                                GradientStop { position: 0.72; color: MichiPalette.auroraCyan }
-                                GradientStop { position: 1; color: MichiPalette.auroraPurple }
-                            }
-                        }
-                    }
-                    handle: Rectangle {
-                        x: volumeSlider.leftPadding + volumeSlider.visualPosition
-                            * (volumeSlider.availableWidth - width)
-                        y: volumeSlider.topPadding
-                            + volumeSlider.availableHeight / 2 - height / 2
-                        width: 14
-                        height: 14
-                        radius: 7
-                        color: MichiPalette.textPrimary
-                        border.width: 2
-                        border.color: volumeSlider.visualFocus
-                            || volumeSlider.hovered
-                            ? MichiPalette.auroraCyan : MichiPalette.auroraPurple
-                        scale: volumeSlider.pressed ? 1.08
-                            : volumeSlider.hovered ? 1.04 : 1
-                        Behavior on scale {
-                            enabled: !MichiAccessibility.reducedMotion
-                            NumberAnimation { duration: MichiMotion.micro; easing.type: MichiMotion.outCubic }
-                        }
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: 20
-                            height: 20
-                            radius: 10
-                            color: "transparent"
-                            border.width: 1
-                            border.color: MichiSemanticColors.auroraCyanBorder
-                            visible: volumeSlider.hovered
-                                || volumeSlider.pressed || volumeSlider.visualFocus
-                        }
-                        MichiFocusRing { visualFocus: volumeSlider.visualFocus }
-                    }
-                }
-                MichiText {
-                    visible: !root.compact
-                    Layout.preferredWidth: 34
-                    text: Math.round(volumeSlider.value) + "%"
-                    role: "technical"
-                    technical: true
-                    color: MichiPalette.textMuted
-                    horizontalAlignment: Text.AlignRight
-                }
+                volume: root.volume
+                muted: root.muted
+                volumeAdjustable: root.volumeAdjustable
+                volumeMode: root.volumeMode
+                volumeModeLabel: root.volumeModeLabel
+                onVolumeChangeRequested: value => root.volumeRequested(value)
+                onMuteToggleRequested: value => root.muteRequested(value)
             }
 
             MichiIconButton {

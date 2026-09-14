@@ -1,6 +1,7 @@
 """Test fixtures — single canonical FakeAudioPort, never copied from Legacy."""
 
 import sys
+from functools import wraps
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,40 @@ import pytest
 from michi.application.ports import AudioLoadError
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+
+class _SharedOutputTruth:
+    mode = "shared"
+    volume_policy = None
+
+
+@pytest.fixture(autouse=True)
+def _install_explicit_test_volume_policy(monkeypatch):
+    """Legacy tests get an explicit Shared policy without weakening product API.
+
+    Production composition always injects its one real VolumePolicyService;
+    PlaybackService itself retains a required ``volume_port`` argument.
+    """
+    from michi.application.playback_service import PlaybackService
+    from michi.application.volume_policy_service import VolumePolicyService
+
+    original = PlaybackService.__init__
+
+    @wraps(original)
+    def test_init(self, audio_port, *, volume_port=None, **kwargs):
+        if volume_port is None:
+            output_tx = kwargs.get("output_tx")
+            output = (
+                output_tx
+                if output_tx is not None
+                and hasattr(output_tx, "mode")
+                and hasattr(output_tx, "volume_policy")
+                else _SharedOutputTruth()
+            )
+            volume_port = VolumePolicyService(audio_port, output)
+        original(self, audio_port, volume_port=volume_port, **kwargs)
+
+    monkeypatch.setattr(PlaybackService, "__init__", test_init)
 
 
 class FakeAudioPort:

@@ -105,6 +105,9 @@ Item {
         duration: playback.duration
         volume: playback.volume
         muted: playback.muted
+        volumeAdjustable: audioOutput.volumeAdjustable
+        volumeMode: audioOutput.volumeMode
+        volumeModeLabel: audioOutput.volumeLabel
         hasPrevious: playbackSession.hasPrevious
         hasNext: playbackSession.hasNext
         shuffleEnabled: playbackSession.shuffleEnabled

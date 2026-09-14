@@ -1,5 +1,33 @@
 import pytest
 
+from michi.application.audio_output_ports import (
+    DeviceControlUnavailableError,
+    OutputVolumeLockedError,
+    UnknownVolumeAuthorityError,
+)
+from michi.presentation.playback_bridge import _friendly_command_message
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (
+            OutputVolumeLockedError("technical"),
+            "This output is fixed at unity. Use the downstream volume control.",
+        ),
+        (
+            DeviceControlUnavailableError("technical"),
+            "Hardware volume is not available for this output.",
+        ),
+        (
+            UnknownVolumeAuthorityError("technical"),
+            "Volume control is unavailable until the output path is known.",
+        ),
+    ],
+)
+def test_v60_18_volume_failures_have_stable_friendly_copy(error, message) -> None:
+    assert _friendly_command_message(error) == message
+
 
 class TestTogglePlayPause:
     """PLAYBACK-CONTROLS-R1: the canonical three-state toggle lives in the

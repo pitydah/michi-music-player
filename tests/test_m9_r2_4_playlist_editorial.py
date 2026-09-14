@@ -384,14 +384,15 @@ def test_now_playing_bar_repeat_has_non_chromatic_state():
 
 def test_now_playing_bar_accessibles_are_translated():
     bar = read("player/NowPlayingBar.qml")
+    volume = read("components/DacVolumeControl.qml")
     for string in [
         "Playback position",
         "Previous track",
         "Next track",
-        "Volume",
         "Audio settings",
         "Output selection unavailable",
     ]:
         assert f'qsTr("{string}")' in bar, string
-    assert 'qsTr("%1 percent")' in bar  # R2: .arg() substitution
+    assert 'qsTr("Volume")' in volume
+    assert 'qsTr("%1 percent")' in volume  # R2: .arg() substitution
     assert "Math.round(value))" in bar

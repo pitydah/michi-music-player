@@ -25,6 +25,7 @@ def test_canonical_reference_is_pinned_verbatim() -> None:
 def test_qml_preserves_landmarks_in_a_responsive_three_zone_layout() -> None:
     """The reference composition scales without pinning the component to 1920 px."""
     qml = QML.read_text()
+    volume_qml = (QML.parent.parent / "components" / "DacVolumeControl.qml").read_text()
     required = (
         'objectName: "nowPlayingBar"',
         "implicitWidth: 800",
@@ -36,9 +37,9 @@ def test_qml_preserves_landmarks_in_a_responsive_three_zone_layout() -> None:
         'objectName: "timeline"',
         'objectName: "playPauseButton"',
         'objectName: "queueButton"',
-        'objectName: "volumeSlider"',
         'objectName: "qualityBadge"',
     )
     assert all(fragment in qml for fragment in required)
+    assert 'objectName: "volumeSlider"' in volume_qml
     assert "implicitWidth: 1920" not in qml
     assert "transportOrigin" not in qml

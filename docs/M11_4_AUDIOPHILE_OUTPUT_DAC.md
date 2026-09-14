@@ -44,13 +44,20 @@ V3.5 spec governs implementation and acceptance.
   stale generations/receipts cannot reclaim ownership, and a failed teardown
   after A was destroyed converges to STOPPED/IDLE with no false restore.
   Productive gates: R2-01..R2-14 plus repeated cleanup-anchor failure.
+- `DAC-V35-060` volume authority migration — **CLOSED-AUTOMATED / GO**.
+  One production `VolumePolicyService` executes Shared/reference commands and
+  fails closed for Direct FIXED, unavailable hardware, and unknown authority.
+  Direct candidates establish and verify unity without overwriting the
+  persisted Shared preference; effective `PlaybackState` truth and the
+  authority-aware player control converge through typed results. Automated
+  gates: V60-01..V60-30, plus 050R2 and M11.3 regression firewalls.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 
 **Explicitly NOT claimed**: no physical DAC qualification, no
 "bit-perfect"/Michi-Verified claim, no Signal Truth runtime verdict, no
-M11.5 promotion. `DAC-V35-060` is NOT STARTED. Physical qualification
-(`DAC-V35-110`) remains pending.
+M11.5 promotion. `DAC-V35-070` Signal Truth is NOT STARTED. Physical
+qualification (`DAC-V35-110`) remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —
 **not** Audio Lab.

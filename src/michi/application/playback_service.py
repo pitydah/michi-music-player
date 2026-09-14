@@ -12,6 +12,11 @@ from michi.application.audio_engine_selection import (
     MediaRequestTerminalResult,
     MediaRequestTerminalStatus,
 )
+from michi.application.audio_output_ports import (
+    AppliedVolume,
+    PlaybackVolumePort,
+    VolumeRestoreError,
+)
 from michi.application.ports import (
     AudioLoadError,
     AudioPort,
@@ -151,9 +156,11 @@ class PlaybackService:
         self,
         audio_port: AudioPort,
         *,
+        volume_port: PlaybackVolumePort,
         output_tx: PlaybackOutputTransactionPort | None = None,
     ) -> None:
         self._audio = audio_port
+        self._volume_port = volume_port
         # §0H.2: en producción SIEMPRE existe un output transaction. El
         # modo Shared/reference usa el no-op explícito; no hay rama None.
         self._output_tx: PlaybackOutputTransactionPort = (
@@ -166,6 +173,7 @@ class PlaybackService:
         self._user_play_acceptance_latched: Path | None = None
         self._user_play_play_phase_complete: bool = False
         self._state = PlaybackState()
+        self._volume_mode = "michi_software"
         self._subscribers: list[Callable[[], None]] = []
         self._eom_subscribers: list[Callable[[], None]] = []
         self._pending_path: Path | None = None
@@ -272,11 +280,12 @@ class PlaybackService:
             cb()
 
     def restore_volume(self, volume: int, muted: bool) -> None:
-        clamped = max(0, min(100, volume))
-        self._audio.set_volume(clamped)
-        self._audio.set_muted(muted)
-        self._state.volume = clamped
-        self._state.muted = muted
+        try:
+            applied = self._volume_port.restore(volume, muted)
+        except VolumeRestoreError as exc:
+            self._commit_applied_volume(exc.applied, notify=False)
+            raise
+        self._commit_applied_volume(applied, notify=False)
 
     def report_error(self, message: str) -> None:
         self._state.error_message = message
@@ -342,8 +351,15 @@ class PlaybackService:
         # preservado (True) o ya no garantizado (False). NOTA (R6.5.2):
         # con callbacks DIRECTOS, load() puede REJECT/ACCEPT/SUPERSEDE
         # esta request SÍNCRONICAMENTE dentro de esta llamada.
+        backend_load_completed = False
         try:
             self._audio.load(file_path)
+            backend_load_completed = True
+            # Output preparation resolved the candidate policy before load,
+            # but effective PlaybackState changes only after the old physical
+            # source crossed the backend load boundary successfully.
+            applied_volume = self._volume_port.synchronize()
+            self._commit_applied_volume(applied_volume, notify=True)
         except Exception as exc:
             if my_epoch != self._request_epoch:
                 raise
@@ -353,8 +369,8 @@ class PlaybackService:
                 # state and propagate the lifecycle exception.
                 raise
             self._clear_pending()
-            previous_source_preserved = not isinstance(exc, AudioLoadError) or (
-                exc.previous_source_preserved
+            previous_source_preserved = not backend_load_completed and (
+                not isinstance(exc, AudioLoadError) or exc.previous_source_preserved
             )
             abort_reason = "load_failed"
             classify_failure = getattr(self._output_tx, "classify_load_failure", None)
@@ -779,13 +795,14 @@ class PlaybackService:
         """KCR-021: read-only capture of the stopped-media truth (the
         logical resume target included). Only reads state — the engine
         switch uses it to rehydrate the new backend without autoplay."""
+        volume, muted = self._volume_port.preference()
         return EngineSwitchMediaSnapshot(
             file_path=self._state.file_path,
             confirmed_position_ms=self._state.position_ms,
             deferred_resume_target_ms=self._deferred_resume_target_ms,
             previous_status=self._state.status,
-            volume=self._state.volume,
-            muted=self._state.muted,
+            volume=volume,
+            muted=muted,
         )
 
     def _schedule_engine_switch_timeout(self, file_path: Path, epoch: int) -> None:
@@ -1199,16 +1216,24 @@ class PlaybackService:
 
     def set_volume(self, value: int) -> None:
         self._ensure_no_engine_switch_lease("set_volume")
-        clamped = max(0, min(100, value))
-        self._audio.set_volume(clamped)
-        self._state.volume = clamped
-        self._notify()
+        self._commit_applied_volume(self._volume_port.apply_volume(value), notify=True)
 
     def set_muted(self, muted: bool) -> None:
         self._ensure_no_engine_switch_lease("set_muted")
-        self._audio.set_muted(muted)
-        self._state.muted = muted
-        self._notify()
+        self._commit_applied_volume(self._volume_port.apply_muted(muted), notify=True)
+
+    def _commit_applied_volume(self, applied: AppliedVolume, *, notify: bool) -> None:
+        """Commit only mechanism-confirmed effective state."""
+        changed = (
+            self._state.volume != applied.effective_percent
+            or self._state.muted != applied.muted
+            or self._volume_mode != applied.mode
+        )
+        self._state.volume = applied.effective_percent
+        self._state.muted = applied.muted
+        self._volume_mode = applied.mode
+        if notify and changed:
+            self._notify()
 
     def update_position(self, position_ms: int) -> None:
         if self._state.position_ms != position_ms:
@@ -1239,7 +1264,8 @@ class PlaybackService:
             self._notify()
 
     def snapshot_volume(self) -> tuple[int, bool]:
-        return (self._state.volume, self._state.muted)
+        """Persisted Shared preference, not Direct's temporary unity projection."""
+        return self._volume_port.preference()
 
     def is_engine_switch_quiescent(self) -> bool:
         """TRUE only when an engine switch is safe (M11.3F).
