@@ -222,7 +222,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 4 | `DAC-V35-040` Output planner + output transaction | ACTIVE | YES | deterministic plan before hardware/backend mutation |
 | 5 | `DAC-V35-050` GStreamer Direct executor | ACTIVE | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
-| 7 | `DAC-V35-070` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | requested/decoded/effective/negotiated path with contradiction handling |
+| 7 | `DAC-V35-070 + 070R1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | production provenance sealed fail-closed; physical claims excluded |
 | 8 | `DAC-V35-080` Disconnect/reconnect + transitions | ACTIVE | YES | deterministic failure/rebind; no speaker fallback |
 | 9 | `DAC-V35-090` Premium DAC UI | ACTIVE | YES | DAC controls separated from Audio Engine; mode-aware volume |
 | 10 | `DAC-V35-100` Automated verification + documentation seal | ACTIVE | YES | one GO/NO-GO command + docs/status parity |
@@ -19401,7 +19401,7 @@ QML attempts playback.set_volume(37)
 
 ---
 
-# 406. `DAC-V35-070` — SIGNAL TRUTH / RUNTIME EVIDENCE CLOSED SLICE
+# 406. `DAC-V35-070/070R1` — SIGNAL TRUTH PRODUCTION PROVENANCE CORRECTIVE SLICE
 
 Runtime evidence recorder receives immutable evidence events. It does not infer device identity or policy.
 
@@ -19467,7 +19467,8 @@ Stable reason precedence and same-class tie-breaks are:
 
 ```text
 CONTRADICTED:
-  ST_DEVICE_MISMATCH > ST_BINDING_MISMATCH > ST_SINK_MISMATCH
+  ST_DEVICE_MISMATCH > ST_BINDING_MISMATCH
+  > ST_ALSA_NEGOTIATION_CONTRADICTION > ST_SINK_MISMATCH
   > ST_RUNTIME_ERROR > ST_XRUN > ST_GAIN_NOT_UNITY
   > ST_CLOCK_POLICY_MISMATCH
 
@@ -19516,6 +19517,76 @@ M11.3 regression firewalls cover the automated seal.
 This seal is runtime-software evidence only. It does not claim physical DAC
 qualification, exclusivity, bit-perfect/Michi-Verified status, M11.5 guarantees,
 or 080 reconnect/recovery behavior.
+
+**Corrective closure (2026-09-15): `DAC-V35-070 + 070R1 CLOSED-AUTOMATED / GO`.**
+The production-provenance gaps in the 2026-09-14 automated seal are closed by
+the rules and gates below. The corrective package preserves the 070 recorder
+architecture and the 050R2/060 ownership model; it does not begin 080.
+
+`DAC-V35-070R1` freezes these implementation decisions before code changes:
+
+```text
+ALSA physical binding
+  = card + PCM device + stable endpoint signature from passive topology
+
+ALSA subdevice in passive discovery
+  = concrete K only when procfs enumerates exactly one playback subK
+  = unknown when none or more than one are present
+  = never default/minimum/first/sub0 by convention
+
+ALSA runtime subdevice
+  = the binding's proven K, or exactly one currently parseable active subK
+  = unknown when zero or multiple active candidates remain
+```
+
+Passive discovery may read sysfs/procfs topology but never opens PCM. A stable
+endpoint signature MUST NOT contain `sub:0` unless subdevice 0 was actually
+proved. For a multi-subdevice physical endpoint the stable signature remains at
+card-independent USB-interface + PCM-device scope; runtime `AlsaRuntimeEvidence`
+records the exact active card/device/subdevice and proc path. Missing evidence
+remains `UNKNOWN`; a positively demonstrated locator/card/device/subdevice
+conflict is `ST_BINDING_MISMATCH`.
+
+Decoded runtime caps MUST come from exactly one current negotiated decoder src
+pad reachable by walking upstream from the installed `michi_direct_caps` /
+`michi_direct_alsa` branch. A recursive inventory may still support diagnostics,
+but it is not decoder provenance. Zero or multiple reachable audio decoders,
+unconnected decoders, template/allowed caps, traversal failure, or ambiguous
+branch ownership produce missing decoded evidence and therefore `UNKNOWN`. The
+observer performs no graph mutation and installs no permanent callback.
+
+Engine-effective PCM is current negotiated caps at the strict sink branch, not
+allowed/template caps or caps from another branch. Significant-bit preservation
+for `DIRECT_CONTAINER_ADAPTED` requires all three runtime stages to be known and
+equal:
+
+```text
+decoded.sbits == engine_effective.sbits == alsa.sbits
+```
+
+`S32_LE` never implies 32 significant bits. An unknown engine-effective sbits
+value yields `UNKNOWN + ST_SIGNIFICANT_BITS_UNKNOWN`, including when decoded and
+ALSA both report 24.
+
+Source metadata remains informational. A source-file-vs-decoded mismatch is
+preserved as `ST_SOURCE_DECODED_MISMATCH` without changing the runtime verdict;
+decoded -> engine-effective -> ALSA remains the classification authority.
+
+Rate/channel transformation verdicts require positive transformation evidence.
+When decoded and engine-effective agree with the requested plan but ALSA
+negotiates a different rate or channel count and no resampler/remix is observed,
+the verdict is `CONTRADICTED + ST_ALSA_NEGOTIATION_CONTRADICTION`, not
+`RESAMPLED`/`REMIXED`. Observed resampling/remixing retains the transformed
+verdict and mismatch reason.
+
+Required corrective gates are `ST70R1-01..19` and productive gates
+`ST70R1-P01..P08`, including real synthetic sysfs+proc discovery, ambiguous
+multi-subdevice fail-closed behavior, selected-branch multi-decoder order
+invariance, end-to-end significant bits, source mismatch preservation, exact
+ALSA contradiction semantics, stale A->B->C isolation, closed/malformed
+`hw_params`, reconnect generation fencing, Direct FIXED unity, and 050R2/060/
+M11.3 regressions. Only after all package and repository gates are green may the
+status return to `DAC-V35-070 + 070R1 CLOSED-AUTOMATED / GO`.
 
 No UI “Lossless/Bit-perfect/Direct verified” label may be derived solely from the selected setting.
 

@@ -33,6 +33,7 @@ class SignalTruthReason(Enum):
     ST_XRUN = "ST_XRUN"
     ST_GAIN_NOT_UNITY = "ST_GAIN_NOT_UNITY"
     ST_CLOCK_POLICY_MISMATCH = "ST_CLOCK_POLICY_MISMATCH"
+    ST_ALSA_NEGOTIATION_CONTRADICTION = "ST_ALSA_NEGOTIATION_CONTRADICTION"
     ST_RESAMPLER_PRESENT = "ST_RESAMPLER_PRESENT"
     ST_RATE_MISMATCH = "ST_RATE_MISMATCH"
     ST_REMIX_OBSERVED = "ST_REMIX_OBSERVED"
@@ -46,6 +47,7 @@ class SignalTruthReason(Enum):
     ST_MISSING_GAIN = "ST_MISSING_GAIN"
     ST_MISSING_CLOCK = "ST_MISSING_CLOCK"
     ST_SIGNIFICANT_BITS_UNKNOWN = "ST_SIGNIFICANT_BITS_UNKNOWN"
+    ST_SOURCE_DECODED_MISMATCH = "ST_SOURCE_DECODED_MISMATCH"
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +111,12 @@ class AlsaRuntimeEvidence:
     buffer_size: int | None
     proc_path: str
     binding_matches: bool = True
+    card_index: int | None = None
+    pcm_device: int | None = None
+    pcm_subdevice: int | None = None
+    locator: str | None = None
+    stable_endpoint_signature: str | None = None
+    binding_generation: int | None = None
 
 
 class RuntimeAnomalyKind(Enum):
@@ -149,6 +157,7 @@ class SignalTruthSnapshot:
 _CONTRADICTION_ORDER = (
     SignalTruthReason.ST_DEVICE_MISMATCH,
     SignalTruthReason.ST_BINDING_MISMATCH,
+    SignalTruthReason.ST_ALSA_NEGOTIATION_CONTRADICTION,
     SignalTruthReason.ST_SINK_MISMATCH,
     SignalTruthReason.ST_RUNTIME_ERROR,
     SignalTruthReason.ST_XRUN,
@@ -177,6 +186,35 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
     engine = snapshot.engine_effective
     alsa = snapshot.device_negotiated
 
+    provenance: tuple[SignalTruthReason, ...] = ()
+    source = snapshot.source_file_facts
+    if source is not None and source.nominal_pcm is not None and decoded is not None:
+        nominal = source.nominal_pcm
+        runtime = decoded.pcm
+        if (
+            nominal.rate_hz != runtime.rate_hz
+            or nominal.channels != runtime.channels
+            or (
+                nominal.significant_bits is not None
+                and runtime.significant_bits is not None
+                and nominal.significant_bits != runtime.significant_bits
+            )
+        ):
+            provenance = (SignalTruthReason.ST_SOURCE_DECODED_MISMATCH,)
+
+    def result(verdict, reasons=()):
+        return replace(snapshot, verdict=verdict, reasons=(*reasons, *provenance))
+
+    resampling_observed = bool(
+        engine is not None
+        and (
+            engine.resampling_observed
+            or "audioresample" in engine.graph_factories
+            or engine.slave_method == "resample"
+        )
+    )
+    remix_observed = bool(engine is not None and engine.remix_observed)
+
     contradictions: set[SignalTruthReason] = set()
     if engine is not None:
         if engine.graph_inspection_complete and engine.sink_device != plan.sink_device:
@@ -190,6 +228,31 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
             contradictions.add(SignalTruthReason.ST_GAIN_NOT_UNITY)
     if alsa is not None and not alsa.binding_matches:
         contradictions.add(SignalTruthReason.ST_BINDING_MISMATCH)
+    if (
+        decoded is not None
+        and engine is not None
+        and engine.effective_pcm is not None
+        and alsa is not None
+    ):
+        requested = plan.requested_pcm
+        effective = engine.effective_pcm
+        negotiated = alsa.negotiated_pcm
+        software_rate_matches = (
+            decoded.pcm.rate_hz == effective.rate_hz == requested.rate_hz
+        )
+        software_channels_match = (
+            decoded.pcm.channels == effective.channels == requested.channels
+        )
+        if (
+            software_rate_matches
+            and effective.rate_hz != negotiated.rate_hz
+            and not resampling_observed
+        ) or (
+            software_channels_match
+            and effective.channels != negotiated.channels
+            and not remix_observed
+        ):
+            contradictions.add(SignalTruthReason.ST_ALSA_NEGOTIATION_CONTRADICTION)
     if engine is not None and (
         engine.sink_provides_clock is False
         or engine.sink_clock_is_pipeline_clock is False
@@ -203,28 +266,48 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
         else:
             contradictions.add(SignalTruthReason.ST_XRUN)
     if contradictions:
-        return replace(
-            snapshot,
-            verdict=SignalTruthVerdict.CONTRADICTED,
-            reasons=_ordered(contradictions, _CONTRADICTION_ORDER),
+        return result(
+            SignalTruthVerdict.CONTRADICTED,
+            _ordered(contradictions, _CONTRADICTION_ORDER),
         )
 
     transformed: set[SignalTruthReason] = set()
     if engine is not None:
-        if (
-            engine.resampling_observed
-            or "audioresample" in engine.graph_factories
-            or engine.slave_method == "resample"
-        ):
+        if resampling_observed:
             transformed.add(SignalTruthReason.ST_RESAMPLER_PRESENT)
-        if engine.remix_observed:
+        if remix_observed:
             transformed.add(SignalTruthReason.ST_REMIX_OBSERVED)
         if engine.dsp_observed or "audioconvert" in engine.graph_factories:
             transformed.add(SignalTruthReason.ST_DSP_PRESENT)
-    if decoded is not None and alsa is not None:
-        if decoded.pcm.rate_hz != alsa.negotiated_pcm.rate_hz:
+    if (
+        decoded is not None
+        and engine is not None
+        and engine.effective_pcm is not None
+        and alsa is not None
+    ):
+        if (
+            resampling_observed
+            and len(
+                {
+                    decoded.pcm.rate_hz,
+                    engine.effective_pcm.rate_hz,
+                    alsa.negotiated_pcm.rate_hz,
+                }
+            )
+            != 1
+        ):
             transformed.add(SignalTruthReason.ST_RATE_MISMATCH)
-        if decoded.pcm.channels != alsa.negotiated_pcm.channels:
+        if (
+            remix_observed
+            and len(
+                {
+                    decoded.pcm.channels,
+                    engine.effective_pcm.channels,
+                    alsa.negotiated_pcm.channels,
+                }
+            )
+            != 1
+        ):
             transformed.add(SignalTruthReason.ST_CHANNEL_MISMATCH)
     if transformed:
         if transformed & {
@@ -246,11 +329,7 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
             SignalTruthReason.ST_CHANNEL_MISMATCH,
             SignalTruthReason.ST_DSP_PRESENT,
         )
-        return replace(
-            snapshot,
-            verdict=verdict,
-            reasons=_ordered(transformed, transform_order),
-        )
+        return result(verdict, _ordered(transformed, transform_order))
 
     missing: set[SignalTruthReason] = set()
     if decoded is None:
@@ -274,16 +353,18 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
         or engine.slave_method is None
     ):
         missing.add(SignalTruthReason.ST_MISSING_CLOCK)
-    if (decoded is not None and decoded.pcm.significant_bits is None) or (
-        alsa is not None and alsa.negotiated_pcm.significant_bits is None
+    if (
+        decoded is not None
+        and decoded.pcm.significant_bits is None
+        or engine is not None
+        and engine.effective_pcm is not None
+        and engine.effective_pcm.significant_bits is None
+        or alsa is not None
+        and alsa.negotiated_pcm.significant_bits is None
     ):
         missing.add(SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN)
     if missing:
-        return replace(
-            snapshot,
-            verdict=SignalTruthVerdict.UNKNOWN,
-            reasons=_ordered(missing, _UNKNOWN_ORDER),
-        )
+        return result(SignalTruthVerdict.UNKNOWN, _ordered(missing, _UNKNOWN_ORDER))
 
     assert decoded is not None and engine is not None and alsa is not None
     assert engine.effective_pcm is not None
@@ -292,42 +373,39 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
     channels = {item.channels for item in signals}
     significant_bits = {
         decoded.pcm.significant_bits,
+        engine.effective_pcm.significant_bits,
         alsa.negotiated_pcm.significant_bits,
     }
     if len(rates) != 1:
-        return replace(
-            snapshot,
-            verdict=SignalTruthVerdict.RESAMPLED,
-            reasons=(SignalTruthReason.ST_RATE_MISMATCH,),
+        reason = (
+            SignalTruthReason.ST_ALSA_NEGOTIATION_CONTRADICTION
+            if engine.effective_pcm.rate_hz != alsa.negotiated_pcm.rate_hz
+            else SignalTruthReason.ST_RATE_MISMATCH
         )
+        return result(SignalTruthVerdict.CONTRADICTED, (reason,))
     if len(channels) != 1:
-        return replace(
-            snapshot,
-            verdict=SignalTruthVerdict.REMIXED,
-            reasons=(SignalTruthReason.ST_CHANNEL_MISMATCH,),
+        reason = (
+            SignalTruthReason.ST_ALSA_NEGOTIATION_CONTRADICTION
+            if engine.effective_pcm.channels != alsa.negotiated_pcm.channels
+            else SignalTruthReason.ST_CHANNEL_MISMATCH
         )
+        return result(SignalTruthVerdict.CONTRADICTED, (reason,))
     if len(significant_bits) != 1:
-        return replace(
-            snapshot,
-            verdict=SignalTruthVerdict.UNKNOWN,
-            reasons=(SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN,),
+        return result(
+            SignalTruthVerdict.UNKNOWN,
+            (SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN,),
         )
     formats = {item.transport_format.replace("_", "").upper() for item in signals}
     if len(formats) != 1:
         bits = decoded.pcm.significant_bits
         allowed_24_bit_containers = {"S243LE", "S2432LE", "S32LE"}
         if bits == 24 and formats <= allowed_24_bit_containers:
-            return replace(
-                snapshot,
-                verdict=SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED,
-                reasons=(SignalTruthReason.ST_CONTAINER_ADAPTED,),
+            return result(
+                SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED,
+                (SignalTruthReason.ST_CONTAINER_ADAPTED,),
             )
-        return replace(
-            snapshot,
-            verdict=SignalTruthVerdict.DSP,
-            reasons=(SignalTruthReason.ST_DSP_PRESENT,),
-        )
-    return replace(snapshot, verdict=SignalTruthVerdict.DIRECT, reasons=())
+        return result(SignalTruthVerdict.DSP, (SignalTruthReason.ST_DSP_PRESENT,))
+    return result(SignalTruthVerdict.DIRECT)
 
 
 def _initial_snapshot(plan: OutputPlanEvidence) -> SignalTruthSnapshot:

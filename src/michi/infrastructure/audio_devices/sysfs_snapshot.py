@@ -32,6 +32,8 @@ from michi.domain.audio_device import (
 SOURCE_SYSFS = "sysfs"
 
 _PCM_PLAYBACK_RE = re.compile(r"pcmC(\d+)D(\d+)p$")
+_PCM_SUBDEVICE_RE = re.compile(r"sub(\d+)$")
+DEFAULT_PROC_ASOUND_ROOT = Path("/proc/asound")
 
 
 def _read_text(path: Path) -> str | None:
@@ -134,7 +136,26 @@ def _playback_pcms(sysfs_root: Path, card_index: int) -> tuple[int, ...]:
     return tuple(devices)
 
 
-def _stable_endpoint_signature(card_dir: Path, pcm_device: int) -> str | None:
+def _playback_subdevices(
+    proc_asound_root: Path, card_index: int, pcm_device: int
+) -> tuple[int, ...]:
+    """Enumerate only subdevices that procfs proves exist for this PCM."""
+    pcm_root = proc_asound_root / f"card{card_index}" / f"pcm{pcm_device}p"
+    try:
+        entries = tuple(pcm_root.iterdir())
+    except OSError:
+        return ()
+    subdevices: list[int] = []
+    for entry in entries:
+        match = _PCM_SUBDEVICE_RE.fullmatch(entry.name)
+        if match is not None and entry.is_dir():
+            subdevices.append(int(match.group(1)))
+    return tuple(sorted(set(subdevices)))
+
+
+def _stable_endpoint_signature(
+    card_dir: Path, pcm_device: int, pcm_subdevice: int | None
+) -> str | None:
     """USB interface + PCM identity, deliberately independent of cardN."""
     try:
         interface_name = (card_dir / "device").resolve().name
@@ -143,13 +164,17 @@ def _stable_endpoint_signature(card_dir: Path, pcm_device: int) -> str | None:
     _device_name, separator, interface = interface_name.partition(":")
     if not separator or not interface:
         return None
-    return f"usb-interface:{interface}:pcm:{pcm_device}:sub:0"
+    signature = f"usb-interface:{interface}:pcm:{pcm_device}"
+    if pcm_subdevice is not None:
+        signature += f":sub:{pcm_subdevice}"
+    return signature
 
 
 def read_alsa_cards(
     sysfs_root: Path,
     *,
     observed_at_ns: int | None = None,
+    proc_asound_root: Path = DEFAULT_PROC_ASOUND_ROOT,
 ) -> tuple[DeviceObservation, ...]:
     """ALSA cards observadas: cero-o-más bindings de playback.
 
@@ -189,6 +214,8 @@ def read_alsa_cards(
             )
             continue
         for pcm_device in playback_pcms:
+            subdevices = _playback_subdevices(proc_asound_root, card_index, pcm_device)
+            pcm_subdevice = subdevices[0] if len(subdevices) == 1 else None
             observations.append(
                 DeviceObservation(
                     source="alsa",
@@ -207,8 +234,9 @@ def read_alsa_cards(
                         currently_available=True,
                         card_index=card_index,
                         pcm_device=pcm_device,
+                        pcm_subdevice=pcm_subdevice,
                         stable_endpoint_signature=_stable_endpoint_signature(
-                            card_dir, pcm_device
+                            card_dir, pcm_device, pcm_subdevice
                         ),
                     ),
                 )

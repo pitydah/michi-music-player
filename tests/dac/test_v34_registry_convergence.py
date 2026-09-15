@@ -55,7 +55,8 @@ def test_ingest_correlates_usb_and_alsa(tmp_path: Path) -> None:
     assert binding.currently_available is True
     assert binding.card_index == 1
     assert snapshot[0].descriptor_sha256 == hashlib.sha256(DX5.descriptors).hexdigest()
-    assert binding.stable_endpoint_signature == "usb-interface:1.0:pcm:0:sub:0"
+    assert binding.pcm_subdevice is None
+    assert binding.stable_endpoint_signature == "usb-interface:1.0:pcm:0"
 
 
 def test_rescan_is_convergent(tmp_path: Path) -> None:

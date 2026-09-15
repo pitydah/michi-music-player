@@ -1296,7 +1296,11 @@ class TestF42AdapterContract:
         # decoded/effective caps, graph, gain/mute, and clock facts through the
         # generation-fenced executor sidecar. Shared lifecycle and transport
         # semantics remain unchanged; hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "4c96f5f16b1b6eda",
+        # DAC-V35-070R1 (2026-09-15): decoder caps provenance now walks only
+        # the installed strict sink branch and significant bits remain unknown
+        # unless current negotiated caps expose them. Shared lifecycle and
+        # transport semantics remain unchanged.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "e2118bc831f1f459",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

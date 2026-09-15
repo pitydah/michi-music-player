@@ -22,6 +22,7 @@ from michi.infrastructure.audio_devices.sysfs_snapshot import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_SYSFS_ROOT = Path("/sys")
+DEFAULT_PROC_ASOUND_ROOT = Path("/proc/asound")
 
 
 class UdevObserver:
@@ -32,10 +33,12 @@ class UdevObserver:
         registry: AudioDeviceRegistry,
         *,
         sysfs_root: Path = DEFAULT_SYSFS_ROOT,
+        proc_asound_root: Path = DEFAULT_PROC_ASOUND_ROOT,
         context: object | None = None,
     ) -> None:
         self._registry = registry
         self._sysfs_root = sysfs_root
+        self._proc_asound_root = proc_asound_root
         self._context = context
         self._monitors: list[object] = []
 
@@ -87,7 +90,7 @@ class UdevObserver:
     def rescan(self) -> None:
         """Re-scan completo: USB + ALSA en una sola decisión coherente."""
         observations = read_usb_devices(self._sysfs_root) + read_alsa_cards(
-            self._sysfs_root
+            self._sysfs_root, proc_asound_root=self._proc_asound_root
         )
         if observations:
             self._registry.ingest(observations)

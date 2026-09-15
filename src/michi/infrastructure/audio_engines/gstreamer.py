@@ -199,22 +199,8 @@ class GStreamerBindings:
             DirectRuntimeSnapshot,
         )
 
-        def caps_values(pad):
-            caps = pad.get_current_caps() if pad is not None else None
-            if caps is None or caps.get_size() == 0:
-                return None, None, None
-            struct = caps.get_structure(0)
-            value_format = struct.get_string("format")
-            ok_rate, value_rate = struct.get_int("rate")
-            ok_channels, value_channels = struct.get_int("channels")
-            return (
-                value_format,
-                int(value_rate) if ok_rate else None,
-                int(value_channels) if ok_channels else None,
-            )
-
         def full_width_significant_bits(value_format):
-            normalized = (value_format or "").replace("_", "")
+            normalized = (value_format or "").replace("_", "").upper()
             if normalized.startswith("S8") or normalized.startswith("U8"):
                 return 8
             if normalized.startswith("S16") or normalized.startswith("U16"):
@@ -224,42 +210,106 @@ class GStreamerBindings:
             # S32 is a transport container and does not prove 32 sbits.
             return None
 
+        def caps_values(pad):
+            caps = pad.get_current_caps() if pad is not None else None
+            if caps is None or caps.get_size() == 0:
+                return None, None, None, None
+            struct = caps.get_structure(0)
+            value_format = struct.get_string("format")
+            ok_rate, value_rate = struct.get_int("rate")
+            ok_channels, value_channels = struct.get_int("channels")
+            significant_bits = None
+            for field in ("significant-bits", "depth"):
+                ok_bits, value_bits = struct.get_int(field)
+                if ok_bits and int(value_bits) > 0:
+                    significant_bits = int(value_bits)
+                    break
+            if significant_bits is None:
+                significant_bits = full_width_significant_bits(value_format)
+            return (
+                value_format,
+                int(value_rate) if ok_rate else None,
+                int(value_channels) if ok_channels else None,
+                significant_bits,
+            )
+
+        def iterator_values(iterator):
+            while True:
+                result, value = iterator.next()
+                if result == self._gst.IteratorResult.DONE:
+                    return
+                if result != self._gst.IteratorResult.OK:
+                    raise RuntimeError(f"GStreamer iterator interrupted: {result}")
+                yield value
+
+        def selected_branch(start_sink_pad):
+            """Trace only pads upstream of the installed strict sink branch."""
+            stack = [start_sink_pad] if start_sink_pad is not None else []
+            visited: set[int] = set()
+            decoder_pads = []
+            factories: set[str] = set()
+            while stack:
+                sink_pad = stack.pop()
+                if id(sink_pad) in visited:
+                    continue
+                visited.add(id(sink_pad))
+                peer = sink_pad.get_peer()
+                if peer is None:
+                    continue
+                owner = peer.get_parent_element()
+                if owner is None:
+                    continue
+                factory = owner.get_factory()
+                if factory is None:
+                    continue
+                factory_name = factory.get_name()
+                factories.add(factory_name)
+                klass = factory.get_metadata("klass") or ""
+                if "Decoder" in klass and "Audio" in klass:
+                    decoder_pads.append(peer)
+                    continue
+                stack.extend(iterator_values(owner.iterate_sink_pads()))
+            decoder_pad = decoder_pads[0] if len(decoder_pads) == 1 else None
+            return decoder_pad, factories
+
         graph_complete = True
         alsa = None
         sink_factory = ""
         device = ""
         fmt = rate = channels = None
+        effective_significant_bits = None
+        sink_bin = capsfilter = None
         try:
             sink_bin = pipeline.get_property("audio-sink")
             alsa = sink_bin.get_by_name("michi_direct_alsa") if sink_bin else None
+            capsfilter = sink_bin.get_by_name("michi_direct_caps") if sink_bin else None
             sink_factory = "alsasink" if alsa is not None else ""
             if alsa is not None:
                 device = alsa.get_property("device") or ""
                 pad = alsa.get_static_pad("sink")
-                fmt, rate, channels = caps_values(pad)
+                fmt, rate, channels, effective_significant_bits = caps_values(pad)
         except Exception:  # pragma: no cover - live Gst introspection boundary
             graph_complete = False
         factories: list[str] = []
         decoded_format = decoded_rate = decoded_channels = None
+        decoded_significant_bits = None
         try:
-            iterator = pipeline.iterate_recurse()
-            while True:
-                ok, element = iterator.next()
-                if ok != self._gst.IteratorResult.OK:
-                    break
-                factory = element.get_factory()
-                if factory is not None:
-                    factories.append(factory.get_name())
-                    klass = factory.get_metadata("klass") or ""
-                    if "Decoder" in klass and "Audio" in klass:
-                        pads = element.iterate_src_pads()
-                        pad_ok, decoded_pad = pads.next()
-                        if pad_ok == self._gst.IteratorResult.OK:
-                            (
-                                decoded_format,
-                                decoded_rate,
-                                decoded_channels,
-                            ) = caps_values(decoded_pad)
+            external_sink_pad = None
+            if sink_bin is not None:
+                getter = getattr(sink_bin, "get_static_pad", None)
+                external_sink_pad = getter("sink") if getter is not None else None
+            trace_start = external_sink_pad
+            if trace_start is None and capsfilter is not None:
+                trace_start = capsfilter.get_static_pad("sink")
+            decoded_pad, branch_factories = selected_branch(trace_start)
+            factories = sorted(branch_factories | {"capsfilter", "alsasink"})
+            if decoded_pad is not None:
+                (
+                    decoded_format,
+                    decoded_rate,
+                    decoded_channels,
+                    decoded_significant_bits,
+                ) = caps_values(decoded_pad)
         except Exception:  # pragma: no cover - iterador del runtime real
             factories = ["__inspection_failed__"]
             graph_complete = False
@@ -297,8 +347,8 @@ class GStreamerBindings:
             decoded_format=decoded_format,
             decoded_rate_hz=decoded_rate,
             decoded_channels=decoded_channels,
-            decoded_significant_bits=full_width_significant_bits(decoded_format),
-            effective_significant_bits=full_width_significant_bits(fmt),
+            decoded_significant_bits=decoded_significant_bits,
+            effective_significant_bits=effective_significant_bits,
             graph_inspection_complete=graph_complete,
             software_gain=gain,
             muted=muted,

@@ -224,7 +224,7 @@ def test_st70_07_container_adaptation_requires_end_to_end_sbits_proof() -> None:
     identity = _identity()
     recorder = _complete(
         decoded=_pcm(fmt="S24_3LE"),
-        engine=_engine(identity, pcm=_pcm(fmt="S32_LE", significant_bits=None)),
+        engine=_engine(identity, pcm=_pcm(fmt="S32_LE", significant_bits=24)),
         alsa=_alsa(identity, pcm=_pcm(fmt="S32_LE")),
     )
     assert (
@@ -252,10 +252,13 @@ def test_st70_09_resampler_in_graph_is_resampled() -> None:
     assert clock_resample.candidate_snapshot.verdict is SignalTruthVerdict.RESAMPLED
 
 
-def test_st70_10_runtime_rate_mismatch_is_resampled() -> None:
+def test_st70_10_unexplained_alsa_rate_mismatch_is_contradicted() -> None:
     recorder = _complete(alsa=_alsa(pcm=_pcm(rate=48_000)))
-    assert recorder.candidate_snapshot.verdict is SignalTruthVerdict.RESAMPLED
-    assert SignalTruthReason.ST_RATE_MISMATCH in recorder.candidate_snapshot.reasons
+    assert recorder.candidate_snapshot.verdict is SignalTruthVerdict.CONTRADICTED
+    assert (
+        SignalTruthReason.ST_ALSA_NEGOTIATION_CONTRADICTION
+        in recorder.candidate_snapshot.reasons
+    )
 
 
 def test_st70_11_explicit_remix_is_remixed() -> None:
@@ -263,9 +266,9 @@ def test_st70_11_explicit_remix_is_remixed() -> None:
     assert recorder.candidate_snapshot.verdict is SignalTruthVerdict.REMIXED
 
 
-def test_st70_12_runtime_channel_mismatch_is_remixed() -> None:
+def test_st70_12_unexplained_alsa_channel_mismatch_is_contradicted() -> None:
     recorder = _complete(alsa=_alsa(pcm=_pcm(channels=6)))
-    assert recorder.candidate_snapshot.verdict is SignalTruthVerdict.REMIXED
+    assert recorder.candidate_snapshot.verdict is SignalTruthVerdict.CONTRADICTED
 
 
 def test_st70_13_observed_dsp_is_dsp() -> None:

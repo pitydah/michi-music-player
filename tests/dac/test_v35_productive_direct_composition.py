@@ -44,11 +44,6 @@ def _direct_graph(
     from test_gstreamer_audio_port import FakeBindings
 
     from michi.bootstrap import _build_services
-    from michi.domain.audio_device import (
-        AudioDeviceBinding,
-        BindingKind,
-        DeviceObservation,
-    )
     from michi.domain.audio_engine import AudioEngineId
     from michi.domain.audio_evidence import (
         CapabilityEvidence,
@@ -57,6 +52,12 @@ def _direct_graph(
     )
     from michi.domain.audio_output import AudioOutputSelection, stable_direct_preset
     from michi.domain.library import TrackMetadata
+    from tests.dac._fixtures import (
+        AlsaCard,
+        UsbDevice,
+        build_linux_sysfs,
+        make_roots,
+    )
 
     class _Metadata:
         def extract(self, path):
@@ -67,6 +68,38 @@ def _direct_graph(
                 channels=2,
             )
 
+    topology_root = tmp_path / "linux-topology"
+    topology_root.mkdir()
+    sysfs_root = make_roots(topology_root)
+    build_linux_sysfs(
+        sysfs_root,
+        usb_devices=(
+            UsbDevice(
+                "2-1",
+                "2622",
+                "0105",
+                serial="DX5ABC123",
+                bcd_device="0100",
+            ),
+        ),
+        cards=(
+            AlsaCard(
+                card_index=1,
+                card_id="DX5",
+                usb_devpath="2-1",
+                playback_pcms=playback_pcms,
+            ),
+        ),
+    )
+    proc_root = topology_root / "proc" / "asound"
+    card_root = proc_root / "card1"
+    card_root.mkdir(parents=True)
+    (card_root / "id").write_text("DX5\n", encoding="utf-8")
+    for pcm_device in playback_pcms:
+        sub_root = card_root / f"pcm{pcm_device}p" / "sub0"
+        sub_root.mkdir(parents=True)
+        (sub_root / "hw_params").write_text("closed\n", encoding="utf-8")
+
     bindings = FakeBindings()
     graph = _build_services(
         tmp_path / "michi.db",
@@ -76,50 +109,10 @@ def _direct_graph(
         artwork_cache=None,
         gstreamer_bindings=bindings,
         alsa_hw_params_reader=alsa_hw_params_reader,
+        audio_sysfs_root=sysfs_root,
+        alsa_proc_root=proc_root,
     )
     device_id = "usb:2622:0105:DX5ABC123"
-    physical_path = "2-1"
-    graph.audio_device_registry.ingest(
-        (
-            DeviceObservation(
-                source="sysfs",
-                observed_at_ns=1,
-                vendor_id="2622",
-                product_id="0105",
-                serial="DX5ABC123",
-                manufacturer="MichiAudio",
-                product="DAC Test",
-                physical_path=physical_path,
-                bcd_device="0100",
-                binding=None,
-                descriptor_sha256="a" * 64,
-            ),
-            *(
-                DeviceObservation(
-                    source="alsa",
-                    observed_at_ns=1,
-                    vendor_id=None,
-                    product_id=None,
-                    serial=None,
-                    manufacturer=None,
-                    product="DX5",
-                    physical_path=physical_path,
-                    bcd_device=None,
-                    binding=AudioDeviceBinding(
-                        kind=BindingKind.ALSA_PCM,
-                        locator=f"hw:CARD=DX5,DEV={pcm_device}",
-                        generation=0,
-                        currently_available=True,
-                        card_index=1,
-                        pcm_device=pcm_device,
-                        pcm_subdevice=0,
-                        stable_endpoint_signature=f"ep:dx5:{pcm_device}",
-                    ),
-                )
-                for pcm_device in playback_pcms
-            ),
-        )
-    )
     profile = stable_direct_preset("p1", device_id)
     graph.audio_output_profiles.save_profile(profile)
     graph.audio_output_profiles.save_selection(

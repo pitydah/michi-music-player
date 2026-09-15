@@ -363,6 +363,8 @@ def _build_services(
     artwork_cache=_MISSING,
     gstreamer_bindings=None,
     alsa_hw_params_reader=None,
+    audio_sysfs_root: Path | None = None,
+    alsa_proc_root: Path = Path("/proc/asound"),
 ) -> ServiceGraph:
     """Build the PRODUCTION library service graph (composition root core).
 
@@ -391,7 +393,11 @@ def _build_services(
     output_repository = SqliteAudioOutputRepository(Path(db_path))
     output_profiles = AudioOutputProfileService(output_repository)
     audio_devices = AudioDeviceRegistry()
-    udev_observer = UdevObserver(audio_devices)
+    udev_observer = UdevObserver(
+        audio_devices,
+        **({"sysfs_root": audio_sysfs_root} if audio_sysfs_root is not None else {}),
+        proc_asound_root=alsa_proc_root,
+    )
     # Initial passive snapshot; netlink monitoring starts only after every
     # consumer is wired by ApplicationContainer.
     udev_observer.rescan()
@@ -439,7 +445,9 @@ def _build_services(
     # restore the persisted SELECTED preference BEFORE any activation.
     qt_provider = QtEngineProvider()
     signal_truth = SignalTruthRecorder()
-    alsa_runtime_observer = AlsaHwParamsObserver(alsa_hw_params_reader)
+    alsa_runtime_observer = AlsaHwParamsObserver(
+        alsa_hw_params_reader, proc_asound_root=alsa_proc_root
+    )
     direct_executor = GStreamerDirectOutputExecutor(
         signal_truth=signal_truth,
         alsa_runtime_observer=alsa_runtime_observer,
