@@ -12,7 +12,7 @@ from contextlib import suppress
 from dataclasses import dataclass, replace
 from enum import Enum
 
-from michi.domain.audio_evidence import PcmTuple
+from michi.domain.audio_evidence import PcmTuple, RuntimeTransformEvidence
 
 
 class SignalTruthVerdict(Enum):
@@ -47,6 +47,8 @@ class SignalTruthReason(Enum):
     ST_MISSING_GAIN = "ST_MISSING_GAIN"
     ST_MISSING_CLOCK = "ST_MISSING_CLOCK"
     ST_SIGNIFICANT_BITS_UNKNOWN = "ST_SIGNIFICANT_BITS_UNKNOWN"
+    ST_CONVERTER_STATE_UNKNOWN = "ST_CONVERTER_STATE_UNKNOWN"
+    ST_RESAMPLER_STATE_UNKNOWN = "ST_RESAMPLER_STATE_UNKNOWN"
     ST_SOURCE_DECODED_MISMATCH = "ST_SOURCE_DECODED_MISMATCH"
 
 
@@ -99,6 +101,7 @@ class EngineRuntimeEvidence:
     resampling_observed: bool = False
     remix_observed: bool = False
     dsp_observed: bool = False
+    transform_evidence: RuntimeTransformEvidence = RuntimeTransformEvidence()
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,6 +168,8 @@ _CONTRADICTION_ORDER = (
     SignalTruthReason.ST_CLOCK_POLICY_MISMATCH,
 )
 _UNKNOWN_ORDER = (
+    SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
+    SignalTruthReason.ST_RESAMPLER_STATE_UNKNOWN,
     SignalTruthReason.ST_MISSING_DECODED,
     SignalTruthReason.ST_MISSING_ENGINE_EFFECTIVE,
     SignalTruthReason.ST_MISSING_ALSA,
@@ -205,15 +210,21 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
     def result(verdict, reasons=()):
         return replace(snapshot, verdict=verdict, reasons=(*reasons, *provenance))
 
+    transforms = (
+        engine.transform_evidence if engine is not None else RuntimeTransformEvidence()
+    )
     resampling_observed = bool(
         engine is not None
         and (
             engine.resampling_observed
-            or "audioresample" in engine.graph_factories
+            or transforms.resampler_transforming is True
             or engine.slave_method == "resample"
         )
     )
-    remix_observed = bool(engine is not None and engine.remix_observed)
+    remix_observed = bool(
+        engine is not None
+        and (engine.remix_observed or transforms.remix_transforming is True)
+    )
 
     contradictions: set[SignalTruthReason] = set()
     if engine is not None:
@@ -277,7 +288,15 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
             transformed.add(SignalTruthReason.ST_RESAMPLER_PRESENT)
         if remix_observed:
             transformed.add(SignalTruthReason.ST_REMIX_OBSERVED)
-        if engine.dsp_observed or "audioconvert" in engine.graph_factories:
+        converter_changed_without_endpoint_delta = bool(
+            transforms.converter_transforming is True
+            and decoded is not None
+            and engine.effective_pcm is not None
+            and decoded.pcm.transport_format.replace("_", "").upper()
+            == engine.effective_pcm.transport_format.replace("_", "").upper()
+            and not remix_observed
+        )
+        if engine.dsp_observed or converter_changed_without_endpoint_delta:
             transformed.add(SignalTruthReason.ST_DSP_PRESENT)
     if (
         decoded is not None
@@ -330,6 +349,21 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
             SignalTruthReason.ST_DSP_PRESENT,
         )
         return result(verdict, _ordered(transformed, transform_order))
+
+    transform_unknown: set[SignalTruthReason] = set()
+    if engine is not None:
+        if transforms.converter_present and (
+            transforms.converter_transforming is None
+            or transforms.remix_transforming is None
+        ):
+            transform_unknown.add(SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN)
+        if transforms.resampler_present and transforms.resampler_transforming is None:
+            transform_unknown.add(SignalTruthReason.ST_RESAMPLER_STATE_UNKNOWN)
+    if transform_unknown:
+        return result(
+            SignalTruthVerdict.UNKNOWN,
+            _ordered(transform_unknown, _UNKNOWN_ORDER),
+        )
 
     missing: set[SignalTruthReason] = set()
     if decoded is None:

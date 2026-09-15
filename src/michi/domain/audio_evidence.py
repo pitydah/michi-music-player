@@ -54,6 +54,22 @@ class PcmTuple:
 
 
 @dataclass(frozen=True, slots=True)
+class RuntimeTransformEvidence:
+    """Selected-branch transform facts from negotiated runtime caps.
+
+    Presence is topology evidence.  A tri-state activity field is ``True``
+    only when negotiated input/output prove a signal delta, ``False`` only
+    when they prove pass-through, and ``None`` when observation is incomplete.
+    """
+
+    converter_present: bool = False
+    converter_transforming: bool | None = None
+    resampler_present: bool = False
+    resampler_transforming: bool | None = None
+    remix_transforming: bool | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class CapabilityEvidence:
     stable_device_id: str
     tuple: PcmTuple

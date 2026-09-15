@@ -60,10 +60,17 @@ def _require_factory(gst, name: str) -> None:
     )
 
 
-def _write_flac(gst, path: Path, source_format: str = "S16LE") -> None:
+def _write_flac(
+    gst,
+    path: Path,
+    source_format: str = "S16LE",
+    source_rate: int = 48_000,
+    source_channels: int = 2,
+) -> None:
     pipeline = gst.parse_launch(
         "audiotestsrc num-buffers=20 wave=silence ! "
-        f"audio/x-raw,format={source_format},rate=48000,channels=2 ! "
+        f"audio/x-raw,format={source_format},rate={source_rate},"
+        f"channels={source_channels} ! "
         f"flacenc ! filesink location={path}"
     )
     try:
@@ -91,12 +98,18 @@ def _build_runtime_test_sink(gst, recipe):
     return sink_bin
 
 
-def _prerolled_playbin(tmp_path: Path, recipe=None, source_format: str = "S16LE"):
+def _prerolled_playbin(
+    tmp_path: Path,
+    recipe=None,
+    source_format: str = "S16LE",
+    source_rate: int = 48_000,
+    source_channels: int = 2,
+):
     gst = _gst_runtime()
     for name in ("playbin3", "alsasink", "flacenc", "flacdec"):
         _require_factory(gst, name)
     media = tmp_path / "r2-real.flac"
-    _write_flac(gst, media, source_format)
+    _write_flac(gst, media, source_format, source_rate, source_channels)
     bindings = GStreamerBindings()
     bindings.ensure_loaded()
     recipe = recipe or _Recipe()

@@ -38,6 +38,26 @@ _logger = logging.getLogger(__name__)
 _POSITION_POLL_MS = 500
 
 
+@dataclass(frozen=True, slots=True)
+class _NegotiatedPcmCaps:
+    """Normalized negotiated signal properties; contains no Gst objects."""
+
+    format: str | None
+    rate_hz: int | None
+    channels: int | None
+    layout: str | None
+    channel_layout: tuple[int, ...] | None
+
+
+def _aggregate_transform_states(values: list[bool | None]) -> bool | None:
+    """Aggregate all selected-branch instances without fabricating absence."""
+    if any(value is True for value in values):
+        return True
+    if values and all(value is False for value in values):
+        return False
+    return None
+
+
 class DirectSinkBuildError(RuntimeError):
     """Fall-closed del strict Direct sink (código estable, sin jerarquía)."""
 
@@ -56,6 +76,7 @@ class GStreamerBindings:
 
     def __init__(self) -> None:
         self._gst = None
+        self._gst_audio = None
         self._glib = None
         self._init_error: Exception | None = None
 
@@ -70,11 +91,13 @@ class GStreamerBindings:
             import gi  # noqa: PLC0415 - lazy optional system capability
 
             gi.require_version("Gst", "1.0")
+            gi.require_version("GstAudio", "1.0")
             gi.require_version("GLib", "2.0")
-            from gi.repository import GLib, Gst  # noqa: PLC0415
+            from gi.repository import GLib, Gst, GstAudio  # noqa: PLC0415
 
             Gst.init(None)
             self._gst = Gst
+            self._gst_audio = GstAudio
             self._glib = GLib
         except (ImportError, ValueError) as exc:
             self._init_error = exc
@@ -195,25 +218,109 @@ class GStreamerBindings:
         y los caps negociados del sink-pad, más las factories del grafo.
         Nunca expone objetos Gst.
         """
-        from michi.domain.audio_evidence import intrinsic_pcm_significant_bits
+        from michi.domain.audio_evidence import (
+            RuntimeTransformEvidence,
+            intrinsic_pcm_significant_bits,
+        )
         from michi.infrastructure.audio_output.runtime_inspector import (
             DirectRuntimeSnapshot,
         )
 
-        def caps_values(pad):
+        def normalized_caps(pad):
             caps = pad.get_current_caps() if pad is not None else None
             if caps is None or caps.get_size() == 0:
-                return None, None, None, None
+                return None
             struct = caps.get_structure(0)
             value_format = struct.get_string("format")
             ok_rate, value_rate = struct.get_int("rate")
             ok_channels, value_channels = struct.get_int("channels")
-            return (
-                value_format,
-                int(value_rate) if ok_rate else None,
-                int(value_channels) if ok_channels else None,
-                intrinsic_pcm_significant_bits(value_format),
+            value_layout = struct.get_string("layout")
+            channel_layout = None
+            try:
+                has_field = getattr(struct, "has_field", None)
+                audio_info = (
+                    self._gst_audio.AudioInfo.new_from_caps(caps)
+                    if self._gst_audio is not None
+                    else None
+                )
+                if (
+                    has_field is not None
+                    and has_field("channel-mask")
+                    and audio_info is not None
+                    and audio_info.channels > 0
+                ):
+                    positions = tuple(
+                        int(position)
+                        for position in audio_info.position[: audio_info.channels]
+                    )
+                    if all(position >= 0 for position in positions):
+                        channel_layout = positions
+            except (TypeError, ValueError, OverflowError):
+                channel_layout = None
+            return _NegotiatedPcmCaps(
+                format=value_format,
+                rate_hz=int(value_rate) if ok_rate else None,
+                channels=int(value_channels) if ok_channels else None,
+                layout=value_layout,
+                channel_layout=channel_layout,
             )
+
+        def caps_values(pad):
+            normalized = normalized_caps(pad)
+            if normalized is None:
+                return None, None, None, None
+            return (
+                normalized.format,
+                normalized.rate_hz,
+                normalized.channels,
+                intrinsic_pcm_significant_bits(normalized.format),
+            )
+
+        def transform_states(element, factory_name: str):
+            incoming = normalized_caps(element.get_static_pad("sink"))
+            outgoing = normalized_caps(element.get_static_pad("src"))
+            if factory_name == "audioresample":
+                if (
+                    incoming is None
+                    or outgoing is None
+                    or incoming.rate_hz is None
+                    or outgoing.rate_hz is None
+                ):
+                    return None, None
+                return incoming.rate_hz != outgoing.rate_hz, None
+            if incoming is None or outgoing is None:
+                return None, None
+            comparable_pairs = (
+                (incoming.format, outgoing.format),
+                (incoming.channels, outgoing.channels),
+                (incoming.layout, outgoing.layout),
+                (incoming.channel_layout, outgoing.channel_layout),
+            )
+            observed_deltas = tuple(
+                left != right
+                for left, right in comparable_pairs
+                if left is not None and right is not None
+            )
+            core_pairs = comparable_pairs[:3]
+            core_complete = all(
+                left is not None and right is not None for left, right in core_pairs
+            )
+            if any(observed_deltas):
+                converting = True
+            elif core_complete:
+                converting = False
+            else:
+                converting = None
+            remixing = None
+            if incoming.channels is not None and outgoing.channels is not None:
+                if incoming.channels != outgoing.channels:
+                    remixing = True
+                elif (
+                    incoming.channel_layout is not None
+                    and outgoing.channel_layout is not None
+                ):
+                    remixing = incoming.channel_layout != outgoing.channel_layout
+            return converting, remixing
 
         def iterator_values(iterator):
             while True:
@@ -230,6 +337,10 @@ class GStreamerBindings:
             visited: set[int] = set()
             decoder_pads = []
             factories: set[str] = set()
+            converter_states: list[bool | None] = []
+            resampler_states: list[bool | None] = []
+            remix_states: list[bool | None] = []
+            transform_owners: set[int] = set()
 
             def pad_identity(pad) -> int:
                 try:
@@ -295,13 +406,39 @@ class GStreamerBindings:
                     continue
                 factory_name = factory.get_name()
                 factories.add(factory_name)
+                owner_key = id(owner)
+                if (
+                    factory_name in {"audioconvert", "audioresample"}
+                    and owner_key not in transform_owners
+                ):
+                    transform_owners.add(owner_key)
+                    transforming, remixing = transform_states(owner, factory_name)
+                    if factory_name == "audioconvert":
+                        converter_states.append(transforming)
+                        remix_states.append(remixing)
+                    else:
+                        resampler_states.append(transforming)
                 klass = factory.get_metadata("klass") or ""
                 if "Decoder" in klass and "Audio" in klass:
                     decoder_pads.append(peer)
                     continue
                 stack.extend(iterator_values(owner.iterate_sink_pads()))
             decoder_pad = decoder_pads[0] if len(decoder_pads) == 1 else None
-            return decoder_pad, factories
+            return (
+                decoder_pad,
+                factories,
+                RuntimeTransformEvidence(
+                    converter_present=bool(converter_states),
+                    converter_transforming=_aggregate_transform_states(
+                        converter_states
+                    ),
+                    resampler_present=bool(resampler_states),
+                    resampler_transforming=_aggregate_transform_states(
+                        resampler_states
+                    ),
+                    remix_transforming=_aggregate_transform_states(remix_states),
+                ),
+            )
 
         graph_complete = True
         alsa = None
@@ -326,6 +463,7 @@ class GStreamerBindings:
         factories: list[str] = []
         decoded_format = decoded_rate = decoded_channels = None
         decoded_significant_bits = None
+        transform_evidence = RuntimeTransformEvidence()
         try:
             external_sink_pad = None
             if sink_bin is not None:
@@ -334,7 +472,9 @@ class GStreamerBindings:
             trace_start = external_sink_pad
             if trace_start is None and capsfilter is not None:
                 trace_start = capsfilter.get_static_pad("sink")
-            decoded_pad, branch_factories = selected_branch(trace_start)
+            decoded_pad, branch_factories, transform_evidence = selected_branch(
+                trace_start
+            )
             installed_factories = {
                 name for name in ("capsfilter", sink_factory) if name
             }
@@ -391,6 +531,7 @@ class GStreamerBindings:
             decoded_significant_bits=decoded_significant_bits,
             effective_significant_bits=effective_significant_bits,
             graph_inspection_complete=graph_complete,
+            transform_evidence=transform_evidence,
             software_gain=gain,
             muted=muted,
             sink_provides_clock=sink_provides_clock,

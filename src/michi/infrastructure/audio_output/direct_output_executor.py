@@ -449,6 +449,7 @@ class GStreamerDirectOutputExecutor:
                 sink_provides_clock=snapshot.sink_provides_clock,
                 sink_clock_is_pipeline_clock=snapshot.sink_clock_is_pipeline_clock,
                 slave_method=snapshot.slave_method,
+                transform_evidence=snapshot.transform_evidence,
             )
         )
         observer = self._alsa_runtime_observer

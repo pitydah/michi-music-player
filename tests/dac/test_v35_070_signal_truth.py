@@ -243,10 +243,8 @@ def test_st70_08_unknown_sbits_blocks_container_adaptation() -> None:
     assert recorder.candidate_snapshot.verdict is SignalTruthVerdict.UNKNOWN
 
 
-def test_st70_09_resampler_in_graph_is_resampled() -> None:
-    recorder = _complete(
-        engine=_engine(graph=("flacdec", "audioresample", "capsfilter", "alsasink"))
-    )
+def test_st70_09_observed_resampling_is_resampled() -> None:
+    recorder = _complete(engine=_engine(resampling=True))
     assert recorder.candidate_snapshot.verdict is SignalTruthVerdict.RESAMPLED
     clock_resample = _complete(engine=_engine(slave_method="resample"))
     assert clock_resample.candidate_snapshot.verdict is SignalTruthVerdict.RESAMPLED
@@ -274,8 +272,6 @@ def test_st70_12_unexplained_alsa_channel_mismatch_is_contradicted() -> None:
 def test_st70_13_observed_dsp_is_dsp() -> None:
     recorder = _complete(engine=_engine(dsp=True))
     assert recorder.candidate_snapshot.verdict is SignalTruthVerdict.DSP
-    converter = _complete(engine=_engine(graph=("audioconvert", "alsasink")))
-    assert converter.candidate_snapshot.verdict is SignalTruthVerdict.DSP
     endian_change = _complete(
         decoded=_pcm(fmt="S16_LE", significant_bits=16),
         engine=_engine(pcm=_pcm(fmt="S16_BE", significant_bits=16)),

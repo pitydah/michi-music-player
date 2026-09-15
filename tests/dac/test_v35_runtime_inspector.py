@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import pytest
 
+from michi.domain.audio_evidence import RuntimeTransformEvidence
 from michi.infrastructure.audio_output.runtime_inspector import (
-    DIRECT_CONVERTER_PRESENT,
+    DIRECT_CONVERTER_STATE_UNKNOWN,
     DIRECT_GRAPH_INSPECTION_FAILED,
+    DIRECT_RESAMPLER_STATE_UNKNOWN,
     DirectRuntimeSnapshot,
     validate_runtime,
 )
@@ -154,7 +156,7 @@ def test_r8_wrong_channels() -> None:
     assert exc_info.value.code == "DIRECT_CHANNEL_MISMATCH"
 
 
-def test_r9_audioresample_present() -> None:
+def test_r9_audioresample_present_with_unknown_state_fails_closed() -> None:
     from michi.infrastructure.audio_output.runtime_inspector import (
         DirectRuntimeValidationError,
     )
@@ -162,9 +164,15 @@ def test_r9_audioresample_present() -> None:
     with pytest.raises(DirectRuntimeValidationError) as exc_info:
         validate_runtime(
             _recipe(),
-            _snapshot(graph_factories=("capsfilter", "audioresample", "alsasink")),
+            _snapshot(
+                graph_factories=("capsfilter", "audioresample", "alsasink"),
+                transform_evidence=RuntimeTransformEvidence(
+                    resampler_present=True,
+                    resampler_transforming=None,
+                ),
+            ),
         )
-    assert exc_info.value.code == "DIRECT_RESAMPLER_PRESENT"
+    assert exc_info.value.code == DIRECT_RESAMPLER_STATE_UNKNOWN
 
 
 def test_r10_incomplete_graph_inspection_fails_closed() -> None:
@@ -180,7 +188,7 @@ def test_r10_incomplete_graph_inspection_fails_closed() -> None:
     assert exc_info.value.code == DIRECT_GRAPH_INSPECTION_FAILED
 
 
-def test_r11_audioconvert_present_fails_closed() -> None:
+def test_r11_audioconvert_present_with_unknown_state_fails_closed() -> None:
     from michi.infrastructure.audio_output.runtime_inspector import (
         DirectRuntimeValidationError,
     )
@@ -188,6 +196,12 @@ def test_r11_audioconvert_present_fails_closed() -> None:
     with pytest.raises(DirectRuntimeValidationError) as exc_info:
         validate_runtime(
             _recipe(),
-            _snapshot(graph_factories=("capsfilter", "audioconvert", "alsasink")),
+            _snapshot(
+                graph_factories=("capsfilter", "audioconvert", "alsasink"),
+                transform_evidence=RuntimeTransformEvidence(
+                    converter_present=True,
+                    converter_transforming=None,
+                ),
+            ),
         )
-    assert exc_info.value.code == DIRECT_CONVERTER_PRESENT
+    assert exc_info.value.code == DIRECT_CONVERTER_STATE_UNKNOWN

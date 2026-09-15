@@ -222,8 +222,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 4 | `DAC-V35-040` Output planner + output transaction | ACTIVE | YES | deterministic plan before hardware/backend mutation |
 | 5 | `DAC-V35-050` GStreamer Direct executor | ACTIVE | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
-| 7 | `DAC-V35-070 + 070R1 + 070R2` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | significant-bit and real-GStreamer production provenance sealed fail-closed; physical claims excluded |
-| 8 | `DAC-V35-080` Disconnect/reconnect + transitions | ACTIVE | YES | deterministic failure/rebind; no speaker fallback |
+| 7 | `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | negotiated selected-branch transform activity distinguishes element presence from pass-through; physical claims excluded |
+| 8 | `DAC-V35-080` Disconnect/reconnect + transitions | NEXT AUTHORIZED / NOT STARTED | YES | deterministic failure/rebind; no speaker fallback |
 | 9 | `DAC-V35-090` Premium DAC UI | ACTIVE | YES | DAC controls separated from Audio Engine; mode-aware volume |
 | 10 | `DAC-V35-100` Automated verification + documentation seal | ACTIVE | YES | one GO/NO-GO command + docs/status parity |
 | 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
@@ -19678,6 +19678,72 @@ two explained non-R2 skips, clean Ruff checks, repository alignment, and final
 Judgment Day PASS. Publication still requires exact-commit CI confirmation;
 that confirmation does not upgrade this software-only verdict to physical
 qualification.
+
+**Transform/pass-through corrective seal (2026-09-15):
+`DAC-V35-070R2.1 IN PROGRESS / REQUIRED FOR FINAL GO`.** The prior automated
+closure is reopened because topology presence is not runtime transformation
+proof. `audioconvert` and `audioresample` may exist on the selected branch while
+their negotiated input and output remain semantically equivalent.
+
+R2.1 freezes these rules before production changes:
+
+```text
+selected-branch element presence = topology evidence
+selected-branch negotiated input/output delta = transformation evidence
+
+converter_present and converter_transforming are separate typed facts
+resampler_present and resampler_transforming are separate typed facts
+remix_transforming is an independent tri-state fact
+
+True  = negotiated runtime evidence proves transformation
+False = sufficient negotiated runtime evidence proves pass-through
+None  = unavailable or ambiguous; never treated as pass-through
+```
+
+Every reachable selected-branch transform instance is inspected read-only via
+current negotiated sink/src pad caps. Whole caps strings are never compared.
+Only normalized signal properties participate: format, rate, channels, and
+channel mask/layout when observable. Template caps, allowed caps,
+`query_caps()`, element presence, and `GstBaseTransform.is_passthrough()` alone
+cannot prove current activity. Multiple instances aggregate as: any `True` ->
+`True`; all observed `False` -> `False`; otherwise -> `None`. Unrelated pipeline
+branches remain outside the evidence boundary. Traversal interruption marks the
+graph incomplete and leaves transform activity unknown.
+
+Direct validation retains exact production `alsasink` factory/device checks.
+A present converter/resampler proven pass-through is not rejected solely for
+presence. Proven active resampling is rejected; present-but-unknown transform
+state fails closed with a specific stable code. Proven format conversion is
+bounded by existing Signal Truth significant-bit/container rules and cannot be
+promoted to Direct without sufficient evidence. Signal Truth maps active rate
+change to `RESAMPLED`, active channel/layout change to `REMIXED`, and an unknown
+present transform to `UNKNOWN`; presence alone produces neither `DSP` nor
+`RESAMPLED`.
+
+The R2 significant-bit authority remains unchanged. Real GI/playbin3 gates use
+the hardware-independent `fakesink` topology to prove selected-branch,
+negotiated transform semantics and exercise the production transform validator.
+They are not ALSA or physical-DAC evidence; production Direct continues to
+require exact `alsasink` and device identity through the 050 gates.
+
+Required gates are `R21-01..R21-30`, all R2/ST70/ST70R1/050R2/V60/M11.3
+firewalls, all DAC tests, the full repository suite, repository alignment,
+Judgment Day, and exact-head CI. Only after every gate is green may status return
+to `DAC-V35-070 + 070R1 + 070R2 + 070R2.1 CLOSED-AUTOMATED / GO` and
+`DAC-V35-080 NEXT AUTHORIZED / NOT STARTED`.
+
+**Automated closure (2026-09-15):
+`DAC-V35-070 + 070R1 + 070R2 + 070R2.1 CLOSED-AUTOMATED / GO`.** The
+productive implementation now records transform presence independently from
+tri-state negotiated activity and validates only the selected strict-sink
+branch. Pass-through converter/resampler presence no longer fabricates DSP or
+resampling, while active and unknown states remain fail-closed. All 40 R2.1
+cases, all 433 DAC tests, and the complete repository suite at 4610 passed with
+two explained non-R2 skips are green. Ruff, QML, build, wheel parity,
+installed-wheel smoke, repository alignment, and Judgment Day are also green.
+Publication still requires exact-head CI confirmation and does not upgrade this
+software-only result to physical qualification. `DAC-V35-080` is the next
+authorized work package and remains not started.
 
 No UI “Lossless/Bit-perfect/Direct verified” label may be derived solely from the selected setting.
 

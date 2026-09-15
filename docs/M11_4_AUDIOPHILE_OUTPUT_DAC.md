@@ -52,7 +52,8 @@ V3.5 spec governs implementation and acceptance.
   persisted Shared preference; effective `PlaybackState` truth and the
   authority-aware player control converge through typed results. Automated
   gates: V60-01..V60-30, plus 050R2 and M11.3 regression firewalls.
-- `DAC-V35-070 + 070R1 + 070R2` Signal Truth / runtime evidence — **CLOSED-AUTOMATED / GO**.
+- `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Signal Truth / runtime evidence —
+  **CLOSED-AUTOMATED / GO**.
   One passive production recorder consumes immutable, generation-scoped
   events. File metadata remains source facts only; GStreamer supplies current
   decoded caps from exactly one decoder reachable through the installed strict
@@ -70,14 +71,20 @@ V3.5 spec governs implementation and acceptance.
   remains `UNKNOWN`; metadata, qualification, profiles, and synthetic bindings
   cannot fill the gap. The mandatory real suite passes without skips and
   confirms GhostPad/ProxyPad and factory-less-bin traversal, selected-decoder
-  isolation, ambiguity, and bounded teardown.
+  isolation, ambiguity, and bounded teardown. R2.1 separates selected-branch
+  converter/resampler presence from tri-state negotiated activity by comparing
+  normalized current sink/src pad caps. Proven pass-through presence is not
+  classified as DSP or resampling; proven rate/channel-layout changes and
+  present-but-unknown transforms remain fail-closed. Its mandatory typed and
+  real-GStreamer gates pass without skips.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
-software runtime-evidence verdict, not physical proof. `DAC-V35-080` remains
-NOT STARTED; physical qualification (`DAC-V35-110`) remains pending.
+software runtime-evidence verdict, not physical proof. `DAC-V35-080` is NEXT
+AUTHORIZED / NOT STARTED; physical qualification (`DAC-V35-110`) remains
+pending.
 
 Contracts, not implementation. This is playback/output infrastructure —
 **not** Audio Lab.

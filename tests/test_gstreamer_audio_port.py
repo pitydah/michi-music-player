@@ -252,7 +252,10 @@ class FakeBindings:
     def snapshot_direct_runtime(
         self, pipeline, recipe, *, execution_generation, port_generation
     ):
-        from michi.domain.audio_evidence import intrinsic_pcm_significant_bits
+        from michi.domain.audio_evidence import (
+            RuntimeTransformEvidence,
+            intrinsic_pcm_significant_bits,
+        )
         from michi.infrastructure.audio_output.runtime_inspector import (
             DirectRuntimeSnapshot,
         )
@@ -260,6 +263,28 @@ class FakeBindings:
         overrides = self.direct_snapshot_overrides or {}
         negotiated_format = overrides.get("format", recipe.gst_format)
         decoded_format = overrides.get("decoded_format", recipe.gst_format)
+        graph_factories = overrides.get("graph", ("capsfilter", "alsasink"))
+        transform_evidence = overrides.get("transform_evidence")
+        if transform_evidence is None:
+            converter_present = "audioconvert" in graph_factories
+            resampler_present = "audioresample" in graph_factories
+            transform_evidence = RuntimeTransformEvidence(
+                converter_present=converter_present,
+                converter_transforming=(
+                    overrides.get("converter_transforming")
+                    if converter_present
+                    else None
+                ),
+                resampler_present=resampler_present,
+                resampler_transforming=(
+                    overrides.get("resampler_transforming")
+                    if resampler_present
+                    else None
+                ),
+                remix_transforming=(
+                    overrides.get("remix_transforming") if converter_present else None
+                ),
+            )
         return DirectRuntimeSnapshot(
             execution_generation=execution_generation,
             port_generation=port_generation,
@@ -269,7 +294,8 @@ class FakeBindings:
             negotiated_format=negotiated_format,
             negotiated_rate_hz=overrides.get("rate", recipe.rate_hz),
             negotiated_channels=overrides.get("channels", recipe.channels),
-            graph_factories=overrides.get("graph", ("capsfilter", "alsasink")),
+            graph_factories=graph_factories,
+            transform_evidence=transform_evidence,
             decoded_format=decoded_format,
             decoded_rate_hz=overrides.get("decoded_rate", recipe.rate_hz),
             decoded_channels=overrides.get("decoded_channels", recipe.channels),

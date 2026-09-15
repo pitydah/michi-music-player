@@ -1305,7 +1305,7 @@ class TestF42AdapterContract:
         # inspection crosses real GhostPad/ProxyPad/factory-less bins. The
         # Shared command, pump, bus, generation, and acceptance paths remain
         # unchanged; hash re-sealed after M11.3 regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "6e3fb8ffb0f98fc3",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "f8b5151334ab8b9b",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).
