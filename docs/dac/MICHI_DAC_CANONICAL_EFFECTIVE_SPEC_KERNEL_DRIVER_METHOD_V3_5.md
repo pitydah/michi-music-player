@@ -19659,6 +19659,13 @@ and clean bounded teardown. If GI, playbin3, or required GStreamer plugins are
 missing in CI, dependencies must be installed; a skip is `070R2 NO-GO`, not an
 accepted closure. A green automated gate remains software evidence only.
 
+The CI provenance fixture uses a real hardware-independent GStreamer
+`fakesink` inside the same named capsfilter/sink-bin shape so the gate proves
+playbin3 topology and negotiated caps without pretending a physical ALSA
+device exists on the runner. The real `alsasink` factory remains a mandatory
+dependency check. Production Direct still builds and validates `alsasink`; the
+fixture is not ALSA or physical-DAC evidence.
+
 Only after `R2-01..R2-30`, `ST70`, `ST70R1`, `050R2`, `V60`, M11.3 regressions,
 repository alignment, full suite, and exact-head CI are green may status become
 `DAC-V35-070 + 070R1 + 070R2 CLOSED-AUTOMATED / GO`. R2 does not begin 080 or

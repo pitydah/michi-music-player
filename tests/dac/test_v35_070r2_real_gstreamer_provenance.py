@@ -13,8 +13,8 @@ from michi.infrastructure.audio_engines.gstreamer import GStreamerBindings
 @dataclass(frozen=True)
 class _Recipe:
     plan_id: str = "r2-real"
-    sink_factory: str = "alsasink"
-    device: str = "null"
+    sink_factory: str = "fakesink"
+    device: str = ""
 
     @staticmethod
     def caps_string() -> str:
@@ -76,6 +76,21 @@ def _write_flac(gst, path: Path, source_format: str = "S16LE") -> None:
         pipeline.set_state(gst.State.NULL)
 
 
+def _build_runtime_test_sink(gst, recipe):
+    sink_bin = gst.Bin.new("michi_direct_sink")
+    capsfilter = gst.ElementFactory.make("capsfilter", "michi_direct_caps")
+    sink = gst.ElementFactory.make("fakesink", "michi_direct_alsa")
+    assert sink_bin is not None and capsfilter is not None and sink is not None
+    capsfilter.set_property("caps", gst.Caps.from_string(recipe.caps_string()))
+    sink.set_property("sync", False)
+    assert sink_bin.add(capsfilter)
+    assert sink_bin.add(sink)
+    assert capsfilter.link(sink)
+    ghost = gst.GhostPad.new("sink", capsfilter.get_static_pad("sink"))
+    assert ghost is not None and sink_bin.add_pad(ghost)
+    return sink_bin
+
+
 def _prerolled_playbin(tmp_path: Path, recipe=None, source_format: str = "S16LE"):
     gst = _gst_runtime()
     for name in ("playbin3", "alsasink", "flacenc", "flacdec"):
@@ -87,7 +102,7 @@ def _prerolled_playbin(tmp_path: Path, recipe=None, source_format: str = "S16LE"
     recipe = recipe or _Recipe()
     pipeline = bindings.make_playbin3()
     assert pipeline is not None
-    sink = bindings.build_strict_audio_sink(recipe)
+    sink = _build_runtime_test_sink(gst, recipe)
     bindings.set_audio_sink(pipeline, sink)
     pipeline.set_property("uri", media.as_uri())
     assert pipeline.set_state(gst.State.PAUSED) != gst.StateChangeReturn.FAILURE
@@ -172,7 +187,7 @@ def test_r2_24_real_selected_branch_reports_reachable_factories(
 
         assert "flacdec" in snapshot.graph_factories
         assert "capsfilter" in snapshot.graph_factories
-        assert "alsasink" in snapshot.graph_factories
+        assert "fakesink" in snapshot.graph_factories
     finally:
         pipeline.set_state(gst.State.NULL)
 
@@ -233,7 +248,7 @@ class _RealGraphView:
 def _real_static_graph(gst, bindings, upstream_elements):
     recipe = _Recipe()
     pipeline = gst.Pipeline.new(None)
-    sink = bindings.build_strict_audio_sink(recipe)
+    sink = _build_runtime_test_sink(gst, recipe)
     mixer = gst.ElementFactory.make("audiomixer", "r2_mixer")
     assert pipeline is not None and mixer is not None
     assert pipeline.add(mixer)

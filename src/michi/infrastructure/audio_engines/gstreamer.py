@@ -314,9 +314,11 @@ class GStreamerBindings:
             sink_bin = pipeline.get_property("audio-sink")
             alsa = sink_bin.get_by_name("michi_direct_alsa") if sink_bin else None
             capsfilter = sink_bin.get_by_name("michi_direct_caps") if sink_bin else None
-            sink_factory = "alsasink" if alsa is not None else ""
             if alsa is not None:
-                device = alsa.get_property("device") or ""
+                factory = alsa.get_factory()
+                sink_factory = factory.get_name() if factory is not None else ""
+                if alsa.find_property("device") is not None:
+                    device = alsa.get_property("device") or ""
                 pad = alsa.get_static_pad("sink")
                 fmt, rate, channels, effective_significant_bits = caps_values(pad)
         except Exception:  # pragma: no cover - live Gst introspection boundary
@@ -333,7 +335,10 @@ class GStreamerBindings:
             if trace_start is None and capsfilter is not None:
                 trace_start = capsfilter.get_static_pad("sink")
             decoded_pad, branch_factories = selected_branch(trace_start)
-            factories = sorted(branch_factories | {"capsfilter", "alsasink"})
+            installed_factories = {
+                name for name in ("capsfilter", sink_factory) if name
+            }
+            factories = sorted(branch_factories | installed_factories)
             if decoded_pad is not None:
                 (
                     decoded_format,
@@ -360,7 +365,11 @@ class GStreamerBindings:
             sink_clock_is_pipeline_clock = (
                 sink_clock is not None and pipeline_clock == sink_clock
             )
-            value = alsa.get_property("slave-method") if alsa is not None else None
+            value = (
+                alsa.get_property("slave-method")
+                if alsa is not None and alsa.find_property("slave-method") is not None
+                else None
+            )
             slave_method = getattr(value, "value_nick", None) or (
                 str(value) if value is not None else None
             )
