@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from michi.domain.audio_device import AudioDeviceBinding, BindingKind
-from michi.domain.audio_evidence import PcmTuple
+from michi.domain.audio_evidence import PcmTuple, intrinsic_pcm_significant_bits
 from michi.domain.signal_truth import (
     AlsaRuntimeEvidence,
     RuntimeAnomalyEvidence,
@@ -214,12 +214,12 @@ class AlsaHwParamsObserver:
             channels = int(raw["channels"])
             period_size = int(raw["period_size"]) if raw.get("period_size") else None
             buffer_size = int(raw["buffer_size"]) if raw.get("buffer_size") else None
-            significant_bits = int(raw["msbits"]) if raw.get("msbits") else None
         except (ValueError, IndexError):
             return None
-        numeric_values = (rate, channels, period_size, buffer_size, significant_bits)
+        numeric_values = (rate, channels, period_size, buffer_size)
         if any(value is not None and value <= 0 for value in numeric_values):
             return None
+        significant_bits = intrinsic_pcm_significant_bits(raw["format"])
         return _HwParams(
             rate_hz=rate,
             transport_format=raw["format"],

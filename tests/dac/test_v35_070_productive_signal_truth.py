@@ -47,14 +47,17 @@ def test_st70_40_production_graph_owns_one_signal_truth_recorder(
         _close_graph(graph)
 
 
-def test_st70_41_productive_runtime_chain_can_classify_direct(tmp_path: Path) -> None:
+def test_st70_41_productive_runtime_chain_keeps_ambiguous_s32_unknown(
+    tmp_path: Path,
+) -> None:
     graph, bindings = _direct_graph(tmp_path, alsa_hw_params_reader=_read_hw_params)
     try:
         graph.playback.load_and_play(tmp_path / "direct.flac")
         _accept_current(graph, bindings)
         snapshot = graph.signal_truth.active_snapshot
         assert snapshot is not None
-        assert snapshot.verdict is SignalTruthVerdict.DIRECT
+        assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+        assert SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN in snapshot.reasons
         assert snapshot.source_file_facts is not None
         assert snapshot.decoded_runtime is not None
         assert snapshot.engine_effective is not None

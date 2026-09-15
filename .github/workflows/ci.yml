@@ -20,10 +20,15 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq qt6-base-dev qt6-multimedia-dev \
-            libqt6multimedia6 libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev
+            libqt6multimedia6 libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev \
+            libcairo2-dev libgirepository-2.0-dev pkg-config \
+            gir1.2-gstreamer-1.0 gstreamer1.0-alsa \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 
       - name: Install project + test deps
-        run: pip install -e ".[test]"
+        run: |
+          pip install -e ".[test]"
+          pip install PyGObject
 
       - name: Lint
         run: |

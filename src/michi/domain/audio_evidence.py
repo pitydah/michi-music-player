@@ -16,6 +16,26 @@ from dataclasses import dataclass
 from enum import Enum
 
 
+def intrinsic_pcm_significant_bits(transport_format: str | None) -> int | None:
+    """Return precision proved by an intrinsically unambiguous PCM format.
+
+    Container formats such as S32 and S24-in-32 deliberately remain unknown.
+    This function classifies format semantics only; it never infers sample
+    content, device capability, or active-runtime ownership.
+    """
+    normalized = (transport_format or "").strip().replace("-", "_").upper()
+    if normalized in {"S8", "U8"}:
+        return 8
+    compact = normalized.replace("_", "")
+    if compact in {"S16LE", "S16BE", "U16LE", "U16BE"}:
+        return 16
+    if normalized in {"S24_3LE", "S24_3BE", "U24_3LE", "U24_3BE"}:
+        return 24
+    if normalized in {"S24LE", "S24BE", "U24LE", "U24BE"}:
+        return 24
+    return None
+
+
 class EvidenceStrength(Enum):
     DECLARED = "declared"
     DISCOVERED = "discovered"

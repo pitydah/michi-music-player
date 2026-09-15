@@ -75,18 +75,21 @@ def test_st70r1_p01_real_discovery_registry_and_runtime_observer(tmp_path: Path)
         _close_graph(graph)
 
 
-def test_st70r1_p02_full_matching_direct_runtime_is_candidate_direct(
+def test_st70r1_p02_synthetic_s32_composition_does_not_claim_direct(
     tmp_path: Path,
 ):
     graph, bindings = _direct_graph(tmp_path, alsa_hw_params_reader=_runtime_reader())
     try:
         snapshot = _load_and_accept(graph, bindings, tmp_path / "direct.flac")
-        assert snapshot.verdict is SignalTruthVerdict.DIRECT
+        assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+        assert SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN in snapshot.reasons
     finally:
         _close_graph(graph)
 
 
-def test_st70r1_p03_container_adapted_requires_all_runtime_sbits(tmp_path: Path):
+def test_st70r1_p03_synthetic_caps_sbits_cannot_replace_alsa_runtime_sbits(
+    tmp_path: Path,
+):
     graph, bindings = _direct_graph(tmp_path, alsa_hw_params_reader=_runtime_reader())
     bindings.direct_snapshot_overrides = {
         "decoded_format": "S24_3LE",
@@ -95,7 +98,8 @@ def test_st70r1_p03_container_adapted_requires_all_runtime_sbits(tmp_path: Path)
     }
     try:
         snapshot = _load_and_accept(graph, bindings, tmp_path / "adapted.flac")
-        assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+        assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+        assert SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN in snapshot.reasons
     finally:
         _close_graph(graph)
 

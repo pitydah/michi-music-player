@@ -60,7 +60,7 @@ def test_st70_35_reads_only_exact_bound_pcm_subdevice() -> None:
     assert event is not None
     assert event.negotiated_pcm.rate_hz == 96_000
     assert event.negotiated_pcm.transport_format == "S32_LE"
-    assert event.negotiated_pcm.significant_bits == 24
+    assert event.negotiated_pcm.significant_bits is None
     assert event.period_size == 1024
     assert event.buffer_size == 4096
 
@@ -116,9 +116,11 @@ def test_card_name_mismatch_emits_typed_contradiction_without_hw_params_read() -
     assert reads == ["/proc/asound/card4/id"]
 
 
-def test_non_positive_hw_params_is_missing_evidence() -> None:
+def test_non_portable_procfs_msbits_is_ignored() -> None:
     text = _HW_PARAMS.replace("msbits: 24", "msbits: 0")
     observer = AlsaHwParamsObserver(
         lambda path: "DX5\n" if path.endswith("/id") else text
     )
-    assert observer.observe(_identity(), _binding()) is None
+    event = observer.observe(_identity(), _binding())
+    assert event is not None
+    assert event.negotiated_pcm.significant_bits is None

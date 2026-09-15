@@ -222,7 +222,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 4 | `DAC-V35-040` Output planner + output transaction | ACTIVE | YES | deterministic plan before hardware/backend mutation |
 | 5 | `DAC-V35-050` GStreamer Direct executor | ACTIVE | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
-| 7 | `DAC-V35-070 + 070R1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | production provenance sealed fail-closed; physical claims excluded |
+| 7 | `DAC-V35-070 + 070R1 + 070R2` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | significant-bit and real-GStreamer production provenance sealed fail-closed; physical claims excluded |
 | 8 | `DAC-V35-080` Disconnect/reconnect + transitions | ACTIVE | YES | deterministic failure/rebind; no speaker fallback |
 | 9 | `DAC-V35-090` Premium DAC UI | ACTIVE | YES | DAC controls separated from Audio Engine; mode-aware volume |
 | 10 | `DAC-V35-100` Automated verification + documentation seal | ACTIVE | YES | one GO/NO-GO command + docs/status parity |
@@ -19401,7 +19401,7 @@ QML attempts playback.set_volume(37)
 
 ---
 
-# 406. `DAC-V35-070/070R1` — SIGNAL TRUTH PRODUCTION PROVENANCE CORRECTIVE SLICE
+# 406. `DAC-V35-070/070R1/070R2` — SIGNAL TRUTH PRODUCTION PROVENANCE CORRECTIVE SLICE
 
 Runtime evidence recorder receives immutable evidence events. It does not infer device identity or policy.
 
@@ -19587,6 +19587,90 @@ ALSA contradiction semantics, stale A->B->C isolation, closed/malformed
 `hw_params`, reconnect generation fencing, Direct FIXED unity, and 050R2/060/
 M11.3 regressions. Only after all package and repository gates are green may the
 status return to `DAC-V35-070 + 070R1 CLOSED-AUTOMATED / GO`.
+
+**Significant-bit/runtime corrective closure (2026-09-15):
+`DAC-V35-070 + 070R1 + 070R2 CLOSED-AUTOMATED / GO`.** Upstream and real-runtime inspection
+invalidated two assumptions behind the previous automated closure:
+
+```text
+GStreamer audio/x-raw caps
+  = negotiated format/rate/channels/layout evidence
+  != a portable guarantee that custom significant-bits or depth fields exist
+
+/proc/asound/cardN/pcmXp/subY/hw_params
+  = active kernel PCM format/rate/channels witness
+  != a portable significant-bit/msbits API
+```
+
+`GstAudioFormatInfo.width/depth` describes the registered audio format. It can
+support an intrinsic, format-level classification, but it does not prove the
+significant content carried by an ambiguous container. ALSA
+`snd_pcm_hw_params_get_sbits()` is authoritative only for parameters belonging
+to the same active `snd_pcm_t`. Michi has no supported API that exposes the
+`snd_pcm_t` owned by the active `GstAlsaSink`; opening a second PCM is forbidden
+as runtime evidence because it does not prove the state of the executing PCM.
+The mandatory real-runtime fixture also demonstrates that current `flacdec`
+may expose a 24-bit FLAC decoder pad as `S24_32LE`; under this slice that stage
+truthfully remains unknown rather than borrowing the file depth or the later
+packed `S24LE` capsfilter format.
+
+R2 therefore freezes these rules before production changes:
+
+```text
+one central intrinsic_pcm_significant_bits(format) classifier
+  S8/U8                                      -> 8
+  S16/U16, either endian                    -> 16
+  packed ALSA S24_3/U24_3, either endian    -> 24
+  packed GStreamer S24/U24, either endian   -> 24
+  S24_32, S32/U32, float, unknown/invalid   -> unknown
+
+GStreamer decoded/effective sbits
+  = intrinsic classifier(current negotiated format) when unambiguous
+  = unknown otherwise
+  custom caps significant-bits/depth fields never elevate runtime truth
+
+ALSA active-runtime sbits
+  = intrinsic classifier(/proc active format) when unambiguous
+  = same-active-PCM API evidence if a supported GstAlsaSink ownership seam is
+    introduced and proved in a future documented slice
+  = unknown otherwise
+  procfs msbits or similarly undocumented extra fields never elevate truth
+
+S32_LE at any stage remains unknown without valid same-execution evidence.
+Metadata, requested plans, qualification results, profiles, caches, and a
+separately opened PCM never fill a runtime significant-bit gap.
+```
+
+The production GStreamer observer must also be qualified against real
+PyGObject/GStreamer objects. Branch traversal starts at the installed strict
+sink and must safely cross real `GstGhostPad`/`GstProxyPad` and factory-less bin
+boundaries. It accepts decoded evidence only from exactly one reachable current
+audio decoder, ignores unrelated decoders, and fails closed on zero, multiple,
+interrupted, cyclic, stale, or uninspectable paths. Fake graph tests remain
+classifier/adapter evidence and cannot satisfy this real-runtime gate.
+
+Required `DAC-V35-070R2` gates are `R2-01..R2-30`, split into: pure intrinsic-format and
+Signal Truth semantics; real production composition through `_build_services`
+without synthetic positive significant-bit claims; and a dedicated real
+GI/GStreamer/playbin3 provenance suite with no `FakeBindings`. The real suite
+must cover GhostPad/ProxyPad and factory-less-bin traversal, one selected
+decoder, unrelated-decoder isolation, ambiguity, negotiated-cap provenance,
+and clean bounded teardown. If GI, playbin3, or required GStreamer plugins are
+missing in CI, dependencies must be installed; a skip is `070R2 NO-GO`, not an
+accepted closure. A green automated gate remains software evidence only.
+
+Only after `R2-01..R2-30`, `ST70`, `ST70R1`, `050R2`, `V60`, M11.3 regressions,
+repository alignment, full suite, and exact-head CI are green may status become
+`DAC-V35-070 + 070R1 + 070R2 CLOSED-AUTOMATED / GO`. R2 does not begin 080 or
+authorize physical qualification, exclusivity, bit-perfect/Michi-Verified, or
+M11.5 claims.
+
+The local closure gate completed with all 58 R2 cases passing without skips,
+all 392 DAC tests passing, the complete repository suite at 4567 passed with
+two explained non-R2 skips, clean Ruff checks, repository alignment, and final
+Judgment Day PASS. Publication still requires exact-commit CI confirmation;
+that confirmation does not upgrade this software-only verdict to physical
+qualification.
 
 No UI “Lossless/Bit-perfect/Direct verified” label may be derived solely from the selected setting.
 

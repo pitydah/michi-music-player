@@ -1300,7 +1300,12 @@ class TestF42AdapterContract:
         # the installed strict sink branch and significant bits remain unknown
         # unless current negotiated caps expose them. Shared lifecycle and
         # transport semantics remain unchanged.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "e2118bc831f1f459",
+        # DAC-V35-070R2 (2026-09-15): negotiated caps now derive precision
+        # only from intrinsically unambiguous formats, and selected-branch
+        # inspection crosses real GhostPad/ProxyPad/factory-less bins. The
+        # Shared command, pump, bus, generation, and acceptance paths remain
+        # unchanged; hash re-sealed after M11.3 regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "a28610040fb05c4d",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

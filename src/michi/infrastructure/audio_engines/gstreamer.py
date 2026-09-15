@@ -195,20 +195,10 @@ class GStreamerBindings:
         y los caps negociados del sink-pad, más las factories del grafo.
         Nunca expone objetos Gst.
         """
+        from michi.domain.audio_evidence import intrinsic_pcm_significant_bits
         from michi.infrastructure.audio_output.runtime_inspector import (
             DirectRuntimeSnapshot,
         )
-
-        def full_width_significant_bits(value_format):
-            normalized = (value_format or "").replace("_", "").upper()
-            if normalized.startswith("S8") or normalized.startswith("U8"):
-                return 8
-            if normalized.startswith("S16") or normalized.startswith("U16"):
-                return 16
-            if normalized.startswith("S24") or normalized.startswith("U24"):
-                return 24
-            # S32 is a transport container and does not prove 32 sbits.
-            return None
 
         def caps_values(pad):
             caps = pad.get_current_caps() if pad is not None else None
@@ -218,19 +208,11 @@ class GStreamerBindings:
             value_format = struct.get_string("format")
             ok_rate, value_rate = struct.get_int("rate")
             ok_channels, value_channels = struct.get_int("channels")
-            significant_bits = None
-            for field in ("significant-bits", "depth"):
-                ok_bits, value_bits = struct.get_int(field)
-                if ok_bits and int(value_bits) > 0:
-                    significant_bits = int(value_bits)
-                    break
-            if significant_bits is None:
-                significant_bits = full_width_significant_bits(value_format)
             return (
                 value_format,
                 int(value_rate) if ok_rate else None,
                 int(value_channels) if ok_channels else None,
-                significant_bits,
+                intrinsic_pcm_significant_bits(value_format),
             )
 
         def iterator_values(iterator):
@@ -248,19 +230,68 @@ class GStreamerBindings:
             visited: set[int] = set()
             decoder_pads = []
             factories: set[str] = set()
+
+            def pad_identity(pad) -> int:
+                try:
+                    return hash(pad)
+                except TypeError:
+                    return id(pad)
+
+            def concrete_upstream_pad(pad):
+                """Resolve outward-facing GhostPads to their internal source pad."""
+                resolving: set[int] = set()
+                while pad is not None:
+                    key = pad_identity(pad)
+                    if key in resolving:
+                        raise RuntimeError("cyclic GStreamer proxy-pad target")
+                    resolving.add(key)
+                    getter = getattr(pad, "get_target", None)
+                    target = getter() if getter is not None else None
+                    if target is not None and target != pad:
+                        pad = target
+                        continue
+                    if pad.get_parent_element() is None:
+                        parent = pad.get_parent()
+                        if parent is not None and parent != pad:
+                            return parent
+                        peer_getter = getattr(pad, "get_peer", None)
+                        bridged = peer_getter() if peer_getter is not None else None
+                        if bridged is not None and bridged != pad:
+                            pad = bridged
+                            continue
+                        internal_getter = getattr(pad, "get_internal", None)
+                        internal = (
+                            internal_getter() if internal_getter is not None else None
+                        )
+                        if internal is not None and internal != pad:
+                            pad = internal
+                            continue
+                    return pad
+                return None
+
             while stack:
                 sink_pad = stack.pop()
-                if id(sink_pad) in visited:
+                sink_key = pad_identity(sink_pad)
+                if sink_key in visited:
                     continue
-                visited.add(id(sink_pad))
+                visited.add(sink_key)
                 peer = sink_pad.get_peer()
+                if peer is None:
+                    continue
+                peer = concrete_upstream_pad(peer)
                 if peer is None:
                     continue
                 owner = peer.get_parent_element()
                 if owner is None:
-                    continue
+                    raise RuntimeError("GStreamer upstream pad has no parent element")
                 factory = owner.get_factory()
                 if factory is None:
+                    iterator = getattr(owner, "iterate_sink_pads", None)
+                    if iterator is None:
+                        raise RuntimeError(
+                            "GStreamer upstream owner is not inspectable"
+                        )
+                    stack.extend(iterator_values(iterator()))
                     continue
                 factory_name = factory.get_name()
                 factories.add(factory_name)
@@ -311,6 +342,7 @@ class GStreamerBindings:
                     decoded_significant_bits,
                 ) = caps_values(decoded_pad)
         except Exception:  # pragma: no cover - iterador del runtime real
+            _logger.warning("Direct GStreamer branch inspection failed", exc_info=True)
             factories = ["__inspection_failed__"]
             graph_complete = False
         gain = muted = None

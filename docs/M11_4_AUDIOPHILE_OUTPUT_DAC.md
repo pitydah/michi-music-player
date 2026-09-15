@@ -43,7 +43,8 @@ V3.5 spec governs implementation and acceptance.
   rollback authority. Shared/Direct C retire pending B without resurrecting A;
   stale generations/receipts cannot reclaim ownership, and a failed teardown
   after A was destroyed converges to STOPPED/IDLE with no false restore.
-  Productive gates: R2-01..R2-14 plus repeated cleanup-anchor failure.
+  Productive `DAC-V35-050R2` gates: R2-01..R2-14 plus repeated
+  cleanup-anchor failure.
 - `DAC-V35-060` volume authority migration — **CLOSED-AUTOMATED / GO**.
   One production `VolumePolicyService` executes Shared/reference commands and
   fails closed for Direct FIXED, unavailable hardware, and unknown authority.
@@ -51,7 +52,7 @@ V3.5 spec governs implementation and acceptance.
   persisted Shared preference; effective `PlaybackState` truth and the
   authority-aware player control converge through typed results. Automated
   gates: V60-01..V60-30, plus 050R2 and M11.3 regression firewalls.
-- `DAC-V35-070 + 070R1` Signal Truth / runtime evidence — **CLOSED-AUTOMATED / GO**.
+- `DAC-V35-070 + 070R1 + 070R2` Signal Truth / runtime evidence — **CLOSED-AUTOMATED / GO**.
   One passive production recorder consumes immutable, generation-scoped
   events. File metadata remains source facts only; GStreamer supplies current
   decoded caps from exactly one decoder reachable through the installed strict
@@ -62,7 +63,14 @@ V3.5 spec governs implementation and acceptance.
   and unexplained ALSA negotiation conflicts are contradictions. Candidate
   truth follows the 050R2 destructive boundary and cannot replace active truth
   before commit. Gates: ST70-01..44, ST70R1-01..19, ST70R1-P01..P08, 050/050R2,
-  V60, and M11.3 regression firewalls.
+  V60, and M11.3 regression firewalls. R2 reopens the automated seal because
+  custom GStreamer caps fields and procfs `msbits` are not portable runtime
+  significant-bit authority, and because selected-branch provenance still
+  requires a mandatory real GI/GStreamer/playbin3 gate. Ambiguous `S32_LE`
+  remains `UNKNOWN`; metadata, qualification, profiles, and synthetic bindings
+  cannot fill the gap. The mandatory real suite passes without skips and
+  confirms GhostPad/ProxyPad and factory-less-bin traversal, selected-decoder
+  isolation, ambiguity, and bounded teardown.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 

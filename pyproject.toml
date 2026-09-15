@@ -34,6 +34,7 @@ michi-alsa-probe = "michi.infrastructure.audio_devices.alsa_probe_cli:main"
 [tool.pytest.ini_options]
 markers = [
     "live_network: opt-in live provider contract tests (MICHI_RUN_LIVE_NETWORK_TESTS=1)",
+    "gstreamer_runtime: mandatory real GI/GStreamer runtime integration gate",
 ]
 
 [tool.setuptools.packages.find]

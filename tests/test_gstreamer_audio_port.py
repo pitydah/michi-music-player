@@ -252,26 +252,33 @@ class FakeBindings:
     def snapshot_direct_runtime(
         self, pipeline, recipe, *, execution_generation, port_generation
     ):
+        from michi.domain.audio_evidence import intrinsic_pcm_significant_bits
         from michi.infrastructure.audio_output.runtime_inspector import (
             DirectRuntimeSnapshot,
         )
 
         overrides = self.direct_snapshot_overrides or {}
+        negotiated_format = overrides.get("format", recipe.gst_format)
+        decoded_format = overrides.get("decoded_format", recipe.gst_format)
         return DirectRuntimeSnapshot(
             execution_generation=execution_generation,
             port_generation=port_generation,
             plan_id=recipe.plan_id,
             sink_factory=overrides.get("sink_factory", "alsasink"),
             sink_device=overrides.get("sink_device", recipe.device),
-            negotiated_format=overrides.get("format", recipe.gst_format),
+            negotiated_format=negotiated_format,
             negotiated_rate_hz=overrides.get("rate", recipe.rate_hz),
             negotiated_channels=overrides.get("channels", recipe.channels),
             graph_factories=overrides.get("graph", ("capsfilter", "alsasink")),
-            decoded_format=overrides.get("decoded_format", recipe.gst_format),
+            decoded_format=decoded_format,
             decoded_rate_hz=overrides.get("decoded_rate", recipe.rate_hz),
             decoded_channels=overrides.get("decoded_channels", recipe.channels),
-            decoded_significant_bits=overrides.get("decoded_sbits", 24),
-            effective_significant_bits=overrides.get("effective_sbits", 24),
+            decoded_significant_bits=overrides.get(
+                "decoded_sbits", intrinsic_pcm_significant_bits(decoded_format)
+            ),
+            effective_significant_bits=overrides.get(
+                "effective_sbits", intrinsic_pcm_significant_bits(negotiated_format)
+            ),
             graph_inspection_complete=overrides.get("graph_complete", True),
             software_gain=overrides.get("gain", pipeline.volume),
             muted=overrides.get("muted", pipeline.muted),
