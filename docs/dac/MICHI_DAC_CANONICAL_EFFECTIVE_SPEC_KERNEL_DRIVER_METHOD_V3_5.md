@@ -19710,6 +19710,13 @@ cannot prove current activity. Multiple instances aggregate as: any `True` ->
 branches remain outside the evidence boundary. Traversal interruption marks the
 graph incomplete and leaves transform activity unknown.
 
+Channel-mask normalization must not introduce a mandatory `GstAudio` typelib
+dependency: supported runtimes may expose `Gst` while packaging `GstAudio`
+introspection separately. The observer extracts only the negotiated
+`channel-mask` field from the `Gst.Structure` serialization when direct
+`GstBitmask` marshalling is unavailable; it still never compares complete caps
+strings.
+
 Direct validation retains exact production `alsasink` factory/device checks.
 A present converter/resampler proven pass-through is not rejected solely for
 presence. Proven active resampling is rejected; present-but-unknown transform
@@ -19738,7 +19745,7 @@ productive implementation now records transform presence independently from
 tri-state negotiated activity and validates only the selected strict-sink
 branch. Pass-through converter/resampler presence no longer fabricates DSP or
 resampling, while active and unknown states remain fail-closed. All 40 R2.1
-cases, all 433 DAC tests, and the complete repository suite at 4610 passed with
+cases, all 433 DAC tests, and the complete repository suite at 4607 passed with
 two explained non-R2 skips are green. Ruff, QML, build, wheel parity,
 installed-wheel smoke, repository alignment, and Judgment Day are also green.
 Publication still requires exact-head CI confirmation and does not upgrade this

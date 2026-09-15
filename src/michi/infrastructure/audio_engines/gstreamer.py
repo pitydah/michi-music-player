@@ -46,7 +46,7 @@ class _NegotiatedPcmCaps:
     rate_hz: int | None
     channels: int | None
     layout: str | None
-    channel_layout: tuple[int, ...] | None
+    channel_layout: int | None
 
 
 def _aggregate_transform_states(values: list[bool | None]) -> bool | None:
@@ -76,7 +76,6 @@ class GStreamerBindings:
 
     def __init__(self) -> None:
         self._gst = None
-        self._gst_audio = None
         self._glib = None
         self._init_error: Exception | None = None
 
@@ -91,13 +90,11 @@ class GStreamerBindings:
             import gi  # noqa: PLC0415 - lazy optional system capability
 
             gi.require_version("Gst", "1.0")
-            gi.require_version("GstAudio", "1.0")
             gi.require_version("GLib", "2.0")
-            from gi.repository import GLib, Gst, GstAudio  # noqa: PLC0415
+            from gi.repository import GLib, Gst  # noqa: PLC0415
 
             Gst.init(None)
             self._gst = Gst
-            self._gst_audio = GstAudio
             self._glib = GLib
         except (ImportError, ValueError) as exc:
             self._init_error = exc
@@ -238,23 +235,17 @@ class GStreamerBindings:
             channel_layout = None
             try:
                 has_field = getattr(struct, "has_field", None)
-                audio_info = (
-                    self._gst_audio.AudioInfo.new_from_caps(caps)
-                    if self._gst_audio is not None
-                    else None
-                )
-                if (
-                    has_field is not None
-                    and has_field("channel-mask")
-                    and audio_info is not None
-                    and audio_info.channels > 0
-                ):
-                    positions = tuple(
-                        int(position)
-                        for position in audio_info.position[: audio_info.channels]
-                    )
-                    if all(position >= 0 for position in positions):
-                        channel_layout = positions
+                if has_field is not None and has_field("channel-mask"):
+                    # PyGObject cannot marshal GstBitmask through get_value()
+                    # on every supported distro.  Parse only this normalized
+                    # field from the structure serialization; never compare
+                    # complete caps strings.
+                    marker = "channel-mask=(bitmask)"
+                    serialized = struct.to_string()
+                    if marker in serialized:
+                        raw_mask = serialized.split(marker, 1)[1]
+                        raw_mask = raw_mask.split(",", 1)[0].split(";", 1)[0]
+                        channel_layout = int(raw_mask.strip(), 0)
             except (TypeError, ValueError, OverflowError):
                 channel_layout = None
             return _NegotiatedPcmCaps(
