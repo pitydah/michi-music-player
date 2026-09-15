@@ -51,13 +51,22 @@ V3.5 spec governs implementation and acceptance.
   persisted Shared preference; effective `PlaybackState` truth and the
   authority-aware player control converge through typed results. Automated
   gates: V60-01..V60-30, plus 050R2 and M11.3 regression firewalls.
+- `DAC-V35-070` Signal Truth / runtime evidence — **CLOSED-AUTOMATED / GO**.
+  One passive production recorder consumes immutable, generation-scoped
+  events. File metadata remains source facts only; GStreamer supplies decoded
+  and engine-effective observations, while an exact-binding ALSA adapter reads
+  the active `hw_params`. Missing evidence stays `UNKNOWN`; contradictions,
+  transformations, and proven 24-bit container adaptation use deterministic
+  typed reasons. Candidate truth follows the 050R2 destructive boundary and
+  cannot replace active truth before commit. Gates: ST70-01..44 plus 050/050R2,
+  V60, and M11.3 regression firewalls.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 
-**Explicitly NOT claimed**: no physical DAC qualification, no
-"bit-perfect"/Michi-Verified claim, no Signal Truth runtime verdict, no
-M11.5 promotion. `DAC-V35-070` Signal Truth is NOT STARTED. Physical
-qualification (`DAC-V35-110`) remains pending.
+**Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
+"bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
+software runtime-evidence verdict, not physical proof. `DAC-V35-080` remains
+NOT STARTED; physical qualification (`DAC-V35-110`) remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —
 **not** Audio Lab.

@@ -35,7 +35,12 @@ def _qt_runtime():
     yield _QT_APP
 
 
-def _direct_graph(tmp_path: Path, *, playback_pcms: tuple[int, ...] = (0,)):
+def _direct_graph(
+    tmp_path: Path,
+    *,
+    playback_pcms: tuple[int, ...] = (0,),
+    alsa_hw_params_reader=None,
+):
     from test_gstreamer_audio_port import FakeBindings
 
     from michi.bootstrap import _build_services
@@ -70,6 +75,7 @@ def _direct_graph(tmp_path: Path, *, playback_pcms: tuple[int, ...] = (0,)):
         artwork_provider=None,
         artwork_cache=None,
         gstreamer_bindings=bindings,
+        alsa_hw_params_reader=alsa_hw_params_reader,
     )
     device_id = "usb:2622:0105:DX5ABC123"
     physical_path = "2-1"
@@ -106,6 +112,8 @@ def _direct_graph(tmp_path: Path, *, playback_pcms: tuple[int, ...] = (0,)):
                         currently_available=True,
                         card_index=1,
                         pcm_device=pcm_device,
+                        pcm_subdevice=0,
+                        stable_endpoint_signature=f"ep:dx5:{pcm_device}",
                     ),
                 )
                 for pcm_device in playback_pcms

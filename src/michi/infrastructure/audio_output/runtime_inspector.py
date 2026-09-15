@@ -47,6 +47,18 @@ class DirectRuntimeSnapshot:
 
     graph_factories: tuple[str, ...]
 
+    decoded_format: str | None = None
+    decoded_rate_hz: int | None = None
+    decoded_channels: int | None = None
+    decoded_significant_bits: int | None = None
+    effective_significant_bits: int | None = None
+    graph_inspection_complete: bool = True
+    software_gain: float | None = None
+    muted: bool | None = None
+    sink_provides_clock: bool | None = None
+    sink_clock_is_pipeline_clock: bool | None = None
+    slave_method: str | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class DirectPrerollEvidence:

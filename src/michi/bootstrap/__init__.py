@@ -76,8 +76,12 @@ from michi.application.settings_service import SettingsService
 from michi.application.source_scan_coordinator import SourceScanCoordinator
 from michi.application.source_scan_lifecycle import SourceScanLifecycle
 from michi.domain.audio_engine import AudioEngineId
+from michi.domain.signal_truth import SignalTruthRecorder
 from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
 from michi.infrastructure.audio_devices.alsa_probe_adapter import MichiAlsaProbeAdapter
+from michi.infrastructure.audio_devices.alsa_runtime_observer import (
+    AlsaHwParamsObserver,
+)
 from michi.infrastructure.audio_devices.qualification_environment import (
     read_qualification_host_environment,
 )
@@ -201,6 +205,7 @@ class ServiceGraph:
     qt_engine_provider: QtEngineProvider
     gstreamer_engine_provider: GStreamerEngineProvider
     direct_output_executor: GStreamerDirectOutputExecutor
+    signal_truth: SignalTruthRecorder
     output_session: OutputSessionService
     volume_policy: object
     audio_output_profiles: AudioOutputProfileService
@@ -357,6 +362,7 @@ def _build_services(
     artwork_provider=_MISSING,
     artwork_cache=_MISSING,
     gstreamer_bindings=None,
+    alsa_hw_params_reader=None,
 ) -> ServiceGraph:
     """Build the PRODUCTION library service graph (composition root core).
 
@@ -432,7 +438,12 @@ def _build_services(
     # (registry.provider(QT) is qt_provider). M11.3G: selected-first —
     # restore the persisted SELECTED preference BEFORE any activation.
     qt_provider = QtEngineProvider()
-    direct_executor = GStreamerDirectOutputExecutor()
+    signal_truth = SignalTruthRecorder()
+    alsa_runtime_observer = AlsaHwParamsObserver(alsa_hw_params_reader)
+    direct_executor = GStreamerDirectOutputExecutor(
+        signal_truth=signal_truth,
+        alsa_runtime_observer=alsa_runtime_observer,
+    )
     gstreamer_provider = GStreamerEngineProvider(
         direct_executor=direct_executor,
         bindings=runtime_gstreamer_bindings,
@@ -712,6 +723,7 @@ def _build_services(
         qt_engine_provider=qt_provider,
         gstreamer_engine_provider=gstreamer_provider,
         direct_output_executor=direct_executor,
+        signal_truth=signal_truth,
         output_session=output_session,
         volume_policy=volume_policy,
         audio_output_profiles=output_profiles,
@@ -1010,7 +1022,7 @@ class ApplicationContainer:
         graph.history_coordinator.start()
 
         pb = PlaybackBridge(playback, library)
-        aob = AudioOutputBridge(graph.volume_policy, playback)
+        aob = AudioOutputBridge(graph.volume_policy, playback, graph.signal_truth)
         qb = QueueBridge(queue, library)
         psb = PlaybackSessionBridge(graph.playback_session)
         # M11.3-UI: ONE production AudioEngineBridge over the SAME

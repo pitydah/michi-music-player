@@ -222,7 +222,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 4 | `DAC-V35-040` Output planner + output transaction | ACTIVE | YES | deterministic plan before hardware/backend mutation |
 | 5 | `DAC-V35-050` GStreamer Direct executor | ACTIVE | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
-| 7 | `DAC-V35-070` Runtime evidence + Signal Truth | ACTIVE | YES | requested/decoded/effective/negotiated path with contradiction handling |
+| 7 | `DAC-V35-070` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | requested/decoded/effective/negotiated path with contradiction handling |
 | 8 | `DAC-V35-080` Disconnect/reconnect + transitions | ACTIVE | YES | deterministic failure/rebind; no speaker fallback |
 | 9 | `DAC-V35-090` Premium DAC UI | ACTIVE | YES | DAC controls separated from Audio Engine; mode-aware volume |
 | 10 | `DAC-V35-100` Automated verification + documentation seal | ACTIVE | YES | one GO/NO-GO command + docs/status parity |
@@ -563,7 +563,7 @@ slider = disabled in UI
 PlaybackState.volume = 100
 attempt to set volume != 100 through stale/programmatic UI -> OutputVolumeLockedError
 no hidden attenuation
-mute remains an explicit user command; while muted, Signal Truth verdict is MUTED/NO-AUDIBLE-SIGNAL, never BIT_PERFECT_ACTIVE
+mute remains an explicit user command and a separate observed display state; it never becomes zero gain or a BIT_PERFECT_ACTIVE claim
 unmute restores unity before the path can regain Direct-verification status
 ```
 
@@ -19426,6 +19426,96 @@ Verdict precedence remains:
 ```text
 CONTRADICTED > RESAMPLED/REMIXED/DSP > DIRECT_CONTAINER_ADAPTED > DIRECT > UNKNOWN
 ```
+
+`DAC-V35-070` freezes the following executable interpretation before its
+implementation. The recorder owns candidate/active evidence only; it receives
+typed immutable observations and MUST NOT query metadata, settings, profiles,
+the device registry, GStreamer, ALSA, or any playback/output authority.
+
+Evidence identity is the complete tuple:
+
+```text
+plan_id + execution_generation + port_generation + binding_generation
++ stable_device_id + stable_endpoint_signature when available
+```
+
+Candidate evidence cannot replace active truth until output commit. Crossing
+the 050R2 destructive boundary (old pipeline successfully reaches `NULL`)
+retires the old active truth, but does not promote the candidate. Abort before
+that boundary preserves the predecessor; abort after it leaves no active Direct
+truth. Events with a non-current identity are stale and MUST be discarded
+without changing candidate or active evidence, even when `plan_id` is reused.
+
+The four independent stages are:
+
+```text
+source signal stage
+  source file facts        <- metadata only; never decoded-runtime evidence
+  decoded runtime signal   <- separately observed decoder output caps
+requested output plan      <- policy/request only; never runtime evidence
+engine effective signal    <- observed pre-sink caps/graph/gain/clock facts
+device negotiated signal  <- exact active ALSA hw_params readback
+```
+
+`DIRECT` completeness requires current matching observations for decoded
+runtime, engine effective runtime, exact sink/device, inspectable graph,
+software gain `1.0`, clock/slave policy, and exact ALSA negotiated tuple. Source
+file facts are display evidence and are not a substitute for decoded caps.
+Missing evidence yields `UNKNOWN`; it is not itself a contradiction.
+
+Stable reason precedence and same-class tie-breaks are:
+
+```text
+CONTRADICTED:
+  ST_DEVICE_MISMATCH > ST_BINDING_MISMATCH > ST_SINK_MISMATCH
+  > ST_RUNTIME_ERROR > ST_XRUN > ST_GAIN_NOT_UNITY
+  > ST_CLOCK_POLICY_MISMATCH
+
+TRANSFORMED (verdict tie-break):
+  ST_RESAMPLER_PRESENT / rate mismatch -> RESAMPLED
+  ST_REMIX_OBSERVED / channel mismatch -> REMIXED
+  ST_DSP_PRESENT / software processing or gain mutation -> DSP
+  When more than one transformed class is present: RESAMPLED > REMIXED > DSP.
+
+DIRECT_CONTAINER_ADAPTED:
+  ST_CONTAINER_ADAPTED only when rate, channels, and significant bits are
+  proven preserved end-to-end and only the transport container differs.
+
+UNKNOWN:
+  ST_MISSING_DECODED > ST_MISSING_ENGINE_EFFECTIVE > ST_MISSING_ALSA
+  > ST_MISSING_GRAPH > ST_MISSING_GAIN > ST_MISSING_CLOCK
+  > ST_SIGNIFICANT_BITS_UNKNOWN
+```
+
+All applicable reason codes remain in the immutable snapshot in the stable
+order above; the first reason is the deterministic summary reason. A mere
+`S24_3LE -> S32_LE` or 24-bit file fact carried in an `S32_LE` plan does not
+prove preservation. `DIRECT_CONTAINER_ADAPTED` requires runtime significant-bit
+evidence at the decoded and ALSA stages. Mute is reported separately and never
+represented as zero gain. Runtime ERROR/XRUN observations are diagnostic and
+classification inputs only; reconnect, fallback, and recovery remain 080.
+
+The ALSA adapter correlates a symbolic `hw:CARD=<id>,DEV=<n>` locator with
+`/proc/asound/cardN/id` before reading the exact
+`cardN/pcmXp/subY/hw_params`. Missing identity/readback stays `UNKNOWN`; a
+proven locator/card mismatch is `ST_BINDING_MISMATCH`. Non-positive or malformed
+runtime values are rejected rather than normalized into evidence.
+
+**Implementation seal (2026-09-14): `DAC-V35-070 CLOSED-AUTOMATED / GO`.**
+The production graph owns one `SignalTruthRecorder`. Immutable normalized
+events keep file facts, requested plan, decoded runtime, engine-effective
+runtime, and exact ALSA negotiated readback separate. GStreamer records decoded
+and pre-sink caps when observable, the actual sink/device, graph factories,
+gain/mute, clock/slave policy, and current ERROR/XRUN evidence. The exact
+binding identity includes plan, execution, port, and binding generations plus
+stable device and endpoint identity. Candidate truth cannot replace active
+truth before output commit; the 050R2 successful-`NULL` boundary retires the
+predecessor without promoting the candidate. ST70-01..44, 050/050R2, V60, and
+M11.3 regression firewalls cover the automated seal.
+
+This seal is runtime-software evidence only. It does not claim physical DAC
+qualification, exclusivity, bit-perfect/Michi-Verified status, M11.5 guarantees,
+or 080 reconnect/recovery behavior.
 
 No UI “Lossless/Bit-perfect/Direct verified” label may be derived solely from the selected setting.
 

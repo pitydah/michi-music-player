@@ -1292,7 +1292,11 @@ class TestF42AdapterContract:
         # DAC-V35-060 (2026-09-14): candidate-scoped Direct FIXED unity and
         # readback were added without changing Shared transport lifecycle;
         # Direct unity commands preserve the Shared candidate gain default.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "c77ba6995197c6fa",
+        # DAC-V35-070 (2026-09-14): Direct-only runtime observation now emits
+        # decoded/effective caps, graph, gain/mute, and clock facts through the
+        # generation-fenced executor sidecar. Shared lifecycle and transport
+        # semantics remain unchanged; hash re-sealed after full regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "4c96f5f16b1b6eda",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

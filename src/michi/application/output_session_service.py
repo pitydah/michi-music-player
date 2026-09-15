@@ -26,7 +26,7 @@ from michi.application.audio_output_ports import (
 )
 from michi.application.ports import SharedOutputTransaction
 from michi.domain.audio_device import BindingKind
-from michi.domain.audio_evidence import DecodedSourceSignal
+from michi.domain.audio_evidence import DecodedSourceSignal, PcmTuple, SourceFileFacts
 from michi.domain.audio_output import (
     FallbackKind,
     OutputPathPreference,
@@ -247,6 +247,16 @@ class ProductiveOutputRequestResolver:
             evidence=evidence,
             expected_binding_generation=expected_generation,
             device_available=available,
+            source_file_facts=SourceFileFacts(
+                container=metadata.container or None,
+                codec=metadata.codec or None,
+                nominal_pcm=PcmTuple(
+                    metadata.sample_rate_hz,
+                    "",
+                    metadata.channels,
+                    metadata.bit_depth or None,
+                ),
+            ),
         )
         return OutputRequest(
             facts,

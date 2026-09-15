@@ -1,0 +1,458 @@
+"""DAC-V35-070 Signal Truth contracts and evidence-first classifier.
+
+The recorder is deliberately passive: adapters submit immutable normalized
+events and lifecycle owners move candidate/active truth.  It performs no I/O
+and consults no other authority.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from contextlib import suppress
+from dataclasses import dataclass, replace
+from enum import Enum
+
+from michi.domain.audio_evidence import PcmTuple
+
+
+class SignalTruthVerdict(Enum):
+    DIRECT = "direct"
+    DIRECT_CONTAINER_ADAPTED = "direct_container_adapted"
+    DSP = "dsp"
+    RESAMPLED = "resampled"
+    REMIXED = "remixed"
+    UNKNOWN = "unknown"
+    CONTRADICTED = "contradicted"
+
+
+class SignalTruthReason(Enum):
+    ST_DEVICE_MISMATCH = "ST_DEVICE_MISMATCH"
+    ST_BINDING_MISMATCH = "ST_BINDING_MISMATCH"
+    ST_SINK_MISMATCH = "ST_SINK_MISMATCH"
+    ST_RUNTIME_ERROR = "ST_RUNTIME_ERROR"
+    ST_XRUN = "ST_XRUN"
+    ST_GAIN_NOT_UNITY = "ST_GAIN_NOT_UNITY"
+    ST_CLOCK_POLICY_MISMATCH = "ST_CLOCK_POLICY_MISMATCH"
+    ST_RESAMPLER_PRESENT = "ST_RESAMPLER_PRESENT"
+    ST_RATE_MISMATCH = "ST_RATE_MISMATCH"
+    ST_REMIX_OBSERVED = "ST_REMIX_OBSERVED"
+    ST_CHANNEL_MISMATCH = "ST_CHANNEL_MISMATCH"
+    ST_DSP_PRESENT = "ST_DSP_PRESENT"
+    ST_CONTAINER_ADAPTED = "ST_CONTAINER_ADAPTED"
+    ST_MISSING_DECODED = "ST_MISSING_DECODED"
+    ST_MISSING_ENGINE_EFFECTIVE = "ST_MISSING_ENGINE_EFFECTIVE"
+    ST_MISSING_ALSA = "ST_MISSING_ALSA"
+    ST_MISSING_GRAPH = "ST_MISSING_GRAPH"
+    ST_MISSING_GAIN = "ST_MISSING_GAIN"
+    ST_MISSING_CLOCK = "ST_MISSING_CLOCK"
+    ST_SIGNIFICANT_BITS_UNKNOWN = "ST_SIGNIFICANT_BITS_UNKNOWN"
+
+
+@dataclass(frozen=True, slots=True)
+class SignalTruthIdentity:
+    plan_id: str
+    execution_generation: int
+    port_generation: int
+    binding_generation: int
+    stable_device_id: str
+    stable_endpoint_signature: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class OutputPlanEvidence:
+    identity: SignalTruthIdentity
+    requested_pcm: PcmTuple
+    sink_factory: str
+    sink_device: str
+    fixed_gain_required: bool
+
+
+@dataclass(frozen=True, slots=True)
+class SourceFileFactsEvidence:
+    identity: SignalTruthIdentity
+    container: str | None
+    codec: str | None
+    nominal_pcm: PcmTuple | None
+
+
+@dataclass(frozen=True, slots=True)
+class DecodedRuntimeEvidence:
+    identity: SignalTruthIdentity
+    pcm: PcmTuple
+
+
+@dataclass(frozen=True, slots=True)
+class EngineRuntimeEvidence:
+    identity: SignalTruthIdentity
+    effective_pcm: PcmTuple | None
+    sink_factory: str
+    sink_device: str
+    graph_factories: tuple[str, ...]
+    graph_inspection_complete: bool
+    software_gain: float | None
+    muted: bool | None
+    sink_provides_clock: bool | None
+    sink_clock_is_pipeline_clock: bool | None
+    slave_method: str | None
+    resampling_observed: bool = False
+    remix_observed: bool = False
+    dsp_observed: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class AlsaRuntimeEvidence:
+    identity: SignalTruthIdentity
+    negotiated_pcm: PcmTuple
+    access: str | None
+    subformat: str | None
+    period_size: int | None
+    buffer_size: int | None
+    proc_path: str
+    binding_matches: bool = True
+
+
+class RuntimeAnomalyKind(Enum):
+    ERROR = "error"
+    XRUN = "xrun"
+    BINDING_MISMATCH = "binding_mismatch"
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeAnomalyEvidence:
+    identity: SignalTruthIdentity
+    kind: RuntimeAnomalyKind
+    detail: str | None = None
+
+
+SignalTruthEvidence = (
+    SourceFileFactsEvidence
+    | DecodedRuntimeEvidence
+    | EngineRuntimeEvidence
+    | AlsaRuntimeEvidence
+    | RuntimeAnomalyEvidence
+)
+
+
+@dataclass(frozen=True, slots=True)
+class SignalTruthSnapshot:
+    identity: SignalTruthIdentity
+    plan: OutputPlanEvidence
+    source_file_facts: SourceFileFactsEvidence | None
+    decoded_runtime: DecodedRuntimeEvidence | None
+    engine_effective: EngineRuntimeEvidence | None
+    device_negotiated: AlsaRuntimeEvidence | None
+    anomalies: tuple[RuntimeAnomalyEvidence, ...]
+    verdict: SignalTruthVerdict
+    reasons: tuple[SignalTruthReason, ...]
+
+
+_CONTRADICTION_ORDER = (
+    SignalTruthReason.ST_DEVICE_MISMATCH,
+    SignalTruthReason.ST_BINDING_MISMATCH,
+    SignalTruthReason.ST_SINK_MISMATCH,
+    SignalTruthReason.ST_RUNTIME_ERROR,
+    SignalTruthReason.ST_XRUN,
+    SignalTruthReason.ST_GAIN_NOT_UNITY,
+    SignalTruthReason.ST_CLOCK_POLICY_MISMATCH,
+)
+_UNKNOWN_ORDER = (
+    SignalTruthReason.ST_MISSING_DECODED,
+    SignalTruthReason.ST_MISSING_ENGINE_EFFECTIVE,
+    SignalTruthReason.ST_MISSING_ALSA,
+    SignalTruthReason.ST_MISSING_GRAPH,
+    SignalTruthReason.ST_MISSING_GAIN,
+    SignalTruthReason.ST_MISSING_CLOCK,
+    SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN,
+)
+
+
+def _ordered(found: set[SignalTruthReason], order) -> tuple[SignalTruthReason, ...]:
+    return tuple(reason for reason in order if reason in found)
+
+
+def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
+    """Return ``snapshot`` with deterministic fail-closed verdict and reasons."""
+    plan = snapshot.plan
+    decoded = snapshot.decoded_runtime
+    engine = snapshot.engine_effective
+    alsa = snapshot.device_negotiated
+
+    contradictions: set[SignalTruthReason] = set()
+    if engine is not None:
+        if engine.graph_inspection_complete and engine.sink_device != plan.sink_device:
+            contradictions.add(SignalTruthReason.ST_DEVICE_MISMATCH)
+        if (
+            engine.graph_inspection_complete
+            and engine.sink_factory != plan.sink_factory
+        ):
+            contradictions.add(SignalTruthReason.ST_SINK_MISMATCH)
+        if plan.fixed_gain_required and engine.software_gain not in (None, 1.0):
+            contradictions.add(SignalTruthReason.ST_GAIN_NOT_UNITY)
+    if alsa is not None and not alsa.binding_matches:
+        contradictions.add(SignalTruthReason.ST_BINDING_MISMATCH)
+    if engine is not None and (
+        engine.sink_provides_clock is False
+        or engine.sink_clock_is_pipeline_clock is False
+    ):
+        contradictions.add(SignalTruthReason.ST_CLOCK_POLICY_MISMATCH)
+    for anomaly in snapshot.anomalies:
+        if anomaly.kind is RuntimeAnomalyKind.BINDING_MISMATCH:
+            contradictions.add(SignalTruthReason.ST_BINDING_MISMATCH)
+        elif anomaly.kind is RuntimeAnomalyKind.ERROR:
+            contradictions.add(SignalTruthReason.ST_RUNTIME_ERROR)
+        else:
+            contradictions.add(SignalTruthReason.ST_XRUN)
+    if contradictions:
+        return replace(
+            snapshot,
+            verdict=SignalTruthVerdict.CONTRADICTED,
+            reasons=_ordered(contradictions, _CONTRADICTION_ORDER),
+        )
+
+    transformed: set[SignalTruthReason] = set()
+    if engine is not None:
+        if (
+            engine.resampling_observed
+            or "audioresample" in engine.graph_factories
+            or engine.slave_method == "resample"
+        ):
+            transformed.add(SignalTruthReason.ST_RESAMPLER_PRESENT)
+        if engine.remix_observed:
+            transformed.add(SignalTruthReason.ST_REMIX_OBSERVED)
+        if engine.dsp_observed or "audioconvert" in engine.graph_factories:
+            transformed.add(SignalTruthReason.ST_DSP_PRESENT)
+    if decoded is not None and alsa is not None:
+        if decoded.pcm.rate_hz != alsa.negotiated_pcm.rate_hz:
+            transformed.add(SignalTruthReason.ST_RATE_MISMATCH)
+        if decoded.pcm.channels != alsa.negotiated_pcm.channels:
+            transformed.add(SignalTruthReason.ST_CHANNEL_MISMATCH)
+    if transformed:
+        if transformed & {
+            SignalTruthReason.ST_RESAMPLER_PRESENT,
+            SignalTruthReason.ST_RATE_MISMATCH,
+        }:
+            verdict = SignalTruthVerdict.RESAMPLED
+        elif transformed & {
+            SignalTruthReason.ST_REMIX_OBSERVED,
+            SignalTruthReason.ST_CHANNEL_MISMATCH,
+        }:
+            verdict = SignalTruthVerdict.REMIXED
+        else:
+            verdict = SignalTruthVerdict.DSP
+        transform_order = (
+            SignalTruthReason.ST_RESAMPLER_PRESENT,
+            SignalTruthReason.ST_RATE_MISMATCH,
+            SignalTruthReason.ST_REMIX_OBSERVED,
+            SignalTruthReason.ST_CHANNEL_MISMATCH,
+            SignalTruthReason.ST_DSP_PRESENT,
+        )
+        return replace(
+            snapshot,
+            verdict=verdict,
+            reasons=_ordered(transformed, transform_order),
+        )
+
+    missing: set[SignalTruthReason] = set()
+    if decoded is None:
+        missing.add(SignalTruthReason.ST_MISSING_DECODED)
+    if engine is None or engine.effective_pcm is None:
+        missing.add(SignalTruthReason.ST_MISSING_ENGINE_EFFECTIVE)
+    if alsa is None:
+        missing.add(SignalTruthReason.ST_MISSING_ALSA)
+    if (
+        engine is None
+        or not engine.graph_inspection_complete
+        or "__inspection_failed__" in engine.graph_factories
+    ):
+        missing.add(SignalTruthReason.ST_MISSING_GRAPH)
+    if engine is None or engine.software_gain is None:
+        missing.add(SignalTruthReason.ST_MISSING_GAIN)
+    if (
+        engine is None
+        or engine.sink_provides_clock is None
+        or engine.sink_clock_is_pipeline_clock is None
+        or engine.slave_method is None
+    ):
+        missing.add(SignalTruthReason.ST_MISSING_CLOCK)
+    if (decoded is not None and decoded.pcm.significant_bits is None) or (
+        alsa is not None and alsa.negotiated_pcm.significant_bits is None
+    ):
+        missing.add(SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN)
+    if missing:
+        return replace(
+            snapshot,
+            verdict=SignalTruthVerdict.UNKNOWN,
+            reasons=_ordered(missing, _UNKNOWN_ORDER),
+        )
+
+    assert decoded is not None and engine is not None and alsa is not None
+    assert engine.effective_pcm is not None
+    signals = (decoded.pcm, engine.effective_pcm, alsa.negotiated_pcm)
+    rates = {item.rate_hz for item in signals}
+    channels = {item.channels for item in signals}
+    significant_bits = {
+        decoded.pcm.significant_bits,
+        alsa.negotiated_pcm.significant_bits,
+    }
+    if len(rates) != 1:
+        return replace(
+            snapshot,
+            verdict=SignalTruthVerdict.RESAMPLED,
+            reasons=(SignalTruthReason.ST_RATE_MISMATCH,),
+        )
+    if len(channels) != 1:
+        return replace(
+            snapshot,
+            verdict=SignalTruthVerdict.REMIXED,
+            reasons=(SignalTruthReason.ST_CHANNEL_MISMATCH,),
+        )
+    if len(significant_bits) != 1:
+        return replace(
+            snapshot,
+            verdict=SignalTruthVerdict.UNKNOWN,
+            reasons=(SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN,),
+        )
+    formats = {item.transport_format.replace("_", "").upper() for item in signals}
+    if len(formats) != 1:
+        bits = decoded.pcm.significant_bits
+        allowed_24_bit_containers = {"S243LE", "S2432LE", "S32LE"}
+        if bits == 24 and formats <= allowed_24_bit_containers:
+            return replace(
+                snapshot,
+                verdict=SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED,
+                reasons=(SignalTruthReason.ST_CONTAINER_ADAPTED,),
+            )
+        return replace(
+            snapshot,
+            verdict=SignalTruthVerdict.DSP,
+            reasons=(SignalTruthReason.ST_DSP_PRESENT,),
+        )
+    return replace(snapshot, verdict=SignalTruthVerdict.DIRECT, reasons=())
+
+
+def _initial_snapshot(plan: OutputPlanEvidence) -> SignalTruthSnapshot:
+    return classify_signal_truth(
+        SignalTruthSnapshot(
+            identity=plan.identity,
+            plan=plan,
+            source_file_facts=None,
+            decoded_runtime=None,
+            engine_effective=None,
+            device_negotiated=None,
+            anomalies=(),
+            verdict=SignalTruthVerdict.UNKNOWN,
+            reasons=(),
+        )
+    )
+
+
+class SignalTruthRecorder:
+    """One passive candidate/active runtime evidence recorder."""
+
+    def __init__(self) -> None:
+        self._candidate: SignalTruthSnapshot | None = None
+        self._active: SignalTruthSnapshot | None = None
+        self._last: SignalTruthSnapshot | None = None
+        self._subscribers: list[Callable[[], None]] = []
+
+    @property
+    def candidate_snapshot(self) -> SignalTruthSnapshot:
+        if self._candidate is None:
+            raise RuntimeError("no Signal Truth candidate")
+        return self._candidate
+
+    @property
+    def active_snapshot(self) -> SignalTruthSnapshot | None:
+        return self._active
+
+    @property
+    def last_snapshot(self) -> SignalTruthSnapshot | None:
+        return self._last
+
+    def subscribe(self, callback: Callable[[], None]) -> None:
+        if callback not in self._subscribers:
+            self._subscribers.append(callback)
+
+    def unsubscribe(self, callback: Callable[[], None]) -> None:
+        if callback in self._subscribers:
+            self._subscribers.remove(callback)
+
+    def begin_candidate(self, plan: OutputPlanEvidence) -> None:
+        if self._candidate is not None and self._candidate.identity != plan.identity:
+            self._last = self._candidate
+        self._candidate = _initial_snapshot(plan)
+        self._publish()
+
+    def observe(self, event: SignalTruthEvidence) -> bool:
+        if self._candidate is not None and event.identity == self._candidate.identity:
+            self._candidate = self._with_event(self._candidate, event)
+            self._publish()
+            return True
+        if self._active is not None and event.identity == self._active.identity:
+            self._active = self._with_event(self._active, event)
+            self._publish()
+            return True
+        return False
+
+    def commit_candidate(self, identity: SignalTruthIdentity) -> bool:
+        if (
+            self._candidate is None
+            or self._candidate.identity != identity
+            or self._active is not None
+        ):
+            return False
+        self._active = self._candidate
+        self._candidate = None
+        self._publish()
+        return True
+
+    def discard_candidate(self, identity: SignalTruthIdentity) -> bool:
+        if self._candidate is None or self._candidate.identity != identity:
+            return False
+        self._last = self._candidate
+        self._candidate = None
+        self._publish()
+        return True
+
+    def retire_active(self, identity: SignalTruthIdentity) -> bool:
+        if self._active is None or self._active.identity != identity:
+            return False
+        self._last = self._active
+        self._active = None
+        self._publish()
+        return True
+
+    def terminate(self, identity: SignalTruthIdentity) -> bool:
+        changed = False
+        if self._candidate is not None and self._candidate.identity == identity:
+            self._last = self._candidate
+            self._candidate = None
+            changed = True
+        if self._active is not None and self._active.identity == identity:
+            self._last = self._active
+            self._active = None
+            changed = True
+        if changed:
+            self._publish()
+        return changed
+
+    @staticmethod
+    def _with_event(
+        snapshot: SignalTruthSnapshot, event: SignalTruthEvidence
+    ) -> SignalTruthSnapshot:
+        if isinstance(event, SourceFileFactsEvidence):
+            updated = replace(snapshot, source_file_facts=event)
+        elif isinstance(event, DecodedRuntimeEvidence):
+            updated = replace(snapshot, decoded_runtime=event)
+        elif isinstance(event, EngineRuntimeEvidence):
+            updated = replace(snapshot, engine_effective=event)
+        elif isinstance(event, AlsaRuntimeEvidence):
+            updated = replace(snapshot, device_negotiated=event)
+        else:
+            updated = replace(snapshot, anomalies=(*snapshot.anomalies, event))
+        return classify_signal_truth(updated)
+
+    def _publish(self) -> None:
+        for callback in tuple(self._subscribers):
+            with suppress(Exception):
+                callback()

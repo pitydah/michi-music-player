@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from michi.domain.audio_device import AudioDeviceBinding
-from michi.domain.audio_evidence import PcmTuple
+from michi.domain.audio_evidence import PcmTuple, SourceFileFacts
 
 
 class OutputPathPreference(Enum):
@@ -137,6 +137,7 @@ class OutputPlan:
 
     evidence_refs: tuple[str, ...]
     decision_codes: tuple[str, ...]
+    source_file_facts: SourceFileFacts | None = None
 
 
 def sink_spec_for(plan: OutputPlan) -> GstSinkSpec:

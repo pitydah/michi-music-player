@@ -73,3 +73,12 @@ class DecodedSourceSignal:
     significant_bits: int | None
     channels: int
     channel_positions: tuple[str, ...] | None
+
+
+@dataclass(frozen=True, slots=True)
+class SourceFileFacts:
+    """Container/metadata facts; never evidence of decoded runtime caps."""
+
+    container: str | None
+    codec: str | None
+    nominal_pcm: PcmTuple | None

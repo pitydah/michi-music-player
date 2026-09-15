@@ -10,6 +10,7 @@ PlaybackService. PREROLL VERIFIED != RUNNING: la sesión no se toca.
 from __future__ import annotations
 
 import contextlib
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -17,7 +18,18 @@ from typing import Protocol
 
 from michi.application.audio_output_ports import OutputExecutorAbortDisposition
 from michi.domain.audio_engine import AudioEngineId
+from michi.domain.audio_evidence import PcmTuple
 from michi.domain.audio_output import OutputPlan, VolumePolicy
+from michi.domain.signal_truth import (
+    DecodedRuntimeEvidence,
+    EngineRuntimeEvidence,
+    OutputPlanEvidence,
+    RuntimeAnomalyEvidence,
+    RuntimeAnomalyKind,
+    SignalTruthIdentity,
+    SignalTruthRecorder,
+    SourceFileFactsEvidence,
+)
 from michi.infrastructure.audio_output.runtime_inspector import (
     DirectPrerollEvidence,
     DirectRuntimeSnapshot,
@@ -76,9 +88,11 @@ class DirectLoadPreparation:
 class _ExecutionSnapshot:
     state: DirectExecutionState
     handle: DirectExecutionHandle
+    plan: OutputPlan
     recipe: StrictSinkRecipe
     evidence: DirectPrerollEvidence | None
     receipt: str
+    signal_identity: SignalTruthIdentity | None
 
 
 class DirectLoadStagePort(Protocol):
@@ -100,13 +114,22 @@ class DirectLoadStagePort(Protocol):
 class GStreamerDirectOutputExecutor:
     """Sidecar de una única ejecución staged (sin cola, sin authority)."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        signal_truth: SignalTruthRecorder | None = None,
+        alsa_runtime_observer=None,
+    ) -> None:
         self._generation = 0
         self._state = DirectExecutionState.IDLE
         self._handle: DirectExecutionHandle | None = None
+        self._plan: OutputPlan | None = None
         self._recipe: StrictSinkRecipe | None = None
         self._evidence: DirectPrerollEvidence | None = None
         self._receipt: str | None = None
+        self._signal_truth = signal_truth
+        self._alsa_runtime_observer = alsa_runtime_observer
+        self._signal_identity: SignalTruthIdentity | None = None
         # DAC-V35-050R1: at most one committed execution survives while one
         # replacement candidate is provisional. It is private rollback state,
         # never a second output/session authority.
@@ -155,9 +178,11 @@ class GStreamerDirectOutputExecutor:
             plan_id=plan.plan_id,
         )
         self._handle = handle
+        self._plan = plan
         self._recipe = recipe
         self._evidence = None
         self._receipt = None
+        self._signal_identity = None
         self._committed = None
         self._state = DirectExecutionState.STAGED
         return handle
@@ -193,9 +218,11 @@ class GStreamerDirectOutputExecutor:
         receipt = f"direct:{handle.generation}:{handle.plan_id}"
         self._state = DirectExecutionState.STAGED
         self._handle = handle
+        self._plan = plan
         self._recipe = recipe
         self._evidence = None
         self._receipt = receipt
+        self._signal_identity = None
         try:
             port.stage_direct_load(preparation, executor=self)
         except Exception:
@@ -214,6 +241,15 @@ class GStreamerDirectOutputExecutor:
             raise DirectExecutorError(
                 "DIRECT_PREROLL_NOT_VERIFIED",
                 "output commit requires verified runtime preroll evidence",
+            )
+        if (
+            self._signal_truth is not None
+            and self._signal_identity is not None
+            and not self._signal_truth.commit_candidate(self._signal_identity)
+        ):
+            raise DirectExecutorError(
+                "SIGNAL_TRUTH_PROMOTION_BLOCKED",
+                "candidate cannot replace active truth before destructive boundary",
             )
         self._state = DirectExecutionState.COMMITTED
         self._committed = None
@@ -241,7 +277,13 @@ class GStreamerDirectOutputExecutor:
     def _abort_current(
         self, handle: DirectExecutionHandle, reason: str
     ) -> OutputExecutorAbortDisposition:
+        was_committed = self._state is DirectExecutionState.COMMITTED
         self._discard_staged_load(handle)
+        if self._signal_truth is not None and self._signal_identity is not None:
+            if was_committed:
+                self._signal_truth.terminate(self._signal_identity)
+            else:
+                self._signal_truth.discard_candidate(self._signal_identity)
         committed = self._committed
         if (
             reason == "load_failed"
@@ -263,9 +305,55 @@ class GStreamerDirectOutputExecutor:
         execution crossed by a Shared load is removed altogether.
         """
         if self._state is DirectExecutionState.COMMITTED:
+            if self._signal_truth is not None and self._signal_identity is not None:
+                self._signal_truth.retire_active(self._signal_identity)
             self._clear()
             return
+        if (
+            self._signal_truth is not None
+            and self._committed is not None
+            and self._committed.signal_identity is not None
+        ):
+            self._signal_truth.retire_active(self._committed.signal_identity)
         self._committed = None
+
+    def begin_runtime(
+        self, handle: DirectExecutionHandle, *, port_generation: int
+    ) -> SignalTruthIdentity | None:
+        """Start candidate evidence once the port owns its real generation."""
+        self._require_current(handle)
+        plan = self._plan
+        if plan is None or self._signal_truth is None:
+            return None
+        identity = SignalTruthIdentity(
+            plan_id=plan.plan_id,
+            execution_generation=handle.generation,
+            port_generation=port_generation,
+            binding_generation=plan.binding.generation,
+            stable_device_id=plan.stable_device_id,
+            stable_endpoint_signature=plan.binding.stable_endpoint_signature,
+        )
+        self._signal_identity = identity
+        self._signal_truth.begin_candidate(
+            OutputPlanEvidence(
+                identity=identity,
+                requested_pcm=plan.requested_pcm,
+                sink_factory=plan.sink.factory,
+                sink_device=plan.sink.device,
+                fixed_gain_required=plan.volume_policy is VolumePolicy.FIXED,
+            )
+        )
+        source = plan.source_file_facts
+        if source is not None:
+            self._signal_truth.observe(
+                SourceFileFactsEvidence(
+                    identity=identity,
+                    container=source.container,
+                    codec=source.codec,
+                    nominal_pcm=source.nominal_pcm,
+                )
+            )
+        return identity
 
     def owns_committed_receipt(self, receipt: str) -> bool:
         return (
@@ -302,6 +390,7 @@ class GStreamerDirectOutputExecutor:
                 f"snapshot plan_id {snapshot.plan_id!r} != {handle.plan_id!r}",
             )
         assert self._recipe is not None  # garantizado por _require_current
+        self._record_signal_runtime(snapshot)
         try:
             evidence = validate_runtime(self._recipe, snapshot)
         except Exception:
@@ -312,6 +401,77 @@ class GStreamerDirectOutputExecutor:
         self._evidence = evidence
         self._state = DirectExecutionState.PREROLL_VERIFIED
         return evidence
+
+    def _record_signal_runtime(self, snapshot: DirectRuntimeSnapshot) -> None:
+        recorder = self._signal_truth
+        identity = self._signal_identity
+        plan = self._plan
+        if recorder is None or identity is None or plan is None:
+            return
+        if (
+            snapshot.decoded_format is not None
+            and snapshot.decoded_rate_hz is not None
+            and snapshot.decoded_channels is not None
+        ):
+            recorder.observe(
+                DecodedRuntimeEvidence(
+                    identity,
+                    PcmTuple(
+                        snapshot.decoded_rate_hz,
+                        snapshot.decoded_format,
+                        snapshot.decoded_channels,
+                        snapshot.decoded_significant_bits,
+                    ),
+                )
+            )
+        effective = None
+        if (
+            snapshot.negotiated_format is not None
+            and snapshot.negotiated_rate_hz is not None
+            and snapshot.negotiated_channels is not None
+        ):
+            effective = PcmTuple(
+                snapshot.negotiated_rate_hz,
+                snapshot.negotiated_format,
+                snapshot.negotiated_channels,
+                snapshot.effective_significant_bits,
+            )
+        recorder.observe(
+            EngineRuntimeEvidence(
+                identity=identity,
+                effective_pcm=effective,
+                sink_factory=snapshot.sink_factory,
+                sink_device=snapshot.sink_device,
+                graph_factories=snapshot.graph_factories,
+                graph_inspection_complete=snapshot.graph_inspection_complete,
+                software_gain=snapshot.software_gain,
+                muted=snapshot.muted,
+                sink_provides_clock=snapshot.sink_provides_clock,
+                sink_clock_is_pipeline_clock=snapshot.sink_clock_is_pipeline_clock,
+                slave_method=snapshot.slave_method,
+            )
+        )
+        observer = self._alsa_runtime_observer
+        if observer is not None:
+            alsa = observer.observe(identity, plan.binding)
+            if alsa is not None:
+                recorder.observe(alsa)
+
+    def record_runtime_anomaly(
+        self, handle: DirectExecutionHandle, detail: str
+    ) -> bool:
+        """Record an ERROR/XRUN observation without owning recovery policy."""
+        self._require_current(handle)
+        if self._signal_truth is None or self._signal_identity is None:
+            return False
+        kind = (
+            RuntimeAnomalyKind.XRUN
+            if re.search(r"\bxrun\b", detail, flags=re.IGNORECASE)
+            else RuntimeAnomalyKind.ERROR
+        )
+        return self._signal_truth.observe(
+            RuntimeAnomalyEvidence(self._signal_identity, kind, detail)
+        )
 
     def is_preroll_verified(self, handle: DirectExecutionHandle) -> bool:
         if self._handle is None or handle != self._handle:
@@ -347,6 +507,14 @@ class GStreamerDirectOutputExecutor:
         handle = self._handle
         if handle is not None:
             self._discard_staged_load(handle)
+        if self._signal_truth is not None:
+            if self._signal_identity is not None:
+                self._signal_truth.terminate(self._signal_identity)
+            if (
+                self._committed is not None
+                and self._committed.signal_identity is not None
+            ):
+                self._signal_truth.terminate(self._committed.signal_identity)
         self._clear()
 
     def _discard_staged_load(self, handle: DirectExecutionHandle) -> None:
@@ -359,15 +527,18 @@ class GStreamerDirectOutputExecutor:
 
     def _clear(self) -> None:
         self._handle = None
+        self._plan = None
         self._recipe = None
         self._evidence = None
         self._receipt = None
+        self._signal_identity = None
         self._committed = None
         self._state = DirectExecutionState.IDLE
 
     def _snapshot_current(self) -> _ExecutionSnapshot | None:
         if (
             self._handle is None
+            or self._plan is None
             or self._recipe is None
             or self._receipt is None
             or self._state is DirectExecutionState.IDLE
@@ -376,24 +547,30 @@ class GStreamerDirectOutputExecutor:
         return _ExecutionSnapshot(
             state=self._state,
             handle=self._handle,
+            plan=self._plan,
             recipe=self._recipe,
             evidence=self._evidence,
             receipt=self._receipt,
+            signal_identity=self._signal_identity,
         )
 
     def _restore(self, snapshot: _ExecutionSnapshot | None) -> None:
         if snapshot is None:
             self._handle = None
+            self._plan = None
             self._recipe = None
             self._evidence = None
             self._receipt = None
+            self._signal_identity = None
             self._state = DirectExecutionState.IDLE
             return
         self._state = snapshot.state
         self._handle = snapshot.handle
+        self._plan = snapshot.plan
         self._recipe = snapshot.recipe
         self._evidence = snapshot.evidence
         self._receipt = snapshot.receipt
+        self._signal_identity = snapshot.signal_identity
 
     # ── internos ──────────────────────────────────────────────────────
     def _require_current(self, handle: DirectExecutionHandle) -> None:

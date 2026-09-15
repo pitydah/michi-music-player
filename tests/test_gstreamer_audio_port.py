@@ -267,6 +267,19 @@ class FakeBindings:
             negotiated_rate_hz=overrides.get("rate", recipe.rate_hz),
             negotiated_channels=overrides.get("channels", recipe.channels),
             graph_factories=overrides.get("graph", ("capsfilter", "alsasink")),
+            decoded_format=overrides.get("decoded_format", recipe.gst_format),
+            decoded_rate_hz=overrides.get("decoded_rate", recipe.rate_hz),
+            decoded_channels=overrides.get("decoded_channels", recipe.channels),
+            decoded_significant_bits=overrides.get("decoded_sbits", 24),
+            effective_significant_bits=overrides.get("effective_sbits", 24),
+            graph_inspection_complete=overrides.get("graph_complete", True),
+            software_gain=overrides.get("gain", pipeline.volume),
+            muted=overrides.get("muted", pipeline.muted),
+            sink_provides_clock=overrides.get("sink_provides_clock", True),
+            sink_clock_is_pipeline_clock=overrides.get(
+                "sink_clock_is_pipeline_clock", True
+            ),
+            slave_method=overrides.get("slave_method", "none"),
         )
 
     def set_state(self, pipeline, state):

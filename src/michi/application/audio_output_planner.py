@@ -20,6 +20,7 @@ from michi.domain.audio_evidence import (
     CapabilityEvidence,
     DecodedSourceSignal,
     PcmTuple,
+    SourceFileFacts,
 )
 from michi.domain.audio_output import (
     AudioOutputProfile,
@@ -67,6 +68,7 @@ class PlannerFacts:
     evidence: tuple[CapabilityEvidence, ...] = ()
     expected_binding_generation: int | None = None
     device_available: bool = True
+    source_file_facts: SourceFileFacts | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,6 +285,7 @@ class OutputPlanner:
             preconditions=preconditions,
             evidence_refs=evidence_refs,
             decision_codes=tuple(decisions),
+            source_file_facts=facts.source_file_facts,
         )
 
     @staticmethod

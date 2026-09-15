@@ -199,23 +199,48 @@ class GStreamerBindings:
             DirectRuntimeSnapshot,
         )
 
-        sink_bin = pipeline.get_property("audio-sink")
-        alsa = sink_bin.get_by_name("michi_direct_alsa") if sink_bin else None
-        sink_factory = "alsasink" if alsa is not None else ""
+        def caps_values(pad):
+            caps = pad.get_current_caps() if pad is not None else None
+            if caps is None or caps.get_size() == 0:
+                return None, None, None
+            struct = caps.get_structure(0)
+            value_format = struct.get_string("format")
+            ok_rate, value_rate = struct.get_int("rate")
+            ok_channels, value_channels = struct.get_int("channels")
+            return (
+                value_format,
+                int(value_rate) if ok_rate else None,
+                int(value_channels) if ok_channels else None,
+            )
+
+        def full_width_significant_bits(value_format):
+            normalized = (value_format or "").replace("_", "")
+            if normalized.startswith("S8") or normalized.startswith("U8"):
+                return 8
+            if normalized.startswith("S16") or normalized.startswith("U16"):
+                return 16
+            if normalized.startswith("S24") or normalized.startswith("U24"):
+                return 24
+            # S32 is a transport container and does not prove 32 sbits.
+            return None
+
+        graph_complete = True
+        alsa = None
+        sink_factory = ""
         device = ""
         fmt = rate = channels = None
-        if alsa is not None:
-            device = alsa.get_property("device") or ""
-            pad = alsa.get_static_pad("sink")
-            caps = pad.get_current_caps() if pad is not None else None
-            if caps is not None and caps.get_size() > 0:
-                struct = caps.get_structure(0)
-                fmt = struct.get_string("format")
-                ok_rate, rate_val = struct.get_int("rate")
-                ok_ch, ch_val = struct.get_int("channels")
-                rate = int(rate_val) if ok_rate else None
-                channels = int(ch_val) if ok_ch else None
+        try:
+            sink_bin = pipeline.get_property("audio-sink")
+            alsa = sink_bin.get_by_name("michi_direct_alsa") if sink_bin else None
+            sink_factory = "alsasink" if alsa is not None else ""
+            if alsa is not None:
+                device = alsa.get_property("device") or ""
+                pad = alsa.get_static_pad("sink")
+                fmt, rate, channels = caps_values(pad)
+        except Exception:  # pragma: no cover - live Gst introspection boundary
+            graph_complete = False
         factories: list[str] = []
+        decoded_format = decoded_rate = decoded_channels = None
         try:
             iterator = pipeline.iterate_recurse()
             while True:
@@ -225,8 +250,40 @@ class GStreamerBindings:
                 factory = element.get_factory()
                 if factory is not None:
                     factories.append(factory.get_name())
+                    klass = factory.get_metadata("klass") or ""
+                    if "Decoder" in klass and "Audio" in klass:
+                        pads = element.iterate_src_pads()
+                        pad_ok, decoded_pad = pads.next()
+                        if pad_ok == self._gst.IteratorResult.OK:
+                            (
+                                decoded_format,
+                                decoded_rate,
+                                decoded_channels,
+                            ) = caps_values(decoded_pad)
         except Exception:  # pragma: no cover - iterador del runtime real
             factories = ["__inspection_failed__"]
+            graph_complete = False
+        gain = muted = None
+        try:
+            gain = self.volume(pipeline)
+            muted = self.muted(pipeline)
+        except Exception:  # pragma: no cover - runtime property boundary
+            pass
+        sink_provides_clock = sink_clock_is_pipeline_clock = None
+        slave_method = None
+        try:
+            sink_clock = alsa.provide_clock() if alsa is not None else None
+            pipeline_clock = pipeline.get_clock()
+            sink_provides_clock = sink_clock is not None
+            sink_clock_is_pipeline_clock = (
+                sink_clock is not None and pipeline_clock == sink_clock
+            )
+            value = alsa.get_property("slave-method") if alsa is not None else None
+            slave_method = getattr(value, "value_nick", None) or (
+                str(value) if value is not None else None
+            )
+        except Exception:  # pragma: no cover - optional runtime observability
+            pass
         return DirectRuntimeSnapshot(
             execution_generation=execution_generation,
             port_generation=port_generation,
@@ -237,6 +294,17 @@ class GStreamerBindings:
             negotiated_rate_hz=rate,
             negotiated_channels=channels,
             graph_factories=tuple(factories),
+            decoded_format=decoded_format,
+            decoded_rate_hz=decoded_rate,
+            decoded_channels=decoded_channels,
+            decoded_significant_bits=full_width_significant_bits(decoded_format),
+            effective_significant_bits=full_width_significant_bits(fmt),
+            graph_inspection_complete=graph_complete,
+            software_gain=gain,
+            muted=muted,
+            sink_provides_clock=sink_provides_clock,
+            sink_clock_is_pipeline_clock=sink_clock_is_pipeline_clock,
+            slave_method=slave_method,
         )
 
     def set_state(self, pipeline, state) -> bool:
@@ -341,6 +409,9 @@ class GStreamerBindings:
 
     def set_muted(self, pipeline, muted: bool) -> None:
         pipeline.set_property("mute", muted)
+
+    def muted(self, pipeline) -> bool:
+        return bool(pipeline.get_property("mute"))
 
     # -- message parsing --
 
@@ -525,6 +596,11 @@ class GStreamerAudioPort(AudioPort):
             return  # expected close-time exit — never a runtime failure
         if generation != self._generation:
             return  # stale generation — ignored
+        if self._direct_executor is not None and self._active_direct_handle is not None:
+            with contextlib.suppress(Exception):
+                self._direct_executor.record_runtime_anomaly(
+                    self._active_direct_handle, reason
+                )
         cb = self._runtime_failure_callback
         if cb is not None:
             cb(generation, reason)
@@ -776,6 +852,10 @@ class GStreamerAudioPort(AudioPort):
         timer_before = self._timer_source
         paused_accepted = False
         try:
+            if self._direct_executor is not None and direct_handle is not None:
+                self._direct_executor.begin_runtime(
+                    direct_handle, port_generation=self._generation
+                )
             self._ensure_pump()
             pipeline = self._bindings.make_playbin3()
             if pipeline is None:
@@ -1568,6 +1648,7 @@ class GStreamerAudioPort(AudioPort):
             self._current_path = None
             self._active_direct_handle = None
             if self._direct_executor is not None and direct_handle is not None:
+                self._direct_executor.record_runtime_anomaly(direct_handle, reason)
                 self._direct_executor.abort(direct_handle, "gstreamer_error")
             self._deliver_rej(candidate, reason)
 
