@@ -41,9 +41,13 @@ class UdevObserver:
         self._proc_asound_root = proc_asound_root
         self._context = context
         self._monitors: list[object] = []
+        self._started = False
+        self._accept_events = True
 
     def start(self) -> None:
         """Arranca los monitores netlink (usb + sound). Runtime real."""
+        if self._started:
+            return
         import pyudev  # import local: el CI/headless no necesita udev
 
         context = self._context if self._context is not None else pyudev.Context()
@@ -53,18 +57,24 @@ class UdevObserver:
             monitor.filter_by(subsystem=subsystem)
             monitor.start()
             self._monitors.append(monitor)
+        self._started = True
+        self._accept_events = True
         self.rescan()
 
     def stop(self) -> None:
+        self._accept_events = False
         for monitor in self._monitors:
             try:
                 monitor.stop()
             except Exception:  # pragma: no cover - monitor ya cerrado
                 logger.debug("monitor stop falló", exc_info=True)
         self._monitors.clear()
+        self._started = False
 
     def poll(self, timeout: float | None = 0.0) -> int:
         """Procesa eventos pendientes (usado por el loop del player)."""
+        if not self._accept_events:
+            return 0
         processed = 0
         for monitor in self._monitors:
             device = monitor.poll(timeout=timeout)
@@ -83,8 +93,9 @@ class UdevObserver:
 
         Testeable sin socket netlink real.
         """
-        if action == "remove":
-            self._registry.handle_removed(sys_name)
+        del action, subsystem, sys_name
+        if not self._accept_events:
+            return
         self.rescan()
 
     def rescan(self) -> None:
@@ -92,5 +103,4 @@ class UdevObserver:
         observations = read_usb_devices(self._sysfs_root) + read_alsa_cards(
             self._sysfs_root, proc_asound_root=self._proc_asound_root
         )
-        if observations:
-            self._registry.ingest(observations)
+        self._registry.ingest(observations)

@@ -34,6 +34,9 @@ from michi.application.dac_qualification_service import (
     QualificationEnvironmentContext,
     binding_topology_fingerprint,
 )
+from michi.application.direct_output_lifecycle_coordinator import (
+    DirectOutputLifecycleCoordinator,
+)
 from michi.application.enrichment_coordinator import EnrichmentCoordinator
 from michi.application.enrichment_evidence import LibraryEnrichmentEvidenceBuilder
 from michi.application.enrichment_executor import ThreadPoolEnrichmentExecutor
@@ -75,6 +78,7 @@ from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.application.source_scan_coordinator import SourceScanCoordinator
 from michi.application.source_scan_lifecycle import SourceScanLifecycle
+from michi.domain.audio_device import BindingKind
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.signal_truth import SignalTruthRecorder
 from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
@@ -207,6 +211,7 @@ class ServiceGraph:
     direct_output_executor: GStreamerDirectOutputExecutor
     signal_truth: SignalTruthRecorder
     output_session: OutputSessionService
+    direct_output_lifecycle: DirectOutputLifecycleCoordinator
     volume_policy: object
     audio_output_profiles: AudioOutputProfileService
     audio_device_registry: AudioDeviceRegistry
@@ -474,6 +479,15 @@ def _build_services(
         OutputPlanner(),
         request_provider=output_resolver,
         executors={AudioEngineId.GSTREAMER.value: direct_executor},
+        plan_still_current=lambda plan: any(
+            binding.kind is BindingKind.ALSA_PCM
+            and binding.currently_available
+            and binding.generation == plan.binding.generation
+            and binding.locator == plan.binding.locator
+            and binding.card_index == plan.binding.card_index
+            and binding.pcm_device == plan.binding.pcm_device
+            for binding in audio_devices.bindings_for(plan.stable_device_id)
+        ),
     )
     from michi.application.volume_policy_service import VolumePolicyService
 
@@ -486,6 +500,12 @@ def _build_services(
         output_tx=output_session,
         volume_port=volume_policy,
     )
+    direct_output_lifecycle = DirectOutputLifecycleCoordinator(
+        audio_devices,
+        playback,
+        output_session,
+    )
+    direct_output_lifecycle.start()
     convergence = AudioEngineConvergenceCoordinator(
         engine_service=engine_service,
         registry=registry,
@@ -733,6 +753,7 @@ def _build_services(
         direct_output_executor=direct_executor,
         signal_truth=signal_truth,
         output_session=output_session,
+        direct_output_lifecycle=direct_output_lifecycle,
         volume_policy=volume_policy,
         audio_output_profiles=output_profiles,
         audio_device_registry=audio_devices,
@@ -831,6 +852,7 @@ class ApplicationContainer:
         self._audio_engine_convergence: AudioEngineConvergenceCoordinator | None = None
         self._qt_engine_provider: QtEngineProvider | None = None
         self._output_session: OutputSessionService | None = None
+        self._direct_output_lifecycle: DirectOutputLifecycleCoordinator | None = None
         self._udev_observer: UdevObserver | None = None
         self._udev_poll_timer: QTimer | None = None
         self._engine_selection_coordinator: AudioEngineSelectionCoordinator | None = (
@@ -912,6 +934,7 @@ class ApplicationContainer:
         self._audio_engine_convergence = graph.audio_engine_convergence
         self._qt_engine_provider = graph.qt_engine_provider
         self._output_session = graph.output_session
+        self._direct_output_lifecycle = graph.direct_output_lifecycle
         self._udev_observer = graph.udev_observer
 
         playback = graph.playback
@@ -1311,16 +1334,11 @@ class ApplicationContainer:
             except Exception as exc:
                 error = error or exc
 
-        # DAC §0H.4 shutdown: transport safety stop precedes output release;
-        # then observation stops before engine providers are detached/closed.
-        output_session = getattr(self, "_output_session", None)
-        if self._playback is not None and output_session is not None:
-            try:
-                if output_session.state.value != "idle":
-                    self._playback.stop()
-                output_session.release_active("shutdown")
-            except Exception as exc:
-                error = error or exc
+        # DAC-V35-080: make every asynchronous topology/engine callback inert
+        # before transport/output teardown can close physical resources.
+        direct_lifecycle = getattr(self, "_direct_output_lifecycle", None)
+        if direct_lifecycle is not None:
+            error = _capture_cleanup(direct_lifecycle.shutdown, error)
         udev_timer = getattr(self, "_udev_poll_timer", None)
         if udev_timer is not None:
             udev_timer.stop()
@@ -1336,10 +1354,19 @@ class ApplicationContainer:
         # begins — a close-time fatal runtime event (e.g. MPD transport
         # error while closing) must NEVER trigger a Qt fallback during
         # application shutdown.
-        if getattr(self, "_engine_selection_coordinator", None) is not None and getattr(
-            self, "_audio_engine_convergence", None
-        ):
-            self._audio_engine_convergence.shutdown()
+        if getattr(self, "_audio_engine_convergence", None) is not None:
+            error = _capture_cleanup(self._audio_engine_convergence.shutdown, error)
+
+        # DAC §0H.4: once callback sources are inert, transport safety stop
+        # precedes idempotent output release and provider detach/close.
+        output_session = getattr(self, "_output_session", None)
+        if self._playback is not None and output_session is not None:
+            try:
+                if output_session.state.value != "idle":
+                    self._playback.stop()
+                output_session.release_active("shutdown")
+            except Exception as exc:
+                error = error or exc
 
         # M11.3F P1-01: shutdown releases the ACTUALLY ACTIVE provider —
         # resolved from the canonical graph (registry + engine service +

@@ -1206,6 +1206,55 @@ class PlaybackService:
             # Engine loss is a FAILURE, not user cancellation: reject once.
             on_rejected(pending_path, reason)
 
+    def converge_after_output_loss(
+        self,
+        stable_device_id: str,
+        generation: int,
+        reason: str = "OUTPUT_DEVICE_LOST",
+    ) -> None:
+        """Converge canonical playback after the active Direct DAC disappears."""
+        self._request_epoch += 1
+        pending_path = self._pending_path
+        pending_purpose = self._pending_purpose
+        on_rejected = self._pending_on_rejected
+        self._pending_path = None
+        self._pending_purpose = None
+        self._pending_on_accepted = None
+        self._pending_on_rejected = None
+        self._pending_on_cancelled = None
+        self._pending_resume_position_ms = None
+        self._resume_prepared_pending = False
+        self._deferred_resume_target_ms = None
+        self._intent = False
+        self._accepted = False
+        self._converging_unexpected = False
+        try:
+            self._audio.stop()
+        except Exception:
+            # The device is physically gone; output release and canonical STOPPED
+            # remain mandatory even when the transport cannot acknowledge stop.
+            logger.exception("transport stop failed during Direct output loss")
+        self._output_token = None
+        self._output_tx.topology_lost(stable_device_id, generation)
+        self._state.status = PlaybackStatus.STOPPED
+        self._state.error_message = reason
+        self._notify()
+        if (
+            pending_path is not None
+            and pending_purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION
+        ):
+            self._complete_engine_switch_rehydration(
+                MediaRequestTerminalStatus.REJECTED,
+                pending_path,
+                reason,
+            )
+        if (
+            pending_path is not None
+            and on_rejected is not None
+            and self._pending_path is None
+        ):
+            on_rejected(pending_path, reason)
+
     def seek(self, position_ms: int) -> None:
         # AR-16 (reliability seal): seek is INTENT ONLY. A requested position
         # is not a confirmed position — canonical position changes arrive

@@ -223,8 +223,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 5 | `DAC-V35-050` GStreamer Direct executor | ACTIVE | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
 | 7 | `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | negotiated selected-branch transform activity distinguishes element presence from pass-through; physical claims excluded |
-| 8 | `DAC-V35-080` Disconnect/reconnect + transitions | NEXT AUTHORIZED / NOT STARTED | YES | deterministic failure/rebind; no speaker fallback |
-| 9 | `DAC-V35-090` Premium DAC UI | ACTIVE | YES | DAC controls separated from Audio Engine; mode-aware volume |
+| 8 | `DAC-V35-080` Disconnect/reconnect + transitions | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind; no speaker fallback |
+| 9 | `DAC-V35-090` Premium DAC UI | NEXT AUTHORIZED / NOT STARTED | YES | DAC controls separated from Audio Engine; mode-aware volume |
 | 10 | `DAC-V35-100` Automated verification + documentation seal | ACTIVE | YES | one GO/NO-GO command + docs/status parity |
 | 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
@@ -18932,6 +18932,7 @@ src/michi/domain/
 
 src/michi/application/
     audio_device_registry.py
+    direct_output_lifecycle_coordinator.py
     dac_qualification_service.py
     audio_output_profile_service.py
     audio_output_planner.py
@@ -19758,6 +19759,67 @@ No UI “Lossless/Bit-perfect/Direct verified” label may be derived solely fro
 
 # 407. `DAC-V35-080` — TRANSITION / DISCONNECT / RECONNECT CLOSED SLICE
 
+`DAC-V35-080` freezes one application-layer orchestration seam without moving
+existing authorities:
+
+```text
+UdevObserver complete Linux snapshot
+  -> AudioDeviceRegistry canonical reconciliation
+  -> immutable AudioDeviceTopologyChange publication
+  -> DirectOutputLifecycleCoordinator
+  -> PlaybackService.converge_after_output_loss()
+  -> PlaybackOutputTransactionPort.topology_lost()
+  -> OutputSessionService LOST/rebind state machine
+```
+
+`AudioDeviceTopologyChange` contains stable identity, previous/current
+availability, generation, and complete canonical binding sets. Publication
+occurs only after registry mutation; an idempotent or ordering-only rescan emits
+nothing. An empty USB+ALSA snapshot is authoritative. `UdevObserver` never
+applies raw remove identity directly: every event triggers one complete rescan,
+and stopped/shutdown observers ignore late callbacks.
+
+`DirectOutputLifecycleCoordinator` is framework-free and owns orchestration
+only. It subscribes explicitly after the production graph is complete. It does
+not own PlaybackState, output state, identity, policy, Queue, or engine state.
+For loss of the active Direct stable identity it invokes one PlaybackService
+operation. PlaybackService terminalizes a pending request once, performs the
+transport safety stop, invokes the typed topology-loss output transaction,
+then publishes STOPPED with `OUTPUT_DEVICE_LOST`; no EOM or navigation event is
+generated. OutputSessionService releases the Direct executor exactly once,
+clears active plan/device authority, preserves selected device/profile intent,
+and enters LOST.
+
+A matching reappearance is accepted only when the registry event is current,
+the stable identity equals selected intent, the binding set is available, and
+its generation is newer than the lost binding generation. The state machine
+passes through RECOVERING to an inactive IDLE/reconnect-ready state. It restores
+no plan, receipt, executor, media intent, runtime evidence, or playback. No
+auto-resume policy exists in the product, so reconnect remains stopped. The next
+explicit user Play resolves current identity/binding/generation/evidence and
+builds a fresh plan.
+
+Direct replacement classifies the immutable old/new plan pair. Equal physical
+identity, binding generation, requested PCM tuple, path, volume, and strict
+policy is `SAME_TUPLE`; any source-native tuple change is `RECONFIGURE`; a
+device/generation/path change is `REACQUIRE`. All currently use the existing
+050R2 generation-distinct replacement transaction; SAME_TUPLE is not a gapless
+claim, and RECONFIGURE never inserts resampling to hide a rate change.
+
+Shutdown order for this slice is:
+
+```text
+disable DirectOutputLifecycleCoordinator callbacks
+stop UdevObserver / discard queued events
+disable AudioEngineConvergenceCoordinator
+PlaybackService safety stop when output is active
+release any remaining output ownership idempotently
+detach/close engine runtime through M11.3 ownership
+```
+
+This prevents late topology/reconnect or engine-failure callbacks from opening
+resources during teardown.
+
 Required cases:
 
 ```text
@@ -19781,6 +19843,20 @@ otherwise remain stopped and surface reconnect state
 ```
 
 Same-tuple gapless work remains bounded by M11.5, but any M11.5 guarantee selected as a Player-Stable requirement is also pre-Stable work. This slice must not fake gapless by global resampling.
+
+**Automated closure (2026-09-16): `DAC-V35-080 CLOSED-AUTOMATED / GO`.**
+The productive graph now reconciles complete USB+ALSA snapshots, publishes
+immutable generation-scoped topology changes, and routes active Direct loss
+through PlaybackService and OutputSessionService without moving authorities.
+The selected intent survives; active ownership is released once and enters
+LOST. USB-only reappearance is insufficient: recovery requires the same stable
+identity, a current ALSA binding, and a newer generation, remains stopped, and
+the next explicit Play replans from current qualification evidence. Automated
+evidence includes R80-01..R80-30, all 463 DAC tests, M11.3 adapter integrity,
+repository alignment, Ruff, the complete repository suite, adversarial review,
+and Judgment Day. This is software-only evidence: it does not establish
+physical DAC qualification, exclusivity, bit-perfect/Michi-Verified status, or
+M11.5 behavior. `DAC-V35-090` is NEXT AUTHORIZED / NOT STARTED.
 
 ---
 

@@ -24,7 +24,10 @@ Reglas §400 (seal pre-050):
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
 from dataclasses import dataclass
+from threading import RLock
 from typing import Protocol
 
 from michi.domain.audio_device import (
@@ -34,6 +37,24 @@ from michi.domain.audio_device import (
     DeviceObservation,
     IdentityConfidence,
 )
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class AudioDeviceTopologyChange:
+    """Immutable canonical topology truth published after reconciliation."""
+
+    stable_device_id: str
+    previous_available: bool
+    current_available: bool
+    previous_generation: int
+    current_generation: int
+    previous_bindings: tuple[AudioDeviceBinding, ...]
+    current_bindings: tuple[AudioDeviceBinding, ...]
+
+
+TopologyChangedCallback = Callable[[AudioDeviceTopologyChange], None]
 
 
 class AudioDeviceRegistryPort(Protocol):
@@ -97,32 +118,39 @@ class AudioDeviceRegistry:
         self._records: dict[str, _DeviceRecord] = {}
         self._generation = 0
         self._selected_device_id: str | None = None
+        self._topology_subscribers: list[TopologyChangedCallback] = []
+        self._lock = RLock()
 
     # ── lectura ───────────────────────────────────────────────────────
     @property
     def generation(self) -> int:
-        return self._generation
+        with self._lock:
+            return self._generation
 
     @property
     def selected_device_id(self) -> str | None:
-        return self._selected_device_id
+        with self._lock:
+            return self._selected_device_id
 
     def select_device(self, stable_device_id: str) -> None:
         """El intent seleccionado es SEPARADO de la availability (§400)."""
-        self._selected_device_id = stable_device_id
+        with self._lock:
+            self._selected_device_id = stable_device_id
 
     def snapshot(self) -> tuple[AudioDeviceIdentity, ...]:
-        return tuple(
-            record.identity
-            for record in sorted(
-                self._records.values(), key=lambda r: r.stable_device_id
+        with self._lock:
+            return tuple(
+                record.identity
+                for record in sorted(
+                    self._records.values(), key=lambda r: r.stable_device_id
+                )
+                if record.available
             )
-            if record.available
-        )
 
     def generation_for(self, stable_device_id: str) -> int | None:
-        record = self._records.get(stable_device_id)
-        return record.generation if record is not None else None
+        with self._lock:
+            record = self._records.get(stable_device_id)
+            return record.generation if record is not None else None
 
     def bindings_for(
         self, stable_device_id: str, kind: BindingKind | None = None
@@ -131,12 +159,13 @@ class AudioDeviceRegistry:
 
         Determinista: orden estable por kind/locator/card/pcm/subdevice.
         """
-        record = self._records.get(stable_device_id)
-        if record is None or not record.available:
-            return ()
-        if kind is None:
-            return record.bindings
-        return tuple(b for b in record.bindings if b.kind is kind)
+        with self._lock:
+            record = self._records.get(stable_device_id)
+            if record is None or not record.available:
+                return ()
+            if kind is None:
+                return record.bindings
+            return tuple(b for b in record.bindings if b.kind is kind)
 
     def binding_for(
         self, stable_device_id: str, kind: BindingKind
@@ -150,9 +179,23 @@ class AudioDeviceRegistry:
         return bindings[0] if bindings else None
 
     def available_ids(self) -> tuple[str, ...]:
-        return tuple(
-            sorted(r.stable_device_id for r in self._records.values() if r.available)
-        )
+        with self._lock:
+            return tuple(
+                sorted(
+                    r.stable_device_id for r in self._records.values() if r.available
+                )
+            )
+
+    def subscribe_topology_changed(self, callback: TopologyChangedCallback) -> None:
+        """Subscribe to post-mutation canonical topology changes."""
+        with self._lock:
+            if callback not in self._topology_subscribers:
+                self._topology_subscribers.append(callback)
+
+    def unsubscribe_topology_changed(self, callback: TopologyChangedCallback) -> None:
+        with self._lock:
+            if callback in self._topology_subscribers:
+                self._topology_subscribers.remove(callback)
 
     # ── observaciones ─────────────────────────────────────────────────
     def ingest(self, observations: tuple[DeviceObservation, ...]) -> None:
@@ -163,12 +206,14 @@ class AudioDeviceRegistry:
         devices antes observados que ya no aparecen quedan unavailable
         (reconcile generation-safe).
         """
-        self._apply_observations(observations, reconcile=True)
+        with self._lock:
+            self._apply_observations(observations, reconcile=True)
 
     def handle_added(self, observation: DeviceObservation) -> None:
         """Re-add: comparte EXACTAMENTE la resolución canónica de ingest
         (mismo algoritmo de identidad), sin reconciliar terceros."""
-        self._apply_observations((observation,), reconcile=False)
+        with self._lock:
+            self._apply_observations((observation,), reconcile=False)
 
     def _apply_observations(
         self,
@@ -176,6 +221,7 @@ class AudioDeviceRegistry:
         *,
         reconcile: bool,
     ) -> None:
+        before = self._topology_state()
         usb = [o for o in observations if o.vendor_id and o.product_id]
         alsa = [o for o in observations if o.binding is not None]
 
@@ -214,6 +260,7 @@ class AudioDeviceRegistry:
             )
 
         if not reconcile:
+            self._publish_topology_changes(before)
             return
         # Reconcile: USB records que ya no se observan -> unavailable.
         for record in self._records.values():
@@ -230,6 +277,7 @@ class AudioDeviceRegistry:
                 record.available = False
                 record.bindings = ()
                 record.generation = self._next_generation()
+        self._publish_topology_changes(before)
 
     def _identity_for(
         self,
@@ -342,12 +390,60 @@ class AudioDeviceRegistry:
     # ── topología ─────────────────────────────────────────────────────
     def handle_removed(self, physical_path: str) -> None:
         """Remove físico: unavailable, generation++, intent PRESERVADO."""
-        for record in self._records.values():
-            identity = record.identity
-            if identity.physical_path == physical_path and record.available:
-                record.available = False
-                record.bindings = ()
-                record.generation = self._next_generation()
+        with self._lock:
+            before = self._topology_state()
+            for record in self._records.values():
+                identity = record.identity
+                if identity.physical_path == physical_path and record.available:
+                    record.available = False
+                    record.bindings = ()
+                    record.generation = self._next_generation()
+            self._publish_topology_changes(before)
+
+    def _topology_state(
+        self,
+    ) -> dict[str, tuple[bool, int, tuple[AudioDeviceBinding, ...]]]:
+        return {
+            stable_id: (record.available, record.generation, record.bindings)
+            for stable_id, record in self._records.items()
+        }
+
+    def _publish_topology_changes(
+        self,
+        before: dict[str, tuple[bool, int, tuple[AudioDeviceBinding, ...]]],
+    ) -> None:
+        """Publish each semantic device change once, after atomic mutation."""
+        for stable_id in sorted(set(before) | set(self._records)):
+            previous_available, previous_generation, previous_bindings = before.get(
+                stable_id, (False, 0, ())
+            )
+            record = self._records.get(stable_id)
+            if record is None:  # Records are retained as unavailable by design.
+                current_available, current_generation, current_bindings = False, 0, ()
+            else:
+                current_available = record.available
+                current_generation = record.generation
+                current_bindings = record.bindings
+            if (
+                previous_available == current_available
+                and previous_generation == current_generation
+                and _bindings_key(previous_bindings) == _bindings_key(current_bindings)
+            ):
+                continue
+            change = AudioDeviceTopologyChange(
+                stable_device_id=stable_id,
+                previous_available=previous_available,
+                current_available=current_available,
+                previous_generation=previous_generation,
+                current_generation=current_generation,
+                previous_bindings=previous_bindings,
+                current_bindings=current_bindings,
+            )
+            for callback in tuple(self._topology_subscribers):
+                try:
+                    callback(change)
+                except Exception:  # Subscribers cannot roll back registry truth.
+                    logger.exception("audio topology subscriber failed")
 
     # ── generation-safety ─────────────────────────────────────────────
     def apply_probe_result(
@@ -355,8 +451,9 @@ class AudioDeviceRegistry:
     ) -> bool:
         """Callback async: si la generation cambió, se descarta (STALE) y
         NO se muta estado. Devuelve True si fue aceptado."""
-        record = self._records.get(stable_device_id)
-        if record is None:
-            return False
-        # El probe en sí pertenece a DAC-V35-020; aquí solo la guardia.
-        return generation == record.generation
+        with self._lock:
+            record = self._records.get(stable_device_id)
+            if record is None:
+                return False
+            # El probe en sí pertenece a DAC-V35-020; aquí solo la guardia.
+            return generation == record.generation

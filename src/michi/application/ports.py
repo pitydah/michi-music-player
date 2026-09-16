@@ -219,6 +219,10 @@ class PlaybackOutputTransactionPort(Protocol):
 
     def release_active(self, reason: str) -> None: ...
 
+    def topology_lost(self, stable_device_id: str, generation: int) -> None:
+        """Release an active output invalidated by canonical topology truth."""
+        ...
+
 
 @dataclass(frozen=True, slots=True)
 class SharedOutputTransaction:
@@ -241,6 +245,10 @@ class SharedOutputTransaction:
         return None
 
     def release_active(self, reason: str) -> None:
+        return None
+
+    def topology_lost(self, stable_device_id: str, generation: int) -> None:
+        del stable_device_id, generation
         return None
 
 

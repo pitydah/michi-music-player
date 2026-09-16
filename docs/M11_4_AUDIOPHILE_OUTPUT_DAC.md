@@ -77,12 +77,19 @@ V3.5 spec governs implementation and acceptance.
   classified as DSP or resampling; proven rate/channel-layout changes and
   present-but-unknown transforms remain fail-closed. Its mandatory typed and
   real-GStreamer gates pass without skips.
+- `DAC-V35-080` transition/disconnect/reconnect — **CLOSED-AUTOMATED / GO**.
+  Complete USB+ALSA snapshots drive one immutable, generation-scoped topology
+  seam into PlaybackService and OutputSessionService. Active Direct loss stops
+  safely, releases once, preserves selected intent, and enters LOST. Reconnect
+  requires the same stable identity, a newer current ALSA binding, and fresh
+  qualification evidence; it never auto-resumes or silently falls back to
+  Shared/speakers. Gates: R80-01..R80-30 plus all DAC/M11.3 regressions.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
-software runtime-evidence verdict, not physical proof. `DAC-V35-080` is NEXT
+software runtime-evidence verdict, not physical proof. `DAC-V35-090` is NEXT
 AUTHORIZED / NOT STARTED; physical qualification (`DAC-V35-110`) remains
 pending.
 

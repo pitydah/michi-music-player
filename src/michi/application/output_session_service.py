@@ -11,7 +11,9 @@ conserva, el active pasa a None y la sesión queda LOST (§22).
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 
 from michi.application.audio_output_planner import (
@@ -69,6 +71,7 @@ _ALLOWED_TRANSITIONS: dict[OutputSessionState, frozenset[OutputSessionState]] = 
             OutputSessionState.RUNNING,
             OutputSessionState.RELEASING,
             OutputSessionState.RECONFIGURING,
+            OutputSessionState.RECOVERING,
             OutputSessionState.LOST,
             OutputSessionState.FAILED,
         }
@@ -101,6 +104,7 @@ _ALLOWED_TRANSITIONS: dict[OutputSessionState, frozenset[OutputSessionState]] = 
     ),
     OutputSessionState.RECOVERING: frozenset(
         {
+            OutputSessionState.IDLE,
             OutputSessionState.READY,
             OutputSessionState.RUNNING,
             OutputSessionState.LOST,
@@ -111,6 +115,7 @@ _ALLOWED_TRANSITIONS: dict[OutputSessionState, frozenset[OutputSessionState]] = 
         {
             OutputSessionState.IDLE,
             OutputSessionState.ACQUIRING,
+            OutputSessionState.RECOVERING,
             OutputSessionState.RELEASING,
             OutputSessionState.FAILED,
         }
@@ -131,6 +136,14 @@ class OutputSessionError(RuntimeError):
         super().__init__(f"{code}: {message}")
         self.code = code
         self.message = message
+
+
+class DirectTransitionKind(StrEnum):
+    """Auditable classification for one Direct-to-Direct replacement."""
+
+    SAME_TUPLE = "same_tuple"
+    RECONFIGURE = "reconfigure"
+    REACQUIRE = "reacquire"
 
 
 @dataclass(frozen=True, slots=True)
@@ -281,12 +294,14 @@ class OutputSessionService:
         request_provider: Callable[[Path], OutputRequest] | None = None,
         executors: Mapping[str, AudioOutputExecutorPort] | None = None,
         shared_transaction: SharedOutputTransaction | None = None,
+        plan_still_current: Callable[[OutputPlan], bool] | None = None,
     ) -> None:
         self._planner = planner
         self._facts_provider = facts_provider
         self._request_provider = request_provider
         self._executors = dict(executors or {})
         self._shared = shared_transaction or SharedOutputTransaction()
+        self._plan_still_current = plan_still_current or (lambda _plan: True)
         self._state = OutputSessionState.IDLE
         self._generation = 0
         self._session_id: str | None = None
@@ -303,6 +318,9 @@ class OutputSessionService:
         self._previous_direct: _DirectSessionSnapshot | None = None
         self._lost_fallback: FallbackKind | None = None
         self._last_release_invalidated_media = False
+        self._lost_device_id: str | None = None
+        self._lost_binding_generation = 0
+        self._last_transition_kind: DirectTransitionKind | None = None
 
     # ── lectura ───────────────────────────────────────────────────────
     @property
@@ -318,11 +336,24 @@ class OutputSessionService:
         return self._plan
 
     @property
+    def active_plan(self) -> OutputPlan | None:
+        return self._plan if self._state in _ACTIVE_STATES else None
+
+    @property
+    def active_device_id(self) -> str | None:
+        plan = self.active_plan
+        return plan.stable_device_id if plan is not None else None
+
+    @property
+    def last_transition_kind(self) -> DirectTransitionKind | None:
+        return self._last_transition_kind
+
+    @property
     def mode(self) -> str:
         return self._mode
 
     @property
-    def volume_policy(self):
+    def volume_policy(self) -> VolumePolicy | None:
         """Resolved immutable Direct policy; Shared has no Direct policy."""
         return (
             self._plan.volume_policy if self._mode == "direct" and self._plan else None
@@ -413,6 +444,20 @@ class OutputSessionService:
         except Exception as exc:
             code = getattr(exc, "code", "DIRECT_EXECUTOR_PREPARE_FAILED")
             raise OutputSessionError(code, str(exc)) from exc
+        try:
+            plan_is_current = self._plan_still_current(result)
+        except Exception as exc:
+            self._discard_stale_candidate(executor, receipt)
+            raise OutputSessionError(
+                "OUTPUT_BINDING_VALIDATION_FAILED",
+                "Direct binding freshness could not be validated",
+            ) from exc
+        if not plan_is_current:
+            self._discard_stale_candidate(executor, receipt)
+            raise OutputSessionError(
+                "OUTPUT_BINDING_STALE",
+                "Direct binding changed while the candidate was being prepared",
+            )
         if self._mode == "shared" and self._shared_receipt is not None:
             self._shared.abort_media(self._shared_receipt, "superseded")
         return self._begin_session(
@@ -422,6 +467,18 @@ class OutputSessionService:
             receipt,
             previous_direct=previous_direct,
         )
+
+    @staticmethod
+    def _discard_stale_candidate(
+        executor: AudioOutputExecutorPort, receipt: str
+    ) -> None:
+        try:
+            disposition = executor.abort(receipt, "binding_stale_during_prepare")
+            if disposition is OutputExecutorAbortDisposition.STALE:
+                executor.release("binding_stale_during_prepare")
+        except Exception:
+            with suppress(Exception):
+                executor.release("binding_stale_during_prepare")
 
     def _request_for(self, path: Path) -> OutputRequest:
         if self._request_provider is not None:
@@ -496,17 +553,25 @@ class OutputSessionService:
         *,
         previous_direct: _DirectSessionSnapshot | None = None,
     ) -> str:
+        replacement_kind = (
+            self._classify_direct_transition(previous_direct.plan, plan)
+            if previous_direct is not None
+            else None
+        )
         if self._state is not OutputSessionState.IDLE:
             if self._state in (OutputSessionState.READY, OutputSessionState.RUNNING):
-                # re-preparación explícita: reconfigure.
-                self._transition(OutputSessionState.RELEASING)
-                self._transition(OutputSessionState.IDLE)
+                self._transition(
+                    OutputSessionState.RECOVERING
+                    if replacement_kind is DirectTransitionKind.REACQUIRE
+                    else OutputSessionState.RECONFIGURING
+                )
             else:
                 raise OutputSessionError(
                     "illegal_transition",
                     f"prepare desde {self._state.value}",
                 )
-        self._transition(OutputSessionState.ACQUIRING)
+        if self._state is OutputSessionState.IDLE:
+            self._transition(OutputSessionState.ACQUIRING)
         self._generation += 1
         self._plan = plan
         self._path = Path(path)
@@ -517,12 +582,37 @@ class OutputSessionService:
         self._previous_direct = previous_direct
         self._session_id = f"session:{self._generation}"
         self._error_code = None
-        self._transition(OutputSessionState.CONFIGURING)
+        self._last_transition_kind = replacement_kind
+        if self._state is OutputSessionState.ACQUIRING:
+            self._transition(OutputSessionState.CONFIGURING)
         self._transition(OutputSessionState.READY)
         self._token_value = self._token()
         self._last_release_invalidated_media = False
         self._lost_fallback = None
         return self._token_value
+
+    @staticmethod
+    def _classify_direct_transition(
+        previous: OutputPlan, current: OutputPlan
+    ) -> DirectTransitionKind:
+        if (
+            previous.stable_device_id != current.stable_device_id
+            or previous.binding.generation != current.binding.generation
+            or previous.binding.locator != current.binding.locator
+            or previous.path_semantics != current.path_semantics
+        ):
+            return DirectTransitionKind.REACQUIRE
+        if (
+            previous.requested_pcm != current.requested_pcm
+            or previous.volume_policy != current.volume_policy
+            or previous.fallback != current.fallback
+            or previous.allow_resample != current.allow_resample
+            or previous.allow_remix != current.allow_remix
+            or previous.allow_processing != current.allow_processing
+            or previous.sink != current.sink
+        ):
+            return DirectTransitionKind.RECONFIGURE
+        return DirectTransitionKind.SAME_TUPLE
 
     def commit_media(self, token: str, path: Path) -> None:
         if self._is_stale(token):
@@ -629,9 +719,15 @@ class OutputSessionService:
     # ── topología / fallas ────────────────────────────────────────────
     def device_lost(self) -> None:
         """§22: selected se conserva, active pasa a None, sesión LOST."""
-        if self._state is OutputSessionState.IDLE:
+        if self._state in (OutputSessionState.IDLE, OutputSessionState.LOST):
             return
         self._lost_fallback = self._plan.fallback if self._plan is not None else None
+        self._lost_device_id = (
+            self._plan.stable_device_id if self._plan is not None else None
+        )
+        self._lost_binding_generation = (
+            self._plan.binding.generation if self._plan is not None else 0
+        )
         if self._executor is not None:
             self._executor.release("device_lost")
         self._executor = None
@@ -642,6 +738,32 @@ class OutputSessionService:
         self._transition(OutputSessionState.LOST)
         self._plan = None
         self._error_code = "device_lost"
+
+    def topology_lost(self, stable_device_id: str, generation: int) -> None:
+        """Apply one canonical topology loss to the matching active Direct lease."""
+        del generation  # Registry generation orders reconnect; plan generation owns G1.
+        if self._mode != "direct" or self.active_device_id != stable_device_id:
+            return
+        self.device_lost()
+
+    def rebind_after_topology_change(
+        self, stable_device_id: str, generation: int
+    ) -> bool:
+        """Acknowledge a newer same-device binding without activating playback."""
+        if (
+            self._state is not OutputSessionState.LOST
+            or stable_device_id != self._lost_device_id
+            or stable_device_id != self._selected_device_id
+            or generation <= self._lost_binding_generation
+        ):
+            return False
+        self._transition(OutputSessionState.RECOVERING)
+        self._transition(OutputSessionState.IDLE)
+        self._mode = "shared"
+        self._lost_device_id = None
+        self._lost_binding_generation = 0
+        self._error_code = None
+        return True
 
     def fail(self, error_code: str) -> None:
         self._error_code = error_code
@@ -688,6 +810,8 @@ class OutputSessionService:
         self._shared_receipt = None
         self._previous_direct = None
         self._lost_fallback = None
+        self._lost_device_id = None
+        self._lost_binding_generation = 0
         self._mode = "shared"
         if not keep_error:
             self._error_code = None

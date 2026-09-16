@@ -1349,7 +1349,11 @@ class TestF42AdapterContract:
         # next to the port (§0H.2/§10: production always has an output
         # transaction). No existing port signature changed; re-sealed after
         # audit — audio/transport semantics untouched.
-        "src/michi/application/ports.py": "80c41a11741e16c5",  # noqa: E501
+        # DAC-V35-080 (2026-09-16): additive typed topology_lost operation on
+        # PlaybackOutputTransactionPort and its explicit Shared no-op. This
+        # routes physical Direct loss through the existing output authority;
+        # AudioPort and engine transport contracts remain unchanged.
+        "src/michi/application/ports.py": "758bf288bca0126d",  # noqa: E501
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: router gained
         # transactional binding (per-binding generation provenance + attach
         # rollback). Forwarding semantics unchanged.
