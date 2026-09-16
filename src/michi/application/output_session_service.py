@@ -10,6 +10,7 @@ conserva, el active pasa a None y la sesión queda LOST (§22).
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ from michi.application.audio_output_planner import (
 )
 from michi.application.audio_output_ports import (
     AudioOutputExecutorPort,
+    OutputCleanupDiagnostic,
     OutputExecutorAbortDisposition,
     VolumeAuthority,
 )
@@ -38,6 +40,8 @@ from michi.domain.audio_output import (
     VolumePolicy,
 )
 
+logger = logging.getLogger(__name__)
+
 _ACTIVE_STATES = frozenset(
     {
         OutputSessionState.READY,
@@ -50,12 +54,17 @@ _ACTIVE_STATES = frozenset(
 
 _ALLOWED_TRANSITIONS: dict[OutputSessionState, frozenset[OutputSessionState]] = {
     OutputSessionState.IDLE: frozenset(
-        {OutputSessionState.ACQUIRING, OutputSessionState.FAILED}
+        {
+            OutputSessionState.ACQUIRING,
+            OutputSessionState.LOST,
+            OutputSessionState.FAILED,
+        }
     ),
     OutputSessionState.ACQUIRING: frozenset(
         {
             OutputSessionState.CONFIGURING,
             OutputSessionState.IDLE,
+            OutputSessionState.LOST,
             OutputSessionState.FAILED,
         }
     ),
@@ -63,6 +72,7 @@ _ALLOWED_TRANSITIONS: dict[OutputSessionState, frozenset[OutputSessionState]] = 
         {
             OutputSessionState.READY,
             OutputSessionState.IDLE,
+            OutputSessionState.LOST,
             OutputSessionState.FAILED,
         }
     ),
@@ -121,10 +131,18 @@ _ALLOWED_TRANSITIONS: dict[OutputSessionState, frozenset[OutputSessionState]] = 
         }
     ),
     OutputSessionState.FAILED: frozenset(
-        {OutputSessionState.IDLE, OutputSessionState.RELEASING}
+        {
+            OutputSessionState.IDLE,
+            OutputSessionState.RELEASING,
+            OutputSessionState.LOST,
+        }
     ),
     OutputSessionState.RELEASING: frozenset(
-        {OutputSessionState.IDLE, OutputSessionState.FAILED}
+        {
+            OutputSessionState.IDLE,
+            OutputSessionState.LOST,
+            OutputSessionState.FAILED,
+        }
     ),
 }
 
@@ -316,11 +334,11 @@ class OutputSessionService:
         self._executor_receipt: str | None = None
         self._shared_receipt: str | None = None
         self._previous_direct: _DirectSessionSnapshot | None = None
-        self._lost_fallback: FallbackKind | None = None
         self._last_release_invalidated_media = False
         self._lost_device_id: str | None = None
         self._lost_binding_generation = 0
         self._last_transition_kind: DirectTransitionKind | None = None
+        self._last_cleanup_diagnostic: OutputCleanupDiagnostic | None = None
 
     # ── lectura ───────────────────────────────────────────────────────
     @property
@@ -347,6 +365,10 @@ class OutputSessionService:
     @property
     def last_transition_kind(self) -> DirectTransitionKind | None:
         return self._last_transition_kind
+
+    @property
+    def last_cleanup_diagnostic(self) -> OutputCleanupDiagnostic | None:
+        return self._last_cleanup_diagnostic
 
     @property
     def mode(self) -> str:
@@ -380,11 +402,14 @@ class OutputSessionService:
         return self._mode == "direct" and self._executor is not None
 
     def allows_automatic_engine_fallback(self) -> bool:
+        if self._state is OutputSessionState.LOST:
+            return False
         plan = self._plan
         if plan is None and self._previous_direct is not None:
             plan = self._previous_direct.plan
-        fallback = plan.fallback if plan is not None else self._lost_fallback
-        return fallback is not FallbackKind.STOP
+        if plan is None:
+            return self._mode == "shared"
+        return plan.fallback is not FallbackKind.STOP
 
     def classify_load_failure(self, previous_source_preserved: bool) -> str:
         """Retain a prior Direct lease only when the backend retained its source."""
@@ -531,7 +556,6 @@ class OutputSessionService:
         self._token_value = f"output-tx:shared:{self._generation}"
         self._error_code = None
         self._last_release_invalidated_media = False
-        self._lost_fallback = None
         if self._state is not OutputSessionState.IDLE:
             self._state = OutputSessionState.IDLE
         return self._token_value
@@ -588,7 +612,6 @@ class OutputSessionService:
         self._transition(OutputSessionState.READY)
         self._token_value = self._token()
         self._last_release_invalidated_media = False
-        self._lost_fallback = None
         return self._token_value
 
     @staticmethod
@@ -717,34 +740,119 @@ class OutputSessionService:
         self._transition(OutputSessionState.IDLE)
 
     # ── topología / fallas ────────────────────────────────────────────
-    def device_lost(self) -> None:
-        """§22: selected se conserva, active pasa a None, sesión LOST."""
-        if self._state in (OutputSessionState.IDLE, OutputSessionState.LOST):
+    def device_lost(
+        self,
+        stable_device_id: str | None = None,
+        generation: int | None = None,
+    ) -> None:
+        """Invalidate topology-dependent authority, then attempt cleanup."""
+        previous = self._previous_direct
+        if self._state is OutputSessionState.LOST or (
+            self._state is OutputSessionState.IDLE
+            and self._executor is None
+            and previous is None
+        ):
             return
-        self._lost_fallback = self._plan.fallback if self._plan is not None else None
-        self._lost_device_id = (
-            self._plan.stable_device_id if self._plan is not None else None
+        current_plan = self._plan
+        loss_plan = current_plan
+        if stable_device_id is not None:
+            if (
+                current_plan is not None
+                and current_plan.stable_device_id == stable_device_id
+            ):
+                loss_plan = current_plan
+            elif (
+                previous is not None
+                and previous.plan.stable_device_id == stable_device_id
+            ):
+                loss_plan = previous.plan
+        resolved_device_id = stable_device_id or (
+            loss_plan.stable_device_id if loss_plan is not None else None
         )
-        self._lost_binding_generation = (
-            self._plan.binding.generation if self._plan is not None else 0
+        loss_generation = loss_plan.binding.generation if loss_plan is not None else 0
+        if generation is not None:
+            loss_generation = max(loss_generation, generation)
+        wait_for_rebind = (
+            stable_device_id is None or resolved_device_id == self._selected_device_id
         )
-        if self._executor is not None:
-            self._executor.release("device_lost")
+        self._lost_device_id = resolved_device_id
+        self._lost_binding_generation = loss_generation
+
+        executors: list[AudioOutputExecutorPort] = []
+        for candidate in (
+            self._executor,
+            previous.executor if previous is not None else None,
+        ):
+            if candidate is not None and all(
+                candidate is not item for item in executors
+            ):
+                executors.append(candidate)
+        # Topology truth already says the device is absent. Invalidate every
+        # logical lease before attempting fallible physical cleanup so an
+        # exception can never preserve stale output authority.
+        if self._state is not OutputSessionState.LOST:
+            self._transition(OutputSessionState.LOST)
         self._executor = None
         self._executor_receipt = None
         self._shared_receipt = None
         self._previous_direct = None
         self._token_value = None
-        self._transition(OutputSessionState.LOST)
         self._plan = None
+        self._path = None
+        self._session_id = None
+        self._mode = "lost" if wait_for_rebind else "shared"
+        self._last_release_invalidated_media = bool(executors)
         self._error_code = "device_lost"
+        self._last_cleanup_diagnostic = None
+        if not wait_for_rebind:
+            self._lost_device_id = None
+            self._lost_binding_generation = 0
+            self._transition(OutputSessionState.IDLE)
+        for executor in executors:
+            try:
+                executor.release("device_lost")
+            except Exception as exc:  # noqa: BLE001 - physical cleanup boundary
+                if self._last_cleanup_diagnostic is None:
+                    self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                        reason="device_lost",
+                        code=getattr(exc, "code", "DIRECT_EXECUTOR_RELEASE_FAILED"),
+                        detail=str(exc),
+                    )
+                logger.exception("Direct executor release failed after topology loss")
 
     def topology_lost(self, stable_device_id: str, generation: int) -> None:
         """Apply one canonical topology loss to the matching active Direct lease."""
-        del generation  # Registry generation orders reconnect; plan generation owns G1.
-        if self._mode != "direct" or self.active_device_id != stable_device_id:
+        if not self.topology_loss_applies(stable_device_id):
             return
-        self.device_lost()
+        self.device_lost(stable_device_id, generation)
+
+    def topology_loss_applies(self, stable_device_id: str) -> bool:
+        """Whether current or still-restorable Direct ownership uses a device.
+
+        During A→B replacement, B is the logical candidate while A can remain
+        the physical predecessor until the executor's destructive boundary.
+        The executor remains the sole authority on whether A is still owned.
+        """
+        if (
+            self._mode == "direct"
+            and self._plan is not None
+            and self._state in _ACTIVE_STATES
+            and self._plan.stable_device_id == stable_device_id
+        ):
+            return True
+        previous = self._previous_direct
+        if previous is None or previous.plan.stable_device_id != stable_device_id:
+            return False
+        owns_committed = getattr(previous.executor, "owns_committed_receipt", None)
+        if owns_committed is None:
+            return True  # Conservative compatibility for an older executor double.
+        try:
+            return bool(owns_committed(previous.receipt))
+        except Exception:  # noqa: BLE001 - uncertainty cannot dismiss device loss
+            logger.exception(
+                "could not validate predecessor ownership on topology loss"
+            )
+            return True
 
     def rebind_after_topology_change(
         self, stable_device_id: str, generation: int
@@ -809,7 +917,6 @@ class OutputSessionService:
         self._executor_receipt = None
         self._shared_receipt = None
         self._previous_direct = None
-        self._lost_fallback = None
         self._lost_device_id = None
         self._lost_binding_generation = 0
         self._mode = "shared"

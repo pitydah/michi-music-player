@@ -59,6 +59,15 @@ class OutputExecutorAbortDisposition(Enum):
     STALE = "stale"
 
 
+@dataclass(frozen=True, slots=True)
+class OutputCleanupDiagnostic:
+    """Typed evidence that physical cleanup failed after logical invalidation."""
+
+    reason: str
+    code: str
+    detail: str
+
+
 class VolumeAuthority(Enum):
     """Current owner of effective loudness for the resolved output path."""
 

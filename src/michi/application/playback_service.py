@@ -1235,7 +1235,13 @@ class PlaybackService:
             # remain mandatory even when the transport cannot acknowledge stop.
             logger.exception("transport stop failed during Direct output loss")
         self._output_token = None
-        self._output_tx.topology_lost(stable_device_id, generation)
+        try:
+            self._output_tx.topology_lost(stable_device_id, generation)
+        except Exception:
+            # OutputSessionService normally retains its own typed cleanup
+            # diagnostic. This outer boundary prevents any non-conforming or
+            # unexpected transaction failure from blocking PlaybackState truth.
+            logger.exception("output transaction failed during Direct output loss")
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = reason
         self._notify()

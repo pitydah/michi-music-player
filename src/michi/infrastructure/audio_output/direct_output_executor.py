@@ -356,10 +356,16 @@ class GStreamerDirectOutputExecutor:
         return identity
 
     def owns_committed_receipt(self, receipt: str) -> bool:
-        return (
+        current_committed = (
             self._state is DirectExecutionState.COMMITTED
             and self._receipt == receipt
             and self._handle is not None
+        )
+        predecessor = self._committed
+        return current_committed or (
+            predecessor is not None
+            and predecessor.state is DirectExecutionState.COMMITTED
+            and predecessor.receipt == receipt
         )
 
     def recipe_for_load(self, handle: DirectExecutionHandle) -> StrictSinkRecipe:
@@ -504,19 +510,32 @@ class GStreamerDirectOutputExecutor:
 
     # ── terminación ───────────────────────────────────────────────────
     def release(self, reason: str) -> None:
-        """Libera la ejecución actual (idempotente)."""
+        """Invalidate execution truth even when physical teardown fails.
+
+        The caller may retain the raised cleanup error for diagnostics, but a
+        missing device can never leave this executor or Signal Truth claiming
+        that the old generation is still active.
+        """
         handle = self._handle
-        if handle is not None:
-            self._discard_staged_load(handle)
-        if self._signal_truth is not None:
-            if self._signal_identity is not None:
-                self._signal_truth.terminate(self._signal_identity)
-            if (
-                self._committed is not None
-                and self._committed.signal_identity is not None
-            ):
-                self._signal_truth.terminate(self._committed.signal_identity)
-        self._clear()
+        signal_identity = self._signal_identity
+        committed_signal_identity = (
+            self._committed.signal_identity if self._committed is not None else None
+        )
+        cleanup_error: Exception | None = None
+        try:
+            if handle is not None:
+                self._discard_staged_load(handle)
+        except Exception as exc:  # noqa: BLE001 - re-raised after invalidation
+            cleanup_error = exc
+        finally:
+            if self._signal_truth is not None:
+                if signal_identity is not None:
+                    self._signal_truth.terminate(signal_identity)
+                if committed_signal_identity is not None:
+                    self._signal_truth.terminate(committed_signal_identity)
+            self._clear()
+        if cleanup_error is not None:
+            raise cleanup_error
 
     def _discard_staged_load(self, handle: DirectExecutionHandle) -> None:
         provider = self._port_provider

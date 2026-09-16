@@ -223,7 +223,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 5 | `DAC-V35-050` GStreamer Direct executor | ACTIVE | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
 | 7 | `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | negotiated selected-branch transform activity distinguishes element presence from pass-through; physical claims excluded |
-| 8 | `DAC-V35-080` Disconnect/reconnect + transitions | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind; no speaker fallback |
+| 8 | `DAC-V35-080 + 080R1` Disconnect/reconnect + cleanup atomicity | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind even when physical cleanup fails; volume and Signal Truth evidence sealed |
 | 9 | `DAC-V35-090` Premium DAC UI | NEXT AUTHORIZED / NOT STARTED | YES | DAC controls separated from Audio Engine; mode-aware volume |
 | 10 | `DAC-V35-100` Automated verification + documentation seal | ACTIVE | YES | one GO/NO-GO command + docs/status parity |
 | 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
@@ -19857,6 +19857,67 @@ repository alignment, Ruff, the complete repository suite, adversarial review,
 and Judgment Day. This is software-only evidence: it does not establish
 physical DAC qualification, exclusivity, bit-perfect/Michi-Verified status, or
 M11.5 behavior. `DAC-V35-090` is NEXT AUTHORIZED / NOT STARTED.
+
+**Corrective reopening (2026-09-16): `DAC-V35-080R1 IN PROGRESS / 080 NO-GO`.**
+An adversarial audit found that `OutputSessionService.device_lost()` performed
+physical executor release before invalidating logical ownership. If
+`release("device_lost")` raised, the registry truth was already unavailable but
+the output session could still expose the old executor, plan, active device,
+token, rollback image, and non-LOST state. Subscriber exception isolation then
+made that split-brain state persistent. The earlier 080 closure is therefore
+superseded until this corrective package is green.
+
+R1 freezes these rules before production changes:
+
+```text
+topology loss invalidates logical output authority unconditionally
+physical release remains best-effort cleanup and may fail independently
+cleanup failure is explicit typed diagnostic evidence, never swallowed
+LOST preserves selected device/profile intent and lost binding generation only
+LOST never preserves plan, executor, receipt, token, predecessor/candidate,
+AppliedVolume, runtime evidence, or active Signal Truth from the lost generation
+PlaybackService publishes canonical STOPPED + OUTPUT_DEVICE_LOST even when
+transport stop and/or executor release fail
+registry topology truth remains committed and never rolls back for subscribers
+duplicate loss is idempotent and never retries ownership through stale state
+reconnect requires same stable identity, newer current ALSA binding, fresh
+qualification/runtime evidence, and an explicit Play; no auto-resume/fallback
+```
+
+Required `DAC-V35-080R1` gates are `R80R1-01..R80R1-30`. They must include
+release-failure and stop-failure matrices, the productive VolumePolicyService
+seam, the productive SignalTruthRecorder/executor seam, and the 050R2 race
+`committed A -> provisional B -> topology loss` on both sides of the
+destructive boundary. All 050/050R1/050R2, V60, ST70/ST70R1/070R2/070R2.1,
+real-GStreamer, M11.3, DAC, full-suite, quality, packaging, minimum-Qt,
+adversarial-review, Judgment Day, and exact-head CI gates remain mandatory.
+
+Only after every gate is green may the same commit restore
+`DAC-V35-080 CLOSED-AUTOMATED / GO` and authorize 090. Until then
+`DAC-V35-090` is `BLOCKED / DO NOT START`. This corrective package does not
+authorize physical qualification, exclusivity, bit-perfect/Michi-Verified,
+M11.5, hardware-volume, DSD/DoP, or automatic fallback claims.
+
+**Corrective automated closure (2026-09-16):
+`DAC-V35-080 + 080R1 CLOSED-AUTOMATED / GO`.** Topology loss now invalidates
+all logical output ownership before attempting fallible physical cleanup.
+Executor release failure remains explicit as typed diagnostic evidence while
+the executor and active/candidate Signal Truth always become inactive. The
+actual loss identity and registry generation fence reconnect; executor-owned
+predecessor truth covers Direct A→B and Direct→Shared candidates on both sides
+of the destructive boundary. Playback converges to STOPPED even when transport
+stop or output cleanup fails. Productive gates prove preserved Shared volume
+preference, lost-generation volume fail-closed behavior, Signal Truth
+retirement, no fallback/EOM/autoplay, and fresh explicit-Play reconnect.
+
+Evidence: all 30 named `R80R1` gates plus the Shared-candidate predecessor
+extension (31 passed), 494 DAC tests, the complete repository suite at 4668
+passed with two explained unrelated skips, Ruff/format, QML syntax, build,
+wheel parity, installed-wheel smoke, PySide6 6.6.2 minimum lane, adversarial
+review, and Judgment Day PASS. This remains automated software evidence only;
+it establishes no physical DAC qualification, exclusivity, bit-perfect/
+Michi-Verified status, M11.5 guarantee, hardware-volume qualification, or
+DSD/DoP support. `DAC-V35-090` is NEXT AUTHORIZED / NOT STARTED.
 
 ---
 

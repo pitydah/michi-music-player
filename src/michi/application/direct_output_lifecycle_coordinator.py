@@ -52,7 +52,7 @@ class DirectOutputLifecycleCoordinator:
         if registry_available != change.current_available:
             return
         if not change.current_available:
-            if self._output_session.active_device_id == change.stable_device_id:
+            if self._output_session.topology_loss_applies(change.stable_device_id):
                 self._playback.converge_after_output_loss(
                     change.stable_device_id,
                     change.current_generation,
