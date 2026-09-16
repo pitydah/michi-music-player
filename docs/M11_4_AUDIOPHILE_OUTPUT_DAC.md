@@ -77,19 +77,27 @@ V3.5 spec governs implementation and acceptance.
   classified as DSP or resampling; proven rate/channel-layout changes and
   present-but-unknown transforms remain fail-closed. Its mandatory typed and
   real-GStreamer gates pass without skips.
-- `DAC-V35-080 + 080R1` transition/disconnect/reconnect corrective seal —
+- `DAC-V35-080 + 080R1 + 080R1.1` transition/disconnect/reconnect evidence seal —
   **CLOSED-AUTOMATED / GO**. Logical ownership is invalidated before fallible
   physical cleanup; cleanup failure remains typed diagnostic evidence while
   executor and Signal Truth authority become inactive. Exact loss generation,
   Direct A→B/Direct→Shared predecessor races, productive volume, and Signal
-  Truth loss behavior are sealed.
+  Truth loss behavior are sealed. R1.1 proves the complete productive
+  cross-generation cycle: Shared preference 37 survives G1 Direct FIXED unity,
+  loss exposes UNKNOWN authority, reconnect alone restores no runtime
+  authority, explicit Play builds fresh G2 plan/executor/port/binding evidence,
+  and explicit Shared return restores effective 37 and software gain 0.37.
+  G1 Signal Truth terminates on loss; G2 creates no truth before Play, records
+  runtime evidence under a distinct identity, and rejects late G1 anomalies as
+  stale without changing G2.
   Complete USB+ALSA snapshots drive one immutable, generation-scoped topology
   seam into PlaybackService and OutputSessionService. Active Direct loss stops
   safely, releases once, preserves selected intent, and enters LOST. Reconnect
   requires the same stable identity, a newer current ALSA binding, and fresh
   qualification evidence; it never auto-resumes or silently falls back to
-  Shared/speakers. Gates: R80R1-01..R80R1-30 plus the Shared-candidate
-  predecessor extension and all prior DAC/M11.3 regressions.
+  Shared/speakers. Gates: R80R1-01..R80R1-30, the Shared-candidate
+  predecessor extension, R80R1.1-01..R80R1.1-06, and all prior DAC/M11.3
+  regressions.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 

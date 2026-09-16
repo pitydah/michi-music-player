@@ -223,7 +223,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 5 | `DAC-V35-050` GStreamer Direct executor | ACTIVE | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
 | 7 | `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | negotiated selected-branch transform activity distinguishes element presence from pass-through; physical claims excluded |
-| 8 | `DAC-V35-080 + 080R1` Disconnect/reconnect + cleanup atomicity | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind even when physical cleanup fails; volume and Signal Truth evidence sealed |
+| 8 | `DAC-V35-080 + 080R1 + 080R1.1` Disconnect/reconnect + cross-generation evidence | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind plus fresh G2 volume authority and Signal Truth provenance; no G1 runtime authority survives |
 | 9 | `DAC-V35-090` Premium DAC UI | NEXT AUTHORIZED / NOT STARTED | YES | DAC controls separated from Audio Engine; mode-aware volume |
 | 10 | `DAC-V35-100` Automated verification + documentation seal | ACTIVE | YES | one GO/NO-GO command + docs/status parity |
 | 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
@@ -19918,6 +19918,54 @@ review, and Judgment Day PASS. This remains automated software evidence only;
 it establishes no physical DAC qualification, exclusivity, bit-perfect/
 Michi-Verified status, M11.5 guarantee, hardware-volume qualification, or
 DSD/DoP support. `DAC-V35-090` is NEXT AUTHORIZED / NOT STARTED.
+
+**Cross-generation evidence closure (2026-09-16):
+`DAC-V35-080 + 080R1 + 080R1.1 CLOSED-AUTOMATED / GO`.** Productive
+composition evidence now follows one physical DAC from Shared preference 37
+through Direct generation G1, topology loss, a same-identity reconnect with a
+new ALSA card index and binding generation G2, an explicit fresh Play, and an
+explicit return to Shared. G1 and G2 Direct both establish actual pipeline
+gain `1.0` and FIXED effective volume 100, while loss exposes UNKNOWN volume
+authority, reconnect alone restores no Direct authority, and the final Shared
+execution restores the preserved preference and actual software gain 0.37.
+
+The same productive cycle proves that loss retires G1 Signal Truth and that
+reconnect alone creates no candidate or active runtime truth. Explicit Play
+builds a new plan, executor generation, port generation, binding generation,
+and Signal Truth identity. Runtime evidence is recorded against that G2
+identity and classified afresh; the hardware-independent fixture legitimately
+remains `UNKNOWN + ST_MISSING_ALSA` while active `hw_params` is unavailable.
+It does not inherit G1's verdict. A late G1 runtime anomaly is rejected with
+`DIRECT_STALE_EXECUTION` and cannot mutate the active G2 snapshot. USB-only
+reappearance and reconnect without fresh qualification remain fail-closed.
+
+Evidence: `R80R1.1-01..R80R1.1-06` (6 passed), all 500 DAC tests, the complete
+repository suite at 4674 passed with two unrelated environment-dependent
+skips, and unchanged 050R2/060/070/M11.3 firewalls. No production code changed:
+the existing authority model already reconstructs current topology -> current
+binding -> current qualification -> fresh plan -> fresh Direct execution ->
+fresh volume projection -> fresh runtime evidence -> fresh Signal Truth.
+This remains automated software evidence only and does not establish physical
+DAC qualification, exclusive PCM ownership, bit-perfect/Michi-Verified status,
+M11.5 guarantees, hardware-volume qualification, or DSD/DoP support.
+`DAC-V35-090` is NEXT AUTHORIZED / NOT STARTED.
+
+R1.1 Killcritic closure:
+
+```text
+KC-XGEN-01 G2 Direct can start with software gain 0.37              NO
+KC-XGEN-02 Direct loss can overwrite Shared preference 37           NO
+KC-XGEN-03 rebind without Play can restore FIXED authority           NO
+KC-XGEN-04 Shared return after G2 can lose preference 37              NO
+KC-XGEN-05 G2 can inherit active Signal Truth from G1                 NO
+KC-XGEN-06 rebind can create Signal Truth without runtime             NO
+KC-XGEN-07 late G1 evidence can modify G2                              NO
+KC-XGEN-08 G2 can reuse G1 plan_id                                    NO
+KC-XGEN-09 G2 can use G1 binding generation                           NO
+KC-XGEN-10 stale G1 executor handle can continue publishing           NO
+KC-XGEN-11 USB-only reconnect can produce FIXED or Signal Truth       NO
+KC-XGEN-12 closure requires weakening 060 or 070                       NO
+```
 
 ---
 
