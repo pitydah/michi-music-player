@@ -1305,7 +1305,10 @@ class TestF42AdapterContract:
         # inspection crosses real GhostPad/ProxyPad/factory-less bins. The
         # Shared command, pump, bus, generation, and acceptance paths remain
         # unchanged; hash re-sealed after M11.3 regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "f4bec50851265f4c",
+        # DAC-V35-090R1.1 CI corrective seal (2026-09-17): requested close no
+        # longer emits the explicitly unexpected pump-death signal while the
+        # port is in `_closing`; live unexpected-exit telemetry is unchanged.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "9d7137da759b405b",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

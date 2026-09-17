@@ -877,7 +877,7 @@ class GStreamerAudioPort(AudioPort):
             # unexpected engine runtime loss — telemetry is emitted once on
             # the owner thread (QueuedConnection) with the current
             # generation; stale/close-time exits are ignored by the owner.
-            if not self._closed:
+            if not self._closing and not self._closed:
                 self._bridge.sig_pump_died.emit(
                     self._generation, "gstreamer pump exited unexpectedly"
                 )

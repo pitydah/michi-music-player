@@ -4497,6 +4497,19 @@ class TestRuntimeHealthTelemetry:
         QTest.qWait(80)
         assert len(events) == 1
 
+    def test_normal_close_does_not_queue_pump_death_signal(self, qapp):
+        """A requested pump exit is teardown, not runtime-failure telemetry."""
+        from PySide6.QtTest import QSignalSpy
+
+        bindings = FakeBindings()
+        port = GStreamerAudioPort(bindings)
+        spy = QSignalSpy(port._bridge.sig_pump_died)
+        port.activate()
+
+        port.close()
+
+        assert spy.count() == 0
+
 
 # ---------------------------------------------------------------------------
 # DAC-V35-050B — Strict Direct sink staging en el port (P1..P6)
