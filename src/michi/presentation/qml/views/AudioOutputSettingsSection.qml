@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import "../components"
+import "../controls" as Controls
 import "../primitives"
 import "../theme"
 
@@ -11,6 +12,7 @@ Item {
     property var devices: []
     property var profiles: []
     property string selectedDeviceId: ""
+    property string selectedProfileId: ""
     property string activeDeviceId: ""
     property string outputState: "idle"
     property string volumeLabel: qsTr("Volume unavailable")
@@ -23,6 +25,23 @@ Item {
 
     signal deviceSelectionRequested(string stableDeviceId)
     signal sharedSelectionRequested()
+    signal profileSelectionRequested(string profileId)
+
+    function selectedProfileIndex() {
+        for (var i = 0; i < root.profiles.length; ++i) {
+            if (root.profiles[i].profileId === root.selectedProfileId)
+                return i
+        }
+        return -1
+    }
+
+    function syncProfileSelection() {
+        profileSelector.currentIndex = root.selectedProfileIndex()
+    }
+
+    onProfilesChanged: Qt.callLater(root.syncProfileSelection)
+    onSelectedProfileIdChanged: Qt.callLater(root.syncProfileSelection)
+    Component.onCompleted: root.syncProfileSelection()
 
     implicitHeight: panelContent.implicitHeight + MichiSpacing.lg * 2
 
@@ -43,6 +62,48 @@ Item {
                 role: "heading"
                 Accessible.role: Accessible.Heading
             }
+
+            RowLayout {
+                objectName: "audioOutputProfileRow"
+                Layout.fillWidth: true
+                spacing: MichiSpacing.md
+
+                ColumnLayout {
+                    objectName: "audioOutputProfileCopy"
+                    Layout.fillWidth: true
+                    spacing: MichiSpacing.xxs
+                    MichiText {
+                        text: qsTr("Output profile")
+                        role: "primary"
+                    }
+                    MichiText {
+                        Layout.fillWidth: true
+                        text: root.profiles.length > 0
+                            ? qsTr("Choose a saved path for an available device.")
+                            : qsTr("No saved output profiles are available.")
+                        role: "secondary"
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                Controls.MichiComboBox {
+                    id: profileSelector
+                    objectName: "audioOutputProfileSelector"
+                    Layout.minimumWidth: 260
+                    Layout.preferredWidth: 360
+                    model: root.profiles
+                    textRole: "displayName"
+                    enabledRole: "actionEnabled"
+                    enabled: root.profiles.length > 0
+                    accessibleName: qsTr("Output profile")
+                    onActivated: index => {
+                        var profile = root.profiles[index]
+                        if (profile && profile.actionEnabled)
+                            root.profileSelectionRequested(profile.profileId)
+                        Qt.callLater(root.syncProfileSelection)
+                    }
+                }
+            }
             MichiText {
                 Layout.fillWidth: true
                 text: qsTr("Choose where Michi sends audio. Selection and active playback are shown separately.")
@@ -51,6 +112,7 @@ Item {
             }
 
             Rectangle {
+                objectName: "audioOutputFailureBanner"
                 visible: root.lastFailureTitle !== ""
                 Layout.fillWidth: true
                 implicitHeight: failureContent.implicitHeight + MichiSpacing.md * 2

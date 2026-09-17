@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import "../primitives"
@@ -6,6 +8,13 @@ import "../theme"
 ComboBox {
     id: root
     property string accessibleName: "Options"
+    property string enabledRole: ""
+    function optionEnabled(index) {
+        if (root.enabledRole === "")
+            return true
+        var item = root.model && index >= 0 ? root.model[index] : null
+        return item !== null && item[root.enabledRole] !== false
+    }
     implicitHeight: MichiMetrics.controlMedium
     leftPadding: MichiSpacing.md
     rightPadding: MichiSpacing.xl
@@ -45,8 +54,11 @@ ComboBox {
         id: option
         required property int index
         required property var modelData
+        objectName: root.objectName + "_option_" + index
         width: ListView.view.width
-        text: modelData
+        text: root.textAt(index)
+        enabled: root.optionEnabled(index)
+        opacity: enabled ? 1 : 0.55
         highlighted: root.highlightedIndex === index
         contentItem: MichiText { text: option.text; role: "secondary"; color: option.highlighted ? MichiPalette.textPrimary : MichiPalette.textSecondary }
         background: Rectangle {

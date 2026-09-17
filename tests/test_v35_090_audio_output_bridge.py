@@ -268,6 +268,10 @@ def _device(bridge, stable_id):
     return next(row for row in bridge.devices if row["stableDeviceId"] == stable_id)
 
 
+def _profile(bridge, profile_id):
+    return next(row for row in bridge.profiles if row["profileId"] == profile_id)
+
+
 def test_ui90_01_shared_projection_without_physical_dac_is_truthful() -> None:
     graph = _graph()
     shared = graph.bridge.devices[0]
@@ -304,7 +308,7 @@ def test_ui90_04_selected_disconnected_is_projected_correctly() -> None:
     assert row["bindingAvailable"] is False
 
 
-def test_ui90_05_reconnect_does_not_project_active_state() -> None:
+def test_ui90_05_ui90r1_17_reconnect_does_not_project_active_state() -> None:
     graph = _graph()
     graph.coordinator.select_device(graph.stable_id)
     graph.session.lose()
@@ -312,6 +316,19 @@ def test_ui90_05_reconnect_does_not_project_active_state() -> None:
     graph.devices.ingest(_observations("/devices/usb1/1-2", card=7))
     row = _device(graph.bridge, graph.stable_id)
     assert row["available"] is True and row["active"] is False
+
+
+def test_ui90r1_17_reconnect_clears_transient_action_failure() -> None:
+    graph = _graph()
+    graph.coordinator.select_device(graph.stable_id)
+    profile_id = graph.bridge.selectedProfileId
+    graph.devices.ingest(())
+    graph.bridge.select_profile(profile_id)
+    assert graph.bridge.lastFailureTitle == "Device disconnected"
+
+    graph.devices.ingest(_observations("/devices/usb1/1-2", card=7))
+
+    assert graph.bridge.lastFailureTitle == ""
 
 
 def test_ui90_06_fresh_g2_activation_projects_active() -> None:
@@ -371,7 +388,7 @@ def test_ui90_11_signal_truth_retirement_removes_stale_g1_verdict() -> None:
     assert graph.bridge.currentDeviceRate == 0
 
 
-def test_ui90_12_late_stale_g1_does_not_alter_bridge_projection() -> None:
+def test_ui90_12_ui90r1_16_late_stale_g1_does_not_alter_bridge_projection() -> None:
     graph = _graph()
     g1 = _direct_truth(graph.truth, graph.stable_id, 1)
     assert graph.truth.retire_active(g1)
@@ -523,3 +540,112 @@ def test_canonical_bridge_fields_and_intents_are_present() -> None:
         "open_diagnostics",
     ):
         assert callable(getattr(graph.bridge, intent))
+
+
+def test_ui90r1_01_profile_projection_uses_human_device_and_path_names() -> None:
+    graph = _graph()
+    graph.coordinator.select_device(graph.stable_id)
+    profile_id = graph.bridge.selectedProfileId
+
+    row = _profile(graph.bridge, profile_id)
+
+    assert row["displayName"] == "Topping DX5 — Direct"
+    assert row["deviceName"] == "Topping DX5"
+    assert row["pathLabel"] == "Direct"
+    assert row["available"] is True
+    assert row["actionEnabled"] is True
+
+
+def test_ui90r1_02_selected_unavailable_profile_is_retained_and_disabled() -> None:
+    graph = _graph()
+    graph.coordinator.select_device(graph.stable_id)
+    profile_id = graph.bridge.selectedProfileId
+
+    graph.devices.ingest(())
+    row = _profile(graph.bridge, profile_id)
+
+    assert row["selected"] is True
+    assert row["available"] is False
+    assert row["actionEnabled"] is False
+    assert row["statusLabel"] == "Selected · unavailable"
+
+
+def test_ui90r1_03_profile_selection_failure_preserves_authority() -> None:
+    graph = _graph()
+    graph.coordinator.select_device(graph.stable_id)
+    selected_id = graph.bridge.selectedProfileId
+    graph.devices.ingest(())
+
+    graph.bridge.select_profile(selected_id)
+
+    assert graph.bridge.selectedProfileId == selected_id
+    assert _profile(graph.bridge, selected_id)["selected"] is True
+    assert graph.bridge.lastFailureTitle == "Device disconnected"
+
+
+def test_ui90r1_04_profile_selection_never_changes_audio_engine() -> None:
+    graph = _graph()
+    graph.coordinator.select_device(graph.stable_id)
+    profile_id = graph.bridge.selectedProfileId
+    engine_before = graph.engines.state.active_engine_id
+
+    graph.bridge.select_profile(profile_id)
+
+    assert graph.engines.state.active_engine_id is engine_before
+
+
+def test_ui90r1_05_active_device_does_not_fabricate_an_active_profile_id() -> None:
+    graph = _graph()
+    graph.coordinator.select_device(graph.stable_id)
+    profile_id = graph.bridge.selectedProfileId
+    graph.session.activate(graph.stable_id, generation=1)
+
+    row = _profile(graph.bridge, profile_id)
+
+    assert row["selected"] is True
+    assert "active" not in row
+    assert "activeProfileId" not in row
+
+
+def test_ui90r1_18_unknown_profile_failure_preserves_selection() -> None:
+    graph = _graph()
+    graph.coordinator.select_device(graph.stable_id)
+    before = graph.repository.selection
+    failures = []
+    graph.bridge.action_failed.connect(
+        lambda code, title, detail: failures.append((code, title, detail))
+    )
+
+    graph.bridge.select_profile("missing-profile")
+
+    assert graph.repository.selection == before
+    assert graph.bridge.selectedProfileId == before.selected_profile_id
+    assert failures and failures[0][0] == "OUTPUT_PROFILE_UNKNOWN"
+
+
+def test_ui90r1_19_shared_selection_never_fabricates_profile_id() -> None:
+    graph = _graph()
+    graph.coordinator.select_device(graph.stable_id)
+
+    graph.coordinator.select_shared_output()
+
+    assert graph.bridge.selectedDeviceId == ""
+    assert graph.bridge.selectedProfileId == ""
+    shared = next(row for row in graph.bridge.devices if row["isShared"])
+    assert shared["profileId"] == ""
+
+
+def test_ui90r1_20_multiple_real_profiles_remain_distinct_and_human_named() -> None:
+    graph = _graph()
+    graph.devices.ingest(
+        (*_observations("/devices/usb1/1-2"), *_observations("/devices/usb2/2-1"))
+    )
+    for stable_id in graph.devices.available_ids():
+        graph.coordinator.select_device(stable_id)
+
+    rows = graph.bridge.profiles
+
+    assert len(rows) == 2
+    assert len({row["profileId"] for row in rows}) == 2
+    assert all(row["displayName"] == "Topping DX5 — Direct" for row in rows)
+    assert all(row["actionEnabled"] is True for row in rows)

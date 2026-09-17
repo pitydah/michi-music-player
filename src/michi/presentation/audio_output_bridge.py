@@ -148,6 +148,7 @@ class AudioOutputBridge(QObject):
         self._refresh_devices = refresh_devices
         self._disposed = False
         self._projection: dict[str, Any] = {}
+        self._last_action_failure: tuple[str, str, str] | None = None
 
         playback.subscribe_changed(self._on_source_changed)
         if signal_truth is not None:
@@ -179,6 +180,12 @@ class AudioOutputBridge(QObject):
             self._engines.unsubscribe_changed(self._on_source_changed)
 
     def _on_topology_changed(self, _change) -> None:
+        if self._last_action_failure is not None and self._last_action_failure[0] in {
+            "DEVICE_UNAVAILABLE",
+            "DEVICE_LOST",
+            "OUTPUT_DEVICE_LOST",
+        }:
+            self._last_action_failure = None
         self._on_source_changed()
 
     def _on_source_changed(self) -> None:
@@ -239,10 +246,18 @@ class AudioOutputBridge(QObject):
             else "shared"
         )
         reconnecting = output_state == OutputSessionState.RECOVERING.value
-        last_failure_code = (
+        session_failure_code = (
             session_state.error_code if session_state is not None else None
         )
-        last_failure_title, last_failure_display = failure_copy(last_failure_code)
+        if self._last_action_failure is not None:
+            (
+                last_failure_code,
+                last_failure_title,
+                last_failure_display,
+            ) = self._last_action_failure
+        else:
+            last_failure_code = session_failure_code
+            last_failure_title, last_failure_display = failure_copy(last_failure_code)
         truth = self._active_truth(session_state)
         verdict = truth.verdict.value if truth is not None else "unknown"
         truth_label = signal_truth_label(verdict)
@@ -252,11 +267,28 @@ class AudioOutputBridge(QObject):
             and self._engines.state.active_engine_id is AudioEngineId.GSTREAMER
         )
 
-        profile_rows = [self._profile_row(item) for item in profiles]
-        physical_rows = []
         snapshots = (
             self._devices.device_snapshots() if self._devices is not None else ()
         )
+        snapshots_by_id = {
+            snapshot.identity.stable_device_id: snapshot for snapshot in snapshots
+        }
+        profile_rows = [
+            self._profile_row(
+                item,
+                snapshot=snapshots_by_id.get(item.stable_device_id or ""),
+                selected=item.profile_id == selected_profile_id,
+            )
+            for item in profiles
+        ]
+        profile_rows.sort(
+            key=lambda row: (
+                not row["selected"],
+                not row["available"],
+                row["displayName"].casefold(),
+            )
+        )
+        physical_rows = []
         for snapshot in snapshots:
             physical_rows.append(
                 self._device_row(
@@ -386,15 +418,36 @@ class AudioOutputBridge(QObject):
         )
 
     @staticmethod
-    def _profile_row(profile) -> dict[str, Any]:
+    def _profile_row(profile, *, snapshot, selected: bool) -> dict[str, Any]:
         direct = profile.path is OutputPathPreference.HARDWARE_DIRECT
+        path_label = "Direct" if direct else "Shared"
+        available = bool(snapshot is not None and snapshot.available)
+        device_name = (
+            _display_name(snapshot.identity) if snapshot is not None else "Audio device"
+        )
+        status = (
+            "Selected · available"
+            if selected and available
+            else "Selected · unavailable"
+            if selected
+            else "Available"
+            if available
+            else "Unavailable"
+        )
         return {
             "profileId": profile.profile_id,
             "stableDeviceId": profile.stable_device_id or "",
-            "profileName": "Direct" if direct else "Shared",
+            "profileName": path_label,
+            "displayName": f"{device_name} — {path_label}",
+            "deviceName": device_name,
+            "pathLabel": path_label,
             "transportMode": "direct" if direct else "shared",
             "volumeMode": profile.volume_policy.value,
             "resyncDelayMs": profile.resync_delay_ms,
+            "available": available,
+            "selected": selected,
+            "actionEnabled": available,
+            "statusLabel": status,
         }
 
     def _device_row(
@@ -741,7 +794,15 @@ class AudioOutputBridge(QObject):
             title, detail = failure_copy(exc.code)
             if not title:
                 title, detail = "Output unavailable", exc.detail
+            self._last_action_failure = (exc.code, title, detail)
+            self._rebuild()
+            self.state_changed.emit()
             self.action_failed.emit(exc.code, title, detail)
+        else:
+            if self._last_action_failure is not None:
+                self._last_action_failure = None
+                self._rebuild()
+                self.state_changed.emit()
 
     def _get(self, key: str, fallback=None):
         return self._projection.get(key, fallback)

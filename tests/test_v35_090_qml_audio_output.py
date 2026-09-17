@@ -64,6 +64,19 @@ PY_PATH_ROWS = [
     {"title": stage, "summary": "S24_LE · 44.1 kHz"}
     for stage in ("Source", "Decoded", "Engine", "Device")
 ]
+PY_PROFILE_ROWS = [
+    {
+        "profileId": "direct:reference",
+        "stableDeviceId": "usb:1:2:serial-abc",
+        "displayName": "Example Reference DAC — Direct",
+        "deviceName": "Example Reference DAC",
+        "pathLabel": "Direct",
+        "available": True,
+        "selected": True,
+        "actionEnabled": True,
+        "statusLabel": "Selected · available",
+    }
+]
 
 DEVICE_ROW = """
 ({
@@ -134,6 +147,8 @@ Window {{
     color: "#000000"
     property int deviceRequests: 0
     property int sharedRequests: 0
+    property int profileRequests: 0
+    property string requestedProfileId: ""
     property var rows: [{SHARED_ROW}, {DEVICE_ROW}]
     property var pathRows: [
         ({{title: "Source", summary: "FLAC · 44.1 kHz"}}),
@@ -146,13 +161,26 @@ Window {{
         objectName: "outputSettings"
         anchors.left: parent.left
         anchors.top: parent.top
-        width: 900
+        x: 32
+        width: parent.width - 64
         devices: harness.rows
+        profiles: [{{
+            "profileId": "direct:reference",
+            "displayName": "Example Reference DAC — Direct",
+            "available": true,
+            "selected": true,
+            "actionEnabled": true
+        }}]
+        selectedProfileId: "direct:reference"
         signalPath: harness.pathRows
         signalTruthReasonCodes: ["RUNTIME_EVIDENCE_INCOMPLETE"]
         canUseDirect: true
         onDeviceSelectionRequested: harness.deviceRequests++
         onSharedSelectionRequested: harness.sharedRequests++
+        onProfileSelectionRequested: profileId => {{
+            harness.profileRequests++
+            harness.requestedProfileId = profileId
+        }}
     }}
 }}
 """
@@ -175,19 +203,55 @@ Window {{
 
     Item {{
         anchors.fill: parent
+        Button {{
+            id: opener
+            objectName: "outputPopupOpener"
+            text: "Output"
+        }}
         AudioOutputPopup {{
             id: popup
             objectName: "outputPopup"
             x: 40
             y: 40
             devices: harness.rows
+            focusReturnTarget: opener
             onDeviceSelectionRequested: harness.deviceRequests++
             onSharedSelectionRequested: harness.sharedRequests++
             onSettingsRequested: harness.settingsRequests++
         }}
     }}
-    Component.onCompleted: popup.open()
+    Component.onCompleted: {{
+        opener.forceActiveFocus()
+        popup.open()
+    }}
 }}
+"""
+
+NOW_PLAYING_HARNESS = """
+import QtQuick
+import QtQuick.Controls.Basic
+import "../player"
+
+Window {
+    id: harness
+    visible: true
+    width: 1280
+    height: 500
+    color: "#000000"
+
+    NowPlayingBar {
+        id: bar
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: implicitHeight
+        currentPath: "/music/example.flac"
+        trackTitle: "Example Track"
+        artist: "Example Artist"
+        canSelectOutput: true
+        outputDevices: []
+    }
+}
 """
 
 
@@ -200,6 +264,11 @@ def qapp():
 
 def _create(qapp, code: str, base_rel: str):
     engine = QQmlEngine()
+    qml_warnings = []
+    engine.warnings.connect(
+        lambda items: qml_warnings.extend(str(item) for item in items)
+    )
+    engine._michi_test_warnings = qml_warnings
     engine.addImportPath(str(QML_DIR))
     component = QQmlComponent(engine)
     component.setData(code.encode("utf-8"), QUrl.fromLocalFile(str(QML_DIR / base_rel)))
@@ -209,6 +278,8 @@ def _create(qapp, code: str, base_rel: str):
     section = window.findChild(QObject, "outputSettings")
     if section is not None:
         section.setProperty("devices", [PY_SHARED_ROW, PY_DEVICE_ROW])
+        section.setProperty("profiles", PY_PROFILE_ROWS)
+        section.setProperty("selectedProfileId", "direct:reference")
         section.setProperty("signalPath", PY_PATH_ROWS)
     popup = window.findChild(QObject, "outputPopup")
     if popup is not None:
@@ -479,3 +550,373 @@ def test_ui90_47_new_surfaces_define_accessible_names_and_reduced_motion() -> No
     )
     assert sources.count("Accessible.name") >= 3
     assert "MichiAccessibility.reducedMotion" in sources
+
+
+def test_ui90r1_06_settings_instantiates_real_output_profile_selector(qapp) -> None:
+    _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    selector = _visual_item(window, "audioOutputProfileSelector")
+    assert selector is not None
+    assert selector.property("currentText") == "Example Reference DAC — Direct"
+    assert selector.property("accessibleName") == "Output profile"
+    window.close()
+
+
+def test_ui90r1_07_profile_selector_is_wired_to_bridge_intent() -> None:
+    section = _source("views/AudioOutputSettingsSection.qml")
+    settings = _source("views/SettingsView.qml")
+    assert "profileSelectionRequested(profile.profileId)" in section
+    assert "audioOutput.select_profile(profileId)" in settings
+    assert "audioOutput.select_path_mode" not in section
+    assert "audioEngine" not in section
+
+
+def test_ui90r1_08_escape_really_closes_popup_and_restores_focus(qapp) -> None:
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    popup = _open_popup(window)
+    QTest.keyClick(window, Qt.Key_Escape)
+    QTest.qWait(250)
+    QApplication.processEvents()
+    opener = _visual_item(window, "outputPopupOpener")
+    assert popup.property("opened") is False
+    assert opener is not None and opener.property("activeFocus") is True
+    window.close()
+
+
+def test_ui90r1_09_open_really_focuses_first_enabled_row(qapp) -> None:
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    _open_popup(window)
+    shared = _visual_item(window, "outputPopupRow_shared")
+    assert shared is not None and shared.property("activeFocus") is True
+    window.close()
+
+
+def test_ui90r1_10_down_arrow_really_moves_focus(qapp) -> None:
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    _open_popup(window)
+    QTest.keyClick(window, Qt.Key_Down)
+    QApplication.processEvents()
+    device = _visual_item(window, "outputPopupRow_usb:1:2:serial-abc")
+    assert device is not None and device.property("activeFocus") is True
+    window.close()
+
+
+def test_ui90r1_11_arrows_really_skip_disabled_rows(qapp) -> None:
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    popup = _open_popup(window)
+    unavailable = dict(PY_DEVICE_ROW)
+    unavailable.update(
+        stableDeviceId="usb:disabled",
+        displayName="Unavailable DAC",
+        available=False,
+        canSelect=False,
+        selected=False,
+    )
+    available = dict(PY_DEVICE_ROW)
+    available.update(
+        stableDeviceId="usb:available", displayName="Available DAC", selected=False
+    )
+    popup.setProperty("devices", [PY_SHARED_ROW, unavailable, available])
+    QApplication.processEvents()
+    shared = _visual_item(window, "outputPopupRow_shared")
+    shared.forceActiveFocus()
+    QTest.keyClick(window, Qt.Key_Down)
+    QApplication.processEvents()
+    target = _visual_item(window, "outputPopupRow_usb:available")
+    disabled = _visual_item(window, "outputPopupRow_usb:disabled")
+    assert target is not None and target.property("activeFocus") is True
+    assert disabled is not None and disabled.property("activeFocus") is False
+    window.close()
+
+
+def test_ui90r1_12_enter_really_activates_focused_row(qapp) -> None:
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    _open_popup(window)
+    QTest.keyClick(window, Qt.Key_Return)
+    QApplication.processEvents()
+    assert window.property("sharedRequests") == 1
+    assert window.property("deviceRequests") == 0
+    window.close()
+
+
+def test_ui90r1_13_popup_live_adds_device_while_open(qapp) -> None:
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    popup = _open_popup(window)
+    added = dict(PY_DEVICE_ROW)
+    added.update(
+        stableDeviceId="usb:hotplug", displayName="Hotplug DAC", selected=False
+    )
+    popup.setProperty("devices", [PY_SHARED_ROW, PY_DEVICE_ROW, added])
+    QApplication.processEvents()
+    assert popup.property("opened") is True
+    assert _visual_item(window, "outputPopupRow_usb:hotplug") is not None
+    window.close()
+
+
+def test_ui90r1_14_popup_disconnect_disables_without_auto_selection(qapp) -> None:
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    popup = _open_popup(window)
+    disconnected = dict(PY_DEVICE_ROW)
+    disconnected.update(
+        available=False, canSelect=False, statusLabel="Selected · unavailable"
+    )
+    popup.setProperty("devices", [PY_SHARED_ROW, disconnected])
+    QApplication.processEvents()
+    row = _visual_item(window, "outputPopupRow_usb:1:2:serial-abc")
+    assert popup.property("opened") is True
+    assert row is not None and row.property("enabled") is False
+    assert window.property("deviceRequests") == 0
+    assert window.property("sharedRequests") == 0
+    window.close()
+
+
+def test_ui90r1_15_popup_reconnect_enables_without_claiming_active(qapp) -> None:
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    popup = _open_popup(window)
+    disconnected = dict(PY_DEVICE_ROW)
+    disconnected.update(available=False, canSelect=False, active=False)
+    popup.setProperty("devices", [PY_SHARED_ROW, disconnected])
+    QApplication.processEvents()
+    reconnected = dict(disconnected)
+    reconnected.update(
+        available=True, canSelect=True, statusLabel="Selected · inactive"
+    )
+    popup.setProperty("devices", [PY_SHARED_ROW, reconnected])
+    QApplication.processEvents()
+    row = _visual_item(window, "outputPopupRow_usb:1:2:serial-abc")
+    assert row is not None and row.property("enabled") is True
+    assert reconnected["active"] is False
+    assert window.property("deviceRequests") == 0
+    window.close()
+
+
+def test_ui90r1_21_empty_profile_model_disables_selector(qapp) -> None:
+    _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    section = window.findChild(QObject, "outputSettings")
+    section.setProperty("profiles", [])
+    section.setProperty("selectedProfileId", "")
+    QApplication.processEvents()
+    selector = _visual_item(window, "audioOutputProfileSelector")
+    assert selector is not None and selector.property("enabled") is False
+    assert selector.property("count") == 0
+    window.close()
+
+
+def test_ui90r1_19_shared_selection_does_not_display_first_direct_profile(qapp) -> None:
+    _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    section = window.findChild(QObject, "outputSettings")
+    section.setProperty("selectedProfileId", "")
+    QApplication.processEvents()
+    selector = _visual_item(window, "audioOutputProfileSelector")
+    assert selector is not None
+    assert selector.property("currentIndex") == -1
+    assert selector.property("currentText") == ""
+    window.close()
+
+
+def test_ui90r1_22_single_profile_is_selected_from_authority(qapp) -> None:
+    _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    selector = _visual_item(window, "audioOutputProfileSelector")
+    assert selector.property("count") == 1
+    assert selector.property("currentIndex") == 0
+    assert selector.property("currentText") == "Example Reference DAC — Direct"
+    window.close()
+
+
+def test_ui90r1_23_mouse_click_really_emits_exact_profile_id(qapp) -> None:
+    _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    section = window.findChild(QObject, "outputSettings")
+    second = dict(PY_PROFILE_ROWS[0])
+    second.update(
+        profileId="direct:second",
+        displayName="Second DAC — Direct",
+        selected=False,
+    )
+    section.setProperty("profiles", [PY_PROFILE_ROWS[0], second])
+    QApplication.processEvents()
+    selector = _visual_item(window, "audioOutputProfileSelector")
+    _click(window, selector)
+    QTest.qWait(100)
+    option = _visual_item(window, "audioOutputProfileSelector_option_1")
+    assert option is not None
+    _click(window, option)
+    QApplication.processEvents()
+    assert window.property("profileRequests") == 1
+    assert window.property("requestedProfileId") == "direct:second"
+    assert selector.property("currentIndex") == 0
+    window.close()
+
+
+def test_ui90r1_24_unavailable_profile_is_really_disabled(qapp) -> None:
+    _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    section = window.findChild(QObject, "outputSettings")
+    unavailable = dict(PY_PROFILE_ROWS[0])
+    unavailable.update(
+        available=False, actionEnabled=False, statusLabel="Selected · unavailable"
+    )
+    second = dict(PY_PROFILE_ROWS[0])
+    second.update(
+        profileId="direct:second", displayName="Second DAC — Direct", selected=False
+    )
+    section.setProperty("profiles", [unavailable, second])
+    QApplication.processEvents()
+    selector = _visual_item(window, "audioOutputProfileSelector")
+    _click(window, selector)
+    QTest.qWait(100)
+    option = _visual_item(window, "audioOutputProfileSelector_option_0")
+    assert option is not None and option.property("enabled") is False
+    _click(window, option)
+    assert window.property("profileRequests") == 0
+    window.close()
+
+
+def test_ui90r1_25_failure_banner_is_visible_at_runtime(qapp) -> None:
+    _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    section = window.findChild(QObject, "outputSettings")
+    section.setProperty("lastFailureTitle", "Device disconnected")
+    section.setProperty("lastFailureDisplay", "The selected DAC is unavailable.")
+    QApplication.processEvents()
+    banner = _visual_item(window, "audioOutputFailureBanner")
+    assert banner is not None and banner.property("visible") is True
+    assert banner.property("height") > 0
+    window.close()
+
+
+def _bounds_in(item, ancestor):
+    origin = item.mapToItem(ancestor, QPointF(0, 0))
+    return origin.x(), origin.y(), item.width(), item.height()
+
+
+def _assert_settings_geometry(qapp, width: int) -> None:
+    _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    window.setProperty("width", width)
+    QApplication.processEvents()
+    section = _visual_item(window, "outputSettings")
+    selector = _visual_item(window, "audioOutputProfileSelector")
+    cards = _visual_item(window, "audioOutputDeviceCards")
+    profile_copy = _visual_item(window, "audioOutputProfileCopy")
+    assert section is not None and selector is not None and cards is not None
+    sx, _sy, sw, sh = _bounds_in(selector, section)
+    cx, _cy, cw, ch = _bounds_in(cards, section)
+    tx, _ty, tw, th = _bounds_in(profile_copy, section)
+    assert sw > 0 and sh > 0 and sx >= 0 and sx + sw <= section.width() + 1
+    assert cw > 0 and ch > 0 and cx >= 0 and cx + cw <= section.width() + 1
+    assert tw > 0 and th > 0 and tx + tw <= sx + 1
+    window.close()
+
+
+def test_ui90r1_26_settings_geometry_at_1920(qapp) -> None:
+    _assert_settings_geometry(qapp, 1920)
+
+
+def test_ui90r1_27_settings_geometry_at_1440(qapp) -> None:
+    _assert_settings_geometry(qapp, 1440)
+
+
+def test_ui90r1_28_settings_geometry_at_1280(qapp) -> None:
+    _assert_settings_geometry(qapp, 1280)
+
+
+def test_ui90r1_29_settings_geometry_at_980(qapp) -> None:
+    _assert_settings_geometry(qapp, 980)
+
+
+def _assert_now_playing_geometry(qapp, width: int) -> None:
+    _engine, _component, window = _create(
+        qapp, NOW_PLAYING_HARNESS, "tests/ui90r1-now-playing.qml"
+    )
+    window.setProperty("width", width)
+    QApplication.processEvents()
+    bar = _visual_item(window, "nowPlayingBar")
+    track = _visual_item(window, "trackCard")
+    playback = _visual_item(window, "playbackZone")
+    output = _visual_item(window, "outputZone")
+    assert all(item is not None for item in (bar, track, playback, output))
+    tx, ty, tw, th = _bounds_in(track, bar)
+    px, py, pw, ph = _bounds_in(playback, bar)
+    ox, oy, ow, oh = _bounds_in(output, bar)
+    assert bar.height() == 154
+    assert min(tw, th, pw, ph, ow, oh) > 0
+    assert tx >= 0 and tx + tw <= px + 1
+    assert px + pw <= ox + 1
+    assert ox + ow <= bar.width() + 1
+    assert min(ty, py, oy) >= 0
+    assert max(ty + th, py + ph, oy + oh) <= bar.height() + 1
+    window.close()
+
+
+def test_ui90r1_30_now_playing_geometry_at_1920(qapp) -> None:
+    _assert_now_playing_geometry(qapp, 1920)
+
+
+def test_ui90r1_31_now_playing_geometry_at_1440(qapp) -> None:
+    _assert_now_playing_geometry(qapp, 1440)
+
+
+def test_ui90r1_32_now_playing_geometry_at_1280(qapp) -> None:
+    _assert_now_playing_geometry(qapp, 1280)
+
+
+def test_ui90r1_33_now_playing_geometry_at_980(qapp) -> None:
+    _assert_now_playing_geometry(qapp, 980)
+
+
+def test_ui90r1_34_settings_runtime_transitions_emit_no_qml_warnings(qapp) -> None:
+    engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    section = window.findChild(QObject, "outputSettings")
+    unavailable = dict(PY_PROFILE_ROWS[0])
+    unavailable.update(
+        available=False, actionEnabled=False, statusLabel="Selected · unavailable"
+    )
+    section.setProperty("profiles", [unavailable])
+    section.setProperty("lastFailureTitle", "Device disconnected")
+    section.setProperty("lastFailureDisplay", "The selected DAC is unavailable.")
+    section.setProperty("profiles", PY_PROFILE_ROWS)
+    section.setProperty("lastFailureTitle", "")
+    QApplication.processEvents()
+    assert engine._michi_test_warnings == []
+    window.close()
+
+
+def test_ui90r1_35_popup_hotplug_transitions_emit_no_qml_warnings(qapp) -> None:
+    engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    popup = _open_popup(window)
+    disconnected = dict(PY_DEVICE_ROW)
+    disconnected.update(
+        available=False, canSelect=False, statusLabel="Selected · unavailable"
+    )
+    popup.setProperty("devices", [PY_SHARED_ROW, disconnected])
+    popup.setProperty("devices", [PY_SHARED_ROW, PY_DEVICE_ROW])
+    QTest.keyClick(window, Qt.Key_Escape)
+    QApplication.processEvents()
+    assert engine._michi_test_warnings == []
+    window.close()
+
+
+def test_ui90r1_36_now_playing_runtime_height_remains_154(qapp) -> None:
+    _engine, _component, window = _create(
+        qapp, NOW_PLAYING_HARNESS, "tests/ui90r1-now-playing.qml"
+    )
+    bar = _visual_item(window, "nowPlayingBar")
+    assert bar.property("implicitHeight") == 154
+    assert bar.height() == 154
+    window.close()
+
+
+def test_ui90r1_37_playback_controls_remain_visible_and_non_overlapping(qapp) -> None:
+    _engine, _component, window = _create(
+        qapp, NOW_PLAYING_HARNESS, "tests/ui90r1-now-playing.qml"
+    )
+    window.setProperty("width", 980)
+    QApplication.processEvents()
+    bar = _visual_item(window, "nowPlayingBar")
+    previous = _visual_item(window, "previousButton")
+    play_pause = _visual_item(window, "playPauseButton")
+    next_button = _visual_item(window, "nextButton")
+    output = _visual_item(window, "outputZone")
+    for item in (previous, play_pause, next_button, output):
+        assert item is not None and item.property("visible") is True
+        assert item.width() > 0 and item.height() > 0
+    px, _py, pw, _ph = _bounds_in(play_pause, bar)
+    ox, _oy, _ow, _oh = _bounds_in(output, bar)
+    assert px + pw <= ox
+    window.close()
