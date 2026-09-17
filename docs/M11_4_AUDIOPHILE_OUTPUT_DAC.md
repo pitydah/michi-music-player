@@ -101,7 +101,7 @@ V3.5 spec governs implementation and acceptance.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
 - `DAC-V35-090` Premium DAC UI and corrective packages `DAC-V35-090R1` and
-  `DAC-V35-090R1.1` — **IN PROGRESS / EXACT-HEAD CI PENDING**. R1 corrected the
+  `DAC-V35-090R1.1` — **CLOSED-AUTOMATED / GO**. R1 corrected the
   first closure by adding the
   functional authority-bound Output Profile selector and runtime evidence for
   critical interactions. One
@@ -115,13 +115,15 @@ V3.5 spec governs implementation and acceptance.
   for identical-model device/profile rows without exposing complete technical
   ids, productive authority→bridge→NowPlayingBar→open-popup hotplug evidence,
   runtime profile keyboard interaction, and same-DAC selected-profile
-  preservation. Local gates are green; adversarial review and exact-head CI are
-  still required before closure.
+  preservation. Adversarial review is GO and implementation head
+  `492bcb92d4c862b82ad9ed5537ec0efb68050b2e` passed exact-head Michi CI run
+  `35276694349`, including Lint, QML, Test, Build, packaging, visual QA, and
+  minimum-PySide6 gates.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
 software runtime-evidence verdict, not physical proof. `DAC-V35-100` is
-DO NOT START until R1.1 exact-head CI succeeds;
+NEXT AUTHORIZED / NOT STARTED;
 physical qualification (`DAC-V35-110`) remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —

@@ -224,10 +224,10 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
 | 7 | `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | negotiated selected-branch transform activity distinguishes element presence from pass-through; physical claims excluded |
 | 8 | `DAC-V35-080 + 080R1 + 080R1.1` Disconnect/reconnect + cross-generation evidence | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind plus fresh G2 volume authority and Signal Truth provenance; no G1 runtime authority survives |
-| 9 | `DAC-V35-090` Premium DAC UI | IN PROGRESS / R1.1 PUBLICATION GATE | YES | reopened by 090R1.1 until exact-head CI seals identity, productive hotplug, and profile keyboard evidence |
-| 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | EVIDENCE/UX SEAL INCOMPLETE | YES | corrected locally by 090R1.1; publication remains pending |
-| 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | IN PROGRESS / EXACT-HEAD CI PENDING | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100` Automated verification + documentation seal | DO NOT START | YES | blocked until 090R1.1 exact-head CI closes |
+| 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
+| 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
+| 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
+| 10 | `DAC-V35-100` Automated verification + documentation seal | NEXT AUTHORIZED / NOT STARTED | YES | 090R1.1 exact-head CI is green; no 100 implementation has started |
 | 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
@@ -20103,10 +20103,11 @@ bit-perfect/Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
 
 ## 408.4 Profile disambiguation and productive evidence corrective seal — 2026-09-17
 
-`DAC-V35-090R1.1` is **IN PROGRESS / EXACT-HEAD CI PENDING**. Local automated
-gates are green, but `DAC-V35-090` remains IN PROGRESS and `DAC-V35-100`
-remains DO NOT START until publication CI succeeds for the exact implementation
-commit.
+`DAC-V35-090`, `DAC-V35-090R1`, and `DAC-V35-090R1.1` are
+**CLOSED-AUTOMATED / GO**. `DAC-V35-100` is **NEXT AUTHORIZED / NOT STARTED**.
+Implementation head `492bcb92d4c862b82ad9ed5537ec0efb68050b2e` passed exact-head
+Michi CI run `35276694349`, including Lint, QML gates, Test, Build, wheel parity,
+installed-wheel smoke, visual QA, and the minimum-PySide6 lane.
 
 The normal device and profile surfaces now share one collision-only identity
 presentation policy. A unique device retains the clean manufacturer/product and
@@ -20137,13 +20138,16 @@ exact profile id, and Escape cancellation/focus return. QML does not update
 selected valid Direct profile; selecting another DAC still resolves that
 device's own deterministic Direct profile.
 
-Local evidence: `UI90R1.1-01..20`, 97 focused 090 tests, 500 DAC tests, 20
+Automated evidence: `UI90R1.1-01..20`, 97 focused 090 tests, 500 DAC tests, 20
 volume-policy tests, 232 M11.3 tests with one existing skip, 396 isolated-XDG M9
-tests, and the full suite at 4771 passed / 2 skipped. Ruff, format, QML lint,
+tests, and the full local suite at 4772 passed / 2 skipped. Ruff, format, QML lint,
 build, wheel parity, installed-wheel smoke, visual QA, repository alignment, and
-the PySide6 6.6.2 runtime lane are green. This remains automated software
-evidence only and authorizes no physical, exclusive, bit-perfect,
-Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
+the PySide6 6.6.2 runtime lane are green. Publication CI also exposed and sealed
+a pre-existing close-time GStreamer race: requested pump shutdown no longer
+queues unexpected-death telemetry, while genuine live pump death remains
+reported. This remains automated software evidence only and authorizes no
+physical, exclusive, bit-perfect, Michi-Verified, hardware-volume, DSD/DoP, or
+M11.5 claim.
 
 ---
 
