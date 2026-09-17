@@ -9,11 +9,22 @@ ComboBox {
     id: root
     property string accessibleName: "Options"
     property string enabledRole: ""
+    property int keyboardIndex: -1
+    readonly property bool popupVisible: popup.visible
     function optionEnabled(index) {
         if (root.enabledRole === "")
             return true
         var item = root.model && index >= 0 ? root.model[index] : null
         return item !== null && item[root.enabledRole] !== false
+    }
+    function nextEnabledIndex(fromIndex, delta) {
+        var index = fromIndex + delta
+        while (index >= 0 && index < root.count) {
+            if (root.optionEnabled(index))
+                return index
+            index += delta
+        }
+        return fromIndex
     }
     implicitHeight: MichiMetrics.controlMedium
     leftPadding: MichiSpacing.md
@@ -59,7 +70,29 @@ ComboBox {
         text: root.textAt(index)
         enabled: root.optionEnabled(index)
         opacity: enabled ? 1 : 0.55
-        highlighted: root.highlightedIndex === index
+        highlighted: option.hovered || root.keyboardIndex === index
+        Keys.onDownPressed: event => {
+            optionList.focusEnabled(index, 1)
+            event.accepted = true
+        }
+        Keys.onUpPressed: event => {
+            optionList.focusEnabled(index, -1)
+            event.accepted = true
+        }
+        Keys.onReturnPressed: event => {
+            root.activated(index)
+            comboPopup.close()
+            event.accepted = true
+        }
+        Keys.onEnterPressed: event => {
+            root.activated(index)
+            comboPopup.close()
+            event.accepted = true
+        }
+        Keys.onEscapePressed: event => {
+            comboPopup.close()
+            event.accepted = true
+        }
         contentItem: MichiText { text: option.text; role: "secondary"; color: option.highlighted ? MichiPalette.textPrimary : MichiPalette.textSecondary }
         background: Rectangle {
             radius: MichiRadius.sm
@@ -69,11 +102,19 @@ ComboBox {
         }
     }
     popup: Popup {
+        id: comboPopup
         y: root.height + MichiSpacing.xs
         width: root.width
         implicitHeight: contentItem.implicitHeight + MichiSpacing.sm * 2
         padding: MichiSpacing.xs
         focus: true
+        onOpened: {
+            root.keyboardIndex = root.currentIndex
+            Qt.callLater(function() {
+                optionList.focusEnabled(root.currentIndex, 0)
+            })
+        }
+        onClosed: root.forceActiveFocus()
         enter: Transition {
             NumberAnimation {
                 property: "opacity"; from: 0; to: 1
@@ -89,11 +130,30 @@ ComboBox {
             }
         }
         contentItem: ListView {
+            id: optionList
             clip: true
+            focus: true
             implicitHeight: Math.min(contentHeight, 260)
             model: root.popup.visible ? root.delegateModel : null
-            currentIndex: root.highlightedIndex
+            currentIndex: root.keyboardIndex
+            function focusEnabled(fromIndex, delta) {
+                var targetIndex = delta === 0
+                    ? fromIndex : root.nextEnabledIndex(fromIndex, delta)
+                if (!root.optionEnabled(targetIndex))
+                    targetIndex = root.nextEnabledIndex(targetIndex, delta || 1)
+                var item = optionList.itemAtIndex(targetIndex)
+                if (item && item.enabled) {
+                    root.keyboardIndex = targetIndex
+                    item.forceActiveFocus()
+                }
+            }
         }
         background: MichiGlassSurface { elevation: "elevated"; contentPadding: 0; radius: MichiRadius.md }
+    }
+    Shortcut {
+        sequence: "Escape"
+        context: Qt.WindowShortcut
+        enabled: comboPopup.visible
+        onActivated: comboPopup.close()
     }
 }

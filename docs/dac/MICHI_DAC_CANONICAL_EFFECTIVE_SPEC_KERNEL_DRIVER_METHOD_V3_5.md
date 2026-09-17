@@ -224,9 +224,10 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
 | 7 | `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | negotiated selected-branch transform activity distinguishes element presence from pass-through; physical claims excluded |
 | 8 | `DAC-V35-080 + 080R1 + 080R1.1` Disconnect/reconnect + cross-generation evidence | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind plus fresh G2 volume authority and Signal Truth provenance; no G1 runtime authority survives |
-| 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | corrected by 090R1; functional Output Profile UX and runtime interaction/responsive evidence are sealed |
-| 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | real authority-bound profile selection plus runtime popup, hotplug, stale-generation, focus, keyboard, and responsive gates |
-| 10 | `DAC-V35-100` Automated verification + documentation seal | NEXT AUTHORIZED / NOT STARTED | YES | one GO/NO-GO command + docs/status parity |
+| 9 | `DAC-V35-090` Premium DAC UI | IN PROGRESS / R1.1 PUBLICATION GATE | YES | reopened by 090R1.1 until exact-head CI seals identity, productive hotplug, and profile keyboard evidence |
+| 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | EVIDENCE/UX SEAL INCOMPLETE | YES | corrected locally by 090R1.1; publication remains pending |
+| 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | IN PROGRESS / EXACT-HEAD CI PENDING | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
+| 10 | `DAC-V35-100` Automated verification + documentation seal | DO NOT START | YES | blocked until 090R1.1 exact-head CI closes |
 | 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
@@ -20099,6 +20100,50 @@ are GO. Exact-head remote CI remains the mandatory publication confirmation.
 
 This automated closure is not physical verification and makes no exclusivity,
 bit-perfect/Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
+
+## 408.4 Profile disambiguation and productive evidence corrective seal — 2026-09-17
+
+`DAC-V35-090R1.1` is **IN PROGRESS / EXACT-HEAD CI PENDING**. Local automated
+gates are green, but `DAC-V35-090` remains IN PROGRESS and `DAC-V35-100`
+remains DO NOT START until publication CI succeeds for the exact implementation
+commit.
+
+The normal device and profile surfaces now share one collision-only identity
+presentation policy. A unique device retains the clean manufacturer/product and
+path label. Identical visible models receive a bounded suffix derived from a
+unique human-readable serial when available, otherwise from stable identity;
+full stable ids and ALSA locators remain confined to diagnostics.
+
+Hotplug evidence now traverses the productive chain without writing popup
+device properties in the test:
+
+```text
+AudioDeviceRegistry / DirectOutputLifecycleCoordinator
+  -> AudioOutputBridge.state_changed + devices property
+  -> NowPlayingBar.outputDevices: audioOutput.devices
+  -> AudioOutputPopup.devices
+  -> live row while the popup remains open
+```
+
+The chain proves selected-but-unavailable disconnect truth, inactive reconnect,
+fresh G2 activation only after explicit Play, and rejection of a stale G1
+topology event. It emits no device/Shared selection intent and never changes the
+audio engine.
+
+The Output Profile selector is runtime-tested as an accessible ComboBox for
+keyboard open, navigation, disabled-row skipping, Enter activation with the
+exact profile id, and Escape cancellation/focus return. QML does not update
+`selectedProfileId` optimistically. Re-selecting a DAC preserves its currently
+selected valid Direct profile; selecting another DAC still resolves that
+device's own deterministic Direct profile.
+
+Local evidence: `UI90R1.1-01..20`, 97 focused 090 tests, 500 DAC tests, 20
+volume-policy tests, 232 M11.3 tests with one existing skip, 396 isolated-XDG M9
+tests, and the full suite at 4771 passed / 2 skipped. Ruff, format, QML lint,
+build, wheel parity, installed-wheel smoke, visual QA, repository alignment, and
+the PySide6 6.6.2 runtime lane are green. This remains automated software
+evidence only and authorizes no physical, exclusive, bit-perfect,
+Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
 
 ---
 

@@ -88,7 +88,15 @@ class AudioOutputSelectionCoordinator:
             key=lambda profile: profile.profile_id,
         )
         if candidates:
-            profile = candidates[0]
+            selection = self._profiles.load_selection()
+            profile = next(
+                (
+                    candidate
+                    for candidate in candidates
+                    if candidate.profile_id == selection.selected_profile_id
+                ),
+                candidates[0],
+            )
         else:
             profile = stable_direct_preset(
                 self._direct_profile_id(stable_device_id), stable_device_id

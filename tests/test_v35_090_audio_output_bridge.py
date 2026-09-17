@@ -26,6 +26,7 @@ from michi.domain.audio_output import (
     OutputSessionState,
     RatePolicy,
     VolumePolicy,
+    stable_direct_preset,
 )
 from michi.domain.playback import PlaybackState
 from michi.domain.signal_truth import (
@@ -139,7 +140,13 @@ class _Volume:
         self.volume_label = "Software volume"
 
 
-def _observations(path: str, *, card: int = 1, product: str = "DX5"):
+def _observations(
+    path: str,
+    *,
+    card: int = 1,
+    product: str = "DX5",
+    serial: str | None = None,
+):
     binding = AudioDeviceBinding(
         kind=BindingKind.ALSA_PCM,
         locator="hw:CARD=DX5,DEV=0",
@@ -154,7 +161,7 @@ def _observations(path: str, *, card: int = 1, product: str = "DX5"):
         observed_at_ns=1,
         vendor_id="2622",
         product_id="0105",
-        serial=None,
+        serial=serial,
         manufacturer="Topping",
         product=product,
         physical_path=path,
@@ -221,9 +228,13 @@ def _direct_truth(recorder: SignalTruthRecorder, stable_id: str, generation: int
     return identity
 
 
-def _graph():
+def _graph(*, initial_observations=None):
     devices = AudioDeviceRegistry()
-    devices.ingest(_observations("/devices/usb1/1-2"))
+    devices.ingest(
+        initial_observations
+        if initial_observations is not None
+        else _observations("/devices/usb1/1-2")
+    )
     stable_id = devices.available_ids()[0]
     repository = _Repo()
     profiles = AudioOutputProfileService(repository)
@@ -414,15 +425,17 @@ def test_ui90_13_card_index_churn_preserves_stable_card_identity() -> None:
     assert after["generation"] > before["generation"]
 
 
-def test_ui90_14_identical_models_remain_distinct_by_stable_id() -> None:
+def test_ui90_14_ui90r11_03_identical_models_are_visually_distinct() -> None:
     graph = _graph()
     graph.devices.ingest(
         (*_observations("/devices/usb1/1-2"), *_observations("/devices/usb2/2-1"))
     )
     rows = [row for row in graph.bridge.devices if not row["isShared"]]
     assert len(rows) == 2
-    assert rows[0]["displayName"] == rows[1]["displayName"] == "Topping DX5"
+    assert rows[0]["displayName"] != rows[1]["displayName"]
+    assert all(row["displayName"].startswith("Topping DX5 · …") for row in rows)
     assert rows[0]["stableDeviceId"] != rows[1]["stableDeviceId"]
+    assert all(row["stableDeviceId"] not in row["displayName"] for row in rows)
 
 
 def test_ui90_15_alsa_locator_is_diagnostic_not_selected_identity() -> None:
@@ -647,5 +660,81 @@ def test_ui90r1_20_multiple_real_profiles_remain_distinct_and_human_named() -> N
 
     assert len(rows) == 2
     assert len({row["profileId"] for row in rows}) == 2
-    assert all(row["displayName"] == "Topping DX5 — Direct" for row in rows)
+    assert rows[0]["displayName"] != rows[1]["displayName"]
+    assert all(
+        row["displayName"].startswith("Topping DX5 — Direct · …") for row in rows
+    )
+    assert all(row["stableDeviceId"] not in row["displayName"] for row in rows)
     assert all(row["actionEnabled"] is True for row in rows)
+
+
+def test_ui90r11_01_serial_disambiguates_identical_profile_rows() -> None:
+    graph = _graph(
+        initial_observations=(
+            *_observations("/devices/usb1/1-2", serial="DX5-A123"),
+            *_observations("/devices/usb2/2-1", serial="DX5-B921"),
+        )
+    )
+    for stable_id in graph.devices.available_ids():
+        graph.coordinator.select_device(stable_id)
+
+    rows = graph.bridge.profiles
+    assert {row["displayName"] for row in rows} == {
+        "Topping DX5 — Direct · …5-A123",
+        "Topping DX5 — Direct · …5-B921",
+    }
+
+
+def test_ui90r11_02_unique_profile_keeps_clean_human_label() -> None:
+    graph = _graph()
+    graph.coordinator.select_device(graph.stable_id)
+
+    row = _profile(graph.bridge, graph.bridge.selectedProfileId)
+
+    assert row["displayName"] == "Topping DX5 — Direct"
+    assert row["deviceName"] == "Topping DX5"
+
+
+def test_ui90r11_04_full_stable_id_is_confined_to_diagnostics_fields() -> None:
+    graph = _graph()
+    graph.devices.ingest(
+        (*_observations("/devices/usb1/1-2"), *_observations("/devices/usb2/2-1"))
+    )
+    for row in [*graph.bridge.profiles, *graph.bridge.devices[1:]]:
+        assert row["stableDeviceId"] not in row["displayName"]
+        assert row["displayName"].count("usb:") == 0
+
+
+def test_ui90r11_17_reselect_same_dac_preserves_valid_selected_profile() -> None:
+    graph = _graph()
+    first = stable_direct_preset("direct:a", graph.stable_id)
+    second = stable_direct_preset("direct:z", graph.stable_id)
+    graph.profiles.save_profile(first)
+    graph.profiles.save_profile(second)
+    graph.coordinator.select_profile(second.profile_id)
+    engine_before = graph.engines.state.active_engine_id
+
+    graph.coordinator.select_device(graph.stable_id)
+
+    assert graph.bridge.selectedProfileId == second.profile_id
+    assert graph.engines.state.active_engine_id is engine_before
+
+
+def test_ui90r11_18_different_dac_resolves_its_own_profile() -> None:
+    graph = _graph()
+    graph.devices.ingest(
+        (*_observations("/devices/usb1/1-2"), *_observations("/devices/usb2/2-1"))
+    )
+    first_id, second_id = graph.devices.available_ids()
+    first = stable_direct_preset("direct:first-z", first_id)
+    second = stable_direct_preset("direct:second", second_id)
+    graph.profiles.save_profile(first)
+    graph.profiles.save_profile(second)
+    graph.coordinator.select_profile(first.profile_id)
+    engine_before = graph.engines.state.active_engine_id
+
+    graph.coordinator.select_device(second_id)
+
+    assert graph.bridge.selectedDeviceId == second_id
+    assert graph.bridge.selectedProfileId == second.profile_id
+    assert graph.engines.state.active_engine_id is engine_before

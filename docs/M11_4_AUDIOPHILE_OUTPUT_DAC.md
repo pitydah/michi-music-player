@@ -100,8 +100,9 @@ V3.5 spec governs implementation and acceptance.
   regressions.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
-- `DAC-V35-090` Premium DAC UI and corrective package `DAC-V35-090R1` —
-  **CLOSED-AUTOMATED / GO**. R1 corrected the first closure by adding the
+- `DAC-V35-090` Premium DAC UI and corrective packages `DAC-V35-090R1` and
+  `DAC-V35-090R1.1` — **IN PROGRESS / EXACT-HEAD CI PENDING**. R1 corrected the
+  first closure by adding the
   functional authority-bound Output Profile selector and runtime evidence for
   critical interactions. One
   presentation-only bridge projects stable device identity, selected-versus-
@@ -110,13 +111,17 @@ V3.5 spec governs implementation and acceptance.
   NowPlaying output selector is live-bound and keyboard accessible. Physical DAC
   selection is Direct-only and fails closed when GStreamer is not active; the UI
   never changes the engine automatically. Gates `UI90-01..47`,
-  `UI90R1-01..37`, DAC/M9 regressions, QML lint, build, wheel resource parity,
-  installed-wheel smoke, adversarial review, and Judgment Day are green.
+  `UI90R1-01..37` remain sealed. R1.1 adds collision-only human disambiguation
+  for identical-model device/profile rows without exposing complete technical
+  ids, productive authority→bridge→NowPlayingBar→open-popup hotplug evidence,
+  runtime profile keyboard interaction, and same-DAC selected-profile
+  preservation. Local gates are green; adversarial review and exact-head CI are
+  still required before closure.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
 software runtime-evidence verdict, not physical proof. `DAC-V35-100` is
-NEXT AUTHORIZED / NOT STARTED;
+DO NOT START until R1.1 exact-head CI succeeds;
 physical qualification (`DAC-V35-110`) remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —

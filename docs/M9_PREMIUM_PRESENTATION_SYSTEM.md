@@ -81,7 +81,8 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
     deliberate runtime ReferenceError probe is regression-tested and must be
     detected.
 - **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
-  **DONE / TESTED / REFROZEN** by `DAC-V35-090R1` (2026-09-17). R1 corrected
+  **SCOPED CORRECTIVE REOPEN / EXACT-HEAD CI PENDING** under
+  `DAC-V35-090R1.1` (2026-09-17). R1 corrected
   the premature 090 acceptance with a functional authority-bound Output Profile
   selector and runtime interaction/responsive evidence. The accepted contract
   keeps a separate Audio Engine selector, DAC/device selector, functional
@@ -92,8 +93,11 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
   at 154 px; `outputZone`/`outputDeviceButton` are activated without moving
   transport controls. DSD/DoP, hardware-volume qualification, physical
   verification, and bit-perfect/Michi-Verified claims remain outside this
-  package. Automated acceptance: `UI90-01..47`, `UI90R1-01..37`, M9/DAC
-  regressions, full suite, build/package, adversarial review, and Judgment Day.
+  package. R1.1 adds collision-only human device/profile disambiguation,
+  productive authority→bridge→QML popup hotplug evidence, complete profile
+  keyboard runtime gates, and same-DAC profile preservation. Automated local
+  acceptance is green; M9-R2 returns to DONE / TESTED / REFROZEN only after
+  adversarial review and exact-head CI.
 - **M9-R3 — Library Hierarchy, Contextual Actions & Playlist Convergence**
   (trigger: Required-1.0 Library and Playlist workflows): one responsive Library
   toolbar, application-owned sorting, shared technical track projections,

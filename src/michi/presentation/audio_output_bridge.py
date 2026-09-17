@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable
 from typing import Any
 
@@ -103,6 +104,66 @@ def _short_id(stable_device_id: str) -> str:
     if len(stable_device_id) <= 24:
         return stable_device_id
     return f"{stable_device_id[:16]}…{stable_device_id[-6:]}"
+
+
+def _bounded_suffix(value: str, *, width: int = 6) -> str:
+    """Return a stable, bounded presentation hint without exposing raw identity."""
+    return f"…{value[-width:]}"
+
+
+def _identity_presentations(snapshots: tuple) -> dict[str, tuple[str, str]]:
+    """Build collision-only human labels shared by device and profile rows."""
+    grouped: dict[str, list] = {}
+    for snapshot in snapshots:
+        grouped.setdefault(_display_name(snapshot.identity), []).append(snapshot)
+
+    presentations: dict[str, tuple[str, str]] = {}
+    for base_name, group in grouped.items():
+        if len(group) == 1:
+            identity = group[0].identity
+            presentations[identity.stable_device_id] = (base_name, "")
+            continue
+
+        serial_suffixes = {
+            snapshot.identity.stable_device_id: _bounded_suffix(
+                snapshot.identity.serial.strip()
+            )
+            for snapshot in group
+            if snapshot.identity.serial and snapshot.identity.serial.strip()
+        }
+        if len(serial_suffixes) == len(group) and len(
+            set(serial_suffixes.values())
+        ) == len(group):
+            suffixes = serial_suffixes
+        else:
+            stable_ids = [snapshot.identity.stable_device_id for snapshot in group]
+            suffixes = {}
+            for width in range(6, 13):
+                candidate = {
+                    stable_id: _bounded_suffix(stable_id, width=width)
+                    for stable_id in stable_ids
+                }
+                if len(set(candidate.values())) == len(stable_ids):
+                    suffixes = candidate
+                    break
+            if not suffixes:
+                digests = {
+                    stable_id: hashlib.sha256(stable_id.encode("utf-8")).hexdigest()
+                    for stable_id in stable_ids
+                }
+                for width in range(8, 65, 4):
+                    candidate = {
+                        stable_id: f"…{digest[:width]}"
+                        for stable_id, digest in digests.items()
+                    }
+                    if len(set(candidate.values())) == len(stable_ids):
+                        suffixes = candidate
+                        break
+
+        for snapshot in group:
+            stable_id = snapshot.identity.stable_device_id
+            presentations[stable_id] = (base_name, f" · {suffixes[stable_id]}")
+    return presentations
 
 
 def _rate_label(rate_hz: int) -> str:
@@ -273,11 +334,15 @@ class AudioOutputBridge(QObject):
         snapshots_by_id = {
             snapshot.identity.stable_device_id: snapshot for snapshot in snapshots
         }
+        identity_presentations = _identity_presentations(snapshots)
         profile_rows = [
             self._profile_row(
                 item,
                 snapshot=snapshots_by_id.get(item.stable_device_id or ""),
                 selected=item.profile_id == selected_profile_id,
+                identity_presentation=identity_presentations.get(
+                    item.stable_device_id or "", ("Audio device", "")
+                ),
             )
             for item in profiles
         ]
@@ -301,6 +366,9 @@ class AudioOutputBridge(QObject):
                     truth=truth,
                     truth_label=truth_label,
                     last_failure_code=last_failure_code or "",
+                    identity_presentation=identity_presentations[
+                        snapshot.identity.stable_device_id
+                    ],
                 )
             )
         physical_rows.sort(
@@ -418,13 +486,18 @@ class AudioOutputBridge(QObject):
         )
 
     @staticmethod
-    def _profile_row(profile, *, snapshot, selected: bool) -> dict[str, Any]:
+    def _profile_row(
+        profile,
+        *,
+        snapshot,
+        selected: bool,
+        identity_presentation: tuple[str, str],
+    ) -> dict[str, Any]:
         direct = profile.path is OutputPathPreference.HARDWARE_DIRECT
         path_label = "Direct" if direct else "Shared"
         available = bool(snapshot is not None and snapshot.available)
-        device_name = (
-            _display_name(snapshot.identity) if snapshot is not None else "Audio device"
-        )
+        base_device_name, identity_suffix = identity_presentation
+        device_name = f"{base_device_name}{identity_suffix}"
         status = (
             "Selected · available"
             if selected and available
@@ -438,7 +511,7 @@ class AudioOutputBridge(QObject):
             "profileId": profile.profile_id,
             "stableDeviceId": profile.stable_device_id or "",
             "profileName": path_label,
-            "displayName": f"{device_name} — {path_label}",
+            "displayName": f"{base_device_name} — {path_label}{identity_suffix}",
             "deviceName": device_name,
             "pathLabel": path_label,
             "transportMode": "direct" if direct else "shared",
@@ -462,6 +535,7 @@ class AudioOutputBridge(QObject):
         truth,
         truth_label: str,
         last_failure_code: str,
+        identity_presentation: tuple[str, str],
     ) -> dict[str, Any]:
         identity = snapshot.identity
         stable_id = identity.stable_device_id
@@ -549,7 +623,7 @@ class AudioOutputBridge(QObject):
         return {
             "stableDeviceId": stable_id,
             "shortenedStableDeviceId": _short_id(stable_id),
-            "displayName": _display_name(identity),
+            "displayName": "".join(identity_presentation),
             "manufacturer": identity.manufacturer or "",
             "product": identity.product or "",
             "available": snapshot.available,
