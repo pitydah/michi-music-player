@@ -7,6 +7,9 @@ DacQualificationService; aquí no existe ni el método.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+
 from michi.application.audio_output_ports import AudioOutputProfileRepositoryPort
 from michi.domain.audio_output import AudioOutputProfile, AudioOutputSelection
 
@@ -14,6 +17,36 @@ from michi.domain.audio_output import AudioOutputProfile, AudioOutputSelection
 class AudioOutputProfileService:
     def __init__(self, repository: AudioOutputProfileRepositoryPort) -> None:
         self._repository = repository
+        self._subscribers: list[Callable[[], None]] = []
+        self._notification_depth = 0
+        self._notification_pending = False
+
+    def subscribe_changed(self, callback: Callable[[], None]) -> None:
+        if callback not in self._subscribers:
+            self._subscribers.append(callback)
+
+    def unsubscribe_changed(self, callback: Callable[[], None]) -> None:
+        if callback in self._subscribers:
+            self._subscribers.remove(callback)
+
+    def _notify(self) -> None:
+        if self._notification_depth:
+            self._notification_pending = True
+            return
+        for callback in tuple(self._subscribers):
+            callback()
+
+    @contextmanager
+    def batch_changes(self) -> Iterator[None]:
+        """Publish one coherent notification after related repository writes."""
+        self._notification_depth += 1
+        try:
+            yield
+        finally:
+            self._notification_depth -= 1
+            if self._notification_depth == 0 and self._notification_pending:
+                self._notification_pending = False
+                self._notify()
 
     def load_profiles(self) -> tuple[AudioOutputProfile, ...]:
         return self._repository.load_profiles()
@@ -38,6 +71,7 @@ class AudioOutputProfileService:
         ):
             raise ValueError("fallback specific_device exige fallback_device_id")
         self._repository.save_profile(profile)
+        self._notify()
 
     def load_selection(self) -> AudioOutputSelection:
         return self._repository.load_selection()
@@ -50,6 +84,7 @@ class AudioOutputProfileService:
                 "selected_device_id debe ser un id estable textual, nunca un índice"
             )
         self._repository.save_selection(selection)
+        self._notify()
 
     # C07: la cache de qualification NO se muta desde aquí: su autoridad
     # es el DacQualificationService (QualificationCachePort).

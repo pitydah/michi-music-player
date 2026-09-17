@@ -54,6 +54,16 @@ class AudioDeviceTopologyChange:
     current_bindings: tuple[AudioDeviceBinding, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class AudioDeviceSnapshot:
+    """Immutable presentation-safe view of one retained physical device."""
+
+    identity: AudioDeviceIdentity
+    available: bool
+    generation: int
+    bindings: tuple[AudioDeviceBinding, ...]
+
+
 TopologyChangedCallback = Callable[[AudioDeviceTopologyChange], None]
 
 
@@ -132,7 +142,7 @@ class AudioDeviceRegistry:
         with self._lock:
             return self._selected_device_id
 
-    def select_device(self, stable_device_id: str) -> None:
+    def select_device(self, stable_device_id: str | None) -> None:
         """El intent seleccionado es SEPARADO de la availability (§400)."""
         with self._lock:
             self._selected_device_id = stable_device_id
@@ -145,6 +155,25 @@ class AudioDeviceRegistry:
                     self._records.values(), key=lambda r: r.stable_device_id
                 )
                 if record.available
+            )
+
+    def device_snapshots(self) -> tuple[AudioDeviceSnapshot, ...]:
+        """Return all retained identities, including unavailable devices.
+
+        The registry keeps disconnected records so selected intent can remain
+        visible without turning an ephemeral ALSA binding into identity.
+        """
+        with self._lock:
+            return tuple(
+                AudioDeviceSnapshot(
+                    identity=record.identity,
+                    available=record.available,
+                    generation=record.generation,
+                    bindings=record.bindings,
+                )
+                for record in sorted(
+                    self._records.values(), key=lambda item: item.stable_device_id
+                )
             )
 
     def generation_for(self, stable_device_id: str) -> int | None:

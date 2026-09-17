@@ -124,6 +124,11 @@ Item {
         audioEngineStatusSummary: audioEngine.statusSummary
         audioEngineSwitchReady: audioEngine.engineSwitchReady
         audioEngineSwitchBlocker: audioEngine.engineSwitchBlocker
+        outputDevices: audioOutput.devices
+        outputTooltip: audioOutput.outputTooltip
+        outputSignalTruthLabel: audioOutput.signalTruthLabel
+        outputFailureTitle: audioOutput.lastFailureTitle
+        canSelectOutput: audioOutput.canSelectDevice
         currentPath: playback.currentPath
         onPlayPauseRequested: playback.toggle_play_pause()
         onPreviousRequested: playbackSession.previous_track()
@@ -138,6 +143,11 @@ Item {
         onNowPlayingRequested: root.navigationRequested("now_playing")
         onAudioEngineSwitchRequested: (engineId) => audioEngine.switch_engine(engineId)
         onAudioEngineRefreshRequested: audioEngine.refresh_engines()
+        onAudioOutputDeviceSelectionRequested: stableDeviceId =>
+            audioOutput.select_device(stableDeviceId)
+        onAudioOutputSharedSelectionRequested: audioOutput.select_shared_output()
+        onAudioOutputRefreshRequested: audioOutput.refresh_devices()
+        onAudioOutputSettingsRequested: root.navigationRequested("settings")
     }
 
     Loader {
@@ -223,6 +233,12 @@ Item {
         // click that "does nothing" must never hide the diagnostic.
         function onCommand_failed(command, message) {
             root.showToast(message, "error")
+        }
+    }
+    Connections {
+        target: audioOutput
+        function onAction_failed(code, title, explanation) {
+            root.showToast(title + ": " + explanation, "error")
         }
     }
 

@@ -27,6 +27,9 @@ from michi.application.audio_engine_selection_coordinator import (
 from michi.application.audio_engine_service import AudioEngineService
 from michi.application.audio_output_planner import OutputPlanner
 from michi.application.audio_output_profile_service import AudioOutputProfileService
+from michi.application.audio_output_selection_coordinator import (
+    AudioOutputSelectionCoordinator,
+)
 from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.coordinator import PlaybackCoordinator
 from michi.application.dac_qualification_service import (
@@ -1053,7 +1056,24 @@ class ApplicationContainer:
         graph.history_coordinator.start()
 
         pb = PlaybackBridge(playback, library)
-        aob = AudioOutputBridge(graph.volume_policy, playback, graph.signal_truth)
+        output_selection = AudioOutputSelectionCoordinator(
+            profiles=graph.audio_output_profiles,
+            devices=graph.audio_device_registry,
+            output_session=graph.output_session,
+            engines=graph.audio_engine_service,
+        )
+        aob = AudioOutputBridge(
+            graph.volume_policy,
+            playback,
+            graph.signal_truth,
+            devices=graph.audio_device_registry,
+            profiles=graph.audio_output_profiles,
+            output_session=graph.output_session,
+            engines=graph.audio_engine_service,
+            selection_coordinator=output_selection,
+            qualification=graph.dac_qualification,
+            refresh_devices=graph.udev_observer.rescan,
+        )
         qb = QueueBridge(queue, library)
         psb = PlaybackSessionBridge(graph.playback_session)
         # M11.3-UI: ONE production AudioEngineBridge over the SAME

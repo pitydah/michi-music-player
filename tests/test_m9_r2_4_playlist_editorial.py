@@ -390,7 +390,7 @@ def test_now_playing_bar_accessibles_are_translated():
         "Previous track",
         "Next track",
         "Audio settings",
-        "Output selection unavailable",
+        "Audio output",
     ]:
         assert f'qsTr("{string}")' in bar, string
     assert 'qsTr("Volume")' in volume

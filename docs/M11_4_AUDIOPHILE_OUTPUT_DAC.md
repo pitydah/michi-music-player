@@ -100,12 +100,20 @@ V3.5 spec governs implementation and acceptance.
   regressions.
 - Corrective convergence pass `DAC-C01..C13` (2026-09-11) over
   DAC-V35-010..040.
+- `DAC-V35-090` Premium DAC UI — **CLOSED-AUTOMATED / GO**. One
+  presentation-only bridge projects stable device identity, selected-versus-
+  active output state, mode-aware volume, runtime-only Signal Truth, and bounded
+  diagnostics. Settings includes a dedicated Audio Output / DAC section; the
+  NowPlaying output selector is live-bound and keyboard accessible. Physical DAC
+  selection is Direct-only and fails closed when GStreamer is not active; the UI
+  never changes the engine automatically. Gates `UI90-01..47`, DAC/M9
+  regressions, QML lint, build, and wheel resource parity are green.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
-software runtime-evidence verdict, not physical proof. `DAC-V35-090` is NEXT
-AUTHORIZED / NOT STARTED; physical qualification (`DAC-V35-110`) remains
-pending.
+software runtime-evidence verdict, not physical proof. `DAC-V35-090` is
+CLOSED-AUTOMATED / GO. `DAC-V35-100` is NEXT AUTHORIZED / NOT STARTED;
+physical qualification (`DAC-V35-110`) remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —
 **not** Audio Lab.
@@ -232,7 +240,8 @@ AFTER PLAYER STABLE (RETAINED, OUT OF SCOPE).
 ## Non-goals
 
 - No Audio Lab / DSP implementation.
-- No UI (M9-R2 owns presentation).
+- No independent presentation authority in M11.4. M9-R2 owns the UI contract;
+  `DAC-V35-090` implements that contract as a projection of M11.4 authorities.
 - No bit-perfect conformance enforcement (M11.5).
 - No silent rerouting or fabricated capability claims.
 

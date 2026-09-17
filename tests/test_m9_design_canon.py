@@ -185,7 +185,8 @@ def test_premium_detail_pass_is_shared_and_capability_honest() -> None:
     assert "Gradient.Horizontal" in now_playing
     assert 'objectName: "qualityBadge"' in now_playing
     assert now_playing.count('objectName: "outputDeviceButton"') == 1
-    assert 'accessibleName: qsTr("Output selection unavailable")' in now_playing
+    assert "accessibleName: root.outputTooltip" in now_playing
+    assert "enabled: root.canSelectOutput" in now_playing
     # M11.3-UI: the placeholder indicator is replaced by a real interactive
     # quick-selector button. The popup is the quick surface; no configuration
     # controls (DAC/DSD/sample-rate/buffers) live here.

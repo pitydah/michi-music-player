@@ -24,11 +24,12 @@ class TestNowPlayingBar:
         assert npb.count('objectName: "audioEngineButton"') == 1
         assert 'objectName: "audioEngineIndicator"' not in npb
 
-    def test_output_device_button_preserved_disabled(self):
+    def test_output_device_button_is_owned_by_dac_v35_090(self):
         npb = read("player/NowPlayingBar.qml")
         assert npb.count('objectName: "outputDeviceButton"') == 1
-        assert "enabled: false" in npb
-        assert 'accessibleName: qsTr("Output selection unavailable")' in npb
+        assert "enabled: root.canSelectOutput" in npb
+        assert "accessibleName: root.outputTooltip" in npb
+        assert "AudioOutputPopup" in npb
 
     def test_popup_exists_and_has_engine_rows(self):
         popup = read("player/AudioEnginePopup.qml")

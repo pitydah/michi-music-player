@@ -224,8 +224,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
 | 7 | `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | negotiated selected-branch transform activity distinguishes element presence from pass-through; physical claims excluded |
 | 8 | `DAC-V35-080 + 080R1 + 080R1.1` Disconnect/reconnect + cross-generation evidence | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind plus fresh G2 volume authority and Signal Truth provenance; no G1 runtime authority survives |
-| 9 | `DAC-V35-090` Premium DAC UI | NEXT AUTHORIZED / NOT STARTED | YES | DAC controls separated from Audio Engine; mode-aware volume |
-| 10 | `DAC-V35-100` Automated verification + documentation seal | ACTIVE | YES | one GO/NO-GO command + docs/status parity |
+| 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | truthful DAC cards, live output selector, progressive diagnostics, and mode-aware volume remain separate from Audio Engine |
+| 10 | `DAC-V35-100` Automated verification + documentation seal | NEXT AUTHORIZED / NOT STARTED | YES | one GO/NO-GO command + docs/status parity |
 | 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
@@ -20011,6 +20011,32 @@ Runtime path contradicted expected plan
 ```
 
 No raw errno or GStreamer debug string is primary user copy.
+
+## 408.1 Automated closure — 2026-09-16
+
+`DAC-V35-090` is **CLOSED-AUTOMATED / GO**.
+
+The shipped presentation uses one `AudioOutputBridge` over the existing device,
+profile, output-session, volume, engine, qualification, and Signal Truth
+authorities. `AudioOutputSelectionCoordinator` translates typed user intents;
+it owns no output state and never switches the audio engine automatically.
+Physical-device selection resolves only to Direct profiles. Shared remains the
+explicit `System Output` choice.
+
+Settings now places `Audio Output / DAC` after `Audio Engine` and before
+`Library`. The normal card shows only the §408 summary. Stable identity, current
+ALSA locator, USB facts, evidence provenance, runtime graph, and typed failures
+remain behind the advanced disclosure. The NowPlaying output popup is live-bound
+and preserves the existing 154 px bar geometry and playback controls.
+
+Automated gates `UI90-01..47` cover projection truth, stale-generation
+rejection, selected-versus-active state, reconnect, volume authority, failure
+copy, dynamic QML interactions, focus, responsive layout, and geometry. DAC and
+M9 regressions, Ruff, formatting, QML lint, build, and wheel resource parity are
+green. This closure makes no physical DAC, exclusivity, bit-perfect,
+Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
+
+`DAC-V35-100` is next authorized but remains **NOT STARTED**.
 
 ---
 

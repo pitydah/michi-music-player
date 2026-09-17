@@ -56,6 +56,9 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
 - UI foundation: Aurora semantic tokens, smoked-glass control surfaces, desktop controls, accessibility/motion contracts, shared artwork and UI gallery
 - Settings persistence (SQLite, WAL): volume, muted, last_directory, recent_files — with restart gate and read-only health detection
 - Failure contracts: explicit runtime errors, best-effort shutdown (first-error-wins)
+- Audio Output / DAC UI: explicit Shared versus physical Direct selection,
+  selected-versus-active state, mode-aware volume, live Signal Truth, hotplug
+  status, and progressive diagnostics without physical or bit-perfect claims
 
 ## Current implementation focus
 
@@ -63,7 +66,8 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   shell DONE, and scoped M9-R3 Library/collection convergence in progress
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
-- M11.4–M11.5: audiophile output/DAC management, playback guarantees (incl. Required-1.0 gapless)
+- M11.4: DAC-V35-090 premium presentation closed; automated seal and physical
+  qualification remain ahead. M11.5 playback guarantees are not implemented.
 - M12 Performance, M13 Packaging, M14 Beta, M15 RC, M16 Stable
 
 See `docs/MASTER_ROADMAP_1.0.md` for the canonical 1.0 contract and current statuses.

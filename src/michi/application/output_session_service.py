@@ -339,6 +339,7 @@ class OutputSessionService:
         self._lost_binding_generation = 0
         self._last_transition_kind: DirectTransitionKind | None = None
         self._last_cleanup_diagnostic: OutputCleanupDiagnostic | None = None
+        self._subscribers: list[Callable[[], None]] = []
 
     # ── lectura ───────────────────────────────────────────────────────
     @property
@@ -426,10 +427,23 @@ class OutputSessionService:
             error_code=self._error_code,
         )
 
+    def subscribe_changed(self, callback: Callable[[], None]) -> None:
+        if callback not in self._subscribers:
+            self._subscribers.append(callback)
+
+    def unsubscribe_changed(self, callback: Callable[[], None]) -> None:
+        if callback in self._subscribers:
+            self._subscribers.remove(callback)
+
+    def _notify(self) -> None:
+        for callback in tuple(self._subscribers):
+            callback()
+
     def select(self, *, device_id: str | None, profile_id: str | None) -> None:
         """El intent seleccionado persiste aunque el device desaparezca."""
         self._selected_device_id = device_id
         self._selected_profile_id = profile_id
+        self._notify()
 
     # ── planificación ─────────────────────────────────────────────────
     def plan_for(self, facts: PlannerFacts) -> OutputPlan | PlannerRefusal:
@@ -558,6 +572,7 @@ class OutputSessionService:
         self._last_release_invalidated_media = False
         if self._state is not OutputSessionState.IDLE:
             self._state = OutputSessionState.IDLE
+        self._notify()
         return self._token_value
 
     def _facts_for(self, path: Path) -> PlannerFacts:
@@ -650,6 +665,7 @@ class OutputSessionService:
                 self._previous_direct = None
             self._plan = None
             self._state = OutputSessionState.IDLE
+            self._notify()
             return
         if self._state is not OutputSessionState.READY:
             raise OutputSessionError(
@@ -691,10 +707,12 @@ class OutputSessionService:
                 self._shared_receipt = None
                 self._previous_direct = None
                 self._error_code = reason
+                self._notify()
                 return
             if self._previous_direct is not None:
                 self._previous_direct.executor.release(reason)
             self._clear_execution()
+            self._notify()
             return
         self._error_code = reason
         disposition = OutputExecutorAbortDisposition.STALE
@@ -715,6 +733,7 @@ class OutputSessionService:
             self._selected_profile_id = previous.selected_profile_id
             self._token_value = None
             self._previous_direct = None
+            self._notify()
             return
         self._transition(OutputSessionState.RELEASING)
         self._clear_execution(keep_error=True)
@@ -728,6 +747,7 @@ class OutputSessionService:
             if self._previous_direct is not None:
                 self._previous_direct.executor.release(reason)
             self._clear_execution()
+            self._notify()
             return
         if self._state is OutputSessionState.IDLE and not was_direct:
             return
@@ -819,6 +839,7 @@ class OutputSessionService:
                         detail=str(exc),
                     )
                 logger.exception("Direct executor release failed after topology loss")
+        self._notify()
 
     def topology_lost(self, stable_device_id: str, generation: int) -> None:
         """Apply one canonical topology loss to the matching active Direct lease."""
@@ -871,12 +892,15 @@ class OutputSessionService:
         self._lost_device_id = None
         self._lost_binding_generation = 0
         self._error_code = None
+        self._notify()
         return True
 
     def fail(self, error_code: str) -> None:
         self._error_code = error_code
         if self._state is not OutputSessionState.FAILED:
             self._transition(OutputSessionState.FAILED)
+        else:
+            self._notify()
 
     # ── internos ──────────────────────────────────────────────────────
     def _committed_direct_snapshot(self) -> _DirectSessionSnapshot | None:
@@ -931,3 +955,4 @@ class OutputSessionService:
                 f"{self._state.value} -> {target.value}",
             )
         self._state = target
+        self._notify()

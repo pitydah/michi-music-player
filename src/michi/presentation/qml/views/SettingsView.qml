@@ -10,8 +10,12 @@ Item {
     // settings surface becomes visible — once per opening, never polling,
     // never a repeating timer. StackLayout toggles `visible` per route.
     onVisibleChanged: {
-        if (visible && typeof audioEngine !== "undefined")
-            audioEngine.refresh_engines()
+        if (visible) {
+            if (typeof audioEngine !== "undefined")
+                audioEngine.refresh_engines()
+            if (typeof audioOutput !== "undefined")
+                audioOutput.refresh_devices()
+        }
     }
 
     Flickable {
@@ -141,6 +145,29 @@ Item {
                 switchingTo: audioEngine.switchRequestPendingTarget !== ""
                     ? audioEngine.switchRequestPendingTarget : audioEngine.switchingTo
                 onEngineSwitchRequested: (engineId) => audioEngine.switch_engine(engineId)
+            }
+
+            // ── Audio Output / DAC (DAC-V35-090) ───────────
+            // This surface projects the output authorities; it does not own
+            // device, session, engine, volume, or Signal Truth state.
+            AudioOutputSettingsSection {
+                objectName: "audioOutputSettingsSection"
+                Layout.fillWidth: true
+                devices: audioOutput.devices
+                profiles: audioOutput.profiles
+                selectedDeviceId: audioOutput.selectedDeviceId
+                activeDeviceId: audioOutput.activeDeviceId
+                outputState: audioOutput.outputState
+                volumeLabel: audioOutput.volumeLabel
+                signalTruthLabel: audioOutput.signalTruthLabel
+                signalTruthReasonCodes: audioOutput.signalTruthReasonCodes
+                signalPath: audioOutput.signalPath
+                lastFailureTitle: audioOutput.lastFailureTitle
+                lastFailureDisplay: audioOutput.lastFailureDisplay
+                canUseDirect: audioOutput.canUseDirect
+                onDeviceSelectionRequested: stableDeviceId =>
+                    audioOutput.select_device(stableDeviceId)
+                onSharedSelectionRequested: audioOutput.select_shared_output()
             }
 
             // ── Library ─────────────────────────────────────

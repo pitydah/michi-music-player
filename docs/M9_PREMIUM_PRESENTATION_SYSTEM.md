@@ -81,11 +81,16 @@ AFFECTED COMPONENTS / NON-GOALS / TEST-ACCEPTANCE GATES / REFREEZE CONDITION:
     deliberate runtime ReferenceError probe is regression-tested and must be
     detected.
 - **M9-R2 — Audio Output UX** (trigger: M11.3/M11.4 audiophile output):
-  engine selector, DAC selector, Output Profile selector, output state,
-  actual format telemetry, Signal Path, DSD mode, BitPerfectState, hotplug/
-  unavailable/error state. The canonical NowPlayingBar geometry stays
-  protected (reserved `audioEngineIndicator`/`outputZone`/`outputDeviceButton`
-  are activated; transport controls are not moved). Refreeze: M9-R2 accepted.
+  **ACCEPTED / TESTED / REFROZEN** by `DAC-V35-090` (2026-09-16). The existing
+  engine selector remains separate. The new DAC selector, Shared/Direct profile
+  projection, selected-versus-active output state, runtime Signal Truth path,
+  mode-aware volume, hotplug/reconnect, and typed error states are live-bound to
+  application authorities. Raw ALSA/USB/runtime details remain behind an
+  advanced disclosure. The canonical NowPlayingBar geometry remains protected
+  at 154 px; `outputZone`/`outputDeviceButton` are activated without moving
+  transport controls. DSD/DoP, hardware-volume qualification, physical
+  verification, and bit-perfect/Michi-Verified claims remain outside this
+  reopening. Automated acceptance: `UI90-01..47` plus M9/DAC regressions.
 - **M9-R3 — Library Hierarchy, Contextual Actions & Playlist Convergence**
   (trigger: Required-1.0 Library and Playlist workflows): one responsive Library
   toolbar, application-owned sorting, shared technical track projections,

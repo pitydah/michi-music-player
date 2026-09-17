@@ -42,6 +42,13 @@ Item {
     property string audioEngineStatusSummary: ""
     property bool audioEngineSwitchReady: true
     property string audioEngineSwitchBlocker: ""
+    // DAC-V35-090: live output selector projections. The player bar remains
+    // geometry-stable; the popup owns no output state.
+    property var outputDevices: []
+    property string outputTooltip: qsTr("Audio output")
+    property string outputSignalTruthLabel: qsTr("Not verified")
+    property string outputFailureTitle: ""
+    property bool canSelectOutput: false
     // PLAYBACK-CONTROLS-R1 (P2): the Play affordance derives from MEDIA
     // truth (committed logical track), not from presentation text.
     property string currentPath: ""
@@ -65,6 +72,10 @@ Item {
     signal nowPlayingRequested()
     signal audioEngineSwitchRequested(string engineId)
     signal audioEngineRefreshRequested()
+    signal audioOutputDeviceSelectionRequested(string stableDeviceId)
+    signal audioOutputSharedSelectionRequested()
+    signal audioOutputRefreshRequested()
+    signal audioOutputSettingsRequested()
 
     implicitWidth: 800
     implicitHeight: 154
@@ -501,15 +512,39 @@ Item {
             }
 
             MichiIconButton {
+                id: outputDeviceButton
                 objectName: "outputDeviceButton"
                 Layout.row: 0
                 Layout.column: 3
                 Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
                 iconName: "audio-output"
-                accessibleName: qsTr("Output selection unavailable")
-                enabled: false
-                opacity: 0.62
+                accessibleName: root.outputTooltip
+                enabled: root.canSelectOutput
+                checkable: true
+                checked: outputPopup.opened
+                onClicked: {
+                    outputPopup.open()
+                    root.audioOutputRefreshRequested()
+                }
+                Accessible.name: root.outputTooltip
+            }
+
+            AudioOutputPopup {
+                id: outputPopup
+                y: -height - MichiSpacing.md
+                x: Math.min(0, outputZone.width - width)
+                devices: root.outputDevices
+                signalTruthLabel: root.outputSignalTruthLabel
+                failureTitle: root.outputFailureTitle
+                focusReturnTarget: outputDeviceButton
+                onDeviceSelectionRequested: stableDeviceId =>
+                    root.audioOutputDeviceSelectionRequested(stableDeviceId)
+                onSharedSelectionRequested: root.audioOutputSharedSelectionRequested()
+                onSettingsRequested: {
+                    outputPopup.close()
+                    root.audioOutputSettingsRequested()
+                }
             }
 
             // M11.3-UI: real interactive engine quick-selector.
