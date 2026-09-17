@@ -10,7 +10,6 @@ from types import SimpleNamespace
 
 import pytest
 from PySide6.QtCore import QMetaObject, QObject, QPoint, QPointF, Qt, QUrl
-from PySide6.QtGui import QAccessible
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
@@ -470,6 +469,8 @@ def _click(window, item) -> None:
 
 
 def _accessible_name(item) -> str:
+    from PySide6.QtGui import QAccessible
+
     interface = QAccessible.queryAccessibleInterface(item)
     assert interface is not None
     return interface.text(QAccessible.Text.Name)
@@ -1144,6 +1145,8 @@ def test_ui90r11_15_profile_keyboard_escape_cancels_and_restores_focus(qapp) -> 
 
 
 def test_ui90r11_profile_selector_runtime_accessibility_contract(qapp) -> None:
+    from PySide6.QtGui import QAccessible
+
     _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
     selector = _visual_item(window, "audioOutputProfileSelector")
     interface = QAccessible.queryAccessibleInterface(selector)
