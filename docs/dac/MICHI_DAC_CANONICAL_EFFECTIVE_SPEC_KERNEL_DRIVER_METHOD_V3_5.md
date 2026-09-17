@@ -224,7 +224,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
 | 7 | `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | negotiated selected-branch transform activity distinguishes element presence from pass-through; physical claims excluded |
 | 8 | `DAC-V35-080 + 080R1 + 080R1.1` Disconnect/reconnect + cross-generation evidence | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind plus fresh G2 volume authority and Signal Truth provenance; no G1 runtime authority survives |
-| 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | truthful DAC cards, live output selector, progressive diagnostics, and mode-aware volume remain separate from Audio Engine |
+| 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | corrected by 090R1; functional Output Profile UX and runtime interaction/responsive evidence are sealed |
+| 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | real authority-bound profile selection plus runtime popup, hotplug, stale-generation, focus, keyboard, and responsive gates |
 | 10 | `DAC-V35-100` Automated verification + documentation seal | NEXT AUTHORIZED / NOT STARTED | YES | one GO/NO-GO command + docs/status parity |
 | 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
@@ -20012,9 +20013,12 @@ Runtime path contradicted expected plan
 
 No raw errno or GStreamer debug string is primary user copy.
 
-## 408.1 Automated closure — 2026-09-16
+## 408.1 Premature automated closure — 2026-09-16
 
-`DAC-V35-090` is **CLOSED-AUTOMATED / GO**.
+The original `DAC-V35-090 CLOSED-AUTOMATED / GO` verdict is historical and
+superseded by §408.2. It proved the initial device/output surfaces but did not
+implement the required Output Profile selector and relied on source-text checks
+for critical popup and responsive behavior.
 
 The shipped presentation uses one `AudioOutputBridge` over the existing device,
 profile, output-session, volume, engine, qualification, and Signal Truth
@@ -20036,7 +20040,65 @@ M9 regressions, Ruff, formatting, QML lint, build, and wheel resource parity are
 green. This closure makes no physical DAC, exclusivity, bit-perfect,
 Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
 
-`DAC-V35-100` is next authorized but remains **NOT STARTED**.
+`DAC-V35-100` was not authorized while the corrective package remained open.
+
+## 408.2 Corrective reopening — 2026-09-17
+
+On 2026-09-17, `DAC-V35-090` entered **NO-GO / CORRECTIVE REOPEN** and
+`DAC-V35-090R1` entered **IN PROGRESS**. The corrective package preserved the
+090 architecture, added no authority, and completed the M9-R2 Output Profile UX
+through the existing
+chain:
+
+```text
+AudioOutputProfileService authority
+  -> AudioOutputBridge profile projection
+  -> real Settings profile selector
+  -> AudioOutputBridge.select_profile(profile_id)
+  -> AudioOutputSelectionCoordinator
+  -> existing persisted selection + OutputSession selection mirror
+```
+
+The selector consumes real projected profiles, shows human device/path names,
+keeps selected state authority-bound after failures and unavailable devices,
+and never changes the audio engine. System Shared has no fabricated profile id.
+Selected device/profile remain distinct from active session truth.
+
+Required runtime gates `UI90R1-01..37` cover profile rendering/selection,
+failure coherence, engine separation, real Escape/focus/arrow/Enter behavior,
+disabled-row skipping, popup-open disconnect/reconnect, stale-generation
+rejection, and real geometry at 1920/1440/1280/980 for Settings and
+NowPlayingBar. Source-string presence is not behavioral evidence.
+
+Only after every R1 gate, DAC 060/070/080 regressions, M9/QML regressions, full
+suite, lint, build, packaging, adversarial review, Judgment Day, and exact-head
+CI pass may 090 + 090R1 return to **CLOSED-AUTOMATED / GO** and authorize
+`DAC-V35-100 NEXT AUTHORIZED / NOT STARTED`.
+
+## 408.3 Corrective closure — 2026-09-17
+
+`DAC-V35-090` and `DAC-V35-090R1` are **CLOSED-AUTOMATED / GO**.
+`DAC-V35-100` is **NEXT AUTHORIZED / NOT STARTED**.
+
+The real Settings selector consumes `AudioOutputBridge.profiles`, renders human
+device/path names, keeps unavailable selected profiles visible but disabled, and
+dispatches only `AudioOutputBridge.select_profile(profile_id)`. Shared retains
+an empty profile id. A selected profile is never presented as an active profile
+because no `activeProfileId` authority exists. Failed intents keep authoritative
+selection coherent and expose typed failure copy; transient topology failures
+clear on reconnect while authoritative session errors remain.
+
+`UI90R1-01..37` exercise real productive QML components and cover mouse,
+Escape, focus return, arrow navigation with disabled-row skipping, Enter,
+popup-open hotplug/disconnect/reconnect, stale generations, zero QML warnings,
+and Settings/NowPlayingBar geometry at 1920/1440/1280/980. The 154 px player
+bar and transport controls remain protected. DAC 060/070/080/090 regressions,
+M9/QML regressions, full suite, Ruff, formatting, QML lint, build, wheel parity,
+installed-wheel smoke, adversarial review, two blind judges, and Judgment Day
+are GO. Exact-head remote CI remains the mandatory publication confirmation.
+
+This automated closure is not physical verification and makes no exclusivity,
+bit-perfect/Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
 
 ---
 
