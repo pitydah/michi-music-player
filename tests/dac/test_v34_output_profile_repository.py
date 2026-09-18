@@ -326,6 +326,35 @@ def test_service_validates_invariants(tmp_path: Path) -> None:
     assert len(service.load_profiles()) == 1
 
 
+@pytest.mark.parametrize(
+    "raw_device_id",
+    (
+        "hw:0,0",
+        "hw:CARD=DX5,DEV=0",
+        "plughw:1,0",
+        "default",
+        "sysdefault:CARD=DX5",
+        "front:CARD=DX5,DEV=0",
+        "dmix:CARD=DX5,DEV=0",
+        "pipewire",
+        "pulse",
+    ),
+)
+def test_service_refuses_ephemeral_alsa_ids_as_persisted_identity(
+    tmp_path: Path, raw_device_id: str
+) -> None:
+    """V3.5 §0I: backend locators are rebuildable bindings, never identity."""
+    db = tmp_path / "settings.db"
+    SQLiteSettingsRepository(db)
+    service = AudioOutputProfileService(SqliteAudioOutputRepository(db))
+
+    with pytest.raises(ValueError, match="ALSA"):
+        service.save_profile(stable_direct_preset("raw", raw_device_id))
+
+    with pytest.raises(ValueError, match="ALSA"):
+        service.save_selection(AudioOutputSelection(None, raw_device_id, 1))
+
+
 # ── DAC-C07: ownership de la cache de qualification ──────────────────
 
 

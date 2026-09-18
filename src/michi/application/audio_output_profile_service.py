@@ -14,6 +14,30 @@ from michi.application.audio_output_ports import AudioOutputProfileRepositoryPor
 from michi.domain.audio_output import AudioOutputProfile, AudioOutputSelection
 
 
+def _reject_ephemeral_alsa_identity(value: str | None, *, field: str) -> None:
+    if value is None:
+        return
+    normalized = value.strip().casefold()
+    raw_names = {"default", "null", "pipewire", "pulse"}
+    raw_prefixes = (
+        "hw:",
+        "plughw:",
+        "default:",
+        "sysdefault:",
+        "front:",
+        "surround",
+        "dmix:",
+        "dsnoop:",
+        "null:",
+        "pipewire:",
+        "pulse:",
+    )
+    if normalized in raw_names or normalized.startswith(raw_prefixes):
+        raise ValueError(
+            f"{field} must be a stable device identity, never a raw ALSA locator"
+        )
+
+
 class AudioOutputProfileService:
     def __init__(self, repository: AudioOutputProfileRepositoryPort) -> None:
         self._repository = repository
@@ -63,6 +87,12 @@ class AudioOutputProfileService:
             raise ValueError(
                 "stable_device_id debe ser un id estable textual, nunca un índice"
             )
+        _reject_ephemeral_alsa_identity(
+            profile.stable_device_id, field="stable_device_id"
+        )
+        _reject_ephemeral_alsa_identity(
+            profile.fallback_device_id, field="fallback_device_id"
+        )
         if profile.resync_delay_ms < 0:
             raise ValueError("resync_delay_ms debe ser >= 0")
         if (
@@ -83,6 +113,9 @@ class AudioOutputProfileService:
             raise ValueError(
                 "selected_device_id debe ser un id estable textual, nunca un índice"
             )
+        _reject_ephemeral_alsa_identity(
+            selection.selected_device_id, field="selected_device_id"
+        )
         self._repository.save_selection(selection)
         self._notify()
 
