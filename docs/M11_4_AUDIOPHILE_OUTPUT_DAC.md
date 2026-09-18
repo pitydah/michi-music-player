@@ -1,9 +1,9 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
 Implementation contract for audiophile output infrastructure. Status:
-**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.1 local
-automated GO; exact-head remote publication pending; physical qualification has
-not started).
+**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.1 automated GO
+published from exact-head remote evidence; physical qualification has not
+started).
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -164,7 +164,7 @@ V3.5 spec governs implementation and acceptance.
   evidence only; it does not close R1.1.
 
 - `DAC-V35-100R1.1` decoded-source and explicit-Stop corrective seal —
-  **CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING**. One bounded,
+  **CLOSED-AUTOMATED / GO; PUBLISHED**. One bounded,
   generation-safe `GStreamerSourceCharacterizer` prerolls local files through
   isolated audio/video/text `fakesink` instances and returns normalized decoded
   PCM without opening ALSA, acquiring the selected DAC, autoplaying, mutating
@@ -179,17 +179,20 @@ V3.5 spec governs implementation and acceptance.
   failure, startup STOPPED observations, and controlled engine-switch stops do
   not erase durable intent. Gates `SC100R1.1-01..10` and
   `SR100R1.1-STOP-01..02` join the preserved `SR100R1-01..13`; the aggregate
-  verifier requires the R1.1 module and seals the productive wiring. Local DAC
-  regression is 555 passed. Final full-suite counts, commit, workflow run, and
-  artifact identity remain pending exact-head remote publication and will be
-  copied from that artifact.
+  verifier requires the R1.1 module and seals the productive wiring. Exact-head
+  commit `7753203cab712ffe38677399dd8eb93d967e25d2` passed Michi CI run
+  `35388153288`: 555 DAC tests and 4824 full-suite tests passed with 28
+  classified non-DAC skips. The SHA-bound artifact
+  `dac-v35-software-closure-7753203cab712ffe38677399dd8eb93d967e25d2` records
+  automated `GO`, physical `NOT_RUN`, and GitHub digest
+  `sha256:71fea718c30bdc5f6d5e9a15f61b2a1c96f31eaf3af3253bd584dacc7010b3f9`.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
 software runtime-evidence verdict, not physical proof. `DAC-V35-100R1` is
-NO-GO / superseded for final promotion; `DAC-V35-100R1.1` is local GO with
-remote publication pending. Physical qualification (`DAC-V35-110`) is
-**DO NOT START** until exact-head R1.1 remote evidence is green.
+NO-GO / superseded for final promotion; `DAC-V35-100R1.1` is published GO.
+Physical qualification (`DAC-V35-110`) remains **DO NOT START** as a separate,
+not-yet-authorized work package; R1.1 publication does not itself start it.
 
 Contracts, not implementation. This is playback/output infrastructure —
 **not** Audio Lab.

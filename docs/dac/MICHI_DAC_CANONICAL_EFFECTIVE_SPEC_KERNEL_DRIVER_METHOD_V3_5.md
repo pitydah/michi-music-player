@@ -227,8 +227,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100 + 100R1 + 100R1.1` Automated verification + documentation seal | CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING | YES | decoded-source characterization, startup-safe Direct resume, explicit-Stop reconciliation, exact-commit aggregate gate, and blocking exact-SHA CI evidence |
-| 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | execution remains blocked until exact-head remote R1.1 GO; then R19–R29/R32–R36 applicable evidence on real hardware |
+| 10 | `DAC-V35-100 + 100R1 + 100R1.1` Automated verification + documentation seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | decoded-source characterization, startup-safe Direct resume, explicit-Stop reconciliation, exact-commit aggregate gate, and blocking exact-SHA CI evidence |
+| 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | exact-head remote R1.1 prerequisite is green; physical execution remains a separately authorized work package using applicable R19–R29/R32–R36 evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
 | 14 | `DAC-V35-140` DSD / DoP | SEPARATE PROMOTION; MAY BE PRE-STABLE | NO | R30 and separate implementation/QA gate |
@@ -20350,16 +20350,19 @@ Mandatory evidence is `SC100R1.1-01..10`, `SR100R1.1-STOP-01..02`, and the
 preserved `SR100R1-01..13` suite with SR100R1-11 replaced by successful decoded
 MP3 replanning. The aggregate verifier requires the R1.1 module at collection,
 forbids skip/xfail under the DAC mandatory prefix, and statically seals the
-productive characterizer/planner/Stop seams. Local targeted evidence is green;
-the final full-suite counts and exact-head publication identity MUST be copied
-from the remote R1.1 artifact, not inferred from local output.
+productive characterizer/planner/Stop seams. The published exact-head artifact
+for commit `7753203cab712ffe38677399dd8eb93d967e25d2`, Michi CI run
+`35388153288`, records automated `GO`, physical `NOT_RUN`, 555 DAC tests passed,
+and 4824 full-suite tests passed with 28 classified non-DAC skips. Artifact
+`dac-v35-software-closure-7753203cab712ffe38677399dd8eb93d967e25d2` has GitHub
+digest `sha256:71fea718c30bdc5f6d5e9a15f61b2a1c96f31eaf3af3253bd584dacc7010b3f9`.
 
 Current status:
 
 ```text
-DAC-V35-100 = CORRECTIVE OPEN until R1.1 publication
+DAC-V35-100 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1 = NO-GO / superseded by R1.1 corrective
-DAC-V35-100R1.1 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
+DAC-V35-100R1.1 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-110 = DO NOT START
 ```
 

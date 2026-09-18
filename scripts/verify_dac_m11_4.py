@@ -465,7 +465,7 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
     required = {
         "canonical": (
             "DAC-V35-100R1.1",
-            "CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING",
+            "CLOSED-AUTOMATED / GO; PUBLISHED",
             "DAC-V35-110",
             "DO NOT START",
         ),

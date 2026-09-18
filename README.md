@@ -66,13 +66,12 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   shell DONE, and scoped M9-R3 Library/collection convergence in progress
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
-- M11.4: DAC-V35-100R1.1 is local automated GO with remote publication pending.
-  Decoded-source characterization now precedes pure Direct planning, and an
-  explicit successful Stop truthfully reconciles protected resume intent. The
-  PCM Direct software core is **IMPLEMENTED / PHYSICAL QUALIFICATION PENDING**.
-  DAC-V35-110 is DO NOT START until exact-head R1.1 remote evidence is green,
-  and M11.5 playback
-  guarantees are not implemented.
+- M11.4: DAC-V35-100R1.1 automated GO is published from exact-head remote
+  evidence. Decoded-source characterization now precedes pure Direct planning,
+  and an explicit successful Stop truthfully reconciles protected resume intent.
+  The PCM Direct software core is **IMPLEMENTED / PHYSICAL QUALIFICATION
+  PENDING**. DAC-V35-110 remains a separate DO NOT START work package, and M11.5
+  playback guarantees are not implemented.
 - M12 Performance, M13 Packaging, M14 Beta, M15 RC, M16 Stable
 
 See `docs/MASTER_ROADMAP_1.0.md` for the canonical 1.0 contract and current statuses.
