@@ -115,12 +115,21 @@ def test_missing_required_test_collection_is_no_go() -> None:
 
 
 def test_all_required_modules_are_detected_without_parsing_test_names() -> None:
+    assert (
+        "tests/dac/test_v35_100r11_source_characterization.py"
+        in verifier.REQUIRED_COLLECTED_MODULES
+    )
     output = "\n".join(
         f"{path}::test_any" for path in verifier.REQUIRED_COLLECTED_MODULES
     )
     ok, detail = verifier._required_collection_gate(output)
     assert ok is True
     assert "mandatory modules collected" in detail
+
+
+def test_source_characterization_contract_is_productively_wired() -> None:
+    ok, detail = verifier._source_characterization_contract_gate()
+    assert ok, detail
 
 
 def test_mandatory_dac_skip_is_no_go() -> None:
@@ -210,21 +219,22 @@ def _write_status_fixture(root, *, work_package_state: str) -> None:
         root
         / "docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md"
     ).write_text(
-        "DAC-V35-100R1 CLOSED-AUTOMATED / GO\n"
-        "DAC-V35-110 NEXT AUTHORIZED / NOT STARTED\n"
+        "DAC-V35-100R1.1 CLOSED-AUTOMATED / LOCAL GO; "
+        "REMOTE PUBLICATION PENDING\n"
+        "DAC-V35-110 DO NOT START\n"
         "DAC-V35-130 POST-STABLE ONLY\n"
     )
     (root / "docs/M11_4_AUDIOPHILE_OUTPUT_DAC.md").write_text(
-        "IMPLEMENTED / PHYSICAL QUALIFICATION PENDING\nDAC-V35-100R1\n"
+        "IMPLEMENTED / PHYSICAL QUALIFICATION PENDING\nDAC-V35-100R1.1\n"
     )
     (root / "docs/STATUS_MATRIX.md").write_text(
-        "| M11.4 Audiophile Output & DAC | IMPLEMENTED | DAC-V35-100R1 |\n"
+        "| M11.4 Audiophile Output & DAC | IMPLEMENTED | DAC-V35-100R1.1 |\n"
         f"| M11.4 Audiophile Output & DAC Management | {work_package_state} | R1 |\n"
     )
     (root / "docs/MASTER_ROADMAP_1.0.md").write_text(
-        "| M11.4 Audiophile Output/DAC | IMPLEMENTED | DAC-V35-100R1 |\n"
+        "| M11.4 Audiophile Output/DAC | IMPLEMENTED | DAC-V35-100R1.1 |\n"
     )
-    (root / "README.md").write_text("DAC-V35-100R1 PHYSICAL QUALIFICATION PENDING\n")
+    (root / "README.md").write_text("DAC-V35-100R1.1 PHYSICAL QUALIFICATION PENDING\n")
 
 
 def test_status_contradiction_is_no_go(tmp_path) -> None:

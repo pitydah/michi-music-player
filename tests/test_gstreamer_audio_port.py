@@ -202,6 +202,10 @@ class FakeBindings:
         self.fail_strict_build = False
         # DAC-V35-050C2: snapshot overrides para mismatches
         self.direct_snapshot_overrides: dict | None = None
+        # DAC-V35-100R1.1: isolated pre-plan source characterization seam.
+        self.source_characterization_overrides: dict | None = None
+        self.source_characterization_error = None
+        self.source_characterization_calls: list[Path] = []
 
     def _raise_if_arm_stage(self, stage):
         if self.arm_exception_stage == stage:
@@ -228,6 +232,35 @@ class FakeBindings:
         p = FakePipeline(f"P{len(self.pipelines)}")
         self.pipelines.append(p)
         return p
+
+    def characterize_local_file(self, path, timeout_ns):
+        from michi.application.audio_output_ports import SourceCharacterizationError
+        from michi.domain.audio_evidence import (
+            DecodedSourceSignal,
+            intrinsic_pcm_significant_bits,
+        )
+
+        del timeout_ns
+        source = Path(path)
+        self.source_characterization_calls.append(source)
+        if self.source_characterization_error is not None:
+            error = self.source_characterization_error
+            if isinstance(error, SourceCharacterizationError):
+                raise error
+            raise SourceCharacterizationError(
+                "SOURCE_CHARACTERIZATION_FAILED", str(error)
+            )
+        values = self.source_characterization_overrides or {}
+        transport_format = values.get("format", "S24LE")
+        return DecodedSourceSignal(
+            "PCM",
+            values.get("rate", 96_000),
+            values.get(
+                "significant_bits", intrinsic_pcm_significant_bits(transport_format)
+            ),
+            values.get("channels", 2),
+            None,
+        )
 
     # -- DAC-V35-050B: strict Direct surface (fake) ---------------------
 

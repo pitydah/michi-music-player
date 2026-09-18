@@ -22,6 +22,8 @@ from michi.application.audio_output_planner import (
     S32_CARRIER_PRESERVES_24_BITS,
     SELECTED_DEVICE_MISSING,
     SIGNIFICANT_BITS_UNPROVEN,
+    SOURCE_CHANNELS_UNSUPPORTED,
+    SOURCE_ENCODING_UNSUPPORTED,
     SOURCE_RATE_UNKNOWN,
     STRICT_NO_REMIX,
     STRICT_NO_RESAMPLE,
@@ -33,6 +35,7 @@ from michi.application.audio_output_planner import (
 from michi.domain.audio_device import AudioDeviceBinding, BindingKind
 from michi.domain.audio_evidence import (
     CapabilityEvidence,
+    DecodedSourceSignal,
     EvidenceStrength,
     PcmTuple,
     SourceFileFacts,
@@ -51,6 +54,10 @@ DEVICE = "usb:2622:0105:DX5ABC123"
 
 
 def _source(rate: int = 96000, bits: int | None = 24, channels: int = 2):
+    return DecodedSourceSignal("PCM", rate, bits, channels, None)
+
+
+def _source_file_facts(rate: int = 96000, bits: int | None = 24, channels: int = 2):
     return SourceFileFacts(
         container="flac",
         codec="FLAC",
@@ -96,11 +103,12 @@ def _facts(**overrides) -> PlannerFacts:
         profile=stable_direct_preset("p1", DEVICE),
         selected_device_id=DEVICE,
         binding=_binding(),
-        source_file_facts=_source(),
+        decoded_source=_source(),
+        source_file_facts=_source_file_facts(),
         evidence=(_evidence(),),
     )
     if "source" in overrides:
-        overrides["source_file_facts"] = overrides.pop("source")
+        overrides["decoded_source"] = overrides.pop("source")
     base.update(overrides)
     return PlannerFacts(**base)
 
@@ -169,6 +177,20 @@ def test_unknown_significant_bits_refused() -> None:
     refusal = OutputPlanner().plan(_facts(source=_source(bits=None)))
     assert isinstance(refusal, PlannerRefusal)
     assert refusal.code == SOURCE_RATE_UNKNOWN
+
+
+def test_non_pcm_decoded_source_is_refused() -> None:
+    refusal = OutputPlanner().plan(
+        _facts(decoded_source=DecodedSourceSignal("DSD", 2_822_400, 1, 2, None))
+    )
+    assert isinstance(refusal, PlannerRefusal)
+    assert refusal.code == SOURCE_ENCODING_UNSUPPORTED
+
+
+def test_non_stereo_decoded_source_is_refused() -> None:
+    refusal = OutputPlanner().plan(_facts(source=_source(channels=1)))
+    assert isinstance(refusal, PlannerRefusal)
+    assert refusal.code == SOURCE_CHANNELS_UNSUPPORTED
 
 
 def test_engine_not_gstreamer_refused() -> None:

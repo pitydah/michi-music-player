@@ -187,6 +187,7 @@ class PlaybackService:
         # position update (which fires `resume_prepared` once) or by any path
         # that clears the resume slot (rejection/stop/supersession).
         self._resume_prepared_subscribers: list[Callable[[Path, int], None]] = []
+        self._explicit_stop_accepted_subscribers: list[Callable[[], None]] = []
         self._resume_prepared_pending: bool = False
         # R2.1-02: a registered (not yet confirmed) resume target — distinct
         # from a confirmed backend position; never blocks quiescence.
@@ -266,6 +267,15 @@ class PlaybackService:
     ) -> None:
         if callback in self._resume_prepared_subscribers:
             self._resume_prepared_subscribers.remove(callback)
+
+    def subscribe_explicit_stop_accepted(self, callback: Callable[[], None]) -> None:
+        """Observe only a fully committed public ``stop()`` command."""
+        if callback not in self._explicit_stop_accepted_subscribers:
+            self._explicit_stop_accepted_subscribers.append(callback)
+
+    def unsubscribe_explicit_stop_accepted(self, callback: Callable[[], None]) -> None:
+        if callback in self._explicit_stop_accepted_subscribers:
+            self._explicit_stop_accepted_subscribers.remove(callback)
 
     def _on_end_of_media(self) -> None:
         # Forward only for a committed track: a natural end of the current
@@ -1141,6 +1151,8 @@ class PlaybackService:
         self._state.status = PlaybackStatus.STOPPED
         self._state.position_ms = 0
         self._notify()
+        for callback in tuple(self._explicit_stop_accepted_subscribers):
+            callback()
         # Reentrancy guard: a subscriber may re-request playback during the
         # notify above, re-arming the pending request; the stale cancellation
         # captured before it must not clear that new pending, so fire it only

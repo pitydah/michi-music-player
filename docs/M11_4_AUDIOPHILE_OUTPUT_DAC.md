@@ -1,8 +1,9 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
 Implementation contract for audiophile output infrastructure. Status:
-**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1 automated GO;
-physical qualification has not started).
+**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.1 local
+automated GO; exact-head remote publication pending; physical qualification has
+not started).
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -145,13 +146,11 @@ V3.5 spec governs implementation and acceptance.
   later transition owns reconciliation. Unexpected persistence failures and
   broken invariants still propagate.
 
-  Productive planning now carries `SourceFileFacts`, not decoded-runtime facts.
-  Lossy significant bits that the file does not define remain unknown; both
-  startup rehydration and explicit Play refuse Strict Direct with
-  `SOURCE_RATE_UNKNOWN` rather than fabricating 16/24/32-bit evidence. Shared
-  output remains available only through explicit selection. The SQLite v2
-  compatibility path also removes the historical unique-per-device profile
-  index so one DAC can retain multiple profiles by `profile_id`.
+  R1 separated `SourceFileFacts` from decoded runtime truth, but its final
+  promotion status is superseded by R1.1 because production still passed file
+  facts directly to the planner. The SQLite v2 compatibility path removes the
+  historical unique-per-device profile index so one DAC can retain multiple
+  profiles by `profile_id`.
 
   Gates `SR100R1-01..13` cover startup convergence, durable snapshot
   protection, explicit Play, Shared and complete-Direct controls, fatal
@@ -161,15 +160,36 @@ V3.5 spec governs implementation and acceptance.
   claim/status consistency, scheduling classifications, wheel parity, and
   exact `GITHUB_SHA` binding. The blocking `dac-v35-software-closure` CI job
   uploads verifier evidence with `always()` and independently preserves the
-  normal `check` and `min-qt` gates. Local regression evidence is 538 DAC tests
-  and 4832 full-suite tests passed; the two skips are classified non-DAC
-  environment/legacy skips.
+  normal `check` and `min-qt` gates. The published R1 artifact is historical
+  evidence only; it does not close R1.1.
+
+- `DAC-V35-100R1.1` decoded-source and explicit-Stop corrective seal —
+  **CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING**. One bounded,
+  generation-safe `GStreamerSourceCharacterizer` prerolls local files through
+  isolated audio/video/text `fakesink` instances and returns normalized decoded
+  PCM without opening ALSA, acquiring the selected DAC, autoplaying, mutating
+  playback state, or publishing Signal Truth. `OutputPlanner` remains pure and
+  now derives the exact carrier only from `DecodedSourceSignal`;
+  `SourceFileFacts` remains optional provenance and cannot fill unknown decoded
+  precision. Explicit MP3 Play can therefore plan from proved S16 decoded caps,
+  while unsupported or unknown decoded tuples still refuse without fallback.
+
+  A separate `explicit_stop_accepted` application event clears a protected
+  startup-resume snapshot only after public Stop fully succeeds. Backend Stop
+  failure, startup STOPPED observations, and controlled engine-switch stops do
+  not erase durable intent. Gates `SC100R1.1-01..10` and
+  `SR100R1.1-STOP-01..02` join the preserved `SR100R1-01..13`; the aggregate
+  verifier requires the R1.1 module and seals the productive wiring. Local DAC
+  regression is 555 passed. Final full-suite counts, commit, workflow run, and
+  artifact identity remain pending exact-head remote publication and will be
+  copied from that artifact.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
 software runtime-evidence verdict, not physical proof. `DAC-V35-100R1` is
-CLOSED-AUTOMATED / GO;
-physical qualification (`DAC-V35-110`) remains pending.
+NO-GO / superseded for final promotion; `DAC-V35-100R1.1` is local GO with
+remote publication pending. Physical qualification (`DAC-V35-110`) is
+**DO NOT START** until exact-head R1.1 remote evidence is green.
 
 Contracts, not implementation. This is playback/output infrastructure —
 **not** Audio Lab.

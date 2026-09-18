@@ -392,6 +392,7 @@ class PersistenceCoordinator:
         self._session.subscribe_changed(self._on_session_changed)
         self._playback.subscribe_changed(self._on_playback_changed)
         self._playback.subscribe_resume_prepared(self._on_resume_prepared)
+        self._playback.subscribe_explicit_stop_accepted(self._on_explicit_stop_accepted)
         self._last_volume, self._last_muted = self._playback.snapshot_volume()
         self._started = True
 
@@ -403,6 +404,9 @@ class PersistenceCoordinator:
         self._session.unsubscribe_changed(self._on_session_changed)
         self._playback.unsubscribe_changed(self._on_playback_changed)
         self._playback.unsubscribe_resume_prepared(self._on_resume_prepared)
+        self._playback.unsubscribe_explicit_stop_accepted(
+            self._on_explicit_stop_accepted
+        )
         self._started = False
 
     def _on_queue_changed(self) -> None:
@@ -488,6 +492,13 @@ class PersistenceCoordinator:
         self._clear_protected_resume("resume position confirmed")
         self._release_resume_authority(reason="resume position confirmed")
         self._last_persisted_position_ms = position_ms
+        self.checkpoint()
+
+    def _on_explicit_stop_accepted(self) -> None:
+        """A successful user Stop supersedes protected startup-resume truth."""
+        if self._restoring or not self._started:
+            return
+        self._clear_protected_resume("explicit stop accepted")
         self.checkpoint()
 
     def _on_playback_changed(self) -> None:
@@ -818,6 +829,9 @@ class PersistenceCoordinator:
         self._session.unsubscribe_changed(self._on_session_changed)
         self._playback.unsubscribe_changed(self._on_playback_changed)
         self._playback.unsubscribe_resume_prepared(self._on_resume_prepared)
+        self._playback.unsubscribe_explicit_stop_accepted(
+            self._on_explicit_stop_accepted
+        )
         self._restoring = False
         self._resume_phase = _ResumePhase.NONE
         self._restored_snapshot = None

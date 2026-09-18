@@ -23,11 +23,13 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, Signal
 
+from michi.application.audio_output_ports import SourceCharacterizationError
 from michi.application.ports import (
     AudioPort,
     AudioTransportCommandError,
     AudioTransportUnavailableError,  # canonical (ports.py)
 )
+from michi.domain.audio_evidence import DecodedSourceSignal
 from michi.domain.playback import PlaybackStatus
 from michi.infrastructure.audio_output.direct_output_executor import (
     DirectLoadPreparation,
@@ -36,6 +38,60 @@ from michi.infrastructure.audio_output.direct_output_executor import (
 _logger = logging.getLogger(__name__)
 
 _POSITION_POLL_MS = 500
+
+
+class GStreamerSourceCharacterizer:
+    """Bounded, generation-safe decoded-source characterization facade."""
+
+    def __init__(self, bindings=None, *, timeout_ms: int = 5_000) -> None:
+        self._bindings = bindings or GStreamerBindings()
+        self._timeout_ns = max(1, int(timeout_ms)) * 1_000_000
+        self._lock = threading.Lock()
+        self._generation = 0
+
+    def characterize(self, path: Path) -> DecodedSourceSignal:
+        with self._lock:
+            self._generation += 1
+            generation = self._generation
+        try:
+            signal = self._bindings.characterize_local_file(
+                Path(path), self._timeout_ns
+            )
+        except SourceCharacterizationError as exc:
+            with self._lock:
+                stale = generation != self._generation
+            if stale:
+                raise SourceCharacterizationError(
+                    "SOURCE_CHARACTERIZATION_STALE",
+                    "decoded-source result belongs to a superseded generation",
+                ) from exc
+            raise
+        except Exception as exc:
+            with self._lock:
+                stale = generation != self._generation
+            if stale:
+                raise SourceCharacterizationError(
+                    "SOURCE_CHARACTERIZATION_STALE",
+                    "decoded-source result belongs to a superseded generation",
+                ) from exc
+            raise SourceCharacterizationError(
+                "SOURCE_CHARACTERIZATION_FAILED", str(exc)
+            ) from exc
+        with self._lock:
+            if generation != self._generation:
+                raise SourceCharacterizationError(
+                    "SOURCE_CHARACTERIZATION_STALE",
+                    "decoded-source result belongs to a superseded generation",
+                )
+        return signal
+
+    def cancel(self) -> None:
+        with self._lock:
+            self._generation += 1
+        cancel_active = getattr(self._bindings, "cancel_source_characterization", None)
+        if cancel_active is not None:
+            with contextlib.suppress(Exception):
+                cancel_active()
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +134,8 @@ class GStreamerBindings:
         self._gst = None
         self._glib = None
         self._init_error: Exception | None = None
+        self._characterization_lock = threading.Lock()
+        self._active_characterization_pipelines: list[object] = []
 
     def ensure_loaded(self) -> None:
         """Lazy GI load — never at import time. Raises ImportError with the
@@ -129,6 +187,143 @@ class GStreamerBindings:
     def make_playbin3(self):
         self.ensure_loaded()
         return self._gst.ElementFactory.make("playbin3", "michi_gst_port")
+
+    def characterize_local_file(
+        self, path: Path, timeout_ns: int
+    ) -> DecodedSourceSignal:
+        """Preroll one local file to fake sinks and return decoded PCM caps.
+
+        This bounded probe owns an isolated playbin3 and never installs an
+        ALSA, desktop, or Direct sink. Cleanup to NULL is unconditional.
+        """
+        self.ensure_loaded()
+        source = Path(path)
+        if not source.is_file():
+            raise SourceCharacterizationError(
+                "SOURCE_FILE_UNAVAILABLE", f"local source does not exist: {source}"
+            )
+        gst = self._gst
+        pipeline = gst.ElementFactory.make("playbin3", "michi_source_characterizer")
+        if pipeline is None:
+            raise SourceCharacterizationError(
+                "SOURCE_CHARACTERIZER_UNAVAILABLE", "playbin3 is unavailable"
+            )
+        with self._characterization_lock:
+            self._active_characterization_pipelines.append(pipeline)
+        primary_error: Exception | None = None
+        try:
+            sinks = tuple(
+                gst.ElementFactory.make("fakesink", name)
+                for name in (
+                    "michi_source_audio_sink",
+                    "michi_source_video_sink",
+                    "michi_source_text_sink",
+                )
+            )
+            if any(sink is None for sink in sinks):
+                raise SourceCharacterizationError(
+                    "SOURCE_CHARACTERIZER_UNAVAILABLE", "fakesink is unavailable"
+                )
+            audio_sink, video_sink, text_sink = sinks
+            for sink in sinks:
+                sink.set_property("sync", False)
+            pipeline.set_property("audio-sink", audio_sink)
+            pipeline.set_property("video-sink", video_sink)
+            pipeline.set_property("text-sink", text_sink)
+            pipeline.set_property("uri", source.resolve().as_uri())
+            requested = pipeline.set_state(gst.State.PAUSED)
+            if requested == gst.StateChangeReturn.FAILURE:
+                raise SourceCharacterizationError(
+                    "SOURCE_CHARACTERIZATION_FAILED",
+                    "playbin3 rejected decoded-source preroll",
+                )
+            result, current, _pending = pipeline.get_state(max(1, int(timeout_ns)))
+            if result == gst.StateChangeReturn.FAILURE:
+                raise SourceCharacterizationError(
+                    "SOURCE_CHARACTERIZATION_FAILED",
+                    "decoded-source preroll failed",
+                )
+            if current != gst.State.PAUSED:
+                raise SourceCharacterizationError(
+                    "SOURCE_CHARACTERIZATION_TIMEOUT",
+                    "decoded-source preroll did not reach PAUSED before timeout",
+                )
+            pad = audio_sink.get_static_pad("sink")
+            caps = pad.get_current_caps() if pad is not None else None
+            if caps is None or caps.get_size() == 0:
+                raise SourceCharacterizationError(
+                    "SOURCE_DECODED_CAPS_UNKNOWN", "decoded audio caps are unavailable"
+                )
+            structure = caps.get_structure(0)
+            if structure.get_name() != "audio/x-raw":
+                raise SourceCharacterizationError(
+                    "SOURCE_ENCODING_UNSUPPORTED",
+                    f"decoded source is {structure.get_name()!r}, not PCM",
+                )
+            try:
+                transport_format = structure.get_value("format")
+                rate_hz = structure.get_value("rate")
+                channels = structure.get_value("channels")
+            except (AttributeError, KeyError, TypeError, ValueError) as exc:
+                raise SourceCharacterizationError(
+                    "SOURCE_DECODED_CAPS_UNKNOWN",
+                    f"decoded PCM caps are malformed: {exc}",
+                ) from exc
+            if not isinstance(transport_format, str):
+                transport_format = None
+            if not isinstance(rate_hz, int) or rate_hz <= 0:
+                rate_hz = 0
+            if not isinstance(channels, int) or channels <= 0:
+                channels = 0
+            from michi.domain.audio_evidence import (  # noqa: PLC0415
+                intrinsic_pcm_significant_bits,
+            )
+
+            signal = DecodedSourceSignal(
+                encoding="PCM",
+                rate_hz=rate_hz,
+                significant_bits=intrinsic_pcm_significant_bits(transport_format),
+                channels=channels,
+                channel_positions=None,
+            )
+            if signal.rate_hz <= 0 or signal.channels <= 0:
+                raise SourceCharacterizationError(
+                    "SOURCE_DECODED_CAPS_UNKNOWN",
+                    "decoded PCM rate/channels are unavailable",
+                )
+            return signal
+        except Exception as exc:
+            primary_error = exc
+            raise
+        finally:
+            with self._characterization_lock:
+                if pipeline in self._active_characterization_pipelines:
+                    self._active_characterization_pipelines.remove(pipeline)
+            try:
+                cleanup_result = pipeline.set_state(gst.State.NULL)
+                if cleanup_result == gst.StateChangeReturn.FAILURE:
+                    raise RuntimeError(
+                        "characterization pipeline rejected transition to NULL"
+                    )
+            except Exception as cleanup_error:
+                if primary_error is None:
+                    raise SourceCharacterizationError(
+                        "SOURCE_CHARACTERIZATION_CLEANUP_FAILED",
+                        str(cleanup_error),
+                    ) from cleanup_error
+                _logger.warning(
+                    "source characterization cleanup failed after %s: %s",
+                    type(primary_error).__name__,
+                    cleanup_error,
+                )
+
+    def cancel_source_characterization(self) -> None:
+        """Interrupt all currently owned characterization prerolls."""
+        with self._characterization_lock:
+            pipelines = tuple(self._active_characterization_pipelines)
+        for pipeline in pipelines:
+            with contextlib.suppress(Exception):
+                pipeline.set_state(self._gst.State.NULL)
 
     # ------------------------------------------------------------------
     # DAC-V35-050B: Strict Direct sink builder (GI confinado aquí)

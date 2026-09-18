@@ -227,8 +227,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100 + 100R1` Automated verification + documentation seal | CLOSED-AUTOMATED / GO | YES | startup-safe Direct resume, exact-commit aggregate gate, and blocking exact-SHA CI evidence |
-| 11 | `DAC-V35-110` Physical PCM promotion | NEXT AUTHORIZED / NOT STARTED | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | execution entry awaits exact-head remote R1 GO; then R19–R29/R32–R36 applicable evidence on real hardware |
+| 10 | `DAC-V35-100 + 100R1 + 100R1.1` Automated verification + documentation seal | CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING | YES | decoded-source characterization, startup-safe Direct resume, explicit-Stop reconciliation, exact-commit aggregate gate, and blocking exact-SHA CI evidence |
+| 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | execution remains blocked until exact-head remote R1.1 GO; then R19–R29/R32–R36 applicable evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
 | 14 | `DAC-V35-140` DSD / DoP | SEPARATE PROMOTION; MAY BE PRE-STABLE | NO | R30 and separate implementation/QA gate |
@@ -1710,6 +1710,13 @@ class DecodedSourceSignal:
     significant_bits: int | None
     channels: int
     channel_positions: tuple[str, ...] | None
+
+
+@dataclass(frozen=True)
+class SourceFileFacts:
+    container: str | None
+    codec: str | None
+    nominal_pcm: PcmTuple | None
 ```
 
 Stable first target:
@@ -1720,6 +1727,28 @@ stereo
 ```
 
 No DSD branch is required before PCM Direct stabilizes.
+
+`SourceFileFacts` and `DecodedSourceSignal` are separate evidence domains.
+Container metadata may travel with the plan as provenance, but it MUST NOT
+select the Direct carrier. Before pure planning, a local source characterizer
+MUST obtain decoded `audio/x-raw` caps from a bounded isolated decode preroll:
+
+```text
+local file
+  -> isolated playbin3
+  -> audio/video/text fakesink only
+  -> bounded PAUSED preroll
+  -> normalized decoded PCM caps
+  -> DecodedSourceSignal
+  -> OutputPlanner
+```
+
+The characterizer MUST be generation-safe, cancellable, and unconditionally
+clean its isolated pipeline to `NULL`. It MUST NOT install an ALSA or desktop
+sink, acquire the selected output, autoplay, mutate Queue/PlaybackState,
+publish Signal Truth, or infer unknown significant bits from file metadata.
+Timeout, missing caps, unsupported encoding, unavailable local source, and a
+superseded generation are typed pre-planning failures.
 
 ---
 
@@ -1756,6 +1785,8 @@ Planner input:
 
 ```text
 DecodedSourceSignal
++
+SourceFileFacts (optional provenance only)
 +
 AudioDevice
 +
@@ -1794,15 +1825,16 @@ Strict Direct algorithm:
 1. Resolve selected stable device.
 2. Resolve current ALSA hardware binding.
 3. Require hardware-raw path.
-4. Build exact source-native target.
-5. Permit S32 carrier for 24-bit source only when significant precision is preserved.
-6. Reject unsupported exact tuple.
-7. Reject unknown exact tuple unless policy permits JIT exact probe.
-8. No sample-rate fallback.
-9. No channel remix.
-10. No DSP.
-11. No different-device fallback.
-12. Emit decisions and evidence references.
+4. Characterize decoded PCM without acquiring any output device.
+5. Build the exact source-native target from `DecodedSourceSignal` only.
+6. Permit S32 carrier for 24-bit source only when significant precision is preserved.
+7. Reject unsupported exact tuple.
+8. Reject unknown exact tuple unless policy permits JIT exact probe.
+9. No sample-rate fallback.
+10. No channel remix.
+11. No DSP.
+12. No different-device fallback.
+13. Emit decisions and evidence references.
 ```
 
 Examples:
@@ -20279,6 +20311,57 @@ part of the aggregate gate. The repository workflow adds a blocking
 requires artifact commit equality with `github.sha`. Remote exact-head GO is
 the remaining execution-entry condition for `DAC-V35-110`; it is evidence for
 this closed automated slice, not physical qualification.
+
+## 409.2 `DAC-V35-100R1.1` corrective seal — decoded source and explicit Stop
+
+The R1 closure is **NO-GO / superseded by R1.1** for final promotion because
+production sent `SourceFileFacts` directly to `OutputPlanner` while §16–§18
+required `DecodedSourceSignal`. This let container metadata occupy a planning
+authority it does not own and made a decodable lossy source remain permanently
+unplannable. R1.1 restores the required boundary without weakening Strict
+Direct or creating another playback/output authority.
+
+For a selected Direct profile, `ProductiveOutputRequestResolver` first retains
+container/codec/nominal metadata as `SourceFileFacts`, then asks the one
+production `GStreamerSourceCharacterizer` for decoded PCM. The characterizer
+uses the same lazy GStreamer bindings but owns an isolated `playbin3` instance
+whose audio, video, and text sinks are all `fakesink`. It performs a bounded
+local-file-only PAUSED preroll, normalizes `audio/x-raw` caps, and always returns
+the pipeline to `NULL`. It never installs `alsasink`, acquires the selected DAC,
+autoplays, mutates playback/session state, or publishes Signal Truth. A newer
+generation or explicit cancellation makes an older result stale.
+
+`OutputPlanner` remains pure and deterministic. Its carrier tuple comes only
+from `DecodedSourceSignal`; `SourceFileFacts` is optional provenance. Unknown
+decoded precision remains unknown even when file metadata contains a nominal
+bit depth. Device evidence and binding-generation checks remain unchanged, and
+Direct still refuses rather than resampling, remixing, processing, changing
+devices, or falling back to Shared.
+
+The protected startup-resume snapshot has one additional terminal owner: a
+successful public `PlaybackService.stop()` command. `PlaybackService` publishes
+an application-layer `explicit_stop_accepted` event only after backend Stop,
+output release, and local STOPPED commit all succeed. `PersistenceCoordinator`
+then clears the protected snapshot and checkpoints `None@0`. Startup-generated
+STOPPED observations, engine-switch controlled stops, and failed Stop commands
+do not publish this event and cannot erase protected durable intent.
+
+Mandatory evidence is `SC100R1.1-01..10`, `SR100R1.1-STOP-01..02`, and the
+preserved `SR100R1-01..13` suite with SR100R1-11 replaced by successful decoded
+MP3 replanning. The aggregate verifier requires the R1.1 module at collection,
+forbids skip/xfail under the DAC mandatory prefix, and statically seals the
+productive characterizer/planner/Stop seams. Local targeted evidence is green;
+the final full-suite counts and exact-head publication identity MUST be copied
+from the remote R1.1 artifact, not inferred from local output.
+
+Current status:
+
+```text
+DAC-V35-100 = CORRECTIVE OPEN until R1.1 publication
+DAC-V35-100R1 = NO-GO / superseded by R1.1 corrective
+DAC-V35-100R1.1 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
+DAC-V35-110 = DO NOT START
+```
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 

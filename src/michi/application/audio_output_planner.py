@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from michi.domain.audio_device import AudioDeviceBinding, BindingKind
 from michi.domain.audio_evidence import (
     CapabilityEvidence,
+    DecodedSourceSignal,
     PcmTuple,
     SourceFileFacts,
 )
@@ -52,6 +53,7 @@ NO_ALSA_HW_BINDING = "NO_ALSA_HW_BINDING"
 ENGINE_NOT_GSTREAMER = "ENGINE_UNSUPPORTED_FOR_DIRECT"
 PATH_NOT_HARDWARE_DIRECT = "PATH_NOT_HARDWARE_DIRECT"
 SOURCE_RATE_UNKNOWN = "SOURCE_RATE_UNKNOWN"
+SOURCE_ENCODING_UNSUPPORTED = "SOURCE_ENCODING_UNSUPPORTED"
 SOURCE_CHANNELS_UNSUPPORTED = "SOURCE_CHANNELS_UNSUPPORTED"
 EXACT_TUPLE_UNSUPPORTED = "EXACT_TUPLE_UNSUPPORTED"
 EXACT_TUPLE_UNKNOWN = "EXACT_TUPLE_UNKNOWN"
@@ -65,7 +67,8 @@ class PlannerFacts:
     profile: AudioOutputProfile | None
     selected_device_id: str | None
     binding: AudioDeviceBinding | None
-    source_file_facts: SourceFileFacts
+    decoded_source: DecodedSourceSignal
+    source_file_facts: SourceFileFacts | None = None
     evidence: tuple[CapabilityEvidence, ...] = ()
     expected_binding_generation: int | None = None
     device_available: bool = True
@@ -82,25 +85,16 @@ def _tuple_key(pcm: PcmTuple) -> tuple[int, str, int]:
     return (pcm.rate_hz, pcm.transport_format, pcm.channels)
 
 
-def carrier_tuple(source: SourceFileFacts) -> PcmTuple | None:
-    """Exact pre-decode target from meaningful nominal file facts.
-
-    These facts select a candidate only; they are never decoded-runtime or
-    Signal Truth evidence. S32 is allowed for a nominal 24-bit PCM source only
-    because the plan requires later runtime preservation evidence. Unknown
-    nominal significant bits remain unknown and refuse planning.
-    """
-    nominal = source.nominal_pcm
-    if nominal is None:
-        return None
-    bits = nominal.significant_bits
-    if bits is None or nominal.rate_hz <= 0 or nominal.channels <= 0:
+def carrier_tuple(source: DecodedSourceSignal) -> PcmTuple | None:
+    """Build the exact Direct carrier only from characterized decoded PCM."""
+    bits = source.significant_bits
+    if bits is None or source.rate_hz <= 0 or source.channels <= 0:
         return None
     transport_format = "S16_LE" if bits <= 16 else "S32_LE"
     return PcmTuple(
-        rate_hz=nominal.rate_hz,
+        rate_hz=source.rate_hz,
         transport_format=transport_format,
-        channels=nominal.channels,
+        channels=source.channels,
         significant_bits=bits,
     )
 
@@ -171,8 +165,21 @@ class OutputPlanner:
         if profile.rate_policy is RatePolicy.SOURCE_NATIVE:
             decisions.append(SOURCE_NATIVE_RATE_REQUIRED)
 
+        if facts.decoded_source.encoding.strip().upper() != "PCM":
+            return PlannerRefusal(
+                SOURCE_ENCODING_UNSUPPORTED,
+                f"decoded encoding {facts.decoded_source.encoding!r} is not PCM",
+                tuple(decisions),
+            )
+        if facts.decoded_source.channels != 2:
+            return PlannerRefusal(
+                SOURCE_CHANNELS_UNSUPPORTED,
+                "Stable Strict Direct requires decoded stereo; no remix is allowed",
+                tuple(decisions),
+            )
+
         # 8. target exacto
-        requested = carrier_tuple(facts.source_file_facts)
+        requested = carrier_tuple(facts.decoded_source)
         if requested is None:
             return PlannerRefusal(
                 SOURCE_RATE_UNKNOWN,
@@ -240,8 +247,7 @@ class OutputPlanner:
             )
 
         # 10. canales (sin remix)
-        nominal = facts.source_file_facts.nominal_pcm
-        if nominal is None or requested.channels != nominal.channels:
+        if requested.channels != facts.decoded_source.channels:
             return PlannerRefusal(
                 SOURCE_CHANNELS_UNSUPPORTED,
                 "no hay remix de canales en Strict Direct",
@@ -311,6 +317,7 @@ class OutputPlanner:
             f"format={requested.transport_format}",
             f"channels={requested.channels}",
             f"sbits={requested.significant_bits}",
+            f"source_encoding={facts.decoded_source.encoding}",
             f"engine={facts.active_engine_id}",
             f"volume={profile.volume_policy.value}",
             f"fallback={profile.fallback.value}",

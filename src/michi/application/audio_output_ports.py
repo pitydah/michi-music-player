@@ -14,10 +14,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from michi.domain.audio_engine import AudioEngineId
-from michi.domain.audio_evidence import CapabilityEvidence
+from michi.domain.audio_evidence import CapabilityEvidence, DecodedSourceSignal
 from michi.domain.audio_output import (
     AudioOutputProfile,
     AudioOutputSelection,
@@ -45,6 +46,24 @@ class QualificationCachePort(Protocol):
     def replace_qualification_cache(
         self, stable_device_id: str, evidence: tuple[CapabilityEvidence, ...]
     ) -> None: ...
+
+
+class SourceCharacterizationError(RuntimeError):
+    """Typed pre-planning failure; never runtime Signal Truth evidence."""
+
+    def __init__(self, code: str, detail: str) -> None:
+        super().__init__(f"{code}: {detail}")
+        self.code = code
+        self.detail = detail
+
+
+@runtime_checkable
+class SourceCharacterizerPort(Protocol):
+    """Characterize decoded PCM without acquiring an output device."""
+
+    def characterize(self, path: Path) -> DecodedSourceSignal: ...
+
+    def cancel(self) -> None: ...
 
 
 class OutputExecutorAbortDisposition(Enum):

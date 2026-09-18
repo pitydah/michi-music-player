@@ -26,6 +26,8 @@ from michi.application.audio_output_ports import (
     AudioOutputExecutorPort,
     OutputCleanupDiagnostic,
     OutputExecutorAbortDisposition,
+    SourceCharacterizationError,
+    SourceCharacterizerPort,
     VolumeAuthority,
 )
 from michi.application.ports import SharedOutputTransaction
@@ -210,12 +212,14 @@ class ProductiveOutputRequestResolver:
         qualification,
         engines,
         source_metadata,
+        source_characterizer: SourceCharacterizerPort,
     ) -> None:
         self._profiles = profiles
         self._devices = devices
         self._qualification = qualification
         self._engines = engines
         self._source_metadata = source_metadata
+        self._source_characterizer = source_characterizer
 
     def __call__(self, path: Path) -> OutputRequest:
         selection = self._profiles.load_selection()
@@ -253,6 +257,10 @@ class ProductiveOutputRequestResolver:
                 metadata.bit_depth or None,
             ),
         )
+        try:
+            decoded_source = self._source_characterizer.characterize(path)
+        except SourceCharacterizationError as exc:
+            raise OutputSessionError(exc.code, exc.detail) from exc
         active = self._engines.state.active_engine_id
         binding = None
         expected_generation = None
@@ -278,6 +286,7 @@ class ProductiveOutputRequestResolver:
             profile=profile,
             selected_device_id=selected_device_id,
             binding=binding,
+            decoded_source=decoded_source,
             source_file_facts=source_file_facts,
             evidence=evidence,
             expected_binding_generation=expected_generation,

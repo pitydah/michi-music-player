@@ -29,6 +29,7 @@ SPEC_REVISION = "V3.5"
 REQUIRED_COLLECTED_MODULES = (
     "tests/dac/test_v35_100_software_closure.py",
     "tests/dac/test_v35_100r1_startup_resume.py",
+    "tests/dac/test_v35_100r11_source_characterization.py",
     "tests/test_v35_090_audio_output_bridge.py",
     "tests/test_v35_090_qml_audio_output.py",
 )
@@ -463,26 +464,26 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
         return False, f"status source unavailable: {exc}"
     required = {
         "canonical": (
-            "DAC-V35-100R1",
-            "CLOSED-AUTOMATED / GO",
+            "DAC-V35-100R1.1",
+            "CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING",
             "DAC-V35-110",
-            "NEXT AUTHORIZED / NOT STARTED",
+            "DO NOT START",
         ),
         "contract": (
             "IMPLEMENTED / PHYSICAL QUALIFICATION PENDING",
-            "DAC-V35-100R1",
+            "DAC-V35-100R1.1",
         ),
         "matrix": (
             "M11.4 Audiophile Output & DAC",
             "IMPLEMENTED",
-            "DAC-V35-100R1",
+            "DAC-V35-100R1.1",
         ),
         "roadmap": (
             "M11.4 Audiophile Output/DAC",
             "IMPLEMENTED",
-            "DAC-V35-100R1",
+            "DAC-V35-100R1.1",
         ),
-        "readme": ("DAC-V35-100R1", "PHYSICAL QUALIFICATION PENDING"),
+        "readme": ("DAC-V35-100R1.1", "PHYSICAL QUALIFICATION PENDING"),
     }
     missing = [
         f"{name}:{marker}"
@@ -503,6 +504,72 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
     if missing:
         return False, f"current status contradictions/missing markers: {missing}"
     return True, "current status markers agree; M11.4 remains physical-pending"
+
+
+def _source_characterization_contract_gate(
+    root: Path | None = None,
+) -> tuple[bool, str]:
+    """Seal the pre-plan decoded-source and explicit-Stop production seams."""
+    scan_root = root or ROOT
+    paths = {
+        "planner": scan_root / "src/michi/application/audio_output_planner.py",
+        "resolver": scan_root / "src/michi/application/output_session_service.py",
+        "gstreamer": scan_root / "src/michi/infrastructure/audio_engines/gstreamer.py",
+        "bootstrap": scan_root / "src/michi/bootstrap/__init__.py",
+        "playback": scan_root / "src/michi/application/playback_service.py",
+        "persistence": scan_root / "src/michi/application/persistence_coordinator.py",
+    }
+    try:
+        source = {
+            name: path.read_text(encoding="utf-8") for name, path in paths.items()
+        }
+    except OSError as exc:
+        return False, f"source-characterization contract unavailable: {exc}"
+    required = {
+        "planner": (
+            "decoded_source: DecodedSourceSignal",
+            "carrier_tuple(facts.decoded_source)",
+        ),
+        "resolver": (
+            "self._source_characterizer.characterize(path)",
+            "decoded_source=decoded_source",
+        ),
+        "bootstrap": (
+            "GStreamerSourceCharacterizer(",
+            "source_characterizer=source_characterizer",
+        ),
+        "playback": (
+            "subscribe_explicit_stop_accepted",
+            "_explicit_stop_accepted_subscribers",
+        ),
+        "persistence": (
+            "subscribe_explicit_stop_accepted",
+            "explicit stop accepted",
+        ),
+    }
+    missing = [
+        f"{name}:{marker}"
+        for name, markers in required.items()
+        for marker in markers
+        if marker not in source[name]
+    ]
+    gstreamer_method = source["gstreamer"].split("    def characterize_local_file(", 1)
+    if len(gstreamer_method) != 2:
+        missing.append("gstreamer:characterize_local_file")
+    else:
+        body = gstreamer_method[1].split("\n    def ", 1)[0]
+        for marker in ('"fakesink"', "gst.State.NULL", "timeout_ns"):
+            if marker not in body:
+                missing.append(f"gstreamer:{marker}")
+        if "alsasink" in body or "SignalTruth" in body:
+            missing.append("gstreamer:characterization must not acquire/output truth")
+    if missing:
+        return False, f"source-characterization/Stop contract missing: {missing}"
+    return (
+        True,
+        "decoded-source precedes pure planning; fake-sink probe and explicit Stop "
+        "reconciliation are productively wired",
+    )
 
 
 def _verification_manifest_gate(root: Path | None = None) -> tuple[bool, str]:
@@ -733,6 +800,13 @@ def main(argv: list[str] | None = None) -> int:
                 "current-status-consistency",
                 "Current M11.4/R1/110 status markers agree",
                 _status_consistency_gate(),
+            )
+        )
+        results.append(
+            _result_for_internal(
+                "source-characterization-contract",
+                "Decoded-source planning and explicit Stop reconciliation",
+                _source_characterization_contract_gate(),
             )
         )
         results.append(

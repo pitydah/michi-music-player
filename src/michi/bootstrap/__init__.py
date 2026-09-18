@@ -93,7 +93,10 @@ from michi.infrastructure.audio_devices.qualification_environment import (
     read_qualification_host_environment,
 )
 from michi.infrastructure.audio_devices.udev_observer import UdevObserver
-from michi.infrastructure.audio_engines.gstreamer import GStreamerBindings
+from michi.infrastructure.audio_engines.gstreamer import (
+    GStreamerBindings,
+    GStreamerSourceCharacterizer,
+)
 from michi.infrastructure.audio_engines.providers import (
     GStreamerEngineProvider,
     MpdEngineProvider,
@@ -212,6 +215,7 @@ class ServiceGraph:
     qt_engine_provider: QtEngineProvider
     gstreamer_engine_provider: GStreamerEngineProvider
     direct_output_executor: GStreamerDirectOutputExecutor
+    source_characterizer: object
     signal_truth: SignalTruthRecorder
     output_session: OutputSessionService
     direct_output_lifecycle: DirectOutputLifecycleCoordinator
@@ -370,6 +374,7 @@ def _build_services(
     artwork_provider=_MISSING,
     artwork_cache=_MISSING,
     gstreamer_bindings=None,
+    source_characterizer=None,
     alsa_hw_params_reader=None,
     audio_sysfs_root: Path | None = None,
     alsa_proc_root: Path = Path("/proc/asound"),
@@ -410,6 +415,9 @@ def _build_services(
     # consumer is wired by ApplicationContainer.
     udev_observer.rescan()
     runtime_gstreamer_bindings = gstreamer_bindings or GStreamerBindings()
+    source_characterizer = source_characterizer or GStreamerSourceCharacterizer(
+        runtime_gstreamer_bindings
+    )
     qualification_host = read_qualification_host_environment()
 
     def qualification_environment(stable_device_id: str):
@@ -477,6 +485,7 @@ def _build_services(
         qualification=qualification,
         engines=engine_service,
         source_metadata=metadata_extractor,
+        source_characterizer=source_characterizer,
     )
     output_session = OutputSessionService(
         OutputPlanner(),
@@ -754,6 +763,7 @@ def _build_services(
         qt_engine_provider=qt_provider,
         gstreamer_engine_provider=gstreamer_provider,
         direct_output_executor=direct_executor,
+        source_characterizer=source_characterizer,
         signal_truth=signal_truth,
         output_session=output_session,
         direct_output_lifecycle=direct_output_lifecycle,

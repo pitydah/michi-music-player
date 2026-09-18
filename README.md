@@ -66,11 +66,12 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   shell DONE, and scoped M9-R3 Library/collection convergence in progress
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
-- M11.4: DAC-V35-100R1 is closed automated / GO; persisted Direct startup now
-  fails closed without aborting application initialization or losing durable
-  session intent. The PCM Direct software core is
-  **IMPLEMENTED / PHYSICAL QUALIFICATION PENDING**. DAC-V35-110 has not
-  started, and M11.5 playback
+- M11.4: DAC-V35-100R1.1 is local automated GO with remote publication pending.
+  Decoded-source characterization now precedes pure Direct planning, and an
+  explicit successful Stop truthfully reconciles protected resume intent. The
+  PCM Direct software core is **IMPLEMENTED / PHYSICAL QUALIFICATION PENDING**.
+  DAC-V35-110 is DO NOT START until exact-head R1.1 remote evidence is green,
+  and M11.5 playback
   guarantees are not implemented.
 - M12 Performance, M13 Packaging, M14 Beta, M15 RC, M16 Stable
 

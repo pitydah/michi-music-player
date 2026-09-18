@@ -1308,7 +1308,10 @@ class TestF42AdapterContract:
         # DAC-V35-090R1.1 CI corrective seal (2026-09-17): requested close no
         # longer emits the explicitly unexpected pump-death signal while the
         # port is in `_closing`; live unexpected-exit telemetry is unchanged.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "9d7137da759b405b",
+        # DAC-V35-100R1.1 (2026-09-18): additive isolated local-source
+        # characterizer uses playbin3 with fake sinks and never touches the
+        # owned AudioPort pipeline, commands, pump, bus, or acceptance state.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "52b1eb9f34fdd621",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

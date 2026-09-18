@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 from conftest import FakeSettingsRepo
 
-from michi.application.output_session_service import OutputSessionError
 from michi.application.persistence_coordinator import PersistenceCoordinator
 from michi.application.settings_service import SettingsService
 from michi.domain.audio_engine import AudioEngineId
@@ -73,7 +72,13 @@ def _lossy_graph(tmp_path: Path):
         bit_depth=0,
         channels=2,
     )
-    return _direct_graph(tmp_path, source_metadata=metadata)
+    graph, bindings = _direct_graph(tmp_path, source_metadata=metadata)
+    from michi.application.audio_output_ports import SourceCharacterizationError
+
+    bindings.source_characterization_error = SourceCharacterizationError(
+        "SOURCE_CHARACTERIZATION_TIMEOUT", "startup characterization timed out"
+    )
+    return graph, bindings
 
 
 def _restore_direct_resume(
@@ -133,7 +138,7 @@ def test_sr100r1_01_direct_unknown_source_facts_do_not_abort_startup(
         assert graph.direct_output_executor.handle is None
         assert graph.signal_truth.active_snapshot is None
         assert len(bindings.pipelines) == 0  # no Direct or Shared recovery pipeline
-        assert "SOURCE_RATE_UNKNOWN" in caplog.text
+        assert "SOURCE_CHARACTERIZATION_TIMEOUT" in caplog.text
 
         persistence.shutdown()
         assert repo.load() == snapshot
@@ -283,24 +288,62 @@ def test_sr100r1_10_true_persistence_failure_remains_fatal(tmp_path: Path) -> No
         _close_graph(graph)
 
 
-def test_sr100r1_11_explicit_play_reprobes_and_remains_typed_fail_closed(
+def test_sr100r1_11_explicit_play_recharacterizes_and_plans_decoded_mp3(
     failed_direct_resume,
 ) -> None:
-    graph, _bindings, _persistence, _repo, _snapshot, _target = failed_direct_resume
-    with pytest.raises(OutputSessionError) as caught:
-        graph.playback_session.play_queue_index(1)
-    assert caught.value.code == "SOURCE_RATE_UNKNOWN"
-    assert graph.output_session.active_plan is None
-    assert graph.direct_output_executor.handle is None
+    from michi.domain.audio_evidence import (
+        CapabilityEvidence,
+        EvidenceStrength,
+        PcmTuple,
+    )
+
+    graph, bindings, _persistence, _repo, _snapshot, _target = failed_direct_resume
+    device_id = "usb:2622:0105:DX5ABC123"
+    bindings.source_characterization_error = None
+    bindings.source_characterization_overrides = {
+        "format": "S16LE",
+        "rate": 44_100,
+        "channels": 2,
+    }
+    graph.dac_qualification.cache_evidence(
+        device_id,
+        (
+            CapabilityEvidence(
+                stable_device_id=device_id,
+                tuple=PcmTuple(44_100, "S16_LE", 2, 16),
+                supported=True,
+                strength=EvidenceStrength.OPENED,
+                source="michi-alsa-probe",
+                observed_at_ns=1,
+                environment_fingerprint=(
+                    graph.dac_qualification.current_environment_fingerprint(device_id)
+                ),
+                evidence_refs=("probe:mp3-decoded",),
+            ),
+        ),
+    )
+
+    graph.playback_session.play_queue_index(1)
+
+    assert graph.output_session.plan is not None
+    assert graph.output_session.plan.requested_pcm == PcmTuple(44_100, "S16_LE", 2, 16)
+    assert graph.direct_output_executor.handle is not None
 
 
 def test_sr100r1_12_lossy_unknown_bits_remain_file_facts_not_decoded_truth(
     failed_direct_resume,
 ) -> None:
-    graph, _bindings, _persistence, _repo, _snapshot, target = failed_direct_resume
+    graph, bindings, _persistence, _repo, _snapshot, target = failed_direct_resume
+    bindings.source_characterization_error = None
+    bindings.source_characterization_overrides = {
+        "format": "S16LE",
+        "rate": 44_100,
+        "channels": 2,
+    }
     request = graph.output_session._request_for(target)
     facts = request.facts
     assert facts is not None
+    assert facts.decoded_source.significant_bits == 16
     assert facts.source_file_facts.container == "mp3"
     assert facts.source_file_facts.codec == "MP3"
     assert facts.source_file_facts.nominal_pcm.rate_hz == 44_100
@@ -345,3 +388,33 @@ def test_sr100r1_13_application_container_reaches_bridges_after_refusal(
         assert container._persistence._resume_phase.name == "NONE"
     finally:
         container.shutdown()
+
+
+def test_sr100r11_stop_01_accepted_explicit_stop_cancels_protected_resume(
+    failed_direct_resume,
+) -> None:
+    graph, _bindings, persistence, repo, _snapshot, _target = failed_direct_resume
+
+    graph.playback.stop()
+
+    assert persistence._protected_resume_snapshot is None
+    durable = repo.load()
+    assert durable.playback_path is None
+    assert durable.position_ms == 0
+
+
+def test_sr100r11_stop_02_failed_explicit_stop_preserves_protected_resume(
+    failed_direct_resume, monkeypatch
+) -> None:
+    graph, _bindings, persistence, repo, snapshot, _target = failed_direct_resume
+
+    def reject_stop():
+        raise RuntimeError("backend stop rejected")
+
+    monkeypatch.setattr(graph.playback._audio, "stop", reject_stop)
+
+    with pytest.raises(RuntimeError, match="backend stop rejected"):
+        graph.playback.stop()
+
+    assert persistence._protected_resume_snapshot == snapshot
+    assert repo.load() == snapshot
