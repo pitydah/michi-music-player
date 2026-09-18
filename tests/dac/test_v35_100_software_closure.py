@@ -12,11 +12,22 @@ from michi.application.audio_output_ports import VolumeAuthority
 from michi.application.audio_output_selection_coordinator import (
     AudioOutputSelectionCoordinator,
 )
-from michi.domain.audio_evidence import CapabilityEvidence, EvidenceStrength, PcmTuple
-from michi.domain.audio_output import AudioOutputSelection, OutputSessionState
+from michi.application.output_session_service import OutputSessionError
+from michi.domain.audio_engine import AudioEngineId
+from michi.domain.audio_evidence import (
+    CapabilityEvidence,
+    EvidenceStrength,
+    ExactProbeResult,
+    PcmTuple,
+)
+from michi.domain.audio_output import (
+    AudioOutputSelection,
+    OutputSessionState,
+    stable_direct_preset,
+)
 from michi.domain.playback import PlaybackStatus
 from michi.infrastructure.audio_output.direct_output_executor import DirectExecutorError
-from michi.presentation.audio_output_bridge import AudioOutputBridge
+from michi.presentation.audio_output_bridge import AudioOutputBridge, failure_copy
 from tests.dac._fixtures import AlsaCard, UsbDevice, build_linux_sysfs
 from tests.dac.test_v35_080_productive_lifecycle import _disconnect
 from tests.dac.test_v35_productive_direct_composition import (
@@ -43,7 +54,9 @@ AUTHORITY_MANIFEST = {
 VERIFICATION_MANIFEST = {
     "automated": tuple(f"DAC-V35-{number:03d}" for number in range(0, 101, 10)),
     "physical": ("DAC-V35-110",),
-    "conditional": ("DAC-V35-120", "DAC-V35-130"),
+    "conditional": ("DAC-V35-120",),
+    "post_stable": ("DAC-V35-130",),
+    "separate_promotion": ("DAC-V35-140",),
 }
 
 
@@ -184,6 +197,9 @@ def test_e2e_100_01_authority_and_package_manifests_are_complete() -> None:
         "DAC-V35-100",
     )
     assert "DAC-V35-110" not in VERIFICATION_MANIFEST["automated"]
+    assert VERIFICATION_MANIFEST["conditional"] == ("DAC-V35-120",)
+    assert VERIFICATION_MANIFEST["post_stable"] == ("DAC-V35-130",)
+    assert VERIFICATION_MANIFEST["separate_promotion"] == ("DAC-V35-140",)
 
 
 def test_e2e_100_02_productive_graph_has_one_authority_per_concern(
@@ -407,3 +423,152 @@ def test_e2e_100_10_shutdown_follows_sealed_callback_and_authority_order() -> No
         "engine-unbind",
     )
     assert tuple(item for item in calls if item in expected) == expected
+
+
+def test_e2e_100r1_01_qt_engine_refuses_direct_without_switch_or_fallback(
+    tmp_path: Path,
+) -> None:
+    graph, bindings = _direct_graph(
+        tmp_path, startup_selected_engine=AudioEngineId.QT_MULTIMEDIA
+    )
+    try:
+        with pytest.raises(OutputSessionError) as caught:
+            graph.playback.load_and_play(tmp_path / "engine.flac")
+        assert caught.value.code == "ENGINE_UNSUPPORTED_FOR_DIRECT"
+        assert (
+            graph.audio_engine_service.state.active_engine_id
+            is AudioEngineId.QT_MULTIMEDIA
+        )
+        assert graph.audio_output_profiles.load_selection().selected_profile_id == "p1"
+        assert graph.output_session.active_plan is None
+        assert graph.direct_output_executor.handle is None
+        assert bindings.pipelines == []
+        assert failure_copy(caught.value.code)[0] == "Direct requires GStreamer"
+    finally:
+        graph.direct_output_lifecycle.shutdown()
+        graph.audio_engine_convergence.shutdown()
+        if graph.audio_router.bound_engine_id is not None:
+            graph.audio_router.unbind()
+        graph.qt_engine_provider.close()
+
+
+def test_e2e_100r1_02_busy_is_ambiguous_not_negative_capability(
+    tmp_path: Path,
+) -> None:
+    graph, _bindings = _direct_graph(tmp_path)
+    requested = PcmTuple(96_000, "S32_LE", 2, 24)
+
+    class _BusyProbe:
+        def probe_exact(self, **_kwargs):
+            return ExactProbeResult(
+                requested=requested,
+                negotiated=None,
+                disposition="device_busy",
+                alsa_error_code=16,
+                detail="busy",
+                evidence_ref="probe:busy",
+            )
+
+    try:
+        before = graph.dac_qualification.cached_evidence(_DEVICE_ID)
+        graph.dac_qualification._adapter = _BusyProbe()
+        result = graph.dac_qualification.qualify_and_cache(
+            stable_device_id=_DEVICE_ID,
+            locator="hw:CARD=DX5,DEV=0",
+            rate_hz=96_000,
+            transport_format="S32_LE",
+            channels=2,
+        )
+        assert result.supported is None
+        assert result.evidence_refs == ("probe:busy",)
+        assert graph.dac_qualification.cached_evidence(_DEVICE_ID) == before
+        assert graph.output_session.active_plan is None
+        assert graph.audio_output_profiles.load_selection().selected_profile_id == "p1"
+        assert failure_copy("ALSA_DEVICE_BUSY")[0] == "Device busy"
+    finally:
+        graph.direct_output_lifecycle.shutdown()
+        _close_graph(graph)
+
+
+def test_e2e_100r1_03_unknown_exact_tuple_never_reaches_executor(
+    tmp_path: Path,
+) -> None:
+    graph, bindings = _direct_graph(tmp_path)
+    try:
+        graph.dac_qualification.cache_evidence(_DEVICE_ID, ())
+        with pytest.raises(OutputSessionError) as caught:
+            graph.playback.load_and_play(tmp_path / "unknown.flac")
+        assert caught.value.code == "EXACT_TUPLE_UNKNOWN"
+        assert graph.output_session.active_plan is None
+        assert graph.direct_output_executor.handle is None
+        assert bindings.pipelines == []
+        assert graph.audio_output_profiles.load_selection().selected_profile_id == "p1"
+        assert failure_copy(caught.value.code)[0] == "Format not verified"
+    finally:
+        graph.direct_output_lifecycle.shutdown()
+        _close_graph(graph)
+
+
+def test_e2e_100r1_04_identical_dacs_keep_distinct_identity_and_profiles(
+    tmp_path: Path,
+) -> None:
+    graph, _bindings = _direct_graph(tmp_path)
+    bridge = _bridge_for(graph)
+    second_id = "usb:2622:0105:DX5XYZ999"
+    sysfs = tmp_path / "linux-topology" / "sys"
+    try:
+        build_linux_sysfs(
+            sysfs,
+            usb_devices=(
+                UsbDevice("2-1", "2622", "0105", serial="DX5ABC123"),
+                UsbDevice("2-2", "2622", "0105", serial="DX5XYZ999"),
+            ),
+            cards=(
+                AlsaCard(1, "DX5", "2-1"),
+                AlsaCard(2, "DX5B", "2-2"),
+            ),
+        )
+        graph.udev_observer.rescan()
+        graph.audio_output_profiles.save_profile(stable_direct_preset("p2", second_id))
+
+        ids = {item.stable_device_id for item in graph.audio_device_registry.snapshot()}
+        assert {_DEVICE_ID, second_id} <= ids
+        assert graph.audio_device_registry.bindings_for(_DEVICE_ID)[0].card_index == 1
+        assert graph.audio_device_registry.bindings_for(second_id)[0].card_index == 2
+        profiles = {
+            item.profile_id: item.stable_device_id
+            for item in graph.audio_output_profiles.load_profiles()
+        }
+        assert profiles["p1"] == _DEVICE_ID
+        assert profiles["p2"] == second_id
+        rows = [item for item in bridge.devices if not item["isShared"]]
+        names = {item["stableDeviceId"]: item["displayName"] for item in rows}
+        assert names[_DEVICE_ID] != names[second_id]
+    finally:
+        bridge.dispose()
+        graph.direct_output_lifecycle.shutdown()
+        _close_graph(graph)
+
+
+def test_e2e_100r1_05_same_dac_reselection_preserves_selected_profile(
+    tmp_path: Path,
+) -> None:
+    graph, _bindings = _direct_graph(tmp_path)
+    coordinator = AudioOutputSelectionCoordinator(
+        profiles=graph.audio_output_profiles,
+        devices=graph.audio_device_registry,
+        output_session=graph.output_session,
+        engines=graph.audio_engine_service,
+    )
+    try:
+        graph.audio_output_profiles.save_profile(stable_direct_preset("p2", _DEVICE_ID))
+        graph.audio_output_profiles.save_selection(
+            AudioOutputSelection("p2", _DEVICE_ID, 2)
+        )
+        coordinator.select_device(_DEVICE_ID)
+        selection = graph.audio_output_profiles.load_selection()
+        assert selection.selected_device_id == _DEVICE_ID
+        assert selection.selected_profile_id == "p2"
+    finally:
+        graph.direct_output_lifecycle.shutdown()
+        _close_graph(graph)

@@ -224,13 +224,41 @@ def test_profile_upsert_does_not_duplicate(tmp_path: Path) -> None:
     assert len(repo.load_profiles()) == 1
 
 
-def test_unique_device_index_rejects_second_profile(tmp_path: Path) -> None:
+def test_same_device_can_own_multiple_explicit_profiles(tmp_path: Path) -> None:
     db = tmp_path / "settings.db"
     SQLiteSettingsRepository(db)
     repo = SqliteAudioOutputRepository(db)
     repo.save_profile(stable_direct_preset("p1", DEVICE))
-    with pytest.raises(sqlite3.IntegrityError):
-        repo.save_profile(stable_direct_preset("p2", DEVICE))
+    repo.save_profile(stable_direct_preset("p2", DEVICE))
+    assert [
+        (item.profile_id, item.stable_device_id) for item in repo.load_profiles()
+    ] == [
+        ("p1", DEVICE),
+        ("p2", DEVICE),
+    ]
+
+
+def test_existing_v2_unique_device_index_is_removed_without_data_loss(
+    tmp_path: Path,
+) -> None:
+    db = tmp_path / "settings.db"
+    SQLiteSettingsRepository(db)
+    repo = SqliteAudioOutputRepository(db)
+    repo.save_profile(stable_direct_preset("p1", DEVICE))
+    conn = sqlite3.connect(str(db))
+    try:
+        conn.execute(
+            "CREATE UNIQUE INDEX idx_audio_output_profiles_device "
+            "ON audio_output_profiles(stable_device_id) "
+            "WHERE stable_device_id IS NOT NULL"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    SQLiteSettingsRepository(db)
+    repo.save_profile(stable_direct_preset("p2", DEVICE))
+    assert [item.profile_id for item in repo.load_profiles()] == ["p1", "p2"]
 
 
 def test_schema_stores_no_card_index_columns(tmp_path: Path) -> None:

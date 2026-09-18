@@ -33,9 +33,9 @@ from michi.application.audio_output_planner import (
 from michi.domain.audio_device import AudioDeviceBinding, BindingKind
 from michi.domain.audio_evidence import (
     CapabilityEvidence,
-    DecodedSourceSignal,
     EvidenceStrength,
     PcmTuple,
+    SourceFileFacts,
 )
 from michi.domain.audio_output import (
     FallbackKind,
@@ -51,12 +51,10 @@ DEVICE = "usb:2622:0105:DX5ABC123"
 
 
 def _source(rate: int = 96000, bits: int | None = 24, channels: int = 2):
-    return DecodedSourceSignal(
-        encoding="pcm",
-        rate_hz=rate,
-        significant_bits=bits,
-        channels=channels,
-        channel_positions=("FL", "FR"),
+    return SourceFileFacts(
+        container="flac",
+        codec="FLAC",
+        nominal_pcm=PcmTuple(rate, "", channels, bits),
     )
 
 
@@ -98,9 +96,11 @@ def _facts(**overrides) -> PlannerFacts:
         profile=stable_direct_preset("p1", DEVICE),
         selected_device_id=DEVICE,
         binding=_binding(),
-        source=_source(),
+        source_file_facts=_source(),
         evidence=(_evidence(),),
     )
+    if "source" in overrides:
+        overrides["source_file_facts"] = overrides.pop("source")
     base.update(overrides)
     return PlannerFacts(**base)
 

@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from michi.domain.audio_device import AudioDeviceBinding, BindingKind
 from michi.domain.audio_evidence import (
     CapabilityEvidence,
-    DecodedSourceSignal,
     PcmTuple,
     SourceFileFacts,
 )
@@ -48,7 +47,9 @@ FALLBACK_STOP = "FALLBACK_STOP"
 SELECTED_DEVICE_MISSING = "SELECTED_DEVICE_MISSING"
 DEVICE_UNAVAILABLE = "DEVICE_UNAVAILABLE"
 NO_ALSA_HW_BINDING = "NO_ALSA_HW_BINDING"
-ENGINE_NOT_GSTREAMER = "ENGINE_NOT_GSTREAMER"
+# Public refusal vocabulary is engine-agnostic. Keep the historical symbol as
+# an import-compatible alias while emitting the canonical presentation code.
+ENGINE_NOT_GSTREAMER = "ENGINE_UNSUPPORTED_FOR_DIRECT"
 PATH_NOT_HARDWARE_DIRECT = "PATH_NOT_HARDWARE_DIRECT"
 SOURCE_RATE_UNKNOWN = "SOURCE_RATE_UNKNOWN"
 SOURCE_CHANNELS_UNSUPPORTED = "SOURCE_CHANNELS_UNSUPPORTED"
@@ -64,11 +65,10 @@ class PlannerFacts:
     profile: AudioOutputProfile | None
     selected_device_id: str | None
     binding: AudioDeviceBinding | None
-    source: DecodedSourceSignal
+    source_file_facts: SourceFileFacts
     evidence: tuple[CapabilityEvidence, ...] = ()
     expected_binding_generation: int | None = None
     device_available: bool = True
-    source_file_facts: SourceFileFacts | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,21 +82,25 @@ def _tuple_key(pcm: PcmTuple) -> tuple[int, str, int]:
     return (pcm.rate_hz, pcm.transport_format, pcm.channels)
 
 
-def carrier_tuple(source: DecodedSourceSignal) -> PcmTuple | None:
-    """Target exacto source-native (§18.4/§18.5).
+def carrier_tuple(source: SourceFileFacts) -> PcmTuple | None:
+    """Exact pre-decode target from meaningful nominal file facts.
 
-    El carrier S32 se permite para fuente de 24 bits SOLO porque la
-    precisión significativa se preserva (sbits=24). 16-bit usa S16_LE;
-    significant_bits desconocidos -> None (no se adivina).
+    These facts select a candidate only; they are never decoded-runtime or
+    Signal Truth evidence. S32 is allowed for a nominal 24-bit PCM source only
+    because the plan requires later runtime preservation evidence. Unknown
+    nominal significant bits remain unknown and refuse planning.
     """
-    bits = source.significant_bits
-    if bits is None or source.rate_hz <= 0 or source.channels <= 0:
+    nominal = source.nominal_pcm
+    if nominal is None:
+        return None
+    bits = nominal.significant_bits
+    if bits is None or nominal.rate_hz <= 0 or nominal.channels <= 0:
         return None
     transport_format = "S16_LE" if bits <= 16 else "S32_LE"
     return PcmTuple(
-        rate_hz=source.rate_hz,
+        rate_hz=nominal.rate_hz,
         transport_format=transport_format,
-        channels=source.channels,
+        channels=nominal.channels,
         significant_bits=bits,
     )
 
@@ -168,7 +172,7 @@ class OutputPlanner:
             decisions.append(SOURCE_NATIVE_RATE_REQUIRED)
 
         # 8. target exacto
-        requested = carrier_tuple(facts.source)
+        requested = carrier_tuple(facts.source_file_facts)
         if requested is None:
             return PlannerRefusal(
                 SOURCE_RATE_UNKNOWN,
@@ -207,7 +211,7 @@ class OutputPlanner:
         # C06: la precisión significativa debe estar PROBADA por readback.
         # El decision S32_CARRIER_PRESERVES_24_BITS solo se emite con
         # evidencia de sbits suficientes; nunca por el pedido.
-        source_bits = facts.source.significant_bits
+        source_bits = requested.significant_bits
         if requested.transport_format == "S32_LE" and source_bits == 24:
             proven = [
                 item
@@ -236,7 +240,8 @@ class OutputPlanner:
             )
 
         # 10. canales (sin remix)
-        if requested.channels != facts.source.channels:
+        nominal = facts.source_file_facts.nominal_pcm
+        if nominal is None or requested.channels != nominal.channels:
             return PlannerRefusal(
                 SOURCE_CHANNELS_UNSUPPORTED,
                 "no hay remix de canales en Strict Direct",

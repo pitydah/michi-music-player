@@ -90,7 +90,7 @@ def test_prepare_refusal_raises_typed_error() -> None:
     service = _service(engine="mpd")
     with pytest.raises(OutputSessionError) as exc_info:
         service.prepare_for_media(Path("a.flac"))
-    assert exc_info.value.code == "ENGINE_NOT_GSTREAMER"
+    assert exc_info.value.code == "ENGINE_UNSUPPORTED_FOR_DIRECT"
 
 
 def test_prepare_commit_runs_session(tmp_path: Path) -> None:

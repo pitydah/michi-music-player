@@ -505,11 +505,6 @@ _V2_SCHEMA_STATEMENTS = (
     )
     """,
     """
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_audio_output_profiles_device
-    ON audio_output_profiles(stable_device_id)
-    WHERE stable_device_id IS NOT NULL
-    """,
-    """
     CREATE TABLE IF NOT EXISTS audio_output_selection (
         singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
         selected_profile_id TEXT,
@@ -559,6 +554,24 @@ def _migrate_1_to_2(conn: sqlite3.Connection) -> None:
             "INSERT INTO settings(key, value) VALUES('schema_version', '2') "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
         )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+
+
+def _converge_v2_output_profile_multiplicity(conn: sqlite3.Connection) -> None:
+    """Remove the historical one-profile-per-device index idempotently.
+
+    Profile identity is ``profile_id``. Multiple explicit profiles may belong
+    to the same stable DAC, and existing v2 databases must gain that contract
+    without losing rows or requiring user intervention.
+    """
+    # Early DAC-V35-030 databases created this unique-per-device index outside
+    # the final v2 schema. Profile identity permits multiple profiles per DAC.
+    conn.execute("BEGIN")
+    try:
+        conn.execute("DROP INDEX IF EXISTS idx_audio_output_profiles_device")
         conn.execute("COMMIT")
     except Exception:
         conn.execute("ROLLBACK")
@@ -621,6 +634,8 @@ class SQLiteSettingsRepository(SettingsRepository):
             else:
                 current = int(raw)
             if current == CURRENT_SCHEMA_VERSION:
+                if current == 2:
+                    _converge_v2_output_profile_multiplicity(conn)
                 return
             if current > CURRENT_SCHEMA_VERSION:
                 raise SchemaVersionError(

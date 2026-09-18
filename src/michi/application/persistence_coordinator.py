@@ -22,9 +22,14 @@ import logging
 from enum import Enum
 from pathlib import Path
 
+from michi.application.output_session_service import OutputSessionError
 from michi.application.playback_service import PlaybackService
 from michi.application.playback_session_service import PlaybackSessionService
-from michi.application.ports import SessionRepository
+from michi.application.ports import (
+    AudioLoadError,
+    MetadataExtractionError,
+    SessionRepository,
+)
 from michi.application.queue_service import QueueService
 from michi.application.settings_service import SettingsService
 from michi.domain.playback import PlaybackStatus
@@ -163,6 +168,12 @@ class PersistenceCoordinator:
         # incomplete runtime Playback (still None@0) overwrite it. Cleared
         # when the window closes or the coordinator stops.
         self._restored_snapshot: PlaybackSessionSnapshot | None = None
+        # DAC-V35-100R1: a typed refusal before backend acceptance closes the
+        # in-memory resume state machine but does not authorize erasing the
+        # last coherent durable session. This protection survives ordinary
+        # shutdown checkpoints until a later runtime/session action establishes
+        # different truth.
+        self._protected_resume_snapshot: PlaybackSessionSnapshot | None = None
         # Last-observed volume/mute (P1-B runtime sync baseline).
         self._last_volume, self._last_muted = playback_service.snapshot_volume()
         # M4-R1: session change-detection baseline — only canonical session
@@ -190,16 +201,18 @@ class PersistenceCoordinator:
         """
         queue_state = self._queue.state
         session_state = self._session.state
-        if (
-            self._resume_phase is not _ResumePhase.NONE
-            and self._restored_snapshot is not None
-        ):
-            if self._hybrid_coherent():
+        held_snapshot = (
+            self._restored_snapshot
+            if self._resume_phase is not _ResumePhase.NONE
+            else self._protected_resume_snapshot
+        )
+        if held_snapshot is not None:
+            if self._snapshot_coherent(held_snapshot):
                 # P1-05: persist the CURRENT resolved path (a moved track's
                 # new location) — never the stale snapshot path.
                 current = self._session.state.current_entry
                 playback_path = str(current.file_path) if current is not None else None
-                position_ms = self._restored_snapshot.position_ms
+                position_ms = held_snapshot.position_ms
             else:
                 playback_path = None
                 position_ms = 0
@@ -259,15 +272,33 @@ class PersistenceCoordinator:
             return track_id_a == track_id_b
         return path_a == path_b
 
-    def _restored_playback_track_id(self) -> str | None:
-        restored = self._restored_snapshot
-        if restored is None:
+    @staticmethod
+    def _snapshot_playback_track_id(
+        snapshot: PlaybackSessionSnapshot | None,
+    ) -> str | None:
+        if snapshot is None:
             return None
-        idx = restored.context.current_index
-        entries = restored.context.entries
+        idx = snapshot.context.current_index
+        entries = snapshot.context.entries
         if not (0 <= idx < len(entries)):
             return None
         return entries[idx].library_track_id
+
+    def _restored_playback_track_id(self) -> str | None:
+        return self._snapshot_playback_track_id(self._restored_snapshot)
+
+    def _snapshot_coherent(self, snapshot: PlaybackSessionSnapshot) -> bool:
+        session_entry = self._session.state.current_entry
+        return (
+            snapshot.playback_path is not None
+            and session_entry is not None
+            and self._playback_identity_equal(
+                str(session_entry.file_path),
+                session_entry.library_track_id,
+                snapshot.playback_path,
+                self._snapshot_playback_track_id(snapshot),
+            )
+        )
 
     def _hybrid_coherent(self) -> bool:
         """The hybrid's playback portion is only trusted WHILE coherent:
@@ -275,18 +306,32 @@ class PersistenceCoordinator:
         path is present, and the LIVE queue current identity matches the
         restored path (string equality)."""
         restored = self._restored_snapshot
-        session_entry = self._session.state.current_entry
         return (
             self._resume_phase is not _ResumePhase.NONE
             and restored is not None
-            and restored.playback_path is not None
-            and session_entry is not None
-            and self._playback_identity_equal(
-                str(session_entry.file_path),
-                session_entry.library_track_id,
-                restored.playback_path,
-                self._restored_playback_track_id(),
-            )
+            and self._snapshot_coherent(restored)
+        )
+
+    def _clear_protected_resume(self, reason: str) -> None:
+        if self._protected_resume_snapshot is None:
+            return
+        self._protected_resume_snapshot = None
+        logger.debug("protected resume snapshot released: %s", reason)
+
+    def _terminalize_optional_resume_failure(
+        self,
+        snapshot: PlaybackSessionSnapshot,
+        error: OutputSessionError | AudioLoadError | MetadataExtractionError,
+    ) -> None:
+        """Close startup rehydration while preserving last durable truth."""
+        self._resume_phase = _ResumePhase.NONE
+        self._restored_snapshot = None
+        self._protected_resume_snapshot = snapshot
+        code = getattr(error, "code", type(error).__name__)
+        logger.warning(
+            "startup resume preparation unavailable [%s]: %s",
+            code,
+            error,
         )
 
     def _release_resume_authority(self, reason: str = "resume resolved") -> None:
@@ -383,6 +428,13 @@ class PersistenceCoordinator:
                 self._playback.stop()
                 self._release_resume_authority(reason="queue coherence broken")
             # non-QUEUE contexts: Queue mutation does NOT invalidate resume
+        if self._protected_resume_snapshot is not None:
+            session_type = self._session.state.context_type
+            if (
+                session_type is PlaybackContextType.QUEUE
+                and not self._snapshot_coherent(self._protected_resume_snapshot)
+            ):
+                self._clear_protected_resume("queue coherence broken")
         self.checkpoint()
 
     def _on_session_changed(self) -> None:
@@ -415,6 +467,9 @@ class PersistenceCoordinator:
         ):
             self._playback.stop()
             self._release_resume_authority(reason="session superseded")
+        protected = self._protected_resume_snapshot
+        if protected is not None and not self._snapshot_coherent(protected):
+            self._clear_protected_resume("session superseded")
         self.checkpoint()
 
     def _on_resume_prepared(self, path: Path, position_ms: int) -> None:
@@ -430,6 +485,7 @@ class PersistenceCoordinator:
         # immediately: no future checkpoint can regress it.
         if not self._started:
             return
+        self._clear_protected_resume("resume position confirmed")
         self._release_resume_authority(reason="resume position confirmed")
         self._last_persisted_position_ms = position_ms
         self.checkpoint()
@@ -443,6 +499,8 @@ class PersistenceCoordinator:
         if self._restoring or not self._started:
             return
         state = self._playback.state
+        if self._protected_resume_snapshot is not None and state.file_path is not None:
+            self._clear_protected_resume("runtime media identity committed")
         # M5-LAST-GATE-2 restore window: while a phase is open, playback
         # events are startup fallout — consumed without a checkpoint (the
         # hybrid protects the durable truth). Media acceptance moves
@@ -674,7 +732,20 @@ class PersistenceCoordinator:
                 # C4: load + seek after acceptance; never autoplay. The
                 # CURRENT resolved path reaches the backend (moved tracks
                 # resume from their new location).
-                self._playback.prepare_for_resume(resume_target, snapshot.position_ms)
+                try:
+                    self._playback.prepare_for_resume(
+                        resume_target, snapshot.position_ms
+                    )
+                except (
+                    OutputSessionError,
+                    AudioLoadError,
+                    MetadataExtractionError,
+                ) as exc:
+                    # Mandatory persistence/logical restore has completed. A
+                    # typed media/output refusal belongs to optional startup
+                    # rehydration: terminalize it without fallback, fabricated
+                    # facts, or loss of the last coherent durable snapshot.
+                    self._terminalize_optional_resume_failure(snapshot, exc)
                 # The restore window stays open (WAITING_MEDIA) until the
                 # backend confirms the position (resume_prepared), rejects
                 # it, or the session coherence breaks.
@@ -750,3 +821,4 @@ class PersistenceCoordinator:
         self._restoring = False
         self._resume_phase = _ResumePhase.NONE
         self._restored_snapshot = None
+        self._protected_resume_snapshot = None

@@ -40,6 +40,8 @@ def _direct_graph(
     *,
     playback_pcms: tuple[int, ...] = (0,),
     alsa_hw_params_reader=None,
+    source_metadata=None,
+    startup_selected_engine=None,
 ):
     from test_gstreamer_audio_port import FakeBindings
 
@@ -61,7 +63,7 @@ def _direct_graph(
 
     class _Metadata:
         def extract(self, path):
-            return TrackMetadata(
+            return source_metadata or TrackMetadata(
                 title=Path(path).stem,
                 sample_rate_hz=96_000,
                 bit_depth=24,
@@ -101,9 +103,10 @@ def _direct_graph(
         (sub_root / "hw_params").write_text("closed\n", encoding="utf-8")
 
     bindings = FakeBindings()
+    selected_engine = startup_selected_engine or AudioEngineId.GSTREAMER
     graph = _build_services(
         tmp_path / "michi.db",
-        startup_selected_engine=AudioEngineId.GSTREAMER,
+        startup_selected_engine=selected_engine,
         metadata_extractor=_Metadata(),
         artwork_provider=None,
         artwork_cache=None,
