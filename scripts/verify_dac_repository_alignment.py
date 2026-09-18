@@ -243,7 +243,7 @@ def main() -> int:
         mark = "OK" if finding["ok"] else "CHANGED"
         print(f"  [{mark}] {finding['id']}: {finding['detail']}")
     print("report: artifacts/dac_repository_alignment.{json,md}")
-    return 0
+    return 0 if aligned else 1
 
 
 if __name__ == "__main__":
