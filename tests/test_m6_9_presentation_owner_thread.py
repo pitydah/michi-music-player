@@ -99,7 +99,9 @@ class TestOwnerThreadContract:
         import time
 
         end = time.monotonic() + 10
-        while not bridge.property("artistCandidates") and time.monotonic() < end:
+        while (
+            not bridge.property("artistCandidates") or not delivery_threads
+        ) and time.monotonic() < end:
             process_events(8)
         assert len(bridge.property("artistCandidates")) == 1
         assert any(t != owner_thread for t in emit_threads)
