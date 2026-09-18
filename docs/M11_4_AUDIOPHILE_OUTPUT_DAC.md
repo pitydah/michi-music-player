@@ -162,7 +162,7 @@ V3.5 spec governs implementation and acceptance.
   exact `GITHUB_SHA` binding. The blocking `dac-v35-software-closure` CI job
   uploads verifier evidence with `always()` and independently preserves the
   normal `check` and `min-qt` gates. Local regression evidence is 538 DAC tests
-  and 4831 full-suite tests passed; the two skips are classified non-DAC
+  and 4832 full-suite tests passed; the two skips are classified non-DAC
   environment/legacy skips.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,

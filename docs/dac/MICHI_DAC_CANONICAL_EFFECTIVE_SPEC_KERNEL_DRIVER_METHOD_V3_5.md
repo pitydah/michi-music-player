@@ -20271,7 +20271,7 @@ removes the historical unique-per-device profile index so profile identity,
 not device identity alone, remains authoritative.
 
 Local corrective evidence on 2026-09-18 is green: `SR100R1-01..13`, 538 DAC
-tests, and 4831 full-suite tests pass. The two skips are unrelated to mandatory
+tests, and 4832 full-suite tests pass. The two skips are unrelated to mandatory
 DAC coverage and are classified as an opt-in live-network test and an existing
 Qt-runtime environment case. Ruff check/format and critical DAC QML lint are
 part of the aggregate gate. The repository workflow adds a blocking
