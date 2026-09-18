@@ -1,7 +1,8 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
-Implementation contract for audiophile output infrastructure. Status: **IN
-PROGRESS** (DAC-V35 implementation authorized 2026-09-11).
+Implementation contract for audiophile output infrastructure. Status:
+**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100 automated GO;
+publication CI pending).
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -119,23 +120,23 @@ V3.5 spec governs implementation and acceptance.
   `492bcb92d4c862b82ad9ed5537ec0efb68050b2e` passed exact-head Michi CI run
    `35276694349`, including Lint, QML, Test, Build, packaging, visual QA, and
    minimum-PySide6 gates.
-- `DAC-V35-100` automated verification and documentation seal — **LOCAL GATES
-  GREEN / EXACT-COMMIT VERDICT PENDING**. Ten cross-slice E2E gates assert the
+- `DAC-V35-100` automated verification and documentation seal —
+  **CLOSED-AUTOMATED / GO; PUBLICATION CI PENDING**. Ten cross-slice E2E gates assert the
   productive authority graph, Direct commit/replacement, disconnect/reconnect,
   volume, Signal Truth, projection, and shutdown invariants. The mandatory
   `python scripts/verify_dac_m11_4.py` aggregator runs isolated DAC, engine,
   playback, persistence, QML, full-suite, canonical-invariant, build, wheel,
   and installed-wheel gates and emits machine/human-readable verdict artifacts.
-  Local evidence: 513 DAC tests and 4789 full-suite tests passed with two
-  existing non-DAC skips. The audit also blocks raw `hw:`/`plughw:` locators at
-  the authoritative profile/selection persistence boundary. Exact-head CI is
-  still required before publication closure.
+  Exact-commit evidence at `4b0c88fba74b0700295d5c4636df7d49cb6235f3`:
+  519 DAC tests and 4798 full-suite tests passed with two existing non-DAC
+  skips. The audit also blocks raw ALSA locators at the authoritative
+  profile/selection persistence boundary. Exact-head CI remains required for
+  publication closure.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
-software runtime-evidence verdict, not physical proof. `DAC-V35-100` has green
-local behavioral/package gates but remains pending a clean exact-commit verdict
-and publication CI;
+software runtime-evidence verdict, not physical proof. `DAC-V35-100` is
+CLOSED-AUTOMATED / GO; publication CI remains pending;
 physical qualification (`DAC-V35-110`) remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —

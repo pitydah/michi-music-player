@@ -227,8 +227,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100` Automated verification + documentation seal | LOCAL GATES GREEN / EXACT-COMMIT VERDICT PENDING | YES | E2E-100-01..10 and every behavioral/package category are green; clean exact-commit aggregate verdict and CI remain required |
-| 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
+| 10 | `DAC-V35-100` Automated verification + documentation seal | CLOSED-AUTOMATED / GO; PUBLICATION CI PENDING | YES | exact verifier head `4b0c88f`; E2E-100-01..10, full suite, packaging, and installed-wheel gates green |
+| 11 | `DAC-V35-110` Physical PCM promotion | NEXT AUTHORIZED / NOT STARTED | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
 | 14 | `DAC-V35-140` DSD / DoP | SEPARATE PROMOTION; MAY BE PRE-STABLE | NO | R30 and separate implementation/QA gate |
@@ -20198,13 +20198,14 @@ and selection mutation now reject raw `hw:`/`plughw:` locators before
 persistence. Backend locators remain generation-scoped runtime bindings and
 diagnostics only.
 
-Local closure evidence on 2026-09-17 is 513 DAC tests and 4789 full-suite tests
-passed, with two existing non-DAC skips. Build, wheel parity, required DAC wheel
-members, installed-wheel imports, and all behavioral/package categories are
-green. Because the implementation/docs tree is not yet committed, the mandatory
-clean exact-commit aggregate verdict remains pending; publication then requires
-exact-head CI. This local result makes no physical, exclusive, bit-perfect,
-Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
+Automated closure evidence on 2026-09-17 is bound to exact clean commit
+`4b0c88fba74b0700295d5c4636df7d49cb6235f3`: 519 DAC tests and 4798
+full-suite tests passed, with two existing non-DAC skips. Build, wheel parity,
+required DAC wheel members, installed-wheel imports, alignment, and every
+mandatory aggregate category are green. `automated_verdict=GO` and
+`physical_verdict=NOT_RUN`. Exact-head CI remains the publication confirmation.
+This result makes no physical, exclusive, bit-perfect, Michi-Verified,
+hardware-volume, DSD/DoP, or M11.5 claim. DAC-V35-110 has not started.
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 
