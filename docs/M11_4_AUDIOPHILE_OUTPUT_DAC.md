@@ -1,8 +1,8 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
 Implementation contract for audiophile output infrastructure. Status:
-**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100 automated GO;
-publication CI green).
+**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1 automated GO;
+physical qualification has not started).
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -132,13 +132,43 @@ V3.5 spec governs implementation and acceptance.
   blocks raw ALSA locators at the authoritative profile/selection persistence
   boundary. The ignored verdict artifact binds each run to its actual HEAD.
   Implementation/publication head `0f0902ff656fdc105958204754be215226cc55fa`
-  passed exact-head Michi CI run `35296338553` (`min-qt` and `check`, including
-  Lint, QML, Test, Build, wheel parity, installed-wheel smoke, and visual QA).
+   passed exact-head Michi CI run `35296338553` (`min-qt` and `check`, including
+   Lint, QML, Test, Build, wheel parity, installed-wheel smoke, and visual QA).
+- `DAC-V35-100R1` startup and remote-evidence corrective seal —
+  **CLOSED-AUTOMATED / GO**. Mandatory settings, queue, logical playback
+  session, engine, output, and profile restoration is separated from optional
+  stopped-media/output rehydration. A typed Direct planning or media refusal in
+  that optional phase terminates resume without aborting application startup,
+  preserves queue/current identity and selected Direct intent, keeps playback
+  stopped, and leaves no plan, executor handle, or active Signal Truth. The
+  last coherent durable resume snapshot remains protected until a legitimate
+  later transition owns reconciliation. Unexpected persistence failures and
+  broken invariants still propagate.
+
+  Productive planning now carries `SourceFileFacts`, not decoded-runtime facts.
+  Lossy significant bits that the file does not define remain unknown; both
+  startup rehydration and explicit Play refuse Strict Direct with
+  `SOURCE_RATE_UNKNOWN` rather than fabricating 16/24/32-bit evidence. Shared
+  output remains available only through explicit selection. The SQLite v2
+  compatibility path also removes the historical unique-per-device profile
+  index so one DAC can retain multiple profiles by `profile_id`.
+
+  Gates `SR100R1-01..13` cover startup convergence, durable snapshot
+  protection, explicit Play, Shared and complete-Direct controls, fatal
+  persistence failures, and productive container initialization. The aggregate
+  verifier additionally enforces collection completeness, mandatory skip/xfail
+  absence, classified unrelated skips, Ruff/format, critical DAC QML lint,
+  claim/status consistency, scheduling classifications, wheel parity, and
+  exact `GITHUB_SHA` binding. The blocking `dac-v35-software-closure` CI job
+  uploads verifier evidence with `always()` and independently preserves the
+  normal `check` and `min-qt` gates. Local regression evidence is 538 DAC tests
+  and 4828 full-suite tests passed; the two skips are classified non-DAC
+  environment/legacy skips.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
-software runtime-evidence verdict, not physical proof. `DAC-V35-100` is
-CLOSED-AUTOMATED / GO and published with exact-head CI green;
+software runtime-evidence verdict, not physical proof. `DAC-V35-100R1` is
+CLOSED-AUTOMATED / GO;
 physical qualification (`DAC-V35-110`) remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —

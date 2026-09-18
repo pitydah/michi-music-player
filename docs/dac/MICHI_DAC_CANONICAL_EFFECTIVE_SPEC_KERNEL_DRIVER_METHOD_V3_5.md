@@ -227,8 +227,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100` Automated verification + documentation seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | clean exact-commit aggregate gate; implementation head `0f0902f` passed Michi CI `35296338553` |
-| 11 | `DAC-V35-110` Physical PCM promotion | NEXT AUTHORIZED / NOT STARTED | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
+| 10 | `DAC-V35-100 + 100R1` Automated verification + documentation seal | CLOSED-AUTOMATED / GO | YES | startup-safe Direct resume, exact-commit aggregate gate, and blocking exact-SHA CI evidence |
+| 11 | `DAC-V35-110` Physical PCM promotion | NEXT AUTHORIZED / NOT STARTED | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | execution entry awaits exact-head remote R1 GO; then R19–R29/R32–R36 applicable evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
 | 14 | `DAC-V35-140` DSD / DoP | SEPARATE PROMOTION; MAY BE PRE-STABLE | NO | R30 and separate implementation/QA gate |
@@ -720,10 +720,6 @@ CREATE TABLE IF NOT EXISTS audio_output_profiles (
     updated_at_ms INTEGER NOT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_audio_output_profiles_device
-ON audio_output_profiles(stable_device_id)
-WHERE stable_device_id IS NOT NULL;
-
 CREATE TABLE IF NOT EXISTS audio_output_selection (
     singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
     selected_profile_id TEXT,
@@ -734,6 +730,13 @@ CREATE TABLE IF NOT EXISTS audio_output_selection (
 ```
 
 These tables are **authoritative user state** and therefore join the recovery/provenance model in `sqlite_settings.py`.
+
+`profile_id` is the profile identity. More than one profile MAY belong to the
+same `stable_device_id`; selecting that same DAC preserves its currently
+selected valid profile rather than choosing another profile lexicographically.
+Existing schema-v2 databases remove the historical
+`idx_audio_output_profiles_device` unique index idempotently without deleting
+or rewriting user rows.
 
 Rules:
 
@@ -20168,6 +20171,55 @@ M11.5 claim.
 
 Automated completion requires `python scripts/verify_dac_m11_4.py` GO at exact commit.
 
+## 409.1 `DAC-V35-100R1` corrective reopening — startup and remote evidence
+
+The original `DAC-V35-100` closure is reopened because a coherent persisted
+Direct session can make optional stopped-media preparation raise a typed output
+refusal during `PersistenceCoordinator.restore()` and abort application startup.
+The planner refusing unknown source facts is correct. Treating that bounded
+rehydration refusal as a fatal persistence failure is not.
+
+The startup authority boundary is now:
+
+```text
+mandatory restore
+  = settings + queue + logical playback session + selected engine/output/profile
+
+optional startup rehydration
+  = output planning/acquisition + stopped media load + deferred seek
+```
+
+A typed output/media preparation refusal in the optional phase MUST terminate
+the resume attempt without terminating application initialization. It MUST
+preserve the restored queue/current logical identity and selected Direct intent,
+leave playback `STOPPED`, retain no output plan/executor handle/active Signal
+Truth, and MUST NOT select Shared, switch engines, fabricate source facts, or
+hide persistence infrastructure failures and broken program invariants.
+
+The last coherent durable resume snapshot remains protected during this failed
+opportunistic startup attempt. Merely failing to prove a Direct tuple does not
+authorize rewriting it to `None@0`; a later legitimate user/runtime transition
+owns durable reconciliation. The resume state machine itself must nevertheless
+be terminal after the failure rather than remaining in `WAITING_MEDIA`.
+
+Source-file facts and decoded-runtime facts remain separate evidence classes.
+File metadata may provide nominal planning facts only where the file format
+actually defines them; it never becomes decoded-runtime or Signal Truth proof.
+Unknown lossy significant bits remain unknown and are never normalized to 16,
+24, or 32. Explicit Play uses the same fail-closed planning policy and must be
+tested independently from startup containment.
+
+Corrective closure also requires a blocking remote CI job that runs the default
+aggregate verifier, uploads its verdict/alignment/log artifacts with `always()`
+even on failure, fails when the verifier returns non-zero, and proves the JSON
+commit equals the workflow `github.sha`. Normal `check` and `min-qt` jobs remain
+independent required gates. The aggregate must additionally seal required test
+collection, mandatory skip/xfail absence, classified unrelated skips, bounded
+current-product claim/status consistency, Ruff/format, critical DAC QML lint,
+and the complete R1 adversarial matrix. `DAC-V35-110` remains blocked until the
+exact-head remote artifact reports `automated_verdict=GO` and
+`physical_verdict=NOT_RUN`.
+
 `DAC-V35-100` adds one cross-slice closure layer rather than another output
 authority. `tests/dac/test_v35_100_software_closure.py` owns E2E-100-01..10 and
 the reusable `assert_audio_output_consistent(graph)` assertion. The gates cover:
@@ -20208,6 +20260,25 @@ verdict artifact records the actual commit for each run;
 `35296338553` (`min-qt` and `check`). This result makes no physical, exclusive,
 bit-perfect, Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
 DAC-V35-110 has not started.
+
+The `DAC-V35-100R1` corrective implementation closes the startup defect without
+weakening Strict Direct planning. `PersistenceCoordinator.restore()` treats
+only typed output/media preparation failures as optional-rehydration refusals;
+unexpected persistence and invariant failures remain fatal. The productive
+request resolver carries `SourceFileFacts`, and unknown lossy significant bits
+remain unknown for both startup and explicit Play. SQLite v2 compatibility
+removes the historical unique-per-device profile index so profile identity,
+not device identity alone, remains authoritative.
+
+Local corrective evidence on 2026-09-18 is green: `SR100R1-01..13`, 538 DAC
+tests, and 4828 full-suite tests pass. The two skips are unrelated to mandatory
+DAC coverage and are classified as an opt-in live-network test and an existing
+Qt-runtime environment case. Ruff check/format and critical DAC QML lint are
+part of the aggregate gate. The repository workflow adds a blocking
+`dac-v35-software-closure` job that always uploads its verifier artifacts and
+requires artifact commit equality with `github.sha`. Remote exact-head GO is
+the remaining execution-entry condition for `DAC-V35-110`; it is evidence for
+this closed automated slice, not physical qualification.
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 

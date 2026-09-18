@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -24,6 +25,29 @@ from zipfile import ZipFile
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / "artifacts"
 SPEC_REVISION = "V3.5"
+
+REQUIRED_COLLECTED_MODULES = (
+    "tests/dac/test_v35_100_software_closure.py",
+    "tests/dac/test_v35_100r1_startup_resume.py",
+    "tests/test_v35_090_audio_output_bridge.py",
+    "tests/test_v35_090_qml_audio_output.py",
+)
+
+MANDATORY_SKIP_PREFIXES = (
+    "tests/dac/",
+    "tests/test_v35_090_audio_output_bridge.py",
+    "tests/test_v35_090_qml_audio_output.py",
+    "tests/test_gstreamer_audio_port.py",
+)
+
+DAC_QML_SURFACES = (
+    "src/michi/presentation/qml/views/AudioOutputSettingsSection.qml",
+    "src/michi/presentation/qml/player/AudioOutputPopup.qml",
+    "src/michi/presentation/qml/components/DacDeviceCard.qml",
+    "src/michi/presentation/qml/components/DacDiagnosticsDisclosure.qml",
+    "src/michi/presentation/qml/components/SignalTruthPanel.qml",
+    "src/michi/presentation/qml/player/NowPlayingBar.qml",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +74,31 @@ TEST_GATES = (
         "repository-alignment",
         "Repository baseline and authority assumptions",
         (sys.executable, "scripts/verify_dac_repository_alignment.py"),
+    ),
+    Gate(
+        "ruff-check",
+        "Ruff static analysis",
+        ("ruff", "check", "src", "tests", "scripts"),
+    ),
+    Gate(
+        "ruff-format",
+        "Ruff formatting",
+        ("ruff", "format", "--check", "src", "tests", "scripts"),
+    ),
+    Gate(
+        "dac-qml-lint",
+        "Critical DAC QML syntax and type lint",
+        (
+            "pyside6-qmllint",
+            "-I",
+            "src/michi/presentation/qml",
+            *DAC_QML_SURFACES,
+        ),
+    ),
+    Gate(
+        "required-test-collection",
+        "Collect the complete suite and prove mandatory modules are visible",
+        (sys.executable, "-m", "pytest", "tests", "--collect-only", "-q"),
     ),
     Gate(
         "dac-domain-runtime",
@@ -122,7 +171,7 @@ TEST_GATES = (
     Gate(
         "full-regression-suite",
         "Complete repository regression suite",
-        (sys.executable, "-m", "pytest", "tests", "-q"),
+        (sys.executable, "-m", "pytest", "tests", "-q", "-rsxX"),
     ),
 )
 
@@ -256,6 +305,233 @@ def _static_invariants() -> tuple[bool, str]:
     return True, "authority construction and forbidden-identity invariants hold"
 
 
+def _read_gate_log(gate_id: str) -> str:
+    path = ARTIFACTS / f"dac_m11_4_{gate_id}.log"
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def _required_collection_gate(output: str) -> tuple[bool, str]:
+    missing = [path for path in REQUIRED_COLLECTED_MODULES if path not in output]
+    if missing:
+        return False, f"mandatory test modules were not collected: {missing}"
+    return True, f"all {len(REQUIRED_COLLECTED_MODULES)} mandatory modules collected"
+
+
+def _pytest_counts(output: str) -> dict[str, int]:
+    counts = {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "xfailed": 0,
+        "xpassed": 0,
+        "errors": 0,
+        "collected": 0,
+    }
+    for match in re.finditer(
+        r"(?P<count>\d+)\s+(?P<kind>passed|failed|skipped|xfailed|xpassed|errors?)\b",
+        output,
+    ):
+        kind = match.group("kind")
+        if kind == "error":
+            kind = "errors"
+        counts[kind] = max(counts[kind], int(match.group("count")))
+    collected = re.findall(r"(\d+)\s+(?:tests?\s+)?collected\b", output)
+    if collected:
+        counts["collected"] = int(collected[-1])
+    return counts
+
+
+def _skip_records(output: str) -> list[dict[str, str]]:
+    records: list[dict[str, str]] = []
+    pattern = re.compile(
+        r"^(?P<kind>SKIPPED|XFAIL|XPASS)(?:\s+\[\d+\])?\s+"
+        r"(?P<location>tests/[^\s:]+)(?::\d+)?(?:::[^\s]+)?\s*[:-]?\s*"
+        r"(?P<reason>.*)$"
+    )
+    for line in output.splitlines():
+        match = pattern.match(line.strip())
+        if match is None:
+            continue
+        location = match.group("location")
+        reason = match.group("reason").strip() or "pytest did not provide a reason"
+        mandatory = any(
+            location.startswith(prefix) for prefix in MANDATORY_SKIP_PREFIXES
+        )
+        lowered = reason.casefold()
+        if mandatory:
+            classification = "mandatory_dac_software"
+        elif any(
+            token in lowered
+            for token in (
+                "dependency absent",
+                "no disponible",
+                "not found in path",
+                "platform cannot",
+                "live network",
+                "opt-in",
+            )
+        ):
+            classification = "environmental_optional"
+        else:
+            classification = "unrelated_legacy"
+        records.append(
+            {
+                "kind": match.group("kind").lower(),
+                "file": location,
+                "reason": reason,
+                "classification": classification,
+            }
+        )
+    return records
+
+
+def _mandatory_skip_gate(output: str) -> tuple[bool, str]:
+    records = _skip_records(output)
+    mandatory = [
+        item
+        for item in records
+        if item["classification"] == "mandatory_dac_software"
+        and item["kind"] in {"skipped", "xfail"}
+    ]
+    if mandatory:
+        return False, f"mandatory DAC tests skipped/xfail: {mandatory}"
+    return (
+        True,
+        f"mandatory DAC skips/xfails=0; classified other outcomes={len(records)}",
+    )
+
+
+def _claim_leak_gate(root: Path | None = None) -> tuple[bool, str]:
+    scan_root = root or ROOT
+    product_root = scan_root / "src" / "michi"
+    terms = (
+        "bit-perfect",
+        "michi verified",
+        "exclusive verified",
+        "physical verified",
+        "kernel verified",
+        "hardware verified",
+    )
+    negative_markers = (
+        " not ",
+        " no ",
+        "never ",
+        "nunca ",
+        "does not ",
+        "cannot ",
+        "sin claim",
+    )
+    leaks: list[str] = []
+    if not product_root.exists():
+        return False, "product source root is missing"
+    for path in sorted(product_root.rglob("*")):
+        if path.suffix not in {".py", ".qml"} or not path.is_file():
+            continue
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for line_number, line in enumerate(lines, start=1):
+            normalized = f" {line.casefold()} "
+            present_terms = [term for term in terms if term in normalized]
+            if not present_terms:
+                continue
+            context = " ".join(lines[max(0, line_number - 3) : line_number]).casefold()
+            first_term = min(context.rfind(term) for term in present_terms)
+            clause_prefix = re.split(r"[.!?]", context[:first_term])[-1]
+            if any(marker in f" {clause_prefix} " for marker in negative_markers):
+                continue
+            leaks.append(f"{path.relative_to(scan_root)}:{line_number}")
+    if leaks:
+        return False, f"current product-positive claim leaks: {leaks}"
+    return True, "current product-positive claim leaks: 0"
+
+
+def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
+    scan_root = root or ROOT
+    paths = {
+        "canonical": scan_root
+        / "docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md",
+        "contract": scan_root / "docs/M11_4_AUDIOPHILE_OUTPUT_DAC.md",
+        "matrix": scan_root / "docs/STATUS_MATRIX.md",
+        "roadmap": scan_root / "docs/MASTER_ROADMAP_1.0.md",
+        "readme": scan_root / "README.md",
+    }
+    try:
+        text = {name: path.read_text(encoding="utf-8") for name, path in paths.items()}
+    except OSError as exc:
+        return False, f"status source unavailable: {exc}"
+    required = {
+        "canonical": (
+            "DAC-V35-100R1",
+            "CLOSED-AUTOMATED / GO",
+            "DAC-V35-110",
+            "NEXT AUTHORIZED / NOT STARTED",
+        ),
+        "contract": (
+            "IMPLEMENTED / PHYSICAL QUALIFICATION PENDING",
+            "DAC-V35-100R1",
+        ),
+        "matrix": (
+            "M11.4 Audiophile Output & DAC",
+            "IMPLEMENTED",
+            "DAC-V35-100R1",
+        ),
+        "roadmap": (
+            "M11.4 Audiophile Output/DAC",
+            "IMPLEMENTED",
+            "DAC-V35-100R1",
+        ),
+        "readme": ("DAC-V35-100R1", "PHYSICAL QUALIFICATION PENDING"),
+    }
+    missing = [
+        f"{name}:{marker}"
+        for name, markers in required.items()
+        for marker in markers
+        if marker not in text[name]
+    ]
+    work_package_done = re.search(
+        r"\|\s*M11\.4 Audiophile Output & DAC Management\s*\|\s*DONE\s*\|",
+        text["matrix"],
+    )
+    if work_package_done:
+        missing.append("matrix:M11.4 work package must not be DONE before 110")
+    if "DAC-V35-130\n= POST-STABLE ONLY" not in text["canonical"] and not re.search(
+        r"DAC-V35-130.*POST-STABLE ONLY", text["canonical"]
+    ):
+        missing.append("canonical:DAC-V35-130 POST-STABLE ONLY")
+    if missing:
+        return False, f"current status contradictions/missing markers: {missing}"
+    return True, "current status markers agree; M11.4 remains physical-pending"
+
+
+def _verification_manifest_gate(root: Path | None = None) -> tuple[bool, str]:
+    scan_root = root or ROOT
+    path = scan_root / "tests/dac/test_v35_100_software_closure.py"
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return False, f"verification manifest unavailable: {exc}"
+    required = (
+        '"conditional": ("DAC-V35-120",)',
+        '"post_stable": ("DAC-V35-130",)',
+        '"separate_promotion": ("DAC-V35-140",)',
+    )
+    missing = [item for item in required if item not in source]
+    if missing:
+        return False, f"verification scheduling classifications missing: {missing}"
+    return True, "120 conditional; 130 post-stable; 140 separate promotion"
+
+
+def _ci_commit_gate(commit: str, env: dict[str, str]) -> tuple[bool, str]:
+    github_sha = env.get("GITHUB_SHA")
+    if not github_sha:
+        return True, "local run; no GITHUB_SHA binding requested"
+    if github_sha != commit:
+        return False, f"GITHUB_SHA {github_sha} != verifier commit {commit}"
+    return True, f"remote artifact bound to GITHUB_SHA={github_sha}"
+
+
 def _alignment_artifact_gate(commit: str) -> tuple[bool, str]:
     path = ARTIFACTS / "dac_repository_alignment.json"
     try:
@@ -311,10 +587,24 @@ def _write_reports(commit: str, results: list[GateResult]) -> None:
         str(path.relative_to(ROOT))
         for path in (
             *ARTIFACTS.glob("dac_m11_4_*"),
+            *ARTIFACTS.glob("dac_repository_alignment.*"),
             *ARTIFACTS.glob("michi_music_player-*.whl"),
         )
         if path.name not in {"dac_m11_4_verdict.json", "dac_m11_4_verdict.md"}
     )
+    test_counts: dict[str, dict[str, int]] = {}
+    for item in results:
+        if item.log is None:
+            continue
+        counts = _pytest_counts(_read_gate_log(item.gate_id))
+        if any(counts.values()):
+            test_counts[item.gate_id] = counts
+    collection_output = _read_gate_log("required-test-collection")
+    full_output = _read_gate_log("full-regression-suite")
+    ci = {
+        "workflow_run_id": os.environ.get("GITHUB_RUN_ID"),
+        "github_sha": os.environ.get("GITHUB_SHA"),
+    }
     report = {
         "schema_version": 1,
         "commit": commit,
@@ -322,12 +612,25 @@ def _write_reports(commit: str, results: list[GateResult]) -> None:
         "automated_verdict": verdict,
         "physical_verdict": "NOT_RUN",
         "gates": [asdict(item) for item in results],
+        "test_counts": test_counts,
+        "collection": {
+            "required_modules": list(REQUIRED_COLLECTED_MODULES),
+            "required_modules_collected": all(
+                item in collection_output for item in REQUIRED_COLLECTED_MODULES
+            ),
+            "counts": _pytest_counts(collection_output),
+        },
+        "skip_classification": _skip_records(full_output),
         "artifacts": artifact_paths,
+        "generated_at": generated,
         "generated_at_utc": generated,
+        "ci": ci,
     }
     json_path = ARTIFACTS / "dac_m11_4_verdict.json"
     json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
+    modules_collected = report["collection"]["required_modules_collected"]
+    classified_skips = len(report["skip_classification"])
     lines = [
         "# M11.4 automated software verdict",
         "",
@@ -337,6 +640,8 @@ def _write_reports(commit: str, results: list[GateResult]) -> None:
         "- Physical verdict: **NOT_RUN**",
         "- Scope: automated software evidence only; not Michi-Verified "
         "or physical proof.",
+        f"- Required modules collected: **{modules_collected}**",
+        f"- Full-suite skips/xfails classified: **{classified_skips}**",
         "",
         "| Gate | Status | Detail |",
         "|---|---|---|",
@@ -400,6 +705,48 @@ def main(argv: list[str] | None = None) -> int:
                 "alignment-artifact",
                 "Alignment report agrees with the exact verifier commit",
                 _alignment_artifact_gate(commit),
+            )
+        )
+        results.append(
+            _result_for_internal(
+                "mandatory-module-collection",
+                "Required DAC/startup/UI modules are collected",
+                _required_collection_gate(_read_gate_log("required-test-collection")),
+            )
+        )
+        results.append(
+            _result_for_internal(
+                "mandatory-skip-audit",
+                "Mandatory DAC software tests cannot skip or xfail",
+                _mandatory_skip_gate(_read_gate_log("full-regression-suite")),
+            )
+        )
+        results.append(
+            _result_for_internal(
+                "product-claim-firewall",
+                "Current product code/QML contains no positive verification claims",
+                _claim_leak_gate(),
+            )
+        )
+        results.append(
+            _result_for_internal(
+                "current-status-consistency",
+                "Current M11.4/R1/110 status markers agree",
+                _status_consistency_gate(),
+            )
+        )
+        results.append(
+            _result_for_internal(
+                "verification-scheduling-manifest",
+                "120/130/140 scheduling remains semantically distinct",
+                _verification_manifest_gate(),
+            )
+        )
+        results.append(
+            _result_for_internal(
+                "ci-commit-binding",
+                "Remote verdict commit equals GitHub workflow SHA",
+                _ci_commit_gate(commit, env),
             )
         )
         results.append(
