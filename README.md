@@ -67,8 +67,8 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
 - M11.4: DAC-V35-100 is closed automated / GO; the PCM Direct software core is
-  implemented with physical qualification pending. Publication CI is pending,
-  and DAC-V35-110 has not started. M11.5 playback guarantees are not implemented.
+  implemented with physical qualification pending. Exact-head publication CI is
+  green, and DAC-V35-110 has not started. M11.5 playback guarantees are not implemented.
 - M12 Performance, M13 Packaging, M14 Beta, M15 RC, M16 Stable
 
 See `docs/MASTER_ROADMAP_1.0.md` for the canonical 1.0 contract and current statuses.
