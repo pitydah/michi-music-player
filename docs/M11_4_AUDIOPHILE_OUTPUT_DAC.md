@@ -117,13 +117,25 @@ V3.5 spec governs implementation and acceptance.
   runtime profile keyboard interaction, and same-DAC selected-profile
   preservation. Adversarial review is GO and implementation head
   `492bcb92d4c862b82ad9ed5537ec0efb68050b2e` passed exact-head Michi CI run
-  `35276694349`, including Lint, QML, Test, Build, packaging, visual QA, and
-  minimum-PySide6 gates.
+   `35276694349`, including Lint, QML, Test, Build, packaging, visual QA, and
+   minimum-PySide6 gates.
+- `DAC-V35-100` automated verification and documentation seal — **LOCAL GATES
+  GREEN / EXACT-COMMIT VERDICT PENDING**. Ten cross-slice E2E gates assert the
+  productive authority graph, Direct commit/replacement, disconnect/reconnect,
+  volume, Signal Truth, projection, and shutdown invariants. The mandatory
+  `python scripts/verify_dac_m11_4.py` aggregator runs isolated DAC, engine,
+  playback, persistence, QML, full-suite, canonical-invariant, build, wheel,
+  and installed-wheel gates and emits machine/human-readable verdict artifacts.
+  Local evidence: 513 DAC tests and 4789 full-suite tests passed with two
+  existing non-DAC skips. The audit also blocks raw `hw:`/`plughw:` locators at
+  the authoritative profile/selection persistence boundary. Exact-head CI is
+  still required before publication closure.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
-software runtime-evidence verdict, not physical proof. `DAC-V35-100` is
-NEXT AUTHORIZED / NOT STARTED;
+software runtime-evidence verdict, not physical proof. `DAC-V35-100` has green
+local behavioral/package gates but remains pending a clean exact-commit verdict
+and publication CI;
 physical qualification (`DAC-V35-110`) remains pending.
 
 Contracts, not implementation. This is playback/output infrastructure —
@@ -258,10 +270,15 @@ AFTER PLAYER STABLE (RETAINED, OUT OF SCOPE).
 
 ## Exit criteria (DoD)
 
-- Registry discovers devices across at least two adapters with stable
-  identity and truthful capability probes.
-- Per-DAC profile persistence round-trips across restart and reconnect.
-- Direct/Shared, PCM policy, DSD/DoP policy, volume modes and automatic
-  sample-rate switching work within engine capability.
-- Hotplug/failure injection produces honest observable states.
-- Full pytest suite green; M11.4 TESTED / FROZEN.
+- Linux sysfs/udev and ALSA observations converge into one stable,
+  generation-safe registry identity without persisting raw backend locators.
+- Exact PCM qualification, per-DAC profile selection, and rebuildable evidence
+  survive the declared restart/reconnect boundaries.
+- Shared and mandatory PCM Direct paths preserve their separate volume,
+  fallback, transaction, and Signal Truth authorities.
+- Hotplug/failure injection remains fail-closed with no automatic Direct to
+  Shared downgrade or stale-generation authority.
+- `python scripts/verify_dac_m11_4.py` is GO at an exact clean commit, full CI
+  is green, and M11.4 becomes **IMPLEMENTED / PHYSICAL QUALIFICATION PENDING**.
+- DSD/DoP and qualified hardware volume remain separate promotion packages;
+  their absence does not falsify completion of the mandatory PCM Direct core.

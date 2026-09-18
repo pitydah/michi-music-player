@@ -215,19 +215,19 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 
 | Order | Work package | Status | Required before Player Stable | Canonical outcome |
 |---:|---|---|---|---|
-| 0 | `DAC-V35-000` Repository/agent alignment | REQUIRED FIRST | YES | baseline verified, `AGENTS.md` installed, active spec path fixed |
-| 1 | `DAC-V35-010` Device identity + discovery | ACTIVE | YES | one stable physical DAC model + generation-safe ALSA binding |
-| 2 | `DAC-V35-020` Exact ALSA qualification | ACTIVE | YES | subprocess-isolated exact `hw:` probe with post-commit readback |
-| 3 | `DAC-V35-030` Persistence + output profile | ACTIVE | YES | schema v2, selected DAC/profile persisted, qualification cache rebuildable |
-| 4 | `DAC-V35-040` Output planner + output transaction | ACTIVE | YES | deterministic plan before hardware/backend mutation |
-| 5 | `DAC-V35-050` GStreamer Direct executor | ACTIVE | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
+| 0 | `DAC-V35-000` Repository/agent alignment | CLOSED-AUTOMATED / GO | YES | baseline verified, `AGENTS.md` installed, active spec path fixed |
+| 1 | `DAC-V35-010` Device identity + discovery | CLOSED-AUTOMATED / GO | YES | one stable physical DAC model + generation-safe ALSA binding |
+| 2 | `DAC-V35-020` Exact ALSA qualification | CLOSED-AUTOMATED / GO | YES | subprocess-isolated exact `hw:` probe with post-commit readback |
+| 3 | `DAC-V35-030` Persistence + output profile | CLOSED-AUTOMATED / GO | YES | schema v2, selected DAC/profile persisted, qualification cache rebuildable |
+| 4 | `DAC-V35-040` Output planner + output transaction | CLOSED-AUTOMATED / GO | YES | deterministic plan before hardware/backend mutation |
+| 5 | `DAC-V35-050 + 050R1 + 050R2` GStreamer Direct executor | CLOSED-AUTOMATED / GO | YES | existing `playbin3` + injected strict ALSA sink; no engine rewrite |
 | 6 | `DAC-V35-060` Volume authority migration | CLOSED-AUTOMATED / GO | YES | FIXED Direct mode cannot silently use generic pipeline attenuation |
 | 7 | `DAC-V35-070 + 070R1 + 070R2 + 070R2.1` Runtime evidence + Signal Truth | CLOSED-AUTOMATED / GO | YES | negotiated selected-branch transform activity distinguishes element presence from pass-through; physical claims excluded |
 | 8 | `DAC-V35-080 + 080R1 + 080R1.1` Disconnect/reconnect + cross-generation evidence | CLOSED-AUTOMATED / GO | YES | deterministic failure/rebind plus fresh G2 volume authority and Signal Truth provenance; no G1 runtime authority survives |
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100` Automated verification + documentation seal | NEXT AUTHORIZED / NOT STARTED | YES | 090R1.1 exact-head CI is green; no 100 implementation has started |
+| 10 | `DAC-V35-100` Automated verification + documentation seal | LOCAL GATES GREEN / EXACT-COMMIT VERDICT PENDING | YES | E2E-100-01..10 and every behavioral/package category are green; clean exact-commit aggregate verdict and CI remain required |
 | 11 | `DAC-V35-110` Physical PCM promotion | PRE-STABLE PHYSICAL LAB | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | R19–R29/R32–R36 applicable evidence on real hardware |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
@@ -676,17 +676,22 @@ alone never proves that a predecessor remains physically restorable.
 
 `OutputSessionService` receives an immutable mapping of engine id -> executor. Stable contains one Direct-capable entry: GStreamer. Missing mapping is a typed `ENGINE_UNSUPPORTED_FOR_DIRECT`, not a fallback.
 
-Shutdown order:
+Shutdown order is reconciled to the productive application lifecycle. The
+durable checkpoint runs first because later safety-stop events mutate
+`PlaybackState`; this supersedes the earlier assumption that persistence could
+close after audio teardown without losing the pre-shutdown session:
 
 ```text
-01 stop accepting new presentation intents / dispose DAC bridge subscriptions
-02 PlaybackSessionService.stop() (existing subscription ownership)
-03 issue existing PlaybackService.stop() safety command when transport is active
-04 OutputSessionService.release_active("shutdown")
-05 stop ALSA control observer if DAC-V35-120 is active
-06 stop UdevObserver and discard queued generations
-07 close/unbind engines through existing M11.3 lifecycle/router/provider contracts
-08 close persistence through existing application shutdown path
+00 freeze persistence + write the final durable checkpoint/preferences
+01 PlaybackSessionService.stop() and stop history/session delivery
+02 stop application worker runtimes through their existing owners
+03 dispose presentation bridges, including AudioOutputBridge subscriptions
+04 disable DirectOutputLifecycleCoordinator callbacks
+05 stop UdevObserver and discard queued generations
+06 disable AudioEngineConvergenceCoordinator callbacks
+07 issue PlaybackService.stop() when output is active
+08 OutputSessionService.release_active("shutdown") idempotently
+09 close/unbind engines through existing M11.3 lifecycle/router/provider contracts
 ```
 
 Every start/stop/close method added by M11.4 MUST be idempotent. Constructors subscribe to nothing that can emit before the graph is complete unless the existing architecture already guarantees that behavior.
@@ -889,6 +894,11 @@ The script is an aggregator, not a fake proof generator. It MUST:
 12. emit machine-readable `artifacts/dac_m11_4_verdict.json`
 13. emit human-readable `artifacts/dac_m11_4_verdict.md`
 ```
+
+The default command is the release gate. It MUST refuse `GO` when the working
+tree is dirty, so the reported commit binds every tested source and document.
+Development-only partial modes may exist, but an omitted mandatory gate must
+produce `NO_GO`.
 
 Required JSON top-level shape:
 
@@ -20041,7 +20051,8 @@ M9 regressions, Ruff, formatting, QML lint, build, and wheel resource parity are
 green. This closure makes no physical DAC, exclusivity, bit-perfect,
 Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
 
-`DAC-V35-100` was not authorized while the corrective package remained open.
+At this historical reopening point, `DAC-V35-100` was not authorized while the
+corrective package remained open.
 
 ## 408.2 Corrective reopening — 2026-09-17
 
@@ -20071,15 +20082,16 @@ disabled-row skipping, popup-open disconnect/reconnect, stale-generation
 rejection, and real geometry at 1920/1440/1280/980 for Settings and
 NowPlayingBar. Source-string presence is not behavioral evidence.
 
-Only after every R1 gate, DAC 060/070/080 regressions, M9/QML regressions, full
+At this historical corrective point, only after every R1 gate, DAC 060/070/080 regressions, M9/QML regressions, full
 suite, lint, build, packaging, adversarial review, Judgment Day, and exact-head
 CI pass may 090 + 090R1 return to **CLOSED-AUTOMATED / GO** and authorize
 `DAC-V35-100 NEXT AUTHORIZED / NOT STARTED`.
 
 ## 408.3 Corrective closure — 2026-09-17
 
-`DAC-V35-090` and `DAC-V35-090R1` are **CLOSED-AUTOMATED / GO**.
-`DAC-V35-100` is **NEXT AUTHORIZED / NOT STARTED**.
+At the 090R1 closure point, `DAC-V35-090` and `DAC-V35-090R1` became
+**CLOSED-AUTOMATED / GO**, and `DAC-V35-100` became **NEXT AUTHORIZED / NOT
+STARTED**. Section 409 records the later 100 status.
 
 The real Settings selector consumes `AudioOutputBridge.profiles`, renders human
 device/path names, keeps unavailable selected profiles visible but disabled, and
@@ -20103,8 +20115,9 @@ bit-perfect/Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
 
 ## 408.4 Profile disambiguation and productive evidence corrective seal — 2026-09-17
 
-`DAC-V35-090`, `DAC-V35-090R1`, and `DAC-V35-090R1.1` are
-**CLOSED-AUTOMATED / GO**. `DAC-V35-100` is **NEXT AUTHORIZED / NOT STARTED**.
+At the 090R1.1 closure point, `DAC-V35-090`, `DAC-V35-090R1`, and
+`DAC-V35-090R1.1` became **CLOSED-AUTOMATED / GO**, and `DAC-V35-100` became
+**NEXT AUTHORIZED / NOT STARTED**. Section 409 records the later 100 status.
 Implementation head `492bcb92d4c862b82ad9ed5537ec0efb68050b2e` passed exact-head
 Michi CI run `35276694349`, including Lint, QML gates, Test, Build, wheel parity,
 installed-wheel smoke, visual QA, and the minimum-PySide6 lane.
@@ -20154,6 +20167,44 @@ M11.5 claim.
 # 409. `DAC-V35-100/110` — AUTOMATED + PHYSICAL PROMOTION SEAL
 
 Automated completion requires `python scripts/verify_dac_m11_4.py` GO at exact commit.
+
+`DAC-V35-100` adds one cross-slice closure layer rather than another output
+authority. `tests/dac/test_v35_100_software_closure.py` owns E2E-100-01..10 and
+the reusable `assert_audio_output_consistent(graph)` assertion. The gates cover:
+
+```text
+authority and work-package manifests
+one productive graph / one owner per concern
+Direct prepare -> runtime acceptance -> committed projection
+Direct replacement with one current execution generation
+disconnect without fallback or selected-intent loss
+fresh-generation reconnect with no action before explicit Play
+Shared preference -> Direct fixed unity -> Shared preference round trip
+fresh Signal Truth provenance and stale-generation rejection
+normal presentation free of raw backend identity
+sealed shutdown callback/authority order
+```
+
+`scripts/verify_dac_m11_4.py` is the executable §0K gate. It uses isolated XDG
+state; runs DAC, M11.3/AudioPort, playback/session, persistence, QML, and full
+repository regressions; checks canonical ownership/forbidden identity rules;
+builds the wheel; verifies DAC Python/QML members; imports the installed-wheel
+DAC modules; and emits `artifacts/dac_m11_4_verdict.{json,md}`. A dirty tree or
+an omitted mandatory gate is `NO_GO`. The artifact always keeps physical truth
+separate through `physical_verdict=NOT_RUN` until DAC-V35-110 evidence exists.
+
+The closure audit also sealed one P1 identity boundary: authoritative profile
+and selection mutation now reject raw `hw:`/`plughw:` locators before
+persistence. Backend locators remain generation-scoped runtime bindings and
+diagnostics only.
+
+Local closure evidence on 2026-09-17 is 513 DAC tests and 4789 full-suite tests
+passed, with two existing non-DAC skips. Build, wheel parity, required DAC wheel
+members, installed-wheel imports, and all behavioral/package categories are
+green. Because the implementation/docs tree is not yet committed, the mandatory
+clean exact-commit aggregate verdict remains pending; publication then requires
+exact-head CI. This local result makes no physical, exclusive, bit-perfect,
+Michi-Verified, hardware-volume, DSD/DoP, or M11.5 claim.
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 

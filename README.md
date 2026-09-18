@@ -66,8 +66,10 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   shell DONE, and scoped M9-R3 Library/collection convergence in progress
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
-- M11.4: DAC-V35-090 + DAC-V35-090R1 are closed automated / GO; DAC-V35-100
-  is next authorized but not started. M11.5 playback guarantees are not implemented.
+- M11.4: DAC-V35-100 local behavioral/package gates are green; the clean
+  exact-commit verdict and publication CI remain pending. Physical PCM
+  qualification stays separate in DAC-V35-110. M11.5 playback guarantees are
+  not implemented.
 - M12 Performance, M13 Packaging, M14 Beta, M15 RC, M16 Stable
 
 See `docs/MASTER_ROADMAP_1.0.md` for the canonical 1.0 contract and current statuses.
