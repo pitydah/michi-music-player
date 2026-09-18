@@ -127,11 +127,11 @@ V3.5 spec governs implementation and acceptance.
   `python scripts/verify_dac_m11_4.py` aggregator runs isolated DAC, engine,
   playback, persistence, QML, full-suite, canonical-invariant, build, wheel,
   and installed-wheel gates and emits machine/human-readable verdict artifacts.
-  Exact-commit evidence at `4b0c88fba74b0700295d5c4636df7d49cb6235f3`:
-  519 DAC tests and 4798 full-suite tests passed with two existing non-DAC
-  skips. The audit also blocks raw ALSA locators at the authoritative
-  profile/selection persistence boundary. Exact-head CI remains required for
-  publication closure.
+  The clean exact-commit aggregate gate is GO: 519 DAC tests and 4798
+  full-suite tests passed with two existing non-DAC skips. The audit also
+  blocks raw ALSA locators at the authoritative profile/selection persistence
+  boundary. The ignored verdict artifact binds each run to its actual HEAD;
+  exact-head CI remains required for publication closure.
 
 **Explicitly NOT claimed**: no physical DAC qualification, exclusivity,
 "bit-perfect"/Michi-Verified status, or M11.5 promotion. Signal Truth is a
