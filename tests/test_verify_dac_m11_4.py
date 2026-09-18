@@ -262,3 +262,13 @@ def test_all_internal_r1_contract_gates_pass_on_repository() -> None:
     assert verifier._mandatory_skip_gate("")[0] is True
     assert verifier._claim_leak_gate()[0] is True
     assert verifier._verification_manifest_gate()[0] is True
+
+
+def test_remote_closure_has_full_history_without_activating_real_mpd() -> None:
+    workflow = (verifier.ROOT / ".github/workflows/ci.yml").read_text()
+    closure_job = workflow.split("  dac-v35-software-closure:", 1)[1]
+    assert "fetch-depth: 0" in closure_job
+    system_install = closure_job.split(
+        "Install Qt, GStreamer, ALSA, and runtime dependencies", 1
+    )[1].split("Install project and closure dependencies", 1)[0]
+    assert "mpd" not in system_install.replace("\\", " ").split()
