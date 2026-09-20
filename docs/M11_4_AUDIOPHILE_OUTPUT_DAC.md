@@ -1,9 +1,8 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
 Implementation contract for audiophile output infrastructure. Status:
-**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.1 automated GO
-published from exact-head remote evidence; physical qualification has not
-started).
+**SOFTWARE CLOSURE NOT ACCEPTED** (`DAC-V35-100R1.2` field corrective in
+progress; `DAC-V35-110` physical qualification has not started).
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -193,6 +192,18 @@ software runtime-evidence verdict, not physical proof. `DAC-V35-100R1` is
 NO-GO / superseded for final promotion; `DAC-V35-100R1.1` is published GO.
 Physical qualification (`DAC-V35-110`) remains **DO NOT START** as a separate,
 not-yet-authorized work package; R1.1 publication does not itself start it.
+
+- `DAC-V35-100R1.2` productive qualification, playback-refusal containment, and
+  native GStreamer safety seal — **IN PROGRESS / SOFTWARE CLOSURE NOT
+  ACCEPTED**. Field playback proves R1.1 decoded-source characterization reaches
+  PCM 44.1 kHz / S16_LE / stereo, but fresh Direct Play cannot yet acquire the
+  missing exact tuple through the productive path. Expected output refusals can
+  still escape toward QML, and native GLib MainContext ownership assertions plus
+  a later field SIGSEGV block closure. R1.2 preserves planner purity and every
+  closed authority while adding one-shot asynchronous exact qualification,
+  one shared typed playback-action failure projection, and pump-owned custom
+  MainContext source/watch lifecycle. No causal claim links the context warnings
+  to SIGSEGV without native backtrace evidence.
 
 Contracts, not implementation. This is playback/output infrastructure —
 **not** Audio Lab.

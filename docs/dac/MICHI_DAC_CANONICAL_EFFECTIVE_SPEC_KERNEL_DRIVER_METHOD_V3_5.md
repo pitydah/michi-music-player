@@ -227,8 +227,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100 + 100R1 + 100R1.1` Automated verification + documentation seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | decoded-source characterization, startup-safe Direct resume, explicit-Stop reconciliation, exact-commit aggregate gate, and blocking exact-SHA CI evidence |
-| 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | exact-head remote R1.1 prerequisite is green; physical execution remains a separately authorized work package using applicable R19–R29/R32–R36 evidence on real hardware |
+| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2` Automated verification + field corrective seal | CORRECTIVE OPEN; R1.2 IN PROGRESS | YES | R1.2 must prove productive first-use exact qualification, typed refusal containment before QML, and single-owner native GStreamer/GLib lifecycle safety |
+| 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | blocked until exact-head remote R1.2 GO and a separate physical-qualification authorization |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
 | 14 | `DAC-V35-140` DSD / DoP | SEPARATE PROMOTION; MAY BE PRE-STABLE | NO | R30 and separate implementation/QA gate |
@@ -20357,12 +20357,55 @@ and 4824 full-suite tests passed with 28 classified non-DAC skips. Artifact
 `dac-v35-software-closure-7753203cab712ffe38677399dd8eb93d967e25d2` has GitHub
 digest `sha256:71fea718c30bdc5f6d5e9a15f61b2a1c96f31eaf3af3253bd584dacc7010b3f9`.
 
+## 409.3 `DAC-V35-100R1.2` field corrective — productive qualification, refusal containment, and native safety
+
+Field evidence reopens the R1.1 automated closure. Production decoded-source
+characterization correctly reaches PCM 44.1 kHz / S16_LE / stereo, but a fresh
+Strict Direct Play can still terminate at `EXACT_TUPLE_UNKNOWN` because no
+productive user path acquires the one missing exact qualification. Expected
+Direct refusals can cross PySide/QML invocation boundaries, and the GStreamer
+pump currently permits owner-thread push/pop of a custom `GLib.MainContext`
+already owned by the pump thread. Native context assertions and a later field
+SIGSEGV block software closure; correlation is not claimed as proven causality.
+
+R1.2 freezes these invariants before production changes:
+
+```text
+SourceFileFacts != DecodedSourceSignal != Signal Truth
+OutputPlanner remains pure and performs no qualification I/O
+one explicit current Play may acquire only its missing exact tuple evidence
+no startup/hotplug/settings/background capability-matrix probing
+blocking ALSA probe I/O never runs on the Qt owner thread
+one pending qualification owner carries request/media/device/profile/binding/tuple identity
+new Play, Stop, engine switch, device loss, or shutdown invalidates old continuation
+one request may automatically qualify/replan at most once
+BUSY/REMOVED/TIMEOUT/environment failure -> supported=None, never unsupported
+tuple B qualification does not erase current-environment tuple A evidence
+no Shared/output/device/rate/format fallback and no automatic engine switch
+expected typed output refusals terminate before QML and emit one shared presentation failure
+unexpected programming/invariant failures remain exception-visible
+custom GLib MainContext push/pop, source attach, and source detach have one owner: the pump thread
+native subprocess and forbidden-context-warning gates are mandatory and cannot skip
+```
+
+Mandatory evidence is `Q100R1.2-01..09`, `UI100R1.2-01..04`, and
+`GST100R1.2-01..10`, plus preserved R1.1 characterization, explicit Stop,
+Signal Truth, volume, reconnect, output transaction, QML, engine, packaging,
+full-suite, and exact-head remote artifact gates. A real second compressed lossy
+codec must characterize through GStreamer without a fake characterizer. The
+aggregate must remain `NO_GO` while this package is in progress or while any
+mandatory module skips/xfails, any forbidden GLib context assertion appears, or
+the native subprocess exits non-zero or by signal.
+
 Current status:
 
 ```text
-DAC-V35-100 = CLOSED-AUTOMATED / GO; PUBLISHED
-DAC-V35-100R1 = NO-GO / superseded by R1.1 corrective
-DAC-V35-100R1.1 = CLOSED-AUTOMATED / GO; PUBLISHED
+DAC-V35-000..090 = CLOSED
+DAC-V35-100 = CORRECTIVE OPEN
+DAC-V35-100R1 = SUPERSEDED
+DAC-V35-100R1.1 = REOPENED BY FIELD EVIDENCE
+DAC-V35-100R1.2 = IN PROGRESS
+M11.4 = SOFTWARE CLOSURE NOT ACCEPTED
 DAC-V35-110 = DO NOT START
 ```
 
