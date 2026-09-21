@@ -11,6 +11,7 @@ event isolation, teardown.
 """
 
 import os
+import queue
 import threading
 from pathlib import Path
 
@@ -186,6 +187,7 @@ class FakeBindings:
         self.timer_sources = []
         self.timer_callback = None
         self._quit = threading.Event()
+        self._context_commands: queue.Queue = queue.Queue()
         self.failed_states: set = set()
         self.fail_next_states: list = []
         self.ignore_quit = False  # simula pump que no termina
@@ -379,7 +381,29 @@ class FakeBindings:
         return "loop"
 
     def run_loop(self, loop):
-        self._quit.wait()  # simula el pump real hasta quit_loop
+        while not self._quit.is_set():
+            try:
+                callback, completed, outcome = self._context_commands.get(timeout=0.01)
+            except queue.Empty:
+                continue
+            try:
+                outcome.append((True, callback()))
+            except BaseException as exc:  # test seam preserves command failure
+                outcome.append((False, exc))
+            finally:
+                completed.set()
+
+    def invoke_context_sync(self, context, callback, timeout_s=2.0):
+        del context
+        completed = threading.Event()
+        outcome = []
+        self._context_commands.put((callback, completed, outcome))
+        if not completed.wait(timeout_s):
+            raise RuntimeError("fake GStreamer context command timed out")
+        succeeded, value = outcome[0]
+        if not succeeded:
+            raise value
+        return value
 
     def quit_loop(self, loop):
         if not self.ignore_quit:
@@ -1503,10 +1527,10 @@ class TestBusWatchLifecycleSeal:
         assert bus_a.watch_installed is True  # bookkeeping retenido
         assert bus_a.remove_watch_count == 0
         assert port._pipeline is bindings.pipelines[0]
-        # A ya no está productivamente reproduciendo (NULL OK antes del
-        # fallo de remoción) — pero no hay estado falso de B: A sigue como
-        # fuente pendiente canónica (la transacción abortó sin mutarla)
-        assert port._pending_path == Path("/m/a.flac")
+        # A reached NULL before detach failed, so it cannot remain logical
+        # media. The retained pipeline/watch are cleanup anchors only.
+        assert port._pending_path is None
+        assert port._current_path is None
         assert port._current_path is None
 
     def test_retry_close_after_remove_failure(self, qapp):
@@ -1539,7 +1563,7 @@ class TestBusWatchLifecycleSeal:
         # evidencia de la remoción fallida
         assert port._pipeline is None  # NULL OK → transport detenido
         assert port._bus_source is not None  # bookkeeping retenido
-        assert port._pump is None  # la limpieza del pump continuó
+        assert port._pump is not None and port._pump.is_alive()
         # liberación manual del bookkeeping retenido para salir limpio
         bus_a.fail_remove_watch = False
         port._detach_pipeline_sources()
@@ -1566,7 +1590,7 @@ class TestTerminalCleanupFirstErrorWins:
         assert pipeline.state == _FakeState.NULL
         assert port._pipeline is None  # NULL OK → transport detenido
         assert bus_a.remove_watch_count == 0  # la remoción falló (evidencia)
-        assert port._pump is None  # pump terminó
+        assert port._pump is not None and port._pump.is_alive()
         assert port._timer_source is None  # timer destruido
         bus_a.fail_remove_watch = False
         port._detach_pipeline_sources()
@@ -1584,7 +1608,7 @@ class TestTerminalCleanupFirstErrorWins:
         # first-error-wins: el watch falló primero → primario
         assert bindings.null_request_count == 1  # NULL igual se intentó
         assert port._pipeline is pipeline  # NULL falló → retenido
-        assert port._pump is None  # pump cleanup continuó
+        assert port._pump is not None and port._pump.is_alive()
         assert port._closed is False  # R1-03: retryable
         bus_a.fail_remove_watch = False
         bindings.failed_states.discard(_FakeState.NULL)
@@ -1734,8 +1758,11 @@ class TestCleanupExceptionBoundary:
         assert pipeline.state == _FakeState.NULL
         assert port._pipeline is None  # NULL OK → liberado
         assert port._timer_source is None  # timer cleanup continuó
-        assert port._pump is None  # pump cleanup continuó
+        assert port._pump is not None and port._pump.is_alive()
         assert bus_a.remove_watch_count == 0  # la remoción no ocurrió (evidencia)
+        bus_a.remove_watch_exception = None
+        port.close()
+        assert port._closed is True
 
     def test_close_detach_typeerror_null_fails_retains_pipeline(self, qapp):
         bindings = FakeBindings()
@@ -1751,8 +1778,12 @@ class TestCleanupExceptionBoundary:
         # pero el NULL igual se intentó y el pipeline se retiene
         assert bindings.null_request_count == 1
         assert port._pipeline is pipeline  # NULL falló → retenido
-        assert port._pump is None  # pump cleanup continuó
+        assert port._pump is not None and port._pump.is_alive()
         assert port._closed is False  # R1-03: retryable
+        bus_a.remove_watch_exception = None
+        bindings.failed_states.discard(_FakeState.NULL)
+        port.close()
+        assert port._closed is True
 
     def test_close_detach_exception_pump_timeout_keeps_first_error(self, qapp):
         bindings = FakeBindings()
@@ -1764,15 +1795,14 @@ class TestCleanupExceptionBoundary:
         bus_a.remove_watch_exception = ValueError("synthetic remove exception")
         with pytest.raises(ValueError, match="synthetic remove exception"):
             port.close()
-        # ValueError primario; el timeout del pump es secundario
+        # ValueError primario; el pump se preserva para retry y por eso no se
+        # intenta todavía su shutdown.
         assert port._pipeline is None  # NULL OK
         assert port._pump is pump  # worker vivo retenido (secundario)
         bindings.ignore_quit = False
-        bindings.quit_loop(port._loop or "loop")
-        pump.join(timeout=2.0)
-        port._pump = None
-        port._loop = None
-        port._context = None
+        bus_a.remove_watch_exception = None
+        port.close()
+        assert port._closed is True
 
     def test_preroll_null_ok_detach_exception(self, qapp):
         bindings = FakeBindings()

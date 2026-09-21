@@ -293,6 +293,12 @@ class GStreamerDirectOutputExecutor:
             self._restore(committed)
             self._committed = None
             return OutputExecutorAbortDisposition.PREDECESSOR_RESTORED
+        if (
+            self._signal_truth is not None
+            and committed is not None
+            and committed.signal_identity is not None
+        ):
+            self._signal_truth.terminate(committed.signal_identity)
         self._clear()
         return OutputExecutorAbortDisposition.CANDIDATE_DISCARDED
 

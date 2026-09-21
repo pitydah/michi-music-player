@@ -10,7 +10,6 @@ import pytest
 from michi.application.audio_output_planner import OutputPlanner
 from michi.application.output_session_service import (
     OutputRequest,
-    OutputSessionError,
     OutputSessionService,
 )
 from michi.application.ports import PlaybackOutputTransactionPort
@@ -42,6 +41,8 @@ def _direct_graph(
     alsa_hw_params_reader=None,
     source_metadata=None,
     startup_selected_engine=None,
+    preseed_qualification: bool = True,
+    qualification_adapter=None,
 ):
     from test_gstreamer_audio_port import FakeBindings
 
@@ -50,6 +51,7 @@ def _direct_graph(
     from michi.domain.audio_evidence import (
         CapabilityEvidence,
         EvidenceStrength,
+        ExactProbeResult,
         PcmTuple,
     )
     from michi.domain.audio_output import AudioOutputSelection, stable_direct_preset
@@ -103,6 +105,28 @@ def _direct_graph(
         (sub_root / "hw_params").write_text("closed\n", encoding="utf-8")
 
     bindings = FakeBindings()
+
+    if qualification_adapter is None:
+
+        class _ExactOpeningProbe:
+            def probe_exact(self, **kwargs):
+                significant_bits = 24 if kwargs["transport_format"] == "S32_LE" else 16
+                requested = PcmTuple(
+                    kwargs["rate_hz"],
+                    kwargs["transport_format"],
+                    kwargs["channels"],
+                    significant_bits,
+                )
+                return ExactProbeResult(
+                    requested,
+                    requested,
+                    "OPENED",
+                    None,
+                    None,
+                    "probe:test-exact-open",
+                )
+
+        qualification_adapter = _ExactOpeningProbe()
     selected_engine = startup_selected_engine or AudioEngineId.GSTREAMER
     graph = _build_services(
         tmp_path / "michi.db",
@@ -114,6 +138,7 @@ def _direct_graph(
         alsa_hw_params_reader=alsa_hw_params_reader,
         audio_sysfs_root=sysfs_root,
         alsa_proc_root=proc_root,
+        qualification_adapter=qualification_adapter,
     )
     device_id = "usb:2622:0105:DX5ABC123"
     profile = stable_direct_preset("p1", device_id)
@@ -121,23 +146,26 @@ def _direct_graph(
     graph.audio_output_profiles.save_selection(
         AudioOutputSelection("p1", device_id, time.time_ns() // 1_000_000)
     )
-    graph.dac_qualification.cache_evidence(
-        device_id,
-        (
-            CapabilityEvidence(
-                stable_device_id=device_id,
-                tuple=PcmTuple(96_000, "S32_LE", 2, 24),
-                supported=True,
-                strength=EvidenceStrength.OPENED,
-                source="michi-alsa-probe",
-                observed_at_ns=1,
-                environment_fingerprint=(
-                    graph.dac_qualification.current_environment_fingerprint(device_id)
+    if preseed_qualification:
+        graph.dac_qualification.cache_evidence(
+            device_id,
+            (
+                CapabilityEvidence(
+                    stable_device_id=device_id,
+                    tuple=PcmTuple(96_000, "S32_LE", 2, 24),
+                    supported=True,
+                    strength=EvidenceStrength.OPENED,
+                    source="michi-alsa-probe",
+                    observed_at_ns=1,
+                    environment_fingerprint=(
+                        graph.dac_qualification.current_environment_fingerprint(
+                            device_id
+                        )
+                    ),
+                    evidence_refs=("probe:productive",),
                 ),
-                evidence_refs=("probe:productive",),
             ),
-        ),
-    )
+        )
     return graph, bindings
 
 
@@ -156,6 +184,16 @@ def _accept_current(graph, bindings) -> None:
     port = graph.gstreamer_engine_provider.current_port
     message, generation = _msg(port, _FakeMsgType.ASYNC_DONE, bindings.pipelines[-1])
     _deliver(port, message, generation)
+
+
+def _wait_for_pipeline_count(bindings, count: int, timeout_s: float = 2.0) -> None:
+    from PySide6.QtCore import QCoreApplication
+
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline and len(bindings.pipelines) < count:
+        QCoreApplication.processEvents()
+        time.sleep(0.01)
+    assert len(bindings.pipelines) >= count
 
 
 class _AtomicDirectPort:
@@ -479,10 +517,9 @@ def test_p050_14_direct_prepare_failure_never_loads_or_falls_back(
     graph, bindings = _direct_graph(tmp_path)
     graph.audio_device_registry.handle_removed("2-1")
     try:
-        with pytest.raises(Exception) as exc_info:
-            graph.playback.load_and_play(tmp_path / "missing.flac")
+        graph.playback.load_and_play(tmp_path / "missing.flac")
 
-        assert "DEVICE_UNAVAILABLE" in str(exc_info.value)
+        assert graph.playback.state.error_message.startswith("Device disconnected:")
         assert bindings.pipelines == []
         assert graph.audio_router.bound_engine_id.value == "gstreamer"
         assert graph.direct_output_executor.handle is None
@@ -545,6 +582,7 @@ def test_dr_05_post_destructive_arm_failure_never_resurrects_a(
         assert graph.output_session.state is OutputSessionState.IDLE
         assert graph.output_session.plan is None
         assert graph.direct_output_executor.handle is None
+        assert graph.signal_truth.active_snapshot is None
         port = graph.gstreamer_engine_provider.current_port
         assert port._current_path is None and port._pending_path is None
     finally:
@@ -638,9 +676,10 @@ def test_dr_08_stale_b_acceptance_cannot_reclaim_after_failure(tmp_path: Path) -
 def test_me_01_zero_playback_endpoints_refuses_direct(tmp_path: Path) -> None:
     graph, bindings = _direct_graph(tmp_path, playback_pcms=())
     try:
-        with pytest.raises(Exception) as caught:
-            graph.playback.load_and_play(tmp_path / "zero.flac")
-        assert "NO_ALSA_HW_BINDING" in str(caught.value)
+        graph.playback.load_and_play(tmp_path / "zero.flac")
+        assert graph.playback.state.error_message.startswith(
+            "Direct endpoint unavailable:"
+        )
         assert bindings.pipelines == []
     finally:
         _close_graph(graph)
@@ -660,9 +699,10 @@ def test_me_02_one_playback_endpoint_uses_the_exact_binding(tmp_path: Path) -> N
 def test_me_03_multiple_playback_endpoints_fail_closed(tmp_path: Path) -> None:
     graph, bindings = _direct_graph(tmp_path, playback_pcms=(0, 1))
     try:
-        with pytest.raises(Exception) as caught:
-            graph.playback.load_and_play(tmp_path / "ambiguous.flac")
-        assert "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS" in str(caught.value)
+        graph.playback.load_and_play(tmp_path / "ambiguous.flac")
+        assert graph.playback.state.error_message.startswith(
+            "Choose a Direct endpoint:"
+        )
         assert graph.output_session.plan is None
         assert graph.direct_output_executor.handle is None
         assert bindings.pipelines == []
@@ -675,10 +715,10 @@ def test_me_04_ambiguity_refusal_is_independent_of_endpoint_order(
 ) -> None:
     graph, bindings = _direct_graph(tmp_path, playback_pcms=(9, 2))
     try:
-        with pytest.raises(Exception) as caught:
-            graph.playback.load_and_play(tmp_path / "unordered.flac")
-        assert getattr(caught.value, "code", None) == "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS"
-        assert "DEV=2" not in str(caught.value) and "DEV=9" not in str(caught.value)
+        graph.playback.load_and_play(tmp_path / "unordered.flac")
+        error = graph.playback.state.error_message
+        assert error.startswith("Choose a Direct endpoint:")
+        assert "DEV=2" not in error and "DEV=9" not in error
         assert bindings.built_recipes == []
     finally:
         _close_graph(graph)
@@ -703,8 +743,10 @@ def test_me_06_ambiguous_direct_does_not_touch_backend_or_shared_fallback(
 ) -> None:
     graph, bindings = _direct_graph(tmp_path, playback_pcms=(0, 1))
     try:
-        with pytest.raises(OutputSessionError):
-            graph.playback.load_and_play(tmp_path / "no-fallback.flac")
+        graph.playback.load_and_play(tmp_path / "no-fallback.flac")
+        assert graph.playback.state.error_message.startswith(
+            "Choose a Direct endpoint:"
+        )
         assert bindings.pipelines == []
         assert graph.audio_router.bound_engine_id.value == "gstreamer"
         assert graph.output_session.mode == "shared"
@@ -756,9 +798,10 @@ def test_me_07_endpoint_set_change_advances_generation_but_never_guesses(
     graph.audio_device_registry.ingest((usb, endpoint(0), endpoint(1)))
     try:
         assert graph.audio_device_registry.generation_for(device_id) != first_generation
-        with pytest.raises(Exception) as caught:
-            graph.playback.load_and_play(tmp_path / "changed.flac")
-        assert "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS" in str(caught.value)
+        graph.playback.load_and_play(tmp_path / "changed.flac")
+        assert graph.playback.state.error_message.startswith(
+            "Choose a Direct endpoint:"
+        )
         assert bindings.pipelines == []
     finally:
         _close_graph(graph)

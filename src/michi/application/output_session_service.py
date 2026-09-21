@@ -13,14 +13,16 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Mapping
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
 
 from michi.application.audio_output_planner import (
+    EXACT_TUPLE_UNKNOWN,
     OutputPlanner,
     PlannerFacts,
     PlannerRefusal,
+    carrier_tuple,
 )
 from michi.application.audio_output_ports import (
     AudioOutputExecutorPort,
@@ -298,6 +300,59 @@ class ProductiveOutputRequestResolver:
             selection.selected_profile_id,
         )
 
+    def qualify_request(self, request: OutputRequest) -> OutputRequest:
+        """Probe at most the request's one exact tuple and refresh its facts."""
+        request, outcome = self.probe_request(request)
+        return self.apply_qualification(request, outcome)
+
+    def probe_request(self, request: OutputRequest):
+        """Worker phase: exact-open only, with no cache or session mutation."""
+        facts = request.facts
+        if facts is None or facts.binding is None or facts.selected_device_id is None:
+            return request, None
+        requested = carrier_tuple(facts.decoded_source)
+        if requested is None:
+            return request, None
+        outcome = self._qualification.probe_for_play(
+            stable_device_id=facts.selected_device_id,
+            locator=facts.binding.locator,
+            rate_hz=requested.rate_hz,
+            transport_format=requested.transport_format,
+            channels=requested.channels,
+        )
+        return request, outcome
+
+    def apply_qualification(self, request: OutputRequest, outcome) -> OutputRequest:
+        """Owner phase: classify, cache, and refresh only a current result."""
+        if outcome is None:
+            return request
+        facts = request.facts
+        assert facts is not None and facts.selected_device_id is not None
+        if outcome.evidence.supported is None:
+            disposition = outcome.disposition.casefold()
+            if "busy" in disposition:
+                code = "ALSA_DEVICE_BUSY"
+            elif disposition in {"removed", "device_removed", "no_device"}:
+                code = "OUTPUT_DEVICE_LOST"
+            elif disposition == "timeout":
+                code = "EXACT_QUALIFICATION_TIMEOUT"
+            else:
+                code = "EXACT_QUALIFICATION_INCONCLUSIVE"
+            raise OutputSessionError(
+                code,
+                outcome.detail or f"exact qualification ended as {outcome.disposition}",
+            )
+        self._qualification.cache_conclusive_evidence(outcome.evidence)
+        return replace(
+            request,
+            facts=replace(
+                facts,
+                evidence=self._qualification.cached_evidence_current(
+                    facts.selected_device_id
+                ),
+            ),
+        )
+
 
 class OutputSessionService:
     """Implementa el PlaybackOutputTransactionPort canónico (§0H.2).
@@ -316,6 +371,7 @@ class OutputSessionService:
         executors: Mapping[str, AudioOutputExecutorPort] | None = None,
         shared_transaction: SharedOutputTransaction | None = None,
         plan_still_current: Callable[[OutputPlan], bool] | None = None,
+        async_submit: Callable[[Callable, Callable], None] | None = None,
     ) -> None:
         self._planner = planner
         self._facts_provider = facts_provider
@@ -323,6 +379,9 @@ class OutputSessionService:
         self._executors = dict(executors or {})
         self._shared = shared_transaction or SharedOutputTransaction()
         self._plan_still_current = plan_still_current or (lambda _plan: True)
+        self._async_submit = async_submit
+        self._async_prepare_generation = 0
+        self._pending_prepare_device_id: str | None = None
         self._state = OutputSessionState.IDLE
         self._generation = 0
         self._session_id: str | None = None
@@ -458,6 +517,7 @@ class OutputSessionService:
 
         Firma EXACTA del port: PlaybackService nunca ve un OutputPlan.
         """
+        self.cancel_pending_prepare()
         if self._state not in (
             OutputSessionState.IDLE,
             OutputSessionState.READY,
@@ -467,6 +527,89 @@ class OutputSessionService:
                 "illegal_transition", f"prepare desde {self._state.value}"
             )
         request = self._request_for(path)
+        return self._prepare_request(path, request)
+
+    def prepare_for_media_async(
+        self,
+        path: Path,
+        on_prepared: Callable[[str], None],
+        on_failed: Callable[[Exception], None],
+    ) -> None:
+        """Prepare normally, offloading only a missing exact ALSA probe."""
+        self._async_prepare_generation += 1
+        generation = self._async_prepare_generation
+        try:
+            request = self._request_for(path)
+            self._pending_prepare_device_id = request.selected_device_id
+            result = (
+                self._planner.plan(request.facts) if request.facts is not None else None
+            )
+        except Exception as exc:  # noqa: BLE001 - typed completion boundary
+            on_failed(exc)
+            return
+        if not (
+            isinstance(result, PlannerRefusal)
+            and result.code == EXACT_TUPLE_UNKNOWN
+            and hasattr(self._request_provider, "qualify_request")
+        ):
+            self._pending_prepare_device_id = None
+            try:
+                token = self._prepare_request(path, request)
+            except Exception as exc:  # noqa: BLE001 - typed completion boundary
+                on_failed(exc)
+                return
+            on_prepared(token)
+            return
+
+        def work():
+            return self._request_provider.probe_request(request)
+
+        def completed(value, error) -> None:
+            if generation != self._async_prepare_generation:
+                on_failed(
+                    OutputSessionError(
+                        "OUTPUT_PREPARATION_STALE",
+                        "output preparation was superseded",
+                    )
+                )
+                return
+            self._pending_prepare_device_id = None
+            if error is not None:
+                on_failed(error)
+                return
+            try:
+                probed_request, outcome = value
+                qualified_request = self._request_provider.apply_qualification(
+                    probed_request, outcome
+                )
+                token = self._prepare_request(path, qualified_request)
+            except Exception as exc:  # noqa: BLE001 - owner completion boundary
+                on_failed(exc)
+                return
+            on_prepared(token)
+
+        if self._async_submit is None:
+            try:
+                completed(work(), None)
+            except Exception as exc:  # noqa: BLE001 - fallback test boundary
+                completed(None, exc)
+        else:
+            self._async_submit(work, completed)
+
+    def cancel_pending_prepare(self) -> None:
+        """Invalidate worker continuations without cancelling blocking ALSA I/O."""
+        self._async_prepare_generation += 1
+        self._pending_prepare_device_id = None
+
+    def _prepare_request(self, path: Path, request: OutputRequest) -> str:
+        if self._state not in (
+            OutputSessionState.IDLE,
+            OutputSessionState.READY,
+            OutputSessionState.RUNNING,
+        ):
+            raise OutputSessionError(
+                "illegal_transition", f"prepare desde {self._state.value}"
+            )
         previous_direct = self._committed_direct_snapshot()
         self._selected_device_id = request.selected_device_id
         self._selected_profile_id = request.selected_profile_id
@@ -480,6 +623,18 @@ class OutputSessionService:
             raise OutputSessionError(
                 "ENGINE_UNSUPPORTED_FOR_DIRECT",
                 f"no Direct executor for engine {result.engine_id!r}",
+            )
+        try:
+            plan_is_current = self._plan_still_current(result)
+        except Exception as exc:
+            raise OutputSessionError(
+                "OUTPUT_BINDING_VALIDATION_FAILED",
+                "Direct binding freshness could not be validated",
+            ) from exc
+        if not plan_is_current:
+            raise OutputSessionError(
+                "OUTPUT_BINDING_STALE",
+                "Direct binding changed before candidate preparation",
             )
         try:
             receipt = executor.prepare(result)
@@ -743,6 +898,7 @@ class OutputSessionService:
         self._transition(OutputSessionState.IDLE)
 
     def release_active(self, reason: str) -> None:
+        self.cancel_pending_prepare()
         was_direct = self._mode == "direct" and self._executor is not None
         self._last_release_invalidated_media = was_direct
         if self._mode == "shared":
@@ -848,6 +1004,7 @@ class OutputSessionService:
         """Apply one canonical topology loss to the matching active Direct lease."""
         if not self.topology_loss_applies(stable_device_id):
             return
+        self.cancel_pending_prepare()
         self.device_lost(stable_device_id, generation)
 
     def topology_loss_applies(self, stable_device_id: str) -> bool:
@@ -857,6 +1014,8 @@ class OutputSessionService:
         the physical predecessor until the executor's destructive boundary.
         The executor remains the sole authority on whether A is still owned.
         """
+        if self._pending_prepare_device_id == stable_device_id:
+            return True
         if (
             self._mode == "direct"
             and self._plan is not None

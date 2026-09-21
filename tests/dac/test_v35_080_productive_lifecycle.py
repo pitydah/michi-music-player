@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
 import pytest
 
 from michi.application.audio_device_registry import AudioDeviceTopologyChange
-from michi.application.output_session_service import OutputSessionError
-from michi.domain.audio_evidence import CapabilityEvidence, EvidenceStrength, PcmTuple
 from michi.domain.audio_output import OutputSessionState
 from michi.domain.playback import PlaybackStatus
 from tests.dac._fixtures import (
@@ -183,31 +180,12 @@ def test_r80_13_19_reconnect_same_identity_is_inactive_until_fresh_play(
         new_generation = graph.audio_device_registry.generation_for(stable_id)
         assert new_generation > old_generation
         assert graph.dac_qualification.cached_evidence_current(stable_id) == ()
-        with pytest.raises(OutputSessionError):
-            graph.playback.play()
-        assert graph.output_session.active_plan is None
-        assert len(bindings.pipelines) == pipeline_count
-
-        graph.dac_qualification.cache_evidence(
-            stable_id,
-            (
-                CapabilityEvidence(
-                    stable_device_id=stable_id,
-                    tuple=PcmTuple(96_000, "S32_LE", 2, 24),
-                    supported=True,
-                    strength=EvidenceStrength.OPENED,
-                    source="michi-alsa-probe",
-                    observed_at_ns=time.time_ns(),
-                    environment_fingerprint=(
-                        graph.dac_qualification.current_environment_fingerprint(
-                            stable_id
-                        )
-                    ),
-                    evidence_refs=("probe:reconnected",),
-                ),
-            ),
-        )
         graph.playback.play()
+        from tests.dac.test_v35_productive_direct_composition import (
+            _wait_for_pipeline_count,
+        )
+
+        _wait_for_pipeline_count(bindings, pipeline_count + 1)
 
         assert graph.output_session.active_device_id == stable_id
         assert graph.output_session.active_plan is not None

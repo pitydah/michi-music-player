@@ -12,6 +12,7 @@ from michi.application.audio_output_selection_coordinator import (
     AudioOutputSelectionCoordinator,
     AudioOutputSelectionError,
 )
+from michi.application.playback_failure import playback_action_failure
 from michi.application.playback_service import PlaybackService
 from michi.application.volume_policy_service import VolumePolicyService
 from michi.domain.audio_engine import AudioEngineId
@@ -37,53 +38,8 @@ def signal_truth_label(verdict: str) -> str:
 
 def failure_copy(code: str | None) -> tuple[str, str]:
     """Return presentation-only title/explanation for one typed code."""
-    normalized = (code or "").upper()
-    if "BUSY" in normalized:
-        return "Device busy", "Another application is currently using this DAC."
-    if normalized in {"DEVICE_LOST", "OUTPUT_DEVICE_LOST", "DEVICE_UNAVAILABLE"}:
-        return (
-            "Device disconnected",
-            "The selected DAC is no longer available.",
-        )
-    if normalized in {"ENGINE_UNSUPPORTED_FOR_DIRECT", "ENGINE_NOT_GSTREAMER"}:
-        return (
-            "Direct requires GStreamer",
-            "Select GStreamer explicitly to use Direct output.",
-        )
-    if normalized in {"EXACT_TUPLE_UNKNOWN", "SIGNIFICANT_BITS_UNPROVEN"}:
-        return (
-            "Format not verified",
-            "Michi has not confirmed this format for the current DAC connection.",
-        )
-    if "FIXED" in normalized or "LOCKED" in normalized:
-        return (
-            "Output locked at fixed level",
-            "Digital attenuation is disabled for this output.",
-        )
-    if "CONTRADICT" in normalized or normalized == "OUTPUT_MISMATCH":
-        return (
-            "Output mismatch",
-            "The runtime output does not match the expected Direct plan.",
-        )
-    if normalized in {"OUTPUT_DEVICE_UNKNOWN", "OUTPUT_PROFILE_UNKNOWN"}:
-        return (
-            "Output unavailable",
-            "The requested output is no longer known to Michi.",
-        )
-    if normalized in {"SELECTED_DEVICE_MISSING", "DIRECT_PROFILE_REQUIRED"}:
-        return "Select a DAC", "Choose an available physical DAC first."
-    if normalized == "OUTPUT_PROFILE_DEVICE_MISMATCH":
-        return "Profile mismatch", "This output profile belongs to another DAC."
-    if normalized in {"VOLUME_MODE_UNAVAILABLE", "RESYNC_DELAY_INVALID"}:
-        return (
-            "Setting unavailable",
-            "This setting is not qualified for the selected output.",
-        )
-    if normalized == "OUTPUT_PATH_MODE_UNKNOWN":
-        return "Output path unavailable", "Choose Shared or Direct output."
-    if not normalized:
-        return "", ""
-    return "Output unavailable", "Michi could not activate the selected output."
+    failure = playback_action_failure(code)
+    return failure.title, failure.explanation
 
 
 def _display_name(identity) -> str:

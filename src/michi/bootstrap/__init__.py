@@ -136,6 +136,7 @@ from michi.infrastructure.playlist_artwork_store import (
 )
 from michi.infrastructure.playlist_palette import QtPlaylistPaletteExtractor
 from michi.infrastructure.playlists import SqlitePlaylistsRepository
+from michi.infrastructure.qt_async_call import QtAsyncCallExecutor
 from michi.infrastructure.scan_dispatcher import LibraryScanDispatcher
 from michi.infrastructure.scan_runner import ScanRelay, ThreadScanRunner
 from michi.infrastructure.session_repository import SqliteSessionRepository
@@ -223,6 +224,7 @@ class ServiceGraph:
     audio_output_profiles: AudioOutputProfileService
     audio_device_registry: AudioDeviceRegistry
     dac_qualification: DacQualificationService
+    output_preparation_executor: QtAsyncCallExecutor
     udev_observer: UdevObserver
     scanner: object
     metadata_extractor: object
@@ -378,6 +380,8 @@ def _build_services(
     alsa_hw_params_reader=None,
     audio_sysfs_root: Path | None = None,
     alsa_proc_root: Path = Path("/proc/asound"),
+    qualification_adapter=None,
+    output_preparation_executor: QtAsyncCallExecutor | None = None,
 ) -> ServiceGraph:
     """Build the PRODUCTION library service graph (composition root core).
 
@@ -450,7 +454,7 @@ def _build_services(
         )
 
     qualification = DacQualificationService(
-        MichiAlsaProbeAdapter(),
+        qualification_adapter or MichiAlsaProbeAdapter(),
         cache=output_repository,
         environment_context=qualification_environment,
     )
@@ -487,6 +491,7 @@ def _build_services(
         source_metadata=metadata_extractor,
         source_characterizer=source_characterizer,
     )
+    preparation_executor = output_preparation_executor or QtAsyncCallExecutor()
     output_session = OutputSessionService(
         OutputPlanner(),
         request_provider=output_resolver,
@@ -500,6 +505,7 @@ def _build_services(
             and binding.pcm_device == plan.binding.pcm_device
             for binding in audio_devices.bindings_for(plan.stable_device_id)
         ),
+        async_submit=preparation_executor.submit,
     )
     from michi.application.volume_policy_service import VolumePolicyService
 
@@ -771,6 +777,7 @@ def _build_services(
         audio_output_profiles=output_profiles,
         audio_device_registry=audio_devices,
         dac_qualification=qualification,
+        output_preparation_executor=preparation_executor,
         udev_observer=udev_observer,
         scanner=scanner,
         metadata_extractor=metadata_extractor,

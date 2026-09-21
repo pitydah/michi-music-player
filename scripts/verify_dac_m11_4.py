@@ -30,6 +30,9 @@ REQUIRED_COLLECTED_MODULES = (
     "tests/dac/test_v35_100_software_closure.py",
     "tests/dac/test_v35_100r1_startup_resume.py",
     "tests/dac/test_v35_100r11_source_characterization.py",
+    "tests/dac/test_v35_100r12_native_lifecycle.py",
+    "tests/dac/test_v35_100r12_playback_refusal_ui.py",
+    "tests/dac/test_v35_100r12_productive_qualification.py",
     "tests/test_v35_090_audio_output_bridge.py",
     "tests/test_v35_090_qml_audio_output.py",
 )

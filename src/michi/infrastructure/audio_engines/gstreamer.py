@@ -752,6 +752,34 @@ class GStreamerBindings:
     def pop_thread_default(self, context):
         context.pop_thread_default()
 
+    def invoke_context_sync(self, context, callback, timeout_s: float = 2.0):
+        """Run one bounded command while ``context`` is owned by its pump.
+
+        ``MainContext.invoke_full`` provides the only cross-thread lifecycle
+        seam.  Command exceptions are returned to the caller unchanged and a
+        wedged context is reported rather than silently mutating ownership on
+        the caller thread.
+        """
+        completed = threading.Event()
+        outcome: list[tuple[bool, object]] = []
+
+        def execute(_user_data=None):
+            try:
+                outcome.append((True, callback()))
+            except BaseException as exc:  # preserve the command's primary failure
+                outcome.append((False, exc))
+            finally:
+                completed.set()
+            return False
+
+        context.invoke_full(self._glib.PRIORITY_DEFAULT, execute, None)
+        if not completed.wait(timeout_s):
+            raise RuntimeError("GStreamer MainContext command timed out")
+        succeeded, value = outcome[0]
+        if not succeeded:
+            raise value
+        return value
+
     def create_bus_source(self, bus, callback, context=None) -> int:
         """Bus watch canónico attachado al context indicado.
 
@@ -901,6 +929,10 @@ class _GstEventKind(Enum):
     POSITION_TICK = auto()
 
 
+class _PipelineDetachAfterNullError(RuntimeError):
+    """The transport reached NULL but its bus watch could not be detached."""
+
+
 @dataclass(frozen=True, slots=True)
 class _GstEvent:
     """Envelope inmutable de observación backend (M11.3C-R6.5).
@@ -977,6 +1009,7 @@ class GStreamerAudioPort(AudioPort):
         self._context = None
         self._loop = None
         self._pump: threading.Thread | None = None
+        self._pump_ident: int | None = None
         self._pump_start_count = 0
         self._closing = False  # R1-03: close in progress (retryable)
         # load-command ownership epoch (GATE 1)
@@ -1060,6 +1093,7 @@ class GStreamerAudioPort(AudioPort):
         self._pump.start()
 
     def _pump_run(self) -> None:
+        self._pump_ident = threading.get_ident()
         self._bindings.push_thread_default(self._context)
         try:
             # AR-12 race fix: GLib quit() before run_loop is a no-op — the
@@ -1067,15 +1101,42 @@ class GStreamerAudioPort(AudioPort):
             self._pump_entered_run.set()
             self._bindings.run_loop(self._loop)
         finally:
+            unexpected_exit = not self._closing and not self._closed
+            if unexpected_exit:
+                # Last pump-owned cleanup opportunity. Once this thread exits,
+                # no caller may safely detach/destroy custom-context sources.
+                try:
+                    self._detach_pipeline_sources()
+                except Exception:  # noqa: BLE001 - terminal native cleanup
+                    _logger.exception(
+                        "gstreamer pump exit could not detach the bus watch"
+                    )
+                if self._timer_source is not None:
+                    try:
+                        self._bindings.destroy_source(self._timer_source)
+                    except Exception:  # noqa: BLE001 - terminal native cleanup
+                        _logger.exception(
+                            "gstreamer pump exit could not destroy the timer source"
+                        )
+                    else:
+                        self._timer_source = None
             self._bindings.pop_thread_default(self._context)
             # AR-11: a pump that exits while the port is NOT closing is an
             # unexpected engine runtime loss — telemetry is emitted once on
             # the owner thread (QueuedConnection) with the current
             # generation; stale/close-time exits are ignored by the owner.
-            if not self._closing and not self._closed:
+            if unexpected_exit:
                 self._bridge.sig_pump_died.emit(
                     self._generation, "gstreamer pump exited unexpectedly"
                 )
+
+    def _run_on_pump(self, callback):
+        """Synchronously dispatch one bounded native-lifecycle command."""
+        if threading.get_ident() == self._pump_ident:
+            return callback()
+        if self._pump is None or not self._pump.is_alive() or self._context is None:
+            raise RuntimeError("GStreamer pump is unavailable for context command")
+        return self._bindings.invoke_context_sync(self._context, callback)
 
     def _attach_pipeline_sources(self, pipeline, bus, generation: int) -> None:
         """Instala el bus watch y el timer de posición en el context custom.
@@ -1092,20 +1153,23 @@ class GStreamerAudioPort(AudioPort):
             self._process_message(message, generation, pipeline)
             return True  # keep source
 
-        self._bus_source = self._bindings.create_bus_source(
-            bus, on_bus_message, self._context
-        )
-        self._bus_source_attached = True
-        if self._timer_source is None:
-
-            def on_timer():
-                self._poll_position()
-                return True  # keep timer
-
-            self._timer_source = self._bindings.create_timeout_source(
-                _POSITION_POLL_MS, on_timer
+        def attach():
+            self._bus_source = self._bindings.create_bus_source(
+                bus, on_bus_message, self._context
             )
-            self._bindings.attach_source(self._timer_source, self._context)
+            self._bus_source_attached = True
+            if self._timer_source is None:
+
+                def on_timer():
+                    self._poll_position()
+                    return True  # keep timer
+
+                self._timer_source = self._bindings.create_timeout_source(
+                    _POSITION_POLL_MS, on_timer
+                )
+                self._bindings.attach_source(self._timer_source, self._context)
+
+        self._run_on_pump(attach)
 
     def _detach_pipeline_sources(self) -> None:
         """Remove the current bus watch with truthful result semantics.
@@ -1113,14 +1177,20 @@ class GStreamerAudioPort(AudioPort):
         M11.3C-R4: a failed (or impossible) watch removal raises — the
         lifecycle cleanup must never be silently claimed as successful.
         Callers decide how the failure composes with their own errors."""
-        if self._bus_source is not None:
+        if self._bus_source is None:
+            self._bus = None
+            return
+
+        def detach():
             if self._bus is None:
                 raise RuntimeError("GStreamer bus watch exists without owning bus")
             if not self._bindings.remove_bus_watch(self._bus):
                 raise RuntimeError("GStreamer bus watch could not be removed")
             self._bus_source = None
             self._bus_source_attached = False
-        self._bus = None
+            self._bus = None
+
+        self._run_on_pump(detach)
 
     def _poll_position(self) -> None:
         """GLib timer (pump): enqueue POSITION_TICK — el OWNER resuelve
@@ -1203,7 +1273,24 @@ class GStreamerAudioPort(AudioPort):
         previous_source_was_lost = (
             self._pipeline is not None and self._current_path is None
         )
-        if not self._try_stop_pipeline():
+        try:
+            previous_stopped = self._try_stop_pipeline()
+        except _PipelineDetachAfterNullError as exc:
+            self._invalidate_generation()
+            self._pending_path = None
+            self._current_path = None
+            self._pending_play = False
+            self._eos_emitted = False
+            self._active_direct_handle = None
+            self._deliver_state_if(PlaybackStatus.STOPPED)
+            from michi.application.ports import AudioLoadError
+
+            raise AudioLoadError(
+                Path(file_path),
+                str(exc),
+                previous_source_preserved=False,
+            ) from exc
+        if not previous_stopped:
             if previous_source_was_lost:
                 # DAC-V35-050R2: B had already destroyed accepted source A,
                 # but B itself was never accepted (or survives only as an
@@ -1603,9 +1690,12 @@ class GStreamerAudioPort(AudioPort):
         primary_error = self._teardown_pipeline_terminal()
         # destroy timer + sources
         if self._timer_source is not None:
-            self._bindings.destroy_source(self._timer_source)
+            self._run_on_pump(lambda: self._bindings.destroy_source(self._timer_source))
             self._timer_source = None
-        if self._pump is not None:
+        # A source still attached to this context requires its original pump
+        # to remain alive for a truthful retry.  Never orphan it by stopping
+        # the only thread allowed to detach it.
+        if self._pump is not None and self._bus_source is None:
             if self._loop is not None:
                 # GLib race (AR-12 evidence): a g_main_loop_quit issued
                 # before the loop is poll-blocking can be lost, leaving the
@@ -1616,7 +1706,8 @@ class GStreamerAudioPort(AudioPort):
                 if entered is not None:
                     entered.wait(timeout=1.0)
                 for _ in range(4):
-                    self._bindings.quit_loop(self._loop)
+                    if self._pump.is_alive():
+                        self._run_on_pump(lambda: self._bindings.quit_loop(self._loop))
                     self._pump.join(timeout=0.4)
                     if not self._pump.is_alive():
                         break
@@ -1664,7 +1755,10 @@ class GStreamerAudioPort(AudioPort):
             return True
         if not self._bindings.set_state(self._pipeline, self._bindings.STATE.NULL):
             return False
-        self._detach_pipeline_sources()
+        try:
+            self._detach_pipeline_sources()
+        except Exception as exc:
+            raise _PipelineDetachAfterNullError(str(exc)) from exc
         self._pipeline = None
         return True
 
@@ -1688,7 +1782,7 @@ class GStreamerAudioPort(AudioPort):
         # 3. timer creado POR ESTE arm que nunca quedó válido/reutilizable:
         #    no dejar _timer_source != None con un timer nunca attachado
         if timer_before is None and self._timer_source is not None:
-            self._bindings.destroy_source(self._timer_source)
+            self._run_on_pump(lambda: self._bindings.destroy_source(self._timer_source))
             self._timer_source = None
         # 4. NULL best-effort del pipeline candidato (si existe)
         null_ok = True

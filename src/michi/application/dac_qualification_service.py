@@ -86,6 +86,13 @@ class QualificationEnvironmentContext:
         return all(value is not None and value != "" for value in required)
 
 
+@dataclass(frozen=True, slots=True)
+class ExactQualificationOutcome:
+    evidence: CapabilityEvidence
+    disposition: str
+    detail: str | None
+
+
 def default_environment_context(
     stable_device_id: str = "environment:unbound",
 ) -> QualificationEnvironmentContext:
@@ -229,16 +236,89 @@ class DacQualificationService:
         La ambigüedad (BUSY/REMOVED/TIMEOUT/entorno) nunca se cachea como
         claim (§0I/§12).
         """
-        evidence = self.qualify_exact(
+        return self.qualify_for_play(
+            stable_device_id=stable_device_id,
+            locator=locator,
+            rate_hz=rate_hz,
+            transport_format=transport_format,
+            channels=channels,
+        ).evidence
+
+    def qualify_for_play(
+        self,
+        *,
+        stable_device_id: str,
+        locator: str,
+        rate_hz: int,
+        transport_format: str,
+        channels: int,
+    ) -> ExactQualificationOutcome:
+        """Qualify and cache one current Play tuple."""
+        outcome = self.probe_for_play(
             stable_device_id=stable_device_id,
             locator=locator,
             rate_hz=rate_hz,
             transport_format=transport_format,
             channels=channels,
         )
+        self.cache_conclusive_evidence(outcome.evidence)
+        return outcome
+
+    def probe_for_play(
+        self,
+        *,
+        stable_device_id: str,
+        locator: str,
+        rate_hz: int,
+        transport_format: str,
+        channels: int,
+    ) -> ExactQualificationOutcome:
+        """Probe without cache mutation; owner revalidation decides commit."""
+        environment_before = self.current_environment_fingerprint(stable_device_id)
+        result: ExactProbeResult = self._adapter.probe_exact(
+            locator=locator,
+            rate_hz=rate_hz,
+            transport_format=transport_format,
+            channels=channels,
+        )
+        evidence = self.evidence_from(result, stable_device_id=stable_device_id)
+        environment_after = self.current_environment_fingerprint(stable_device_id)
+        if environment_after != environment_before:
+            evidence = CapabilityEvidence(
+                stable_device_id=evidence.stable_device_id,
+                tuple=evidence.tuple,
+                supported=None,
+                strength=EvidenceStrength.PROBED,
+                source=evidence.source,
+                observed_at_ns=evidence.observed_at_ns,
+                environment_fingerprint=environment_after,
+                evidence_refs=(*evidence.evidence_refs, "environment_changed"),
+            )
+        return ExactQualificationOutcome(evidence, result.disposition, result.detail)
+
+    def cache_conclusive_evidence(self, evidence: CapabilityEvidence) -> None:
+        """Merge one conclusive tuple after its continuation is current."""
         if evidence.supported is not None and self._cache is not None:
-            self._cache.replace_qualification_cache(stable_device_id, (evidence,))
-        return evidence
+            key = (
+                evidence.environment_fingerprint,
+                evidence.tuple.rate_hz,
+                evidence.tuple.transport_format,
+                evidence.tuple.channels,
+            )
+            retained = tuple(
+                item
+                for item in self.cached_evidence(evidence.stable_device_id)
+                if (
+                    item.environment_fingerprint,
+                    item.tuple.rate_hz,
+                    item.tuple.transport_format,
+                    item.tuple.channels,
+                )
+                != key
+            )
+            self._cache.replace_qualification_cache(
+                evidence.stable_device_id, (*retained, evidence)
+            )
 
     def qualify_exact(
         self,

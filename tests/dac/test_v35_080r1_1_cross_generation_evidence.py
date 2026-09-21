@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from michi.application.audio_output_ports import VolumeAuthority
-from michi.application.output_session_service import OutputSessionError
 from michi.domain.audio_evidence import CapabilityEvidence, EvidenceStrength, PcmTuple
 from michi.domain.audio_output import AudioOutputSelection, OutputSessionState
 from michi.domain.playback import PlaybackStatus
@@ -259,8 +258,8 @@ def test_late_g1_runtime_anomaly_cannot_modify_active_g2_truth(tmp_path: Path) -
         _close_graph(graph)
 
 
-def test_reconnect_without_fresh_qualification_fails_closed(tmp_path: Path) -> None:
-    """R80R1.1-04: topology readiness alone cannot restore Direct authority."""
+def test_reconnect_performs_fresh_qualification_before_direct(tmp_path: Path) -> None:
+    """R1.2: topology readiness alone is insufficient; fresh exact-open follows."""
     graph, bindings = _direct_graph(tmp_path)
     try:
         _start_direct(graph, bindings, tmp_path / "unqualified.flac")
@@ -269,16 +268,18 @@ def test_reconnect_without_fresh_qualification_fails_closed(tmp_path: Path) -> N
         _reconnect_usb_only(graph, tmp_path)
         _reconnect_alsa(graph, tmp_path, card_index=4)
 
-        with pytest.raises(OutputSessionError, match="EXACT_TUPLE_UNKNOWN"):
-            graph.playback.play()
+        graph.playback.play()
+        from tests.dac.test_v35_productive_direct_composition import (
+            _wait_for_pipeline_count,
+        )
 
-        assert len(bindings.pipelines) == pipeline_count
-        assert graph.output_session.state is OutputSessionState.IDLE
-        assert graph.output_session.plan is None
-        assert graph.direct_output_executor.handle is None
+        _wait_for_pipeline_count(bindings, pipeline_count + 1)
+
+        assert graph.output_session.state is OutputSessionState.READY
+        assert graph.output_session.plan is not None
+        assert graph.direct_output_executor.handle is not None
         assert graph.signal_truth.active_snapshot is None
-        _candidate_is_absent(graph)
-        assert graph.volume_policy.authority is not VolumeAuthority.FIXED
+        assert graph.volume_policy.authority is VolumeAuthority.FIXED
     finally:
         graph.direct_output_lifecycle.shutdown()
         _close_graph(graph)

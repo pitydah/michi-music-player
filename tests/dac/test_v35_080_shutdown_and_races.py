@@ -11,7 +11,6 @@ from michi.application.audio_device_registry import AudioDeviceTopologyChange
 from michi.application.audio_engine_runtime_failure import (
     AudioEngineRuntimeFailureEvent,
 )
-from michi.application.output_session_service import OutputSessionError
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_output import OutputSessionState
 from michi.domain.playback import PlaybackStatus
@@ -70,12 +69,12 @@ def test_r80_26_unplug_during_prepare_rejects_stale_binding(tmp_path: Path) -> N
 
     graph.direct_output_executor.prepare = racing_prepare
     try:
-        with pytest.raises(OutputSessionError, match="OUTPUT_BINDING_STALE"):
-            graph.playback.load_and_play(tmp_path / "racing.flac")
+        graph.playback.load_and_play(tmp_path / "racing.flac")
 
         assert graph.output_session.active_plan is None
         assert graph.direct_output_executor.handle is None
         assert graph.playback.state.status is PlaybackStatus.STOPPED
+        assert graph.playback.state.error_message.startswith("Output unavailable:")
     finally:
         graph.direct_output_lifecycle.shutdown()
         _close_graph(graph)

@@ -12,7 +12,6 @@ from michi.application.audio_output_ports import VolumeAuthority
 from michi.application.audio_output_selection_coordinator import (
     AudioOutputSelectionCoordinator,
 )
-from michi.application.output_session_service import OutputSessionError
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_evidence import (
     CapabilityEvidence,
@@ -432,9 +431,10 @@ def test_e2e_100r1_01_qt_engine_refuses_direct_without_switch_or_fallback(
         tmp_path, startup_selected_engine=AudioEngineId.QT_MULTIMEDIA
     )
     try:
-        with pytest.raises(OutputSessionError) as caught:
-            graph.playback.load_and_play(tmp_path / "engine.flac")
-        assert caught.value.code == "ENGINE_UNSUPPORTED_FOR_DIRECT"
+        graph.playback.load_and_play(tmp_path / "engine.flac")
+        assert graph.playback.state.error_message.startswith(
+            "Direct requires GStreamer:"
+        )
         assert (
             graph.audio_engine_service.state.active_engine_id
             is AudioEngineId.QT_MULTIMEDIA
@@ -443,7 +443,9 @@ def test_e2e_100r1_01_qt_engine_refuses_direct_without_switch_or_fallback(
         assert graph.output_session.active_plan is None
         assert graph.direct_output_executor.handle is None
         assert bindings.pipelines == []
-        assert failure_copy(caught.value.code)[0] == "Direct requires GStreamer"
+        assert failure_copy("ENGINE_UNSUPPORTED_FOR_DIRECT")[0] == (
+            "Direct requires GStreamer"
+        )
     finally:
         graph.direct_output_lifecycle.shutdown()
         graph.audio_engine_convergence.shutdown()
@@ -490,20 +492,22 @@ def test_e2e_100r1_02_busy_is_ambiguous_not_negative_capability(
         _close_graph(graph)
 
 
-def test_e2e_100r1_03_unknown_exact_tuple_never_reaches_executor(
+def test_e2e_100r12_03_unknown_exact_tuple_is_qualified_before_executor(
     tmp_path: Path,
 ) -> None:
     graph, bindings = _direct_graph(tmp_path)
     try:
         graph.dac_qualification.cache_evidence(_DEVICE_ID, ())
-        with pytest.raises(OutputSessionError) as caught:
-            graph.playback.load_and_play(tmp_path / "unknown.flac")
-        assert caught.value.code == "EXACT_TUPLE_UNKNOWN"
-        assert graph.output_session.active_plan is None
-        assert graph.direct_output_executor.handle is None
-        assert bindings.pipelines == []
+        graph.playback.load_and_play(tmp_path / "unknown.flac")
+        from tests.dac.test_v35_productive_direct_composition import (
+            _wait_for_pipeline_count,
+        )
+
+        _wait_for_pipeline_count(bindings, 1)
+        assert graph.output_session.active_plan is not None
+        assert graph.direct_output_executor.handle is not None
         assert graph.audio_output_profiles.load_selection().selected_profile_id == "p1"
-        assert failure_copy(caught.value.code)[0] == "Format not verified"
+        assert failure_copy("EXACT_TUPLE_UNKNOWN")[0] == "Format not verified"
     finally:
         graph.direct_output_lifecycle.shutdown()
         _close_graph(graph)

@@ -17,6 +17,7 @@ from michi.application.audio_output_ports import (
     PlaybackVolumePort,
     VolumeRestoreError,
 )
+from michi.application.playback_failure import playback_action_failure
 from michi.application.ports import (
     AudioLoadError,
     AudioPort,
@@ -338,14 +339,80 @@ class PlaybackService:
         # backend. Si el prepare falla, el candidate anterior queda
         # INTACTO (T10): sólo tras un prepare exitoso B pasa a ser dueño
         # del output intent y el token viejo se termina como superseded.
+        async_prepare = getattr(self._output_tx, "prepare_for_media_async", None)
+        if async_prepare is not None:
+            previous_intent = self._intent
+            previous_accepted = self._accepted
+            self._request_epoch += 1
+            my_epoch = self._request_epoch
+            self._pending_path = file_path
+            self._pending_purpose = MediaRequestPurpose.USER_PLAY
+            self._pending_on_accepted = on_accepted
+            self._pending_on_rejected = on_rejected
+            self._pending_on_cancelled = on_cancelled
+            self._intent = True
+
+            def prepared(token: str) -> None:
+                if my_epoch != self._request_epoch:
+                    self._output_tx.abort_media(token, "superseded")
+                    return
+                self._continue_prepared_load(
+                    file_path,
+                    token,
+                    my_epoch,
+                    previous_intent,
+                    previous_accepted,
+                    on_accepted,
+                    on_rejected,
+                    on_cancelled,
+                )
+
+            def failed(exc: Exception) -> None:
+                if my_epoch != self._request_epoch:
+                    return
+                self._clear_pending()
+                self._intent = previous_intent
+                self._accepted = previous_accepted
+                if getattr(exc, "code", None) is None:
+                    raise exc
+                failure = playback_action_failure(exc.code)
+                logger.warning("playback output refusal %s: %s", exc.code, exc)
+                self._state.error_message = failure.message
+                self._notify()
+                if on_rejected is not None:
+                    on_rejected(file_path, failure.message)
+
+            async_prepare(file_path, prepared, failed)
+            return
+
         new_token = self._output_tx.prepare_for_media(file_path)
+        self._request_epoch += 1
+        self._continue_prepared_load(
+            file_path,
+            new_token,
+            self._request_epoch,
+            self._intent,
+            self._accepted,
+            on_accepted,
+            on_rejected,
+            on_cancelled,
+        )
+
+    def _continue_prepared_load(
+        self,
+        file_path: Path,
+        new_token: str,
+        my_epoch: int,
+        previous_intent: bool,
+        previous_accepted: bool,
+        on_accepted: Callable[[Path], None] | None,
+        on_rejected: Callable[[Path, str], None] | None,
+        on_cancelled: Callable[[Path], None] | None,
+    ) -> None:
+        """Continue a Play request on the owner after output preparation."""
         self._abort_output_token("superseded")
         self._output_token = new_token
         self._reset_user_play_acceptance_latch()
-        previous_intent = self._intent
-        previous_accepted = self._accepted
-        self._request_epoch += 1
-        my_epoch = self._request_epoch
         self._pending_path = file_path
         self._pending_purpose = MediaRequestPurpose.USER_PLAY
         self._pending_on_accepted = on_accepted
@@ -1129,6 +1196,10 @@ class PlaybackService:
         on_cancelled = self._pending_on_cancelled
         cancelled_path = self._pending_path
         self._audio.stop()
+        self._request_epoch += 1
+        cancel_prepare = getattr(self._output_tx, "cancel_pending_prepare", None)
+        if cancel_prepare is not None:
+            cancel_prepare()
         # §0H.2: la semántica de safety del AudioPort va PRIMERO; luego se
         # libera el output activo (release_active, nunca abort).
         self._output_token = None

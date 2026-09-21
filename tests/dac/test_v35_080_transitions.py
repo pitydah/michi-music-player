@@ -180,7 +180,8 @@ def test_plan_freshness_guard_aborts_candidate_before_session_activation() -> No
     with pytest.raises(OutputSessionError, match="OUTPUT_BINDING_STALE"):
         service.prepare_for_media(Path("stale.flac"))
 
-    assert executor.aborts == ["binding_stale_during_prepare"]
+    assert executor.receipt == ""
+    assert executor.aborts == []
     assert service.state is OutputSessionState.IDLE
     assert service.active_plan is None
 
