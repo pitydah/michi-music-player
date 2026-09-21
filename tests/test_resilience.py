@@ -179,6 +179,61 @@ class TestLibraryResilience:
 
 
 class TestApplicationContainerShutdown:
+    def test_shutdown_never_forces_qquick_deferred_delete_after_event_loop(self):
+        """Qt Quick render ownership must unwind at application destruction."""
+
+        class Root(DeleteLaterSpy):
+            def close(self):
+                return None
+
+        class Engine(DeleteLaterSpy):
+            def __init__(self, root):
+                super().__init__()
+                self._root = root
+
+            def rootObjects(self):  # noqa: N802 - Qt API name
+                return [self._root]
+
+        class App:
+            def sendPostedEvents(self, *_args):  # noqa: N802 - Qt API name
+                raise AssertionError("forced QQuick DeferredDelete is unsafe")
+
+        container = ApplicationContainer()
+        root = Root()
+        engine = Engine(root)
+        container._app = App()
+        container._engine = engine
+
+        container.shutdown()
+
+        assert root.calls == 0
+        assert engine.calls == 1
+        assert engine in container._qml_teardown_keepalive
+
+    def test_qml_engine_destruction_releases_teardown_keepalive(self):
+        class DestroyedSignal:
+            def connect(self, callback):
+                self._callback = callback
+
+            def emit(self):
+                self._callback()
+
+        class Engine(DeleteLaterSpy):
+            def __init__(self):
+                super().__init__()
+                self.destroyed = DestroyedSignal()
+
+        container = ApplicationContainer()
+        engine = Engine()
+        container._engine = engine
+
+        container._schedule_qml_teardown()
+        assert engine in container._qml_teardown_keepalive
+
+        engine.destroyed.emit()
+
+        assert container._qml_teardown_keepalive == ()
+
     def test_cleanup_runs_when_settings_save_fails(self):
         container = ApplicationContainer()
 

@@ -12,7 +12,14 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QStandardPaths, Qt, QTimer, QUrl
+from PySide6.QtCore import (
+    QCoreApplication,
+    QEventLoop,
+    QStandardPaths,
+    Qt,
+    QTimer,
+    QUrl,
+)
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -905,6 +912,8 @@ class ApplicationContainer:
         self._enrichment: EnrichmentGraph | None = None
         self._enrichment_settings: SettingsService | None = None
         self._eb: EnrichmentBridge | None = None
+        self._library_enrichment: LibraryEnrichmentProjection | None = None
+        self._qml_teardown_keepalive: tuple[object, ...] = ()
         # NEGATIVE-EVIDENCE SEAL §40: ownership artwork DECLARADA en
         # __init__ (nunca solo dentro de initialize) — el teardown accede
         # directamente, sin getattr defensivo.
@@ -912,11 +921,47 @@ class ApplicationContainer:
         self._artwork_refresh = None
         self._artwork_dispatcher = None
 
+    def _schedule_qml_teardown(self) -> None:
+        """Queue QML ownership release while Qt can drain deferred deletes."""
+        engine = self._engine
+        if engine is None:
+            return
+        # QQmlApplicationEngine owns the objects it loaded.  Never enqueue
+        # their deletion separately: deleting roots and then their owner can
+        # race/double-enter QQuickItem window teardown.
+        self._qml_teardown_keepalive = tuple(
+            item
+            for item in (
+                engine,
+                getattr(self, "_pb", None),
+                getattr(self, "_qb", None),
+                getattr(self, "_psb", None),
+                getattr(self, "_lb", None),
+                getattr(self, "_plb", None),
+                getattr(self, "_nb", None),
+                getattr(self, "_sb", None),
+                getattr(self, "_aeb", None),
+                getattr(self, "_aob", None),
+                getattr(self, "_eb", None),
+                getattr(self, "_library_enrichment", None),
+            )
+            if item is not None
+        )
+        if hasattr(engine, "destroyed"):
+            engine.destroyed.connect(self._release_qml_teardown_keepalive)
+        engine.deleteLater()
+        self._engine = None
+
+    def _release_qml_teardown_keepalive(self, *_args) -> None:
+        self._qml_teardown_keepalive = ()
+
     def initialize(self) -> None:
         QGuiApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
         QGuiApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
         self._app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+        if hasattr(self._app, "aboutToQuit"):
+            self._app.aboutToQuit.connect(self._schedule_qml_teardown)
         self._app.setApplicationName("Michi Music Player")
         self._app.setApplicationVersion("0.1.0")
         self._app.setOrganizationName("Michi")
@@ -1438,29 +1483,21 @@ class ApplicationContainer:
 
         try:
             if self._engine:
-                # R2.1-05 teardown order: destroy the QML tree NOW (before
-                # the bridges are released) — otherwise live bindings
-                # re-evaluate against destroyed context objects and emit the
-                # "Cannot read property X of null" storm observed at
-                # shutdown. Verified: QApplication.processEvents() does NOT
-                # deliver DeferredDelete events at the same loop level —
-                # sendPostedEvents(QEvent.DeferredDelete) is required to
-                # actually tear the tree down before the bridges die.
-                # a test-double engine may expose no rootObjects()
-                roots = (
-                    self._engine.rootObjects()
-                    if hasattr(self._engine, "rootObjects")
-                    else []
-                )
-                for root_obj in roots:
-                    if hasattr(root_obj, "close"):
-                        root_obj.close()
-                    root_obj.deleteLater()
-                if self._app is not None:  # partial container (tests)
-                    self._app.sendPostedEvents(None, QEvent.DeferredDelete)
-                self._engine.deleteLater()
-                if self._app is not None:
-                    self._app.sendPostedEvents(None, QEvent.DeferredDelete)
+                # Normal GUI exit schedules this from aboutToQuit, while Qt
+                # still guarantees DeferredDelete delivery.  This fallback
+                # covers partial startup/tests without synchronously deleting
+                # a visible QQuickWindow after exec() has returned.
+                self._schedule_qml_teardown()
+                if (
+                    QCoreApplication.instance() is self._app
+                    and self._qml_teardown_keepalive
+                ):
+                    # load_qml() harnesses may never enter app.exec(). Give
+                    # Qt one bounded event-loop turn so the engine-owned tree
+                    # is released with normal QQuick render-thread ordering.
+                    drain_loop = QEventLoop()
+                    QTimer.singleShot(0, drain_loop.quit)
+                    drain_loop.exec()
         except Exception as exc:
             error = error or exc
 

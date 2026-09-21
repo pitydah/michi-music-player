@@ -20409,6 +20409,29 @@ M11.4 = SOFTWARE CLOSURE NOT ACCEPTED
 DAC-V35-110 = DO NOT START
 ```
 
+Field evidence on 2026-09-21 isolated the later shutdown `SIGSEGV` from the
+R1.2 GStreamer context work. A visible Wayland reproduction crashed in
+`QQuickItemPrivate::derefWindow()` when `ApplicationContainer.shutdown()`
+queued every QML root and its owning `QQmlApplicationEngine` for deletion and
+then synchronously drained `DeferredDelete` after `exec()` returned. The local
+corrective keeps `QQmlApplicationEngine` as the sole QML-tree destruction
+owner, schedules it from `aboutToQuit`, and keeps Python context objects alive
+until `engine.destroyed`. A bounded nested event-loop drain exists only for
+partial-startup and `load_qml()` harnesses that never enter the main loop. The
+original visible-window reproducer now exits without a signal, QML null-binding
+warnings, or a retained teardown keepalive. This evidence does not close R1.2;
+exact-head CI and a successful compatible physical Direct run remain required.
+
+The same field session confirmed that the SMSL endpoint at
+`hw:CARD=AUDIO,DEV=0` truthfully rejects `(44100, S16_LE, 2)`: both the Michi
+exact-open worker and `aplay --dump-hw-params` report that the hardware endpoint
+offers `S32_LE` and `DSD_U32_BE`, not `S16_LE`. A separate exact-open of
+`(44100, S32_LE, 2)` succeeds with `S32_LE` readback and 32 significant bits.
+The S16 refusal therefore remains valid negative tuple evidence, not a probe
+defect. It does not authorize implicit container adaptation; physical Direct
+smoke on this device must use a source/request that legitimately produces a
+supported transport tuple under the current policy.
+
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 
 Minimum physical diversity for a top-tier general claim:
