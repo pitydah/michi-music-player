@@ -1,5 +1,6 @@
 """Test fixtures — single canonical FakeAudioPort, never copied from Legacy."""
 
+import os
 import sys
 from functools import wraps
 from pathlib import Path
@@ -9,6 +10,16 @@ import pytest
 from michi.application.ports import AudioLoadError
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+
+@pytest.fixture(scope="session")
+def qapp():
+    """Provide Qt without depending on the optional pytest-qt plugin."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance() or QApplication([])
+    yield app
 
 
 class _SharedOutputTruth:
