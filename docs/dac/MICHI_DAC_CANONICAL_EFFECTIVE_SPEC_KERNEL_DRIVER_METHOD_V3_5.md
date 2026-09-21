@@ -227,8 +227,8 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2` Automated verification + field corrective seal | CORRECTIVE OPEN; R1.2 IN PROGRESS | YES | R1.2 must prove productive first-use exact qualification, typed refusal containment before QML, and single-owner native GStreamer/GLib lifecycle safety |
-| 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | blocked until exact-head remote R1.2 GO and a separate physical-qualification authorization |
+| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2` Automated verification + field corrective seal | CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
+| 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | blocked until exact-head remote R1.2 publication and a separate physical-qualification authorization |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
 | 14 | `DAC-V35-140` DSD / DoP | SEPARATE PROMOTION; MAY BE PRE-STABLE | NO | R30 and separate implementation/QA gate |
@@ -20401,26 +20401,39 @@ Current status:
 
 ```text
 DAC-V35-000..090 = CLOSED
-DAC-V35-100 = CORRECTIVE OPEN
+DAC-V35-100 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
 DAC-V35-100R1 = SUPERSEDED
-DAC-V35-100R1.1 = REOPENED BY FIELD EVIDENCE
-DAC-V35-100R1.2 = IN PROGRESS
-M11.4 = SOFTWARE CLOSURE NOT ACCEPTED
+DAC-V35-100R1.1 = CLOSED-AUTOMATED / GO; PUBLISHED
+DAC-V35-100R1.2 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
 DAC-V35-110 = DO NOT START
 ```
 
-Field evidence on 2026-09-21 isolated the later shutdown `SIGSEGV` from the
-R1.2 GStreamer context work. A visible Wayland reproduction crashed in
+R1.2 closure is recorded from field evidence plus exact-head CI. The four
+reopened blockers are resolved: one explicit current Play now acquires its
+missing exact tuple through the productive qualification path, typed output
+refusals are contained before QML as one shared presentation failure, the
+custom `GLib.MainContext` has a single pump-thread owner, and the later field
+`SIGSEGV` is root-caused and corrected.
+
+Field evidence on 2026-09-21 isolated that `SIGSEGV` from the R1.2 GStreamer
+context work. A visible Wayland reproduction crashed in
 `QQuickItemPrivate::derefWindow()` when `ApplicationContainer.shutdown()`
 queued every QML root and its owning `QQmlApplicationEngine` for deletion and
-then synchronously drained `DeferredDelete` after `exec()` returned. The local
+then synchronously drained `DeferredDelete` after `exec()` returned. The
 corrective keeps `QQmlApplicationEngine` as the sole QML-tree destruction
 owner, schedules it from `aboutToQuit`, and keeps Python context objects alive
 until `engine.destroyed`. A bounded nested event-loop drain exists only for
-partial-startup and `load_qml()` harnesses that never enter the main loop. The
-original visible-window reproducer now exits without a signal, QML null-binding
-warnings, or a retained teardown keepalive. This evidence does not close R1.2;
-exact-head CI and a successful compatible physical Direct run remain required.
+partial-startup and `load_qml()` harnesses that never enter the main loop. Both
+the original visible-window reproducer and a full field smoke now exit without
+a signal, QML null-binding warnings, or a retained teardown keepalive.
+
+A productive field smoke with a 16-bit PCM source demonstrates the R1.2
+behavior end to end: one explicit Play acquires the missing exact tuple, the
+endpoint's exact rejection classifies as `EXACT_TUPLE_UNSUPPORTED`, the typed
+refusal surfaces as `Format unsupported: The selected DAC rejected this exact
+format in Direct mode.`, and the application exits cleanly under
+`PYTHONFAULTHANDLER=1` and `G_DEBUG=fatal-criticals` with no forbidden GLib
+context assertion.
 
 The same field session confirmed that the SMSL endpoint at
 `hw:CARD=AUDIO,DEV=0` truthfully rejects `(44100, S16_LE, 2)`: both the Michi
@@ -20428,9 +20441,19 @@ exact-open worker and `aplay --dump-hw-params` report that the hardware endpoint
 offers `S32_LE` and `DSD_U32_BE`, not `S16_LE`. A separate exact-open of
 `(44100, S32_LE, 2)` succeeds with `S32_LE` readback and 32 significant bits.
 The S16 refusal therefore remains valid negative tuple evidence, not a probe
-defect. It does not authorize implicit container adaptation; physical Direct
-smoke on this device must use a source/request that legitimately produces a
-supported transport tuple under the current policy.
+defect. No source can currently play strict Direct on this specific device
+under the frozen policy: `S16_LE`/`S24_*` sources are rejected exactly by the
+endpoint, and `S32_LE` sources carry unknown decoded significant bits by
+design. That truthful refusal is the correct outcome; it neither authorizes
+implicit container adaptation nor Shared fallback, and it is not a physical
+qualification claim.
+
+The R1.2 fix commit `0d6907e72fcc56655f326278844897a29bb9e509` passed exact-head
+CI run `35649494289`: 27 gates with only the deliberate in-progress status lock
+failing, 582 DAC tests and 4854 full-suite tests passed, and 28 classified
+non-DAC skips. Software closure does not claim physical qualification,
+exclusivity, bit-perfect status, or M11.5 guarantees; `DAC-V35-110` remains a
+separate DO NOT START work package.
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 

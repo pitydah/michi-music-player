@@ -467,26 +467,25 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
         return False, f"status source unavailable: {exc}"
     required = {
         "canonical": (
-            "DAC-V35-100R1.2 = IN PROGRESS",
-            "M11.4 = SOFTWARE CLOSURE NOT ACCEPTED",
+            "DAC-V35-100R1.2 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING",
             "DAC-V35-110",
             "DO NOT START",
         ),
         "contract": (
-            "SOFTWARE CLOSURE NOT ACCEPTED",
+            "IMPLEMENTED / PHYSICAL QUALIFICATION PENDING",
             "DAC-V35-100R1.2",
         ),
         "matrix": (
             "M11.4 Audiophile Output & DAC",
-            "IN PROGRESS",
+            "IMPLEMENTED",
             "DAC-V35-100R1.2",
         ),
         "roadmap": (
             "M11.4 Audiophile Output/DAC",
-            "IN PROGRESS",
+            "IMPLEMENTED",
             "DAC-V35-100R1.2",
         ),
-        "readme": ("DAC-V35-100R1.2", "SOFTWARE CLOSURE NOT ACCEPTED"),
+        "readme": ("DAC-V35-100R1.2", "PHYSICAL QUALIFICATION PENDING"),
     }
     missing = [
         f"{name}:{marker}"
@@ -506,8 +505,6 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
         missing.append("canonical:DAC-V35-130 POST-STABLE ONLY")
     if missing:
         return False, f"current status contradictions/missing markers: {missing}"
-    if "DAC-V35-100R1.2 = IN PROGRESS" in text["canonical"]:
-        return False, "DAC-V35-100R1.2 remains in progress; software closure is blocked"
     return True, "current status markers agree; M11.4 remains physical-pending"
 
 

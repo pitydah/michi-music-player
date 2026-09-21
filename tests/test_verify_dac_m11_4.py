@@ -219,22 +219,21 @@ def _write_status_fixture(root, *, work_package_state: str) -> None:
         root
         / "docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md"
     ).write_text(
-        "DAC-V35-100R1.2 = IN PROGRESS\n"
-        "M11.4 = SOFTWARE CLOSURE NOT ACCEPTED\n"
+        "DAC-V35-100R1.2 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING\n"
         "DAC-V35-110 DO NOT START\n"
         "DAC-V35-130 POST-STABLE ONLY\n"
     )
     (root / "docs/M11_4_AUDIOPHILE_OUTPUT_DAC.md").write_text(
-        "SOFTWARE CLOSURE NOT ACCEPTED\nDAC-V35-100R1.2\n"
+        "IMPLEMENTED / PHYSICAL QUALIFICATION PENDING\nDAC-V35-100R1.2\n"
     )
     (root / "docs/STATUS_MATRIX.md").write_text(
-        "| M11.4 Audiophile Output & DAC | IN PROGRESS | DAC-V35-100R1.2 |\n"
+        "| M11.4 Audiophile Output & DAC | IMPLEMENTED | DAC-V35-100R1.2 |\n"
         f"| M11.4 Audiophile Output & DAC Management | {work_package_state} | R1 |\n"
     )
     (root / "docs/MASTER_ROADMAP_1.0.md").write_text(
-        "| M11.4 Audiophile Output/DAC | IN PROGRESS | DAC-V35-100R1.2 |\n"
+        "| M11.4 Audiophile Output/DAC | IMPLEMENTED | DAC-V35-100R1.2 |\n"
     )
-    (root / "README.md").write_text("DAC-V35-100R1.2 SOFTWARE CLOSURE NOT ACCEPTED\n")
+    (root / "README.md").write_text("DAC-V35-100R1.2 PHYSICAL QUALIFICATION PENDING\n")
 
 
 def test_status_contradiction_is_no_go(tmp_path) -> None:
@@ -244,11 +243,9 @@ def test_status_contradiction_is_no_go(tmp_path) -> None:
     assert "must not be DONE" in detail
 
 
-def test_status_consistency_blocks_r12_in_progress(tmp_path) -> None:
+def test_status_consistency_accepts_physical_pending(tmp_path) -> None:
     _write_status_fixture(tmp_path, work_package_state="IN_PROGRESS")
-    ok, detail = verifier._status_consistency_gate(tmp_path)
-    assert ok is False
-    assert "R1.2 remains in progress" in detail
+    assert verifier._status_consistency_gate(tmp_path)[0] is True
 
 
 def test_manifest_requires_140_separate_promotion(tmp_path) -> None:
