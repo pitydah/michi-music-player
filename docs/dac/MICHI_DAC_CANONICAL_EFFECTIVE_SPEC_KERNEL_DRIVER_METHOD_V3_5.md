@@ -227,7 +227,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2` Automated verification + field corrective seal | CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
+| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2` Automated verification + field corrective seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
 | 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | blocked until exact-head remote R1.2 publication and a separate physical-qualification authorization |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
@@ -20401,10 +20401,10 @@ Current status:
 
 ```text
 DAC-V35-000..090 = CLOSED
-DAC-V35-100 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
+DAC-V35-100 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1 = SUPERSEDED
 DAC-V35-100R1.1 = CLOSED-AUTOMATED / GO; PUBLISHED
-DAC-V35-100R1.2 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
+DAC-V35-100R1.2 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-110 = DO NOT START
 ```
 
@@ -20448,12 +20448,17 @@ design. That truthful refusal is the correct outcome; it neither authorizes
 implicit container adaptation nor Shared fallback, and it is not a physical
 qualification claim.
 
-The R1.2 fix commit `0d6907e72fcc56655f326278844897a29bb9e509` passed exact-head
-CI run `35649494289`: 27 gates with only the deliberate in-progress status lock
-failing, 582 DAC tests and 4854 full-suite tests passed, and 28 classified
-non-DAC skips. Software closure does not claim physical qualification,
-exclusivity, bit-perfect status, or M11.5 guarantees; `DAC-V35-110` remains a
-separate DO NOT START work package.
+R1.2 closure is published from the exact-head remote artifact for commit
+`666c163b65a76d3f2496e33a889caa945485947d`, Michi CI run `35652376543`, which
+records automated `GO`, physical `NOT_RUN`, 582 DAC tests passed, and 4854
+full-suite tests passed with 28 classified non-DAC skips. Artifact
+`dac-v35-software-closure-666c163b65a76d3f2496e33a889caa945485947d` has GitHub
+digest `sha256:54c3933558a464d75a56feb6dabf8cc8af5a21b3e7ff801a116a7bdc64e8de7d`.
+The earlier fix commit `0d6907e72fcc56655f326278844897a29bb9e509` (run
+`35649494289`) had already passed every executable gate with only the deliberate
+in-progress status lock failing. Software closure does not claim physical
+qualification, exclusivity, bit-perfect status, or M11.5 guarantees;
+`DAC-V35-110` remains a separate DO NOT START work package.
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 

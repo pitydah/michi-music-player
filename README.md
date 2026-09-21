@@ -66,11 +66,12 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   shell DONE, and scoped M9-R3 Library/collection convergence in progress
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
-- M11.4: DAC-V35-100R1.2 is local automated GO with remote publication pending.
-  Productive first-use exact qualification now acquires the one missing tuple
-  before Direct planning, expected output refusals are contained before QML as
-  one shared presentation failure, the native GStreamer/GLib lifecycle is
-  single-owner, and the field-smoke QML teardown crash is corrected. The PCM
+- M11.4: DAC-V35-100R1.2 automated GO is published from exact-head remote
+  evidence. Productive first-use exact qualification now acquires the one
+  missing tuple before Direct planning, expected output refusals are contained
+  before QML as one shared presentation failure, the native GStreamer/GLib
+  lifecycle is single-owner, and the field-smoke QML teardown crash is
+  corrected. The PCM
   Direct software core is **IMPLEMENTED / PHYSICAL QUALIFICATION PENDING**.
   DAC-V35-110 remains a separate DO NOT START work package, and M11.5 playback
   guarantees are not implemented.

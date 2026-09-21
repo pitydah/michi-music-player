@@ -1,9 +1,9 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
 Implementation contract for audiophile output infrastructure. Status:
-**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.2 local
-automated GO; exact-head remote publication pending; physical qualification has
-not started).
+**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.2 automated GO
+published from exact-head remote evidence; physical qualification has not
+started).
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -195,8 +195,8 @@ Physical qualification (`DAC-V35-110`) remains **DO NOT START** as a separate,
 not-yet-authorized work package; R1.1 publication does not itself start it.
 
 - `DAC-V35-100R1.2` productive qualification, playback-refusal containment, and
-  native GStreamer safety seal — **CLOSED-AUTOMATED / LOCAL GO; REMOTE
-  PUBLICATION PENDING**. One explicit current Play acquires the one missing
+  native GStreamer safety seal — **CLOSED-AUTOMATED / GO; PUBLISHED**. One
+  explicit current Play acquires the one missing
   exact tuple through the productive path, expected output refusals are
   contained before QML as one shared typed presentation failure, and the custom
   `GLib.MainContext` has a single pump-thread owner. The later field SIGSEGV is
