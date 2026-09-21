@@ -1315,7 +1315,9 @@ class TestF42AdapterContract:
         # routes custom MainContext source attach/detach/destruction and loop
         # shutdown through the one pump-owned dispatch seam. Failed detach
         # retains the live pump for retry; transport authority is unchanged.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "f6546e69c6c3753b",
+        # The exact-SHA CI corrective also rejects queued PAUSED/STOPPED
+        # observations superseded by explicit Stop/replay command authority.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "34d26f532bd77301",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

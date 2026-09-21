@@ -1913,6 +1913,25 @@ class TestAcceptedStopReplay:
         assert port._current_path == Path("/m/a.flac")
         port.close()
 
+    def test_stop_then_play_hides_transitional_stopped_event(self, qapp):
+        """A replay target may traverse READY, but public intent stays PLAYING."""
+        bindings = FakeBindings()
+        port, pipeline = self._accepted_playing(bindings)
+        states = []
+        port.subscribe_playback_state_changed(lambda status: states.append(status))
+
+        port.stop()
+        stale_paused, stale_generation = msg_state(port, pipeline, _FakeState.PAUSED)
+        _deliver(port, stale_paused, stale_generation)
+        port.play()
+        transient, transient_generation = msg_state(port, pipeline, _FakeState.READY)
+        _deliver(port, transient, transient_generation)
+        playing, playing_generation = msg_state(port, pipeline, _FakeState.PLAYING)
+        _deliver(port, playing, playing_generation)
+
+        assert states == [PlaybackStatus.STOPPED, PlaybackStatus.PLAYING]
+        port.close()
+
     def test_stop_then_resume_delivers_playing(self, qapp):
         bindings = FakeBindings()
         port, pipeline = self._accepted_playing(bindings)

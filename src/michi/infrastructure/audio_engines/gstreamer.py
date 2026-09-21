@@ -2114,10 +2114,23 @@ class GStreamerAudioPort(AudioPort):
                 return
             self._deliver_state_if(PlaybackStatus.PLAYING)
         elif status == PlaybackStatus.PAUSED:
-            if not self._pending_play and self._pending_path is None:
+            # A PAUSED observation queued before an explicit Stop can arrive
+            # after Stop already committed.  It cannot override that newer
+            # command authority.  A real Pause starts from a non-STOPPED
+            # canonical state and remains publishable here.
+            if (
+                not self._pending_play
+                and self._pending_path is None
+                and self._current_state is not PlaybackStatus.STOPPED
+            ):
                 self._deliver_state_if(PlaybackStatus.PAUSED)
         elif status == PlaybackStatus.STOPPED:
-            self._deliver_state_if(PlaybackStatus.STOPPED)
+            # Starting a retained source traverses NULL/READY on some real
+            # runtimes.  Those transitional states are not a newer Stop and
+            # must not create a second public STOPPED between replay intent
+            # and the resulting PLAYING observation.
+            if not self._pending_play:
+                self._deliver_state_if(PlaybackStatus.STOPPED)
 
     def _commit_eos(self, event) -> None:
         """OWNER: EOS = fin natural del media ACEPTADO actual — converge a
