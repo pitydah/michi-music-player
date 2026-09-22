@@ -530,7 +530,8 @@ def _source_characterization_contract_gate(
     required = {
         "planner": (
             "decoded_source: DecodedSourceSignal",
-            "carrier_tuple(facts.decoded_source)",
+            "CandidateCarrierResolver()",
+            "resolver.candidates(",
         ),
         "resolver": (
             "self._source_characterizer.characterize(path)",
