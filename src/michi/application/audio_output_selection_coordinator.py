@@ -61,9 +61,27 @@ class AudioOutputSelectionCoordinator:
         self._clock_ms = clock_ms
 
     def select_shared_output(self) -> None:
-        selection = AudioOutputSelection(None, None, self._clock_ms())
+        """Use Shared routing WITHOUT forgetting the selected hardware.
+
+        R1.3.1 §6/§7: ``Shared`` means "do not route playback through Direct",
+        never "forget the selected DAC". Clearing the hardware identity is a
+        separate explicit intent (:meth:`clear_device_selection`).
+        """
+        selection = self._profiles.load_selection()
+        device_id = selection.selected_device_id
         with self._profiles.batch_changes():
-            self._profiles.save_selection(selection)
+            self._profiles.save_selection(
+                AudioOutputSelection(None, device_id, self._clock_ms())
+            )
+            self._devices.select_device(device_id)
+            self._output_session.select(device_id=device_id, profile_id=None)
+
+    def clear_device_selection(self) -> None:
+        """Explicit intent: forget the selected hardware identity entirely."""
+        with self._profiles.batch_changes():
+            self._profiles.save_selection(
+                AudioOutputSelection(None, None, self._clock_ms())
+            )
             self._devices.select_device(None)
             self._output_session.select(device_id=None, profile_id=None)
 

@@ -655,10 +655,14 @@ def test_ui90r1_19_shared_selection_never_fabricates_profile_id() -> None:
 
     graph.coordinator.select_shared_output()
 
-    assert graph.bridge.selectedDeviceId == ""
+    # R1.3.1: Shared is a path policy, never "forget the DAC". The identity is
+    # preserved and no profile is fabricated for the shared path.
+    assert graph.bridge.selectedDeviceId == graph.stable_id
     assert graph.bridge.selectedProfileId == ""
+    assert graph.bridge.selectedPathMode == "shared"
     shared = next(row for row in graph.bridge.devices if row["isShared"])
     assert shared["profileId"] == ""
+    assert shared["selected"] is True
 
 
 def test_ui90r1_20_multiple_real_profiles_remain_distinct_and_human_named() -> None:

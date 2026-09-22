@@ -107,9 +107,10 @@ def test_pc13_02_01_shared_selection_persists_without_direct_profile(
 
         selection = graph.audio_output_profiles.load_selection()
         assert selection.selected_profile_id is None
-        assert selection.selected_device_id is None
+        # R1.3.1: the hardware identity survives the Shared policy.
+        assert selection.selected_device_id == "usb:2622:0105:DX5ABC123"
         session_state = graph.output_session.selection_state()
-        assert session_state.selected_device_id is None
+        assert session_state.selected_device_id == "usb:2622:0105:DX5ABC123"
         assert session_state.selected_profile_id is None
         assert graph.output_session.mode == "shared"
         assert probe_calls == []

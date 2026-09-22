@@ -379,7 +379,9 @@ class AudioOutputBridge(QObject):
         )
         shared_active = self._shared_is_active(transport_mode)
         shared_row = self._shared_row(
-            selected=selected_device_id is None,
+            # R1.3.1: Shared is a PATH POLICY. A remembered DAC identity no
+            # longer implies that the shared path is unselected.
+            selected=selected_path_mode == "shared",
             active=shared_active,
             truth_label=truth_label if shared_active else "Not verified",
         )
