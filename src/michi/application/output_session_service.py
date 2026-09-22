@@ -351,6 +351,7 @@ class ProductiveOutputRequestResolver:
                 rate_hz=candidate.tuple.rate_hz,
                 transport_format=candidate.tuple.transport_format,
                 channels=candidate.tuple.channels,
+                binding_generation=facts.expected_binding_generation,
             )
             outcomes.append(outcome)
             if outcome.evidence.supported is not False:

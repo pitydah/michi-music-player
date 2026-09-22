@@ -157,6 +157,23 @@ def binding_topology_fingerprint(
     return f"topology:v1:sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
 
 
+class QualificationSingleFlightTimeoutError(RuntimeError):
+    """A coalesced follower exceeded its wait while the leader is still alive.
+
+    R1.3.1 §10/§12: a follower timeout must NEVER launch a second physical
+    probe. The consumer receives a typed inconclusive timeout instead, and
+    nothing is cached as capability.
+    """
+
+    code = "EXACT_QUALIFICATION_TIMEOUT"
+
+    def __init__(self, key: tuple[object, ...]) -> None:
+        super().__init__(
+            "exact qualification is already running for this endpoint and tuple"
+        )
+        self.key = key
+
+
 class _Flight:
     """One in-flight qualification shared by equivalent concurrent callers."""
 
@@ -200,9 +217,10 @@ class DacQualificationService:
     def _single_flight(self, key: tuple[object, ...], probe: Callable[[], object]):
         """Run ``probe`` once for every equivalent concurrent caller.
 
-        Followers wait for the leader's published result. A follower whose
-        wait expires receives ``None`` and its caller probes for real — a
-        coalesced consumer never fabricates evidence.
+        Invariant (R1.3.1 §10): AT MOST ONE physical probe may be running for
+        one key. A follower whose wait expires receives a typed timeout — it
+        never becomes a second physical leader while the original probe is
+        still alive, and no thread is killed or cancelled.
         """
         with self._flight_lock:
             flight = self._flights.get(key)
@@ -227,7 +245,14 @@ class DacQualificationService:
                 if flight.waiters == 0:
                     self._flights.pop(key, None)
             return result
-        flight.event.wait(timeout=self._single_flight_timeout_s)
+        if not flight.event.wait(timeout=self._single_flight_timeout_s):
+            with self._flight_lock:
+                flight.waiters -= 1
+                if flight.waiters == 0 and flight.result is None:
+                    # The leader is still alive: keep the flight registered so
+                    # a future consumer still coalesces onto it.
+                    pass
+            raise QualificationSingleFlightTimeoutError(key)
         with self._flight_lock:
             result = flight.result
             flight.waiters -= 1
@@ -329,15 +354,19 @@ class DacQualificationService:
         rate_hz: int,
         transport_format: str,
         channels: int,
+        binding_generation: int | None = None,
     ) -> ExactQualificationOutcome:
         """Probe without cache mutation; owner revalidation decides commit.
 
-        Equivalent concurrent requests coalesce into ONE physical probe
-        (single-flight key: device + environment + exact tuple).
+        Equivalent concurrent requests coalesce into ONE physical probe. The
+        flight key represents the exact endpoint AND request (R1.3.1 §11):
+        device + binding generation + locator + environment + exact tuple.
         """
         environment_before = self.current_environment_fingerprint(stable_device_id)
         key = (
             stable_device_id,
+            binding_generation,
+            locator,
             environment_before,
             rate_hz,
             transport_format,
@@ -371,12 +400,7 @@ class DacQualificationService:
                 evidence, result.disposition, result.detail
             )
 
-        outcome = self._single_flight(key, probe)
-        if outcome is None:
-            # A coalesced waiter whose leader did not publish a result (or an
-            # exception path) must never fabricate evidence: probe for real.
-            outcome = probe()
-        return outcome
+        return self._single_flight(key, probe)
 
     def cache_conclusive_evidence(self, evidence: CapabilityEvidence) -> None:
         """Merge one conclusive tuple after its continuation is current."""
