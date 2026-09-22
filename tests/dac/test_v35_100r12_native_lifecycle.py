@@ -124,9 +124,21 @@ def test_gst100r12_04_failed_detach_retains_pump_for_retry(
         port.close()
 
     assert port._pump is not None and port._pump.is_alive()
+    # R1.3.2 §16: a failed detach must leave real ownership observable.
+    assert port._bus_source is not None
+    assert port._bus is not None
+    assert port._closed is False
     port._bus.fail_remove_watch = False
     port.close()
+    # R1.3.2 §20: closure is proven by released ownership, not by the flag.
     assert port._closed is True
+    assert port._pipeline is None
+    assert port._bus_source is None
+    assert port._bus is None
+    assert port._timer_source is None
+    assert port._loop is None
+    assert port._context is None
+    assert port._pump is None or not port._pump.is_alive()
 
 
 def test_failed_replacement_detach_converges_stopped_and_source_lost(

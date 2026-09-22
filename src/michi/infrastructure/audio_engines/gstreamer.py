@@ -1949,6 +1949,16 @@ class GStreamerAudioPort(AudioPort):
         if teardown_error is not None:
             record_error(teardown_error)
 
+        # 1b. R1.3.2 §17: a residual bus source is an INDEPENDENT obligation.
+        #     A successful NULL releases the pipeline, but the watch may still
+        #     be attached to this context — the retry must detach it even when
+        #     the pipeline is already gone.
+        if self._bus_source is not None:
+            try:
+                self._detach_pipeline_sources()
+            except Exception as exc:  # noqa: BLE001 — best-effort retry
+                record_error(exc)
+
         # 2. timer source — cleared ONLY once its destruction was proven
         if self._timer_source is not None:
             try:
@@ -2024,9 +2034,46 @@ class GStreamerAudioPort(AudioPort):
 
         if primary_error is not None:
             raise primary_error  # _closed stays False → retryable
+        # R1.3.2 §18: terminal ownership gate. `_closed` is a claim about
+        # native ownership, so it is only set once every obligation is proven
+        # released — never by clearing references.
+        residual = self._close_residual_ownership()
+        if residual:
+            raise RuntimeError(
+                "GStreamer close retained native ownership: " + ", ".join(residual)
+            )
         # ONLY after the full chain succeeded:
         self._closed = True
         self._closing = False
+
+    def _close_residual_ownership(self) -> tuple[str, ...]:
+        """Native ownership that must be gone before ``_closed`` is truthful.
+
+        R1.3.2 §16/§18: ``_closed = True`` is a claim about native ownership,
+        not about Python references being cleared. Every live obligation is
+        reported so the caller can retry instead of reading a fake closure.
+        """
+        residual: list[str] = []
+        if self._pipeline is not None:
+            residual.append("pipeline")
+        if self._bus_source is not None:
+            residual.append("bus_source")
+        if self._bus is not None:
+            residual.append("bus")
+        if self._timer_source is not None:
+            residual.append("timer_source")
+        if self._pump is not None:
+            residual.append("pump")
+        if self._loop is not None:
+            residual.append("loop")
+        if self._context is not None:
+            residual.append("context")
+        if (
+            self._direct_executor is not None
+            and getattr(self._direct_executor, "handle", None) is not None
+        ):
+            residual.append("direct_executor_handle")
+        return tuple(residual)
 
     def _try_stop_pipeline(self) -> bool:
         """Reemplazo normal (load): NULL PRIMERO, detach SOLO tras éxito.

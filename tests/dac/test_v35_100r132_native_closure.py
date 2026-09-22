@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import contextlib
 import threading
+from pathlib import Path
 
+import pytest
 from test_gstreamer_audio_port import FakeBindings
 
 from michi.infrastructure.audio_engines.gstreamer import (
@@ -190,3 +192,117 @@ def test_nc132_01_c_stale_detach_cannot_clear_a_newer_bus_source() -> None:
         bindings.watch_remove_release.set()
         with contextlib.suppress(Exception):
             port.close()
+
+
+# ── Phase 2 — residual native ownership cannot fake closure ────────────────
+
+
+class _Executor:
+    """Direct-executor double with injectable release failure."""
+
+    def __init__(self, *, fail: bool = False) -> None:
+        self.handle = None
+        self.releases: list[str] = []
+        self.fail = fail
+
+    def release(self, reason: str) -> None:
+        self.releases.append(reason)
+        if self.fail:
+            raise RuntimeError("synthetic release failure")
+
+    def mark_previous_source_released(self) -> None:
+        return None
+
+    def abort(self, *_args, **_kwargs):
+        return None
+
+    def record_runtime_anomaly(self, *_args, **_kwargs) -> None:
+        return None
+
+    def discard_staged_load(self, *_args, **_kwargs) -> None:
+        return None
+
+
+def _loaded_port(tmp_path: Path, *, executor=None):
+    bindings = FakeBindings()
+    port = GStreamerAudioPort(bindings=bindings, direct_executor=executor)
+    port.load(tmp_path / "r132.flac")
+    return bindings, port
+
+
+def _assert_full_closure(port) -> None:
+    assert port._closed is True
+    assert port._pipeline is None
+    assert port._bus_source is None
+    assert port._bus is None
+    assert port._timer_source is None
+    assert port._loop is None
+    assert port._context is None
+    assert port._pump is None or not port._pump.is_alive()
+    assert port._close_residual_ownership() == ()
+
+
+def test_nc132_02_a_close_retry_releases_residual_bus_and_pump(
+    qapp, tmp_path: Path
+) -> None:
+    """A successful NULL must not hide a still-attached bus watch."""
+    bindings, port = _loaded_port(tmp_path)
+    assert port._bus_source is not None
+    port._bus.fail_remove_watch = True
+
+    with pytest.raises(RuntimeError, match="bus watch"):
+        port.close()
+
+    # The residual ownership stays observable and retryable.
+    assert port._closed is False
+    assert port._bus_source is not None
+    assert port._bus is not None
+    assert port._pump is not None and port._pump.is_alive()
+    assert "bus_source" in port._close_residual_ownership()
+
+    port._bus.fail_remove_watch = False
+    port.close()
+
+    _assert_full_closure(port)
+
+
+def test_nc132_02_b_residual_gate_blocks_a_fake_closure(
+    qapp, tmp_path: Path
+) -> None:
+    """No residual obligation may coexist with a closed port."""
+    _bindings_unused, port = _loaded_port(tmp_path)
+    # Keep the pump ownership while removing every other obligation: the gate
+    # must still refuse to claim closure.
+    port._pipeline = None
+    port._bus_source = None
+    port._timer_source = None
+
+    residual = port._close_residual_ownership()
+
+    assert "pump" in residual
+    assert port._closed is False
+
+
+def test_nc132_02_c_first_error_wins_and_release_still_attempted(
+    qapp, tmp_path: Path
+) -> None:
+    executor = _Executor(fail=True)
+    _bindings_unused, port = _loaded_port(tmp_path, executor=executor)
+    port._bus.fail_remove_watch = True
+
+    with pytest.raises(RuntimeError, match="bus watch"):
+        port.close()
+
+    # The first chronological failure wins, and the Direct executor release is
+    # still attempted even though an earlier cleanup failed.
+    assert executor.releases == ["gstreamer_close"]
+    assert port._closed is False
+    assert port._bus_source is not None
+
+    # Repairing both obligations must converge to a full terminal closure.
+    port._bus.fail_remove_watch = False
+    executor.fail = False
+    port.close()
+
+    _assert_full_closure(port)
+    assert executor.releases == ["gstreamer_close", "gstreamer_close"]
