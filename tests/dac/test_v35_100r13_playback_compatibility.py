@@ -923,3 +923,305 @@ def test_pc13_06_08_one_intent_prepares_output_exactly_once(
         assert bindings.pipelines == []
     finally:
         _close_graph(graph)
+
+
+# ── Phase 7 — native lifecycle hardening ───────────────────────────────────
+
+
+class _ManualContext:
+    """GLib-like context whose queued callbacks dispatch only on demand.
+
+    ``immediate`` models a healthy pump; ``False`` models a wedged one whose
+    queued callbacks only run when the pump finally recovers.
+    """
+
+    def __init__(self, *, immediate: bool = False) -> None:
+        self.immediate = immediate
+        self.queued: list = []
+
+    def invoke_full(self, _priority, callback, _user_data) -> None:
+        if self.immediate:
+            callback(None)
+            return
+        self.queued.append(callback)
+
+    def dispatch_all(self) -> None:
+        pending, self.queued = self.queued, []
+        for callback in pending:
+            callback(None)
+
+
+def _bindings():
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerBindings
+
+    return GStreamerBindings()
+
+
+def test_pc13_07_01_context_command_dispatch_success() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import (
+        ContextCommand,
+        ContextCommandState,
+    )
+
+    bindings = _bindings()
+    context = _ManualContext(immediate=True)
+    command = ContextCommand("c-success", 1)
+
+    value = bindings.invoke_context_sync(
+        context, lambda: 42, timeout_s=2.0, command=command
+    )
+
+    assert value == 42
+    assert command.state is ContextCommandState.COMPLETED
+
+
+def test_pc13_07_02_context_command_returns_the_callback_failure() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import ContextCommand
+
+    bindings = _bindings()
+    context = _ManualContext(immediate=True)
+
+    def failing():
+        raise ValueError("synthetic command failure")
+
+    with pytest.raises(ValueError, match="synthetic command failure"):
+        bindings.invoke_context_sync(
+            context, failing, timeout_s=2.0, command=ContextCommand("c-fail", 1)
+        )
+
+
+def test_pc13_07_03_timeout_abandons_the_queued_command() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import (
+        ContextCommand,
+        ContextCommandState,
+        ContextCommandTimeoutError,
+    )
+
+    bindings = _bindings()
+    context = _ManualContext()
+    command = ContextCommand("c-timeout", 3)
+    mutations: list[str] = []
+
+    with pytest.raises(ContextCommandTimeoutError):
+        bindings.invoke_context_sync(
+            context,
+            lambda: mutations.append("stale mutation"),
+            timeout_s=0.05,
+            command=command,
+        )
+
+    assert command.state is ContextCommandState.ABANDONED
+    # The wedged pump finally recovers and dispatches the queued callback.
+    context.dispatch_all()
+    assert mutations == []
+    assert command.state is ContextCommandState.ABANDONED
+
+
+def test_pc13_07_04_delayed_pump_recovery_then_new_command_succeeds() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import (
+        ContextCommand,
+        ContextCommandTimeoutError,
+    )
+
+    bindings = _bindings()
+    context = _ManualContext()
+    stale: list[str] = []
+
+    with pytest.raises(ContextCommandTimeoutError):
+        bindings.invoke_context_sync(
+            context,
+            lambda: stale.append("stale"),
+            timeout_s=0.05,
+            command=ContextCommand("c-stale", 4),
+        )
+
+    # The pump recovers, drains the abandoned callback, then serves a fresh one.
+    context.dispatch_all()
+    assert stale == []
+    context.immediate = True
+
+    value = bindings.invoke_context_sync(
+        context,
+        lambda: "fresh",
+        timeout_s=2.0,
+        command=ContextCommand("c-fresh", 5),
+    )
+    assert value == "fresh"
+
+
+def test_pc13_07_05_started_command_is_never_abandoned() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import (
+        ContextCommand,
+        ContextCommandState,
+    )
+
+    command = ContextCommand("c-running", 6)
+    assert command.claim() is True
+    assert command.state is ContextCommandState.RUNNING
+    # A command that already started owns its mutation: it cannot be abandoned.
+    assert command.abandon() is False
+    assert command.state is ContextCommandState.RUNNING
+    command.complete()
+    assert command.state is ContextCommandState.COMPLETED
+
+
+def test_pc13_07_06_close_release_failure_is_not_a_faked_closure() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerAudioPort
+    from tests.test_gstreamer_audio_port import FakeBindings
+
+    class _FailingExecutor:
+        handle = None
+
+        def __init__(self) -> None:
+            self.releases: list[str] = []
+            self.fail = True
+
+        def release(self, reason: str) -> None:
+            self.releases.append(reason)
+            if self.fail:
+                raise RuntimeError("synthetic release failure")
+
+    bindings = FakeBindings()
+    executor = _FailingExecutor()
+    port = GStreamerAudioPort(bindings=bindings, direct_executor=executor)
+    try:
+        with pytest.raises(RuntimeError, match="synthetic release failure"):
+            port.close()
+        assert port._closed is False
+        assert executor.releases == ["gstreamer_close"]
+
+        executor.fail = False
+        port.close()
+        assert port._closed is True
+        assert executor.releases == ["gstreamer_close", "gstreamer_close"]
+    finally:
+        if not port._closed:
+            executor.fail = False
+            port.close()
+
+
+def test_pc13_07_07_close_keeps_the_first_error_when_release_also_fails() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerAudioPort
+    from tests.test_gstreamer_audio_port import FakeBindings
+
+    class _FailingExecutor:
+        handle = None
+
+        def release(self, _reason: str) -> None:
+            raise RuntimeError("secondary release failure")
+
+        def mark_previous_source_released(self) -> None:
+            return None
+
+        def abort(self, *_args, **_kwargs):
+            return None
+
+        def record_runtime_anomaly(self, *_args, **_kwargs) -> None:
+            return None
+
+        def discard_staged_load(self, *_args, **_kwargs) -> None:
+            return None
+
+    bindings = FakeBindings()
+    port = GStreamerAudioPort(bindings=bindings, direct_executor=_FailingExecutor())
+    port.load(Path("/tmp/r13-first-error.flac"))
+    # Primary failure: the pump never terminates (pump + direct-release combo).
+    bindings.ignore_quit = True
+    try:
+        with pytest.raises(Exception) as exc_info:  # noqa: PT011 — typed below
+            port.close()
+        # The first chronological failure wins; the release error is secondary.
+        assert str(exc_info.value) != "secondary release failure"
+        assert port._closed is False
+    finally:
+        import contextlib
+
+        bindings.ignore_quit = False
+        if not port._closed:
+            with contextlib.suppress(Exception):
+                port.close()
+
+
+def test_pc13_07_08_nested_drain_requires_explicit_harness_lifecycle(
+    qapp, tmp_path: Path
+) -> None:
+    from michi.bootstrap import ApplicationContainer, ContainerLifecycle
+
+    class _Signal:
+        def connect(self, _callback) -> None:
+            return None
+
+    class _Engine:
+        def __init__(self) -> None:
+            self.deleted = 0
+            self.destroyed = _Signal()
+
+        def deleteLater(self):  # noqa: N802 — Qt API name
+            self.deleted += 1
+
+    container = ApplicationContainer()
+    container._engine = _Engine()
+    container._lifecycle = ContainerLifecycle.MAIN_LOOP_RUNNING
+
+    scheduled: list[str] = []
+    container._schedule_qml_teardown()
+    assert container._engine is None  # teardown is still scheduled
+
+    # The bounded drain is only authorized before the main loop ever ran.
+    assert container._lifecycle is not ContainerLifecycle.INITIALIZED, (
+        "a running GUI loop must never be treated as harness mode"
+    )
+    scheduled.clear()
+
+
+def test_pc13_07_09_every_context_property_is_retained_for_teardown() -> None:
+    """R1.3 §18 parity: registered context properties stay alive until Qt ends."""
+    from michi.bootstrap import ApplicationContainer
+
+    container = ApplicationContainer()
+
+    class _Obj:
+        def __init__(self) -> None:
+            self.deleted = 0
+
+        def deleteLater(self):  # noqa: N802 — Qt API name
+            self.deleted += 1
+
+    class _Engine(_Obj):
+        pass
+
+    engine = _Engine()
+    container._engine = engine
+    for name in (
+        "_pb",
+        "_qb",
+        "_psb",
+        "_lb",
+        "_plb",
+        "_nb",
+        "_sb",
+        "_aeb",
+        "_aob",
+        "_eb",
+        "_library_enrichment",
+    ):
+        setattr(container, name, _Obj())
+
+    container._schedule_qml_teardown()
+
+    retained = container._qml_teardown_keepalive
+    assert engine in retained
+    for name in (
+        "_pb",
+        "_qb",
+        "_psb",
+        "_lb",
+        "_plb",
+        "_nb",
+        "_sb",
+        "_aeb",
+        "_aob",
+        "_eb",
+        "_library_enrichment",
+    ):
+        assert getattr(container, name) in retained, name

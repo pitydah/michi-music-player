@@ -40,6 +40,67 @@ _logger = logging.getLogger(__name__)
 _POSITION_POLL_MS = 500
 
 
+class ContextCommandState(Enum):
+    """Lifecycle of one cross-thread GLib context command."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    ABANDONED = "abandoned"
+
+
+class ContextCommandTimeoutError(RuntimeError):
+    """The owner gave up waiting for one bounded context command."""
+
+    def __init__(self, command_id: str) -> None:
+        super().__init__(f"GStreamer MainContext command timed out: {command_id}")
+        self.command_id = command_id
+
+
+class ContextCommand:
+    """Identity + fence for one queued context command.
+
+    A caller that times out ABANDONS the command. An abandoned command must
+    never mutate state when the pump finally dispatches it: the callback sees
+    ``ABANDONED`` and returns without running its body. A command that already
+    started (``RUNNING``) cannot be abandoned — its mutation is truthful and
+    the caller simply learns that the wait expired.
+    """
+
+    __slots__ = ("command_id", "generation", "state", "lock")
+
+    def __init__(self, command_id: str, generation: int) -> None:
+        self.command_id = command_id
+        self.generation = generation
+        self.state = ContextCommandState.PENDING
+        self.lock = threading.Lock()
+
+    def claim(self) -> bool:
+        """Atomically move PENDING -> RUNNING. False means: never mutate."""
+        with self.lock:
+            if self.state is not ContextCommandState.PENDING:
+                return False
+            self.state = ContextCommandState.RUNNING
+            return True
+
+    def complete(self) -> None:
+        with self.lock:
+            if self.state is ContextCommandState.RUNNING:
+                self.state = ContextCommandState.COMPLETED
+
+    def abandon(self) -> bool:
+        """Atomically move PENDING -> ABANDONED. False when already started."""
+        with self.lock:
+            if self.state is not ContextCommandState.PENDING:
+                return False
+            self.state = ContextCommandState.ABANDONED
+            return True
+
+    @property
+    def abandoned(self) -> bool:
+        return self.state is ContextCommandState.ABANDONED
+
+
 class GStreamerSourceCharacterizer:
     """Bounded, generation-safe decoded-source characterization facade."""
 
@@ -801,29 +862,56 @@ class GStreamerBindings:
     def pop_thread_default(self, context):
         context.pop_thread_default()
 
-    def invoke_context_sync(self, context, callback, timeout_s: float = 2.0):
+    def invoke_context_sync(
+        self,
+        context,
+        callback,
+        timeout_s: float = 2.0,
+        *,
+        command: ContextCommand | None = None,
+    ):
         """Run one bounded command while ``context`` is owned by its pump.
 
         ``MainContext.invoke_full`` provides the only cross-thread lifecycle
         seam.  Command exceptions are returned to the caller unchanged and a
         wedged context is reported rather than silently mutating ownership on
         the caller thread.
+
+        DAC-V35-100R1.3 §15: a caller that times out ABANDONS the command, so
+        the queued callback can never wake up later and mutate stale state.
         """
+        self.ensure_loaded()
+        command = command or ContextCommand("anonymous", 0)
         completed = threading.Event()
         outcome: list[tuple[bool, object]] = []
 
         def execute(_user_data=None):
+            if not command.claim():
+                # ABANDONED (or already dispatched): ZERO mutation.
+                completed.set()
+                return False
             try:
                 outcome.append((True, callback()))
             except BaseException as exc:  # preserve the command's primary failure
                 outcome.append((False, exc))
             finally:
+                command.complete()
                 completed.set()
             return False
 
         context.invoke_full(self._glib.PRIORITY_DEFAULT, execute, None)
         if not completed.wait(timeout_s):
-            raise RuntimeError("GStreamer MainContext command timed out")
+            if command.abandon():
+                # The queued callback is now inert: it can never mutate state.
+                _logger.warning(
+                    "Abandoned context command %s after timeout", command.command_id
+                )
+            raise ContextCommandTimeoutError(command.command_id)
+        if not outcome:
+            raise RuntimeError(
+                f"GStreamer MainContext command produced no outcome: "
+                f"{command.command_id}"
+            )
         succeeded, value = outcome[0]
         if not succeeded:
             raise value
@@ -1063,6 +1151,7 @@ class GStreamerAudioPort(AudioPort):
         self._closing = False  # R1-03: close in progress (retryable)
         # load-command ownership epoch (GATE 1)
         self._load_epoch = 0
+        self._context_command_seq = 0
         # consumer registrations
         self._eom: list = []
         self._pos: list = []
@@ -1185,7 +1274,14 @@ class GStreamerAudioPort(AudioPort):
             return callback()
         if self._pump is None or not self._pump.is_alive() or self._context is None:
             raise RuntimeError("GStreamer pump is unavailable for context command")
-        return self._bindings.invoke_context_sync(self._context, callback)
+        self._context_command_seq += 1
+        command = ContextCommand(
+            f"ctx:{self._context_command_seq}:gen:{self._generation}",
+            self._generation,
+        )
+        return self._bindings.invoke_context_sync(
+            self._context, callback, command=command
+        )
 
     def _attach_pipeline_sources(self, pipeline, bus, generation: int) -> None:
         """Instala el bus watch y el timer de posición en el context custom.
@@ -1786,11 +1882,25 @@ class GStreamerAudioPort(AudioPort):
         self._pst = []
         if primary_error is not None:
             raise primary_error  # _closed stays False → retryable
+        # DAC-V35-100R1.3 §16: the executor release is part of the authoritative
+        # teardown. `_closed = True` is only truthful once EVERY ownership
+        # hand-off succeeded, so the release happens BEFORE the flag and its
+        # failure is a first-class close failure (retryable, never faked).
+        if self._direct_executor is not None:
+            try:
+                self._direct_executor.release("gstreamer_close")
+            except Exception as exc:  # noqa: BLE001 — first-error-wins
+                primary_error = exc
+            else:
+                if getattr(self._direct_executor, "handle", None) is not None:
+                    primary_error = RuntimeError(
+                        "Direct executor still owns a handle after close release"
+                    )
+        if primary_error is not None:
+            raise primary_error
         # ONLY after the full chain succeeded:
         self._closed = True
         self._closing = False
-        if self._direct_executor is not None:
-            self._direct_executor.release("gstreamer_close")
 
     def _try_stop_pipeline(self) -> bool:
         """Reemplazo normal (load): NULL PRIMERO, detach SOLO tras éxito.

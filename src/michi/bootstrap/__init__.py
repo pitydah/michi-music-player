@@ -10,6 +10,7 @@ shutdown lifecycle.
 import logging
 import sys
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from PySide6.QtCore import (
@@ -850,6 +851,21 @@ def _shutdown_audio_runtime(router, engine_service, registry) -> None:
         raise primary_error
 
 
+class ContainerLifecycle(Enum):
+    """Explicit container lifecycle — never inferred from side effects.
+
+    R1.3 §19: the bounded nested event-loop drain is only authorized while the
+    container has NEVER entered the main loop. "A Qt application exists and a
+    teardown keepalive exists" is not proof of harness mode.
+    """
+
+    CREATED = "created"
+    INITIALIZED = "initialized"
+    MAIN_LOOP_RUNNING = "main_loop_running"
+    ABOUT_TO_QUIT = "about_to_quit"
+    TERMINATED = "terminated"
+
+
 class ApplicationContainer:
     """Creates and owns all long-lived components. Explicit wiring only."""
 
@@ -914,12 +930,17 @@ class ApplicationContainer:
         self._eb: EnrichmentBridge | None = None
         self._library_enrichment: LibraryEnrichmentProjection | None = None
         self._qml_teardown_keepalive: tuple[object, ...] = ()
+        self._lifecycle = ContainerLifecycle.CREATED
         # NEGATIVE-EVIDENCE SEAL §40: ownership artwork DECLARADA en
         # __init__ (nunca solo dentro de initialize) — el teardown accede
         # directamente, sin getattr defensivo.
         self._artwork_runner: ThreadScanRunner | None = None
         self._artwork_refresh = None
         self._artwork_dispatcher = None
+
+    def _on_about_to_quit(self) -> None:
+        self._lifecycle = ContainerLifecycle.ABOUT_TO_QUIT
+        self._schedule_qml_teardown()
 
     def _schedule_qml_teardown(self) -> None:
         """Queue QML ownership release while Qt can drain deferred deletes."""
@@ -960,8 +981,9 @@ class ApplicationContainer:
         QGuiApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
         self._app = QGuiApplication.instance() or QGuiApplication(sys.argv)
+        self._lifecycle = ContainerLifecycle.INITIALIZED
         if hasattr(self._app, "aboutToQuit"):
-            self._app.aboutToQuit.connect(self._schedule_qml_teardown)
+            self._app.aboutToQuit.connect(self._on_about_to_quit)
         self._app.setApplicationName("Michi Music Player")
         self._app.setApplicationVersion("0.1.0")
         self._app.setOrganizationName("Michi")
@@ -1283,10 +1305,16 @@ class ApplicationContainer:
     def run(self) -> int:
         if not self.load_qml():
             return 1
-        return self._app.exec()
+        self._lifecycle = ContainerLifecycle.MAIN_LOOP_RUNNING
+        try:
+            return self._app.exec()
+        finally:
+            if self._lifecycle is ContainerLifecycle.MAIN_LOOP_RUNNING:
+                self._lifecycle = ContainerLifecycle.TERMINATED
 
     def shutdown(self) -> None:
         error: Exception | None = None
+        self._lifecycle = ContainerLifecycle.TERMINATED
 
         # The persistence coordinator owns the durable session + prefs
         # policy: freeze, final checkpoint and volume/mute persistence all
@@ -1491,6 +1519,7 @@ class ApplicationContainer:
                 if (
                     QCoreApplication.instance() is self._app
                     and self._qml_teardown_keepalive
+                    and self._lifecycle is ContainerLifecycle.INITIALIZED
                 ):
                     # load_qml() harnesses may never enter app.exec(). Give
                     # Qt one bounded event-loop turn so the engine-owned tree

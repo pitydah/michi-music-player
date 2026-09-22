@@ -393,12 +393,29 @@ class FakeBindings:
             finally:
                 completed.set()
 
-    def invoke_context_sync(self, context, callback, timeout_s=2.0):
+    def invoke_context_sync(self, context, callback, timeout_s=2.0, *, command=None):
         del context
         completed = threading.Event()
         outcome = []
-        self._context_commands.put((callback, completed, outcome))
+
+        def execute():
+            # R1.3 §15 fence: an abandoned command never mutates state.
+            if command is not None and not command.claim():
+                completed.set()
+                return
+            try:
+                outcome.append((True, callback()))
+            except BaseException as exc:  # noqa: BLE001 — preserve primary failure
+                outcome.append((False, exc))
+            finally:
+                if command is not None:
+                    command.complete()
+                completed.set()
+
+        self._context_commands.put((execute, completed, outcome))
         if not completed.wait(timeout_s):
+            if command is not None:
+                command.abandon()
             raise RuntimeError("fake GStreamer context command timed out")
         succeeded, value = outcome[0]
         if not succeeded:
