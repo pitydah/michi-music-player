@@ -304,3 +304,170 @@ def test_nc132_02_c_first_error_wins_and_release_still_attempted(
 
     _assert_full_closure(port)
     assert executor.releases == ["gstreamer_close", "gstreamer_close"]
+
+
+# ── Phase 3 — single-flight leader failure fan-out ─────────────────────────
+
+
+_UNSET = object()
+
+
+class _FailingGatedProbe:
+    """Probe that blocks until every follower joined, then fails or succeeds."""
+
+    def __init__(self, *, failure: object = _UNSET) -> None:
+        self.calls: list[dict] = []
+        self.entered = threading.Event()
+        self.release = threading.Event()
+        self.failure: BaseException | None = (
+            RuntimeError("synthetic probe failure") if failure is _UNSET else failure
+        )
+
+    def probe_exact(self, **kwargs):
+        from michi.domain.audio_evidence import ExactProbeResult, PcmTuple
+
+        self.calls.append(kwargs)
+        self.entered.set()
+        self.release.wait(timeout=15)
+        if self.failure is not None:
+            raise self.failure
+        requested = PcmTuple(
+            kwargs["rate_hz"], kwargs["transport_format"], kwargs["channels"], 16
+        )
+        return ExactProbeResult(
+            requested, requested, "OPENED", None, None, "probe:fan-out"
+        )
+
+
+def _qualification_service(probe, *, follower_timeout_s: float = 10.0):
+    from michi.application.dac_qualification_service import DacQualificationService
+
+    return DacQualificationService(
+        probe,
+        environment_fingerprint=lambda: "env:a",
+        single_flight_timeout_s=follower_timeout_s,
+    )
+
+
+def _probe_once(service):
+    return service.probe_for_play(
+        stable_device_id="usb:2622:0105:DX5ABC123",
+        locator="hw:CARD=DX5,DEV=0",
+        rate_hz=44_100,
+        transport_format="S16_LE",
+        channels=2,
+        binding_generation=1,
+    )
+
+
+def test_nc132_03_a_leader_failure_fans_out_to_every_follower() -> None:
+    probe = _FailingGatedProbe()
+    service = _qualification_service(probe)
+    outcomes: list[object] = []
+    failures: list[BaseException] = []
+    lock = threading.Lock()
+
+    def worker() -> None:
+        try:
+            outcome = _probe_once(service)
+        except BaseException as exc:  # noqa: BLE001 — asserted below
+            with lock:
+                failures.append(exc)
+        else:
+            with lock:
+                outcomes.append(outcome)
+
+    leader = threading.Thread(target=worker)
+    leader.start()
+    assert probe.entered.wait(timeout=10), "the leader never probed"
+
+    followers = [threading.Thread(target=worker) for _ in range(20)]
+    for follower in followers:
+        follower.start()
+    assert _await(
+        lambda: bool(service._flights)
+        and next(iter(service._flights.values())).waiters == 20
+    ), "followers did not coalesce"
+
+    probe.release.set()
+    leader.join(timeout=15)
+    for follower in followers:
+        follower.join(timeout=15)
+
+    assert len(probe.calls) == 1, "the flight probed more than once"
+    assert outcomes == [], "a follower received an accidental result"
+    assert len(failures) == 21
+    assert all(isinstance(item, RuntimeError) for item in failures)
+    assert all("synthetic probe failure" in str(item) for item in failures)
+    assert all(not isinstance(item, AttributeError) for item in failures)
+    assert service._flights == {}, "the failed flight did not retire"
+
+
+def test_nc132_03_b_repaired_adapter_forms_a_new_flight() -> None:
+    probe = _FailingGatedProbe()
+    service = _qualification_service(probe)
+
+    with pytest.raises(RuntimeError, match="synthetic probe failure"):
+        _probe_once(service)
+    assert service._flights == {}
+
+    probe.failure = None
+    probe.release.set()
+    outcome = _probe_once(service)
+
+    assert outcome.evidence.supported is True
+    assert len(probe.calls) == 2
+
+
+def test_nc132_03_c_follower_timeout_still_never_starts_a_second_probe() -> None:
+    from michi.application.dac_qualification_service import (
+        QualificationSingleFlightTimeoutError,
+    )
+
+    probe = _FailingGatedProbe(failure=None)
+    service = _qualification_service(probe, follower_timeout_s=0.2)
+    leader_results: list[object] = []
+    follower_errors: list[BaseException] = []
+
+    def leader() -> None:
+        leader_results.append(_probe_once(service))
+
+    def follower() -> None:
+        try:
+            _probe_once(service)
+        except BaseException as exc:  # noqa: BLE001 — asserted below
+            follower_errors.append(exc)
+
+    leader_thread = threading.Thread(target=leader)
+    leader_thread.start()
+    assert probe.entered.wait(timeout=10)
+
+    followers = [threading.Thread(target=follower) for _ in range(5)]
+    for thread in followers:
+        thread.start()
+    for thread in followers:
+        thread.join(timeout=10)
+
+    assert probe.release.is_set() is False
+    assert len(probe.calls) == 1
+    assert len(follower_errors) == 5
+    assert all(
+        isinstance(item, QualificationSingleFlightTimeoutError)
+        for item in follower_errors
+    )
+
+    probe.release.set()
+    leader_thread.join(timeout=15)
+    assert len(leader_results) == 1
+    assert len(probe.calls) == 1
+
+
+def _await(predicate, *, timeout_s: float = 5.0) -> bool:
+    import time
+
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.005)
+    return bool(predicate())

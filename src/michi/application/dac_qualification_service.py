@@ -174,14 +174,33 @@ class QualificationSingleFlightTimeoutError(RuntimeError):
         self.key = key
 
 
-class _Flight:
-    """One in-flight qualification shared by equivalent concurrent callers."""
+class QualificationSingleFlightIncompleteError(RuntimeError):
+    """A coalesced flight ended without a result or a failure.
 
-    __slots__ = ("event", "result", "waiters")
+    R1.3.2 §24: a flight terminates in exactly SUCCESS(result) or
+    FAILURE(error). An accidental ``None`` must never reach a consumer.
+    """
+
+    code = "EXACT_QUALIFICATION_INCONCLUSIVE"
+
+    def __init__(self, key: tuple[object, ...]) -> None:
+        super().__init__("exact qualification produced no terminal outcome")
+        self.key = key
+
+
+class _Flight:
+    """One in-flight qualification shared by equivalent concurrent callers.
+
+    The terminal outcome is exactly one of: a result, or the leader's failure.
+    Followers observe the SAME semantic failure — never an accidental ``None``.
+    """
+
+    __slots__ = ("event", "result", "error", "waiters")
 
     def __init__(self) -> None:
         self.event = threading.Event()
         self.result: object | None = None
+        self.error: BaseException | None = None
         self.waiters = 0
 
 
@@ -234,11 +253,23 @@ class DacQualificationService:
         if leader:
             try:
                 result = probe()
-            except BaseException:
+            except BaseException as exc:
+                # R1.3.2 §25: the leader's failure is the flight's terminal
+                # outcome, so every joined consumer observes it coherently.
                 with self._flight_lock:
-                    self._flights.pop(key, None)
+                    flight.error = exc
                     flight.event.set()
+                    if flight.waiters == 0:
+                        self._flights.pop(key, None)
                 raise
+            if result is None:
+                incomplete = QualificationSingleFlightIncompleteError(key)
+                with self._flight_lock:
+                    flight.error = incomplete
+                    flight.event.set()
+                    if flight.waiters == 0:
+                        self._flights.pop(key, None)
+                raise incomplete
             with self._flight_lock:
                 flight.result = result
                 flight.event.set()
@@ -255,9 +286,15 @@ class DacQualificationService:
             raise QualificationSingleFlightTimeoutError(key)
         with self._flight_lock:
             result = flight.result
+            error = flight.error
             flight.waiters -= 1
             if flight.waiters == 0:
                 self._flights.pop(key, None)
+        if error is not None:
+            raise error
+        if result is None:
+            # Defensive: a flight must never publish an accidental None.
+            raise QualificationSingleFlightIncompleteError(key)
         return result
 
     # ── C07: la mutación de la cache es autoridad de ESTE servicio ────
