@@ -814,3 +814,231 @@ def test_ci131_05_f_direct_compatibility_is_a_third_concept() -> None:
     assert row["capabilityEvidenceLabel"] == "Current format unsupported"
     assert row["directCompatibilityLabel"] == "Strict carrier unsupported"
     assert graph.bridge.directCompatibilityLabel == "Strict carrier unsupported"
+
+
+# ── Phase 6 — one user intent -> one playback request ──────────────────────
+
+
+class _CountingProbe:
+    def __init__(self) -> None:
+        self.calls: list[tuple[int, str, int]] = []
+
+    def probe_exact(self, **kwargs):
+        from michi.domain.audio_evidence import ExactProbeResult, PcmTuple
+
+        rate_hz = kwargs["rate_hz"]
+        transport_format = kwargs["transport_format"]
+        channels = kwargs["channels"]
+        self.calls.append((rate_hz, transport_format, channels))
+        requested = PcmTuple(rate_hz, transport_format, channels, 16)
+        if transport_format == "S16_LE":
+            return ExactProbeResult(
+                requested,
+                None,
+                "unsupported_format",
+                22,
+                "exact reject",
+                "probe:reject",
+            )
+        return ExactProbeResult(
+            requested,
+            PcmTuple(rate_hz, transport_format, channels, 32),
+            "OPENED",
+            None,
+            None,
+            "probe:open",
+        )
+
+
+def _cardinality_graph(tmp_path: Path):
+    from michi.domain.library import TrackMetadata
+
+    probe = _CountingProbe()
+    graph, bindings = _direct_graph(
+        tmp_path,
+        qualification_adapter=probe,
+        preseed_qualification=False,
+        source_metadata=TrackMetadata(
+            title="S16 source",
+            sample_rate_hz=44_100,
+            bit_depth=16,
+            channels=2,
+        ),
+    )
+    bindings.source_characterization_overrides = {
+        "format": "S16LE",
+        "rate": 44_100,
+        "significant_bits": 16,
+        "channels": 2,
+    }
+    counts = {"session": 0, "load": 0, "prepare": 0}
+
+    # Every session context (SINGLE/ALBUM/PLAYLIST/queue slot) funnels through
+    # one canonical transition creator.
+    original_request = graph.playback_session._request
+
+    def counted_request(*args, **kwargs):
+        counts["session"] += 1
+        return original_request(*args, **kwargs)
+
+    graph.playback_session._request = counted_request
+
+    original_load = graph.playback.load_and_play
+
+    def counted_load(*args, **kwargs):
+        counts["load"] += 1
+        return original_load(*args, **kwargs)
+
+    graph.playback.load_and_play = counted_load
+
+    original_prepare = graph.output_session.prepare_for_media_async
+
+    def counted_prepare(*args, **kwargs):
+        counts["prepare"] += 1
+        return original_prepare(*args, **kwargs)
+
+    graph.output_session.prepare_for_media_async = counted_prepare
+    return graph, bindings, probe, counts
+
+
+def _seed_library(graph, media: Path) -> str:
+    """Seed one visible library track and return its track id."""
+    from michi.domain.library import MediaAvailability, TrackRef
+
+    track_id = "track-1"
+    # TD-013 validates the filesystem before any library-origin playback.
+    media.parent.mkdir(parents=True, exist_ok=True)
+    media.write_bytes(b"michi-r131-seed")
+    graph.library._state.tracks = [
+        TrackRef(
+            media,
+            title="Seeded",
+            artist="Artist",
+            album="Album",
+            track_id=track_id,
+            media_file_id="media-1",
+            library_source_id="source-1",
+            availability=MediaAvailability.AVAILABLE,
+        )
+    ]
+    graph.library._rebuild_derived_library_state()
+    return track_id
+
+
+def _assert_single_intent(
+    graph,
+    probe,
+    counts,
+    *,
+    expected_probes: int = 1,
+    expected_session: int = 1,
+) -> None:
+    assert _await(
+        lambda: len(probe.calls) >= expected_probes
+    ), "the physical qualification never completed"
+    # A replay is not a new semantic context, so it legitimately opens no new
+    # session transition; what must never happen is fan-out.
+    assert counts["session"] == expected_session, (
+        "one user intent must produce one session request"
+    )
+    assert counts["load"] == 1, "one user intent must produce one playback load"
+    assert counts["prepare"] == 1, "one user intent must produce one preparation"
+    # At most ONE physical qualification per carrier key — never a sweep.
+    assert len(probe.calls) == expected_probes
+    assert graph.output_session.mode == "shared"
+
+
+def test_ci131_06_a_song_row_intent_is_one_request(qapp, tmp_path: Path) -> None:
+    media = tmp_path / "song-row.flac"
+    graph, _bindings, probe, counts = _cardinality_graph(tmp_path)
+    track_id = _seed_library(graph, media)
+    try:
+        graph.library_playback.play_track_by_id(track_id, "Song row")
+        assert _await(lambda: counts["load"] == 1)
+        _assert_single_intent(graph, probe, counts)
+    finally:
+        _close_graph(graph)
+
+
+def test_ci131_06_b_album_track_intent_is_one_request(qapp, tmp_path: Path) -> None:
+    from michi.domain.library import build_music_model
+
+    media = tmp_path / "album-track.flac"
+    graph, _bindings, probe, counts = _cardinality_graph(tmp_path)
+    _seed_library(graph, media)
+    album_key = build_music_model(graph.library.state.tracks).albums[0].key
+    try:
+        graph.library_playback.play_album_track(album_key, 0)
+        assert _await(lambda: counts["load"] == 1)
+        _assert_single_intent(graph, probe, counts)
+    finally:
+        _close_graph(graph)
+
+
+def test_ci131_06_c_playlist_track_intent_is_one_request(qapp, tmp_path: Path) -> None:
+    from michi.domain.playback_session import PlaybackSequenceEntry
+
+    media = tmp_path / "playlist-track.flac"
+    graph, _bindings, probe, counts = _cardinality_graph(tmp_path)
+    try:
+        graph.playlist_playback.play_playlist_entries(
+            "playlist-1",
+            [PlaybackSequenceEntry(media, "Playlist track")],
+            0,
+        )
+        assert _await(lambda: counts["load"] == 1)
+        _assert_single_intent(graph, probe, counts)
+    finally:
+        _close_graph(graph)
+
+
+def test_ci131_06_d_search_result_intent_is_one_request(qapp, tmp_path: Path) -> None:
+    media = tmp_path / "search-result.flac"
+    graph, _bindings, probe, counts = _cardinality_graph(tmp_path)
+    track_id = _seed_library(graph, media)
+    try:
+        graph.library.search("Seeded")
+        visible = graph.library.visible_tracks()
+        assert visible, "the seeded track must be visible after search"
+        graph.library_playback.play_track_by_id(track_id, "Search result")
+        assert _await(lambda: counts["load"] == 1)
+        _assert_single_intent(graph, probe, counts)
+    finally:
+        _close_graph(graph)
+
+
+def test_ci131_06_e_queue_entry_intent_is_one_request(qapp, tmp_path: Path) -> None:
+    from michi.presentation.playback_session_bridge import PlaybackSessionBridge
+
+    media = tmp_path / "queue-entry.flac"
+    graph, _bindings, probe, counts = _cardinality_graph(tmp_path)
+    bridge = PlaybackSessionBridge(graph.playback_session)
+    try:
+        graph.queue.add(media, "Queue entry")
+        bridge.play_queue_index(0)
+        assert _await(lambda: counts["load"] == 1)
+        _assert_single_intent(graph, probe, counts)
+    finally:
+        bridge.dispose()
+        _close_graph(graph)
+
+
+def test_ci131_06_f_now_playing_play_intent_is_one_request(
+    qapp, tmp_path: Path
+) -> None:
+    from michi.presentation.playback_bridge import PlaybackBridge
+
+    media = tmp_path / "now-playing.flac"
+    graph, _bindings, probe, counts = _cardinality_graph(tmp_path)
+    bridge = PlaybackBridge(graph.playback)
+    try:
+        # The public replay case: a stopped logical source re-enters the
+        # canonical load path through the bridge.
+        graph.playback._state.file_path = media
+        graph.playback._accepted = False
+        bridge.play()
+        assert _await(lambda: counts["load"] == 1)
+        _assert_single_intent(graph, probe, counts, expected_session=0)
+    finally:
+        bridge.dispose()
+        _close_graph(graph)
