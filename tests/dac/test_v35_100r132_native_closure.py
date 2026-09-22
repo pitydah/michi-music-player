@@ -471,3 +471,151 @@ def _await(predicate, *, timeout_s: float = 5.0) -> bool:
             return True
         time.sleep(0.005)
     return bool(predicate())
+
+
+# ── Phase 4 — startup resume transient position readiness ──────────────────
+
+
+class _TransientPositionPort:
+    """Audio port whose post-seek position query is temporarily unavailable."""
+
+    def __init__(self, *, before: int = 0, target_confirmed: bool = False) -> None:
+        self._position = before
+        self._position_calls = 0
+        self.seek_calls: list[int] = []
+        self.play_calls = 0
+        self.unavailable_on_second_query = True
+        self._accepted_callbacks: list = []
+        self._position_changed_callbacks: list = []
+        self._target_confirmed = target_confirmed
+
+    # -- surface used by PlaybackService --------------------------------
+    def load(self, path) -> None:
+        return None
+
+    def play(self) -> None:
+        self.play_calls += 1
+
+    def pause(self) -> None:
+        return None
+
+    def resume(self) -> None:
+        return None
+
+    def stop(self) -> None:
+        return None
+
+    def set_volume(self, value) -> None:
+        return None
+
+    def set_muted(self, value) -> None:
+        return None
+
+    def seek(self, position_ms: int) -> None:
+        self.seek_calls.append(position_ms)
+        if self._target_confirmed:
+            self._position = position_ms
+
+    def position(self) -> int:
+        from michi.application.ports import AudioTransportUnavailableError
+
+        self._position_calls += 1
+        if self.unavailable_on_second_query and self._position_calls >= 2:
+            raise AudioTransportUnavailableError(
+                "GStreamer position query failed on a live pipeline"
+            )
+        return self._position
+
+    def duration(self) -> int:
+        return 0
+
+    def subscribe_end_of_media(self, callback) -> None:
+        return None
+
+    def unsubscribe_end_of_media(self, callback) -> None:
+        return None
+
+    def subscribe_position_changed(self, callback) -> None:
+        self._position_changed_callbacks.append(callback)
+
+    def unsubscribe_position_changed(self, callback) -> None:
+        return None
+
+    def subscribe_duration_changed(self, callback) -> None:
+        return None
+
+    def unsubscribe_duration_changed(self, callback) -> None:
+        return None
+
+    def subscribe_media_accepted(self, callback) -> None:
+        self._accepted_callbacks.append(callback)
+
+    def unsubscribe_media_accepted(self, callback) -> None:
+        return None
+
+    def subscribe_playback_state_changed(self, callback) -> None:
+        return None
+
+    def unsubscribe_playback_state_changed(self, callback) -> None:
+        return None
+
+    def subscribe_media_rejected(self, callback) -> None:
+        return None
+
+    def unsubscribe_media_rejected(self, callback) -> None:
+        return None
+
+    def accept_media(self, path) -> None:
+        for callback in list(self._accepted_callbacks):
+            callback(path)
+
+    def emit_position_changed(self, position_ms: int) -> None:
+        for callback in list(self._position_changed_callbacks):
+            callback(position_ms)
+
+
+def _resume_playback(*, target_confirmed: bool = False):
+    from michi.application.playback_service import PlaybackService
+
+    port = _TransientPositionPort(before=0, target_confirmed=target_confirmed)
+    playback = PlaybackService(port)
+    fired: list[tuple] = []
+    playback.subscribe_resume_prepared(lambda path, pos: fired.append((path, pos)))
+    return port, playback, fired
+
+
+def test_nc132_04_a_transient_post_seek_position_cannot_escape() -> None:
+    media = Path("/tmp/r132-resume.flac")
+    port, playback, fired = _resume_playback()
+
+    playback.prepare_for_resume(media, 30_000)
+    port.accept_media(media)
+
+    # The transient readiness failure must not escape and must not fabricate a
+    # confirmation: the latch stays armed for the normal backend event.
+    assert port.seek_calls == [30_000]
+    assert fired == []
+    assert playback._resume_prepared_pending is True
+    assert playback.state.error_message is None
+
+    # The normal backend event: PlaybackCoordinator._on_position_changed
+    # forwards the observed position into the playback authority.
+    playback.update_position(30_000)
+
+    assert fired == [(media, 30_000)]
+    assert playback._resume_prepared_pending is False
+
+
+def test_nc132_04_b_immediate_confirmation_is_preserved() -> None:
+    """A backend that answers immediately keeps the current semantics."""
+    media = Path("/tmp/r132-resume-immediate.flac")
+    port, playback, fired = _resume_playback(target_confirmed=False)
+    port.unavailable_on_second_query = False
+
+    playback.prepare_for_resume(media, 0)
+    port.accept_media(media)
+
+    # seek-to-0 with an unchanged, already-matching backend position confirms
+    # once, with the backend-reported value.
+    assert fired == [(media, 0)]
+    assert playback._resume_prepared_pending is False

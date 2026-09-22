@@ -21,6 +21,7 @@ from michi.application.playback_failure import playback_action_failure
 from michi.application.ports import (
     AudioLoadError,
     AudioPort,
+    AudioTransportUnavailableError,
     PlaybackOutputTransactionPort,
     SharedOutputTransaction,
 )
@@ -986,7 +987,16 @@ class PlaybackService:
             # NOT block engine switching (quiescence). The confirmation
             # fires when the backend reports the position after the
             # explicit Play (positionChanged event).
-            confirmed = self._audio.position()
+            try:
+                confirmed = self._audio.position()
+            except AudioTransportUnavailableError:
+                # DAC-V35-100R1.3.2 §34: "seek command accepted" is NOT
+                # "post-seek position confirmed". A backend that has accepted
+                # the media but cannot answer a position query yet (GStreamer
+                # still prerolling) must not poison the resume: no exception
+                # escapes, no confirmation is fabricated, the latch stays
+                # armed and the normal positionChanged settles it.
+                return
             if confirmed == resume_position and confirmed == before:
                 # seek-to-0 / unchanged: backend already reports the value
                 self._resume_prepared_pending = False
