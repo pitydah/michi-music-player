@@ -739,9 +739,11 @@ def test_pc13_05_10_real_converter_preserves_sixteen_bit_values_exactly() -> Non
 
     import gi
 
+    # CI installs gstreamer1.0-plugins-base WITHOUT the GstApp typelib, so the
+    # appsrc/appsink elements are driven through their GObject signals (core
+    # Gst only). The production converter contract is what this test proves.
     gi.require_version("Gst", "1.0")
-    gi.require_version("GstApp", "1.0")
-    from gi.repository import Gst, GstApp  # noqa: F401 — registers appsrc surface
+    from gi.repository import Gst
 
     from michi.infrastructure.audio_engines.gstreamer import GStreamerBindings
 
@@ -777,9 +779,19 @@ def test_pc13_05_10_real_converter_preserves_sixteen_bit_values_exactly() -> Non
     frames = b"".join(struct.pack("<hh", value, value) for value in vectors)
 
     pipeline.set_state(Gst.State.PLAYING)
-    assert appsrc.push_buffer(Gst.Buffer.new_wrapped(frames)) == Gst.FlowReturn.OK
-    appsrc.end_of_stream()
-    sample = sink.try_pull_sample(Gst.SECOND * 10)
+    assert appsrc.emit("push-buffer", Gst.Buffer.new_wrapped(frames)) == (
+        Gst.FlowReturn.OK
+    )
+    appsrc.emit("end-of-stream")
+
+    import time
+
+    deadline = time.monotonic() + 15
+    sample = None
+    while sample is None and time.monotonic() < deadline:
+        sample = sink.emit("pull-sample")
+        if sample is None:
+            time.sleep(0.05)
     pipeline.set_state(Gst.State.NULL)
     assert sample is not None
 
