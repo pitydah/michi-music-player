@@ -1247,16 +1247,17 @@ def test_pc13_08_01_qualification_timeout_is_typed_and_never_cached(
     graph, bindings = _s16_graph(tmp_path, probe)
     try:
         graph.playback.load_and_play(tmp_path / "timeout16.flac")
-        assert _wait_until(
-            lambda: bool(graph.playback.state.error_message)
-        ), "the timeout refusal was never contained"
+        assert _wait_until(lambda: bool(graph.playback.state.error_message)), (
+            "the timeout refusal was never contained"
+        )
 
         assert graph.playback.state.error_code == "EXACT_QUALIFICATION_TIMEOUT"
         assert graph.playback.state.error_message.startswith("Format check timed out")
         # TIMEOUT is ambiguity, never a capability claim.
-        assert graph.dac_qualification.cached_evidence_current(
-            "usb:2622:0105:DX5ABC123"
-        ) == ()
+        assert (
+            graph.dac_qualification.cached_evidence_current("usb:2622:0105:DX5ABC123")
+            == ()
+        )
         assert graph.output_session.mode == "shared"
         assert bindings.pipelines == []
     finally:
@@ -1294,8 +1295,9 @@ def test_pc13_08_02_owner_revalidation_rejects_a_stale_environment(
             resolver.apply_qualification(request, stale_outcome)
 
         assert exc_info.value.code == "EXACT_QUALIFICATION_STALE"
-        assert graph.dac_qualification.cached_evidence_current(
-            "usb:2622:0105:DX5ABC123"
-        ) == ()
+        assert (
+            graph.dac_qualification.cached_evidence_current("usb:2622:0105:DX5ABC123")
+            == ()
+        )
     finally:
         _close_graph(graph)
