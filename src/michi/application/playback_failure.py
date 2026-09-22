@@ -16,6 +16,54 @@ class PlaybackActionFailure:
         return f"{self.title}: {self.explanation}"
 
 
+#: Recovery intents a refusal may offer. NONE of them is executed
+#: automatically: the user always decides explicitly.
+RECOVERY_TRY_COMPATIBLE_DIRECT = "try_compatible_direct"
+RECOVERY_USE_SHARED = "use_shared"
+RECOVERY_CANCEL = "cancel"
+
+#: The compatible Direct policy resolves a wider lossless carrier; offering it
+#: only makes sense while the exact carrier is the one that failed.
+_STRICT_INCOMPATIBLE_CODES = frozenset(
+    {
+        "EXACT_TUPLE_UNSUPPORTED",
+        "EXACT_TUPLE_UNKNOWN",
+        "SIGNIFICANT_BITS_UNPROVEN",
+    }
+)
+_SHARED_FALLBACK_CODES = frozenset(
+    {
+        "NO_COMPATIBLE_CARRIER",
+        "ALSA_DEVICE_BUSY",
+        "OUTPUT_DEVICE_LOST",
+        "DEVICE_UNAVAILABLE",
+        "DEVICE_LOST",
+        "NO_ALSA_HW_BINDING",
+        "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS",
+        "ENGINE_UNSUPPORTED_FOR_DIRECT",
+        "ENGINE_NOT_GSTREAMER",
+        "SELECTED_DEVICE_MISSING",
+        "EXACT_QUALIFICATION_TIMEOUT",
+        "EXACT_QUALIFICATION_INCONCLUSIVE",
+        "EXACT_QUALIFICATION_STALE",
+    }
+)
+
+
+def output_recovery_actions(code: str | None) -> tuple[str, ...]:
+    """Explicit recovery intents for one typed output refusal."""
+    normalized = (code or "").upper()
+    if normalized in _STRICT_INCOMPATIBLE_CODES:
+        return (
+            RECOVERY_TRY_COMPATIBLE_DIRECT,
+            RECOVERY_USE_SHARED,
+            RECOVERY_CANCEL,
+        )
+    if normalized in _SHARED_FALLBACK_CODES:
+        return (RECOVERY_USE_SHARED, RECOVERY_CANCEL)
+    return ()
+
+
 def playback_action_failure(code: str | None) -> PlaybackActionFailure:
     """Map one typed refusal to stable normal-mode copy."""
     normalized = (code or "").upper()
@@ -37,6 +85,35 @@ def playback_action_failure(code: str | None) -> PlaybackActionFailure:
         title, detail = (
             "Format unsupported",
             "The selected DAC rejected this exact format in Direct mode.",
+        )
+    elif normalized == "NO_COMPATIBLE_CARRIER":
+        title, detail = (
+            "No compatible Direct format",
+            "This DAC rejected every lossless carrier Michi can send for this track.",
+        )
+    elif normalized == "EXACT_QUALIFICATION_TIMEOUT":
+        title, detail = (
+            "Format check timed out",
+            "The DAC did not answer the exact format check in time.",
+        )
+    elif normalized == "EXACT_QUALIFICATION_INCONCLUSIVE":
+        title, detail = (
+            "Format check inconclusive",
+            "Michi could not prove a supported carrier for this track.",
+        )
+    elif normalized == "EXACT_QUALIFICATION_STALE":
+        title, detail = (
+            "DAC connection changed",
+            "The DAC connection changed while Michi was checking the format.",
+        )
+    elif normalized in {
+        "OUTPUT_BINDING_STALE",
+        "OUTPUT_BINDING_VALIDATION_FAILED",
+        "BINDING_GENERATION_CHANGED",
+    }:
+        title, detail = (
+            "DAC connection changed",
+            "The Direct endpoint changed before playback could start.",
         )
     elif normalized == "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS":
         title, detail = (

@@ -167,6 +167,7 @@ Item {
                 lastFailureDisplay: audioOutput.lastFailureDisplay
                 canUseDirect: audioOutput.canUseDirect
                 selectedPathMode: audioOutput.selectedPathMode
+                recoveryActions: audioOutput.outputRecoveryActions
                 onDeviceSelectionRequested: stableDeviceId =>
                     audioOutput.select_device(stableDeviceId)
                 onSharedSelectionRequested: audioOutput.select_shared_output()
@@ -174,6 +175,14 @@ Item {
                     audioOutput.select_profile(profileId)
                 onPathModeSelectionRequested: mode =>
                     audioOutput.select_path_mode(mode)
+                onRecoveryActionRequested: action => {
+                    if (action === "try_compatible_direct")
+                        audioOutput.try_compatible_direct()
+                    else if (action === "use_shared")
+                        audioOutput.select_shared_output()
+                    else
+                        audioOutput.dismiss_output_failure()
+                }
             }
 
             // ── Library ─────────────────────────────────────

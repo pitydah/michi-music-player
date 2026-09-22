@@ -74,7 +74,10 @@ def test_r80_26_unplug_during_prepare_rejects_stale_binding(tmp_path: Path) -> N
         assert graph.output_session.active_plan is None
         assert graph.direct_output_executor.handle is None
         assert graph.playback.state.status is PlaybackStatus.STOPPED
-        assert graph.playback.state.error_message.startswith("Output unavailable:")
+        # R1.3: the stale-binding refusal now names the real cause (endpoint change)
+        assert graph.playback.state.error_message.startswith(
+            ("DAC connection changed:", "Output unavailable:")
+        )
     finally:
         graph.direct_output_lifecycle.shutdown()
         _close_graph(graph)

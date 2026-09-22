@@ -538,8 +538,9 @@ def test_pc13_05_04_all_carriers_rejected_is_not_a_device_claim(
         # A tuple-scoped refusal must never be presented as a dead device.
         assert "not available" not in graph.playback.state.error_message
         assert graph.playback.state.error_message.startswith(
-            ("Format unsupported", "Output unavailable", "Compatible")
+            ("No compatible Direct format", "Format unsupported")
         )
+        assert graph.playback.state.error_code == "NO_COMPATIBLE_CARRIER"
     finally:
         _close_graph(graph)
 
@@ -792,3 +793,133 @@ def test_pc13_05_10_real_converter_preserves_sixteen_bit_values_exactly() -> Non
     assert observed == expected
     # The original significant value is exactly recoverable.
     assert tuple(value >> 16 for value in observed[::2]) == tuple(vectors)
+
+
+# ── Phase 6 — output failure presentation and recovery intents ─────────────
+
+
+def _bridge_graph():
+    from tests.test_v35_090_audio_output_bridge import _graph, _select_direct
+
+    return _graph(), _select_direct
+
+
+def _publish_playback_failure(graph, code: str) -> None:
+    graph.playback.state.error_message = "raw playback copy"
+    graph.playback.state.error_code = code
+    graph.playback.publish()
+
+
+def test_pc13_06_01_playback_refusal_reaches_the_output_ui() -> None:
+    graph, _select = _bridge_graph()
+
+    _publish_playback_failure(graph, "EXACT_TUPLE_UNSUPPORTED")
+
+    assert graph.bridge.lastFailureCode == "EXACT_TUPLE_UNSUPPORTED"
+    assert graph.bridge.lastFailureTitle == "Format unsupported"
+    assert graph.bridge.lastFailureDisplay.startswith(
+        "The selected DAC rejected this exact format"
+    )
+    # Never the raw internal code as the primary copy.
+    assert "EXACT_TUPLE_UNSUPPORTED" not in graph.bridge.lastFailureDisplay
+    assert "EXACT_TUPLE_UNSUPPORTED" not in graph.bridge.lastFailureTitle
+
+
+def test_pc13_06_02_strict_incompatibility_offers_explicit_recovery() -> None:
+    graph, _select = _bridge_graph()
+
+    _publish_playback_failure(graph, "EXACT_TUPLE_UNSUPPORTED")
+
+    actions = [row["action"] for row in graph.bridge.outputRecoveryActions]
+    labels = [row["label"] for row in graph.bridge.outputRecoveryActions]
+    assert actions == ["try_compatible_direct", "use_shared", "cancel"]
+    assert labels == ["Try Compatible Direct", "Use Shared", "Cancel"]
+
+
+def test_pc13_06_03_no_compatible_carrier_offers_shared_or_cancel() -> None:
+    graph, _select = _bridge_graph()
+
+    _publish_playback_failure(graph, "NO_COMPATIBLE_CARRIER")
+
+    assert graph.bridge.lastFailureTitle == "No compatible Direct format"
+    assert [row["action"] for row in graph.bridge.outputRecoveryActions] == [
+        "use_shared",
+        "cancel",
+    ]
+
+
+def test_pc13_06_04_busy_and_disconnected_never_claim_unsupported_format() -> None:
+    for code, expected_title in (
+        ("ALSA_DEVICE_BUSY", "Device busy"),
+        ("OUTPUT_DEVICE_LOST", "Device disconnected"),
+        ("ENGINE_UNSUPPORTED_FOR_DIRECT", "Direct requires GStreamer"),
+        ("EXACT_QUALIFICATION_TIMEOUT", "Format check timed out"),
+        ("EXACT_QUALIFICATION_INCONCLUSIVE", "Format check inconclusive"),
+        ("EXACT_QUALIFICATION_STALE", "DAC connection changed"),
+    ):
+        graph, _select = _bridge_graph()
+        _publish_playback_failure(graph, code)
+        assert graph.bridge.lastFailureTitle == expected_title, code
+        actions = [row["action"] for row in graph.bridge.outputRecoveryActions]
+        assert actions == ["use_shared", "cancel"], code
+
+
+def test_pc13_06_05_refusal_never_switches_policy_automatically() -> None:
+    graph, select_direct = _bridge_graph()
+    select_direct(graph)
+    before = graph.repository.selection
+
+    _publish_playback_failure(graph, "EXACT_TUPLE_UNSUPPORTED")
+
+    assert graph.repository.selection == before
+    assert graph.bridge.selectedPathMode == "strict"
+
+
+def test_pc13_06_06_try_compatible_direct_is_explicit_and_user_driven() -> None:
+    graph, select_direct = _bridge_graph()
+    select_direct(graph)
+
+    graph.bridge.try_compatible_direct()
+
+    assert graph.bridge.selectedPathMode == "compatible"
+    assert graph.bridge.lastFailureTitle == ""
+
+
+def test_pc13_06_07_dismiss_clears_the_presented_failure() -> None:
+    graph, _select = _bridge_graph()
+    graph.bridge.select_device("unknown-device")
+    assert graph.bridge.lastFailureTitle != ""
+
+    graph.bridge.dismiss_output_failure()
+
+    assert graph.bridge.lastFailureCode == ""
+    assert graph.bridge.lastFailureTitle == ""
+
+
+def test_pc13_06_08_one_intent_prepares_output_exactly_once(
+    qapp, tmp_path: Path
+) -> None:
+    probe = _SplitProbe()
+    graph, bindings = _s16_graph(tmp_path, probe)
+    calls: list[str] = []
+    original = graph.output_session.prepare_for_media_async
+
+    def counted(path, on_prepared, on_failed):
+        calls.append(str(path))
+        return original(path, on_prepared, on_failed)
+
+    graph.output_session.prepare_for_media_async = counted
+    try:
+        from michi.domain.playback_session import PlaybackSequenceEntry
+
+        graph.playback_session.play_single(
+            PlaybackSequenceEntry(tmp_path / "one-intent.flac", "One intent")
+        )
+        assert _wait_until(lambda: bool(probe.calls)), "no probe happened"
+
+        assert len(calls) == 1
+        # One physical probe per authorized candidate — never a brute-force sweep.
+        assert probe.calls == [(44_100, "S16_LE", 2)]
+        assert bindings.pipelines == []
+    finally:
+        _close_graph(graph)

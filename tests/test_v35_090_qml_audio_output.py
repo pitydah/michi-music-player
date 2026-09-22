@@ -727,6 +727,19 @@ def test_pc13_03_ui_path_mode_control_is_wired_to_bridge_intent() -> None:
     assert "audioOutput.selectedPathMode" in settings
 
 
+def test_pc13_06_ui_recovery_actions_are_wired_to_bridge_intent() -> None:
+    """R1.3: output failures offer explicit, user-driven recovery only."""
+    section = _source("views/AudioOutputSettingsSection.qml")
+    settings = _source("views/SettingsView.qml")
+    assert "audioOutputFailureActions" in section
+    assert "recoveryActionRequested(modelData.action)" in section
+    assert "recoveryActions: audioOutput.outputRecoveryActions" in settings
+    assert "onRecoveryActionRequested" in settings
+    assert "audioOutput.try_compatible_direct()" in settings
+    assert "audioOutput.select_shared_output()" in settings
+    assert "audioOutput.dismiss_output_failure()" in settings
+
+
 def test_ui90r1_08_escape_really_closes_popup_and_restores_focus(qapp) -> None:
     _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
     popup = _open_popup(window)

@@ -12,7 +12,13 @@ from michi.application.audio_output_selection_coordinator import (
     AudioOutputSelectionCoordinator,
     AudioOutputSelectionError,
 )
-from michi.application.playback_failure import playback_action_failure
+from michi.application.playback_failure import (
+    RECOVERY_CANCEL,
+    RECOVERY_TRY_COMPATIBLE_DIRECT,
+    RECOVERY_USE_SHARED,
+    output_recovery_actions,
+    playback_action_failure,
+)
 from michi.application.playback_service import PlaybackService
 from michi.application.volume_policy_service import VolumePolicyService
 from michi.domain.audio_engine import AudioEngineId
@@ -47,6 +53,20 @@ def _path_mode_of(profile) -> str:
     if profile.path is OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE:
         return "compatible"
     return "strict"
+
+
+_RECOVERY_LABELS = {
+    RECOVERY_TRY_COMPATIBLE_DIRECT: "Try Compatible Direct",
+    RECOVERY_USE_SHARED: "Use Shared",
+    RECOVERY_CANCEL: "Cancel",
+}
+
+
+def _recovery_rows(actions: tuple[str, ...]) -> list[dict[str, str]]:
+    return [
+        {"action": action, "label": _RECOVERY_LABELS.get(action, action)}
+        for action in actions
+    ]
 
 
 def failure_copy(code: str | None) -> tuple[str, str]:
@@ -227,6 +247,18 @@ class AudioOutputBridge(QObject):
     def _selection(self):
         return self._profiles.load_selection() if self._profiles is not None else None
 
+    def _playback_failure_code(self) -> str | None:
+        """Typed playback-refusal code for the CURRENT playback failure.
+
+        Output planning/qualification refusals surface through PlaybackService;
+        without this bridge the Audio Output UI and the playback surface would
+        hold two disconnected truths (R1.3 §12).
+        """
+        state = getattr(self._playback, "state", None)
+        if state is None or not getattr(state, "error_message", None):
+            return None
+        return getattr(state, "error_code", None)
+
     def _profiles_snapshot(self) -> tuple:
         return self._profiles.load_profiles() if self._profiles is not None else ()
 
@@ -281,8 +313,9 @@ class AudioOutputBridge(QObject):
                 last_failure_display,
             ) = self._last_action_failure
         else:
-            last_failure_code = session_failure_code
+            last_failure_code = session_failure_code or self._playback_failure_code()
             last_failure_title, last_failure_display = failure_copy(last_failure_code)
+        recovery_actions = output_recovery_actions(last_failure_code)
         truth = self._active_truth(session_state)
         verdict = truth.verdict.value if truth is not None else "unknown"
         truth_label = signal_truth_label(verdict)
@@ -433,6 +466,7 @@ class AudioOutputBridge(QObject):
             "lastFailureCode": last_failure_code or "",
             "lastFailureTitle": last_failure_title,
             "lastFailureDisplay": last_failure_display,
+            "outputRecoveryActions": _recovery_rows(recovery_actions),
             "canSelectDevice": self._selection_coordinator is not None,
             "canUseDirect": can_use_direct,
             "outputTooltip": output_tooltip,
@@ -812,6 +846,22 @@ class AudioOutputBridge(QObject):
         self.diagnostics_requested.emit()
 
     @Slot()
+    def try_compatible_direct(self) -> None:
+        """Explicit user recovery: switch the policy, never a hidden fallback."""
+        self._run_action(
+            lambda: (
+                self._selection_coordinator.select_path_mode("compatible")
+                if self._selection_coordinator is not None
+                else self._missing_action()
+            )
+        )
+
+    @Slot()
+    def dismiss_output_failure(self) -> None:
+        self._last_action_failure = None
+        self._on_source_changed()
+
+    @Slot()
     def select_shared_output(self) -> None:
         self._run_action(
             lambda: (
@@ -957,6 +1007,11 @@ class AudioOutputBridge(QObject):
     )
     lastFailureDisplay = Property(
         str, lambda self: self._get("lastFailureDisplay", ""), notify=state_changed
+    )
+    outputRecoveryActions = Property(
+        "QVariantList",
+        lambda self: self._get("outputRecoveryActions", []),
+        notify=state_changed,
     )
     canSelectDevice = Property(
         bool, lambda self: self._get("canSelectDevice", False), notify=state_changed

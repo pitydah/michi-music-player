@@ -23,11 +23,13 @@ Item {
     property string lastFailureDisplay: ""
     property bool canUseDirect: false
     property string selectedPathMode: "shared"
+    property var recoveryActions: []
 
     signal deviceSelectionRequested(string stableDeviceId)
     signal sharedSelectionRequested()
     signal profileSelectionRequested(string profileId)
     signal pathModeSelectionRequested(string mode)
+    signal recoveryActionRequested(string action)
 
     readonly property var pathModes: [
         {
@@ -211,6 +213,20 @@ Item {
                         text: root.lastFailureDisplay
                         role: "secondary"
                         wrapMode: Text.WordWrap
+                    }
+                    RowLayout {
+                        objectName: "audioOutputFailureActions"
+                        visible: root.recoveryActions.length > 0
+                        spacing: MichiSpacing.sm
+                        Repeater {
+                            objectName: "audioOutputFailureActionRepeater"
+                            model: root.recoveryActions
+                            delegate: Controls.MichiButton {
+                                required property var modelData
+                                text: modelData.label
+                                onClicked: root.recoveryActionRequested(modelData.action)
+                            }
+                        }
                     }
                 }
             }

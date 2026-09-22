@@ -378,6 +378,7 @@ class PlaybackService:
                 failure = playback_action_failure(exc.code)
                 logger.warning("playback output refusal %s: %s", exc.code, exc)
                 self._state.error_message = failure.message
+                self._state.error_code = failure.code
                 self._notify()
                 if on_rejected is not None:
                     on_rejected(file_path, failure.message)

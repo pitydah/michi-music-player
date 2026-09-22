@@ -22,3 +22,5 @@ class PlaybackState:
     volume: int = 100  # 0-100
     muted: bool = False
     error_message: str | None = None
+    #: Typed failure code for the CURRENT error_message (never raw UI copy).
+    error_code: str | None = None
