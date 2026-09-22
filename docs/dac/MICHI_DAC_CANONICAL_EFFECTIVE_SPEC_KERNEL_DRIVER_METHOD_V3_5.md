@@ -227,7 +227,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2 + 100R1.3 + 100R1.3.1` Automated verification + field corrective seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
+| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2 + 100R1.3 + 100R1.3.1 + 100R1.3.2` Automated verification + field corrective seal | CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
 | 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | blocked until exact-head remote R1.2 publication and a separate physical-qualification authorization |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
@@ -20407,6 +20407,7 @@ DAC-V35-100R1.1 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.2 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.1 = CLOSED-AUTOMATED / GO; PUBLISHED
+DAC-V35-100R1.3.2 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
 DAC-V35-110 = DO NOT START
 ```
 
@@ -20617,6 +20618,48 @@ engine can raise `AudioTransportUnavailableError` from `_apply_prepare_seek`
 when the position query lands before the pipeline is ready, which surfaces as an
 event-loop exception. It is data-state dependent (persisted engine + session
 snapshot) and does not reproduce with clean application data.
+
+## 409.6 `DAC-V35-100R1.3.2` native closure final corrective
+
+R1.3.1 closed the closure-integrity gaps. A follow-up audit demonstrated four
+remaining defects, all now corrected productively (the tests exercise the
+production paths, never a test-side replica of the intended semantics).
+
+1. **RUNNING context-command commit boundary.** The fence used to run only
+   BEFORE the callback, so a native operation that blocked past the caller's
+   timeout could still mutate ownership afterwards. The port now separates
+   physical execution from the authoritative commit: `_commit_guarded()` is
+   evaluated immediately before every ownership mutation, so a revoked command
+   cannot install a bus source, install a timer, or clear ownership that a
+   newer generation re-installed. `_attach_pipeline_sources` and
+   `_detach_pipeline_sources` both run through this boundary.
+2. **Residual native ownership cannot fake closure.** A failed bus detach
+   followed by a successful pipeline NULL used to leave `_bus_source` and the
+   pump alive while a retry skipped the detach (the pipeline was already gone)
+   and `_closed` could become True. `_bus_source` is now an INDEPENDENT teardown
+   obligation retried even when `_pipeline is None`, and a terminal
+   `_close_residual_ownership()` gate refuses closure while any native
+   obligation remains (pipeline, bus source, bus, timer, pump, loop, context,
+   Direct executor handle). Ownership stays observable and retryable; no
+   reference is cleared without proof of release.
+3. **Single-flight leader failure fan-out.** A flight now terminates in exactly
+   SUCCESS(result) or FAILURE(error). The leader publishes its failure to the
+   flight, so every coalesced consumer observes the same coherent failure
+   instead of an accidental `None`; a defensive guard raises a typed
+   inconclusive error if a flight ever ends without a terminal outcome. A
+   repaired adapter forms a new flight, and the follower-timeout guarantee
+   (never a second physical probe while the leader lives) is preserved.
+4. **Startup resume readiness.** `_apply_prepare_seek()` no longer lets a
+   transient `AudioTransportUnavailableError` escape from the post-seek
+   position query. "Seek command accepted" and "post-seek position confirmed"
+   are distinct facts: an unobservable confirmation keeps the latch armed,
+   fabricates no position, and lets the normal backend position event settle
+   the resume. The immediate-confirmation, reentrant, seek-to-zero and MPD
+   deferred-target semantics are preserved.
+
+R1.3.2 does not claim physical qualification, exclusivity, bit-perfect status,
+or M11.5 guarantees. `DAC-V35-110` remains `DO NOT START`. Physical
+qualification remains `NOT_RUN`.
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 

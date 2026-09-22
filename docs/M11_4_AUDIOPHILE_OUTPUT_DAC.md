@@ -1,9 +1,9 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
 Implementation contract for audiophile output infrastructure. Status:
-**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.3.1 automated
-GO published from exact-head remote evidence; physical qualification has not
-started).
+**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.3.2 local
+automated GO; exact-head remote publication pending; physical qualification has
+not started).
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -194,6 +194,12 @@ NO-GO / superseded for final promotion; `DAC-V35-100R1.1` is published GO.
 Physical qualification (`DAC-V35-110`) remains **DO NOT START** as a separate,
 not-yet-authorized work package; R1.1 publication does not itself start it.
 
+- `DAC-V35-100R1.3.2` native closure final corrective — **CLOSED-AUTOMATED /
+  LOCAL GO; REMOTE PUBLICATION PENDING**. The RUNNING context-command commit
+  boundary is fenced immediately before every ownership mutation, residual GLib
+  bus/pump ownership can no longer fake closure, single-flight leader failures
+  fan out coherently to every follower (never an accidental None), and the
+  startup resume no longer leaks a transient position-readiness failure.
 - `DAC-V35-100R1.3.1` closure integrity corrective — **CLOSED-AUTOMATED /
   GO; PUBLISHED**. Shared preserves the selected DAC
   identity (clearing it is an explicit intent), a follower timeout never
