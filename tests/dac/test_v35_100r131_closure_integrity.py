@@ -933,9 +933,9 @@ def _assert_single_intent(
     expected_probes: int = 1,
     expected_session: int = 1,
 ) -> None:
-    assert _await(
-        lambda: len(probe.calls) >= expected_probes
-    ), "the physical qualification never completed"
+    assert _await(lambda: len(probe.calls) >= expected_probes), (
+        "the physical qualification never completed"
+    )
     # A replay is not a new semantic context, so it legitimately opens no new
     # session transition; what must never happen is fan-out.
     assert counts["session"] == expected_session, (
