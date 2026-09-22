@@ -266,9 +266,7 @@ def test_nc132_02_a_close_retry_releases_residual_bus_and_pump(
     _assert_full_closure(port)
 
 
-def test_nc132_02_b_residual_gate_blocks_a_fake_closure(
-    qapp, tmp_path: Path
-) -> None:
+def test_nc132_02_b_residual_gate_blocks_a_fake_closure(qapp, tmp_path: Path) -> None:
     """No residual obligation may coexist with a closed port."""
     _bindings_unused, port = _loaded_port(tmp_path)
     # Keep the pump ownership while removing every other obligation: the gate
