@@ -227,7 +227,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2` Automated verification + field corrective seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
+| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2 + 100R1.3` Automated verification + field corrective seal | CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
 | 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | blocked until exact-head remote R1.2 publication and a separate physical-qualification authorization |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
@@ -20405,6 +20405,7 @@ DAC-V35-100 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1 = SUPERSEDED
 DAC-V35-100R1.1 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.2 = CLOSED-AUTOMATED / GO; PUBLISHED
+DAC-V35-100R1.3 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
 DAC-V35-110 = DO NOT START
 ```
 
@@ -20459,6 +20460,87 @@ The earlier fix commit `0d6907e72fcc56655f326278844897a29bb9e509` (run
 in-progress status lock failing. Software closure does not claim physical
 qualification, exclusivity, bit-perfect status, or M11.5 guarantees;
 `DAC-V35-110` remains a separate DO NOT START work package.
+
+## 409.4 `DAC-V35-100R1.3` playback compatibility, output-mode separation, and native lifecycle seal
+
+R1.2 closed productive first-use exact qualification, typed refusal containment
+before QML, the initial pump-owned `GLib.MainContext` model, and the field
+`SIGSEGV` corrective (QML teardown is owned by `QQmlApplicationEngine` at
+`aboutToQuit`). R1.3 closes the functional consequence that remained: a truthful
+`EXACT_TUPLE_UNSUPPORTED` for one transport tuple must never be presented as
+"this DAC cannot play this track".
+
+What R1.3 changes:
+
+- **Shared baseline.** Explicit Shared selection bypasses the Direct planner and
+  never runs an exact ALSA qualification; it uses the Shared transaction only.
+- **Device identity vs path policy.** `select_device()` persists hardware
+  identity only and never implies Strict Direct; `select_path_mode()` selects
+  the transport policy (`shared` | `compatible` | `strict`) without changing the
+  device. Both truths persist and survive restart. The persisted `path`
+  vocabulary gained the additive `hardware_direct_compatible` value; existing
+  v2 databases converge in place (idempotent table rebuild, rows preserved, no
+  version bump).
+- **Bounded candidate carrier resolution.** `carrier_tuple()` (one tuple from
+  significant bits) is replaced by `CandidateCarrierResolver`: a deterministic,
+  policy-bounded (<= 3) ordered candidate set. `significant_bits is None` never
+  produces a candidate and never produces an adaptation.
+- **Compatible Direct.** Strict Direct stays fail-closed and only ever uses the
+  exact candidate. Compatible Direct may additionally use a bounded
+  container-width candidate that preserves rate, channels and significant bits.
+  The sink inserts ONE explicitly configured `audioconvert` (dithering and noise
+  shaping disabled and verified by readback; the runtime default `dithering` is
+  2, so the defaults are never trusted). The conversion is proven sample-level on
+  real GStreamer: `s32 == s16 << 16` for `0, 1, -1, 32767, -32768`, alternating
+  and deterministic random vectors, and the original value is exactly
+  recoverable. This is never reported as bit-perfect or as `DIRECT`.
+- **Signal Truth.** `DIRECT_CONTAINER_ADAPTED` / `ST_CONTAINER_ADAPTED` is
+  emitted only when the PLAN itself requested a different, wider lossless
+  container for the same proven width, rate and channel count. An unauthorized
+  format change stays `DSP`; a requested-but-drifted carrier stays `DSP`.
+- **Qualification.** At most the candidate set is probed, in priority order,
+  stopping at the first positive carrier or the first inconclusive result.
+  `BUSY`/`REMOVED`/`TIMEOUT` remain `supported=None`. Equivalent concurrent
+  qualifications coalesce into ONE physical probe (single-flight key: device +
+  environment fingerprint + exact tuple); a coalesced waiter whose wait expires
+  probes for real and never fabricates evidence. The owner revalidates the
+  environment fingerprint before caching and returns a typed stale result
+  instead of a claim.
+- **Output failure UX.** Playback refusals carry a typed code
+  (`PlaybackState.error_code`) into the Audio Output surface, so the playback
+  copy and `lastFailure*` can no longer be two disconnected truths. Recovery is
+  explicit only: `Try Compatible Direct`, `Use Shared`, `Cancel`. Nothing is
+  executed automatically and no hidden fallback exists.
+- **Lifecycle.** A timed-out context command is ABANDONED under a lock and can
+  never mutate state when the pump finally dispatches it; a command that already
+  started cannot be abandoned. `close()` releases the Direct executor BEFORE
+  `_closed = True` and verifies the executor no longer owns a handle, so a failed
+  release is a real, retryable close failure (first-error-wins). The container
+  keeps an explicit lifecycle (`CREATED` -> `INITIALIZED` -> `MAIN_LOOP_RUNNING`
+  -> `ABOUT_TO_QUIT` -> `TERMINATED`); the bounded nested event-loop drain is
+  authorized only while the container never entered the main loop.
+
+Field evidence (2026-09-21, real SMSL at `hw:CARD=AUDIO,DEV=0`): a 44.1 kHz /
+16-bit / stereo source under the compatible policy resolved
+`(44100, S16_LE, 2) -> unsupported (exact EINVAL)` then
+`(44100, S32_LE, 2) -> opened (32 significant bits)`, planned
+`requested_pcm=(44100, S32_LE, 2, 16)`, `carrier_adaptation=container_width`,
+decision codes `CONTAINER_WIDTH_ADAPTED` + `STRICT_NO_RESAMPLE` +
+`STRICT_NO_REMIX` + `FIXED_VOLUME_SELECTED` + `FALLBACK_STOP`, reached
+`running direct` with the DAC negotiating 44.1 kHz / S32_LE / 2ch, and exited
+cleanly under `PYTHONFAULTHANDLER=1` and `G_DEBUG=fatal-criticals`. The same
+source under strict Direct still refuses truthfully with the exact rejection.
+
+Known limitation (not a claim): the productive Signal Truth runtime verdict for
+the adapted carrier stayed `Not verified` in that smoke because the
+decoded-runtime evidence was not populated by the selected-branch inspection.
+This affects the strict path identically and predates R1.3; the verdict never
+reported `DIRECT` or `DSP`, so no false claim was made. The classifier's
+container-adaptation rule is sealed by tests.
+
+R1.3 does not claim physical qualification, exclusivity, bit-perfect status, or
+M11.5 guarantees. `DAC-V35-110` remains `DO NOT START` pending a separate
+authorization.
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 
