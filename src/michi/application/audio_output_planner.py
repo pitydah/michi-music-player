@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
+from michi.application.carrier_resolution import CandidateCarrierResolver
 from michi.domain.audio_device import AudioDeviceBinding, BindingKind
 from michi.domain.audio_evidence import (
     CapabilityEvidence,
@@ -86,17 +87,13 @@ def _tuple_key(pcm: PcmTuple) -> tuple[int, str, int]:
 
 
 def carrier_tuple(source: DecodedSourceSignal) -> PcmTuple | None:
-    """Build the exact Direct carrier only from characterized decoded PCM."""
-    bits = source.significant_bits
-    if bits is None or source.rate_hz <= 0 or source.channels <= 0:
-        return None
-    transport_format = "S16_LE" if bits <= 16 else "S32_LE"
-    return PcmTuple(
-        rate_hz=source.rate_hz,
-        transport_format=transport_format,
-        channels=source.channels,
-        significant_bits=bits,
-    )
+    """Exact (non-adapted) carrier for a characterized decoded source.
+
+    Historical helper retained for import compatibility. The policy now lives
+    in :class:`CandidateCarrierResolver`; this returns its exact candidate only.
+    """
+    candidates = CandidateCarrierResolver().candidates(source, allow_adaptation=False)
+    return candidates[0].tuple if candidates else None
 
 
 class OutputPlanner:
