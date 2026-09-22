@@ -1042,3 +1042,169 @@ def test_ci131_06_f_now_playing_play_intent_is_one_request(
     finally:
         bridge.dispose()
         _close_graph(graph)
+
+
+# ── Phase 7 — authorized container-adaptation relation ─────────────────────
+
+
+def _truth(
+    *,
+    decoded,
+    requested,
+    engine=None,
+    alsa=None,
+    plan_id: str = "plan:r131",
+    resampling: bool = False,
+    remix: bool = False,
+):
+    from michi.domain.signal_truth import (
+        AlsaRuntimeEvidence,
+        DecodedRuntimeEvidence,
+        EngineRuntimeEvidence,
+        OutputPlanEvidence,
+        SignalTruthIdentity,
+        SignalTruthRecorder,
+    )
+
+    identity = SignalTruthIdentity(plan_id, 1, 1, 1, "usb:dac", "ep:0")
+    recorder = SignalTruthRecorder()
+    recorder.begin_candidate(
+        OutputPlanEvidence(identity, requested, "alsasink", "hw:CARD=X,DEV=0", True)
+    )
+    recorder.observe(DecodedRuntimeEvidence(identity, decoded))
+    recorder.observe(
+        EngineRuntimeEvidence(
+            identity=identity,
+            effective_pcm=engine if engine is not None else requested,
+            sink_factory="alsasink",
+            sink_device="hw:CARD=X,DEV=0",
+            graph_factories=("flacdec", "audioconvert", "capsfilter", "alsasink"),
+            graph_inspection_complete=True,
+            software_gain=1.0,
+            muted=False,
+            sink_provides_clock=True,
+            sink_clock_is_pipeline_clock=True,
+            slave_method="none",
+            resampling_observed=resampling,
+            remix_observed=remix,
+        )
+    )
+    recorder.observe(
+        AlsaRuntimeEvidence(
+            identity=identity,
+            negotiated_pcm=alsa if alsa is not None else requested,
+            access="RW_INTERLEAVED",
+            subformat="STD",
+            period_size=1024,
+            buffer_size=4096,
+            proc_path="/proc/asound/card1/pcm0p/sub0/hw_params",
+            locator="hw:CARD=X,DEV=0",
+        )
+    )
+    return recorder.candidate_snapshot
+
+
+def test_ci131_07_a_authorized_sixteen_bit_widening_is_adapted() -> None:
+    from michi.domain.audio_evidence import PcmTuple
+    from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
+
+    snapshot = _truth(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 16),
+        engine=PcmTuple(44_100, "S32_LE", 2, 16),
+        alsa=PcmTuple(44_100, "S32_LE", 2, 16),
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert snapshot.reasons == (SignalTruthReason.ST_CONTAINER_ADAPTED,)
+
+
+def test_ci131_07_b_narrowing_is_never_an_authorized_adaptation() -> None:
+    from michi.domain.audio_evidence import PcmTuple
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _truth(
+        decoded=PcmTuple(44_100, "S32_LE", 2, 16),
+        requested=PcmTuple(44_100, "S16_LE", 2, 16),
+        engine=PcmTuple(44_100, "S16_LE", 2, 16),
+        alsa=PcmTuple(44_100, "S16_LE", 2, 16),
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert snapshot.verdict is SignalTruthVerdict.DSP
+
+
+def test_ci131_07_c_significant_bits_mismatch_is_never_adapted() -> None:
+    from michi.domain.audio_evidence import PcmTuple
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _truth(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 24),
+        engine=PcmTuple(44_100, "S32_LE", 2, 24),
+        alsa=PcmTuple(44_100, "S32_LE", 2, 24),
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+
+
+def test_ci131_07_d_observed_resampling_is_resampled() -> None:
+    from michi.domain.audio_evidence import PcmTuple
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    pcm = PcmTuple(44_100, "S16_LE", 2, 16)
+    snapshot = _truth(
+        decoded=pcm,
+        requested=pcm,
+        engine=pcm,
+        alsa=pcm,
+        resampling=True,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.RESAMPLED
+
+
+def test_ci131_07_e_observed_channel_transform_is_remixed() -> None:
+    from michi.domain.audio_evidence import PcmTuple
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    pcm = PcmTuple(44_100, "S16_LE", 2, 16)
+    snapshot = _truth(
+        decoded=pcm,
+        requested=pcm,
+        engine=pcm,
+        alsa=pcm,
+        remix=True,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.REMIXED
+
+
+def test_ci131_07_g_rate_contradiction_is_never_adapted() -> None:
+    from michi.domain.audio_evidence import PcmTuple
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _truth(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(48_000, "S16_LE", 2, 16),
+        engine=PcmTuple(48_000, "S16_LE", 2, 16),
+        alsa=PcmTuple(48_000, "S16_LE", 2, 16),
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
+
+
+def test_ci131_07_f_unlisted_format_pair_is_not_adapted() -> None:
+    from michi.domain.audio_evidence import PcmTuple
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    # S24_3LE -> S16LE is neither an authorized widening pair nor a lossless
+    # container relation for 16 proven bits.
+    snapshot = _truth(
+        decoded=PcmTuple(44_100, "S24_3LE", 2, 16),
+        requested=PcmTuple(44_100, "S16_LE", 2, 16),
+        engine=PcmTuple(44_100, "S16_LE", 2, 16),
+        alsa=PcmTuple(44_100, "S16_LE", 2, 16),
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
