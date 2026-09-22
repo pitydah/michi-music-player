@@ -1,9 +1,9 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
 Implementation contract for audiophile output infrastructure. Status:
-**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.3 local
-automated GO; exact-head remote publication pending; physical qualification has
-not started).
+**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.3 automated GO
+published from exact-head remote evidence; physical qualification has not
+started).
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -195,8 +195,7 @@ Physical qualification (`DAC-V35-110`) remains **DO NOT START** as a separate,
 not-yet-authorized work package; R1.1 publication does not itself start it.
 
 - `DAC-V35-100R1.3` playback compatibility, output-mode separation, and native
-  lifecycle final seal — **CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION
-  PENDING**. Device identity is separated from the transport policy
+  lifecycle final seal — **CLOSED-AUTOMATED / GO; PUBLISHED**. Device identity is separated from the transport policy
   (`shared`/`compatible`/`strict`), `CandidateCarrierResolver` produces a
   bounded ordered candidate set, and Compatible Direct may use a wider lossless
   container only when rate, channels and significant bits are preserved
