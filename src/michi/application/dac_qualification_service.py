@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -156,6 +157,17 @@ def binding_topology_fingerprint(
     return f"topology:v1:sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
 
 
+class _Flight:
+    """One in-flight qualification shared by equivalent concurrent callers."""
+
+    __slots__ = ("event", "result", "waiters")
+
+    def __init__(self) -> None:
+        self.event = threading.Event()
+        self.result: object | None = None
+        self.waiters = 0
+
+
 class DacQualificationService:
     def __init__(
         self,
@@ -167,6 +179,7 @@ class DacQualificationService:
             Callable[[str], QualificationEnvironmentContext] | None
         ) = None,
         clock: Callable[[], int] = time.monotonic_ns,
+        single_flight_timeout_s: float = 30.0,
     ) -> None:
         if environment_fingerprint is not None and environment_context is not None:
             raise ValueError(
@@ -177,6 +190,50 @@ class DacQualificationService:
         self._environment_fingerprint = environment_fingerprint
         self._environment_context = environment_context
         self._clock = clock
+        self._single_flight_timeout_s = single_flight_timeout_s
+        # DAC-V35-100R1.3 §11: equivalent concurrent qualifications coalesce
+        # into exactly ONE physical probe. No thread is killed and no ALSA
+        # call is cancelled; only duplicate consumers are merged.
+        self._flight_lock = threading.Lock()
+        self._flights: dict[tuple[object, ...], _Flight] = {}
+
+    def _single_flight(self, key: tuple[object, ...], probe: Callable[[], object]):
+        """Run ``probe`` once for every equivalent concurrent caller.
+
+        Followers wait for the leader's published result. A follower whose
+        wait expires receives ``None`` and its caller probes for real — a
+        coalesced consumer never fabricates evidence.
+        """
+        with self._flight_lock:
+            flight = self._flights.get(key)
+            if flight is None:
+                flight = _Flight()
+                self._flights[key] = flight
+                leader = True
+            else:
+                flight.waiters += 1
+                leader = False
+        if leader:
+            try:
+                result = probe()
+            except BaseException:
+                with self._flight_lock:
+                    self._flights.pop(key, None)
+                    flight.event.set()
+                raise
+            with self._flight_lock:
+                flight.result = result
+                flight.event.set()
+                if flight.waiters == 0:
+                    self._flights.pop(key, None)
+            return result
+        flight.event.wait(timeout=self._single_flight_timeout_s)
+        with self._flight_lock:
+            result = flight.result
+            flight.waiters -= 1
+            if flight.waiters == 0:
+                self._flights.pop(key, None)
+        return result
 
     # ── C07: la mutación de la cache es autoridad de ESTE servicio ────
     def cache_evidence(
@@ -273,28 +330,53 @@ class DacQualificationService:
         transport_format: str,
         channels: int,
     ) -> ExactQualificationOutcome:
-        """Probe without cache mutation; owner revalidation decides commit."""
+        """Probe without cache mutation; owner revalidation decides commit.
+
+        Equivalent concurrent requests coalesce into ONE physical probe
+        (single-flight key: device + environment + exact tuple).
+        """
         environment_before = self.current_environment_fingerprint(stable_device_id)
-        result: ExactProbeResult = self._adapter.probe_exact(
-            locator=locator,
-            rate_hz=rate_hz,
-            transport_format=transport_format,
-            channels=channels,
+        key = (
+            stable_device_id,
+            environment_before,
+            rate_hz,
+            transport_format,
+            channels,
         )
-        evidence = self.evidence_from(result, stable_device_id=stable_device_id)
-        environment_after = self.current_environment_fingerprint(stable_device_id)
-        if environment_after != environment_before:
-            evidence = CapabilityEvidence(
-                stable_device_id=evidence.stable_device_id,
-                tuple=evidence.tuple,
-                supported=None,
-                strength=EvidenceStrength.PROBED,
-                source=evidence.source,
-                observed_at_ns=evidence.observed_at_ns,
-                environment_fingerprint=environment_after,
-                evidence_refs=(*evidence.evidence_refs, "environment_changed"),
+
+        def probe() -> ExactQualificationOutcome:
+            result: ExactProbeResult = self._adapter.probe_exact(
+                locator=locator,
+                rate_hz=rate_hz,
+                transport_format=transport_format,
+                channels=channels,
             )
-        return ExactQualificationOutcome(evidence, result.disposition, result.detail)
+            evidence = self.evidence_from(result, stable_device_id=stable_device_id)
+            environment_after = self.current_environment_fingerprint(stable_device_id)
+            if environment_after != environment_before:
+                evidence = CapabilityEvidence(
+                    stable_device_id=evidence.stable_device_id,
+                    tuple=evidence.tuple,
+                    supported=None,
+                    strength=EvidenceStrength.PROBED,
+                    source=evidence.source,
+                    observed_at_ns=evidence.observed_at_ns,
+                    environment_fingerprint=environment_after,
+                    evidence_refs=(
+                        *evidence.evidence_refs,
+                        "environment_changed",
+                    ),
+                )
+            return ExactQualificationOutcome(
+                evidence, result.disposition, result.detail
+            )
+
+        outcome = self._single_flight(key, probe)
+        if outcome is None:
+            # A coalesced waiter whose leader did not publish a result (or an
+            # exception path) must never fabricate evidence: probe for real.
+            outcome = probe()
+        return outcome
 
     def cache_conclusive_evidence(self, evidence: CapabilityEvidence) -> None:
         """Merge one conclusive tuple after its continuation is current."""

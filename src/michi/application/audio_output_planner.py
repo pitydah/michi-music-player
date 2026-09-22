@@ -15,7 +15,11 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-from michi.application.carrier_resolution import CandidateCarrierResolver
+from michi.application.carrier_resolution import (
+    CandidateCarrierResolver,
+    CarrierAdaptationKind,
+    CarrierCandidate,
+)
 from michi.domain.audio_device import AudioDeviceBinding, BindingKind
 from michi.domain.audio_evidence import (
     CapabilityEvidence,
@@ -27,6 +31,7 @@ from michi.domain.audio_output import (
     AudioOutputProfile,
     FallbackKind,
     GstSinkSpec,
+    OutputPathPreference,
     OutputPlan,
     PathSemantics,
     RatePolicy,
@@ -60,6 +65,16 @@ EXACT_TUPLE_UNSUPPORTED = "EXACT_TUPLE_UNSUPPORTED"
 EXACT_TUPLE_UNKNOWN = "EXACT_TUPLE_UNKNOWN"
 BINDING_GENERATION_CHANGED = "BINDING_GENERATION_CHANGED"
 SIGNIFICANT_BITS_UNPROVEN = "SIGNIFICANT_BITS_UNPROVEN"
+#: Compatible Direct exhausted every policy-authorized carrier.
+NO_COMPATIBLE_CARRIER = "NO_COMPATIBLE_CARRIER"
+
+# Decision codes for a policy-authorized wider lossless carrier.
+CONTAINER_WIDTH_ADAPTED = "CONTAINER_WIDTH_ADAPTED"
+
+# Exact-tuple evidence states (never a capability claim by absence).
+_EVIDENCE_POSITIVE = "positive"
+_EVIDENCE_NEGATIVE = "negative"
+_EVIDENCE_UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +99,21 @@ class PlannerRefusal:
 
 def _tuple_key(pcm: PcmTuple) -> tuple[int, str, int]:
     return (pcm.rate_hz, pcm.transport_format, pcm.channels)
+
+
+def _evidence_state(pcm: PcmTuple, facts: PlannerFacts) -> str:
+    """Classify exact-tuple evidence without inventing capability."""
+    matches = [
+        item
+        for item in facts.evidence
+        if item.stable_device_id == facts.selected_device_id
+        and _tuple_key(item.tuple) == _tuple_key(pcm)
+    ]
+    if any(item.supported is True for item in matches):
+        return _EVIDENCE_POSITIVE
+    if any(item.supported is False for item in matches):
+        return _EVIDENCE_NEGATIVE
+    return _EVIDENCE_UNKNOWN
 
 
 def carrier_tuple(source: DecodedSourceSignal) -> PcmTuple | None:
@@ -175,9 +205,15 @@ class OutputPlanner:
                 tuple(decisions),
             )
 
-        # 8. target exacto
-        requested = carrier_tuple(facts.decoded_source)
-        if requested is None:
+        # 8. candidatos de carrier autorizados por la POLÍTICA del profile
+        resolver = CandidateCarrierResolver()
+        allow_adaptation = (
+            profile.path is OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE
+        )
+        candidates = resolver.candidates(
+            facts.decoded_source, allow_adaptation=allow_adaptation
+        )
+        if not candidates:
             return PlannerRefusal(
                 SOURCE_RATE_UNKNOWN,
                 "rate/significant_bits de la fuente desconocidos: "
@@ -185,32 +221,52 @@ class OutputPlanner:
                 tuple(decisions),
             )
 
-        # 9. evidencia exacta del tuple
-        matches = [
+        # 9. resolver el primer candidato con evidencia exacta POSITIVA.
+        #    Ninguna ausencia se convierte en capacidad: sin evidencia el
+        #    planner pide qualification (EXACT_TUPLE_UNKNOWN) y la política
+        #    compatible sigue con el candidato siguiente.
+        selected = None
+        rejected: list[CarrierCandidate] = []
+        for candidate in candidates:
+            state = _evidence_state(candidate.tuple, facts)
+            if state == _EVIDENCE_POSITIVE:
+                selected = candidate
+                break
+            if state == _EVIDENCE_NEGATIVE:
+                rejected.append(candidate)
+                continue
+            # ausente o ambigua: sin claim de capacidad
+            return PlannerRefusal(
+                EXACT_TUPLE_UNKNOWN,
+                f"sin evidencia concluyente para {_tuple_key(candidate.tuple)}: "
+                "se requiere probe exacto",
+                tuple(decisions),
+            )
+        if selected is None:
+            # Todos los candidatos autorizados fueron rechazados exactamente.
+            if allow_adaptation:
+                return PlannerRefusal(
+                    NO_COMPATIBLE_CARRIER,
+                    "el DAC rechazó exactamente todos los carriers autorizados "
+                    f"({len(rejected)}): "
+                    + ", ".join(_tuple_key(item.tuple)[1] for item in rejected),
+                    tuple(decisions),
+                )
+            return PlannerRefusal(
+                EXACT_TUPLE_UNSUPPORTED,
+                f"ALSA rechazó exactamente {_tuple_key(rejected[0].tuple)}",
+                tuple(decisions),
+            )
+        requested = selected.tuple
+        positive = [
             item
             for item in facts.evidence
             if item.stable_device_id == facts.selected_device_id
             and _tuple_key(item.tuple) == _tuple_key(requested)
+            and item.supported is True
         ]
-        if not matches:
-            return PlannerRefusal(
-                EXACT_TUPLE_UNKNOWN,
-                f"sin evidencia para {_tuple_key(requested)}: se requiere probe exacto",
-                tuple(decisions),
-            )
-        positive = [item for item in matches if item.supported is True]
-        if not positive:
-            if any(item.supported is False for item in matches):
-                return PlannerRefusal(
-                    EXACT_TUPLE_UNSUPPORTED,
-                    f"ALSA rechazó exactamente {_tuple_key(requested)}",
-                    tuple(decisions),
-                )
-            return PlannerRefusal(
-                EXACT_TUPLE_UNKNOWN,
-                "evidencia ambigua (BUSY/REMOVED/TIMEOUT): sin claim",
-                tuple(decisions),
-            )
+        if selected.adaptation_kind is CarrierAdaptationKind.CONTAINER_WIDTH:
+            decisions.append(CONTAINER_WIDTH_ADAPTED)
 
         # C06: la precisión significativa debe estar PROBADA por readback.
         # El decision S32_CARRIER_PRESERVES_24_BITS solo se emite con
@@ -260,6 +316,7 @@ class OutputPlanner:
             decisions.append(FALLBACK_STOP)
 
         evidence_refs = tuple(ref for item in positive for ref in item.evidence_refs)
+        adaptation = selected.adaptation_kind.value
         # C09: el plan es autosuficiente para el executor.
         preconditions = (
             "engine_gstreamer_direct",
@@ -270,12 +327,15 @@ class OutputPlanner:
                 f"{requested.rate_hz}:{requested.transport_format}:"
                 f"{requested.channels}"
             ),
+            f"carrier_adaptation:{adaptation}",
         )
         sink = GstSinkSpec(
             factory="alsasink",
             device=binding.locator,
         )
-        plan_id = self._plan_id(facts, requested, binding, profile, preconditions, sink)
+        plan_id = self._plan_id(
+            facts, requested, binding, profile, preconditions, sink, adaptation
+        )
         return OutputPlan(
             plan_id=plan_id,
             stable_device_id=facts.selected_device_id,
@@ -294,6 +354,7 @@ class OutputPlanner:
             evidence_refs=evidence_refs,
             decision_codes=tuple(decisions),
             source_file_facts=facts.source_file_facts,
+            carrier_adaptation=adaptation,
         )
 
     @staticmethod
@@ -304,6 +365,7 @@ class OutputPlanner:
         profile: AudioOutputProfile,
         preconditions: tuple[str, ...],
         sink: GstSinkSpec,
+        adaptation: str = "exact",
     ) -> str:
         """C10: el plan_id cambia con TODA propiedad ejecutable."""
         parts = (
@@ -320,6 +382,7 @@ class OutputPlanner:
             f"fallback={profile.fallback.value}",
             f"fallback_device={profile.fallback_device_id}",
             f"resync={profile.resync_delay_ms}",
+            f"adaptation={adaptation}",
             "resample=false",
             "remix=false",
             "processing=false",

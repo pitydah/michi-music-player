@@ -37,6 +37,11 @@ class StrictSinkRecipe:
     rate_hz: int
     channels: int
     layout: str
+    #: True only when the PLAN authorized a wider lossless container. The
+    #: builder then inserts one explicitly configured integer width converter
+    #: (dithering and noise shaping disabled) between the decoded branch and
+    #: the pinned output caps. Never implied by the sink itself.
+    container_conversion: bool = False
 
     def caps_string(self) -> str:
         return (
@@ -78,6 +83,11 @@ def recipe_from_plan(plan: OutputPlan) -> StrictSinkRecipe:
     pcm = plan.requested_pcm
     if pcm.rate_hz <= 0 or pcm.channels <= 0:
         raise StrictSinkError("DIRECT_PLAN_INVALID", "tuple PCM inválido")
+    if plan.carrier_adaptation not in {"exact", "container_width"}:
+        raise StrictSinkError(
+            "DIRECT_PLAN_INVALID",
+            f"carrier adaptation {plan.carrier_adaptation!r} desconocida",
+        )
     gst_format = _ALSA_TO_GST_FORMAT.get(pcm.transport_format)
     if gst_format is None:
         raise StrictSinkError(
@@ -93,4 +103,5 @@ def recipe_from_plan(plan: OutputPlan) -> StrictSinkRecipe:
         rate_hz=pcm.rate_hz,
         channels=pcm.channels,
         layout="interleaved",
+        container_conversion=plan.carrier_adaptation == "container_width",
     )

@@ -172,6 +172,10 @@ class OutputPlan:
     evidence_refs: tuple[str, ...]
     decision_codes: tuple[str, ...]
     source_file_facts: SourceFileFacts | None = None
+    #: How the requested carrier relates to the decoded signal: ``exact``
+    #: (source-native transport format) or ``container_width`` (a wider
+    #: lossless container that preserves the proven significant bits).
+    carrier_adaptation: str = "exact"
 
 
 def sink_spec_for(plan: OutputPlan) -> GstSinkSpec:

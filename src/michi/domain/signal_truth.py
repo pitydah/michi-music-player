@@ -184,6 +184,50 @@ def _ordered(found: set[SignalTruthReason], order) -> tuple[SignalTruthReason, .
     return tuple(reason for reason in order if reason in found)
 
 
+#: Lossless integer containers authorized per PROVEN signal width. A carrier
+#: drawn from this set transports the same significant value exactly (the
+#: narrower samples are left-shifted into the wider container with zero fill);
+#: anything else is a real transform and must never be reported as adapted.
+_LOSSLESS_CONTAINERS_BY_SIGNIFICANT_BITS: dict[int, frozenset[str]] = {
+    16: frozenset({"S16LE", "S32LE"}),
+    24: frozenset({"S243LE", "S2432LE", "S32LE"}),
+}
+
+
+def _lossless_container_adaptation(
+    requested_pcm: PcmTuple,
+    decoded_pcm: PcmTuple,
+    negotiated_formats: set[str],
+) -> bool:
+    """True only when the PLAN authorized a wider lossless container.
+
+    The plan is the policy authority: strict Direct never requests a carrier
+    whose transport format differs from the decoded source, so a format
+    difference can only be a policy-authorized container-width adaptation when
+    the requested carrier is the wider authorized container for the SAME
+    proven width, rate and channel count.
+    """
+    bits = decoded_pcm.significant_bits
+    allowed = _LOSSLESS_CONTAINERS_BY_SIGNIFICANT_BITS.get(bits)
+    if allowed is None:
+        return False
+    requested_format = requested_pcm.transport_format.replace("_", "").upper()
+    decoded_format = decoded_pcm.transport_format.replace("_", "").upper()
+    if requested_format not in allowed:
+        return False
+    if requested_format == decoded_format:
+        # The plan asked for the source-native carrier: any negotiated format
+        # difference is then an unauthorized transform, not an adaptation.
+        return False
+    if requested_pcm.significant_bits != bits:
+        return False
+    if requested_pcm.rate_hz != decoded_pcm.rate_hz:
+        return False
+    if requested_pcm.channels != decoded_pcm.channels:
+        return False
+    return negotiated_formats <= allowed
+
+
 def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
     """Return ``snapshot`` with deterministic fail-closed verdict and reasons."""
     plan = snapshot.plan
@@ -431,9 +475,7 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
         )
     formats = {item.transport_format.replace("_", "").upper() for item in signals}
     if len(formats) != 1:
-        bits = decoded.pcm.significant_bits
-        allowed_24_bit_containers = {"S243LE", "S2432LE", "S32LE"}
-        if bits == 24 and formats <= allowed_24_bit_containers:
+        if _lossless_container_adaptation(plan.requested_pcm, decoded.pcm, formats):
             return result(
                 SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED,
                 (SignalTruthReason.ST_CONTAINER_ADAPTED,),

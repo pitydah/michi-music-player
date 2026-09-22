@@ -22,7 +22,6 @@ from michi.application.audio_output_planner import (
     OutputPlanner,
     PlannerFacts,
     PlannerRefusal,
-    carrier_tuple,
 )
 from michi.application.audio_output_ports import (
     AudioOutputExecutorPort,
@@ -32,11 +31,13 @@ from michi.application.audio_output_ports import (
     SourceCharacterizerPort,
     VolumeAuthority,
 )
+from michi.application.carrier_resolution import CandidateCarrierResolver
 from michi.application.ports import SharedOutputTransaction
 from michi.domain.audio_device import BindingKind
 from michi.domain.audio_evidence import PcmTuple, SourceFileFacts
 from michi.domain.audio_output import (
     FallbackKind,
+    OutputPathPreference,
     OutputPlan,
     OutputSelectionState,
     OutputSessionState,
@@ -149,6 +150,18 @@ _ALLOWED_TRANSITIONS: dict[OutputSessionState, frozenset[OutputSessionState]] = 
         }
     ),
 }
+
+
+def _has_conclusive_evidence(pcm: PcmTuple, facts: PlannerFacts) -> bool:
+    """True when this exact tuple already carries a conclusive claim."""
+    key = (pcm.rate_hz, pcm.transport_format, pcm.channels)
+    return any(
+        item.stable_device_id == facts.selected_device_id
+        and (item.tuple.rate_hz, item.tuple.transport_format, item.tuple.channels)
+        == key
+        and item.supported is not None
+        for item in facts.evidence
+    )
 
 
 class OutputSessionError(RuntimeError):
@@ -306,43 +319,82 @@ class ProductiveOutputRequestResolver:
         return self.apply_qualification(request, outcome)
 
     def probe_request(self, request: OutputRequest):
-        """Worker phase: exact-open only, with no cache or session mutation."""
+        """Worker phase: bounded exact-open over policy-authorized candidates.
+
+        At most the resolver's candidate set (<= 3) is probed, in priority
+        order, and probing stops at the first positive carrier or the first
+        inconclusive result. No cache or session mutation happens here.
+        """
         facts = request.facts
-        if facts is None or facts.binding is None or facts.selected_device_id is None:
+        if (
+            facts is None
+            or facts.binding is None
+            or facts.selected_device_id is None
+            or facts.profile is None
+        ):
             return request, None
-        requested = carrier_tuple(facts.decoded_source)
-        if requested is None:
-            return request, None
-        outcome = self._qualification.probe_for_play(
-            stable_device_id=facts.selected_device_id,
-            locator=facts.binding.locator,
-            rate_hz=requested.rate_hz,
-            transport_format=requested.transport_format,
-            channels=requested.channels,
+        candidates = CandidateCarrierResolver().candidates(
+            facts.decoded_source,
+            allow_adaptation=(
+                facts.profile.path is OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE
+            ),
         )
-        return request, outcome
+        if not candidates:
+            return request, None
+        outcomes = []
+        for candidate in candidates:
+            if _has_conclusive_evidence(candidate.tuple, facts):
+                continue
+            outcome = self._qualification.probe_for_play(
+                stable_device_id=facts.selected_device_id,
+                locator=facts.binding.locator,
+                rate_hz=candidate.tuple.rate_hz,
+                transport_format=candidate.tuple.transport_format,
+                channels=candidate.tuple.channels,
+            )
+            outcomes.append(outcome)
+            if outcome.evidence.supported is not False:
+                # Positive carrier found, or BUSY/REMOVED/TIMEOUT: stop.
+                break
+        return request, tuple(outcomes)
 
     def apply_qualification(self, request: OutputRequest, outcome) -> OutputRequest:
         """Owner phase: classify, cache, and refresh only a current result."""
         if outcome is None:
             return request
         facts = request.facts
-        assert facts is not None and facts.selected_device_id is not None
-        if outcome.evidence.supported is None:
-            disposition = outcome.disposition.casefold()
-            if "busy" in disposition:
-                code = "ALSA_DEVICE_BUSY"
-            elif disposition in {"removed", "device_removed", "no_device"}:
-                code = "OUTPUT_DEVICE_LOST"
-            elif disposition == "timeout":
-                code = "EXACT_QUALIFICATION_TIMEOUT"
-            else:
-                code = "EXACT_QUALIFICATION_INCONCLUSIVE"
-            raise OutputSessionError(
-                code,
-                outcome.detail or f"exact qualification ended as {outcome.disposition}",
-            )
-        self._qualification.cache_conclusive_evidence(outcome.evidence)
+        if facts is None or facts.selected_device_id is None:
+            return request
+        outcomes = outcome if isinstance(outcome, tuple) else (outcome,)
+        if not outcomes:
+            return request
+        current_fingerprint = self._qualification.current_environment_fingerprint(
+            facts.selected_device_id
+        )
+        for item in outcomes:
+            if item.evidence.supported is None:
+                disposition = item.disposition.casefold()
+                if "busy" in disposition:
+                    code = "ALSA_DEVICE_BUSY"
+                elif disposition in {"removed", "device_removed", "no_device"}:
+                    code = "OUTPUT_DEVICE_LOST"
+                elif disposition == "timeout":
+                    code = "EXACT_QUALIFICATION_TIMEOUT"
+                else:
+                    code = "EXACT_QUALIFICATION_INCONCLUSIVE"
+                raise OutputSessionError(
+                    code,
+                    item.detail or f"exact qualification ended as {item.disposition}",
+                )
+            if item.evidence.environment_fingerprint != current_fingerprint:
+                # Topology changed between the worker probe and this commit:
+                # never cache, never plan, never claim (R1.3 §20).
+                raise OutputSessionError(
+                    "EXACT_QUALIFICATION_STALE",
+                    "environment changed before owner commit",
+                )
+        for item in outcomes:
+            self._qualification.cache_conclusive_evidence(item.evidence)
         return replace(
             request,
             facts=replace(

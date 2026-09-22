@@ -330,10 +330,15 @@ class GStreamerBindings:
     # ------------------------------------------------------------------
 
     def build_strict_audio_sink(self, recipe):
-        """GstBin estricto: capsfilter -> alsasink + ghost pad de entrada.
+        """GstBin estricto: [converter] -> capsfilter -> alsasink + ghost pad.
 
-        Sin audioresample/audioconvert/queue/DSP. Caps y device EXACTOS de
-        la receta inmutable. Fail-closed con códigos estables.
+        Sin audioresample/queue/DSP. Caps y device EXACTOS de la receta
+        inmutable. Fail-closed con códigos estables.
+
+        Cuando la receta autoriza ``container_conversion`` (Compatible Direct)
+        se inserta UN audioconvert explícitamente configurado: dithering y
+        noise-shaping desactivados y verificados por readback. Nunca se
+        depende de los defaults (el default real de ``dithering`` es 2).
         """
         self.ensure_loaded()
         gst = self._gst
@@ -364,6 +369,14 @@ class GStreamerBindings:
                 "DIRECT_ALSASINK_CREATE_FAILED", f"{recipe.sink_factory} no disponible"
             )
         alsa.set_property("device", recipe.device)
+        converter = None
+        if recipe.container_conversion:
+            converter = self._build_container_converter(gst)
+            if not sink_bin.add(converter):
+                raise DirectSinkBuildError(
+                    "DIRECT_SINK_ADD_FAILED",
+                    "container converter could not be added to strict sink bin",
+                )
         if not sink_bin.add(capsfilter):
             raise DirectSinkBuildError(
                 "DIRECT_SINK_ADD_FAILED",
@@ -374,15 +387,22 @@ class GStreamerBindings:
                 "DIRECT_SINK_ADD_FAILED",
                 "alsasink could not be added to strict sink bin",
             )
+        head = converter if converter is not None else capsfilter
+        head_name = "michi_direct_convert" if converter is not None else "capsfilter"
+        if converter is not None and not converter.link(capsfilter):
+            raise DirectSinkBuildError(
+                "DIRECT_SINK_LINK_FAILED",
+                f"{head_name} -> capsfilter link falló",
+            )
         if not capsfilter.link(alsa):
             raise DirectSinkBuildError(
                 "DIRECT_SINK_LINK_FAILED", "capsfilter -> alsasink link falló"
             )
-        sink_pad = capsfilter.get_static_pad("sink")
+        sink_pad = head.get_static_pad("sink")
         if sink_pad is None:
             raise DirectSinkBuildError(
                 "DIRECT_GHOST_PAD_FAILED",
-                "capsfilter static sink pad unavailable",
+                f"{head_name} static sink pad unavailable",
             )
         ghost = gst.GhostPad.new("sink", sink_pad)
         if ghost is None or not sink_bin.add_pad(ghost):
@@ -390,6 +410,35 @@ class GStreamerBindings:
                 "DIRECT_GHOST_PAD_FAILED", "ghost pad del strict sink falló"
             )
         return sink_bin
+
+    @staticmethod
+    def _build_container_converter(gst):
+        """Explicit integer width converter — no implicit defaults.
+
+        The bounded container-width adaptation is only authorized when every
+        transformation except integer width promotion is provably disabled.
+        If the runtime cannot prove that contract, construction fails closed.
+        """
+        converter = gst.ElementFactory.make("audioconvert", "michi_direct_convert")
+        if converter is None:
+            raise DirectSinkBuildError(
+                "DIRECT_CONVERTER_UNAVAILABLE",
+                "audioconvert no disponible para la adaptación autorizada",
+            )
+        for prop, expected in (("dithering", 0), ("noise-shaping", 0)):
+            if converter.find_property(prop) is None:
+                raise DirectSinkBuildError(
+                    "DIRECT_CONVERTER_CONTRACT_UNPROVEN",
+                    f"audioconvert no expone {prop!r}: contrato no demostrable",
+                )
+            converter.set_property(prop, expected)
+            observed = converter.get_property(prop)
+            if observed != expected:
+                raise DirectSinkBuildError(
+                    "DIRECT_CONVERTER_CONTRACT_UNPROVEN",
+                    f"audioconvert {prop} readback {observed!r} != {expected}",
+                )
+        return converter
 
     def set_audio_sink(self, pipeline, sink) -> None:
         """Instala el sink y verifica la instalación (identidad real)."""
