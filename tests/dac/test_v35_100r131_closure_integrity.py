@@ -751,9 +751,7 @@ def _qualified_graph(evidence, *, failing: bool = False):
 
 def _device_row(graph):
     return next(
-        row
-        for row in graph.bridge.devices
-        if row["stableDeviceId"] == graph.stable_id
+        row for row in graph.bridge.devices if row["stableDeviceId"] == graph.stable_id
     )
 
 
@@ -768,9 +766,7 @@ def test_ci131_05_a_negative_tuple_never_marks_the_dac_unavailable() -> None:
 
 
 def test_ci131_05_b_mixed_evidence_is_partially_qualified() -> None:
-    graph = _qualified_graph(
-        [_evidence(False), _evidence(True, fmt="S32_LE", bits=32)]
-    )
+    graph = _qualified_graph([_evidence(False), _evidence(True, fmt="S32_LE", bits=32)])
 
     row = _device_row(graph)
 

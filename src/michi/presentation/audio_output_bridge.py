@@ -76,9 +76,7 @@ def _direct_compatibility_label(
         return "No compatible carrier"
     if normalized == "EXACT_QUALIFICATION_TIMEOUT":
         return "Qualification timed out"
-    if path_mode == "compatible" and any(
-        item.supported is True for item in evidence
-    ):
+    if path_mode == "compatible" and any(item.supported is True for item in evidence):
         return "Compatible carrier qualified"
     if path_mode in {"strict", "compatible"} and any(
         item.supported is True for item in evidence
@@ -442,9 +440,7 @@ class AudioOutputBridge(QObject):
             "selectedPathMode": selected_path_mode,
             "pathMode": selected_path_mode,
             "directCompatibilityLabel": (
-                selected_row["directCompatibilityLabel"]
-                if selected_row
-                else "Unknown"
+                selected_row["directCompatibilityLabel"] if selected_row else "Unknown"
             ),
             "availability": bool(selected_row and selected_row["available"]),
             "availabilityReason": (
@@ -1052,7 +1048,8 @@ class AudioOutputBridge(QObject):
         str, lambda self: self._get("lastFailureDisplay", ""), notify=state_changed
     )
     directCompatibilityLabel = Property(
-        str, lambda self: self._get("directCompatibilityLabel", "Unknown"),
+        str,
+        lambda self: self._get("directCompatibilityLabel", "Unknown"),
         notify=state_changed,
     )
     outputRecoveryActions = Property(
