@@ -275,6 +275,12 @@ def _graph(*, initial_observations=None):
     )
 
 
+def _select_direct(graph, stable_id=None):
+    """DAC-V35-100R1.3 two-step intent: identity, then explicit strict policy."""
+    graph.coordinator.select_device(stable_id or graph.stable_id)
+    graph.coordinator.select_path_mode("strict")
+
+
 def _device(bridge, stable_id):
     return next(row for row in bridge.devices if row["stableDeviceId"] == stable_id)
 
@@ -293,7 +299,7 @@ def test_ui90_01_shared_projection_without_physical_dac_is_truthful() -> None:
 
 def test_ui90_02_available_selected_dac_differs_from_active_dac() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     row = _device(graph.bridge, graph.stable_id)
     assert row["selected"] is True and row["active"] is False
     assert row["statusLabel"] == "Selected · inactive"
@@ -301,7 +307,7 @@ def test_ui90_02_available_selected_dac_differs_from_active_dac() -> None:
 
 def test_ui90_03_selected_active_direct_is_projected_correctly() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     graph.session.activate(graph.stable_id, generation=1)
     row = _device(graph.bridge, graph.stable_id)
     assert row["statusLabel"] == "Selected · Active"
@@ -310,7 +316,7 @@ def test_ui90_03_selected_active_direct_is_projected_correctly() -> None:
 
 def test_ui90_04_selected_disconnected_is_projected_correctly() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     graph.devices.ingest(())
     row = _device(graph.bridge, graph.stable_id)
     assert row["selected"] is True and row["available"] is False
@@ -321,7 +327,7 @@ def test_ui90_04_selected_disconnected_is_projected_correctly() -> None:
 
 def test_ui90_05_ui90r1_17_reconnect_does_not_project_active_state() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     graph.session.lose()
     graph.devices.ingest(())
     graph.devices.ingest(_observations("/devices/usb1/1-2", card=7))
@@ -331,7 +337,7 @@ def test_ui90_05_ui90r1_17_reconnect_does_not_project_active_state() -> None:
 
 def test_ui90r1_17_reconnect_clears_transient_action_failure() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     profile_id = graph.bridge.selectedProfileId
     graph.devices.ingest(())
     graph.bridge.select_profile(profile_id)
@@ -344,7 +350,7 @@ def test_ui90r1_17_reconnect_clears_transient_action_failure() -> None:
 
 def test_ui90_06_fresh_g2_activation_projects_active() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     graph.session.lose()
     graph.devices.ingest(())
     graph.devices.ingest(_observations("/devices/usb1/1-2", card=7))
@@ -383,7 +389,7 @@ def test_ui90_09_unknown_authority_projects_disabled_unavailable() -> None:
 
 def test_ui90_10_signal_truth_verdict_updates_live() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     graph.session.activate(graph.stable_id, generation=1)
     _direct_truth(graph.truth, graph.stable_id, 1)
     assert graph.bridge.signalTruthVerdict == "direct"
@@ -440,7 +446,7 @@ def test_ui90_14_ui90r11_03_identical_models_are_visually_distinct() -> None:
 
 def test_ui90_15_alsa_locator_is_diagnostic_not_selected_identity() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     row = _device(graph.bridge, graph.stable_id)
     assert graph.bridge.selectedDeviceId == graph.stable_id
     assert row["alsaLocator"] == "hw:CARD=DX5,DEV=0"
@@ -456,18 +462,25 @@ def test_ui90_17_disconnected_maps_to_device_disconnected() -> None:
 
 
 def test_ui90_18_engine_unsupported_maps_to_direct_requires_gstreamer() -> None:
+    """Device identity needs no engine; the Direct POLICY requires GStreamer."""
     graph = _graph()
     graph.engines.state.active_engine_id = AudioEngineId.QT_MULTIMEDIA
     failures = []
     graph.bridge.action_failed.connect(
         lambda code, title, detail: failures.append((code, title, detail))
     )
-    selection_before = graph.repository.selection
+
     graph.bridge.select_device(graph.stable_id)
+    # R1.3: selecting a DAC is identity only — no policy, no engine gate.
+    assert graph.repository.selection.selected_device_id == graph.stable_id
+    assert graph.repository.selection.selected_profile_id is None
+    assert failures == []
+
+    graph.bridge.select_path_mode("strict")
     assert graph.engines.state.active_engine_id is AudioEngineId.QT_MULTIMEDIA
-    assert graph.repository.selection == selection_before
-    assert graph.session.selected_device_id is None
-    assert failures[0][0] == "ENGINE_UNSUPPORTED_FOR_DIRECT"
+    assert graph.repository.selection.selected_profile_id is None
+    assert graph.session.selected_profile_id is None
+    assert failures and failures[0][0] == "ENGINE_UNSUPPORTED_FOR_DIRECT"
     assert (
         failure_copy("ENGINE_UNSUPPORTED_FOR_DIRECT")[0] == "Direct requires GStreamer"
     )
@@ -499,7 +512,7 @@ def test_selection_notifications_never_publish_mixed_authorities() -> None:
             (graph.bridge.selectedDeviceId, graph.session.selected_device_id)
         )
     )
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     assert snapshots
     assert all(item == (graph.stable_id, graph.stable_id) for item in snapshots)
 
@@ -519,7 +532,7 @@ def test_physical_device_selection_never_chooses_shared_profile() -> None:
             fallback=FallbackKind.DESKTOP_DEFAULT,
         )
     )
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     selected = graph.repository.selection
     assert selected.selected_profile_id != "aaa-shared"
     profile = next(
@@ -557,7 +570,7 @@ def test_canonical_bridge_fields_and_intents_are_present() -> None:
 
 def test_ui90r1_01_profile_projection_uses_human_device_and_path_names() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     profile_id = graph.bridge.selectedProfileId
 
     row = _profile(graph.bridge, profile_id)
@@ -571,7 +584,7 @@ def test_ui90r1_01_profile_projection_uses_human_device_and_path_names() -> None
 
 def test_ui90r1_02_selected_unavailable_profile_is_retained_and_disabled() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     profile_id = graph.bridge.selectedProfileId
 
     graph.devices.ingest(())
@@ -585,7 +598,7 @@ def test_ui90r1_02_selected_unavailable_profile_is_retained_and_disabled() -> No
 
 def test_ui90r1_03_profile_selection_failure_preserves_authority() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     selected_id = graph.bridge.selectedProfileId
     graph.devices.ingest(())
 
@@ -598,7 +611,7 @@ def test_ui90r1_03_profile_selection_failure_preserves_authority() -> None:
 
 def test_ui90r1_04_profile_selection_never_changes_audio_engine() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     profile_id = graph.bridge.selectedProfileId
     engine_before = graph.engines.state.active_engine_id
 
@@ -609,7 +622,7 @@ def test_ui90r1_04_profile_selection_never_changes_audio_engine() -> None:
 
 def test_ui90r1_05_active_device_does_not_fabricate_an_active_profile_id() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     profile_id = graph.bridge.selectedProfileId
     graph.session.activate(graph.stable_id, generation=1)
 
@@ -622,7 +635,7 @@ def test_ui90r1_05_active_device_does_not_fabricate_an_active_profile_id() -> No
 
 def test_ui90r1_18_unknown_profile_failure_preserves_selection() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
     before = graph.repository.selection
     failures = []
     graph.bridge.action_failed.connect(
@@ -638,7 +651,7 @@ def test_ui90r1_18_unknown_profile_failure_preserves_selection() -> None:
 
 def test_ui90r1_19_shared_selection_never_fabricates_profile_id() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
 
     graph.coordinator.select_shared_output()
 
@@ -654,7 +667,7 @@ def test_ui90r1_20_multiple_real_profiles_remain_distinct_and_human_named() -> N
         (*_observations("/devices/usb1/1-2"), *_observations("/devices/usb2/2-1"))
     )
     for stable_id in graph.devices.available_ids():
-        graph.coordinator.select_device(stable_id)
+        _select_direct(graph, stable_id)
 
     rows = graph.bridge.profiles
 
@@ -676,7 +689,7 @@ def test_ui90r11_01_serial_disambiguates_identical_profile_rows() -> None:
         )
     )
     for stable_id in graph.devices.available_ids():
-        graph.coordinator.select_device(stable_id)
+        _select_direct(graph, stable_id)
 
     rows = graph.bridge.profiles
     assert {row["displayName"] for row in rows} == {
@@ -687,7 +700,7 @@ def test_ui90r11_01_serial_disambiguates_identical_profile_rows() -> None:
 
 def test_ui90r11_02_unique_profile_keeps_clean_human_label() -> None:
     graph = _graph()
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
 
     row = _profile(graph.bridge, graph.bridge.selectedProfileId)
 
@@ -714,7 +727,7 @@ def test_ui90r11_17_reselect_same_dac_preserves_valid_selected_profile() -> None
     graph.coordinator.select_profile(second.profile_id)
     engine_before = graph.engines.state.active_engine_id
 
-    graph.coordinator.select_device(graph.stable_id)
+    _select_direct(graph)
 
     assert graph.bridge.selectedProfileId == second.profile_id
     assert graph.engines.state.active_engine_id is engine_before

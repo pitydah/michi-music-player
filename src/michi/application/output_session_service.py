@@ -37,11 +37,11 @@ from michi.domain.audio_device import BindingKind
 from michi.domain.audio_evidence import PcmTuple, SourceFileFacts
 from michi.domain.audio_output import (
     FallbackKind,
-    OutputPathPreference,
     OutputPlan,
     OutputSelectionState,
     OutputSessionState,
     VolumePolicy,
+    is_direct_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -240,7 +240,7 @@ class ProductiveOutputRequestResolver:
                 "SELECTED_PROFILE_MISSING",
                 f"selected profile {selection.selected_profile_id!r} does not exist",
             )
-        if profile.path is not OutputPathPreference.HARDWARE_DIRECT:
+        if not is_direct_path(profile.path):
             return OutputRequest(
                 None,
                 selection.selected_device_id,

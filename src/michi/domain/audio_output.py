@@ -20,7 +20,30 @@ from michi.domain.audio_evidence import PcmTuple, SourceFileFacts
 class OutputPathPreference(Enum):
     DESKTOP = "desktop"
     MANAGED = "managed"
+    # STRICT Direct: exact source-native transport, never a widened carrier.
     HARDWARE_DIRECT = "hardware_direct"
+    # COMPATIBLE Direct: exact carrier first, then bounded container-width
+    # adaptation that preserves rate/channels/significant bits.
+    HARDWARE_DIRECT_COMPATIBLE = "hardware_direct_compatible"
+
+
+#: Every preference that routes through the Direct (hardware-raw) path.
+DIRECT_PATH_PREFERENCES = frozenset(
+    {
+        OutputPathPreference.HARDWARE_DIRECT,
+        OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE,
+    }
+)
+
+
+def is_direct_path(path: OutputPathPreference) -> bool:
+    """True for any Direct policy (strict or compatible)."""
+    return path in DIRECT_PATH_PREFERENCES
+
+
+def is_strict_direct_path(path: OutputPathPreference) -> bool:
+    """True only for the strict policy (no carrier widening at all)."""
+    return path is OutputPathPreference.HARDWARE_DIRECT
 
 
 class RatePolicy(Enum):
@@ -69,12 +92,23 @@ class AudioOutputSelection:
     updated_at_ms: int
 
 
-def stable_direct_preset(profile_id: str, stable_device_id: str) -> AudioOutputProfile:
-    """Preset canónico Stable Direct (§15)."""
+def stable_direct_preset(
+    profile_id: str,
+    stable_device_id: str,
+    *,
+    path: OutputPathPreference = OutputPathPreference.HARDWARE_DIRECT,
+) -> AudioOutputProfile:
+    """Preset canónico Stable Direct (§15).
+
+    ``path`` selects the transport policy: strict (default, historical) or the
+    compatible policy that may resolve a wider lossless carrier.
+    """
+    if not is_direct_path(path):
+        raise ValueError(f"{path!r} is not a Direct path preference")
     return AudioOutputProfile(
         profile_id=profile_id,
         stable_device_id=stable_device_id,
-        path=OutputPathPreference.HARDWARE_DIRECT,
+        path=path,
         rate_policy=RatePolicy.SOURCE_NATIVE,
         volume_policy=VolumePolicy.FIXED,
         allow_resample=False,

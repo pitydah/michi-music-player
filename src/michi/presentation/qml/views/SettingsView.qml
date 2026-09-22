@@ -166,11 +166,14 @@ Item {
                 lastFailureTitle: audioOutput.lastFailureTitle
                 lastFailureDisplay: audioOutput.lastFailureDisplay
                 canUseDirect: audioOutput.canUseDirect
+                selectedPathMode: audioOutput.selectedPathMode
                 onDeviceSelectionRequested: stableDeviceId =>
                     audioOutput.select_device(stableDeviceId)
                 onSharedSelectionRequested: audioOutput.select_shared_output()
                 onProfileSelectionRequested: profileId =>
                     audioOutput.select_profile(profileId)
+                onPathModeSelectionRequested: mode =>
+                    audioOutput.select_path_mode(mode)
             }
 
             // ── Library ─────────────────────────────────────

@@ -21,6 +21,7 @@ from michi.domain.audio_output import (
     AudioOutputProfile,
     AudioOutputSelection,
     OutputPathPreference,
+    is_direct_path,
     stable_direct_preset,
 )
 
@@ -36,6 +37,13 @@ class AudioOutputSelectionError(RuntimeError):
 
 class AudioOutputSelectionCoordinator:
     """Coordinate existing output authorities without becoming one."""
+
+    _PATH_MODE_POLICIES = {
+        "strict": OutputPathPreference.HARDWARE_DIRECT,
+        "direct": OutputPathPreference.HARDWARE_DIRECT,
+        "compatible": OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE,
+        "compatible_direct": OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE,
+    }
 
     def __init__(
         self,
@@ -60,6 +68,13 @@ class AudioOutputSelectionCoordinator:
             self._output_session.select(device_id=None, profile_id=None)
 
     def select_device(self, stable_device_id: str) -> None:
+        """Select hardware IDENTITY only; the path policy is preserved.
+
+        DAC-V35-100R1.3 §3: selecting a DAC never implies Strict Direct. When
+        the current policy is Shared the device is remembered for later policy
+        changes but routing stays Shared; when a Direct policy is active the
+        same policy is re-bound to the new device.
+        """
         stable_device_id = stable_device_id.strip()
         if not stable_device_id:
             self.select_shared_output()
@@ -78,34 +93,17 @@ class AudioOutputSelectionCoordinator:
                 "DEVICE_UNAVAILABLE", "The selected DAC is disconnected."
             )
 
-        candidates = sorted(
-            (
-                profile
-                for profile in self._profiles.load_profiles()
-                if profile.stable_device_id == stable_device_id
-                and profile.path is OutputPathPreference.HARDWARE_DIRECT
-            ),
-            key=lambda profile: profile.profile_id,
-        )
-        if candidates:
-            selection = self._profiles.load_selection()
-            profile = next(
-                (
-                    candidate
-                    for candidate in candidates
-                    if candidate.profile_id == selection.selected_profile_id
-                ),
-                candidates[0],
-            )
-        else:
-            profile = stable_direct_preset(
-                self._direct_profile_id(stable_device_id), stable_device_id
-            )
-            self._require_direct_engine(profile)
+        current = self._selected_profile(self._profiles.load_selection())
+        if current is None or not is_direct_path(current.path):
+            with self._profiles.batch_changes():
+                self._profiles.save_selection(
+                    AudioOutputSelection(None, stable_device_id, self._clock_ms())
+                )
+                self._devices.select_device(stable_device_id)
+                self._output_session.select(device_id=stable_device_id, profile_id=None)
+            return
         with self._profiles.batch_changes():
-            if not candidates:
-                self._profiles.save_profile(profile)
-            self._select_profile(profile, stable_device_id=stable_device_id)
+            self._select_device_policy(stable_device_id, current.path)
 
     def select_profile(self, profile_id: str) -> None:
         profile = next(
@@ -122,7 +120,7 @@ class AudioOutputSelectionCoordinator:
             )
         stable_device_id = profile.stable_device_id
         if stable_device_id is None:
-            if profile.path is OutputPathPreference.HARDWARE_DIRECT:
+            if is_direct_path(profile.path):
                 raise AudioOutputSelectionError(
                     "SELECTED_DEVICE_MISSING",
                     "Direct output requires a selected physical DAC.",
@@ -142,11 +140,18 @@ class AudioOutputSelectionCoordinator:
             self._select_profile(profile, stable_device_id=stable_device_id)
 
     def select_path_mode(self, mode: str) -> None:
-        normalized = mode.strip().casefold()
+        """Select the transport POLICY without changing device identity.
+
+        Accepted modes: ``shared``, ``strict``/``direct`` (exact carrier only)
+        and ``compatible`` (exact carrier first, then bounded container-width
+        adaptation).
+        """
+        normalized = mode.strip().casefold().replace("-", "_")
         if normalized == "shared":
             self.select_shared_output()
             return
-        if normalized != "direct":
+        policy = self._PATH_MODE_POLICIES.get(normalized)
+        if policy is None:
             raise AudioOutputSelectionError(
                 "OUTPUT_PATH_MODE_UNKNOWN", "The requested output path is unknown."
             )
@@ -156,7 +161,8 @@ class AudioOutputSelectionCoordinator:
                 "SELECTED_DEVICE_MISSING",
                 "Select an available physical DAC before choosing Direct output.",
             )
-        self.select_device(selection.selected_device_id)
+        with self._profiles.batch_changes():
+            self._select_device_policy(selection.selected_device_id, policy)
 
     def select_volume_mode(self, mode: str) -> None:
         """Accept only modes already supported by the current Stable slice."""
@@ -184,7 +190,7 @@ class AudioOutputSelectionCoordinator:
             )
         selection = self._profiles.load_selection()
         profile = self._selected_profile(selection)
-        if profile is None or profile.path is not OutputPathPreference.HARDWARE_DIRECT:
+        if profile is None or not is_direct_path(profile.path):
             raise AudioOutputSelectionError(
                 "DIRECT_PROFILE_REQUIRED",
                 "Resync delay requires a selected Direct output profile.",
@@ -203,6 +209,39 @@ class AudioOutputSelectionCoordinator:
             ),
             None,
         )
+
+    def _select_device_policy(
+        self, stable_device_id: str, policy: OutputPathPreference
+    ) -> None:
+        """Bind the canonical ``(device, policy)`` pair to one profile."""
+        candidates = sorted(
+            (
+                profile
+                for profile in self._profiles.load_profiles()
+                if profile.stable_device_id == stable_device_id
+                and profile.path is policy
+            ),
+            key=lambda profile: profile.profile_id,
+        )
+        if candidates:
+            selection = self._profiles.load_selection()
+            profile = next(
+                (
+                    candidate
+                    for candidate in candidates
+                    if candidate.profile_id == selection.selected_profile_id
+                ),
+                candidates[0],
+            )
+        else:
+            profile = stable_direct_preset(
+                self._direct_profile_id(stable_device_id, policy),
+                stable_device_id,
+                path=policy,
+            )
+            self._require_direct_engine(profile)
+            self._profiles.save_profile(profile)
+        self._select_profile(profile, stable_device_id=stable_device_id)
 
     def _select_profile(
         self, profile: AudioOutputProfile, *, stable_device_id: str
@@ -224,7 +263,7 @@ class AudioOutputSelectionCoordinator:
 
     def _require_direct_engine(self, profile: AudioOutputProfile) -> None:
         if (
-            profile.path is OutputPathPreference.HARDWARE_DIRECT
+            is_direct_path(profile.path)
             and self._engines.state.active_engine_id is not AudioEngineId.GSTREAMER
         ):
             raise AudioOutputSelectionError(
@@ -233,6 +272,14 @@ class AudioOutputSelectionCoordinator:
             )
 
     @staticmethod
-    def _direct_profile_id(stable_device_id: str) -> str:
+    def _direct_profile_id(
+        stable_device_id: str,
+        policy: OutputPathPreference = OutputPathPreference.HARDWARE_DIRECT,
+    ) -> str:
         digest = hashlib.sha256(stable_device_id.encode("utf-8")).hexdigest()[:16]
-        return f"direct:{digest}"
+        prefix = (
+            "compatible"
+            if policy is OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE
+            else "direct"
+        )
+        return f"{prefix}:{digest}"

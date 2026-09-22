@@ -22,10 +22,44 @@ Item {
     property string lastFailureTitle: ""
     property string lastFailureDisplay: ""
     property bool canUseDirect: false
+    property string selectedPathMode: "shared"
 
     signal deviceSelectionRequested(string stableDeviceId)
     signal sharedSelectionRequested()
     signal profileSelectionRequested(string profileId)
+    signal pathModeSelectionRequested(string mode)
+
+    readonly property var pathModes: [
+        {
+            "mode": "shared",
+            "displayName": qsTr("Shared"),
+            "description": qsTr("System output. No Direct DAC transport.")
+        },
+        {
+            "mode": "compatible",
+            "displayName": qsTr("Compatible Direct"),
+            "description": qsTr("Exact carrier first, then a wider lossless carrier that preserves rate, channels and significant bits.")
+        },
+        {
+            "mode": "strict",
+            "displayName": qsTr("Strict Direct"),
+            "description": qsTr("Exact source-native carrier only. Refuses when the DAC rejects it.")
+        }
+    ]
+
+    function pathModeIndex() {
+        for (var i = 0; i < pathModes.length; ++i) {
+            if (pathModes[i].mode === root.selectedPathMode)
+                return i
+        }
+        return 0
+    }
+
+    function syncPathModeSelection() {
+        pathModeSelector.currentIndex = root.pathModeIndex()
+    }
+
+    onSelectedPathModeChanged: Qt.callLater(root.syncPathModeSelection)
 
     function selectedProfileIndex() {
         for (var i = 0; i < root.profiles.length; ++i) {
@@ -41,7 +75,10 @@ Item {
 
     onProfilesChanged: Qt.callLater(root.syncProfileSelection)
     onSelectedProfileIdChanged: Qt.callLater(root.syncProfileSelection)
-    Component.onCompleted: root.syncProfileSelection()
+    Component.onCompleted: {
+        root.syncPathModeSelection()
+        root.syncProfileSelection()
+    }
 
     implicitHeight: panelContent.implicitHeight + MichiSpacing.lg * 2
 
@@ -61,6 +98,45 @@ Item {
                 text: qsTr("Audio Output / DAC")
                 role: "heading"
                 Accessible.role: Accessible.Heading
+            }
+
+            RowLayout {
+                objectName: "audioOutputPathModeRow"
+                Layout.fillWidth: true
+                spacing: MichiSpacing.md
+
+                ColumnLayout {
+                    objectName: "audioOutputPathModeCopy"
+                    Layout.fillWidth: true
+                    spacing: MichiSpacing.xxs
+                    MichiText {
+                        text: qsTr("Output mode")
+                        role: "primary"
+                    }
+                    MichiText {
+                        Layout.fillWidth: true
+                        text: qsTr("Choosing a DAC never changes this. Direct modes require a selected DAC and GStreamer.")
+                        role: "secondary"
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                Controls.MichiComboBox {
+                    id: pathModeSelector
+                    objectName: "audioOutputPathModeSelector"
+                    Layout.minimumWidth: 260
+                    Layout.preferredWidth: 360
+                    model: root.pathModes
+                    textRole: "displayName"
+                    enabled: true
+                    accessibleName: qsTr("Output mode")
+                    onActivated: index => {
+                        var entry = root.pathModes[index]
+                        if (entry)
+                            root.pathModeSelectionRequested(entry.mode)
+                        Qt.callLater(root.syncPathModeSelection)
+                    }
+                }
             }
 
             RowLayout {

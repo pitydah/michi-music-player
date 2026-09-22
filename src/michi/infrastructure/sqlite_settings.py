@@ -494,7 +494,7 @@ _V2_SCHEMA_STATEMENTS = (
     CREATE TABLE IF NOT EXISTS audio_output_profiles (
         profile_id TEXT PRIMARY KEY,
         stable_device_id TEXT,
-        path TEXT NOT NULL CHECK(path IN ('desktop','managed','hardware_direct')),
+        path TEXT NOT NULL CHECK(path IN ('desktop','managed','hardware_direct','hardware_direct_compatible')),
         rate_policy TEXT NOT NULL CHECK(rate_policy IN ('source_native','system')),
         volume_policy TEXT NOT NULL CHECK(volume_policy IN ('fixed','software','hardware')),
         fallback_kind TEXT NOT NULL CHECK(fallback_kind IN ('stop','ask','desktop_default','specific_device')),
@@ -578,6 +578,67 @@ def _converge_v2_output_profile_multiplicity(conn: sqlite3.Connection) -> None:
         raise
 
 
+#: DAC-V35-100R1.3 widened the persisted Direct policy vocabulary. The value
+#: is additive: every pre-existing row keeps its meaning.
+_COMPATIBLE_PATH_VALUE = "hardware_direct_compatible"
+
+
+def _converge_v2_direct_path_policies(conn: sqlite3.Connection) -> None:
+    """Widen the ``path`` CHECK constraint idempotently (no version bump).
+
+    SQLite cannot ALTER a CHECK constraint, so the table is rebuilt with the
+    canonical v2 definition. Rows are preserved byte-for-byte; the rebuild is
+    skipped when the stored schema already admits the compatible policy.
+    """
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' "
+        "AND name='audio_output_profiles'"
+    ).fetchone()
+    stored = row[0] if row is not None else None
+    if stored is None or _COMPATIBLE_PATH_VALUE in stored:
+        return
+    conn.execute("BEGIN")
+    try:
+        conn.execute("PRAGMA defer_foreign_keys=ON")
+        conn.execute(
+            """
+            CREATE TABLE audio_output_profiles_converged (
+                profile_id TEXT PRIMARY KEY,
+                stable_device_id TEXT,
+                path TEXT NOT NULL CHECK(path IN (
+                    'desktop','managed','hardware_direct',
+                    'hardware_direct_compatible'
+                )),
+                rate_policy TEXT NOT NULL CHECK(rate_policy IN ('source_native','system')),
+                volume_policy TEXT NOT NULL CHECK(volume_policy IN ('fixed','software','hardware')),
+                fallback_kind TEXT NOT NULL CHECK(fallback_kind IN ('stop','ask','desktop_default','specific_device')),
+                fallback_device_id TEXT,
+                resync_delay_ms INTEGER NOT NULL DEFAULT 0 CHECK(resync_delay_ms >= 0),
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO audio_output_profiles_converged
+            SELECT profile_id, stable_device_id, path, rate_policy,
+                   volume_policy, fallback_kind, fallback_device_id,
+                   resync_delay_ms, created_at_ms, updated_at_ms
+            FROM audio_output_profiles
+            """
+        )
+        conn.execute("DROP TABLE audio_output_profiles")
+        conn.execute(
+            "ALTER TABLE audio_output_profiles_converged "
+            "RENAME TO audio_output_profiles"
+        )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+
+
 class SQLiteSettingsRepository(SettingsRepository):
     """Infrastructure adapter: persists settings to SQLite."""
 
@@ -636,6 +697,7 @@ class SQLiteSettingsRepository(SettingsRepository):
             if current == CURRENT_SCHEMA_VERSION:
                 if current == 2:
                     _converge_v2_output_profile_multiplicity(conn)
+                    _converge_v2_direct_path_policies(conn)
                 return
             if current > CURRENT_SCHEMA_VERSION:
                 raise SchemaVersionError(

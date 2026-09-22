@@ -713,8 +713,18 @@ def test_ui90r1_07_profile_selector_is_wired_to_bridge_intent() -> None:
     settings = _source("views/SettingsView.qml")
     assert "profileSelectionRequested(profile.profileId)" in section
     assert "audioOutput.select_profile(profileId)" in settings
-    assert "audioOutput.select_path_mode" not in section
     assert "audioEngine" not in section
+
+
+def test_pc13_03_ui_path_mode_control_is_wired_to_bridge_intent() -> None:
+    """R1.3: the UI expresses device identity AND transport policy."""
+    section = _source("views/AudioOutputSettingsSection.qml")
+    settings = _source("views/SettingsView.qml")
+    assert "audioOutputPathModeSelector" in section
+    assert "pathModeSelectionRequested(entry.mode)" in section
+    assert "onPathModeSelectionRequested" in settings
+    assert "audioOutput.select_path_mode(mode)" in settings
+    assert "audioOutput.selectedPathMode" in settings
 
 
 def test_ui90r1_08_escape_really_closes_popup_and_restores_focus(qapp) -> None:

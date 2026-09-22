@@ -16,7 +16,11 @@ from michi.application.playback_failure import playback_action_failure
 from michi.application.playback_service import PlaybackService
 from michi.application.volume_policy_service import VolumePolicyService
 from michi.domain.audio_engine import AudioEngineId
-from michi.domain.audio_output import OutputPathPreference, OutputSessionState
+from michi.domain.audio_output import (
+    OutputPathPreference,
+    OutputSessionState,
+    is_direct_path,
+)
 from michi.domain.playback import PlaybackStatus
 from michi.domain.signal_truth import SignalTruthRecorder
 
@@ -34,6 +38,15 @@ _VERDICT_LABELS = {
 def signal_truth_label(verdict: str) -> str:
     """Map a canonical verdict to normal-mode copy without overclaiming."""
     return _VERDICT_LABELS.get(verdict.casefold(), "Not verified")
+
+
+def _path_mode_of(profile) -> str:
+    """Canonical path-mode vocabulary: shared | strict | compatible."""
+    if profile is None or not is_direct_path(profile.path):
+        return "shared"
+    if profile.path is OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE:
+        return "compatible"
+    return "strict"
 
 
 def failure_copy(code: str | None) -> tuple[str, str]:
@@ -256,12 +269,7 @@ class AudioOutputBridge(QObject):
         transport_mode = (
             self._output_session.mode if self._output_session is not None else "shared"
         )
-        selected_path_mode = (
-            "direct"
-            if selected_profile is not None
-            and selected_profile.path is OutputPathPreference.HARDWARE_DIRECT
-            else "shared"
-        )
+        selected_path_mode = _path_mode_of(selected_profile)
         reconnecting = output_state == OutputSessionState.RECOVERING.value
         session_failure_code = (
             session_state.error_code if session_state is not None else None
@@ -449,8 +457,12 @@ class AudioOutputBridge(QObject):
         selected: bool,
         identity_presentation: tuple[str, str],
     ) -> dict[str, Any]:
-        direct = profile.path is OutputPathPreference.HARDWARE_DIRECT
-        path_label = "Direct" if direct else "Shared"
+        direct = is_direct_path(profile.path)
+        path_label = (
+            "Compatible Direct"
+            if profile.path is OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE
+            else ("Direct" if direct else "Shared")
+        )
         available = bool(snapshot is not None and snapshot.available)
         base_device_name, identity_suffix = identity_presentation
         device_name = f"{base_device_name}{identity_suffix}"
@@ -509,9 +521,7 @@ class AudioOutputBridge(QObject):
             ),
             device_profiles[0] if device_profiles else None,
         )
-        direct = bool(
-            profile is not None and profile.path is OutputPathPreference.HARDWARE_DIRECT
-        )
+        direct = bool(profile is not None and is_direct_path(profile.path))
         alsa = next(
             (
                 binding

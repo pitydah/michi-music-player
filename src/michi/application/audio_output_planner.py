@@ -26,10 +26,10 @@ from michi.domain.audio_output import (
     AudioOutputProfile,
     FallbackKind,
     GstSinkSpec,
-    OutputPathPreference,
     OutputPlan,
     PathSemantics,
     RatePolicy,
+    is_direct_path,
 )
 
 ENGINE_GSTREAMER = "gstreamer"
@@ -127,8 +127,8 @@ class OutputPlanner:
             )
         decisions.append(ENGINE_GSTREAMER_DIRECT)
 
-        # 4. hardware-raw
-        if profile.path is not OutputPathPreference.HARDWARE_DIRECT:
+        # 4. hardware-raw (strict o compatible)
+        if not is_direct_path(profile.path):
             return PlannerRefusal(
                 PATH_NOT_HARDWARE_DIRECT,
                 f"path {profile.path.value!r} no es hardware-direct",
