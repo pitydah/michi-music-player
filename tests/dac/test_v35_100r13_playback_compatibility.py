@@ -1225,3 +1225,77 @@ def test_pc13_07_09_every_context_property_is_retained_for_teardown() -> None:
         "_library_enrichment",
     ):
         assert getattr(container, name) in retained, name
+
+
+# ── Phase 8 — qualification evidence matrix ────────────────────────────────
+
+
+class _TimeoutProbe:
+    def probe_exact(self, **kwargs):
+        requested = PcmTuple(
+            kwargs["rate_hz"], kwargs["transport_format"], kwargs["channels"], 16
+        )
+        return ExactProbeResult(
+            requested, None, "timeout", None, "probe timed out", "probe:timeout"
+        )
+
+
+def test_pc13_08_01_qualification_timeout_is_typed_and_never_cached(
+    qapp, tmp_path: Path
+) -> None:
+    probe = _TimeoutProbe()
+    graph, bindings = _s16_graph(tmp_path, probe)
+    try:
+        graph.playback.load_and_play(tmp_path / "timeout16.flac")
+        assert _wait_until(
+            lambda: bool(graph.playback.state.error_message)
+        ), "the timeout refusal was never contained"
+
+        assert graph.playback.state.error_code == "EXACT_QUALIFICATION_TIMEOUT"
+        assert graph.playback.state.error_message.startswith("Format check timed out")
+        # TIMEOUT is ambiguity, never a capability claim.
+        assert graph.dac_qualification.cached_evidence_current(
+            "usb:2622:0105:DX5ABC123"
+        ) == ()
+        assert graph.output_session.mode == "shared"
+        assert bindings.pipelines == []
+    finally:
+        _close_graph(graph)
+
+
+def test_pc13_08_02_owner_revalidation_rejects_a_stale_environment(
+    qapp, tmp_path: Path
+) -> None:
+    from michi.application.dac_qualification_service import ExactQualificationOutcome
+    from michi.application.output_session_service import OutputSessionError
+    from michi.domain.audio_evidence import CapabilityEvidence, EvidenceStrength
+
+    probe = _SplitProbe(rejected=())
+    graph, _bindings = _s16_graph(tmp_path, probe)
+    try:
+        resolver = graph.output_session._request_provider
+        request = resolver(tmp_path / "stale.flac")
+        stale_outcome = ExactQualificationOutcome(
+            CapabilityEvidence(
+                stable_device_id="usb:2622:0105:DX5ABC123",
+                tuple=PcmTuple(44_100, "S16_LE", 2, 16),
+                supported=True,
+                strength=EvidenceStrength.OPENED,
+                source="michi-alsa-probe",
+                observed_at_ns=1,
+                environment_fingerprint="qenv:v2:sha256:stale",
+                evidence_refs=("probe:stale",),
+            ),
+            "OPENED",
+            None,
+        )
+
+        with pytest.raises(OutputSessionError) as exc_info:
+            resolver.apply_qualification(request, stale_outcome)
+
+        assert exc_info.value.code == "EXACT_QUALIFICATION_STALE"
+        assert graph.dac_qualification.cached_evidence_current(
+            "usb:2622:0105:DX5ABC123"
+        ) == ()
+    finally:
+        _close_graph(graph)
