@@ -219,7 +219,7 @@ def _write_status_fixture(root, *, work_package_state: str) -> None:
         root
         / "docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md"
     ).write_text(
-        "DAC-V35-100R1.3.1 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING\n"
+        "DAC-V35-100R1.3.1 = CLOSED-AUTOMATED / GO; PUBLISHED\n"
         "DAC-V35-110 DO NOT START\n"
         "DAC-V35-130 POST-STABLE ONLY\n"
     )
