@@ -385,8 +385,10 @@ def test_nc132_03_a_leader_failure_fans_out_to_every_follower() -> None:
     for follower in followers:
         follower.start()
     assert _await(
-        lambda: bool(service._flights)
-        and next(iter(service._flights.values())).waiters == 20
+        lambda: (
+            bool(service._flights)
+            and next(iter(service._flights.values())).waiters == 20
+        )
     ), "followers did not coalesce"
 
     probe.release.set()
