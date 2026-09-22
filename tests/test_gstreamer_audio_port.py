@@ -416,9 +416,18 @@ class FakeBindings:
 
         self._context_commands.put((execute, completed, outcome))
         if not completed.wait(timeout_s):
-            if command is not None:
-                command.abandon()
-            raise RuntimeError("fake GStreamer context command timed out")
+            # Parity with GStreamerBindings.invoke_context_sync (R1.3.1/R1.3.2):
+            # a never-started command is ABANDONED; a RUNNING one loses its
+            # commit authority so a late completion cannot mutate state.
+            from michi.infrastructure.audio_engines.gstreamer import (
+                ContextCommandTimeoutError,
+            )
+
+            if command is not None and not command.abandon():
+                command.revoke_commit()
+            raise ContextCommandTimeoutError(
+                command.command_id if command is not None else "anonymous"
+            )
         succeeded, value = outcome[0]
         if not succeeded:
             raise value

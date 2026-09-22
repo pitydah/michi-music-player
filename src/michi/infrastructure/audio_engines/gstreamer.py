@@ -1303,10 +1303,44 @@ class GStreamerAudioPort(AudioPort):
                     self._generation, "gstreamer pump exited unexpectedly"
                 )
 
-    def _run_on_pump(self, callback):
+    def _commit_guarded(self, command, mutation) -> bool:
+        """Authoritative commit: recheck authority immediately before mutating.
+
+        R1.3.2 §8: a native operation may block for arbitrarily long after the
+        first fence, so a caller timeout can revoke the command WHILE the
+        operation runs. The ownership mutation must therefore recheck authority
+        after the native call and immediately before touching state. Returns
+        True only when the mutation was actually applied.
+
+        ``command is None`` means the caller runs ON the pump thread: that path
+        is synchronous and has no cross-thread timeout to revoke.
+        """
+        if command is not None and not command.commit_allowed(
+            current_generation=self._generation
+        ):
+            _logger.warning(
+                "Skipped stale lifecycle commit for command %s", command.command_id
+            )
+            return False
+        mutation()
+        return True
+
+    def _install_bus_source(self, source) -> None:
+        self._bus_source = source
+        self._bus_source_attached = True
+
+    def _install_timer_source(self, source) -> None:
+        self._timer_source = source
+
+    def _clear_bus_ownership(self) -> None:
+        self._bus_source = None
+        self._bus_source_attached = False
+        self._bus = None
+
+    def _run_on_pump(self, callback, *, pass_command: bool = False):
         """Synchronously dispatch one bounded native-lifecycle command."""
         if threading.get_ident() == self._pump_ident:
-            return callback()
+            return callback(None) if pass_command else callback()
         if self._pump is None or not self._pump.is_alive() or self._context is None:
             raise RuntimeError("GStreamer pump is unavailable for context command")
         self._context_command_seq += 1
@@ -1325,7 +1359,7 @@ class GStreamerAudioPort(AudioPort):
                     command.command_id,
                 )
                 return None
-            return callback()
+            return callback(command) if pass_command else callback()
 
         return self._bindings.invoke_context_sync(
             self._context, guarded, command=command
@@ -1346,23 +1380,36 @@ class GStreamerAudioPort(AudioPort):
             self._process_message(message, generation, pipeline)
             return True  # keep source
 
-        def attach():
-            self._bus_source = self._bindings.create_bus_source(
+        def attach(command):
+            # The native creation may block arbitrarily long: the ownership
+            # commit is fenced AFTER it, immediately before mutating (R1.3.2 §8).
+            source = self._bindings.create_bus_source(
                 bus, on_bus_message, self._context
             )
-            self._bus_source_attached = True
+            if not self._commit_guarded(
+                command, lambda: self._install_bus_source(source)
+            ):
+                with contextlib.suppress(Exception):
+                    self._bindings.destroy_source(source)
+                return
             if self._timer_source is None:
 
                 def on_timer():
                     self._poll_position()
                     return True  # keep timer
 
-                self._timer_source = self._bindings.create_timeout_source(
+                timer = self._bindings.create_timeout_source(
                     _POSITION_POLL_MS, on_timer
                 )
-                self._bindings.attach_source(self._timer_source, self._context)
+                if not self._commit_guarded(
+                    command, lambda: self._install_timer_source(timer)
+                ):
+                    with contextlib.suppress(Exception):
+                        self._bindings.destroy_source(timer)
+                    return
+                self._bindings.attach_source(timer, self._context)
 
-        self._run_on_pump(attach)
+        self._run_on_pump(attach, pass_command=True)
 
     def _detach_pipeline_sources(self) -> None:
         """Remove the current bus watch with truthful result semantics.
@@ -1374,16 +1421,16 @@ class GStreamerAudioPort(AudioPort):
             self._bus = None
             return
 
-        def detach():
+        def detach(command):
             if self._bus is None:
                 raise RuntimeError("GStreamer bus watch exists without owning bus")
             if not self._bindings.remove_bus_watch(self._bus):
                 raise RuntimeError("GStreamer bus watch could not be removed")
-            self._bus_source = None
-            self._bus_source_attached = False
-            self._bus = None
+            # A revoked command must not clear ownership that a newer
+            # generation already re-installed (R1.3.2 §8).
+            self._commit_guarded(command, self._clear_bus_ownership)
 
-        self._run_on_pump(detach)
+        self._run_on_pump(detach, pass_command=True)
 
     def _poll_position(self) -> None:
         """GLib timer (pump): enqueue POSITION_TICK — el OWNER resuelve
