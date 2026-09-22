@@ -237,8 +237,10 @@ def test_ci131_02_a_one_physical_leader_for_concurrent_equivalent_requests() -> 
     for follower in followers:
         follower.start()
     assert _await(
-        lambda: bool(service._flights)
-        and next(iter(service._flights.values())).waiters == 100
+        lambda: (
+            bool(service._flights)
+            and next(iter(service._flights.values())).waiters == 100
+        )
     ), "followers did not coalesce onto the in-flight qualification"
 
     probe.release.set()
