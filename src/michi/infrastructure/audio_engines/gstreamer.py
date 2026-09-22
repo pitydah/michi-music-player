@@ -119,8 +119,7 @@ class ContextCommand:
             if not self.commit_authorized:
                 return False
             return not (
-                current_generation is not None
-                and self.generation != current_generation
+                current_generation is not None and self.generation != current_generation
             )
 
     @property

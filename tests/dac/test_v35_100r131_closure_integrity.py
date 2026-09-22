@@ -436,9 +436,7 @@ def test_ci131_03_b_late_running_completion_cannot_commit() -> None:
 
     def caller() -> None:
         try:
-            bindings.invoke_context_sync(
-                context, body, timeout_s=0.2, command=command
-            )
+            bindings.invoke_context_sync(context, body, timeout_s=0.2, command=command)
         except BaseException as exc:  # noqa: BLE001 — asserted below
             errors.append(exc)
 
