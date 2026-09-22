@@ -695,3 +695,126 @@ def test_ci131_04_g_release_that_keeps_a_handle_is_not_a_faked_closure() -> None
         port.close()
 
     assert port._closed is False
+
+
+# ── Phase 5 — tuple-scoped capability presentation ─────────────────────────
+
+
+def _evidence(supported: bool, *, fmt: str = "S16_LE", bits: int = 16):
+    from michi.domain.audio_evidence import (
+        CapabilityEvidence,
+        EvidenceStrength,
+        PcmTuple,
+    )
+
+    return CapabilityEvidence(
+        stable_device_id="usb:2622:0105:DX5ABC123",
+        tuple=PcmTuple(44_100, fmt, 2, bits),
+        supported=supported,
+        strength=EvidenceStrength.PROBED,
+        source="michi-alsa-probe",
+        observed_at_ns=1,
+        environment_fingerprint="qenv:test",
+        evidence_refs=("probe:test",),
+    )
+
+
+def _qualified_graph(evidence, *, failing: bool = False):
+    from michi.presentation.audio_output_bridge import AudioOutputBridge
+    from tests.test_v35_090_audio_output_bridge import _graph
+
+    graph = _graph()
+
+    class _Qualification:
+        def cached_evidence_current(self, _stable_device_id):
+            if failing:
+                raise RuntimeError("synthetic qualification failure")
+            return tuple(evidence)
+
+        def current_environment_fingerprint(self, _stable_device_id):
+            return "qenv:test"
+
+    graph.bridge.dispose()
+    graph.bridge = AudioOutputBridge(
+        graph.volume,
+        graph.playback,
+        graph.truth,
+        devices=graph.devices,
+        profiles=graph.profiles,
+        output_session=graph.session,
+        engines=graph.engines,
+        selection_coordinator=graph.coordinator,
+        qualification=_Qualification(),
+    )
+    return graph
+
+
+def _device_row(graph):
+    return next(
+        row
+        for row in graph.bridge.devices
+        if row["stableDeviceId"] == graph.stable_id
+    )
+
+
+def test_ci131_05_a_negative_tuple_never_marks_the_dac_unavailable() -> None:
+    graph = _qualified_graph([_evidence(False)])
+
+    row = _device_row(graph)
+
+    assert row["connectionLabel"] == "Available"
+    assert row["capabilityEvidenceLabel"] != "Unavailable"
+    assert row["capabilityEvidenceLabel"] == "Current format unsupported"
+
+
+def test_ci131_05_b_mixed_evidence_is_partially_qualified() -> None:
+    graph = _qualified_graph(
+        [_evidence(False), _evidence(True, fmt="S32_LE", bits=32)]
+    )
+
+    row = _device_row(graph)
+
+    assert row["connectionLabel"] == "Available"
+    assert row["capabilityEvidenceLabel"] == "Partially qualified"
+
+
+def test_ci131_05_c_positive_evidence_is_qualified() -> None:
+    graph = _qualified_graph([_evidence(True, fmt="S32_LE", bits=32)])
+
+    assert _device_row(graph)["capabilityEvidenceLabel"] == "Qualified"
+
+
+def test_ci131_05_d_disconnected_device_reports_disconnected() -> None:
+    graph = _qualified_graph([_evidence(False)])
+
+    graph.devices.ingest(())
+
+    row = _device_row(graph)
+    assert row["connectionLabel"] == "Disconnected"
+    assert row["available"] is False
+
+
+def test_ci131_05_e_qualification_failure_degrades_honestly() -> None:
+    graph = _qualified_graph([], failing=True)
+
+    row = _device_row(graph)
+
+    assert row["capabilityEvidenceLabel"] == "Evidence unavailable"
+    assert row["connectionLabel"] == "Available"
+
+
+def test_ci131_05_f_direct_compatibility_is_a_third_concept() -> None:
+    graph = _qualified_graph([_evidence(False)])
+    select_direct = __import__(
+        "tests.test_v35_090_audio_output_bridge", fromlist=["_select_direct"]
+    )._select_direct
+    select_direct(graph)
+
+    graph.playback.state.error_message = "raw copy"
+    graph.playback.state.error_code = "EXACT_TUPLE_UNSUPPORTED"
+    graph.playback.publish()
+
+    row = _device_row(graph)
+    assert row["capabilityEvidenceLabel"] == "Current format unsupported"
+    assert row["directCompatibilityLabel"] == "Strict carrier unsupported"
+    assert graph.bridge.directCompatibilityLabel == "Strict carrier unsupported"

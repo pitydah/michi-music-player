@@ -62,6 +62,31 @@ _RECOVERY_LABELS = {
 }
 
 
+def _direct_compatibility_label(
+    code: str | None, evidence: tuple, *, path_mode: str
+) -> str:
+    """Current Direct compatibility for the selected endpoint.
+
+    R1.3.1 §25: this is a THIRD concept — neither connection nor qualification.
+    """
+    normalized = (code or "").upper()
+    if normalized == "EXACT_TUPLE_UNSUPPORTED":
+        return "Strict carrier unsupported"
+    if normalized == "NO_COMPATIBLE_CARRIER":
+        return "No compatible carrier"
+    if normalized == "EXACT_QUALIFICATION_TIMEOUT":
+        return "Qualification timed out"
+    if path_mode == "compatible" and any(
+        item.supported is True for item in evidence
+    ):
+        return "Compatible carrier qualified"
+    if path_mode in {"strict", "compatible"} and any(
+        item.supported is True for item in evidence
+    ):
+        return "Carrier qualified"
+    return "Unknown"
+
+
 def _recovery_rows(actions: tuple[str, ...]) -> list[dict[str, str]]:
     return [
         {"action": action, "label": _RECOVERY_LABELS.get(action, action)}
@@ -366,6 +391,7 @@ class AudioOutputBridge(QObject):
                     identity_presentation=identity_presentations[
                         snapshot.identity.stable_device_id
                     ],
+                    path_mode=selected_path_mode,
                 )
             )
         physical_rows.sort(
@@ -415,6 +441,11 @@ class AudioOutputBridge(QObject):
             "transportMode": transport_mode,
             "selectedPathMode": selected_path_mode,
             "pathMode": selected_path_mode,
+            "directCompatibilityLabel": (
+                selected_row["directCompatibilityLabel"]
+                if selected_row
+                else "Unknown"
+            ),
             "availability": bool(selected_row and selected_row["available"]),
             "availabilityReason": (
                 selected_row["connectionLabel"] if selected_row else "Unknown"
@@ -540,6 +571,7 @@ class AudioOutputBridge(QObject):
         truth_label: str,
         last_failure_code: str,
         identity_presentation: tuple[str, str],
+        path_mode: str = "shared",
     ) -> dict[str, Any]:
         identity = snapshot.identity
         stable_id = identity.stable_device_id
@@ -592,12 +624,17 @@ class AudioOutputBridge(QObject):
                 evidence_failed = True
         if evidence_failed:
             evidence_label = "Evidence unavailable"
+        elif any(item.supported is True for item in evidence) and any(
+            item.supported is False for item in evidence
+        ):
+            # R1.3.1 §24/§25: a negative TUPLE never means the DAC is unusable.
+            evidence_label = "Partially qualified"
         elif any(item.supported is True for item in evidence):
             evidence_label = "Qualified"
         elif any(item.supported is False for item in evidence):
-            evidence_label = "Unavailable"
+            evidence_label = "Current format unsupported"
         else:
-            evidence_label = "Unknown" if snapshot.available else "Removed"
+            evidence_label = "Not yet qualified" if snapshot.available else "Removed"
         environment = ""
         if self._qualification is not None and snapshot.available:
             try:
@@ -650,6 +687,9 @@ class AudioOutputBridge(QObject):
             "sourceRateLabel": _rate_label(source_rate),
             "deviceRateLabel": _rate_label(device_rate),
             "capabilityEvidenceLabel": evidence_label,
+            "directCompatibilityLabel": _direct_compatibility_label(
+                last_failure_code, evidence, path_mode=path_mode
+            ),
             "environmentFingerprint": environment,
             "runtimeSinkSummary": " → ".join(graph),
             "lastFailureCode": last_failure_code if selected else "",
@@ -702,6 +742,7 @@ class AudioOutputBridge(QObject):
             "sourceRateLabel": "—",
             "deviceRateLabel": "—",
             "capabilityEvidenceLabel": "Not applicable",
+            "directCompatibilityLabel": "Not applicable",
             "environmentFingerprint": "",
             "runtimeSinkSummary": "",
             "lastFailureCode": "",
@@ -1009,6 +1050,10 @@ class AudioOutputBridge(QObject):
     )
     lastFailureDisplay = Property(
         str, lambda self: self._get("lastFailureDisplay", ""), notify=state_changed
+    )
+    directCompatibilityLabel = Property(
+        str, lambda self: self._get("directCompatibilityLabel", "Unknown"),
+        notify=state_changed,
     )
     outputRecoveryActions = Property(
         "QVariantList",
