@@ -60,19 +60,23 @@ class ContextCommandTimeoutError(RuntimeError):
 class ContextCommand:
     """Identity + fence for one queued context command.
 
-    A caller that times out ABANDONS the command. An abandoned command must
-    never mutate state when the pump finally dispatches it: the callback sees
-    ``ABANDONED`` and returns without running its body. A command that already
-    started (``RUNNING``) cannot be abandoned — its mutation is truthful and
-    the caller simply learns that the wait expired.
+    A caller that times out ABANDONS a command that never started: the queued
+    callback sees ``ABANDONED`` and returns without running its body.
+
+    R1.3.1 §15/§16: a command that already reached ``RUNNING`` cannot be
+    abandoned (its physical body may be unstoppable). The caller then REVOKES
+    its commit authority, so the late completion cannot mutate authoritative
+    state belonging to a newer generation. Physical execution and logical
+    commit authority are therefore separate concerns.
     """
 
-    __slots__ = ("command_id", "generation", "state", "lock")
+    __slots__ = ("command_id", "generation", "state", "lock", "commit_authorized")
 
     def __init__(self, command_id: str, generation: int) -> None:
         self.command_id = command_id
         self.generation = generation
         self.state = ContextCommandState.PENDING
+        self.commit_authorized = True
         self.lock = threading.Lock()
 
     def claim(self) -> bool:
@@ -95,6 +99,29 @@ class ContextCommand:
                 return False
             self.state = ContextCommandState.ABANDONED
             return True
+
+    def revoke_commit(self) -> None:
+        """Caller timeout: revoke the authoritative commit of a RUNNING command.
+
+        The physical body may still finish; it just loses the right to mutate.
+        """
+        with self.lock:
+            self.commit_authorized = False
+
+    def commit_allowed(self, *, current_generation: int | None = None) -> bool:
+        """True only while this command still owns its authoritative mutation.
+
+        Must be evaluated immediately before the mutation itself.
+        """
+        with self.lock:
+            if self.state is not ContextCommandState.RUNNING:
+                return False
+            if not self.commit_authorized:
+                return False
+            return not (
+                current_generation is not None
+                and self.generation != current_generation
+            )
 
     @property
     def abandoned(self) -> bool:
@@ -906,6 +933,15 @@ class GStreamerBindings:
                 _logger.warning(
                     "Abandoned context command %s after timeout", command.command_id
                 )
+            else:
+                # RUNNING: the physical body may still be executing. Revoke the
+                # authoritative commit so a late completion cannot mutate state
+                # that now belongs to a newer generation (R1.3.1 §16).
+                command.revoke_commit()
+                _logger.warning(
+                    "Revoked late commit authority for context command %s",
+                    command.command_id,
+                )
             raise ContextCommandTimeoutError(command.command_id)
         if not outcome:
             raise RuntimeError(
@@ -1279,8 +1315,21 @@ class GStreamerAudioPort(AudioPort):
             f"ctx:{self._context_command_seq}:gen:{self._generation}",
             self._generation,
         )
+
+        def guarded():
+            # R1.3.1 §16: the authoritative mutation happens only while this
+            # command still owns it. A revoked or stale command performs no
+            # lifecycle mutation at all.
+            if not command.commit_allowed(current_generation=self._generation):
+                _logger.warning(
+                    "Skipped stale lifecycle mutation for command %s",
+                    command.command_id,
+                )
+                return None
+            return callback()
+
         return self._bindings.invoke_context_sync(
-            self._context, callback, command=command
+            self._context, guarded, command=command
         )
 
     def _attach_pipeline_sources(self, pipeline, bus, generation: int) -> None:

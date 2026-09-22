@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from michi.application.audio_output_selection_coordinator import (
     AudioOutputSelectionCoordinator,
 )
@@ -339,3 +341,212 @@ def test_ci131_02_e_environment_change_is_a_different_flight() -> None:
         first.evidence.environment_fingerprint
         != second.evidence.environment_fingerprint
     )
+
+
+# ── Phase 3 — GLib context-command commit authority ────────────────────────
+
+
+class _ManualContext:
+    """GLib-like context whose queued callbacks dispatch only on demand."""
+
+    def __init__(self, *, immediate: bool = False) -> None:
+        self.immediate = immediate
+        self.queued: list = []
+
+    def invoke_full(self, _priority, callback, _user_data) -> None:
+        if self.immediate:
+            callback(None)
+            return
+        self.queued.append(callback)
+
+    def dispatch_async(self):
+        import threading
+
+        callback = self.queued.pop(0)
+        thread = threading.Thread(target=lambda: callback(None), daemon=True)
+        thread.start()
+        return thread
+
+
+def _bindings():
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerBindings
+
+    return GStreamerBindings()
+
+
+def _fenced_mutation(command, state, *, generation: int | None):
+    """Authoritative mutation that only happens while the command owns it."""
+
+    def body():
+        if not command.commit_allowed(current_generation=generation):
+            return "blocked"
+        state["value"] = "committed"
+        return "committed"
+
+    return body
+
+
+def test_ci131_03_a_pending_timeout_abandons_with_zero_mutation() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import (
+        ContextCommand,
+        ContextCommandState,
+        ContextCommandTimeoutError,
+    )
+
+    bindings = _bindings()
+    context = _ManualContext()
+    command = ContextCommand("c-pending", 1)
+    mutations: list[str] = []
+
+    with pytest.raises(ContextCommandTimeoutError):
+        bindings.invoke_context_sync(
+            context,
+            lambda: mutations.append("stale"),
+            timeout_s=0.05,
+            command=command,
+        )
+
+    assert command.state is ContextCommandState.ABANDONED
+    context.queued[0](None)  # the wedged pump finally dispatches
+    assert mutations == []
+
+
+def test_ci131_03_b_late_running_completion_cannot_commit() -> None:
+    import threading
+
+    from michi.infrastructure.audio_engines.gstreamer import (
+        ContextCommand,
+        ContextCommandState,
+        ContextCommandTimeoutError,
+    )
+
+    bindings = _bindings()
+    context = _ManualContext()
+    command = ContextCommand("c-running-late", 1)
+    state: dict[str, str] = {}
+    started = threading.Event()
+    finish = threading.Event()
+    generation = {"value": 1}
+    errors: list[BaseException] = []
+
+    def body():
+        started.set()
+        finish.wait(timeout=10)
+        return _fenced_mutation(command, state, generation=generation["value"])()
+
+    def caller() -> None:
+        try:
+            bindings.invoke_context_sync(
+                context, body, timeout_s=0.2, command=command
+            )
+        except BaseException as exc:  # noqa: BLE001 — asserted below
+            errors.append(exc)
+
+    caller_thread = threading.Thread(target=caller)
+    caller_thread.start()
+    assert _await(lambda: bool(context.queued))
+    dispatcher = context.dispatch_async()
+    assert _await(started.is_set)
+    caller_thread.join(timeout=10)
+
+    assert len(errors) == 1 and isinstance(errors[0], ContextCommandTimeoutError)
+    assert command.state is ContextCommandState.RUNNING
+    assert command.commit_authorized is False
+
+    # A newer generation starts and the old body finally finishes.
+    generation["value"] = 2
+    finish.set()
+    dispatcher.join(timeout=10)
+
+    assert state == {}
+
+
+def test_ci131_03_c_retry_stays_authoritative_after_late_completion() -> None:
+    import threading
+
+    from michi.infrastructure.audio_engines.gstreamer import (
+        ContextCommand,
+        ContextCommandTimeoutError,
+    )
+
+    bindings = _bindings()
+    context = _ManualContext()
+    state: dict[str, str] = {}
+    started = threading.Event()
+    finish = threading.Event()
+    errors: list[BaseException] = []
+
+    stale_command = ContextCommand("c-stale", 1)
+
+    def stale_body():
+        started.set()
+        finish.wait(timeout=10)
+        return _fenced_mutation(stale_command, state, generation=1)()
+
+    def caller() -> None:
+        try:
+            bindings.invoke_context_sync(
+                context, stale_body, timeout_s=0.2, command=stale_command
+            )
+        except BaseException as exc:  # noqa: BLE001 — asserted below
+            errors.append(exc)
+
+    caller_thread = threading.Thread(target=caller)
+    caller_thread.start()
+    assert _await(lambda: bool(context.queued))
+    dispatcher = context.dispatch_async()
+    assert _await(started.is_set)
+    caller_thread.join(timeout=10)
+    assert len(errors) == 1 and isinstance(errors[0], ContextCommandTimeoutError)
+
+    # Retry: a fresh command succeeds and becomes authoritative.
+    retry_context = _ManualContext(immediate=True)
+    retry_command = ContextCommand("c-retry", 2)
+    value = bindings.invoke_context_sync(
+        retry_context,
+        _fenced_mutation(retry_command, state, generation=2),
+        timeout_s=2.0,
+        command=retry_command,
+    )
+    assert value == "committed"
+    assert state["value"] == "committed"
+
+    # The stale body finally finishes and must not overwrite the retry.
+    finish.set()
+    dispatcher.join(timeout=10)
+    assert state["value"] == "committed"
+
+
+def test_ci131_03_d_running_command_that_finishes_in_time_commits() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import ContextCommand
+
+    bindings = _bindings()
+    context = _ManualContext(immediate=True)
+    command = ContextCommand("c-ok", 7)
+    state: dict[str, str] = {}
+
+    value = bindings.invoke_context_sync(
+        context,
+        _fenced_mutation(command, state, generation=7),
+        timeout_s=2.0,
+        command=command,
+    )
+
+    assert value == "committed"
+    assert state == {"value": "committed"}
+
+
+def test_ci131_03_e_generation_change_fences_a_claimed_command() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import (
+        ContextCommand,
+        ContextCommandState,
+    )
+
+    command = ContextCommand("c-gen", 4)
+    assert command.claim() is True
+    assert command.state is ContextCommandState.RUNNING
+    assert command.commit_allowed(current_generation=4) is True
+    # A newer port generation makes the same claimed command non-authoritative.
+    assert command.commit_allowed(current_generation=5) is False
+    command.revoke_commit()
+    assert command.commit_allowed(current_generation=4) is False
