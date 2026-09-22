@@ -193,6 +193,8 @@ class FakeBindings:
         self.ignore_quit = False  # simula pump que no termina
         self.null_request_count = 0  # requests STATE.NULL emitidos
         self.fail_remove_watch = False  # buses nuevos heredan el fallo
+        self.fail_destroy_source = False  # R1.3.1 failure injection
+        self.destroy_source_calls = 0
         self.remove_watch_exception: Exception | None = None  # o la excepción
         # inyección de excepciones de ARM (M11.3C-R6 P1-03, TEST ONLY)
         self.arm_exception_stage: str | None = None
@@ -451,6 +453,9 @@ class FakeBindings:
         return source.attach(context)
 
     def destroy_source(self, source):
+        self.destroy_source_calls += 1
+        if self.fail_destroy_source:
+            raise RuntimeError("synthetic destroy_source failure")
         if source is not None:
             source.destroy()
 

@@ -548,3 +548,150 @@ def test_ci131_03_e_generation_change_fences_a_claimed_command() -> None:
     assert command.commit_allowed(current_generation=5) is False
     command.revoke_commit()
     assert command.commit_allowed(current_generation=4) is False
+
+
+# ── Phase 4 — close: first-error-wins + complete safe best-effort ──────────
+
+
+class _Executor:
+    """Direct-executor double with injectable release failure."""
+
+    def __init__(self, *, fail: bool = False, keep_handle: bool = False) -> None:
+        self.handle = "handle" if keep_handle else None
+        self.releases: list[str] = []
+        self.fail = fail
+        self.keep_handle = keep_handle
+
+    def release(self, reason: str) -> None:
+        self.releases.append(reason)
+        if self.fail:
+            raise RuntimeError("synthetic release failure")
+        if not self.keep_handle:
+            self.handle = None
+
+    def mark_previous_source_released(self) -> None:
+        return None
+
+    def abort(self, *_args, **_kwargs):
+        return None
+
+    def record_runtime_anomaly(self, *_args, **_kwargs) -> None:
+        return None
+
+    def discard_staged_load(self, *_args, **_kwargs) -> None:
+        return None
+
+
+def _port(*, executor=None, timer: bool = False):
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerAudioPort
+    from tests.test_gstreamer_audio_port import FakeBindings
+
+    bindings = FakeBindings()
+    port = GStreamerAudioPort(bindings=bindings, direct_executor=executor)
+    if timer:
+        port._timer_source = object()
+    return bindings, port
+
+
+def _force_pipeline_error(port, message: str = "pipeline teardown failed") -> None:
+    port._teardown_pipeline_terminal = lambda: RuntimeError(message)
+
+
+def test_ci131_04_a_pipeline_error_wins_and_timer_cleanup_is_attempted() -> None:
+    bindings, port = _port(timer=True)
+    port._run_on_pump = lambda callback: callback()
+    _force_pipeline_error(port)
+    bindings.fail_destroy_source = True
+    try:
+        with pytest.raises(RuntimeError, match="pipeline teardown failed"):
+            port.close()
+
+        assert bindings.destroy_source_calls >= 1  # best-effort attempted
+        assert port._timer_source is not None  # not cleared without proof
+        assert port._closed is False
+    finally:
+        bindings.fail_destroy_source = False
+
+
+def test_ci131_04_b_release_is_attempted_after_a_pipeline_error() -> None:
+    executor = _Executor(fail=True)
+    _bindings_unused, port = _port(executor=executor)
+    _force_pipeline_error(port)
+
+    with pytest.raises(RuntimeError, match="pipeline teardown failed"):
+        port.close()
+
+    assert executor.releases == ["gstreamer_close"]
+    assert port._closed is False
+
+
+def test_ci131_04_c_timer_error_wins_and_release_is_attempted() -> None:
+    executor = _Executor(fail=True)
+    bindings, port = _port(executor=executor, timer=True)
+    port._run_on_pump = lambda callback: callback()
+    bindings.fail_destroy_source = True
+    try:
+        with pytest.raises(RuntimeError, match="synthetic destroy_source failure"):
+            port.close()
+
+        assert executor.releases == ["gstreamer_close"]
+        assert port._closed is False
+    finally:
+        bindings.fail_destroy_source = False
+
+
+def test_ci131_04_d_pump_timeout_is_first_and_release_still_attempted() -> None:
+    executor = _Executor(fail=True)
+    bindings, port = _port(executor=executor)
+    port._ensure_pump()
+    bindings.ignore_quit = True
+    try:
+        with pytest.raises(RuntimeError, match="pump thread did not terminate"):
+            port.close()
+
+        assert executor.releases == ["gstreamer_close"]
+        assert port._closed is False
+        assert port._pump is not None  # residual ownership retained
+    finally:
+        bindings.ignore_quit = False
+        if not port._closed:
+            import contextlib
+
+            with contextlib.suppress(Exception):
+                port.close()
+
+
+def test_ci131_04_e_release_only_failure_is_retryable() -> None:
+    executor = _Executor(fail=True)
+    _bindings_unused, port = _port(executor=executor)
+
+    with pytest.raises(RuntimeError, match="synthetic release failure"):
+        port.close()
+    assert port._closed is False
+    assert executor.releases == ["gstreamer_close"]
+
+    executor.fail = False
+    port.close()
+    assert port._closed is True
+    assert executor.releases == ["gstreamer_close", "gstreamer_close"]
+
+
+def test_ci131_04_f_happy_path_closes_fully() -> None:
+    executor = _Executor()
+    _bindings_unused, port = _port(executor=executor)
+
+    port.close()
+
+    assert port._closed is True
+    assert port._closing is False
+    assert executor.releases == ["gstreamer_close"]
+
+
+def test_ci131_04_g_release_that_keeps_a_handle_is_not_a_faked_closure() -> None:
+    executor = _Executor(keep_handle=True)
+    _bindings_unused, port = _port(executor=executor)
+
+    with pytest.raises(RuntimeError, match="still owns a handle"):
+        port.close()
+
+    assert port._closed is False

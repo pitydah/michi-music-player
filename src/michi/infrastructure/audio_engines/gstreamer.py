@@ -1864,43 +1864,76 @@ class GStreamerAudioPort(AudioPort):
     # ------------------------------------------------------------------
 
     def close(self) -> None:
-        """R1-03: retryable, failure-atomic close. `_closed == True` only
-        after ALL teardown succeeded; a failure raises with ownership
-        retained and `_closed` still False so a SECOND close retries the
-        remaining teardown (resources already released are None-guarded)."""
+        """R1-03/R1.3.1: retryable, failure-atomic, best-effort close.
+
+        Contract (R1.3.1 §20):
+
+        A. the FIRST chronological error is the one re-raised;
+        B. every SAFE remaining cleanup is still attempted;
+        C. ``_closed == True`` only once every authoritative obligation finished;
+        D. residual ownership stays retryable (``_closed`` remains False);
+        E. no reference is cleared before its release was proven.
+
+        The Direct executor release is part of the authoritative teardown and is
+        therefore always attempted — never skipped merely because an earlier
+        cleanup failed.
+        """
         self._load_epoch += 1
         if self._closed:
             return
         self._closing = True
         self._invalidate_generation()  # in-flight messages stale
-        # FIRST-ERROR-WINS (M11.3C-R3/R5): la secuencia canónica es
-        # 1) invalidar generación, 2) teardown del pipeline (bus watch +
-        # NULL, best-effort — un fallo de remoción NUNCA salta el request
-        # NULL), 3) limpieza de sources, 4) quit del pump, 5) join. La
-        # PRIMERA falla cronológica es la autoritativa; las posteriores
-        # NUNCA reemplazan a la primaria. El teardown terminal ya no puede
-        # lanzar: devuelve su primer error.
-        primary_error = self._teardown_pipeline_terminal()
-        # destroy timer + sources
+
+        primary_error: Exception | None = None
+        secondary_errors: list[Exception] = []
+
+        def record_error(exc: Exception) -> None:
+            nonlocal primary_error
+            if primary_error is None:
+                primary_error = exc
+            else:
+                secondary_errors.append(exc)
+
+        # 1. pipeline terminal cleanup (already returns its first error)
+        try:
+            teardown_error = self._teardown_pipeline_terminal()
+        except Exception as exc:  # noqa: BLE001 — cleanup must never escape
+            teardown_error = exc
+        if teardown_error is not None:
+            record_error(teardown_error)
+
+        # 2. timer source — cleared ONLY once its destruction was proven
         if self._timer_source is not None:
-            self._run_on_pump(lambda: self._bindings.destroy_source(self._timer_source))
-            self._timer_source = None
-        # A source still attached to this context requires its original pump
-        # to remain alive for a truthful retry.  Never orphan it by stopping
-        # the only thread allowed to detach it.
+            try:
+                self._run_on_pump(
+                    lambda: self._bindings.destroy_source(self._timer_source)
+                )
+            except Exception as exc:  # noqa: BLE001 — best-effort cleanup
+                record_error(exc)
+            else:
+                self._timer_source = None
+
+        # 3. pump/loop/context. SAFETY EXCEPTION (§22): a source still attached
+        # to this context requires its original pump to stay alive for a
+        # truthful retry — never orphan it by stopping the only thread allowed
+        # to detach it.
         if self._pump is not None and self._bus_source is None:
             if self._loop is not None:
-                # GLib race (AR-12 evidence): a g_main_loop_quit issued
-                # before the loop is poll-blocking can be lost, leaving the
-                # pump stuck in run(). quit() is idempotent and thread-safe
-                # — retry quit + bounded join until the pump is proven dead
-                # (bounded shutdown verification, max ~1.6s).
+                # GLib race (AR-12 evidence): a g_main_loop_quit issued before
+                # the loop is poll-blocking can be lost, leaving the pump stuck
+                # in run(). quit() is idempotent and thread-safe — retry quit +
+                # bounded join until the pump is proven dead (max ~1.6s).
                 entered = getattr(self, "_pump_entered_run", None)
                 if entered is not None:
                     entered.wait(timeout=1.0)
                 for _ in range(4):
                     if self._pump.is_alive():
-                        self._run_on_pump(lambda: self._bindings.quit_loop(self._loop))
+                        try:
+                            self._run_on_pump(
+                                lambda: self._bindings.quit_loop(self._loop)
+                            )
+                        except Exception as exc:  # noqa: BLE001 — best-effort
+                            record_error(exc)
                     self._pump.join(timeout=0.4)
                     if not self._pump.is_alive():
                         break
@@ -1909,15 +1942,13 @@ class GStreamerAudioPort(AudioPort):
             if self._pump.is_alive():
                 # NUNCA perder el ownership mientras el thread viva:
                 # retener referencias y reportar (R2 P1-03)
-                pump_error = RuntimeError("GStreamer pump thread did not terminate")
-                if primary_error is None:
-                    primary_error = pump_error
-                # si ya hay un error primario (teardown), el timeout del
-                # pump queda como falla secundaria: NO lo reemplaza.
+                record_error(RuntimeError("GStreamer pump thread did not terminate"))
             else:
                 self._pump = None
                 self._loop = None
                 self._context = None
+
+        # 4. logical session bookkeeping (no native owner left behind)
         self._pending_path = None
         self._current_path = None
         self._pending_direct_load = None
@@ -1928,24 +1959,24 @@ class GStreamerAudioPort(AudioPort):
         self._acc = []
         self._rej = []
         self._pst = []
-        if primary_error is not None:
-            raise primary_error  # _closed stays False → retryable
-        # DAC-V35-100R1.3 §16: the executor release is part of the authoritative
-        # teardown. `_closed = True` is only truthful once EVERY ownership
-        # hand-off succeeded, so the release happens BEFORE the flag and its
-        # failure is a first-class close failure (retryable, never faked).
+
+        # 5. Direct executor release — ALWAYS attempted (best-effort) and the
+        #    authoritative hand-off that gates `_closed`.
         if self._direct_executor is not None:
             try:
                 self._direct_executor.release("gstreamer_close")
             except Exception as exc:  # noqa: BLE001 — first-error-wins
-                primary_error = exc
+                record_error(exc)
             else:
                 if getattr(self._direct_executor, "handle", None) is not None:
-                    primary_error = RuntimeError(
-                        "Direct executor still owns a handle after close release"
+                    record_error(
+                        RuntimeError(
+                            "Direct executor still owns a handle after close release"
+                        )
                     )
+
         if primary_error is not None:
-            raise primary_error
+            raise primary_error  # _closed stays False → retryable
         # ONLY after the full chain succeeded:
         self._closed = True
         self._closing = False
