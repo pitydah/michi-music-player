@@ -227,7 +227,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2 + 100R1.3` Automated verification + field corrective seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
+| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2 + 100R1.3 + 100R1.3.1` Automated verification + field corrective seal | CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
 | 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | blocked until exact-head remote R1.2 publication and a separate physical-qualification authorization |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
@@ -20406,6 +20406,7 @@ DAC-V35-100R1 = SUPERSEDED
 DAC-V35-100R1.1 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.2 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3 = CLOSED-AUTOMATED / GO; PUBLISHED
+DAC-V35-100R1.3.1 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
 DAC-V35-110 = DO NOT START
 ```
 
@@ -20547,6 +20548,69 @@ non-DAC skips. Artifact
 R1.3 does not claim physical qualification, exclusivity, bit-perfect status, or
 M11.5 guarantees. `DAC-V35-110` remains `DO NOT START` pending a separate
 authorization.
+
+## 409.5 `DAC-V35-100R1.3.1` closure integrity corrective
+
+R1.3 closed the functional gap (a truthful tuple refusal must not read as "this
+DAC cannot play this track") and published exact-head evidence. R1.3.1 corrects
+the residual integrity defects that an audit demonstrated afterwards. Nothing
+in R1.3 is erased; its published evidence stands.
+
+Corrected defects:
+
+1. **Device identity vs output path.** `Shared` is a path POLICY, never
+   "forget the selected DAC". `select_path_mode("shared")` /
+   `select_shared_output()` preserve `selected_device_id`; forgetting the
+   hardware is the separate explicit intent `clear_device_selection()`.
+2. **Qualification single-flight.** A follower whose wait expires receives a
+   typed `EXACT_QUALIFICATION_TIMEOUT` (`code` preserved for the owner
+   projection) and NEVER launches a second physical probe while the leader is
+   still alive. The flight key now represents the exact endpoint and request:
+   device + binding generation + locator + environment fingerprint + exact
+   tuple. No thread is killed and no ambiguity is cached.
+3. **GLib command commit authority.** A command that already reached RUNNING
+   cannot be abandoned, so the caller REVOKES its commit authority on timeout.
+   The authoritative mutation evaluates `commit_allowed()` immediately before
+   mutating, and every lifecycle mutation dispatched through the pump is fenced
+   against the current port generation. Physical execution and logical commit
+   authority are therefore separate: a late RUNNING completion cannot commit
+   into a newer generation.
+4. **GStreamer close.** `close()` is now simultaneously first-error-wins AND
+   best-effort: every safe remaining cleanup is attempted, the Direct executor
+   release is never skipped because an earlier cleanup failed, `_closed = True`
+   only after every authoritative obligation finished, residual ownership stays
+   retryable, and no reference is cleared before its release was proven. A
+   cleanup that would orphan a dependency the previous failure still owns is
+   intentionally deferred (documented safety exception).
+5. **Capability presentation.** A negative tuple never means the DAC is
+   unavailable: connection (`Available`/`Disconnected`), qualification
+   (`Qualified` / `Partially qualified` / `Current format unsupported` /
+   `Not yet qualified` / `Evidence unavailable`) and current Direct
+   compatibility (`Strict carrier unsupported` / `No compatible carrier` /
+   `Qualification timed out` / `Compatible carrier qualified` / `Unknown`) are
+   three separate concepts.
+6. **One user intent -> one playback request.** Six productive entrypoints
+   (library row, album track, playlist track, search result, queue entry,
+   NowPlaying play) are sealed: exactly one session request, one playback load,
+   one output preparation and at most one physical qualification per carrier
+   key. A replay legitimately opens no new session transition; what never
+   happens is fan-out.
+7. **Signal Truth container boundary.** Container adaptation is now an explicit
+   table of authorized ordered `(decoded, requested)` widening pairs
+   (16-bit: `S16LE -> S32LE`; 24-bit: `S243LE -> S2432LE`, `S243LE -> S32LE`,
+   `S2432LE -> S32LE`). Family membership is no longer sufficient: an
+   unauthorized or narrowing rewrite is never reported as an adaptation.
+
+R1.3.1 does not claim physical qualification, exclusivity, bit-perfect status,
+or M11.5 guarantees. `DAC-V35-110` remains `DO NOT START`. Physical
+qualification remains `NOT_RUN`.
+
+Known pre-existing observation (outside this corrective's scope, reproduced at
+the R1.3 baseline `babab94`): a startup resume through the persisted GStreamer
+engine can raise `AudioTransportUnavailableError` from `_apply_prepare_seek`
+when the position query lands before the pipeline is ready, which surfaces as an
+event-loop exception. It is data-state dependent (persisted engine + session
+snapshot) and does not reproduce with clean application data.
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 

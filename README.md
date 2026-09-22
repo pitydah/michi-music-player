@@ -66,8 +66,13 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   shell DONE, and scoped M9-R3 Library/collection convergence in progress
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
-- M11.4: DAC-V35-100R1.3 automated GO is published from exact-head remote
-  evidence. Selecting a DAC is now separate from choosing the output mode
+- M11.4: DAC-V35-100R1.3.1 (closure integrity corrective) is local automated GO
+  with remote publication pending: Shared keeps the selected DAC identity,
+  qualification single-flight survives follower timeouts, timed-out context
+  commands lose their commit authority, `close()` is first-error-wins and
+  best-effort, capability evidence stays tuple-scoped, and one user intent
+  produces exactly one playback request. DAC-V35-100R1.3 automated GO is
+  published from exact-head remote evidence. Selecting a DAC is now separate from choosing the output mode
   (Shared / Compatible Direct / Strict Direct); Compatible Direct may use a
   wider lossless carrier that provably preserves the source's significant bits,
   and output refusals surface as one typed truth with explicit recovery actions.
