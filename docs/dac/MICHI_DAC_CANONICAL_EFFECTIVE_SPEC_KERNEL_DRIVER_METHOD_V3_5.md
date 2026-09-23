@@ -227,7 +227,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9 | `DAC-V35-090` Premium DAC UI | CLOSED-AUTOMATED / GO | YES | R1 + R1.1 seal functional profiles, collision-safe identity, productive hotplug, and runtime keyboard evidence |
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
-| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2 + 100R1.3 + 100R1.3.1 + 100R1.3.2` Automated verification + field corrective seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
+| 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2 + 100R1.3 + 100R1.3.1 + 100R1.3.2 + 100R1.3.3` Automated verification + field corrective seal | CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
 | 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | blocked until exact-head remote R1.2 publication and a separate physical-qualification authorization |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
@@ -20408,6 +20408,7 @@ DAC-V35-100R1.2 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.1 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.2 = CLOSED-AUTOMATED / GO; PUBLISHED
+DAC-V35-100R1.3.3 = CLOSED-AUTOMATED / LOCAL GO; REMOTE PUBLICATION PENDING
 DAC-V35-110 = DO NOT START
 ```
 
@@ -20666,6 +20667,47 @@ commit is the PUBLICATION head; the code closure remains bound to the
 implementation head above.
 
 R1.3.2 does not claim physical qualification, exclusivity, bit-perfect status,
+or M11.5 guarantees. `DAC-V35-110` remains `DO NOT START`. Physical
+qualification remains `NOT_RUN`.
+
+## 409.7 `DAC-V35-100R1.3.3` native source ownership seal
+
+R1.3.2 fenced the LOGICAL commit of a stale context command. A follow-up audit
+demonstrated that Python bookkeeping and native GLib/GStreamer ownership could
+still diverge, because a native operation may already have happened when the
+logical commit is rejected. R1.3.3 seals exactly that boundary.
+
+Corrected defects:
+
+1. **Native bus-watch ownership.** ``Gst.Bus.add_watch()`` REGISTERS the watch
+   natively and then returns a watch ID. The rejected-commit path used to call
+   ``destroy_source(watch_id)``, i.e. it treated an integer ID as a
+   ``GLib.Source`` (and the failure was suppressed), leaving an invisible
+   native watch. Compensation now uses the canonical ``bus.remove_watch()``.
+2. **Native timer ownership.** ``attach_source()`` is a native operation; the
+   timer used to be published before it and without a post-attach authority
+   check. The sequence is now CREATE -> NATIVE ATTACH -> POST-ATTACH AUTHORITY
+   CHECK -> LOGICAL COMMIT, and a timer whose commit is rejected is destroyed
+   (verified, non-suppressing) instead of being forgotten.
+3. **Compensation failure is observable.** When a compensating release cannot
+   be proven, the receipt is retained (``_residual_bus_watches`` /
+   ``_residual_timer_sources``), reported by the terminal ownership gate, and
+   retried by ``close()``. A native resource never becomes invisible ownership.
+4. **Stale detach reconciliation by resource identity.** A stale command whose
+   native removal PHYSICALLY succeeded used to leave the old bookkeeping in
+   place, so ``close()`` could never converge. Reconciliation is now keyed on
+   the exact resource (``bus`` + ``watch_id``), so the removed resource's
+   bookkeeping clears while a newer generation's watch is never touched. An
+   already-absent watch is not treated as a removal failure (the Gst contract
+   says ``remove_watch()`` returns False when no watch is installed), and a
+   reference to a bus without a watch is not native ownership.
+
+Native truth — ``watch_installed``, ``add_watch_count``, ``remove_watch_count``,
+``source.attached``, ``source.destroyed`` — is asserted by the R1.3.3 gates, not
+only the Python fields. Four of them are discriminating: disabling the
+corresponding fix makes the gate fail.
+
+R1.3.3 does not claim physical qualification, exclusivity, bit-perfect status,
 or M11.5 guarantees. `DAC-V35-110` remains `DO NOT START`. Physical
 qualification remains `NOT_RUN`.
 

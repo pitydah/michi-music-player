@@ -66,7 +66,13 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   shell DONE, and scoped M9-R3 Library/collection convergence in progress
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
-- M11.4: DAC-V35-100R1.3.2 (native closure final corrective) automated GO is
+- M11.4: DAC-V35-100R1.3.3 (native source ownership seal) is local automated GO
+  with remote publication pending: native bus-watch registration is compensated
+  through the canonical removal API (a watch ID is never treated as a GLib
+  source), timer ownership publishes only after the native attach plus a
+  post-attach authority check, unproven compensation stays as an observable
+  retryable receipt, and stale detach reconciles by resource identity.
+  DAC-V35-100R1.3.2 (native closure final corrective) automated GO is
   published from exact-head remote evidence: the RUNNING context-command commit
   boundary is fenced immediately before each ownership mutation, residual GLib
   bus/pump ownership cannot fake closure, single-flight leader failures fan out
