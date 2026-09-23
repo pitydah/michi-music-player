@@ -1317,7 +1317,7 @@ class TestF42AdapterContract:
         # retains the live pump for retry; transport authority is unchanged.
         # The exact-SHA CI corrective also rejects queued PAUSED/STOPPED
         # observations superseded by explicit Stop/replay command authority.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "03ad7f669791a9de",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "8b99fe5cc0eb8524",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).
