@@ -467,8 +467,7 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
         return False, f"status source unavailable: {exc}"
     required = {
         "canonical": (
-            "DAC-V35-100R1.3.3 = CLOSED-AUTOMATED / LOCAL GO; "
-            "REMOTE PUBLICATION PENDING",
+            "DAC-V35-100R1.3.3 = CLOSED-AUTOMATED / GO; PUBLISHED",
             "DAC-V35-110",
             "DO NOT START",
         ),
