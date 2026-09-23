@@ -20808,6 +20808,16 @@ environment.** Bit-perfect is **not** claimed; M11.5 remains **not started**;
 
 `DAC-V35-110` final status: **PHYSICAL QUALIFICATION IN PROGRESS.**
 
+R1.3.4 + R110 code closure is bound to the exact-head remote artifact for
+commit `8e79b3a5812fd0e764df6c4f2b26a9ba46e7aff6`, Michi CI run `35902090162` (automated `GO`, physical evidence recorded
+separately in `evidence/dac-v35-110/2026-09-22-smsl-152a85dd/`). Artifact
+`dac-v35-software-closure-8e79b3a5812fd0e764df6c4f2b26a9ba46e7aff6` has GitHub digest `sha256:1e8f79fcd237b143211287e18198eef4219529e855fc6bb1b02a168a570f5dbd`. Nomenclature:
+`8e79b3a5812fd0e764df6c4f2b26a9ba46e7aff6` is the R1.3.4 CODE_CLOSURE_HEAD; the commit that records this evidence
+is the PUBLICATION_HEAD. No third commit documents the publication CI.
+
+Physical qualification remains DEVICE-SCOPED to the tested SMSL DAC and the
+recorded environment; it is not a universal claim and it is not bit-perfect.
+
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 
 Minimum physical diversity for a top-tier general claim:

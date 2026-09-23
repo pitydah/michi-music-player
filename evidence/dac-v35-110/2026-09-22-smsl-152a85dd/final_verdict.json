@@ -317,5 +317,11 @@
   "physical_claim_scope": "Physical PCM Direct path verified on the tested SMSL DAC (USB 152a:85dd, hw:CARD=AUDIO,DEV=0, physical path usb-0000:0c:00.3-3.3.2) under kernel 7.2.6-1-cachyos / alsa-lib 1.2.16.1 / GStreamer 1.28.7",
   "bit_perfect_claim": false,
   "m11_5_claim": false,
-  "final_status": "PHYSICAL QUALIFICATION IN PROGRESS"
+  "final_status": "PHYSICAL QUALIFICATION IN PROGRESS",
+  "r134_code_closure": {
+    "code_closure_head": "8e79b3a5812fd0e764df6c4f2b26a9ba46e7aff6",
+    "code_closure_ci": "35902090162",
+    "code_closure_artifact": "dac-v35-software-closure-8e79b3a5812fd0e764df6c4f2b26a9ba46e7aff6",
+    "code_closure_digest": "sha256:1e8f79fcd237b143211287e18198eef4219529e855fc6bb1b02a168a570f5dbd"
+  }
 }
