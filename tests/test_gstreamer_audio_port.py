@@ -109,6 +109,7 @@ class FakeBus:
     def __init__(self, pipeline):
         self.pipeline = pipeline
         self.sources_created = 0
+        self.add_watch_count = 0
         self.watch_installed = False
         self.watch_callback = None
         self.remove_watch_count = 0
@@ -120,6 +121,7 @@ class FakeBus:
         return FakeSource()
 
     def add_watch(self, priority, callback):
+        self.add_watch_count += 1
         self.watch_installed = True
         self.watch_callback = callback
         return 42  # id sintético (bookkeeping only)
@@ -138,6 +140,7 @@ class FakeSource:
     def __init__(self):
         self.destroyed = False
         self.attached = False
+        self.fail_destroy = False
         self._callback = None
 
     def set_callback(self, callback, *args):
@@ -148,6 +151,8 @@ class FakeSource:
         return 1
 
     def destroy(self):
+        if self.fail_destroy:
+            raise RuntimeError("synthetic source destroy failure")
         self.destroyed = True
 
 
@@ -467,6 +472,14 @@ class FakeBindings:
             raise RuntimeError("synthetic destroy_source failure")
         if source is not None:
             source.destroy()
+
+    def destroy_source_verified(self, source):
+        """Parity with GStreamerBindings: destruction failure is NOT hidden."""
+        self.destroy_source_calls += 1
+        if self.fail_destroy_source:
+            raise RuntimeError("synthetic destroy_source failure")
+        source.destroy()
+        return True
 
     def create_timeout_source(self, interval_ms, callback):
         self._raise_if_arm_stage("create_timeout_source")

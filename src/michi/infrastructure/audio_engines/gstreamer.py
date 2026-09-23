@@ -991,6 +991,17 @@ class GStreamerBindings:
         with suppress(Exception):
             source.destroy()  # source ya destruido o contexto muerto
 
+    def destroy_source_verified(self, source) -> bool:
+        """Destroy a GLib source WITHOUT suppressing failure (R1.3.3 §19).
+
+        ``destroy_source`` is a best-effort helper for a source that is already
+        being torn down. A caller that must decide whether a native release was
+        PROVEN needs the failure to reach it, so the residual ownership stays
+        observable instead of becoming invisible.
+        """
+        source.destroy()
+        return True
+
     def create_timeout_source(self, interval_ms: int, callback):
         source = self._glib.timeout_source_new(interval_ms)
         source.set_callback(callback)
@@ -1187,6 +1198,10 @@ class GStreamerAudioPort(AudioPort):
         # load-command ownership epoch (GATE 1)
         self._load_epoch = 0
         self._context_command_seq = 0
+        # R1.3.3: native receipts whose logical commit was rejected and
+        # whose compensation could not be proven. Observable and retryable.
+        self._residual_bus_watches: list[tuple[object, object]] = []
+        self._residual_timer_sources: list[object] = []
         # consumer registrations
         self._eom: list = []
         self._pos: list = []
@@ -1325,6 +1340,67 @@ class GStreamerAudioPort(AudioPort):
         mutation()
         return True
 
+    @staticmethod
+    def _bus_watch_still_installed(bus) -> bool:
+        """Native watch truth when the bus can report it (R1.3.3 §27).
+
+        ``Gst.Bus.remove_watch()`` returns False when the bus has NO watch
+        installed, so an absent watch is not a removal failure. A backend that
+        can report the watch state explicitly lets a refusal be told apart from
+        an already-removed resource; otherwise the Gst contract governs.
+        """
+        installed = getattr(bus, "watch_installed", None)
+        return bool(installed) if installed is not None else False
+
+    def _compensate_bus_watch(self, bus, watch_id) -> None:
+        """Undo a native bus watch whose logical commit was rejected.
+
+        R1.3.3 §11/§12: ``bus.add_watch()`` already REGISTERED the watch
+        natively; the returned value is a watch ID, NOT a GLib.Source. The
+        canonical release is ``bus.remove_watch()``. When that release cannot
+        be proven, the receipt stays observable so ``close()`` can retry it —
+        a native watch must never become invisible ownership.
+        """
+        try:
+            removed = self._bindings.remove_bus_watch(bus)
+        except Exception:  # noqa: BLE001 — compensation boundary
+            removed = False
+        if removed or not self._bus_watch_still_installed(bus):
+            # Native truth: no watch installed → nothing to retain.
+            return
+        receipt = (bus, watch_id)
+        if receipt not in self._residual_bus_watches:
+            self._residual_bus_watches.append(receipt)
+        _logger.warning(
+            "Retained residual native bus watch %r after rejected commit", watch_id
+        )
+
+    def _compensate_timer_source(self, timer) -> None:
+        """Release a natively attached timer whose logical commit was rejected."""
+        try:
+            self._bindings.destroy_source_verified(timer)
+        except Exception:  # noqa: BLE001 — compensation boundary
+            pass
+        else:
+            return
+        if timer not in self._residual_timer_sources:
+            self._residual_timer_sources.append(timer)
+        _logger.warning("Retained residual native timer source after rejected commit")
+
+    def _reconcile_bus_removal(self, bus, watch_id) -> bool:
+        """Clear bookkeeping only when it still describes THAT resource.
+
+        R1.3.3 §24/§25: a stale command whose native removal PHYSICALLY
+        succeeded must still reconcile the bookkeeping of the exact resource it
+        removed, otherwise close() can never converge. Resource identity — not
+        command authority alone — decides, so a newer generation's watch is
+        never cleared.
+        """
+        if self._bus is not bus or self._bus_source != watch_id:
+            return False
+        self._clear_bus_ownership()
+        return True
+
     def _install_bus_source(self, source) -> None:
         self._bus_source = source
         self._bus_source_attached = True
@@ -1381,16 +1457,16 @@ class GStreamerAudioPort(AudioPort):
             return True  # keep source
 
         def attach(command):
-            # The native creation may block arbitrarily long: the ownership
-            # commit is fenced AFTER it, immediately before mutating (R1.3.2 §8).
-            source = self._bindings.create_bus_source(
+            # Native registration happens INSIDE add_watch; the returned value
+            # is a watch ID, never a GLib.Source (R1.3.3 §9/§11).
+            watch_id = self._bindings.create_bus_source(
                 bus, on_bus_message, self._context
             )
             if not self._commit_guarded(
-                command, lambda: self._install_bus_source(source)
+                command, lambda: self._install_bus_source(watch_id)
             ):
-                with contextlib.suppress(Exception):
-                    self._bindings.destroy_source(source)
+                # The native watch EXISTS: compensate with the canonical API.
+                self._compensate_bus_watch(bus, watch_id)
                 return
             if self._timer_source is None:
 
@@ -1401,13 +1477,14 @@ class GStreamerAudioPort(AudioPort):
                 timer = self._bindings.create_timeout_source(
                     _POSITION_POLL_MS, on_timer
                 )
+                # CREATE -> NATIVE ATTACH -> POST-ATTACH AUTHORITY CHECK ->
+                # LOGICAL COMMIT (R1.3.3 §18): ownership is published only
+                # after the attach succeeded AND the command still owns it.
+                self._bindings.attach_source(timer, self._context)
                 if not self._commit_guarded(
                     command, lambda: self._install_timer_source(timer)
                 ):
-                    with contextlib.suppress(Exception):
-                        self._bindings.destroy_source(timer)
-                    return
-                self._bindings.attach_source(timer, self._context)
+                    self._compensate_timer_source(timer)
 
         self._run_on_pump(attach, pass_command=True)
 
@@ -1424,11 +1501,20 @@ class GStreamerAudioPort(AudioPort):
         def detach(command):
             if self._bus is None:
                 raise RuntimeError("GStreamer bus watch exists without owning bus")
-            if not self._bindings.remove_bus_watch(self._bus):
-                raise RuntimeError("GStreamer bus watch could not be removed")
-            # A revoked command must not clear ownership that a newer
-            # generation already re-installed (R1.3.2 §8).
-            self._commit_guarded(command, self._clear_bus_ownership)
+            # CAPTURE RESOURCE IDENTITY before the native primitive (R1.3.3 §25).
+            expected_bus = self._bus
+            expected_watch_id = self._bus_source
+            if not self._bindings.remove_bus_watch(expected_bus):
+                if self._bus_watch_still_installed(expected_bus):
+                    # Native truth: the watch is STILL installed → refusal.
+                    raise RuntimeError("GStreamer bus watch could not be removed")
+                # Native truth: the watch is already absent. That is NOT a
+                # removal failure and must not block close() forever (§27).
+                self._reconcile_bus_removal(expected_bus, expected_watch_id)
+                return
+            # The native watch is gone: reconcile the EXACT resource, even when
+            # this command already lost authority (R1.3.3 §24).
+            self._reconcile_bus_removal(expected_bus, expected_watch_id)
 
         self._run_on_pump(detach, pass_command=True)
 
@@ -2017,6 +2103,27 @@ class GStreamerAudioPort(AudioPort):
         self._rej = []
         self._pst = []
 
+        # 4b. R1.3.3 §13/§19: residual native receipts from rejected
+        #     compensations are retried here so close() can converge from a
+        #     native/logical divergence state.
+        for receipt in tuple(self._residual_bus_watches):
+            bus, _watch_id = receipt
+            try:
+                if self._bindings.remove_bus_watch(bus):
+                    self._residual_bus_watches.remove(receipt)
+                elif not self._bus_watch_still_installed(bus):
+                    # Native truth: no watch installed → nothing to release.
+                    self._residual_bus_watches.remove(receipt)
+            except Exception as exc:  # noqa: BLE001 — best-effort retry
+                record_error(exc)
+        for timer in tuple(self._residual_timer_sources):
+            try:
+                self._bindings.destroy_source_verified(timer)
+            except Exception as exc:  # noqa: BLE001 — best-effort retry
+                record_error(exc)
+            else:
+                self._residual_timer_sources.remove(timer)
+
         # 5. Direct executor release — ALWAYS attempted (best-effort) and the
         #    authoritative hand-off that gates `_closed`.
         if self._direct_executor is not None:
@@ -2058,10 +2165,16 @@ class GStreamerAudioPort(AudioPort):
             residual.append("pipeline")
         if self._bus_source is not None:
             residual.append("bus_source")
-        if self._bus is not None:
-            residual.append("bus")
+        elif self._bus is not None:
+            # R1.3.3 §16: a bus REFERENCE without a watch carries no native
+            # obligation; only the watch receipt is real ownership.
+            self._bus = None
         if self._timer_source is not None:
             residual.append("timer_source")
+        if self._residual_bus_watches:
+            residual.append("residual_bus_watch")
+        if self._residual_timer_sources:
+            residual.append("residual_timer_source")
         if self._pump is not None:
             residual.append("pump")
         if self._loop is not None:
