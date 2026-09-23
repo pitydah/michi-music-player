@@ -36,7 +36,13 @@ CARD_DX5 = AlsaCard(card_index=1, card_id="DX5", usb_devpath="2-1")
 
 
 def _ingest(registry: AudioDeviceRegistry, sysfs_root: Path) -> None:
-    registry.ingest(read_usb_devices(sysfs_root) + read_alsa_cards(sysfs_root))
+    # The ALSA reader defaults to the HOST /proc/asound for subdevice facts.
+    # These gates must be hermetic: the fixture's own (absent) proc root keeps
+    # the assertions independent of the machine's current sound-card layout.
+    registry.ingest(
+        read_usb_devices(sysfs_root)
+        + read_alsa_cards(sysfs_root, proc_asound_root=sysfs_root / "proc")
+    )
 
 
 def test_ingest_correlates_usb_and_alsa(tmp_path: Path) -> None:

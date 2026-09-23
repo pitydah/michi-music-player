@@ -122,6 +122,9 @@ class FakeBus:
 
     def add_watch(self, priority, callback):
         self.add_watch_count += 1
+        if self.watch_installed:
+            # Gst contract: the bus already owns an event source → no new watch.
+            return 0
         self.watch_installed = True
         self.watch_callback = callback
         return 42  # id sintético (bookkeeping only)
@@ -472,6 +475,11 @@ class FakeBindings:
             raise RuntimeError("synthetic destroy_source failure")
         if source is not None:
             source.destroy()
+
+    @staticmethod
+    def bus_watch_acquired(watch_id):
+        """Parity with GStreamerBindings: 0 is not an acquired watch."""
+        return isinstance(watch_id, int) and watch_id > 0
 
     def destroy_source_verified(self, source):
         """Parity with GStreamerBindings: destruction failure is NOT hidden."""

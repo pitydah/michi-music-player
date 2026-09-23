@@ -49,6 +49,15 @@ class ContextCommandState(Enum):
     ABANDONED = "abandoned"
 
 
+class BusWatchNotAcquiredError(RuntimeError):
+    """``gst_bus_add_watch()`` returned no new watch id.
+
+    R1.3.4 §16/§17: a zero return means the bus ALREADY owns an event source,
+    so Michi acquired NOTHING. No ownership receipt exists, and removing the
+    bus's pre-existing watch is forbidden.
+    """
+
+
 class ContextCommandTimeoutError(RuntimeError):
     """The owner gave up waiting for one bounded context command."""
 
@@ -952,6 +961,15 @@ class GStreamerBindings:
             raise value
         return value
 
+    @staticmethod
+    def bus_watch_acquired(watch_id) -> bool:
+        """True only when ``add_watch()`` actually returned a new watch id.
+
+        R1.3.4 §15: the Gst contract allows 0 — the bus already owns an event
+        source — which is NOT an acquired watch.
+        """
+        return isinstance(watch_id, int) and watch_id > 0
+
     def create_bus_source(self, bus, callback, context=None) -> int:
         """Bus watch canónico attachado al context indicado.
 
@@ -1352,28 +1370,41 @@ class GStreamerAudioPort(AudioPort):
         installed = getattr(bus, "watch_installed", None)
         return bool(installed) if installed is not None else False
 
+    def _retain_residual_bus_watch(self, bus, watch_id, *, cause=None) -> None:
+        """Keep an unproven native watch receipt observable and retryable."""
+        receipt = (bus, watch_id)
+        if receipt not in self._residual_bus_watches:
+            self._residual_bus_watches.append(receipt)
+        _logger.warning(
+            "Retained residual native bus watch %r (release not proven: %s)",
+            watch_id,
+            type(cause).__name__ if cause is not None else "unknown native state",
+        )
+
     def _compensate_bus_watch(self, bus, watch_id) -> None:
         """Undo a native bus watch whose logical commit was rejected.
 
         R1.3.3 §11/§12: ``bus.add_watch()`` already REGISTERED the watch
         natively; the returned value is a watch ID, NOT a GLib.Source. The
-        canonical release is ``bus.remove_watch()``. When that release cannot
-        be proven, the receipt stays observable so ``close()`` can retry it —
-        a native watch must never become invisible ownership.
+        canonical release is ``bus.remove_watch()``.
+
+        R1.3.4 §10: the native release has THREE states — REMOVED,
+        STILL_PRESENT and UNKNOWN. An exception means the release was NOT
+        PROVEN, so UNKNOWN is never collapsed into REMOVED: the receipt is
+        retained even when the bus cannot report its own watch state.
         """
         try:
             removed = self._bindings.remove_bus_watch(bus)
-        except Exception:  # noqa: BLE001 — compensation boundary
-            removed = False
-        if removed or not self._bus_watch_still_installed(bus):
-            # Native truth: no watch installed → nothing to retain.
+        except Exception as exc:  # noqa: BLE001 — compensation boundary
+            self._retain_residual_bus_watch(bus, watch_id, cause=exc)
             return
-        receipt = (bus, watch_id)
-        if receipt not in self._residual_bus_watches:
-            self._residual_bus_watches.append(receipt)
-        _logger.warning(
-            "Retained residual native bus watch %r after rejected commit", watch_id
-        )
+        if removed:
+            return
+        if self._bus_watch_still_installed(bus):
+            self._retain_residual_bus_watch(bus, watch_id)
+            return
+        # Gst contract: False means the bus has no event source installed.
+        return
 
     def _compensate_timer_source(self, timer) -> None:
         """Release a natively attached timer whose logical commit was rejected."""
@@ -1462,6 +1493,13 @@ class GStreamerAudioPort(AudioPort):
             watch_id = self._bindings.create_bus_source(
                 bus, on_bus_message, self._context
             )
+            if not self._bindings.bus_watch_acquired(watch_id):
+                # No ownership receipt exists: never claim the watch and never
+                # compensate by removing a pre-existing native watch.
+                raise BusWatchNotAcquiredError(
+                    "GStreamer bus watch was not acquired "
+                    f"(watch id {watch_id!r}); the bus already owns a source"
+                )
             if not self._commit_guarded(
                 command, lambda: self._install_bus_source(watch_id)
             ):
