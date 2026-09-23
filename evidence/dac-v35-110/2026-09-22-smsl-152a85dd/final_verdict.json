@@ -323,5 +323,23 @@
     "code_closure_ci": "35902090162",
     "code_closure_artifact": "dac-v35-software-closure-8e79b3a5812fd0e764df6c4f2b26a9ba46e7aff6",
     "code_closure_digest": "sha256:1e8f79fcd237b143211287e18198eef4219529e855fc6bb1b02a168a570f5dbd"
+  },
+  "software_closure": {
+    "package": "DAC-V35-110R1",
+    "code_closure_head": "81834f9134076961377f6acfeaee549f2a31314e",
+    "code_closure_ci": "35932818028",
+    "code_closure_artifact": "dac-v35-software-closure-81834f9134076961377f6acfeaee549f2a31314e",
+    "code_closure_digest": "sha256:2c0186c3fd273d10693cd53cead94fc3e212537b2809e0bc2b938935abd266cf",
+    "strict_carrier_decision": "B (canonical \u00a71822 step 6: the S32 carrier for a 24-bit source is the EXACT strict target)",
+    "strict_policy": "24-bit -> S32_LE with significant precision preserved is the canonical EXACT strict target and emits no CONTAINER_WIDTH_ADAPTED; the transport preservation policy (recipe container_conversion, \u00a7292) is separate and declared; Signal Truth reports the representation change (\u00a7297).",
+    "decoded_evidence": "converged: real graphs now publish decoded S16LE/16 (16-bit fixture) and S24LE/24 (24-bit fixture); ST_MISSING_DECODED no longer appears",
+    "remaining_blocker": "Signal Truth verdict still UNKNOWN with ST_SIGNIFICANT_BITS_UNKNOWN: the classifier requires a proven significant-bit value at every stage and an authorised wider container (S32_LE) cannot provide one by design (intrinsic_pcm_significant_bits('S32LE') is deliberately None). Converging it requires modelling the canonical \u00a7297 pair (sample_values_preserved / container_representation_changed) in the classifier; that extension exceeds this package's bounded attempt budget and needs its own authorisation.",
+    "phases_not_executed": [
+      "PHASE 3 SUCCESS_FAILURE_STATE_HYGIENE",
+      "PHASE 5 PHYSICAL_MATRIX_REPLAY (replay for the affected matrices)",
+      "PHASE 6 DISCONNECT_RECONNECT",
+      "PHASE 7 OPERATOR_OBSERVATION",
+      "PHASE 8 CANONICAL_EXPERIMENT_LEDGER"
+    ]
   }
 }

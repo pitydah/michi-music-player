@@ -20873,6 +20873,12 @@ either an S32_LE carrier (24-bit sources, canonical exact target) or an S32_LE
 container adaptation (16-bit sources), so every route ends in
 `ST_SIGNIFICANT_BITS_UNKNOWN`.
 
+R110R1 code closure is bound to the exact-head remote artifact for commit
+`81834f9134076961377f6acfeaee549f2a31314e`, Michi CI run `35932818028` (automated `GO`). Artifact
+`dac-v35-software-closure-81834f9134076961377f6acfeaee549f2a31314e` has GitHub digest `sha256:2c0186c3fd273d10693cd53cead94fc3e212537b2809e0bc2b938935abd266cf`. `81834f9134076961377f6acfeaee549f2a31314e` is the
+R1.3.4/R110R1 CODE_CLOSURE_HEAD; the commit that records this evidence is the
+PUBLICATION_HEAD.
+
 Convergence therefore requires modelling the canonical §297 pair explicitly
 (`sample_values_preserved` / `container_representation_changed`) so that an
 authorised container-width route with proven decoded precision yields
