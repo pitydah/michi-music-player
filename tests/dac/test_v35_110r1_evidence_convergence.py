@@ -32,9 +32,7 @@ def _plan(*, bits: int, adaptation: str, fmt: str, rate: int = 44_100):
         VolumePolicy,
     )
 
-    carrier = (
-        "S32_LE" if bits == 24 or adaptation != "exact" else "S16_LE"
-    )
+    carrier = "S32_LE" if bits == 24 or adaptation != "exact" else "S16_LE"
     return OutputPlan(
         plan_id=f"plan:{fmt}:{bits}:{adaptation}",
         stable_device_id="usb:152a:85dd:3-3.3.2",
@@ -170,12 +168,12 @@ def test_pev110r1_01_e_declared_conversion_is_authorized_undeclared_is_not() -> 
         validate_runtime(
             replace(recipe, container_conversion=False),
             _snapshot(
-            plan_id=recipe.plan_id,
-            sink_device=recipe.device,
-            negotiated_rate_hz=recipe.rate_hz,
-            negotiated_channels=recipe.channels,
-            transform_evidence=evidence,
-        ),
+                plan_id=recipe.plan_id,
+                sink_device=recipe.device,
+                negotiated_rate_hz=recipe.rate_hz,
+                negotiated_channels=recipe.channels,
+                transform_evidence=evidence,
+            ),
         )
     assert exc_info.value.code == "DIRECT_CONVERTER_ACTIVE"
 

@@ -764,8 +764,7 @@ class GStreamerBindings:
                     not is_bin
                     and produces_audio
                     and any(
-                        token in klass
-                        for token in ("Decoder", "Parser", "Demuxer")
+                        token in klass for token in ("Decoder", "Parser", "Demuxer")
                     )
                 ):
                     decoder_pads.append(peer)

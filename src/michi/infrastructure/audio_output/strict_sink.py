@@ -126,7 +126,6 @@ def recipe_from_plan(plan: OutputPlan) -> StrictSinkRecipe:
         channels=pcm.channels,
         layout="interleaved",
         container_conversion=(
-            plan.carrier_adaptation == "container_width"
-            or _container_is_wider(pcm)
+            plan.carrier_adaptation == "container_width" or _container_is_wider(pcm)
         ),
     )
