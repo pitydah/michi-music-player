@@ -49,6 +49,19 @@ class _FakeElement:
     def set_property(self, key, value) -> None:
         self.props[key] = value
 
+    def find_property(self, key):
+        """Parity with Gst: the production converter verifies its contract by
+        readback, so the double must expose the property surface it checks."""
+        if self.factory_name == "audioconvert" and key in {
+            "dithering",
+            "noise-shaping",
+        }:
+            return object()
+        return None
+
+    def get_property(self, key):
+        return self.props.get(key)
+
     def get_static_pad(self, name):
         if self._outer.flags.get("static_pad_missing"):
             return None

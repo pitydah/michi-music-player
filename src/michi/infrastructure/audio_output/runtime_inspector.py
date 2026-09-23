@@ -159,10 +159,20 @@ def validate_runtime_semantics(
             "selected-branch channel layout or count changed",
         )
     if transforms.converter_present:
+        if transforms.remix_transforming is True:
+            raise DirectRuntimeValidationError(
+                DIRECT_REMIX_ACTIVE,
+                "audioconvert remixed the negotiated channel layout",
+            )
         if (
             transforms.converter_transforming is True
-            or transforms.remix_transforming is True
+            and not recipe.container_conversion
         ):
+            # An UNDECLARED conversion is exactly the silent widening the
+            # Direct contract forbids. R1.3.4 declared the container policy in
+            # the recipe for the canonical 24-bit -> S32 carrier target
+            # (§1822 step 6 + §292 preservation policy); Signal Truth then
+            # reports the representation change honestly (§297).
             raise DirectRuntimeValidationError(
                 DIRECT_CONVERTER_ACTIVE,
                 "audioconvert changed negotiated signal properties",

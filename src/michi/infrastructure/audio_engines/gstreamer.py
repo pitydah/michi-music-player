@@ -750,11 +750,34 @@ class GStreamerBindings:
                     else:
                         resampler_states.append(transforming)
                 klass = factory.get_metadata("klass") or ""
-                if "Decoder" in klass and "Audio" in klass:
+                # The decoded PCM source belongs to the closest NON-BIN element
+                # that produces audio. Real graphs expose it as
+                # "Codec/Decoder/Audio" (flacdec, mpg123audiodec),
+                # "Codec/Parser/Audio" or "Codec/Demuxer/Audio" (wavparse),
+                # while decodebin3/parsebin are Decoder-class BINS whose pads
+                # are not the decoded signal, and audioconvert/audioresample are
+                # "Filter/Converter/Audio" transforms that must never be taken
+                # as the decoded source.
+                is_bin = "Bin" in klass
+                produces_audio = "Audio" in klass and "Converter" not in klass
+                if (
+                    not is_bin
+                    and produces_audio
+                    and any(
+                        token in klass
+                        for token in ("Decoder", "Parser", "Demuxer")
+                    )
+                ):
                     decoder_pads.append(peer)
                     continue
                 stack.extend(iterator_values(owner.iterate_sink_pads()))
-            decoder_pad = decoder_pads[0] if len(decoder_pads) == 1 else None
+            # The walk starts at the installed sink and moves upstream, so the
+            # FIRST audio-decoder source pad found is the one closest to the
+            # sink — the decoded signal this Direct branch actually consumes.
+            # Requiring exactly one decoder made real playbin3 graphs (which
+            # expose several Decoder-class elements) lose the decoded facts, so
+            # Signal Truth could never converge (R110R1 §17).
+            decoder_pad = decoder_pads[0] if decoder_pads else None
             return (
                 decoder_pad,
                 factories,

@@ -101,30 +101,6 @@ def _tuple_key(pcm: PcmTuple) -> tuple[int, str, int]:
     return (pcm.rate_hz, pcm.transport_format, pcm.channels)
 
 
-#: Container width per authorized lossless transport format.
-_CONTAINER_BITS = {
-    "S16_LE": 16,
-    "S24_3LE": 24,
-    "S24_32LE": 32,
-    "S32_LE": 32,
-}
-
-
-def _container_is_wider(pcm: PcmTuple) -> bool:
-    """True when the carrier container is wider than the proven precision.
-
-    Canonical §292/§297: a container-representation change is an EXPLICIT
-    preservation-policy decision, never a silent one. A carrier whose container
-    holds more bits than the signal proves changes the representation, so the
-    plan declares the bounded container adaptation and the sink inserts the
-    explicitly configured converter (dithering/noise-shaping disabled).
-    """
-    container = _CONTAINER_BITS.get(pcm.transport_format)
-    if container is None or pcm.significant_bits is None:
-        return False
-    return pcm.significant_bits < container
-
-
 def _evidence_state(pcm: PcmTuple, facts: PlannerFacts) -> str:
     """Classify exact-tuple evidence without inventing capability."""
     matches = [
@@ -282,12 +258,13 @@ class OutputPlanner:
                 tuple(decisions),
             )
         requested = selected.tuple
+        # Canonical §1822 (Strict Direct algorithm, step 6): an S32 carrier for
+        # a 24-bit source IS the exact source-native target "only when
+        # significant precision is preserved". It is therefore NOT relabelled
+        # as a compatible-only adaptation. The container REPRESENTATION change
+        # is a separate declared fact handled by the sink policy (§292) and
+        # reported by Signal Truth (§297), never by the carrier policy.
         adaptation = selected.adaptation_kind.value
-        if adaptation == "exact" and _container_is_wider(requested):
-            # The container is wider than the proven precision: this is the
-            # canonical container-representation change (§297), declared here
-            # instead of happening silently inside the decoder.
-            adaptation = CarrierAdaptationKind.CONTAINER_WIDTH.value
         positive = [
             item
             for item in facts.evidence

@@ -5,7 +5,12 @@ Implementation contract for audiophile output infrastructure. Status:
 GO; device-scoped physical PCM evidence captured for the tested SMSL DAC;
 Signal Truth runtime verdict and disconnect/reconnect classification remain
 open. The software core is IMPLEMENTED / PHYSICAL QUALIFICATION PENDING until
-those are closed.
+those are closed. `DAC-V35-110R1` closed the carrier-policy coherence (the
+canonical 24-bit -> S32 strict target is `exact`; the transport preservation
+policy lives in the recipe) and made the DECODED runtime evidence converge; the
+remaining promotion blocker is the Signal Truth verdict, which still reports
+`ST_SIGNIFICANT_BITS_UNKNOWN` because an authorised wider container cannot prove
+significant bits by design.
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`

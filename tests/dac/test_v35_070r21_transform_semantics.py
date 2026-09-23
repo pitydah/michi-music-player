@@ -89,8 +89,12 @@ def test_r21_08_09_unknown_transform_state_fails_closed(
     evidence: RuntimeTransformEvidence,
     expected_code: str,
 ) -> None:
+    # The recipe declares the container preservation policy for the canonical
+    # 24-bit -> S32 carrier target (§1822 step 6 / §292). An active transform is
+    # refused when that policy is NOT declared, which is the invariant here.
+    undeclared = replace(_recipe(), container_conversion=False)
     with pytest.raises(DirectRuntimeValidationError) as exc_info:
-        validate_runtime(_recipe(), _snapshot(transform_evidence=evidence))
+        validate_runtime(undeclared, _snapshot(transform_evidence=evidence))
 
     assert exc_info.value.code == expected_code
 
@@ -118,8 +122,12 @@ def test_r21_active_transform_fails_direct_validation(
     evidence: RuntimeTransformEvidence,
     expected_code: str,
 ) -> None:
+    # An UNDECLARED active transform is refused. The recipe declares the
+    # container preservation policy for the canonical 24-bit -> S32 carrier
+    # target (§1822 step 6 / §292), so the invariant is exercised without it.
+    undeclared = replace(_recipe(), container_conversion=False)
     with pytest.raises(DirectRuntimeValidationError) as exc_info:
-        validate_runtime(_recipe(), _snapshot(transform_evidence=evidence))
+        validate_runtime(undeclared, _snapshot(transform_evidence=evidence))
 
     assert exc_info.value.code == expected_code
 

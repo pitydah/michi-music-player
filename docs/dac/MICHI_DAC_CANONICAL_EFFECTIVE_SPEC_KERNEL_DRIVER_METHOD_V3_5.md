@@ -20410,6 +20410,7 @@ DAC-V35-100R1.3.1 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.2 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.3 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.4 = CLOSED-AUTOMATED / GO
+DAC-V35-110R1 = IN PROGRESS / SOFTWARE PART CLOSED
 DAC-V35-110 = PHYSICAL QUALIFICATION IN PROGRESS
 DAC-V35-120 = DO NOT START
 ```
@@ -20817,6 +20818,69 @@ is the PUBLICATION_HEAD. No third commit documents the publication CI.
 
 Physical qualification remains DEVICE-SCOPED to the tested SMSL DAC and the
 recorded environment; it is not a universal claim and it is not bit-perfect.
+
+## 409.9 `DAC-V35-110R1` carrier-policy coherence, decoded evidence and the Signal Truth blocker
+
+### Strict carrier contract resolved from the canon (§1822)
+
+The canonical Strict Direct algorithm states, in its own words: "Permit S32
+carrier for 24-bit source only when significant precision is preserved", with
+the worked example "source 24/96 -> device exact S32_LE / 96k / stereo / 24
+sbits -> READY". The S32_LE carrier for a 24-bit source therefore IS the
+canonical EXACT strict target: it must not be relabelled as a Compatible-only
+adaptation, and it must not count as Compatible evidence. The prior R1.3.4
+planner reclassification is reverted.
+
+The two independent facts are now modelled separately:
+
+- **Carrier policy (plan):** `carrier_adaptation` stays `exact` for the
+  canonical 24-bit -> S32 target and `container_width` only for a genuine
+  compatible widening (for example 16-bit -> S32_LE).
+- **Transport preservation policy (recipe, §292):** the recipe declares
+  `container_conversion` whenever the carrier container is wider than the
+  proven precision, so the sink inserts ONE explicitly configured converter
+  (dithering and noise shaping disabled) instead of leaving the widening to an
+  unobserved decoder converter. The runtime validator authorises a transforming
+  converter only when that policy is declared — an undeclared conversion stays
+  fail-closed — and Signal Truth reports the representation change separately
+  (§297).
+
+### Decoded runtime evidence now converges
+
+The Direct branch inspection required exactly one audio-decoder pad, so real
+`playbin3` graphs (which also expose Decoder-class bins and whose WAV audio
+source is `wavparse`, klass `Codec/Demuxer/Audio`) lost the decoded facts
+entirely: Signal Truth reported `ST_MISSING_DECODED` and could never converge.
+The inspection now takes the audio source closest to the installed sink among
+non-bin elements whose class produces audio and is not a converter, which is the
+decoded PCM this branch actually consumes. Measured on the real graph:
+
+```text
+16-bit fixture -> decoded S16LE / 44100 / 2 / 16 significant bits
+24-bit fixture -> decoded S24LE / 44100 / 2 / 24 significant bits
+```
+
+`ST_MISSING_DECODED` no longer appears in field evidence.
+
+### Remaining blocker (exact, not fabricated)
+
+With the decoded evidence present, the productive Signal Truth verdict still
+reports UNKNOWN with `ST_SIGNIFICANT_BITS_UNKNOWN`. The classifier requires a
+PROVEN significant-bit value at every stage, and an authorised wider container
+(S32_LE) cannot provide one by design: `intrinsic_pcm_significant_bits("S32LE")`
+is deliberately `None`. Every physical Direct route on the tested SMSL uses
+either an S32_LE carrier (24-bit sources, canonical exact target) or an S32_LE
+container adaptation (16-bit sources), so every route ends in
+`ST_SIGNIFICANT_BITS_UNKNOWN`.
+
+Convergence therefore requires modelling the canonical §297 pair explicitly
+(`sample_values_preserved` / `container_representation_changed`) so that an
+authorised container-width route with proven decoded precision yields
+`DIRECT_CONTAINER_ADAPTED` while an unauthorised one still yields
+`CONTRADICTED`/`DSP`. That classifier extension is NOT implemented here: it
+exceeds this package's bounded attempt budget and would need its own
+authorisation. Until then `DAC-V35-110` cannot be promoted, because a complete
+productive Signal Truth verdict is a mandatory promotion gate.
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 

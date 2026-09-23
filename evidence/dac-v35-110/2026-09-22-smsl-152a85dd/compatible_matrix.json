@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "experiment": "R110 field scenario: compatible",
-  "captured_at": "2026-09-23T14:15:04-0300",
+  "captured_at": "2026-09-23T19:32:02-0300",
   "device_id": "usb:152a:85dd:3-3.3.2",
   "locator": "hw:CARD=AUDIO,DEV=0",
   "observations": [
@@ -45,12 +45,11 @@
       "direct_handle": null,
       "signal_truth_label": "Not verified",
       "signal_truth_reasons": [
-        "ST_MISSING_DECODED",
         "ST_SIGNIFICANT_BITS_UNKNOWN"
       ],
       "format": "S32_LE",
       "significant_bits": 0,
-      "source_rate": 0,
+      "source_rate": 44100,
       "device_rate": 44100,
       "failure_code": "",
       "failure_title": "",
@@ -103,12 +102,11 @@
       "direct_handle": null,
       "signal_truth_label": "Not verified",
       "signal_truth_reasons": [
-        "ST_MISSING_DECODED",
         "ST_SIGNIFICANT_BITS_UNKNOWN"
       ],
       "format": "S32_LE",
       "significant_bits": 0,
-      "source_rate": 0,
+      "source_rate": 48000,
       "device_rate": 48000,
       "failure_code": "",
       "failure_title": "",
@@ -161,12 +159,11 @@
       "direct_handle": null,
       "signal_truth_label": "Not verified",
       "signal_truth_reasons": [
-        "ST_MISSING_DECODED",
         "ST_SIGNIFICANT_BITS_UNKNOWN"
       ],
       "format": "S32_LE",
       "significant_bits": 0,
-      "source_rate": 0,
+      "source_rate": 96000,
       "device_rate": 96000,
       "failure_code": "",
       "failure_title": "",
@@ -194,19 +191,18 @@
       "output_mode": "direct",
       "output_state": "running",
       "plan": {
-        "plan_id": "plan:0879533cd4089b0d",
+        "plan_id": "plan:5055921f5198a4cd",
         "requested_pcm": {
           "rate_hz": 44100,
           "format": "S32_LE",
           "channels": 2,
           "significant_bits": 24
         },
-        "carrier_adaptation": "container_width",
+        "carrier_adaptation": "exact",
         "decision_codes": [
           "ENGINE_GSTREAMER_DIRECT",
           "BINDING_ALSA_HW_SELECTED",
           "SOURCE_NATIVE_RATE_REQUIRED",
-          "CONTAINER_WIDTH_ADAPTED",
           "S32_CARRIER_PRESERVES_24_BITS",
           "STRICT_NO_RESAMPLE",
           "STRICT_NO_REMIX",
@@ -220,12 +216,11 @@
       "direct_handle": null,
       "signal_truth_label": "Not verified",
       "signal_truth_reasons": [
-        "ST_MISSING_DECODED",
         "ST_SIGNIFICANT_BITS_UNKNOWN"
       ],
       "format": "S32_LE",
       "significant_bits": 0,
-      "source_rate": 0,
+      "source_rate": 44100,
       "device_rate": 44100,
       "failure_code": "",
       "failure_title": "",

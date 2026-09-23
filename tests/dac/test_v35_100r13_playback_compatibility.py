@@ -12,6 +12,7 @@ Phase gates are prefixed with the R1.3 phase they seal:
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -571,8 +572,20 @@ def test_pc13_05_06_recipe_authorizes_conversion_only_from_the_plan() -> None:
     recipe = recipe_from_plan(graph_plan)
     assert recipe.container_conversion is True
 
+    # R110R1: the container preservation policy is declared by the plan's
+    # adaptation OR by the carrier geometry (canonical §292). An "exact" plan
+    # whose container is wider than the proven precision still needs the
+    # explicit converter policy.
     exact_recipe = recipe_from_plan(_plan_with_adaptation("exact"))
-    assert exact_recipe.container_conversion is False
+    assert exact_recipe.container_conversion is True
+
+    matching_container = recipe_from_plan(
+        replace(
+            _plan_with_adaptation("exact"),
+            requested_pcm=PcmTuple(44_100, "S32_LE", 2, 32),
+        )
+    )
+    assert matching_container.container_conversion is False
 
     invalid = _plan_with_adaptation("dsp")
     with pytest.raises(StrictSinkError) as exc_info:

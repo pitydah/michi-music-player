@@ -12,6 +12,28 @@ from michi.domain.audio_output import OutputPlan, PathSemantics
 
 # Mapping explícito y fail-closed ALSA -> GStreamer (nunca replace()).
 # Privado: ningún consumidor externo debe mutarlo.
+_CONTAINER_BITS = {
+    "S16_LE": 16,
+    "S24_3LE": 24,
+    "S24_32LE": 32,
+    "S32_LE": 32,
+}
+
+
+def _container_is_wider(pcm) -> bool:
+    """True when the carrier container holds more bits than the signal proves.
+
+    Canonical §292: an audioconvert is allowed "ONLY under explicit preservation
+    policy". The recipe declares that policy here, so the sink inserts ONE
+    explicitly configured converter (dithering and noise shaping disabled)
+    instead of leaving the widening to an unobserved decoder converter.
+    """
+    container = _CONTAINER_BITS.get(pcm.transport_format)
+    if container is None or pcm.significant_bits is None:
+        return False
+    return pcm.significant_bits < container
+
+
 _ALSA_TO_GST_FORMAT: dict[str, str] = {
     "S16_LE": "S16LE",
     "S32_LE": "S32LE",
@@ -103,5 +125,8 @@ def recipe_from_plan(plan: OutputPlan) -> StrictSinkRecipe:
         rate_hz=pcm.rate_hz,
         channels=pcm.channels,
         layout="interleaved",
-        container_conversion=plan.carrier_adaptation == "container_width",
+        container_conversion=(
+            plan.carrier_adaptation == "container_width"
+            or _container_is_wider(pcm)
+        ),
     )
