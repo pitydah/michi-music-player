@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "experiment": "R110 field scenario: stress",
+  "captured_at": "2026-09-23T14:15:54-0300",
+  "device_id": "usb:152a:85dd:3-3.3.2",
+  "locator": "hw:CARD=AUDIO,DEV=0",
+  "observations": [
+    {
+      "iteration": 1,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 2,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 3,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 4,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 5,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 6,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 7,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 8,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 9,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 10,
+      "kind": "sequential_load_stop",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 11,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 12,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 13,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 14,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 15,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 16,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 17,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 18,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 19,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 20,
+      "kind": "stop_play_cycle",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 21,
+      "kind": "mode_transition",
+      "mode": "compatible",
+      "status": 2,
+      "error": null,
+      "output_mode": "direct",
+      "stopped": true
+    },
+    {
+      "iteration": 21,
+      "kind": "mode_transition",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 22,
+      "kind": "mode_transition",
+      "mode": "compatible",
+      "status": 2,
+      "error": null,
+      "output_mode": "direct",
+      "stopped": true
+    },
+    {
+      "iteration": 22,
+      "kind": "mode_transition",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 23,
+      "kind": "mode_transition",
+      "mode": "compatible",
+      "status": 2,
+      "error": null,
+      "output_mode": "direct",
+      "stopped": true
+    },
+    {
+      "iteration": 23,
+      "kind": "mode_transition",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 24,
+      "kind": "mode_transition",
+      "mode": "compatible",
+      "status": 2,
+      "error": null,
+      "output_mode": "direct",
+      "stopped": true
+    },
+    {
+      "iteration": 24,
+      "kind": "mode_transition",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    },
+    {
+      "iteration": 25,
+      "kind": "mode_transition",
+      "mode": "compatible",
+      "status": 2,
+      "error": null,
+      "output_mode": "direct",
+      "stopped": true
+    },
+    {
+      "iteration": 25,
+      "kind": "mode_transition",
+      "mode": "shared",
+      "status": 2,
+      "error": null,
+      "output_mode": "shared",
+      "stopped": true
+    }
+  ],
+  "audible": "REQUIRES_OPERATOR_CONFIRMATION",
+  "fixtures": {
+    "16_44100": {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_44100.wav",
+      "rate_hz": 44100,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "a08ef12fa2b803fa48b2034d8374c0c90f470a6c31cbddb3b9d73e477881472d"
+    },
+    "24_44100": {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm24_44100.wav",
+      "rate_hz": 44100,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "59e08a4dad9b6d2a2648e5bbfe1470375d9beaf718a50fdeb5eebfd0a5dad1be"
+    }
+  },
+  "engine_switch_ready": true,
+  "active_engine_after_switch": "gstreamer",
+  "failures": []
+}

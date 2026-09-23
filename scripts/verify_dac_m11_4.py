@@ -467,25 +467,25 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
         return False, f"status source unavailable: {exc}"
     required = {
         "canonical": (
-            "DAC-V35-100R1.3.3 = CLOSED-AUTOMATED / GO; PUBLISHED",
+            "DAC-V35-100R1.3.4 = CLOSED-AUTOMATED / GO",
             "DAC-V35-110",
-            "DO NOT START",
+            "PHYSICAL QUALIFICATION IN PROGRESS",
         ),
         "contract": (
-            "IMPLEMENTED / PHYSICAL QUALIFICATION PENDING",
-            "DAC-V35-100R1.3.3",
+            "DAC-V35-100R1.3.4",
+            "PHYSICAL QUALIFICATION IN PROGRESS",
         ),
         "matrix": (
             "M11.4 Audiophile Output & DAC",
-            "IMPLEMENTED",
-            "DAC-V35-100R1.3.3",
+            "PHYSICAL QUALIFICATION IN PROGRESS",
+            "DAC-V35-100R1.3.4",
         ),
         "roadmap": (
             "M11.4 Audiophile Output/DAC",
-            "IMPLEMENTED",
-            "DAC-V35-100R1.3.3",
+            "PHYSICAL QUALIFICATION IN PROGRESS",
+            "DAC-V35-100R1.3.4",
         ),
-        "readme": ("DAC-V35-100R1.3.3", "PHYSICAL QUALIFICATION PENDING"),
+        "readme": ("DAC-V35-100R1.3.4", "PHYSICAL QUALIFICATION IN PROGRESS"),
     }
     missing = [
         f"{name}:{marker}"

@@ -1,9 +1,11 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
 Implementation contract for audiophile output infrastructure. Status:
-**IMPLEMENTED / PHYSICAL QUALIFICATION PENDING** (DAC-V35-100R1.3.3 automated
-GO published from exact-head remote evidence; physical qualification has not
-started).
+**PHYSICAL QUALIFICATION IN PROGRESS** — `DAC-V35-100R1.3.4` CLOSED-AUTOMATED /
+GO; device-scoped physical PCM evidence captured for the tested SMSL DAC;
+Signal Truth runtime verdict and disconnect/reconnect classification remain
+open. The software core is IMPLEMENTED / PHYSICAL QUALIFICATION PENDING until
+those are closed.
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -194,7 +196,26 @@ NO-GO / superseded for final promotion; `DAC-V35-100R1.1` is published GO.
 Physical qualification (`DAC-V35-110`) remains **DO NOT START** as a separate,
 not-yet-authorized work package; R1.1 publication does not itself start it.
 
-- `DAC-V35-100R1.3.3` native source ownership seal — **CLOSED-AUTOMATED /
+- `DAC-V35-110` physical PCM promotion — **PHYSICAL QUALIFICATION IN
+  PROGRESS**. Device-scoped evidence for the tested SMSL DAC
+  (`152a:85dd`, `hw:CARD=AUDIO,DEV=0`): Shared baseline plays; Strict Direct
+  reaches `(rate, S32_LE, 2)` with 24 significant bits preserved at
+  44100/48000/96000/192000 Hz through a DECLARED container adaptation;
+  16-bit strict tuples refuse truthfully (`EXACT_TUPLE_UNSUPPORTED`); Compatible
+  Direct preserves 16- and 24-bit precision in the `S32_LE` carrier; three
+  restart cycles and 30 bounded stress cycles are clean. Signal Truth runtime
+  verdict is `INCONCLUSIVE` and disconnect/reconnect is `NOT_RUN`, so the
+  device is not promoted to fully qualified. Bit-perfect is not claimed;
+  `DAC-V35-120` remains DO NOT START.
+- `DAC-V35-100R1.3.4` final native edge seal — **CLOSED-AUTOMATED / GO**. A
+  raise from the canonical watch removal means the release was NOT proven
+  (REMOVED / STILL_PRESENT / UNKNOWN; UNKNOWN never collapses into REMOVED),
+  and a zero `add_watch()` acquisition is never claimed as ownership nor
+  compensated by removing the bus's pre-existing watch. R110 also found and
+  corrected a planner defect: a carrier whose container is wider than the
+  proven precision now declares the container adaptation (canonical §292/§297)
+  instead of leaving the widening to an unobserved decoder converter.
+- `DAC-V35-100R1.3.4` final native edge seal — **CLOSED-AUTOMATED /
   GO; PUBLISHED**. Native ``bus.add_watch()``
   registration now has truthful compensation through the canonical
   ``bus.remove_watch()`` (a watch ID is never treated as a ``GLib.Source``),

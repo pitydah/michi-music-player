@@ -66,8 +66,17 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   shell DONE, and scoped M9-R3 Library/collection convergence in progress
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
-- M11.4: DAC-V35-100R1.3.3 (native source ownership seal) automated GO is
-  published from exact-head remote evidence: native bus-watch registration is compensated
+- M11.4: DAC-V35-110 physical PCM promotion is PHYSICAL QUALIFICATION IN
+  PROGRESS with device-scoped evidence for the tested SMSL DAC: Shared plays,
+  Strict Direct plays 24-bit sources at 44.1/48/96/192 kHz through a declared
+  `S32_LE` container adaptation, 16-bit strict tuples refuse truthfully,
+  Compatible Direct preserves 16/24-bit precision, and 3 restarts plus 30
+  bounded stress cycles are clean. Signal Truth's runtime verdict and
+  disconnect/reconnect remain open, so the device is not claimed as fully
+  qualified; bit-perfect is not claimed; DAC-V35-120 stays DO NOT START.
+  DAC-V35-100R1.3.4 (final native edge seal) is CLOSED-AUTOMATED / GO.
+  DAC-V35-100R1.3.3 (native source ownership seal) automated GO is published
+  from exact-head remote evidence: native bus-watch registration is compensated
   through the canonical removal API (a watch ID is never treated as a GLib
   source), timer ownership publishes only after the native attach plus a
   post-attach authority check, unproven compensation stays as an observable

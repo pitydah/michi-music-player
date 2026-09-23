@@ -228,7 +228,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
 | 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2 + 100R1.3 + 100R1.3.1 + 100R1.3.2 + 100R1.3.3` Automated verification + field corrective seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
-| 11 | `DAC-V35-110` Physical PCM promotion | DO NOT START | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | blocked until exact-head remote R1.2 publication and a separate physical-qualification authorization |
+| 11 | `DAC-V35-110` Physical PCM promotion | PHYSICAL QUALIFICATION IN PROGRESS | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | device-scoped PCM Direct evidence captured for the tested SMSL DAC; Signal Truth runtime verdict and disconnect/reconnect classification remain open |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
 | 14 | `DAC-V35-140` DSD / DoP | SEPARATE PROMOTION; MAY BE PRE-STABLE | NO | R30 and separate implementation/QA gate |
@@ -20409,7 +20409,9 @@ DAC-V35-100R1.3 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.1 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.2 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.3 = CLOSED-AUTOMATED / GO; PUBLISHED
-DAC-V35-110 = DO NOT START
+DAC-V35-100R1.3.4 = CLOSED-AUTOMATED / GO
+DAC-V35-110 = PHYSICAL QUALIFICATION IN PROGRESS
+DAC-V35-120 = DO NOT START
 ```
 
 R1.2 closure is recorded from field evidence plus exact-head CI. The four
@@ -20718,6 +20720,93 @@ is the R1.3.3 PUBLICATION_HEAD.
 R1.3.3 does not claim physical qualification, exclusivity, bit-perfect status,
 or M11.5 guarantees. `DAC-V35-110` remains `DO NOT START`. Physical
 qualification remains `NOT_RUN`.
+
+## 409.8 `DAC-V35-100R1.3.4` final native edge seal + `DAC-V35-110` physical PCM evidence
+
+### R1.3.4 — final native ownership edges
+
+Two residual native-edges were demonstrated after R1.3.3 and are corrected:
+
+1. **A raise means the native release was NOT proven.** The compensation path
+   collapsed an exception from the canonical removal API into "removed" and,
+   on a bus that cannot report its own watch state (the real `Gst.Bus`), the
+   receipt was discarded. Native truth now has THREE states — REMOVED,
+   STILL_PRESENT, UNKNOWN — and UNKNOWN is never collapsed into REMOVED: the
+   residual receipt is always retained so `close()` can retry it.
+2. **A zero watch acquisition is not ownership.** `gst_bus_add_watch()` returns
+   0 when the bus already owns an event source. Michi acquired nothing, so it
+   must not claim the watch and must never remove the bus's pre-existing watch.
+   A zero acquisition now raises `BusWatchNotAcquiredError` with no ownership
+   commit and no compensation.
+
+### Field software defect found by R110 and corrected
+
+The first physical Strict Direct matrix with a 24-bit source (decoded S24_3LE,
+carrier S32_LE labelled `exact`) failed at runtime with
+`DIRECT_CONVERTER_ACTIVE`. Canonical §292/§297 resolve the case: an
+`audioconvert` is allowed "ONLY under explicit preservation policy" and a
+container-representation change must be DECLARED (`container_representation_changed`
+-> "Direct — container adapted"). The planner now declares the container
+adaptation whenever the carrier container is wider than the proven precision, so
+the sink inserts the explicitly configured converter (dithering and noise
+shaping disabled) instead of leaving the widening to an unobserved decoder
+converter. Strict Direct therefore uses a declared, bounded and auditable
+container adaptation — never a silent one.
+
+### R1.3.2 nomenclature (historical correction)
+
+```text
+R1.3.2 CODE_CLOSURE_HEAD: 0876175744de2b1414fb4a0ded0088bde6b9cee1
+R1.3.2 CODE_CLOSURE_CI:   35795736917
+R1.3.2 PUBLICATION_HEAD:  ec771574aaac45b7cc3875673a1d414cdab14f8c
+R1.3.2 PUBLICATION_CI:    35796716902 attempt 2
+```
+
+### DAC-V35-110 — device-scoped physical PCM evidence
+
+Environment: kernel 7.2.6-1-cachyos, alsa-lib 1.2.16.1, GStreamer 1.28.7,
+PyGObject 3.56.3, PipeWire 1.6.9, WirePlumber 0.5.17. Device: SMSL USB AUDIO,
+USB `152a:85dd`, physical path `usb-0000:0c:00.3-3.3.2`, ALSA endpoint
+`hw:CARD=AUDIO,DEV=0`, advertising `S32_LE` + `DSD_U32_BE`, 2 channels,
+44100–768000 Hz. Evidence: `evidence/dac-v35-110/2026-09-22-smsl-152a85dd/`.
+
+Verified on that device and environment:
+
+- **Shared baseline:** 44.1 kHz / 16-bit / stereo plays; media accepted,
+  `PLAYING`, clean stop, no silent engine or device switch.
+- **Strict Direct (positive):** 24-bit sources at 44100, 48000, 96000 and
+  192000 Hz plan `(rate, S32_LE, 2)` with `significant_bits=24`, declared
+  `container_width`, sink `alsasink:hw:CARD=AUDIO,DEV=0`, volume policy
+  `fixed`, decisions `CONTAINER_WIDTH_ADAPTED` + `STRICT_NO_RESAMPLE` +
+  `STRICT_NO_REMIX` + `FIXED_VOLUME_SELECTED` + `FALLBACK_STOP`, and play.
+- **Strict Direct (negative):** 16-bit sources requesting
+  `(44100|48000|96000, S16_LE, 2)` are rejected exactly
+  (`EXACT_TUPLE_UNSUPPORTED`) — tuple-specific evidence, not a device claim.
+- **Compatible Direct:** 16-bit sources resolve to a `S32_LE` carrier with 16
+  significant bits preserved (44100/48000/96000) and 24-bit sources to a
+  `S32_LE` carrier with 24 significant bits preserved (44100); all play with
+  the device negotiating the exact requested rate, 2 channels, `S32_LE`.
+- **Transitions:** Shared -> Strict (refusal contained, no silent fallback),
+  Shared -> Compatible (direct), Compatible -> Shared, all coherent.
+- **Restart:** three startup/shutdown cycles keep engine, device identity and
+  path policy, fabricate no autoplay, and shut down cleanly.
+- **Bounded stress:** 30 cycles (10 sequential loads, 10 stop/play, 5
+  Compatible<->Shared transitions), 30 played, 30 stopped, 0 failures.
+
+Open items (not fabricated as verified):
+
+- **Signal Truth runtime verdict:** `INCONCLUSIVE`. The productive Signal Truth
+  evidence does not populate decoded-runtime facts (pre-existing observability
+  gap), so the verdict stays `Not verified` and never falsely reports `DIRECT`
+  or `DSP`.
+- **Disconnect/reconnect classification:** `NOT_RUN`.
+
+Physical claim scope: **physical PCM Direct path verified on the tested SMSL DAC
+(USB 152a:85dd, `hw:CARD=AUDIO,DEV=0`) under the recorded kernel/ALSA/GStreamer
+environment.** Bit-perfect is **not** claimed; M11.5 remains **not started**;
+`DAC-V35-120` remains `DO NOT START`.
+
+`DAC-V35-110` final status: **PHYSICAL QUALIFICATION IN PROGRESS.**
 
 Physical PCM Direct promotion requires applicable experiments from the existing R19–R29 and R32–R36 corpus plus V3.5 transaction/volume checks.
 

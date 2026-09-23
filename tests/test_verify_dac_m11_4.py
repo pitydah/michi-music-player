@@ -219,22 +219,24 @@ def _write_status_fixture(root, *, work_package_state: str) -> None:
         root
         / "docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md"
     ).write_text(
-        "DAC-V35-100R1.3.3 = CLOSED-AUTOMATED / GO; PUBLISHED\n"
-        "DAC-V35-110 DO NOT START\n"
+        "DAC-V35-100R1.3.4 = CLOSED-AUTOMATED / GO\n"
+        "DAC-V35-110 PHYSICAL QUALIFICATION IN PROGRESS\n"
         "DAC-V35-130 POST-STABLE ONLY\n"
     )
     (root / "docs/M11_4_AUDIOPHILE_OUTPUT_DAC.md").write_text(
-        "IMPLEMENTED / PHYSICAL QUALIFICATION PENDING\nDAC-V35-100R1.3.3\n"
+        "DAC-V35-100R1.3.4\nPHYSICAL QUALIFICATION IN PROGRESS\n"
     )
     (root / "docs/STATUS_MATRIX.md").write_text(
-        "| M11.4 Audiophile Output & DAC | IMPLEMENTED | DAC-V35-100R1.3.3 |\n"
+        "| M11.4 Audiophile Output & DAC | PHYSICAL QUALIFICATION IN "
+        "PROGRESS | DAC-V35-100R1.3.4 |\n"
         f"| M11.4 Audiophile Output & DAC Management | {work_package_state} | R1 |\n"
     )
     (root / "docs/MASTER_ROADMAP_1.0.md").write_text(
-        "| M11.4 Audiophile Output/DAC | IMPLEMENTED | DAC-V35-100R1.3.3 |\n"
+        "| M11.4 Audiophile Output/DAC | PHYSICAL QUALIFICATION IN "
+        "PROGRESS | DAC-V35-100R1.3.4 |\n"
     )
     (root / "README.md").write_text(
-        "DAC-V35-100R1.3.3 PHYSICAL QUALIFICATION PENDING\n"
+        "DAC-V35-100R1.3.4 PHYSICAL QUALIFICATION IN PROGRESS\n"
     )
 
 

@@ -1,0 +1,23 @@
+qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version 7.1.3 LGPL version 2.1 or later
+Input #0, mp3, from '/home/cristian/Música/Talk Talk - Life's What You Make It.mp3':
+  Metadata:
+    grouping        : EMI Records
+    encoder         : Lavf58.29.100
+    artist          : Talk Talk
+    date            : 1986
+    DISCTOTAL       : 1
+    genre           : New Wave
+    disc            : 1/1
+    composer        : Mark Hollis, Tim Friese-Greene
+    album_artist    : Talk Talk
+    album           : The Colour of Spring
+    title           : Life's What You Make It
+    track           : 3/8
+    TRACKTOTAL      : 8
+  Duration: 00:04:28.92, start: 0.023021, bitrate: 327 kb/s
+  Stream #0:0: Audio: mp3 (mp3float), 48000 Hz, stereo, fltp, 320 kb/s
+      Metadata:
+        encoder         : Lavc58.54
+  Stream #0:1: Video: mjpeg (Baseline), yuvj444p(pc, bt470bg/unknown/unknown), 640x640 [SAR 72:72 DAR 1:1], 90k tbr, 90k tbn (attached pic)
+      Metadata:
+        comment         : Cover (front)

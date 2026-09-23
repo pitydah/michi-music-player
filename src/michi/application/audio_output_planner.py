@@ -101,6 +101,30 @@ def _tuple_key(pcm: PcmTuple) -> tuple[int, str, int]:
     return (pcm.rate_hz, pcm.transport_format, pcm.channels)
 
 
+#: Container width per authorized lossless transport format.
+_CONTAINER_BITS = {
+    "S16_LE": 16,
+    "S24_3LE": 24,
+    "S24_32LE": 32,
+    "S32_LE": 32,
+}
+
+
+def _container_is_wider(pcm: PcmTuple) -> bool:
+    """True when the carrier container is wider than the proven precision.
+
+    Canonical §292/§297: a container-representation change is an EXPLICIT
+    preservation-policy decision, never a silent one. A carrier whose container
+    holds more bits than the signal proves changes the representation, so the
+    plan declares the bounded container adaptation and the sink inserts the
+    explicitly configured converter (dithering/noise-shaping disabled).
+    """
+    container = _CONTAINER_BITS.get(pcm.transport_format)
+    if container is None or pcm.significant_bits is None:
+        return False
+    return pcm.significant_bits < container
+
+
 def _evidence_state(pcm: PcmTuple, facts: PlannerFacts) -> str:
     """Classify exact-tuple evidence without inventing capability."""
     matches = [
@@ -258,6 +282,12 @@ class OutputPlanner:
                 tuple(decisions),
             )
         requested = selected.tuple
+        adaptation = selected.adaptation_kind.value
+        if adaptation == "exact" and _container_is_wider(requested):
+            # The container is wider than the proven precision: this is the
+            # canonical container-representation change (§297), declared here
+            # instead of happening silently inside the decoder.
+            adaptation = CarrierAdaptationKind.CONTAINER_WIDTH.value
         positive = [
             item
             for item in facts.evidence
@@ -265,7 +295,7 @@ class OutputPlanner:
             and _tuple_key(item.tuple) == _tuple_key(requested)
             and item.supported is True
         ]
-        if selected.adaptation_kind is CarrierAdaptationKind.CONTAINER_WIDTH:
+        if adaptation == CarrierAdaptationKind.CONTAINER_WIDTH.value:
             decisions.append(CONTAINER_WIDTH_ADAPTED)
 
         # C06: la precisión significativa debe estar PROBADA por readback.
@@ -316,7 +346,6 @@ class OutputPlanner:
             decisions.append(FALLBACK_STOP)
 
         evidence_refs = tuple(ref for item in positive for ref in item.evidence_refs)
-        adaptation = selected.adaptation_kind.value
         # C09: el plan es autosuficiente para el executor.
         preconditions = (
             "engine_gstreamer_direct",

@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "experiment": "R110 Michi exact-open qualification (R34 matrix)",
+  "device_locator": "hw:CARD=AUDIO,DEV=0",
+  "results": [
+    {
+      "tuple": {
+        "rate_hz": 44100,
+        "format": "S16_LE",
+        "channels": 2
+      },
+      "ok": false,
+      "negotiated": null,
+      "error": {
+        "category": "unsupported_format",
+        "alsa_error_code": 22,
+        "detail": "Invalid argument"
+      }
+    },
+    {
+      "tuple": {
+        "rate_hz": 48000,
+        "format": "S16_LE",
+        "channels": 2
+      },
+      "ok": false,
+      "negotiated": null,
+      "error": {
+        "category": "unsupported_format",
+        "alsa_error_code": 22,
+        "detail": "Invalid argument"
+      }
+    },
+    {
+      "tuple": {
+        "rate_hz": 44100,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "ok": true,
+      "negotiated": {
+        "rate_hz": 44100,
+        "format": "S32_LE",
+        "channels": 2,
+        "significant_bits": 32
+      },
+      "error": null
+    },
+    {
+      "tuple": {
+        "rate_hz": 48000,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "ok": true,
+      "negotiated": {
+        "rate_hz": 48000,
+        "format": "S32_LE",
+        "channels": 2,
+        "significant_bits": 32
+      },
+      "error": null
+    },
+    {
+      "tuple": {
+        "rate_hz": 88200,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "ok": true,
+      "negotiated": {
+        "rate_hz": 88200,
+        "format": "S32_LE",
+        "channels": 2,
+        "significant_bits": 32
+      },
+      "error": null
+    },
+    {
+      "tuple": {
+        "rate_hz": 96000,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "ok": true,
+      "negotiated": {
+        "rate_hz": 96000,
+        "format": "S32_LE",
+        "channels": 2,
+        "significant_bits": 32
+      },
+      "error": null
+    },
+    {
+      "tuple": {
+        "rate_hz": 176400,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "ok": true,
+      "negotiated": {
+        "rate_hz": 176400,
+        "format": "S32_LE",
+        "channels": 2,
+        "significant_bits": 32
+      },
+      "error": null
+    },
+    {
+      "tuple": {
+        "rate_hz": 192000,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "ok": true,
+      "negotiated": {
+        "rate_hz": 192000,
+        "format": "S32_LE",
+        "channels": 2,
+        "significant_bits": 32
+      },
+      "error": null
+    },
+    {
+      "tuple": {
+        "rate_hz": 44100,
+        "format": "S24_3LE",
+        "channels": 2
+      },
+      "ok": false,
+      "negotiated": null,
+      "error": {
+        "category": "unsupported_format",
+        "alsa_error_code": 22,
+        "detail": "Invalid argument"
+      }
+    },
+    {
+      "tuple": {
+        "rate_hz": 96000,
+        "format": "S24_3LE",
+        "channels": 2
+      },
+      "ok": false,
+      "negotiated": null,
+      "error": {
+        "category": "unsupported_format",
+        "alsa_error_code": 22,
+        "detail": "Invalid argument"
+      }
+    }
+  ]
+}

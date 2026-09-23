@@ -1,0 +1,334 @@
+{
+  "schema_version": 1,
+  "experiment": "R110 field scenario: compatible",
+  "captured_at": "2026-09-23T14:15:04-0300",
+  "device_id": "usb:152a:85dd:3-3.3.2",
+  "locator": "hw:CARD=AUDIO,DEV=0",
+  "observations": [
+    {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_44100.wav",
+      "rate_hz": 44100,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "a08ef12fa2b803fa48b2034d8374c0c90f470a6c31cbddb3b9d73e477881472d",
+      "playback_status": 2,
+      "file_path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_44100.wav",
+      "error_code": null,
+      "error_message": null,
+      "output_mode": "direct",
+      "output_state": "running",
+      "plan": {
+        "plan_id": "plan:aedae649fcd28430",
+        "requested_pcm": {
+          "rate_hz": 44100,
+          "format": "S32_LE",
+          "channels": 2,
+          "significant_bits": 16
+        },
+        "carrier_adaptation": "container_width",
+        "decision_codes": [
+          "ENGINE_GSTREAMER_DIRECT",
+          "BINDING_ALSA_HW_SELECTED",
+          "SOURCE_NATIVE_RATE_REQUIRED",
+          "CONTAINER_WIDTH_ADAPTED",
+          "STRICT_NO_RESAMPLE",
+          "STRICT_NO_REMIX",
+          "FIXED_VOLUME_SELECTED",
+          "FALLBACK_STOP"
+        ],
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "binding_locator": "hw:CARD=AUDIO,DEV=0",
+        "volume_policy": "fixed"
+      },
+      "direct_handle": null,
+      "signal_truth_label": "Not verified",
+      "signal_truth_reasons": [
+        "ST_MISSING_DECODED",
+        "ST_SIGNIFICANT_BITS_UNKNOWN"
+      ],
+      "format": "S32_LE",
+      "significant_bits": 0,
+      "source_rate": 0,
+      "device_rate": 44100,
+      "failure_code": "",
+      "failure_title": "",
+      "failure_display": "",
+      "selected_device": "usb:152a:85dd:3-3.3.2",
+      "selected_path_mode": "compatible",
+      "active_engine": "gstreamer",
+      "receipt": {
+        "mode": "compatible",
+        "fixture": "16_44100"
+      }
+    },
+    {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_48000.wav",
+      "rate_hz": 48000,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "bb76fb15f76e8ab5dc89b1012e521d3aebd381b9f4f947bce14186786164004f",
+      "playback_status": 2,
+      "file_path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_48000.wav",
+      "error_code": null,
+      "error_message": null,
+      "output_mode": "direct",
+      "output_state": "running",
+      "plan": {
+        "plan_id": "plan:8a45c752ad8a4eed",
+        "requested_pcm": {
+          "rate_hz": 48000,
+          "format": "S32_LE",
+          "channels": 2,
+          "significant_bits": 16
+        },
+        "carrier_adaptation": "container_width",
+        "decision_codes": [
+          "ENGINE_GSTREAMER_DIRECT",
+          "BINDING_ALSA_HW_SELECTED",
+          "SOURCE_NATIVE_RATE_REQUIRED",
+          "CONTAINER_WIDTH_ADAPTED",
+          "STRICT_NO_RESAMPLE",
+          "STRICT_NO_REMIX",
+          "FIXED_VOLUME_SELECTED",
+          "FALLBACK_STOP"
+        ],
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "binding_locator": "hw:CARD=AUDIO,DEV=0",
+        "volume_policy": "fixed"
+      },
+      "direct_handle": null,
+      "signal_truth_label": "Not verified",
+      "signal_truth_reasons": [
+        "ST_MISSING_DECODED",
+        "ST_SIGNIFICANT_BITS_UNKNOWN"
+      ],
+      "format": "S32_LE",
+      "significant_bits": 0,
+      "source_rate": 0,
+      "device_rate": 48000,
+      "failure_code": "",
+      "failure_title": "",
+      "failure_display": "",
+      "selected_device": "usb:152a:85dd:3-3.3.2",
+      "selected_path_mode": "compatible",
+      "active_engine": "gstreamer",
+      "receipt": {
+        "mode": "compatible",
+        "fixture": "16_48000"
+      }
+    },
+    {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_96000.wav",
+      "rate_hz": 96000,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "f5b0cb6c6a809e23db0fb5404fe8d966fd4464e33a6b9b9aa9bdc98557c2863f",
+      "playback_status": 2,
+      "file_path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_96000.wav",
+      "error_code": null,
+      "error_message": null,
+      "output_mode": "direct",
+      "output_state": "running",
+      "plan": {
+        "plan_id": "plan:b0a10c5ac0d19717",
+        "requested_pcm": {
+          "rate_hz": 96000,
+          "format": "S32_LE",
+          "channels": 2,
+          "significant_bits": 16
+        },
+        "carrier_adaptation": "container_width",
+        "decision_codes": [
+          "ENGINE_GSTREAMER_DIRECT",
+          "BINDING_ALSA_HW_SELECTED",
+          "SOURCE_NATIVE_RATE_REQUIRED",
+          "CONTAINER_WIDTH_ADAPTED",
+          "STRICT_NO_RESAMPLE",
+          "STRICT_NO_REMIX",
+          "FIXED_VOLUME_SELECTED",
+          "FALLBACK_STOP"
+        ],
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "binding_locator": "hw:CARD=AUDIO,DEV=0",
+        "volume_policy": "fixed"
+      },
+      "direct_handle": null,
+      "signal_truth_label": "Not verified",
+      "signal_truth_reasons": [
+        "ST_MISSING_DECODED",
+        "ST_SIGNIFICANT_BITS_UNKNOWN"
+      ],
+      "format": "S32_LE",
+      "significant_bits": 0,
+      "source_rate": 0,
+      "device_rate": 96000,
+      "failure_code": "",
+      "failure_title": "",
+      "failure_display": "",
+      "selected_device": "usb:152a:85dd:3-3.3.2",
+      "selected_path_mode": "compatible",
+      "active_engine": "gstreamer",
+      "receipt": {
+        "mode": "compatible",
+        "fixture": "16_96000"
+      }
+    },
+    {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm24_44100.wav",
+      "rate_hz": 44100,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "59e08a4dad9b6d2a2648e5bbfe1470375d9beaf718a50fdeb5eebfd0a5dad1be",
+      "playback_status": 2,
+      "file_path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm24_44100.wav",
+      "error_code": null,
+      "error_message": null,
+      "output_mode": "direct",
+      "output_state": "running",
+      "plan": {
+        "plan_id": "plan:0879533cd4089b0d",
+        "requested_pcm": {
+          "rate_hz": 44100,
+          "format": "S32_LE",
+          "channels": 2,
+          "significant_bits": 24
+        },
+        "carrier_adaptation": "container_width",
+        "decision_codes": [
+          "ENGINE_GSTREAMER_DIRECT",
+          "BINDING_ALSA_HW_SELECTED",
+          "SOURCE_NATIVE_RATE_REQUIRED",
+          "CONTAINER_WIDTH_ADAPTED",
+          "S32_CARRIER_PRESERVES_24_BITS",
+          "STRICT_NO_RESAMPLE",
+          "STRICT_NO_REMIX",
+          "FIXED_VOLUME_SELECTED",
+          "FALLBACK_STOP"
+        ],
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "binding_locator": "hw:CARD=AUDIO,DEV=0",
+        "volume_policy": "fixed"
+      },
+      "direct_handle": null,
+      "signal_truth_label": "Not verified",
+      "signal_truth_reasons": [
+        "ST_MISSING_DECODED",
+        "ST_SIGNIFICANT_BITS_UNKNOWN"
+      ],
+      "format": "S32_LE",
+      "significant_bits": 0,
+      "source_rate": 0,
+      "device_rate": 44100,
+      "failure_code": "",
+      "failure_title": "",
+      "failure_display": "",
+      "selected_device": "usb:152a:85dd:3-3.3.2",
+      "selected_path_mode": "compatible",
+      "active_engine": "gstreamer",
+      "receipt": {
+        "mode": "compatible",
+        "fixture": "24_44100"
+      }
+    }
+  ],
+  "audible": "REQUIRES_OPERATOR_CONFIRMATION",
+  "fixtures": {
+    "16_44100": {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_44100.wav",
+      "rate_hz": 44100,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "a08ef12fa2b803fa48b2034d8374c0c90f470a6c31cbddb3b9d73e477881472d"
+    },
+    "16_48000": {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_48000.wav",
+      "rate_hz": 48000,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "bb76fb15f76e8ab5dc89b1012e521d3aebd381b9f4f947bce14186786164004f"
+    },
+    "16_96000": {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm16_96000.wav",
+      "rate_hz": 96000,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "f5b0cb6c6a809e23db0fb5404fe8d966fd4464e33a6b9b9aa9bdc98557c2863f"
+    },
+    "24_44100": {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm24_44100.wav",
+      "rate_hz": 44100,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "59e08a4dad9b6d2a2648e5bbfe1470375d9beaf718a50fdeb5eebfd0a5dad1be"
+    },
+    "24_48000": {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm24_48000.wav",
+      "rate_hz": 48000,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "072d3f576d3ca9cabab0c9afb930ac191a3d27fe01dccb6fa299173d38580ecd"
+    },
+    "24_96000": {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm24_96000.wav",
+      "rate_hz": 96000,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "f447ad2074cdafd0445027810ef2d1fa58ecfa117f103cfc18f0d4494431f2a5"
+    },
+    "24_192000": {
+      "path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm24_192000.wav",
+      "rate_hz": 192000,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "d4b1dc1db31678b4d34dbabe9bdd73cb5f0355b618a5f3a7a2b0e03884f03aed"
+    }
+  },
+  "engine_switch_ready": true,
+  "active_engine_after_switch": "gstreamer",
+  "after_cycles": {
+    "playback_status": 1,
+    "file_path": "evidence/dac-v35-110/2026-09-22-smsl-152a85dd/fixtures/pcm24_44100.wav",
+    "error_code": null,
+    "error_message": null,
+    "output_mode": "shared",
+    "output_state": "idle",
+    "plan": null,
+    "direct_handle": null,
+    "signal_truth_label": "Not verified",
+    "signal_truth_reasons": [],
+    "format": "",
+    "channels": 0,
+    "significant_bits": 0,
+    "source_rate": 0,
+    "device_rate": 0,
+    "failure_code": "stop",
+    "failure_title": "Output unavailable",
+    "failure_display": "Michi could not activate the selected output.",
+    "selected_device": "usb:152a:85dd:3-3.3.2",
+    "selected_path_mode": "compatible",
+    "active_engine": "gstreamer",
+    "receipt": {}
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "experiment": "DAC-V35-110 environment fingerprint",
+  "captured_at": "2026-09-23T14:05:53-0300",
+  "git_head": "de4d48e5b7cd48cd96c7c118e4c53181ac64e98b",
+  "kernel": "7.2.6-1-cachyos",
+  "kernel_package": "linux-cachyos 7.2.6-1",
+  "distribution": "CachyOS",
+  "python": "3.11.15",
+  "alsa_lib": "alsa-lib 1.2.16.1-1.1",
+  "alsa_utils": "alsa-utils 1.2.16-1.1",
+  "gstreamer": "gstreamer 1.28.7-2.1",
+  "gst_plugins_base": "gst-plugins-base 1.28.7-2.1",
+  "gst_plugins_good": "gst-plugins-good 1.28.7-2.1",
+  "pygobject": "python-gobject 3.56.3-1",
+  "pyside6": "6.11.1",
+  "pipewire": "pipewire 1:1.6.9-1",
+  "wireplumber": "wireplumber 0.5.17-2.1",
+  "snd_usb_audio_module": "filename:       /lib/modules/7.2.6-1-cachyos/kernel/sound/usb/snd-usb-audio.ko.zst",
+  "usb": {
+    "vid": "152a",
+    "pid": "85dd",
+    "lsusb": "Bus 003 Device 006: ID 152a:85dd Thesycon Systemsoftware & Consulting GmbH SMSL USB AUDIO",
+    "physical_path": "usb-0000:0c:00.3-3.3.2"
+  },
+  "alsa": {
+    "card_index": 2,
+    "card_id": "AUDIO",
+    "card_name": "SMSL USB AUDIO",
+    "device_index": 0,
+    "michi_locator": "hw:CARD=AUDIO,DEV=0",
+    "stream0": "SMSL SMSL USB AUDIO at usb-0000:0c:00.3-3.3.2, high speed : USB Audio\n\nPlayback:\n  Status: Stop\n  Interface 1\n    Altset 1\n    Format: S32_LE\n    Channels: 2\n    Endpoint: 0x01 (1 OUT) (ASYNC)\n    Rates: 44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000, 705600, 768000\n    Data packet interval: 125 us\n    Bits: 32\n    Channel map: FL FR\n    Sync Endpoint: 0x81 (1 IN)\n    Sync EP Interface: 1\n    Sync EP Altset: 1\n    Implicit Feedback Mode: No\n  Interface 1\n    Altset 2\n    Format: S32_LE"
+  },
+  "michi_stable_device_id": null
+}
