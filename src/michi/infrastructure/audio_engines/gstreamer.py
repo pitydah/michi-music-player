@@ -770,13 +770,14 @@ class GStreamerBindings:
                     decoder_pads.append(peer)
                     continue
                 stack.extend(iterator_values(owner.iterate_sink_pads()))
-            # The walk starts at the installed sink and moves upstream, so the
-            # FIRST audio-decoder source pad found is the one closest to the
-            # sink — the decoded signal this Direct branch actually consumes.
-            # Requiring exactly one decoder made real playbin3 graphs (which
-            # expose several Decoder-class elements) lose the decoded facts, so
-            # Signal Truth could never converge (R110R1 §17).
-            decoder_pad = decoder_pads[0] if decoder_pads else None
+            # Exactly ONE non-bin audio producer identifies the decoded signal
+            # unambiguously. The producer detection above already excludes
+            # Decoder-class BINS (decodebin3/parsebin) and converter elements,
+            # which is what made real playbin3 graphs lose the decoded facts
+            # (R110R1 §17). A genuinely multi-input topology (several producers
+            # feeding one branch) stays ambiguous and keeps publishing no
+            # decoded truth rather than guessing.
+            decoder_pad = decoder_pads[0] if len(decoder_pads) == 1 else None
             return (
                 decoder_pad,
                 factories,

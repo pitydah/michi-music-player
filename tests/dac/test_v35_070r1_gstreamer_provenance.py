@@ -262,6 +262,8 @@ def test_st70r1_12_multiple_reachable_decoders_are_ambiguous():
         selected_upstream=mixer,
     )
 
+    # Two distinct audio producers feeding one branch stay ambiguous: no
+    # decoded truth is published rather than guessing (R110R1 §17 keeps this).
     assert snapshot.decoded_format is None
     assert snapshot.decoded_rate_hz is None
     assert snapshot.decoded_channels is None
