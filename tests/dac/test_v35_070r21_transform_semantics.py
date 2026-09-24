@@ -279,16 +279,40 @@ def test_r21_active_format_conversion_with_unknown_sbits_stays_unknown() -> None
         alsa_pcm=_pcm(fmt="S32_LE", significant_bits=None),
     )
 
+    # R110R1 PRESERVATION SEMANTIC UPDATE
+    # Old invariant: a transforming converter with unknown sbits stays UNKNOWN
+    #   because the container width is unknown.
+    # Why superseded: the verdict is still UNKNOWN, but the blocking fact is now
+    #   the UNPROVEN preservation policy of the active converter (§44), not the
+    #   container width. The protected invariant (never Direct) is preserved.
+    # Canonical authority: §292 (explicit preservation policy) + §297.
+    # New invariant: UNKNOWN, blocked by the unproven converter policy.
     assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
-    assert SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN in snapshot.reasons
+    assert SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN in snapshot.reasons
 
 
 def test_r21_proven_container_adaptation_remains_bounded() -> None:
     from michi.domain.signal_truth import SignalTruthVerdict
     from tests.dac.test_v35_070_signal_truth import _pcm
 
+    # R110R1 PRESERVATION SEMANTIC UPDATE
+    # Old invariant: a transforming converter alone certifies an adapted Direct
+    #   route.
+    # Why superseded: §44 requires the OBSERVED converter to PROVE its
+    #   preservation policy (dithering and noise shaping disabled).
+    # Canonical authority: §292 (explicit preservation policy) + §297.
+    # New invariant: the proven authorized adaptation stays
+    #   DIRECT_CONTAINER_ADAPTED, now with the policy proven.
     snapshot = _signal_truth_with_transforms(
-        RuntimeTransformEvidence(True, True, False, None, False),
+        RuntimeTransformEvidence(
+            True,
+            True,
+            False,
+            None,
+            False,
+            converter_dithering_disabled=True,
+            converter_noise_shaping_disabled=True,
+        ),
         decoded=_pcm(fmt="S24_3LE", significant_bits=24),
         engine_pcm=_pcm(fmt="S32_LE", significant_bits=24),
         alsa_pcm=_pcm(fmt="S32_LE", significant_bits=24),

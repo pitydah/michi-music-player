@@ -144,6 +144,105 @@ SignalTruthEvidence = (
 )
 
 
+def _authorized_preservation_decision(
+    *,
+    requested: PcmTuple,
+    decoded: PcmTuple,
+    effective: PcmTuple,
+    alsa: PcmTuple,
+    transforms: RuntimeTransformEvidence,
+) -> tuple[SignalTruthVerdict, SignalTruthReason] | None:
+    """Decide an AUTHORIZED representation-preserving widening route (R110R1).
+
+    Canonical §292/§297: an explicitly configured representation-only
+    transformation is auditable evidence, so a proven authorized route is
+    classified BEFORE the epistemic container-bit guard — the CARRIER is a
+    container, its width is not the signal's precision.
+
+    Returns ``None`` for every other route so the established classification
+    keeps governing unchanged:
+
+    * identical representation            -> existing DIRECT path
+    * unauthorized / unrequested rewrite  -> existing DSP path
+    * rate / channel / negotiation clash  -> existing CONTRADICTED path
+    """
+    norm = lambda pcm: pcm.transport_format.replace("_", "").upper()  # noqa: E731
+
+    decoded_format = norm(decoded)
+    requested_format = norm(requested)
+    effective_format = norm(effective)
+    alsa_format = norm(alsa)
+
+    if decoded_format == effective_format == alsa_format:
+        return None
+    bits = decoded.significant_bits
+    if bits is None:
+        return None
+    authorized = _ALLOWED_CONTAINER_ADAPTATIONS.get(bits, frozenset())
+    if (decoded_format, requested_format) not in authorized:
+        return None
+    if not (effective_format == alsa_format == requested_format):
+        return None
+    # Rate and channel clashes are contradictions, not preservation questions.
+    if not (decoded.rate_hz == requested.rate_hz == effective.rate_hz == alsa.rate_hz):
+        return None
+    if not (
+        decoded.channels == requested.channels == effective.channels == alsa.channels
+    ):
+        return None
+    # A PROVEN carrier width that contradicts the decoded signal refutes.
+    for known in (effective.significant_bits, alsa.significant_bits):
+        if known is not None and known != bits:
+            return (
+                SignalTruthVerdict.CONTRADICTED,
+                SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN,
+            )
+    if requested.significant_bits != bits:
+        return (
+            SignalTruthVerdict.CONTRADICTED,
+            SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN,
+        )
+    if transforms.resampler_present and transforms.resampler_transforming is not False:
+        return (
+            SignalTruthVerdict.UNKNOWN,
+            SignalTruthReason.ST_RESAMPLER_STATE_UNKNOWN,
+        )
+    if transforms.converter_present:
+        if transforms.remix_transforming is not False:
+            return (
+                SignalTruthVerdict.UNKNOWN,
+                SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
+            )
+        if transforms.converter_transforming is None:
+            return (
+                SignalTruthVerdict.UNKNOWN,
+                SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
+            )
+        if transforms.converter_transforming is True:
+            if (
+                transforms.converter_dithering_disabled is None
+                or transforms.converter_noise_shaping_disabled is None
+            ):
+                # A transforming converter whose preservation configuration
+                # cannot be proven is never assumed harmless.
+                return (
+                    SignalTruthVerdict.UNKNOWN,
+                    SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
+                )
+            if not (
+                transforms.converter_dithering_disabled
+                and transforms.converter_noise_shaping_disabled
+            ):
+                return (
+                    SignalTruthVerdict.DSP,
+                    SignalTruthReason.ST_DSP_PRESENT,
+                )
+    return (
+        SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED,
+        SignalTruthReason.ST_CONTAINER_ADAPTED,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class SignalTruthSnapshot:
     identity: SignalTruthIdentity
@@ -437,15 +536,13 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
         or engine.slave_method is None
     ):
         missing.add(SignalTruthReason.ST_MISSING_CLOCK)
-    if (
-        decoded is not None
-        and decoded.pcm.significant_bits is None
-        or engine is not None
-        and engine.effective_pcm is not None
-        and engine.effective_pcm.significant_bits is None
-        or alsa is not None
-        and alsa.negotiated_pcm.significant_bits is None
-    ):
+    if decoded is not None and decoded.pcm.significant_bits is None:
+        # R110R1 TRAP 3: only the DECODED signal width is an epistemic fact the
+        # classifier cannot do without. The engine/ALSA stages report a
+        # CARRIER container whose intrinsic width is legitimately unknown for
+        # S32_LE; an authorized representation-preserving route is decided by
+        # _authorized_preservation_decision() below, and every other route
+        # still fails closed through the equality check that follows.
         missing.add(SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN)
     if missing:
         return result(SignalTruthVerdict.UNKNOWN, _ordered(missing, _UNKNOWN_ORDER))
@@ -453,6 +550,19 @@ def classify_signal_truth(snapshot: SignalTruthSnapshot) -> SignalTruthSnapshot:
     assert decoded is not None and engine is not None and alsa is not None
     assert engine.effective_pcm is not None
     signals = (decoded.pcm, engine.effective_pcm, alsa.negotiated_pcm)
+    # R110R1: a PROVEN authorized representation-preserving widening is decided
+    # before the epistemic container-bit guard. Every other route returns None
+    # and keeps the established classification.
+    preservation_decision = _authorized_preservation_decision(
+        requested=plan.requested_pcm,
+        decoded=decoded.pcm,
+        effective=engine.effective_pcm,
+        alsa=alsa.negotiated_pcm,
+        transforms=engine.transform_evidence,
+    )
+    if preservation_decision is not None:
+        verdict, reason = preservation_decision
+        return result(verdict, (reason,))
     rates = {item.rate_hz for item in signals}
     channels = {item.channels for item in signals}
     significant_bits = {

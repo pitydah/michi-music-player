@@ -87,7 +87,7 @@ def test_st70r1_p02_synthetic_s32_composition_does_not_claim_direct(
         _close_graph(graph)
 
 
-def test_st70r1_p03_synthetic_caps_sbits_cannot_replace_alsa_runtime_sbits(
+def test_st70r1_p03_authorized_route_does_not_require_alsa_container_bits(
     tmp_path: Path,
 ):
     graph, bindings = _direct_graph(tmp_path, alsa_hw_params_reader=_runtime_reader())
@@ -98,13 +98,26 @@ def test_st70r1_p03_synthetic_caps_sbits_cannot_replace_alsa_runtime_sbits(
     }
     try:
         snapshot = _load_and_accept(graph, bindings, tmp_path / "adapted.flac")
-        assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
-        assert SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN in snapshot.reasons
+        # R110R1 PRESERVATION SEMANTIC UPDATE
+        # Old invariant: without ALSA runtime container bits the authorized
+        #   route stays UNKNOWN.
+        # Why superseded: the ALSA stage negotiates the CARRIER container; the
+        #   productive decoded width plus the authorized pair and the declared
+        #   policy prove preservation (§17). The protected invariant (no
+        #   synthetic evidence ever REPLACES runtime truth) is preserved: the
+        #   plan never fabricates the container width.
+        # Canonical authority: §297 + §292.
+        # New invariant: the productive authorized route converges to
+        #   DIRECT_CONTAINER_ADAPTED.
+        assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+        assert SignalTruthReason.ST_CONTAINER_ADAPTED in snapshot.reasons
     finally:
         _close_graph(graph)
 
 
-def test_st70r1_p04_missing_engine_sbits_is_unknown(tmp_path: Path):
+def test_st70r1_p04_missing_engine_container_bits_do_not_block_authorized_route(
+    tmp_path: Path,
+):
     graph, bindings = _direct_graph(tmp_path, alsa_hw_params_reader=_runtime_reader())
     bindings.direct_snapshot_overrides = {
         "decoded_format": "S24_3LE",
@@ -113,8 +126,11 @@ def test_st70r1_p04_missing_engine_sbits_is_unknown(tmp_path: Path):
     }
     try:
         snapshot = _load_and_accept(graph, bindings, tmp_path / "unknown.flac")
-        assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
-        assert SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN in snapshot.reasons
+        # R110R1 PRESERVATION SEMANTIC UPDATE (same family as p03): the missing
+        # engine CONTAINER width does not block the proven authorized route.
+        # Canonical authority: §297 + §292.
+        assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+        assert SignalTruthReason.ST_CONTAINER_ADAPTED in snapshot.reasons
     finally:
         _close_graph(graph)
 
@@ -178,5 +194,31 @@ def test_st70r1_p08_direct_fixed_non_unity_can_never_be_direct(tmp_path: Path):
         snapshot = _load_and_accept(graph, bindings, tmp_path / "attenuated.flac")
         assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
         assert SignalTruthReason.ST_GAIN_NOT_UNITY in snapshot.reasons
+    finally:
+        _close_graph(graph)
+
+
+def test_pev110r1_02_productive_authorized_route_converges(tmp_path: Path):
+    """R110R1 §55: the PRODUCTIVE composition reaches an adapted Direct verdict.
+
+    No manual snapshot population: the real graph plans the canonical 24-bit
+    carrier, loads, accepts and records the decoded runtime facts, and the
+    classifier converges through the productive Signal Truth surface.
+    """
+    from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
+
+    graph, bindings = _direct_graph(tmp_path, alsa_hw_params_reader=_runtime_reader())
+    bindings.direct_snapshot_overrides = {
+        "decoded_format": "S24_3LE",
+        "decoded_sbits": 24,
+        "effective_sbits": 24,
+    }
+    try:
+        snapshot = _load_and_accept(graph, bindings, tmp_path / "productive.flac")
+
+        assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED, (
+            snapshot.reasons
+        )
+        assert snapshot.reasons == (SignalTruthReason.ST_CONTAINER_ADAPTED,)
     finally:
         _close_graph(graph)

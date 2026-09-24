@@ -1145,7 +1145,16 @@ def test_ci131_07_c_significant_bits_mismatch_is_never_adapted() -> None:
         alsa=PcmTuple(44_100, "S32_LE", 2, 24),
     )
 
-    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+    # R110R1 PRESERVATION SEMANTIC UPDATE
+    # Old invariant: a requested-carrier/decoded width mismatch stays UNKNOWN.
+    # Why superseded: the plan requested a width the decoded signal does not
+    #   prove — a contradiction between declared intent and proven signal, so it
+    #   is REFUTED rather than merely unknown. Never adapted is preserved.
+    # Canonical authority: §297 (declared intent vs proven width) with the
+    #   established contradiction vocabulary (§296).
+    # New invariant: CONTRADICTED, never DIRECT_CONTAINER_ADAPTED.
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
 
 
 def test_ci131_07_d_observed_resampling_is_resampled() -> None:

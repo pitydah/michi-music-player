@@ -67,6 +67,11 @@ class RuntimeTransformEvidence:
     resampler_present: bool = False
     resampler_transforming: bool | None = None
     remix_transforming: bool | None = None
+    #: R110R1 §44: the OBSERVED converter's preservation configuration.
+    #: ``True`` only when the runtime readback proves the property disabled;
+    #: ``None`` when the runtime cannot prove it (never assumed harmless).
+    converter_dithering_disabled: bool | None = None
+    converter_noise_shaping_disabled: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)

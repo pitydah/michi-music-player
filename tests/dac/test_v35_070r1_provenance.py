@@ -223,14 +223,25 @@ def _truth(
     return recorder
 
 
-def test_st70r1_04_engine_effective_sbits_unknown_blocks_container_adaptation():
+def test_st70r1_04_engine_container_bits_unknown_do_not_block_authorized_route():
     snapshot = _truth(
         decoded=_pcm(fmt="S24_3LE"),
         effective=_pcm(fmt="S32_LE", sbits=None),
         alsa=_pcm(fmt="S32_LE"),
     ).candidate_snapshot
-    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
-    assert SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN in snapshot.reasons
+    # R110R1 PRESERVATION SEMANTIC UPDATE
+    # Old invariant: an unknown ENGINE container width blocks the authorized
+    #   representation-preserving route.
+    # Why superseded: the engine stage reports the CARRIER container. S32_LE
+    #   precision is deliberately unknown, so demanding it made every
+    #   authorized 24/source route permanently UNKNOWN. §17 proves preservation
+    #   from the decoded width, the authorized pair, the declared policy and the
+    #   runtime graph facts — not from the container's width.
+    # Canonical authority: §297 (container_representation_changed) + §292.
+    # New invariant: the authorized route is DIRECT_CONTAINER_ADAPTED; an
+    #   unknown container width alone never blocks it.
+    assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert SignalTruthReason.ST_CONTAINER_ADAPTED in snapshot.reasons
 
 
 def test_st70r1_05_decoded_sbits_unknown_blocks_container_adaptation():
@@ -242,13 +253,20 @@ def test_st70r1_05_decoded_sbits_unknown_blocks_container_adaptation():
     assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
 
 
-def test_st70r1_06_alsa_sbits_unknown_blocks_container_adaptation():
+def test_st70r1_06_alsa_container_bits_unknown_do_not_block_authorized_route():
     snapshot = _truth(
         decoded=_pcm(fmt="S24_3LE"),
         effective=_pcm(fmt="S32_LE"),
         alsa=_pcm(fmt="S32_LE", sbits=None),
     ).candidate_snapshot
-    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+    # R110R1 PRESERVATION SEMANTIC UPDATE
+    # Old invariant: an unknown ALSA container width blocks the authorized route.
+    # Why superseded: the ALSA stage negotiates the CARRIER container; §17 does
+    #   not require its intrinsic width for an authorized representation-only
+    #   change. Requiring it made the physical S32 route permanently UNKNOWN.
+    # Canonical authority: §297 (container_representation_changed) + §292.
+    # New invariant: DIRECT_CONTAINER_ADAPTED for the proven authorized route.
+    assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
 
 
 def test_st70r1_07_all_three_prove_24_sbits_allows_container_adaptation():
@@ -277,7 +295,14 @@ def test_st70r1_09_engine_effective_sbits_mismatch_blocks_adaptation():
         effective=_pcm(fmt="S32_LE", sbits=20),
         alsa=_pcm(fmt="S32_LE", sbits=24),
     ).candidate_snapshot
-    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+    # R110R1 PRESERVATION SEMANTIC UPDATE
+    # Old invariant: a proven engine/ALSA width mismatch stays UNKNOWN.
+    # Why superseded: a PROVEN width that contradicts the decoded signal is a
+    #   real contradiction between the runtime and the promised signal, so it is
+    #   REFUTED rather than merely unknown. Never adapted is preserved.
+    # Canonical authority: §297 with the established contradiction vocabulary.
+    # New invariant: CONTRADICTED with the significant-bit reason.
+    assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
     assert SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN in snapshot.reasons
 
 

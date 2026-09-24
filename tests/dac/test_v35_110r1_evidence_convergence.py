@@ -183,3 +183,237 @@ def test_pev110r1_01_f_strict_path_helper_matches_the_policy() -> None:
     assert (
         is_strict_direct_path(OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE) is False
     )
+
+
+# ── R110R1 §46 — representation-preservation model gates ───────────────────
+
+
+def _preservation_snapshot(
+    *,
+    decoded: PcmTuple,
+    requested: PcmTuple | None = None,
+    effective: PcmTuple | None = None,
+    alsa: PcmTuple | None = None,
+    converter_present: bool = False,
+    converter_transforming: bool | None = None,
+    dithering_disabled: bool | None = None,
+    noise_shaping_disabled: bool | None = None,
+    remix_transforming: bool | None = False,
+):
+    """Classify one Direct candidate through the productive recorder surface."""
+    from michi.domain.audio_evidence import RuntimeTransformEvidence
+    from michi.domain.signal_truth import (
+        AlsaRuntimeEvidence,
+        DecodedRuntimeEvidence,
+        EngineRuntimeEvidence,
+        OutputPlanEvidence,
+        SignalTruthIdentity,
+        SignalTruthRecorder,
+    )
+
+    identity = SignalTruthIdentity("plan:pev", 1, 1, 1, "usb:dac", "ep:0")
+    carrier = requested or (effective or alsa or decoded)
+    recorder = SignalTruthRecorder()
+    recorder.begin_candidate(
+        OutputPlanEvidence(identity, carrier, "alsasink", "hw:CARD=AUDIO,DEV=0", True)
+    )
+    recorder.observe(DecodedRuntimeEvidence(identity, decoded))
+    recorder.observe(
+        EngineRuntimeEvidence(
+            identity=identity,
+            effective_pcm=effective or carrier,
+            sink_factory="alsasink",
+            sink_device="hw:CARD=AUDIO,DEV=0",
+            graph_factories=("wavparse", "audioconvert", "capsfilter", "alsasink"),
+            graph_inspection_complete=True,
+            software_gain=1.0,
+            muted=False,
+            sink_provides_clock=True,
+            sink_clock_is_pipeline_clock=True,
+            slave_method="none",
+            transform_evidence=RuntimeTransformEvidence(
+                converter_present=converter_present,
+                converter_transforming=converter_transforming,
+                remix_transforming=remix_transforming,
+                converter_dithering_disabled=dithering_disabled,
+                converter_noise_shaping_disabled=noise_shaping_disabled,
+            ),
+        )
+    )
+    recorder.observe(
+        AlsaRuntimeEvidence(
+            identity=identity,
+            negotiated_pcm=alsa or carrier,
+            access="RW_INTERLEAVED",
+            subformat="STD",
+            period_size=1024,
+            buffer_size=4096,
+            proc_path="/proc/asound/card2/pcm0p/sub0/hw_params",
+            locator="hw:CARD=AUDIO,DEV=0",
+        )
+    )
+    return recorder.candidate_snapshot
+
+
+def test_pev110r1_02_a_unchanged_exact_route_is_direct() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    pcm = PcmTuple(44_100, "S16_LE", 2, 16)
+    snapshot = _preservation_snapshot(
+        decoded=pcm, requested=pcm, effective=pcm, alsa=pcm
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.DIRECT
+
+
+def test_pev110r1_02_b_sixteen_to_wide_container_preserved_is_adapted() -> None:
+    from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 16),
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert snapshot.reasons == (SignalTruthReason.ST_CONTAINER_ADAPTED,)
+
+
+def test_pev110r1_02_c_twenty_four_to_canonical_carrier_preserved_is_adapted() -> None:
+    """Canonical §1822 step 6: S32 is the EXACT strict carrier for 24-bit, yet the
+    runtime representation changed — the two facts are different dimensions."""
+    from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S24_3LE", 2, 24),
+        requested=PcmTuple(44_100, "S32_LE", 2, 24),
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert snapshot.reasons == (SignalTruthReason.ST_CONTAINER_ADAPTED,)
+
+
+def test_pev110r1_02_d_wide_container_without_preservation_proof_is_unknown() -> None:
+    """No converter evidence at all: the earlier model fabricated S32 precision,
+    this one refuses to; the decoded width alone is not a carrier claim."""
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 16),
+        converter_present=True,
+        converter_transforming=None,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+
+
+def test_pev110r1_02_e_unauthorized_pair_is_never_adapted() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S32_LE", 2, 16),
+        requested=PcmTuple(44_100, "S16_LE", 2, 16),
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert snapshot.verdict is SignalTruthVerdict.DSP
+
+
+def test_pev110r1_02_f_active_dither_is_never_direct() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 16),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=False,
+        noise_shaping_disabled=True,
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+
+
+def test_pev110r1_02_g_active_noise_shaping_is_never_direct() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 16),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=True,
+        noise_shaping_disabled=False,
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+
+
+def test_pev110r1_02_h_transforming_converter_without_policy_is_unknown() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 16),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=None,
+        noise_shaping_disabled=None,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+
+
+def test_pev110r1_02_i_proven_wide_container_policy_is_adapted() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 16),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=True,
+        noise_shaping_disabled=True,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+
+
+def test_pev110r1_02_j_proven_width_mismatch_is_refuted() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S24_3LE", 2, 24),
+        requested=PcmTuple(44_100, "S32_LE", 2, 24),
+        effective=PcmTuple(44_100, "S32_LE", 2, 16),
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT
+    assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
+
+
+def test_pev110r1_02_k_rate_mismatch_is_never_direct() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(48_000, "S32_LE", 2, 16),
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
+
+
+def test_pev110r1_02_l_channel_mismatch_is_never_direct() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 6, 16),
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
