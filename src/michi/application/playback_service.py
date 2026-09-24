@@ -557,7 +557,12 @@ class PlaybackService:
         self._pending_on_cancelled = None
         self._reset_user_play_acceptance_latch()
         self._state.file_path = file_path
+        # R110 §17/§18: acceptance is the SUCCESS boundary of THIS request, so
+        # the previous request's failure presentation retires here — both the
+        # message AND the typed code. Clearing on click alone would let a new
+        # failing request present a stale clean state.
         self._state.error_message = None
+        self._state.error_code = None
         self._accepted = True
         self._notify()
         if on_accepted is not None:

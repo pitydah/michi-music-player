@@ -963,7 +963,12 @@ class OutputSessionService:
             return
         if self._state is OutputSessionState.IDLE and not was_direct:
             return
-        self._error_code = reason
+        # R110 §21: a normal release/stop is a COMMAND, not a failure. The
+        # session error code is reserved for typed failures (prepare refusals,
+        # device loss, abort); a release that genuinely fails raises to its
+        # caller. Projecting a plain reason here made every clean stop render as
+        # "Output unavailable".
+        self._error_code = None
         if self._executor is not None:
             self._executor.release(reason)
         if self._state is not OutputSessionState.RELEASING:
