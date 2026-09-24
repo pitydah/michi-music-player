@@ -20410,7 +20410,7 @@ DAC-V35-100R1.3.1 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.2 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.3 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.4 = CLOSED-AUTOMATED / GO
-DAC-V35-110R1 = SIGNAL TRUTH BLOCKER RESOLVED (software closure bound to exact-head CI)
+DAC-V35-110R1 = SIGNAL TRUTH FAIL-CLOSED SEAL COMPLETE (exact-head CI GO)
 DAC-V35-110 = PHYSICAL QUALIFICATION IN PROGRESS
 DAC-V35-120 = DO NOT START
 ```
@@ -20993,3 +20993,14 @@ first-sample/tail/XRUN/reconnect tests meet declared acceptance criteria
 Hardware volume and DSD/DoP have their own promotion gates and may be pursued during pre-Stable development after the mandatory PCM path is green. Signed remote profile distribution remains POST-STABLE ONLY. None may be smuggled into the mandatory core merely to claim “100%”.
 
 **V3.5 KILLCRITIC verdict:** after this seal, an implementation agent should not need to invent a module name, technology stack, ownership boundary, volume path, persistence schema, composition strategy, UI placement, execution order, or software completion criterion. Remaining uncertainty is intentionally empirical hardware evidence, which no Markdown plan can honestly pre-compute.
+
+
+### R110R1 Signal Truth final fail-closed seal — exact-head evidence
+
+The final seal commit `df866f4aebd3990b2755ca719b00f10514419b0f` passed Michi CI run `36034144696` with `check`,
+`min-qt` and `dac-v35-software-closure` in `success`; artifact
+`dac-v35-software-closure-df866f4aebd3990b2755ca719b00f10514419b0f` has GitHub digest `sha256:85fc25a37e81b87795a05e5e42239d8b284aeee920ee8177f81b5657b78927ef`. The seal closes
+the four audited false-positive paths (converter absent, converter passthrough
+against a proven change, tests that encoded those false positives, and the
+missing real-GStreamer preservation gate) and adds the complete §22 matrix, the
+productive positive and negative gates, and a real-runtime readback gate.

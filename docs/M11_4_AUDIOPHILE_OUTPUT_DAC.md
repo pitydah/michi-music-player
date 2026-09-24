@@ -9,11 +9,13 @@ those are closed. `DAC-V35-110R1` closed the carrier-policy coherence (the
 canonical 24-bit -> S32 strict target is `exact`; the transport preservation
 policy lives in the recipe) and made the DECODED runtime evidence converge; the
 remaining promotion blocker is the Signal Truth verdict, which still reports
-`ST_SIGNIFICANT_BITS_UNKNOWN`, now RESOLVED: the canonical §297 preservation
-pair is modelled explicitly for authorized routes, so a proven
-representation-preserving S16/S24 -> S32 route reaches
-`DIRECT_CONTAINER_ADAPTED` through the productive path while the S32 container
-width stays honestly unknown and every unauthorized route fails closed.
+SIGNAL TRUTH PRESERVATION MODEL IMPLEMENTED / FINAL FAIL-CLOSED SEAL COMPLETE.
+A representation-changing route now reaches `DIRECT_CONTAINER_ADAPTED` only
+when the responsible converter is OBSERVED, TRANSFORMING and its preservation
+policy is read back from the real element; a converter that is absent,
+passthrough against a proven change, or has an unproven/unsafe policy can never
+produce an adapted Direct verdict. The S32 container width stays honestly
+unknown and real GStreamer runtime evidence seals the readback.
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
