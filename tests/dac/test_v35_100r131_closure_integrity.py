@@ -1056,7 +1056,9 @@ def _truth(
     plan_id: str = "plan:r131",
     resampling: bool = False,
     remix: bool = False,
+    transforms=None,
 ):
+    from michi.domain.audio_evidence import RuntimeTransformEvidence
     from michi.domain.signal_truth import (
         AlsaRuntimeEvidence,
         DecodedRuntimeEvidence,
@@ -1087,6 +1089,9 @@ def _truth(
             slave_method="none",
             resampling_observed=resampling,
             remix_observed=remix,
+            transform_evidence=(
+                transforms if transforms is not None else RuntimeTransformEvidence()
+            ),
         )
     )
     recorder.observe(
@@ -1105,14 +1110,23 @@ def _truth(
 
 
 def test_ci131_07_a_authorized_sixteen_bit_widening_is_adapted() -> None:
-    from michi.domain.audio_evidence import PcmTuple
+    from michi.domain.audio_evidence import PcmTuple, RuntimeTransformEvidence
     from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
 
+    # R110R1 §12/§23: an adapted verdict requires the OBSERVED mechanism that
+    # performs the representation change with a PROVEN preservation policy.
     snapshot = _truth(
         decoded=PcmTuple(44_100, "S16_LE", 2, 16),
         requested=PcmTuple(44_100, "S32_LE", 2, 16),
         engine=PcmTuple(44_100, "S32_LE", 2, 16),
         alsa=PcmTuple(44_100, "S32_LE", 2, 16),
+        transforms=RuntimeTransformEvidence(
+            converter_present=True,
+            converter_transforming=True,
+            remix_transforming=False,
+            converter_dithering_disabled=True,
+            converter_noise_shaping_disabled=True,
+        ),
     )
 
     assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED

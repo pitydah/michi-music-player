@@ -166,6 +166,22 @@ def _pcm(
     return PcmTuple(rate, fmt, channels, sbits)
 
 
+def _proven_chain():
+    """The §12 required positive chain: an OBSERVED transforming converter whose
+    preservation policy is proven (dithering and noise shaping disabled)."""
+    from michi.domain.audio_evidence import RuntimeTransformEvidence
+
+    return RuntimeTransformEvidence(
+        converter_present=True,
+        converter_transforming=True,
+        resampler_present=False,
+        resampler_transforming=False,
+        remix_transforming=False,
+        converter_dithering_disabled=True,
+        converter_noise_shaping_disabled=True,
+    )
+
+
 def _truth(
     *,
     decoded: PcmTuple | None = None,
@@ -174,7 +190,10 @@ def _truth(
     source: PcmTuple | None = None,
     resampling: bool = False,
     remix: bool = False,
+    transforms=None,
 ) -> SignalTruthRecorder:
+    from michi.domain.audio_evidence import RuntimeTransformEvidence
+
     identity = SignalTruthIdentity("p", 1, 2, 3, "dac", "endpoint")
     recorder = SignalTruthRecorder()
     recorder.begin_candidate(
@@ -192,6 +211,9 @@ def _truth(
                 sink_factory="alsasink",
                 sink_device="hw:CARD=DX5,DEV=0",
                 graph_factories=("flacdec", "capsfilter", "alsasink"),
+                transform_evidence=(
+                    transforms if transforms is not None else RuntimeTransformEvidence()
+                ),
                 graph_inspection_complete=True,
                 software_gain=1.0,
                 muted=False,
@@ -228,6 +250,7 @@ def test_st70r1_04_engine_container_bits_unknown_do_not_block_authorized_route()
         decoded=_pcm(fmt="S24_3LE"),
         effective=_pcm(fmt="S32_LE", sbits=None),
         alsa=_pcm(fmt="S32_LE"),
+        transforms=_proven_chain(),
     ).candidate_snapshot
     # R110R1 PRESERVATION SEMANTIC UPDATE
     # Old invariant: an unknown ENGINE container width blocks the authorized
@@ -258,6 +281,7 @@ def test_st70r1_06_alsa_container_bits_unknown_do_not_block_authorized_route():
         decoded=_pcm(fmt="S24_3LE"),
         effective=_pcm(fmt="S32_LE"),
         alsa=_pcm(fmt="S32_LE", sbits=None),
+        transforms=_proven_chain(),
     ).candidate_snapshot
     # R110R1 PRESERVATION SEMANTIC UPDATE
     # Old invariant: an unknown ALSA container width blocks the authorized route.
@@ -274,6 +298,7 @@ def test_st70r1_07_all_three_prove_24_sbits_allows_container_adaptation():
         decoded=_pcm(fmt="S24_3LE"),
         effective=_pcm(fmt="S32_LE"),
         alsa=_pcm(fmt="S32_LE"),
+        transforms=_proven_chain(),
     ).candidate_snapshot
     assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
     assert snapshot.reasons == (SignalTruthReason.ST_CONTAINER_ADAPTED,)
@@ -303,7 +328,7 @@ def test_st70r1_09_engine_effective_sbits_mismatch_blocks_adaptation():
     # Canonical authority: §297 with the established contradiction vocabulary.
     # New invariant: CONTRADICTED with the significant-bit reason.
     assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
-    assert SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN in snapshot.reasons
+    assert SignalTruthReason.ST_SIGNIFICANT_BITS_MISMATCH in snapshot.reasons
 
 
 def test_source_decoded_mismatch_is_preserved_without_overriding_runtime_truth():

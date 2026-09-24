@@ -50,6 +50,11 @@ class SignalTruthReason(Enum):
     ST_CONVERTER_STATE_UNKNOWN = "ST_CONVERTER_STATE_UNKNOWN"
     ST_RESAMPLER_STATE_UNKNOWN = "ST_RESAMPLER_STATE_UNKNOWN"
     ST_SOURCE_DECODED_MISMATCH = "ST_SOURCE_DECODED_MISMATCH"
+    #: R110R1 final fail-closed seal: a KNOWN unequal significant-bit value.
+    ST_SIGNIFICANT_BITS_MISMATCH = "ST_SIGNIFICANT_BITS_MISMATCH"
+    #: The representation changed but no mechanism responsible for it was
+    #: observed (converter absent, or the observed converter claims passthrough).
+    ST_CONTAINER_TRANSFORM_UNOBSERVED = "ST_CONTAINER_TRANSFORM_UNOBSERVED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,53 +195,69 @@ def _authorized_preservation_decision(
         decoded.channels == requested.channels == effective.channels == alsa.channels
     ):
         return None
-    # A PROVEN carrier width that contradicts the decoded signal refutes.
+    # A PROVEN carrier width that contradicts the decoded signal is a known
+    # mismatch, never an epistemic unknown (§21).
     for known in (effective.significant_bits, alsa.significant_bits):
         if known is not None and known != bits:
             return (
                 SignalTruthVerdict.CONTRADICTED,
-                SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN,
+                SignalTruthReason.ST_SIGNIFICANT_BITS_MISMATCH,
             )
     if requested.significant_bits != bits:
         return (
             SignalTruthVerdict.CONTRADICTED,
-            SignalTruthReason.ST_SIGNIFICANT_BITS_UNKNOWN,
+            SignalTruthReason.ST_SIGNIFICANT_BITS_MISMATCH,
         )
     if transforms.resampler_present and transforms.resampler_transforming is not False:
         return (
             SignalTruthVerdict.UNKNOWN,
             SignalTruthReason.ST_RESAMPLER_STATE_UNKNOWN,
         )
-    if transforms.converter_present:
-        if transforms.remix_transforming is not False:
-            return (
-                SignalTruthVerdict.UNKNOWN,
-                SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
-            )
-        if transforms.converter_transforming is None:
-            return (
-                SignalTruthVerdict.UNKNOWN,
-                SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
-            )
-        if transforms.converter_transforming is True:
-            if (
-                transforms.converter_dithering_disabled is None
-                or transforms.converter_noise_shaping_disabled is None
-            ):
-                # A transforming converter whose preservation configuration
-                # cannot be proven is never assumed harmless.
-                return (
-                    SignalTruthVerdict.UNKNOWN,
-                    SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
-                )
-            if not (
-                transforms.converter_dithering_disabled
-                and transforms.converter_noise_shaping_disabled
-            ):
-                return (
-                    SignalTruthVerdict.DSP,
-                    SignalTruthReason.ST_DSP_PRESENT,
-                )
+    # §12 required positive chain: the representation changed, so preservation
+    # can only be claimed through an OBSERVED mechanism that proves it.
+    if not transforms.converter_present:
+        # AUTHORIZED is not OBSERVED: no mechanism responsible for the change
+        # was observed.
+        return (
+            SignalTruthVerdict.UNKNOWN,
+            SignalTruthReason.ST_CONTAINER_TRANSFORM_UNOBSERVED,
+        )
+    if transforms.remix_transforming is not False:
+        return (
+            SignalTruthVerdict.UNKNOWN,
+            SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
+        )
+    if transforms.converter_transforming is None:
+        return (
+            SignalTruthVerdict.UNKNOWN,
+            SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
+        )
+    if transforms.converter_transforming is False:
+        # Contradictory evidence: the endpoint proves the representation changed
+        # while the observed converter claims it did NOT transform, so the
+        # responsible mechanism is unobserved. Fail closed.
+        return (
+            SignalTruthVerdict.CONTRADICTED,
+            SignalTruthReason.ST_CONTAINER_TRANSFORM_UNOBSERVED,
+        )
+    if (
+        transforms.converter_dithering_disabled is None
+        or transforms.converter_noise_shaping_disabled is None
+    ):
+        # A transforming converter whose preservation configuration cannot be
+        # proven is never assumed harmless.
+        return (
+            SignalTruthVerdict.UNKNOWN,
+            SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN,
+        )
+    if not (
+        transforms.converter_dithering_disabled
+        and transforms.converter_noise_shaping_disabled
+    ):
+        return (
+            SignalTruthVerdict.DSP,
+            SignalTruthReason.ST_DSP_PRESENT,
+        )
     return (
         SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED,
         SignalTruthReason.ST_CONTAINER_ADAPTED,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
@@ -222,9 +222,29 @@ def test_st70_06_complete_matching_runtime_is_direct() -> None:
 
 def test_st70_07_container_adaptation_requires_end_to_end_sbits_proof() -> None:
     identity = _identity()
+    # R110R1 §12: an adapted verdict requires the OBSERVED transforming
+    # converter with a PROVEN preservation policy (dithering and noise shaping
+    # disabled), not merely an authorized format pair.
+    from michi.domain.audio_evidence import RuntimeTransformEvidence
+
+    engine = _engine(
+        identity,
+        pcm=_pcm(fmt="S32_LE", significant_bits=24),
+        graph=("flacdec", "audioconvert", "capsfilter", "alsasink"),
+    )
+    engine = replace(
+        engine,
+        transform_evidence=RuntimeTransformEvidence(
+            converter_present=True,
+            converter_transforming=True,
+            remix_transforming=False,
+            converter_dithering_disabled=True,
+            converter_noise_shaping_disabled=True,
+        ),
+    )
     recorder = _complete(
         decoded=_pcm(fmt="S24_3LE"),
-        engine=_engine(identity, pcm=_pcm(fmt="S32_LE", significant_bits=24)),
+        engine=engine,
         alsa=_alsa(identity, pcm=_pcm(fmt="S32_LE")),
     )
     assert (

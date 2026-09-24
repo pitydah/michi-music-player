@@ -269,9 +269,15 @@ def test_pev110r1_02_a_unchanged_exact_route_is_direct() -> None:
 def test_pev110r1_02_b_sixteen_to_wide_container_preserved_is_adapted() -> None:
     from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
 
+    # §12/§23: the adapted verdict requires the OBSERVED transforming
+    # converter with a PROVEN preservation policy.
     snapshot = _preservation_snapshot(
         decoded=PcmTuple(44_100, "S16_LE", 2, 16),
         requested=PcmTuple(44_100, "S32_LE", 2, 16),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=True,
+        noise_shaping_disabled=True,
     )
 
     assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
@@ -286,16 +292,35 @@ def test_pev110r1_02_c_twenty_four_to_canonical_carrier_preserved_is_adapted() -
     snapshot = _preservation_snapshot(
         decoded=PcmTuple(44_100, "S24_3LE", 2, 24),
         requested=PcmTuple(44_100, "S32_LE", 2, 24),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=True,
+        noise_shaping_disabled=True,
     )
 
     assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
     assert snapshot.reasons == (SignalTruthReason.ST_CONTAINER_ADAPTED,)
 
 
-def test_pev110r1_02_d_wide_container_without_preservation_proof_is_unknown() -> None:
-    """No converter evidence at all: the earlier model fabricated S32 precision,
-    this one refuses to; the decoded width alone is not a carrier claim."""
-    from michi.domain.signal_truth import SignalTruthVerdict
+def test_pev110r1_02_d1_representation_change_without_observed_mechanism() -> None:
+    """§13: AUTHORIZED is not OBSERVED. If the representation changed but no
+    converter was observed, preservation cannot be claimed."""
+    from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 16),
+        converter_present=False,
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+    assert SignalTruthReason.ST_CONTAINER_TRANSFORM_UNOBSERVED in snapshot.reasons
+
+
+def test_pev110r1_02_d2_representation_change_with_unknown_converter_state() -> None:
+    from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
 
     snapshot = _preservation_snapshot(
         decoded=PcmTuple(44_100, "S16_LE", 2, 16),
@@ -305,6 +330,43 @@ def test_pev110r1_02_d_wide_container_without_preservation_proof_is_unknown() ->
     )
 
     assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+    assert SignalTruthReason.ST_CONVERTER_STATE_UNKNOWN in snapshot.reasons
+
+
+def test_pev110r1_02_e2_passthrough_converter_contradicts_the_change() -> None:
+    """§15: the endpoint proves the representation changed while the observed
+    converter claims it did NOT transform — contradictory evidence."""
+    from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S16_LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 16),
+        converter_present=True,
+        converter_transforming=False,
+    )
+
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+    assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
+    assert SignalTruthReason.ST_CONTAINER_TRANSFORM_UNOBSERVED in snapshot.reasons
+
+
+def test_pev110r1_02_b2_unchanged_representation_with_passthrough_converter() -> None:
+    """§18/§19: an unchanged representation stays DIRECT with a converter that
+    proves passthrough — presence alone is never DSP."""
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    pcm = PcmTuple(44_100, "S16_LE", 2, 16)
+    snapshot = _preservation_snapshot(
+        decoded=pcm,
+        requested=pcm,
+        effective=pcm,
+        alsa=pcm,
+        converter_present=True,
+        converter_transforming=False,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.DIRECT
 
 
 def test_pev110r1_02_e_unauthorized_pair_is_never_adapted() -> None:
@@ -382,7 +444,7 @@ def test_pev110r1_02_i_proven_wide_container_policy_is_adapted() -> None:
 
 
 def test_pev110r1_02_j_proven_width_mismatch_is_refuted() -> None:
-    from michi.domain.signal_truth import SignalTruthVerdict
+    from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
 
     snapshot = _preservation_snapshot(
         decoded=PcmTuple(44_100, "S24_3LE", 2, 24),
@@ -392,6 +454,7 @@ def test_pev110r1_02_j_proven_width_mismatch_is_refuted() -> None:
 
     assert snapshot.verdict is not SignalTruthVerdict.DIRECT
     assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
+    assert SignalTruthReason.ST_SIGNIFICANT_BITS_MISMATCH in snapshot.reasons
 
 
 def test_pev110r1_02_k_rate_mismatch_is_never_direct() -> None:
@@ -417,3 +480,80 @@ def test_pev110r1_02_l_channel_mismatch_is_never_direct() -> None:
 
     assert snapshot.verdict is not SignalTruthVerdict.DIRECT
     assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+
+
+# ── PHASE 3 — REAL GStreamer preservation gate (§26–§32) ───────────────────
+
+
+def test_pev110r1_03_a_real_audioconvert_readback_proves_policy(tmp_path) -> None:
+    """Real GStreamer: read dithering / noise shaping from a LIVE audioconvert.
+
+    The production helper is exercised against a real element and a real
+    representation change (S16 -> S32). No hardware sink is used.
+    """
+    import struct
+    import wave
+
+    import gi
+
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst
+
+    from michi.infrastructure.audio_engines.gstreamer import (
+        converter_preservation_config,
+    )
+
+    Gst.init(None)
+
+    fixture = tmp_path / "real16.wav"
+    with wave.open(str(fixture), "wb") as handle:
+        handle.setnchannels(2)
+        handle.setsampwidth(2)
+        handle.setframerate(44_100)
+        frames = b"".join(struct.pack("<hh", 1024, -1024) for _ in range(4096))
+        handle.writeframes(frames)
+
+    pipeline = Gst.Pipeline.new("r110r1-real-preservation")
+    src = Gst.ElementFactory.make("filesrc", "src")
+    parser = Gst.ElementFactory.make("wavparse", "parser")
+    converter = Gst.ElementFactory.make("audioconvert", "conv")
+    caps = Gst.ElementFactory.make("capsfilter", "caps")
+    caps.set_property(
+        "caps",
+        Gst.Caps.from_string(
+            "audio/x-raw,format=S32LE,rate=44100,channels=2,layout=interleaved"
+        ),
+    )
+    sink = Gst.ElementFactory.make("fakesink", "sink")
+    for element in (src, parser, converter, caps, sink):
+        assert element is not None
+        pipeline.add(element)
+    assert src.link(parser) and parser.link(converter)
+    assert converter.link(caps) and caps.link(sink)
+    src.set_property("location", str(fixture))
+
+    pipeline.set_state(Gst.State.PAUSED)
+    assert pipeline.get_state(5 * Gst.SECOND)[0] is Gst.StateChangeReturn.SUCCESS
+
+    # The REAL element, read through the production helper.
+    default_dithering, default_noise = converter_preservation_config(converter)
+    assert default_dithering is not None and default_noise is not None
+
+    converter.set_property("dithering", 0)
+    converter.set_property("noise-shaping", 0)
+    proven = converter_preservation_config(converter)
+    assert proven == (True, True), proven
+
+    # Deliberately unsafe: the helper must report the ACTIVE transform policy.
+    converter.set_property("dithering", 2)
+    assert converter_preservation_config(converter)[0] is False
+
+    # The real representation change (S16 fixture -> S32 caps) is observable.
+    sink_pad_caps = caps.get_static_pad("sink").get_current_caps()
+    assert sink_pad_caps is not None
+    assert "format=(string)S32LE" in sink_pad_caps.to_string()
+    upstream_caps = parser.get_static_pad("src").get_current_caps()
+    assert upstream_caps is not None
+    assert "format=(string)S16LE" in upstream_caps.to_string()
+
+    pipeline.set_state(Gst.State.NULL)

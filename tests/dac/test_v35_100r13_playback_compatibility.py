@@ -594,6 +594,7 @@ def test_pc13_05_06_recipe_authorizes_conversion_only_from_the_plan() -> None:
 
 
 def test_pc13_05_07_signal_truth_reports_16_bit_container_adaptation() -> None:
+    from michi.domain.audio_evidence import RuntimeTransformEvidence
     from michi.domain.signal_truth import (
         AlsaRuntimeEvidence,
         DecodedRuntimeEvidence,
@@ -626,6 +627,13 @@ def test_pc13_05_07_signal_truth_reports_16_bit_container_adaptation() -> None:
             sink_provides_clock=True,
             sink_clock_is_pipeline_clock=True,
             slave_method="none",
+            transform_evidence=RuntimeTransformEvidence(
+                converter_present=True,
+                converter_transforming=True,
+                remix_transforming=False,
+                converter_dithering_disabled=True,
+                converter_noise_shaping_disabled=True,
+            ),
         )
     )
     recorder.observe(

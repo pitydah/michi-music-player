@@ -201,6 +201,37 @@ class _NegotiatedPcmCaps:
     channel_layout: int | None
 
 
+def converter_preservation_config(
+    element,
+) -> tuple[bool | None, bool | None]:
+    """R110R1 §28/§44: read dithering / noise shaping from a REAL converter.
+
+    Returns ``(dithering_disabled, noise_shaping_disabled)``. A missing,
+    unreadable or non-numeric property is NEVER treated as disabled.
+    ``value_nick`` is preferred over the integer value so GEnum forms are
+    normalized robustly across GStreamer versions.
+    """
+
+    def disabled(prop: str):
+        try:
+            if element.find_property(prop) is None:
+                return None
+            value = element.get_property(prop)
+        except Exception:  # noqa: BLE001 — runtime boundary
+            return None
+        if value is None:
+            return None
+        nick = getattr(value, "value_nick", None)
+        if nick is not None:
+            return nick == "none"
+        try:
+            return int(value) == 0
+        except (TypeError, ValueError):
+            return None
+
+    return disabled("dithering"), disabled("noise-shaping")
+
+
 def _aggregate_preservation(
     configs: list[tuple[bool | None, bool | None]], index: int
 ) -> bool | None:
@@ -687,31 +718,6 @@ class GStreamerBindings:
             converter_states: list[bool | None] = []
             converter_config: list[tuple[bool | None, bool | None]] = []
 
-            def _preservation_config(element):
-                """R110R1 §44: prove dithering / noise shaping are DISABLED.
-
-                A missing or unreadable property is NEVER treated as disabled.
-                """
-
-                def disabled(prop: str):
-                    try:
-                        if element.find_property(prop) is None:
-                            return None
-                        value = element.get_property(prop)
-                    except Exception:  # noqa: BLE001 — runtime boundary
-                        return None
-                    if value is None:
-                        return None
-                    nick = getattr(value, "value_nick", None)
-                    if nick is not None:
-                        return nick == "none"
-                    try:
-                        return int(value) == 0
-                    except (TypeError, ValueError):
-                        return None
-
-                return disabled("dithering"), disabled("noise-shaping")
-
             resampler_states: list[bool | None] = []
             remix_states: list[bool | None] = []
             transform_owners: set[int] = set()
@@ -790,7 +796,7 @@ class GStreamerBindings:
                     if factory_name == "audioconvert":
                         converter_states.append(transforming)
                         remix_states.append(remixing)
-                        converter_config.append(_preservation_config(owner))
+                        converter_config.append(converter_preservation_config(owner))
                     else:
                         resampler_states.append(transforming)
                 klass = factory.get_metadata("klass") or ""

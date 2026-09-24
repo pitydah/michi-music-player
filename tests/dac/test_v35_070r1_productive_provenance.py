@@ -55,6 +55,21 @@ def _load_and_accept(graph, bindings, path: Path):
     return snapshot
 
 
+def _proven_chain():
+    """R110R1 §12: the OBSERVED transforming converter with the proven policy."""
+    from michi.domain.audio_evidence import RuntimeTransformEvidence
+
+    return RuntimeTransformEvidence(
+        converter_present=True,
+        converter_transforming=True,
+        resampler_present=False,
+        resampler_transforming=False,
+        remix_transforming=False,
+        converter_dithering_disabled=True,
+        converter_noise_shaping_disabled=True,
+    )
+
+
 def test_st70r1_p01_real_discovery_registry_and_runtime_observer(tmp_path: Path):
     graph, bindings = _direct_graph(tmp_path, alsa_hw_params_reader=_runtime_reader())
     try:
@@ -95,6 +110,8 @@ def test_st70r1_p03_authorized_route_does_not_require_alsa_container_bits(
         "decoded_format": "S24_3LE",
         "decoded_sbits": 24,
         "effective_sbits": 24,
+        "graph": ("wavparse", "audioconvert", "capsfilter", "alsasink"),
+        "transform_evidence": _proven_chain(),
     }
     try:
         snapshot = _load_and_accept(graph, bindings, tmp_path / "adapted.flac")
@@ -123,6 +140,8 @@ def test_st70r1_p04_missing_engine_container_bits_do_not_block_authorized_route(
         "decoded_format": "S24_3LE",
         "decoded_sbits": 24,
         "effective_sbits": None,
+        "graph": ("wavparse", "audioconvert", "capsfilter", "alsasink"),
+        "transform_evidence": _proven_chain(),
     }
     try:
         snapshot = _load_and_accept(graph, bindings, tmp_path / "unknown.flac")
@@ -212,6 +231,8 @@ def test_pev110r1_02_productive_authorized_route_converges(tmp_path: Path):
         "decoded_format": "S24_3LE",
         "decoded_sbits": 24,
         "effective_sbits": 24,
+        "graph": ("wavparse", "audioconvert", "capsfilter", "alsasink"),
+        "transform_evidence": _proven_chain(),
     }
     try:
         snapshot = _load_and_accept(graph, bindings, tmp_path / "productive.flac")
@@ -220,5 +241,31 @@ def test_pev110r1_02_productive_authorized_route_converges(tmp_path: Path):
             snapshot.reasons
         )
         assert snapshot.reasons == (SignalTruthReason.ST_CONTAINER_ADAPTED,)
+    finally:
+        _close_graph(graph)
+
+
+def test_pev110r1_02_productive_representation_change_without_mechanism_is_not_direct(
+    tmp_path: Path,
+):
+    """§34: through the PRODUCTIVE composition, a representation change with no
+    observed mechanism must never become adapted Direct."""
+    from michi.domain.audio_evidence import RuntimeTransformEvidence
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    graph, bindings = _direct_graph(tmp_path, alsa_hw_params_reader=_runtime_reader())
+    bindings.direct_snapshot_overrides = {
+        "decoded_format": "S24_3LE",
+        "decoded_sbits": 24,
+        "effective_sbits": 24,
+        "graph": ("wavparse", "capsfilter", "alsasink"),
+        "transform_evidence": RuntimeTransformEvidence(converter_present=False),
+    }
+    try:
+        snapshot = _load_and_accept(graph, bindings, tmp_path / "no-mechanism.flac")
+
+        assert snapshot.verdict is not SignalTruthVerdict.DIRECT
+        assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+        assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
     finally:
         _close_graph(graph)
