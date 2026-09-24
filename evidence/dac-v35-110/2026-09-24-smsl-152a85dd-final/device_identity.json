@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+  "captured_at": "2026-09-24T20:08:32-0300",
+  "manufacturer": "SMSL",
+  "product": "SMSL USB AUDIO",
+  "usb": "152a:85dd",
+  "physical_path": "usb-0000:0c:00.3-3.3.2",
+  "stable_device_id": "usb:152a:85dd:3-3.3.2",
+  "alsa_card_index": 2,
+  "alsa_card_id": "AUDIO",
+  "alsa_device_index": 0,
+  "michi_locator": "hw:CARD=AUDIO,DEV=0",
+  "identity_correlation": "TOPOLOGY_DERIVED (no serial exposed)",
+  "advertised": {
+    "formats": [
+      "S32_LE",
+      "DSD_U32_BE"
+    ],
+    "sample_bits": 32,
+    "channels": 2,
+    "rate_range_hz": [
+      44100,
+      768000
+    ]
+  }
+}

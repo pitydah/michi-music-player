@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+  "captured_at": "2026-09-24T20:08:32-0300",
+  "kernel": "7.2.6-1-cachyos",
+  "distribution": "CachyOS",
+  "alsa_lib": "alsa-lib 1.2.16.1-1.1",
+  "alsa_utils": "alsa-utils 1.2.16-1.1",
+  "gstreamer": "gstreamer 1.28.7-2.1",
+  "gst_plugins_base": "gst-plugins-base 1.28.7-2.1",
+  "pygobject": "python-gobject 3.56.3-1",
+  "pipewire": "pipewire 1:1.6.9-1",
+  "wireplumber": "wireplumber 0.5.17-2.1"
+}

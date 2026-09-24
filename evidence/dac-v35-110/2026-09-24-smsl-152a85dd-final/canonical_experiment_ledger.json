@@ -1,0 +1,226 @@
+[
+  {
+    "experiment_id": "R19",
+    "canonical_requirement": "enumeration convergence / hotplug race",
+    "applicability": "APPLICABLE",
+    "execution": "device rediscovered at the current HEAD; no intentional hotplug cycle executed in this run",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_RUN",
+    "notes": "requires the disconnect/reconnect checkpoint"
+  },
+  {
+    "experiment_id": "R20",
+    "canonical_requirement": "duplicate serial / identical device collision",
+    "applicability": "NOT_APPLICABLE",
+    "execution": "only one USB DAC of this type is present",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_APPLICABLE",
+    "notes": "no second identical DAC available"
+  },
+  {
+    "experiment_id": "R21",
+    "canonical_requirement": "passive claim vs exact open consistency",
+    "applicability": "APPLICABLE",
+    "execution": "probe matrix: S32_LE opened exactly with readback, S16_LE/S24_3LE rejected exactly",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "VERIFIED",
+    "notes": "tuple-scoped truthfulness confirmed for the tested device"
+  },
+  {
+    "experiment_id": "R22",
+    "canonical_requirement": "significant-bit depth consistency",
+    "applicability": "APPLICABLE",
+    "execution": "24-bit sources negotiate the S32_LE carrier; the runtime significant-bit readback is unavailable",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "INCONCLUSIVE",
+    "notes": "the physical Signal Truth chain does not complete (see R110 blocker)"
+  },
+  {
+    "experiment_id": "R23",
+    "canonical_requirement": "multi-endpoint / composite USB audio",
+    "applicability": "NOT_APPLICABLE",
+    "execution": "single playback endpoint",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_APPLICABLE",
+    "notes": "no composite endpoint present"
+  },
+  {
+    "experiment_id": "R24",
+    "canonical_requirement": "GStreamer clock authority / slave method",
+    "applicability": "APPLICABLE",
+    "execution": "not executed in this run",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_RUN",
+    "notes": ""
+  },
+  {
+    "experiment_id": "R25",
+    "canonical_requirement": "sample-rate transition / resync lab",
+    "applicability": "APPLICABLE",
+    "execution": "44.1/48/96/192 kHz routes exercised; the resync lab was not executed",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_RUN",
+    "notes": ""
+  },
+  {
+    "experiment_id": "R26",
+    "canonical_requirement": "hardware volume control qualification",
+    "applicability": "NOT_APPLICABLE",
+    "execution": "belongs to DAC-V35-120 (DO NOT START)",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_APPLICABLE",
+    "notes": "OUT_OF_SCOPE_R120"
+  },
+  {
+    "experiment_id": "R27",
+    "canonical_requirement": "ALSA control event convergence",
+    "applicability": "APPLICABLE",
+    "execution": "not executed",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_RUN",
+    "notes": ""
+  },
+  {
+    "experiment_id": "R28",
+    "canonical_requirement": "Signal Truth contradiction matrix",
+    "applicability": "APPLICABLE",
+    "execution": "no contradiction observed; the adapted verdict is blocked at the observation stage",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "INCONCLUSIVE",
+    "notes": "see R110 blocker"
+  },
+  {
+    "experiment_id": "R29",
+    "canonical_requirement": "Michi Verifier profile precedence",
+    "applicability": "APPLICABLE",
+    "execution": "no Michi-Verified profile exists",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_RUN",
+    "notes": ""
+  },
+  {
+    "experiment_id": "R32",
+    "canonical_requirement": "long-run USB DAC soak",
+    "applicability": "NOT_APPLICABLE",
+    "execution": "explicitly outside the bounded scope",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_APPLICABLE",
+    "notes": "historical bounded stress remains referenced"
+  },
+  {
+    "experiment_id": "R33",
+    "canonical_requirement": "reconnect / resume safety",
+    "applicability": "APPLICABLE",
+    "execution": "not executed",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_RUN",
+    "notes": "requires the operator checkpoint"
+  },
+  {
+    "experiment_id": "R34",
+    "canonical_requirement": "strict exact-open / no-resample probe",
+    "applicability": "APPLICABLE",
+    "execution": "matrix revalidated: S32_LE opens exactly at 44100/48000/96000/192000; S16_LE and S24_3LE fail truthfully",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "VERIFIED",
+    "notes": "supported tuples read back exactly; unsupported tuples fail truthfully"
+  },
+  {
+    "experiment_id": "R35",
+    "canonical_requirement": "tail / drain integrity",
+    "applicability": "APPLICABLE",
+    "execution": "not executed",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_RUN",
+    "notes": "requires loopback or rendered-tail capture"
+  },
+  {
+    "experiment_id": "R36",
+    "canonical_requirement": "XRUN recovery transparency",
+    "applicability": "APPLICABLE",
+    "execution": "not executed",
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "evidence_files": [
+      "final_verdict.json",
+      "device_identity.json",
+      "environment.json"
+    ],
+    "result": "NOT_RUN",
+    "notes": ""
+  }
+]

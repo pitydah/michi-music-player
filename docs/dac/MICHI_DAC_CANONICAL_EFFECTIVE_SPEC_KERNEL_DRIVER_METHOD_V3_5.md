@@ -21004,3 +21004,44 @@ the four audited false-positive paths (converter absent, converter passthrough
 against a proven change, tests that encoded those false positives, and the
 missing real-GStreamer preservation gate) and adds the complete §22 matrix, the
 productive positive and negative gates, and a real-runtime readback gate.
+
+
+### DAC-V35-110 current-code physical replay (2026-09-24) — device-scoped evidence and blocker
+
+Device rediscovered at runtime: SMSL USB AUDIO, USB `152a:85dd`, physical path
+`usb-0000:0c:00.3-3.3.2`, ALSA `hw:CARD=AUDIO,DEV=0` (card index 2, id AUDIO),
+advertising `S32_LE` + `DSD_U32_BE`, 2 channels, 44100–768000 Hz. Michi stable
+device id `usb:152a:85dd:3-3.3.2` (topology-derived: the device exposes no
+serial). Evidence: `evidence/dac-v35-110/2026-09-24-smsl-152a85dd-final/`.
+
+Verified on the current code:
+
+- **Shared**: 16/44.1 plays.
+- **Strict Direct**: 24-bit sources at 44100, 48000, 96000 and 192000 Hz plan
+  `(rate, S32_LE, 2)` with `carrier_adaptation=exact` and play; 16-bit sources
+  requesting `S16_LE` are refused exactly (`EXACT_TUPLE_UNSUPPORTED`) —
+  tuple-scoped hardware truth, not a device claim.
+- **Compatible Direct**: 16-bit sources resolve to `S32_LE`
+  (`container_width`) and play; a 24-bit source resolves to the canonical
+  `S32_LE` exact carrier (no false widening).
+- **Failure hygiene (physically confirmed)**: the strict refusals present one
+  typed failure in BOTH authorities, and every later success presents no error
+  and no failure copy. No `PLAYING` row retains a previous error, and a normal
+  stop no longer renders as "Output unavailable".
+- **R34 revalidated**: `S32_LE` opens exactly at 44100/48000/96000/192000 Hz;
+  `S16_LE` and `S24_3LE` fail truthfully.
+
+**Blocker (PHYSICAL SOFTWARE DEFECT, reproduced on all 7 adapted rows):** the
+converter that performs the authorized widening is inserted INSIDE the strict
+sink bin (`michi_direct_convert`), while the Signal Truth branch inspection
+walks UPSTREAM from the sink bin's ghost pad. The responsible mechanism is
+therefore never observed (`converter_present=False`), so the fail-closed chain
+required by the R110R1 seal cannot be satisfied on a real adapted route: the
+physical verdicts are `ST_CONTAINER_TRANSFORM_UNOBSERVED` on the compatible
+routes and `ST_SIGNIFICANT_BITS_UNKNOWN` on the canonical 24-bit routes.
+
+Consequently no physical Direct row carries a complete Signal Truth verdict, and
+`DAC-V35-110` remains **PHYSICAL QUALIFICATION IN PROGRESS**. The canonical
+R19–R29/R32–R36 ledger is recorded in the evidence directory; disconnect,
+reconnect, operator audibility and the tail/XRUN labs remain open. Bit-perfect
+is not claimed, M11.5 is not started and `DAC-V35-120` remains DO NOT START.

@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+  "captured_at": "2026-09-24T20:08:33-0300",
+  "device_id": "usb:152a:85dd:3-3.3.2",
+  "software_closure": {
+    "signal_truth_fail_closed_seal": "df866f4 (CI 36034144696 SUCCESS)",
+    "failure_hygiene": "b1b2ba9 (retire stale failures on success; normal stop is not a failure)"
+  },
+  "environment": {
+    "schema_version": 1,
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "captured_at": "2026-09-24T20:08:32-0300",
+    "kernel": "7.2.6-1-cachyos",
+    "distribution": "CachyOS",
+    "alsa_lib": "alsa-lib 1.2.16.1-1.1",
+    "alsa_utils": "alsa-utils 1.2.16-1.1",
+    "gstreamer": "gstreamer 1.28.7-2.1",
+    "gst_plugins_base": "gst-plugins-base 1.28.7-2.1",
+    "pygobject": "python-gobject 3.56.3-1",
+    "pipewire": "pipewire 1:1.6.9-1",
+    "wireplumber": "wireplumber 0.5.17-2.1"
+  },
+  "device_identity": {
+    "schema_version": 1,
+    "git_head": "b052dfbaa104eaf993984304afcb717505bed096",
+    "captured_at": "2026-09-24T20:08:32-0300",
+    "manufacturer": "SMSL",
+    "product": "SMSL USB AUDIO",
+    "usb": "152a:85dd",
+    "physical_path": "usb-0000:0c:00.3-3.3.2",
+    "stable_device_id": "usb:152a:85dd:3-3.3.2",
+    "alsa_card_index": 2,
+    "alsa_card_id": "AUDIO",
+    "alsa_device_index": 0,
+    "michi_locator": "hw:CARD=AUDIO,DEV=0",
+    "identity_correlation": "TOPOLOGY_DERIVED (no serial exposed)",
+    "advertised": {
+      "formats": [
+        "S32_LE",
+        "DSD_U32_BE"
+      ],
+      "sample_bits": 32,
+      "channels": 2,
+      "rate_range_hz": [
+        44100,
+        768000
+      ]
+    }
+  },
+  "alsa_capabilities": [
+    {
+      "tuple": {
+        "rate_hz": 44100,
+        "format": "S16_LE",
+        "channels": 2
+      },
+      "opened": false,
+      "error": "unsupported_format"
+    },
+    {
+      "tuple": {
+        "rate_hz": 44100,
+        "format": "S24_3LE",
+        "channels": 2
+      },
+      "opened": false,
+      "error": "unsupported_format"
+    },
+    {
+      "tuple": {
+        "rate_hz": 44100,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "opened": true,
+      "error": null
+    },
+    {
+      "tuple": {
+        "rate_hz": 48000,
+        "format": "S16_LE",
+        "channels": 2
+      },
+      "opened": false,
+      "error": "unsupported_format"
+    },
+    {
+      "tuple": {
+        "rate_hz": 48000,
+        "format": "S24_3LE",
+        "channels": 2
+      },
+      "opened": false,
+      "error": "unsupported_format"
+    },
+    {
+      "tuple": {
+        "rate_hz": 48000,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "opened": true,
+      "error": null
+    },
+    {
+      "tuple": {
+        "rate_hz": 96000,
+        "format": "S16_LE",
+        "channels": 2
+      },
+      "opened": false,
+      "error": "unsupported_format"
+    },
+    {
+      "tuple": {
+        "rate_hz": 96000,
+        "format": "S24_3LE",
+        "channels": 2
+      },
+      "opened": false,
+      "error": "unsupported_format"
+    },
+    {
+      "tuple": {
+        "rate_hz": 96000,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "opened": true,
+      "error": null
+    },
+    {
+      "tuple": {
+        "rate_hz": 192000,
+        "format": "S16_LE",
+        "channels": 2
+      },
+      "opened": false,
+      "error": "unsupported_format"
+    },
+    {
+      "tuple": {
+        "rate_hz": 192000,
+        "format": "S24_3LE",
+        "channels": 2
+      },
+      "opened": false,
+      "error": "unsupported_format"
+    },
+    {
+      "tuple": {
+        "rate_hz": 192000,
+        "format": "S32_LE",
+        "channels": 2
+      },
+      "opened": true,
+      "error": null
+    }
+  ],
+  "failure_hygiene": {
+    "strict_refusal_reports_typed_failure": "YES (EXACT_TUPLE_UNSUPPORTED in both authorities)",
+    "later_success_retires_the_failure": "YES (err None and failure empty on every later success row)",
+    "playing_retains_stale_error": "NO",
+    "normal_stop_reports_output_unavailable": "NO"
+  },
+  "shared": [
+    {
+      "mode": "shared",
+      "fixture": "16_44100",
+      "status": 2
+    }
+  ],
+  "strict_direct": [
+    {
+      "fixture": "16_44100",
+      "status": 1,
+      "carrier": null,
+      "adaptation": null,
+      "failure_code": "EXACT_TUPLE_UNSUPPORTED",
+      "signal_truth": "Not verified",
+      "signal_truth_reasons": []
+    },
+    {
+      "fixture": "16_48000",
+      "status": 1,
+      "carrier": null,
+      "adaptation": null,
+      "failure_code": "EXACT_TUPLE_UNSUPPORTED",
+      "signal_truth": "Not verified",
+      "signal_truth_reasons": []
+    },
+    {
+      "fixture": "16_96000",
+      "status": 1,
+      "carrier": null,
+      "adaptation": null,
+      "failure_code": "EXACT_TUPLE_UNSUPPORTED",
+      "signal_truth": "Not verified",
+      "signal_truth_reasons": []
+    },
+    {
+      "fixture": "24_44100",
+      "status": 2,
+      "carrier": "S32_LE",
+      "adaptation": "exact",
+      "failure_code": null,
+      "signal_truth": "Not verified",
+      "signal_truth_reasons": [
+        "ST_SIGNIFICANT_BITS_UNKNOWN"
+      ]
+    },
+    {
+      "fixture": "24_48000",
+      "status": 2,
+      "carrier": "S32_LE",
+      "adaptation": "exact",
+      "failure_code": null,
+      "signal_truth": "Not verified",
+      "signal_truth_reasons": [
+        "ST_SIGNIFICANT_BITS_UNKNOWN"
+      ]
+    },
+    {
+      "fixture": "24_96000",
+      "status": 2,
+      "carrier": "S32_LE",
+      "adaptation": "exact",
+      "failure_code": null,
+      "signal_truth": "Not verified",
+      "signal_truth_reasons": [
+        "ST_SIGNIFICANT_BITS_UNKNOWN"
+      ]
+    },
+    {
+      "fixture": "24_192000",
+      "status": 2,
+      "carrier": "S32_LE",
+      "adaptation": "exact",
+      "failure_code": null,
+      "signal_truth": "Not verified",
+      "signal_truth_reasons": [
+        "ST_SIGNIFICANT_BITS_UNKNOWN"
+      ]
+    }
+  ],
+  "compatible_direct": [
+    {
+      "fixture": "16_44100",
+      "status": 2,
+      "carrier": "S32_LE",
+      "adaptation": "container_width",
+      "signal_truth": "Output mismatch",
+      "signal_truth_reasons": [
+        "ST_CONTAINER_TRANSFORM_UNOBSERVED"
+      ]
+    },
+    {
+      "fixture": "16_48000",
+      "status": 2,
+      "carrier": "S32_LE",
+      "adaptation": "container_width",
+      "signal_truth": "Output mismatch",
+      "signal_truth_reasons": [
+        "ST_CONTAINER_TRANSFORM_UNOBSERVED"
+      ]
+    },
+    {
+      "fixture": "16_96000",
+      "status": 2,
+      "carrier": "S32_LE",
+      "adaptation": "container_width",
+      "signal_truth": "Output mismatch",
+      "signal_truth_reasons": [
+        "ST_CONTAINER_TRANSFORM_UNOBSERVED"
+      ]
+    },
+    {
+      "fixture": "24_44100",
+      "status": 2,
+      "carrier": "S32_LE",
+      "adaptation": "exact",
+      "signal_truth": "Not verified",
+      "signal_truth_reasons": [
+        "ST_SIGNIFICANT_BITS_UNKNOWN"
+      ]
+    }
+  ],
+  "signal_truth": {
+    "complete_direct_row": "NO",
+    "blocker_reason": "ST_CONTAINER_TRANSFORM_UNOBSERVED on the adapted routes and ST_SIGNIFICANT_BITS_UNKNOWN on the canonical 24-bit routes",
+    "root_cause": "PHYSICAL SOFTWARE DEFECT: the converter that performs the authorized widening is inserted INSIDE the strict sink bin (michi_direct_convert), while the Signal Truth branch inspection walks UPSTREAM from the sink bin's ghost pad. The mechanism is therefore never observed (converter_present=False), so the fail-closed chain cannot be satisfied on a real adapted route.",
+    "reproduced": "yes (all 7 adapted physical rows)"
+  },
+  "transition_matrix": [
+    {
+      "mode": "shared",
+      "fixture": "16_44100",
+      "status": 2,
+      "error_code": null,
+      "failure_code": ""
+    },
+    {
+      "mode": "strict",
+      "fixture": "16_44100",
+      "status": 1,
+      "error_code": "EXACT_TUPLE_UNSUPPORTED",
+      "failure_code": "EXACT_TUPLE_UNSUPPORTED"
+    },
+    {
+      "mode": "shared",
+      "fixture": "24_44100",
+      "status": 2,
+      "error_code": null,
+      "failure_code": ""
+    },
+    {
+      "mode": "compatible",
+      "fixture": "24_44100",
+      "status": 2,
+      "error_code": null,
+      "failure_code": ""
+    },
+    {
+      "mode": "shared",
+      "fixture": "16_44100",
+      "status": 2,
+      "error_code": null,
+      "failure_code": ""
+    }
+  ],
+  "disconnect": "NOT_RUN (requires the operator checkpoint)",
+  "reconnect": "NOT_RUN (requires the operator checkpoint)",
+  "operator_observation": {
+    "shared_audible": "NOT_OBSERVED",
+    "direct_audible": "NOT_OBSERVED",
+    "disconnect_performed": false,
+    "reconnect_performed": false
+  },
+  "restart_historical": "3 clean cycles (bf866f4-era evidence, lifecycle unchanged by the failure-hygiene patch)",
+  "stress_historical": "30 cycles, 0 failures (historical; not rerun: failure hygiene does not alter lifecycle)",
+  "canonical_experiments": {
+    "R19": "NOT_RUN",
+    "R20": "NOT_APPLICABLE",
+    "R21": "VERIFIED",
+    "R22": "INCONCLUSIVE",
+    "R23": "NOT_APPLICABLE",
+    "R24": "NOT_RUN",
+    "R25": "NOT_RUN",
+    "R26": "NOT_APPLICABLE",
+    "R27": "NOT_RUN",
+    "R28": "INCONCLUSIVE",
+    "R29": "NOT_RUN",
+    "R32": "NOT_APPLICABLE",
+    "R33": "NOT_RUN",
+    "R34": "VERIFIED",
+    "R35": "NOT_RUN",
+    "R36": "NOT_RUN"
+  },
+  "ci": {
+    "code_closure": "b052dfb (pending push)",
+    "publication": "pending"
+  },
+  "final_status": "PHYSICAL QUALIFICATION IN PROGRESS"
+}

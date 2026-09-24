@@ -1,0 +1,12 @@
+{'rate_hz': 44100, 'format': 'S16_LE', 'channels': 2} -> REJECTED unsupported_format
+{'rate_hz': 44100, 'format': 'S24_3LE', 'channels': 2} -> REJECTED unsupported_format
+{'rate_hz': 44100, 'format': 'S32_LE', 'channels': 2} -> OPENED
+{'rate_hz': 48000, 'format': 'S16_LE', 'channels': 2} -> REJECTED unsupported_format
+{'rate_hz': 48000, 'format': 'S24_3LE', 'channels': 2} -> REJECTED unsupported_format
+{'rate_hz': 48000, 'format': 'S32_LE', 'channels': 2} -> OPENED
+{'rate_hz': 96000, 'format': 'S16_LE', 'channels': 2} -> REJECTED unsupported_format
+{'rate_hz': 96000, 'format': 'S24_3LE', 'channels': 2} -> REJECTED unsupported_format
+{'rate_hz': 96000, 'format': 'S32_LE', 'channels': 2} -> OPENED
+{'rate_hz': 192000, 'format': 'S16_LE', 'channels': 2} -> REJECTED unsupported_format
+{'rate_hz': 192000, 'format': 'S24_3LE', 'channels': 2} -> REJECTED unsupported_format
+{'rate_hz': 192000, 'format': 'S32_LE', 'channels': 2} -> OPENED
