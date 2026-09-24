@@ -161,9 +161,9 @@ def test_fh110_f_a_failing_request_keeps_a_truthful_failure(
 
         # A second request that ALSO fails keeps a truthful typed failure.
         graph.playback.load_and_play(tmp_path / "second-failure.flac")
-        assert _wait(
-            lambda: graph.playback.state.error_code == first_code
-        ), graph.playback.state.error_code
+        assert _wait(lambda: graph.playback.state.error_code == first_code), (
+            graph.playback.state.error_code
+        )
         assert graph.playback.state.status is not PlaybackStatus.PLAYING
         assert graph.playback.state.error_message is not None
     finally:
