@@ -1,0 +1,146 @@
+{
+  "schema_version": 2,
+  "execution_git_head": "92e60dce7bcfe74266a56461549f8b87c1e26ba0",
+  "experiment": "R110 field scenario: shared",
+  "captured_at": "2026-09-25T16:17:51-0300",
+  "device_id": "usb:152a:85dd:3-3.3.2",
+  "locator": "hw:CARD=AUDIO,DEV=0",
+  "observations": [
+    {
+      "source": {
+        "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm16_44100.wav",
+        "sha256": "a08ef12fa2b803fa48b2034d8374c0c90f470a6c31cbddb3b9d73e477881472d",
+        "format_family": "PCM",
+        "rate_hz": 44100,
+        "channels": 2,
+        "significant_bits": 16,
+        "seconds": 12.0,
+        "amplitude": 4096
+      },
+      "request": {
+        "mode": "shared",
+        "fixture": "16_44100",
+        "requested_rate_hz": 44100,
+        "requested_significant_bits": 16,
+        "requested_channels": 2
+      },
+      "playback": {
+        "status": 2,
+        "file_path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm16_44100.wav",
+        "error_code": null,
+        "error_message": null
+      },
+      "output": {
+        "mode": "shared",
+        "state": "idle",
+        "selected_device": "usb:152a:85dd:3-3.3.2",
+        "selected_path_mode": "shared",
+        "failure_code": "",
+        "failure_title": "",
+        "failure_display": "",
+        "active_engine": "gstreamer"
+      },
+      "plan": null,
+      "signal_truth": null,
+      "receipt": {
+        "mode": "shared",
+        "fixture": "16_44100",
+        "label": "Not verified",
+        "reasons": []
+      }
+    }
+  ],
+  "audible": "REQUIRES_OPERATOR_CONFIRMATION",
+  "fixtures": {
+    "16_44100": {
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm16_44100.wav",
+      "rate_hz": 44100,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "a08ef12fa2b803fa48b2034d8374c0c90f470a6c31cbddb3b9d73e477881472d"
+    },
+    "16_48000": {
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm16_48000.wav",
+      "rate_hz": 48000,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "bb76fb15f76e8ab5dc89b1012e521d3aebd381b9f4f947bce14186786164004f"
+    },
+    "16_96000": {
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm16_96000.wav",
+      "rate_hz": 96000,
+      "bits": 16,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 4096,
+      "sha256": "f5b0cb6c6a809e23db0fb5404fe8d966fd4464e33a6b9b9aa9bdc98557c2863f"
+    },
+    "24_44100": {
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm24_44100.wav",
+      "rate_hz": 44100,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "59e08a4dad9b6d2a2648e5bbfe1470375d9beaf718a50fdeb5eebfd0a5dad1be"
+    },
+    "24_48000": {
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm24_48000.wav",
+      "rate_hz": 48000,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "072d3f576d3ca9cabab0c9afb930ac191a3d27fe01dccb6fa299173d38580ecd"
+    },
+    "24_96000": {
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm24_96000.wav",
+      "rate_hz": 96000,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "f447ad2074cdafd0445027810ef2d1fa58ecfa117f103cfc18f0d4494431f2a5"
+    },
+    "24_192000": {
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm24_192000.wav",
+      "rate_hz": 192000,
+      "bits": 24,
+      "channels": 2,
+      "seconds": 12.0,
+      "amplitude": 1048576,
+      "sha256": "d4b1dc1db31678b4d34dbabe9bdd73cb5f0355b618a5f3a7a2b0e03884f03aed"
+    }
+  },
+  "engine_switch_ready": true,
+  "active_engine_after_switch": "gstreamer",
+  "after_cycles": {
+    "playback_status": 1,
+    "file_path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/fixtures/pcm16_44100.wav",
+    "error_code": null,
+    "error_message": null,
+    "output_mode": "shared",
+    "output_state": "idle",
+    "plan": null,
+    "direct_handle": null,
+    "signal_truth_diagnostics": null,
+    "signal_truth_label": "Not verified",
+    "signal_truth_reasons": [],
+    "format": "",
+    "channels": 0,
+    "significant_bits": 0,
+    "source_rate": 0,
+    "device_rate": 0,
+    "failure_code": "",
+    "failure_title": "",
+    "failure_display": "",
+    "selected_device": "usb:152a:85dd:3-3.3.2",
+    "selected_path_mode": "shared",
+    "active_engine": "gstreamer",
+    "receipt": {}
+  }
+}
