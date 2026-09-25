@@ -114,28 +114,55 @@ def _wait_for(root, prop, value, rounds=30):
     return None
 
 
-def _activate_menu_item(delegate, text):
-    """Trigger REAL MenuItem.triggered → onTriggered (production chain).
-    El menú del delegate (TrackContextMenu declarado en el row) se abre con
-    el right-click real; sus items son estables en el mismo tick."""
+def _open_delegate_menu(delegate, rounds=150):
+    """Return the DECLARED ContextMenu of a delegate once it is visible.
+
+    CI runs the whole suite on a loaded runner: a 1.2s budget was insufficient,
+    so the bounded budget is 6s while the requirement itself stays strict."""
     from PySide6.QtCore import QObject
 
-    menu = None
-    # CI runs the whole suite on a loaded Ubuntu runner: a 1.2s budget proved
-    # insufficient twice while the test passes deterministically on an idle
-    # machine. Keep the assertion strict but give the popup a bounded 6s to
-    # appear so runner load cannot masquerade as a missing context menu.
-    for _ in range(150):
+    for _ in range(rounds):
         for child in delegate.findChildren(QObject):
             if (
                 "ContextMenu" in child.metaObject().className()
                 and child.property("visible") is True
             ):
-                menu = child
-                break
-        if menu is not None:
-            break
+                return child
         QTest.qWait(40)
+    return None
+
+
+def _open_delegate_context_menu(view, root, track_id, attempts=4):
+    """Right-click a delegate row and require its real ContextMenu to open.
+
+    Row geometry can lag behind a loaded runner, and a click that misses the
+    delegate would be reported as a missing menu. Unlanded clicks are therefore
+    retried with refreshed geometry inside a bounded budget; every attempt still
+    requires the real popup to become visible.
+    """
+    row = _wait_for(root, "trackId", track_id)
+    assert row is not None, f"TrackRow {track_id} no instanciado"
+    for _ in range(attempts):
+        if row.width() > 0 and row.height() > 0:
+            center = row.mapToScene(QPointF(row.width() / 2, row.height() / 2))
+            QTest.mouseClick(
+                view,
+                Qt.MouseButton.RightButton,
+                Qt.KeyboardModifier.NoModifier,
+                QPoint(int(center.x()), int(center.y())),
+            )
+            QTest.qWait(80)
+            if _open_delegate_menu(row, rounds=25) is not None:
+                return row
+        QTest.qWait(150)
+    return row
+
+
+def _activate_menu_item(delegate, text):
+    """Trigger REAL MenuItem.triggered → onTriggered (production chain).
+    El menú del delegate (TrackContextMenu declarado en el row) se abre con
+    el right-click real; sus items son estables en el mismo tick."""
+    menu = _open_delegate_menu(delegate)
     assert menu is not None, "menú contextual del delegate no visible"
     for _ in range(10):
         for child in menu.findChildren(QObject):
@@ -783,20 +810,13 @@ class TestDetailSurfacesR2:
         )
         row = _wait_for(detail, "trackId", "T-1")
         assert row is not None, "fila del detalle de artista"
-        center = row.mapToScene(QPointF(row.width() / 2, row.height() / 2))
-        QTest.mouseClick(
-            view,
-            Qt.MouseButton.RightButton,
-            Qt.KeyboardModifier.NoModifier,
-            QPoint(int(center.x()), int(center.y())),
-        )
-        QTest.qWait(80)
+        row = _open_delegate_context_menu(view, root, "T-1")
         _activate_menu_item(row, "Add to Playlist")
         assert library.target_calls and library.target_calls[-1] == ["T-1"], (
             "ArtistDetail: targeting TrackId estable"
         )
         # Properties → vista del host.
-        _right_click_row(view, root, "T-1")
+        row = _open_delegate_context_menu(view, root, "T-1")
         _activate_menu_item(row, "Properties")
         props = _find_any(
             root, lambda c: c.objectName() == "libraryContextTrackProperties"
