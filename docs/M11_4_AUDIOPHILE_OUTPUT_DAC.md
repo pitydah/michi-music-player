@@ -1,21 +1,27 @@
 # M11.4 — Audiophile Output & DAC Management (contract)
 
 Implementation contract for audiophile output infrastructure. Status:
-**PHYSICAL QUALIFICATION IN PROGRESS** — `DAC-V35-100R1.3.4` CLOSED-AUTOMATED /
-GO; device-scoped physical PCM evidence captured for the tested SMSL DAC;
-Signal Truth runtime verdict and disconnect/reconnect classification remain
-open. The software core is IMPLEMENTED / PHYSICAL QUALIFICATION PENDING until
-those are closed. `DAC-V35-110R1` closed the carrier-policy coherence (the
-canonical 24-bit -> S32 strict target is `exact`; the transport preservation
-policy lives in the recipe) and made the DECODED runtime evidence converge; the
-remaining promotion blocker is the Signal Truth verdict, which still reports
-SIGNAL TRUTH PRESERVATION MODEL IMPLEMENTED / FINAL FAIL-CLOSED SEAL COMPLETE.
-A representation-changing route now reaches `DIRECT_CONTAINER_ADAPTED` only
-when the responsible converter is OBSERVED, TRANSFORMING and its preservation
-policy is read back from the real element; a converter that is absent,
-passthrough against a proven change, or has an unproven/unsafe policy can never
-produce an adapted Direct verdict. The S32 container width stays honestly
-unknown and real GStreamer runtime evidence seals the readback.
+**PHYSICAL QUALIFICATION PASS (BOUNDED, device-scoped)** — `DAC-V35-100R1.3.4`
+CLOSED-AUTOMATED / GO and `DAC-V35-110` physically qualified for the tested SMSL
+DAC (USB `152a:85dd`, `hw:CARD=AUDIO,DEV=0`): a 12-row physical matrix captured
+twice (executed heads `92e60dce7bcfe74266a56461549f8b87c1e26ba0` and
+`283d91976d19d82dcd0c4d4a7ae521000173104d`) with identical truth, Signal Truth
+COMPLETE on every direct row, operator audibility PASS on 12/12 rows and physical
+hotplug/reconnect PASS. Reference code closure
+`d581ad334503bbd8d13dfb120b9538695df79e47` (CI run `36184951752`, all jobs
+SUCCESS; artifact `sha256:2f705210ee97f51b98679858d35926ff235c52a2e3a2854a691a131a21e89f89`).
+`DAC-V35-110R1` closed the carrier-policy coherence (the canonical 24-bit -> S32
+strict target is `exact`; the transport preservation policy lives in the recipe)
+and made the DECODED runtime evidence converge. A representation-changing route
+reaches `DIRECT_CONTAINER_ADAPTED` only when the responsible converter is
+OBSERVED, TRANSFORMING and its preservation policy is read back from the real
+element; a converter that is absent, passthrough against a proven change, or has
+an unproven/unsafe policy can never produce an adapted Direct verdict. The S32
+container width stays honestly unknown and real GStreamer runtime evidence seals
+the readback. The verdict is device- and environment-scoped
+(`qenv:v2:sha256:77ee027839ed623943a36912c258ce15550fc4dc746048c0321242fadf124701`):
+bit-perfect is **not** claimed, `M11.5` is not started and `DAC-V35-120` remains
+DO NOT START.
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
@@ -206,17 +212,26 @@ NO-GO / superseded for final promotion; `DAC-V35-100R1.1` is published GO.
 Physical qualification (`DAC-V35-110`) remains **DO NOT START** as a separate,
 not-yet-authorized work package; R1.1 publication does not itself start it.
 
-- `DAC-V35-110` physical PCM promotion — **PHYSICAL QUALIFICATION IN
-  PROGRESS**. Device-scoped evidence for the tested SMSL DAC
-  (`152a:85dd`, `hw:CARD=AUDIO,DEV=0`): Shared baseline plays; Strict Direct
-  reaches `(rate, S32_LE, 2)` with 24 significant bits preserved at
-  44100/48000/96000/192000 Hz through a DECLARED container adaptation;
-  16-bit strict tuples refuse truthfully (`EXACT_TUPLE_UNSUPPORTED`); Compatible
-  Direct preserves 16- and 24-bit precision in the `S32_LE` carrier; three
-  restart cycles and 30 bounded stress cycles are clean. Signal Truth runtime
-  verdict is `INCONCLUSIVE` and disconnect/reconnect is `NOT_RUN`, so the
-  device is not promoted to fully qualified. Bit-perfect is not claimed;
-  `DAC-V35-120` remains DO NOT START.
+- `DAC-V35-110` physical PCM promotion — **PHYSICAL QUALIFICATION PASS
+  (BOUNDED, device-scoped)**. Device-scoped evidence for the tested SMSL DAC
+  (`152a:85dd`, `hw:CARD=AUDIO,DEV=0`): Shared baseline plays with no direct
+  claim; Strict Direct reaches `(rate, S32_LE, 2)` with 24 significant bits
+  preserved at 44100/48000/96000/192000 Hz through a DECLARED container
+  adaptation (`carrier_adaptation = exact`); 16-bit strict tuples refuse
+  truthfully (`EXACT_TUPLE_UNSUPPORTED`); Compatible Direct preserves 16- and
+  24-bit precision in the `S32_LE` carrier. All nine direct rows carry the
+  `Direct · container adapted` receipt with a COMPLETE Signal Truth verdict. The
+  single batched operator checkpoint recorded audibility PASS on 12/12 rows and
+  physical hotplug/reconnect PASS (no crash, device loss handled, rediscovery).
+  Canonical ledger R19-R36 = 6 PASS (R19, R21, R22, R28, R33, R34) / 5
+  NOT_APPLICABLE with canonical justification (R20, R23, R26, R30, R31) / 7
+  NOT_RUN (R24, R25, R27, R29, R32, R35, R36), which bound the claim. Evidence:
+  `evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/` plus the
+  corroborating `evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/`. The
+  field harness now emits schema v2 nested namespaces with immutable fixture
+  truth and the canonical environment fingerprint, and a failed release
+  publishes a current typed `OUTPUT_RELEASE_FAILED` instead of a fabricated
+  clean state. Bit-perfect is not claimed; `DAC-V35-120` remains DO NOT START.
 - `DAC-V35-100R1.3.4` final native edge seal — **CLOSED-AUTOMATED / GO**. A
   raise from the canonical watch removal means the release was NOT proven
   (REMOVED / STILL_PRESENT / UNKNOWN; UNKNOWN never collapses into REMOVED),
@@ -417,6 +432,7 @@ AFTER PLAYER STABLE (RETAINED, OUT OF SCOPE).
 - Hotplug/failure injection remains fail-closed with no automatic Direct to
   Shared downgrade or stale-generation authority.
 - `python scripts/verify_dac_m11_4.py` is GO at an exact clean commit, full CI
-  is green, and M11.4 becomes **IMPLEMENTED / PHYSICAL QUALIFICATION PENDING**.
+  is green, and M11.4 becomes **IMPLEMENTED / PHYSICAL QUALIFICATION PASS
+  (BOUNDED, device-scoped)** for the declared physical matrix.
 - DSD/DoP and qualified hardware volume remain separate promotion packages;
   their absence does not falsify completion of the mandatory PCM Direct core.

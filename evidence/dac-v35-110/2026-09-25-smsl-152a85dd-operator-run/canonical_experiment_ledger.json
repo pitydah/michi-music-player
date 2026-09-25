@@ -1,0 +1,147 @@
+{
+  "schema_version": 2,
+  "suite": "DAC-V35-110 canonical experiment ledger",
+  "execution_git_head": "283d91976d19d82dcd0c4d4a7ae521000173104d",
+  "code_closure_commit": "d581ad334503bbd8d13dfb120b9538695df79e47",
+  "captured_at": "2026-09-25T19:34:52.195984+00:00",
+  "device": {
+    "device_id": "usb:152a:85dd:3-3.3.2",
+    "locator": "hw:CARD=AUDIO,DEV=0",
+    "vendor_product": "152a:85dd",
+    "serial": null,
+    "identity_source": "topology-derived stable id"
+  },
+  "environment": {
+    "environment_fingerprint": "qenv:v2:sha256:77ee027839ed623943a36912c258ce15550fc4dc746048c0321242fadf124701",
+    "evidence": "environment_fingerprint.json"
+  },
+  "operator_observation": {
+    "checkpoint": "single batched checkpoint",
+    "audibility": {
+      "answer": "PASS",
+      "scope": "12/12 rows of the operator run (shared + 8 direct rows + 3 truthful strict refusals)",
+      "source": "human operator, real listening session"
+    },
+    "hotplug_reconnect": {
+      "answer": "PASS",
+      "observed": "no crash; device loss handled; SMSL rediscovered on reconnect",
+      "source": "human operator, physical USB unplug/reconnect with the real app running",
+      "app_log": "0 tracebacks; truthful EXACT_TUPLE_UNSUPPORTED refusal UX rendered"
+    },
+    "evidence": "operator_observation.json"
+  },
+  "experiments": {
+    "R19": {
+      "title": "ENUMERATION CONVERGENCE / HOTPLUG RACE",
+      "status": "PASS",
+      "evidence": "operator hotplug: physical unplug under load, no crash, rediscovery on reconnect",
+      "notes": "enumeration converged to the same stable device id/locator after reconnect"
+    },
+    "R20": {
+      "title": "DUPLICATE SERIAL / IDENTICAL DEVICE COLLISION",
+      "status": "NOT_APPLICABLE",
+      "justification": "Canonical §262 requires two identical devices (duplicate serial or no-serial collision). This bench has exactly one supported DAC, and its identity is topology-derived from the unique port chain 3-3.3.2, so no collision pair can be formed. Not a silent skip: no second device was present."
+    },
+    "R21": {
+      "title": "PASSIVE CLAIM VS EXACT OPEN CONSISTENCY",
+      "status": "PASS",
+      "evidence": "passive advertisement exposes S32_LE only; exact opens succeed on the advertised carrier and are truthfully refused for S16_LE tuples"
+    },
+    "R22": {
+      "title": "SIGNIFICANT-BIT DEPTH CONSISTENCY",
+      "status": "PASS",
+      "evidence": "12 physical rows: 16-bit sources -> container adapted; 24-bit sources -> exact carrier. Decoder reported S24LE, closed with the real pair table; real width rewrite still classifies DSP"
+    },
+    "R23": {
+      "title": "MULTI-ENDPOINT / COMPOSITE USB AUDIO",
+      "status": "NOT_APPLICABLE",
+      "justification": "Canonical §265 targets composite/multi-endpoint USB audio devices. The SMSL 152a:85dd exposes a single PCM endpoint (usb-interface:1.0:pcm:0:sub:0), so there are no sibling endpoints to exercise on this hardware."
+    },
+    "R24": {
+      "title": "GSTREAMER CLOCK AUTHORITY / SLAVE METHOD",
+      "status": "NOT_RUN",
+      "justification": "Dedicated clock-authority laboratory; not executed in this run. Ordinary playback is not accepted as R24 evidence."
+    },
+    "R25": {
+      "title": "SAMPLE-RATE TRANSITION / RESYNC LAB",
+      "status": "NOT_RUN",
+      "justification": "Bounded resync laboratory not executed in this run; the transitions rerun is a separate experiment."
+    },
+    "R26": {
+      "title": "HARDWARE VOLUME CONTROL QUALIFICATION",
+      "status": "NOT_APPLICABLE",
+      "justification": "Qualifies per-mapping ALSA control volume for DAC-V35-120, which is explicitly DO NOT START. Fixed-volume policy was used throughout."
+    },
+    "R27": {
+      "title": "ALSA CONTROL EVENT CONVERGENCE",
+      "status": "NOT_RUN",
+      "justification": "No external ALSA control event injection was performed."
+    },
+    "R28": {
+      "title": "SIGNAL TRUTH CONTRADICTION MATRIX",
+      "status": "PASS",
+      "evidence": "All 12 rows classified through the domain snapshot: 9 direct rows DIRECT_CONTAINER_ADAPTED, 3 truthful EXACT_TUPLE_UNSUPPORTED, 1 shared row correctly not verified"
+    },
+    "R29": {
+      "title": "MICHI VERIFIED PROFILE PRECEDENCE",
+      "status": "NOT_RUN",
+      "justification": "No verified-profile promotion path was exercised in this run."
+    },
+    "R30": {
+      "title": "DSD / DoP PHYSICAL LAB",
+      "status": "NOT_APPLICABLE",
+      "justification": "DSD/DoP belongs to the separate DAC-V35-140 promotion gate, not started. The device advertises DSD_U32_BE but no DSD claim is made here."
+    },
+    "R31": {
+      "title": "KERNEL / ALSA / GSTREAMER UPGRADE REQUALIFICATION",
+      "status": "NOT_APPLICABLE",
+      "justification": "No kernel/alsa-lib/GStreamer upgrade occurred within this cycle; the environment fingerprint is recorded for future requalification."
+    },
+    "R32": {
+      "title": "LONG-RUN USB DAC SOAK",
+      "status": "NOT_RUN",
+      "justification": "Applicable to this device class but duration-bound (long soak); this convergence run is a short bounded matrix, so the soak remains NOT_RUN."
+    },
+    "R33": {
+      "title": "RECONNECT / RESUME SAFETY",
+      "status": "PASS",
+      "evidence": "operator physical unplug/reconnect: no crash, loss handled, rediscovery succeeded",
+      "scope_note": "The reconnect half is physically verified; the autoplay-resume half was not exercised in this run."
+    },
+    "R34": {
+      "title": "STRICT EXACT-OPEN / NO-RESAMPLE PROBE",
+      "status": "PASS",
+      "evidence": "strict exact opens at 44.1/48/96/192 kHz on the S32_LE carrier; no resample, no remix, 16-bit tuples truthfully refused"
+    },
+    "R35": {
+      "title": "TAIL / DRAIN INTEGRITY",
+      "status": "NOT_RUN",
+      "justification": "Bounded tail/drain laboratory not executed; ordinary playback was not accepted as R35 evidence."
+    },
+    "R36": {
+      "title": "XRUN RECOVERY TRANSPARENCY",
+      "status": "NOT_RUN",
+      "justification": "No xrun injection was performed in this run."
+    }
+  },
+  "matrices": {
+    "shared": "shared_matrix.json",
+    "compatible": "compatible_matrix.json",
+    "strict": "strict_matrix.json"
+  },
+  "code_closure_ci": {
+    "run_id": 36184951752,
+    "conclusion": "success",
+    "jobs": [
+      "check",
+      "min-qt",
+      "dac-v35-software-closure"
+    ],
+    "artifact": "dac-v35-software-closure-d581ad334503bbd8d13dfb120b9538695df79e47",
+    "artifact_digest": "sha256:2f705210ee97f51b98679858d35926ff235c52a2e3a2854a691a131a21e89f89"
+  },
+  "executed_git_heads": {
+    "first_capture": "92e60dce7bcfe74266a56461549f8b87c1e26ba0",
+    "operator_capture": "283d91976d19d82dcd0c4d4a7ae521000173104d"
+  }
+}

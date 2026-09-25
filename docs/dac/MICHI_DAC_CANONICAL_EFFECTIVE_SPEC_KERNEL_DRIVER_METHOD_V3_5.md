@@ -228,7 +228,7 @@ ACTIVE_MANIFEST_IS_AUTHORITY = TRUE
 | 9.1 | `DAC-V35-090R1` Output Profile UX + runtime evidence seal | CLOSED-AUTOMATED / GO | YES | functional authority-bound selector and productive interaction evidence sealed by R1.1 |
 | 9.2 | `DAC-V35-090R1.1` Profile disambiguation + productive hotplug evidence | CLOSED-AUTOMATED / GO | YES | collision-only human identity, productive authority-to-popup hotplug, runtime keyboard, and same-DAC profile preservation |
 | 10 | `DAC-V35-100 + 100R1 + 100R1.1 + 100R1.2 + 100R1.3 + 100R1.3.1 + 100R1.3.2 + 100R1.3.3` Automated verification + field corrective seal | CLOSED-AUTOMATED / GO; PUBLISHED | YES | productive first-use exact qualification, typed refusal containment before QML, single-owner native GStreamer/GLib lifecycle safety, and the field-smoke QML teardown corrective sealed by exact-head CI evidence |
-| 11 | `DAC-V35-110` Physical PCM promotion | PHYSICAL QUALIFICATION IN PROGRESS | YES FOR DECLARED VERIFIED/RELEASE CLAIMS | device-scoped PCM Direct evidence captured for the tested SMSL DAC; Signal Truth runtime verdict and disconnect/reconnect classification remain open |
+| 11 | `DAC-V35-110` Physical PCM promotion | PHYSICAL QUALIFICATION PASS (BOUNDED, device-scoped) | YES FOR DECLARED VERIFIED/RELEASE CLAIMS, WITHIN THE RECORDED DEVICE/ENVIRONMENT SCOPE | 12-row physical matrix captured twice with identical truth on the tested SMSL DAC; Signal Truth COMPLETE on every direct row; operator audibility and physical hotplug/reconnect PASS; canonical ledger R19-R36 recorded with explicit NOT_RUN laboratories |
 | 12 | `DAC-V35-120` Qualified hardware volume | CONDITIONAL | NO | only after R26/R27 on each supported mapping |
 | 13 | `DAC-V35-130` Signed downloadable profile bundles | POST-STABLE ONLY | NO | remote update/signature machinery; not required for PCM Direct 1.0 |
 | 14 | `DAC-V35-140` DSD / DoP | SEPARATE PROMOTION; MAY BE PRE-STABLE | NO | R30 and separate implementation/QA gate |
@@ -20411,7 +20411,7 @@ DAC-V35-100R1.3.2 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.3 = CLOSED-AUTOMATED / GO; PUBLISHED
 DAC-V35-100R1.3.4 = CLOSED-AUTOMATED / GO
 DAC-V35-110R1 = SIGNAL TRUTH FAIL-CLOSED SEAL COMPLETE (exact-head CI GO)
-DAC-V35-110 = PHYSICAL QUALIFICATION IN PROGRESS
+DAC-V35-110 = PHYSICAL QUALIFICATION PASS (BOUNDED, device-scoped)
 DAC-V35-120 = DO NOT START
 ```
 
@@ -20807,7 +20807,7 @@ Physical claim scope: **physical PCM Direct path verified on the tested SMSL DAC
 environment.** Bit-perfect is **not** claimed; M11.5 remains **not started**;
 `DAC-V35-120` remains `DO NOT START`.
 
-`DAC-V35-110` final status: **PHYSICAL QUALIFICATION IN PROGRESS.**
+`DAC-V35-110` status at this closure: **PHYSICAL QUALIFICATION IN PROGRESS** (later closed by the final physical verdict recorded at the end of this document).
 
 R1.3.4 + R110 code closure is bound to the exact-head remote artifact for
 commit `8e79b3a5812fd0e764df6c4f2b26a9ba46e7aff6`, Michi CI run `35902090162` (automated `GO`, physical evidence recorded
@@ -21040,8 +21040,9 @@ required by the R110R1 seal cannot be satisfied on a real adapted route: the
 physical verdicts are `ST_CONTAINER_TRANSFORM_UNOBSERVED` on the compatible
 routes and `ST_SIGNIFICANT_BITS_UNKNOWN` on the canonical 24-bit routes.
 
-Consequently no physical Direct row carries a complete Signal Truth verdict, and
-`DAC-V35-110` remains **PHYSICAL QUALIFICATION IN PROGRESS**. The canonical
+Consequently no physical Direct row carried a complete Signal Truth verdict, and
+`DAC-V35-110` remained **PHYSICAL QUALIFICATION IN PROGRESS** at that point (closed by
+the correctives and the final physical verdict recorded below). The canonical
 R19–R29/R32–R36 ledger is recorded in the evidence directory; disconnect,
 reconnect, operator audibility and the tail/XRUN labs remain open. Bit-perfect
 is not claimed, M11.5 is not started and `DAC-V35-120` remains DO NOT START.
@@ -21078,8 +21079,9 @@ carrier `S32_LE`) still reports `ST_SIGNIFICANT_BITS_UNKNOWN`: the decoded
 runtime facts for that route do not carry a proven width in the physical run.
 The full normalized Signal Truth snapshot export and the 24-bit diagnosis remain
 open, as do the field-evidence schema, the genuine stop-failure truth and the
-operator/hotplug/ledger phases. `DAC-V35-110` therefore remains **PHYSICAL
-QUALIFICATION IN PROGRESS**; bit-perfect is not claimed, `M11.5` is not started
+operator/hotplug/ledger phases. `DAC-V35-110` therefore remained **PHYSICAL
+QUALIFICATION IN PROGRESS** at that point (the 24-bit diagnosis and the final
+physical verdict follow below); bit-perfect is not claimed, `M11.5` is not started
 and `DAC-V35-120` remains DO NOT START.
 
 
@@ -21123,9 +21125,58 @@ strict     24 / 44.1 -> PLAYING, carrier_adaptation = exact,
 Both minimal rows therefore carry a COMPLETE physical Signal Truth verdict on
 the tested SMSL. Evidence: `evidence/dac-v35-110/2026-09-24-smsl-152a85dd-24bit-fix/`.
 
-Still open for `DAC-V35-110`: the field-evidence schema versioning across the
-whole harness, the genuine stop/release failure truth, the expanded physical
-matrix, operator audibility, hotplug/reconnect and the canonical ledger
-completion. `DAC-V35-110` remains **PHYSICAL QUALIFICATION IN PROGRESS**;
-bit-perfect is not claimed, `M11.5` is not started and `DAC-V35-120` remains DO
-NOT START.
+### DAC-V35-110 final physical verdict — PASS (BOUNDED, device-scoped)
+
+`DAC-V35-110` is **PHYSICAL QUALIFICATION PASS (BOUNDED)** for the tested SMSL
+DAC (USB `152a:85dd`, stable id `usb:152a:85dd:3-3.3.2`, `hw:CARD=AUDIO,DEV=0`)
+under the recorded environment fingerprint
+`qenv:v2:sha256:77ee027839ed623943a36912c258ce15550fc4dc746048c0321242fadf124701`.
+
+Reference code closure: commit `d581ad334503bbd8d13dfb120b9538695df79e47`
+(Michi CI run `36184951752`; `check`, `min-qt` and `dac-v35-software-closure` all
+SUCCESS; SHA-bound artifact
+`dac-v35-software-closure-d581ad334503bbd8d13dfb120b9538695df79e47`, GitHub digest
+`sha256:2f705210ee97f51b98679858d35926ff235c52a2e3a2854a691a131a21e89f89`).
+
+Physical matrix (12 rows), captured twice (executed heads `92e60dce7bcfe74266a56461549f8b87c1e26ba0`
+and `283d91976d19d82dcd0c4d4a7ae521000173104d`) with identical truth:
+
+```
+shared     16 / 44.1  -> PLAYING, no direct claim (correctly not verified)
+strict     16 / 44.1, 16 / 48, 16 / 96 -> EXACT_TUPLE_UNSUPPORTED (truthful)
+strict     24 / 44.1, 24 / 48, 24 / 96, 24 / 192 ->
+                       PLAYING, carrier_adaptation = exact,
+                       direct_container_adapted (ST_CONTAINER_ADAPTED)
+compatible 16 / 44.1, 16 / 48, 16 / 96 -> PLAYING, container_width,
+                       direct_container_adapted (ST_CONTAINER_ADAPTED)
+compatible 24 / 44.1  -> PLAYING, carrier_adaptation = exact,
+                       direct_container_adapted (ST_CONTAINER_ADAPTED)
+```
+
+All nine direct rows carry the `Direct · container adapted` receipt. The single
+batched operator checkpoint recorded audibility **PASS** on 12/12 rows and
+physical USB unplug/reconnect **PASS** (no crash, device loss handled, SMSL
+rediscovered), with zero tracebacks in the application log. Evidence:
+`evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/` (schema v2
+matrices, canonical experiment ledger, canonical environment fingerprint and the
+operator observation file) plus the corroborating first capture in
+`evidence/dac-v35-110/2026-09-25-smsl-152a85dd-final-v2/`.
+
+Closed by this run: field-evidence schema versioning across the whole harness
+(schema v2 nested `source`/`request`/`playback`/`output`/`plan`/`signal_truth`/`receipt`
+namespaces with immutable fixture truth, repository-derived executed SHA,
+device/locator re-validation and the canonical environment fingerprint), the
+genuine stop/release failure truth (a failed release publishes a current typed
+`OUTPUT_RELEASE_FAILED` instead of retiring the failure presentation first), the
+expanded physical matrix, operator audibility, hotplug/reconnect and the
+canonical ledger completion.
+
+Canonical ledger R19–R36: **6 PASS** (R19, R21, R22, R28, R33, R34),
+**5 NOT_APPLICABLE** with explicit canonical justification (R20, R23, R26, R30,
+R31) and **7 NOT_RUN** (R24 clock authority, R25 resync, R27 ALSA control
+events, R29 profile precedence, R32 long soak, R35 tail/drain, R36 XRUN
+recovery).
+
+Boundaries of this verdict: it is device-scoped and environment-scoped, and the
+NOT_RUN laboratories above are outside the claim. Bit-perfect is **not**
+claimed; `M11.5` is **not started**; `DAC-V35-120` remains **DO NOT START**.

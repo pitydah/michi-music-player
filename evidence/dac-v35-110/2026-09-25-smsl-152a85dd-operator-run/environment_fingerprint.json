@@ -1,0 +1,18 @@
+{
+  "environment_fingerprint": "qenv:v2:sha256:77ee027839ed623943a36912c258ce15550fc4dc746048c0321242fadf124701",
+  "environment_context": {
+    "stable_device_id": "environment:unbound",
+    "usb_vendor_id": null,
+    "usb_product_id": null,
+    "usb_bcd_device": null,
+    "usb_descriptor_sha256": null,
+    "kernel_release": "7.2.6-1-cachyos",
+    "snd_usb_audio_identity": null,
+    "alsa_library_version": null,
+    "gstreamer_version": null,
+    "binding_topology_fingerprint": "topology:unbound",
+    "qualification_profile_version": "dac-v35-exact-open-v1"
+  },
+  "recorded_at": "2026-09-25T19:54:14.765694+00:00",
+  "note": "Recorded by the orchestrator for the operator run package; the field harness computes this fingerprint itself since code closure of this run."
+}

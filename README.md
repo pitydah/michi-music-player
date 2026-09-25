@@ -66,7 +66,7 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   shell DONE, and scoped M9-R3 Library/collection convergence in progress
 - M11.3 Multi-Engine Audio Runtime: implemented Required-1.0 engine foundation
   (Qt Multimedia + GStreamer + managed MPD)
-- M11.4: DAC-V35-110 physical PCM promotion is **PHYSICAL QUALIFICATION IN PROGRESS** with device-scoped
+- M11.4: DAC-V35-110 physical PCM promotion reached **PHYSICAL QUALIFICATION PASS (BOUNDED, device-scoped)** with
   evidence for the tested SMSL DAC: Shared plays,
   Strict Direct plays 24-bit sources at 44.1/48/96/192 kHz through a declared
   `S32_LE` container adaptation, 16-bit strict tuples refuse truthfully,
@@ -101,9 +101,12 @@ Dependencies flow inward: Presentation → Application → Domain. Infrastructur
   before QML as one shared presentation failure, the native GStreamer/GLib
   lifecycle is single-owner, and the field-smoke QML teardown crash is
   corrected. The PCM
-  Direct software core is **IMPLEMENTED / PHYSICAL QUALIFICATION PENDING**.
-  DAC-V35-110 remains a separate DO NOT START work package, and M11.5 playback
-  guarantees are not implemented.
+  Direct software core is **IMPLEMENTED** and physically qualified for the tested
+  DAC (12-row matrix captured twice with identical truth, Signal Truth COMPLETE
+  on every direct row, operator audibility and hotplug/reconnect PASS; reference
+  closure `d581ad334503bbd8d13dfb120b9538695df79e47`, CI run `36184951752`).
+  Bit-perfect is not claimed, `DAC-V35-120` remains DO NOT START, and M11.5
+  playback guarantees are not implemented.
 - M12 Performance, M13 Packaging, M14 Beta, M15 RC, M16 Stable
 
 See `docs/MASTER_ROADMAP_1.0.md` for the canonical 1.0 contract and current statuses.
