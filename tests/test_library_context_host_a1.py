@@ -121,7 +121,11 @@ def _activate_menu_item(delegate, text):
     from PySide6.QtCore import QObject
 
     menu = None
-    for _ in range(30):
+    # CI runs the whole suite on a loaded Ubuntu runner: a 1.2s budget proved
+    # insufficient twice while the test passes deterministically on an idle
+    # machine. Keep the assertion strict but give the popup a bounded 6s to
+    # appear so runner load cannot masquerade as a missing context menu.
+    for _ in range(150):
         for child in delegate.findChildren(QObject):
             if (
                 "ContextMenu" in child.metaObject().className()
