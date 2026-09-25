@@ -21081,3 +21081,51 @@ open, as do the field-evidence schema, the genuine stop-failure truth and the
 operator/hotplug/ledger phases. `DAC-V35-110` therefore remains **PHYSICAL
 QUALIFICATION IN PROGRESS**; bit-perfect is not claimed, `M11.5` is not started
 and `DAC-V35-120` remains DO NOT START.
+
+
+### DAC-V35-110 major convergence: 24-bit physical Signal Truth resolved (2026-09-24)
+
+The normalized Signal Truth diagnostic snapshot (a read-only domain serializer
+exposed to the field harness — no parallel truth model, no Gst objects) isolated
+the exact 24-bit loss of knowledge on real hardware:
+
+```text
+decoded: S24LE / 44100 / 2 / 24 significant bits   (proven)
+plan:    S32_LE / 24 significant bits / carrier_adaptation = exact
+engine:  S32LE / 44100 / 2 / significant_bits unknown (the carrier)
+ALSA:    S32_LE / 44100 / 2 / significant_bits null
+transform: converter_present, converter_transforming, dithering and noise
+           shaping disabled, no remix  (complete)
+verdict: UNKNOWN / ST_SIGNIFICANT_BITS_UNKNOWN
+```
+
+Root cause: the physical decoder for a 24-bit PCM source reports GStreamer
+`S24LE`, while the authorized container-adaptation table only listed the
+`S24_3LE` (`S243LE`) pairs. The pair lookup therefore failed and the route fell
+through to the epistemic significant-bit guard even though the decoded width,
+the owned converter and its preservation policy were all proven.
+
+Two minimal corrections: the authorized pairs now include the real decoder
+format (`S24LE` -> `S2432LE` / `S32LE`), and a KNOWN discrepancy between the
+declared request and the proven signal is refuted as a contradiction before the
+pair lookup — while a pair that is not authorized for any width keeps the
+established classification (a real format rewrite stays `DSP`).
+
+**Physical result (commit `5ab61c0f`, CI run `36084234472`, artifact
+`sha256:b7dd77fd3f61af45bc83b90d17b960e53d57551708b2c5dd0deb59b85a82aab4`):**
+
+```text
+compatible 16 / 44.1 -> PLAYING, container_width, direct_container_adapted
+strict     24 / 44.1 -> PLAYING, carrier_adaptation = exact,
+                        direct_container_adapted (ST_CONTAINER_ADAPTED)
+```
+
+Both minimal rows therefore carry a COMPLETE physical Signal Truth verdict on
+the tested SMSL. Evidence: `evidence/dac-v35-110/2026-09-24-smsl-152a85dd-24bit-fix/`.
+
+Still open for `DAC-V35-110`: the field-evidence schema versioning across the
+whole harness, the genuine stop/release failure truth, the expanded physical
+matrix, operator audibility, hotplug/reconnect and the canonical ledger
+completion. `DAC-V35-110` remains **PHYSICAL QUALIFICATION IN PROGRESS**;
+bit-perfect is not claimed, `M11.5` is not started and `DAC-V35-120` remains DO
+NOT START.

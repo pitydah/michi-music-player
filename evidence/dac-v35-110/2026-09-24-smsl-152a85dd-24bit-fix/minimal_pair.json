@@ -1,0 +1,208 @@
+{
+  "schema_version": 2,
+  "execution_git_head": "5ab61c0f6aba4cf0d5cc8152e9f21c4c3c4871da",
+  "device_id": "usb:152a:85dd:3-3.3.2",
+  "locator": "hw:CARD=AUDIO,DEV=0",
+  "rows": [
+    {
+      "row": "compatible_16_44100",
+      "mode": "compatible",
+      "playback": {
+        "status": 2,
+        "error_code": null,
+        "error_message": null
+      },
+      "output": {
+        "mode": "direct",
+        "state": "running",
+        "failure_code": "",
+        "failure_title": ""
+      },
+      "plan": {
+        "carrier": "S32_LE",
+        "significant_bits": 16,
+        "adaptation": "container_width",
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "locator": "hw:CARD=AUDIO,DEV=0"
+      },
+      "signal_truth": {
+        "identity": {
+          "plan_id": "plan:aedae649fcd28430",
+          "execution_generation": 1,
+          "port_generation": 1,
+          "binding_generation": 5,
+          "stable_device_id": "usb:152a:85dd:3-3.3.2",
+          "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+        },
+        "plan": {
+          "requested": {
+            "format": "S32_LE",
+            "rate_hz": 44100,
+            "channels": 2,
+            "significant_bits": 16
+          },
+          "sink_factory": "alsasink",
+          "sink_device": "hw:CARD=AUDIO,DEV=0",
+          "fixed_gain_required": true
+        },
+        "decoded": {
+          "format": "S16LE",
+          "rate_hz": 44100,
+          "channels": 2,
+          "significant_bits": 16
+        },
+        "engine": {
+          "format": "S32LE",
+          "rate_hz": 44100,
+          "channels": 2,
+          "significant_bits": null,
+          "graph_inspection_complete": true,
+          "graph_factories": [
+            "alsasink",
+            "audioconvert",
+            "audioresample",
+            "bin",
+            "capsfilter",
+            "decodebin3",
+            "identity",
+            "multiqueue",
+            "playsink",
+            "queue",
+            "streamsynchronizer",
+            "tee",
+            "volume",
+            "wavparse"
+          ],
+          "software_gain": 1.0,
+          "muted": false
+        },
+        "transform": {
+          "converter_present": true,
+          "converter_transforming": true,
+          "converter_dithering_disabled": true,
+          "converter_noise_shaping_disabled": true,
+          "resampler_present": true,
+          "resampler_transforming": false,
+          "remix_transforming": false
+        },
+        "alsa": {
+          "format": "S32_LE",
+          "rate_hz": 44100,
+          "channels": 2,
+          "significant_bits": null
+        },
+        "clock": {
+          "sink_provides_clock": true,
+          "sink_clock_is_pipeline_clock": true,
+          "slave_method": "skew"
+        },
+        "verdict": {
+          "state": "direct_container_adapted",
+          "reason_codes": [
+            "ST_CONTAINER_ADAPTED"
+          ]
+        }
+      }
+    },
+    {
+      "row": "strict_24_44100",
+      "mode": "strict",
+      "playback": {
+        "status": 2,
+        "error_code": null,
+        "error_message": null
+      },
+      "output": {
+        "mode": "direct",
+        "state": "running",
+        "failure_code": "",
+        "failure_title": ""
+      },
+      "plan": {
+        "carrier": "S32_LE",
+        "significant_bits": 24,
+        "adaptation": "exact",
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "locator": "hw:CARD=AUDIO,DEV=0"
+      },
+      "signal_truth": {
+        "identity": {
+          "plan_id": "plan:5055921f5198a4cd",
+          "execution_generation": 2,
+          "port_generation": 2,
+          "binding_generation": 5,
+          "stable_device_id": "usb:152a:85dd:3-3.3.2",
+          "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+        },
+        "plan": {
+          "requested": {
+            "format": "S32_LE",
+            "rate_hz": 44100,
+            "channels": 2,
+            "significant_bits": 24
+          },
+          "sink_factory": "alsasink",
+          "sink_device": "hw:CARD=AUDIO,DEV=0",
+          "fixed_gain_required": true
+        },
+        "decoded": {
+          "format": "S24LE",
+          "rate_hz": 44100,
+          "channels": 2,
+          "significant_bits": 24
+        },
+        "engine": {
+          "format": "S32LE",
+          "rate_hz": 44100,
+          "channels": 2,
+          "significant_bits": null,
+          "graph_inspection_complete": true,
+          "graph_factories": [
+            "alsasink",
+            "audioconvert",
+            "audioresample",
+            "bin",
+            "capsfilter",
+            "decodebin3",
+            "identity",
+            "multiqueue",
+            "playsink",
+            "queue",
+            "streamsynchronizer",
+            "tee",
+            "volume",
+            "wavparse"
+          ],
+          "software_gain": 1.0,
+          "muted": false
+        },
+        "transform": {
+          "converter_present": true,
+          "converter_transforming": true,
+          "converter_dithering_disabled": true,
+          "converter_noise_shaping_disabled": true,
+          "resampler_present": true,
+          "resampler_transforming": false,
+          "remix_transforming": false
+        },
+        "alsa": {
+          "format": "S32_LE",
+          "rate_hz": 44100,
+          "channels": 2,
+          "significant_bits": null
+        },
+        "clock": {
+          "sink_provides_clock": true,
+          "sink_clock_is_pipeline_clock": true,
+          "slave_method": "skew"
+        },
+        "verdict": {
+          "state": "direct_container_adapted",
+          "reason_codes": [
+            "ST_CONTAINER_ADAPTED"
+          ]
+        }
+      }
+    }
+  ]
+}
