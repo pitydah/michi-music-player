@@ -33,7 +33,7 @@ def test_fs110_02_observations_use_nested_namespaces() -> None:
     ):
         assert namespace in source, namespace
     # The flat anti-pattern that let runtime values overwrite fixture truth.
-    assert "entry = dict(report[\"fixtures\"][key])" not in source
+    assert 'entry = dict(report["fixtures"][key])' not in source
     assert "entry.update(_capture(" not in source
 
 
@@ -67,6 +67,13 @@ def test_fs110_05_device_locator_is_validated_before_the_run() -> None:
     # A mismatch aborts instead of silently running against a stale card.
     section = source.split("def _validate_device(", 1)[1].split("def ", 1)[0]
     assert "SystemExit" in section
+
+
+def test_fs110_05b_environment_fingerprint_uses_the_canonical_authority() -> None:
+    source = _harness_source()
+    assert "from michi.application.dac_qualification_service import (" in source
+    assert "default_environment_fingerprint()" in source
+    assert '"environment_fingerprint": _env_fingerprint,' in source
 
 
 def test_fs110_06_signal_truth_comes_from_the_domain_authority() -> None:

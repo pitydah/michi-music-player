@@ -104,9 +104,7 @@ def _execution_git_head() -> str:
 def _validate_device(container, *, device_id: str, locator: str) -> None:
     """R110 §23: never trust hardcoded physical defaults."""
     rows = [
-        row
-        for row in container._aob.devices
-        if row.get("stableDeviceId") == device_id
+        row for row in container._aob.devices if row.get("stableDeviceId") == device_id
     ]
     if not rows:
         raise SystemExit(f"device not present after rediscovery: {device_id}")
@@ -209,9 +207,19 @@ def main() -> int:
     fixtures_dir = evidence_dir / "fixtures"
     fixtures_dir.mkdir(exist_ok=True)
 
+    try:
+        from michi.application.dac_qualification_service import (
+            default_environment_fingerprint,
+        )
+
+        _env_fingerprint = default_environment_fingerprint()
+    except Exception:  # noqa: BLE001 — provenance boundary, never mask the run
+        _env_fingerprint = ""
+
     report: dict = {
         "schema_version": 2,
         "execution_git_head": _execution_git_head(),
+        "environment_fingerprint": _env_fingerprint,
         "experiment": f"R110 field scenario: {args.scenario}",
         "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "device_id": args.device_id,
