@@ -21045,3 +21045,39 @@ Consequently no physical Direct row carries a complete Signal Truth verdict, and
 R19–R29/R32–R36 ledger is recorded in the evidence directory; disconnect,
 reconnect, operator audibility and the tail/XRUN labs remain open. Bit-perfect
 is not claimed, M11.5 is not started and `DAC-V35-120` remains DO NOT START.
+
+
+### DAC-V35-110 productive runtime observability corrective (2026-09-24)
+
+A bounded corrective fixed the physical observability of the converter Michi
+itself installs. The strict sink bin OWNS `michi_direct_convert`, but the Signal
+Truth branch inspection walks UPSTREAM from the sink bin's ghost pad, so the
+mechanism responsible for an authorized representation change was never
+observed. The runtime inspection now locates the installed converter through the
+production builder's name, reads its REAL negotiated caps and preservation
+policy, and merges it with the upstream branch evidence:
+
+- the preservation POLICY is attributed only to the converter that actually
+  transforms — playbin3's internal audioconvert is a proven pass-through on an
+  adapted route and ships with dithering enabled by default, which must never
+  poison the evidence of the owned converter that performs the widening;
+- a no-conversion sink claims no owned converter, and unnegotiated caps stay
+  `UNKNOWN` (fail closed).
+
+**Physical result (commit `663abee0`, CI run `36077847591`, artifact
+`sha256:ec9f8864e5a3cef583fdedbfe34896ac1f3a8a1f5ac6aff5c0294d458be3436a`):**
+the Compatible 16-bit routes (44.1 / 48 / 96 kHz) now play Direct with a
+COMPLETE physical Signal Truth verdict — `Direct · container adapted` with
+`ST_CONTAINER_ADAPTED` — proving the end-to-end chain on real hardware: real
+source -> real decoder -> real GStreamer graph -> owned audioconvert ->
+real property readback -> real ALSA negotiation -> SignalTruthRecorder.
+Evidence: `evidence/dac-v35-110/2026-09-24-smsl-152a85dd-p1fix/`.
+
+**Remaining blocker:** the canonical 24-bit route (carrier policy `exact`,
+carrier `S32_LE`) still reports `ST_SIGNIFICANT_BITS_UNKNOWN`: the decoded
+runtime facts for that route do not carry a proven width in the physical run.
+The full normalized Signal Truth snapshot export and the 24-bit diagnosis remain
+open, as do the field-evidence schema, the genuine stop-failure truth and the
+operator/hotplug/ledger phases. `DAC-V35-110` therefore remains **PHYSICAL
+QUALIFICATION IN PROGRESS**; bit-perfect is not claimed, `M11.5` is not started
+and `DAC-V35-120` remains DO NOT START.

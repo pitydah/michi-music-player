@@ -1,0 +1,251 @@
+{
+  "schema_version": 2,
+  "execution_git_head": "663abee0c93636dcab12c670d25f12725997cb0a",
+  "captured_at": "2026-09-24T21:44:49-0300",
+  "package": "DAC-V35-110 PRODUCTIVE RUNTIME OBSERVABILITY CORRECTIVE \u2014 minimal physical replay",
+  "device_id": "usb:152a:85dd:3-3.3.2",
+  "priority_1_owned_converter_observability": {
+    "status": "PASS (physically proven)",
+    "evidence": "the compatible 16-bit routes now report 'Direct \u00b7 container adapted' with ST_CONTAINER_ADAPTED in the real product"
+  },
+  "priority_2_strict_24_signal_truth": {
+    "status": "BLOCKED",
+    "previous_reason": "ST_SIGNIFICANT_BITS_UNKNOWN",
+    "current_reason": "ST_SIGNIFICANT_BITS_UNKNOWN (unchanged on the 24-bit route)",
+    "diagnosis": "the decoded-significant-bits guard fires: the decoded runtime facts for the 24-bit route do not carry a proven width in the physical run; the normalized snapshot export (priority 2 \u00a726) was not implemented in this run"
+  },
+  "priority_3_field_schema": {
+    "status": "NOT_RUN"
+  },
+  "priority_4_stop_failure_truth": {
+    "status": "NOT_RUN"
+  },
+  "compatible_minimal_replay": [
+    {
+      "fixture": "16_44100",
+      "source": {
+        "rate_hz": 44100,
+        "significant_bits": 16,
+        "channels": 2,
+        "sha256": "a08ef12fa2b803fa48b2034d8374c0c90f470a6c31cbddb3b9d73e477881472d"
+      },
+      "request": {
+        "mode": "compatible",
+        "fixture": "16_44100"
+      },
+      "playback": {
+        "status": 2,
+        "file_path": "evidence/dac-v35-110/2026-09-24-smsl-152a85dd-p1fix/fixtures/pcm16_44100.wav",
+        "error_code": null,
+        "error_message": null
+      },
+      "output": {
+        "mode": "direct",
+        "state": "running",
+        "selected_device": "usb:152a:85dd:3-3.3.2",
+        "selected_path_mode": "compatible",
+        "failure_code": "",
+        "failure_title": "",
+        "failure_display": ""
+      },
+      "plan": {
+        "carrier": "S32_LE",
+        "significant_bits": 16,
+        "adaptation": "container_width",
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "locator": "hw:CARD=AUDIO,DEV=0",
+        "decision_codes": [
+          "ENGINE_GSTREAMER_DIRECT",
+          "BINDING_ALSA_HW_SELECTED",
+          "SOURCE_NATIVE_RATE_REQUIRED",
+          "CONTAINER_WIDTH_ADAPTED",
+          "STRICT_NO_RESAMPLE",
+          "STRICT_NO_REMIX",
+          "FIXED_VOLUME_SELECTED",
+          "FALLBACK_STOP"
+        ]
+      },
+      "runtime": {
+        "device_rate_hz": 44100,
+        "carrier": "S32_LE",
+        "channels": 2
+      },
+      "signal_truth": {
+        "label": "Direct \u00b7 container adapted",
+        "reasons": [
+          "ST_CONTAINER_ADAPTED"
+        ]
+      }
+    },
+    {
+      "fixture": "16_48000",
+      "source": {
+        "rate_hz": 48000,
+        "significant_bits": 16,
+        "channels": 2,
+        "sha256": "bb76fb15f76e8ab5dc89b1012e521d3aebd381b9f4f947bce14186786164004f"
+      },
+      "request": {
+        "mode": "compatible",
+        "fixture": "16_48000"
+      },
+      "playback": {
+        "status": 2,
+        "file_path": "evidence/dac-v35-110/2026-09-24-smsl-152a85dd-p1fix/fixtures/pcm16_48000.wav",
+        "error_code": null,
+        "error_message": null
+      },
+      "output": {
+        "mode": "direct",
+        "state": "running",
+        "selected_device": "usb:152a:85dd:3-3.3.2",
+        "selected_path_mode": "compatible",
+        "failure_code": "",
+        "failure_title": "",
+        "failure_display": ""
+      },
+      "plan": {
+        "carrier": "S32_LE",
+        "significant_bits": 16,
+        "adaptation": "container_width",
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "locator": "hw:CARD=AUDIO,DEV=0",
+        "decision_codes": [
+          "ENGINE_GSTREAMER_DIRECT",
+          "BINDING_ALSA_HW_SELECTED",
+          "SOURCE_NATIVE_RATE_REQUIRED",
+          "CONTAINER_WIDTH_ADAPTED",
+          "STRICT_NO_RESAMPLE",
+          "STRICT_NO_REMIX",
+          "FIXED_VOLUME_SELECTED",
+          "FALLBACK_STOP"
+        ]
+      },
+      "runtime": {
+        "device_rate_hz": 48000,
+        "carrier": "S32_LE",
+        "channels": 2
+      },
+      "signal_truth": {
+        "label": "Direct \u00b7 container adapted",
+        "reasons": [
+          "ST_CONTAINER_ADAPTED"
+        ]
+      }
+    },
+    {
+      "fixture": "16_96000",
+      "source": {
+        "rate_hz": 96000,
+        "significant_bits": 16,
+        "channels": 2,
+        "sha256": "f5b0cb6c6a809e23db0fb5404fe8d966fd4464e33a6b9b9aa9bdc98557c2863f"
+      },
+      "request": {
+        "mode": "compatible",
+        "fixture": "16_96000"
+      },
+      "playback": {
+        "status": 2,
+        "file_path": "evidence/dac-v35-110/2026-09-24-smsl-152a85dd-p1fix/fixtures/pcm16_96000.wav",
+        "error_code": null,
+        "error_message": null
+      },
+      "output": {
+        "mode": "direct",
+        "state": "running",
+        "selected_device": "usb:152a:85dd:3-3.3.2",
+        "selected_path_mode": "compatible",
+        "failure_code": "",
+        "failure_title": "",
+        "failure_display": ""
+      },
+      "plan": {
+        "carrier": "S32_LE",
+        "significant_bits": 16,
+        "adaptation": "container_width",
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "locator": "hw:CARD=AUDIO,DEV=0",
+        "decision_codes": [
+          "ENGINE_GSTREAMER_DIRECT",
+          "BINDING_ALSA_HW_SELECTED",
+          "SOURCE_NATIVE_RATE_REQUIRED",
+          "CONTAINER_WIDTH_ADAPTED",
+          "STRICT_NO_RESAMPLE",
+          "STRICT_NO_REMIX",
+          "FIXED_VOLUME_SELECTED",
+          "FALLBACK_STOP"
+        ]
+      },
+      "runtime": {
+        "device_rate_hz": 96000,
+        "carrier": "S32_LE",
+        "channels": 2
+      },
+      "signal_truth": {
+        "label": "Direct \u00b7 container adapted",
+        "reasons": [
+          "ST_CONTAINER_ADAPTED"
+        ]
+      }
+    },
+    {
+      "fixture": "24_44100",
+      "source": {
+        "rate_hz": 44100,
+        "significant_bits": 24,
+        "channels": 2,
+        "sha256": "59e08a4dad9b6d2a2648e5bbfe1470375d9beaf718a50fdeb5eebfd0a5dad1be"
+      },
+      "request": {
+        "mode": "compatible",
+        "fixture": "24_44100"
+      },
+      "playback": {
+        "status": 2,
+        "file_path": "evidence/dac-v35-110/2026-09-24-smsl-152a85dd-p1fix/fixtures/pcm24_44100.wav",
+        "error_code": null,
+        "error_message": null
+      },
+      "output": {
+        "mode": "direct",
+        "state": "running",
+        "selected_device": "usb:152a:85dd:3-3.3.2",
+        "selected_path_mode": "compatible",
+        "failure_code": "",
+        "failure_title": "",
+        "failure_display": ""
+      },
+      "plan": {
+        "carrier": "S32_LE",
+        "significant_bits": 24,
+        "adaptation": "exact",
+        "sink": "alsasink:hw:CARD=AUDIO,DEV=0",
+        "locator": "hw:CARD=AUDIO,DEV=0",
+        "decision_codes": [
+          "ENGINE_GSTREAMER_DIRECT",
+          "BINDING_ALSA_HW_SELECTED",
+          "SOURCE_NATIVE_RATE_REQUIRED",
+          "S32_CARRIER_PRESERVES_24_BITS",
+          "STRICT_NO_RESAMPLE",
+          "STRICT_NO_REMIX",
+          "FIXED_VOLUME_SELECTED",
+          "FALLBACK_STOP"
+        ]
+      },
+      "runtime": {
+        "device_rate_hz": 44100,
+        "carrier": "S32_LE",
+        "channels": 2
+      },
+      "signal_truth": {
+        "label": "Not verified",
+        "reasons": [
+          "ST_SIGNIFICANT_BITS_UNKNOWN"
+        ]
+      }
+    }
+  ],
+  "complete_physical_signal_truth_rows": 3,
+  "final_status": "PHYSICAL QUALIFICATION IN PROGRESS"
+}
