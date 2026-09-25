@@ -86,6 +86,54 @@ def _signal_truth_diagnostics(container) -> dict | None:
     return signal_truth_snapshot_diagnostics(snapshot)
 
 
+def _execution_git_head() -> str:
+    """R110 §24: derive the executed SHA from the repository, never hand-enter."""
+    import subprocess
+
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        ).stdout.strip()
+    except Exception:  # noqa: BLE001 — provenance boundary
+        return ""
+
+
+def _validate_device(container, *, device_id: str, locator: str) -> None:
+    """R110 §23: never trust hardcoded physical defaults."""
+    rows = [
+        row
+        for row in container._aob.devices
+        if row.get("stableDeviceId") == device_id
+    ]
+    if not rows:
+        raise SystemExit(f"device not present after rediscovery: {device_id}")
+    current = rows[0].get("alsaLocator")
+    if current != locator:
+        raise SystemExit(
+            f"locator mismatch: requested {locator!r} but discovery resolved "
+            f"{current!r}; aborting the physical run"
+        )
+    if not rows[0].get("bindingAvailable"):
+        raise SystemExit(f"device binding unavailable: {device_id}")
+
+
+def _source_section(fixture: dict) -> dict:
+    """R110 §15: fixture truth is immutable and runtime never overwrites it."""
+    return {
+        "path": str(fixture.get("path")),
+        "sha256": fixture.get("sha256"),
+        "format_family": "PCM",
+        "rate_hz": fixture.get("rate_hz"),
+        "channels": fixture.get("channels"),
+        "significant_bits": fixture.get("bits"),
+        "seconds": fixture.get("seconds"),
+        "amplitude": fixture.get("amplitude"),
+    }
+
+
 def _capture(container, extra: dict | None = None) -> dict:
     state = container._playback.state
     plan = container._output_session.plan
@@ -162,7 +210,8 @@ def main() -> int:
     fixtures_dir.mkdir(exist_ok=True)
 
     report: dict = {
-        "schema_version": 1,
+        "schema_version": 2,
+        "execution_git_head": _execution_git_head(),
         "experiment": f"R110 field scenario: {args.scenario}",
         "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "device_id": args.device_id,
@@ -290,6 +339,7 @@ def main() -> int:
         report["active_engine_after_switch"] = (
             container._audio_engine_service.state.active_engine_id.value
         )
+        _validate_device(container, device_id=args.device_id, locator=args.locator)
         container._aob.select_device(args.device_id)
 
         if args.scenario == "stress":
@@ -382,8 +432,41 @@ def main() -> int:
                     break
                 time.sleep(0.02)
             container._app.processEvents()
-            entry = dict(report["fixtures"][key])
-            entry.update(_capture(container, {"mode": mode, "fixture": key}))
+            captured = _capture(container, {"mode": mode, "fixture": key})
+            entry = {
+                "source": _source_section(report["fixtures"][key]),
+                "request": {
+                    "mode": mode,
+                    "fixture": key,
+                    "requested_rate_hz": report["fixtures"][key].get("rate_hz"),
+                    "requested_significant_bits": report["fixtures"][key].get("bits"),
+                    "requested_channels": report["fixtures"][key].get("channels"),
+                },
+                "playback": {
+                    "status": captured.get("playback_status"),
+                    "file_path": captured.get("file_path"),
+                    "error_code": captured.get("error_code"),
+                    "error_message": captured.get("error_message"),
+                },
+                "output": {
+                    "mode": captured.get("output_mode"),
+                    "state": captured.get("output_state"),
+                    "selected_device": captured.get("selected_device"),
+                    "selected_path_mode": captured.get("selected_path_mode"),
+                    "failure_code": captured.get("failure_code"),
+                    "failure_title": captured.get("failure_title"),
+                    "failure_display": captured.get("failure_display"),
+                    "active_engine": captured.get("active_engine"),
+                },
+                "plan": captured.get("plan"),
+                "signal_truth": captured.get("signal_truth_diagnostics"),
+                "receipt": {
+                    "mode": mode,
+                    "fixture": key,
+                    "label": captured.get("signal_truth_label"),
+                    "reasons": captured.get("signal_truth_reasons"),
+                },
+            }
             report["observations"].append(entry)
             container._playback.stop()
             _pump(container, 1.0)
@@ -402,14 +485,14 @@ def main() -> int:
             entry["receipt"]["fixture"],
             entry["receipt"]["mode"],
             "|",
-            entry["playback_status"],
+            entry["playback"]["status"],
             "|",
             (plan.get("requested_pcm") or {}).get("format"),
             (plan.get("carrier_adaptation") or "-"),
             "|",
-            entry["error_code"] or "ok",
+            entry["playback"]["error_code"] or "ok",
             "|",
-            entry["failure_title"] or "-",
+            entry["output"]["failure_title"] or "-",
         )
     print()
     print("FIELD OBSERVATION REQUIRED")

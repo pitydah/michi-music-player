@@ -164,6 +164,10 @@ def _has_conclusive_evidence(pcm: PcmTuple, facts: PlannerFacts) -> bool:
     )
 
 
+#: R110 §31: a genuine output release failure. Not a plain "stop" reason.
+OUTPUT_RELEASE_FAILED = "OUTPUT_RELEASE_FAILED"
+
+
 class OutputSessionError(RuntimeError):
     """Error tipado de sesión (illegal_transition, no_plan, stale_token)."""
 
@@ -963,14 +967,23 @@ class OutputSessionService:
             return
         if self._state is OutputSessionState.IDLE and not was_direct:
             return
-        # R110 §21: a normal release/stop is a COMMAND, not a failure. The
-        # session error code is reserved for typed failures (prepare refusals,
-        # device loss, abort); a release that genuinely fails raises to its
-        # caller. Projecting a plain reason here made every clean stop render as
-        # "Output unavailable".
-        self._error_code = None
+        # R110 §21/§29: a normal release/stop is a COMMAND, not a failure — but
+        # the release is a TRANSACTION. The failure presentation is only retired
+        # AFTER the physical release succeeded, and a release that genuinely
+        # fails leaves a typed current failure instead of a fabricated clean
+        # state. Projecting a plain reason made every clean stop render as
+        # "Output unavailable"; clearing before the call would hide a real one.
         if self._executor is not None:
-            self._executor.release(reason)
+            try:
+                self._executor.release(reason)
+            except Exception as exc:  # noqa: BLE001 — release boundary
+                self._error_code = OUTPUT_RELEASE_FAILED
+                self._notify()
+                raise OutputSessionError(
+                    OUTPUT_RELEASE_FAILED,
+                    f"output release failed: {exc}",
+                ) from exc
+        self._error_code = None
         if self._state is not OutputSessionState.RELEASING:
             self._transition(OutputSessionState.RELEASING)
         self._clear_execution(keep_error=True)

@@ -231,3 +231,37 @@ def test_fh110_e_a_real_stop_failure_stays_visible(qapp, tmp_path: Path) -> None
             graph.playback.stop()
     finally:
         _close_graph(graph)
+
+
+def test_fh110_g_genuine_release_failure_leaves_typed_truth(
+    qapp, tmp_path: Path
+) -> None:
+    """R110 §29-§32: a release that genuinely fails must not fabricate success."""
+    from michi.application.output_session_service import (
+        OUTPUT_RELEASE_FAILED,
+        OutputSessionError,
+    )
+
+    probe = _SplitProbe()
+    graph, _bindings = _s16_graph(tmp_path, probe)
+    try:
+        session = graph.output_session
+
+        class _ExplodingExecutor:
+            def release(self, _reason):
+                raise RuntimeError("synthetic release failure")
+
+        # An ACTIVE Direct execution whose physical release genuinely fails.
+        session._executor = _ExplodingExecutor()
+        session._mode = "direct"
+
+        with pytest.raises(OutputSessionError) as exc_info:
+            session.release_active("stop")
+
+        assert exc_info.value.code == OUTPUT_RELEASE_FAILED
+        # The typed failure is CURRENT in the session authority and no fabricated
+        # clean release state was committed.
+        assert session.selection_state().error_code == OUTPUT_RELEASE_FAILED
+        assert session.mode == "direct"
+    finally:
+        _close_graph(graph)
