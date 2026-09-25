@@ -110,10 +110,11 @@ def _complete(
     decoded: PcmTuple | None = None,
     engine: EngineRuntimeEvidence | None = None,
     alsa: AlsaRuntimeEvidence | None = None,
+    plan: OutputPlanEvidence | None = None,
 ) -> SignalTruthRecorder:
     recorder = SignalTruthRecorder()
     identity = _identity()
-    recorder.begin_candidate(_plan(identity))
+    recorder.begin_candidate(plan or _plan(identity))
     recorder.observe(DecodedRuntimeEvidence(identity, decoded or _pcm()))
     recorder.observe(engine or _engine(identity))
     recorder.observe(alsa or _alsa(identity))
@@ -292,7 +293,17 @@ def test_st70_12_unexplained_alsa_channel_mismatch_is_contradicted() -> None:
 def test_st70_13_observed_dsp_is_dsp() -> None:
     recorder = _complete(engine=_engine(dsp=True))
     assert recorder.candidate_snapshot.verdict is SignalTruthVerdict.DSP
+    # R110 §21: the declared request must match the proven signal width, so the
+    # fixture declares 16 — the endian rewrite is then a real FORMAT rewrite
+    # (neither an authorized pair nor a width mismatch) and stays DSP.
     endian_change = _complete(
+        plan=OutputPlanEvidence(
+            _identity(),
+            _pcm(fmt="S16_BE", significant_bits=16),
+            "alsasink",
+            "hw:CARD=DX5,DEV=0",
+            True,
+        ),
         decoded=_pcm(fmt="S16_LE", significant_bits=16),
         engine=_engine(pcm=_pcm(fmt="S16_BE", significant_bits=16)),
         alsa=_alsa(pcm=_pcm(fmt="S16_BE", significant_bits=16)),

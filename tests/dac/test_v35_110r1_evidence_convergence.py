@@ -681,3 +681,95 @@ def test_pev110r1_04_c_owned_converter_without_caps_stays_unknown(tmp_path) -> N
         assert snapshot.transform_evidence.converter_transforming is None
     finally:
         pipeline.set_state(Gst.State.NULL)
+
+
+# ── PHASE 3 — 24-bit runtime width convergence (root cause found physically) ─
+
+
+def test_pev110r1_05_a_real_decoder_format_pair_is_authorized() -> None:
+    """The physical 24-bit PCM decoder reports `S24LE`, not `S24_3LE`.
+
+    Omitting that pair silently dropped the canonical 24-bit Strict route to
+    UNKNOWN even though decoded width, owned converter and policy were all
+    proven. This gate pins the real decoder format to the authorized table.
+    """
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S24LE", 2, 24),
+        requested=PcmTuple(44_100, "S32_LE", 2, 24),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=True,
+        noise_shaping_disabled=True,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+
+
+def test_pev110r1_05_b_twenty_four_bit_route_without_decoded_width_is_unknown() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S24LE", 2, None),
+        requested=PcmTuple(44_100, "S32_LE", 2, 24),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=True,
+        noise_shaping_disabled=True,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+
+
+def test_pev110r1_05_c_wrong_known_width_is_refuted() -> None:
+    from michi.domain.signal_truth import SignalTruthReason, SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S24LE", 2, 16),
+        requested=PcmTuple(44_100, "S32_LE", 2, 24),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=True,
+        noise_shaping_disabled=True,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
+    assert SignalTruthReason.ST_SIGNIFICANT_BITS_MISMATCH in snapshot.reasons
+
+
+def test_pev110r1_05_d_twenty_four_bit_route_without_converter_is_unknown() -> None:
+    from michi.domain.signal_truth import SignalTruthVerdict
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S24LE", 2, 24),
+        requested=PcmTuple(44_100, "S32_LE", 2, 24),
+        converter_present=False,
+    )
+
+    assert snapshot.verdict is SignalTruthVerdict.UNKNOWN
+    assert snapshot.verdict is not SignalTruthVerdict.DIRECT_CONTAINER_ADAPTED
+
+
+def test_pev110r1_05_e_normalized_snapshot_exposes_every_intermediate(tmp_path) -> None:
+    """§15: the read-only diagnostic exposes the intermediates before verdict."""
+    from michi.domain.signal_truth import signal_truth_snapshot_diagnostics
+
+    snapshot = _preservation_snapshot(
+        decoded=PcmTuple(44_100, "S24LE", 2, 24),
+        requested=PcmTuple(44_100, "S32_LE", 2, 24),
+        converter_present=True,
+        converter_transforming=True,
+        dithering_disabled=True,
+        noise_shaping_disabled=True,
+    )
+    diagnostics = signal_truth_snapshot_diagnostics(snapshot)
+
+    assert diagnostics["decoded"]["format"] == "S24LE"
+    assert diagnostics["decoded"]["significant_bits"] == 24
+    assert diagnostics["engine"]["format"] == "S32_LE"
+    assert diagnostics["transform"]["converter_present"] is True
+    assert diagnostics["transform"]["converter_dithering_disabled"] is True
+    assert diagnostics["alsa"]["format"] == "S32_LE"
+    assert diagnostics["verdict"]["state"] == "direct_container_adapted"
+    assert diagnostics["clock"]["sink_provides_clock"] is not None

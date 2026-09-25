@@ -183,9 +183,22 @@ def _authorized_preservation_decision(
     bits = decoded.significant_bits
     if bits is None:
         return None
-    authorized = _ALLOWED_CONTAINER_ADAPTATIONS.get(bits, frozenset())
+    # The carrier POLICY selects the authorized pair for the width the plan
+    # DECLARED; a known discrepancy between that declared width and the proven
+    # signal is then a contradiction (R110 §21/§22) rather than an epistemic
+    # unknown. Pairs that are not authorized for any width keep the established
+    # classification untouched (a real rewrite stays DSP).
+    requested_bits = requested.significant_bits
+    authorized = _ALLOWED_CONTAINER_ADAPTATIONS.get(
+        bits, frozenset()
+    ) | _ALLOWED_CONTAINER_ADAPTATIONS.get(requested_bits, frozenset())
     if (decoded_format, requested_format) not in authorized:
         return None
+    if requested_bits is not None and requested_bits != bits:
+        return (
+            SignalTruthVerdict.CONTRADICTED,
+            SignalTruthReason.ST_SIGNIFICANT_BITS_MISMATCH,
+        )
     if not (effective_format == alsa_format == requested_format):
         return None
     # Rate and channel clashes are contradictions, not preservation questions.
@@ -277,6 +290,92 @@ class SignalTruthSnapshot:
     reasons: tuple[SignalTruthReason, ...]
 
 
+def signal_truth_snapshot_diagnostics(snapshot) -> dict:
+    """Read-only normalized view of ONE Signal Truth candidate (R110 §12/§13).
+
+    The field harness is an OBSERVER: this serializer is the single authority
+    that decides how Signal Truth facts are exposed, so no second classifier or
+    parallel truth model can drift from the recorder. Only normalized values are
+    returned — never a Gst object or a QObject.
+    """
+
+    def pcm(item):
+        if item is None:
+            return None
+        return {
+            "format": item.transport_format,
+            "rate_hz": item.rate_hz,
+            "channels": item.channels,
+            "significant_bits": item.significant_bits,
+        }
+
+    decoded = snapshot.decoded_runtime
+    engine = snapshot.engine_effective
+    alsa = snapshot.device_negotiated
+    plan = snapshot.plan
+    transforms = engine.transform_evidence if engine is not None else None
+    identity = snapshot.identity
+    return {
+        "identity": {
+            "plan_id": identity.plan_id,
+            "execution_generation": identity.execution_generation,
+            "port_generation": identity.port_generation,
+            "binding_generation": identity.binding_generation,
+            "stable_device_id": identity.stable_device_id,
+            "stable_endpoint_signature": identity.stable_endpoint_signature,
+        },
+        "plan": {
+            "requested": pcm(plan.requested_pcm),
+            "sink_factory": plan.sink_factory,
+            "sink_device": plan.sink_device,
+            "fixed_gain_required": plan.fixed_gain_required,
+        },
+        "decoded": pcm(decoded.pcm) if decoded is not None else None,
+        "engine": {
+            **(pcm(engine.effective_pcm) if engine is not None else {}),
+            "graph_inspection_complete": (
+                engine.graph_inspection_complete if engine is not None else None
+            ),
+            "graph_factories": (
+                list(engine.graph_factories) if engine is not None else []
+            ),
+            "software_gain": engine.software_gain if engine is not None else None,
+            "muted": engine.muted if engine is not None else None,
+        },
+        "transform": (
+            {
+                "converter_present": transforms.converter_present,
+                "converter_transforming": transforms.converter_transforming,
+                "converter_dithering_disabled": (
+                    transforms.converter_dithering_disabled
+                ),
+                "converter_noise_shaping_disabled": (
+                    transforms.converter_noise_shaping_disabled
+                ),
+                "resampler_present": transforms.resampler_present,
+                "resampler_transforming": transforms.resampler_transforming,
+                "remix_transforming": transforms.remix_transforming,
+            }
+            if transforms is not None
+            else None
+        ),
+        "alsa": pcm(alsa.negotiated_pcm) if alsa is not None else None,
+        "clock": {
+            "sink_provides_clock": (
+                engine.sink_provides_clock if engine is not None else None
+            ),
+            "sink_clock_is_pipeline_clock": (
+                engine.sink_clock_is_pipeline_clock if engine is not None else None
+            ),
+            "slave_method": engine.slave_method if engine is not None else None,
+        },
+        "verdict": {
+            "state": snapshot.verdict.value,
+            "reason_codes": [reason.value for reason in snapshot.reasons],
+        },
+    }
+
+
 _CONTRADICTION_ORDER = (
     SignalTruthReason.ST_DEVICE_MISMATCH,
     SignalTruthReason.ST_BINDING_MISMATCH,
@@ -314,8 +413,14 @@ _ALLOWED_CONTAINER_ADAPTATIONS: dict[int, frozenset[tuple[str, str]]] = {
     16: frozenset({("S16LE", "S32LE")}),
     24: frozenset(
         {
+            # Packed 3-byte 24 (GStreamer S24_3LE).
             ("S243LE", "S2432LE"),
             ("S243LE", "S32LE"),
+            # 24-bit-in-32 storage (GStreamer S24LE / S24_32LE). The physical
+            # decoder for a 24-bit PCM source reports S24LE, so omitting these
+            # pairs silently dropped the 24-bit route to UNKNOWN.
+            ("S24LE", "S2432LE"),
+            ("S24LE", "S32LE"),
             ("S2432LE", "S32LE"),
         }
     ),

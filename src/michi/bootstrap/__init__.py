@@ -1018,6 +1018,9 @@ class ApplicationContainer:
         self._audio_router = graph.audio_router
         self._audio_engine_registry = graph.audio_engine_registry
         self._audio_engine_service = graph.audio_engine_service
+        # R110 §11: the field harness observes the SAME Signal Truth the
+        # product consumes; it never reconstructs a parallel truth model.
+        self._signal_truth = graph.signal_truth
         self._audio_engine_convergence = graph.audio_engine_convergence
         self._qt_engine_provider = graph.qt_engine_provider
         self._output_session = graph.output_session

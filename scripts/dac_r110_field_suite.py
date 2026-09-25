@@ -64,6 +64,28 @@ def write_pcm_fixture(
     }
 
 
+def _signal_truth_diagnostics(container) -> dict | None:
+    """R110 §11/§13: normalized Signal Truth view from the domain authority."""
+    from michi.domain.signal_truth import signal_truth_snapshot_diagnostics
+
+    recorder = getattr(container, "_signal_truth", None)
+    if recorder is None:
+        return None
+    snapshot = None
+    try:
+        snapshot = recorder.active_snapshot
+    except Exception:  # noqa: BLE001 — recorder boundary
+        snapshot = None
+    if snapshot is None:
+        try:
+            snapshot = recorder.candidate_snapshot
+        except Exception:  # noqa: BLE001 — recorder boundary
+            snapshot = None
+    if snapshot is None:
+        return None
+    return signal_truth_snapshot_diagnostics(snapshot)
+
+
 def _capture(container, extra: dict | None = None) -> dict:
     state = container._playback.state
     plan = container._output_session.plan
@@ -94,6 +116,7 @@ def _capture(container, extra: dict | None = None) -> dict:
         "direct_handle": container._direct_output_lifecycle.handle is not None
         if hasattr(container._direct_output_lifecycle, "handle")
         else None,
+        "signal_truth_diagnostics": _signal_truth_diagnostics(container),
         "signal_truth_label": container._aob.signalTruthLabel,
         "signal_truth_reasons": list(container._aob.signalTruthReasonCodes),
         "format": container._aob.currentFormat,
