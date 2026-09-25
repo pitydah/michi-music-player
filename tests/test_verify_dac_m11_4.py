@@ -220,23 +220,23 @@ def _write_status_fixture(root, *, work_package_state: str) -> None:
         / "docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md"
     ).write_text(
         "DAC-V35-100R1.3.4 = CLOSED-AUTOMATED / GO\n"
-        "DAC-V35-110 PHYSICAL QUALIFICATION IN PROGRESS\n"
+        "DAC-V35-110 = PHYSICAL QUALIFICATION PASS (BOUNDED, device-scoped)\n"
         "DAC-V35-130 POST-STABLE ONLY\n"
     )
     (root / "docs/M11_4_AUDIOPHILE_OUTPUT_DAC.md").write_text(
-        "DAC-V35-100R1.3.4\nPHYSICAL QUALIFICATION IN PROGRESS\n"
+        "DAC-V35-100R1.3.4\nPHYSICAL QUALIFICATION PASS (BOUNDED)\n"
     )
     (root / "docs/STATUS_MATRIX.md").write_text(
-        "| M11.4 Audiophile Output & DAC | PHYSICAL QUALIFICATION IN "
-        "PROGRESS | DAC-V35-100R1.3.4 |\n"
+        "| M11.4 Audiophile Output & DAC | PHYSICAL QUALIFICATION PASS "
+        "(BOUNDED) | DAC-V35-100R1.3.4 |\n"
         f"| M11.4 Audiophile Output & DAC Management | {work_package_state} | R1 |\n"
     )
     (root / "docs/MASTER_ROADMAP_1.0.md").write_text(
-        "| M11.4 Audiophile Output/DAC | PHYSICAL QUALIFICATION IN "
-        "PROGRESS | DAC-V35-100R1.3.4 |\n"
+        "| M11.4 Audiophile Output/DAC | PHYSICAL QUALIFICATION PASS "
+        "(BOUNDED) | DAC-V35-100R1.3.4 |\n"
     )
     (root / "README.md").write_text(
-        "DAC-V35-100R1.3.4 PHYSICAL QUALIFICATION IN PROGRESS\n"
+        "DAC-V35-100R1.3.4 PHYSICAL QUALIFICATION PASS (BOUNDED)\n"
     )
 
 
@@ -247,9 +247,23 @@ def test_status_contradiction_is_no_go(tmp_path) -> None:
     assert "must not be DONE" in detail
 
 
-def test_status_consistency_accepts_physical_pending(tmp_path) -> None:
+def test_status_consistency_accepts_physical_pass_bounded(tmp_path) -> None:
     _write_status_fixture(tmp_path, work_package_state="IN_PROGRESS")
     assert verifier._status_consistency_gate(tmp_path)[0] is True
+
+
+def test_stale_pending_status_cell_is_no_go(tmp_path) -> None:
+    _write_status_fixture(tmp_path, work_package_state="IN_PROGRESS")
+    matrix = tmp_path / "docs" / "STATUS_MATRIX.md"
+    matrix.write_text(
+        "| M11.4 Audiophile Output & DAC | PHYSICAL QUALIFICATION IN "
+        "PROGRESS | DAC-V35-100R1.3.4 |\n"
+        "| M11.4 Audiophile Output & DAC Management | IN_PROGRESS | R1 |\n",
+        encoding="utf-8",
+    )
+    ok, detail = verifier._status_consistency_gate(tmp_path)
+    assert ok is False
+    assert "stale pending status cell" in detail
 
 
 def test_manifest_requires_140_separate_promotion(tmp_path) -> None:

@@ -465,27 +465,29 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
         text = {name: path.read_text(encoding="utf-8") for name, path in paths.items()}
     except OSError as exc:
         return False, f"status source unavailable: {exc}"
+    # R110 reached a bounded, device-scoped physical PASS, so every status
+    # source must agree on that current status. The exact "= ..." token binds
+    # the canonical status block rather than relying on loose text matches.
     required = {
         "canonical": (
             "DAC-V35-100R1.3.4 = CLOSED-AUTOMATED / GO",
-            "DAC-V35-110",
-            "PHYSICAL QUALIFICATION IN PROGRESS",
+            "DAC-V35-110 = PHYSICAL QUALIFICATION PASS (BOUNDED, device-scoped)",
         ),
         "contract": (
             "DAC-V35-100R1.3.4",
-            "PHYSICAL QUALIFICATION IN PROGRESS",
+            "PHYSICAL QUALIFICATION PASS (BOUNDED",
         ),
         "matrix": (
             "M11.4 Audiophile Output & DAC",
-            "PHYSICAL QUALIFICATION IN PROGRESS",
+            "PHYSICAL QUALIFICATION PASS (BOUNDED",
             "DAC-V35-100R1.3.4",
         ),
         "roadmap": (
             "M11.4 Audiophile Output/DAC",
-            "PHYSICAL QUALIFICATION IN PROGRESS",
+            "PHYSICAL QUALIFICATION PASS (BOUNDED",
             "DAC-V35-100R1.3.4",
         ),
-        "readme": ("DAC-V35-100R1.3.4", "PHYSICAL QUALIFICATION IN PROGRESS"),
+        "readme": ("DAC-V35-100R1.3.4", "PHYSICAL QUALIFICATION PASS (BOUNDED"),
     }
     missing = [
         f"{name}:{marker}"
@@ -499,13 +501,20 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
     )
     if work_package_done:
         missing.append("matrix:M11.4 work package must not be DONE before 110")
+    stale_pending = [
+        name
+        for name in ("matrix", "roadmap", "readme")
+        if re.search(r"\|\s*PHYSICAL QUALIFICATION IN PROGRESS\s*\|", text[name])
+    ]
+    if stale_pending:
+        missing.append(f"stale pending status cell: {stale_pending}")
     if "DAC-V35-130\n= POST-STABLE ONLY" not in text["canonical"] and not re.search(
         r"DAC-V35-130.*POST-STABLE ONLY", text["canonical"]
     ):
         missing.append("canonical:DAC-V35-130 POST-STABLE ONLY")
     if missing:
         return False, f"current status contradictions/missing markers: {missing}"
-    return True, "current status markers agree; M11.4 remains physical-pending"
+    return True, "current status markers agree; M11.4 is physically qualified (bounded)"
 
 
 def _source_characterization_contract_gate(
