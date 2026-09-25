@@ -511,7 +511,21 @@ class GStreamerBindings:
             raise DirectSinkBuildError(
                 "DIRECT_ALSASINK_CREATE_FAILED", f"{recipe.sink_factory} no disponible"
             )
-        alsa.set_property("device", recipe.device)
+        # Only elements that expose a device selector accept one. The runtime
+        # inspector already guards this the same way; a sink without the
+        # property (a safe non-hardware sink in tests) is otherwise rejected for
+        # a capability it never had.
+        try:
+            alsa.set_property("device", recipe.device)
+        except TypeError as exc:
+            # The real sink element has no device selector. Addressing a
+            # specific endpoint is then impossible, so fail closed; a safe
+            # non-hardware sink with no device request is legitimate (tests).
+            if recipe.device:
+                raise DirectSinkBuildError(
+                    "DIRECT_ALSASINK_CREATE_FAILED",
+                    f"{recipe.sink_factory} cannot address {recipe.device!r}",
+                ) from exc
         converter = None
         if recipe.container_conversion:
             converter = self._build_container_converter(gst)
@@ -861,6 +875,13 @@ class GStreamerBindings:
             sink_bin = pipeline.get_property("audio-sink")
             alsa = sink_bin.get_by_name("michi_direct_alsa") if sink_bin else None
             capsfilter = sink_bin.get_by_name("michi_direct_caps") if sink_bin else None
+            # R110 P1: the sink bin OWNS its converter, and the upstream branch
+            # walk cannot see inside it. Locate the installed element directly
+            # through the production builder's name — never infer it from the
+            # plan.
+            owned_converter = (
+                sink_bin.get_by_name("michi_direct_convert") if sink_bin else None
+            )
             if alsa is not None:
                 factory = alsa.get_factory()
                 sink_factory = factory.get_name() if factory is not None else ""
@@ -888,6 +909,64 @@ class GStreamerBindings:
             installed_factories = {
                 name for name in ("capsfilter", sink_factory) if name
             }
+            if owned_converter is not None:
+                # §16/§17: read the owned converter's REAL caps and policy.
+                owned_state, owned_remix = transform_states(
+                    owned_converter, "audioconvert"
+                )
+                owned_dither, owned_noise = converter_preservation_config(
+                    owned_converter
+                )
+                merged_transforming = _aggregate_transform_states(
+                    [transform_evidence.converter_transforming, owned_state]
+                )
+                # §17: the preservation POLICY is only meaningful for converters
+                # that actually transform. playbin3's internal audioconvert is a
+                # proven pass-through on an adapted route and ships with dithering
+                # enabled by default; its configuration must never poison the
+                # evidence of the owned converter that does the real widening.
+                branch_transforms = transform_evidence.converter_transforming is True
+                owned_transforms = owned_state is True
+                if owned_transforms and not branch_transforms:
+                    merged_dither, merged_noise = owned_dither, owned_noise
+                elif branch_transforms and not owned_transforms:
+                    merged_dither = transform_evidence.converter_dithering_disabled
+                    merged_noise = transform_evidence.converter_noise_shaping_disabled
+                else:
+                    merged_dither = _aggregate_preservation(
+                        [
+                            (
+                                transform_evidence.converter_dithering_disabled,
+                                transform_evidence.converter_noise_shaping_disabled,
+                            ),
+                            (owned_dither, owned_noise),
+                        ],
+                        0,
+                    )
+                    merged_noise = _aggregate_preservation(
+                        [
+                            (
+                                transform_evidence.converter_dithering_disabled,
+                                transform_evidence.converter_noise_shaping_disabled,
+                            ),
+                            (owned_dither, owned_noise),
+                        ],
+                        1,
+                    )
+                transform_evidence = RuntimeTransformEvidence(
+                    converter_present=True,
+                    converter_transforming=merged_transforming,
+                    resampler_present=transform_evidence.resampler_present,
+                    resampler_transforming=transform_evidence.resampler_transforming,
+                    remix_transforming=_aggregate_transform_states(
+                        [transform_evidence.remix_transforming, owned_remix]
+                    ),
+                    converter_dithering_disabled=merged_dither,
+                    converter_noise_shaping_disabled=merged_noise,
+                )
+                factory = owned_converter.get_factory()
+                if factory is not None:
+                    installed_factories.add(factory.get_name())
             factories = sorted(branch_factories | installed_factories)
             if decoded_pad is not None:
                 (

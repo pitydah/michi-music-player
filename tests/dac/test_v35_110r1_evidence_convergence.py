@@ -557,3 +557,127 @@ def test_pev110r1_03_a_real_audioconvert_readback_proves_policy(tmp_path) -> Non
     assert "format=(string)S16LE" in upstream_caps.to_string()
 
     pipeline.set_state(Gst.State.NULL)
+
+
+# ── PRIORITY 1 — owned strict-sink converter observability (§21–§23) ──────
+
+
+def _real_strict_pipeline(
+    tmp_path, *, conversion: bool, sink_factory: str = "fakesink"
+):
+    """A REAL strict sink bin built by the production builder."""
+    import struct
+    import wave
+
+    import gi
+
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst
+
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerBindings
+    from michi.infrastructure.audio_output.strict_sink import StrictSinkRecipe
+
+    Gst.init(None)
+    fixture = tmp_path / ("real16.wav" if conversion else "real16_exact.wav")
+    with wave.open(str(fixture), "wb") as handle:
+        handle.setnchannels(2)
+        handle.setsampwidth(2)
+        handle.setframerate(44_100)
+        handle.writeframes(
+            b"".join(struct.pack("<hh", 1024, -1024) for _ in range(8192))
+        )
+
+    bindings = GStreamerBindings()
+    recipe = StrictSinkRecipe(
+        plan_id="plan:owned",
+        sink_factory=sink_factory,
+        device="",
+        media_type="audio/x-raw",
+        gst_format="S32LE" if conversion else "S16LE",
+        rate_hz=44_100,
+        channels=2,
+        layout="interleaved",
+        container_conversion=conversion,
+    )
+    pipeline = bindings.make_playbin3()
+    sink = bindings.build_strict_audio_sink(recipe)
+    pipeline.set_property("audio-sink", sink)
+    pipeline.set_property("uri", f"file://{fixture}")
+    return bindings, pipeline, sink, recipe
+
+
+def test_pev110r1_04_a_owned_converter_is_observed_and_transforming(tmp_path) -> None:
+    """§21: the production inspector must observe the converter the production
+    builder installed INSIDE the strict sink bin."""
+    import gi
+
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst
+
+    bindings, pipeline, sink, recipe = _real_strict_pipeline(tmp_path, conversion=True)
+    try:
+        assert sink.get_by_name("michi_direct_convert") is not None
+        pipeline.set_state(Gst.State.PAUSED)
+        pipeline.get_state(5 * Gst.SECOND)
+
+        snapshot = bindings.snapshot_direct_runtime(
+            pipeline, recipe, execution_generation=1, port_generation=1
+        )
+
+        assert snapshot.transform_evidence.converter_present is True
+        assert snapshot.transform_evidence.converter_transforming is True
+        assert snapshot.transform_evidence.remix_transforming is False
+        assert snapshot.transform_evidence.converter_dithering_disabled is True
+        assert snapshot.transform_evidence.converter_noise_shaping_disabled is True
+        assert "audioconvert" in snapshot.graph_factories
+    finally:
+        pipeline.set_state(Gst.State.NULL)
+
+
+def test_pev110r1_04_b_without_conversion_no_owned_converter_is_claimed(
+    tmp_path,
+) -> None:
+    """§22: a no-conversion strict sink must not claim a converter."""
+    import gi
+
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst
+
+    bindings, pipeline, sink, recipe = _real_strict_pipeline(tmp_path, conversion=False)
+    try:
+        assert sink.get_by_name("michi_direct_convert") is None
+        pipeline.set_state(Gst.State.PAUSED)
+        pipeline.get_state(5 * Gst.SECOND)
+
+        snapshot = bindings.snapshot_direct_runtime(
+            pipeline, recipe, execution_generation=1, port_generation=1
+        )
+
+        # The OWNED converter is absent (asserted above). The graph may still
+        # expose playbin3's internal audioconvert, but on a no-conversion route
+        # it is a proven pass-through and must never be reported as transforming.
+        assert snapshot.transform_evidence.converter_transforming is not True
+        assert "michi_direct_convert" not in snapshot.graph_factories
+    finally:
+        pipeline.set_state(Gst.State.NULL)
+
+
+def test_pev110r1_04_c_owned_converter_without_caps_stays_unknown(tmp_path) -> None:
+    """§23: fail closed when the owned converter's caps cannot be observed."""
+    import gi
+
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst
+
+    bindings, pipeline, sink, recipe = _real_strict_pipeline(tmp_path, conversion=True)
+    try:
+        # Never prerolled: the owned converter exists but has no negotiated caps,
+        # so the transform state must remain UNKNOWN rather than guessed.
+        snapshot = bindings.snapshot_direct_runtime(
+            pipeline, recipe, execution_generation=1, port_generation=1
+        )
+
+        assert snapshot.transform_evidence.converter_present is True
+        assert snapshot.transform_evidence.converter_transforming is None
+    finally:
+        pipeline.set_state(Gst.State.NULL)
