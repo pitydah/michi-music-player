@@ -1332,3 +1332,78 @@ def test_ui90r1_37_playback_controls_remain_visible_and_non_overlapping(qapp) ->
     ox, _oy, _ow, _oh = _bounds_in(output, bar)
     assert px + pw <= ox
     window.close()
+
+
+def _assert_output_popup_is_anchored_to_opener(qapp, width: int) -> None:
+    engine, _component, window = _create(
+        qapp, NOW_PLAYING_HARNESS, "tests/ui90r12-popup-anchor.qml"
+    )
+    window.setProperty("width", width)
+    QApplication.processEvents()
+
+    bar = _visual_item(window, "nowPlayingBar")
+    button = _visual_item(window, "outputDeviceButton")
+    popup = window.findChild(QObject, "AudioOutputPopup")
+    assert bar is not None and button is not None and popup is not None
+
+    # Exercise the grouped projection that enlarged the popup in 010R1; this
+    # is the product path that exposed the real Wayland displacement bug.
+    bar.setProperty("outputDevices", [PY_SHARED_ROW, PY_DEVICE_ROW])
+    bar.setProperty(
+        "outputDeviceGroups",
+        [
+            {
+                "groupId": "system",
+                "label": "System Output",
+                "description": "Desktop-managed shared output",
+                "collapsedByDefault": False,
+                "rows": [PY_SHARED_ROW],
+            },
+            {
+                "groupId": "external",
+                "label": "External Audio",
+                "description": "DACs and USB audio interfaces",
+                "collapsedByDefault": False,
+                "rows": [PY_DEVICE_ROW],
+            },
+        ],
+    )
+    QApplication.processEvents()
+
+    _click(window, button)
+    QTest.qWait(300)
+    QApplication.processEvents()
+    assert popup.property("opened") is True
+
+    popup_parent = popup.property("parent")
+    assert popup_parent is not None
+    assert popup_parent.objectName() == "outputDeviceButton"
+
+    background = popup.property("background")
+    assert isinstance(background, QQuickItem)
+    opener_origin = button.mapToScene(QPointF(0, 0))
+    popup_origin = background.mapToScene(QPointF(0, 0))
+    opener_right = opener_origin.x() + button.width()
+    popup_right = popup_origin.x() + background.width()
+    popup_bottom = popup_origin.y() + background.height()
+    vertical_gap = opener_origin.y() - popup_bottom
+
+    # The popup must be immediately above and right-aligned with its opener,
+    # not merely somewhere inside the window. This is the missing regression
+    # contract for the displacement captured on the real product UI.
+    assert abs(popup_right - opener_right) <= 2.0
+    assert 0.0 <= vertical_gap <= 32.0
+    assert popup_origin.x() >= -1.0
+    assert popup_origin.y() >= -1.0
+    assert popup_right <= window.width() + 1.0
+    assert popup_bottom <= window.height() + 1.0
+    assert engine._michi_test_warnings == []
+    window.close()
+
+
+def test_ui90r12_01_output_popup_anchor_at_1280(qapp) -> None:
+    _assert_output_popup_is_anchored_to_opener(qapp, 1280)
+
+
+def test_ui90r12_02_output_popup_anchor_at_980(qapp) -> None:
+    _assert_output_popup_is_anchored_to_opener(qapp, 980)

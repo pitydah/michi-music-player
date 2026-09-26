@@ -94,7 +94,7 @@ def test_capture_only_usb_card_is_not_an_output(tmp_path: Path) -> None:
     assert registry.device_snapshots() == ()
 
 
-def test_composite_playback_capture_usb_is_admitted_as_interface(
+def test_duplex_usb_is_admitted_without_overclaiming_interface_role(
     tmp_path: Path,
 ) -> None:
     root = make_roots(tmp_path)
@@ -107,10 +107,10 @@ def test_composite_playback_capture_usb_is_admitted_as_interface(
     registry = AudioDeviceRegistry()
     _ingest(registry, root)
     snapshot = registry.device_snapshots()[0]
+    classification = classify_audio_device(snapshot)
     assert snapshot.capture_capable is True
-    assert (
-        classify_audio_device(snapshot).category is AudioDeviceCategory.AUDIO_INTERFACE
-    )
+    assert classification.category is AudioDeviceCategory.EXTERNAL_AUDIO
+    assert "does not prove a product role" in classification.reason
 
 
 def test_non_usb_motherboard_playback_remains_first_class(tmp_path: Path) -> None:

@@ -62,9 +62,10 @@ def has_current_playback(snapshot) -> bool:
 def classify_audio_device(snapshot) -> AudioDeviceClassification:
     """Classify for UI grouping after playback admission has succeeded.
 
-    USB + capture is a useful generic signal for an audio interface, but it is
-    not required for use. USB playback without capture is intentionally called
-    External Audio rather than guessed to be a DAC/headphone/receiver.
+    USB playback proves an external audio output, not a product role. Capture
+    capability is useful topology evidence and remains exposed separately, but
+    duplex playback+capture is also common in headsets, docks, speakerphones and
+    other USB Audio devices, so it must not imply "Audio Interface" by itself.
 
     Linux commonly exposes both HDMI and DisplayPort sink paths through an HDA
     HDMI ALSA card; unless a DRM/EDID connector correlation proves the exact
@@ -73,16 +74,15 @@ def classify_audio_device(snapshot) -> AudioDeviceClassification:
     """
     identity = snapshot.identity
     if identity.bus == "usb":
+        reason = "USB hardware exposes a current ALSA playback endpoint"
         if snapshot.capture_capable:
-            return AudioDeviceClassification(
-                AudioDeviceCategory.AUDIO_INTERFACE,
-                ClassificationConfidence.HIGH,
-                "USB hardware exposes current ALSA playback plus capture capability",
+            reason += (
+                "; capture capability is observed but does not prove a product role"
             )
         return AudioDeviceClassification(
             AudioDeviceCategory.EXTERNAL_AUDIO,
             ClassificationConfidence.HIGH,
-            "USB hardware exposes a current ALSA playback endpoint",
+            reason,
         )
 
     searchable = " ".join(

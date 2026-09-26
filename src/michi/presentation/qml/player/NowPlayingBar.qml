@@ -533,27 +533,14 @@ Item {
 
             AudioOutputPopup {
                 id: outputPopup
-                // A Popup is an overlay surface, not a GridLayout cell.
-                // Parenting it to the window overlay prevents its rich
-                // grouped content/implicitWidth from participating in
-                // outputZone sizing. Coordinates are therefore mapped
-                // from the opener into the overlay coordinate system.
-                parent: Overlay.overlay
-                x: {
-                    var point = outputDeviceButton.mapToItem(parent, 0, 0)
-                    var rightAligned = point.x + outputDeviceButton.width - width
-                    return Math.max(
-                        MichiSpacing.sm,
-                        Math.min(parent.width - width - MichiSpacing.sm, rightAligned)
-                    )
-                }
-                y: {
-                    var point = outputDeviceButton.mapToItem(parent, 0, 0)
-                    return Math.max(
-                        MichiSpacing.sm,
-                        point.y - height - MichiSpacing.md
-                    )
-                }
+                // Popup coordinates are relative to Popup.parent. Keep the
+                // opener as that coordinate authority: Popup.Item already
+                // renders its visual content in the window overlay, so an
+                // explicit Overlay.overlay reparent + mapToItem transform is
+                // unnecessary and displaced this popup on the real Wayland UI.
+                parent: outputDeviceButton
+                x: outputDeviceButton.width - width
+                y: -height - MichiSpacing.md
                 devices: root.outputDevices
                 deviceGroups: root.outputDeviceGroups
                 signalTruthLabel: root.outputSignalTruthLabel

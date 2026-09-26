@@ -22,6 +22,7 @@ Popup {
     signal settingsRequested()
 
     padding: MichiSpacing.lg
+    margins: MichiSpacing.sm
     modal: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
