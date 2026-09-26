@@ -11,6 +11,15 @@ from michi.application.ports import AudioLoadError
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+# The platform plugin is chosen when the FIRST QApplication is constructed and
+# cannot be changed afterwards. Several DAC test modules build their own
+# QApplication in an autouse fixture, so setting this only inside the qapp
+# fixture let a real platform (wayland/xcb) win whenever a DAC module ran first;
+# QML interaction/geometry gates then failed purely from test ordering.
+# CI already exports QT_QPA_PLATFORM=offscreen, so binding it at import time
+# makes local runs deterministic and identical to CI.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 
 @pytest.fixture(scope="session")
 def qapp():

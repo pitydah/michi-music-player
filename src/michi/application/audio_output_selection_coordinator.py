@@ -16,6 +16,7 @@ from michi.application.audio_device_registry import AudioDeviceRegistry
 from michi.application.audio_engine_service import AudioEngineService
 from michi.application.audio_output_profile_service import AudioOutputProfileService
 from michi.application.output_session_service import OutputSessionService
+from michi.domain.audio_device import BindingKind
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_output import (
     AudioOutputProfile,
@@ -97,19 +98,7 @@ class AudioOutputSelectionCoordinator:
         if not stable_device_id:
             self.select_shared_output()
             return
-        snapshots = {
-            item.identity.stable_device_id: item
-            for item in self._devices.device_snapshots()
-        }
-        snapshot = snapshots.get(stable_device_id)
-        if snapshot is None:
-            raise AudioOutputSelectionError(
-                "OUTPUT_DEVICE_UNKNOWN", "The requested audio output is unknown."
-            )
-        if not snapshot.available:
-            raise AudioOutputSelectionError(
-                "DEVICE_UNAVAILABLE", "The selected DAC is disconnected."
-            )
+        self._require_playback_device(stable_device_id)
 
         current = self._selected_profile(self._profiles.load_selection())
         if current is None or not is_direct_path(current.path):
@@ -145,15 +134,7 @@ class AudioOutputSelectionCoordinator:
                 )
             self.select_shared_output()
             return
-        snapshots = {
-            item.identity.stable_device_id: item
-            for item in self._devices.device_snapshots()
-        }
-        snapshot = snapshots.get(stable_device_id)
-        if snapshot is None or not snapshot.available:
-            raise AudioOutputSelectionError(
-                "DEVICE_UNAVAILABLE", "The selected DAC is disconnected."
-            )
+        self._require_playback_device(stable_device_id)
         with self._profiles.batch_changes():
             self._select_profile(profile, stable_device_id=stable_device_id)
 
@@ -179,6 +160,7 @@ class AudioOutputSelectionCoordinator:
                 "SELECTED_DEVICE_MISSING",
                 "Select an available physical DAC before choosing Direct output.",
             )
+        self._require_playback_device(selection.selected_device_id)
         with self._profiles.batch_changes():
             self._select_device_policy(selection.selected_device_id, policy)
 
@@ -216,6 +198,30 @@ class AudioOutputSelectionCoordinator:
         with self._profiles.batch_changes():
             self._profiles.save_profile(replace(profile, resync_delay_ms=value))
 
+    def _require_playback_device(self, stable_device_id: str):
+        snapshots = {
+            item.identity.stable_device_id: item
+            for item in self._devices.device_snapshots()
+        }
+        snapshot = snapshots.get(stable_device_id)
+        if snapshot is None:
+            raise AudioOutputSelectionError(
+                "OUTPUT_DEVICE_UNKNOWN", "The requested audio output is unknown."
+            )
+        if not snapshot.available:
+            raise AudioOutputSelectionError(
+                "DEVICE_UNAVAILABLE", "The selected audio output is disconnected."
+            )
+        if not any(
+            binding.kind is BindingKind.ALSA_PCM and binding.currently_available
+            for binding in snapshot.bindings
+        ):
+            raise AudioOutputSelectionError(
+                "OUTPUT_DEVICE_NOT_PLAYBACK_CAPABLE",
+                "The selected hardware has no current audio playback endpoint.",
+            )
+        return snapshot
+
     def _selected_profile(
         self, selection: AudioOutputSelection
     ) -> AudioOutputProfile | None:
@@ -232,6 +238,7 @@ class AudioOutputSelectionCoordinator:
         self, stable_device_id: str, policy: OutputPathPreference
     ) -> None:
         """Bind the canonical ``(device, policy)`` pair to one profile."""
+        self._require_playback_device(stable_device_id)
         candidates = sorted(
             (
                 profile

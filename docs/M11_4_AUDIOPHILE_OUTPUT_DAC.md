@@ -6,7 +6,7 @@ CLOSED-AUTOMATED / GO and `DAC-V35-110` physically qualified for the tested SMSL
 DAC (USB `152a:85dd`, `hw:CARD=AUDIO,DEV=0`): a 12-row physical matrix captured
 twice (executed heads `92e60dce7bcfe74266a56461549f8b87c1e26ba0` and
 `283d91976d19d82dcd0c4d4a7ae521000173104d`) with identical truth, Signal Truth
-COMPLETE on every direct row, operator audibility PASS on 12/12 rows and physical
+COMPLETE on every direct row, operator expected-behavior PASS on 12/12 rows (audible on 9 playback rows; 3 Strict 16-bit refusals correctly silent) and physical
 hotplug/reconnect PASS. Reference code closure
 `d581ad334503bbd8d13dfb120b9538695df79e47` (CI run `36184951752`, all jobs
 SUCCESS; artifact `sha256:2f705210ee97f51b98679858d35926ff235c52a2e3a2854a691a131a21e89f89`).
@@ -18,8 +18,11 @@ OBSERVED, TRANSFORMING and its preservation policy is read back from the real
 element; a converter that is absent, passthrough against a proven change, or has
 an unproven/unsafe policy can never produce an adapted Direct verdict. The S32
 container width stays honestly unknown and real GStreamer runtime evidence seals
-the readback. The verdict is device- and environment-scoped
-(`qenv:v2:sha256:77ee027839ed623943a36912c258ce15550fc4dc746048c0321242fadf124701`):
+the readback. The bounded playback verdict is device-scoped. The historical R110 qenv hash
+was captured from an unbound default environment context and is retained only
+as provenance; it is **not** a device-bound environment claim. The corrected
+field harness now requires a complete device-bound qualification context before
+publishing an environment-scoped fingerprint:
 bit-perfect is **not** claimed, `M11.5` is not started and `DAC-V35-120` remains
 DO NOT START.
 
@@ -219,9 +222,10 @@ not-yet-authorized work package; R1.1 publication does not itself start it.
   preserved at 44100/48000/96000/192000 Hz through a DECLARED container
   adaptation (`carrier_adaptation = exact`); 16-bit strict tuples refuse
   truthfully (`EXACT_TUPLE_UNSUPPORTED`); Compatible Direct preserves 16- and
-  24-bit precision in the `S32_LE` carrier. All nine direct rows carry the
+  24-bit precision in the `S32_LE` carrier. All eight direct rows carry the
   `Direct · container adapted` receipt with a COMPLETE Signal Truth verdict. The
-  single batched operator checkpoint recorded audibility PASS on 12/12 rows and
+  single batched operator checkpoint recorded expected-behavior PASS on 12/12
+  rows (9 playback rows audible, 3 truthful Strict 16-bit refusals silent) and
   physical hotplug/reconnect PASS (no crash, device loss handled, rediscovery).
   Canonical ledger R19-R36 = 6 PASS (R19, R21, R22, R28, R33, R34) / 5
   NOT_APPLICABLE with canonical justification (R20, R23, R26, R30, R31) / 7

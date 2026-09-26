@@ -33,6 +33,7 @@ REQUIRED_COLLECTED_MODULES = (
     "tests/dac/test_v35_100r12_native_lifecycle.py",
     "tests/dac/test_v35_100r12_playback_refusal_ui.py",
     "tests/dac/test_v35_100r12_productive_qualification.py",
+    "tests/dac/test_v35_010r1_universal_audio_discovery.py",
     "tests/test_v35_090_audio_output_bridge.py",
     "tests/test_v35_090_qml_audio_output.py",
 )
@@ -185,6 +186,8 @@ REQUIRED_DAC_WHEEL_MEMBERS = frozenset(
         "michi/presentation/qml/player/AudioOutputPopup.qml",
         "michi/presentation/qml/views/AudioOutputSettingsSection.qml",
         "michi/application/audio_device_registry.py",
+        "michi/application/audio_device_semantics.py",
+        "michi/presentation/qml/components/AudioOutputDeviceGroup.qml",
         "michi/application/audio_output_planner.py",
         "michi/application/audio_output_profile_service.py",
         "michi/application/audio_output_selection_coordinator.py",
@@ -198,6 +201,7 @@ REQUIRED_DAC_WHEEL_MEMBERS = frozenset(
 
 INSTALLED_IMPORTS = (
     "michi.application.audio_device_registry",
+    "michi.application.audio_device_semantics",
     "michi.application.audio_output_planner",
     "michi.application.audio_output_profile_service",
     "michi.application.audio_output_selection_coordinator",

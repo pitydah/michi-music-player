@@ -36,6 +36,7 @@ class AlsaCard:
     card_id: str
     usb_devpath: str | None = None
     playback_pcms: tuple[int, ...] = (0,)
+    capture_pcms: tuple[int, ...] = ()
     platform_path: str = "platform/michi-sound"
 
 
@@ -109,6 +110,13 @@ def build_linux_sysfs(
         class_sound.mkdir(parents=True, exist_ok=True)
         for pcm in card.playback_pcms:
             pcm_name = f"pcmC{card.card_index}D{pcm}p"
+            (card_dir / pcm_name).mkdir(exist_ok=True)
+            pcm_link = class_sound / pcm_name
+            if not pcm_link.exists():
+                relative_card = card_dir.relative_to(root)
+                pcm_link.symlink_to(f"../../{relative_card}/{pcm_name}")
+        for pcm in card.capture_pcms:
+            pcm_name = f"pcmC{card.card_index}D{pcm}c"
             (card_dir / pcm_name).mkdir(exist_ok=True)
             pcm_link = class_sound / pcm_name
             if not pcm_link.exists():

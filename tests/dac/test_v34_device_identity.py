@@ -87,6 +87,8 @@ def test_card_without_playback_pcm_produces_zero_bindings(tmp_path: Path) -> Non
         "la card sin playback se observa SIN binding"
     )
     stable_id = "usb:2622:0105:DX5ABC123"
+    assert registry.snapshot() == (), "capture/non-playback USB is not an Audio Output"
+    assert registry.device_snapshots() == (), "unknown non-playback USB is not retained"
     assert registry.binding_for(stable_id, BindingKind.ALSA_PCM) is None
 
 
@@ -163,6 +165,10 @@ def test_identical_vid_pid_simultaneous_not_merged(tmp_path: Path) -> None:
             UsbDevice("2-1", "2622", "0105"),
             UsbDevice("2-2", "2622", "0105"),
         ),
+        cards=(
+            AlsaCard(1, "DAC1", "2-1"),
+            AlsaCard(2, "DAC2", "2-2"),
+        ),
     )
     registry = AudioDeviceRegistry()
     _ingest(registry, sysfs_root)
@@ -179,6 +185,10 @@ def test_duplicated_serial_simultaneous_not_merged(tmp_path: Path) -> None:
             UsbDevice("2-1", "2622", "0105", serial="SAME123"),
             UsbDevice("2-2", "2622", "0105", serial="SAME123"),
         ),
+        cards=(
+            AlsaCard(1, "DAC1", "2-1"),
+            AlsaCard(2, "DAC2", "2-2"),
+        ),
     )
     registry = AudioDeviceRegistry()
     _ingest(registry, sysfs_root)
@@ -192,6 +202,7 @@ def test_generic_serial_not_used_for_identity(tmp_path: Path) -> None:
     build_linux_sysfs(
         sysfs_root,
         usb_devices=(UsbDevice("2-1", "2622", "0105", serial="00000000"),),
+        cards=(AlsaCard(1, "DAC", "2-1"),),
     )
     registry = AudioDeviceRegistry()
     _ingest(registry, sysfs_root)
@@ -297,7 +308,12 @@ def test_g1_endpoint_disappears_invalidates_generation(tmp_path: Path) -> None:
     remove_playback_pcm(sysfs_root, 1, 0)
     _ingest(registry, sysfs_root)
 
-    assert [i.stable_device_id for i in registry.snapshot()] == [stable_id]
+    assert registry.snapshot() == ()
+    retained = {
+        item.identity.stable_device_id: item for item in registry.device_snapshots()
+    }
+    assert retained[stable_id].available is False
+    assert retained[stable_id].bindings == ()
     assert registry.bindings_for(stable_id, BindingKind.ALSA_PCM) == ()
     assert registry.generation_for(stable_id) > generation_before
     assert registry.apply_probe_result(stable_id, generation_before) is False, (
@@ -310,14 +326,15 @@ def test_g2_endpoint_appears_invalidates_generation(tmp_path: Path) -> None:
     build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card(()),))
     registry = AudioDeviceRegistry()
     _ingest(registry, sysfs_root)
-    stable_id = registry.snapshot()[0].stable_device_id
-    generation_before = registry.generation_for(stable_id)
-    assert registry.bindings_for(stable_id, BindingKind.ALSA_PCM) == ()
+    stable_id = "usb:2622:0105:DX5ABC123"
+    assert registry.snapshot() == ()
+    assert registry.device_snapshots() == ()
 
     build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0,)),))
     _ingest(registry, sysfs_root)
 
-    assert registry.generation_for(stable_id) > generation_before
+    generation_after = registry.generation_for(stable_id)
+    assert generation_after is not None
     assert [b.locator for b in registry.bindings_for(stable_id)] == [
         "hw:CARD=DX5,DEV=0"
     ]
@@ -423,21 +440,23 @@ def test_g13_availability_only_disappearance_invalidates_generation_once(
 ) -> None:
     """available=True + bindings=() -> reconcile sin device -> gen++ UNA vez."""
     sysfs_root = make_roots(tmp_path)
-    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card(()),))
+    build_linux_sysfs(sysfs_root, usb_devices=(DX5,), cards=(_single_card((0,)),))
     registry = AudioDeviceRegistry()
     _ingest(registry, sysfs_root)
     stable_id = registry.snapshot()[0].stable_device_id
     generation_before = registry.generation_for(stable_id)
-    assert registry.bindings_for(stable_id) == ()
 
-    remove_usb_device(sysfs_root, "2-1")
+    # Playback disappears while the physical USB identity remains. A known
+    # audio device is retained as disconnected exactly once.
+    remove_playback_pcm(sysfs_root, 1, 0)
     _ingest(registry, sysfs_root)
 
     assert registry.snapshot() == ()
-    assert registry.generation_for(stable_id) == generation_before + 1, (
-        "available True->False es un cambio topológico aunque bindings==()"
-    )
+    retained = {
+        item.identity.stable_device_id: item for item in registry.device_snapshots()
+    }
+    assert retained[stable_id].available is False
+    assert registry.generation_for(stable_id) == generation_before + 1
 
-    # segundo rescan con el device todavía ausente: NO incrementa de nuevo
     _ingest(registry, sysfs_root)
     assert registry.generation_for(stable_id) == generation_before + 1

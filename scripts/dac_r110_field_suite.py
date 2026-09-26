@@ -26,6 +26,7 @@ import math
 import struct
 import time
 import wave
+from dataclasses import asdict
 from pathlib import Path
 
 MAX_AMPLITUDE_16 = 2**12  # conservative level: never full-scale
@@ -207,19 +208,11 @@ def main() -> int:
     fixtures_dir = evidence_dir / "fixtures"
     fixtures_dir.mkdir(exist_ok=True)
 
-    try:
-        from michi.application.dac_qualification_service import (
-            default_environment_fingerprint,
-        )
-
-        _env_fingerprint = default_environment_fingerprint()
-    except Exception:  # noqa: BLE001 — provenance boundary, never mask the run
-        _env_fingerprint = ""
-
     report: dict = {
         "schema_version": 2,
         "execution_git_head": _execution_git_head(),
-        "environment_fingerprint": _env_fingerprint,
+        "environment_fingerprint": None,
+        "environment_context": None,
         "experiment": f"R110 field scenario: {args.scenario}",
         "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "device_id": args.device_id,
@@ -348,6 +341,19 @@ def main() -> int:
             container._audio_engine_service.state.active_engine_id.value
         )
         _validate_device(container, device_id=args.device_id, locator=args.locator)
+        qualification = container._aob._qualification
+        if qualification is None:
+            raise SystemExit("canonical DAC qualification authority unavailable")
+        environment_context = qualification.current_environment_context(args.device_id)
+        if not environment_context.complete_for_current_evidence:
+            raise SystemExit(
+                "device-bound qualification environment is incomplete; "
+                "refusing to publish an unbound environment fingerprint"
+            )
+        report["environment_context"] = asdict(environment_context)
+        report["environment_fingerprint"] = (
+            qualification.current_environment_fingerprint(args.device_id)
+        )
         container._aob.select_device(args.device_id)
 
         if args.scenario == "stress":

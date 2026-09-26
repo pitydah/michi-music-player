@@ -45,6 +45,7 @@ Item {
     // DAC-V35-090: live output selector projections. The player bar remains
     // geometry-stable; the popup owns no output state.
     property var outputDevices: []
+    property var outputDeviceGroups: []
     property string outputTooltip: qsTr("Audio output")
     property string outputSignalTruthLabel: qsTr("Not verified")
     property string outputFailureTitle: ""
@@ -532,9 +533,29 @@ Item {
 
             AudioOutputPopup {
                 id: outputPopup
-                y: -height - MichiSpacing.md
-                x: Math.min(0, outputZone.width - width)
+                // A Popup is an overlay surface, not a GridLayout cell.
+                // Parenting it to the window overlay prevents its rich
+                // grouped content/implicitWidth from participating in
+                // outputZone sizing. Coordinates are therefore mapped
+                // from the opener into the overlay coordinate system.
+                parent: Overlay.overlay
+                x: {
+                    var point = outputDeviceButton.mapToItem(parent, 0, 0)
+                    var rightAligned = point.x + outputDeviceButton.width - width
+                    return Math.max(
+                        MichiSpacing.sm,
+                        Math.min(parent.width - width - MichiSpacing.sm, rightAligned)
+                    )
+                }
+                y: {
+                    var point = outputDeviceButton.mapToItem(parent, 0, 0)
+                    return Math.max(
+                        MichiSpacing.sm,
+                        point.y - height - MichiSpacing.md
+                    )
+                }
                 devices: root.outputDevices
+                deviceGroups: root.outputDeviceGroups
                 signalTruthLabel: root.outputSignalTruthLabel
                 failureTitle: root.outputFailureTitle
                 focusReturnTarget: outputDeviceButton

@@ -21153,8 +21153,11 @@ compatible 24 / 44.1  -> PLAYING, carrier_adaptation = exact,
                        direct_container_adapted (ST_CONTAINER_ADAPTED)
 ```
 
-All nine direct rows carry the `Direct · container adapted` receipt. The single
-batched operator checkpoint recorded audibility **PASS** on 12/12 rows and
+All eight direct rows carry the `Direct · container adapted` receipt; the
+remaining four rows are the Shared baseline (no direct claim) and the three
+truthful Strict 16-bit refusals. The single batched operator checkpoint recorded
+expected-behavior **PASS** on 12/12 rows (audible on the 9 playback rows: 1
+Shared + 8 Direct; the 3 Strict 16-bit refusals were correctly silent) and
 physical USB unplug/reconnect **PASS** (no crash, device loss handled, SMSL
 rediscovered), with zero tracebacks in the application log. Evidence:
 `evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/` (schema v2

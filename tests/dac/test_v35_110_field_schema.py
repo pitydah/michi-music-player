@@ -69,11 +69,14 @@ def test_fs110_05_device_locator_is_validated_before_the_run() -> None:
     assert "SystemExit" in section
 
 
-def test_fs110_05b_environment_fingerprint_uses_the_canonical_authority() -> None:
+def test_fs110_05b_environment_fingerprint_is_device_bound() -> None:
     source = _harness_source()
-    assert "from michi.application.dac_qualification_service import (" in source
-    assert "default_environment_fingerprint()" in source
-    assert '"environment_fingerprint": _env_fingerprint,' in source
+    assert "default_environment_fingerprint()" not in source
+    assert "current_environment_context(args.device_id)" in source
+    assert "current_environment_fingerprint(" in source
+    assert "complete_for_current_evidence" in source
+    assert '"environment_context": None,' in source
+    assert '"environment_fingerprint": None,' in source
 
 
 def test_fs110_06_signal_truth_comes_from_the_domain_authority() -> None:

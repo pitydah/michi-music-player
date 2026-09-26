@@ -13,13 +13,16 @@
   },
   "environment": {
     "environment_fingerprint": "qenv:v2:sha256:77ee027839ed623943a36912c258ce15550fc4dc746048c0321242fadf124701",
-    "evidence": "environment_fingerprint.json"
+    "evidence": "environment_fingerprint.json",
+    "device_bound": false,
+    "status": "HISTORICAL_UNBOUND_CONTEXT",
+    "note": "The recorded qenv hash was generated from default_environment_context() with environment:unbound/topology:unbound. It is retained as historical provenance but MUST NOT be cited as a device-bound environment fingerprint."
   },
   "operator_observation": {
     "checkpoint": "single batched checkpoint",
     "audibility": {
       "answer": "PASS",
-      "scope": "12/12 rows of the operator run (shared + 8 direct rows + 3 truthful strict refusals)",
+      "scope": "expected behavior PASS 12/12: audible on 9 playback rows (1 Shared + 8 Direct), truthful silence/refusal on 3 Strict 16-bit rows",
       "source": "human operator, real listening session"
     },
     "hotplug_reconnect": {
@@ -40,7 +43,7 @@
     "R20": {
       "title": "DUPLICATE SERIAL / IDENTICAL DEVICE COLLISION",
       "status": "NOT_APPLICABLE",
-      "justification": "Canonical §262 requires two identical devices (duplicate serial or no-serial collision). This bench has exactly one supported DAC, and its identity is topology-derived from the unique port chain 3-3.3.2, so no collision pair can be formed. Not a silent skip: no second device was present."
+      "justification": "Canonical \u00a7262 requires two identical devices (duplicate serial or no-serial collision). This bench has exactly one supported DAC, and its identity is topology-derived from the unique port chain 3-3.3.2, so no collision pair can be formed. Not a silent skip: no second device was present."
     },
     "R21": {
       "title": "PASSIVE CLAIM VS EXACT OPEN CONSISTENCY",
@@ -55,7 +58,7 @@
     "R23": {
       "title": "MULTI-ENDPOINT / COMPOSITE USB AUDIO",
       "status": "NOT_APPLICABLE",
-      "justification": "Canonical §265 targets composite/multi-endpoint USB audio devices. The SMSL 152a:85dd exposes a single PCM endpoint (usb-interface:1.0:pcm:0:sub:0), so there are no sibling endpoints to exercise on this hardware."
+      "justification": "Canonical \u00a7265 targets composite/multi-endpoint USB audio devices. The SMSL 152a:85dd exposes a single PCM endpoint (usb-interface:1.0:pcm:0:sub:0), so there are no sibling endpoints to exercise on this hardware."
     },
     "R24": {
       "title": "GSTREAMER CLOCK AUTHORITY / SLAVE METHOD",
@@ -80,7 +83,7 @@
     "R28": {
       "title": "SIGNAL TRUTH CONTRADICTION MATRIX",
       "status": "PASS",
-      "evidence": "All 12 rows classified through the domain snapshot: 9 direct rows DIRECT_CONTAINER_ADAPTED, 3 truthful EXACT_TUPLE_UNSUPPORTED, 1 shared row correctly not verified"
+      "evidence": "All 12 rows classified through the domain snapshot: 8 Direct rows DIRECT_CONTAINER_ADAPTED, 3 truthful EXACT_TUPLE_UNSUPPORTED, 1 Shared row correctly not verified"
     },
     "R29": {
       "title": "MICHI VERIFIED PROFILE PRECEDENCE",
@@ -105,8 +108,8 @@
     "R33": {
       "title": "RECONNECT / RESUME SAFETY",
       "status": "PASS",
-      "evidence": "operator physical unplug/reconnect: no crash, loss handled, rediscovery succeeded",
-      "scope_note": "The reconnect half is physically verified; the autoplay-resume half was not exercised in this run."
+      "evidence": "physical operator unplug/reconnect: no crash, loss handled, rediscovery succeeded; automated DAC-V35-080R1.1 gates prove reconnect alone restores no runtime authority, never autoplays, requires explicit Play and creates a fresh generation/SignalTruthIdentity",
+      "scope_note": "PASS is composite evidence: physical reconnect + existing productive automated no-autoresume/explicit-Play safety gates. No physical autoplay was fabricated or inferred."
     },
     "R34": {
       "title": "STRICT EXACT-OPEN / NO-RESAMPLE PROBE",

@@ -32,6 +32,7 @@ from michi.domain.audio_device import (
 SOURCE_SYSFS = "sysfs"
 
 _PCM_PLAYBACK_RE = re.compile(r"pcmC(\d+)D(\d+)p$")
+_PCM_CAPTURE_RE = re.compile(r"pcmC(\d+)D(\d+)c$")
 _PCM_SUBDEVICE_RE = re.compile(r"sub(\d+)$")
 DEFAULT_PROC_ASOUND_ROOT = Path("/proc/asound")
 
@@ -136,6 +137,20 @@ def _playback_pcms(sysfs_root: Path, card_index: int) -> tuple[int, ...]:
     return tuple(devices)
 
 
+def _capture_pcms(sysfs_root: Path, card_index: int) -> tuple[int, ...]:
+    """Capture PCMs are classification evidence, never output admission."""
+    sound_dir = sysfs_root / "class" / "sound"
+    if not sound_dir.is_dir():
+        return ()
+    devices: list[int] = []
+    for entry in sorted(sound_dir.iterdir()):
+        match = _PCM_CAPTURE_RE.fullmatch(entry.name)
+        if match is None or int(match.group(1)) != card_index:
+            continue
+        devices.append(int(match.group(2)))
+    return tuple(devices)
+
+
 def _playback_subdevices(
     proc_asound_root: Path, card_index: int, pcm_device: int
 ) -> tuple[int, ...]:
@@ -197,6 +212,7 @@ def read_alsa_cards(
         card_id = _read_text(card_dir / "id") or str(card_index)
         physical_path = _usb_ancestor(sysfs_root, card_dir)
         playback_pcms = _playback_pcms(sysfs_root, card_index)
+        capture_capable = bool(_capture_pcms(sysfs_root, card_index))
         if not playback_pcms:
             observations.append(
                 DeviceObservation(
@@ -210,6 +226,7 @@ def read_alsa_cards(
                     physical_path=physical_path,
                     bcd_device=None,
                     binding=None,
+                    capture_capable=capture_capable,
                 )
             )
             continue
@@ -239,6 +256,7 @@ def read_alsa_cards(
                             card_dir, pcm_device, pcm_subdevice
                         ),
                     ),
+                    capture_capable=capture_capable,
                 )
             )
     return tuple(observations)

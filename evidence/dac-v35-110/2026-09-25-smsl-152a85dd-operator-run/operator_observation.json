@@ -4,13 +4,18 @@
   "captured_at": "2026-09-25T19:54:14.765892+00:00",
   "audibility": {
     "answer": "PASS",
-    "scope": "12/12 rows of the operator run",
-    "meaning": "Audible low-level 440 Hz tone on the shared row and all eight direct rows; the three strict 16-bit tuples are truthful refusals with no audio, as expected."
+    "scope": "9 playback rows (1 Shared + 8 Direct)",
+    "meaning": "Audible low-level 440 Hz tone on the shared row and all eight direct rows; the three strict 16-bit tuples are truthful refusals with no audio, as expected.",
+    "truthful_refusals": "3 Strict 16-bit rows produced no audio because the exact tuple was refused, as expected"
   },
   "hotplug_reconnect": {
     "answer": "PASS",
     "observed": "no crash; device loss handled; SMSL rediscovered on reconnect",
     "procedure": "real app (PYTHONPATH=src python -m michi) playing a 24-bit 44.1 kHz fixture in Direct mode; USB cable unplugged, then replugged",
     "corroboration": "app log contains 0 tracebacks and shows the truthful EXACT_TUPLE_UNSUPPORTED refusal UX rendered for the strict 16-bit attempt during the same session"
+  },
+  "expected_behavior": {
+    "answer": "PASS",
+    "scope": "12/12 rows"
   }
 }

@@ -125,6 +125,7 @@ Item {
         audioEngineSwitchReady: audioEngine.engineSwitchReady
         audioEngineSwitchBlocker: audioEngine.engineSwitchBlocker
         outputDevices: audioOutput.devices
+        outputDeviceGroups: audioOutput.deviceGroups
         outputTooltip: audioOutput.outputTooltip
         outputSignalTruthLabel: audioOutput.signalTruthLabel
         outputFailureTitle: audioOutput.lastFailureTitle

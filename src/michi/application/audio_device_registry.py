@@ -62,6 +62,7 @@ class AudioDeviceSnapshot:
     available: bool
     generation: int
     bindings: tuple[AudioDeviceBinding, ...]
+    capture_capable: bool = False
 
 
 TopologyChangedCallback = Callable[[AudioDeviceTopologyChange], None]
@@ -119,6 +120,7 @@ class _DeviceRecord:
     available: bool
     generation: int
     bindings: tuple[AudioDeviceBinding, ...] = ()
+    capture_capable: bool = False
 
 
 class AudioDeviceRegistry:
@@ -170,6 +172,7 @@ class AudioDeviceRegistry:
                     available=record.available,
                     generation=record.generation,
                     bindings=record.bindings,
+                    capture_capable=record.capture_capable,
                 )
                 for record in sorted(
                     self._records.values(), key=lambda item: item.stable_device_id
@@ -215,6 +218,24 @@ class AudioDeviceRegistry:
                 )
             )
 
+    def is_playback_capable(self, stable_device_id: str) -> bool:
+        """True only for a CURRENT, proven ALSA PCM playback binding.
+
+        This is the Linux admission authority for Audio Output. USB presence,
+        USB class, product names, VID/PID and classification labels are never
+        substitutes for a real playback endpoint.
+        """
+        with self._lock:
+            record = self._records.get(stable_device_id)
+            return bool(
+                record is not None
+                and record.available
+                and any(
+                    binding.kind is BindingKind.ALSA_PCM and binding.currently_available
+                    for binding in record.bindings
+                )
+            )
+
     def subscribe_topology_changed(self, callback: TopologyChangedCallback) -> None:
         """Subscribe to post-mutation canonical topology changes."""
         with self._lock:
@@ -250,11 +271,27 @@ class AudioDeviceRegistry:
         *,
         reconcile: bool,
     ) -> None:
+        """Reconcile raw observations into the AUDIO OUTPUT domain.
+
+        Universal admission rule:
+        * USB/sysfs may observe every USB device on the host.
+        * a NEW physical identity enters AudioDeviceRegistry only when Linux
+          proves at least one CURRENT ALSA PCM playback endpoint;
+        * capture-only cards, HID, cameras, hubs and arbitrary USB devices are
+          therefore never promoted merely because they have VID/PID;
+        * an identity that was previously admitted as audio is retained when
+          its playback endpoint disappears, but becomes unavailable so hotplug
+          intent/generation semantics remain truthful.
+
+        Classification is deliberately absent from this method. A device does
+        not need to be recognised as a DAC/interface/HDMI to be admitted; real
+        playback capability is sufficient.
+        """
         before = self._topology_state()
         usb = [o for o in observations if o.vendor_id and o.product_id]
-        alsa = [o for o in observations if o.binding is not None]
+        alsa_all = [o for o in observations if o.source == "alsa"]
+        alsa_playback = [o for o in alsa_all if o.binding is not None]
 
-        # seriales "útiles": los duplicados simultáneos dejan de serlo.
         serial_counts: dict[str, int] = {}
         for observation in usb:
             serial = _useful_serial(observation.serial)
@@ -262,50 +299,75 @@ class AudioDeviceRegistry:
                 serial_counts[serial] = serial_counts.get(serial, 0) + 1
 
         batch_ids: set[str] = set()
-        seen_paths: set[str] = set()
+        seen_current_ids: set[str] = set()
         for observation in usb:
-            if observation.physical_path:
-                seen_paths.add(observation.physical_path)
             stable_id = self._identity_for(observation, serial_counts, batch_ids)
+            correlated = [
+                item
+                for item in alsa_playback
+                if observation.physical_path
+                and item.physical_path == observation.physical_path
+            ]
+            capture_capable = any(
+                item.capture_capable
+                for item in alsa_all
+                if observation.physical_path
+                and item.physical_path == observation.physical_path
+            )
+
+            if not correlated:
+                previous = self._records.get(stable_id)
+                if previous is not None:
+                    previous.capture_capable = capture_capable
+                    if previous.available or previous.bindings:
+                        previous.available = False
+                        previous.bindings = ()
+                        previous.generation = self._next_generation()
+                # Critical firewall: an unknown USB identity with no playback
+                # endpoint is not an Audio Output at all.
+                continue
+
             self._records[stable_id] = self._publish(
                 stable_id,
                 observation,
                 self._confidence_for(stable_id, observation, serial_counts),
-                alsa,
+                alsa_playback,
+                capture_capable=capture_capable,
             )
+            seen_current_ids.add(stable_id)
 
-        # cards ALSA huérfanas (sin ancestro USB observado): identidad local.
-        for observation in alsa:
+        # Non-USB ALSA playback is first-class audio: motherboard codecs,
+        # PCI/PCIe cards, S/PDIF and HDMI/DP remain discoverable. Only actual
+        # playback observations reach this loop.
+        for observation in alsa_playback:
             correlated = any(
                 binding.locator == observation.binding.locator
-                for record in self._records.values()
-                for binding in record.bindings
+                for stable_id in seen_current_ids
+                for binding in self._records[stable_id].bindings
             )
             if correlated:
                 continue
             stable_id = f"local:{observation.binding.locator}"
             self._records[stable_id] = self._publish(
-                stable_id, observation, IdentityConfidence.LOW, ()
+                stable_id,
+                observation,
+                IdentityConfidence.LOW,
+                (),
+                capture_capable=observation.capture_capable,
             )
+            seen_current_ids.add(stable_id)
 
-        if not reconcile:
-            self._publish_topology_changes(before)
-            return
-        # Reconcile: USB records que ya no se observan -> unavailable.
-        for record in self._records.values():
-            identity = record.identity
-            if (
-                identity.bus == "usb"
-                and record.available
-                and identity.physical_path not in seen_paths
-            ):
-                # available True->False es un cambio topológico SIEMPRE,
-                # aunque bindings==(): generation++ exactamente una vez
-                # (el guard record.available evita repetir mientras siga
-                # ausente).
+        if reconcile:
+            # Every previously admitted physical audio identity absent from the
+            # current playback topology becomes disconnected; records are never
+            # deleted because selected intent must survive physical loss.
+            for stable_id, record in self._records.items():
+                if stable_id in seen_current_ids or not record.available:
+                    continue
                 record.available = False
                 record.bindings = ()
                 record.generation = self._next_generation()
+
         self._publish_topology_changes(before)
 
     def _identity_for(
@@ -353,6 +415,8 @@ class AudioDeviceRegistry:
         observation: DeviceObservation,
         confidence: IdentityConfidence,
         alsa: list[DeviceObservation],
+        *,
+        capture_capable: bool = False,
     ) -> _DeviceRecord:
         previous = self._records.get(stable_id)
         # TODOS los endpoints del mismo DAC físico (nunca break al primero).
@@ -396,6 +460,7 @@ class AudioDeviceRegistry:
             available=True,
             generation=generation,
             bindings=bindings,
+            capture_capable=capture_capable,
         )
 
     def _bindings_state(

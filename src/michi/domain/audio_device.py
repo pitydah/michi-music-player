@@ -77,3 +77,6 @@ class DeviceObservation:
 
     binding: AudioDeviceBinding | None
     descriptor_sha256: str | None = None
+    # Card-level capture capability is auxiliary classification evidence only.
+    # It NEVER admits a device to Audio Output; playback binding does.
+    capture_capable: bool = False

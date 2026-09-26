@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "kind": "R110 publication integrity correction",
+  "base_publication_head": "e0eb9fc3df4648bb3d6341341427f16b800be2f2",
+  "raw_physical_matrices_rewritten": false,
+  "corrections": {
+    "direct_positive_rows": {
+      "previous_claim": 9,
+      "correct_value": 8,
+      "derivation": "12 total = 1 Shared + 3 Strict refusals + 8 Direct successes"
+    },
+    "audibility": {
+      "expected_behavior_rows": 12,
+      "audible_playback_rows": 9,
+      "truthful_refusal_rows": 3
+    },
+    "environment_fingerprint": {
+      "historical_hash_is_device_bound": false,
+      "reason": "captured from default unbound environment context",
+      "corrective": "field harness now requires complete current_environment_context(device_id) before publishing qenv"
+    },
+    "R33": {
+      "physical_component": "unplug/reconnect/rediscovery PASS",
+      "resume_safety_component": "automated DAC-V35-080R1.1 no-autoresume + explicit-Play/fresh-generation gates"
+    }
+  }
+}

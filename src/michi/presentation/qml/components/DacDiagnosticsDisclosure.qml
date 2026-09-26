@@ -61,6 +61,40 @@ ColumnLayout {
         MichiDivider { Layout.fillWidth: true }
         MichiText {
             Layout.fillWidth: true
+            text: qsTr("Identity: %1 · %2")
+                .arg(root.device.manufacturer || qsTr("Unknown manufacturer"))
+                .arg(root.device.product || qsTr("Unknown model"))
+            role: "technical"
+            technical: true
+            wrapMode: Text.WordWrap
+        }
+        MichiText {
+            Layout.fillWidth: true
+            text: qsTr("Class: %1 · confidence %2")
+                .arg(root.device.deviceCategoryLabel || qsTr("Audio"))
+                .arg(root.device.classificationConfidence || "—")
+            role: "technical"
+            technical: true
+            wrapMode: Text.WordWrap
+        }
+        MichiText {
+            Layout.fillWidth: true
+            text: qsTr("Playback endpoints: %1 · capture capability: %2")
+                .arg(root.device.playbackEndpointCount || 0)
+                .arg(root.device.captureCapable ? qsTr("yes") : qsTr("no / not observed"))
+            role: "technical"
+            technical: true
+        }
+        MichiText {
+            Layout.fillWidth: true
+            text: qsTr("Qualified playback capabilities: %1")
+                .arg(root.device.qualifiedCapabilitySummary || qsTr("Not yet qualified"))
+            role: "technical"
+            technical: true
+            wrapMode: Text.WordWrap
+        }
+        MichiText {
+            Layout.fillWidth: true
             text: qsTr("Stable device ID: %1").arg(root.device.shortenedStableDeviceId || "—")
             role: "technical"
             technical: true

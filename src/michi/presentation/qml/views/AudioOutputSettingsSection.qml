@@ -10,6 +10,7 @@ import "../theme"
 Item {
     id: root
     property var devices: []
+    property var deviceGroups: []
     property var profiles: []
     property string selectedDeviceId: ""
     property string selectedProfileId: ""
@@ -48,6 +49,26 @@ Item {
             "description": qsTr("Exact source-native carrier only. Refuses when the DAC rejects it.")
         }
     ]
+
+    function effectiveGroups() {
+        if (root.deviceGroups && root.deviceGroups.length > 0)
+            return root.deviceGroups
+        return [{
+            "groupId": "legacy",
+            "label": "",
+            "description": "",
+            "collapsedByDefault": false,
+            "rows": root.devices
+        }]
+    }
+
+    function hasHardwareOutput() {
+        for (var i = 0; i < root.devices.length; ++i) {
+            if (!root.devices[i].isShared)
+                return true
+        }
+        return false
+    }
 
     function pathModeIndex() {
         for (var i = 0; i < pathModes.length; ++i) {
@@ -246,17 +267,46 @@ Item {
                 Layout.fillWidth: true
                 spacing: MichiSpacing.md
 
+                // Backward-compatible flat projection. Production binds
+                // deviceGroups; legacy harnesses/embedders may still bind
+                // only devices. Do not wrap the flat path in a group:
+                // preserving the original hierarchy also preserves pointer
+                // geometry and keyboard focus contracts.
                 Repeater {
                     objectName: "audioOutputDeviceRepeater"
-                    model: root.devices
+                    model: (!root.deviceGroups || root.deviceGroups.length === 0)
+                        ? root.devices : []
                     delegate: DacDeviceCard {
-                        id: deviceCard
+                        id: legacyDeviceCard
                         required property var modelData
                         Layout.fillWidth: true
-                        device: deviceCard.modelData
-                        signalPath: deviceCard.modelData.active ? root.signalPath : []
-                        reasonCodes: deviceCard.modelData.active
+                        device: legacyDeviceCard.modelData
+                        signalPath: legacyDeviceCard.modelData.active
+                            ? root.signalPath : []
+                        reasonCodes: legacyDeviceCard.modelData.active
                             ? root.signalTruthReasonCodes : []
+                        onSelectionRequested: stableDeviceId => {
+                            if (stableDeviceId === "")
+                                root.sharedSelectionRequested()
+                            else
+                                root.deviceSelectionRequested(stableDeviceId)
+                        }
+                    }
+                }
+
+                // Canonical production projection: semantically grouped
+                // system/external/local/display audio.
+                Repeater {
+                    objectName: "audioOutputDeviceGroupRepeater"
+                    model: (root.deviceGroups && root.deviceGroups.length > 0)
+                        ? root.deviceGroups : []
+                    delegate: AudioOutputDeviceGroup {
+                        id: outputGroup
+                        required property var modelData
+                        Layout.fillWidth: true
+                        group: outputGroup.modelData
+                        signalPath: root.signalPath
+                        reasonCodes: root.signalTruthReasonCodes
                         onSelectionRequested: stableDeviceId => {
                             if (stableDeviceId === "")
                                 root.sharedSelectionRequested()
@@ -268,16 +318,16 @@ Item {
             }
 
             ColumnLayout {
-                visible: root.devices.length === 1 && root.devices[0].isShared
+                visible: !root.hasHardwareOutput()
                 Layout.fillWidth: true
                 spacing: MichiSpacing.xs
                 MichiText {
-                    text: qsTr("No DAC detected")
+                    text: qsTr("No hardware audio outputs detected")
                     role: "primary"
                 }
                 MichiText {
                     Layout.fillWidth: true
-                    text: qsTr("Connect a USB DAC or use Shared system output.")
+                    text: qsTr("System Output remains available. Connect any playback-capable DAC, audio interface or sound device to add it here.")
                     role: "secondary"
                     wrapMode: Text.WordWrap
                 }

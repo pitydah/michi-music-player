@@ -677,9 +677,12 @@ def test_me_01_zero_playback_endpoints_refuses_direct(tmp_path: Path) -> None:
     graph, bindings = _direct_graph(tmp_path, playback_pcms=())
     try:
         graph.playback.load_and_play(tmp_path / "zero.flac")
-        assert graph.playback.state.error_message.startswith(
-            "Direct endpoint unavailable:"
-        )
+        # UNIVERSAL-DISCOVERY-R1: brand-new hardware with no proven playback
+        # endpoint is not admitted into AudioDeviceRegistry. A stale/preseeded
+        # Direct selection therefore fails closed as an unavailable device;
+        # Michi must never synthesize a PCM binding to preserve old semantics.
+        assert graph.playback.state.error_code == "DEVICE_UNAVAILABLE"
+        assert graph.playback.state.error_message.startswith("Device disconnected:")
         assert bindings.pipelines == []
     finally:
         _close_graph(graph)

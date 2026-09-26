@@ -74,6 +74,7 @@ Item {
                         tone: root.device.transportMode === "direct" ? "active" : "neutral"
                     }
                     MichiStatusChip {
+                        visible: root.device.active
                         text: root.device.signalTruthLabel || qsTr("Not verified")
                         tone: root.device.signalTruthLabel === "Output mismatch"
                             ? "error" : "neutral"

@@ -154,6 +154,7 @@ Item {
                 objectName: "audioOutputSettingsSection"
                 Layout.fillWidth: true
                 devices: audioOutput.devices
+                deviceGroups: audioOutput.deviceGroups
                 profiles: audioOutput.profiles
                 selectedProfileId: audioOutput.selectedProfileId
                 selectedDeviceId: audioOutput.selectedDeviceId

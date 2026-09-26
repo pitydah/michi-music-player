@@ -331,15 +331,24 @@ class DacQualificationService:
             if item.environment_fingerprint == fingerprint
         )
 
+    def current_environment_context(
+        self, stable_device_id: str
+    ) -> QualificationEnvironmentContext:
+        """Return the exact context used for environment-scoped qualification.
+
+        Evidence tooling must never call ``default_environment_fingerprint()``
+        without this device-bound context and then label the result physical.
+        """
+        if self._environment_context is not None:
+            return self._environment_context(stable_device_id)
+        return default_environment_context(stable_device_id)
+
     def current_environment_fingerprint(self, stable_device_id: str) -> str:
         if self._environment_fingerprint is not None:
             return self._environment_fingerprint()
-        context = (
-            self._environment_context(stable_device_id)
-            if self._environment_context is not None
-            else default_environment_context(stable_device_id)
+        return default_environment_fingerprint(
+            self.current_environment_context(stable_device_id)
         )
-        return default_environment_fingerprint(context)
 
     def qualify_and_cache(
         self,

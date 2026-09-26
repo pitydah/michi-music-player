@@ -39,6 +39,7 @@ _SHARED_FALLBACK_CODES = frozenset(
         "DEVICE_UNAVAILABLE",
         "DEVICE_LOST",
         "NO_ALSA_HW_BINDING",
+        "OUTPUT_DEVICE_NOT_PLAYBACK_CAPABLE",
         "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS",
         "ENGINE_UNSUPPORTED_FOR_DIRECT",
         "ENGINE_NOT_GSTREAMER",
@@ -124,6 +125,11 @@ def playback_action_failure(code: str | None) -> PlaybackActionFailure:
         title, detail = (
             "Direct endpoint unavailable",
             "No current hardware playback endpoint is available for this DAC.",
+        )
+    elif normalized == "OUTPUT_DEVICE_NOT_PLAYBACK_CAPABLE":
+        title, detail = (
+            "Not an audio output",
+            "This hardware does not expose a current playback endpoint.",
         )
     elif normalized.startswith("SOURCE_CHARACTERIZATION_"):
         title, detail = (

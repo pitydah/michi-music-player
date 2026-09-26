@@ -8,6 +8,11 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from michi.application.audio_device_semantics import (
+    category_label,
+    classify_audio_device,
+    current_playback_bindings,
+)
 from michi.application.audio_output_selection_coordinator import (
     AudioOutputSelectionCoordinator,
     AudioOutputSelectionError,
@@ -178,6 +183,87 @@ def _identity_presentations(snapshots: tuple) -> dict[str, tuple[str, str]]:
     return presentations
 
 
+def _capability_summary(evidence: tuple) -> tuple[str, list[int], list[str], list[int]]:
+    supported = [item for item in evidence if item.supported is True]
+    rates = sorted({item.tuple.rate_hz for item in supported})
+    formats = sorted({item.tuple.transport_format for item in supported})
+    channels = sorted({item.tuple.channels for item in supported})
+    if not supported:
+        return "Not yet qualified", rates, formats, channels
+    rate_label = ", ".join(_rate_label(rate) for rate in rates[:5])
+    if len(rates) > 5:
+        rate_label += f" +{len(rates) - 5}"
+    format_label = ", ".join(formats[:3])
+    if len(formats) > 3:
+        format_label += f" +{len(formats) - 3}"
+    channel_label = "/".join(str(value) for value in channels) + " ch"
+    return (
+        " · ".join(
+            value for value in (rate_label, format_label, channel_label) if value
+        ),
+        rates,
+        formats,
+        channels,
+    )
+
+
+def _device_groups(
+    shared_row: dict[str, Any], physical_rows: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    groups: list[dict[str, Any]] = [
+        {
+            "groupId": "system",
+            "label": "System Output",
+            "description": "Desktop-managed shared output",
+            "collapsedByDefault": False,
+            "rows": [shared_row],
+        }
+    ]
+    specs = (
+        (
+            "external",
+            "External Audio",
+            "DACs and USB audio interfaces",
+            False,
+            {"external_audio", "audio_interface"},
+        ),
+        (
+            "local",
+            "Built-in / Local Audio",
+            "Motherboard, PCI/PCIe and digital audio outputs",
+            False,
+            {"local_audio"},
+        ),
+        (
+            "display",
+            "Display Audio",
+            "HDMI / DisplayPort audio outputs",
+            True,
+            {"display_audio"},
+        ),
+        (
+            "other",
+            "Other Audio",
+            "Playback-capable hardware not otherwise classified",
+            False,
+            {"other_audio"},
+        ),
+    )
+    for group_id, label, description, collapsed, categories in specs:
+        rows = [row for row in physical_rows if row.get("deviceCategory") in categories]
+        if rows:
+            groups.append(
+                {
+                    "groupId": group_id,
+                    "label": label,
+                    "description": description,
+                    "collapsedByDefault": collapsed,
+                    "rows": rows,
+                }
+            )
+    return groups
+
+
 def _rate_label(rate_hz: int) -> str:
     if rate_hz <= 0:
         return "—"
@@ -306,9 +392,10 @@ class AudioOutputBridge(QObject):
         selected_profile_id = (
             selection.selected_profile_id if selection is not None else None
         )
-        profiles = self._profiles_snapshot()
+        all_profiles = self._profiles_snapshot()
         selected_profile = next(
-            (item for item in profiles if item.profile_id == selected_profile_id), None
+            (item for item in all_profiles if item.profile_id == selected_profile_id),
+            None,
         )
         session_state = (
             self._output_session.selection_state()
@@ -355,6 +442,15 @@ class AudioOutputBridge(QObject):
             snapshot.identity.stable_device_id: snapshot for snapshot in snapshots
         }
         identity_presentations = _identity_presentations(snapshots)
+        retained_ids = set(snapshots_by_id)
+        # Do not delete persisted profiles here, but never project stale profiles
+        # for identities the AUDIO registry no longer recognises (e.g. legacy
+        # non-audio USB rows created before the admission firewall).
+        profiles = tuple(
+            item
+            for item in all_profiles
+            if item.stable_device_id is None or item.stable_device_id in retained_ids
+        )
         profile_rows = [
             self._profile_row(
                 item,
@@ -410,6 +506,7 @@ class AudioOutputBridge(QObject):
             truth_label=truth_label if shared_active else "Not verified",
         )
         device_rows = [shared_row, *physical_rows]
+        device_groups = _device_groups(shared_row, physical_rows)
         selected_name = next(
             (row["displayName"] for row in device_rows if row["selected"]),
             "System Output" if selected_device_id is None else "Audio Output",
@@ -432,6 +529,7 @@ class AudioOutputBridge(QObject):
 
         self._projection = {
             "devices": device_rows,
+            "deviceGroups": device_groups,
             "profiles": profile_rows,
             "selectedDeviceId": selected_device_id or "",
             "activeDeviceId": active_device_id or "",
@@ -586,16 +684,9 @@ class AudioOutputBridge(QObject):
             device_profiles[0] if device_profiles else None,
         )
         direct = bool(profile is not None and is_direct_path(profile.path))
-        alsa = next(
-            (
-                binding
-                for binding in snapshot.bindings
-                if snapshot.available
-                and binding.currently_available
-                and binding.kind.value == "alsa_pcm"
-            ),
-            None,
-        )
+        playback_bindings = current_playback_bindings(snapshot)
+        alsa = playback_bindings[0] if playback_bindings else None
+        classification = classify_audio_device(snapshot)
         if selected and reconnecting:
             status = "Selected · reconnecting"
         elif selected and not snapshot.available:
@@ -639,6 +730,9 @@ class AudioOutputBridge(QObject):
                 )
             except Exception:  # Diagnostics must never break the normal card.
                 environment = ""
+        capability_summary, qualified_rates, qualified_formats, qualified_channels = (
+            _capability_summary(evidence)
+        )
         active_truth = truth if active else None
         source_rate = (
             active_truth.decoded_runtime.pcm.rate_hz
@@ -661,6 +755,12 @@ class AudioOutputBridge(QObject):
             "displayName": "".join(identity_presentation),
             "manufacturer": identity.manufacturer or "",
             "product": identity.product or "",
+            "deviceCategory": classification.category.value,
+            "deviceCategoryLabel": category_label(classification.category),
+            "classificationConfidence": classification.confidence.value,
+            "classificationReason": classification.reason,
+            "playbackEndpointCount": len(playback_bindings),
+            "captureCapable": snapshot.capture_capable,
             "available": snapshot.available,
             "selected": selected,
             "active": active,
@@ -683,6 +783,10 @@ class AudioOutputBridge(QObject):
             "sourceRateLabel": _rate_label(source_rate),
             "deviceRateLabel": _rate_label(device_rate),
             "capabilityEvidenceLabel": evidence_label,
+            "qualifiedCapabilitySummary": capability_summary,
+            "qualifiedRates": qualified_rates,
+            "qualifiedFormats": qualified_formats,
+            "qualifiedChannels": qualified_channels,
             "directCompatibilityLabel": _direct_compatibility_label(
                 last_failure_code, evidence, path_mode=path_mode
             ),
@@ -696,7 +800,7 @@ class AudioOutputBridge(QObject):
                 and self._output_session.last_cleanup_diagnostic is not None
                 else ""
             ),
-            "canSelect": snapshot.available,
+            "canSelect": bool(snapshot.available and playback_bindings),
             "isShared": False,
         }
 
@@ -716,6 +820,12 @@ class AudioOutputBridge(QObject):
             "displayName": "System Output",
             "manufacturer": "",
             "product": "",
+            "deviceCategory": "system",
+            "deviceCategoryLabel": "System Output",
+            "classificationConfidence": "high",
+            "classificationReason": "desktop-managed shared output",
+            "playbackEndpointCount": 0,
+            "captureCapable": False,
             "available": True,
             "selected": selected,
             "active": active,
@@ -738,6 +848,10 @@ class AudioOutputBridge(QObject):
             "sourceRateLabel": "—",
             "deviceRateLabel": "—",
             "capabilityEvidenceLabel": "Not applicable",
+            "qualifiedCapabilitySummary": "System managed",
+            "qualifiedRates": [],
+            "qualifiedFormats": [],
+            "qualifiedChannels": [],
             "directCompatibilityLabel": "Not applicable",
             "environmentFingerprint": "",
             "runtimeSinkSummary": "",
@@ -938,6 +1052,9 @@ class AudioOutputBridge(QObject):
 
     devices = Property(
         list, lambda self: self._get("devices", []), notify=state_changed
+    )
+    deviceGroups = Property(
+        list, lambda self: self._get("deviceGroups", []), notify=state_changed
     )
     profiles = Property(
         list, lambda self: self._get("profiles", []), notify=state_changed
