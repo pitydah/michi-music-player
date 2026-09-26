@@ -16,6 +16,9 @@ Popup {
     property string failureTitle: ""
     property var focusReturnTarget: null
     property bool displayAudioExpanded: false
+    property real maximumRowsHeight: Math.max(
+        160, Math.min(420, (Overlay.overlay ? Overlay.overlay.height : 560) - 160)
+    )
 
     signal deviceSelectionRequested(string stableDeviceId)
     signal sharedSelectionRequested()
@@ -126,8 +129,19 @@ Popup {
             Layout.fillWidth: true
         }
 
-        Repeater {
-            id: outputRows
+        ScrollView {
+            id: outputRowsScroll
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.min(outputRowsColumn.implicitHeight, root.maximumRowsHeight)
+            Layout.maximumHeight: root.maximumRowsHeight
+            clip: true
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+            ColumnLayout {
+                id: outputRowsColumn
+                width: outputRowsScroll.availableWidth
+                Repeater {
+                    id: outputRows
             objectName: "audioOutputPopupRepeater"
             model: root.visibleRows()
             delegate: Button {
@@ -205,6 +219,8 @@ Popup {
                     border.width: row.visualFocus || row.modelData.selected ? 1 : 0
                     border.color: row.visualFocus ? MichiSemanticColors.focusRing : MichiSemanticColors.borderStrong
                 }
+            }
+        }
             }
         }
 

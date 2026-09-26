@@ -1,0 +1,72 @@
+{
+  "captured_at": "2026-09-26T19:50:18-0300",
+  "claim_firewall": {
+    "DAC-V35-120": "OUT_OF_SCOPE",
+    "DAC-V35-130": "POST_STABLE",
+    "DAC-V35-140": "SEPARATE_PROMOTION",
+    "M11.5": "OUT_OF_SCOPE",
+    "bit_perfect": false,
+    "exclusive": false
+  },
+  "device": {
+    "bcd_device": "a0a6",
+    "descriptor_hash": "",
+    "display_name": "KINMAX HA01",
+    "label": "KINMAX HA01",
+    "locator": "hw:CARD=HA01,DEV=0",
+    "manufacturer": "KINMAX",
+    "product": "HA01",
+    "product_id": "f882",
+    "stable_device_id": "usb:2fc6:f882:HA01",
+    "vendor_id": "2fc6"
+  },
+  "environment_context": {
+    "alsa_library_version": "1.2.16.1",
+    "binding_topology_fingerprint": "topology:v1:sha256:d6cb409e6a2ca60f07fed28cbef06ed92c177603426092615958878cb6c18822",
+    "gstreamer_version": "GStreamer 1.28.7",
+    "kernel_release": "7.2.6-1-cachyos",
+    "qualification_profile_version": "dac-v35-exact-open-v1",
+    "snd_usb_audio_identity": "snd-usb-audio",
+    "stable_device_id": "usb:2fc6:f882:HA01",
+    "usb_bcd_device": "a0a6",
+    "usb_descriptor_sha256": "720f0aab5a83ad3a4f0f5cf4fff37c0b878872b0073691f187ec3b9ecc512e36",
+    "usb_product_id": "f882",
+    "usb_vendor_id": "2fc6"
+  },
+  "environment_fingerprint": "qenv:v2:sha256:e64a9c924837f2b6dbb1e7671e030d9f2aac4516820a545bfd2f12eaafc258c9",
+  "events": [],
+  "execution_git_head": "82d920ef04412aa3be0acc8710d6aefdf9c5354d",
+  "experiments": {
+    "R24": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R25": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R32": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R35": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R36": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    }
+  },
+  "schema_version": 1
+}

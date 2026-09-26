@@ -1,0 +1,72 @@
+{
+  "captured_at": "2026-09-26T19:50:19-0300",
+  "claim_firewall": {
+    "DAC-V35-120": "OUT_OF_SCOPE",
+    "DAC-V35-130": "POST_STABLE",
+    "DAC-V35-140": "SEPARATE_PROMOTION",
+    "M11.5": "OUT_OF_SCOPE",
+    "bit_perfect": false,
+    "exclusive": false
+  },
+  "device": {
+    "bcd_device": "0206",
+    "descriptor_hash": "",
+    "display_name": "SMSL USB AUDIO",
+    "label": "SMSL USB AUDIO",
+    "locator": "hw:CARD=AUDIO,DEV=0",
+    "manufacturer": "SMSL",
+    "product": "SMSL USB AUDIO",
+    "product_id": "85dd",
+    "stable_device_id": "usb:152a:85dd:3-3.3.2",
+    "vendor_id": "152a"
+  },
+  "environment_context": {
+    "alsa_library_version": "1.2.16.1",
+    "binding_topology_fingerprint": "topology:v1:sha256:d6cb409e6a2ca60f07fed28cbef06ed92c177603426092615958878cb6c18822",
+    "gstreamer_version": "GStreamer 1.28.7",
+    "kernel_release": "7.2.6-1-cachyos",
+    "qualification_profile_version": "dac-v35-exact-open-v1",
+    "snd_usb_audio_identity": "snd-usb-audio",
+    "stable_device_id": "usb:152a:85dd:3-3.3.2",
+    "usb_bcd_device": "0206",
+    "usb_descriptor_sha256": "935e6173281969f3cb35931f4bfbcf6f28b21d22300fd47f334a15bf70975a4a",
+    "usb_product_id": "85dd",
+    "usb_vendor_id": "152a"
+  },
+  "environment_fingerprint": "qenv:v2:sha256:429dae18495a075ec51c6658bc0d8918347e7ea2510c2697693918a991773658",
+  "events": [],
+  "execution_git_head": "82d920ef04412aa3be0acc8710d6aefdf9c5354d",
+  "experiments": {
+    "R24": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R25": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R32": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R35": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R36": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    }
+  },
+  "schema_version": 1
+}

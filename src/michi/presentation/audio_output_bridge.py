@@ -183,28 +183,31 @@ def _identity_presentations(snapshots: tuple) -> dict[str, tuple[str, str]]:
     return presentations
 
 
-def _capability_summary(evidence: tuple) -> tuple[str, list[int], list[str], list[int]]:
-    supported = [item for item in evidence if item.supported is True]
-    rates = sorted({item.tuple.rate_hz for item in supported})
-    formats = sorted({item.tuple.transport_format for item in supported})
-    channels = sorted({item.tuple.channels for item in supported})
-    if not supported:
-        return "Not yet qualified", rates, formats, channels
-    rate_label = ", ".join(_rate_label(rate) for rate in rates[:5])
-    if len(rates) > 5:
-        rate_label += f" +{len(rates) - 5}"
-    format_label = ", ".join(formats[:3])
-    if len(formats) > 3:
-        format_label += f" +{len(formats) - 3}"
-    channel_label = "/".join(str(value) for value in channels) + " ch"
-    return (
-        " · ".join(
-            value for value in (rate_label, format_label, channel_label) if value
+def _capability_summary(evidence: tuple) -> tuple[str, list[dict[str, object]]]:
+    """Project qualification without inventing a Cartesian capability matrix."""
+    supported = sorted(
+        (item.tuple for item in evidence if item.supported is True),
+        key=lambda pcm: (
+            pcm.rate_hz,
+            pcm.transport_format,
+            pcm.channels,
+            pcm.significant_bits or 0,
         ),
-        rates,
-        formats,
-        channels,
     )
+    tuples = [
+        {
+            "rateHz": pcm.rate_hz,
+            "rateLabel": _rate_label(pcm.rate_hz),
+            "format": pcm.transport_format,
+            "channels": pcm.channels,
+            "significantBits": pcm.significant_bits or 0,
+        }
+        for pcm in supported
+    ]
+    if not tuples:
+        return "Not yet qualified", tuples
+    label = "qualified tuple" if len(tuples) == 1 else "qualified tuples"
+    return f"{len(tuples)} {label}", tuples
 
 
 def _device_groups(
@@ -684,6 +687,14 @@ class AudioOutputBridge(QObject):
             device_profiles[0] if device_profiles else None,
         )
         direct = bool(profile is not None and is_direct_path(profile.path))
+        profile_path_mode = _path_mode_of(profile)
+        profile_path_label = (
+            "Compatible Direct"
+            if profile_path_mode == "compatible"
+            else "Direct"
+            if profile_path_mode == "strict"
+            else "Shared"
+        )
         playback_bindings = current_playback_bindings(snapshot)
         alsa = playback_bindings[0] if playback_bindings else None
         classification = classify_audio_device(snapshot)
@@ -695,6 +706,8 @@ class AudioOutputBridge(QObject):
             status = "Selected · Active"
         elif active:
             status = "In use"
+        elif selected and path_mode == "shared":
+            status = "Preferred device · inactive"
         elif selected:
             status = "Selected · inactive"
         elif snapshot.available:
@@ -730,9 +743,7 @@ class AudioOutputBridge(QObject):
                 )
             except Exception:  # Diagnostics must never break the normal card.
                 environment = ""
-        capability_summary, qualified_rates, qualified_formats, qualified_channels = (
-            _capability_summary(evidence)
-        )
+        capability_summary, qualified_tuples = _capability_summary(evidence)
         active_truth = truth if active else None
         source_rate = (
             active_truth.decoded_runtime.pcm.rate_hz
@@ -775,18 +786,16 @@ class AudioOutputBridge(QObject):
             "generation": snapshot.generation,
             "bindingAvailable": alsa is not None,
             "profileId": profile.profile_id if profile is not None else "",
-            "profileName": "Direct" if direct else ("Shared" if profile else ""),
+            "profileName": profile_path_label if profile is not None else "",
             "transportMode": "direct" if direct else "shared",
-            "transportLabel": "Direct" if direct else "Shared",
+            "transportLabel": profile_path_label if profile is not None else "Shared",
             "volumeLabel": self._volume_policy.volume_label if active else "",
             "signalTruthLabel": truth_label if active else "Not verified",
             "sourceRateLabel": _rate_label(source_rate),
             "deviceRateLabel": _rate_label(device_rate),
             "capabilityEvidenceLabel": evidence_label,
             "qualifiedCapabilitySummary": capability_summary,
-            "qualifiedRates": qualified_rates,
-            "qualifiedFormats": qualified_formats,
-            "qualifiedChannels": qualified_channels,
+            "qualifiedTuples": qualified_tuples,
             "directCompatibilityLabel": _direct_compatibility_label(
                 last_failure_code, evidence, path_mode=path_mode
             ),

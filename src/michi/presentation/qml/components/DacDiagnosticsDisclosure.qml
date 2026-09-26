@@ -93,6 +93,21 @@ ColumnLayout {
             technical: true
             wrapMode: Text.WordWrap
         }
+        Repeater {
+            model: root.device.qualifiedTuples || []
+            delegate: MichiText {
+                required property var modelData
+                Layout.fillWidth: true
+                text: qsTr("• %1 · %2 · %3 ch · %4 significant bits")
+                    .arg(modelData.rateLabel || "—")
+                    .arg(modelData.format || "—")
+                    .arg(modelData.channels || 0)
+                    .arg(modelData.significantBits || "—")
+                role: "technical"
+                technical: true
+                wrapMode: Text.WordWrap
+            }
+        }
         MichiText {
             Layout.fillWidth: true
             text: qsTr("Stable device ID: %1").arg(root.device.shortenedStableDeviceId || "—")

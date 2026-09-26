@@ -26,6 +26,25 @@ publishing an environment-scoped fingerprint:
 bit-perfect is **not** claimed, `M11.5` is not started and `DAC-V35-120` remains
 DO NOT START.
 
+### Final PCM implementation-closure seal
+
+Baseline `82d920ef04412aa3be0acc8710d6aefdf9c5354d` includes the UI90R1.2
+popup-anchor corrective and exact-SHA remote software GO. The final M11.4 PCM
+implementation adds `michi.application.dac_pcm_closure` plus
+`scripts/dac_m11_4_pcm_lab.py`. The field tool has no vendor/model defaults:
+each physical target must come from current Linux discovery, so the historical
+SMSL and any second DAC (including a newly connected device) are collected under
+the same contract.
+
+The required physical PCM closure experiments are R24 clock authority, R25
+rate-transition/first-sample integrity, R32 8 h verified soak, R35 tail/drain
+integrity, and R36 real XRUN fault injection. A nominal PASS without structured
+facts and evidence references is rejected. One complete device yields only
+`PASS_BOUNDED`; `PASS_MULTI_HARDWARE` requires two complete, materially distinct
+device manifests. Topology/path differences alone never prove hardware
+diversity. This seal does not start M11.5 or DAC-V35-120/130/140 and never
+promotes a bit-perfect or exclusive claim.
+
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
 (work packages `DAC-V35-*`, §0E manifest, §0F baseline seal, §0K DoD).
