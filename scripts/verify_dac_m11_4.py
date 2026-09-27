@@ -616,6 +616,7 @@ def _pcm_closure_state(root: Path | None = None) -> dict:
     reports what the archived, fail-closed device manifests actually prove.
     """
     from michi.application.dac_pcm_closure import (
+        FINALIZATION_OBLIGATIONS,
         IMPLEMENTATION_OBLIGATIONS,
         TOOLING_OBLIGATIONS,
         PcmClosureEvidenceError,
@@ -643,8 +644,24 @@ def _pcm_closure_state(root: Path | None = None) -> dict:
         "implementation_verdict": closure_verdict(IMPLEMENTATION_OBLIGATIONS),
         "implementation_obligations": obligation_report(IMPLEMENTATION_OBLIGATIONS),
         "tooling_obligations": obligation_report(TOOLING_OBLIGATIONS),
+        "finalization_verdict": closure_verdict(FINALIZATION_OBLIGATIONS),
+        "m11_4_technical_closure": (
+            "COMPLETE"
+            if all(
+                closure_verdict(obligations) == "COMPLETE"
+                for obligations in (
+                    IMPLEMENTATION_OBLIGATIONS,
+                    TOOLING_OBLIGATIONS,
+                    FINALIZATION_OBLIGATIONS,
+                )
+            )
+            else "INCOMPLETE"
+        ),
+        "finalization_obligations": obligation_report(FINALIZATION_OBLIGATIONS),
         "closure_gaps": list(
-            closure_gaps(IMPLEMENTATION_OBLIGATIONS) + closure_gaps(TOOLING_OBLIGATIONS)
+            closure_gaps(IMPLEMENTATION_OBLIGATIONS)
+            + closure_gaps(TOOLING_OBLIGATIONS)
+            + closure_gaps(FINALIZATION_OBLIGATIONS)
         ),
         "manifests": [str(path.relative_to(base)) for path in manifests],
         "devices": [
@@ -778,6 +795,8 @@ def _write_reports(commit: str, results: list[GateResult]) -> None:
         "commit": commit,
         "spec_revision": SPEC_REVISION,
         "implementation_verdict": implementation,
+        "finalization_verdict": pcm_closure["finalization_verdict"],
+        "m11_4_technical_closure": pcm_closure["m11_4_technical_closure"],
         "automated_verdict": verdict,
         "physical_tooling_verdict": pcm_closure["physical_tooling_verdict"],
         "physical_verdict": pcm_closure["physical_verdict"],
