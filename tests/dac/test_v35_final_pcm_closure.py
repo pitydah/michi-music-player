@@ -79,6 +79,14 @@ def _manifest(
                             "stale_generation_observed": False,
                             "hidden_conversion_observed": False,
                             "xrun_count": 0,
+                            "receipts": [
+                                {
+                                    "error": None,
+                                    "xrun_count": 0,
+                                    "actual_hold_ms": delay + 1 if delay else 0,
+                                }
+                                for _ in range(7)
+                            ],
                         }
                         for delay in (0, 100, 250, 500, 1000)
                     ],
@@ -104,10 +112,45 @@ def _manifest(
                     "xrun_count": 0,
                     "runtime_error_count": 0,
                     "transition_failures": 0,
+                    "transition_receipts": [
+                        {
+                            "failed": False,
+                            "decoded_rate_hz": 44100,
+                            "requested_rate_hz": 44100,
+                            "negotiated_rate_hz": 44100,
+                            "identity": {
+                                "plan_id": "plan-a",
+                                "execution_generation": 1,
+                                "port_generation": 1,
+                            },
+                        }
+                    ],
+                    "rss_baseline_kb": 100000,
+                    "rss_peak_kb": 104096,
+                    "rss_final_kb": 104096,
                     "memory_growth_kb": 4096,
-                    "pump_health": {"pump_alive": True, "cycles_completed": 120},
-                    "resource_growth": {"unbounded": False, "owned_pipelines": 1},
-                    "usb_errors_observed": {"device_id": "usb:1111:0001:path-a"},
+                    "pump_health": {
+                        "pump_alive": True,
+                        "alive_at_every_checkpoint": True,
+                        "cycles_completed": 120,
+                    },
+                    "resource_growth": {
+                        "observed": True,
+                        "unbounded": False,
+                        "owned_pipelines_peak": 1,
+                    },
+                    "usb_errors_observed": {
+                        "device_id": stable_device_id,
+                        "sysfs_path": (
+                            "/sys/bus/usb/devices/"
+                            + stable_device_id.rsplit(":", 1)[-1]
+                        ),
+                        "available": True,
+                        "baseline": {"error_count": 0},
+                        "final": {"error_count": 0},
+                        "delta": {"error_count": 0},
+                        "error_delta": 0,
+                    },
                     "rss_checkpoints": [{"cycle": 20, "rss_kb": 100000}],
                 },
             },
@@ -122,7 +165,10 @@ def _manifest(
                             "evidence_kind": "operator",
                             "evidence_reference": "operator:tail-session",
                             "method": "operator-listening-tail-check",
+                            "fixture_sha256": "d" * 64,
                             "falsifier_observed": False,
+                            "playback_error": None,
+                            "terminal_status": 1,
                         }
                         for name in (
                             "nonzero_final_samples",
@@ -147,6 +193,9 @@ def _manifest(
                     "false_verified_after_incident": False,
                     "generation_fresh": True,
                     "recovery_loop_count": 0,
+                    "signal_truth_after": {
+                        "verdict": {"state": "direct_container_adapted"}
+                    },
                 },
             },
         },
@@ -349,15 +398,9 @@ def test_fc_14_verifier_verdicts_come_from_obligations_not_green_gates() -> None
     # Implementation closure is complete: the resync hold, the EOS replay and
     # the recovery/handover contracts are implemented and gated.
     assert closure_verdict(IMPLEMENTATION_OBLIGATIONS) == "COMPLETE"
-    # The experimental tooling program and one finalization item remain open.
-    assert closure_verdict(TOOLING_OBLIGATIONS) == "INCOMPLETE"
-    assert closure_verdict(FINALIZATION_OBLIGATIONS) == "INCOMPLETE"
-    assert any("R25" in gap for gap in gaps)
-    assert any("R32:" in gap for gap in gaps)
-    assert any("R35:" in gap for gap in gaps)
-    assert any("R36:" in gap for gap in gaps)
-    assert any("lab_tests" in gap for gap in gaps)
-    # Closed obligations must not reappear as gaps.
+    assert closure_verdict(TOOLING_OBLIGATIONS) == "COMPLETE"
+    assert closure_verdict(FINALIZATION_OBLIGATIONS) == "COMPLETE"
+    assert gaps == ()
     assert not any("resync_timing_safety" in gap for gap in gaps)
     assert not any("resync_eos_replay" in gap for gap in gaps)
     assert not any("lab_semantic_checks" in gap for gap in gaps)
@@ -432,9 +475,35 @@ def test_final_pcm_14_r32_requires_memory_pump_and_device_bound_usb() -> None:
     unattached_usb["experiments"]["R32"]["facts"]["usb_errors_observed"] = {}
     assert "not bound to the tested device" in _reject(unattached_usb)
 
+    wrong_device = _manifest()
+    wrong_device["experiments"]["R32"]["facts"]["usb_errors_observed"]["device_id"] = (
+        "usb:ffff:ffff:other"
+    )
+    assert "different tested device" in _reject(wrong_device)
+
     transitions = _manifest()
     transitions["experiments"]["R32"]["facts"]["transition_failures"] = 2
     assert "transition failures" in _reject(transitions)
+
+    stale_receipt = _manifest()
+    stale_receipt["experiments"]["R32"]["facts"]["transition_receipts"][0]["failed"] = (
+        True
+    )
+    assert "transition receipts" in _reject(stale_receipt)
+
+    no_sysfs = _manifest()
+    no_sysfs["experiments"]["R32"]["facts"]["usb_errors_observed"]["sysfs_path"] = None
+    assert "sysfs" in _reject(no_sysfs)
+
+    usb_delta = _manifest()
+    usb_delta["experiments"]["R32"]["facts"]["usb_errors_observed"]["error_delta"] = 1
+    assert "USB errors" in _reject(usb_delta)
+
+    dead_checkpoint = _manifest()
+    dead_checkpoint["experiments"]["R32"]["facts"]["pump_health"][
+        "alive_at_every_checkpoint"
+    ] = False
+    assert "every checkpoint" in _reject(dead_checkpoint)
 
 
 def test_final_pcm_15_r36_requires_measured_recovery_facts() -> None:
@@ -498,3 +567,71 @@ def test_final_pcm_16_r35_capture_artifact_must_exist_and_match_hash(tmp_path) -
             }
         )
     assert "hash mismatch" in _reject(mismatch)
+
+
+def test_final_pcm_17_r35_fixture_hash_and_method_are_mandatory() -> None:
+    no_fixture_hash = _manifest()
+    no_fixture_hash["experiments"]["R35"]["facts"]["fixtures"]["end_impulse"].pop(
+        "fixture_sha256"
+    )
+    assert "fixture sha256" in _reject(no_fixture_hash)
+
+    no_method = _manifest()
+    no_method["experiments"]["R35"]["facts"]["fixtures"]["end_impulse"]["method"] = ""
+    assert "measurement method" in _reject(no_method)
+
+    playback_error = _manifest()
+    playback_error["experiments"]["R35"]["facts"]["fixtures"]["end_impulse"][
+        "playback_error"
+    ] = "backend failed"
+    assert "playback error" in _reject(playback_error)
+
+
+def test_final_pcm_18_r36_cases_have_case_specific_recovery_proof() -> None:
+    device_failure = _manifest()
+    device_failure["experiments"]["R36"]["facts"].update(
+        {
+            "case": "device_failure",
+            "mechanism_available": True,
+            "operator_reference": "operator:device-failure",
+            "action_completed": True,
+            "same_identity_after": False,
+        }
+    )
+    assert "same stable identity" in _reject(device_failure)
+
+    suspend = _manifest()
+    suspend["experiments"]["R36"]["facts"].update(
+        {
+            "case": "suspend_resume",
+            "mechanism_available": True,
+            "operator_reference": "operator:suspend",
+            "action_completed": True,
+            "signal_truth_after": None,
+        }
+    )
+    assert "post-recovery Signal Truth" in _reject(suspend)
+
+    no_suspend_witness = _manifest()
+    no_suspend_witness["experiments"]["R36"]["facts"].update(
+        {
+            "case": "suspend_resume",
+            "mechanism_available": True,
+            "operator_reference": "operator:suspend",
+            "action_completed": True,
+        }
+    )
+    assert "kernel suspend-success witness" in _reject(no_suspend_witness)
+
+    recovered_device = _manifest()
+    recovered_device["experiments"]["R36"]["facts"].update(
+        {
+            "case": "device_failure",
+            "mechanism_available": True,
+            "operator_reference": "operator:device-failure",
+            "action_completed": True,
+            "same_identity_after": True,
+            "physical_reenumeration_observed": True,
+        }
+    )
+    assert evaluate_device_manifest(recovered_device).verdict == "PASS"

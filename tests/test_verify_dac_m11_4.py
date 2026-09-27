@@ -50,6 +50,8 @@ def test_verdict_report_has_canonical_shape(tmp_path, monkeypatch) -> None:
     }
     assert report["implementation_verdict"] in {"COMPLETE", "INCOMPLETE"}
     assert report["physical_tooling_verdict"] in {"COMPLETE", "INCOMPLETE"}
+    assert report["finalization_verdict"] == "COMPLETE"
+    assert report["m11_4_technical_closure"] == "COMPLETE"
     assert report["multi_hardware_verdict"] in {"PASS_MULTI_HARDWARE", "NOT_PROVEN"}
     if report["physical_verdict"] == "PASS_MULTI_HARDWARE":
         assert report["multi_hardware_verdict"] == "PASS_MULTI_HARDWARE"
@@ -135,6 +137,7 @@ def test_all_required_modules_are_detected_without_parsing_test_names() -> None:
         "tests/dac/test_v35_100r11_source_characterization.py"
         in verifier.REQUIRED_COLLECTED_MODULES
     )
+    assert "tests/dac/test_v35_pcm_lab.py" in verifier.REQUIRED_COLLECTED_MODULES
     output = "\n".join(
         f"{path}::test_any" for path in verifier.REQUIRED_COLLECTED_MODULES
     )

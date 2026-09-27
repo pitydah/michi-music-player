@@ -17,12 +17,17 @@ import argparse
 import contextlib
 import copy
 import json
+import re
 import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from michi.application.dac_pcm_closure import (
+    R25_HOLD_TOLERANCE_MS,
+    R25_SWEEP_DELAYS,
+    R32_MAX_MEMORY_GROWTH_KB,
+    R35_REQUIRED_FIXTURES,
     PcmClosureEvidenceError,
     evaluate_device_manifest,
     load_manifest,
@@ -214,6 +219,7 @@ def _record(
         )
     candidate = copy.deepcopy(payload)
     captured_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    collected_head = _git_head()
     candidate["experiments"][experiment].update(
         {
             "status": status,
@@ -230,20 +236,27 @@ def _record(
             "evidence": list(evidence),
             "facts": dict(facts),
             "captured_at": captured_at,
-            "collected_head": _git_head(),
+            "collected_head": collected_head,
         }
     )
+    if candidate.get("manifest_schema") == 2:
+        candidate["evidence_execution_head"] = collected_head
     try:
         verdict = evaluate_device_manifest(candidate)
     except PcmClosureEvidenceError as exc:
         raise SystemExit(
             f"refusing invalid observation; stored manifest unchanged: {exc}"
         ) from exc
+    contradictions = [
+        reason for reason in verdict.reasons if reason.startswith(f"{experiment}:")
+    ]
+    if status == "PASS" and contradictions:
+        raise SystemExit(
+            "refusing contradicted PASS; stored manifest unchanged: "
+            + "; ".join(contradictions)
+        )
     _write_json(path, candidate)
     print(f"{experiment}: {status}; device verdict={verdict.verdict}")
-
-
-R25_HOLD_TOLERANCE_MS = 5
 
 
 def _file_sha256(path: Path) -> str:
@@ -270,14 +283,48 @@ def _process_rss_kb() -> int | None:
     return None
 
 
-def _pump_alive(container) -> bool | None:
-    """Best-effort health of the owned GStreamer pump (R32 pump evidence)."""
+def _runtime_resource_snapshot(container) -> dict[str, Any]:
+    """Observe R32 ownership from the provider's one current port."""
+
+    empty = {
+        "port_exists": False,
+        "pump_alive": False,
+        "owned_pipelines": 0,
+        "current_path": None,
+        "pending_path": None,
+        "direct_plan_id": None,
+        "direct_execution_generation": None,
+        "port_generation": None,
+        "residual_bus_watches": 0,
+        "residual_timer_sources": 0,
+    }
     try:
         port = container.gstreamer_engine_provider.current_port
-        pump = getattr(port, "_pump", None)
-        return bool(pump is not None and pump.is_alive())
     except Exception:  # noqa: BLE001 - observational boundary
-        return None
+        return empty
+    if port is None:
+        return empty
+    pump = getattr(port, "_pump", None)
+    handle = getattr(port, "_active_direct_handle", None)
+    pipeline = getattr(port, "_pipeline", None)
+    return {
+        "port_exists": True,
+        "pump_alive": bool(pump is not None and pump.is_alive()),
+        "owned_pipelines": 1 if pipeline is not None else 0,
+        "current_path": str(getattr(port, "_current_path", None) or "") or None,
+        "pending_path": str(getattr(port, "_pending_path", None) or "") or None,
+        "direct_plan_id": getattr(handle, "plan_id", None),
+        "direct_execution_generation": getattr(handle, "generation", None),
+        "port_generation": getattr(port, "_generation", None),
+        "residual_bus_watches": len(getattr(port, "_residual_bus_watches", ()) or ()),
+        "residual_timer_sources": len(
+            getattr(port, "_residual_timer_sources", ()) or ()
+        ),
+    }
+
+
+def _pump_alive(container) -> bool:
+    return bool(_runtime_resource_snapshot(container)["pump_alive"])
 
 
 def _checkpoint_path(args, cycle: int) -> Path:
@@ -286,22 +333,114 @@ def _checkpoint_path(args, cycle: int) -> Path:
     return base / f"soak-cycle-{cycle:06d}.json"
 
 
-def _usb_error_evidence() -> dict[str, Any]:
-    """Kernel-side USB counters visible without privileges, when exposed."""
-    evidence: dict[str, Any] = {"source": None, "counters": {}}
+def _resolve_usb_sysfs_node(
+    stable_device_id: str,
+    *,
+    sysfs_root: Path = Path("/sys"),
+    explicit_path: Path | None = None,
+) -> Path | None:
+    """Resolve one USB node and verify it against the tested stable identity."""
+
+    parts = stable_device_id.split(":", 3)
+    if len(parts) != 4 or parts[0] != "usb":
+        return None
+    vendor, product, identity = (part.casefold() for part in parts[1:])
+    if not re.fullmatch(r"[0-9a-z][0-9a-z.\-]*", identity):
+        return None
+    devices = (sysfs_root / "bus" / "usb" / "devices").resolve()
+    candidates: list[Path]
+    if explicit_path is not None:
+        try:
+            explicit = explicit_path.resolve(strict=True)
+            explicit.relative_to(devices)
+        except (OSError, ValueError):
+            return None
+        candidates = [explicit]
+    else:
+        direct = devices / identity
+        candidates = [direct] if direct.is_dir() else sorted(devices.glob("*"))
+    for node in candidates:
+        try:
+            observed_vendor = (node / "idVendor").read_text(encoding="utf-8").strip()
+            observed_product = (node / "idProduct").read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if (
+            observed_vendor.casefold() != vendor
+            or observed_product.casefold() != product
+        ):
+            continue
+        if node.name == identity:
+            return node
+        serial = ""
+        with contextlib.suppress(OSError):
+            serial = (node / "serial").read_text(encoding="utf-8").strip()
+        if serial and serial.casefold() == identity:
+            return node
+    return None
+
+
+def _read_usb_error_counters(node: Path | None) -> dict[str, int]:
+    """Read only numeric error counters from one already-bound USB node."""
+
+    if node is None:
+        return {}
+    counters: dict[str, int] = {}
+    for name in ("error_count", "urb_errors", "transfer_errors"):
+        candidate = node / name
+        try:
+            value = candidate.read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        try:
+            counters[name] = int(value, 0)
+        except ValueError:
+            continue
+    return counters
+
+
+def _usb_error_delta(
+    stable_device_id: str,
+    node: Path | None,
+    baseline: dict[str, int],
+    final: dict[str, int],
+) -> dict[str, Any]:
+    same_counter_set = bool(baseline) and set(baseline) == set(final)
+    common = sorted(set(baseline) & set(final))
+    delta = {name: final[name] - baseline[name] for name in common}
+    return {
+        "device_id": stable_device_id,
+        "sysfs_path": str(node) if node is not None else None,
+        "available": bool(node is not None and same_counter_set),
+        "baseline": dict(baseline),
+        "final": dict(final),
+        "delta": delta,
+        "error_delta": sum(abs(value) for value in delta.values()),
+    }
+
+
+def _usb_instance_witness(stable_device_id: str) -> dict[str, Any] | None:
+    """Persistent USB enumeration witness usable across lab processes."""
+
+    node = _resolve_usb_sysfs_node(stable_device_id)
+    if node is None:
+        return None
+    values: dict[str, Any] = {"sysfs_path": str(node)}
+    for name in ("busnum", "devnum"):
+        try:
+            values[name] = int((node / name).read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            return None
+    return values
+
+
+def _suspend_success_count(
+    path: Path = Path("/sys/power/suspend_stats/success"),
+) -> int | None:
     try:
-        devices = sorted(Path("/sys/bus/usb/devices").glob("*/"))
-    except OSError:
-        return evidence
-    for device in devices:
-        for name in ("error_count", "urb_num"):
-            candidate = device / name
-            if candidate.exists():
-                evidence["source"] = str(candidate.parent)
-                evidence["counters"][name] = candidate.read_text(
-                    encoding="utf-8"
-                ).strip()
-    return evidence
+        return int(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
 
 
 def _coordinator(container):
@@ -373,10 +512,15 @@ def command_init(args) -> int:
         context = qualification.current_environment_context(args.device_id)
         if not context.complete_for_current_evidence:
             raise SystemExit("device-bound qenv is incomplete")
+        collected_head = _git_head()
+        created_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
         payload = {
             "schema_version": 1,
-            "execution_git_head": _git_head(),
-            "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            "manifest_schema": 2,
+            "implementation_head": collected_head,
+            "evidence_execution_head": collected_head,
+            "manifest_created_at": created_at,
+            "captured_at": created_at,
             "environment_fingerprint": qualification.current_environment_fingerprint(
                 args.device_id
             ),
@@ -473,6 +617,67 @@ R25_REQUIRED_EDGES = (
 )
 
 
+def _r25_run_passes(run: dict[str, Any]) -> bool:
+    hold = run.get("actual_hold_ms")
+    receipts = run.get("receipts")
+    return bool(
+        isinstance(hold, int)
+        and hold >= 0
+        and hold + R25_HOLD_TOLERANCE_MS >= run.get("configured_delay_ms", -1)
+        and set(run.get("edges") or ()) == set(R25_REQUIRED_EDGES)
+        and run.get("stale_generation_observed") is False
+        and run.get("hidden_conversion_observed") is False
+        and int(run.get("xrun_count", 0) or 0) == 0
+        and isinstance(receipts, list)
+        and len(receipts) == len(R25_MEDIA_ORDER)
+        and all(isinstance(receipt, dict) for receipt in receipts)
+        and not any(
+            receipt.get("error") or int(receipt.get("xrun_count", 0) or 0)
+            for receipt in receipts
+        )
+        and all(
+            isinstance(receipt.get("actual_hold_ms"), int)
+            and receipt["actual_hold_ms"] + R25_HOLD_TOLERANCE_MS
+            >= run.get("configured_delay_ms", -1)
+            for receipt in receipts
+        )
+    )
+
+
+def _r25_result(
+    runs: list[dict[str, Any]], first_sample: dict[str, Any] | None
+) -> tuple[str, int | None]:
+    """Derive R25 status and minimum; never promote a partial sweep."""
+
+    delays = [run.get("configured_delay_ms") for run in runs]
+    malformed = any(
+        not isinstance(run, dict)
+        or not isinstance(run.get("receipts"), list)
+        or not all(isinstance(receipt, dict) for receipt in run.get("receipts", ()))
+        or any(
+            receipt.get("error") or int(receipt.get("xrun_count", 0) or 0)
+            for receipt in run.get("receipts", ())
+        )
+        or run.get("stale_generation_observed") is True
+        or run.get("hidden_conversion_observed") is True
+        for run in runs
+    )
+    if malformed:
+        return "FAIL", None
+    canonical = (
+        len(runs) == len(R25_SWEEP_DELAYS)
+        and len(set(delays)) == len(R25_SWEEP_DELAYS)
+        and set(delays) == set(R25_SWEEP_DELAYS)
+    )
+    passing = sorted(
+        int(run["configured_delay_ms"]) for run in runs if _r25_run_passes(run)
+    )
+    minimum = passing[0] if passing else None
+    if not canonical or len(passing) != len(R25_SWEEP_DELAYS) or first_sample is None:
+        return "REQUIRES_OPERATOR_CONFIRMATION", minimum
+    return "PASS", minimum
+
+
 def _port_resync_evidence(container) -> dict[str, Any]:
     """Measured hold evidence from the runtime, when the port exposes it."""
     try:
@@ -523,6 +728,7 @@ def _run_r25_delay(container, args, delay_ms: int) -> dict[str, Any]:
     hidden = False
     previous_identity = None
     measured: dict[str, Any] = {}
+    measured_holds: list[int] = []
     for media in args.media:
         result = _play(container, media, args.mode)
         truth = result.get("signal_truth") or {}
@@ -538,6 +744,12 @@ def _run_r25_delay(container, args, delay_ms: int) -> dict[str, Any]:
         evidence = _port_resync_evidence(container)
         if evidence:
             measured = evidence
+        actual = evidence.get("resync_actual_hold_ms")
+        actual_hold = (
+            int(actual) if isinstance(actual, int) else (0 if delay_ms == 0 else None)
+        )
+        if isinstance(actual_hold, int):
+            measured_holds.append(actual_hold)
         receipts.append(
             {
                 "media": str(media),
@@ -549,7 +761,7 @@ def _run_r25_delay(container, args, delay_ms: int) -> dict[str, Any]:
                 ),
                 "signal_truth_identity": identity,
                 "requested_tuple": (
-                    (truth.get("plan") or {}).get("requested_pcm")
+                    (truth.get("plan") or {}).get("requested")
                     if isinstance(truth, dict)
                     else None
                 ),
@@ -560,6 +772,7 @@ def _run_r25_delay(container, args, delay_ms: int) -> dict[str, Any]:
                 ),
                 "xrun_count": 1 if "ST_XRUN" in reasons else 0,
                 "error": result.get("error_message"),
+                "actual_hold_ms": actual_hold,
             }
         )
         _stop(container)
@@ -567,18 +780,22 @@ def _run_r25_delay(container, args, delay_ms: int) -> dict[str, Any]:
     edges = [
         f"{left}->{right}" for left, right in zip(rates[:-1], rates[1:], strict=True)
     ]
-    actual = measured.get("resync_actual_hold_ms")
     return {
         "configured_delay_ms": delay_ms,
-        "actual_hold_ms": int(actual)
-        if isinstance(actual, int)
-        else (0 if delay_ms == 0 else None),
+        "actual_hold_ms": (
+            min(measured_holds)
+            if len(measured_holds) == len(receipts) and measured_holds
+            else None
+        ),
         "edges": edges,
         "port_generation": measured.get("port_generation"),
         "execution_generation": measured.get("execution_generation"),
         "plan_id": measured.get("plan_id"),
         "stale_generation_observed": stale,
         "hidden_conversion_observed": hidden,
+        "xrun_count": sum(
+            int(receipt.get("xrun_count", 0) or 0) for receipt in receipts
+        ),
         "receipts": receipts,
     }
 
@@ -598,21 +815,9 @@ def command_transition(args) -> int:
     finally:
         container.shutdown()
 
-    def _run_passes(run: dict[str, Any]) -> bool:
-        hold = run.get("actual_hold_ms")
-        return not (
-            sorted(set(run["edges"])) != sorted(R25_REQUIRED_EDGES)
-            or run["stale_generation_observed"]
-            or run["hidden_conversion_observed"]
-            or not isinstance(hold, int)
-            or hold + R25_HOLD_TOLERANCE_MS < run["configured_delay_ms"]
-        )
-
-    passing = [run["configured_delay_ms"] for run in runs if _run_passes(run)]
-    minimal = min(passing) if passing else None
+    status, minimal = _r25_result(runs, first_sample)
     any_stale = any(run["stale_generation_observed"] for run in runs)
     any_hidden = any(run["hidden_conversion_observed"] for run in runs)
-    any_error = any(receipt["error"] for run in runs for receipt in run["receipts"])
     any_xrun = any(receipt["xrun_count"] for run in runs for receipt in run["receipts"])
     facts = {
         "runs": runs,
@@ -624,12 +829,6 @@ def command_transition(args) -> int:
         "hidden_conversion_observed": any_hidden,
         "xrun_count": any_xrun,
     }
-    if any_stale or any_hidden or any_error or any_xrun:
-        status = "FAIL"
-    elif first_sample is None or len(passing) != len(R25_DELAYS):
-        status = "REQUIRES_OPERATOR_CONFIRMATION"
-    else:
-        status = "PASS"
     _record(
         args.manifest,
         experiment="R25",
@@ -641,6 +840,100 @@ def command_transition(args) -> int:
     return 0
 
 
+def _transition_receipt(
+    result: dict[str, Any], *, previous_identity: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Classify one load from productive Signal Truth, never filenames."""
+
+    truth = result.get("signal_truth")
+    truth = truth if isinstance(truth, dict) else {}
+    identity = truth.get("identity")
+    identity = identity if isinstance(identity, dict) else None
+    decoded = truth.get("decoded")
+    requested = (truth.get("plan") or {}).get("requested")
+    negotiated = truth.get("alsa")
+    decoded_rate = (decoded or {}).get("rate_hz") if isinstance(decoded, dict) else None
+    requested_rate = (
+        (requested or {}).get("rate_hz") if isinstance(requested, dict) else None
+    )
+    negotiated_rate = (
+        (negotiated or {}).get("rate_hz") if isinstance(negotiated, dict) else None
+    )
+    verdict = truth.get("verdict")
+    state = (verdict or {}).get("state") if isinstance(verdict, dict) else None
+    generations_valid = bool(
+        identity
+        and isinstance(identity.get("execution_generation"), int)
+        and isinstance(identity.get("port_generation"), int)
+    )
+    rates_valid = bool(
+        isinstance(decoded_rate, int)
+        and decoded_rate > 0
+        and requested_rate == decoded_rate
+        and negotiated_rate == decoded_rate
+    )
+    stale = previous_identity is not None and identity == previous_identity
+    failed = bool(
+        result.get("error_message")
+        or result.get("status") != PlaybackStatus.PLAYING.value
+        or state not in {"direct", "direct_container_adapted"}
+        or not generations_valid
+        or not rates_valid
+        or stale
+    )
+    return {
+        "failed": failed,
+        "error": result.get("error_message"),
+        "status": result.get("status"),
+        "decoded_rate_hz": decoded_rate,
+        "requested_rate_hz": requested_rate,
+        "negotiated_rate_hz": negotiated_rate,
+        "identity": identity,
+        "signal_truth_state": state,
+        "stale_identity": stale,
+    }
+
+
+def _soak_status(facts: dict[str, Any]) -> str:
+    hard_failure = bool(
+        int(facts.get("xrun_count", 0) or 0)
+        or int(facts.get("runtime_error_count", 0) or 0)
+        or int(facts.get("transition_failures", 0) or 0)
+    )
+    if hard_failure:
+        return "FAIL"
+    if float(facts.get("duration_seconds", 0) or 0) < 28800:
+        return "REQUIRES_OPERATOR_CONFIRMATION"
+    growth = facts.get("memory_growth_kb")
+    checkpoints = facts.get("rss_checkpoints")
+    pump = facts.get("pump_health")
+    resources = facts.get("resource_growth")
+    usb = facts.get("usb_errors_observed")
+    measured = bool(
+        isinstance(growth, (int, float))
+        and isinstance(checkpoints, list)
+        and checkpoints
+        and isinstance(pump, dict)
+        and isinstance(resources, dict)
+        and resources.get("observed") is True
+        and isinstance(usb, dict)
+        and usb.get("available") is True
+        and bool(usb.get("device_id"))
+        and bool(usb.get("sysfs_path"))
+    )
+    if not measured:
+        return "REQUIRES_OPERATOR_CONFIRMATION"
+    failed = bool(
+        growth > R32_MAX_MEMORY_GROWTH_KB
+        or pump.get("pump_alive") is not True
+        or pump.get("alive_at_every_checkpoint") is not True
+        or int(pump.get("cycles_completed", 0) or 0) <= 0
+        or resources.get("unbounded") is not False
+        or usb.get("error_delta") != 0
+    )
+    return "FAIL" if failed else "PASS"
+
+
 def command_soak(args) -> int:
     if args.duration_seconds <= 0:
         raise SystemExit("--duration-seconds must be > 0")
@@ -650,10 +943,17 @@ def command_soak(args) -> int:
     cycles = 0
     xrun_count = 0
     rss_checkpoints: list[dict[str, Any]] = []
+    transition_receipts: list[dict[str, Any]] = []
     transition_failures = 0
-    previous_rate = 0
+    previous_identity: dict[str, Any] | None = None
     checkpoints: list[Path] = []
     rss_baseline = _process_rss_kb()
+    usb_node = _resolve_usb_sysfs_node(
+        args.device_id,
+        explicit_path=args.usb_sysfs_path,
+    )
+    usb_baseline = _read_usb_error_counters(usb_node)
+    resource_baseline = _runtime_resource_snapshot(container)
     try:
         while time.monotonic() - started < args.duration_seconds:
             media = args.media[cycles % len(args.media)]
@@ -661,25 +961,25 @@ def command_soak(args) -> int:
             reasons = result.get("signal_truth_reasons") or []
             if "ST_XRUN" in reasons:
                 xrun_count += 1
-            rate = int(result.get("decoded_rate_hz") or 0)
-            if previous_rate and rate and rate != previous_rate:
-                transition_failures += 0  # a completed change is not a failure
-            previous_rate = rate or previous_rate
+            receipt = _transition_receipt(result, previous_identity=previous_identity)
+            transition_receipts.append(receipt)
+            if receipt["failed"]:
+                transition_failures += 1
+            identity = receipt.get("identity")
+            previous_identity = identity if isinstance(identity, dict) else None
             if result["error_message"]:
                 errors.append(str(result["error_message"]))
             cycles += 1
             _stop(container)
             if cycles % max(1, args.checkpoint_every) == 0:
+                resources = _runtime_resource_snapshot(container)
                 checkpoint = {
                     "cycle": cycles,
                     "elapsed_seconds": time.monotonic() - started,
                     "rss_kb": _process_rss_kb(),
                     "xrun_count": xrun_count,
                     "runtime_error_count": len(errors),
-                    "owned_pipelines": len(
-                        getattr(container.gstreamer_engine_provider, "pipelines", [])
-                        or []
-                    ),
+                    "resources": resources,
                 }
                 rss_checkpoints.append(checkpoint)
                 path = _checkpoint_path(args, cycles)
@@ -689,14 +989,47 @@ def command_soak(args) -> int:
                 break
         duration = time.monotonic() - started
         rss_final = _process_rss_kb()
-        growth_kb = (rss_final - rss_baseline) if rss_baseline and rss_final else None
+        rss_values = [
+            value
+            for value in [
+                rss_baseline,
+                *(item.get("rss_kb") for item in rss_checkpoints),
+                rss_final,
+            ]
+            if isinstance(value, int)
+        ]
+        growth_kb = (
+            rss_final - rss_baseline
+            if isinstance(rss_baseline, int) and isinstance(rss_final, int)
+            else None
+        )
+        resource_snapshots = [
+            resource_baseline,
+            *(item["resources"] for item in rss_checkpoints),
+            _runtime_resource_snapshot(container),
+        ]
+        owned_peak = max(
+            (int(item.get("owned_pipelines", 0)) for item in resource_snapshots),
+            default=0,
+        )
+        residual_peak = max(
+            (
+                int(item.get("residual_bus_watches", 0))
+                + int(item.get("residual_timer_sources", 0))
+                for item in resource_snapshots
+            ),
+            default=0,
+        )
+        usb_final = _read_usb_error_counters(usb_node)
         facts = {
             "duration_seconds": duration,
             "cycles": cycles,
             "xrun_count": xrun_count,
             "runtime_error_count": len(errors),
             "errors": errors[:20],
+            "transition_receipts": transition_receipts,
             "rss_baseline_kb": rss_baseline,
+            "rss_peak_kb": max(rss_values) if rss_values else None,
             "rss_final_kb": rss_final,
             "memory_growth_kb": growth_kb,
             "rss_checkpoints": rss_checkpoints,
@@ -704,17 +1037,25 @@ def command_soak(args) -> int:
             "pump_health": {
                 "cycles_completed": cycles,
                 "pump_alive": _pump_alive(container),
+                "alive_at_every_checkpoint": bool(rss_checkpoints)
+                and all(
+                    item["resources"].get("pump_alive") is True
+                    for item in rss_checkpoints
+                ),
             },
             "transition_failures": transition_failures,
-            "usb_errors_observed": _usb_error_evidence(),
+            "resource_growth": {
+                "observed": bool(resource_snapshots),
+                "unbounded": owned_peak > 1 or residual_peak > 0,
+                "owned_pipelines_baseline": resource_baseline["owned_pipelines"],
+                "owned_pipelines_peak": owned_peak,
+                "residual_native_resources_peak": residual_peak,
+            },
+            "usb_errors_observed": _usb_error_delta(
+                args.device_id, usb_node, usb_baseline, usb_final
+            ),
         }
-        status = (
-            "PASS"
-            if duration >= 28800 and not errors and xrun_count == 0
-            else "FAIL"
-            if errors or xrun_count
-            else "REQUIRES_OPERATOR_CONFIRMATION"
-        )
+        status = _soak_status(facts)
         _record(
             args.manifest,
             experiment="R32",
@@ -727,12 +1068,78 @@ def command_soak(args) -> int:
     return 0
 
 
-R35_FIXTURES = (
-    "nonzero_final_samples",
-    "end_impulse",
-    "same_tuple_two_track_boundary",
-    "different_tuple_two_track_boundary",
-)
+R35_FIXTURES = R35_REQUIRED_FIXTURES
+
+
+def _merge_r35_fixture(
+    existing_facts: dict[str, Any], fixture: str, entry: dict[str, Any]
+) -> dict[str, Any]:
+    fixtures = copy.deepcopy(existing_facts.get("fixtures") or {})
+    fixtures[fixture] = copy.deepcopy(entry)
+    return fixtures
+
+
+def _r35_status(fixtures: dict[str, Any]) -> str:
+    if any(
+        isinstance(entry, dict)
+        and (
+            entry.get("result") == "FAIL"
+            or entry.get("falsifier_observed") is True
+            or entry.get("playback_error")
+        )
+        for entry in fixtures.values()
+    ):
+        return "FAIL"
+    if set(fixtures) != set(R35_FIXTURES):
+        return "REQUIRES_OPERATOR_CONFIRMATION"
+    return (
+        "PASS"
+        if all(
+            isinstance(fixtures[name], dict)
+            and fixtures[name].get("result") == "PASS"
+            and fixtures[name].get("falsifier_observed") is False
+            for name in R35_FIXTURES
+        )
+        else "REQUIRES_OPERATOR_CONFIRMATION"
+    )
+
+
+def _r35_fixture_entry(
+    *,
+    media: Path,
+    result: str,
+    evidence_kind: str,
+    evidence_reference: str,
+    method: str,
+    falsifier_observed: bool,
+    playback_error: str | None = None,
+    terminal_status: str | None = None,
+) -> dict[str, Any]:
+    if not media.is_file():
+        raise SystemExit(f"media fixture does not exist: {media}")
+    entry: dict[str, Any] = {
+        "result": result,
+        "evidence_kind": evidence_kind,
+        "evidence_reference": evidence_reference,
+        "method": method,
+        "fixture_sha256": _file_sha256(media),
+        "falsifier_observed": bool(falsifier_observed),
+        "playback_error": playback_error,
+        "terminal_status": terminal_status,
+    }
+    if evidence_kind == "capture":
+        artifact = Path(evidence_reference)
+        if not artifact.is_file():
+            raise SystemExit(f"capture artifact does not exist: {artifact}")
+        entry.update(
+            {
+                "artifact": str(artifact),
+                "sha256": _file_sha256(artifact),
+            }
+        )
+    elif not evidence_reference.strip():
+        raise SystemExit("operator evidence requires a concrete reference")
+    return entry
 
 
 def command_tail(args) -> int:
@@ -745,51 +1152,22 @@ def command_tail(args) -> int:
             settled=lambda: container._playback.state.status is PlaybackStatus.STOPPED,
         )
         terminal = container._playback.state.status.value
-        perfect_drain = (
-            True
-            if args.evidence_kind == "capture"
-            and args.tail_result == "PASS"
-            and not result["error_message"]
-            and terminal == "stopped"
-            else None
+        entry = _r35_fixture_entry(
+            media=args.media,
+            result=args.tail_result,
+            evidence_kind=args.evidence_kind,
+            evidence_reference=args.evidence_reference,
+            method=args.method,
+            falsifier_observed=(args.falsifier_observed or args.tail_result == "FAIL"),
+            playback_error=result["error_message"],
+            terminal_status=terminal,
         )
-        facts = {
-            "fixture": args.fixture,
-            "tail_result": args.tail_result,
-            "evidence_kind": args.evidence_kind,
-            "evidence_reference": args.evidence_reference,
-            "playback_error": result["error_message"],
-            "terminal_status": terminal,
-            "perfect_drain_capability": perfect_drain,
-            "drain_silence_policy": None,
-            "transition_timeline": [
-                {"from": "playing", "to": terminal},
-            ],
-            "rendered_tail_capture": (
-                args.evidence_reference if args.evidence_kind == "capture" else None
-            ),
-            "falsifiers": {
-                "tail_truncated": args.tail_result == "FAIL",
-                "stale_samples_after_pointer": None,
-                "extra_drain_gap_same_tuple": None,
-                "click_pop_introduced_by_teardown": (
-                    True if args.tail_result == "FAIL" else None
-                ),
-            },
-        }
-        # A nominal result without a concrete fixture and evidence reference is
-        # not sufficient evidence for R35.
-        status = (
-            "PASS"
-            if args.tail_result == "PASS"
-            and args.evidence_kind == "capture"
-            and args.evidence_reference
-            and args.fixture in R35_FIXTURES
-            and not result["error_message"]
-            else "FAIL"
-            if args.tail_result == "FAIL" or result["error_message"]
-            else "REQUIRES_OPERATOR_CONFIRMATION"
+        existing = _manifest(args.manifest)["experiments"]["R35"].get("facts")
+        fixtures = _merge_r35_fixture(
+            existing if isinstance(existing, dict) else {}, args.fixture, entry
         )
+        status = _r35_status(fixtures)
+        facts = {"fixtures": fixtures}
         _record(
             args.manifest,
             experiment="R35",
@@ -803,6 +1181,214 @@ def command_tail(args) -> int:
 
 
 R36_CASES = ("induced_underrun", "suspend_resume", "device_failure")
+
+
+def _r36_prepare_facts(
+    *,
+    case: str,
+    device_id: str,
+    locator: str,
+    device_generation: int | None,
+    signal_identity: dict[str, Any] | None,
+    playback_status: str,
+    operator_reference: str,
+    usb_instance_before: dict[str, Any] | None = None,
+    suspend_success_before: int | None = None,
+) -> dict[str, Any]:
+    return {
+        "case": case,
+        "state": "WAITING_OPERATOR_ACTION",
+        "device_id": device_id,
+        "locator": locator,
+        "device_generation_before": device_generation,
+        "signal_identity_before": copy.deepcopy(signal_identity),
+        "playback_status_before": playback_status,
+        "operator_reference": operator_reference,
+        "usb_instance_before": copy.deepcopy(usb_instance_before),
+        "suspend_success_before": suspend_success_before,
+        "prepared_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
+
+
+def _r36_complete_facts(
+    baseline: dict[str, Any],
+    *,
+    after_row: dict[str, Any] | None,
+    after_result: dict[str, Any],
+    after_usb_instance: dict[str, Any] | None = None,
+    suspend_success_after: int | None = None,
+) -> dict[str, Any]:
+    after_row = after_row if isinstance(after_row, dict) else {}
+    truth = after_result.get("signal_truth")
+    truth = truth if isinstance(truth, dict) else {}
+    after_identity = truth.get("identity")
+    after_identity = after_identity if isinstance(after_identity, dict) else None
+    before_identity = baseline.get("signal_identity_before")
+    before_identity = before_identity if isinstance(before_identity, dict) else None
+    before_device_generation = baseline.get("device_generation_before")
+    after_device_generation = after_row.get("generation")
+
+    def positive_delta(before, after) -> int | None:
+        if not isinstance(before, int) or not isinstance(after, int):
+            return None
+        return after - before
+
+    device_delta = positive_delta(before_device_generation, after_device_generation)
+    execution_delta = positive_delta(
+        (before_identity or {}).get("execution_generation"),
+        (after_identity or {}).get("execution_generation"),
+    )
+    port_delta = positive_delta(
+        (before_identity or {}).get("port_generation"),
+        (after_identity or {}).get("port_generation"),
+    )
+    case = baseline.get("case")
+    before_usb = baseline.get("usb_instance_before")
+    before_usb = before_usb if isinstance(before_usb, dict) else None
+    physical_reenumeration = bool(
+        case == "device_failure"
+        and before_usb
+        and after_usb_instance
+        and before_usb.get("busnum") == after_usb_instance.get("busnum")
+        and isinstance(before_usb.get("devnum"), int)
+        and isinstance(after_usb_instance.get("devnum"), int)
+        and before_usb["devnum"] != after_usb_instance["devnum"]
+    )
+    suspend_before = baseline.get("suspend_success_before")
+    suspend_delta = positive_delta(suspend_before, suspend_success_after)
+    if case == "device_failure":
+        generation_fresh = physical_reenumeration
+        observed_deltas = [1] if physical_reenumeration else []
+    else:
+        generation_fresh = bool(
+            isinstance(suspend_delta, int)
+            and suspend_delta > 0
+            and after_identity is not None
+        )
+        observed_deltas = [suspend_delta] if isinstance(suspend_delta, int) else []
+    recovery_loop_count = max([max(0, value - 1) for value in observed_deltas] or [0])
+    same_identity = bool(
+        after_row.get("stableDeviceId") == baseline.get("device_id")
+        and after_row.get("alsaLocator") == baseline.get("locator")
+    )
+    state = (truth.get("verdict") or {}).get("state")
+    state_reported = isinstance(state, str) and bool(state)
+    direct_state = state in {"direct", "direct_container_adapted"}
+    action_completed = bool(baseline.get("operator_reference") and generation_fresh)
+    continuity = bool(
+        same_identity
+        and after_row.get("available") is True
+        and after_result.get("status") == PlaybackStatus.PLAYING.value
+        and not after_result.get("error_message")
+        and direct_state
+        and generation_fresh
+    )
+    return {
+        "case": case,
+        "mechanism_available": True,
+        "operator_reference": baseline.get("operator_reference"),
+        "action_completed": action_completed,
+        "incident_retained": bool(before_identity and baseline.get("prepared_at")),
+        "device_id": baseline.get("device_id"),
+        "same_identity_after": same_identity,
+        "device_generation_before": before_device_generation,
+        "device_generation_after": after_device_generation,
+        "device_generation_delta": device_delta,
+        "signal_identity_before": before_identity,
+        "signal_identity_after": after_identity,
+        "execution_generation_delta": execution_delta,
+        "port_generation_delta": port_delta,
+        "usb_instance_before": before_usb,
+        "usb_instance_after": copy.deepcopy(after_usb_instance),
+        "physical_reenumeration_observed": physical_reenumeration,
+        "suspend_success_before": suspend_before,
+        "suspend_success_after": suspend_success_after,
+        "suspend_success_delta": suspend_delta,
+        "generation_fresh": generation_fresh,
+        "recovered_state_reported": state_reported,
+        "continuity_proof": continuity,
+        "false_verified_after_incident": bool(direct_state and not generation_fresh),
+        "recovery_loop_count": recovery_loop_count,
+        "signal_truth_after": truth,
+    }
+
+
+def command_fault_prepare(args) -> int:
+    if args.case not in {"suspend_resume", "device_failure"}:
+        raise SystemExit("fault-prepare is only for operator-driven R36 cases")
+    container = _container(args.device_id, args.locator)
+    try:
+        result = _play(container, args.media, args.mode)
+        row = _row(container, args.device_id, args.locator)
+        truth = result.get("signal_truth") or {}
+        baseline = _r36_prepare_facts(
+            case=args.case,
+            device_id=args.device_id,
+            locator=args.locator,
+            device_generation=row.get("generation"),
+            signal_identity=truth.get("identity") if isinstance(truth, dict) else None,
+            playback_status=result.get("status") or "unknown",
+            operator_reference=args.operator_reference,
+            usb_instance_before=_usb_instance_witness(args.device_id),
+            suspend_success_before=_suspend_success_count(),
+        )
+        _record(
+            args.manifest,
+            experiment="R36",
+            status="REQUIRES_OPERATOR_CONFIRMATION",
+            evidence=[f"operator:{args.operator_reference}", f"runtime:{args.media}"],
+            facts={"case": args.case, "baseline": baseline},
+        )
+    finally:
+        container.shutdown()
+    print(
+        f"R36 {args.case} baseline saved; perform the operator action, then "
+        "run fault-complete with the same device, manifest and media."
+    )
+    return 0
+
+
+def command_fault_complete(args) -> int:
+    previous = _manifest(args.manifest)["experiments"]["R36"].get("facts")
+    baseline = previous.get("baseline") if isinstance(previous, dict) else None
+    if not isinstance(baseline, dict) or baseline.get("case") != args.case:
+        raise SystemExit("matching R36 baseline missing; run fault-prepare first")
+    container = _container(args.device_id, args.locator)
+    try:
+        result = _play(container, args.media, args.mode)
+        row = _row(container, args.device_id, args.locator)
+        facts = _r36_complete_facts(
+            baseline,
+            after_row=row,
+            after_result=result,
+            after_usb_instance=_usb_instance_witness(args.device_id),
+            suspend_success_after=_suspend_success_count(),
+        )
+        status = (
+            "PASS"
+            if facts["incident_retained"]
+            and facts["recovered_state_reported"]
+            and facts["continuity_proof"]
+            and facts["generation_fresh"]
+            and facts["same_identity_after"]
+            and facts["action_completed"]
+            and facts["recovery_loop_count"] == 0
+            and not facts["false_verified_after_incident"]
+            else "FAIL"
+        )
+        _record(
+            args.manifest,
+            experiment="R36",
+            status=status,
+            evidence=[
+                f"operator:{baseline['operator_reference']}",
+                f"runtime:{args.media}",
+            ],
+            facts=facts,
+        )
+    finally:
+        container.shutdown()
+    return 0
 
 
 def command_xrun(args) -> int:
@@ -866,12 +1452,43 @@ def command_xrun(args) -> int:
             "direct",
             "direct_container_adapted",
         }
+        before_identity = truth.get("identity") if isinstance(truth, dict) else None
+        after_identity = (
+            after_truth.get("identity") if isinstance(after_truth, dict) else None
+        )
+        generation_fresh = bool(
+            isinstance(before_identity, dict)
+            and isinstance(after_identity, dict)
+            and (
+                after_identity.get("execution_generation")
+                != before_identity.get("execution_generation")
+                or after_identity.get("port_generation")
+                != before_identity.get("port_generation")
+            )
+        )
+        resources = _runtime_resource_snapshot(container)
         facts = {
             "case": args.case,
             "fault_injected": True,
             "xrun_observed": observed,
-            "false_verified_after_xrun": false_verified,
-            "recovery_loop_observed": False,
+            "incident_retained": True,
+            "recovered_state_reported": after_state is not None,
+            "continuity_proof": bool(
+                observed
+                and generation_fresh
+                and resources["pump_alive"]
+                and not result["error_message"]
+            ),
+            "false_verified_after_incident": bool(
+                false_verified and not generation_fresh
+            ),
+            "generation_fresh": generation_fresh,
+            "recovery_loop_count": max(
+                0,
+                int(resources.get("port_generation") or 0)
+                - int((before_identity or {}).get("port_generation") or 0)
+                - 1,
+            ),
             "status_before": before,
             "status_immediate": immediate,
             "signal_truth_after": after_truth,
@@ -879,7 +1496,15 @@ def command_xrun(args) -> int:
             if isinstance(alsa, dict)
             else None,
         }
-        status = "PASS" if observed and not false_verified else "FAIL"
+        status = (
+            "PASS"
+            if observed
+            and facts["continuity_proof"]
+            and not facts["false_verified_after_incident"]
+            and facts["generation_fresh"]
+            and facts["recovery_loop_count"] == 0
+            else "FAIL"
+        )
         _record(
             args.manifest,
             experiment="R36",
@@ -947,6 +1572,11 @@ def build_parser() -> argparse.ArgumentParser:
     soak.add_argument("--duration-seconds", type=float, required=True)
     soak.add_argument("--fail-fast", action="store_true")
     soak.add_argument("--checkpoint-every", type=int, default=20)
+    soak.add_argument(
+        "--usb-sysfs-path",
+        type=Path,
+        help="Exact sysfs USB node; its VID/PID is verified against --device-id",
+    )
     soak.set_defaults(func=command_soak)
 
     tail = common("tail")
@@ -957,8 +1587,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tail.add_argument("--evidence-kind", choices=("capture", "operator"), required=True)
     tail.add_argument("--evidence-reference", required=True)
+    tail.add_argument("--method", required=True)
+    tail.add_argument("--falsifier-observed", action="store_true")
     tail.add_argument("--timeout-seconds", type=float, default=30.0)
     tail.set_defaults(func=command_tail)
+
+    fault_prepare = common("fault-prepare")
+    fault_prepare.add_argument("--media", type=Path, required=True)
+    fault_prepare.add_argument(
+        "--case", choices=("suspend_resume", "device_failure"), required=True
+    )
+    fault_prepare.add_argument("--operator-reference", required=True)
+    fault_prepare.set_defaults(func=command_fault_prepare)
+
+    fault_complete = common("fault-complete")
+    fault_complete.add_argument("--media", type=Path, required=True)
+    fault_complete.add_argument(
+        "--case", choices=("suspend_resume", "device_failure"), required=True
+    )
+    fault_complete.set_defaults(func=command_fault_complete)
 
     xrun = common("xrun")
     xrun.add_argument("--media", type=Path, required=True)

@@ -8,6 +8,7 @@ summarizes them without upgrading evidence beyond what was actually observed.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -109,6 +110,10 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
 @dataclass(frozen=True, slots=True)
 class ClosureObligation:
     """One explicit closure obligation with its remaining gaps.
@@ -194,45 +199,10 @@ IMPLEMENTATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
 #: being present is NOT tooling completeness.
 TOOLING_OBLIGATIONS: tuple[ClosureObligation, ...] = (
     ClosureObligation("R24", "Clock authority tooling", True),
-    ClosureObligation(
-        "R25",
-        "Rate-transition tooling",
-        False,
-        (
-            "real sweep aggregation and minimum-delay selection",
-            "first-sample evidence reference/method requirement",
-            "the lab does not consume the runtime's measured actual hold",
-        ),
-    ),
-    ClosureObligation(
-        "R32",
-        "Soak tooling",
-        False,
-        (
-            "growth/pump/USB/transition evidence must be part of PASS",
-            "transition_failures accounting is a no-op",
-            "ownership is read from provider.pipelines, not current_port",
-            "USB counters are not device-bound",
-        ),
-    ),
-    ClosureObligation(
-        "R35",
-        "Tail/drain tooling",
-        False,
-        (
-            "all four canonical fixtures required before PASS",
-            "capture artifact/hash validation",
-        ),
-    ),
-    ClosureObligation(
-        "R36",
-        "XRUN and recovery tooling",
-        False,
-        (
-            "operator workflow for suspend/resume and device failure",
-            "measured recovery, continuity and loop facts",
-        ),
-    ),
+    ClosureObligation("R25", "Rate-transition tooling", True),
+    ClosureObligation("R32", "Soak tooling", True),
+    ClosureObligation("R35", "Tail/drain tooling", True),
+    ClosureObligation("R36", "XRUN and recovery tooling", True),
 )
 
 
@@ -246,8 +216,7 @@ FINALIZATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
     ClosureObligation(
         "lab_tests",
         "the field lab itself is covered by tests",
-        False,
-        ("no test executes scripts/dac_m11_4_pcm_lab.py",),
+        True,
     ),
     ClosureObligation(
         "docs_reconciled",
@@ -350,7 +319,12 @@ def _pass_has_evidence(experiment: str, item: dict[str, Any]) -> bool:
     )
 
 
-def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
+def _semantic_pass_check(
+    experiment: str,
+    item: dict[str, Any],
+    *,
+    stable_device_id: str | None = None,
+) -> str | None:
     """Return a contradiction reason for a nominal PASS, otherwise None."""
     if not _pass_has_evidence(experiment, item):
         return "PASS lacks executed=true plus non-empty evidence references"
@@ -420,6 +394,18 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
                 return "R25 observed an unobserved hidden conversion"
             if int(run.get("xrun_count", 0) or 0) != 0:
                 return "R25 observed XRUNs"
+            receipts = run.get("receipts")
+            if not isinstance(receipts, list) or len(receipts) != 7:
+                return f"R25 delay {delay} lacks the seven transition receipts"
+            for receipt in receipts:
+                if not isinstance(receipt, dict) or receipt.get("error"):
+                    return f"R25 delay {delay} contains a failed receipt"
+                receipt_hold = receipt.get("actual_hold_ms")
+                if (
+                    not isinstance(receipt_hold, int)
+                    or receipt_hold + R25_HOLD_TOLERANCE_MS < delay
+                ):
+                    return f"R25 delay {delay} contains an unmeasured short hold"
         evidence = facts.get("first_sample_evidence")
         if not isinstance(evidence, dict):
             return "R25 PASS requires structured first-sample evidence"
@@ -436,6 +422,8 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
                 return f"R25 first-sample evidence lacks {field}"
         if not str(evidence.get("observed_result")).upper().startswith("PASS"):
             return "R25 first-sample evidence does not report PASS"
+        if not _is_sha256(evidence.get("fixture_sha256")):
+            return "R25 first-sample evidence has an invalid fixture_sha256"
         minimal = facts.get("minimal_delay_that_preserves_first_content")
         if minimal not in R25_SWEEP_DELAYS:
             return "R25 did not determine a minimal delay from the sweep"
@@ -467,6 +455,20 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
             return "R32 observed runtime errors"
         if int(facts.get("transition_failures", 0)) != 0:
             return "R32 observed transition failures"
+        receipts = facts.get("transition_receipts")
+        if not isinstance(receipts, list) or not receipts:
+            return "R32 PASS requires transition receipts"
+        if any(
+            not isinstance(receipt, dict)
+            or receipt.get("failed") is not False
+            or not isinstance(receipt.get("decoded_rate_hz"), int)
+            or not isinstance(receipt.get("identity"), dict)
+            for receipt in receipts
+        ):
+            return "R32 transition receipts contain failed or incomplete observations"
+        for field in ("rss_baseline_kb", "rss_peak_kb", "rss_final_kb"):
+            if not isinstance(facts.get(field), (int, float)):
+                return f"R32 PASS requires measured {field}"
         growth = facts.get("memory_growth_kb")
         if not isinstance(growth, (int, float)):
             return "R32 PASS requires a measured memory-growth trend"
@@ -478,16 +480,39 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
         pump = facts.get("pump_health")
         if not isinstance(pump, dict) or pump.get("pump_alive") is not True:
             return "R32 PASS requires proven pump health"
+        if pump.get("alive_at_every_checkpoint") is not True:
+            return "R32 pump was not alive at every checkpoint"
         if not int(pump.get("cycles_completed", 0)):
             return "R32 pump health lacks completed cycles"
         resources = facts.get("resource_growth")
         if not isinstance(resources, dict):
             return "R32 PASS requires measured resource growth"
+        if resources.get("observed") is not True:
+            return "R32 resource ownership was not observed"
         if resources.get("unbounded") is True:
             return "R32 observed unbounded resource growth"
+        if not isinstance(resources.get("owned_pipelines_peak"), int):
+            return "R32 resource growth lacks the owned pipeline peak"
         usb = facts.get("usb_errors_observed")
         if not isinstance(usb, dict) or not usb.get("device_id"):
             return "R32 USB evidence is not bound to the tested device"
+        if stable_device_id is None or usb.get("device_id") != stable_device_id:
+            return "R32 USB evidence names a different tested device"
+        if usb.get("available") is not True:
+            return "R32 USB error counters were not available"
+        if not isinstance(usb.get("sysfs_path"), str) or not usb["sysfs_path"]:
+            return "R32 USB evidence lacks a device-bound sysfs path"
+        for field in ("baseline", "final", "delta"):
+            if not isinstance(usb.get(field), dict) or not usb[field]:
+                return f"R32 USB evidence lacks a non-empty {field} counter set"
+        if set(usb["baseline"]) != set(usb["final"]) or set(usb["delta"]) != set(
+            usb["baseline"]
+        ):
+            return "R32 USB counter sets changed during the soak"
+        if any(value != 0 for value in usb["delta"].values()):
+            return "R32 observed USB counter movement during the soak"
+        if usb.get("error_delta") != 0:
+            return "R32 observed USB errors during the soak"
         checkpoints = facts.get("rss_checkpoints")
         if not isinstance(checkpoints, list) or not checkpoints:
             return "R32 PASS requires incremental checkpoints"
@@ -504,15 +529,21 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
                 return f"R35 fixture {name} evidence must be an object"
             if entry.get("result") != "PASS":
                 return f"R35 fixture {name} did not report PASS"
+            if entry.get("playback_error") not in (None, ""):
+                return f"R35 fixture {name} reported a playback error"
+            if entry.get("terminal_status") is None:
+                return f"R35 fixture {name} lacks a terminal playback status"
             if entry.get("falsifier_observed") is True:
                 return f"R35 fixture {name} observed a drain falsifier"
+            if not _is_sha256(entry.get("fixture_sha256")):
+                return f"R35 fixture {name} lacks a valid fixture sha256"
             kind = entry.get("evidence_kind")
             if kind == "capture":
                 artifact = entry.get("artifact")
                 digest = entry.get("sha256")
                 if not isinstance(artifact, str) or not Path(artifact).is_file():
                     return f"R35 fixture {name} capture artifact is missing"
-                if not isinstance(digest, str) or not digest:
+                if not _is_sha256(digest):
                     return f"R35 fixture {name} capture lacks a sha256"
                 if _file_sha256(Path(artifact)) != digest:
                     return f"R35 fixture {name} capture artifact hash mismatch"
@@ -559,6 +590,29 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
                 return "R36 operator case lacks a concrete operator reference"
             if facts.get("action_completed") is not True:
                 return "R36 operator case lacks a completed operator action"
+            if (
+                case == "device_failure"
+                and facts.get("same_identity_after") is not True
+            ):
+                return "R36 device failure did not recover the same stable identity"
+            if (
+                case == "device_failure"
+                and facts.get("physical_reenumeration_observed") is not True
+            ):
+                return "R36 device failure lacks a USB re-enumeration witness"
+            if case == "suspend_resume" and not isinstance(
+                facts.get("signal_truth_after"), dict
+            ):
+                return "R36 suspend/resume lacks post-recovery Signal Truth"
+            if case == "suspend_resume":
+                before = facts.get("suspend_success_before")
+                after = facts.get("suspend_success_after")
+                if (
+                    not isinstance(before, int)
+                    or not isinstance(after, int)
+                    or after <= before
+                ):
+                    return "R36 suspend/resume lacks a kernel suspend-success witness"
     return None
 
 
@@ -647,7 +701,11 @@ def evaluate_device_manifest(payload: dict[str, Any]) -> DeviceClosureVerdict:
             all_pass = False
             reasons.append(f"{experiment}={status}")
             continue
-        contradiction = _semantic_pass_check(experiment, item)
+        contradiction = _semantic_pass_check(
+            experiment,
+            item,
+            stable_device_id=identity.stable_device_id,
+        )
         if contradiction is not None:
             has_fail = True
             all_pass = False

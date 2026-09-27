@@ -26,6 +26,11 @@ publishing an environment-scoped fingerprint:
 bit-perfect is **not** claimed, `M11.5` is not started and `DAC-V35-120` remains
 DO NOT START.
 
+This bounded `DAC-V35-110` matrix verdict and the final five-experiment PCM
+closure ledger are separate evidence scopes. The latter remains physically
+`INCOMPLETE` until R25/R32/R35/R36 are executed as described below; no tooling
+or software verdict upgrades that physical state.
+
 ### Final PCM implementation-closure seal
 
 Baseline `82d920ef04412aa3be0acc8710d6aefdf9c5354d` includes the UI90R1.2
@@ -113,11 +118,33 @@ without a second acceptance. The canonical semantic evaluator now enforces the
 R25/R32/R35/R36 contracts, so a nominal PASS without structured facts is
 rejected, and the finalization obligations participate in the closure verdict.
 
-Software implementation is COMPLETE for the delivered feature set and the
-evaluator/finalization layers are COMPLETE. Physical EXECUTION remains
-INCOMPLETE: the field lab still needs the recorded R25 sweep runs, the R32 soak
-metrics promotion, the four R35 fixture captures and the R36 operator runs
-before any physical verdict above INCOMPLETE can be emitted.
+Software implementation, physical-closure tooling and finalization are
+**COMPLETE** for the delivered M11.4 PCM feature set. The field lab now enforces
+the same contracts as the semantic evaluator:
+
+- R25 records one complete run for every canonical delay and derives its minimum
+  only from measured runtime holds plus structured first-sample evidence.
+- R32 binds USB counters to the tested sysfs node, records baseline/final/delta,
+  reads pump and pipeline ownership from the current GStreamer port, persists
+  incremental RSS/resource checkpoints and includes every metric in the PASS
+  decision.
+- R35 accumulates the four canonical fixtures without replacing prior results;
+  fixture and capture hashes are calculated by the lab before PASS.
+- R36 provides persistent `fault-prepare` / `fault-complete` operator workflows
+  for suspend/resume and device failure, while induced XRUN remains a separate,
+  explicit destructive command. Recovery state, identity, generation freshness,
+  continuity and loop count are derived from observations rather than operator
+  booleans. Cross-process freshness uses persistent kernel witnesses: USB
+  `busnum`/`devnum` re-enumeration for device failure and
+  `/sys/power/suspend_stats/success` for suspend/resume.
+- `LAB-01..LAB-20` test the field script itself and are mandatory in the
+  aggregate verifier.
+
+Physical **EXECUTION** remains INCOMPLETE: the archived devices still need the
+recorded R25 operator evidence, the 8-hour R32 run, all four R35 observations
+and applicable R36 runs before any physical verdict above INCOMPLETE can be
+emitted. A missing kernel counter or fault-injection mechanism remains an honest
+non-PASS condition; tooling completeness never manufactures physical evidence.
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`

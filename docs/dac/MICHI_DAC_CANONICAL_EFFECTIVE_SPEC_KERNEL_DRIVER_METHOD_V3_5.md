@@ -15268,6 +15268,25 @@ before the hold starts. Duplicate Play and ASYNC_DONE cannot restart the
 deadline. Pause, Stop, close, error, output release and supersession cannot let
 a queued old tick resume playback. No acceptance callback may bypass the hold.
 
+### M11.4 PCM physical-closure tooling seal
+
+The repository field lab and semantic evaluator use one fail-closed evidence
+contract for R25, R32, R35 and R36:
+
+```text
+R25 -> complete canonical delay sweep + measured holds + structured first sample
+R32 -> 8 h + transition receipts + RSS/resources + pump + device-bound USB delta
+R35 -> all four fixtures accumulated + fixture/capture hashes + falsifier truth
+R36 -> retained incident + reported recovery + continuity + fresh generation
+       + measured loop count; operator cases use prepare/complete checkpoints
+       bound to USB devnum re-enumeration or kernel suspend-success counters
+```
+
+The lab may report `REQUIRES_OPERATOR_CONFIRMATION`, `NOT_RUN` or `FAIL` when a
+measurement mechanism is absent or incomplete. Tooling completeness means the
+measurement and falsification path exists and is tested; it never upgrades the
+archived physical evidence. `LAB-01..LAB-20` are mandatory verifier inputs.
+
 ---
 
 # 302. FIRST-SAMPLE INTEGRITY

@@ -35,6 +35,7 @@ REQUIRED_COLLECTED_MODULES = (
     "tests/dac/test_v35_100r12_productive_qualification.py",
     "tests/dac/test_v35_010r1_universal_audio_discovery.py",
     "tests/dac/test_v35_final_pcm_closure.py",
+    "tests/dac/test_v35_pcm_lab.py",
     "tests/test_v35_090_audio_output_bridge.py",
     "tests/test_v35_090_qml_audio_output.py",
 )
