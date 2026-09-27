@@ -82,6 +82,133 @@ class PcmClosureSummary:
     dac_v35_140_in_scope: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class ClosureObligation:
+    """One explicit closure obligation with its remaining gaps.
+
+    A green test suite does not prove a product obligation, so the canonical
+    verifier must not infer COMPLETE from passing gates. Each obligation is
+    declared here with the concrete gap that is still open; the verdict is
+    COMPLETE only when every obligation is genuinely satisfied.
+    """
+
+    key: str
+    label: str
+    complete: bool
+    gaps: tuple[str, ...] = ()
+
+
+#: Product obligations for M11.4 PCM. Flipping one to complete requires the
+#: code, the tests and the evidence that prove it - never a passing gate alone.
+IMPLEMENTATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
+    ClosureObligation(
+        "normal_dac_playback",
+        "Choosing a DAC from the normal surface routes playback through it",
+        True,
+    ),
+    ClosureObligation(
+        "failure_recovery_ux",
+        "The refusal carries its recovery intents on the normal surface",
+        True,
+    ),
+    ClosureObligation(
+        "startup_refusal_publication",
+        "A refused startup resume publishes its typed failure",
+        True,
+    ),
+    ClosureObligation(
+        "evidence_provenance",
+        "Evidence provenance is internally coherent per event",
+        True,
+    ),
+    ClosureObligation(
+        "resync_delay_runtime",
+        "OutputPlan.resync_delay_ms has a real runtime effect",
+        False,
+        ("no productive consumer of the plan field exists",),
+    ),
+    ClosureObligation(
+        "try_compatible_retries",
+        "Try Compatible Direct actually retries the refused request",
+        True,
+    ),
+    ClosureObligation(
+        "active_track_reroute",
+        "Selecting a DAC reroutes the track that is already playing",
+        True,
+    ),
+    ClosureObligation(
+        "documentation_state_alignment",
+        "Governance state is not mixed with the physical evidence verdict",
+        True,
+    ),
+)
+
+#: Physical-closure tooling obligations. A lab script existing and one manifest
+#: being present is NOT tooling completeness.
+TOOLING_OBLIGATIONS: tuple[ClosureObligation, ...] = (
+    ClosureObligation("R24", "Clock authority tooling", True),
+    ClosureObligation(
+        "R25",
+        "Rate-transition tooling",
+        False,
+        ("resync delay sweep 0/100/250/500/1000", "first-sample evidence contract"),
+    ),
+    ClosureObligation(
+        "R32",
+        "Soak tooling",
+        False,
+        (
+            "USB error accounting",
+            "memory-growth trend",
+            "pump health",
+            "transition failures",
+            "resource growth",
+            "incremental checkpoints",
+        ),
+    ),
+    ClosureObligation(
+        "R35",
+        "Tail/drain tooling",
+        False,
+        ("four canonical fixtures",),
+    ),
+    ClosureObligation(
+        "R36",
+        "XRUN and recovery tooling",
+        False,
+        ("suspend/resume", "device failure recovery", "continuity proof"),
+    ),
+)
+
+
+def closure_verdict(obligations: tuple[ClosureObligation, ...]) -> str:
+    return "COMPLETE" if all(item.complete for item in obligations) else "INCOMPLETE"
+
+
+def closure_gaps(obligations: tuple[ClosureObligation, ...]) -> tuple[str, ...]:
+    return tuple(
+        f"{item.key}: {gap}"
+        for item in obligations
+        if not item.complete
+        for gap in item.gaps
+    )
+
+
+def obligation_report(
+    obligations: tuple[ClosureObligation, ...],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "key": item.key,
+            "label": item.label,
+            "complete": item.complete,
+            "gaps": list(item.gaps),
+        }
+        for item in obligations
+    ]
+
+
 def load_manifest(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -210,11 +337,16 @@ def _manifest_provenance(payload: dict[str, Any]) -> tuple[str, str, str]:
 
     A manifest is committed AFTER the run that produced it, so requiring its
     recorded head to equal the current HEAD would make every archived manifest
-    stale by construction. The contract is instead: ``implementation_head`` is
-    the product commit whose code produced the evidence and
-    ``evidence_execution_head`` is the head actually executing at collection
-    time; for a single run both are the same commit and that equality is what
-    is enforced here.
+    stale by construction. The contract is instead:
+
+    - ``implementation_head``: the product commit the evidence is bound to;
+    - ``events[].collected_head``: the head that collected each observation;
+    - ``evidence_execution_head``: the head of the LAST collected event (or the
+      implementation head while the manifest has no events yet).
+
+    The manifest is therefore coherent only when its top-level execution head
+    agrees with its own events. Appending evidence collected from a different
+    head is exactly what must show up, never hide, in the archive.
     """
     manifest_schema = payload.get("manifest_schema", 1)
     if manifest_schema not in (1, 2):
@@ -227,14 +359,35 @@ def _manifest_provenance(payload: dict[str, Any]) -> tuple[str, str, str]:
     created_at = _required_text(payload, "manifest_created_at")
     if len(implementation_head) != 40 or len(execution_head) != 40:
         raise PcmClosureEvidenceError("closure manifest heads must be full commit ids")
-    if execution_head != implementation_head:
-        raise PcmClosureEvidenceError(
-            "evidence_execution_head must match implementation_head within one run"
-        )
     legacy = payload.get("execution_git_head")
     if legacy is not None and legacy != implementation_head:
         raise PcmClosureEvidenceError(
             "execution_git_head contradicts the declared provenance"
+        )
+    # Per-event provenance: every recorded observation names the head that
+    # collected it, and the manifest-level execution head must agree with the
+    # LAST event. A manifest whose top level disagrees with its own events is a
+    # provenance contradiction rather than a valid archive.
+    events = payload.get("events", [])
+    if events is None:
+        events = []
+    if not isinstance(events, list):
+        raise PcmClosureEvidenceError("manifest.events must be a list")
+    collected: list[str] = []
+    for index, event in enumerate(events):
+        if not isinstance(event, dict):
+            raise PcmClosureEvidenceError(f"manifest.events[{index}] must be an object")
+        head = event.get("collected_head")
+        if not isinstance(head, str) or len(head) != 40:
+            raise PcmClosureEvidenceError(
+                f"manifest.events[{index}] is missing a full collected_head"
+            )
+        collected.append(head)
+    expected_execution_head = collected[-1] if collected else implementation_head
+    if execution_head != expected_execution_head:
+        raise PcmClosureEvidenceError(
+            "evidence_execution_head must equal the last collected event head "
+            f"({expected_execution_head[:8]}), not {execution_head[:8]}"
         )
     return implementation_head, execution_head, created_at
 

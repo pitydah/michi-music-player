@@ -972,6 +972,10 @@ class AudioOutputBridge(QObject):
         picked a physical output to play through, so the recommended Direct
         policy (Compatible Direct) is bound explicitly. Strict Direct remains an
         advanced choice and no refusal is ever resolved by a hidden fallback.
+
+        Choosing an output also means "play there" for a normal player, so an
+        accepted track is re-prepared through the new route with its position
+        preserved (handover) instead of silently staying on the old output.
         """
         self._run_action(
             lambda: (
@@ -980,6 +984,12 @@ class AudioOutputBridge(QObject):
                 else self._missing_action()
             )
         )
+        if self._last_action_failure is not None:
+            return
+        playback = getattr(self, "_playback", None)
+        reroute = getattr(playback, "reroute_accepted_media", None)
+        if callable(reroute):
+            reroute()
 
     @Slot(str)
     def select_profile(self, profile_id: str) -> None:
@@ -1027,7 +1037,13 @@ class AudioOutputBridge(QObject):
 
     @Slot()
     def try_compatible_direct(self) -> None:
-        """Explicit user recovery: switch the policy, never a hidden fallback."""
+        """Explicit user recovery: switch the policy AND retry the refusal.
+
+        This is a real "Try": the request that was refused is re-issued through
+        the new policy. It stays explicit user intent, never a hidden fallback,
+        and it is generation-safe because the retry travels the normal request
+        machinery.
+        """
         self._run_action(
             lambda: (
                 self._selection_coordinator.select_path_mode("compatible")
@@ -1035,6 +1051,12 @@ class AudioOutputBridge(QObject):
                 else self._missing_action()
             )
         )
+        if self._last_action_failure is not None:
+            return
+        playback = getattr(self, "_playback", None)
+        retry = getattr(playback, "retry_last_refused", None)
+        if callable(retry):
+            retry()
 
     @Slot()
     def dismiss_output_failure(self) -> None:

@@ -484,12 +484,12 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
         ),
         "matrix": (
             "M11.4 Audiophile Output & DAC",
-            "PHYSICAL QUALIFICATION PASS (BOUNDED",
+            "| TESTED |",
             "DAC-V35-100R1.3.4",
         ),
         "roadmap": (
             "M11.4 Audiophile Output/DAC",
-            "PHYSICAL QUALIFICATION PASS (BOUNDED",
+            "| TESTED |",
             "DAC-V35-100R1.3.4",
         ),
         "readme": ("DAC-V35-100R1.3.4", "PHYSICAL QUALIFICATION PASS (BOUNDED"),
@@ -596,8 +596,13 @@ def _pcm_closure_state(root: Path | None = None) -> dict:
     reports what the archived, fail-closed device manifests actually prove.
     """
     from michi.application.dac_pcm_closure import (
+        IMPLEMENTATION_OBLIGATIONS,
+        TOOLING_OBLIGATIONS,
         PcmClosureEvidenceError,
+        closure_gaps,
+        closure_verdict,
         load_manifest,
+        obligation_report,
         summarize_manifests,
         summary_to_dict,
     )
@@ -615,6 +620,12 @@ def _pcm_closure_state(root: Path | None = None) -> dict:
     summary = summary_to_dict(summarize_manifests(payloads))
     lab = base / "scripts" / "dac_m11_4_pcm_lab.py"
     return {
+        "implementation_verdict": closure_verdict(IMPLEMENTATION_OBLIGATIONS),
+        "implementation_obligations": obligation_report(IMPLEMENTATION_OBLIGATIONS),
+        "tooling_obligations": obligation_report(TOOLING_OBLIGATIONS),
+        "closure_gaps": list(
+            closure_gaps(IMPLEMENTATION_OBLIGATIONS) + closure_gaps(TOOLING_OBLIGATIONS)
+        ),
         "manifests": [str(path.relative_to(base)) for path in manifests],
         "devices": [
             {
@@ -626,7 +637,7 @@ def _pcm_closure_state(root: Path | None = None) -> dict:
             for item in summary["devices"]
         ],
         "physical_tooling_verdict": (
-            "COMPLETE" if lab.is_file() and payloads else "INCOMPLETE"
+            closure_verdict(TOOLING_OBLIGATIONS) if lab.is_file() else "INCOMPLETE"
         ),
         "physical_verdict": summary["physical_verdict"],
         "multi_hardware_verdict": (

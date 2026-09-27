@@ -243,13 +243,11 @@ def _write_status_fixture(root, *, work_package_state: str) -> None:
         "DAC-V35-100R1.3.4\nPHYSICAL QUALIFICATION PASS (BOUNDED)\n"
     )
     (root / "docs/STATUS_MATRIX.md").write_text(
-        "| M11.4 Audiophile Output & DAC | PHYSICAL QUALIFICATION PASS "
-        "(BOUNDED) | DAC-V35-100R1.3.4 |\n"
+        "| M11.4 Audiophile Output & DAC | TESTED | DAC-V35-100R1.3.4 |\n"
         f"| M11.4 Audiophile Output & DAC Management | {work_package_state} | R1 |\n"
     )
     (root / "docs/MASTER_ROADMAP_1.0.md").write_text(
-        "| M11.4 Audiophile Output/DAC | PHYSICAL QUALIFICATION PASS "
-        "(BOUNDED) | DAC-V35-100R1.3.4 |\n"
+        "| M11.4 Audiophile Output/DAC | TESTED | DAC-V35-100R1.3.4 |\n"
     )
     (root / "README.md").write_text(
         "DAC-V35-100R1.3.4 PHYSICAL QUALIFICATION PASS (BOUNDED)\n"

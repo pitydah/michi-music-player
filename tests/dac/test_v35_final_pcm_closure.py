@@ -240,3 +240,64 @@ def test_fc_12_manifest_without_provenance_or_with_drift_is_rejected() -> None:
     contradicted["execution_git_head"] = "d" * 40
     with pytest.raises(PcmClosureEvidenceError):
         evaluate_device_manifest(contradicted)
+
+
+def test_fc_13_provenance_contradiction_between_levels_is_rejected() -> None:
+    """A manifest whose top level disagrees with its events is not coherent."""
+    import copy
+
+    coherent = _v2_manifest()
+    coherent["events"] = [
+        {
+            "experiment": "R24",
+            "status": "PASS",
+            "collected_head": "b" * 40,
+        }
+    ]
+    coherent["evidence_execution_head"] = "b" * 40
+    # The manifest-level execution head matches its last event.
+    assert evaluate_device_manifest(coherent).evidence_execution_head == "b" * 40
+
+    contradictory = copy.deepcopy(coherent)
+    contradictory["evidence_execution_head"] = "a" * 40
+    with pytest.raises(PcmClosureEvidenceError):
+        evaluate_device_manifest(contradictory)
+
+    missing_event_head = copy.deepcopy(coherent)
+    missing_event_head["events"][0].pop("collected_head")
+    with pytest.raises(PcmClosureEvidenceError):
+        evaluate_device_manifest(missing_event_head)
+
+
+def test_fc_14_verifier_verdicts_come_from_obligations_not_green_gates() -> None:
+    """Green gates must not be reported as full implementation closure."""
+    from michi.application.dac_pcm_closure import (
+        IMPLEMENTATION_OBLIGATIONS,
+        TOOLING_OBLIGATIONS,
+        closure_gaps,
+        closure_verdict,
+    )
+
+    implementation = closure_verdict(IMPLEMENTATION_OBLIGATIONS)
+    tooling = closure_verdict(TOOLING_OBLIGATIONS)
+    gaps = closure_gaps(IMPLEMENTATION_OBLIGATIONS) + closure_gaps(TOOLING_OBLIGATIONS)
+
+    # With resync_delay_ms still dead and the deep lab contracts still partial,
+    # neither verdict may claim completeness.
+    assert implementation == "INCOMPLETE"
+    assert tooling == "INCOMPLETE"
+    assert any("resync_delay_runtime" in gap for gap in gaps)
+    assert any(gap.startswith("R32:") for gap in gaps)
+    assert any(gap.startswith("R35:") for gap in gaps)
+    assert any(gap.startswith("R36:") for gap in gaps)
+    # Everything already closed must be reported as closed.
+    completed = {item.key for item in IMPLEMENTATION_OBLIGATIONS if item.complete}
+    assert {
+        "normal_dac_playback",
+        "failure_recovery_ux",
+        "startup_refusal_publication",
+        "evidence_provenance",
+        "try_compatible_retries",
+        "active_track_reroute",
+        "documentation_state_alignment",
+    } <= completed

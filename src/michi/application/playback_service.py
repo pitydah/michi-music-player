@@ -189,6 +189,12 @@ class PlaybackService:
         # position update (which fires `resume_prepared` once) or by any path
         # that clears the resume slot (rejection/stop/supersession).
         self._resume_prepared_subscribers: list[Callable[[Path, int], None]] = []
+        #: Media whose request ended in a typed refusal: the exact request an
+        #: explicit recovery intent re-issues. Retired on acceptance.
+        self._last_refused_path: Path | None = None
+        #: Set while a routing handover re-prepares the accepted media; when the
+        #: media was playing, playback resumes once it is accepted.
+        self._reroute_resume_playing: bool = False
         self._explicit_stop_accepted_subscribers: list[Callable[[], None]] = []
         self._resume_prepared_pending: bool = False
         # R2.1-02: a registered (not yet confirmed) resume target — distinct
@@ -378,6 +384,7 @@ class PlaybackService:
                     raise exc
                 failure = playback_action_failure(exc.code)
                 logger.warning("playback output refusal %s: %s", exc.code, exc)
+                self._last_refused_path = file_path
                 self._state.error_message = failure.message
                 self._state.error_code = failure.code
                 self._notify()
@@ -421,6 +428,7 @@ class PlaybackService:
         self._pending_on_rejected = on_rejected
         self._pending_on_cancelled = on_cancelled
         self._pending_resume_position_ms = None  # supersedes any prepare
+        self._reroute_resume_playing = False  # supersedes any pending handover
         self._resume_prepared_pending = False
         self._deferred_resume_target_ms = None  # R2.1-02: supersedes target
         self._accepted = False
@@ -578,11 +586,17 @@ class PlaybackService:
         # failing request present a stale clean state.
         self._state.error_message = None
         self._state.error_code = None
+        self._last_refused_path = None
         self._accepted = True
         self._notify()
         if on_accepted is not None:
             on_accepted(file_path)
         self._apply_prepare_seek()
+        if self._reroute_resume_playing:
+            # Handover contract: the user was playing, so the re-prepared media
+            # resumes from its sought position once it is accepted.
+            self._reroute_resume_playing = False
+            self.play()
         if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
             self._complete_engine_switch_rehydration(
                 MediaRequestTerminalStatus.ACCEPTED, file_path
@@ -612,6 +626,38 @@ class PlaybackService:
         self._pending_on_cancelled = None
         self._pending_resume_position_ms = None
         self._resume_prepared_pending = False
+
+    def retry_last_refused(self) -> bool:
+        """Re-issue the last refused request through the current policy.
+
+        Explicit recovery only: the caller already switched the policy, and this
+        re-issues exactly the request that was refused. Generation-safe because
+        it travels the normal request machinery, so a newer request or a stop
+        supersedes it like any other request.
+        """
+        path = self._last_refused_path
+        if path is None:
+            return False
+        self._last_refused_path = None
+        self.load_and_play(path)
+        return True
+
+    def reroute_accepted_media(self) -> bool:
+        """Handover: move the accepted media to the current routing policy.
+
+        Selecting an output means "play there" for a normal player, so the
+        accepted track is re-prepared through the new policy with its position
+        preserved. When it was playing, playback resumes from the sought
+        position once the media is accepted. Generation-safe: a newer request,
+        stop or device loss supersedes it through the normal fence.
+        """
+        path = self._state.file_path
+        if path is None:
+            return False
+        position_ms = max(0, int(self._state.position_ms or 0))
+        self._reroute_resume_playing = self._state.status is PlaybackStatus.PLAYING
+        self.prepare_for_resume(Path(path), position_ms)
+        return True
 
     def prepare_for_resume(self, file_path: Path, position_ms: int) -> None:
         """STARTUP RESTORE (P2-01): participates in the M5 two-phase restore

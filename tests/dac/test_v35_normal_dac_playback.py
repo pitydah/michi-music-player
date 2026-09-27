@@ -282,3 +282,97 @@ def test_ndp_06_persisted_strict_startup_resume_stays_honest_and_recoverable(
             persistence.shutdown()
         graph.direct_output_lifecycle.shutdown()
         _close_graph(graph)
+
+
+def test_ndp_07_recovery_reissues_the_refused_request(qapp, tmp_path) -> None:
+    """Try Compatible Direct must really retry, not only switch the policy."""
+    probe = _SplitProbe()
+    graph, bindings = _s16_graph_at(tmp_path, probe, 44_100)
+    try:
+        coordinator = _coordinator(graph)
+        coordinator.select_path_mode("strict")
+        media = tmp_path / "retry-44100-16.flac"
+        graph.playback.load_and_play(media)
+        assert _wait_until(
+            lambda: graph.playback.state.error_code == "EXACT_TUPLE_UNSUPPORTED"
+        )
+        assert bindings.pipelines == []
+
+        # Explicit recovery: switch policy, then re-issue the refused request.
+        coordinator.select_path_mode("compatible")
+        assert graph.playback.retry_last_refused() is True
+        _wait_for_pipeline(bindings, graph)
+        _accept_current(graph, bindings)
+
+        assert probe.calls == [(44_100, "S16_LE", 2), (44_100, "S32_LE", 2)]
+        plan = graph.output_session.plan
+        assert plan is not None
+        assert plan.requested_pcm.transport_format == "S32_LE"
+        assert graph.playback.state.file_path == media
+        assert _wait_until(lambda: graph.playback.state.error_code is None), (
+            "the refused failure must retire after the successful retry"
+        )
+    finally:
+        _close_graph(graph)
+
+
+def test_ndp_08_retry_is_retired_and_generation_safe(qapp, tmp_path) -> None:
+    """A refused request is retried once; success and newer requests retire it."""
+    probe = _SplitProbe()
+    graph, bindings = _s16_graph_at(tmp_path, probe, 44_100)
+    try:
+        # Nothing refused yet: no retry.
+        assert graph.playback.retry_last_refused() is False
+
+        coordinator = _coordinator(graph)
+        coordinator.select_path_mode("strict")
+        media = tmp_path / "retire-44100-16.flac"
+        graph.playback.load_and_play(media)
+        assert _wait_until(
+            lambda: graph.playback.state.error_code == "EXACT_TUPLE_UNSUPPORTED"
+        )
+
+        # Acceptance retires the refusal: a later retry is a no-op.
+        coordinator.select_path_mode("compatible")
+        graph.playback.load_and_play(media)
+        _wait_for_pipeline(bindings, graph)
+        _accept_current(graph, bindings)
+        assert _wait_until(lambda: graph.playback.state.error_code is None)
+        assert graph.playback.retry_last_refused() is False
+    finally:
+        _close_graph(graph)
+
+
+def test_ndp_09_handover_reprepares_the_accepted_track(qapp, tmp_path) -> None:
+    """Selecting an output moves the accepted track instead of ignoring it."""
+    probe = _SplitProbe()
+    graph, bindings = _s16_graph_at(tmp_path, probe, 44_100)
+    calls: list[tuple[str, int | None]] = []
+    original = graph.playback.prepare_for_resume
+
+    def counted(path, position_ms):
+        calls.append((str(path), position_ms))
+        return original(path, position_ms)
+
+    graph.playback.prepare_for_resume = counted
+    try:
+        assert graph.playback.reroute_accepted_media() is False, (
+            "nothing accepted means nothing to move"
+        )
+
+        coordinator = _coordinator(graph)
+        coordinator.select_path_mode("compatible")
+        media = tmp_path / "handover-44100-16.flac"
+        graph.playback.load_and_play(media)
+        _wait_for_pipeline(bindings, graph)
+        _accept_current(graph, bindings)
+        assert _wait_until(lambda: graph.playback.state.file_path == media)
+
+        # The user switches output while the track is live.
+        assert graph.playback.reroute_accepted_media() is True
+        assert calls == [(str(media), 0)]
+        assert _wait_until(lambda: len(bindings.pipelines) >= 2), (
+            "the handover must re-prepare through the new route"
+        )
+    finally:
+        _close_graph(graph)

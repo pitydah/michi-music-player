@@ -215,7 +215,7 @@
       "status": "REQUIRES_OPERATOR_CONFIRMATION"
     }
   ],
-  "evidence_execution_head": "82d920ef04412aa3be0acc8710d6aefdf9c5354d",
+  "evidence_execution_head": "bc53642039d1e2597abba476215a198949887c2d",
   "experiments": {
     "R24": {
       "captured_at": "2026-09-26T20:56:51-0300",

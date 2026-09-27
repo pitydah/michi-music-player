@@ -76,6 +76,39 @@ kernel) remain `NOT_RUN`. Physical verdict: `INCOMPLETE`, multi-hardware not
 proven. Bit-perfect and exclusive are still not claimed, and M11.5 /
 DAC-V35-120 / 130 / 140 are not started.
 
+### Recovery is a real Try, handover moves the live track, provenance is coherent
+
+Post-audit corrective (ten focused points, no changes to discovery,
+qualification, Strict semantics, carrier resolution or the lifecycle core):
+
+- **Try Compatible Direct really tries.** The recovery intent switches the
+  policy *and* re-issues the refused request through the normal request
+  machinery, so it is explicit user intent and generation-safe instead of only
+  changing the policy.
+- **Selecting an output moves the live track.** Choosing a DAC while media is
+  accepted re-prepares that media through the new route with its position
+  preserved, and playback resumes from the sought position once accepted
+  (handover), instead of silently staying on the old output.
+- **Evidence provenance is internally coherent.** ``implementation_head`` binds
+  the product code, ``events[].collected_head`` records who collected each
+  observation, and ``evidence_execution_head`` must equal the LAST event's head
+  (or the implementation head while there are no events). A manifest whose top
+  level disagrees with its own events is rejected as a contradiction; the two
+  archived manifests were migrated to this model without altering their
+  recorded observations.
+- **The verifier no longer overclaims.** Verdicts come from declared
+  obligations with explicit gaps, never from a green gate set: a passing suite
+  is not implementation completeness, and a lab script plus one manifest is not
+  tooling completeness.
+- **Governance state is separated from evidence verdicts.** STATUS_MATRIX and
+  the roadmap use the governance state ``TESTED``; the physical verdicts live in
+  the prose, where they belong.
+
+Still open and honestly reported as INCOMPLETE: ``OutputPlan.resync_delay_ms``
+has no runtime consumer yet (which also blocks the R25 delay sweep), and the
+deep R25/R32/R35/R36 lab contracts (first-sample evidence, soak metrics,
+canonical tail fixtures, XRUN recovery semantics) remain partial.
+
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
 (work packages `DAC-V35-*`, §0E manifest, §0F baseline seal, §0K DoD).
