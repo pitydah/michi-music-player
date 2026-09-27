@@ -64,6 +64,20 @@ def _pump(ms: int = 60):
         _time.sleep(0.01)
 
 
+def _pump_until(predicate, timeout_ms: int = 4000) -> bool:
+    """Pump events until an async backend observation arrives or times out."""
+    import time as _time
+
+    from PySide6.QtCore import QEventLoop
+    from PySide6.QtWidgets import QApplication
+
+    deadline = _time.monotonic() + timeout_ms / 1000.0
+    while not predicate() and _time.monotonic() < deadline:
+        QApplication.processEvents(QEventLoop.AllEvents, 20)
+        _time.sleep(0.01)
+    return bool(predicate())
+
+
 def _drain():
     from PySide6.QtWidgets import QApplication
 
@@ -145,9 +159,8 @@ class _Contract:
         port.subscribe_media_accepted(on_accepted)
         try:
             port.load(wav)
-            _pump(150)
             # acceptance may be synchronous (MPD) or async (GStreamer bus)
-            assert accepted, "media must be accepted"
+            assert _pump_until(lambda: accepted), "media must be accepted"
             # no autoplay on prepare: state must not be PLAYING
             assert PlaybackStatus.PLAYING not in states
         finally:
