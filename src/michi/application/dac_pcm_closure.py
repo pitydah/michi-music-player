@@ -127,6 +127,17 @@ IMPLEMENTATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
         True,
     ),
     ClosureObligation(
+        "resync_timing_safety",
+        "The resync deadline cannot strand the pipeline and its evidence is fresh",
+        False,
+        (
+            "coarse QTimer can wake early and the callback does not re-arm, "
+            "which can leave the pipeline PAUSED",
+            "resync_actual_hold_ms is not reset per execution and can expose "
+            "a previous track's hold",
+        ),
+    ),
+    ClosureObligation(
         "resync_eos_replay",
         "EOS replay under a nonzero delay keeps the configured hold",
         False,
@@ -170,6 +181,7 @@ TOOLING_OBLIGATIONS: tuple[ClosureObligation, ...] = (
         (
             "real sweep aggregation and minimum-delay selection",
             "first-sample evidence reference/method requirement",
+            "the lab does not consume the runtime's measured actual hold",
         ),
     ),
     ClosureObligation(
@@ -223,6 +235,12 @@ FINALIZATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
         "M11_4 contract matches the real tooling state",
         False,
         ("environment-doc reconciliation pending",),
+    ),
+    ClosureObligation(
+        "finalization_wiring",
+        "Finalization obligations participate in the closure verdict",
+        False,
+        ("the verifier imports only implementation and tooling obligations",),
     ),
 )
 

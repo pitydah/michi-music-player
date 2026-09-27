@@ -294,6 +294,8 @@ def test_fc_14_verifier_verdicts_come_from_obligations_not_green_gates() -> None
     assert any("R35:" in gap for gap in gaps)
     assert any("R36:" in gap for gap in gaps)
     assert any("resync_eos_replay" in gap for gap in gaps)
+    assert any("resync_timing_safety" in gap for gap in gaps)
+    assert any("measured actual hold" in gap for gap in gaps)
     # Everything already closed must be reported as closed.
     completed = {item.key for item in IMPLEMENTATION_OBLIGATIONS if item.complete}
     assert {
