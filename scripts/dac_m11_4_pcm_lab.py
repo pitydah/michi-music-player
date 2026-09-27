@@ -243,6 +243,19 @@ def _record(
     print(f"{experiment}: {status}; device verdict={verdict.verdict}")
 
 
+R25_HOLD_TOLERANCE_MS = 5
+
+
+def _file_sha256(path: Path) -> str:
+    import hashlib
+
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _process_rss_kb() -> int | None:
     """Best-effort resident set of this lab process (R32 memory evidence)."""
     try:
@@ -448,74 +461,183 @@ def command_clock(args) -> int:
     return 0
 
 
+R25_DELAYS = (0, 100, 250, 500, 1000)
+R25_MEDIA_ORDER = (0, 0, 48000, 44100, 96000, 192000, 44100)
+R25_REQUIRED_EDGES = (
+    "44100->44100",
+    "44100->48000",
+    "48000->44100",
+    "44100->96000",
+    "96000->192000",
+    "192000->44100",
+)
+
+
+def _port_resync_evidence(container) -> dict[str, Any]:
+    """Measured hold evidence from the runtime, when the port exposes it."""
+    try:
+        port = container.gstreamer_engine_provider.current_port
+        evidence = getattr(port, "resync_evidence", None)
+        if callable(evidence):
+            payload = evidence()
+            return payload if isinstance(payload, dict) else {}
+    except Exception:  # noqa: BLE001 - observational boundary
+        pass
+    return {}
+
+
+def _first_sample_evidence(args) -> dict[str, Any] | None:
+    """Structured first-sample evidence, or None when it is not complete.
+
+    A nominal ``--first-sample-result PASS`` is never enough: the identity of the
+    fixture and the measurement method travel with the observation, and the
+    fixture hash is computed here from the file itself.
+    """
+    method = getattr(args, "first_sample_method", None)
+    fixture = getattr(args, "first_sample_fixture", None)
+    reference = getattr(args, "first_sample_evidence", None)
+    marker = getattr(args, "first_sample_expected_marker", None)
+    observed = getattr(args, "first_sample_observed_result", None)
+    if not all((method, fixture, reference, marker, observed)):
+        return None
+    path = Path(fixture)
+    if not path.is_file():
+        raise SystemExit(f"first-sample fixture does not exist: {path}")
+    return {
+        "method": str(method),
+        "fixture_id": path.name,
+        "fixture_sha256": _file_sha256(path),
+        "evidence_reference": str(reference),
+        "expected_marker": str(marker),
+        "observed_result": str(observed),
+    }
+
+
+def _run_r25_delay(container, args, delay_ms: int) -> dict[str, Any]:
+    """One delay of the canonical sweep: the full media sequence, measured."""
+    coordinator = _coordinator(container)
+    coordinator.select_path_mode(args.mode)
+    coordinator.set_resync_delay_ms(delay_ms)
+    receipts: list[dict[str, Any]] = []
+    stale = False
+    hidden = False
+    previous_identity = None
+    measured: dict[str, Any] = {}
+    for media in args.media:
+        result = _play(container, media, args.mode)
+        truth = result.get("signal_truth") or {}
+        decoded = truth.get("decoded") if isinstance(truth, dict) else None
+        identity = truth.get("identity") if isinstance(truth, dict) else None
+        rate = int((decoded or {}).get("rate_hz") or 0)
+        reasons = result.get("signal_truth_reasons") or []
+        if previous_identity is not None and identity == previous_identity:
+            stale = True
+        if any("CONTAINER_TRANSFORM_UNOBSERVED" in str(reason) for reason in reasons):
+            hidden = True
+        previous_identity = identity
+        evidence = _port_resync_evidence(container)
+        if evidence:
+            measured = evidence
+        receipts.append(
+            {
+                "media": str(media),
+                "source_rate_hz": rate,
+                "signal_truth_state": (
+                    (truth.get("verdict") or {}).get("state")
+                    if isinstance(truth, dict)
+                    else None
+                ),
+                "signal_truth_identity": identity,
+                "requested_tuple": (
+                    (truth.get("plan") or {}).get("requested_pcm")
+                    if isinstance(truth, dict)
+                    else None
+                ),
+                "negotiated_tuple": (
+                    truth.get("negotiated") or truth.get("alsa")
+                    if isinstance(truth, dict)
+                    else None
+                ),
+                "xrun_count": 1 if "ST_XRUN" in reasons else 0,
+                "error": result.get("error_message"),
+            }
+        )
+        _stop(container)
+    rates = [int(receipt["source_rate_hz"]) for receipt in receipts]
+    edges = [
+        f"{left}->{right}" for left, right in zip(rates[:-1], rates[1:], strict=True)
+    ]
+    actual = measured.get("resync_actual_hold_ms")
+    return {
+        "configured_delay_ms": delay_ms,
+        "actual_hold_ms": int(actual)
+        if isinstance(actual, int)
+        else (0 if delay_ms == 0 else None),
+        "edges": edges,
+        "port_generation": measured.get("port_generation"),
+        "execution_generation": measured.get("execution_generation"),
+        "plan_id": measured.get("plan_id"),
+        "stale_generation_observed": stale,
+        "hidden_conversion_observed": hidden,
+        "receipts": receipts,
+    }
+
+
 def command_transition(args) -> int:
     if len(args.media) != 7:
         raise SystemExit(
             "R25 requires seven fixtures in this order: "
             "44.1, 44.1, 48, 44.1, 96, 192, 44.1 kHz"
         )
+    first_sample = _first_sample_evidence(args)
     container = _container(args.device_id, args.locator)
-    observed_rates: list[int] = []
-    stale = False
-    receipts: list[dict[str, Any]] = []
-    resync_delay_ms = int(getattr(args, "resync_delay_ms", 0))
+    runs: list[dict[str, Any]] = []
     try:
-        if resync_delay_ms:
-            _coordinator(container).select_path_mode(args.mode)
-            _coordinator(container).set_resync_delay_ms(resync_delay_ms)
-        previous_identity = None
-        for media in args.media:
-            result = _play(container, media, args.mode)
-            truth = result["signal_truth"] or {}
-            decoded = truth.get("decoded") if isinstance(truth, dict) else None
-            identity = truth.get("identity") if isinstance(truth, dict) else None
-            rate = int((decoded or {}).get("rate_hz") or 0)
-            observed_rates.append(rate)
-            if previous_identity is not None and identity == previous_identity:
-                stale = True
-            previous_identity = identity
-            receipts.append(
-                {
-                    "media": str(media),
-                    "rate_hz": rate,
-                    "identity": identity,
-                    "verdict": truth.get("verdict")
-                    if isinstance(truth, dict)
-                    else None,
-                    "error": result["error_message"],
-                }
-            )
-            _stop(container)
-        edges = [
-            f"{left}->{right}"
-            for left, right in zip(observed_rates[:-1], observed_rates[1:], strict=True)
-        ]
-        first_sample_result = args.first_sample_result
-        facts = {
-            "transition_edges": edges,
-            "first_sample_result": first_sample_result,
-            "stale_generation_observed": stale,
-            "receipts": receipts,
-            "resync_delay_ms": resync_delay_ms,
-        }
-        status = (
-            "PASS"
-            if first_sample_result == "PASS"
-            and not stale
-            and all(rate > 0 for rate in observed_rates)
-            else "FAIL"
-            if first_sample_result == "FAIL" or stale
-            else "REQUIRES_OPERATOR_CONFIRMATION"
-        )
-        _record(
-            args.manifest,
-            experiment="R25",
-            status=status,
-            evidence=[f"runtime:{media}" for media in args.media],
-            facts=facts,
-        )
+        for delay in R25_DELAYS:
+            runs.append(_run_r25_delay(container, args, delay))
     finally:
         container.shutdown()
+
+    def _run_passes(run: dict[str, Any]) -> bool:
+        hold = run.get("actual_hold_ms")
+        return not (
+            sorted(set(run["edges"])) != sorted(R25_REQUIRED_EDGES)
+            or run["stale_generation_observed"]
+            or run["hidden_conversion_observed"]
+            or not isinstance(hold, int)
+            or hold + R25_HOLD_TOLERANCE_MS < run["configured_delay_ms"]
+        )
+
+    passing = [run["configured_delay_ms"] for run in runs if _run_passes(run)]
+    minimal = min(passing) if passing else None
+    any_stale = any(run["stale_generation_observed"] for run in runs)
+    any_hidden = any(run["hidden_conversion_observed"] for run in runs)
+    any_error = any(receipt["error"] for run in runs for receipt in run["receipts"])
+    any_xrun = any(receipt["xrun_count"] for run in runs for receipt in run["receipts"])
+    facts = {
+        "runs": runs,
+        "transition_edges": sorted({edge for run in runs for edge in run["edges"]}),
+        "first_sample_evidence": first_sample,
+        "first_sample_result": ("PASS" if first_sample is not None else "NOT_OBSERVED"),
+        "minimal_delay_that_preserves_first_content": minimal,
+        "stale_generation_observed": any_stale,
+        "hidden_conversion_observed": any_hidden,
+        "xrun_count": any_xrun,
+    }
+    if any_stale or any_hidden or any_error or any_xrun:
+        status = "FAIL"
+    elif first_sample is None or len(passing) != len(R25_DELAYS):
+        status = "REQUIRES_OPERATOR_CONFIRMATION"
+    else:
+        status = "PASS"
+    _record(
+        args.manifest,
+        experiment="R25",
+        status=status,
+        evidence=[f"runtime:{media}" for media in args.media]
+        + [f"sweep_delay:{delay}ms" for delay in R25_DELAYS],
+        facts=facts,
+    )
     return 0
 
 
@@ -813,12 +935,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     transition = common("transition")
     transition.add_argument("--media", type=Path, nargs="+", required=True)
-    transition.add_argument(
-        "--first-sample-result",
-        choices=("PASS", "FAIL", "NOT_OBSERVED"),
-        default="NOT_OBSERVED",
-    )
-    transition.add_argument("--resync-delay-ms", type=int, default=0)
+    transition.add_argument("--first-sample-method")
+    transition.add_argument("--first-sample-fixture")
+    transition.add_argument("--first-sample-evidence")
+    transition.add_argument("--first-sample-expected-marker")
+    transition.add_argument("--first-sample-observed-result")
     transition.set_defaults(func=command_transition)
 
     soak = common("soak")
