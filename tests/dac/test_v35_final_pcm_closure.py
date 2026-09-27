@@ -282,11 +282,18 @@ def test_fc_14_verifier_verdicts_come_from_obligations_not_green_gates() -> None
     tooling = closure_verdict(TOOLING_OBLIGATIONS)
     gaps = closure_gaps(IMPLEMENTATION_OBLIGATIONS) + closure_gaps(TOOLING_OBLIGATIONS)
 
-    # Implementation and tooling obligations are closed. Physical evidence
-    # stays separate and honestly INCOMPLETE, so no physical PASS is implied.
-    assert implementation == "COMPLETE"
-    assert tooling == "COMPLETE"
-    assert gaps == ()
+    # Implementation closure is complete for the delivered feature set, while
+    # the experimental tooling program is explicitly still open: a nominal PASS
+    # can still omit required facts and the field lab has no tests.
+    # Implementation closure is real for the delivered feature set except the
+    # EOS-replay-under-delay edge, which is fail-closed and declared open.
+    assert implementation == "INCOMPLETE"
+    assert tooling == "INCOMPLETE"
+    assert any("R25" in gap for gap in gaps)
+    assert any("R32:" in gap for gap in gaps)
+    assert any("R35:" in gap for gap in gaps)
+    assert any("R36:" in gap for gap in gaps)
+    assert any("resync_eos_replay" in gap for gap in gaps)
     # Everything already closed must be reported as closed.
     completed = {item.key for item in IMPLEMENTATION_OBLIGATIONS if item.complete}
     assert {

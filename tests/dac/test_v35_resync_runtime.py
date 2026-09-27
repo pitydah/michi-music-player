@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from michi.infrastructure.audio_engines.gstreamer import (
+    GStreamerAudioPort,
     _GstEvent,
     _GstEventKind,
 )
@@ -40,13 +41,15 @@ def test_resync_starts_only_after_verified_preroll_and_deadline(qapp, delay):
         now[0] = 9_000_000_000
         _preroll(port, bindings)
         assert pipeline.state != bindings.STATE.PLAYING
-        tick = _GstEvent(port._generation, _GstEventKind.POSITION_TICK)
         now[0] += delay * 1_000_000 - 1
-        port._on_backend_event(tick)
+        port._on_resync_deadline()
         assert pipeline.state != bindings.STATE.PLAYING
         now[0] += 1
-        port._on_backend_event(tick)
+        port._on_resync_deadline()
         assert pipeline.state == bindings.STATE.PLAYING
+        evidence = port.resync_evidence()
+        assert evidence["resync_delay_ms"] == delay
+        assert evidence["resync_actual_hold_ms"] == delay
     finally:
         port.close()
 
@@ -77,7 +80,6 @@ def test_cancelled_or_stale_tick_never_starts_audio(qapp, cancel):
         port.play()
         _preroll(port, bindings)
         old_pipeline = bindings.pipelines[-1]
-        tick = _GstEvent(port._generation, _GstEventKind.POSITION_TICK)
         if cancel == "release":
             executor.release("device_lost")
         elif cancel == "supersede":
@@ -85,7 +87,7 @@ def test_cancelled_or_stale_tick_never_starts_audio(qapp, cancel):
         else:
             getattr(port, cancel)()
         now[0] = 10_000_000_000
-        port._on_backend_event(tick)
+        port._on_resync_deadline()
         assert old_pipeline.state != bindings.STATE.PLAYING
         assert bindings.pipelines[-1].state != bindings.STATE.PLAYING
     finally:
@@ -106,7 +108,7 @@ def test_duplicate_play_and_async_done_do_not_restart_deadline(qapp):
         port.play()
         _preroll(port, bindings)
         now[0] = 100_000_000
-        port._on_backend_event(_GstEvent(port._generation, _GstEventKind.POSITION_TICK))
+        port._on_resync_deadline()
         assert bindings.pipelines[-1].state == bindings.STATE.PLAYING
     finally:
         port.close()
@@ -131,11 +133,10 @@ def test_retained_source_replay_reacquires_before_delay_without_reacceptance(qap
         assert bindings.pipelines[-1].state == bindings.STATE.PAUSED
         now[0] = 2_000_000_000
         _preroll(port, bindings)
-        tick = _GstEvent(port._generation, _GstEventKind.POSITION_TICK)
-        port._on_backend_event(tick)
+        port._on_resync_deadline()
         assert bindings.pipelines[-1].state == bindings.STATE.PAUSED
         now[0] += 100_000_000
-        port._on_backend_event(tick)
+        port._on_resync_deadline()
         assert bindings.pipelines[-1].state == bindings.STATE.PLAYING
         assert accepted == [Path("/m/marker.wav")]
     finally:
@@ -181,39 +182,54 @@ def test_failure_during_hold_cancels_the_deferred_start(qapp, failure):
         port.close()
 
 
-def test_eos_replay_with_delay_reacquires_before_starting(qapp):
-    """An EOS replay must re-hold: fresh preroll then the full delay."""
+def test_eos_replay_with_delay_is_a_typed_refusal(qapp):
+    """EOS replay under a nonzero delay fails closed instead of skipping it."""
+    from michi.application.ports import AudioTransportCommandError
     from tests.test_gstreamer_audio_port import _deliver, _FakeMsgType, _msg
 
     bindings = FakeBindings()
     port, executor = _strict_port(bindings)
     now = [0]
     port._resync_clock_ns = lambda: now[0]
-    accepted: list[Path] = []
-    port.subscribe_media_accepted(accepted.append)
     try:
         executor.prepare(replace(_plan(), resync_delay_ms=100))
         port.load(Path("/m/marker.wav"))
         port.play()
         _preroll(port, bindings)
         now[0] = 100_000_000
-        port._on_backend_event(_GstEvent(port._generation, _GstEventKind.POSITION_TICK))
+        port._on_resync_deadline()
+        assert bindings.pipelines[-1].state == bindings.STATE.PLAYING
+
+        message, generation = _msg(port, _FakeMsgType.EOS, bindings.pipelines[-1])
+        _deliver(port, message, generation)
+
+        with pytest.raises(AudioTransportCommandError) as exc_info:
+            port.play()
+        assert "DIRECT_RESYNC_EOS_REPLAY_UNSUPPORTED" in str(exc_info.value)
+        # The refused replay must leave no deferred start behind.
+        assert port._pending_play is False
+        assert port._resync_delay_ms == 0
+    finally:
+        port.close()
+
+
+def test_eos_replay_with_zero_delay_still_works(qapp):
+    """The default zero-delay path keeps the existing EOS replay semantics."""
+    from tests.test_gstreamer_audio_port import _deliver, _FakeMsgType, _msg
+
+    bindings = FakeBindings()
+    port = GStreamerAudioPort(bindings)
+    try:
+        port.load(Path("/m/marker.wav"))
+        port.play()
+        _preroll(port, bindings)
         assert bindings.pipelines[-1].state == bindings.STATE.PLAYING
 
         message, generation = _msg(port, _FakeMsgType.EOS, bindings.pipelines[-1])
         _deliver(port, message, generation)
 
         port.play()
-        assert bindings.pipelines[-1].state == bindings.STATE.PAUSED
-        now[0] = 9_000_000_000
-        _preroll(port, bindings)
-        tick = _GstEvent(port._generation, _GstEventKind.POSITION_TICK)
-        port._on_backend_event(tick)
-        assert bindings.pipelines[-1].state == bindings.STATE.PAUSED
-        now[0] += 100_000_000
-        port._on_backend_event(tick)
         assert bindings.pipelines[-1].state == bindings.STATE.PLAYING
-        assert accepted == [Path("/m/marker.wav")]
     finally:
         port.close()
 
@@ -234,7 +250,7 @@ def test_released_execution_cannot_start_and_reports_no_anomaly(qapp):
         executor.release("device_lost")
 
         now[0] = 10_000_000_000
-        port._on_backend_event(_GstEvent(port._generation, _GstEventKind.POSITION_TICK))
+        port._on_resync_deadline()
         assert bindings.pipelines[-1].state != bindings.STATE.PLAYING
         assert port._resync_complete is False
         assert port._pending_play is False

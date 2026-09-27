@@ -127,6 +127,12 @@ IMPLEMENTATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
         True,
     ),
     ClosureObligation(
+        "resync_eos_replay",
+        "EOS replay under a nonzero delay keeps the configured hold",
+        False,
+        ("fail-closed typed refusal; the post-EOS hold is not implemented",),
+    ),
+    ClosureObligation(
         "try_compatible_retries",
         "Try Compatible Direct actually retries the refused request",
         True,
@@ -157,17 +163,66 @@ IMPLEMENTATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
 #: being present is NOT tooling completeness.
 TOOLING_OBLIGATIONS: tuple[ClosureObligation, ...] = (
     ClosureObligation("R24", "Clock authority tooling", True),
-    ClosureObligation("R25", "Rate-transition tooling", True),
-    ClosureObligation("R32", "Soak tooling", True),
+    ClosureObligation(
+        "R25",
+        "Rate-transition tooling",
+        False,
+        (
+            "real sweep aggregation and minimum-delay selection",
+            "first-sample evidence reference/method requirement",
+        ),
+    ),
+    ClosureObligation(
+        "R32",
+        "Soak tooling",
+        False,
+        (
+            "growth/pump/USB/transition evidence must be part of PASS",
+            "transition_failures accounting is a no-op",
+            "ownership is read from provider.pipelines, not current_port",
+            "USB counters are not device-bound",
+        ),
+    ),
     ClosureObligation(
         "R35",
         "Tail/drain tooling",
-        True,
+        False,
+        (
+            "all four canonical fixtures required before PASS",
+            "capture artifact/hash validation",
+        ),
     ),
     ClosureObligation(
         "R36",
         "XRUN and recovery tooling",
-        True,
+        False,
+        (
+            "operator workflow for suspend/resume and device failure",
+            "measured recovery, continuity and loop facts",
+        ),
+    ),
+)
+
+
+#: Cross-cutting finalization obligations for the experimental program.
+FINALIZATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
+    ClosureObligation(
+        "lab_semantic_checks",
+        "_semantic_pass_check reflects the canonical R25/R32/R35/R36 contracts",
+        False,
+        ("nominal PASS can still omit the required structured facts",),
+    ),
+    ClosureObligation(
+        "lab_tests",
+        "the field lab itself is covered by tests",
+        False,
+        ("no test executes scripts/dac_m11_4_pcm_lab.py",),
+    ),
+    ClosureObligation(
+        "docs_reconciled",
+        "M11_4 contract matches the real tooling state",
+        False,
+        ("environment-doc reconciliation pending",),
     ),
 )
 
