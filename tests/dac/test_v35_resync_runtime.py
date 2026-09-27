@@ -182,33 +182,50 @@ def test_failure_during_hold_cancels_the_deferred_start(qapp, failure):
         port.close()
 
 
-def test_eos_replay_with_delay_is_a_typed_refusal(qapp):
-    """EOS replay under a nonzero delay fails closed instead of skipping it."""
-    from michi.application.ports import AudioTransportCommandError
+@pytest.mark.parametrize("delay", [100, 250, 500, 1000])
+def test_eos_replay_reacquires_and_reholds(qapp, delay):
+    """EOS replay keeps the contract: fresh verified preroll, fresh hold."""
     from tests.test_gstreamer_audio_port import _deliver, _FakeMsgType, _msg
 
     bindings = FakeBindings()
     port, executor = _strict_port(bindings)
     now = [0]
     port._resync_clock_ns = lambda: now[0]
+    accepted: list[Path] = []
+    port.subscribe_media_accepted(accepted.append)
     try:
-        executor.prepare(replace(_plan(), resync_delay_ms=100))
+        executor.prepare(replace(_plan(), resync_delay_ms=delay))
         port.load(Path("/m/marker.wav"))
         port.play()
         _preroll(port, bindings)
-        now[0] = 100_000_000
+        now[0] = delay * 1_000_000
         port._on_resync_deadline()
         assert bindings.pipelines[-1].state == bindings.STATE.PLAYING
+        assert port.resync_evidence()["resync_actual_hold_ms"] == delay
 
         message, generation = _msg(port, _FakeMsgType.EOS, bindings.pipelines[-1])
         _deliver(port, message, generation)
 
-        with pytest.raises(AudioTransportCommandError) as exc_info:
-            port.play()
-        assert "DIRECT_RESYNC_EOS_REPLAY_UNSUPPORTED" in str(exc_info.value)
-        # The refused replay must leave no deferred start behind.
-        assert port._pending_play is False
-        assert port._resync_delay_ms == 0
+        before = now[0]
+        port.play()
+        assert bindings.pipelines[-1].state == bindings.STATE.PAUSED
+        # Fresh execution: the previous hold must not leak as evidence.
+        assert port.resync_evidence()["resync_actual_hold_ms"] is None
+
+        # A slow reacquisition must not consume the post-preroll hold.
+        now[0] = before + 5_000_000_000
+        _preroll(port, bindings)
+        port._on_resync_deadline()
+        assert bindings.pipelines[-1].state == bindings.STATE.PAUSED
+        now[0] += delay * 1_000_000
+        port._on_resync_deadline()
+        assert bindings.pipelines[-1].state == bindings.STATE.PLAYING
+
+        evidence = port.resync_evidence()
+        assert evidence["resync_delay_ms"] == delay
+        assert evidence["resync_actual_hold_ms"] == delay
+        # Same accepted media, one execution authority, no second acceptance.
+        assert accepted == [Path("/m/marker.wav")]
     finally:
         port.close()
 

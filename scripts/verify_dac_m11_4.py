@@ -1077,6 +1077,8 @@ def main(argv: list[str] | None = None) -> int:
     # artifact records. A green gate set never upgrades it here either.
     print(f"Implementation verdict: {closure['implementation_verdict']}")
     print(f"Physical tooling verdict: {closure['physical_tooling_verdict']}")
+    print(f"Finalization verdict: {closure['finalization_verdict']}")
+    print(f"M11.4 technical closure: {closure['m11_4_technical_closure']}")
     print(
         f"Physical verdict: {closure['physical_verdict']} "
         f"(multi-hardware: {closure['multi_hardware_verdict']})"

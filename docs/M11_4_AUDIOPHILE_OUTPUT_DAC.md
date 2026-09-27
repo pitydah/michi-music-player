@@ -104,10 +104,20 @@ qualification, Strict semantics, carrier resolution or the lifecycle core):
   the roadmap use the governance state ``TESTED``; the physical verdicts live in
   the prose, where they belong.
 
-Still open and honestly reported as INCOMPLETE: ``OutputPlan.resync_delay_ms``
-has no runtime consumer yet (which also blocks the R25 delay sweep), and the
-deep R25/R32/R35/R36 lab contracts (first-sample evidence, soak metrics,
-canonical tail fixtures, XRUN recovery semantics) remain partial.
+`OutputPlan.resync_delay_ms` now has a real runtime consumer: the Direct port
+holds the pipeline in PAUSED after the verified preroll and starts it only when
+the configured delay has elapsed, with a precise owner-thread timer, an
+arm-token and execution fence, defensive re-arming, measured
+``resync_actual_hold_ms`` evidence, and EOS replay that reacquires and re-holds
+without a second acceptance. The canonical semantic evaluator now enforces the
+R25/R32/R35/R36 contracts, so a nominal PASS without structured facts is
+rejected, and the finalization obligations participate in the closure verdict.
+
+Software implementation is COMPLETE for the delivered feature set and the
+evaluator/finalization layers are COMPLETE. Physical EXECUTION remains
+INCOMPLETE: the field lab still needs the recorded R25 sweep runs, the R32 soak
+metrics promotion, the four R35 fixture captures and the R36 operator runs
+before any physical verdict above INCOMPLETE can be emitted.
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`

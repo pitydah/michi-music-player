@@ -82,6 +82,33 @@ class PcmClosureSummary:
     dac_v35_140_in_scope: bool = False
 
 
+#: Canonical experimental constants enforced by the semantic checks.
+R25_SWEEP_DELAYS = frozenset({0, 100, 250, 500, 1000})
+#: Scheduling tolerance: the observed hold may exceed the configured delay but
+#: must never fall below it by more than this margin.
+R25_HOLD_TOLERANCE_MS = 5
+R32_MAX_MEMORY_GROWTH_KB = 65536
+R35_REQUIRED_FIXTURES = (
+    "nonzero_final_samples",
+    "end_impulse",
+    "same_tuple_two_track_boundary",
+    "different_tuple_two_track_boundary",
+)
+R36_CASES = ("induced_underrun", "suspend_resume", "device_failure")
+R36_MAX_RECOVERY_LOOPS = 0
+
+
+def _file_sha256(path: Path) -> str:
+    """Hash a capture artifact so R35 evidence cannot be asserted by string."""
+    import hashlib
+
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 @dataclass(frozen=True, slots=True)
 class ClosureObligation:
     """One explicit closure obligation with its remaining gaps.
@@ -129,19 +156,12 @@ IMPLEMENTATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
     ClosureObligation(
         "resync_timing_safety",
         "The resync deadline cannot strand the pipeline and its evidence is fresh",
-        False,
-        (
-            "coarse QTimer can wake early and the callback does not re-arm, "
-            "which can leave the pipeline PAUSED",
-            "resync_actual_hold_ms is not reset per execution and can expose "
-            "a previous track's hold",
-        ),
+        True,
     ),
     ClosureObligation(
         "resync_eos_replay",
         "EOS replay under a nonzero delay keeps the configured hold",
-        False,
-        ("fail-closed typed refusal; the post-EOS hold is not implemented",),
+        True,
     ),
     ClosureObligation(
         "try_compatible_retries",
@@ -221,8 +241,7 @@ FINALIZATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
     ClosureObligation(
         "lab_semantic_checks",
         "_semantic_pass_check reflects the canonical R25/R32/R35/R36 contracts",
-        False,
-        ("nominal PASS can still omit the required structured facts",),
+        True,
     ),
     ClosureObligation(
         "lab_tests",
@@ -233,14 +252,12 @@ FINALIZATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
     ClosureObligation(
         "docs_reconciled",
         "M11_4 contract matches the real tooling state",
-        False,
-        ("environment-doc reconciliation pending",),
+        True,
     ),
     ClosureObligation(
         "finalization_wiring",
         "Finalization obligations participate in the closure verdict",
-        False,
-        ("the verifier imports only implementation and tooling obligations",),
+        True,
     ),
 )
 
@@ -358,18 +375,61 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
             "96000->192000",
             "192000->44100",
         }
-        observed = {
-            str(edge)
-            for edge in facts.get("transition_edges", [])
-            if isinstance(edge, str)
+        runs = facts.get("runs")
+        if not isinstance(runs, list) or not runs:
+            return "R25 PASS requires the recorded sweep runs"
+        observed_edges = {str(run.get("edge")) for run in runs if isinstance(run, dict)}
+        missing_edges = sorted(required_edges - observed_edges)
+        if missing_edges:
+            return f"R25 missing transition edges: {missing_edges}"
+        swept_delays = {
+            int(run.get("configured_delay_ms", -1))
+            for run in runs
+            if isinstance(run, dict)
         }
-        missing = sorted(required_edges - observed)
-        if missing:
-            return f"R25 missing transition edges: {missing}"
+        missing_delays = sorted(R25_SWEEP_DELAYS - swept_delays)
+        if missing_delays:
+            return f"R25 missing resync sweep delays: {missing_delays}"
+        for run in runs:
+            if not isinstance(run, dict):
+                return "R25 sweep runs must be objects"
+            configured = int(run.get("configured_delay_ms", -1))
+            actual = run.get("actual_hold_ms")
+            if not isinstance(actual, int) or actual < 0:
+                return (
+                    "R25 must observe the runtime actual hold, not only the "
+                    "configured delay"
+                )
+            if actual + R25_HOLD_TOLERANCE_MS < configured:
+                return (
+                    f"R25 observed hold {actual} ms is below the configured "
+                    f"{configured} ms"
+                )
+            if run.get("stale_generation_observed") is True:
+                return "R25 observed stale-generation truth"
+            if run.get("hidden_conversion_observed") is True:
+                return "R25 observed an unobserved hidden conversion"
+        evidence = facts.get("first_sample_evidence")
+        if not isinstance(evidence, dict):
+            return "R25 PASS requires structured first-sample evidence"
+        for field in (
+            "method",
+            "fixture_id",
+            "fixture_sha256",
+            "evidence_reference",
+            "expected_marker",
+            "observed_result",
+        ):
+            value = evidence.get(field)
+            if not isinstance(value, str) or not value.strip():
+                return f"R25 first-sample evidence lacks {field}"
+        if not str(evidence.get("observed_result")).upper().startswith("PASS"):
+            return "R25 first-sample evidence does not report PASS"
+        minimal = facts.get("minimal_delay_that_preserves_first_content")
+        if minimal not in R25_SWEEP_DELAYS:
+            return "R25 did not determine a minimal delay from the sweep"
         if facts.get("first_sample_result") != "PASS":
             return "R25 first-sample integrity is not PASS"
-        if facts.get("stale_generation_observed") is True:
-            return "R25 observed stale-generation truth"
     elif experiment == "R32":
         duration = facts.get("duration_seconds")
         if not isinstance(duration, (int, float)) or duration < 28800:
@@ -378,20 +438,100 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
             return "R32 observed XRUNs"
         if int(facts.get("runtime_error_count", 0)) != 0:
             return "R32 observed runtime errors"
+        if int(facts.get("transition_failures", 0)) != 0:
+            return "R32 observed transition failures"
+        growth = facts.get("memory_growth_kb")
+        if not isinstance(growth, (int, float)):
+            return "R32 PASS requires a measured memory-growth trend"
+        if growth > R32_MAX_MEMORY_GROWTH_KB:
+            return (
+                f"R32 memory growth {growth} kB exceeds the bounded threshold "
+                f"{R32_MAX_MEMORY_GROWTH_KB} kB"
+            )
+        pump = facts.get("pump_health")
+        if not isinstance(pump, dict) or pump.get("pump_alive") is not True:
+            return "R32 PASS requires proven pump health"
+        if not int(pump.get("cycles_completed", 0)):
+            return "R32 pump health lacks completed cycles"
+        resources = facts.get("resource_growth")
+        if not isinstance(resources, dict):
+            return "R32 PASS requires measured resource growth"
+        if resources.get("unbounded") is True:
+            return "R32 observed unbounded resource growth"
+        usb = facts.get("usb_errors_observed")
+        if not isinstance(usb, dict) or not usb.get("device_id"):
+            return "R32 USB evidence is not bound to the tested device"
+        checkpoints = facts.get("rss_checkpoints")
+        if not isinstance(checkpoints, list) or not checkpoints:
+            return "R32 PASS requires incremental checkpoints"
     elif experiment == "R35":
-        if facts.get("tail_result") != "PASS":
-            return "R35 tail/drain integrity is not PASS"
-        if facts.get("evidence_kind") not in {"capture", "operator"}:
-            return "R35 requires capture or explicit operator evidence"
+        fixtures = facts.get("fixtures")
+        if not isinstance(fixtures, dict):
+            return "R35 PASS requires per-fixture evidence"
+        missing = [name for name in R35_REQUIRED_FIXTURES if name not in fixtures]
+        if missing:
+            return f"R35 PASS requires all four canonical fixtures; missing {missing}"
+        for name in R35_REQUIRED_FIXTURES:
+            entry = fixtures[name]
+            if not isinstance(entry, dict):
+                return f"R35 fixture {name} evidence must be an object"
+            if entry.get("result") != "PASS":
+                return f"R35 fixture {name} did not report PASS"
+            if entry.get("falsifier_observed") is True:
+                return f"R35 fixture {name} observed a drain falsifier"
+            kind = entry.get("evidence_kind")
+            if kind == "capture":
+                artifact = entry.get("artifact")
+                digest = entry.get("sha256")
+                if not isinstance(artifact, str) or not Path(artifact).is_file():
+                    return f"R35 fixture {name} capture artifact is missing"
+                if not isinstance(digest, str) or not digest:
+                    return f"R35 fixture {name} capture lacks a sha256"
+                if _file_sha256(Path(artifact)) != digest:
+                    return f"R35 fixture {name} capture artifact hash mismatch"
+            elif kind == "operator":
+                reference = entry.get("evidence_reference")
+                if not isinstance(reference, str) or not reference.strip():
+                    return f"R35 fixture {name} lacks an operator reference"
+            else:
+                return f"R35 fixture {name} needs capture or operator evidence"
+            if (
+                not isinstance(entry.get("method"), str)
+                or not entry.get("method").strip()
+            ):
+                return f"R35 fixture {name} lacks a measurement method"
     elif experiment == "R36":
-        if facts.get("fault_injected") is not True:
-            return "R36 did not inject a real XRUN"
-        if facts.get("xrun_observed") is not True:
-            return "R36 did not observe the injected XRUN"
-        if facts.get("false_verified_after_xrun") is True:
-            return "R36 retained a false verified state after XRUN"
-        if facts.get("recovery_loop_observed") is True:
-            return "R36 observed a recovery loop"
+        case = facts.get("case")
+        if case not in R36_CASES:
+            return "R36 PASS requires a canonical case"
+        if facts.get("incident_retained") is not True:
+            return "R36 requires the incident to remain in evidence"
+        if facts.get("recovered_state_reported") is not True:
+            return "R36 requires the recovered state to be reported"
+        if facts.get("continuity_proof") is not True:
+            return "R36 requires a continuity proof"
+        if facts.get("false_verified_after_incident") is True:
+            return "R36 retained a false verified state after the incident"
+        if facts.get("generation_fresh") is not True:
+            return "R36 recovery did not run on a fresh generation"
+        loops = facts.get("recovery_loop_count")
+        if not isinstance(loops, int):
+            return "R36 must measure the recovery loop count"
+        if loops > R36_MAX_RECOVERY_LOOPS:
+            return f"R36 observed {loops} recovery loops"
+        if case == "induced_underrun":
+            if facts.get("fault_injected") is not True:
+                return "R36 did not inject a real XRUN"
+            if facts.get("xrun_observed") is not True:
+                return "R36 did not observe the injected XRUN"
+        else:
+            if facts.get("mechanism_available") is not True:
+                return "R36 operator case requires an available mechanism"
+            reference = facts.get("operator_reference")
+            if not isinstance(reference, str) or not reference.strip():
+                return "R36 operator case lacks a concrete operator reference"
+            if facts.get("action_completed") is not True:
+                return "R36 operator case lacks a completed operator action"
     return None
 
 

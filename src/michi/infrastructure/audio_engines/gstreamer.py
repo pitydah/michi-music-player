@@ -1367,10 +1367,19 @@ class GStreamerAudioPort(AudioPort):
         self._resync_complete = False
         self._resync_replay_preroll = False
         self._resync_armed_ns: int | None = None
-        #: Measured wall time between the verified preroll and PLAYING. This is
-        #: the field-evidence value the lab records; the configured delay alone
-        #: never proves what actually happened.
+        #: Measured wall time between the verified preroll and PLAYING, bound to
+        #: the arm token that produced it: a previous track's hold is never
+        #: presented as the current execution's evidence.
         self._resync_actual_hold_ms: int | None = None
+        #: Execution identity of the armed hold. A callback armed for one
+        #: execution can never start another, even when the newer stream also
+        #: carries a delay and a pending play intent.
+        self._resync_token = 0
+        self._resync_armed_token: int | None = None
+        self._resync_armed_generation: int | None = None
+        self._resync_armed_handle = None
+        self._resync_actual_hold_token: int | None = None
+        self._resync_timer: QTimer | None = None
         self._volume = 1.0
         self._muted = False
         self._pipeline = None
@@ -1413,9 +1422,19 @@ class GStreamerAudioPort(AudioPort):
 
     def resync_evidence(self) -> dict[str, int | None]:
         """Configured and MEASURED hold for the current Direct execution."""
+        measured = (
+            self._resync_actual_hold_ms
+            if self._resync_actual_hold_token == self._resync_armed_token
+            and self._resync_armed_token is not None
+            else None
+        )
+        handle = self._resync_armed_handle
         return {
             "resync_delay_ms": self._resync_delay_ms or None,
-            "resync_actual_hold_ms": self._resync_actual_hold_ms,
+            "resync_actual_hold_ms": measured,
+            "port_generation": self._resync_armed_generation,
+            "execution_generation": getattr(handle, "generation", None),
+            "plan_id": getattr(handle, "plan_id", None),
         }
 
     def set_runtime_failure_callback(
@@ -1998,15 +2017,23 @@ class GStreamerAudioPort(AudioPort):
                 "GStreamer play on closed/uninitialized transport"
             )
         if self._resync_delay_ms and self._eos_emitted:
-            # Replaying a retained source after EOS would need a fresh
-            # post-preroll hold, and this path has not been proven yet under a
-            # nonzero delay: refuse with a typed error instead of starting
-            # without the hold the profile asked for. delay=0 is unaffected.
-            self._cancel_resync_hold(reset_delay=True)
-            raise AudioTransportCommandError(
-                "DIRECT_RESYNC_EOS_REPLAY_UNSUPPORTED: replay after EOS is not "
-                "supported while a resync delay is configured"
-            )
+            # Replay after EOS with a configured hold: reset the transport, drop
+            # the completed hold and force a FRESH verified preroll before the
+            # hold is re-armed. Same accepted media, same Direct ownership, no
+            # second acceptance and no hidden pipeline.
+            if not self._request_state(self._bindings.STATE.NULL):
+                raise AudioTransportCommandError("Direct EOS replay reset failed")
+            self._eos_emitted = False
+            self._pending_play = False
+            self._resync_complete = False
+            self._resync_ready_at_ns = None
+            self._resync_armed_ns = None
+            self._resync_actual_hold_ms = None
+            self._resync_actual_hold_token = None
+            self._resync_token += 1
+            self._resync_armed_token = None
+            self._resync_armed_generation = None
+            self._resync_armed_handle = None
         if self._resync_delay_ms and not self._resync_complete:
             # Keep the first preroll buffer queued in PAUSED. The delay starts
             # only after ASYNC_DONE has passed Direct runtime verification.
@@ -2726,12 +2753,15 @@ class GStreamerAudioPort(AudioPort):
                 delay_ns = self._resync_delay_ms * 1_000_000
                 self._resync_armed_ns = self._resync_clock_ns()
                 self._resync_ready_at_ns = self._resync_armed_ns + delay_ns
-                # Own-thread timer: millisecond resolution so 100/250 ms have
-                # meaning, unlike the 500 ms position tick. Cancellation is
-                # state-based, so a stale callback can never start audio.
-                QTimer.singleShot(
-                    max(1, self._resync_delay_ms), self._on_resync_deadline
-                )
+                self._resync_actual_hold_ms = None
+                self._resync_actual_hold_token = None
+                self._resync_token += 1
+                self._resync_armed_token = self._resync_token
+                self._resync_armed_generation = self._generation
+                self._resync_armed_handle = self._active_direct_handle
+                # Own-thread PRECISE timer: millisecond resolution so 100/250 ms
+                # have meaning, unlike the 500 ms position tick.
+                self._arm_resync_deadline(self._resync_delay_ms)
         if replay_preroll:
             self._resync_replay_preroll = False
             return  # retained source: never publish a second media acceptance
@@ -2918,21 +2948,59 @@ class GStreamerAudioPort(AudioPort):
         if ok:
             self._deliver_pos(gst_time_to_millis(ns))
 
-    def _on_resync_deadline(self) -> None:
+    def _arm_resync_deadline(self, remaining_ms: int) -> None:
+        """Arm or re-arm the hold deadline with a precise owner-thread timer.
+
+        ``Qt.PreciseTimer`` avoids the coarse-timer early wake-up, and an early
+        callback re-arms for the remainder instead of stranding the pipeline in
+        PAUSED. The callback carries the arm token and the Direct execution it
+        was armed for, so a stale callback is inert.
+        """
+        timer = self._resync_timer
+        if timer is not None:
+            timer.stop()
+        timer = QTimer()  # no QObject parent: owned by this Python port
+        timer.setSingleShot(True)
+        timer.setTimerType(Qt.TimerType.PreciseTimer)
+        token = self._resync_armed_token
+        generation = self._resync_armed_generation
+        handle = self._resync_armed_handle
+        timer.timeout.connect(
+            lambda: self._on_resync_deadline(token, generation, handle)
+        )
+        timer.start(max(1, int(remaining_ms)))
+        self._resync_timer = timer
+
+    def _on_resync_deadline(self, token=None, generation=None, handle=None) -> None:
         """Start the held Direct stream once the verified hold has elapsed.
 
         Validated against the CURRENT hold state, so a callback from a
         superseded load, a released execution or a closed port is inert.
         """
+        if token is None:
+            token = self._resync_armed_token
+        if generation is None:
+            generation = self._resync_armed_generation
+        if handle is None:
+            handle = self._resync_armed_handle
+        if self._closed or token != self._resync_armed_token:
+            return  # superseded arm
+        if generation != self._generation:
+            return  # superseded execution
+        if handle is None or handle is not self._active_direct_handle:
+            return  # retired or other Direct execution
         if (
-            self._closed
-            or not self._resync_delay_ms
+            not self._resync_delay_ms
             or self._resync_complete
             or self._resync_ready_at_ns is None
             or not self._pending_play
         ):
             return
-        if self._resync_clock_ns() < self._resync_ready_at_ns:
+        now = self._resync_clock_ns()
+        if now < self._resync_ready_at_ns:
+            # Never depend on the backend's waking discipline: an early callback
+            # re-arms for the remainder (the remainder shrinks, so it ends).
+            self._arm_resync_deadline((self._resync_ready_at_ns - now) // 1_000_000)
             return
         try:
             self.play()
@@ -2955,6 +3023,7 @@ class GStreamerAudioPort(AudioPort):
                 self._resync_actual_hold_ms = (
                     self._resync_clock_ns() - armed
                 ) // 1_000_000
+                self._resync_actual_hold_token = token
 
     def _cancel_resync_hold(self, *, reset_delay: bool = False) -> None:
         """Cancel the deferred Direct start intent at an authority boundary.
@@ -2970,6 +3039,14 @@ class GStreamerAudioPort(AudioPort):
         self._resync_complete = False
         self._resync_replay_preroll = False
         self._resync_armed_ns = None
+        self._resync_actual_hold_ms = None
+        self._resync_actual_hold_token = None
+        self._resync_token += 1
+        self._resync_armed_token = None
+        self._resync_armed_generation = None
+        self._resync_armed_handle = None
+        if self._resync_timer is not None:
+            self._resync_timer.stop()
         self._pending_play = False
 
     def _invalidate_generation(self) -> None:
