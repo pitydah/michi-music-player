@@ -66,30 +66,21 @@ def _manifest(
                     ],
                     "runs": [
                         {
-                            "edge": edge,
-                            "configured_delay_ms": 0,
-                            "actual_hold_ms": 1,
-                            "stale_generation_observed": False,
-                            "hidden_conversion_observed": False,
-                        }
-                        for edge in (
-                            "44100->44100",
-                            "44100->48000",
-                            "48000->44100",
-                            "44100->96000",
-                            "96000->192000",
-                            "192000->44100",
-                        )
-                    ]
-                    + [
-                        {
-                            "edge": "44100->44100",
+                            "edges": [
+                                "44100->44100",
+                                "44100->48000",
+                                "48000->44100",
+                                "44100->96000",
+                                "96000->192000",
+                                "192000->44100",
+                            ],
                             "configured_delay_ms": delay,
-                            "actual_hold_ms": delay + 1,
+                            "actual_hold_ms": delay + 1 if delay else 0,
                             "stale_generation_observed": False,
                             "hidden_conversion_observed": False,
+                            "xrun_count": 0,
                         }
-                        for delay in (100, 250, 500, 1000)
+                        for delay in (0, 100, 250, 500, 1000)
                     ],
                     "first_sample_evidence": {
                         "method": "operator-impulse-marker",
@@ -226,10 +217,19 @@ def test_final_pcm_07_short_soak_cannot_be_promoted_to_pass() -> None:
 def test_final_pcm_08_transition_matrix_requires_all_canonical_edges() -> None:
     payload = _manifest()
     facts = payload["experiments"]["R25"]["facts"]
-    facts["runs"] = [run for run in facts["runs"] if run["edge"] != "192000->44100"]
-    verdict = evaluate_device_manifest(payload)
-    assert verdict.verdict == "FAIL"
-    assert any("missing transition edges" in reason for reason in verdict.reasons)
+    # One delay missing a canonical edge is not a valid sweep.
+    facts["runs"][0]["edges"] = [
+        edge for edge in facts["runs"][0]["edges"] if edge != "192000->44100"
+    ]
+    assert "misses canonical edges" in _reject(payload)
+
+    # A minimum that disagrees with the recorded runs is rejected too.
+    mismatched = _manifest()
+    mismatched["experiments"]["R25"]["facts"]["runs"][0]["actual_hold_ms"] = 0
+    mismatched["experiments"]["R25"]["facts"][
+        "minimal_delay_that_preserves_first_content"
+    ] = 100
+    assert "disagrees with the sweep" in _reject(mismatched)
 
 
 def test_final_pcm_09_xrun_pass_forbids_false_verified_state() -> None:

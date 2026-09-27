@@ -378,37 +378,48 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
         runs = facts.get("runs")
         if not isinstance(runs, list) or not runs:
             return "R25 PASS requires the recorded sweep runs"
-        observed_edges = {str(run.get("edge")) for run in runs if isinstance(run, dict)}
-        missing_edges = sorted(required_edges - observed_edges)
-        if missing_edges:
-            return f"R25 missing transition edges: {missing_edges}"
-        swept_delays = {
-            int(run.get("configured_delay_ms", -1))
-            for run in runs
-            if isinstance(run, dict)
-        }
-        missing_delays = sorted(R25_SWEEP_DELAYS - swept_delays)
-        if missing_delays:
-            return f"R25 missing resync sweep delays: {missing_delays}"
+        runs_by_delay: dict[int, list[dict]] = {}
         for run in runs:
             if not isinstance(run, dict):
                 return "R25 sweep runs must be objects"
-            configured = int(run.get("configured_delay_ms", -1))
+            delay = run.get("configured_delay_ms")
+            if not isinstance(delay, int):
+                return "R25 sweep runs must declare a configured delay"
+            runs_by_delay.setdefault(delay, []).append(run)
+        missing_delays = sorted(R25_SWEEP_DELAYS - set(runs_by_delay))
+        if missing_delays:
+            return f"R25 missing resync sweep delays: {missing_delays}"
+        extra_delays = sorted(set(runs_by_delay) - R25_SWEEP_DELAYS)
+        if extra_delays:
+            return f"R25 has non-canonical sweep delays: {extra_delays}"
+        for delay, delay_runs in sorted(runs_by_delay.items()):
+            if len(delay_runs) != 1:
+                return f"R25 requires exactly one canonical run per delay ({delay})"
+            run = delay_runs[0]
+            # Each delay must cover the canonical edges itself: a union of edges
+            # across delays is not a sweep.
+            edges = {
+                str(edge) for edge in run.get("edges", []) if isinstance(edge, str)
+            }
+            missing_edges = sorted(required_edges - edges)
+            if missing_edges:
+                return f"R25 delay {delay} misses canonical edges: {missing_edges}"
             actual = run.get("actual_hold_ms")
             if not isinstance(actual, int) or actual < 0:
                 return (
                     "R25 must observe the runtime actual hold, not only the "
                     "configured delay"
                 )
-            if actual + R25_HOLD_TOLERANCE_MS < configured:
+            if actual + R25_HOLD_TOLERANCE_MS < delay:
                 return (
-                    f"R25 observed hold {actual} ms is below the configured "
-                    f"{configured} ms"
+                    f"R25 observed hold {actual} ms is below the configured {delay} ms"
                 )
             if run.get("stale_generation_observed") is True:
                 return "R25 observed stale-generation truth"
             if run.get("hidden_conversion_observed") is True:
                 return "R25 observed an unobserved hidden conversion"
+            if int(run.get("xrun_count", 0) or 0) != 0:
+                return "R25 observed XRUNs"
         evidence = facts.get("first_sample_evidence")
         if not isinstance(evidence, dict):
             return "R25 PASS requires structured first-sample evidence"
@@ -428,6 +439,22 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
         minimal = facts.get("minimal_delay_that_preserves_first_content")
         if minimal not in R25_SWEEP_DELAYS:
             return "R25 did not determine a minimal delay from the sweep"
+        passing = sorted(
+            delay
+            for delay, delay_runs in runs_by_delay.items()
+            if len(delay_runs) == 1
+            and not delay_runs[0].get("stale_generation_observed")
+            and not delay_runs[0].get("hidden_conversion_observed")
+            and isinstance(delay_runs[0].get("actual_hold_ms"), int)
+            and delay_runs[0]["actual_hold_ms"] + R25_HOLD_TOLERANCE_MS >= delay
+        )
+        if not passing:
+            return "R25 has no passing delay for the specified minimum"
+        if minimal != passing[0]:
+            return (
+                f"R25 minimum delay {minimal} disagrees with the sweep "
+                f"(expected {passing[0]})"
+            )
         if facts.get("first_sample_result") != "PASS":
             return "R25 first-sample integrity is not PASS"
     elif experiment == "R32":
