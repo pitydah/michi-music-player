@@ -275,3 +275,98 @@ def test_released_execution_cannot_start_and_reports_no_anomaly(qapp):
         assert anomalies == [], "a retired execution is not re-entered"
     finally:
         port.close()
+
+
+def test_new_generation_cannot_expose_previous_resync_evidence(qapp):
+    """A completed hold must not survive into the next execution's evidence."""
+    bindings = FakeBindings()
+    port, executor = _strict_port(bindings)
+    now = [0]
+    port._resync_clock_ns = lambda: now[0]
+    try:
+        executor.prepare(replace(_plan(), resync_delay_ms=250))
+        port.load(Path("/m/a.wav"))
+        port.play()
+        _preroll(port, bindings)
+        now[0] = 250_000_000
+        port._on_resync_deadline()
+        first = port.resync_evidence()
+        assert first["resync_actual_hold_ms"] == 250
+        assert first["execution_generation"] == 1
+
+        port.load(Path("/m/b.wav"))
+
+        after = port.resync_evidence()
+        assert after["resync_actual_hold_ms"] is None
+        assert after["execution_generation"] is None
+        assert after["plan_id"] is None
+        assert after["resync_delay_ms"] is None
+    finally:
+        port.close()
+
+
+def test_stale_callback_identity_cannot_touch_the_new_stream(qapp):
+    """A callback armed for execution A is inert once B owns the transport."""
+    bindings = FakeBindings()
+    port, executor = _strict_port(bindings)
+    now = [0]
+    port._resync_clock_ns = lambda: now[0]
+    try:
+        executor.prepare(replace(_plan(), resync_delay_ms=250))
+        port.load(Path("/m/a.wav"))
+        port.play()
+        _preroll(port, bindings)
+        token_a = port._resync_armed_token
+        generation_a = port._resync_armed_generation
+        handle_a = port._resync_armed_handle
+        assert token_a is not None and handle_a is not None
+
+        executor.prepare(replace(_plan(plan_id="plan:B"), resync_delay_ms=250))
+        port.load(Path("/m/b.wav"))
+        port.play()
+        _preroll(port, bindings)
+        before = port.resync_evidence()
+
+        now[0] = 60_000_000_000
+        port._on_resync_deadline(token_a, generation_a, handle_a)
+
+        assert bindings.pipelines[-1].state != bindings.STATE.PLAYING, (
+            "a stale arm must not start the new stream"
+        )
+        assert port.resync_evidence() == before, "stale arm must not alter evidence"
+        assert port._resync_complete is False
+    finally:
+        port.close()
+
+
+def test_early_wake_up_rearms_with_the_remaining_time(qapp):
+    """An early backend wake-up re-arms for the remainder, not the whole hold."""
+    bindings = FakeBindings()
+    port, executor = _strict_port(bindings)
+    now = [0]
+    port._resync_clock_ns = lambda: now[0]
+    armed: list[int] = []
+    original = port._arm_resync_deadline
+
+    def counted(remaining_ms):
+        armed.append(int(remaining_ms))
+        return original(remaining_ms)
+
+    port._arm_resync_deadline = counted
+    try:
+        executor.prepare(replace(_plan(), resync_delay_ms=100))
+        port.load(Path("/m/a.wav"))
+        port.play()
+        _preroll(port, bindings)
+        assert armed == [100]
+
+        now[0] = 95_000_000  # a coarse timer waking 5 ms early
+        port._on_resync_deadline()
+        assert bindings.pipelines[-1].state != bindings.STATE.PLAYING
+        assert armed == [100, 5], armed
+
+        now[0] = 100_000_000
+        port._on_resync_deadline()
+        assert bindings.pipelines[-1].state == bindings.STATE.PLAYING
+    finally:
+        port.close()

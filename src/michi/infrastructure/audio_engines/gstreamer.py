@@ -2158,10 +2158,7 @@ class GStreamerAudioPort(AudioPort):
 
     def stop(self) -> None:
         if self._resync_delay_ms:
-            self._pending_play = False
-            self._resync_ready_at_ns = None
-            self._resync_complete = False
-            self._resync_replay_preroll = False
+            self._retire_resync_execution(reset_delay=False, clear_play_intent=True)
         self._load_epoch += 1
         if self._closed:
             raise AudioTransportUnavailableError("GStreamer stop on closed transport")
@@ -3000,7 +2997,8 @@ class GStreamerAudioPort(AudioPort):
         if now < self._resync_ready_at_ns:
             # Never depend on the backend's waking discipline: an early callback
             # re-arms for the remainder (the remainder shrinks, so it ends).
-            self._arm_resync_deadline((self._resync_ready_at_ns - now) // 1_000_000)
+            remaining_ns = self._resync_ready_at_ns - now
+            self._arm_resync_deadline((remaining_ns + 999_999) // 1_000_000)
             return
         try:
             self.play()
@@ -3025,14 +3023,24 @@ class GStreamerAudioPort(AudioPort):
                 ) // 1_000_000
                 self._resync_actual_hold_token = token
 
-    def _cancel_resync_hold(self, *, reset_delay: bool = False) -> None:
-        """Cancel the deferred Direct start intent at an authority boundary.
+    def _retire_resync_execution(
+        self,
+        *,
+        reset_delay: bool,
+        clear_play_intent: bool,
+    ) -> None:
+        """Retire the current resync execution. ONE authority for every boundary.
 
-        A queued position tick must never start audio for a pipeline whose
-        execution was retired (error, pump death, output release, teardown).
-        ``reset_delay`` clears the plan delay too; ``stop()`` intentionally
-        keeps it so a retained-source replay re-holds before starting again.
+        Retires the timer, the arm identity, the measured evidence and the
+        deferred start intent together, so no caller can leave part of the
+        previous execution observable. ``reset_delay`` clears the plan delay
+        (terminal boundaries); ``stop()`` keeps it so a retained-source replay
+        re-holds before starting again.
         """
+        timer = self._resync_timer
+        if timer is not None:
+            timer.stop()
+            self._resync_timer = None
         if reset_delay:
             self._resync_delay_ms = 0
         self._resync_ready_at_ns = None
@@ -3045,9 +3053,12 @@ class GStreamerAudioPort(AudioPort):
         self._resync_armed_token = None
         self._resync_armed_generation = None
         self._resync_armed_handle = None
-        if self._resync_timer is not None:
-            self._resync_timer.stop()
-        self._pending_play = False
+        if clear_play_intent:
+            self._pending_play = False
+
+    def _cancel_resync_hold(self, *, reset_delay: bool = False) -> None:
+        """Failure/teardown boundary: retire the hold and the start intent."""
+        self._retire_resync_execution(reset_delay=reset_delay, clear_play_intent=True)
 
     def _invalidate_generation(self) -> None:
         """OWNER: avanza la generación (monotónica, nunca decrece) y limpia
@@ -3056,10 +3067,7 @@ class GStreamerAudioPort(AudioPort):
         terminal de candidatos, reemplazo destructivo y close — NUNCA para
         stop/replay de un source aceptado."""
         self._generation += 1
-        self._resync_delay_ms = 0
-        self._resync_ready_at_ns = None
-        self._resync_complete = False
-        self._resync_replay_preroll = False
+        self._retire_resync_execution(reset_delay=True, clear_play_intent=False)
         self._deferred_playing_generation = None
         self._deferred_eos_generation = None
         self._duration_refresh_generation = None
