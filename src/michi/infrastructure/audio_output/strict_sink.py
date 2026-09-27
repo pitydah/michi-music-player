@@ -64,6 +64,7 @@ class StrictSinkRecipe:
     #: (dithering and noise shaping disabled) between the decoded branch and
     #: the pinned output caps. Never implied by the sink itself.
     container_conversion: bool = False
+    resync_delay_ms: int = 0
 
     def caps_string(self) -> str:
         return (
@@ -128,4 +129,5 @@ def recipe_from_plan(plan: OutputPlan) -> StrictSinkRecipe:
         container_conversion=(
             plan.carrier_adaptation == "container_width" or _container_is_wider(pcm)
         ),
+        resync_delay_ms=plan.resync_delay_ms,
     )

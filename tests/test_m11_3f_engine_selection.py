@@ -1250,6 +1250,9 @@ class TestF42AdapterContract:
         # R1 CORRECTIVE SEAL authorized reopenings: retryable teardown
         # (provider/port close), typed MPD command semantics, partial
         # startup cleanup, orphan recovery. Transport semantics unchanged.
+        # DAC-V35 M11.4 authorized reopening: gstreamer.py adds the Direct
+        # resync hold (post-preroll, generation-scoped, cancelable). Transport
+        # semantics for Shared/MPD are unchanged.
         # R2 PRODUCTION REALITY authorized reopening: mpd.py defers the
         # resume seek to the explicit play (seekid on a stopped song starts
         # playback — verified on real MPD 0.24.14). Transport unchanged.
@@ -1317,7 +1320,7 @@ class TestF42AdapterContract:
         # retains the live pump for retry; transport authority is unchanged.
         # The exact-SHA CI corrective also rejects queued PAUSED/STOPPED
         # observations superseded by explicit Stop/replay command authority.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "b982f23c29a05acb",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "d64496e4a540895f",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

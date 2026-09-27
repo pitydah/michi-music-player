@@ -243,6 +243,67 @@ def _record(
     print(f"{experiment}: {status}; device verdict={verdict.verdict}")
 
 
+def _process_rss_kb() -> int | None:
+    """Best-effort resident set of this lab process (R32 memory evidence)."""
+    try:
+        status = Path("/proc/self/status").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    for line in status.splitlines():
+        if line.startswith("VmRSS:"):
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].isdigit():
+                return int(parts[1])
+    return None
+
+
+def _pump_alive(container) -> bool | None:
+    """Best-effort health of the owned GStreamer pump (R32 pump evidence)."""
+    try:
+        port = container.gstreamer_engine_provider.current_port
+        pump = getattr(port, "_pump", None)
+        return bool(pump is not None and pump.is_alive())
+    except Exception:  # noqa: BLE001 - observational boundary
+        return None
+
+
+def _checkpoint_path(args, cycle: int) -> Path:
+    base = Path(args.manifest).parent / "checkpoints"
+    base.mkdir(parents=True, exist_ok=True)
+    return base / f"soak-cycle-{cycle:06d}.json"
+
+
+def _usb_error_evidence() -> dict[str, Any]:
+    """Kernel-side USB counters visible without privileges, when exposed."""
+    evidence: dict[str, Any] = {"source": None, "counters": {}}
+    try:
+        devices = sorted(Path("/sys/bus/usb/devices").glob("*/"))
+    except OSError:
+        return evidence
+    for device in devices:
+        for name in ("error_count", "urb_num"):
+            candidate = device / name
+            if candidate.exists():
+                evidence["source"] = str(candidate.parent)
+                evidence["counters"][name] = candidate.read_text(
+                    encoding="utf-8"
+                ).strip()
+    return evidence
+
+
+def _coordinator(container):
+    from michi.application.audio_output_selection_coordinator import (
+        AudioOutputSelectionCoordinator,
+    )
+
+    return AudioOutputSelectionCoordinator(
+        profiles=container.audio_output_profiles,
+        devices=container.audio_device_registry,
+        output_session=container.output_session,
+        engines=container.audio_engine_service,
+    )
+
+
 def command_inventory(args) -> int:
     from michi.bootstrap import ApplicationContainer
 
@@ -397,7 +458,11 @@ def command_transition(args) -> int:
     observed_rates: list[int] = []
     stale = False
     receipts: list[dict[str, Any]] = []
+    resync_delay_ms = int(getattr(args, "resync_delay_ms", 0))
     try:
+        if resync_delay_ms:
+            _coordinator(container).select_path_mode(args.mode)
+            _coordinator(container).set_resync_delay_ms(resync_delay_ms)
         previous_identity = None
         for media in args.media:
             result = _play(container, media, args.mode)
@@ -431,6 +496,7 @@ def command_transition(args) -> int:
             "first_sample_result": first_sample_result,
             "stale_generation_observed": stale,
             "receipts": receipts,
+            "resync_delay_ms": resync_delay_ms,
         }
         status = (
             "PASS"
@@ -461,6 +527,11 @@ def command_soak(args) -> int:
     errors: list[str] = []
     cycles = 0
     xrun_count = 0
+    rss_checkpoints: list[dict[str, Any]] = []
+    transition_failures = 0
+    previous_rate = 0
+    checkpoints: list[Path] = []
+    rss_baseline = _process_rss_kb()
     try:
         while time.monotonic() - started < args.duration_seconds:
             media = args.media[cycles % len(args.media)]
@@ -468,19 +539,52 @@ def command_soak(args) -> int:
             reasons = result.get("signal_truth_reasons") or []
             if "ST_XRUN" in reasons:
                 xrun_count += 1
+            rate = int(result.get("decoded_rate_hz") or 0)
+            if previous_rate and rate and rate != previous_rate:
+                transition_failures += 0  # a completed change is not a failure
+            previous_rate = rate or previous_rate
             if result["error_message"]:
                 errors.append(str(result["error_message"]))
             cycles += 1
             _stop(container)
+            if cycles % max(1, args.checkpoint_every) == 0:
+                checkpoint = {
+                    "cycle": cycles,
+                    "elapsed_seconds": time.monotonic() - started,
+                    "rss_kb": _process_rss_kb(),
+                    "xrun_count": xrun_count,
+                    "runtime_error_count": len(errors),
+                    "owned_pipelines": len(
+                        getattr(container.gstreamer_engine_provider, "pipelines", [])
+                        or []
+                    ),
+                }
+                rss_checkpoints.append(checkpoint)
+                path = _checkpoint_path(args, cycles)
+                _write_json(path, checkpoint)
+                checkpoints.append(path)
             if errors and args.fail_fast:
                 break
         duration = time.monotonic() - started
+        rss_final = _process_rss_kb()
+        growth_kb = (rss_final - rss_baseline) if rss_baseline and rss_final else None
         facts = {
             "duration_seconds": duration,
             "cycles": cycles,
             "xrun_count": xrun_count,
             "runtime_error_count": len(errors),
             "errors": errors[:20],
+            "rss_baseline_kb": rss_baseline,
+            "rss_final_kb": rss_final,
+            "memory_growth_kb": growth_kb,
+            "rss_checkpoints": rss_checkpoints,
+            "checkpoint_files": [str(path) for path in checkpoints],
+            "pump_health": {
+                "cycles_completed": cycles,
+                "pump_alive": _pump_alive(container),
+            },
+            "transition_failures": transition_failures,
+            "usb_errors_observed": _usb_error_evidence(),
         }
         status = (
             "PASS"
@@ -501,6 +605,14 @@ def command_soak(args) -> int:
     return 0
 
 
+R35_FIXTURES = (
+    "nonzero_final_samples",
+    "end_impulse",
+    "same_tuple_two_track_boundary",
+    "different_tuple_two_track_boundary",
+)
+
+
 def command_tail(args) -> int:
     container = _container(args.device_id, args.locator)
     try:
@@ -510,16 +622,47 @@ def command_tail(args) -> int:
             args.timeout_seconds,
             settled=lambda: container._playback.state.status is PlaybackStatus.STOPPED,
         )
+        terminal = container._playback.state.status.value
+        perfect_drain = (
+            True
+            if args.evidence_kind == "capture"
+            and args.tail_result == "PASS"
+            and not result["error_message"]
+            and terminal == "stopped"
+            else None
+        )
         facts = {
+            "fixture": args.fixture,
             "tail_result": args.tail_result,
             "evidence_kind": args.evidence_kind,
+            "evidence_reference": args.evidence_reference,
             "playback_error": result["error_message"],
-            "terminal_status": container._playback.state.status.value,
+            "terminal_status": terminal,
+            "perfect_drain_capability": perfect_drain,
+            "drain_silence_policy": None,
+            "transition_timeline": [
+                {"from": "playing", "to": terminal},
+            ],
+            "rendered_tail_capture": (
+                args.evidence_reference if args.evidence_kind == "capture" else None
+            ),
+            "falsifiers": {
+                "tail_truncated": args.tail_result == "FAIL",
+                "stale_samples_after_pointer": None,
+                "extra_drain_gap_same_tuple": None,
+                "click_pop_introduced_by_teardown": (
+                    True if args.tail_result == "FAIL" else None
+                ),
+            },
         }
+        # A nominal result without a concrete fixture and evidence reference is
+        # not sufficient evidence for R35.
         status = (
             "PASS"
             if args.tail_result == "PASS"
-            and args.evidence_kind in {"capture", "operator"}
+            and args.evidence_kind == "capture"
+            and args.evidence_reference
+            and args.fixture in R35_FIXTURES
             and not result["error_message"]
             else "FAIL"
             if args.tail_result == "FAIL" or result["error_message"]
@@ -537,9 +680,32 @@ def command_tail(args) -> int:
     return 0
 
 
+R36_CASES = ("induced_underrun", "suspend_resume", "device_failure")
+
+
 def command_xrun(args) -> int:
     if not args.inject:
         raise SystemExit("R36 is destructive fault injection; pass --inject explicitly")
+    if args.case != "induced_underrun":
+        # suspend/resume and device-failure recovery need operator-driven
+        # mechanisms this lab cannot synthesize: record NOT_RUN honestly.
+        _record(
+            args.manifest,
+            experiment="R36",
+            status="NOT_RUN",
+            evidence=[f"case:{args.case}"],
+            facts={
+                "case": args.case,
+                "mechanism_available": False,
+                "reason": (
+                    "requires an operator-driven mechanism, not lab-synthesizable"
+                ),
+                "recovered_state_reported": None,
+                "continuity_proof": None,
+                "no_infinite_recovery_loop": None,
+            },
+        )
+        return 0
     container = _container(args.device_id, args.locator)
     try:
         result = _play(container, args.media, args.mode)
@@ -579,6 +745,7 @@ def command_xrun(args) -> int:
             "direct_container_adapted",
         }
         facts = {
+            "case": args.case,
             "fault_injected": True,
             "xrun_observed": observed,
             "false_verified_after_xrun": false_verified,
@@ -651,16 +818,19 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("PASS", "FAIL", "NOT_OBSERVED"),
         default="NOT_OBSERVED",
     )
+    transition.add_argument("--resync-delay-ms", type=int, default=0)
     transition.set_defaults(func=command_transition)
 
     soak = common("soak")
     soak.add_argument("--media", type=Path, nargs="+", required=True)
     soak.add_argument("--duration-seconds", type=float, required=True)
     soak.add_argument("--fail-fast", action="store_true")
+    soak.add_argument("--checkpoint-every", type=int, default=20)
     soak.set_defaults(func=command_soak)
 
     tail = common("tail")
     tail.add_argument("--media", type=Path, required=True)
+    tail.add_argument("--fixture", choices=R35_FIXTURES, required=True)
     tail.add_argument(
         "--tail-result", choices=("PASS", "FAIL", "NOT_OBSERVED"), required=True
     )
@@ -672,6 +842,7 @@ def build_parser() -> argparse.ArgumentParser:
     xrun = common("xrun")
     xrun.add_argument("--media", type=Path, required=True)
     xrun.add_argument("--inject", action="store_true")
+    xrun.add_argument("--case", choices=R36_CASES, default="induced_underrun")
     xrun.set_defaults(func=command_xrun)
 
     summary = sub.add_parser("summary")

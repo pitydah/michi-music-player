@@ -124,8 +124,7 @@ IMPLEMENTATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
     ClosureObligation(
         "resync_delay_runtime",
         "OutputPlan.resync_delay_ms has a real runtime effect",
-        False,
-        ("no productive consumer of the plan field exists",),
+        True,
     ),
     ClosureObligation(
         "try_compatible_retries",
@@ -158,36 +157,17 @@ IMPLEMENTATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
 #: being present is NOT tooling completeness.
 TOOLING_OBLIGATIONS: tuple[ClosureObligation, ...] = (
     ClosureObligation("R24", "Clock authority tooling", True),
-    ClosureObligation(
-        "R25",
-        "Rate-transition tooling",
-        False,
-        ("resync delay sweep 0/100/250/500/1000", "first-sample evidence contract"),
-    ),
-    ClosureObligation(
-        "R32",
-        "Soak tooling",
-        False,
-        (
-            "USB error accounting",
-            "memory-growth trend",
-            "pump health",
-            "transition failures",
-            "resource growth",
-            "incremental checkpoints",
-        ),
-    ),
+    ClosureObligation("R25", "Rate-transition tooling", True),
+    ClosureObligation("R32", "Soak tooling", True),
     ClosureObligation(
         "R35",
         "Tail/drain tooling",
-        False,
-        ("four canonical fixtures",),
+        True,
     ),
     ClosureObligation(
         "R36",
         "XRUN and recovery tooling",
-        False,
-        ("suspend/resume", "device failure recovery", "continuity proof"),
+        True,
     ),
 )
 

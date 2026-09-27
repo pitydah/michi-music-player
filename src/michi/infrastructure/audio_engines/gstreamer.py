@@ -16,6 +16,7 @@ NO GStreamer types leave this module.
 import contextlib
 import logging
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -1358,6 +1359,13 @@ class GStreamerAudioPort(AudioPort):
         self._deferred_playing_generation: int | None = None
         self._deferred_eos_generation: int | None = None
         self._duration_refresh_generation: int | None = None
+        # Nonzero Direct resync holds PAUSED after verified preroll. Serviced
+        # by the existing generation-scoped position source (no new GSource).
+        self._resync_clock_ns = time.monotonic_ns
+        self._resync_delay_ms = 0
+        self._resync_ready_at_ns: int | None = None
+        self._resync_complete = False
+        self._resync_replay_preroll = False
         self._volume = 1.0
         self._muted = False
         self._pipeline = None
@@ -1411,6 +1419,8 @@ class GStreamerAudioPort(AudioPort):
             return  # expected close-time exit — never a runtime failure
         if generation != self._generation:
             return  # stale generation — ignored
+        # The transport runtime is gone: no deferred resync start may survive.
+        self._cancel_resync_hold(reset_delay=True)
         if self._direct_executor is not None and self._active_direct_handle is not None:
             with contextlib.suppress(Exception):
                 self._direct_executor.record_runtime_anomaly(
@@ -1873,6 +1883,9 @@ class GStreamerAudioPort(AudioPort):
         # como primaria (los fallos de limpieza son secundarios).
         self._invalidate_generation()
         self._pending_path = Path(file_path)
+        self._resync_delay_ms = (
+            strict_recipe.resync_delay_ms if strict_recipe is not None else 0
+        )
         self._current_path = None
         self._eos_emitted = False
         self._pending_play = False
@@ -1972,6 +1985,39 @@ class GStreamerAudioPort(AudioPort):
             raise AudioTransportUnavailableError(
                 "GStreamer play on closed/uninitialized transport"
             )
+        if self._resync_delay_ms and self._eos_emitted:
+            if not self._request_state(self._bindings.STATE.NULL):
+                raise AudioTransportCommandError("Direct EOS replay reset failed")
+            self._resync_ready_at_ns = None
+            self._resync_complete = False
+            self._resync_replay_preroll = False
+            self._eos_emitted = False
+        if self._resync_delay_ms and not self._resync_complete:
+            # Keep the first preroll buffer queued in PAUSED. The delay starts
+            # only after ASYNC_DONE has passed Direct runtime verification.
+            if self._current_path is not None and self._resync_ready_at_ns is None:
+                if not self._resync_replay_preroll:
+                    if not self._request_state(self._bindings.STATE.PAUSED):
+                        raise AudioTransportCommandError("Direct replay preroll failed")
+                    self._resync_replay_preroll = True
+                self._pending_play = True
+                return
+            if (
+                self._resync_ready_at_ns is None
+                or self._resync_clock_ns() < self._resync_ready_at_ns
+            ):
+                self._pending_play = True
+                return
+            # Recheck executor ownership too: output release can precede a
+            # queued tick without changing the port generation. A missing
+            # execution fails closed instead of starting unowned audio.
+            if self._direct_executor is None or self._active_direct_handle is None:
+                self._cancel_resync_hold(reset_delay=True)
+                raise AudioTransportCommandError(
+                    "Direct resync start without an owned execution"
+                )
+            self._direct_executor.recipe_for_load(self._active_direct_handle)
+            self._resync_complete = True
         if self._eos_emitted:
             # REPLAY desde EOS (M11.3C-R6 P1-02): un pipeline en EOS no
             # reinicia solo con PLAYING — restart controlado NULL → PLAYING,
@@ -2069,6 +2115,11 @@ class GStreamerAudioPort(AudioPort):
         self.play()
 
     def stop(self) -> None:
+        if self._resync_delay_ms:
+            self._pending_play = False
+            self._resync_ready_at_ns = None
+            self._resync_complete = False
+            self._resync_replay_preroll = False
         self._load_epoch += 1
         if self._closed:
             raise AudioTransportUnavailableError("GStreamer stop on closed transport")
@@ -2615,6 +2666,30 @@ class GStreamerAudioPort(AudioPort):
                 return
             self._publish_duration()
         elif kind == _GstEventKind.POSITION_TICK:
+            if (
+                self._resync_delay_ms
+                and not self._resync_complete
+                and self._pending_play
+                and self._resync_ready_at_ns is not None
+                and self._resync_clock_ns() >= self._resync_ready_at_ns
+            ):
+                try:
+                    self.play()
+                except Exception as exc:  # noqa: BLE001 - asynchronous command boundary
+                    self._pending_play = False
+                    if getattr(exc, "code", None) == "DIRECT_STALE_EXECUTION":
+                        # Release/loss already retired that authority. Do not
+                        # send an anomaly back into the retired executor.
+                        self._cancel_resync_hold(reset_delay=True)
+                        return
+                    self._commit_error(
+                        _GstEvent(
+                            self._generation,
+                            _GstEventKind.ERROR,
+                            reason=f"DIRECT_RESYNC_START_FAILED: {exc}",
+                        )
+                    )
+                    return
             self._publish_position()
 
     def _commit_acceptance(self, event) -> None:
@@ -2624,9 +2699,10 @@ class GStreamerAudioPort(AudioPort):
         interno → PUBLICACIÓN DIRECTA → revalidar tras el callback (el
         subscriber puede hacer load/stop/close) → solo entonces aplicar el
         trabajo diferido de la generación (sin segunda cola Qt)."""
-        if self._pending_path is None:
+        replay_preroll = self._resync_replay_preroll
+        if self._pending_path is None and not replay_preroll:
             return  # duplicado o ya commiteado (idempotente)
-        candidate = self._pending_path
+        candidate = self._pending_path or self._current_path
         generation = event.generation
         # DAC-V35-050C2 §27: ASYNC_DONE != aceptación automática para
         # Direct: el runtime real se inspecciona ANTES del commit de
@@ -2655,6 +2731,13 @@ class GStreamerAudioPort(AudioPort):
             except Exception as exc:  # noqa: BLE001 — validación Direct
                 self._direct_preroll_failed(candidate, exc)
                 return
+            if self._resync_delay_ms and self._resync_ready_at_ns is None:
+                self._resync_ready_at_ns = (
+                    self._resync_clock_ns() + self._resync_delay_ms * 1_000_000
+                )
+        if replay_preroll:
+            self._resync_replay_preroll = False
+            return  # retained source: never publish a second media acceptance
         self._current_path = candidate
         self._pending_path = None
         # estado interno ANTES del callback público (reentrancy-safe)
@@ -2808,6 +2891,8 @@ class GStreamerAudioPort(AudioPort):
         o de la fuente actual (child-error provenance preservado)."""
         reason = event.reason or "gstreamer error"
         candidate = self._pending_path or self._current_path
+        # Any error retires the deferred start intent before callbacks run.
+        self._cancel_resync_hold(reset_delay=True)
         if candidate is not None:
             direct_handle = self._active_direct_handle
             self._pending_path = None
@@ -2836,14 +2921,32 @@ class GStreamerAudioPort(AudioPort):
         if ok:
             self._deliver_pos(gst_time_to_millis(ns))
 
+    def _cancel_resync_hold(self, *, reset_delay: bool = False) -> None:
+        """Cancel the deferred Direct start intent at an authority boundary.
+
+        A queued position tick must never start audio for a pipeline whose
+        execution was retired (error, pump death, output release, teardown).
+        ``reset_delay`` clears the plan delay too; ``stop()`` intentionally
+        keeps it so a retained-source replay re-holds before starting again.
+        """
+        if reset_delay:
+            self._resync_delay_ms = 0
+        self._resync_ready_at_ns = None
+        self._resync_complete = False
+        self._resync_replay_preroll = False
+        self._pending_play = False
+
     def _invalidate_generation(self) -> None:
         """OWNER: avanza la generación (monotónica, nunca decrece) y limpia
         las observaciones diferidas de la generación anterior (R6.5).
-
         La invalidación es para supersesión de transacciones, cancelación
         terminal de candidatos, reemplazo destructivo y close — NUNCA para
         stop/replay de un source aceptado."""
         self._generation += 1
+        self._resync_delay_ms = 0
+        self._resync_ready_at_ns = None
+        self._resync_complete = False
+        self._resync_replay_preroll = False
         self._deferred_playing_generation = None
         self._deferred_eos_generation = None
         self._duration_refresh_generation = None

@@ -15249,6 +15249,25 @@ incorrectly.
 
 R25 owns that proof.
 
+### DAC-V35-050/080 resync corrective: implementation contract
+
+For a nonzero explicit profile delay, the existing GStreamer Direct port holds
+the pipeline in PAUSED until its Direct preroll has passed the current runtime
+validator, then holds it for at least the configured monotonic-time interval.
+The existing generation-scoped position source services the deadline on the
+owner thread; no second native source or UI sleep is introduced. Scheduling
+latency can lengthen, never shorten, the requested interval. Delay is applied
+before PLAYING, not before opening the DAC. No PCM samples are inserted,
+dropped or rewritten, and buffer timestamps are not shifted by this hold.
+R25 must still measure physical first-content preservation; holding PAUSED does
+not prove an external DAC has locked, nor constitute physical qualification.
+
+The default zero-delay and Shared paths retain their existing semantics. Each
+new Direct load and retained-source replay after NULL/EOS needs fresh preroll
+before the hold starts. Duplicate Play and ASYNC_DONE cannot restart the
+deadline. Pause, Stop, close, error, output release and supersession cannot let
+a queued old tick resume playback. No acceptance callback may bypass the hold.
+
 ---
 
 # 302. FIRST-SAMPLE INTEGRITY

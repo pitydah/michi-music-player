@@ -1073,7 +1073,9 @@ def main(argv: list[str] | None = None) -> int:
     _write_reports(commit, results)
     verdict = "GO" if all(item.status == "PASS" for item in results) else "NO_GO"
     print(f"M11.4 automated verdict: {verdict}")
-    print(f"Implementation verdict: {'COMPLETE' if verdict == 'GO' else 'INCOMPLETE'}")
+    # One authority only: the console reports the same obligation verdict the
+    # artifact records. A green gate set never upgrades it here either.
+    print(f"Implementation verdict: {closure['implementation_verdict']}")
     print(f"Physical tooling verdict: {closure['physical_tooling_verdict']}")
     print(
         f"Physical verdict: {closure['physical_verdict']} "

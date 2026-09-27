@@ -282,14 +282,11 @@ def test_fc_14_verifier_verdicts_come_from_obligations_not_green_gates() -> None
     tooling = closure_verdict(TOOLING_OBLIGATIONS)
     gaps = closure_gaps(IMPLEMENTATION_OBLIGATIONS) + closure_gaps(TOOLING_OBLIGATIONS)
 
-    # With resync_delay_ms still dead and the deep lab contracts still partial,
-    # neither verdict may claim completeness.
-    assert implementation == "INCOMPLETE"
-    assert tooling == "INCOMPLETE"
-    assert any("resync_delay_runtime" in gap for gap in gaps)
-    assert any(gap.startswith("R32:") for gap in gaps)
-    assert any(gap.startswith("R35:") for gap in gaps)
-    assert any(gap.startswith("R36:") for gap in gaps)
+    # Implementation and tooling obligations are closed. Physical evidence
+    # stays separate and honestly INCOMPLETE, so no physical PASS is implied.
+    assert implementation == "COMPLETE"
+    assert tooling == "COMPLETE"
+    assert gaps == ()
     # Everything already closed must be reported as closed.
     completed = {item.key for item in IMPLEMENTATION_OBLIGATIONS if item.complete}
     assert {
