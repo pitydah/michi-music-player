@@ -506,6 +506,21 @@ class PlaybackService:
         self._state.error_message = None
         self._notify()
 
+    def publish_preparation_refusal(self, code: str) -> None:
+        """Publish one typed preparation refusal to the playback authority.
+
+        Startup resume (and any preparation that happens outside a load
+        request) must surface its typed refusal with the same copy the UI
+        already renders, instead of only being logged. No playback state is
+        fabricated: status, source and acceptance are left untouched.
+        """
+        if not code:
+            return
+        failure = playback_action_failure(code)
+        self._state.error_message = failure.message
+        self._state.error_code = failure.code
+        self._notify()
+
     def _reset_user_play_acceptance_latch(self) -> None:
         self._user_play_acceptance_latched = None
         self._user_play_play_phase_complete = False

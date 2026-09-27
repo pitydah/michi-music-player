@@ -39,7 +39,23 @@ def test_verdict_report_has_canonical_shape(tmp_path, monkeypatch) -> None:
     assert report["commit"] == "a" * 40
     assert report["spec_revision"] == "V3.5"
     assert report["automated_verdict"] == "GO"
-    assert report["physical_verdict"] == "NOT_RUN"
+    # The verifier must report the state the archived fail-closed manifests
+    # actually prove instead of asserting one fixed physical verdict.
+    assert report["physical_verdict"] in {
+        "NOT_RUN",
+        "INCOMPLETE",
+        "FAIL",
+        "PASS_BOUNDED",
+        "PASS_MULTI_HARDWARE",
+    }
+    assert report["implementation_verdict"] in {"COMPLETE", "INCOMPLETE"}
+    assert report["physical_tooling_verdict"] in {"COMPLETE", "INCOMPLETE"}
+    assert report["multi_hardware_verdict"] in {"PASS_MULTI_HARDWARE", "NOT_PROVEN"}
+    if report["physical_verdict"] == "PASS_MULTI_HARDWARE":
+        assert report["multi_hardware_verdict"] == "PASS_MULTI_HARDWARE"
+    if report["physical_verdict"] == "NOT_RUN":
+        assert report["multi_hardware_verdict"] == "NOT_PROVEN"
+    assert isinstance(report["pcm_closure"]["devices"], list)
     assert report["gates"][0]["status"] == "PASS"
     assert report["generated_at"] == report["generated_at_utc"]
     assert "test_counts" in report

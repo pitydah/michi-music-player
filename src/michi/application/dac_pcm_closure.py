@@ -64,6 +64,9 @@ class DeviceClosureVerdict:
     experiment_status: tuple[tuple[str, str], ...]
     verdict: str
     reasons: tuple[str, ...]
+    implementation_head: str = ""
+    evidence_execution_head: str = ""
+    manifest_created_at: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,10 +205,44 @@ def _semantic_pass_check(experiment: str, item: dict[str, Any]) -> str | None:
     return None
 
 
+def _manifest_provenance(payload: dict[str, Any]) -> tuple[str, str, str]:
+    """Bind evidence to the code that produced it, never to the current tree.
+
+    A manifest is committed AFTER the run that produced it, so requiring its
+    recorded head to equal the current HEAD would make every archived manifest
+    stale by construction. The contract is instead: ``implementation_head`` is
+    the product commit whose code produced the evidence and
+    ``evidence_execution_head`` is the head actually executing at collection
+    time; for a single run both are the same commit and that equality is what
+    is enforced here.
+    """
+    manifest_schema = payload.get("manifest_schema", 1)
+    if manifest_schema not in (1, 2):
+        raise PcmClosureEvidenceError("unsupported closure manifest schema")
+    if manifest_schema == 1:
+        head = _required_text(payload, "execution_git_head")
+        return head, head, ""
+    implementation_head = _required_text(payload, "implementation_head")
+    execution_head = _required_text(payload, "evidence_execution_head")
+    created_at = _required_text(payload, "manifest_created_at")
+    if len(implementation_head) != 40 or len(execution_head) != 40:
+        raise PcmClosureEvidenceError("closure manifest heads must be full commit ids")
+    if execution_head != implementation_head:
+        raise PcmClosureEvidenceError(
+            "evidence_execution_head must match implementation_head within one run"
+        )
+    legacy = payload.get("execution_git_head")
+    if legacy is not None and legacy != implementation_head:
+        raise PcmClosureEvidenceError(
+            "execution_git_head contradicts the declared provenance"
+        )
+    return implementation_head, execution_head, created_at
+
+
 def evaluate_device_manifest(payload: dict[str, Any]) -> DeviceClosureVerdict:
     if payload.get("schema_version") != 1:
         raise PcmClosureEvidenceError("unsupported closure manifest schema")
-    _required_text(payload, "execution_git_head")
+    implementation_head, execution_head, created_at = _manifest_provenance(payload)
     _required_text(payload, "environment_fingerprint")
     identity = _identity(payload)
     experiments = _experiment_map(payload)
@@ -245,6 +282,9 @@ def evaluate_device_manifest(payload: dict[str, Any]) -> DeviceClosureVerdict:
         experiment_status=tuple(statuses),
         verdict=verdict,
         reasons=tuple(reasons),
+        implementation_head=implementation_head,
+        evidence_execution_head=execution_head,
+        manifest_created_at=created_at,
     )
 
 
@@ -317,6 +357,9 @@ def summary_to_dict(summary: PcmClosureSummary) -> dict[str, Any]:
                 "stable_device_id": item.identity.stable_device_id,
                 "locator": item.identity.locator,
                 "verdict": item.verdict,
+                "implementation_head": item.implementation_head,
+                "evidence_execution_head": item.evidence_execution_head,
+                "manifest_created_at": item.manifest_created_at,
                 "experiments": dict(item.experiment_status),
                 "reasons": list(item.reasons),
             }

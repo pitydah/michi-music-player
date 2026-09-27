@@ -129,6 +129,7 @@ Item {
         outputTooltip: audioOutput.outputTooltip
         outputSignalTruthLabel: audioOutput.signalTruthLabel
         outputFailureTitle: audioOutput.lastFailureTitle
+        outputRecoveryActions: audioOutput.outputRecoveryActions
         canSelectOutput: audioOutput.canSelectDevice
         currentPath: playback.currentPath
         onPlayPauseRequested: playback.toggle_play_pause()
@@ -145,9 +146,17 @@ Item {
         onAudioEngineSwitchRequested: (engineId) => audioEngine.switch_engine(engineId)
         onAudioEngineRefreshRequested: audioEngine.refresh_engines()
         onAudioOutputDeviceSelectionRequested: stableDeviceId =>
-            audioOutput.select_device(stableDeviceId)
+            audioOutput.select_device_for_playback(stableDeviceId)
         onAudioOutputSharedSelectionRequested: audioOutput.select_shared_output()
         onAudioOutputRefreshRequested: audioOutput.refresh_devices()
+        onAudioOutputRecoveryActionRequested: action => {
+            if (action === "try_compatible_direct")
+                audioOutput.try_compatible_direct()
+            else if (action === "use_shared")
+                audioOutput.select_shared_output()
+            else
+                audioOutput.dismiss_output_failure()
+        }
         onAudioOutputSettingsRequested: root.navigationRequested("settings")
     }
 

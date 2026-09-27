@@ -34,14 +34,42 @@
     "usb_vendor_id": "2fc6"
   },
   "environment_fingerprint": "qenv:v2:sha256:e64a9c924837f2b6dbb1e7671e030d9f2aac4516820a545bfd2f12eaafc258c9",
-  "events": [],
-  "execution_git_head": "82d920ef04412aa3be0acc8710d6aefdf9c5354d",
+  "events": [
+    {
+      "captured_at": "2026-09-26T20:57:02-0300",
+      "collected_head": "bc53642039d1e2597abba476215a198949887c2d",
+      "evidence": [
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "SignalTruth.clock"
+      ],
+      "experiment": "R24",
+      "facts": {
+        "resampling_observed": false,
+        "signal_truth_state": "direct",
+        "sink_clock_is_pipeline_clock": true,
+        "sink_provides_clock": true,
+        "slave_method": "skew"
+      },
+      "status": "PASS"
+    }
+  ],
+  "evidence_execution_head": "82d920ef04412aa3be0acc8710d6aefdf9c5354d",
   "experiments": {
     "R24": {
-      "evidence": [],
-      "executed": false,
-      "facts": {},
-      "status": "NOT_RUN"
+      "captured_at": "2026-09-26T20:57:02-0300",
+      "evidence": [
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "SignalTruth.clock"
+      ],
+      "executed": true,
+      "facts": {
+        "resampling_observed": false,
+        "signal_truth_state": "direct",
+        "sink_clock_is_pipeline_clock": true,
+        "sink_provides_clock": true,
+        "slave_method": "skew"
+      },
+      "status": "PASS"
     },
     "R25": {
       "evidence": [],
@@ -68,5 +96,8 @@
       "status": "NOT_RUN"
     }
   },
+  "implementation_head": "82d920ef04412aa3be0acc8710d6aefdf9c5354d",
+  "manifest_created_at": "2026-09-26T19:50:18-0300",
+  "manifest_schema": 2,
   "schema_version": 1
 }

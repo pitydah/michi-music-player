@@ -589,6 +589,54 @@ def _source_characterization_contract_gate(
     )
 
 
+def _pcm_closure_state(root: Path | None = None) -> dict:
+    """Report software, tooling, physical and multi-hardware closure separately.
+
+    The canonical verifier must never assert a fixed physical verdict: it
+    reports what the archived, fail-closed device manifests actually prove.
+    """
+    from michi.application.dac_pcm_closure import (
+        PcmClosureEvidenceError,
+        load_manifest,
+        summarize_manifests,
+        summary_to_dict,
+    )
+
+    base = root or Path(__file__).resolve().parents[1]
+    manifests = sorted(
+        (base / "evidence" / "dac-v35-pcm-closure").glob("*/manifest.json")
+    )
+    payloads = []
+    for path in manifests:
+        try:
+            payloads.append(load_manifest(path))
+        except PcmClosureEvidenceError:
+            continue
+    summary = summary_to_dict(summarize_manifests(payloads))
+    lab = base / "scripts" / "dac_m11_4_pcm_lab.py"
+    return {
+        "manifests": [str(path.relative_to(base)) for path in manifests],
+        "devices": [
+            {
+                "stable_device_id": item["stable_device_id"],
+                "locator": item["locator"],
+                "verdict": item["verdict"],
+                "experiments": dict(item["experiments"]),
+            }
+            for item in summary["devices"]
+        ],
+        "physical_tooling_verdict": (
+            "COMPLETE" if lab.is_file() and payloads else "INCOMPLETE"
+        ),
+        "physical_verdict": summary["physical_verdict"],
+        "multi_hardware_verdict": (
+            "PASS_MULTI_HARDWARE" if summary["multi_hardware_proven"] else "NOT_PROVEN"
+        ),
+        "bit_perfect_claimed": summary["bit_perfect_claimed"],
+        "out_of_scope": summary["out_of_scope"],
+    }
+
+
 def _verification_manifest_gate(root: Path | None = None) -> tuple[bool, str]:
     scan_root = root or ROOT
     path = scan_root / "tests/dac/test_v35_100_software_closure.py"
@@ -689,12 +737,20 @@ def _write_reports(commit: str, results: list[GateResult]) -> None:
         "workflow_run_id": os.environ.get("GITHUB_RUN_ID"),
         "github_sha": os.environ.get("GITHUB_SHA"),
     }
+    pcm_closure = _pcm_closure_state()
+    implementation = (
+        "COMPLETE" if all(item.status == "PASS" for item in results) else "INCOMPLETE"
+    )
     report = {
         "schema_version": 1,
         "commit": commit,
         "spec_revision": SPEC_REVISION,
+        "implementation_verdict": implementation,
         "automated_verdict": verdict,
-        "physical_verdict": "NOT_RUN",
+        "physical_tooling_verdict": pcm_closure["physical_tooling_verdict"],
+        "physical_verdict": pcm_closure["physical_verdict"],
+        "multi_hardware_verdict": pcm_closure["multi_hardware_verdict"],
+        "pcm_closure": pcm_closure,
         "gates": [asdict(item) for item in results],
         "test_counts": test_counts,
         "collection": {
@@ -721,9 +777,12 @@ def _write_reports(commit: str, results: list[GateResult]) -> None:
         f"- Commit: `{commit}`",
         f"- Spec revision: `{SPEC_REVISION}`",
         f"- Automated verdict: **{verdict}**",
-        "- Physical verdict: **NOT_RUN**",
-        "- Scope: automated software evidence only; not Michi-Verified "
-        "or physical proof.",
+        f"- Implementation verdict: **{report['implementation_verdict']}**",
+        f"- Physical tooling verdict: **{report['physical_tooling_verdict']}**",
+        f"- Physical verdict: **{report['physical_verdict']}** "
+        f"(multi-hardware: {report['multi_hardware_verdict']})",
+        "- Scope: automated software evidence plus archived fail-closed device "
+        "manifests; a physical PASS is only ever reported from real evidence.",
         f"- Required modules collected: **{modules_collected}**",
         f"- Full-suite skips/xfails classified: **{classified_skips}**",
         "",
@@ -978,10 +1037,16 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 )
 
+    closure = _pcm_closure_state()
     _write_reports(commit, results)
     verdict = "GO" if all(item.status == "PASS" for item in results) else "NO_GO"
     print(f"M11.4 automated verdict: {verdict}")
-    print("Physical verdict: NOT_RUN")
+    print(f"Implementation verdict: {'COMPLETE' if verdict == 'GO' else 'INCOMPLETE'}")
+    print(f"Physical tooling verdict: {closure['physical_tooling_verdict']}")
+    print(
+        f"Physical verdict: {closure['physical_verdict']} "
+        f"(multi-hardware: {closure['multi_hardware_verdict']})"
+    )
     print("reports: artifacts/dac_m11_4_verdict.{json,md}")
     return 0 if verdict == "GO" else 1
 

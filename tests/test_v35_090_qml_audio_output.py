@@ -1407,3 +1407,255 @@ def test_ui90r12_01_output_popup_anchor_at_1280(qapp) -> None:
 
 def test_ui90r12_02_output_popup_anchor_at_980(qapp) -> None:
     _assert_output_popup_is_anchored_to_opener(qapp, 980)
+
+
+# ── DAC-V35 PCM closure UI gates ─────────────────────────────────────────
+
+
+def test_ui90r13_01_popup_offers_the_typed_recovery_actions(qapp) -> None:
+    """The normal surface must offer the refusal's explicit recovery intents."""
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    popup = window.findChild(QObject, "outputPopup")
+    assert popup is not None
+
+    # Without a failure there is no recovery surface at all.
+    popup.setProperty("failureTitle", "")
+    popup.setProperty("recoveryActions", [])
+    QApplication.processEvents()
+    assert _visual_item(window, "outputRecoveryAction_try_compatible_direct") is None
+
+    seen: list[str] = []
+    popup.recoveryActionRequested.connect(lambda action: seen.append(action))
+    popup.setProperty("failureTitle", "Format unsupported")
+    popup.setProperty(
+        "recoveryActions",
+        [
+            {"action": "try_compatible_direct", "label": "Try Compatible Direct"},
+            {"action": "use_shared", "label": "Use Shared"},
+            {"action": "cancel", "label": "Cancel"},
+        ],
+    )
+    QApplication.processEvents()
+
+    primary = _visual_item(window, "outputRecoveryAction_try_compatible_direct")
+    shared = _visual_item(window, "outputRecoveryAction_use_shared")
+    cancel = _visual_item(window, "outputRecoveryAction_cancel")
+    assert primary is not None and shared is not None and cancel is not None
+    assert primary.property("text") == "Try Compatible Direct"
+    assert shared.property("text") == "Use Shared"
+    assert cancel.property("text") == "Cancel"
+
+    _click(window, primary)
+    assert seen == ["try_compatible_direct"]
+    _click(window, shared)
+    _click(window, cancel)
+    assert seen == ["try_compatible_direct", "use_shared", "cancel"]
+    window.close()
+
+
+def _many_rows(count: int) -> list[dict]:
+    """Self-contained output rows: only the fields the row template reads."""
+
+    def _row(index: int, *, shared: bool) -> dict:
+        return {
+            "stableDeviceId": "" if shared else f"usb:9:{index}:row-{index}",
+            "displayName": "System Output" if shared else f"Row device {index}",
+            "available": True,
+            "selected": False,
+            "active": shared,
+            "canSelect": True,
+            "isShared": shared,
+            "statusLabel": "In use" if shared else "Available",
+            "transportLabel": "Shared" if shared else "Direct",
+            "signalTruthLabel": "",
+            "canSelectOutput": True,
+        }
+
+    rows = [_row(-1, shared=True)]
+    for index in range(count):
+        rows.append(_row(index, shared=False))
+    return rows
+
+
+def _walk_named(item, name: str):
+    if item.objectName() == name:
+        return item
+    for child in item.childItems():
+        found = _walk_named(child, name)
+        if found is not None:
+            return found
+    return None
+
+
+def _walk_texts(item) -> list[str]:
+    found = []
+    text = item.property("text")
+    if isinstance(text, str) and text:
+        found.append(text)
+    for child in item.childItems():
+        found.extend(_walk_texts(child))
+    return found
+
+
+def _long_popup_harness(window) -> None:
+    popup = window.findChild(QObject, "outputPopup")
+    assert popup is not None
+    popup.setProperty("devices", _many_rows(14))
+    popup.setProperty("deviceGroups", [])
+    QApplication.processEvents()
+
+
+def _live(root, name: str, reader):
+    """Read one named object, re-resolving it from the root on every attempt.
+
+    The popup rebuilds its content when the window relayouts, which invalidates
+    any previously resolved wrapper; a fresh lookup plus a liveness probe keeps
+    the assertion reading the CURRENT object instead of a deleted one.
+    """
+    for _ in range(50):
+        item = root.findChild(QObject, name)
+        if item is None:
+            QTest.qWait(20)
+            continue
+        try:
+            return reader(item)
+        except RuntimeError:
+            QTest.qWait(20)
+    raise AssertionError(f"{name} never resolved to a live object")
+
+
+def test_ui90r13_02_long_output_list_is_bounded_and_reachable(qapp) -> None:
+    """A long output list must stay inside the viewport and stay navigable."""
+    _engine, _component, window = _create(qapp, POPUP_HARNESS, "tests/ui90.qml")
+    window.setProperty("width", 1280)
+    window.setProperty("height", 600)
+    _long_popup_harness(window)
+    popup = _open_popup(window)
+
+    assert (
+        _live(window, "audioOutputPopupRepeater", lambda item: item.property("count"))
+        == 15
+    ), "every output is offered"
+
+    list_top, list_bottom = _live(
+        window,
+        "outputRowsScroll",
+        lambda item: (
+            item.mapToScene(QPointF(0, 0)).y(),
+            item.mapToScene(QPointF(0, 0)).y() + item.height(),
+        ),
+    )
+    assert list_top >= 0
+    assert list_bottom <= window.height() + 1, "the popup stays inside the window"
+
+    def _last_row_y():
+        return _live(
+            window,
+            "audioOutputPopupRepeater",
+            lambda item: [
+                child.mapToScene(QPointF(0, 0)).y()
+                for child in item.parentItem().childItems()
+                if child.objectName().startswith("outputPopupRow_")
+            ][-1],
+        )
+
+    before = _last_row_y()
+    assert before > list_bottom, "the last row starts below the visible list area"
+
+    # Keyboard navigation must really scroll the list: the last row moves into
+    # the visible area of the popup instead of staying out of reach.
+    for _ in range(60):
+        QTest.keyClick(window, Qt.Key_Down)
+        QApplication.processEvents()
+    after = _last_row_y()
+    assert after < before, "keyboard navigation must scroll the list"
+    assert list_top - 1 <= after <= list_bottom + 1, "the last row became reachable"
+
+    # A narrower window and a short viewport keep the popup bounded.
+    window.setProperty("width", 980)
+    window.setProperty("height", 420)
+    QApplication.processEvents()
+    bottom = _live(
+        window,
+        "outputRowsScroll",
+        lambda item: item.mapToScene(QPointF(0, 0)).y() + item.height(),
+    )
+    assert bottom <= window.height() + 1
+
+    # Escape closes and returns focus to the opener.
+    QTest.keyClick(window, Qt.Key_Escape)
+    QApplication.processEvents()
+    assert popup.property("opened") is False
+    assert popup.property("focusReturnTarget") is not None
+    window.close()
+
+
+def test_ui90r13_03_diagnostics_show_only_proven_tuples(qapp) -> None:
+    """Two proven tuples are shown as two; no Cartesian combination is implied."""
+    _engine, _component, window = _create(qapp, SETTINGS_HARNESS, "tests/ui90.qml")
+    section = window.findChild(QObject, "outputSettings")
+    assert section is not None
+    section.setProperty(
+        "devices",
+        [
+            PY_SHARED_ROW,
+            dict(
+                PY_DEVICE_ROW,
+                qualifiedTuples=[
+                    {
+                        "rateHz": 44100,
+                        "rateLabel": "44.1 kHz",
+                        "format": "S16_LE",
+                        "channels": 2,
+                        "significantBits": 16,
+                    },
+                    {
+                        "rateHz": 96000,
+                        "rateLabel": "96 kHz",
+                        "format": "S32_LE",
+                        "channels": 2,
+                        "significantBits": 24,
+                    },
+                ],
+            ),
+        ],
+    )
+    QApplication.processEvents()
+
+    toggle = _visual_item(window, "dacAdvancedToggle_usb:1:2:serial-abc")
+    assert toggle is not None
+    # Let the card layout settle before clicking: an unlaid-out toggle has zero
+    # width and a synthetic click would miss it.
+    for _ in range(25):
+        if toggle.width() > 0:
+            break
+        QTest.qWait(20)
+    assert toggle.width() > 0
+    disclosure = toggle.parentItem()
+    assert disclosure is not None
+    tuples = _walk_named(disclosure, "qualifiedTupleRepeater")
+    assert tuples is not None, "the diagnostics disclose qualified tuples"
+    assert tuples.property("count") == 2
+    _click(window, toggle)
+    for _ in range(25):
+        if disclosure.property("expanded") is True:
+            break
+        QTest.qWait(20)
+    assert disclosure.property("expanded") is True
+    lines = [text for text in _walk_texts(disclosure) if text.startswith("• ")]
+    assert len(lines) == 2, lines
+    assert any("44.1 kHz" in line and "S16_LE" in line for line in lines)
+    assert any("96 kHz" in line and "S32_LE" in line for line in lines)
+    # No line may imply a combination the evidence never proved.
+    assert not any("44.1 kHz" in line and "S32_LE" in line for line in lines)
+    assert not any("96 kHz" in line and "S16_LE" in line for line in lines)
+    # The disclosed lines are really visible once expanded.
+    delegates = [
+        child
+        for child in tuples.parentItem().childItems()
+        if isinstance(child.property("text"), str)
+        and child.property("text").startswith("• ")
+    ]
+    assert len(delegates) == 2
+    assert all(delegate.isVisible() for delegate in delegates)
+    window.close()

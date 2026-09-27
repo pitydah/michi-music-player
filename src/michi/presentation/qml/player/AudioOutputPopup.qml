@@ -14,6 +14,7 @@ Popup {
     property var deviceGroups: []
     property string signalTruthLabel: qsTr("Not verified")
     property string failureTitle: ""
+    property var recoveryActions: []
     property var focusReturnTarget: null
     property bool displayAudioExpanded: false
     property real maximumRowsHeight: Math.max(
@@ -23,6 +24,7 @@ Popup {
     signal deviceSelectionRequested(string stableDeviceId)
     signal sharedSelectionRequested()
     signal settingsRequested()
+    signal recoveryActionRequested(string action)
 
     padding: MichiSpacing.lg
     margins: MichiSpacing.sm
@@ -131,6 +133,7 @@ Popup {
 
         ScrollView {
             id: outputRowsScroll
+            objectName: "outputRowsScroll"
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(outputRowsColumn.implicitHeight, root.maximumRowsHeight)
             Layout.maximumHeight: root.maximumRowsHeight
@@ -230,6 +233,23 @@ Popup {
             text: root.failureTitle
             role: "secondary"
             wrapMode: Text.WordWrap
+        }
+
+        // The normal surface must offer the same recovery the settings surface
+        // offers: a typed refusal carries its explicit intents with it, so the
+        // user never has to navigate away to resolve it. Nothing here switches
+        // policy on its own - every row is a real user intent.
+        Repeater {
+            objectName: "outputRecoveryActionRepeater"
+            model: root.failureTitle !== "" ? (root.recoveryActions || []) : []
+            delegate: MichiButton {
+                required property var modelData
+                objectName: "outputRecoveryAction_" + (modelData.action || "unknown")
+                Layout.fillWidth: true
+                text: modelData.label || modelData.action || ""
+                variant: modelData.action === "try_compatible_direct" ? "primary" : "secondary"
+                onClicked: root.recoveryActionRequested(modelData.action)
+            }
         }
 
         MichiButton {

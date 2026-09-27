@@ -112,6 +112,27 @@ class AudioOutputSelectionCoordinator:
         with self._profiles.batch_changes():
             self._select_device_policy(stable_device_id, current.path)
 
+    def select_device_for_playback(self, stable_device_id: str) -> None:
+        """Normal-playback intent: route PCM through this DAC, recommended policy.
+
+        Choosing a physical output from the normal (NowPlaying) surface means
+        "play through this DAC", not merely "remember its identity". The normal
+        Direct policy is the bounded Compatible Direct one: the exact carrier is
+        attempted first and only a refused exact carrier authorizes the lossless
+        container-width carrier. Strict Direct stays an explicit advanced
+        choice. This intent performs no fallback of its own, and an exact
+        refusal is never converted into a compatible success silently.
+        """
+        stable_device_id = stable_device_id.strip()
+        if not stable_device_id:
+            self.select_shared_output()
+            return
+        with self._profiles.batch_changes():
+            self._select_device_policy(
+                stable_device_id,
+                OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE,
+            )
+
     def select_profile(self, profile_id: str) -> None:
         profile = next(
             (

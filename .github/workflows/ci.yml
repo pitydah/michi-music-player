@@ -211,5 +211,20 @@ jobs:
           assert report["commit"] == os.environ["EXPECTED_SHA"]
           assert report["ci"]["github_sha"] == os.environ["EXPECTED_SHA"]
           assert report["automated_verdict"] == "GO"
-          assert report["physical_verdict"] == "NOT_RUN"
+          allowed = {
+              "NOT_RUN",
+              "INCOMPLETE",
+              "FAIL",
+              "PASS_BOUNDED",
+              "PASS_MULTI_HARDWARE",
+          }
+          assert report["physical_verdict"] in allowed
+          assert report["implementation_verdict"] in {"COMPLETE", "INCOMPLETE"}
+          assert report["physical_tooling_verdict"] in {"COMPLETE", "INCOMPLETE"}
+          assert report["multi_hardware_verdict"] in {
+              "PASS_MULTI_HARDWARE",
+              "NOT_PROVEN",
+          }
+          if report["physical_verdict"] == "PASS_MULTI_HARDWARE":
+              assert report["multi_hardware_verdict"] == "PASS_MULTI_HARDWARE"
           PY

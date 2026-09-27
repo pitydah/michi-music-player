@@ -333,6 +333,9 @@ class PersistenceCoordinator:
             code,
             error,
         )
+        publish = getattr(self._playback, "publish_preparation_refusal", None)
+        if callable(publish) and isinstance(code, str):
+            publish(code)
 
     def _release_resume_authority(self, reason: str = "resume resolved") -> None:
         """Close the restore window: drop the phase and the restored truth.

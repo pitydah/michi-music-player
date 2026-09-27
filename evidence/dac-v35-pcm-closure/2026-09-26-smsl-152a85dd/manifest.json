@@ -34,20 +34,365 @@
     "usb_vendor_id": "152a"
   },
   "environment_fingerprint": "qenv:v2:sha256:429dae18495a075ec51c6658bc0d8918347e7ea2510c2697693918a991773658",
-  "events": [],
-  "execution_git_head": "82d920ef04412aa3be0acc8710d6aefdf9c5354d",
+  "events": [
+    {
+      "captured_at": "2026-09-26T20:56:51-0300",
+      "collected_head": "bc53642039d1e2597abba476215a198949887c2d",
+      "evidence": [
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "SignalTruth.clock"
+      ],
+      "experiment": "R24",
+      "facts": {
+        "resampling_observed": false,
+        "signal_truth_state": "direct_container_adapted",
+        "sink_clock_is_pipeline_clock": true,
+        "sink_provides_clock": true,
+        "slave_method": "skew"
+      },
+      "status": "PASS"
+    },
+    {
+      "captured_at": "2026-09-26T20:57:14-0300",
+      "collected_head": "bc53642039d1e2597abba476215a198949887c2d",
+      "evidence": [
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav"
+      ],
+      "experiment": "R25",
+      "facts": {
+        "first_sample_result": "NOT_OBSERVED",
+        "receipts": [
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 1,
+              "plan_id": "plan:2784f316aec6ce07",
+              "port_generation": 1,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+            "rate_hz": 44100,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 2,
+              "plan_id": "plan:2784f316aec6ce07",
+              "port_generation": 2,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+            "rate_hz": 44100,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 3,
+              "plan_id": "plan:a62545cf9a6feec7",
+              "port_generation": 3,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+            "rate_hz": 48000,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 4,
+              "plan_id": "plan:2784f316aec6ce07",
+              "port_generation": 4,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+            "rate_hz": 44100,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 5,
+              "plan_id": "plan:7f969f2e8463dfe8",
+              "port_generation": 5,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+            "rate_hz": 96000,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 6,
+              "plan_id": "plan:fe01295f3625ed3e",
+              "port_generation": 6,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+            "rate_hz": 192000,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 7,
+              "plan_id": "plan:2784f316aec6ce07",
+              "port_generation": 7,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+            "rate_hz": 44100,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          }
+        ],
+        "stale_generation_observed": false,
+        "transition_edges": [
+          "44100->44100",
+          "44100->48000",
+          "48000->44100",
+          "44100->96000",
+          "96000->192000",
+          "192000->44100"
+        ]
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    }
+  ],
+  "evidence_execution_head": "82d920ef04412aa3be0acc8710d6aefdf9c5354d",
   "experiments": {
     "R24": {
-      "evidence": [],
-      "executed": false,
-      "facts": {},
-      "status": "NOT_RUN"
+      "captured_at": "2026-09-26T20:56:51-0300",
+      "evidence": [
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "SignalTruth.clock"
+      ],
+      "executed": true,
+      "facts": {
+        "resampling_observed": false,
+        "signal_truth_state": "direct_container_adapted",
+        "sink_clock_is_pipeline_clock": true,
+        "sink_provides_clock": true,
+        "slave_method": "skew"
+      },
+      "status": "PASS"
     },
     "R25": {
-      "evidence": [],
+      "captured_at": "2026-09-26T20:57:14-0300",
+      "evidence": [
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav"
+      ],
       "executed": false,
-      "facts": {},
-      "status": "NOT_RUN"
+      "facts": {
+        "first_sample_result": "NOT_OBSERVED",
+        "receipts": [
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 1,
+              "plan_id": "plan:2784f316aec6ce07",
+              "port_generation": 1,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+            "rate_hz": 44100,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 2,
+              "plan_id": "plan:2784f316aec6ce07",
+              "port_generation": 2,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+            "rate_hz": 44100,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 3,
+              "plan_id": "plan:a62545cf9a6feec7",
+              "port_generation": 3,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+            "rate_hz": 48000,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 4,
+              "plan_id": "plan:2784f316aec6ce07",
+              "port_generation": 4,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+            "rate_hz": 44100,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 5,
+              "plan_id": "plan:7f969f2e8463dfe8",
+              "port_generation": 5,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+            "rate_hz": 96000,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 6,
+              "plan_id": "plan:fe01295f3625ed3e",
+              "port_generation": 6,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+            "rate_hz": 192000,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          },
+          {
+            "error": null,
+            "identity": {
+              "binding_generation": 1,
+              "execution_generation": 7,
+              "plan_id": "plan:2784f316aec6ce07",
+              "port_generation": 7,
+              "stable_device_id": "usb:152a:85dd:3-3.3.2",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+            "rate_hz": 44100,
+            "verdict": {
+              "reason_codes": [
+                "ST_CONTAINER_ADAPTED"
+              ],
+              "state": "direct_container_adapted"
+            }
+          }
+        ],
+        "stale_generation_observed": false,
+        "transition_edges": [
+          "44100->44100",
+          "44100->48000",
+          "48000->44100",
+          "44100->96000",
+          "96000->192000",
+          "192000->44100"
+        ]
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
     },
     "R32": {
       "evidence": [],
@@ -68,5 +413,8 @@
       "status": "NOT_RUN"
     }
   },
+  "implementation_head": "82d920ef04412aa3be0acc8710d6aefdf9c5354d",
+  "manifest_created_at": "2026-09-26T19:50:19-0300",
+  "manifest_schema": 2,
   "schema_version": 1
 }

@@ -46,6 +46,7 @@ Item {
     // geometry-stable; the popup owns no output state.
     property var outputDevices: []
     property var outputDeviceGroups: []
+    property var outputRecoveryActions: []
     property string outputTooltip: qsTr("Audio output")
     property string outputSignalTruthLabel: qsTr("Not verified")
     property string outputFailureTitle: ""
@@ -77,6 +78,7 @@ Item {
     signal audioOutputSharedSelectionRequested()
     signal audioOutputRefreshRequested()
     signal audioOutputSettingsRequested()
+    signal audioOutputRecoveryActionRequested(string action)
 
     implicitWidth: 800
     implicitHeight: 154
@@ -545,10 +547,13 @@ Item {
                 deviceGroups: root.outputDeviceGroups
                 signalTruthLabel: root.outputSignalTruthLabel
                 failureTitle: root.outputFailureTitle
+                recoveryActions: root.outputRecoveryActions
                 focusReturnTarget: outputDeviceButton
                 onDeviceSelectionRequested: stableDeviceId =>
                     root.audioOutputDeviceSelectionRequested(stableDeviceId)
                 onSharedSelectionRequested: root.audioOutputSharedSelectionRequested()
+                onRecoveryActionRequested: action =>
+                    root.audioOutputRecoveryActionRequested(action)
                 onSettingsRequested: {
                     outputPopup.close()
                     root.audioOutputSettingsRequested()

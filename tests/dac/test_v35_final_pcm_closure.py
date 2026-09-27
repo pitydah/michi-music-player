@@ -189,3 +189,54 @@ def test_final_pcm_10_schema_and_required_experiments_are_fail_closed() -> None:
     wrong["schema_version"] = 99
     with pytest.raises(PcmClosureEvidenceError, match="schema"):
         evaluate_device_manifest(wrong)
+
+
+# ── Provenance and append-only gates ─────────────────────────────────────
+
+
+def _v2_manifest(**kwargs):
+    payload = _manifest(**kwargs)
+    payload.pop("execution_git_head")
+    payload.update(
+        {
+            "manifest_schema": 2,
+            "implementation_head": "a" * 40,
+            "evidence_execution_head": "a" * 40,
+            "manifest_created_at": "2026-09-26T00:00:00-0300",
+        }
+    )
+    return payload
+
+
+def test_fc_11_manifest_binds_to_its_execution_head_not_the_current_tree() -> None:
+    """A committed manifest is never stale by construction."""
+    payload = _v2_manifest()
+    verify_manifest = evaluate_device_manifest(payload)
+    assert verify_manifest.implementation_head == "a" * 40
+    assert verify_manifest.evidence_execution_head == "a" * 40
+    assert verify_manifest.manifest_created_at == "2026-09-26T00:00:00-0300"
+    # The manifest claims a head that cannot be the current tree by definition;
+    # loading it must still succeed because provenance is internal.
+    assert payload["implementation_head"] != "b" * 40
+
+
+def test_fc_12_manifest_without_provenance_or_with_drift_is_rejected() -> None:
+    payload = _v2_manifest()
+    payload.pop("implementation_head")
+    with pytest.raises(PcmClosureEvidenceError):
+        evaluate_device_manifest(payload)
+
+    drifted = _v2_manifest()
+    drifted["evidence_execution_head"] = "c" * 40
+    with pytest.raises(PcmClosureEvidenceError):
+        evaluate_device_manifest(drifted)
+
+    malformed = _v2_manifest()
+    malformed["implementation_head"] = "short"
+    with pytest.raises(PcmClosureEvidenceError):
+        evaluate_device_manifest(malformed)
+
+    contradicted = _v2_manifest()
+    contradicted["execution_git_head"] = "d" * 40
+    with pytest.raises(PcmClosureEvidenceError):
+        evaluate_device_manifest(contradicted)

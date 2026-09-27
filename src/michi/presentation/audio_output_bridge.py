@@ -964,6 +964,24 @@ class AudioOutputBridge(QObject):
         )
 
     @Slot(str)
+    def select_device_for_playback(self, stable_device_id: str) -> None:
+        """Normal output choice: use this DAC for PCM playback.
+
+        Distinct from :meth:`select_device`, which only records hardware
+        identity for advanced flows. This is the NowPlaying intent: the user
+        picked a physical output to play through, so the recommended Direct
+        policy (Compatible Direct) is bound explicitly. Strict Direct remains an
+        advanced choice and no refusal is ever resolved by a hidden fallback.
+        """
+        self._run_action(
+            lambda: (
+                self._selection_coordinator.select_device_for_playback(stable_device_id)
+                if self._selection_coordinator is not None
+                else self._missing_action()
+            )
+        )
+
+    @Slot(str)
     def select_profile(self, profile_id: str) -> None:
         self._run_action(
             lambda: (

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import copy
 import json
 import time
 from dataclasses import asdict
@@ -173,12 +174,19 @@ def _stop(container) -> None:
 
 
 def _manifest(path: Path) -> dict[str, Any]:
+    """Load a manifest and prove it is internally valid.
+
+    Deliberately does NOT compare the recorded head with the current HEAD: a
+    manifest is committed after the run that produced it, so that comparison
+    would make every archived manifest stale by construction. Provenance is
+    bound inside the manifest instead (implementation_head /
+    evidence_execution_head / manifest_created_at).
+    """
     payload = load_manifest(path)
-    if payload.get("execution_git_head") != _git_head():
-        raise SystemExit(
-            "manifest execution_git_head does not match current HEAD; "
-            "create a fresh manifest before collecting physical evidence"
-        )
+    try:
+        evaluate_device_manifest(payload)
+    except PcmClosureEvidenceError as exc:
+        raise SystemExit(f"manifest is invalid: {exc}") from exc
     return payload
 
 
@@ -190,6 +198,13 @@ def _record(
     evidence: list[str],
     facts: dict[str, Any],
 ) -> None:
+    """Append one observation with validate-before-write provenance.
+
+    The candidate is a deep copy: the observation is applied to the candidate,
+    the candidate is validated semantically, and only a valid candidate replaces
+    the evidence file atomically. An invalid observation therefore cannot mutate
+    the stored evidence at all.
+    """
     payload = _manifest(path)
     item = payload["experiments"][experiment]
     if item.get("status") == "PASS":
@@ -197,29 +212,34 @@ def _record(
             f"{experiment} is already PASS; physical evidence is append-only. "
             "Create a new manifest for a new run."
         )
-    item.update(
+    candidate = copy.deepcopy(payload)
+    captured_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    candidate["experiments"][experiment].update(
         {
             "status": status,
             "executed": status in {"PASS", "FAIL"},
-            "evidence": evidence,
-            "facts": facts,
-            "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            "evidence": list(evidence),
+            "facts": dict(facts),
+            "captured_at": captured_at,
         }
     )
-    payload.setdefault("events", []).append(
+    candidate.setdefault("events", []).append(
         {
             "experiment": experiment,
             "status": status,
             "evidence": list(evidence),
-            "facts": facts,
-            "captured_at": item["captured_at"],
+            "facts": dict(facts),
+            "captured_at": captured_at,
+            "collected_head": _git_head(),
         }
     )
-    _write_json(path, payload)
     try:
-        verdict = evaluate_device_manifest(payload)
+        verdict = evaluate_device_manifest(candidate)
     except PcmClosureEvidenceError as exc:
-        raise SystemExit(f"manifest became invalid: {exc}") from exc
+        raise SystemExit(
+            f"refusing invalid observation; stored manifest unchanged: {exc}"
+        ) from exc
+    _write_json(path, candidate)
     print(f"{experiment}: {status}; device verdict={verdict.verdict}")
 
 
@@ -230,9 +250,13 @@ def command_inventory(args) -> int:
     try:
         container.initialize()
         _pump(container, 1.0)
+        collected_head = _git_head()
         payload = {
             "schema_version": 1,
-            "execution_git_head": _git_head(),
+            "manifest_schema": 2,
+            "implementation_head": collected_head,
+            "evidence_execution_head": collected_head,
+            "manifest_created_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "devices": [
                 {

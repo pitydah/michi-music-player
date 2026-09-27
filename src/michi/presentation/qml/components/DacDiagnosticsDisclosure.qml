@@ -94,6 +94,7 @@ ColumnLayout {
             wrapMode: Text.WordWrap
         }
         Repeater {
+            objectName: "qualifiedTupleRepeater"
             model: root.device.qualifiedTuples || []
             delegate: MichiText {
                 required property var modelData

@@ -45,6 +45,37 @@ device manifests. Topology/path differences alone never prove hardware
 diversity. This seal does not start M11.5 or DAC-V35-120/130/140 and never
 promotes a bit-perfect or exclusive claim.
 
+### Normal PCM playback closure (implementation complete)
+
+Playing a DAC from the normal surface no longer requires knowing ALSA details.
+`AudioOutputSelectionCoordinator.select_device_for_playback` is the explicit
+normal intent ("play through this DAC"): it binds the recommended
+**Compatible Direct** policy, which tries the exact carrier first and only then
+the authorized lossless container-width carrier. **Strict Direct** stays an
+explicit advanced mode and keeps failing honestly; nothing falls back on its
+own. The three policies are named unambiguously - Shared, Compatible Direct and
+Strict Direct - in the settings surface, the diagnostics and the profile labels.
+
+The typed refusal now travels with its recovery: the NowPlaying output popup
+renders the same explicit intents the settings surface offers
+(Try Compatible Direct / Use Shared / Cancel), and a startup resume that cannot
+prepare under a persisted Strict policy publishes its typed refusal
+(`EXACT_TUPLE_UNKNOWN` / `EXACT_TUPLE_UNSUPPORTED`) through the playback
+authority instead of only logging it, while preserving the selected DAC, the
+policy and the absence of autoplay.
+
+Physical closure evidence is separated from implementation state and bound to
+the code that produced it (`implementation_head`, `evidence_execution_head`,
+`manifest_created_at`, `manifest_schema`), so an archived manifest is never
+stale by construction. Current honest physical state for the two connected
+DACs: **R24 clock authority PASS** for both (SMSL `usb:152a:85dd:3-3.3.2` and
+KINMAX HA01 `usb:2fc6:f882:HA01`); **R25** automated transitions complete but
+`REQUIRES_OPERATOR_CONFIRMATION` for first-sample/click-pop; **R32** (8 h soak),
+**R35** (tail/drain capture) and **R36** (XRUN injection, unavailable in this
+kernel) remain `NOT_RUN`. Physical verdict: `INCOMPLETE`, multi-hardware not
+proven. Bit-perfect and exclusive are still not claimed, and M11.5 /
+DAC-V35-120 / 130 / 140 are not started.
+
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`
 (work packages `DAC-V35-*`, §0E manifest, §0F baseline seal, §0K DoD).
