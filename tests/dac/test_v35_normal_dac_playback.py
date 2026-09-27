@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import QCoreApplication
+
 from michi.application.playback_failure import (
     RECOVERY_CANCEL,
     RECOVERY_TRY_COMPATIBLE_DIRECT,
@@ -348,13 +350,13 @@ def test_ndp_09_handover_reprepares_the_accepted_track(qapp, tmp_path) -> None:
     probe = _SplitProbe()
     graph, bindings = _s16_graph_at(tmp_path, probe, 44_100)
     calls: list[tuple[str, int | None]] = []
-    original = graph.playback.prepare_for_resume
+    original = graph.playback.prepare_for_handover
 
     def counted(path, position_ms):
         calls.append((str(path), position_ms))
         return original(path, position_ms)
 
-    graph.playback.prepare_for_resume = counted
+    graph.playback.prepare_for_handover = counted
     try:
         assert graph.playback.reroute_accepted_media() is False, (
             "nothing accepted means nothing to move"
@@ -374,5 +376,99 @@ def test_ndp_09_handover_reprepares_the_accepted_track(qapp, tmp_path) -> None:
         assert _wait_until(lambda: len(bindings.pipelines) >= 2), (
             "the handover must re-prepare through the new route"
         )
+    finally:
+        _close_graph(graph)
+
+
+def _handover_graph(qapp, tmp_path):
+    probe = _SplitProbe()
+    graph, bindings = _s16_graph_at(tmp_path, probe, 44_100)
+    coordinator = _coordinator(graph)
+    coordinator.select_path_mode("compatible")
+    media = tmp_path / "handover-state.flac"
+    graph.playback.load_and_play(media)
+    _wait_for_pipeline(bindings, graph)
+    _accept_current(graph, bindings)
+    assert _wait_until(lambda: graph.playback.state.file_path == media)
+    return graph, bindings, media
+
+
+def test_ndp_10_handover_preserves_a_live_playing_position(qapp, tmp_path) -> None:
+    """PLAYING at a non-zero position stays PLAYING at that position."""
+    from michi.domain.playback import PlaybackStatus
+
+    graph, bindings, media = _handover_graph(qapp, tmp_path)
+    seen: list[tuple[str, int]] = []
+    original = graph.playback.prepare_for_handover
+
+    def counted(path, position_ms):
+        seen.append((str(path), position_ms))
+        return original(path, position_ms)
+
+    graph.playback.prepare_for_handover = counted
+    played: list[int] = []
+    original_play = graph.playback.play
+
+    def counted_play():
+        played.append(1)
+        return original_play()
+
+    graph.playback.play = counted_play
+    try:
+        graph.playback.state.status = PlaybackStatus.PLAYING
+        graph.playback.state.position_ms = 42_000
+
+        assert graph.playback.reroute_accepted_media() is True
+        assert seen == [(str(media), 42_000)]
+
+        _wait_until(lambda: len(bindings.pipelines) >= 2)
+        _accept_current(graph, bindings)
+        assert _wait_until(lambda: bool(played)), (
+            "a live handover must request playback resume"
+        )
+    finally:
+        _close_graph(graph)
+
+
+def test_ndp_11_handover_keeps_paused_and_stopped_states(qapp, tmp_path) -> None:
+    """A paused or stopped track is moved, not started."""
+    from michi.domain.playback import PlaybackStatus
+
+    graph, bindings, _media = _handover_graph(qapp, tmp_path)
+    try:
+        graph.playback.state.status = PlaybackStatus.PAUSED
+        graph.playback.state.position_ms = 7_500
+        played: list[int] = []
+        original_play = graph.playback.play
+        graph.playback.play = lambda: played.append(1) or original_play()
+        assert graph.playback.reroute_accepted_media() is True
+        _wait_until(lambda: len(bindings.pipelines) >= 2)
+        _accept_current(graph, bindings)
+        QCoreApplication.processEvents()
+        assert played == [], "a paused handover must not request playback"
+        assert graph.playback.state.status is not PlaybackStatus.PLAYING
+    finally:
+        _close_graph(graph)
+
+
+def test_ndp_12_newer_request_supersedes_a_pending_handover(qapp, tmp_path) -> None:
+    """A newer request retires the pending handover playback intent."""
+    from michi.domain.playback import PlaybackStatus
+
+    graph, bindings, _media = _handover_graph(qapp, tmp_path)
+    try:
+        graph.playback.state.status = PlaybackStatus.PLAYING
+        assert graph.playback.reroute_accepted_media() is True
+        assert graph.playback._reroute_resume_playing is True
+
+        newer = tmp_path / "newer.flac"
+        graph.playback.load_and_play(newer)
+        assert graph.playback._reroute_resume_playing is False, (
+            "a newer request supersedes the handover intent"
+        )
+        _wait_for_pipeline(bindings, graph)
+        _accept_current(graph, bindings)
+        # The newer request is the one that lands, not the superseded handover.
+        assert _wait_until(lambda: graph.playback.state.file_path == newer)
     finally:
         _close_graph(graph)

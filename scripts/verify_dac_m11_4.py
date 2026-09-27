@@ -506,6 +506,16 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
     )
     if work_package_done:
         missing.append("matrix:M11.4 work package must not be DONE before 110")
+    governance_states = {
+        "UNKNOWN",
+        "AUDITED",
+        "BROKEN",
+        "PARTIAL",
+        "FUNCTIONAL",
+        "TESTED",
+        "STABLE",
+        "FROZEN",
+    }
     stale_pending = [
         name
         for name in ("matrix", "roadmap", "readme")
@@ -513,6 +523,16 @@ def _status_consistency_gate(root: Path | None = None) -> tuple[bool, str]:
     ]
     if stale_pending:
         missing.append(f"stale pending status cell: {stale_pending}")
+
+    # Every M11.4 row must carry a governance state, never a physical evidence
+    # verdict used as component state. The whole row is validated, so a second
+    # M11.4 row cannot smuggle an invalid state past the gate.
+    for row in re.findall(r"\|\s*(M11\.4[^|]*)\|([^|]*)\|", text["matrix"]):
+        state_cell = row[1].strip()
+        if state_cell not in governance_states:
+            missing.append(
+                f"{row[0].strip()}: non-governance state cell {state_cell!r}"
+            )
     if "DAC-V35-130\n= POST-STABLE ONLY" not in text["canonical"] and not re.search(
         r"DAC-V35-130.*POST-STABLE ONLY", text["canonical"]
     ):
@@ -749,9 +769,10 @@ def _write_reports(commit: str, results: list[GateResult]) -> None:
         "github_sha": os.environ.get("GITHUB_SHA"),
     }
     pcm_closure = _pcm_closure_state()
-    implementation = (
-        "COMPLETE" if all(item.status == "PASS" for item in results) else "INCOMPLETE"
-    )
+    # One authority only: the top-level implementation verdict IS the declared
+    # obligations verdict. A green gate set never upgrades it.
+    implementation = pcm_closure["implementation_verdict"]
+    assert implementation == pcm_closure["implementation_verdict"]
     report = {
         "schema_version": 1,
         "commit": commit,

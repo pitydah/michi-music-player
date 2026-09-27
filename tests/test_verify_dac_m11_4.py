@@ -261,23 +261,38 @@ def test_status_contradiction_is_no_go(tmp_path) -> None:
     assert "must not be DONE" in detail
 
 
-def test_status_consistency_accepts_physical_pass_bounded(tmp_path) -> None:
-    _write_status_fixture(tmp_path, work_package_state="IN_PROGRESS")
+def test_status_consistency_accepts_governance_states(tmp_path) -> None:
+    _write_status_fixture(tmp_path, work_package_state="TESTED")
     assert verifier._status_consistency_gate(tmp_path)[0] is True
 
 
 def test_stale_pending_status_cell_is_no_go(tmp_path) -> None:
-    _write_status_fixture(tmp_path, work_package_state="IN_PROGRESS")
+    _write_status_fixture(tmp_path, work_package_state="TESTED")
     matrix = tmp_path / "docs" / "STATUS_MATRIX.md"
     matrix.write_text(
         "| M11.4 Audiophile Output & DAC | PHYSICAL QUALIFICATION IN "
         "PROGRESS | DAC-V35-100R1.3.4 |\n"
-        "| M11.4 Audiophile Output & DAC Management | IN_PROGRESS | R1 |\n",
+        "| M11.4 Audiophile Output & DAC Management | TESTED | R1 |\n",
         encoding="utf-8",
     )
     ok, detail = verifier._status_consistency_gate(tmp_path)
     assert ok is False
     assert "stale pending status cell" in detail
+
+
+def test_second_m11_4_row_with_a_physical_verdict_is_no_go(tmp_path) -> None:
+    """A second M11.4 row may not smuggle a physical verdict as its state."""
+    _write_status_fixture(tmp_path, work_package_state="TESTED")
+    matrix = tmp_path / "docs" / "STATUS_MATRIX.md"
+    matrix.write_text(
+        "| M11.4 Audiophile Output & DAC | TESTED | DAC-V35-100R1.3.4 |\n"
+        "| M11.4 Audiophile Output & DAC Management | PHYSICAL QUALIFICATION "
+        "PASS (BOUNDED) | R1 |\n",
+        encoding="utf-8",
+    )
+    ok, detail = verifier._status_consistency_gate(tmp_path)
+    assert ok is False
+    assert "non-governance state cell" in detail
 
 
 def test_manifest_requires_140_separate_promotion(tmp_path) -> None:

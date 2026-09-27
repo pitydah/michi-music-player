@@ -138,6 +138,16 @@ IMPLEMENTATION_OBLIGATIONS: tuple[ClosureObligation, ...] = (
         True,
     ),
     ClosureObligation(
+        "handover_purpose_separated",
+        "Live handover is not a startup restore and never confirms a resume",
+        True,
+    ),
+    ClosureObligation(
+        "handover_state_contract",
+        "Handover preserves position and only resumes when it was playing",
+        True,
+    ),
+    ClosureObligation(
         "documentation_state_alignment",
         "Governance state is not mixed with the physical evidence verdict",
         True,

@@ -31,6 +31,11 @@ class MediaRequestPurpose(Enum):
     USER_PLAY = "user_play"
     STARTUP_RESTORE = "startup_restore"
     ENGINE_SWITCH_REHYDRATION = "engine_switch_rehydration"
+    #: Live output handover: the accepted media is moved to a new routing
+    #: policy. It shares load/seek/fail-closed dispositions with the restore
+    #: path but participates in NO restore authority and never emits the
+    #: startup ``resume_prepared`` confirmation.
+    OUTPUT_HANDOVER = "output_handover"
 
 
 class MediaRequestTerminalStatus(Enum):

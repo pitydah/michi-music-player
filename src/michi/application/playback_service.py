@@ -656,7 +656,7 @@ class PlaybackService:
             return False
         position_ms = max(0, int(self._state.position_ms or 0))
         self._reroute_resume_playing = self._state.status is PlaybackStatus.PLAYING
-        self.prepare_for_resume(Path(path), position_ms)
+        self.prepare_for_handover(Path(path), position_ms)
         return True
 
     def prepare_for_resume(self, file_path: Path, position_ms: int) -> None:
@@ -665,6 +665,19 @@ class PlaybackService:
         self._ensure_no_engine_switch_lease("prepare_for_resume")
         self._prepare_stopped_media(
             file_path, position_ms, MediaRequestPurpose.STARTUP_RESTORE
+        )
+
+    def prepare_for_handover(self, file_path: Path, position_ms: int) -> None:
+        """OUTPUT HANDOVER: move accepted media to the new routing policy.
+
+        Deliberately not a startup restore: no restore authority is opened and
+        ``resume_prepared`` is never emitted, so a live output change cannot be
+        read as a completed startup resume. Load, seek and fail-closed
+        dispositions are shared with the restore path.
+        """
+        self._ensure_no_engine_switch_lease("prepare_for_handover")
+        self._prepare_stopped_media(
+            file_path, position_ms, MediaRequestPurpose.OUTPUT_HANDOVER
         )
 
     def prepare_after_engine_switch(self, snapshot: EngineSwitchMediaSnapshot) -> None:
@@ -1066,9 +1079,12 @@ class PlaybackService:
             if confirmed == resume_position and confirmed == before:
                 # seek-to-0 / unchanged: backend already reports the value
                 self._resume_prepared_pending = False
+                # Only the startup restore confirms a resume position. An
+                # output handover must never be mistaken for a completed
+                # startup resume by the persistence authority.
                 if (
                     getattr(self, "_prepare_purpose", None)
-                    is not MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION
+                    is MediaRequestPurpose.STARTUP_RESTORE
                 ):
                     for cb in list(self._resume_prepared_subscribers):
                         cb(self._state.file_path, confirmed)
@@ -1464,7 +1480,7 @@ class PlaybackService:
             if (
                 self._state.file_path is not None
                 and getattr(self, "_prepare_purpose", None)
-                is not MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION
+                is MediaRequestPurpose.STARTUP_RESTORE
             ):
                 for cb in list(self._resume_prepared_subscribers):
                     cb(self._state.file_path, position_ms)
