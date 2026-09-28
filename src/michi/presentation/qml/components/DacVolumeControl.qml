@@ -96,14 +96,15 @@ RowLayout {
     }
 
     MichiText {
-        Layout.preferredWidth: root.volumeAdjustable ? 34 : 82
-        text: root.volumeAdjustable
-            ? qsTr("%1%").arg(Math.round(root.volume))
-            : root.volumeModeLabel
+        // Fixed/Unity remains available to accessibility and diagnostics, but
+        // does not consume permanent NowPlaying space while gain is locked.
+        visible: root.volumeAdjustable
+        Layout.preferredWidth: visible ? 34 : 0
+        Layout.maximumWidth: visible ? 34 : 0
+        text: qsTr("%1%").arg(Math.round(root.volume))
         role: "technical"
         technical: true
-        color: root.volumeAdjustable
-            ? MichiPalette.textMuted : MichiPalette.auroraCyan
+        color: MichiPalette.textMuted
         horizontalAlignment: Text.AlignRight
     }
 }

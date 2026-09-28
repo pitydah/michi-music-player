@@ -27,7 +27,10 @@ def test_v60_23_dac_volume_control_disables_only_gain_not_mute() -> None:
 
     assert "enabled: root.volumeAdjustable" in control
     assert "onClicked: root.muteToggleRequested" in control
-    assert "text: root.volumeAdjustable" in control
+    assert "visible: root.volumeAdjustable" in control
+    assert "Layout.preferredWidth: visible ? 34 : 0" in control
+    assert 'text: qsTr("%1%").arg(Math.round(root.volume))' in control
+    # Accessibility keeps the Fixed/Unity semantic even though visual copy is gone.
     assert 'qsTr("Fixed / Unity")' in control
 
 

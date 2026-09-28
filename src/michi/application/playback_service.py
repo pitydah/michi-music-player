@@ -655,7 +655,6 @@ class PlaybackService:
         if path is None:
             return False
         position_ms = max(0, int(self._state.position_ms or 0))
-        self._reroute_resume_playing = self._state.status is PlaybackStatus.PLAYING
         self.prepare_for_handover(Path(path), position_ms)
         return True
 
@@ -676,9 +675,53 @@ class PlaybackService:
         dispositions are shared with the restore path.
         """
         self._ensure_no_engine_switch_lease("prepare_for_handover")
-        self._prepare_stopped_media(
-            file_path, position_ms, MediaRequestPurpose.OUTPUT_HANDOVER
-        )
+        position_ms = max(0, position_ms)
+        async_prepare = getattr(self._output_tx, "prepare_for_media_async", None)
+        if async_prepare is None:
+            self._reroute_resume_playing = self._state.status is PlaybackStatus.PLAYING
+            self._prepare_stopped_media(
+                file_path, position_ms, MediaRequestPurpose.OUTPUT_HANDOVER
+            )
+            return
+
+        previous_intent = self._intent
+        previous_accepted = self._accepted
+        previous_status = self._state.status
+        self._request_epoch += 1
+        my_epoch = self._request_epoch
+
+        def prepared(token: str) -> None:
+            if my_epoch != self._request_epoch:
+                self._output_tx.abort_media(token, "superseded")
+                return
+            self._reroute_resume_playing = previous_status is PlaybackStatus.PLAYING
+            self._continue_prepared_stopped_media(
+                file_path,
+                position_ms,
+                MediaRequestPurpose.OUTPUT_HANDOVER,
+                token,
+                previous_accepted=previous_accepted,
+                epoch=my_epoch,
+            )
+
+        def failed(exc: Exception) -> None:
+            if my_epoch != self._request_epoch:
+                return
+            self._reroute_resume_playing = False
+            self._intent = previous_intent
+            self._accepted = previous_accepted
+            self._state.status = previous_status
+            code = getattr(exc, "code", None)
+            if code is None:
+                raise exc
+            failure = playback_action_failure(code)
+            logger.warning("output handover refusal %s: %s", code, exc)
+            self._last_refused_path = file_path
+            self._state.error_message = failure.message
+            self._state.error_code = failure.code
+            self._notify()
+
+        async_prepare(file_path, prepared, failed)
 
     def prepare_after_engine_switch(self, snapshot: EngineSwitchMediaSnapshot) -> None:
         """ENGINE-SWITCH rehydration (P2-01): LOAD + deferred seek allowed,
@@ -706,7 +749,6 @@ class PlaybackService:
         truth of R2.1 is respected. STARTUP_RESTORE emits resume_prepared
         (M5 two-phase); ENGINE_SWITCH does NOT (the PersistenceCoordinator
         state machine must not be opened by an engine switch)."""
-        self._prepare_purpose = purpose
         """Request stopped-media preparation: LOAD the candidate, never
         autoplay.
 
@@ -729,10 +771,32 @@ class PlaybackService:
         if position_ms < 0:
             position_ms = 0
         # §0H.2: el seam de output también precede a este LOAD sin autoplay.
-        self._output_token = self._output_tx.prepare_for_media(file_path)
+        token = self._output_tx.prepare_for_media(file_path)
         previous_accepted = self._accepted
         self._request_epoch += 1  # M11.3C-R6.5.2: request identity
-        my_epoch = self._request_epoch
+        self._continue_prepared_stopped_media(
+            file_path,
+            position_ms,
+            purpose,
+            token,
+            previous_accepted=previous_accepted,
+            epoch=self._request_epoch,
+        )
+
+    def _continue_prepared_stopped_media(
+        self,
+        file_path: Path,
+        position_ms: int,
+        purpose: MediaRequestPurpose,
+        token: str,
+        *,
+        previous_accepted: bool,
+        epoch: int,
+    ) -> None:
+        """Continue stopped-media preparation after output is READY."""
+        self._prepare_purpose = purpose
+        self._abort_output_token("superseded")
+        self._output_token = token
         self._pending_path = file_path
         self._pending_purpose = purpose
         self._pending_on_accepted = None
@@ -776,7 +840,7 @@ class PlaybackService:
             self._notify()
             raise
         except Exception as exc:
-            if my_epoch != self._request_epoch:
+            if epoch != self._request_epoch:
                 raise
             if self._pending_path is None and not self._accepted:
                 # SAME REQUEST already terminalized synchronously (media_rejected /
@@ -812,7 +876,7 @@ class PlaybackService:
                     str(exc),
                 )
             raise
-        if my_epoch != self._request_epoch:
+        if epoch != self._request_epoch:
             return
         if self._pending_path is None and not self._accepted:
             # GATE 2: Synchronous rejection (terminal)
@@ -829,7 +893,7 @@ class PlaybackService:
         self._state.error_message = None
         self._notify()
         if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
-            self._schedule_engine_switch_timeout(file_path, my_epoch)
+            self._schedule_engine_switch_timeout(file_path, epoch)
 
     def _on_media_accepted(self, file_path: Path) -> None:
         if self._pending_path is None or file_path != self._pending_path:

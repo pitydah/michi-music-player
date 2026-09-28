@@ -537,11 +537,28 @@ class OutputSessionService:
 
     def selection_state(self) -> OutputSelectionState:
         active = self._plan is not None and self._state in _ACTIVE_STATES
+        active_plan = self._plan if active else None
+        if (
+            self._previous_direct is not None
+            and self._state is OutputSessionState.READY
+        ):
+            # A READY replacement is still a candidate and must never be
+            # projected as active before media acceptance. Keep the committed
+            # predecessor only while the executor still proves its ownership;
+            # after the destructive boundary no device is active yet.
+            previous = self._previous_direct
+            owns_committed = getattr(previous.executor, "owns_committed_receipt", None)
+            predecessor_is_active = owns_committed is None or owns_committed(
+                previous.receipt
+            )
+            active_plan = previous.plan if predecessor_is_active else None
         return OutputSelectionState(
             selected_device_id=self._selected_device_id,
             selected_profile_id=self._selected_profile_id,
-            active_device_id=self._plan.stable_device_id if active else None,
-            active_plan_id=self._plan.plan_id if active else None,
+            active_device_id=(
+                active_plan.stable_device_id if active_plan is not None else None
+            ),
+            active_plan_id=active_plan.plan_id if active_plan is not None else None,
             session_state=self._state,
             error_code=self._error_code,
         )

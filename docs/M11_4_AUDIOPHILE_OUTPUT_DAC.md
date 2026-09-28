@@ -94,6 +94,18 @@ qualification, Strict semantics, carrier resolution or the lifecycle core):
   accepted re-prepares that media through the new route with its position
   preserved, and playback resumes from the sought position once accepted
   (handover), instead of silently staying on the old output.
+- **A cold target qualifies before handover.** Missing tuple evidence now uses
+  the existing bounded asynchronous qualification path. The selected target may
+  change immediately, but the accepted track and active physical predecessor
+  remain authoritative throughout qualification. Once candidate loading crosses
+  the destructive boundary, presentation reports no active device rather than
+  fabricating A or B; B becomes active only when backend acceptance commits it.
+  Typed timeout, busy, inconclusive or device-loss results preserve the
+  predecessor; a late result cannot beat a newer output selection.
+- **Fixed unity stays semantic, not decorative.** Direct FIXED remains the
+  volume-policy and accessibility truth, while the permanently visible
+  `Fixed / Unity` copy is removed from NowPlaying. The percentage label consumes
+  visual space only when gain is adjustable.
 - **Evidence provenance is internally coherent.** ``implementation_head`` binds
   the product code, ``events[].collected_head`` records who collected each
   observation, and ``evidence_execution_head`` must equal the LAST event's head

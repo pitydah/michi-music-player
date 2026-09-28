@@ -11,13 +11,18 @@ from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication
 
+from michi.application.audio_output_ports import AppliedVolume
+from michi.application.output_session_service import OutputSessionError
 from michi.application.playback_failure import (
     RECOVERY_CANCEL,
     RECOVERY_TRY_COMPATIBLE_DIRECT,
     RECOVERY_USE_SHARED,
     output_recovery_actions,
 )
+from michi.application.playback_service import PlaybackService
 from michi.domain.audio_output import OutputPathPreference
+from michi.domain.playback import PlaybackStatus
+from tests.conftest import FakeAudioPort
 from tests.dac.test_v35_100r13_playback_compatibility import (
     _close_graph,
     _coordinator,
@@ -33,7 +38,7 @@ from tests.dac.test_v35_productive_direct_composition import (
 DEVICE_ID = "usb:2622:0105:DX5ABC123"
 
 
-def _s16_graph_at(tmp_path: Path, probe, rate_hz: int):
+def _s16_graph_at(tmp_path: Path, probe, rate_hz: int, **graph_options):
     """Sixteen-bit source at the requested rate, with S16_LE refused by ALSA."""
     from michi.domain.library import TrackMetadata
 
@@ -47,6 +52,7 @@ def _s16_graph_at(tmp_path: Path, probe, rate_hz: int):
             bit_depth=16,
             channels=2,
         ),
+        **graph_options,
     )
     bindings.source_characterization_overrides = {
         "format": "S16LE",
@@ -472,3 +478,259 @@ def test_ndp_12_newer_request_supersedes_a_pending_handover(qapp, tmp_path) -> N
         assert _wait_until(lambda: graph.playback.state.file_path == newer)
     finally:
         _close_graph(graph)
+
+
+class _UnityVolume:
+    def synchronize(self) -> AppliedVolume:
+        return AppliedVolume(100, 100, False, "fixed", False)
+
+    def preference(self) -> tuple[int, bool]:
+        return 100, False
+
+
+class _AsyncHandoverOutput:
+    """Controllable output seam: A is active while selected B/C is prepared."""
+
+    def __init__(self) -> None:
+        self.selected_device_id = "dac-a"
+        self.active_device_id = "dac-a"
+        self.pending: dict[str, tuple[object, object]] = {}
+        self.aborted: list[tuple[str, str]] = []
+        self.committed: list[str] = []
+        self.retired: list[str] = []
+        self.probes: list[tuple[str, int, str, int, str]] = []
+        self.plan: dict[str, object] | None = None
+        self._serial = 0
+
+    def prepare_for_media_async(self, path, on_prepared, on_failed) -> None:
+        del path
+        device_id = self.selected_device_id
+        if device_id == self.active_device_id:
+            self._serial += 1
+            on_prepared(f"ready:{device_id}:{self._serial}")
+            return
+        self.pending[device_id] = (on_prepared, on_failed)
+
+    def prepare_for_media(self, path):
+        raise AssertionError(f"handover used synchronous prepare for {path}")
+
+    def complete(self, device_id: str) -> str:
+        on_prepared, _on_failed = self.pending.pop(device_id)
+        if device_id == "dac-b":
+            self.probes.extend(
+                (
+                    (device_id, 44_100, "S16_LE", 2, "unsupported"),
+                    (device_id, 44_100, "S32_LE", 2, "supported"),
+                )
+            )
+        self.plan = {
+            "device_id": device_id,
+            "rate_hz": 44_100,
+            "transport_format": "S32_LE",
+            "channels": 2,
+            "significant_bits": 16,
+            "carrier_adaptation": "container_width",
+        }
+        self._serial += 1
+        token = f"ready:{device_id}:{self._serial}"
+        on_prepared(token)
+        return token
+
+    def fail(self, device_id: str, code: str) -> None:
+        _on_prepared, on_failed = self.pending.pop(device_id)
+        on_failed(OutputSessionError(code, f"{device_id} qualification failed"))
+
+    def commit_media(self, token: str, path: Path) -> None:
+        del path
+        previous = self.active_device_id
+        self.active_device_id = token.split(":")[1]
+        self.committed.append(token)
+        if previous != self.active_device_id:
+            self.retired.append(previous)
+
+    def abort_media(self, token: str, reason: str) -> None:
+        self.aborted.append((token, reason))
+
+    def release_active(self, reason: str) -> None:
+        del reason
+        self.active_device_id = ""
+
+
+def _playing_handover_service(tmp_path: Path):
+    audio = FakeAudioPort()
+    output = _AsyncHandoverOutput()
+    playback = PlaybackService(audio, volume_port=_UnityVolume(), output_tx=output)
+    media = tmp_path / "accepted-a.flac"
+    playback.load_and_play(media)
+    audio.trigger_media_accepted(media)
+    audio.trigger_playback_state(PlaybackStatus.PLAYING)
+    playback.state.position_ms = 42_000
+    assert playback.state.file_path == media
+    assert playback.state.status is PlaybackStatus.PLAYING
+    return playback, audio, output, media
+
+
+def test_ndp_13_cold_second_dac_qualifies_before_live_handover(tmp_path) -> None:
+    playback, audio, output, media = _playing_handover_service(tmp_path)
+    output.selected_device_id = "dac-b"
+
+    assert playback.reroute_accepted_media() is True
+
+    assert output.selected_device_id == "dac-b"
+    assert output.active_device_id == "dac-a"
+    assert playback.state.file_path == media
+    assert playback.state.status is PlaybackStatus.PLAYING
+    assert playback._accepted is True
+    assert audio.loaded == media
+
+    output.complete("dac-b")
+    assert output.active_device_id == "dac-a", "B is not active before acceptance"
+    audio.trigger_media_accepted(media)
+    audio.trigger_playback_state(PlaybackStatus.PLAYING)
+
+    assert output.probes == [
+        ("dac-b", 44_100, "S16_LE", 2, "unsupported"),
+        ("dac-b", 44_100, "S32_LE", 2, "supported"),
+    ]
+    assert output.plan == {
+        "device_id": "dac-b",
+        "rate_hz": 44_100,
+        "transport_format": "S32_LE",
+        "channels": 2,
+        "significant_bits": 16,
+        "carrier_adaptation": "container_width",
+    }
+    assert output.active_device_id == "dac-b"
+    assert output.retired == ["dac-a"]
+    assert audio.seek_calls[-1] == 42_000
+    assert playback.state.status is PlaybackStatus.PLAYING
+    assert playback.state.error_code is None
+
+
+def test_ndp_13_productive_cold_b_keeps_a_active_until_acceptance(
+    qapp, tmp_path
+) -> None:
+    from tests.dac._fixtures import AlsaCard, UsbDevice
+
+    device_b = "usb:1234:5678:DACB"
+    probe = _SplitProbe()
+    graph, bindings = _s16_graph_at(
+        tmp_path,
+        probe,
+        44_100,
+        extra_usb_devices=(
+            UsbDevice("2-2", "1234", "5678", serial="DACB", bcd_device="0100"),
+        ),
+        extra_alsa_cards=(AlsaCard(card_index=2, card_id="DACB", usb_devpath="2-2"),),
+    )
+    try:
+        coordinator = _coordinator(graph)
+        coordinator.select_path_mode("compatible")
+        media = tmp_path / "productive-handover.flac"
+        graph.playback.load_and_play(media)
+        _wait_for_pipeline(bindings, graph)
+        _accept_current(graph, bindings)
+        graph.playback.state.status = PlaybackStatus.PLAYING
+        graph.playback.state.position_ms = 42_000
+        assert graph.output_session.selection_state().active_device_id == DEVICE_ID
+
+        coordinator.select_device_for_playback(device_b)
+        assert graph.playback.reroute_accepted_media() is True
+
+        during_probe = graph.output_session.selection_state()
+        assert during_probe.selected_device_id == device_b
+        assert during_probe.active_device_id == DEVICE_ID
+        assert graph.playback.state.file_path == media
+        assert graph.playback.state.status is PlaybackStatus.PLAYING
+        assert _wait_until(lambda: len(bindings.pipelines) >= 2)
+
+        ready = graph.output_session.selection_state()
+        assert ready.selected_device_id == device_b
+        previous = graph.output_session._previous_direct
+        assert previous is not None
+        predecessor_is_active = previous.executor.owns_committed_receipt(
+            previous.receipt
+        )
+        assert ready.active_device_id == (DEVICE_ID if predecessor_is_active else None)
+        assert ready.active_device_id != device_b
+        _accept_current(graph, bindings)
+        graph.playback.state.status = PlaybackStatus.PLAYING
+
+        assert graph.output_session.selection_state().active_device_id == device_b
+        assert graph.output_session.plan is not None
+        pcm = graph.output_session.plan.requested_pcm
+        pcm_tuple = (
+            pcm.rate_hz,
+            pcm.transport_format,
+            pcm.channels,
+            pcm.significant_bits,
+        )
+        assert pcm_tuple == (
+            44_100,
+            "S32_LE",
+            2,
+            16,
+        )
+        assert graph.output_session.plan.carrier_adaptation == "container_width"
+        assert graph.playback.state.position_ms == 42_000
+        assert probe.calls == [
+            (44_100, "S16_LE", 2),
+            (44_100, "S32_LE", 2),
+            (44_100, "S16_LE", 2),
+            (44_100, "S32_LE", 2),
+        ]
+    finally:
+        _close_graph(graph)
+
+
+def test_ndp_14_cold_dac_qualification_failure_preserves_active_a(tmp_path) -> None:
+    playback, _audio, output, media = _playing_handover_service(tmp_path)
+    output.selected_device_id = "dac-b"
+
+    assert playback.reroute_accepted_media() is True
+    output.fail("dac-b", "EXACT_QUALIFICATION_TIMEOUT")
+
+    assert output.selected_device_id == "dac-b"
+    assert output.active_device_id == "dac-a"
+    assert playback.state.file_path == media
+    assert playback.state.position_ms == 42_000
+    assert playback.state.status is PlaybackStatus.PLAYING
+    assert playback._accepted is True
+    assert playback.state.error_code == "EXACT_QUALIFICATION_TIMEOUT"
+    assert output.committed == ["ready:dac-a:1"]
+
+
+def test_ndp_15_late_b_completion_cannot_beat_newer_c_selection(tmp_path) -> None:
+    playback, audio, output, media = _playing_handover_service(tmp_path)
+    output.selected_device_id = "dac-b"
+    assert playback.reroute_accepted_media() is True
+
+    output.selected_device_id = "dac-c"
+    assert playback.reroute_accepted_media() is True
+
+    stale_b = output.complete("dac-b")
+    assert (stale_b, "superseded") in output.aborted
+    assert output.active_device_id == "dac-a"
+
+    output.complete("dac-c")
+    audio.trigger_media_accepted(media)
+    audio.trigger_playback_state(PlaybackStatus.PLAYING)
+
+    assert output.active_device_id == "dac-c"
+    assert all("dac-b" not in token for token in output.committed)
+    assert playback.state.file_path == media
+
+
+def test_ndp_16_selected_b_loss_during_qualification_preserves_a(tmp_path) -> None:
+    playback, _audio, output, media = _playing_handover_service(tmp_path)
+    output.selected_device_id = "dac-b"
+
+    assert playback.reroute_accepted_media() is True
+    output.fail("dac-b", "OUTPUT_DEVICE_LOST")
+
+    assert output.selected_device_id == "dac-b"
+    assert output.active_device_id == "dac-a"
+    assert playback.state.file_path == media
+    assert playback.state.status is PlaybackStatus.PLAYING
+    assert playback._accepted is True
+    assert playback.state.error_code == "OUTPUT_DEVICE_LOST"

@@ -21271,3 +21271,43 @@ Only while the productive field lab, semantic evaluator and mandatory tests
 enforce all four contracts may R25/R32/R36 remain complete in
 `TOOLING_OBLIGATIONS`. This tooling verdict does not alter archived physical
 evidence: SMSL and Kinmax still require the declared R25/R32/R35/R36 campaign.
+
+
+### M11.4 selected-output handover and fixed-volume presentation corrective
+
+A normal output selection while accepted media exists is an explicit current
+playback-routing intent. If the selected Direct DAC lacks exact tuple evidence,
+`OUTPUT_HANDOVER` uses the existing bounded
+`OutputSessionService.prepare_for_media_async()` qualification seam before it
+touches the accepted source. This is the same one-request candidate policy used
+by `USER_PLAY`; it does not authorize background probing or a second
+qualification/planning authority.
+
+During qualification, selected intent may name candidate B while active runtime
+truth remains predecessor A. `PlaybackService` preserves the accepted track,
+position, status, transport and active output until a READY token crosses the
+candidate-commit boundary. Only then may it load the candidate, commit the new
+output after backend media acceptance, restore the preserved position and
+resume when the predecessor was PLAYING. PAUSED or STOPPED predecessors do not
+autoplay. A newer output selection, Play, Stop, engine switch, device loss or
+shutdown makes an older completion stale; a late READY token is aborted as
+`superseded` and cannot become active.
+
+Expected typed qualification refusal, timeout, busy or device-loss completion
+is contained by `PlaybackService`: predecessor A remains coherent and active,
+selected B remains user intent, and one typed playback failure is published.
+No `EXACT_TUPLE_UNKNOWN` exception crosses into QML, no Shared fallback occurs,
+and no refusal is converted into success. Unexpected programming/invariant
+failures remain exception-visible.
+
+Direct `FIXED` / `Fixed / Unity` remains canonical volume-policy and
+accessibility truth, but its label is not rendered permanently beside the
+disabled NowPlaying gain control. The visual percentage is shown only while
+gain is adjustable; the disabled slider retains its accessible name and
+description.
+
+Mandatory regressions are NDP-13 through NDP-16: cold B qualification and
+playing-position preservation, typed failure preserving A, late B completion
+losing to newer C, and B disappearance during qualification. These gates do not
+alter Discovery, Qualification, CandidateCarrierResolver, Planner, Signal Truth,
+R25/R32/R35/R36 tooling or archived physical evidence.

@@ -38,6 +38,8 @@ def _direct_graph(
     tmp_path: Path,
     *,
     playback_pcms: tuple[int, ...] = (0,),
+    extra_usb_devices=(),
+    extra_alsa_cards=(),
     alsa_hw_params_reader=None,
     source_metadata=None,
     startup_selected_engine=None,
@@ -75,34 +77,39 @@ def _direct_graph(
     topology_root = tmp_path / "linux-topology"
     topology_root.mkdir()
     sysfs_root = make_roots(topology_root)
+    usb_devices = (
+        UsbDevice(
+            "2-1",
+            "2622",
+            "0105",
+            serial="DX5ABC123",
+            bcd_device="0100",
+        ),
+        *extra_usb_devices,
+    )
+    alsa_cards = (
+        AlsaCard(
+            card_index=1,
+            card_id="DX5",
+            usb_devpath="2-1",
+            playback_pcms=playback_pcms,
+        ),
+        *extra_alsa_cards,
+    )
     build_linux_sysfs(
         sysfs_root,
-        usb_devices=(
-            UsbDevice(
-                "2-1",
-                "2622",
-                "0105",
-                serial="DX5ABC123",
-                bcd_device="0100",
-            ),
-        ),
-        cards=(
-            AlsaCard(
-                card_index=1,
-                card_id="DX5",
-                usb_devpath="2-1",
-                playback_pcms=playback_pcms,
-            ),
-        ),
+        usb_devices=usb_devices,
+        cards=alsa_cards,
     )
     proc_root = topology_root / "proc" / "asound"
-    card_root = proc_root / "card1"
-    card_root.mkdir(parents=True)
-    (card_root / "id").write_text("DX5\n", encoding="utf-8")
-    for pcm_device in playback_pcms:
-        sub_root = card_root / f"pcm{pcm_device}p" / "sub0"
-        sub_root.mkdir(parents=True)
-        (sub_root / "hw_params").write_text("closed\n", encoding="utf-8")
+    for card in alsa_cards:
+        card_root = proc_root / f"card{card.card_index}"
+        card_root.mkdir(parents=True)
+        (card_root / "id").write_text(f"{card.card_id}\n", encoding="utf-8")
+        for pcm_device in card.playback_pcms:
+            sub_root = card_root / f"pcm{pcm_device}p" / "sub0"
+            sub_root.mkdir(parents=True)
+            (sub_root / "hw_params").write_text("closed\n", encoding="utf-8")
 
     bindings = FakeBindings()
 
