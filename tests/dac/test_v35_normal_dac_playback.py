@@ -734,3 +734,36 @@ def test_ndp_16_selected_b_loss_during_qualification_preserves_a(tmp_path) -> No
     assert playback.state.status is PlaybackStatus.PLAYING
     assert playback._accepted is True
     assert playback.state.error_code == "OUTPUT_DEVICE_LOST"
+
+
+def test_ndp_17_live_direct_to_shared_bypasses_alsa_probe(qapp, tmp_path) -> None:
+    """System Output re-prepares the accepted track without probing Direct."""
+    probe = _SplitProbe()
+    graph, bindings = _s16_graph_at(tmp_path, probe, 44_100)
+    try:
+        coordinator = _coordinator(graph)
+        coordinator.select_path_mode("compatible")
+        media = tmp_path / "direct-to-shared.flac"
+        graph.playback.load_and_play(media)
+        _wait_for_pipeline(bindings, graph)
+        _accept_current(graph, bindings)
+        graph.playback.state.status = PlaybackStatus.PLAYING
+        graph.playback.state.position_ms = 42_000
+        direct_probe_calls = tuple(probe.calls)
+
+        coordinator.select_shared_output()
+        assert graph.playback.reroute_accepted_media() is True
+
+        assert _wait_until(lambda: len(bindings.pipelines) >= 2)
+        assert bindings.pipelines[-1].audio_sink is None
+        assert tuple(probe.calls) == direct_probe_calls
+        _accept_current(graph, bindings)
+
+        assert graph.output_session.mode == "shared"
+        assert graph.output_session.plan is None
+        assert graph.direct_output_executor.handle is None
+        assert graph.playback.state.file_path == media
+        assert graph.playback.state.position_ms == 42_000
+        assert graph.playback.state.error_code is None
+    finally:
+        _close_graph(graph)

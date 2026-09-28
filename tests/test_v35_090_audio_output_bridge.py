@@ -82,6 +82,11 @@ class _Playback(_Observable):
     def __init__(self) -> None:
         super().__init__()
         self.state = PlaybackState()
+        self.reroute_calls = 0
+
+    def reroute_accepted_media(self) -> bool:
+        self.reroute_calls += 1
+        return True
 
 
 class _Engine(_Observable):
@@ -663,6 +668,17 @@ def test_ui90r1_19_shared_selection_never_fabricates_profile_id() -> None:
     shared = next(row for row in graph.bridge.devices if row["isShared"])
     assert shared["profileId"] == ""
     assert shared["selected"] is True
+
+
+def test_ui90r1_19_shared_playback_selection_reroutes_accepted_media() -> None:
+    """System Output is a route change, not only a read-model selection."""
+    graph = _graph()
+    _select_direct(graph)
+
+    graph.bridge.select_shared_output()
+
+    assert graph.bridge.selectedPathMode == "shared"
+    assert graph.playback.reroute_calls == 1
 
 
 def test_ui90r1_20_multiple_real_profiles_remain_distinct_and_human_named() -> None:

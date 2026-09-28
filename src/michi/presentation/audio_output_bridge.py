@@ -1065,6 +1065,7 @@ class AudioOutputBridge(QObject):
 
     @Slot()
     def select_shared_output(self) -> None:
+        """Route accepted media through System Output immediately."""
         self._run_action(
             lambda: (
                 self._selection_coordinator.select_shared_output()
@@ -1072,6 +1073,12 @@ class AudioOutputBridge(QObject):
                 else self._missing_action()
             )
         )
+        if self._last_action_failure is not None:
+            return
+        playback = getattr(self, "_playback", None)
+        reroute = getattr(playback, "reroute_accepted_media", None)
+        if callable(reroute):
+            reroute()
 
     @staticmethod
     def _missing_action() -> None:
