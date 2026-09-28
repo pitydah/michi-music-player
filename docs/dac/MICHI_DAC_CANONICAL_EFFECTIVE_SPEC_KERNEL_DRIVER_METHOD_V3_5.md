@@ -15274,13 +15274,25 @@ The repository field lab and semantic evaluator use one fail-closed evidence
 contract for R25, R32, R35 and R36:
 
 ```text
-R25 -> complete canonical delay sweep + measured holds + structured first sample
-R32 -> 8 h + transition receipts + RSS/resources + pump + device-bound USB delta
+R25 -> complete canonical delay sweep + measured holds + first-sample evidence
+       for every delay; the minimum is derived only from those per-delay results
+R32 -> 8 h + transition receipts + RSS/resources + pump + device-bound USB health
+       using documented USB ABI witnesses and device-filtered kernel diagnostics
 R35 -> all four fixtures accumulated + fixture/capture hashes + falsifier truth
-R36 -> retained incident + reported recovery + continuity + fresh generation
-       + measured loop count; operator cases use prepare/complete checkpoints
-       bound to USB devnum re-enumeration or kernel suspend-success counters
+R36 -> cumulative cases{} for induced underrun, suspend/resume and reproducible
+       device failure; every case retains incident + reported recovery +
+       continuity + fresh generation + measured loop count; no individual case
+       can promote global R36 PASS; operator cases use prepare/complete
+       checkpoints bound to USB devnum re-enumeration or kernel suspend-success
 ```
+
+Linux USB health MUST NOT depend on invented or driver-private device attributes
+such as `error_count`, `urb_errors` or `transfer_errors`: the generic USB sysfs
+ABI does not guarantee them. The portable field backend binds the exact USB node
+through `busnum`/`devnum`, proves traffic progress through documented `urbnum`,
+and inspects the readable kernel journal over the exact soak interval for error
+events filtered to that USB topology. If the node, ABI witnesses or kernel log
+window cannot be observed, R32 remains `REQUIRES_OPERATOR_CONFIRMATION`.
 
 The lab may report `REQUIRES_OPERATOR_CONFIRMATION`, `NOT_RUN` or `FAIL` when a
 measurement mechanism is absent or incomplete. Tooling completeness means the
@@ -16205,13 +16217,14 @@ resync_delay_ms:
 
 capture:
   - transition_timeline
-  - first_sample_fixture_result
+  - first_sample_fixture_result_per_delay
   - click_pop_observation
   - negotiation_result
   - xrun_count
 
 pass:
-  - minimal_delay_that_preserves_first_content_for_affected_device
+  - minimal_delay_that_preserves_first_content_for_affected_device_is_derived_from_per_delay_evidence
+  - every_canonical_delay_has_a_first_sample_result
   - zero_remains_default_when_no_problem_exists
 
 falsifier:
@@ -16412,11 +16425,16 @@ capture:
   - memory_growth
   - pump_health
   - transition_failures
+  - documented_usb_abi_busnum_devnum_urbnum
+  - device_filtered_kernel_log_errors_over_exact_soak_window
 
 pass:
   - no_unexplained_signal_policy_degradation
   - no_repeated_backend_failure
   - no_unbounded_resource_growth
+  - usb_device_binding_remains_stable
+  - usb_urb_progress_is_observed
+  - zero_device_bound_kernel_usb_errors
 ```
 
 ---
@@ -18240,7 +18258,15 @@ cases:
   - suspend_resume
   - device_failure_recovery_if_reproducible
 
+evidence_shape:
+  cases:
+    induced_underrun: accumulated_case_result
+    suspend_resume: accumulated_case_result
+    device_failure: accumulated_case_result
+
 pass:
+  - every_required_case_passes
+  - no_individual_case_promotes_global_pass
   - recovered_state_is_reported
   - incident_remains_in_evidence
   - session_integrity_not_promoted_to_verified_without_continuity_proof
@@ -21221,3 +21247,27 @@ recovery).
 Boundaries of this verdict: it is device-scoped and environment-scoped, and the
 NOT_RUN laboratories above are outside the claim. Bit-perfect is **not**
 claimed; `M11.5` is **not started**; `DAC-V35-120` remains **DO NOT START**.
+
+
+### M11.4 PCM field-lab final contract corrective
+
+The final tooling seal is conditional on four discriminating contracts rather
+than another DAC architecture slice:
+
+1. R25 stores first-sample evidence inside every canonical delay run and derives
+   the minimum solely from the monotonic per-delay preservation results; tests
+   must prove non-zero minima (250 ms and 500 ms), not only the default 0 ms.
+2. R36 is one cumulative `cases{}` ledger. Induced underrun, suspend/resume and
+   reproducible device failure retain independent evidence, and no single case
+   can promote global R36 to PASS.
+3. R32 uses documented generic USB ABI witnesses (`busnum`, `devnum`, `urbnum`)
+   plus an exact-window, topology-filtered kernel journal. It does not depend on
+   non-standard sysfs error attributes. Missing access remains fail-closed.
+4. A newly initialized closure manifest copies
+   `QualificationEnvironmentContext.usb_descriptor_sha256` into the evidence
+   identity's `descriptor_hash`; a present malformed digest is rejected.
+
+Only while the productive field lab, semantic evaluator and mandatory tests
+enforce all four contracts may R25/R32/R36 remain complete in
+`TOOLING_OBLIGATIONS`. This tooling verdict does not alter archived physical
+evidence: SMSL and Kinmax still require the declared R25/R32/R35/R36 campaign.

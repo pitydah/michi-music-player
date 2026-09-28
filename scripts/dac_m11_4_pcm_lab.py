@@ -18,6 +18,7 @@ import contextlib
 import copy
 import json
 import re
+import subprocess
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -49,8 +50,6 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _git_head() -> str:
-    import subprocess
-
     completed = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         check=False,
@@ -380,42 +379,112 @@ def _resolve_usb_sysfs_node(
     return None
 
 
-def _read_usb_error_counters(node: Path | None) -> dict[str, int]:
-    """Read only numeric error counters from one already-bound USB node."""
+def _read_usb_health_snapshot(node: Path | None) -> dict[str, int]:
+    """Read documented generic USB ABI witnesses from one bound device node."""
 
     if node is None:
         return {}
-    counters: dict[str, int] = {}
-    for name in ("error_count", "urb_errors", "transfer_errors"):
-        candidate = node / name
+    values: dict[str, int] = {}
+    for name in ("busnum", "devnum", "urbnum"):
         try:
-            value = candidate.read_text(encoding="utf-8").strip()
-        except OSError:
-            continue
-        try:
-            counters[name] = int(value, 0)
-        except ValueError:
-            continue
-    return counters
+            values[name] = int((node / name).read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            return {}
+    return values
 
 
-def _usb_error_delta(
+_USB_KERNEL_ERROR = re.compile(
+    r"\b(error|failed|failure|timeout|timed out|stall|xacterr|babble|"
+    r"reset\s+(?:full-speed|high-speed|super(?:speed)?|low-speed)?\s*usb\s+device|"
+    r"disconnect|not responding|cannot)\b",
+    re.IGNORECASE,
+)
+
+
+def _usb_health_evidence(
     stable_device_id: str,
     node: Path | None,
     baseline: dict[str, int],
     final: dict[str, int],
+    *,
+    since_epoch: float,
+    until_epoch: float,
+    runner=None,
 ) -> dict[str, Any]:
-    same_counter_set = bool(baseline) and set(baseline) == set(final)
-    common = sorted(set(baseline) & set(final))
-    delta = {name: final[name] - baseline[name] for name in common}
+    """Combine documented USB ABI progress with device-bound kernel diagnostics."""
+
+    if runner is None:
+        runner = subprocess.run
+    topology = node.name if node is not None else ""
+    kernel_log_available = False
+    journal_error: str | None = None
+    output = ""
+    try:
+        completed = runner(
+            [
+                "journalctl",
+                "--dmesg",
+                "--no-pager",
+                "--output=cat",
+                "--since",
+                f"@{since_epoch:.6f}",
+                "--until",
+                f"@{until_epoch:.6f}",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        kernel_log_available = completed.returncode == 0
+        output = completed.stdout if kernel_log_available else ""
+        if not kernel_log_available:
+            journal_error = (completed.stderr or "journalctl failed").strip()
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        journal_error = str(exc)
+
+    device_pattern = (
+        re.compile(rf"\b(?:usb|snd-usb-audio)\s+{re.escape(topology)}(?=[:\s])", re.I)
+        if topology
+        else None
+    )
+    relevant = [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip() and device_pattern is not None and device_pattern.search(line)
+    ]
+    errors = [line for line in relevant if _USB_KERNEL_ERROR.search(line)]
+    complete_snapshots = set(baseline) == {"busnum", "devnum", "urbnum"} and set(
+        final
+    ) == {"busnum", "devnum", "urbnum"}
+    binding_stable = bool(
+        complete_snapshots
+        and baseline["busnum"] == final["busnum"]
+        and baseline["devnum"] == final["devnum"]
+    )
+    urb_progress = bool(complete_snapshots and baseline["urbnum"] != final["urbnum"])
     return {
         "device_id": stable_device_id,
         "sysfs_path": str(node) if node is not None else None,
-        "available": bool(node is not None and same_counter_set),
+        "topology": topology or None,
+        "backend": "linux_usb_abi_kernel_journal",
+        "available": bool(
+            node is not None
+            and complete_snapshots
+            and kernel_log_available
+            and until_epoch > since_epoch
+        ),
         "baseline": dict(baseline),
         "final": dict(final),
-        "delta": delta,
-        "error_delta": sum(abs(value) for value in delta.values()),
+        "binding_stable": binding_stable,
+        "urb_progress": urb_progress,
+        "kernel_log_available": kernel_log_available,
+        "journal_error": journal_error,
+        "observation_start_epoch": since_epoch,
+        "observation_end_epoch": until_epoch,
+        "relevant_event_count": len(relevant),
+        "error_events": errors,
+        "error_count": len(errors),
     }
 
 
@@ -525,18 +594,13 @@ def command_init(args) -> int:
                 args.device_id
             ),
             "environment_context": asdict(context),
-            "device": {
-                "label": args.label,
-                "stable_device_id": args.device_id,
-                "locator": args.locator,
-                "vendor_id": row.get("vendorId") or "",
-                "product_id": row.get("productId") or "",
-                "bcd_device": row.get("bcdDevice") or "",
-                "manufacturer": row.get("manufacturer") or "",
-                "product": row.get("product") or "",
-                "descriptor_hash": "",
-                "display_name": row.get("displayName") or "",
-            },
+            "device": _manifest_device_identity(
+                label=args.label,
+                device_id=args.device_id,
+                locator=args.locator,
+                row=row,
+                usb_descriptor_sha256=context.usb_descriptor_sha256,
+            ),
             "experiments": {
                 experiment: {
                     "status": "NOT_RUN",
@@ -561,6 +625,30 @@ def command_init(args) -> int:
         container.shutdown()
     print(f"manifest initialized: {args.manifest}")
     return 0
+
+
+def _manifest_device_identity(
+    *,
+    label: str,
+    device_id: str,
+    locator: str,
+    row: dict[str, Any],
+    usb_descriptor_sha256: str | None,
+) -> dict[str, Any]:
+    """Project device identity without dropping descriptor provenance."""
+
+    return {
+        "label": label,
+        "stable_device_id": device_id,
+        "locator": locator,
+        "vendor_id": row.get("vendorId") or "",
+        "product_id": row.get("productId") or "",
+        "bcd_device": row.get("bcdDevice") or "",
+        "manufacturer": row.get("manufacturer") or "",
+        "product": row.get("product") or "",
+        "descriptor_hash": usb_descriptor_sha256 or "",
+        "display_name": row.get("displayName") or "",
+    }
 
 
 def command_clock(args) -> int:
@@ -617,7 +705,7 @@ R25_REQUIRED_EDGES = (
 )
 
 
-def _r25_run_passes(run: dict[str, Any]) -> bool:
+def _r25_runtime_passes(run: dict[str, Any]) -> bool:
     hold = run.get("actual_hold_ms")
     receipts = run.get("receipts")
     return bool(
@@ -644,9 +732,18 @@ def _r25_run_passes(run: dict[str, Any]) -> bool:
     )
 
 
-def _r25_result(
-    runs: list[dict[str, Any]], first_sample: dict[str, Any] | None
-) -> tuple[str, int | None]:
+def _r25_run_passes(run: dict[str, Any]) -> bool:
+    evidence = run.get("first_sample_evidence")
+    return bool(
+        _r25_runtime_passes(run)
+        and isinstance(evidence, dict)
+        and evidence.get("configured_delay_ms") == run.get("configured_delay_ms")
+        and evidence.get("preserved") is True
+        and str(evidence.get("observed_result") or "").upper().startswith("PASS")
+    )
+
+
+def _r25_result(runs: list[dict[str, Any]]) -> tuple[str, int | None]:
     """Derive R25 status and minimum; never promote a partial sweep."""
 
     delays = [run.get("configured_delay_ms") for run in runs]
@@ -669,12 +766,60 @@ def _r25_result(
         and len(set(delays)) == len(R25_SWEEP_DELAYS)
         and set(delays) == set(R25_SWEEP_DELAYS)
     )
+    if not canonical:
+        return "REQUIRES_OPERATOR_CONFIRMATION", None
+    evidence_complete = all(
+        isinstance(run.get("first_sample_evidence"), dict)
+        and run["first_sample_evidence"].get("configured_delay_ms")
+        == run["configured_delay_ms"]
+        and isinstance(run["first_sample_evidence"].get("preserved"), bool)
+        and re.fullmatch(
+            r"[0-9a-f]{64}",
+            str(run["first_sample_evidence"].get("fixture_sha256") or ""),
+        )
+        is not None
+        and all(
+            isinstance(run["first_sample_evidence"].get(field), str)
+            and bool(run["first_sample_evidence"][field].strip())
+            for field in (
+                "method",
+                "fixture_id",
+                "fixture_sha256",
+                "evidence_reference",
+                "expected_marker",
+                "observed_result",
+            )
+        )
+        for run in runs
+    )
+    if not evidence_complete:
+        return "REQUIRES_OPERATOR_CONFIRMATION", None
+    contradictory_evidence = any(
+        run["first_sample_evidence"]["preserved"]
+        != str(run["first_sample_evidence"]["observed_result"])
+        .upper()
+        .startswith("PASS")
+        for run in runs
+    )
+    if contradictory_evidence:
+        return "FAIL", None
+    runtime_passes = all(_r25_runtime_passes(run) for run in runs)
+    if not runtime_passes:
+        return "FAIL", None
     passing = sorted(
-        int(run["configured_delay_ms"]) for run in runs if _r25_run_passes(run)
+        int(run["configured_delay_ms"])
+        for run in runs
+        if run["first_sample_evidence"]["preserved"] is True
     )
     minimum = passing[0] if passing else None
-    if not canonical or len(passing) != len(R25_SWEEP_DELAYS) or first_sample is None:
-        return "REQUIRES_OPERATOR_CONFIRMATION", minimum
+    if minimum is None:
+        return "FAIL", None
+    if any(
+        run["first_sample_evidence"]["preserved"]
+        != (run["configured_delay_ms"] >= minimum)
+        for run in runs
+    ):
+        return "FAIL", None
     return "PASS", minimum
 
 
@@ -691,7 +836,12 @@ def _port_resync_evidence(container) -> dict[str, Any]:
     return {}
 
 
-def _first_sample_evidence(args) -> dict[str, Any] | None:
+def _first_sample_evidence(
+    args,
+    *,
+    delay_ms: int | None = None,
+    observation: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     """Structured first-sample evidence, or None when it is not complete.
 
     A nominal ``--first-sample-result PASS`` is never enough: the identity of the
@@ -700,25 +850,60 @@ def _first_sample_evidence(args) -> dict[str, Any] | None:
     """
     method = getattr(args, "first_sample_method", None)
     fixture = getattr(args, "first_sample_fixture", None)
-    reference = getattr(args, "first_sample_evidence", None)
+    observation = observation or {}
+    reference = observation.get("evidence_reference") or getattr(
+        args, "first_sample_evidence", None
+    )
     marker = getattr(args, "first_sample_expected_marker", None)
-    observed = getattr(args, "first_sample_observed_result", None)
+    observed = observation.get("observed_result") or getattr(
+        args, "first_sample_observed_result", None
+    )
     if not all((method, fixture, reference, marker, observed)):
         return None
     path = Path(fixture)
     if not path.is_file():
         raise SystemExit(f"first-sample fixture does not exist: {path}")
-    return {
+    result = {
         "method": str(method),
         "fixture_id": path.name,
         "fixture_sha256": _file_sha256(path),
         "evidence_reference": str(reference),
         "expected_marker": str(marker),
         "observed_result": str(observed),
+        "preserved": str(observed).upper().startswith("PASS"),
     }
+    if delay_ms is not None:
+        result["configured_delay_ms"] = delay_ms
+    return result
 
 
-def _run_r25_delay(container, args, delay_ms: int) -> dict[str, Any]:
+def _first_sample_evidence_by_delay(args) -> dict[int, dict[str, Any]]:
+    path = getattr(args, "first_sample_observations", None)
+    if path is None:
+        return {}
+    try:
+        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"invalid first-sample observations: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise SystemExit("first-sample observations must be a JSON object by delay")
+    result: dict[int, dict[str, Any]] = {}
+    for delay in R25_DELAYS:
+        observation = raw.get(str(delay))
+        if not isinstance(observation, dict):
+            continue
+        evidence = _first_sample_evidence(args, delay_ms=delay, observation=observation)
+        if evidence is not None:
+            result[delay] = evidence
+    return result
+
+
+def _run_r25_delay(
+    container,
+    args,
+    delay_ms: int,
+    first_sample_evidence: dict[str, Any] | None,
+) -> dict[str, Any]:
     """One delay of the canonical sweep: the full media sequence, measured."""
     coordinator = _coordinator(container)
     coordinator.select_path_mode(args.mode)
@@ -797,6 +982,7 @@ def _run_r25_delay(container, args, delay_ms: int) -> dict[str, Any]:
             int(receipt.get("xrun_count", 0) or 0) for receipt in receipts
         ),
         "receipts": receipts,
+        "first_sample_evidence": copy.deepcopy(first_sample_evidence),
     }
 
 
@@ -806,24 +992,29 @@ def command_transition(args) -> int:
             "R25 requires seven fixtures in this order: "
             "44.1, 44.1, 48, 44.1, 96, 192, 44.1 kHz"
         )
-    first_sample = _first_sample_evidence(args)
+    first_sample_by_delay = _first_sample_evidence_by_delay(args)
     container = _container(args.device_id, args.locator)
     runs: list[dict[str, Any]] = []
     try:
         for delay in R25_DELAYS:
-            runs.append(_run_r25_delay(container, args, delay))
+            runs.append(
+                _run_r25_delay(container, args, delay, first_sample_by_delay.get(delay))
+            )
     finally:
         container.shutdown()
 
-    status, minimal = _r25_result(runs, first_sample)
+    status, minimal = _r25_result(runs)
     any_stale = any(run["stale_generation_observed"] for run in runs)
     any_hidden = any(run["hidden_conversion_observed"] for run in runs)
     any_xrun = any(receipt["xrun_count"] for run in runs for receipt in run["receipts"])
     facts = {
         "runs": runs,
         "transition_edges": sorted({edge for run in runs for edge in run["edges"]}),
-        "first_sample_evidence": first_sample,
-        "first_sample_result": ("PASS" if first_sample is not None else "NOT_OBSERVED"),
+        "first_sample_evidence_by_delay": {
+            str(delay): copy.deepcopy(first_sample_by_delay[delay])
+            for delay in sorted(first_sample_by_delay)
+        },
+        "first_sample_result": "PASS" if status == "PASS" else "NOT_PROVEN",
         "minimal_delay_that_preserves_first_content": minimal,
         "stale_generation_observed": any_stale,
         "hidden_conversion_observed": any_hidden,
@@ -920,6 +1111,8 @@ def _soak_status(facts: dict[str, Any]) -> str:
         and usb.get("available") is True
         and bool(usb.get("device_id"))
         and bool(usb.get("sysfs_path"))
+        and usb.get("backend") == "linux_usb_abi_kernel_journal"
+        and usb.get("kernel_log_available") is True
     )
     if not measured:
         return "REQUIRES_OPERATOR_CONFIRMATION"
@@ -929,7 +1122,9 @@ def _soak_status(facts: dict[str, Any]) -> str:
         or pump.get("alive_at_every_checkpoint") is not True
         or int(pump.get("cycles_completed", 0) or 0) <= 0
         or resources.get("unbounded") is not False
-        or usb.get("error_delta") != 0
+        or usb.get("binding_stable") is not True
+        or usb.get("urb_progress") is not True
+        or int(usb.get("error_count", 0) or 0) != 0
     )
     return "FAIL" if failed else "PASS"
 
@@ -939,6 +1134,7 @@ def command_soak(args) -> int:
         raise SystemExit("--duration-seconds must be > 0")
     container = _container(args.device_id, args.locator)
     started = time.monotonic()
+    started_epoch = time.time()
     errors: list[str] = []
     cycles = 0
     xrun_count = 0
@@ -952,7 +1148,7 @@ def command_soak(args) -> int:
         args.device_id,
         explicit_path=args.usb_sysfs_path,
     )
-    usb_baseline = _read_usb_error_counters(usb_node)
+    usb_baseline = _read_usb_health_snapshot(usb_node)
     resource_baseline = _runtime_resource_snapshot(container)
     try:
         while time.monotonic() - started < args.duration_seconds:
@@ -1020,7 +1216,8 @@ def command_soak(args) -> int:
             ),
             default=0,
         )
-        usb_final = _read_usb_error_counters(usb_node)
+        usb_final = _read_usb_health_snapshot(usb_node)
+        finished_epoch = time.time()
         facts = {
             "duration_seconds": duration,
             "cycles": cycles,
@@ -1051,8 +1248,13 @@ def command_soak(args) -> int:
                 "owned_pipelines_peak": owned_peak,
                 "residual_native_resources_peak": residual_peak,
             },
-            "usb_errors_observed": _usb_error_delta(
-                args.device_id, usb_node, usb_baseline, usb_final
+            "usb_errors_observed": _usb_health_evidence(
+                args.device_id,
+                usb_node,
+                usb_baseline,
+                usb_final,
+                since_epoch=started_epoch,
+                until_epoch=finished_epoch,
             ),
         }
         status = _soak_status(facts)
@@ -1181,6 +1383,71 @@ def command_tail(args) -> int:
 
 
 R36_CASES = ("induced_underrun", "suspend_resume", "device_failure")
+
+
+def _r36_case_status(case: str, facts: dict[str, Any]) -> str:
+    if facts.get("case") != case:
+        return "FAIL"
+    required_true = (
+        "incident_retained",
+        "recovered_state_reported",
+        "continuity_proof",
+        "generation_fresh",
+    )
+    if any(facts.get(field) is False for field in required_true):
+        return "FAIL"
+    if any(facts.get(field) is not True for field in required_true):
+        return "REQUIRES_OPERATOR_CONFIRMATION"
+    if facts.get("false_verified_after_incident") is True:
+        return "FAIL"
+    loops = facts.get("recovery_loop_count")
+    if not isinstance(loops, int):
+        return "REQUIRES_OPERATOR_CONFIRMATION"
+    if loops != 0:
+        return "FAIL"
+    if case == "induced_underrun":
+        if facts.get("fault_injected") is False or facts.get("xrun_observed") is False:
+            return "FAIL"
+        if (
+            facts.get("fault_injected") is not True
+            or facts.get("xrun_observed") is not True
+        ):
+            return "REQUIRES_OPERATOR_CONFIRMATION"
+        return "PASS"
+    if facts.get("mechanism_available") is not True:
+        return "REQUIRES_OPERATOR_CONFIRMATION"
+    if not facts.get("operator_reference") or facts.get("action_completed") is not True:
+        return "REQUIRES_OPERATOR_CONFIRMATION"
+    if case == "device_failure":
+        if facts.get("same_identity_after") is not True:
+            return "FAIL"
+        if facts.get("physical_reenumeration_observed") is not True:
+            return "FAIL"
+    if case == "suspend_resume":
+        if not isinstance(facts.get("signal_truth_after"), dict):
+            return "FAIL"
+        before = facts.get("suspend_success_before")
+        after = facts.get("suspend_success_after")
+        if not isinstance(before, int) or not isinstance(after, int) or after <= before:
+            return "FAIL"
+    return "PASS"
+
+
+def _r36_cases_status(cases: dict[str, Any]) -> str:
+    statuses = {
+        case: _r36_case_status(case, cases[case])
+        for case in R36_CASES
+        if isinstance(cases.get(case), dict)
+    }
+    if any(status == "FAIL" for status in statuses.values()):
+        return "FAIL"
+    if set(statuses) != set(R36_CASES):
+        return "REQUIRES_OPERATOR_CONFIRMATION"
+    return (
+        "PASS"
+        if all(status == "PASS" for status in statuses.values())
+        else "REQUIRES_OPERATOR_CONFIRMATION"
+    )
 
 
 def _r36_prepare_facts(
@@ -1332,12 +1599,17 @@ def command_fault_prepare(args) -> int:
             usb_instance_before=_usb_instance_witness(args.device_id),
             suspend_success_before=_suspend_success_count(),
         )
+        previous = _manifest(args.manifest)["experiments"]["R36"].get("facts")
+        previous = previous if isinstance(previous, dict) else {}
+        cases = copy.deepcopy(previous.get("cases") or {})
+        pending = copy.deepcopy(previous.get("pending_cases") or {})
+        pending[args.case] = baseline
         _record(
             args.manifest,
             experiment="R36",
             status="REQUIRES_OPERATOR_CONFIRMATION",
             evidence=[f"operator:{args.operator_reference}", f"runtime:{args.media}"],
-            facts={"case": args.case, "baseline": baseline},
+            facts={"cases": cases, "pending_cases": pending},
         )
     finally:
         container.shutdown()
@@ -1350,7 +1622,9 @@ def command_fault_prepare(args) -> int:
 
 def command_fault_complete(args) -> int:
     previous = _manifest(args.manifest)["experiments"]["R36"].get("facts")
-    baseline = previous.get("baseline") if isinstance(previous, dict) else None
+    previous = previous if isinstance(previous, dict) else {}
+    pending = copy.deepcopy(previous.get("pending_cases") or {})
+    baseline = pending.get(args.case)
     if not isinstance(baseline, dict) or baseline.get("case") != args.case:
         raise SystemExit("matching R36 baseline missing; run fault-prepare first")
     container = _container(args.device_id, args.locator)
@@ -1364,18 +1638,10 @@ def command_fault_complete(args) -> int:
             after_usb_instance=_usb_instance_witness(args.device_id),
             suspend_success_after=_suspend_success_count(),
         )
-        status = (
-            "PASS"
-            if facts["incident_retained"]
-            and facts["recovered_state_reported"]
-            and facts["continuity_proof"]
-            and facts["generation_fresh"]
-            and facts["same_identity_after"]
-            and facts["action_completed"]
-            and facts["recovery_loop_count"] == 0
-            and not facts["false_verified_after_incident"]
-            else "FAIL"
-        )
+        cases = copy.deepcopy(previous.get("cases") or {})
+        cases[args.case] = facts
+        pending.pop(args.case, None)
+        status = _r36_cases_status(cases)
         _record(
             args.manifest,
             experiment="R36",
@@ -1384,7 +1650,7 @@ def command_fault_complete(args) -> int:
                 f"operator:{baseline['operator_reference']}",
                 f"runtime:{args.media}",
             ],
-            facts=facts,
+            facts={"cases": cases, "pending_cases": pending},
         )
     finally:
         container.shutdown()
@@ -1397,20 +1663,26 @@ def command_xrun(args) -> int:
     if args.case != "induced_underrun":
         # suspend/resume and device-failure recovery need operator-driven
         # mechanisms this lab cannot synthesize: record NOT_RUN honestly.
+        previous = _manifest(args.manifest)["experiments"]["R36"].get("facts")
+        previous = previous if isinstance(previous, dict) else {}
+        cases = copy.deepcopy(previous.get("cases") or {})
+        cases[args.case] = {
+            "case": args.case,
+            "mechanism_available": False,
+            "reason": "requires an operator-driven mechanism, not lab-synthesizable",
+            "recovered_state_reported": None,
+            "continuity_proof": None,
+            "generation_fresh": None,
+            "recovery_loop_count": None,
+        }
         _record(
             args.manifest,
             experiment="R36",
-            status="NOT_RUN",
+            status=_r36_cases_status(cases),
             evidence=[f"case:{args.case}"],
             facts={
-                "case": args.case,
-                "mechanism_available": False,
-                "reason": (
-                    "requires an operator-driven mechanism, not lab-synthesizable"
-                ),
-                "recovered_state_reported": None,
-                "continuity_proof": None,
-                "no_infinite_recovery_loop": None,
+                "cases": cases,
+                "pending_cases": copy.deepcopy(previous.get("pending_cases") or {}),
             },
         )
         return 0
@@ -1496,7 +1768,7 @@ def command_xrun(args) -> int:
             if isinstance(alsa, dict)
             else None,
         }
-        status = (
+        case_status = (
             "PASS"
             if observed
             and facts["continuity_proof"]
@@ -1505,12 +1777,20 @@ def command_xrun(args) -> int:
             and facts["recovery_loop_count"] == 0
             else "FAIL"
         )
+        previous = _manifest(args.manifest)["experiments"]["R36"].get("facts")
+        previous = previous if isinstance(previous, dict) else {}
+        cases = copy.deepcopy(previous.get("cases") or {})
+        cases[args.case] = facts
+        status = _r36_cases_status(cases) if case_status == "PASS" else "FAIL"
         _record(
             args.manifest,
             experiment="R36",
             status=status,
             evidence=[str(xrun_path), str(status_path), f"runtime:{args.media}"],
-            facts=facts,
+            facts={
+                "cases": cases,
+                "pending_cases": copy.deepcopy(previous.get("pending_cases") or {}),
+            },
         )
     finally:
         with __import__("contextlib").suppress(Exception):
@@ -1560,11 +1840,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     transition = common("transition")
     transition.add_argument("--media", type=Path, nargs="+", required=True)
-    transition.add_argument("--first-sample-method")
-    transition.add_argument("--first-sample-fixture")
-    transition.add_argument("--first-sample-evidence")
-    transition.add_argument("--first-sample-expected-marker")
-    transition.add_argument("--first-sample-observed-result")
+    transition.add_argument("--first-sample-method", required=True)
+    transition.add_argument("--first-sample-fixture", type=Path, required=True)
+    transition.add_argument("--first-sample-expected-marker", required=True)
+    transition.add_argument(
+        "--first-sample-observations",
+        type=Path,
+        required=True,
+        help=(
+            "JSON object keyed by 0/100/250/500/1000; each value supplies "
+            "evidence_reference and observed_result"
+        ),
+    )
     transition.set_defaults(func=command_transition)
 
     soak = common("soak")

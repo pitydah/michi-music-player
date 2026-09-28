@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from argparse import Namespace
 from pathlib import Path
 from types import SimpleNamespace
@@ -30,7 +31,9 @@ def _identity(*, plan: str = "plan-a", execution: int = 2, port: int = 3):
     }
 
 
-def _r25_run(delay: int, *, actual: int | None = None):
+def _r25_run(
+    delay: int, *, actual: int | None = None, first_sample_preserved: bool = True
+):
     return {
         "configured_delay_ms": delay,
         "actual_hold_ms": delay if actual is None else actual,
@@ -48,17 +51,24 @@ def _r25_run(delay: int, *, actual: int | None = None):
         "receipts": [
             {"error": None, "xrun_count": 0, "actual_hold_ms": delay} for _ in range(7)
         ],
+        "first_sample_evidence": _first_sample(
+            delay=delay, preserved=first_sample_preserved
+        ),
     }
 
 
-def _first_sample():
+def _first_sample(*, delay: int = 0, preserved: bool = True):
     return {
+        "configured_delay_ms": delay,
         "method": "capture",
         "fixture_id": "first.wav",
         "fixture_sha256": "a" * 64,
         "evidence_reference": "capture:first.wav",
         "expected_marker": "sample zero impulse",
-        "observed_result": "PASS: marker preserved",
+        "observed_result": (
+            "PASS: marker preserved" if preserved else "FAIL: marker truncated"
+        ),
+        "preserved": preserved,
     }
 
 
@@ -83,11 +93,18 @@ def _soak_facts():
         "usb_errors_observed": {
             "device_id": "usb:1111:2222:1-2",
             "sysfs_path": "/sys/bus/usb/devices/1-2",
+            "topology": "1-2",
+            "backend": "linux_usb_abi_kernel_journal",
             "available": True,
-            "baseline": {"error_count": 2},
-            "final": {"error_count": 2},
-            "delta": {"error_count": 0},
-            "error_delta": 0,
+            "baseline": {"busnum": 1, "devnum": 2, "urbnum": 100},
+            "final": {"busnum": 1, "devnum": 2, "urbnum": 200},
+            "binding_stable": True,
+            "urb_progress": True,
+            "kernel_log_available": True,
+            "observation_start_epoch": 100.0,
+            "observation_end_epoch": 200.0,
+            "error_events": [],
+            "error_count": 0,
         },
     }
 
@@ -167,6 +184,24 @@ def test_lab_03_file_hash_is_calculated_from_bytes(lab, tmp_path) -> None:
     )
 
 
+def test_lab_03b_manifest_identity_uses_the_usb_descriptor_digest(lab) -> None:
+    identity = lab._manifest_device_identity(
+        label="Reference DAC",
+        device_id="usb:1111:2222:1-2",
+        locator="hw:CARD=DAC,DEV=0",
+        row={
+            "vendorId": "1111",
+            "productId": "2222",
+            "bcdDevice": "0100",
+            "manufacturer": "Vendor",
+            "product": "DAC",
+            "displayName": "Vendor DAC",
+        },
+        usb_descriptor_sha256="d" * 64,
+    )
+    assert identity["descriptor_hash"] == "d" * 64
+
+
 def test_lab_04_first_sample_requires_complete_structured_evidence(
     lab, tmp_path
 ) -> None:
@@ -188,6 +223,40 @@ def test_lab_05_incomplete_first_sample_never_becomes_evidence(lab) -> None:
     assert lab._first_sample_evidence(Namespace()) is None
 
 
+def test_lab_05b_first_sample_observations_are_bound_per_delay(lab, tmp_path) -> None:
+    fixture = tmp_path / "first.wav"
+    fixture.write_bytes(b"impulse")
+    observations = tmp_path / "first-sample.json"
+    observations.write_text(
+        json.dumps(
+            {
+                str(delay): {
+                    "evidence_reference": f"capture:{delay}.wav",
+                    "observed_result": (
+                        "PASS: marker preserved"
+                        if delay >= 250
+                        else "FAIL: marker truncated"
+                    ),
+                }
+                for delay in (0, 100, 250, 500, 1000)
+            }
+        ),
+        encoding="utf-8",
+    )
+    evidence = lab._first_sample_evidence_by_delay(
+        Namespace(
+            first_sample_method="loopback-capture",
+            first_sample_fixture=fixture,
+            first_sample_expected_marker="impulse at sample zero",
+            first_sample_observations=observations,
+        )
+    )
+    assert set(evidence) == {0, 100, 250, 500, 1000}
+    assert evidence[100]["preserved"] is False
+    assert evidence[250]["preserved"] is True
+    assert evidence[250]["configured_delay_ms"] == 250
+
+
 def test_lab_06_r25_run_requires_measured_nonshortened_hold(lab) -> None:
     assert lab._r25_run_passes(_r25_run(250)) is True
     assert lab._r25_run_passes(_r25_run(250, actual=200)) is False
@@ -195,15 +264,28 @@ def test_lab_06_r25_run_requires_measured_nonshortened_hold(lab) -> None:
 
 def test_lab_07_r25_pass_requires_the_whole_canonical_sweep(lab) -> None:
     runs = [_r25_run(delay) for delay in (0, 100, 250, 500, 1000)]
-    status, minimum = lab._r25_result(runs, _first_sample())
+    status, minimum = lab._r25_result(runs)
     assert (status, minimum) == ("PASS", 0)
-    assert lab._r25_result(runs[:-1], _first_sample())[0] != "PASS"
+    assert lab._r25_result(runs[:-1])[0] != "PASS"
+
+
+@pytest.mark.parametrize("minimum", (250, 500))
+def test_lab_07b_r25_minimum_is_derived_from_per_delay_evidence(lab, minimum) -> None:
+    runs = [
+        _r25_run(delay, first_sample_preserved=delay >= minimum)
+        for delay in (0, 100, 250, 500, 1000)
+    ]
+    assert lab._r25_result(runs) == ("PASS", minimum)
+
+    # A global PASS observation cannot override a failed lower-delay marker.
+    runs[0]["first_sample_evidence"]["observed_result"] = "PASS: fabricated"
+    assert lab._r25_result(runs) == ("FAIL", None)
 
 
 def test_lab_08_r25_runtime_error_forces_fail(lab) -> None:
     runs = [_r25_run(delay) for delay in (0, 100, 250, 500, 1000)]
     runs[2]["receipts"][0]["error"] = "backend failure"
-    assert lab._r25_result(runs, _first_sample())[0] == "FAIL"
+    assert lab._r25_result(runs)[0] == "FAIL"
 
 
 def test_lab_09_transition_receipt_uses_runtime_identity_and_rates(lab) -> None:
@@ -287,21 +369,54 @@ def test_lab_12_usb_node_resolution_is_bound_to_device_identity(lab, tmp_path) -
     )
 
 
-def test_lab_13_usb_evidence_records_baseline_final_and_delta(lab, tmp_path) -> None:
+def test_lab_13_usb_health_uses_documented_abi_and_device_kernel_log(
+    lab, tmp_path
+) -> None:
     node = tmp_path / "bus" / "usb" / "devices" / "1-2"
     node.mkdir(parents=True)
     (node / "idVendor").write_text("1111", encoding="utf-8")
     (node / "idProduct").write_text("2222", encoding="utf-8")
-    (node / "error_count").write_text("4", encoding="utf-8")
-    baseline = lab._read_usb_error_counters(node)
-    (node / "error_count").write_text("5", encoding="utf-8")
-    evidence = lab._usb_error_delta(
-        "usb:1111:2222:1-2", node, baseline, lab._read_usb_error_counters(node)
+    (node / "busnum").write_text("1", encoding="utf-8")
+    (node / "devnum").write_text("7", encoding="utf-8")
+    (node / "urbnum").write_text("40", encoding="utf-8")
+    baseline = lab._read_usb_health_snapshot(node)
+    (node / "urbnum").write_text("75", encoding="utf-8")
+
+    def runner(*_args, **_kwargs):
+        return SimpleNamespace(
+            returncode=0,
+            stdout=(
+                "usb 1-2: reset high-speed USB device number 7 using xhci_hcd\n"
+                "usb 9-9: device descriptor read/64, error -71\n"
+            ),
+            stderr="",
+        )
+
+    evidence = lab._usb_health_evidence(
+        "usb:1111:2222:1-2",
+        node,
+        baseline,
+        lab._read_usb_health_snapshot(node),
+        since_epoch=100.0,
+        until_epoch=200.0,
+        runner=runner,
     )
-    assert evidence["delta"] == {"error_count": 1}
-    assert evidence["error_delta"] == 1
-    missing_final = lab._usb_error_delta("usb:1111:2222:1-2", node, baseline, {})
-    assert missing_final["available"] is False
+    assert evidence["backend"] == "linux_usb_abi_kernel_journal"
+    assert evidence["binding_stable"] is True
+    assert evidence["urb_progress"] is True
+    assert evidence["error_count"] == 1
+    assert len(evidence["error_events"]) == 1
+
+    unavailable = lab._usb_health_evidence(
+        "usb:1111:2222:1-2",
+        node,
+        baseline,
+        {},
+        since_epoch=100.0,
+        until_epoch=200.0,
+        runner=runner,
+    )
+    assert unavailable["available"] is False
 
 
 def test_lab_14_soak_pass_requires_every_measured_metric(lab) -> None:
@@ -437,6 +552,49 @@ def test_lab_20_r36_completion_derives_recovery_truth(lab) -> None:
     assert no_device_recovery["continuity_proof"] is False
 
 
+def test_lab_20b_r36_global_pass_requires_all_accumulated_cases(lab) -> None:
+    passing = {
+        "incident_retained": True,
+        "recovered_state_reported": True,
+        "continuity_proof": True,
+        "false_verified_after_incident": False,
+        "generation_fresh": True,
+        "recovery_loop_count": 0,
+    }
+    cases = {
+        "induced_underrun": {
+            **passing,
+            "case": "induced_underrun",
+            "fault_injected": True,
+            "xrun_observed": True,
+        }
+    }
+    assert lab._r36_cases_status(cases) == "REQUIRES_OPERATOR_CONFIRMATION"
+
+    cases["suspend_resume"] = {
+        **passing,
+        "case": "suspend_resume",
+        "mechanism_available": True,
+        "operator_reference": "operator:suspend",
+        "action_completed": True,
+        "signal_truth_after": {},
+        "suspend_success_before": 4,
+        "suspend_success_after": 5,
+    }
+    assert lab._r36_cases_status(cases) == "REQUIRES_OPERATOR_CONFIRMATION"
+
+    cases["device_failure"] = {
+        **passing,
+        "case": "device_failure",
+        "mechanism_available": True,
+        "operator_reference": "operator:device",
+        "action_completed": True,
+        "same_identity_after": True,
+        "physical_reenumeration_observed": True,
+    }
+    assert lab._r36_cases_status(cases) == "PASS"
+
+
 def test_lab_command_soak_wires_measured_facts_into_pass(
     lab, tmp_path, monkeypatch
 ) -> None:
@@ -476,8 +634,19 @@ def test_lab_command_soak_wires_measured_facts_into_pass(
     monkeypatch.setattr(
         lab, "_resolve_usb_sysfs_node", lambda *_args, **_kwargs: tmp_path
     )
+    health_snapshots = iter(
+        (
+            {"busnum": 1, "devnum": 2, "urbnum": 100},
+            {"busnum": 1, "devnum": 2, "urbnum": 200},
+        )
+    )
     monkeypatch.setattr(
-        lab, "_read_usb_error_counters", lambda _node: {"error_count": 0}
+        lab, "_read_usb_health_snapshot", lambda _node: next(health_snapshots)
+    )
+    monkeypatch.setattr(
+        lab,
+        "_usb_health_evidence",
+        lambda *_args, **_kwargs: _soak_facts()["usb_errors_observed"],
     )
     monkeypatch.setattr(
         lab,
@@ -498,7 +667,7 @@ def test_lab_command_soak_wires_measured_facts_into_pass(
     assert lab.command_soak(args) == 0
     assert recorded["status"] == "PASS"
     assert recorded["facts"]["transition_failures"] == 0
-    assert recorded["facts"]["usb_errors_observed"]["error_delta"] == 0
+    assert recorded["facts"]["usb_errors_observed"]["error_count"] == 0
 
 
 def test_lab_command_tail_accumulates_the_fourth_fixture(
@@ -573,10 +742,50 @@ def test_lab_command_fault_complete_uses_the_prepared_baseline(
     )
     container = SimpleNamespace(shutdown=lambda: None)
     recorded = {}
+    prior_cases = {
+        case: facts
+        for case, facts in {
+            "induced_underrun": {
+                "case": "induced_underrun",
+                "fault_injected": True,
+                "xrun_observed": True,
+                "incident_retained": True,
+                "recovered_state_reported": True,
+                "continuity_proof": True,
+                "false_verified_after_incident": False,
+                "generation_fresh": True,
+                "recovery_loop_count": 0,
+            },
+            "suspend_resume": {
+                "case": "suspend_resume",
+                "mechanism_available": True,
+                "operator_reference": "operator:suspend",
+                "action_completed": True,
+                "incident_retained": True,
+                "recovered_state_reported": True,
+                "continuity_proof": True,
+                "false_verified_after_incident": False,
+                "generation_fresh": True,
+                "recovery_loop_count": 0,
+                "signal_truth_after": {},
+                "suspend_success_before": 1,
+                "suspend_success_after": 2,
+            },
+        }.items()
+    }
     monkeypatch.setattr(
         lab,
         "_manifest",
-        lambda _path: {"experiments": {"R36": {"facts": {"baseline": baseline}}}},
+        lambda _path: {
+            "experiments": {
+                "R36": {
+                    "facts": {
+                        "cases": prior_cases,
+                        "pending_cases": {"device_failure": baseline},
+                    }
+                }
+            }
+        },
     )
     monkeypatch.setattr(lab, "_container", lambda *_args: container)
     monkeypatch.setattr(
@@ -626,4 +835,76 @@ def test_lab_command_fault_complete_uses_the_prepared_baseline(
     )
     assert lab.command_fault_complete(args) == 0
     assert recorded["status"] == "PASS"
-    assert recorded["facts"]["same_identity_after"] is True
+    assert recorded["facts"]["cases"]["device_failure"]["same_identity_after"] is True
+
+
+def test_lab_command_fault_complete_one_case_cannot_promote_global_pass(
+    lab, tmp_path, monkeypatch
+) -> None:
+    baseline = lab._r36_prepare_facts(
+        case="device_failure",
+        device_id="usb:1111:2222:1-2",
+        locator="hw:CARD=DAC,DEV=0",
+        device_generation=4,
+        signal_identity=_identity(execution=2, port=3),
+        playback_status=lab.PlaybackStatus.PLAYING.value,
+        operator_reference="operator:session-1",
+        usb_instance_before={"sysfs_path": "/sys/1-2", "busnum": 1, "devnum": 5},
+    )
+    recorded = {}
+    monkeypatch.setattr(
+        lab,
+        "_manifest",
+        lambda _path: {
+            "experiments": {
+                "R36": {
+                    "facts": {
+                        "cases": {},
+                        "pending_cases": {"device_failure": baseline},
+                    }
+                }
+            }
+        },
+    )
+    monkeypatch.setattr(
+        lab, "_container", lambda *_args: SimpleNamespace(shutdown=lambda: None)
+    )
+    monkeypatch.setattr(
+        lab,
+        "_play",
+        lambda *_args: {
+            "status": lab.PlaybackStatus.PLAYING.value,
+            "error_message": None,
+            "signal_truth": {
+                "identity": _identity(execution=3, port=4),
+                "verdict": {"state": "direct_container_adapted"},
+            },
+        },
+    )
+    monkeypatch.setattr(
+        lab,
+        "_row",
+        lambda *_args: {
+            "stableDeviceId": "usb:1111:2222:1-2",
+            "alsaLocator": "hw:CARD=DAC,DEV=0",
+            "available": True,
+            "generation": 5,
+        },
+    )
+    monkeypatch.setattr(lab, "_record", lambda _path, **kwargs: recorded.update(kwargs))
+    monkeypatch.setattr(
+        lab,
+        "_usb_instance_witness",
+        lambda _device_id: {"sysfs_path": "/sys/1-2", "busnum": 1, "devnum": 6},
+    )
+    monkeypatch.setattr(lab, "_suspend_success_count", lambda: None)
+    args = Namespace(
+        case="device_failure",
+        device_id="usb:1111:2222:1-2",
+        locator="hw:CARD=DAC,DEV=0",
+        manifest=tmp_path / "manifest.json",
+        media=tmp_path / "track.wav",
+        mode="compatible",
+    )
+    assert lab.command_fault_complete(args) == 0
+    assert recorded["status"] == "REQUIRES_OPERATOR_CONFIRMATION"

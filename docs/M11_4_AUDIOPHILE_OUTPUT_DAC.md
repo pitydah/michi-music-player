@@ -122,29 +122,34 @@ Software implementation, physical-closure tooling and finalization are
 **COMPLETE** for the delivered M11.4 PCM feature set. The field lab now enforces
 the same contracts as the semantic evaluator:
 
-- R25 records one complete run for every canonical delay and derives its minimum
-  only from measured runtime holds plus structured first-sample evidence.
-- R32 binds USB counters to the tested sysfs node, records baseline/final/delta,
-  reads pump and pipeline ownership from the current GStreamer port, persists
-  incremental RSS/resource checkpoints and includes every metric in the PASS
-  decision.
+- R25 records one complete run for every canonical delay, binds structured
+  first-sample evidence to each individual delay and derives the minimum only
+  from those per-delay marker results. A single global PASS cannot make 0 ms the
+  minimum; the gates explicitly cover real minima of 250 ms and 500 ms.
+- R32 binds USB health to the tested sysfs node without relying on non-standard
+  error attributes. The Linux backend uses documented generic USB ABI witnesses
+  (`busnum`, `devnum`, `urbnum`) for stable binding and traffic progress, plus a
+  kernel-journal window filtered to that exact USB topology for errors. It also
+  reads pump and pipeline ownership from the current GStreamer port and persists
+  incremental RSS/resource checkpoints.
 - R35 accumulates the four canonical fixtures without replacing prior results;
   fixture and capture hashes are calculated by the lab before PASS.
-- R36 provides persistent `fault-prepare` / `fault-complete` operator workflows
-  for suspend/resume and device failure, while induced XRUN remains a separate,
-  explicit destructive command. Recovery state, identity, generation freshness,
-  continuity and loop count are derived from observations rather than operator
-  booleans. Cross-process freshness uses persistent kernel witnesses: USB
-  `busnum`/`devnum` re-enumeration for device failure and
+- R36 accumulates induced underrun, suspend/resume and reproducible device
+  failure under one `cases{}` ledger. No individual case can promote global R36
+  to PASS. `fault-prepare` / `fault-complete` persist operator checkpoints;
+  induced XRUN remains a separate explicit destructive command. Cross-process
+  freshness uses USB `busnum`/`devnum` re-enumeration for device failure and
   `/sys/power/suspend_stats/success` for suspend/resume.
-- `LAB-01..LAB-20` test the field script itself and are mandatory in the
+- The LAB field-script suite, including the non-zero R25 minimum, Linux USB
+  health, cumulative R36 and descriptor-provenance gates, is mandatory in the
   aggregate verifier.
 
 Physical **EXECUTION** remains INCOMPLETE: the archived devices still need the
 recorded R25 operator evidence, the 8-hour R32 run, all four R35 observations
 and applicable R36 runs before any physical verdict above INCOMPLETE can be
-emitted. A missing kernel counter or fault-injection mechanism remains an honest
-non-PASS condition; tooling completeness never manufactures physical evidence.
+emitted. An unreadable kernel journal, missing documented USB ABI witness or
+unavailable fault-injection mechanism remains an honest non-PASS condition;
+tooling completeness never manufactures physical evidence.
 
 **Canonical implementation authority**: the normative V3.5 spec
 `docs/dac/MICHI_DAC_CANONICAL_EFFECTIVE_SPEC_KERNEL_DRIVER_METHOD_V3_5.md`

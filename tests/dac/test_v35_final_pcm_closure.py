@@ -87,17 +87,21 @@ def _manifest(
                                 }
                                 for _ in range(7)
                             ],
+                            "first_sample_evidence": {
+                                "configured_delay_ms": delay,
+                                "method": "operator-impulse-marker",
+                                "fixture_id": "start_impulse_44100",
+                                "fixture_sha256": "a" * 64,
+                                "evidence_reference": (
+                                    f"operator:2026-09-27-session:{delay}ms"
+                                ),
+                                "expected_marker": "impulse at sample 0",
+                                "observed_result": "PASS: marker preserved",
+                                "preserved": True,
+                            },
                         }
                         for delay in (0, 100, 250, 500, 1000)
                     ],
-                    "first_sample_evidence": {
-                        "method": "operator-impulse-marker",
-                        "fixture_id": "start_impulse_44100",
-                        "fixture_sha256": "a" * 64,
-                        "evidence_reference": "operator:2026-09-27-session",
-                        "expected_marker": "impulse at sample 0",
-                        "observed_result": "PASS: marker preserved",
-                    },
                     "minimal_delay_that_preserves_first_content": 0,
                     "first_sample_result": "PASS",
                     "stale_generation_observed": False,
@@ -145,11 +149,18 @@ def _manifest(
                             "/sys/bus/usb/devices/"
                             + stable_device_id.rsplit(":", 1)[-1]
                         ),
+                        "topology": stable_device_id.rsplit(":", 1)[-1],
+                        "backend": "linux_usb_abi_kernel_journal",
                         "available": True,
-                        "baseline": {"error_count": 0},
-                        "final": {"error_count": 0},
-                        "delta": {"error_count": 0},
-                        "error_delta": 0,
+                        "baseline": {"busnum": 1, "devnum": 2, "urbnum": 100},
+                        "final": {"busnum": 1, "devnum": 2, "urbnum": 200},
+                        "binding_stable": True,
+                        "urb_progress": True,
+                        "kernel_log_available": True,
+                        "observation_start_epoch": 100.0,
+                        "observation_end_epoch": 200.0,
+                        "error_events": [],
+                        "error_count": 0,
                     },
                     "rss_checkpoints": [{"cycle": 20, "rss_kb": 100000}],
                 },
@@ -184,17 +195,53 @@ def _manifest(
                 "executed": True,
                 "evidence": ["xrun.json"],
                 "facts": {
-                    "case": "induced_underrun",
-                    "fault_injected": True,
-                    "xrun_observed": True,
-                    "incident_retained": True,
-                    "recovered_state_reported": True,
-                    "continuity_proof": True,
-                    "false_verified_after_incident": False,
-                    "generation_fresh": True,
-                    "recovery_loop_count": 0,
-                    "signal_truth_after": {
-                        "verdict": {"state": "direct_container_adapted"}
+                    "cases": {
+                        "induced_underrun": {
+                            "case": "induced_underrun",
+                            "fault_injected": True,
+                            "xrun_observed": True,
+                            "incident_retained": True,
+                            "recovered_state_reported": True,
+                            "continuity_proof": True,
+                            "false_verified_after_incident": False,
+                            "generation_fresh": True,
+                            "recovery_loop_count": 0,
+                            "signal_truth_after": {"verdict": {"state": "unknown"}},
+                        },
+                        "suspend_resume": {
+                            "case": "suspend_resume",
+                            "mechanism_available": True,
+                            "operator_reference": "operator:suspend",
+                            "action_completed": True,
+                            "incident_retained": True,
+                            "recovered_state_reported": True,
+                            "continuity_proof": True,
+                            "false_verified_after_incident": False,
+                            "generation_fresh": True,
+                            "recovery_loop_count": 0,
+                            "signal_truth_after": {
+                                "verdict": {"state": "direct_container_adapted"}
+                            },
+                            "suspend_success_before": 10,
+                            "suspend_success_after": 11,
+                        },
+                        "device_failure": {
+                            "case": "device_failure",
+                            "mechanism_available": True,
+                            "operator_reference": "operator:device-failure",
+                            "action_completed": True,
+                            "incident_retained": True,
+                            "recovered_state_reported": True,
+                            "continuity_proof": True,
+                            "false_verified_after_incident": False,
+                            "generation_fresh": True,
+                            "recovery_loop_count": 0,
+                            "same_identity_after": True,
+                            "physical_reenumeration_observed": True,
+                            "signal_truth_after": {
+                                "verdict": {"state": "direct_container_adapted"}
+                            },
+                        },
                     },
                 },
             },
@@ -283,7 +330,9 @@ def test_final_pcm_08_transition_matrix_requires_all_canonical_edges() -> None:
 
 def test_final_pcm_09_xrun_pass_forbids_false_verified_state() -> None:
     payload = _manifest()
-    payload["experiments"]["R36"]["facts"]["false_verified_after_incident"] = True
+    payload["experiments"]["R36"]["facts"]["cases"]["induced_underrun"][
+        "false_verified_after_incident"
+    ] = True
     verdict = evaluate_device_manifest(payload)
     assert verdict.verdict == "FAIL"
     assert summarize_manifests([payload]).physical_verdict == PHYSICAL_FAIL
@@ -350,6 +399,11 @@ def test_fc_12_manifest_without_provenance_or_with_drift_is_rejected() -> None:
     contradicted["execution_git_head"] = "d" * 40
     with pytest.raises(PcmClosureEvidenceError):
         evaluate_device_manifest(contradicted)
+
+    malformed_descriptor = _v2_manifest()
+    malformed_descriptor["device"]["descriptor_hash"] = "not-a-digest"
+    with pytest.raises(PcmClosureEvidenceError, match="descriptor_hash"):
+        evaluate_device_manifest(malformed_descriptor)
 
 
 def test_fc_13_provenance_contradiction_between_levels_is_rejected() -> None:
@@ -428,11 +482,11 @@ def test_final_pcm_11_nominal_pass_is_rejected_without_structured_facts() -> Non
 def test_final_pcm_12_first_sample_evidence_must_be_structured() -> None:
     manifest = _manifest()
     facts = manifest["experiments"]["R25"]["facts"]
-    facts.pop("first_sample_evidence")
+    facts["runs"][0].pop("first_sample_evidence")
     assert "first-sample evidence" in _reject(manifest)
 
     structured = _manifest()
-    structured["experiments"]["R25"]["facts"]["first_sample_evidence"].pop(
+    structured["experiments"]["R25"]["facts"]["runs"][0]["first_sample_evidence"].pop(
         "fixture_sha256"
     )
     assert "fixture_sha256" in _reject(structured)
@@ -491,13 +545,42 @@ def test_final_pcm_14_r32_requires_memory_pump_and_device_bound_usb() -> None:
     )
     assert "transition receipts" in _reject(stale_receipt)
 
-    no_sysfs = _manifest()
-    no_sysfs["experiments"]["R32"]["facts"]["usb_errors_observed"]["sysfs_path"] = None
-    assert "sysfs" in _reject(no_sysfs)
+    no_journal = _manifest()
+    no_journal["experiments"]["R32"]["facts"]["usb_errors_observed"][
+        "kernel_log_available"
+    ] = False
+    assert "kernel log" in _reject(no_journal)
 
     usb_delta = _manifest()
-    usb_delta["experiments"]["R32"]["facts"]["usb_errors_observed"]["error_delta"] = 1
+    usb_delta["experiments"]["R32"]["facts"]["usb_errors_observed"]["error_count"] = 1
+    usb_delta["experiments"]["R32"]["facts"]["usb_errors_observed"]["error_events"] = [
+        "usb 1-2: reset high-speed USB device"
+    ]
     assert "USB errors" in _reject(usb_delta)
+
+    no_progress = _manifest()
+    no_progress["experiments"]["R32"]["facts"]["usb_errors_observed"][
+        "urb_progress"
+    ] = False
+    assert "URB progress" in _reject(no_progress)
+
+    false_binding = _manifest()
+    false_binding["experiments"]["R32"]["facts"]["usb_errors_observed"]["final"][
+        "devnum"
+    ] = 3
+    assert "contradict stable binding" in _reject(false_binding)
+
+    false_progress = _manifest()
+    false_progress["experiments"]["R32"]["facts"]["usb_errors_observed"]["final"][
+        "urbnum"
+    ] = 100
+    assert "contradict URB progress" in _reject(false_progress)
+
+    no_window = _manifest()
+    no_window["experiments"]["R32"]["facts"]["usb_errors_observed"].pop(
+        "observation_end_epoch"
+    )
+    assert "observation window" in _reject(no_window)
 
     dead_checkpoint = _manifest()
     dead_checkpoint["experiments"]["R32"]["facts"]["pump_health"][
@@ -508,25 +591,27 @@ def test_final_pcm_14_r32_requires_memory_pump_and_device_bound_usb() -> None:
 
 def test_final_pcm_15_r36_requires_measured_recovery_facts() -> None:
     no_continuity = _manifest()
-    no_continuity["experiments"]["R36"]["facts"].pop("continuity_proof")
+    no_continuity["experiments"]["R36"]["facts"]["cases"]["induced_underrun"].pop(
+        "continuity_proof"
+    )
     assert "continuity proof" in _reject(no_continuity)
 
     no_loop_count = _manifest()
-    no_loop_count["experiments"]["R36"]["facts"].pop("recovery_loop_count")
+    no_loop_count["experiments"]["R36"]["facts"]["cases"]["induced_underrun"].pop(
+        "recovery_loop_count"
+    )
     assert "loop count" in _reject(no_loop_count)
 
     stale_generation = _manifest()
-    stale_generation["experiments"]["R36"]["facts"]["generation_fresh"] = False
+    stale_generation["experiments"]["R36"]["facts"]["cases"]["induced_underrun"][
+        "generation_fresh"
+    ] = False
     assert "fresh generation" in _reject(stale_generation)
 
     operator_without_reference = _manifest()
-    operator_without_reference["experiments"]["R36"]["facts"].update(
-        {
-            "case": "suspend_resume",
-            "mechanism_available": True,
-            "action_completed": True,
-        }
-    )
+    operator_without_reference["experiments"]["R36"]["facts"]["cases"][
+        "suspend_resume"
+    ]["operator_reference"] = ""
     assert "operator reference" in _reject(operator_without_reference)
 
 
@@ -589,49 +674,45 @@ def test_final_pcm_17_r35_fixture_hash_and_method_are_mandatory() -> None:
 
 def test_final_pcm_18_r36_cases_have_case_specific_recovery_proof() -> None:
     device_failure = _manifest()
-    device_failure["experiments"]["R36"]["facts"].update(
-        {
-            "case": "device_failure",
-            "mechanism_available": True,
-            "operator_reference": "operator:device-failure",
-            "action_completed": True,
-            "same_identity_after": False,
-        }
-    )
+    device_failure["experiments"]["R36"]["facts"]["cases"]["device_failure"][
+        "same_identity_after"
+    ] = False
     assert "same stable identity" in _reject(device_failure)
 
     suspend = _manifest()
-    suspend["experiments"]["R36"]["facts"].update(
-        {
-            "case": "suspend_resume",
-            "mechanism_available": True,
-            "operator_reference": "operator:suspend",
-            "action_completed": True,
-            "signal_truth_after": None,
-        }
-    )
+    suspend["experiments"]["R36"]["facts"]["cases"]["suspend_resume"][
+        "signal_truth_after"
+    ] = None
     assert "post-recovery Signal Truth" in _reject(suspend)
 
     no_suspend_witness = _manifest()
-    no_suspend_witness["experiments"]["R36"]["facts"].update(
-        {
-            "case": "suspend_resume",
-            "mechanism_available": True,
-            "operator_reference": "operator:suspend",
-            "action_completed": True,
-        }
+    no_suspend_witness["experiments"]["R36"]["facts"]["cases"]["suspend_resume"].pop(
+        "suspend_success_after"
     )
     assert "kernel suspend-success witness" in _reject(no_suspend_witness)
 
     recovered_device = _manifest()
-    recovered_device["experiments"]["R36"]["facts"].update(
-        {
-            "case": "device_failure",
-            "mechanism_available": True,
-            "operator_reference": "operator:device-failure",
-            "action_completed": True,
-            "same_identity_after": True,
-            "physical_reenumeration_observed": True,
-        }
-    )
     assert evaluate_device_manifest(recovered_device).verdict == "PASS"
+
+
+def test_final_pcm_19_r36_one_passing_case_cannot_promote_global_pass() -> None:
+    manifest = _manifest()
+    cases = manifest["experiments"]["R36"]["facts"]["cases"]
+    manifest["experiments"]["R36"]["facts"]["cases"] = {
+        "induced_underrun": cases["induced_underrun"]
+    }
+    assert "missing cumulative cases" in _reject(manifest)
+
+
+@pytest.mark.parametrize("minimum", (250, 500))
+def test_final_pcm_20_r25_accepts_a_nonzero_evidence_derived_minimum(minimum) -> None:
+    manifest = _manifest()
+    facts = manifest["experiments"]["R25"]["facts"]
+    for run in facts["runs"]:
+        preserved = run["configured_delay_ms"] >= minimum
+        run["first_sample_evidence"]["preserved"] = preserved
+        run["first_sample_evidence"]["observed_result"] = (
+            "PASS: marker preserved" if preserved else "FAIL: marker truncated"
+        )
+    facts["minimal_delay_that_preserves_first_content"] = minimum
+    assert evaluate_device_manifest(manifest).verdict == "PASS"

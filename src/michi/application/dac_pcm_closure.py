@@ -281,6 +281,9 @@ def _identity(payload: dict[str, Any]) -> DeviceIdentityEvidence:
     raw = payload.get("device")
     if not isinstance(raw, dict):
         raise PcmClosureEvidenceError("manifest.device must be an object")
+    descriptor_hash = str(raw.get("descriptor_hash") or "")
+    if descriptor_hash and not _is_sha256(descriptor_hash):
+        raise PcmClosureEvidenceError("device.descriptor_hash must be a SHA-256 digest")
     return DeviceIdentityEvidence(
         stable_device_id=_required_text(raw, "stable_device_id"),
         locator=_required_text(raw, "locator"),
@@ -289,7 +292,7 @@ def _identity(payload: dict[str, Any]) -> DeviceIdentityEvidence:
         bcd_device=str(raw.get("bcd_device") or ""),
         manufacturer=str(raw.get("manufacturer") or ""),
         product=str(raw.get("product") or ""),
-        descriptor_hash=str(raw.get("descriptor_hash") or ""),
+        descriptor_hash=descriptor_hash,
     )
 
 
@@ -317,6 +320,52 @@ def _pass_has_evidence(experiment: str, item: dict[str, Any]) -> bool:
         and bool(evidence)
         and all(isinstance(entry, str) and entry.strip() for entry in evidence)
     )
+
+
+def _r36_case_contradiction(case: str, facts: dict[str, Any]) -> str | None:
+    if facts.get("case") != case:
+        return f"R36 case {case} has mismatched case identity"
+    if facts.get("incident_retained") is not True:
+        return f"R36 case {case} requires the incident to remain in evidence"
+    if facts.get("recovered_state_reported") is not True:
+        return f"R36 case {case} requires the recovered state to be reported"
+    if facts.get("continuity_proof") is not True:
+        return f"R36 case {case} requires a continuity proof"
+    if facts.get("false_verified_after_incident") is True:
+        return f"R36 case {case} retained a false verified state after the incident"
+    if facts.get("generation_fresh") is not True:
+        return f"R36 case {case} recovery did not run on a fresh generation"
+    loops = facts.get("recovery_loop_count")
+    if not isinstance(loops, int):
+        return f"R36 case {case} must measure the recovery loop count"
+    if loops > R36_MAX_RECOVERY_LOOPS:
+        return f"R36 case {case} observed {loops} recovery loops"
+    if case == "induced_underrun":
+        if facts.get("fault_injected") is not True:
+            return "R36 did not inject a real XRUN"
+        if facts.get("xrun_observed") is not True:
+            return "R36 did not observe the injected XRUN"
+        return None
+    if facts.get("mechanism_available") is not True:
+        return f"R36 case {case} requires an available mechanism"
+    reference = facts.get("operator_reference")
+    if not isinstance(reference, str) or not reference.strip():
+        return f"R36 case {case} lacks a concrete operator reference"
+    if facts.get("action_completed") is not True:
+        return f"R36 case {case} lacks a completed operator action"
+    if case == "device_failure":
+        if facts.get("same_identity_after") is not True:
+            return "R36 device failure did not recover the same stable identity"
+        if facts.get("physical_reenumeration_observed") is not True:
+            return "R36 device failure lacks a USB re-enumeration witness"
+    if case == "suspend_resume":
+        if not isinstance(facts.get("signal_truth_after"), dict):
+            return "R36 suspend/resume lacks post-recovery Signal Truth"
+        before = facts.get("suspend_success_before")
+        after = facts.get("suspend_success_after")
+        if not isinstance(before, int) or not isinstance(after, int) or after <= before:
+            return "R36 suspend/resume lacks a kernel suspend-success witness"
+    return None
 
 
 def _semantic_pass_check(
@@ -406,24 +455,35 @@ def _semantic_pass_check(
                     or receipt_hold + R25_HOLD_TOLERANCE_MS < delay
                 ):
                     return f"R25 delay {delay} contains an unmeasured short hold"
-        evidence = facts.get("first_sample_evidence")
-        if not isinstance(evidence, dict):
-            return "R25 PASS requires structured first-sample evidence"
-        for field in (
-            "method",
-            "fixture_id",
-            "fixture_sha256",
-            "evidence_reference",
-            "expected_marker",
-            "observed_result",
-        ):
-            value = evidence.get(field)
-            if not isinstance(value, str) or not value.strip():
-                return f"R25 first-sample evidence lacks {field}"
-        if not str(evidence.get("observed_result")).upper().startswith("PASS"):
-            return "R25 first-sample evidence does not report PASS"
-        if not _is_sha256(evidence.get("fixture_sha256")):
-            return "R25 first-sample evidence has an invalid fixture_sha256"
+            evidence = run.get("first_sample_evidence")
+            if not isinstance(evidence, dict):
+                return f"R25 delay {delay} lacks structured first-sample evidence"
+            if evidence.get("configured_delay_ms") != delay:
+                return f"R25 delay {delay} first-sample evidence is misbound"
+            for field in (
+                "method",
+                "fixture_id",
+                "fixture_sha256",
+                "evidence_reference",
+                "expected_marker",
+                "observed_result",
+            ):
+                value = evidence.get(field)
+                if not isinstance(value, str) or not value.strip():
+                    return f"R25 delay {delay} first-sample evidence lacks {field}"
+            if not _is_sha256(evidence.get("fixture_sha256")):
+                return (
+                    f"R25 delay {delay} first-sample evidence has an invalid "
+                    "fixture_sha256"
+                )
+            preserved = evidence.get("preserved")
+            if not isinstance(preserved, bool):
+                return f"R25 delay {delay} lacks a boolean first-sample result"
+            reported_pass = (
+                str(evidence.get("observed_result")).upper().startswith("PASS")
+            )
+            if preserved != reported_pass:
+                return f"R25 delay {delay} has contradictory first-sample evidence"
         minimal = facts.get("minimal_delay_that_preserves_first_content")
         if minimal not in R25_SWEEP_DELAYS:
             return "R25 did not determine a minimal delay from the sweep"
@@ -431,10 +491,7 @@ def _semantic_pass_check(
             delay
             for delay, delay_runs in runs_by_delay.items()
             if len(delay_runs) == 1
-            and not delay_runs[0].get("stale_generation_observed")
-            and not delay_runs[0].get("hidden_conversion_observed")
-            and isinstance(delay_runs[0].get("actual_hold_ms"), int)
-            and delay_runs[0]["actual_hold_ms"] + R25_HOLD_TOLERANCE_MS >= delay
+            and delay_runs[0]["first_sample_evidence"]["preserved"] is True
         )
         if not passing:
             return "R25 has no passing delay for the specified minimum"
@@ -443,6 +500,11 @@ def _semantic_pass_check(
                 f"R25 minimum delay {minimal} disagrees with the sweep "
                 f"(expected {passing[0]})"
             )
+        if any(
+            delay_runs[0]["first_sample_evidence"]["preserved"] != (delay >= minimal)
+            for delay, delay_runs in runs_by_delay.items()
+        ):
+            return "R25 first-sample results are not monotonic from the minimum delay"
         if facts.get("first_sample_result") != "PASS":
             return "R25 first-sample integrity is not PASS"
     elif experiment == "R32":
@@ -499,19 +561,55 @@ def _semantic_pass_check(
         if stable_device_id is None or usb.get("device_id") != stable_device_id:
             return "R32 USB evidence names a different tested device"
         if usb.get("available") is not True:
-            return "R32 USB error counters were not available"
+            return "R32 USB health backend was not available"
         if not isinstance(usb.get("sysfs_path"), str) or not usb["sysfs_path"]:
             return "R32 USB evidence lacks a device-bound sysfs path"
-        for field in ("baseline", "final", "delta"):
-            if not isinstance(usb.get(field), dict) or not usb[field]:
-                return f"R32 USB evidence lacks a non-empty {field} counter set"
-        if set(usb["baseline"]) != set(usb["final"]) or set(usb["delta"]) != set(
-            usb["baseline"]
+        if not isinstance(usb.get("topology"), str) or not usb["topology"]:
+            return "R32 USB evidence lacks the bound topology"
+        if usb.get("backend") != "linux_usb_abi_kernel_journal":
+            return "R32 USB health backend is not the canonical Linux backend"
+        for field in ("baseline", "final"):
+            snapshot = usb.get(field)
+            if not isinstance(snapshot, dict) or set(snapshot) != {
+                "busnum",
+                "devnum",
+                "urbnum",
+            }:
+                return f"R32 USB evidence lacks documented ABI {field} witnesses"
+            if not all(isinstance(value, int) for value in snapshot.values()):
+                return f"R32 USB {field} witnesses must be integers"
+        if usb.get("binding_stable") is not True:
+            return "R32 USB device binding changed during the soak"
+        if (
+            usb["baseline"]["busnum"] != usb["final"]["busnum"]
+            or usb["baseline"]["devnum"] != usb["final"]["devnum"]
         ):
-            return "R32 USB counter sets changed during the soak"
-        if any(value != 0 for value in usb["delta"].values()):
-            return "R32 observed USB counter movement during the soak"
-        if usb.get("error_delta") != 0:
+            return "R32 USB ABI witnesses contradict stable binding"
+        if usb.get("urb_progress") is not True:
+            return "R32 USB health lacks URB progress"
+        if usb["baseline"]["urbnum"] == usb["final"]["urbnum"]:
+            return "R32 USB ABI witnesses contradict URB progress"
+        if usb.get("kernel_log_available") is not True:
+            return "R32 device-bound kernel log was not available"
+        start = usb.get("observation_start_epoch")
+        end = usb.get("observation_end_epoch")
+        if (
+            not isinstance(start, (int, float))
+            or not isinstance(end, (int, float))
+            or end <= start
+        ):
+            return "R32 kernel log lacks a valid observation window"
+        events = usb.get("error_events")
+        if not isinstance(events, list) or not all(
+            isinstance(event, str) and event.strip() for event in events
+        ):
+            return "R32 USB kernel error events are malformed"
+        error_count = usb.get("error_count")
+        if not isinstance(error_count, int) or error_count < 0:
+            return "R32 USB kernel error count is malformed"
+        if error_count != len(events):
+            return "R32 USB kernel error count contradicts its events"
+        if events:
             return "R32 observed USB errors during the soak"
         checkpoints = facts.get("rss_checkpoints")
         if not isinstance(checkpoints, list) or not checkpoints:
@@ -559,60 +657,22 @@ def _semantic_pass_check(
             ):
                 return f"R35 fixture {name} lacks a measurement method"
     elif experiment == "R36":
-        case = facts.get("case")
-        if case not in R36_CASES:
-            return "R36 PASS requires a canonical case"
-        if facts.get("incident_retained") is not True:
-            return "R36 requires the incident to remain in evidence"
-        if facts.get("recovered_state_reported") is not True:
-            return "R36 requires the recovered state to be reported"
-        if facts.get("continuity_proof") is not True:
-            return "R36 requires a continuity proof"
-        if facts.get("false_verified_after_incident") is True:
-            return "R36 retained a false verified state after the incident"
-        if facts.get("generation_fresh") is not True:
-            return "R36 recovery did not run on a fresh generation"
-        loops = facts.get("recovery_loop_count")
-        if not isinstance(loops, int):
-            return "R36 must measure the recovery loop count"
-        if loops > R36_MAX_RECOVERY_LOOPS:
-            return f"R36 observed {loops} recovery loops"
-        if case == "induced_underrun":
-            if facts.get("fault_injected") is not True:
-                return "R36 did not inject a real XRUN"
-            if facts.get("xrun_observed") is not True:
-                return "R36 did not observe the injected XRUN"
-        else:
-            if facts.get("mechanism_available") is not True:
-                return "R36 operator case requires an available mechanism"
-            reference = facts.get("operator_reference")
-            if not isinstance(reference, str) or not reference.strip():
-                return "R36 operator case lacks a concrete operator reference"
-            if facts.get("action_completed") is not True:
-                return "R36 operator case lacks a completed operator action"
-            if (
-                case == "device_failure"
-                and facts.get("same_identity_after") is not True
-            ):
-                return "R36 device failure did not recover the same stable identity"
-            if (
-                case == "device_failure"
-                and facts.get("physical_reenumeration_observed") is not True
-            ):
-                return "R36 device failure lacks a USB re-enumeration witness"
-            if case == "suspend_resume" and not isinstance(
-                facts.get("signal_truth_after"), dict
-            ):
-                return "R36 suspend/resume lacks post-recovery Signal Truth"
-            if case == "suspend_resume":
-                before = facts.get("suspend_success_before")
-                after = facts.get("suspend_success_after")
-                if (
-                    not isinstance(before, int)
-                    or not isinstance(after, int)
-                    or after <= before
-                ):
-                    return "R36 suspend/resume lacks a kernel suspend-success witness"
+        cases = facts.get("cases")
+        if not isinstance(cases, dict):
+            return "R36 PASS requires cumulative cases"
+        missing = [case for case in R36_CASES if case not in cases]
+        if missing:
+            return f"R36 PASS is missing cumulative cases: {missing}"
+        extra = sorted(set(cases) - set(R36_CASES))
+        if extra:
+            return f"R36 contains non-canonical cases: {extra}"
+        for case in R36_CASES:
+            case_facts = cases.get(case)
+            if not isinstance(case_facts, dict):
+                return f"R36 case {case} must be an object"
+            contradiction = _r36_case_contradiction(case, case_facts)
+            if contradiction is not None:
+                return contradiction
     return None
 
 
