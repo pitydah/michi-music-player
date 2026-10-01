@@ -336,12 +336,63 @@ def test_lab_11_resources_are_read_from_the_current_owned_port(lab) -> None:
         _residual_timer_sources=[],
     )
     container = SimpleNamespace(
-        gstreamer_engine_provider=SimpleNamespace(current_port=port)
+        _audio_engine_registry=SimpleNamespace(
+            provider=lambda engine_id: SimpleNamespace(current_port=port)
+        )
     )
     snapshot = lab._runtime_resource_snapshot(container)
     assert snapshot["pump_alive"] is True
     assert snapshot["owned_pipelines"] == 1
     assert snapshot["port_generation"] == 9
+    # A container that cannot resolve the canonical port degrades to an honest
+    # empty observation instead of inventing ownership.
+    assert lab._runtime_resource_snapshot(SimpleNamespace()) == lab._empty_resources()
+
+
+def test_lab_21_resync_evidence_reads_the_canonical_runtime_port(lab) -> None:
+    port = SimpleNamespace(
+        resync_evidence=lambda: {
+            "resync_delay_ms": 250,
+            "resync_actual_hold_ms": 269,
+            "port_generation": 2,
+            "execution_generation": 2,
+            "plan_id": "plan:x",
+        }
+    )
+    container = SimpleNamespace(
+        _audio_engine_registry=SimpleNamespace(
+            provider=lambda engine_id: SimpleNamespace(current_port=port)
+        )
+    )
+    evidence = lab._port_resync_evidence(container)
+    assert evidence["resync_actual_hold_ms"] == 269
+    assert evidence["plan_id"] == "plan:x"
+    # The lab never fabricates hold evidence for a missing runtime port.
+    assert lab._port_resync_evidence(SimpleNamespace()) == {}
+
+
+def test_lab_22_play_settles_only_on_playing_or_a_new_error(lab) -> None:
+    def container(status, error):
+        return SimpleNamespace(
+            _playback=SimpleNamespace(
+                state=SimpleNamespace(status=status, error_message=error)
+            )
+        )
+
+    assert (
+        lab._play_settled(container(lab.PlaybackStatus.PLAYING, "stale"), "stale")
+        is True
+    )
+    # A pre-existing error is not this request's outcome.
+    assert (
+        lab._play_settled(container(lab.PlaybackStatus.STOPPED, "stale"), "stale")
+        is False
+    )
+    assert (
+        lab._play_settled(container(lab.PlaybackStatus.STOPPED, "fresh"), "stale")
+        is True
+    )
+    assert lab._play_settled(container(lab.PlaybackStatus.STOPPED, None), None) is False
 
 
 def test_lab_12_usb_node_resolution_is_bound_to_device_identity(lab, tmp_path) -> None:
@@ -609,7 +660,9 @@ def test_lab_command_soak_wires_measured_facts_into_pass(
         _residual_timer_sources=[],
     )
     container = SimpleNamespace(
-        gstreamer_engine_provider=SimpleNamespace(current_port=port),
+        _audio_engine_registry=SimpleNamespace(
+            provider=lambda engine_id: SimpleNamespace(current_port=port)
+        ),
         shutdown=lambda: None,
     )
     result = {

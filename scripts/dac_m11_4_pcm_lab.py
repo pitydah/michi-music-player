@@ -93,6 +93,24 @@ def _row(container, device_id: str, locator: str) -> dict[str, Any]:
     return row
 
 
+def _current_direct_port(container):
+    """The one current GStreamer port through the canonical engine registry.
+
+    The production container exposes the canonical engine registry, and the
+    provider owns the current port. Reading it through that authority keeps the
+    lab observational; a container that cannot resolve the port yields None and
+    the caller degrades to an honest empty observation.
+    """
+    try:
+        registry = getattr(container, "_audio_engine_registry", None)
+        if registry is None:
+            return None
+        provider = registry.provider(AudioEngineId.GSTREAMER)
+        return provider.current_port
+    except Exception:  # noqa: BLE001 - observational boundary
+        return None
+
+
 def _container(device_id: str, locator: str):
     from michi.bootstrap import ApplicationContainer
 
@@ -144,18 +162,30 @@ def _truth(container) -> dict[str, Any] | None:
     return signal_truth_snapshot_diagnostics(snapshot)
 
 
+def _play_settled(container, previous_error: str | None) -> bool:
+    """One media play is settled by PLAYING or by a NEW typed failure.
+
+    A pre-existing error (for example a refused startup resume published before
+    this request) is not this request's outcome and must never be read as one:
+    the receipt records the state observed after the pump.
+    """
+    state = container._playback.state
+    if state.status is PlaybackStatus.PLAYING:
+        return True
+    current = state.error_message
+    return bool(current) and current != previous_error
+
+
 def _play(container, media: Path, mode: str) -> dict[str, Any]:
     if not media.is_file():
         raise SystemExit(f"media fixture does not exist: {media}")
     container._aob.select_path_mode(mode)
+    previous_error = container._playback.state.error_message
     container._playback.load_and_play(media)
     _pump(
         container,
         15.0,
-        settled=lambda: (
-            container._playback.state.status is PlaybackStatus.PLAYING
-            or bool(container._playback.state.error_message)
-        ),
+        settled=lambda: _play_settled(container, previous_error),
     )
     truth = _truth(container)
     return {
@@ -282,10 +312,10 @@ def _process_rss_kb() -> int | None:
     return None
 
 
-def _runtime_resource_snapshot(container) -> dict[str, Any]:
-    """Observe R32 ownership from the provider's one current port."""
+def _empty_resources() -> dict[str, Any]:
+    """The honest empty observation: the lab never invents runtime ownership."""
 
-    empty = {
+    return {
         "port_exists": False,
         "pump_alive": False,
         "owned_pipelines": 0,
@@ -297,12 +327,17 @@ def _runtime_resource_snapshot(container) -> dict[str, Any]:
         "residual_bus_watches": 0,
         "residual_timer_sources": 0,
     }
+
+
+def _runtime_resource_snapshot(container) -> dict[str, Any]:
+    """Observe R32 ownership from the provider's one current port."""
+
     try:
-        port = container.gstreamer_engine_provider.current_port
+        port = _current_direct_port(container)
     except Exception:  # noqa: BLE001 - observational boundary
-        return empty
+        return _empty_resources()
     if port is None:
-        return empty
+        return _empty_resources()
     pump = getattr(port, "_pump", None)
     handle = getattr(port, "_active_direct_handle", None)
     pipeline = getattr(port, "_pipeline", None)
@@ -826,7 +861,7 @@ def _r25_result(runs: list[dict[str, Any]]) -> tuple[str, int | None]:
 def _port_resync_evidence(container) -> dict[str, Any]:
     """Measured hold evidence from the runtime, when the port exposes it."""
     try:
-        port = container.gstreamer_engine_provider.current_port
+        port = _current_direct_port(container)
         evidence = getattr(port, "resync_evidence", None)
         if callable(evidence):
             payload = evidence()
