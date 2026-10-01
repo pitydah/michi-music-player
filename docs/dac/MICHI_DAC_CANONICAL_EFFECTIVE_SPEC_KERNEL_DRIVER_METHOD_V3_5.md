@@ -21270,7 +21270,9 @@ than another DAC architecture slice:
 Only while the productive field lab, semantic evaluator and mandatory tests
 enforce all four contracts may R25/R32/R36 remain complete in
 `TOOLING_OBLIGATIONS`. This tooling verdict does not alter archived physical
-evidence: SMSL and Kinmax still require the declared R25/R32/R35/R36 campaign.
+evidence: SMSL still requires the declared R32/R35/R36 campaign (its R25 closed
+PASS in the 2026-09-30 device-bound campaign, derived minimum delay 0 ms) and
+Kinmax still requires the declared R25/R32/R35/R36 campaign.
 
 
 ### M11.4 selected-output handover and fixed-volume presentation corrective

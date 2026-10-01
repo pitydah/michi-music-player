@@ -72,14 +72,24 @@ policy and the absence of autoplay.
 Physical closure evidence is separated from implementation state and bound to
 the code that produced it (`implementation_head`, `evidence_execution_head`,
 `manifest_created_at`, `manifest_schema`), so an archived manifest is never
-stale by construction. Current honest physical state for the two connected
-DACs: **R24 clock authority PASS** for both (SMSL `usb:152a:85dd:3-3.3.2` and
-KINMAX HA01 `usb:2fc6:f882:HA01`); **R25** automated transitions complete but
-`REQUIRES_OPERATOR_CONFIRMATION` for first-sample/click-pop; **R32** (8 h soak),
-**R35** (tail/drain capture) and **R36** (XRUN injection, unavailable in this
-kernel) remain `NOT_RUN`. Physical verdict: `INCOMPLETE`, multi-hardware not
-proven. Bit-perfect and exclusive are still not claimed, and M11.5 /
-DAC-V35-120 / 130 / 140 are not started.
+stale by construction. Current honest physical state: **R24 clock authority
+PASS** for both connected DACs (SMSL `usb:152a:85dd:3-3.3.2` and KINMAX HA01
+`usb:2fc6:f882:HA01`); **R25 PASS for the SMSL** in its current device-bound
+environment (campaign of 2026-09-30, kernel `7.2.8-1-cachyos`: complete
+canonical delay sweep with measured holds 0/107/268/509/1011 ms, zero XRUN,
+zero stale generation, zero hidden conversion, operator first-sample PASS on
+all five delays, derived minimum delay 0 ms; the Kinmax HA01 R25 campaign
+remains pending); **R32** (8 h soak), **R35** (tail/drain capture) and
+**R36** (XRUN injection, unavailable in this kernel) remain `NOT_RUN`.
+Physical verdict: `INCOMPLETE`, multi-hardware not proven. Bit-perfect and
+exclusive are still not claimed, and M11.5 / DAC-V35-120 / 130 / 140 are not
+started.
+
+Recorded observation outside R25's gates (separate corrective pending): with a
+nonzero resync delay the recorded Signal Truth clock observation is the PAUSED
+pre-start one (`ST_CLOCK_POLICY_MISMATCH` in the sweep receipts) even though
+the live pipeline adopts the ALSA sink clock once PLAYING starts; the R25
+verdict above does not depend on that recorded field.
 
 ### Recovery is a real Try, handover moves the live track, provenance is coherent
 
@@ -157,9 +167,10 @@ the same contracts as the semantic evaluator:
   aggregate verifier.
 
 Physical **EXECUTION** remains INCOMPLETE: the archived devices still need the
-recorded R25 operator evidence, the 8-hour R32 run, all four R35 observations
-and applicable R36 runs before any physical verdict above INCOMPLETE can be
-emitted. An unreadable kernel journal, missing documented USB ABI witness or
+recorded R25 operator evidence for Kinmax (SMSL R25 closed PASS on
+2026-09-30 in its device-bound environment), the 8-hour R32 run, all four R35
+observations and applicable R36 runs before any physical verdict above
+INCOMPLETE can be emitted. An unreadable kernel journal, missing documented USB ABI witness or
 unavailable fault-injection mechanism remains an honest non-PASS condition;
 tooling completeness never manufactures physical evidence.
 
