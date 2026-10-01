@@ -395,6 +395,16 @@ def test_lab_22_play_settles_only_on_playing_or_a_new_error(lab) -> None:
     assert lab._play_settled(container(lab.PlaybackStatus.STOPPED, None), None) is False
 
 
+def test_lab_23_coordinator_is_the_productive_selection_authority(lab) -> None:
+    coordinator = object()
+    container = SimpleNamespace(
+        _aob=SimpleNamespace(_selection_coordinator=coordinator)
+    )
+    assert lab._coordinator(container) is coordinator
+    with pytest.raises(SystemExit):  # a missing authority is never invented
+        lab._coordinator(SimpleNamespace())
+
+
 def test_lab_12_usb_node_resolution_is_bound_to_device_identity(lab, tmp_path) -> None:
     node = tmp_path / "bus" / "usb" / "devices" / "1-2"
     node.mkdir(parents=True)

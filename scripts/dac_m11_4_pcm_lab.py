@@ -548,16 +548,19 @@ def _suspend_success_count(
 
 
 def _coordinator(container):
-    from michi.application.audio_output_selection_coordinator import (
-        AudioOutputSelectionCoordinator,
-    )
+    """The ONE productive output-selection coordinator the app itself uses.
 
-    return AudioOutputSelectionCoordinator(
-        profiles=container.audio_output_profiles,
-        devices=container.audio_device_registry,
-        output_session=container.output_session,
-        engines=container.audio_engine_service,
+    The bridge owns the canonical coordinator wired by the composition root;
+    the lab drives that same authority instead of reconstructing a second
+    selection graph from container internals.
+    """
+
+    coordinator = getattr(
+        getattr(container, "_aob", None), "_selection_coordinator", None
     )
+    if coordinator is None:
+        raise SystemExit("output selection coordinator is unavailable")
+    return coordinator
 
 
 def command_inventory(args) -> int:
