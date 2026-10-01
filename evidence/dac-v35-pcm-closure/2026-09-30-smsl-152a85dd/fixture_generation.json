@@ -1,0 +1,72 @@
+{
+  "campaign": "R25 SMSL usb:152a:85dd:3-3.3.2",
+  "canonical_edges": [
+    "44100->44100",
+    "44100->48000",
+    "48000->44100",
+    "44100->96000",
+    "96000->192000",
+    "192000->44100"
+  ],
+  "expected_decoded_rate_sequence_hz": [
+    44100,
+    44100,
+    48000,
+    44100,
+    96000,
+    192000,
+    44100
+  ],
+  "generated_at": "2026-09-30",
+  "kernel_note": "collected under the current device-bound environment (kernel 7.2.8-1-cachyos)",
+  "marker_fixture": {
+    "algorithm": "sample 0 = +0.9 FS impulse; samples 1..441 = 2 kHz sine burst at 0.9 FS; samples 442..end = 440 Hz sine at 0.35 FS; deterministic, no randomness",
+    "bits": 16,
+    "channels": 2,
+    "expected_marker": "full-scale tick (impulse + 2 kHz burst) at sample 0 followed by a 440 Hz tone",
+    "path": "evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/fixtures/r25_marker_44100.wav",
+    "peak_sample": 29490,
+    "rate_hz": 44100,
+    "seconds": 12.0,
+    "sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6"
+  },
+  "r25_media_order": [
+    {
+      "order": 1,
+      "path": "evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/fixtures/r25_marker_44100.wav",
+      "role": "marker/first-sample",
+      "sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6"
+    },
+    {
+      "order": 2,
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+      "sha256": "e5c4acfc54819f01d2a3eff82039bca0ed215679f092950e973399390f325f87"
+    },
+    {
+      "order": 3,
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+      "sha256": "2c66cac37d46f872ac1b1ebbacb22ae1a700716334584fe7d9e214a0ac229b2e"
+    },
+    {
+      "order": 4,
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+      "sha256": "e5c4acfc54819f01d2a3eff82039bca0ed215679f092950e973399390f325f87"
+    },
+    {
+      "order": 5,
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+      "sha256": "2aab86e67dc458b29321d86f9dcb3d0c420da38bc3ecf0482d18b139052a4eb2"
+    },
+    {
+      "order": 6,
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+      "sha256": "a2d10e31bbc793b8e0f27dc8a047b406b5e0be0fc78f6840145813eb4a3fa2e5"
+    },
+    {
+      "order": 7,
+      "path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+      "sha256": "e5c4acfc54819f01d2a3eff82039bca0ed215679f092950e973399390f325f87"
+    }
+  ],
+  "schema_version": 1
+}
