@@ -1,0 +1,19 @@
+{
+  "cycle": 188000,
+  "elapsed_seconds": 24633.080339698005,
+  "resources": {
+    "current_path": "evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/fixtures/r25_marker_44100.wav",
+    "direct_execution_generation": 187995,
+    "direct_plan_id": "plan:2784f316aec6ce07",
+    "owned_pipelines": 1,
+    "pending_path": null,
+    "port_exists": true,
+    "port_generation": 187998,
+    "pump_alive": true,
+    "residual_bus_watches": 0,
+    "residual_timer_sources": 0
+  },
+  "rss_kb": 279676,
+  "runtime_error_count": 5,
+  "xrun_count": 0
+}

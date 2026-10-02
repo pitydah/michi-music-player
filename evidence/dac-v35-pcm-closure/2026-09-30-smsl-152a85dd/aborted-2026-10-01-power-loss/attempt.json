@@ -1,0 +1,37 @@
+{
+  "attempt": "R32 soak attempt 1 (SMSL)",
+  "checkpoint_sha256": {
+    "soak-cycle-001000.json": "f378ba89f6c6651524cf443caf03b59816a701c6a48d58d226f0f6cacf93baab",
+    "soak-cycle-002000.json": "66e297ecd72db22943f7fd31fc65c1a8601d9bd47532dbe0882c1270ccf6320c",
+    "soak-cycle-003000.json": "8fca21921db3357c972ed6fa909597ee3032385dddc09ec2fa542e981ae6e07a",
+    "soak-cycle-004000.json": "eaaac8486ed6ce89c5df11d06fa9099df94f3ddfba077a1323b8881e7b771e86",
+    "soak-cycle-005000.json": "2820baecaf8d5cc16bfda4ebbd0be83fd09239ed846e163b4ed36f39ea71adee",
+    "soak-cycle-006000.json": "ecb12a0b7cde20fb0fbcaaacf498eb31a1d8df5ed4ad8010fa15b0b7151088ad",
+    "soak-cycle-007000.json": "830e8ac0fdca4c5af6f05ca9d3aaff00ff6e6bc5dcfd586f8fe67469b175c789",
+    "soak-cycle-008000.json": "92e935aedf1eba822e2934855800021c4e876ea47c5e8600b99eab1b0e8c8790",
+    "soak-cycle-009000.json": "05b8a78ce6fe29bd49def0a1bab4e15cc370d52f22b7955f2766a55ee675b3f4",
+    "soak-cycle-010000.json": "a8ecc3cf3746808e64841acf3d3f6d620cac06e9711c1871ab212fc8cf70a6e3",
+    "soak-cycle-011000.json": "eed676a59578370feb4e7b9d1f3e9ba49ee9f82f94c5eb5cd05251aee45241fc",
+    "soak-cycle-012000.json": "6d509fa2334ee56bbafd7d2bd02a5d9958aa9d4534cb022ccccb4fc6c2776eab",
+    "soak-cycle-013000.json": "aeac9be899214e2eea574cbe05b2f5e48d331f2da278489451db527099bc13cf",
+    "soak-cycle-014000.json": "1aa5d69f80ccef2342af4a9c26d4d407c72bd60e7a4b550a7882a40e1958afcd"
+  },
+  "cycles_reached": 14000,
+  "cycles_required_estimate": 196000,
+  "cycling_started_local": "2026-10-01T13:18:08-0300 (inferred from checkpoint cadence)",
+  "duration_reached_seconds_estimate": 1980,
+  "duration_required_seconds": 28800,
+  "environment_fingerprint_unchanged": true,
+  "evidence_note": "non-canonical partial progress of an aborted attempt; excluded from the R32 verdict; retained for audit only",
+  "host_rebooted_local": "2026-10-01T18:13:21-0300",
+  "inferred_cut_window_local": [
+    "2026-10-01T13:49:11-0300",
+    "2026-10-01T13:51:30-0300"
+  ],
+  "last_checkpoint_local": "2026-10-01T13:49:11-0300",
+  "manifest_record": null,
+  "reason": "power loss; the host rebooted and the soak process was terminated before the canonical R32 record",
+  "schema_version": 1,
+  "soak_started_local": "2026-10-01T13:17:5x-0300 (inferred)",
+  "status": "ABORTED"
+}
