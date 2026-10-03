@@ -85,32 +85,29 @@ Physical verdict: `INCOMPLETE`, multi-hardware not proven. Bit-perfect and
 exclusive are still not claimed, and M11.5 / DAC-V35-120 / 130 / 140 are not
 started.
 
-**R32 is currently blocked by a reproduced GStreamer-runtime defect.** Three
-soak attempts (including two with the corrected bounded-evidence lab) wedged
-permanently under high pipeline churn; a directed stress harness reproduced
-the mechanism in seconds and captured native stacks: `gst_element_change_state`
-blocks forever on a `pthread_mutex` held by a stuck streaming thread
-(`gst_pad_pause_task` path), and the characterizer's bounded `get_state`
-timeout does not interrupt it. Evidence:
-`evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/diagnostics/wedge-2026-10-03/`.
-R32 stays `NOT_RUN` pending a separate decision (lab stress profile, product
-lifecycle serialization/quarantine, or an upstream report). Directed
-isolation experiments show that a single pipeline's own transition can
-deadlock (serialization alone does not eliminate it) and that the race scales
-with pipeline-lifecycle count, so the candidate remedies are pipeline
-isolation (subprocess per characterization / bounded engine restart) or an
-upstream GStreamer fix; an upstream report draft with the captured stacks is
-archived beside the evidence. Decoded-source characterization is now
-subprocess-isolated (`michi.infrastructure.audio_engines.characterize_cli`
-worker with a bounded kill, wired in production; injected test bindings keep
-the in-process characterizer), which removes the highest-rate pipeline churn
-from the application process and bounds a stuck preroll to one killed worker.
-The Direct pipeline's own state operations remain in-process and therefore
-still carry the residual exposure documented above. The three
+**R32 is currently blocked by a reproduced GStreamer-runtime defect.** Four
+soak attempts (one power loss, three permanent wedges at ~189k, ~148k and
+~2.2k cycles; the last one with the subprocess-isolated characterizer and an
+offscreen Qt platform) wedged with the same signature: the main thread inside
+a GStreamer state change with a lone `typefindelement` thread stuck, no ALSA
+fd held. A directed stress harness reproduced the mechanism in seconds and
+captured native stacks: `gst_element_change_state` blocks forever on a
+`pthread_mutex` held by a stuck streaming thread (`gst_pad_pause_task` path),
+and the characterizer's bounded `get_state` timeout does not interrupt it.
+This matches the independently reported upstream-class bug
+`Eyevinn/strom#963` (lock-order deadlock in `uridecodebin3`/typefind,
+GStreamer 1.28.6, same stacks); the installed 1.28.7-2.1 is the newest
+version in the repositories, so no fixed build is available. Evidence:
+`evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/diagnostics/wedge-2026-10-03/`
+and the `aborted-2026-10-0x-*` attempt archives. R32 is therefore parked
+until an upstream GStreamer fix (the settling-gap workaround suggested by the
+upstream report remains untested); the product carries the same residual
+exposure under very rapid Direct-pipeline state churn. The three
 supporting correctives (bounded R32 receipts, USB sysfs resolution, Signal
 Truth post-PLAYING refresh) are published; with them the soak showed stable
 memory (+8 MB over 147k cycles), zero runtime errors, complete USB evidence
-and integral receipts until the wedge.
+and integral receipts until the wedge, and the isolated characterizer bounds
+any stuck preroll to one killed worker.
 
 Recorded observation (resolved by the Signal Truth freshness corrective): with
 a nonzero resync delay the recorded engine clock observation used to be the

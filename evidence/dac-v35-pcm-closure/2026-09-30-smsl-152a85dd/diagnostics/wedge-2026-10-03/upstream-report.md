@@ -4,6 +4,16 @@ Status: **ready to file** (gitlab.freedesktop.org/gstreamer/gstreamer issues).
 The GitLab API/search is protected by Anubis, so this could not be matched
 against existing issues automatically.
 
+**Related independent report:** `Eyevinn/strom#963` ("Media Player hangs for
+good when playlist jumps and pause follow quickly (uridecodebin3 deadlock)",
+GStreamer 1.28.6) documents the same lock-order deadlock with the same two
+threads (typefind streaming thread waiting for the state lock vs the control
+thread's `set_state` waiting for typefind's stream lock, via
+`gst_pad_pause_task`). Our evidence adds a music-player soak context (three
+permanent wedges at ~189k, ~148k and ~2.2k pipeline lifecycles), the native
+stacks below, and the finding that subprocess isolation of the
+characterization pipeline does not prevent the Direct path from wedging.
+
 ## Title
 State-change deadlock: `gst_element_change_state` blocks forever on a pad
 mutex held by a streaming thread under rapid playbin3+fakesink churn

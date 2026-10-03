@@ -1,7 +1,16 @@
 {
   "schema_version": 1,
   "finding": "R32 blocked: GStreamer state-change deadlock under high pipeline churn",
-  "status": "REPRODUCED / PARKED PENDING DECISION",
+  "status": "REPRODUCED / PARKED PENDING UPSTREAM FIX",
+  "upstream_reference": "Eyevinn/strom#963 — independently reported lock-order deadlock in uridecodebin3/typefind (GStreamer 1.28.6) with the same two-thread signature: typefind streaming thread waiting for the state lock while the control thread's set_state waits for typefind's stream lock. No fixed build is available in the repositories (cachyos-extra-v3 gstreamer = 1.28.7-2.1, the installed version).",
+  "soak_attempts": [
+    {"attempt": 1, "outcome": "power loss", "cycles": "~14k"},
+    {"attempt": 2, "outcome": "wedge while loading pcm24_192000.wav; DAC held", "cycles": "~189k"},
+    {"attempt": 3, "outcome": "wedge while loading pcm16_48000.wav; no ALSA fd", "cycles": "~148k"},
+    {"attempt": 5, "outcome": "wedge while loading pcm16_44100.wav; no ALSA fd; subprocess-isolated characterizer + Qt offscreen did not prevent it; workers cycled cleanly", "cycles": "~2.2k"},
+    {"attempt": 4, "outcome": "aborted: Wayland session loss broke the Qt app (offscreen introduced for attempt 5)", "cycles": "~1k"}
+  ],
+  "workarounds_untested": "settling gap — wait for the previous state change to complete before starting the next (suggested in the upstream report); not yet validated in the lab",
   "root_cause": "gst_element_change_state (pipeline set_state) recurses through pad activation and blocks forever on a pthread_mutex held by a stuck streaming thread (typefind/wavparse/multiqueue in futex_wait). gst_pad_pause_task is the last resolvable frame; the characterizer timeout (pipeline.get_state with a 5 s budget) does not interrupt the wedge (the sibling thread sits in g_cond_wait_until).",
   "reproduction": "Directed stress harness (two isolated source-characterizer hammer threads at >300/s plus the lab's load/stop churn) reproduces a permanently stuck pipeline in about 11 seconds; the frozen counter and lingering typefind/wavparse/multiqueue threads are the signature. The harness's own faulthandler watchdog captured all-thread Python stacks, and a py-spy parent run (no ptrace needed) captured native stacks.",
   "impact": "Any process that churns GStreamer pipelines (the 8 h R32 soak creates ~200k pipelines at ~7/s; the app also exposes it because Direct staging/stop state operations run on the main thread) can hang permanently with no timeout protection. Three soak attempts ended this way (power loss excluded, two wedges: 189k and 148k cycles).",

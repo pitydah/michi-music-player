@@ -1,0 +1,31 @@
+{
+  "attempt": "R32 soak attempt 5 (SMSL, isolated characterizer, Qt offscreen)",
+  "canonical_r32_record": null,
+  "cycles_reached": "~2200",
+  "file_sha256": {
+    "monitor-attempt5.log": "b511cc1462d7ccccaa2fb63d914b6e4e370939353fe00d3ff208361f7e12839a",
+    "soak-attempt5.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "soak-cycle-001000.json": "145cb69868eef9ac3b59b37a3d7d97882878015ed89ef5ef6df5b572e1147615",
+    "soak-cycle-002000.json": "49c9dc4c525883e831fec9f85230f9d98d62d36c4ede8d65696bf4cd90a9dbf2",
+    "soak-receipts-20261003T173419.jsonl.gz": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "last_checkpoint": {
+    "cycle": 2000,
+    "elapsed_seconds": null
+  },
+  "notes": [
+    "isolated characterizer workers cycled normally (no worker timeout)",
+    "offscreen platform removed the Wayland failure class",
+    "wedge signature identical to attempts 2/3 despite subprocess isolation",
+    "known upstream-class bug: Eyevinn/strom#963 (same native stacks, GStreamer 1.28.6)"
+  ],
+  "rate_cycles_per_second": 2.2,
+  "reason": "same GStreamer 1.28.x state-change deadlock (mainthread futex_wait + lone typefindelement; stalled during a load with no ALSA fd)",
+  "runtime_errors": 0,
+  "schema_version": 1,
+  "soak_started_local": "2026-10-03T17:34:17-0300",
+  "stall_local": "2026-10-03T17:52:0x-0300 (cpu time frozen; monitor checkpoint_age warned at 1972s)",
+  "status": "FAILED",
+  "usb_kernel_errors": 0,
+  "xrun_count": 0
+}
