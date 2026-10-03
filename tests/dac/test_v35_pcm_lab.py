@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import importlib.util
 import json
 from argparse import Namespace
@@ -428,6 +429,32 @@ def test_lab_12_usb_node_resolution_is_bound_to_device_identity(lab, tmp_path) -
         )
         is None
     )
+    # Real sysfs device entries are symlinks whose target lives under
+    # /sys/devices: the explicit path stays the presented entry and must
+    # resolve even though its target is outside the devices directory.
+    real = tmp_path / "devices" / "1-2"
+    real.mkdir(parents=True)
+    (real / "idVendor").write_text("1111", encoding="utf-8")
+    (real / "idProduct").write_text("2222", encoding="utf-8")
+    linked = tmp_path / "bus" / "usb" / "devices" / "1-3"
+    linked.symlink_to(real)
+    assert (
+        lab._resolve_usb_sysfs_node(
+            "usb:1111:2222:1-3",
+            sysfs_root=tmp_path,
+            explicit_path=linked,
+        )
+        == linked
+    )
+    traversal = tmp_path / "bus" / "usb" / "devices" / ".." / "outside"
+    assert (
+        lab._resolve_usb_sysfs_node(
+            "usb:1111:2222:1-2",
+            sysfs_root=tmp_path,
+            explicit_path=traversal,
+        )
+        is None
+    )
 
 
 def test_lab_13_usb_health_uses_documented_abi_and_device_kernel_log(
@@ -731,6 +758,81 @@ def test_lab_command_soak_wires_measured_facts_into_pass(
     assert recorded["status"] == "PASS"
     assert recorded["facts"]["transition_failures"] == 0
     assert recorded["facts"]["usb_errors_observed"]["error_count"] == 0
+    facts = recorded["facts"]
+    assert facts["receipts_total"] == facts["cycles"]
+    assert facts["receipts_failed"] == facts["transition_failures"]
+    assert facts["receipts_sample"]
+    assert isinstance(facts["receipts_file_sha256"], str)
+    assert len(facts["receipts_file_sha256"]) == 64
+    sidecar = Path(facts["receipts_file"])
+    assert sidecar.exists()
+    with gzip.open(sidecar, "rt", encoding="utf-8") as handle:
+        streamed = [json.loads(line) for line in handle if line.strip()]
+    assert len(streamed) == facts["receipts_total"]
+
+
+def test_lab_24_soak_receipts_stay_bounded_while_every_receipt_is_streamed(
+    lab, tmp_path, monkeypatch
+) -> None:
+    container = SimpleNamespace(shutdown=lambda: None)
+    result = {
+        "status": lab.PlaybackStatus.PLAYING.value,
+        "error_message": None,
+        "signal_truth_reasons": [],
+        "signal_truth": {
+            "identity": _identity(execution=1, port=1),
+            "decoded": {"rate_hz": 44100},
+            "plan": {"requested": {"rate_hz": 44100}},
+            "alsa": {"rate_hz": 44100},
+            "verdict": {"state": "direct_container_adapted"},
+        },
+    }
+    monotonic = iter([round(index * 0.01, 2) for index in range(0, 202)])
+    recorded = {}
+    monkeypatch.setattr(lab, "_container", lambda *_args: container)
+    monkeypatch.setattr(lab, "_play", lambda *_args: result)
+    monkeypatch.setattr(lab, "_stop", lambda *_args: None)
+    monkeypatch.setattr(lab, "_process_rss_kb", lambda: 100000)
+    monkeypatch.setattr(lab.time, "monotonic", lambda: next(monotonic))
+    monkeypatch.setattr(
+        lab, "_resolve_usb_sysfs_node", lambda *_args, **_kwargs: tmp_path
+    )
+    monkeypatch.setattr(
+        lab,
+        "_read_usb_health_snapshot",
+        lambda _node: {"busnum": 1, "devnum": 2, "urbnum": 100},
+    )
+    monkeypatch.setattr(
+        lab,
+        "_usb_health_evidence",
+        lambda *_args, **_kwargs: _soak_facts()["usb_errors_observed"],
+    )
+    monkeypatch.setattr(
+        lab,
+        "_record",
+        lambda _path, **kwargs: recorded.update(kwargs),
+    )
+    args = Namespace(
+        duration_seconds=2.0,
+        device_id="usb:1111:2222:1-2",
+        locator="hw:CARD=DAC,DEV=0",
+        media=[tmp_path / "track.wav"],
+        mode="compatible",
+        checkpoint_every=1000,
+        manifest=tmp_path / "manifest.json",
+        usb_sysfs_path=None,
+        fail_fast=False,
+    )
+    assert lab.command_soak(args) == 0
+    facts = recorded["facts"]
+    # tick k values k*0.01s: the 200th tick reaches the 2.0s bound, so the
+    # deterministic run completes 199 cycles.
+    assert facts["receipts_total"] == 199
+    assert len(facts["receipts_sample"]) == lab.SOAK_RECEIPTS_SAMPLE_LIMIT
+    sidecar = Path(facts["receipts_file"])
+    with gzip.open(sidecar, "rt", encoding="utf-8") as handle:
+        streamed = sum(1 for line in handle if line.strip())
+    assert streamed == facts["receipts_total"]
 
 
 def test_lab_command_tail_accumulates_the_fourth_fixture(

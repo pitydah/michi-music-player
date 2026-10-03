@@ -15276,8 +15276,11 @@ contract for R25, R32, R35 and R36:
 ```text
 R25 -> complete canonical delay sweep + measured holds + first-sample evidence
        for every delay; the minimum is derived only from those per-delay results
-R32 -> 8 h + transition receipts + RSS/resources + pump + device-bound USB health
-       using documented USB ABI witnesses and device-filtered kernel diagnostics
+R32 -> 8 h + transition receipts (every receipt streamed to a gzip JSONL sidecar
+       recorded in the manifest facts together with aggregate counts and a
+       bounded first/last sample) + RSS/resources + pump + device-bound USB
+       health using documented USB ABI witnesses and device-filtered kernel
+       diagnostics
 R35 -> all four fixtures accumulated + fixture/capture hashes + falsifier truth
 R36 -> cumulative cases{} for induced underrun, suspend/resume and reproducible
        device failure; every case retains incident + reported recovery +
@@ -15297,7 +15300,7 @@ window cannot be observed, R32 remains `REQUIRES_OPERATOR_CONFIRMATION`.
 The lab may report `REQUIRES_OPERATOR_CONFIRMATION`, `NOT_RUN` or `FAIL` when a
 measurement mechanism is absent or incomplete. Tooling completeness means the
 measurement and falsification path exists and is tested; it never upgrades the
-archived physical evidence. `LAB-01..LAB-20` are mandatory verifier inputs.
+archived physical evidence. `LAB-01..LAB-24` are mandatory verifier inputs.
 
 ---
 

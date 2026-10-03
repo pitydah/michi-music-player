@@ -517,17 +517,30 @@ def _semantic_pass_check(
             return "R32 observed runtime errors"
         if int(facts.get("transition_failures", 0)) != 0:
             return "R32 observed transition failures"
-        receipts = facts.get("transition_receipts")
-        if not isinstance(receipts, list) or not receipts:
-            return "R32 PASS requires transition receipts"
+        receipts_total = facts.get("receipts_total")
+        if not isinstance(receipts_total, int) or receipts_total <= 0:
+            return "R32 PASS requires the transition receipt count"
+        sampled_receipts = facts.get("receipts_sample")
+        if not isinstance(sampled_receipts, list) or not sampled_receipts:
+            return "R32 PASS requires a transition receipt sample"
         if any(
             not isinstance(receipt, dict)
             or receipt.get("failed") is not False
             or not isinstance(receipt.get("decoded_rate_hz"), int)
             or not isinstance(receipt.get("identity"), dict)
-            for receipt in receipts
+            for receipt in sampled_receipts
         ):
-            return "R32 transition receipts contain failed or incomplete observations"
+            return "R32 receipt sample contains failed or incomplete observations"
+        if int(facts.get("receipts_failed", -1)) != 0:
+            return "R32 receipt aggregate reports failed transitions"
+        receipts_file = facts.get("receipts_file")
+        if not isinstance(receipts_file, str) or not receipts_file:
+            return "R32 PASS requires the transition receipt sidecar reference"
+        receipts_digest = facts.get("receipts_file_sha256")
+        if not isinstance(receipts_digest, str) or not re.fullmatch(
+            r"[0-9a-f]{64}", receipts_digest
+        ):
+            return "R32 transition receipt sidecar digest is malformed"
         for field in ("rss_baseline_kb", "rss_peak_kb", "rss_final_kb"):
             if not isinstance(facts.get(field), (int, float)):
                 return f"R32 PASS requires measured {field}"

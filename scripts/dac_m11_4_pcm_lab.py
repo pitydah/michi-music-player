@@ -16,10 +16,12 @@ from __future__ import annotations
 import argparse
 import contextlib
 import copy
+import gzip
 import json
 import re
 import subprocess
 import time
+from collections import deque
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -47,6 +49,10 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
         json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     tmp.replace(path)
+
+
+SOAK_RECEIPTS_SAMPLE_LIMIT = 64
+"""Bounded receipt sample kept in the manifest facts (first + last half)."""
 
 
 def _git_head() -> str:
@@ -381,15 +387,23 @@ def _resolve_usb_sysfs_node(
     vendor, product, identity = (part.casefold() for part in parts[1:])
     if not re.fullmatch(r"[0-9a-z][0-9a-z.\-]*", identity):
         return None
-    devices = (sysfs_root / "bus" / "usb" / "devices").resolve()
+    devices = sysfs_root / "bus" / "usb" / "devices"
     candidates: list[Path]
     if explicit_path is not None:
+        explicit = (
+            explicit_path if explicit_path.is_absolute() else Path.cwd() / explicit_path
+        )
         try:
-            explicit = explicit_path.resolve(strict=True)
-            explicit.relative_to(devices)
-        except (OSError, ValueError):
+            relative = explicit.relative_to(devices)
+        except ValueError:
             return None
-        candidates = [explicit]
+        # The explicit path must name exactly one device entry. Real sysfs
+        # device entries are symlinks whose resolved target lives under
+        # /sys/devices, so containment is checked on the presented path and
+        # any traversal component is rejected.
+        if len(relative.parts) != 1:
+            return None
+        candidates = [devices / relative.parts[0]]
     else:
         direct = devices / identity
         candidates = [direct] if direct.is_dir() else sorted(devices.glob("*"))
@@ -1177,7 +1191,17 @@ def command_soak(args) -> int:
     cycles = 0
     xrun_count = 0
     rss_checkpoints: list[dict[str, Any]] = []
-    transition_receipts: list[dict[str, Any]] = []
+    receipts_head: list[dict[str, Any]] = []
+    receipts_tail: deque[dict[str, Any]] = deque(maxlen=SOAK_RECEIPTS_SAMPLE_LIMIT // 2)
+    receipts_file = (
+        Path(args.manifest).parent
+        / "receipts"
+        / f"soak-receipts-{time.strftime('%Y%m%dT%H%M%S')}.jsonl.gz"
+    )
+    receipts_file.parent.mkdir(parents=True, exist_ok=True)
+    receipts_handle = gzip.open(  # noqa: SIM115 - closed in the command finally
+        receipts_file, "wt", encoding="utf-8"
+    )
     transition_failures = 0
     previous_identity: dict[str, Any] | None = None
     checkpoints: list[Path] = []
@@ -1196,7 +1220,10 @@ def command_soak(args) -> int:
             if "ST_XRUN" in reasons:
                 xrun_count += 1
             receipt = _transition_receipt(result, previous_identity=previous_identity)
-            transition_receipts.append(receipt)
+            receipts_handle.write(json.dumps(receipt, sort_keys=True) + "\n")
+            if len(receipts_head) < SOAK_RECEIPTS_SAMPLE_LIMIT // 2:
+                receipts_head.append(receipt)
+            receipts_tail.append(receipt)
             if receipt["failed"]:
                 transition_failures += 1
             identity = receipt.get("identity")
@@ -1222,6 +1249,16 @@ def command_soak(args) -> int:
             if errors and args.fail_fast:
                 break
         duration = time.monotonic() - started
+        receipts_handle.close()
+        receipts_sample: list[dict[str, Any]] = []
+        seen_receipts: set[int] = set()
+        for receipt in (*receipts_head, *receipts_tail):
+            if id(receipt) not in seen_receipts:
+                seen_receipts.add(id(receipt))
+                receipts_sample.append(receipt)
+        receipts_digest = (
+            _file_sha256(receipts_file) if receipts_file.exists() else None
+        )
         rss_final = _process_rss_kb()
         rss_values = [
             value
@@ -1262,7 +1299,6 @@ def command_soak(args) -> int:
             "xrun_count": xrun_count,
             "runtime_error_count": len(errors),
             "errors": errors[:20],
-            "transition_receipts": transition_receipts,
             "rss_baseline_kb": rss_baseline,
             "rss_peak_kb": max(rss_values) if rss_values else None,
             "rss_final_kb": rss_final,
@@ -1279,6 +1315,12 @@ def command_soak(args) -> int:
                 ),
             },
             "transition_failures": transition_failures,
+            "receipts_total": cycles,
+            "receipts_failed": transition_failures,
+            "receipts_sample": receipts_sample,
+            "receipts_sample_limit": SOAK_RECEIPTS_SAMPLE_LIMIT,
+            "receipts_file": str(receipts_file) if receipts_file.exists() else None,
+            "receipts_file_sha256": receipts_digest,
             "resource_growth": {
                 "observed": bool(resource_snapshots),
                 "unbounded": owned_peak > 1 or residual_peak > 0,
@@ -1304,6 +1346,7 @@ def command_soak(args) -> int:
             facts=facts,
         )
     finally:
+        receipts_handle.close()
         container.shutdown()
     return 0
 

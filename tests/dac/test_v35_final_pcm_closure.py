@@ -116,7 +116,9 @@ def _manifest(
                     "xrun_count": 0,
                     "runtime_error_count": 0,
                     "transition_failures": 0,
-                    "transition_receipts": [
+                    "receipts_total": 120,
+                    "receipts_failed": 0,
+                    "receipts_sample": [
                         {
                             "failed": False,
                             "decoded_rate_hz": 44100,
@@ -129,6 +131,11 @@ def _manifest(
                             },
                         }
                     ],
+                    "receipts_sample_limit": 64,
+                    "receipts_file": (
+                        "receipts/soak-receipts-20261002T000000.jsonl.gz"
+                    ),
+                    "receipts_file_sha256": "e" * 64,
                     "rss_baseline_kb": 100000,
                     "rss_peak_kb": 104096,
                     "rss_final_kb": 104096,
@@ -540,10 +547,8 @@ def test_final_pcm_14_r32_requires_memory_pump_and_device_bound_usb() -> None:
     assert "transition failures" in _reject(transitions)
 
     stale_receipt = _manifest()
-    stale_receipt["experiments"]["R32"]["facts"]["transition_receipts"][0]["failed"] = (
-        True
-    )
-    assert "transition receipts" in _reject(stale_receipt)
+    stale_receipt["experiments"]["R32"]["facts"]["receipts_sample"][0]["failed"] = True
+    assert "receipt sample" in _reject(stale_receipt)
 
     no_journal = _manifest()
     no_journal["experiments"]["R32"]["facts"]["usb_errors_observed"][
