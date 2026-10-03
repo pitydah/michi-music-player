@@ -15,6 +15,21 @@
   ],
   "sibling_stack_frozen_thread": "characterize_local_file [gstreamer.py:384 get_state] -> g_cond_wait_until (the 5 s timeout does not return)",
   "main_thread_exposure": "async prepare completion is delivered to the main thread (qt_async_call.py QueuedConnection) and performs pipeline staging (output_session_service.py _prepare_request -> direct_output_executor.prepare -> gstreamer.py stage_direct_load); stop/load state requests are also main-thread (gstreamer.py _request_state -> set_state).",
+  "isolation_experiments": [
+    {
+      "name": "two characterizer churn threads, no app playback",
+      "result": "WEDGED within ~2-4 minutes"
+    },
+    {
+      "name": "one characterizer churn thread only",
+      "result": "WEDGED within ~47 seconds; a single pipeline's own state transition can deadlock, so serialization alone does not eliminate the hazard"
+    },
+    {
+      "name": "app-style direct load/stop churn only (~7/s)",
+      "result": "survived 8 minutes / 3485 cycles; the race is rare per lifecycle but scales with pipeline count (the 8 h soak wedged at 148k/189k lifecycles)"
+    }
+  ],
+  "upstream_report": "upstream-report.md (ready to file; gitlab.freedesktop.org search is protected by Anubis)",
   "evidence": {
     "stress_log": "stress.log",
     "python_stacks_first_run": "stacks-attempt1.log",

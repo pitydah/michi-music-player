@@ -94,7 +94,13 @@ blocks forever on a `pthread_mutex` held by a stuck streaming thread
 timeout does not interrupt it. Evidence:
 `evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/diagnostics/wedge-2026-10-03/`.
 R32 stays `NOT_RUN` pending a separate decision (lab stress profile, product
-lifecycle serialization/quarantine, or an upstream report). The three
+lifecycle serialization/quarantine, or an upstream report). Directed
+isolation experiments show that a single pipeline's own transition can
+deadlock (serialization alone does not eliminate it) and that the race scales
+with pipeline-lifecycle count, so the candidate remedies are pipeline
+isolation (subprocess per characterization / bounded engine restart) or an
+upstream GStreamer fix; an upstream report draft with the captured stacks is
+archived beside the evidence. The three
 supporting correctives (bounded R32 receipts, USB sysfs resolution, Signal
 Truth post-PLAYING refresh) are published; with them the soak showed stable
 memory (+8 MB over 147k cycles), zero runtime errors, complete USB evidence
