@@ -1320,7 +1320,15 @@ class TestF42AdapterContract:
         # retains the live pump for retry; transport authority is unchanged.
         # The exact-SHA CI corrective also rejects queued PAUSED/STOPPED
         # observations superseded by explicit Stop/replay command authority.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "4b27e163763f6c88",
+        # DAC-V35 M11.4 Signal Truth freshness corrective (2026-10-02):
+        # authorized reopening — the port re-observes the engine runtime when
+        # the Direct execution actually reaches PLAYING (normal path and the
+        # deferred resync start), replacing the stale preroll clock
+        # observation that reported a false clock contradiction for the whole
+        # track with a nonzero resync delay. Shared command, pump, bus,
+        # generation and acceptance paths remain unchanged; hash re-sealed
+        # after full regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "152f3c7440e99ead",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).
