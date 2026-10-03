@@ -100,7 +100,13 @@ deadlock (serialization alone does not eliminate it) and that the race scales
 with pipeline-lifecycle count, so the candidate remedies are pipeline
 isolation (subprocess per characterization / bounded engine restart) or an
 upstream GStreamer fix; an upstream report draft with the captured stacks is
-archived beside the evidence. The three
+archived beside the evidence. Decoded-source characterization is now
+subprocess-isolated (`michi.infrastructure.audio_engines.characterize_cli`
+worker with a bounded kill, wired in production; injected test bindings keep
+the in-process characterizer), which removes the highest-rate pipeline churn
+from the application process and bounds a stuck preroll to one killed worker.
+The Direct pipeline's own state operations remain in-process and therefore
+still carry the residual exposure documented above. The three
 supporting correctives (bounded R32 receipts, USB sysfs resolution, Signal
 Truth post-PLAYING refresh) are published; with them the soak showed stable
 memory (+8 MB over 147k cycles), zero runtime errors, complete USB evidence

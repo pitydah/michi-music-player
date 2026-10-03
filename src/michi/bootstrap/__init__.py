@@ -110,6 +110,9 @@ from michi.infrastructure.audio_engines.providers import (
     MpdEngineProvider,
     QtEngineProvider,
 )
+from michi.infrastructure.audio_engines.subprocess_characterizer import (
+    SubprocessSourceCharacterizer,
+)
 from michi.infrastructure.audio_output.direct_output_executor import (
     GStreamerDirectOutputExecutor,
 )
@@ -427,9 +430,18 @@ def _build_services(
     # consumer is wired by ApplicationContainer.
     udev_observer.rescan()
     runtime_gstreamer_bindings = gstreamer_bindings or GStreamerBindings()
-    source_characterizer = source_characterizer or GStreamerSourceCharacterizer(
-        runtime_gstreamer_bindings
-    )
+    if source_characterizer is None:
+        if gstreamer_bindings is not None:
+            # Explicitly injected bindings keep the in-process characterizer so
+            # test/diagnostic compositions observe their own fake runtime.
+            source_characterizer = GStreamerSourceCharacterizer(
+                runtime_gstreamer_bindings
+            )
+        else:
+            # Production default: decoded-source characterization runs in a
+            # disposable worker process, so a stuck GStreamer state change can
+            # never wedge the application (diagnostics/wedge-2026-10-03).
+            source_characterizer = SubprocessSourceCharacterizer()
     qualification_host = read_qualification_host_environment()
 
     def qualification_environment(stable_device_id: str):
