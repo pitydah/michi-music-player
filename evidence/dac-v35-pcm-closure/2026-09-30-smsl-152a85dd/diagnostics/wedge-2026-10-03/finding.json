@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "finding": "R32 blocked: GStreamer state-change deadlock under high pipeline churn",
+  "status": "REPRODUCED / PARKED PENDING DECISION",
+  "root_cause": "gst_element_change_state (pipeline set_state) recurses through pad activation and blocks forever on a pthread_mutex held by a stuck streaming thread (typefind/wavparse/multiqueue in futex_wait). gst_pad_pause_task is the last resolvable frame; the characterizer timeout (pipeline.get_state with a 5 s budget) does not interrupt the wedge (the sibling thread sits in g_cond_wait_until).",
+  "reproduction": "Directed stress harness (two isolated source-characterizer hammer threads at >300/s plus the lab's load/stop churn) reproduces a permanently stuck pipeline in about 11 seconds; the frozen counter and lingering typefind/wavparse/multiqueue threads are the signature. The harness's own faulthandler watchdog captured all-thread Python stacks, and a py-spy parent run (no ptrace needed) captured native stacks.",
+  "impact": "Any process that churns GStreamer pipelines (the 8 h R32 soak creates ~200k pipelines at ~7/s; the app also exposes it because Direct staging/stop state operations run on the main thread) can hang permanently with no timeout protection. Three soak attempts ended this way (power loss excluded, two wedges: 189k and 148k cycles).",
+  "native_stack_frozen_thread": [
+    "characterize_local_file [gstreamer.py:378 set_state(PAUSED)]",
+    "pygi_function_cache_invoke / pygi_invoke_c_callable / ffi_call",
+    "libgstreamer gst_element_change_state (recursive, through libgstplayback / playbin3)",
+    "gst_pad_set_active / gst_pad_activate_mode (ghost pad, libgstcoreelements multiqueue)",
+    "gst_pad_pause_task",
+    "pthread_mutex_lock (libc __lll_lock_wait)"
+  ],
+  "sibling_stack_frozen_thread": "characterize_local_file [gstreamer.py:384 get_state] -> g_cond_wait_until (the 5 s timeout does not return)",
+  "main_thread_exposure": "async prepare completion is delivered to the main thread (qt_async_call.py QueuedConnection) and performs pipeline staging (output_session_service.py _prepare_request -> direct_output_executor.prepare -> gstreamer.py stage_direct_load); stop/load state requests are also main-thread (gstreamer.py _request_state -> set_state).",
+  "evidence": {
+    "stress_log": "stress.log",
+    "python_stacks_first_run": "stacks-attempt1.log",
+    "python_stacks_pyspy_run": "stacks-attempt2-pyspy.log",
+    "native_stacks_extract": "native-stacks.txt",
+    "native_profile_gzip": "native.speedscope.json.gz",
+    "pyspy_out": "pyspy.out"
+  },
+  "options_considered": [
+    "Serialise all GStreamer lifecycle/state operations under one process-wide lock and quarantine stuck pipelines from a watchdog (product mitigation).",
+    "Change the R32 lab stress profile (slower cadence or periodic engine lifecycle resets) via a canonical decision.",
+    "Report upstream to GStreamer with the captured native stacks."
+  ],
+  "decision": "R32 stays NOT_RUN; the physical verdict remains INCOMPLETE. No further long runs until a separate project decision."
+}

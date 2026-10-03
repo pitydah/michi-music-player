@@ -1,0 +1,6 @@
+py-spy> Sampling process 50 times a second. Press Control-C to exit.
+
+
+py-spy> Stopped sampling because process exited
+py-spy> Wrote speedscope file to '/var/tmp/michi-r32-diag/stress/native.speedscope'. Samples: 28342 Errors: 0
+py-spy> Visit https://www.speedscope.app/ to view

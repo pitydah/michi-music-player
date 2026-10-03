@@ -85,11 +85,26 @@ Physical verdict: `INCOMPLETE`, multi-hardware not proven. Bit-perfect and
 exclusive are still not claimed, and M11.5 / DAC-V35-120 / 130 / 140 are not
 started.
 
-Recorded observation outside R25's gates (separate corrective pending): with a
-nonzero resync delay the recorded Signal Truth clock observation is the PAUSED
-pre-start one (`ST_CLOCK_POLICY_MISMATCH` in the sweep receipts) even though
-the live pipeline adopts the ALSA sink clock once PLAYING starts; the R25
-verdict above does not depend on that recorded field.
+**R32 is currently blocked by a reproduced GStreamer-runtime defect.** Three
+soak attempts (including two with the corrected bounded-evidence lab) wedged
+permanently under high pipeline churn; a directed stress harness reproduced
+the mechanism in seconds and captured native stacks: `gst_element_change_state`
+blocks forever on a `pthread_mutex` held by a stuck streaming thread
+(`gst_pad_pause_task` path), and the characterizer's bounded `get_state`
+timeout does not interrupt it. Evidence:
+`evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/diagnostics/wedge-2026-10-03/`.
+R32 stays `NOT_RUN` pending a separate decision (lab stress profile, product
+lifecycle serialization/quarantine, or an upstream report). The three
+supporting correctives (bounded R32 receipts, USB sysfs resolution, Signal
+Truth post-PLAYING refresh) are published; with them the soak showed stable
+memory (+8 MB over 147k cycles), zero runtime errors, complete USB evidence
+and integral receipts until the wedge.
+
+Recorded observation (resolved by the Signal Truth freshness corrective): with
+a nonzero resync delay the recorded engine clock observation used to be the
+PAUSED pre-start one; the port now re-observes the live runtime when playback
+actually reaches PLAYING (normal path and deferred resync start), so the
+stale `ST_CLOCK_POLICY_MISMATCH` no longer persists.
 
 ### Recovery is a real Try, handover moves the live track, provenance is coherent
 
