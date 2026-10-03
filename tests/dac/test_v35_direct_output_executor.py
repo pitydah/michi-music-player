@@ -317,3 +317,72 @@ def test_stage_failure_restores_current_and_prior_rollback_image() -> None:
     assert executor.handle == handle_a
     assert executor.state is DirectExecutionState.COMMITTED
     assert port.pending is None
+
+
+def test_rt_01_observe_runtime_refreshes_the_recorded_engine_clock() -> None:
+    """F2-E: a PLAYING observation replaces the PAUSED preroll clock facts."""
+    from michi.domain.signal_truth import (
+        SignalTruthRecorder,
+        signal_truth_snapshot_diagnostics,
+    )
+
+    recorder = SignalTruthRecorder()
+    executor = GStreamerDirectOutputExecutor(signal_truth=recorder)
+    handle = executor.stage(_plan())
+    executor.begin_runtime(handle, port_generation=7)
+    executor.verify_preroll(
+        handle,
+        _snapshot(
+            execution_generation=1,
+            sink_provides_clock=True,
+            sink_clock_is_pipeline_clock=False,
+            slave_method="skew",
+        ),
+    )
+    before = signal_truth_snapshot_diagnostics(recorder.candidate_snapshot)
+    assert "ST_CLOCK_POLICY_MISMATCH" in before["verdict"]["reason_codes"]
+
+    playing = _snapshot(
+        execution_generation=1,
+        sink_provides_clock=True,
+        sink_clock_is_pipeline_clock=True,
+        slave_method="skew",
+    )
+    assert executor.observe_runtime(handle, playing) is True
+    after = signal_truth_snapshot_diagnostics(recorder.candidate_snapshot)
+    assert "ST_CLOCK_POLICY_MISMATCH" not in after["verdict"]["reason_codes"]
+
+
+def test_rt_02_observe_runtime_ignores_stale_handles_and_snapshots(
+    monkeypatch,
+) -> None:
+    executor = GStreamerDirectOutputExecutor()
+    handle = executor.stage(_plan())
+    executor.verify_preroll(handle, _snapshot(execution_generation=1))
+    recorded = []
+    monkeypatch.setattr(executor, "_record_signal_runtime", recorded.append)
+    replacement = executor.stage(_plan())  # same plan, newer execution
+
+    assert (
+        executor.observe_runtime(
+            handle, _snapshot(execution_generation=handle.generation)
+        )
+        is False
+    )
+    assert (
+        executor.observe_runtime(
+            replacement,
+            _snapshot(execution_generation=replacement.generation + 5),
+        )
+        is False
+    )
+    assert (
+        executor.observe_runtime(
+            replacement,
+            _snapshot(
+                execution_generation=replacement.generation, plan_id="plan:other"
+            ),
+        )
+        is False
+    )
+    assert recorded == []

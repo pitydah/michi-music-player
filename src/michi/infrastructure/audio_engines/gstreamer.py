@@ -2801,6 +2801,32 @@ class GStreamerAudioPort(AudioPort):
             self._try_stop_pipeline()
         self._deliver_rej(candidate, f"{reason}: {exc}")
 
+    def _refresh_signal_runtime_observation(self, generation) -> None:
+        """OWNER: re-observe the engine once the pipeline actually plays.
+
+        The preroll verification records engine facts while the pipeline is
+        still PAUSED, so the sink clock may not yet be the pipeline clock; that
+        stale observation would report a false clock contradiction for the
+        whole track (always with a nonzero resync delay) and fail otherwise
+        clean soak receipts. Only the currently owned, accepted execution is
+        refreshed; failures stay observational and never touch playback.
+        """
+        executor = self._direct_executor
+        handle = self._active_direct_handle
+        if executor is None or handle is None:
+            return
+        try:
+            recipe = executor.recipe_for_load(handle)
+            snapshot = self._bindings.snapshot_direct_runtime(
+                self._pipeline,
+                recipe,
+                execution_generation=handle.generation,
+                port_generation=generation,
+            )
+            executor.observe_runtime(handle, snapshot)
+        except Exception:  # noqa: BLE001 - observability boundary
+            return
+
     def _apply_deferred_playing(self, generation) -> None:
         """OWNER (directo, sin re-enqueue): PLAYING diferido tras la
         aceptación — revalidado contra la transacción vigente."""
@@ -2809,6 +2835,7 @@ class GStreamerAudioPort(AudioPort):
         if self._current_path is None:
             return
         self._deferred_playing_generation = None
+        self._refresh_signal_runtime_observation(generation)
         self._deliver_state_if(PlaybackStatus.PLAYING)
 
     def _apply_deferred_eos(self, generation) -> None:
@@ -2860,6 +2887,7 @@ class GStreamerAudioPort(AudioPort):
                 # PLAYING temprano: diferir hasta la aceptación (R6.5)
                 self._deferred_playing_generation = event.generation
                 return
+            self._refresh_signal_runtime_observation(event.generation)
             self._deliver_state_if(PlaybackStatus.PLAYING)
         elif status == PlaybackStatus.PAUSED:
             # A PAUSED observation queued before an explicit Stop can arrive

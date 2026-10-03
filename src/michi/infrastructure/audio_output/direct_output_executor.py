@@ -361,6 +361,30 @@ class GStreamerDirectOutputExecutor:
             )
         return identity
 
+    def observe_runtime(
+        self, handle: DirectExecutionHandle, snapshot: DirectRuntimeSnapshot
+    ) -> bool:
+        """Refresh the Signal Truth runtime observation for the CURRENT execution.
+
+        The port calls this once the pipeline actually reaches PLAYING: the
+        preroll verification observes the engine while the pipeline is still
+        PAUSED, so the sink clock may not yet be the pipeline clock and the
+        recorded evidence would report a false clock contradiction for the
+        whole track (always with a nonzero resync delay). Only the live engine
+        facts are re-recorded — execution state, preroll evidence, receipt
+        ownership and the acceptance contract are untouched — and a stale
+        handle or snapshot is ignored instead of raising into the bus owner.
+        """
+        if self._handle is None or handle != self._handle:
+            return False
+        if (
+            snapshot.execution_generation != handle.generation
+            or snapshot.plan_id != handle.plan_id
+        ):
+            return False
+        self._record_signal_runtime(snapshot)
+        return True
+
     def owns_committed_receipt(self, receipt: str) -> bool:
         current_committed = (
             self._state is DirectExecutionState.COMMITTED

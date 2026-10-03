@@ -5098,3 +5098,37 @@ class TestDirectRuntimeValidation:
         _deliver(port, msg, gen)
         assert accepted == [path]
         port.close()
+
+
+class TestPlayingRefreshesEngineObservation:
+    """F2-E: the preroll engine observation is refreshed once PLAYING is real."""
+
+    def test_playing_refreshes_the_recorded_engine_observation(self, qapp):
+        bindings = FakeBindings()
+        port, executor = _strict_port(bindings)
+        _stage_strict(executor)
+        bindings.direct_snapshot_overrides = {
+            "sink_provides_clock": True,
+            "sink_clock_is_pipeline_clock": False,
+            "slave_method": "skew",
+        }
+        port.load(Path("/m/a.flac"))
+
+        calls = []
+        original = executor.observe_runtime
+
+        def spy(handle, snapshot):
+            calls.append((handle, snapshot))
+            return original(handle, snapshot)
+
+        executor.observe_runtime = spy
+        bindings.direct_snapshot_overrides = {
+            "sink_provides_clock": True,
+            "sink_clock_is_pipeline_clock": True,
+            "slave_method": "skew",
+        }
+        _play_state(port, bindings)
+
+        assert len(calls) == 1, "PLAYING must refresh the engine observation"
+        assert calls[0][1].sink_clock_is_pipeline_clock is True
+        port.close()
