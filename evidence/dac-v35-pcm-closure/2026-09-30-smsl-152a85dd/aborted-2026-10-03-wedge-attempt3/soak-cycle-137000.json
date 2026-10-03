@@ -1,0 +1,19 @@
+{
+  "cycle": 137000,
+  "elapsed_seconds": 17645.444037759997,
+  "resources": {
+    "current_path": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+    "direct_execution_generation": 137000,
+    "direct_plan_id": "plan:a62545cf9a6feec7",
+    "owned_pipelines": 1,
+    "pending_path": null,
+    "port_exists": true,
+    "port_generation": 137000,
+    "pump_alive": true,
+    "residual_bus_watches": 0,
+    "residual_timer_sources": 0
+  },
+  "rss_kb": 142844,
+  "runtime_error_count": 0,
+  "xrun_count": 0
+}
