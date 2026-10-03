@@ -21,6 +21,17 @@ pip install -e .
 michi
 ```
 
+Optional Michi AI host-integration baseline:
+
+```bash
+pip install -e ".[ai]"
+```
+
+This installs the pinned host contract and composes a read-only library
+adapter. The baseline publishes only `library.search` and `library.read`; it
+does not add a QML AI surface, remote provider calls, playback control, or
+embedded models.
+
 Or without install:
 
 ```bash
@@ -39,6 +50,7 @@ src/michi/
 ├── application/     Use cases + ports
 ├── infrastructure/  Qt, SQLite, filesystem
 ├── presentation/    QML + bridges
+├── integrations/    Optional host adapters (Michi AI baseline)
 └── bootstrap/       Composition root
 ```
 

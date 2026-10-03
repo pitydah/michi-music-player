@@ -23,7 +23,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8", "ruff>=0.9", "build>=1"]
+ai = [
+    "michi-ai @ git+https://github.com/pitydah/Michi-IA.git@61d90f36702b937047b48b3434cf28587c28eb4c",
+]
+test = [
+    "pytest>=8",
+    "ruff>=0.9",
+    "build>=1",
+    "michi-ai @ git+https://github.com/pitydah/Michi-IA.git@61d90f36702b937047b48b3434cf28587c28eb4c",
+]
 
 [project.scripts]
 michi = "michi.__main__:main"

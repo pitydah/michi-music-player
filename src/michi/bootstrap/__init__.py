@@ -192,6 +192,18 @@ def _cache_dir() -> Path:
     return path
 
 
+def _build_optional_michi_ai(graph: "ServiceGraph"):
+    """Build the optional integration without making AI a core dependency."""
+    try:
+        from michi.integrations.michi_ai import build_player_michi_ai
+    except ModuleNotFoundError as exc:
+        if exc.name == "michi_ai":
+            logger.info("Michi AI optional dependency is not installed")
+            return None
+        raise
+    return build_player_michi_ai(graph)
+
+
 @dataclass
 class ServiceGraph:
     """The production library graph — the same wiring for app and tests."""
@@ -941,6 +953,7 @@ class ApplicationContainer:
         self._enrichment_settings: SettingsService | None = None
         self._eb: EnrichmentBridge | None = None
         self._library_enrichment: LibraryEnrichmentProjection | None = None
+        self._michi_ai_runtime: object | None = None
         self._qml_teardown_keepalive: tuple[object, ...] = ()
         self._lifecycle = ContainerLifecycle.CREATED
         # NEGATIVE-EVIDENCE SEAL §40: ownership artwork DECLARADA en
@@ -1027,6 +1040,7 @@ class ApplicationContainer:
             cache_root=_cache_dir(),
             startup_selected_engine=settings_state.audio_engine_id,
         )
+        self._michi_ai_runtime = _build_optional_michi_ai(graph)
         self._audio_router = graph.audio_router
         self._audio_engine_registry = graph.audio_engine_registry
         self._audio_engine_service = graph.audio_engine_service
@@ -1347,6 +1361,18 @@ class ApplicationContainer:
                 self._settings.save()
         except Exception as exc:
             error = error or exc
+
+        try:
+            # Partial-startup and legacy lifecycle tests may construct the
+            # container via __new__ without running __init__. Productive
+            # ownership is still declared explicitly in __init__.
+            michi_ai_runtime = getattr(self, "_michi_ai_runtime", None)
+            if michi_ai_runtime is not None:
+                michi_ai_runtime.shutdown()
+        except Exception as exc:
+            error = error or exc
+        finally:
+            self._michi_ai_runtime = None
 
         # M4-R1 final seal: lifecycle convergence BEFORE audio teardown.
         # History stopped, Session stopped, PlaybackSessionBridge disposed
