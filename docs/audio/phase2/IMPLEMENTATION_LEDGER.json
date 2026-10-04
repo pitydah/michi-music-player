@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "generated_at_f00": true,
+  "entries": [
+    {"file": "src/michi/domain/audio_signal.py", "owner": "domain types", "phase": "F01/F07/F09", "contract": "SignalFormat + DSD unit-safe types", "tests": ["test_audio_signal.py", "test_dsd_rate_units.py"]},
+    {"file": "src/michi/domain/dop.py", "owner": "domain framing", "phase": "F09", "contract": "DoP state/vector/layout contracts", "tests": ["test_dop_carrier_layouts.py", "test_dop_streaming_chunks.py"]},
+    {"file": "src/michi/domain/signal_path.py", "owner": "domain graph", "phase": "F03", "contract": "DAG + typed verdicts", "tests": ["test_signal_path_graph_invariants.py"]},
+    {"file": "src/michi/application/audio_processing_service.py", "owner": "AudioProcessingService", "phase": "F05/F06", "contract": "processing selection/runtime transaction", "tests": ["test_processing_transaction_quiescent.py"]},
+    {"file": "src/michi/application/dsd_policy_service.py", "owner": "DsdPolicyService", "phase": "F10", "contract": "DSD/DSP decision policy", "tests": ["test_dsd_dsp_matrix.py"]},
+    {"file": "src/michi/application/dsd_output_planner.py", "owner": "planner component under output authority", "phase": "F08", "contract": "Native DSD plan", "tests": ["test_native_dsd_planner.py"]},
+    {"file": "src/michi/application/dop_planner.py", "owner": "planner component under output authority", "phase": "F09", "contract": "DoP double-gate plan", "tests": ["test_dop_planner_v2.py"]},
+    {"file": "src/michi/infrastructure/audio_output/strict_dsd_sink.py", "owner": "infrastructure", "phase": "F08", "contract": "Gst DSD strict recipe", "tests": ["test_native_dsd_recipe_v2.py"]},
+    {"file": "src/michi/infrastructure/audio_output/dop_runtime.py", "owner": "infrastructure", "phase": "F09", "contract": "DoP streaming/native bridge", "tests": ["test_dop_seek_discont.py"]},
+    {"file": "src/michi/infrastructure/audio_processing/gstreamer_processing.py", "owner": "infrastructure", "phase": "F05/F06", "contract": "Gst processing transaction", "tests": ["test_processing_runtime_introspection.py"]},
+    {"file": "src/michi/infrastructure/audio_processing/gstreamer_filter_factory.py", "owner": "infrastructure", "phase": "F06", "contract": "typed node adapters", "tests": ["test_processing_adapter_registry.py"]},
+    {"file": "src/michi/infrastructure/audio_processing/ir_store.py", "owner": "infrastructure", "phase": "F06/F13", "contract": "immutable IR store", "tests": ["test_security_ir_import.py"]},
+    {"file": "src/michi/application/signal_path_service.py", "owner": "SignalPathService", "phase": "F03", "contract": "snapshot projection", "tests": ["test_signal_path_graph.py"]},
+    {"file": "scripts/phase2_context.py", "owner": "agent tooling", "phase": "F00", "contract": "literal context extraction", "tests": ["test_phase2_context.py"]},
+    {"file": "scripts/verify_audio_phase2_repository_alignment.py", "owner": "agent gate", "phase": "F00/F15", "contract": "spec/phase alignment", "tests": ["test_phase2_alignment.py"]},
+    {"file": "scripts/verify_audio_phase2.py", "owner": "aggregate verifier", "phase": "F14/F15", "contract": "full software/perf artifact", "tests": ["test_verify_audio_phase2_contract.py"]}
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "spec_sha256": "ee92baaff023ef82f1258b03e95bca7ab391a65e2e9f2c5d3e39241529ffcd79",
+  "indicators": {
+    "agent_governance": 100,
+    "phase_dag": 100,
+    "ownership": 100,
+    "signal_algebra": 100,
+    "dsp_domain": 100,
+    "dsp_runtime": 100,
+    "native_dsd": 100,
+    "dop": 100,
+    "dsd_to_pcm": 100,
+    "signal_path": 100,
+    "ui_ux": 100,
+    "persistence_security_packaging": 100,
+    "testing_ci_traceability": 100,
+    "physical_performance_spec": 100
+  },
+  "blocking_core_open_decisions": 0,
+  "implementation_progress": 0,
+  "physical_qualification": "NOT_RUN"
+}

@@ -374,6 +374,39 @@ def _r36_case_contradiction(case: str, facts: dict[str, Any]) -> str | None:
     return None
 
 
+def _receipt_contract_error(record: dict[str, Any], position: int) -> str | None:
+    """Strict per-record contract for every streamed R32 receipt.
+
+    Mirrors the canonical lab schema: a malformed middle receipt must fail the
+    verification even when it is outside the bounded manifest sample.
+    """
+    if not isinstance(record.get("failed"), bool):
+        return f"R32 receipt {position} has an invalid failed field"
+    status = record.get("status")
+    if status is not None and not isinstance(status, int):
+        return f"R32 receipt {position} has an invalid status field"
+    for field in ("decoded_rate_hz", "requested_rate_hz", "negotiated_rate_hz"):
+        value = record.get(field)
+        if not isinstance(value, int) or isinstance(value, bool):
+            return f"R32 receipt {position} has an invalid {field} field"
+    identity = record.get("identity")
+    if not isinstance(identity, dict):
+        return f"R32 receipt {position} is missing its identity"
+    if not isinstance(identity.get("plan_id"), str) or not identity.get("plan_id"):
+        return f"R32 receipt {position} identity is missing plan_id"
+    for field in ("execution_generation", "port_generation"):
+        value = identity.get(field)
+        if not isinstance(value, int) or isinstance(value, bool):
+            return f"R32 receipt {position} identity has an invalid {field}"
+    if not isinstance(record.get("signal_truth_state"), str) or not record.get(
+        "signal_truth_state"
+    ):
+        return f"R32 receipt {position} has an invalid signal_truth_state field"
+    if not isinstance(record.get("stale_identity"), bool):
+        return f"R32 receipt {position} has an invalid stale_identity field"
+    return None
+
+
 def _verify_receipt_sidecar(item: dict[str, Any]) -> str | None:
     """Fail-closed streaming proof of the recorded R32 receipt artifact.
 
@@ -389,6 +422,8 @@ def _verify_receipt_sidecar(item: dict[str, Any]) -> str | None:
     facts = item.get("facts")
     if not isinstance(facts, dict):
         return "R32 PASS requires the transition receipt facts"
+    if facts.get("receipts_partial") is True:
+        return "R32 receipt artifact is explicitly partial and cannot satisfy PASS"
     raw = facts.get("receipts_file")
     if not isinstance(raw, str) or not raw:
         return "R32 PASS requires the transition receipt sidecar reference"
@@ -422,6 +457,9 @@ def _verify_receipt_sidecar(item: dict[str, Any]) -> str | None:
                     return "R32 transition receipt sidecar contains invalid JSON"
                 if not isinstance(record, dict):
                     return "R32 transition receipt sidecar contains non-object records"
+                contract_error = _receipt_contract_error(record, actual_total + 1)
+                if contract_error is not None:
+                    return contract_error
                 actual_total += 1
                 if record.get("failed") is True:
                     actual_failed += 1

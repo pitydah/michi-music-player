@@ -854,7 +854,7 @@ class TestR32SidecarArtifactVerification:
         facts["receipts_file_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
         # an explicit partial label must never satisfy a PASS
         facts["receipts_partial"] = True
-        self._assert_artifact_rejected(payload, "sidecar")
+        self._assert_artifact_rejected(payload, "partial")
 
     def test_sample_disagreement_with_artifact_is_rejected(self) -> None:
         payload = _manifest()
@@ -879,3 +879,99 @@ class TestR32SidecarArtifactVerification:
         facts["receipts_total"] = len(records)
         facts["receipts_sample"] = _sample_of(records)
         assert evaluate_device_manifest(payload).verdict == PASSING_DEVICE_VERDICT
+
+
+class TestR32SidecarReceiptContract:
+    """4A: every streamed receipt and the partial flag are contract-checked."""
+
+    @staticmethod
+    def _facts(payload: dict) -> dict:
+        return payload["experiments"]["R32"]["facts"]
+
+    def _payload_with(self, tmp_path, records, name="artifact.jsonl.gz") -> dict:
+        path = tmp_path / name
+        payload = _manifest()
+        facts = self._facts(payload)
+        facts["receipts_file"] = str(path)
+        facts["receipts_file_sha256"] = _write_sidecar(path, records)
+        facts["receipts_total"] = len(records)
+        facts["receipts_sample"] = _sample_of(records)
+        return payload
+
+    def _assert_rejected(self, payload: dict, expected: str) -> None:
+        verdict = evaluate_device_manifest(payload)
+        assert verdict.verdict != PASSING_DEVICE_VERDICT
+        assert any(expected in reason for reason in verdict.reasons), verdict.reasons
+
+    def test_valid_artifact_still_accepted_under_the_strict_contract(
+        self, tmp_path
+    ) -> None:
+        payload = self._payload_with(tmp_path, _r32_records())
+        assert evaluate_device_manifest(payload).verdict == PASSING_DEVICE_VERDICT
+
+    def test_partial_flag_never_passes(self, tmp_path) -> None:
+        payload = self._payload_with(tmp_path, _r32_records())
+        self._facts(payload)["receipts_partial"] = True
+        self._assert_rejected(payload, "partial")
+
+    def _with_mutated_middle(self, tmp_path, mutate) -> dict:
+        records = _r32_records()
+        records[60] = mutate(dict(records[60]))
+        return self._payload_with(tmp_path, records)
+
+    def test_middle_receipt_missing_identity_is_rejected(self, tmp_path) -> None:
+        payload = self._with_mutated_middle(
+            tmp_path, lambda record: {**record, "identity": None}
+        )
+        self._assert_rejected(payload, "identity")
+
+    def test_middle_receipt_missing_plan_id_is_rejected(self, tmp_path) -> None:
+        def mutate(record: dict) -> dict:
+            record["identity"] = dict(record["identity"])
+            record["identity"].pop("plan_id")
+            return record
+
+        payload = self._with_mutated_middle(tmp_path, mutate)
+        self._assert_rejected(payload, "plan_id")
+
+    def test_middle_receipt_invalid_generation_is_rejected(self, tmp_path) -> None:
+        def mutate(record: dict) -> dict:
+            record["identity"] = dict(
+                record["identity"], execution_generation="nope"
+            )
+            return record
+
+        payload = self._with_mutated_middle(tmp_path, mutate)
+        self._assert_rejected(payload, "execution_generation")
+
+    def test_middle_receipt_invalid_failed_field_is_rejected(self, tmp_path) -> None:
+        payload = self._with_mutated_middle(
+            tmp_path, lambda record: {**record, "failed": 1}
+        )
+        self._assert_rejected(payload, "failed")
+
+    def test_middle_receipt_invalid_rate_field_is_rejected(self, tmp_path) -> None:
+        payload = self._with_mutated_middle(
+            tmp_path, lambda record: {**record, "decoded_rate_hz": "44100"}
+        )
+        self._assert_rejected(payload, "decoded_rate_hz")
+
+    def test_middle_receipt_invalid_status_is_rejected(self, tmp_path) -> None:
+        payload = self._with_mutated_middle(
+            tmp_path, lambda record: {**record, "status": "playing"}
+        )
+        self._assert_rejected(payload, "status")
+
+    def test_middle_receipt_invalid_stale_identity_is_rejected(self, tmp_path) -> None:
+        payload = self._with_mutated_middle(
+            tmp_path, lambda record: {**record, "stale_identity": "no"}
+        )
+        self._assert_rejected(payload, "stale_identity")
+
+    def test_middle_receipt_invalid_signal_truth_state_is_rejected(
+        self, tmp_path
+    ) -> None:
+        payload = self._with_mutated_middle(
+            tmp_path, lambda record: {**record, "signal_truth_state": 7}
+        )
+        self._assert_rejected(payload, "signal_truth_state")

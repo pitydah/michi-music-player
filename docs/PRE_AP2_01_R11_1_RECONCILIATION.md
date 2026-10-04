@@ -12,21 +12,30 @@ architectural authority; current repository code wins for preimage facts.
 | R11.1 M11.4 handoff snapshot | `8bea498b0c2838b962352e09aa70da73088ced23` |
 | Repository at PRE-AP2-01 start | `23ce05db466408b1564c40a47e74e88a8283a0eb` |
 | PRE-AP2-01 code commit (WU1–WU3) | `7904c753944f` |
+| M11.5A freeze + reconciliation commit | `705303a52f2d` |
+| AI contamination reverted | `bfef286` (post-revert baseline for F00) |
 
-## Drift between the handoff snapshot and the PRE-AP2-01 baseline
+## AI contamination: detected and reverted
 
-Two commits landed after `8bea498` from an independent, additive workstream:
+Two unrelated Michi AI commits landed here by mistake:
 
 - `4449b05 feat(ai): add read-only host integration baseline`
 - `23ce05d ci(ai): authenticate private host dependency`
 
-They add the optional read-only `michi_ai` host integration (`ADR-0009`,
-`src/michi/integrations/michi_ai/`, a pinned optional dependency in
-`pyproject.toml`, composition wiring in `src/michi/bootstrap`, an
-architecture-test update and a CI authentication step). **No audio,
-playback, DAC, Signal Truth, planner, lab or verifier file was touched**, so
-every R11.1 audio preimage remains valid. The M11.4 verifier stays green on
-the new head, which is the operational proof of that claim.
+Michi AI is out of scope for Audio Phase 2 and the Phase2 baseline must not
+freeze accidental AI work, so both were **reverted in dependency-safe reverse
+order** in `bfef286` (the integration package, ADR-0009, the optional
+dependency, the bootstrap composition wiring, the architecture-test addition,
+its test module and the CI authentication step are gone). The reverts applied
+cleanly with no conflict against the PRE-AP2-01 package; focused
+architecture/bootstrap/package tests pass on the reverted tree.
+
+Shared bootstrap/package files (`src/michi/bootstrap/__init__.py`,
+`pyproject.toml`, `tests/test_architecture.py`) were briefly touched by those
+commits; the audio ownership preimages were inspected and remained intact
+throughout, and the reverted tree restores their pre-AI content. The current
+reconciliation therefore records the contamination as **resolved**, not as
+baseline drift.
 
 ## References checked
 
@@ -34,7 +43,11 @@ the new head, which is the operational proof of that claim.
   the 24 that do not are Phase 2 deliverables that F00+ must create
   (`PHASE2_STATE.json`, `IMPLEMENTATION_LEDGER.json`, `phase2_context.py`,
   `verify_audio_phase2*.py`, `tests/audio_phase2/`, the DSP/DSD runtime
-  modules, `AudioLabView.qml`, Phase 2 architecture tests), not drift.
+  modules, Phase 2 architecture tests) plus the canonical UI targets
+  `EqualizerPopup.qml`, `AdvancedEqualizerPopup.qml` and
+  `SignalTruthPopup.qml` (mega-plan target list), not drift.
+  `AudioLabView.qml` appears only in the historical §153 Audio Lab design
+  section; it is **not** classified here as an active required future file.
 - Cited commands that exist today and are valid: `python -m pytest -q
   tests/dac/` and the `gstreamer_runtime` marker gate (`pyproject.toml`).
   The remaining cited commands (`tests/audio_phase2/`,
@@ -51,8 +64,9 @@ the new head, which is the operational proof of that claim.
 1. **Path shape:** the mega-plan cites `src/michi/bootstrap.py`; the
    repository ships the `src/michi/bootstrap/` package. F00's canonical spec
    install must use the package path.
-2. **Baseline:** F00's baseline HEAD is the PRE-AP2-01 package head, not
-   `8bea498` (the AI-integration commits are part of the baseline).
+2. **Baseline:** F00's baseline HEAD is the post-revert PRE-AP2-01 head
+   (`bfef286` or later), not `8bea498`; the accidental AI work is no longer
+   part of the baseline.
 3. **Spec install:** the plan expects its own canonical copy under
    `docs/audio/` with `PHASE2_STATE.json`, the implementation ledger, the
    context tool and the alignment verifier — still F00 deliverables.

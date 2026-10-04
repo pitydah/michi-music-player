@@ -19,15 +19,20 @@ cannot drift into duplicate authorities. This ADR freezes semantics only:
 
 ### 1. Proof vocabulary
 
-One vocabulary is frozen for every conformance statement:
+One deterministic vocabulary is frozen for every conformance statement:
 
-- `VERIFIED` — the required evidence exists, is current, and proves the claim.
-- `UNVERIFIED` — evidence could exist but has not been produced yet.
+- `VERIFIED` — current valid evidence proves the claim.
+- `BROKEN` — current **authoritative** evidence positively falsifies the claim.
+- `UNVERIFIED` — the proof procedure is applicable and known, but has not yet
+  been completed.
 - `NOT_APPLICABLE` — the claim does not apply to this configuration.
-- `BROKEN` — current evidence contradicts the claim.
-- `UNKNOWN` — evidence is missing, incomplete or contradictory.
+- `UNKNOWN` — evidence is absent, stale, incomplete, internally inconsistent
+  or mutually conflicting such that **no deterministic verdict is justified**.
 
-Missing evidence is never `PASS` and never `FAIL` by itself.
+Contradictory evidence between two authoritative sources is `UNKNOWN`, never
+simultaneously `BROKEN` and `UNKNOWN`: `BROKEN` requires a positive
+falsification from current authoritative evidence. Missing evidence is never
+`PASS` and never `FAIL` by itself.
 
 ### 2. Authority split
 
@@ -46,8 +51,11 @@ DAC-V35 qualification concern (see §7).
 
 ### 4. Gapless and transitions
 
-- Same-format gapless: Audio Phase 2 implements runtime continuity; M11.5
-  owns its verification rules.
+- `PlaybackService` / `PlaybackSessionService` own sequencing and
+  accepted-media continuity.
+- Audio Phase 2 provides the family/output/runtime primitives that continuity
+  requires; it must never become a second queue/transport orchestrator.
+- M11.5 owns conformance verification of same-format gapless.
 - Cross-format transition: a transition is explicitly **not** claimed as
   gapless unless M11.5 verifies it under the same rules.
 - Accepted-media boundary and position/queue ownership remain with
