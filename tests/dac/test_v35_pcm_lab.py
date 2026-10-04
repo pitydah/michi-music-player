@@ -992,6 +992,7 @@ def test_lab_command_fault_complete_uses_the_prepared_baseline(
         },
     )
     monkeypatch.setattr(lab, "_suspend_success_count", lambda: 10)
+    (tmp_path / "track.wav").write_bytes(b"track")
     args = Namespace(
         case="device_failure",
         device_id="usb:1111:2222:1-2",
@@ -999,6 +1000,8 @@ def test_lab_command_fault_complete_uses_the_prepared_baseline(
         manifest=tmp_path / "manifest.json",
         media=tmp_path / "track.wav",
         mode="compatible",
+        wip_dir=tmp_path / "wip",
+        resume=False,
     )
     assert lab.command_fault_complete(args) == 0
     assert recorded["status"] == "PASS"
@@ -1065,6 +1068,7 @@ def test_lab_command_fault_complete_one_case_cannot_promote_global_pass(
         lambda _device_id: {"sysfs_path": "/sys/1-2", "busnum": 1, "devnum": 6},
     )
     monkeypatch.setattr(lab, "_suspend_success_count", lambda: None)
+    (tmp_path / "track.wav").write_bytes(b"track")
     args = Namespace(
         case="device_failure",
         device_id="usb:1111:2222:1-2",
@@ -1072,6 +1076,8 @@ def test_lab_command_fault_complete_one_case_cannot_promote_global_pass(
         manifest=tmp_path / "manifest.json",
         media=tmp_path / "track.wav",
         mode="compatible",
+        wip_dir=tmp_path / "wip",
+        resume=False,
     )
     assert lab.command_fault_complete(args) == 0
     assert recorded["status"] == "REQUIRES_OPERATOR_CONFIRMATION"

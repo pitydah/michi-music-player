@@ -1964,11 +1964,194 @@ def _r36_complete_facts(
     }
 
 
+def _r36_wip_dir(args) -> Path:
+    explicit = getattr(args, "wip_dir", None)
+    if explicit is not None:
+        return Path(explicit)
+    run_dir = os.environ.get("M11_4_RUN_DIR")
+    if run_dir:
+        return Path(run_dir) / "r36"
+    evidence = _evidence_module()
+    return evidence.STATE_ROOT / "r36-wip" / time.strftime("%Y%m%dT%H%M%S") / "r36"
+
+
+def _r36_wip_meta(container, args) -> dict[str, Any]:
+    qualification = getattr(getattr(container, "_aob", None), "_qualification", None)
+    fingerprint = None
+    if qualification is not None:
+        with contextlib.suppress(Exception):
+            fingerprint = qualification.current_environment_fingerprint(args.device_id)
+    return {
+        "schema_version": 1,
+        "experiment": "R36",
+        "device_id": args.device_id,
+        "locator": args.locator,
+        "environment_fingerprint": fingerprint,
+        "implementation_head": _git_head(),
+        "canonical_cases": list(R36_CASES),
+        "case_media": {
+            args.case: {
+                "media": str(args.media),
+                "media_sha256": _file_sha256(args.media),
+            }
+        },
+        "created_wallclock_utc": _evidence_module().utc_now_iso(),
+    }
+
+
+def _r36_wip_mismatch(previous: dict[str, Any], current: dict[str, Any]) -> str | None:
+    checks = (
+        ("device_id", "device identity"),
+        ("locator", "ALSA locator"),
+        ("environment_fingerprint", "environment fingerprint"),
+        ("implementation_head", "implementation HEAD"),
+        ("canonical_cases", "canonical R36 case contract"),
+    )
+    for key, label in checks:
+        if previous.get(key) != current.get(key):
+            return f"{label} changed ({key})"
+    previous_media = previous.get("case_media") or {}
+    current_media = current.get("case_media") or {}
+    for name, current_input in current_media.items():
+        previous_input = previous_media.get(name)
+        if isinstance(previous_input, dict) and previous_input != current_input:
+            return f"case media changed for {name} (case_media)"
+    return None
+
+
+def _r36_meta_sync(evidence, wip_dir: Path, meta: dict[str, Any]) -> None:
+    meta_path = wip_dir / "wip-meta.json"
+    previous = None
+    if meta_path.is_file():
+        previous = json.loads(meta_path.read_text(encoding="utf-8"))
+    if isinstance(previous, dict):
+        mismatch = _r36_wip_mismatch(previous, meta)
+        if mismatch:
+            raise SystemExit(f"STOP_R36_WIP_PROVENANCE_MISMATCH: {mismatch}")
+        merged = dict(previous.get("case_media") or {})
+        merged.update(meta["case_media"])
+        meta["case_media"] = merged
+        meta["created_wallclock_utc"] = previous.get(
+            "created_wallclock_utc", meta["created_wallclock_utc"]
+        )
+    evidence.atomic_write_json(meta_path, meta)
+
+
+def _r36_checkpoint(wip_dir: Path, case: str, phase: str) -> dict[str, Any] | None:
+    """Full checkpoint record for one case phase; survive crash and reboot."""
+    path = wip_dir / f"case-{case}-{phase}.json"
+    if not path.is_file():
+        return None
+    record = json.loads(path.read_text(encoding="utf-8"))
+    return record if isinstance(record, dict) else None
+
+
+def _r36_payload(record: dict[str, Any] | None) -> dict[str, Any] | None:
+    payload = record.get("payload") if isinstance(record, dict) else None
+    return payload if isinstance(payload, dict) else None
+
+
+def _r36_write_checkpoint(
+    evidence,
+    journal,
+    wip_dir: Path,
+    *,
+    case: str,
+    phase: str,
+    payload: dict[str, Any],
+    event: str,
+    result: str | None = None,
+) -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "schema_version": 1,
+        "case": case,
+        "phase": phase,
+        "payload": payload,
+        "sealed_wallclock_utc": evidence.utc_now_iso(),
+    }
+    if result is not None:
+        record["result"] = result
+    evidence.atomic_write_json(wip_dir / f"case-{case}-{phase}.json", record)
+    journal.append(event, {"case": case, "phase": phase, "result": result})
+    return record
+
+
+def _r36_wip_cases(wip_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Completed (or deferred) cases and pending prepared baselines."""
+    cases: dict[str, Any] = {}
+    pending: dict[str, Any] = {}
+    for case in R36_CASES:
+        complete = _r36_payload(_r36_checkpoint(wip_dir, case, "complete"))
+        if complete is not None:
+            cases[case] = complete
+            continue
+        deferred = _r36_payload(_r36_checkpoint(wip_dir, case, "deferred"))
+        if deferred is not None:
+            cases[case] = deferred
+            continue
+        prepare = _r36_payload(_r36_checkpoint(wip_dir, case, "prepare"))
+        if prepare is not None:
+            pending[case] = prepare
+    return cases, pending
+
+
+def _r36_canonical_facts(wip_dir: Path, existing_facts: Any) -> dict[str, Any]:
+    existing = existing_facts if isinstance(existing_facts, dict) else {}
+    cases = copy.deepcopy(existing.get("cases") or {})
+    pending = copy.deepcopy(existing.get("pending_cases") or {})
+    wip_cases, wip_pending = _r36_wip_cases(wip_dir)
+    cases.update(wip_cases)
+    pending.update(wip_pending)
+    for case in list(pending):
+        if case in cases:
+            pending.pop(case, None)
+    return {"cases": cases, "pending_cases": pending}
+
+
+def _r36_import(args, wip_dir: Path) -> None:
+    """Import sealed case evidence into the canonical manifest, once."""
+    existing_facts = _manifest(args.manifest)["experiments"]["R36"].get("facts")
+    facts = _r36_canonical_facts(wip_dir, existing_facts)
+    if existing_facts == facts:
+        print("R36: canonical record already matches the sealed cases")
+        return
+    refs: list[str] = []
+    for case in R36_CASES:
+        entry = facts["cases"].get(case)
+        reference = entry.get("operator_reference") if isinstance(entry, dict) else None
+        if isinstance(reference, str) and reference.strip():
+            refs.append(f"operator:{reference}")
+    refs.append(f"runtime:{args.media}")
+    _record(
+        args.manifest,
+        experiment="R36",
+        status=_r36_cases_status(facts["cases"]),
+        evidence=refs,
+        facts=facts,
+    )
+
+
 def command_fault_prepare(args) -> int:
     if args.case not in {"suspend_resume", "device_failure"}:
         raise SystemExit("fault-prepare is only for operator-driven R36 cases")
+    if not args.media.is_file():
+        raise SystemExit(f"media fixture does not exist: {args.media}")
+    evidence = _evidence_module()
+    wip_dir = _r36_wip_dir(args)
+    wip_dir.mkdir(parents=True, exist_ok=True)
+    journal = evidence.EventJournal(wip_dir / "journal.jsonl")
     container = _container(args.device_id, args.locator)
     try:
+        _r36_meta_sync(evidence, wip_dir, _r36_wip_meta(container, args))
+        if _r36_checkpoint(wip_dir, args.case, "complete") is not None:
+            raise SystemExit(
+                f"STOP_R36_CASE_ALREADY_COMPLETED: {args.case} already has a complete "
+                "checkpoint; use a fresh WIP directory to repeat the case"
+            )
+        if _r36_checkpoint(wip_dir, args.case, "prepare") is not None:
+            journal.append("R36_CASE_REPREPARE", {"case": args.case})
+        journal.append("R36_CASE_START", {"case": args.case, "phase": "prepare"})
+        _wip_heartbeat(args, "r36-prepare", args.case, wip_dir=wip_dir)
         result = _play(container, args.media, args.mode)
         row = _row(container, args.device_id, args.locator)
         truth = result.get("signal_truth") or {}
@@ -1983,18 +2166,17 @@ def command_fault_prepare(args) -> int:
             usb_instance_before=_usb_instance_witness(args.device_id),
             suspend_success_before=_suspend_success_count(),
         )
-        previous = _manifest(args.manifest)["experiments"]["R36"].get("facts")
-        previous = previous if isinstance(previous, dict) else {}
-        cases = copy.deepcopy(previous.get("cases") or {})
-        pending = copy.deepcopy(previous.get("pending_cases") or {})
-        pending[args.case] = baseline
-        _record(
-            args.manifest,
-            experiment="R36",
-            status="REQUIRES_OPERATOR_CONFIRMATION",
-            evidence=[f"operator:{args.operator_reference}", f"runtime:{args.media}"],
-            facts={"cases": cases, "pending_cases": pending},
+        _r36_write_checkpoint(
+            evidence,
+            journal,
+            wip_dir,
+            case=args.case,
+            phase="prepare",
+            payload=baseline,
+            event="R36_CASE_PREPARE",
         )
+        _wip_heartbeat(args, "r36-prepared", args.case, wip_dir=wip_dir)
+        _r36_import(args, wip_dir)
     finally:
         container.shutdown()
     print(
@@ -2005,37 +2187,104 @@ def command_fault_prepare(args) -> int:
 
 
 def command_fault_complete(args) -> int:
-    previous = _manifest(args.manifest)["experiments"]["R36"].get("facts")
-    previous = previous if isinstance(previous, dict) else {}
-    pending = copy.deepcopy(previous.get("pending_cases") or {})
-    baseline = pending.get(args.case)
-    if not isinstance(baseline, dict) or baseline.get("case") != args.case:
-        raise SystemExit("matching R36 baseline missing; run fault-prepare first")
+    if not args.media.is_file():
+        raise SystemExit(f"media fixture does not exist: {args.media}")
+    evidence = _evidence_module()
+    resume = bool(getattr(args, "resume", False))
+    wip_dir = _r36_wip_dir(args)
+    wip_dir.mkdir(parents=True, exist_ok=True)
+    journal = evidence.EventJournal(wip_dir / "journal.jsonl")
     container = _container(args.device_id, args.locator)
     try:
-        result = _play(container, args.media, args.mode)
-        row = _row(container, args.device_id, args.locator)
-        facts = _r36_complete_facts(
-            baseline,
-            after_row=row,
-            after_result=result,
-            after_usb_instance=_usb_instance_witness(args.device_id),
-            suspend_success_after=_suspend_success_count(),
+        _r36_meta_sync(evidence, wip_dir, _r36_wip_meta(container, args))
+        journal.append(
+            "R36_CASE_START",
+            {"case": args.case, "phase": "complete", "resumed": resume},
         )
-        cases = copy.deepcopy(previous.get("cases") or {})
-        cases[args.case] = facts
-        pending.pop(args.case, None)
-        status = _r36_cases_status(cases)
-        _record(
-            args.manifest,
-            experiment="R36",
-            status=status,
-            evidence=[
-                f"operator:{baseline['operator_reference']}",
-                f"runtime:{args.media}",
-            ],
-            facts={"cases": cases, "pending_cases": pending},
-        )
+        _wip_heartbeat(args, "r36-complete", args.case, wip_dir=wip_dir)
+        complete_record = _r36_checkpoint(wip_dir, args.case, "complete")
+        if resume and complete_record is not None:
+            journal.append("R36_CASE_RECOVERED", {"case": args.case})
+        else:
+            if complete_record is not None:
+                previous_result = complete_record.get("result")
+                if previous_result == "PASS":
+                    raise SystemExit(
+                        f"STOP_R36_CASE_ALREADY_SEALED: {args.case} is already sealed "
+                        "PASS; physical evidence is append-only"
+                    )
+                if previous_result == "FAIL":
+                    raise SystemExit(
+                        f"STOP_R36_CASE_SEALED_FAIL: {args.case} is sealed as FAIL; "
+                        "use a fresh WIP directory for an intentional retest"
+                    )
+                journal.append(
+                    "R36_CASE_RETRY",
+                    {"case": args.case, "previous_result": previous_result},
+                )
+            baseline = _r36_payload(_r36_checkpoint(wip_dir, args.case, "prepare"))
+            existing_facts = _manifest(args.manifest)["experiments"]["R36"].get("facts")
+            existing_facts = existing_facts if isinstance(existing_facts, dict) else {}
+            manifest_pending = (existing_facts.get("pending_cases") or {}).get(
+                args.case
+            )
+            if (
+                isinstance(baseline, dict)
+                and isinstance(manifest_pending, dict)
+                and manifest_pending != baseline
+            ):
+                raise SystemExit(
+                    "STOP_R36_WIP_PROVENANCE_MISMATCH: "
+                    f"{args.case} baseline differs between WIP and manifest"
+                )
+            if not isinstance(baseline, dict):
+                baseline = manifest_pending
+                if isinstance(baseline, dict):
+                    journal.append("R36_BASELINE_FROM_MANIFEST", {"case": args.case})
+            if not isinstance(baseline, dict) or baseline.get("case") != args.case:
+                raise SystemExit(
+                    "matching R36 baseline missing; run fault-prepare first"
+                )
+            result = _play(container, args.media, args.mode)
+            row = _row(container, args.device_id, args.locator)
+            after_usb = _usb_instance_witness(args.device_id)
+            after_suspend = _suspend_success_count()
+            _r36_write_checkpoint(
+                evidence,
+                journal,
+                wip_dir,
+                case=args.case,
+                phase="action",
+                payload={
+                    "case": args.case,
+                    "operator_reference": baseline.get("operator_reference"),
+                    "device_generation_after": row.get("generation"),
+                    "usb_instance_after": copy.deepcopy(after_usb),
+                    "suspend_success_after": after_suspend,
+                    "observed_wallclock_utc": evidence.utc_now_iso(),
+                },
+                event="R36_CASE_ACTION",
+            )
+            _wip_heartbeat(args, "r36-action", args.case, wip_dir=wip_dir)
+            facts = _r36_complete_facts(
+                baseline,
+                after_row=row,
+                after_result=result,
+                after_usb_instance=after_usb,
+                suspend_success_after=after_suspend,
+            )
+            _r36_write_checkpoint(
+                evidence,
+                journal,
+                wip_dir,
+                case=args.case,
+                phase="complete",
+                payload=facts,
+                event="R36_CASE_COMPLETE",
+                result=_r36_case_status(args.case, facts),
+            )
+        _wip_heartbeat(args, "r36-complete-sealed", args.case, wip_dir=wip_dir)
+        _r36_import(args, wip_dir)
     finally:
         container.shutdown()
     return 0
@@ -2070,112 +2319,204 @@ def command_xrun(args) -> int:
             },
         )
         return 0
+    if not args.media.is_file():
+        raise SystemExit(f"media fixture does not exist: {args.media}")
+    evidence = _evidence_module()
+    resume = bool(getattr(args, "resume", False))
+    wip_dir = _r36_wip_dir(args)
+    wip_dir.mkdir(parents=True, exist_ok=True)
+    journal = evidence.EventJournal(wip_dir / "journal.jsonl")
     container = _container(args.device_id, args.locator)
     try:
-        result = _play(container, args.media, args.mode)
-        truth = result["signal_truth"] or {}
-        alsa = truth.get("alsa") if isinstance(truth, dict) else None
-        # The public diagnostics serializer intentionally omits proc_path.
-        # Resolve it from the active recorder snapshot only inside this lab.
-        snapshot = container._signal_truth.active_snapshot
-        device = snapshot.device_negotiated
-        if device is None:
-            raise SystemExit("R36 requires active ALSA runtime evidence")
-        hw_path = Path(device.proc_path)
-        substream = hw_path.parent
-        xrun_path = substream / "xrun_injection"
-        status_path = substream / "status"
-        if not xrun_path.exists():
-            raise SystemExit(
-                f"kernel does not expose xrun_injection for {substream}; "
-                "R36 remains NOT_RUN on this environment"
-            )
-        before = status_path.read_text(encoding="utf-8") if status_path.exists() else ""
-        xrun_path.write_text("1\n", encoding="utf-8")
-        immediate = (
-            status_path.read_text(encoding="utf-8") if status_path.exists() else ""
+        _r36_meta_sync(evidence, wip_dir, _r36_wip_meta(container, args))
+        journal.append(
+            "R36_CASE_START",
+            {"case": args.case, "phase": "induced_underrun", "resumed": resume},
         )
-        _pump(container, 2.0)
-        after_truth = _truth(container) or {}
-        after_reasons = (after_truth.get("verdict") or {}).get("reason_codes") or []
-        after_state = (after_truth.get("verdict") or {}).get("state")
-        observed = (
-            "XRUN" in immediate.upper()
-            or "XRUN" in before.upper()
-            or "ST_XRUN" in after_reasons
-        )
-        false_verified = observed and after_state in {
-            "direct",
-            "direct_container_adapted",
-        }
-        before_identity = truth.get("identity") if isinstance(truth, dict) else None
-        after_identity = (
-            after_truth.get("identity") if isinstance(after_truth, dict) else None
-        )
-        generation_fresh = bool(
-            isinstance(before_identity, dict)
-            and isinstance(after_identity, dict)
-            and (
-                after_identity.get("execution_generation")
-                != before_identity.get("execution_generation")
-                or after_identity.get("port_generation")
-                != before_identity.get("port_generation")
-            )
-        )
-        resources = _runtime_resource_snapshot(container)
-        facts = {
-            "case": args.case,
-            "fault_injected": True,
-            "xrun_observed": observed,
-            "incident_retained": True,
-            "recovered_state_reported": after_state is not None,
-            "continuity_proof": bool(
-                observed
-                and generation_fresh
-                and resources["pump_alive"]
-                and not result["error_message"]
-            ),
-            "false_verified_after_incident": bool(
-                false_verified and not generation_fresh
-            ),
-            "generation_fresh": generation_fresh,
-            "recovery_loop_count": max(
-                0,
-                int(resources.get("port_generation") or 0)
-                - int((before_identity or {}).get("port_generation") or 0)
-                - 1,
-            ),
-            "status_before": before,
-            "status_immediate": immediate,
-            "signal_truth_after": after_truth,
-            "alsa_locator": (alsa or {}).get("locator")
-            if isinstance(alsa, dict)
-            else None,
-        }
-        case_status = (
-            "PASS"
-            if observed
-            and facts["continuity_proof"]
-            and not facts["false_verified_after_incident"]
-            and facts["generation_fresh"]
-            and facts["recovery_loop_count"] == 0
-            else "FAIL"
-        )
-        previous = _manifest(args.manifest)["experiments"]["R36"].get("facts")
-        previous = previous if isinstance(previous, dict) else {}
-        cases = copy.deepcopy(previous.get("cases") or {})
-        cases[args.case] = facts
-        status = _r36_cases_status(cases) if case_status == "PASS" else "FAIL"
-        _record(
-            args.manifest,
-            experiment="R36",
-            status=status,
-            evidence=[str(xrun_path), str(status_path), f"runtime:{args.media}"],
-            facts={
-                "cases": cases,
-                "pending_cases": copy.deepcopy(previous.get("pending_cases") or {}),
-            },
-        )
+        _wip_heartbeat(args, "r36-xrun", args.case, wip_dir=wip_dir)
+        complete_record = _r36_checkpoint(wip_dir, args.case, "complete")
+        if resume and complete_record is not None:
+            journal.append("R36_CASE_RECOVERED", {"case": args.case})
+        else:
+            if complete_record is not None:
+                previous_result = complete_record.get("result")
+                if previous_result == "PASS":
+                    raise SystemExit(
+                        f"STOP_R36_CASE_ALREADY_SEALED: {args.case} is already sealed "
+                        "PASS; physical evidence is append-only"
+                    )
+                if previous_result == "FAIL":
+                    raise SystemExit(
+                        f"STOP_R36_CASE_SEALED_FAIL: {args.case} is sealed as FAIL; "
+                        "use a fresh WIP directory for an intentional retest"
+                    )
+                journal.append(
+                    "R36_CASE_RETRY",
+                    {"case": args.case, "previous_result": previous_result},
+                )
+            if _r36_checkpoint(wip_dir, args.case, "deferred") is not None:
+                journal.append(
+                    "R36_CASE_RETRY",
+                    {"case": args.case, "previous_result": "DEFERRED_ENVIRONMENT"},
+                )
+            result = _play(container, args.media, args.mode)
+            truth = result["signal_truth"] or {}
+            alsa = truth.get("alsa") if isinstance(truth, dict) else None
+            # The public diagnostics serializer intentionally omits proc_path.
+            # Resolve it from the active recorder snapshot only inside this lab.
+            snapshot = container._signal_truth.active_snapshot
+            device = snapshot.device_negotiated
+            if device is None:
+                raise SystemExit("R36 requires active ALSA runtime evidence")
+            hw_path = Path(device.proc_path)
+            substream = hw_path.parent
+            xrun_path = substream / "xrun_injection"
+            status_path = substream / "status"
+            if not xrun_path.exists():
+                # Never fabricate fault_injected=true: keep the case deferred
+                # with the environment limitation spelled out.
+                _r36_write_checkpoint(
+                    evidence,
+                    journal,
+                    wip_dir,
+                    case=args.case,
+                    phase="deferred",
+                    payload={
+                        "case": args.case,
+                        "mechanism_available": False,
+                        "environment_deferred": True,
+                        "reason": (
+                            "kernel does not expose xrun_injection for this substream"
+                        ),
+                        "incident_retained": None,
+                        "recovered_state_reported": None,
+                        "continuity_proof": None,
+                        "generation_fresh": None,
+                        "recovery_loop_count": None,
+                    },
+                    event="R36_CASE_DEFERRED",
+                )
+            else:
+                _r36_write_checkpoint(
+                    evidence,
+                    journal,
+                    wip_dir,
+                    case=args.case,
+                    phase="prepare",
+                    payload={
+                        "case": args.case,
+                        "signal_identity_before": (
+                            truth.get("identity") if isinstance(truth, dict) else None
+                        ),
+                        "alsa_locator": (
+                            (alsa or {}).get("locator")
+                            if isinstance(alsa, dict)
+                            else None
+                        ),
+                    },
+                    event="R36_CASE_PREPARE",
+                )
+                before = (
+                    status_path.read_text(encoding="utf-8")
+                    if status_path.exists()
+                    else ""
+                )
+                xrun_path.write_text("1\n", encoding="utf-8")
+                immediate = (
+                    status_path.read_text(encoding="utf-8")
+                    if status_path.exists()
+                    else ""
+                )
+                _r36_write_checkpoint(
+                    evidence,
+                    journal,
+                    wip_dir,
+                    case=args.case,
+                    phase="action",
+                    payload={
+                        "case": args.case,
+                        "xrun_path": str(xrun_path),
+                        "status_path": str(status_path),
+                        "status_before": before,
+                        "status_immediate": immediate,
+                    },
+                    event="R36_CASE_ACTION",
+                )
+                _pump(container, 2.0)
+                after_truth = _truth(container) or {}
+                after_reasons = (after_truth.get("verdict") or {}).get(
+                    "reason_codes"
+                ) or []
+                after_state = (after_truth.get("verdict") or {}).get("state")
+                observed = (
+                    "XRUN" in immediate.upper()
+                    or "XRUN" in before.upper()
+                    or "ST_XRUN" in after_reasons
+                )
+                false_verified = observed and after_state in {
+                    "direct",
+                    "direct_container_adapted",
+                }
+                before_identity = (
+                    truth.get("identity") if isinstance(truth, dict) else None
+                )
+                after_identity = (
+                    after_truth.get("identity")
+                    if isinstance(after_truth, dict)
+                    else None
+                )
+                generation_fresh = bool(
+                    isinstance(before_identity, dict)
+                    and isinstance(after_identity, dict)
+                    and (
+                        after_identity.get("execution_generation")
+                        != before_identity.get("execution_generation")
+                        or after_identity.get("port_generation")
+                        != before_identity.get("port_generation")
+                    )
+                )
+                resources = _runtime_resource_snapshot(container)
+                facts = {
+                    "case": args.case,
+                    "fault_injected": True,
+                    "xrun_observed": observed,
+                    "incident_retained": True,
+                    "recovered_state_reported": after_state is not None,
+                    "continuity_proof": bool(
+                        observed
+                        and generation_fresh
+                        and resources["pump_alive"]
+                        and not result["error_message"]
+                    ),
+                    "false_verified_after_incident": bool(
+                        false_verified and not generation_fresh
+                    ),
+                    "generation_fresh": generation_fresh,
+                    "recovery_loop_count": max(
+                        0,
+                        int(resources.get("port_generation") or 0)
+                        - int((before_identity or {}).get("port_generation") or 0)
+                        - 1,
+                    ),
+                    "status_before": before,
+                    "status_immediate": immediate,
+                    "signal_truth_after": after_truth,
+                    "alsa_locator": (
+                        (alsa or {}).get("locator") if isinstance(alsa, dict) else None
+                    ),
+                }
+                _r36_write_checkpoint(
+                    evidence,
+                    journal,
+                    wip_dir,
+                    case=args.case,
+                    phase="complete",
+                    payload=facts,
+                    event="R36_CASE_COMPLETE",
+                    result=_r36_case_status(args.case, facts),
+                )
+        _wip_heartbeat(args, "r36-xrun-sealed", args.case, wip_dir=wip_dir)
+        _r36_import(args, wip_dir)
     finally:
         with __import__("contextlib").suppress(Exception):
             _stop(container)
@@ -2295,6 +2636,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--case", choices=("suspend_resume", "device_failure"), required=True
     )
     fault_prepare.add_argument("--operator-reference", required=True)
+    fault_prepare.add_argument(
+        "--wip-dir",
+        type=Path,
+        help=(
+            "Durable work-in-progress directory; defaults to "
+            "$M11_4_RUN_DIR/r36 or the local state root"
+        ),
+    )
     fault_prepare.set_defaults(func=command_fault_prepare)
 
     fault_complete = common("fault-complete")
@@ -2302,12 +2651,38 @@ def build_parser() -> argparse.ArgumentParser:
     fault_complete.add_argument(
         "--case", choices=("suspend_resume", "device_failure"), required=True
     )
+    fault_complete.add_argument(
+        "--wip-dir",
+        type=Path,
+        help=(
+            "Durable work-in-progress directory; defaults to "
+            "$M11_4_RUN_DIR/r36 or the local state root"
+        ),
+    )
+    fault_complete.add_argument(
+        "--resume",
+        action="store_true",
+        help="Recover an already-sealed case only when WIP provenance still matches",
+    )
     fault_complete.set_defaults(func=command_fault_complete)
 
     xrun = common("xrun")
     xrun.add_argument("--media", type=Path, required=True)
     xrun.add_argument("--inject", action="store_true")
     xrun.add_argument("--case", choices=R36_CASES, default="induced_underrun")
+    xrun.add_argument(
+        "--wip-dir",
+        type=Path,
+        help=(
+            "Durable work-in-progress directory; defaults to "
+            "$M11_4_RUN_DIR/r36 or the local state root"
+        ),
+    )
+    xrun.add_argument(
+        "--resume",
+        action="store_true",
+        help="Recover an already-sealed case only when WIP provenance still matches",
+    )
     xrun.set_defaults(func=command_xrun)
 
     summary = sub.add_parser("summary")
