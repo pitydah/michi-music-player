@@ -1490,6 +1490,11 @@ def command_soak(args) -> int:
 
 
 R35_FIXTURES = R35_REQUIRED_FIXTURES
+R35_BOUNDARY_FIXTURES = (
+    "same_tuple_two_track_boundary",
+    "different_tuple_two_track_boundary",
+)
+"""Canonical fixtures that must be observed as two ordered tracks (A then B)."""
 
 
 def _merge_r35_fixture(
@@ -1525,9 +1530,26 @@ def _r35_status(fixtures: dict[str, Any]) -> str:
     )
 
 
+def _fixture_sequence_sha256(paths: list[Path]) -> str:
+    """SHA-256 over the ordered concatenation of the fixture tracks.
+
+    A single-track fixture therefore hashes exactly like its file. For the
+    canonical ``*_two_track_boundary`` fixtures the digest is recomputable with
+    ``cat A B | sha256sum``.
+    """
+    import hashlib
+
+    digest = hashlib.sha256()
+    for path in paths:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1 << 20), b""):
+                digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _r35_fixture_entry(
     *,
-    media: Path,
+    media: Path | list[Path],
     result: str,
     evidence_kind: str,
     evidence_reference: str,
@@ -1536,14 +1558,18 @@ def _r35_fixture_entry(
     playback_error: str | None = None,
     terminal_status: str | None = None,
 ) -> dict[str, Any]:
-    if not media.is_file():
-        raise SystemExit(f"media fixture does not exist: {media}")
+    paths = list(media) if isinstance(media, (list, tuple)) else [media]
+    for path in paths:
+        if not path.is_file():
+            raise SystemExit(f"media fixture does not exist: {path}")
     entry: dict[str, Any] = {
         "result": result,
         "evidence_kind": evidence_kind,
         "evidence_reference": evidence_reference,
         "method": method,
-        "fixture_sha256": _file_sha256(media),
+        "fixture_sha256": _fixture_sequence_sha256(paths),
+        "fixture_sha256s": [_file_sha256(path) for path in paths],
+        "media": [str(path) for path in paths],
         "falsifier_observed": bool(falsifier_observed),
         "playback_error": playback_error,
         "terminal_status": terminal_status,
@@ -1590,8 +1616,8 @@ def _r35_wip_meta(container, args) -> dict[str, Any]:
         "canonical_fixtures": list(R35_FIXTURES),
         "fixture_inputs": {
             args.fixture: {
-                "media": str(args.media),
-                "media_sha256": _file_sha256(args.media),
+                "media": [str(path) for path in args.media],
+                "media_sha256": [_file_sha256(path) for path in args.media],
             }
         },
         "created_wallclock_utc": _evidence_module().utc_now_iso(),
@@ -1633,8 +1659,16 @@ def _r35_sealed_fixtures(wip_dir: Path) -> dict[str, dict[str, Any]]:
 
 
 def command_tail(args) -> int:
-    if not args.media.is_file():
-        raise SystemExit(f"media fixture does not exist: {args.media}")
+    media_paths = list(args.media)
+    expected_media = 2 if args.fixture in R35_BOUNDARY_FIXTURES else 1
+    if len(media_paths) != expected_media:
+        raise SystemExit(
+            f"R35 fixture {args.fixture} requires exactly {expected_media} media "
+            f"file(s), got {len(media_paths)}"
+        )
+    for path in media_paths:
+        if not path.is_file():
+            raise SystemExit(f"media fixture does not exist: {path}")
     evidence = _evidence_module()
     resume = bool(getattr(args, "resume", False))
     wip_dir = _r35_wip_dir(args)
@@ -1662,7 +1696,7 @@ def command_tail(args) -> int:
             "R35_FIXTURE_START",
             {
                 "fixture": args.fixture,
-                "media": str(args.media),
+                "media": [str(path) for path in media_paths],
                 "resumed": resume,
             },
         )
@@ -1697,17 +1731,25 @@ def command_tail(args) -> int:
                     "R35_FIXTURE_RETRY",
                     {"fixture": args.fixture, "previous_result": previous_result},
                 )
-            result = _play(container, args.media, args.mode)
-            _pump(
-                container,
-                args.timeout_seconds,
-                settled=lambda: (
-                    container._playback.state.status is PlaybackStatus.STOPPED
-                ),
-            )
-            terminal = container._playback.state.status.value
+            first_error = None
+            terminal = None
+            for media in media_paths:
+                _wip_heartbeat(
+                    args, "r35-track", f"{args.fixture} {media.name}", wip_dir=wip_dir
+                )
+                result = _play(container, media, args.mode)
+                _pump(
+                    container,
+                    args.timeout_seconds,
+                    settled=lambda: (
+                        container._playback.state.status is PlaybackStatus.STOPPED
+                    ),
+                )
+                terminal = container._playback.state.status.value
+                if first_error is None and result["error_message"]:
+                    first_error = result["error_message"]
             entry = _r35_fixture_entry(
-                media=args.media,
+                media=media_paths,
                 result=args.tail_result,
                 evidence_kind=args.evidence_kind,
                 evidence_reference=args.evidence_reference,
@@ -1715,7 +1757,7 @@ def command_tail(args) -> int:
                 falsifier_observed=(
                     args.falsifier_observed or args.tail_result == "FAIL"
                 ),
-                playback_error=result["error_message"],
+                playback_error=first_error,
                 terminal_status=terminal,
             )
             evidence.atomic_write_json(
@@ -1734,6 +1776,7 @@ def command_tail(args) -> int:
                     "result": entry["result"],
                     "falsifier_observed": entry["falsifier_observed"],
                     "fixture_sha256": entry["fixture_sha256"],
+                    "media_count": len(media_paths),
                 },
             )
         _wip_heartbeat(args, "r35-fixture-sealed", args.fixture, wip_dir=wip_dir)
@@ -2605,7 +2648,16 @@ def build_parser() -> argparse.ArgumentParser:
     soak.set_defaults(func=command_soak)
 
     tail = common("tail")
-    tail.add_argument("--media", type=Path, required=True)
+    tail.add_argument(
+        "--media",
+        type=Path,
+        nargs="+",
+        required=True,
+        help=(
+            "One media file; the canonical *_two_track_boundary fixtures require "
+            "exactly two ordered tracks (A then B)"
+        ),
+    )
     tail.add_argument("--fixture", choices=R35_FIXTURES, required=True)
     tail.add_argument(
         "--tail-result", choices=("PASS", "FAIL", "NOT_OBSERVED"), required=True

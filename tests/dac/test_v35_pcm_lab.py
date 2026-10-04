@@ -839,8 +839,10 @@ def test_lab_command_tail_accumulates_the_fourth_fixture(
     lab, tmp_path, monkeypatch
 ) -> None:
     media = tmp_path / "tail.wav"
+    media_b = tmp_path / "tail_b.wav"
     capture = tmp_path / "capture.wav"
     media.write_bytes(b"fixture")
+    media_b.write_bytes(b"fixture-b")
     capture.write_bytes(b"capture")
     state = SimpleNamespace(status=lab.PlaybackStatus.STOPPED)
     container = SimpleNamespace(
@@ -876,7 +878,7 @@ def test_lab_command_tail_accumulates_the_fourth_fixture(
         device_id="usb:1111:2222:1-2",
         locator="hw:CARD=DAC,DEV=0",
         manifest=tmp_path / "manifest.json",
-        media=media,
+        media=[media, media_b],
         mode="compatible",
         timeout_seconds=1,
         fixture=lab.R35_FIXTURES[-1],

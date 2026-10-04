@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 from argparse import Namespace
@@ -16,6 +17,17 @@ FIXTURES = (
     "same_tuple_two_track_boundary",
     "different_tuple_two_track_boundary",
 )
+BOUNDARY_FIXTURE = "same_tuple_two_track_boundary"
+BOUNDARY_FIXTURES = (
+    "same_tuple_two_track_boundary",
+    "different_tuple_two_track_boundary",
+)
+
+
+def _media_names(fixture: str) -> list[str]:
+    if fixture in BOUNDARY_FIXTURES:
+        return [f"{fixture}_a.wav", f"{fixture}_b.wav"]
+    return [f"{fixture}.wav"]
 
 
 @pytest.fixture(scope="module")
@@ -34,9 +46,14 @@ def _tail_args(
     *,
     resume: bool = False,
     result: str = "PASS",
+    media_names: list[str] | None = None,
 ):
-    media = tmp_path / f"{fixture}.wav"
-    media.write_bytes(f"RIFF-{fixture}".encode())
+    names = media_names or [f"{fixture}.wav"]
+    media = []
+    for name in names:
+        path = tmp_path / name
+        path.write_bytes(f"RIFF-{name}".encode())
+        media.append(path)
     capture = tmp_path / f"{fixture}-capture.wav"
     capture.write_bytes(f"CAPTURE-{fixture}".encode())
     return Namespace(
@@ -100,10 +117,15 @@ def test_r35_durability_seals_each_fixture(lab, tmp_path, monkeypatch) -> None:
     calls, recorded = _wire(lab, monkeypatch, behavior=lambda _name: "ok")
     wip = tmp_path / "wip"
 
+    expected_calls: list[str] = []
     for fixture in FIXTURES:
-        assert lab.command_tail(_tail_args(tmp_path, wip, fixture)) == 0
+        names = _media_names(fixture)
+        assert (
+            lab.command_tail(_tail_args(tmp_path, wip, fixture, media_names=names)) == 0
+        )
+        expected_calls.extend(Path(name).stem for name in names)
 
-    assert calls == list(FIXTURES)
+    assert calls == expected_calls
     for fixture in FIXTURES:
         record = json.loads(
             (wip / f"fixture-{fixture}.json").read_text(encoding="utf-8")
@@ -125,15 +147,27 @@ def test_r35_durability_crash_keeps_completed_fixtures(
         lab,
         monkeypatch,
         behavior=lambda name: (
-            "crash" if name == "same_tuple_two_track_boundary" else "ok"
+            "crash" if name == "same_tuple_two_track_boundary_a" else "ok"
         ),
     )
     wip = tmp_path / "wip"
 
     for fixture in FIXTURES[:2]:
-        assert lab.command_tail(_tail_args(tmp_path, wip, fixture)) == 0
+        assert (
+            lab.command_tail(
+                _tail_args(tmp_path, wip, fixture, media_names=_media_names(fixture))
+            )
+            == 0
+        )
     with pytest.raises(RuntimeError):
-        lab.command_tail(_tail_args(tmp_path, wip, FIXTURES[2]))
+        lab.command_tail(
+            _tail_args(
+                tmp_path,
+                wip,
+                FIXTURES[2],
+                media_names=_media_names(FIXTURES[2]),
+            )
+        )
 
     for fixture in FIXTURES[:2]:
         assert (wip / f"fixture-{fixture}.json").is_file()
@@ -212,7 +246,7 @@ def test_r35_durability_resume_with_changed_media_stops(
 
     calls, recorded = _wire(lab, monkeypatch, behavior=lambda _name: "ok", state=state)
     resumed = _tail_args(tmp_path, wip, FIXTURES[0], resume=True)
-    resumed.media.write_bytes(b"DIFFERENT-MEDIA-FOR-THE-SAME-FIXTURE")
+    resumed.media[0].write_bytes(b"DIFFERENT-MEDIA-FOR-THE-SAME-FIXTURE")
     with pytest.raises(SystemExit, match="STOP_R35_WIP_PROVENANCE_MISMATCH"):
         lab.command_tail(resumed)
 
@@ -254,3 +288,82 @@ def test_r35_durability_not_observed_can_be_retried(lab, tmp_path, monkeypatch) 
     )
     assert record["entry"]["result"] == "PASS"
     assert recorded[-1]["status"] == "REQUIRES_OPERATOR_CONFIRMATION"
+
+
+def test_r35_boundary_requires_exactly_two_media(lab, tmp_path, monkeypatch) -> None:
+    _wire(lab, monkeypatch, behavior=lambda _name: "ok")
+    wip = tmp_path / "wip"
+
+    with pytest.raises(SystemExit, match="requires exactly 2"):
+        lab.command_tail(_tail_args(tmp_path, wip, BOUNDARY_FIXTURE))
+
+    with pytest.raises(SystemExit, match="requires exactly 1"):
+        lab.command_tail(
+            _tail_args(
+                tmp_path,
+                wip,
+                FIXTURES[0],
+                media_names=[
+                    "nonzero_final_samples_a.wav",
+                    "nonzero_final_samples_b.wav",
+                ],
+            )
+        )
+
+
+def test_r35_boundary_plays_tracks_in_order_and_seals_both_hashes(
+    lab, tmp_path, monkeypatch
+) -> None:
+    calls, recorded = _wire(lab, monkeypatch, behavior=lambda _name: "ok")
+    wip = tmp_path / "wip"
+    args = _tail_args(
+        tmp_path,
+        wip,
+        BOUNDARY_FIXTURE,
+        media_names=[
+            "same_tuple_two_track_boundary_a.wav",
+            "same_tuple_two_track_boundary_b.wav",
+        ],
+    )
+
+    assert lab.command_tail(args) == 0
+
+    assert calls == [
+        "same_tuple_two_track_boundary_a",
+        "same_tuple_two_track_boundary_b",
+    ], "boundary tracks must play in order A then B"
+    record = json.loads(
+        (wip / f"fixture-{BOUNDARY_FIXTURE}.json").read_text(encoding="utf-8")
+    )
+    entry = record["entry"]
+    assert len(entry["fixture_sha256s"]) == 2
+    assert entry["media"] == [str(path) for path in args.media]
+    expected = hashlib.sha256(
+        args.media[0].read_bytes() + args.media[1].read_bytes()
+    ).hexdigest()
+    assert entry["fixture_sha256"] == expected
+    assert recorded[-1]["status"] == "REQUIRES_OPERATOR_CONFIRMATION"
+
+
+def test_r35_boundary_crash_after_first_track_keeps_no_seal(
+    lab, tmp_path, monkeypatch
+) -> None:
+    def behavior(name: str) -> str:
+        return "crash" if name.endswith("_b") else "ok"
+
+    _wire(lab, monkeypatch, behavior=behavior)
+    wip = tmp_path / "wip"
+    args = _tail_args(
+        tmp_path,
+        wip,
+        BOUNDARY_FIXTURE,
+        media_names=[
+            "same_tuple_two_track_boundary_a.wav",
+            "same_tuple_two_track_boundary_b.wav",
+        ],
+    )
+
+    with pytest.raises(RuntimeError):
+        lab.command_tail(args)
+
+    assert not (wip / f"fixture-{BOUNDARY_FIXTURE}.json").exists()

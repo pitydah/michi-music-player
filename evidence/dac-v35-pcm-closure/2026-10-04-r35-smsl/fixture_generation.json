@@ -1,0 +1,103 @@
+{
+  "campaign": "R35 canonical tail/drain fixtures",
+  "fixtures": {
+    "different_tuple_two_track_boundary": {
+      "fixture_sha256": "09fe262a9df7c32592a2884a39129d81ac967d796edf66f1bc8605b3b9ef2174",
+      "tracks": [
+        {
+          "algorithm": "440.0 Hz sine at 0.5 FS, 44.1 kHz/16-bit, 2.0 s; ends at (near) a zero crossing",
+          "bits": 16,
+          "channels": 2,
+          "last_sample_l": -1026,
+          "last_sample_r": -1026,
+          "path": "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_a.wav",
+          "peak_sample": 16383,
+          "rate_hz": 44100,
+          "samples": 88200,
+          "seconds": 2.0,
+          "sha256": "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521"
+        },
+        {
+          "algorithm": "880.0 Hz sine at 0.5 FS, 96 kHz/24-bit, 2.0 s; starts exactly at a zero crossing; forces a controlled tuple reconfiguration",
+          "bits": 24,
+          "channels": 2,
+          "last_sample_l": -241441,
+          "last_sample_r": -241441,
+          "path": "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_b.wav",
+          "peak_sample": 4194304,
+          "rate_hz": 96000,
+          "samples": 192000,
+          "seconds": 2.0,
+          "sha256": "b19537f845b7b3360430d380212188c0684eee5d7143953f9accb86937e3b868"
+        }
+      ]
+    },
+    "end_impulse": {
+      "algorithm": "exactly 1.0 s of digital silence; a single full-scale (+FS) impulse on the final sample of both channels; any tail truncation removes it",
+      "bits": 16,
+      "channels": 2,
+      "last_sample_l": 32767,
+      "last_sample_r": 32767,
+      "path": "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/end_impulse.wav",
+      "peak_sample": 32767,
+      "rate_hz": 44100,
+      "samples": 44100,
+      "seconds": 1.0,
+      "sha256": "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3"
+    },
+    "nonzero_final_samples": {
+      "algorithm": "220.1 Hz sine at 0.5 FS, both channels identical, exactly 2.0 s; ends abruptly while the waveform is still near its peak (final phase 0.2 cycle, |last sample| > 0.25 FS)",
+      "bits": 16,
+      "channels": 2,
+      "last_sample_l": 15415,
+      "last_sample_r": 15415,
+      "path": "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav",
+      "peak_sample": 16383,
+      "rate_hz": 44100,
+      "samples": 88200,
+      "seconds": 2.0,
+      "sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+    },
+    "same_tuple_two_track_boundary": {
+      "fixture_sha256": "26b6cef7a8f54838fa7517e3f3e8c2d748dbbdd227ea1ab2029b60e398315e9d",
+      "tracks": [
+        {
+          "algorithm": "440.0 Hz sine at 0.5 FS, both channels identical, 2.0 s; ends at (near) a zero crossing so the track itself adds no click",
+          "bits": 16,
+          "channels": 2,
+          "last_sample_l": -1026,
+          "last_sample_r": -1026,
+          "path": "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_a.wav",
+          "peak_sample": 16383,
+          "rate_hz": 44100,
+          "samples": 88200,
+          "seconds": 2.0,
+          "sha256": "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521"
+        },
+        {
+          "algorithm": "880.0 Hz sine at 0.5 FS, both channels identical, 2.0 s; starts exactly at a zero crossing so the track itself adds no click",
+          "bits": 16,
+          "channels": 2,
+          "last_sample_l": -2049,
+          "last_sample_r": -2049,
+          "path": "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_b.wav",
+          "peak_sample": 16383,
+          "rate_hz": 44100,
+          "samples": 88200,
+          "seconds": 2.0,
+          "sha256": "6c00ea1acee3d093be25d39d5edaef3b442586a95bbbaca48e2e4ca95b69f318"
+        }
+      ]
+    }
+  },
+  "generated_at": "2026-10-04",
+  "generator": "stdlib-only deterministic generation; algorithms recorded per fixture",
+  "hash_convention": "the R35 entry fixture_sha256 is sha256 over the ordered concatenation of the fixture tracks; for a single track it equals the file sha256; for the boundary fixtures it is recomputable with `cat A B | sha256sum`",
+  "kernel_note": "device-independent fixtures generated before the physical R35 campaign; reusable by both DAC campaigns by path and hash",
+  "procedure": {
+    "different_tuple_two_track_boundary": "two media in one lab invocation (A=44.1/16 then B=96/24); observe a clean controlled reconfiguration with a fresh generation and no gap, click or stale fragment",
+    "end_impulse": "single media; the final full-scale impulse must be audible at the very end; its absence is tail truncation",
+    "nonzero_final_samples": "single media; listen for the tone stopping cleanly with no audible tail cutoff; falsifiers: tail_truncated, stale_samples_after_application_pointer",
+    "same_tuple_two_track_boundary": "two media in one lab invocation (A then B, same tuple); both tracks are click-free by construction, so any gap or click at the boundary is teardown-induced; falsifiers: extra_drain_gap_between_same_tuple_tracks, click_pop_introduced_by_teardown"
+  }
+}
