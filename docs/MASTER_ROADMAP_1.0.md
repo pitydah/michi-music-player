@@ -56,13 +56,7 @@ Phases M0–M16 remain the roadmap skeleton. M0 (governance foundation) through 
 
 ## Product Scope
 
-- **Michi AI** — PRODUCT CAPABILITY: RETAINED. PRE-STABLE BASELINE AUTHORIZED
-  (ADR 0009): optional host dependency, read-only Player library adapter,
-  explicit capability publication, composition ownership, and cross-repository
-  contract tests. The AI engine remains in `pitydah/Michi-IA`; no models,
-  providers, recommendations, QML AI surface, or speculative ecosystem adapters
-  are embedded in the Player. Further intelligent capabilities remain
-  post-Stable/continuous integration work.
+- **Michi AI** — PRODUCT CAPABILITY: RETAINED. CURRENT REFACTOR: OUT OF SCOPE. IMPLEMENTATION: AFTER PLAYER STABLE, in the separate repository `pitydah/michi-ai`. Not embedded in the Player: no AI engine, models, providers, bridges, or runtime dependencies in this repository.
 - **Audio Lab** — RETAINED. OUT OF SCOPE. AFTER PLAYER STABLE.
 - **Streaming / Radio** — RETAINED. OUT OF SCOPE. AFTER PLAYER STABLE.
 - **Sync** — RETAINED. OUT OF SCOPE. AFTER PLAYER STABLE.

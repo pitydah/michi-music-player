@@ -67,18 +67,6 @@ def test_application_has_no_infrastructure_import():
         assert not violations, module.name
 
 
-def test_michi_ai_integration_stays_outside_qt_and_infrastructure() -> None:
-    integration_root = SRC / "integrations" / "michi_ai"
-    for module in sorted(integration_root.glob("*.py")):
-        violations = _violates(
-            _module_prefixes(module),
-            {"michi.infrastructure", "michi.presentation", "PySide6"},
-        )
-        assert not violations, (
-            f"{module.name} imports forbidden integration roots: {violations}"
-        )
-
-
 def test_m4r1_queue_service_constructor_seal():
     """AR02/AR03: QueueService has NO legacy positional compatibility seam.
 

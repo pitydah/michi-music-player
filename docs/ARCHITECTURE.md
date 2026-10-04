@@ -2,13 +2,7 @@
 
 Authority for system boundaries, layer contracts, state ownership, lifecycle, and error semantics. All architectural decisions are recorded as Accepted ADRs in `docs/adr/`. This document aggregates them into one read-optimized reference.
 
-Product scope note: the optional Michi AI host-integration baseline is approved
-pre-Stable (ADR 0009): a read-only library adapter and composition boundary,
-with no embedded model/provider and no QML surface. Intelligent AI features and
-the remaining ecosystem integrations (Audio Lab, Streaming, Radio, Sync, Michi
-Link/Mobile/Micro Server/Big Server/Music Stream, Home Audio) remain retained
-post-Stable capabilities. CoverFlow is RETIRED; its successor PathView is
-pre-Stable local work. See MASTER_ROADMAP_1.0.md Product Scope.
+Product scope note: Michi AI and ecosystem integrations (Audio Lab, Streaming, Radio, Sync, Michi Link/Mobile/Micro Server/Big Server/Music Stream, Home Audio) are RETAINED product capabilities implemented AFTER PLAYER STABLE — this codebase carries no AI, streaming, or ecosystem code. CoverFlow is RETIRED; its successor PathView is pre-Stable local work. See MASTER_ROADMAP_1.0.md Product Scope.
 
 ## Stack
 
@@ -34,7 +28,6 @@ Python 3.11+, PySide6 (Qt 6, Qt Multimedia with FFmpeg backend), QML, SQLite (WA
         └─────────────────────────────────────────────┘
 
         bootstrap/ — composition root, wires everything above
-        integrations/ — optional host adapters; no Qt/infrastructure imports
 ```
 
 | Layer             | Contents                                                                                                                                                                                                                                                                                             | May import                                               | Forbidden                        |
@@ -44,7 +37,6 @@ Python 3.11+, PySide6 (Qt 6, Qt Multimedia with FFmpeg backend), QML, SQLite (WA
 | `infrastructure/` | `QtMultimediaBackend`, `FilesystemLibraryScanner`, `SQLiteSettingsRepository` (+ `inspect_path` health detection)                                                                                                                                                                                    | application (ports), domain, PySide6, SQLite, filesystem | presentation                     |
 | `presentation/`   | `PlaybackBridge`, `QueueBridge`, `LibraryBridge`, `NavigationBridge`, `SettingsBridge` (read-only); QML: `main.qml`, `qml/theme/` tokens, `qml/ui/` compatibility controls, `qml/player/` canonical NowPlayingBar, `qml/shell/` AppShell/Sidebar/ContentHost, `qml/views/` routed content | application (services), domain (observed state), PySide6 | infrastructure                   |
 | `bootstrap/`      | `ApplicationContainer` composition root                                                                                                                                                                                                                                                              | everything (the only layer allowed to)                   | —                                |
-| `integrations/`   | Optional host adapters (`michi_ai` baseline)                                                                                                                                                                                                                                                          | application, domain, external host contract              | Qt, infrastructure, presentation |
 
 Rules:
 
