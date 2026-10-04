@@ -57,6 +57,9 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 SOAK_RECEIPTS_SAMPLE_LIMIT = 64
 """Bounded receipt sample kept in the manifest facts (first + last half)."""
 
+SOAK_RECEIPT_CHUNK_LIMIT = 5000
+"""Durable receipt chunk size for the 8-hour R32 soak (hardened contract §6)."""
+
 
 def _git_head() -> str:
     completed = subprocess.run(
@@ -1319,9 +1322,29 @@ def _soak_status(facts: dict[str, Any]) -> str:
     return "FAIL" if failed else "PASS"
 
 
+def _r32_receipts_dir(args) -> Path:
+    explicit = getattr(args, "wip_dir", None)
+    if explicit is not None:
+        return Path(explicit) / "receipts"
+    run_dir = os.environ.get("M11_4_RUN_DIR")
+    if run_dir:
+        return Path(run_dir) / "receipts"
+    evidence = _evidence_module()
+    return evidence.STATE_ROOT / "r32-wip" / time.strftime("%Y%m%dT%H%M%S") / "receipts"
+
+
 def command_soak(args) -> int:
     if args.duration_seconds <= 0:
         raise SystemExit("--duration-seconds must be > 0")
+    evidence = _evidence_module()
+    receipts_dir = _r32_receipts_dir(args)
+    if receipts_dir.exists() and any(receipts_dir.iterdir()):
+        raise SystemExit(
+            "STOP_R32_WIP_NOT_EMPTY: a new soak attempt requires a fresh receipt "
+            "directory; previous chunks stay untouched"
+        )
+    receipts_dir.mkdir(parents=True, exist_ok=True)
+    chunks = evidence.ReceiptChunks(receipts_dir, record_limit=SOAK_RECEIPT_CHUNK_LIMIT)
     container = _container(args.device_id, args.locator)
     started = time.monotonic()
     started_epoch = time.time()
@@ -1337,9 +1360,6 @@ def command_soak(args) -> int:
         / f"soak-receipts-{time.strftime('%Y%m%dT%H%M%S')}.jsonl.gz"
     )
     receipts_file.parent.mkdir(parents=True, exist_ok=True)
-    receipts_handle = gzip.open(  # noqa: SIM115 - closed in the command finally
-        receipts_file, "wt", encoding="utf-8"
-    )
     transition_failures = 0
     previous_identity: dict[str, Any] | None = None
     checkpoints: list[Path] = []
@@ -1350,15 +1370,20 @@ def command_soak(args) -> int:
     )
     usb_baseline = _read_usb_health_snapshot(usb_node)
     resource_baseline = _runtime_resource_snapshot(container)
+    last_durable_at = 0.0
     try:
-        while time.monotonic() - started < args.duration_seconds:
+        _wip_heartbeat(args, "r32-soak", "start", wip_dir=receipts_dir.parent)
+        while True:
+            elapsed = time.monotonic() - started
+            if elapsed >= args.duration_seconds:
+                break
             media = args.media[cycles % len(args.media)]
             result = _play(container, media, args.mode)
             reasons = result.get("signal_truth_reasons") or []
             if "ST_XRUN" in reasons:
                 xrun_count += 1
             receipt = _transition_receipt(result, previous_identity=previous_identity)
-            receipts_handle.write(json.dumps(receipt, sort_keys=True) + "\n")
+            chunks.append(receipt, fsync=bool(receipt["failed"]))
             if len(receipts_head) < SOAK_RECEIPTS_SAMPLE_LIMIT // 2:
                 receipts_head.append(receipt)
             receipts_tail.append(receipt)
@@ -1384,19 +1409,55 @@ def command_soak(args) -> int:
                 path = _checkpoint_path(args, cycles)
                 _write_json(path, checkpoint)
                 checkpoints.append(path)
+                chunks.flush()
+                _wip_heartbeat(
+                    args, "r32-soak", f"cycle {cycles}", wip_dir=receipts_dir.parent
+                )
+                last_durable_at = elapsed
+            elif elapsed - last_durable_at >= 5.0:
+                chunks.flush()
+                _wip_heartbeat(
+                    args, "r32-soak", f"cycle {cycles}", wip_dir=receipts_dir.parent
+                )
+                last_durable_at = elapsed
             if errors and args.fail_fast:
                 break
         duration = time.monotonic() - started
-        receipts_handle.close()
+        chunks.seal()
+        seal_problems = chunks.validate_seals()
+        if seal_problems:
+            raise SystemExit(
+                "R32 receipt chunks are not durable: " + "; ".join(seal_problems)
+            )
+        exported = 0
+        with gzip.open(receipts_file, "wt", encoding="utf-8") as handle:
+            for record in chunks.iter_records():
+                handle.write(json.dumps(record, sort_keys=True) + "\n")
+                exported += 1
+        with receipts_file.open("rb") as raw:
+            os.fsync(raw.fileno())
+        receipts_digest = _file_sha256(receipts_file)
+        verified = 0
+        with gzip.open(receipts_file, "rt", encoding="utf-8") as handle:
+            for line in handle:
+                if line.strip():
+                    json.loads(line)
+                    verified += 1
+        if verified != exported or exported != cycles:
+            raise SystemExit(
+                "R32 canonical receipt export verification failed: "
+                f"exported={exported} verified={verified} cycles={cycles}"
+            )
+        chunk_seals = [
+            json.loads(path.read_text(encoding="utf-8"))
+            for path in sorted(receipts_dir.glob("chunk-*.seal.json"))
+        ]
         receipts_sample: list[dict[str, Any]] = []
         seen_receipts: set[int] = set()
         for receipt in (*receipts_head, *receipts_tail):
             if id(receipt) not in seen_receipts:
                 seen_receipts.add(id(receipt))
                 receipts_sample.append(receipt)
-        receipts_digest = (
-            _file_sha256(receipts_file) if receipts_file.exists() else None
-        )
         rss_final = _process_rss_kb()
         rss_values = [
             value
@@ -1459,6 +1520,9 @@ def command_soak(args) -> int:
             "receipts_sample_limit": SOAK_RECEIPTS_SAMPLE_LIMIT,
             "receipts_file": str(receipts_file) if receipts_file.exists() else None,
             "receipts_file_sha256": receipts_digest,
+            "receipts_chunk_dir": str(receipts_dir),
+            "receipts_chunks": chunk_seals,
+            "receipts_export_verified": True,
             "resource_growth": {
                 "observed": bool(resource_snapshots),
                 "unbounded": owned_peak > 1 or residual_peak > 0,
@@ -1484,7 +1548,6 @@ def command_soak(args) -> int:
             facts=facts,
         )
     finally:
-        receipts_handle.close()
         container.shutdown()
     return 0
 
@@ -2640,6 +2703,15 @@ def build_parser() -> argparse.ArgumentParser:
     soak.add_argument("--duration-seconds", type=float, required=True)
     soak.add_argument("--fail-fast", action="store_true")
     soak.add_argument("--checkpoint-every", type=int, default=20)
+    soak.add_argument(
+        "--wip-dir",
+        type=Path,
+        help=(
+            "Durable work-in-progress directory; chunked receipts go to "
+            "<wip-dir>/receipts; defaults to $M11_4_RUN_DIR/receipts or the "
+            "local state root"
+        ),
+    )
     soak.add_argument(
         "--usb-sysfs-path",
         type=Path,

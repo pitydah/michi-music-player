@@ -219,6 +219,11 @@ class ReceiptChunks:
         active = self.active_path()
         if not active.exists() or self._count == 0:
             return None
+        # The chunk content must be durable BEFORE the rename makes it
+        # authoritative; otherwise the seal could survive a power loss while
+        # the data blocks it attests to do not.
+        with active.open("rb") as handle:
+            os.fsync(handle.fileno())
         index = self._next_index()
         chunk = self.directory / f"chunk-{index:06d}.jsonl"
         os.replace(active, chunk)
