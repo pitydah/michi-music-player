@@ -132,7 +132,10 @@ physical hotplug/reconnect PASS, and the canonical ledger R19-R36 is recorded as
 6 PASS / 5 NOT_APPLICABLE (justified) / 7 NOT_RUN. The R25 laboratory later
 closed PASS for the SMSL in the 2026-09-30 device-bound campaign (derived
 minimum delay 0 ms) and for the Kinmax HA01 in the 2026-10-04 hardened
-campaign (same derived minimum); R32/R35/R36 remain NOT_RUN. Reference code closure
+campaign (same derived minimum); the R35 tail/drain laboratory later closed
+PASS for the SMSL in the 2026-10-04 hardened campaign (kernel
+`7.2.9-1-cachyos`, four canonical fixtures with fixture/track hashes and
+operator PASS). R32/R36 remain NOT_RUN and Kinmax R35 is pending. Reference code closure
 `d581ad334503bbd8d13dfb120b9538695df79e47` (CI run `36184951752`, all jobs
 SUCCESS). Bit-perfect is not claimed, and M11.5 is not promoted.
 
