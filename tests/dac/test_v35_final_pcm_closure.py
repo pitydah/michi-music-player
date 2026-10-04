@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import gzip
+import hashlib
+import json
+import tempfile
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
 from michi.application.dac_pcm_closure import (
+    PASSING_DEVICE_VERDICT,
     PHYSICAL_FAIL,
     PHYSICAL_INCOMPLETE,
     PHYSICAL_NOT_RUN,
@@ -17,6 +23,63 @@ from michi.application.dac_pcm_closure import (
     materially_distinct,
     summarize_manifests,
 )
+
+
+def _r32_records(total: int = 120, *, fail_index: int | None = None) -> list[dict]:
+    return [
+        {
+            "failed": index == fail_index,
+            "error": None,
+            "status": 2,
+            "decoded_rate_hz": 44100,
+            "requested_rate_hz": 44100,
+            "negotiated_rate_hz": 44100,
+            "identity": {
+                "plan_id": f"plan:{index:04d}",
+                "execution_generation": index + 1,
+                "port_generation": index + 1,
+            },
+            "signal_truth_state": "direct_container_adapted",
+            "stale_identity": False,
+        }
+        for index in range(total)
+    ]
+
+
+def _write_sidecar(path: Path, records: list[dict]) -> str:
+    with gzip.open(path, "wt", encoding="utf-8") as handle:
+        for record in records:
+            handle.write(json.dumps(record, sort_keys=True) + "\n")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _sample_of(records: list[dict]) -> list[dict]:
+    head = records[:32]
+    tail = records[-32:]
+    sample: list[dict] = []
+    seen: set[int] = set()
+    for record in (*head, *tail):
+        if id(record) not in seen:
+            seen.add(id(record))
+            sample.append(record)
+    return sample
+
+
+def _build_r32_sidecar() -> dict:
+    """One real, complete sidecar artifact matching the lab's sample rule."""
+
+    directory = Path(tempfile.mkdtemp(prefix="r32-closure-sidecar-"))
+    path = directory / "soak-receipts-fixture.jsonl.gz"
+    records = _r32_records()
+    return {
+        "path": str(path),
+        "sha256": _write_sidecar(path, records),
+        "total": len(records),
+        "sample": _sample_of(records),
+    }
+
+
+_R32_SIDECAR = _build_r32_sidecar()
 
 
 def _manifest(
@@ -116,26 +179,12 @@ def _manifest(
                     "xrun_count": 0,
                     "runtime_error_count": 0,
                     "transition_failures": 0,
-                    "receipts_total": 120,
+                    "receipts_total": _R32_SIDECAR["total"],
                     "receipts_failed": 0,
-                    "receipts_sample": [
-                        {
-                            "failed": False,
-                            "decoded_rate_hz": 44100,
-                            "requested_rate_hz": 44100,
-                            "negotiated_rate_hz": 44100,
-                            "identity": {
-                                "plan_id": "plan-a",
-                                "execution_generation": 1,
-                                "port_generation": 1,
-                            },
-                        }
-                    ],
+                    "receipts_sample": deepcopy(_R32_SIDECAR["sample"]),
                     "receipts_sample_limit": 64,
-                    "receipts_file": (
-                        "receipts/soak-receipts-20261002T000000.jsonl.gz"
-                    ),
-                    "receipts_file_sha256": "e" * 64,
+                    "receipts_file": _R32_SIDECAR["path"],
+                    "receipts_file_sha256": _R32_SIDECAR["sha256"],
                     "rss_baseline_kb": 100000,
                     "rss_peak_kb": 104096,
                     "rss_final_kb": 104096,
@@ -721,3 +770,112 @@ def test_final_pcm_20_r25_accepts_a_nonzero_evidence_derived_minimum(minimum) ->
         )
     facts["minimal_delay_that_preserves_first_content"] = minimum
     assert evaluate_device_manifest(manifest).verdict == "PASS"
+
+
+class TestR32SidecarArtifactVerification:
+    """WU1: the R32 verdict must prove the recorded artifact, not its shape."""
+
+    @staticmethod
+    def _facts(payload: dict) -> dict:
+        return payload["experiments"]["R32"]["facts"]
+
+    def _assert_artifact_rejected(self, payload: dict, expected: str) -> None:
+        verdict = evaluate_device_manifest(payload)
+        assert verdict.verdict != PASSING_DEVICE_VERDICT
+        assert any(expected in reason for reason in verdict.reasons), verdict.reasons
+
+    def test_valid_artifact_is_still_accepted(self) -> None:
+        assert evaluate_device_manifest(_manifest()).verdict == PASSING_DEVICE_VERDICT
+
+    def test_missing_artifact_fails_closed(self, tmp_path) -> None:
+        payload = _manifest()
+        self._facts(payload)["receipts_file"] = str(tmp_path / "missing.jsonl.gz")
+        self._assert_artifact_rejected(payload, "sidecar artifact")
+
+    def test_wrong_digest_is_rejected(self) -> None:
+        payload = _manifest()
+        self._facts(payload)["receipts_file_sha256"] = "f" * 64
+        self._assert_artifact_rejected(payload, "digest")
+
+    def test_corrupt_gzip_is_rejected(self, tmp_path) -> None:
+        path = tmp_path / "corrupt.jsonl.gz"
+        path.write_bytes(b"definitely not a gzip stream")
+        payload = _manifest()
+        facts = self._facts(payload)
+        facts["receipts_file"] = str(path)
+        facts["receipts_file_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        self._assert_artifact_rejected(payload, "unreadable or truncated")
+
+    def test_invalid_json_record_is_rejected(self, tmp_path) -> None:
+        path = tmp_path / "invalid.jsonl.gz"
+        with gzip.open(path, "wt", encoding="utf-8") as handle:
+            handle.write(json.dumps(_R32_SIDECAR["sample"][0], sort_keys=True) + "\n")
+            handle.write("this line is not json\n")
+        payload = _manifest()
+        facts = self._facts(payload)
+        facts["receipts_file"] = str(path)
+        facts["receipts_file_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        self._assert_artifact_rejected(payload, "JSON")
+
+    def test_receipt_count_mismatch_is_rejected(self) -> None:
+        payload = _manifest()
+        self._facts(payload)["receipts_total"] = _R32_SIDECAR["total"] + 1
+        self._assert_artifact_rejected(payload, "count does not match")
+
+    def test_failed_count_mismatch_is_rejected(self, tmp_path) -> None:
+        records = _r32_records(fail_index=60)
+        path = tmp_path / "one-failure.jsonl.gz"
+        payload = _manifest()
+        facts = self._facts(payload)
+        facts["receipts_file"] = str(path)
+        facts["receipts_file_sha256"] = _write_sidecar(path, records)
+        facts["receipts_total"] = len(records)
+        facts["receipts_sample"] = _sample_of(records)
+        # the manifest still claims zero failures while the artifact has one
+        self._assert_artifact_rejected(payload, "failed-receipt count")
+
+    def test_truncated_completed_artifact_is_rejected(self, tmp_path) -> None:
+        data = Path(_R32_SIDECAR["path"]).read_bytes()
+        path = tmp_path / "truncated.jsonl.gz"
+        path.write_bytes(data[: len(data) - 40])
+        payload = _manifest()
+        facts = self._facts(payload)
+        facts["receipts_file"] = str(path)
+        facts["receipts_file_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        self._assert_artifact_rejected(payload, "sidecar")
+
+    def test_partial_aborted_artifact_cannot_pass(self, tmp_path) -> None:
+        data = Path(_R32_SIDECAR["path"]).read_bytes()
+        path = tmp_path / "partial.jsonl.gz"
+        path.write_bytes(data[: len(data) - 40])
+        payload = _manifest()
+        facts = self._facts(payload)
+        facts["receipts_file"] = str(path)
+        facts["receipts_file_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        # an explicit partial label must never satisfy a PASS
+        facts["receipts_partial"] = True
+        self._assert_artifact_rejected(payload, "sidecar")
+
+    def test_sample_disagreement_with_artifact_is_rejected(self) -> None:
+        payload = _manifest()
+        sample = self._facts(payload)["receipts_sample"]
+        sample[0] = dict(
+            sample[0],
+            identity={
+                "plan_id": "plan:zzzz",
+                "execution_generation": 999,
+                "port_generation": 999,
+            },
+        )
+        self._assert_artifact_rejected(payload, "sample is inconsistent")
+
+    def test_large_artifact_is_streamed_and_accepted(self, tmp_path) -> None:
+        records = _r32_records(total=5000)
+        path = tmp_path / "large.jsonl.gz"
+        payload = _manifest()
+        facts = self._facts(payload)
+        facts["receipts_file"] = str(path)
+        facts["receipts_file_sha256"] = _write_sidecar(path, records)
+        facts["receipts_total"] = len(records)
+        facts["receipts_sample"] = _sample_of(records)
+        assert evaluate_device_manifest(payload).verdict == PASSING_DEVICE_VERDICT

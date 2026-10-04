@@ -1,0 +1,36 @@
+{
+  "classification": null,
+  "duration_minutes": 15.89,
+  "head": "23ce05db466408b1564c40a47e74e88a8283a0eb",
+  "health": {
+    "hidden_conversions": 0,
+    "ownership_violations": 0,
+    "rss_end_kb": 131148,
+    "rss_start_kb": 112208,
+    "runtime_errors": [],
+    "signal_truth_contradictions": 0,
+    "signal_truth_states": {
+      "direct_container_adapted": 238
+    },
+    "stale_generations": 0,
+    "usb_kernel_errors": [],
+    "xrun_count": 0
+  },
+  "issues": [],
+  "kind": "AP2_PREFLIGHT_SMOKE",
+  "notes": [
+    "not R32 evidence; does not modify the PCM closure manifests or the physical verdict",
+    "bounded development-readiness window, not an 8 h stability proof"
+  ],
+  "scenarios": {
+    "hold_cycles": 166,
+    "load_stop_cycles": 238,
+    "max_pump_gap_ms": 126.8,
+    "phase_a_seconds": 905.0,
+    "rate_transitions": 50,
+    "round_trips": 12
+  },
+  "schema_version": 1,
+  "started_local": "1970-01-01T00:59:22-0300",
+  "verdict": "PASS"
+}

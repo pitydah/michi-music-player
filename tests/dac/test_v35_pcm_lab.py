@@ -1073,3 +1073,11 @@ def test_lab_command_fault_complete_one_case_cannot_promote_global_pass(
     )
     assert lab.command_fault_complete(args) == 0
     assert recorded["status"] == "REQUIRES_OPERATOR_CONFIRMATION"
+
+
+def test_lab_25_receipt_sample_limit_matches_the_evaluator_contract(lab) -> None:
+    """The lab's bounded sample and the evaluator's recomputation must agree."""
+
+    from michi.application.dac_pcm_closure import R32_RECEIPT_SAMPLE_LIMIT
+
+    assert lab.SOAK_RECEIPTS_SAMPLE_LIMIT == R32_RECEIPT_SAMPLE_LIMIT

@@ -7,8 +7,12 @@ summarizes them without upgrading evidence beyond what was actually observed.
 
 from __future__ import annotations
 
+import gzip
+import hashlib
 import json
 import re
+import zlib
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -89,6 +93,8 @@ R25_SWEEP_DELAYS = frozenset({0, 100, 250, 500, 1000})
 #: must never fall below it by more than this margin.
 R25_HOLD_TOLERANCE_MS = 5
 R32_MAX_MEMORY_GROWTH_KB = 65536
+R32_RECEIPT_SAMPLE_LIMIT = 64
+"""Bounded receipt sample kept in the manifest facts (must match the lab)."""
 R35_REQUIRED_FIXTURES = (
     "nonzero_final_samples",
     "end_impulse",
@@ -365,6 +371,77 @@ def _r36_case_contradiction(case: str, facts: dict[str, Any]) -> str | None:
         after = facts.get("suspend_success_after")
         if not isinstance(before, int) or not isinstance(after, int) or after <= before:
             return "R36 suspend/resume lacks a kernel suspend-success witness"
+    return None
+
+
+def _verify_receipt_sidecar(item: dict[str, Any]) -> str | None:
+    """Fail-closed streaming proof of the recorded R32 receipt artifact.
+
+    A PASS claim must prove the complete artifact, never only a path/hash
+    shape: the sidecar must exist, stream-hash to the recorded digest,
+    decompress as gzip, contain only parseable JSONL objects, match the
+    recorded total and failed counts, and reproduce the bounded first/last
+    sample recorded in the manifest. Truncated, malformed or partial
+    artifacts can never PASS, and aborted diagnostics stay explicit partial
+    evidence outside this contract. Only the bounded sample is kept in
+    memory; the rest of the stream is consumed incrementally.
+    """
+    facts = item.get("facts")
+    if not isinstance(facts, dict):
+        return "R32 PASS requires the transition receipt facts"
+    raw = facts.get("receipts_file")
+    if not isinstance(raw, str) or not raw:
+        return "R32 PASS requires the transition receipt sidecar reference"
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    if not candidate.is_file():
+        return "R32 PASS requires the transition receipt sidecar artifact"
+    digest = hashlib.sha256()
+    try:
+        with candidate.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1 << 20), b""):
+                digest.update(chunk)
+    except OSError:
+        return "R32 transition receipt sidecar is unreadable or truncated"
+    if digest.hexdigest() != facts.get("receipts_file_sha256"):
+        return "R32 transition receipt sidecar digest does not match the artifact"
+    actual_total = 0
+    actual_failed = 0
+    head: list[dict[str, Any]] = []
+    tail: deque[dict[str, Any]] = deque(maxlen=R32_RECEIPT_SAMPLE_LIMIT // 2)
+    try:
+        with gzip.open(candidate, "rt", encoding="utf-8") as handle:
+            for line in handle:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    record = json.loads(stripped)
+                except json.JSONDecodeError:
+                    return "R32 transition receipt sidecar contains invalid JSON"
+                if not isinstance(record, dict):
+                    return "R32 transition receipt sidecar contains non-object records"
+                actual_total += 1
+                if record.get("failed") is True:
+                    actual_failed += 1
+                if len(head) < R32_RECEIPT_SAMPLE_LIMIT // 2:
+                    head.append(record)
+                tail.append(record)
+    except (OSError, EOFError, UnicodeDecodeError, zlib.error):
+        return "R32 transition receipt sidecar is unreadable or truncated"
+    if actual_total != facts.get("receipts_total"):
+        return "R32 receipt count does not match the sidecar artifact"
+    if actual_failed != facts.get("receipts_failed"):
+        return "R32 failed-receipt count does not match the sidecar artifact"
+    expected_sample: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for record in (*head, *tail):
+        if id(record) not in seen:
+            seen.add(id(record))
+            expected_sample.append(record)
+    if expected_sample != facts.get("receipts_sample"):
+        return "R32 receipt sample is inconsistent with the sidecar artifact"
     return None
 
 
@@ -783,6 +860,13 @@ def evaluate_device_manifest(payload: dict[str, Any]) -> DeviceClosureVerdict:
             has_fail = True
             all_pass = False
             reasons.append(f"{experiment}: {contradiction}")
+            continue
+        if experiment == "R32":
+            artifact_error = _verify_receipt_sidecar(item)
+            if artifact_error is not None:
+                has_fail = True
+                all_pass = False
+                reasons.append(f"{experiment}: {artifact_error}")
 
     verdict = (
         FAILED_DEVICE_VERDICT

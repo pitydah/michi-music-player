@@ -198,6 +198,8 @@ REQUIRED_DAC_WHEEL_MEMBERS = frozenset(
         "michi/application/volume_policy_service.py",
         "michi/domain/signal_truth.py",
         "michi/infrastructure/audio_output/direct_output_executor.py",
+        "michi/infrastructure/audio_engines/subprocess_characterizer.py",
+        "michi/infrastructure/audio_engines/characterize_cli.py",
     }
 )
 
@@ -212,6 +214,8 @@ INSTALLED_IMPORTS = (
     "michi.application.volume_policy_service",
     "michi.domain.signal_truth",
     "michi.infrastructure.audio_output.direct_output_executor",
+    "michi.infrastructure.audio_engines.subprocess_characterizer",
+    "michi.infrastructure.audio_engines.characterize_cli",
     "michi.presentation.audio_output_bridge",
 )
 
@@ -1048,6 +1052,32 @@ def main(argv: list[str] | None = None) -> int:
                         *(f"import {name}" for name in INSTALLED_IMPORTS),
                     )
                 )
+                worker_smoke_code = ";".join(
+                    (
+                        "import json, struct, subprocess, sys, tempfile, wave",
+                        "from pathlib import Path",
+                        "tmp = Path(tempfile.mkdtemp(prefix='michi-wheel-smoke-'))",
+                        "fixture = tmp / 'tone.wav'",
+                        "handle = wave.open(str(fixture), 'w')",
+                        "handle.setnchannels(2)",
+                        "handle.setsampwidth(2)",
+                        "handle.setframerate(44100)",
+                        "handle.writeframes("
+                        "b''.join(struct.pack('<hh', 0, 0) for _ in range(2205)))",
+                        "handle.close()",
+                        "completed = subprocess.run("
+                        "[sys.executable, '-m', "
+                        "'michi.infrastructure.audio_engines.characterize_cli', "
+                        "'characterize', '--path', str(fixture), "
+                        "'--timeout-ms', '10000', '--json'], "
+                        "cwd=str(tmp), capture_output=True, text=True, timeout=60)",
+                        "assert completed.returncode == 0, completed.stderr",
+                        "payload = json.loads(completed.stdout)",
+                        "assert payload.get('ok') is True, payload",
+                        "assert payload['result']['rate_hz'] == 44100, payload",
+                        "assert payload['result']['channels'] == 2, payload",
+                    )
+                )
                 command = (
                     str(python),
                     "-m",
@@ -1072,11 +1102,29 @@ def main(argv: list[str] | None = None) -> int:
                             env,
                         )
                     )
+                    results.append(
+                        _run_gate(
+                            Gate(
+                                "installed-wheel-characterizer-smoke",
+                                "Execute the isolated characterizer worker from "
+                                "the installed wheel",
+                                (str(python), "-c", worker_smoke_code),
+                            ),
+                            env,
+                        )
+                    )
                 else:
                     results.append(
                         _skip_result(
                             "installed-wheel-dac-smoke",
                             "Installed DAC module smoke",
+                            "wheel installation failed",
+                        )
+                    )
+                    results.append(
+                        _skip_result(
+                            "installed-wheel-characterizer-smoke",
+                            "Installed characterizer worker smoke",
                             "wheel installation failed",
                         )
                     )
