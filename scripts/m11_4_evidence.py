@@ -42,6 +42,12 @@ FINAL_INDEX = "final-index.json"
 RECEIPTS_DIR = "receipts"
 CHUNK_RECORD_LIMIT = 5000
 CHECKPOINT_SECONDS = 5.0
+JOURNAL_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+"""Signals whose handlers append to the journal (see install_signal_handlers).
+
+They are masked while a record is in flight: the handler then always observes a
+consistent hash chain instead of writing with a stale previous hash.
+"""
 
 
 def utc_now_iso() -> str:
@@ -140,20 +146,28 @@ class EventJournal:
         self._boot = boot_id()
 
     def append(self, event: str, payload: Any = None, *, fsync: bool = True) -> dict:
-        self._seq += 1
-        record = {
-            "seq": self._seq,
-            "event": event,
-            "wall_time_utc": utc_now_iso(),
-            "monotonic_ns": monotonic_ns(),
-            "boot_id": self._boot,
-            "pid": os.getpid(),
-            "payload": payload,
-            "previous_record_sha256": self._last_hash,
-        }
-        record["record_sha256"] = _record_hash(record)
-        append_jsonl_durable(self.path, record, fsync=fsync)
-        self._last_hash = record["record_sha256"]
+        # A signal handler may append to this same journal. Mask those signals
+        # while the record is in flight so the handler can never run between
+        # the write and the in-memory hash update and corrupt the chain; the
+        # pending signal is delivered right after the unmask.
+        blocked = signal.pthread_sigmask(signal.SIG_BLOCK, JOURNAL_SIGNALS)
+        try:
+            self._seq += 1
+            record = {
+                "seq": self._seq,
+                "event": event,
+                "wall_time_utc": utc_now_iso(),
+                "monotonic_ns": monotonic_ns(),
+                "boot_id": self._boot,
+                "pid": os.getpid(),
+                "payload": payload,
+                "previous_record_sha256": self._last_hash,
+            }
+            record["record_sha256"] = _record_hash(record)
+            append_jsonl_durable(self.path, record, fsync=fsync)
+            self._last_hash = record["record_sha256"]
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK, blocked)
         return record
 
 

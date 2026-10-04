@@ -81,6 +81,61 @@ def test_journal_corrupt_hash_is_detected(tmp_path: Path) -> None:
     assert invalid == 1
 
 
+def test_journal_chain_survives_a_signal_in_the_append_window(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A handler appending mid-write must never break the hash chain.
+
+    Regression: the supervisor installs signal handlers that append
+    SIGNAL_RECEIVED/RUN_INTERRUPTED. If the signal was delivered between the
+    record write and the in-memory hash update, the handler wrote with a stale
+    previous hash; recover then degraded the classification from
+    INTERRUPTED_SIGNAL to INTERRUPTED_PROCESS_CRASH. The append critical
+    section masks those signals, deferring delivery to a consistent state.
+    """
+    import os
+    import signal
+
+    journal = evidence.EventJournal(tmp_path / "journal.jsonl")
+    delivered: list[int] = []
+
+    def handler(signum, _frame):
+        delivered.append(int(signum))
+        journal.append("SIGNAL_RECEIVED", {"signal": signal.Signals(signum).name})
+
+    previous = signal.signal(signal.SIGTERM, handler)
+    writes = {"count": 0}
+    real_write = evidence.append_jsonl_durable
+
+    def write_then_signal(path, record, *, fsync=True):
+        real_write(path, record, fsync=fsync)
+        writes["count"] += 1
+        if writes["count"] == 2:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    monkeypatch.setattr(evidence, "append_jsonl_durable", write_then_signal)
+    try:
+        journal.append("RUN_START", {"run": "r1"})
+        journal.append("CHILD_STARTED", {"pid": 1})
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+    records, invalid = evidence.validate_journal(journal.path)
+    assert invalid is None
+    assert [record["event"] for record in records] == [
+        "RUN_START",
+        "CHILD_STARTED",
+        "SIGNAL_RECEIVED",
+    ]
+    assert delivered == [int(signal.SIGTERM)]
+    classification = evidence.classify_interruption(
+        journal_events=[record["event"] for record in records],
+        recorded_boot_id=records[0]["boot_id"],
+        current_boot_id=evidence.boot_id(),
+    )
+    assert classification == "INTERRUPTED_SIGNAL"
+
+
 def test_chunks_seal_and_validate(tmp_path: Path) -> None:
     chunks = evidence.ReceiptChunks(tmp_path / "receipts", record_limit=5)
     for index in range(3):
