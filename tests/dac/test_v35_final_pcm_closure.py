@@ -936,9 +936,7 @@ class TestR32SidecarReceiptContract:
 
     def test_middle_receipt_invalid_generation_is_rejected(self, tmp_path) -> None:
         def mutate(record: dict) -> dict:
-            record["identity"] = dict(
-                record["identity"], execution_generation="nope"
-            )
+            record["identity"] = dict(record["identity"], execution_generation="nope")
             return record
 
         payload = self._with_mutated_middle(tmp_path, mutate)
