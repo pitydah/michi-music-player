@@ -953,7 +953,9 @@ def _first_sample_evidence_by_delay(args) -> dict[int, dict[str, Any]]:
     return result
 
 
-def _wip_heartbeat(args, phase: str, detail: str = "") -> None:
+def _wip_heartbeat(
+    args, phase: str, detail: str = "", *, wip_dir: Path | None = None
+) -> None:
     """Durable progress for the external supervisor, emitted by the sweep path."""
     run_dir = os.environ.get("M11_4_RUN_DIR")
     if not run_dir:
@@ -967,7 +969,9 @@ def _wip_heartbeat(args, phase: str, detail: str = "") -> None:
                 "wall_time_utc": evidence.utc_now_iso(),
                 "phase": phase,
                 "detail": detail,
-                "wip_dir": str(_transition_wip_dir(args)),
+                "wip_dir": str(
+                    wip_dir if wip_dir is not None else _transition_wip_dir(args)
+                ),
             },
         )
 
@@ -1559,37 +1563,202 @@ def _r35_fixture_entry(
     return entry
 
 
+def _r35_wip_dir(args) -> Path:
+    explicit = getattr(args, "wip_dir", None)
+    if explicit is not None:
+        return Path(explicit)
+    run_dir = os.environ.get("M11_4_RUN_DIR")
+    if run_dir:
+        return Path(run_dir) / "r35"
+    evidence = _evidence_module()
+    return evidence.STATE_ROOT / "r35-wip" / time.strftime("%Y%m%dT%H%M%S") / "r35"
+
+
+def _r35_wip_meta(container, args) -> dict[str, Any]:
+    qualification = getattr(getattr(container, "_aob", None), "_qualification", None)
+    fingerprint = None
+    if qualification is not None:
+        with contextlib.suppress(Exception):
+            fingerprint = qualification.current_environment_fingerprint(args.device_id)
+    return {
+        "schema_version": 1,
+        "experiment": "R35",
+        "device_id": args.device_id,
+        "locator": args.locator,
+        "environment_fingerprint": fingerprint,
+        "implementation_head": _git_head(),
+        "canonical_fixtures": list(R35_FIXTURES),
+        "fixture_inputs": {
+            args.fixture: {
+                "media": str(args.media),
+                "media_sha256": _file_sha256(args.media),
+            }
+        },
+        "created_wallclock_utc": _evidence_module().utc_now_iso(),
+    }
+
+
+def _r35_wip_mismatch(previous: dict[str, Any], current: dict[str, Any]) -> str | None:
+    checks = (
+        ("device_id", "device identity"),
+        ("locator", "ALSA locator"),
+        ("environment_fingerprint", "environment fingerprint"),
+        ("implementation_head", "implementation HEAD"),
+        ("canonical_fixtures", "canonical R35 fixture contract"),
+    )
+    for key, label in checks:
+        if previous.get(key) != current.get(key):
+            return f"{label} changed ({key})"
+    previous_inputs = previous.get("fixture_inputs") or {}
+    current_inputs = current.get("fixture_inputs") or {}
+    for name, current_input in current_inputs.items():
+        previous_input = previous_inputs.get(name)
+        if isinstance(previous_input, dict) and previous_input != current_input:
+            return f"fixture input changed for {name} (fixture_inputs)"
+    return None
+
+
+def _r35_sealed_fixtures(wip_dir: Path) -> dict[str, dict[str, Any]]:
+    """Sealed fixture entries from durable checkpoints; a crash never erases them."""
+    fixtures: dict[str, dict[str, Any]] = {}
+    for name in R35_FIXTURES:
+        path = wip_dir / f"fixture-{name}.json"
+        if not path.is_file():
+            continue
+        record = json.loads(path.read_text(encoding="utf-8"))
+        entry = record.get("entry") if isinstance(record, dict) else None
+        if isinstance(entry, dict):
+            fixtures[name] = entry
+    return fixtures
+
+
 def command_tail(args) -> int:
+    if not args.media.is_file():
+        raise SystemExit(f"media fixture does not exist: {args.media}")
+    evidence = _evidence_module()
+    resume = bool(getattr(args, "resume", False))
+    wip_dir = _r35_wip_dir(args)
+    wip_dir.mkdir(parents=True, exist_ok=True)
+    journal = evidence.EventJournal(wip_dir / "journal.jsonl")
     container = _container(args.device_id, args.locator)
     try:
-        result = _play(container, args.media, args.mode)
-        _pump(
-            container,
-            args.timeout_seconds,
-            settled=lambda: container._playback.state.status is PlaybackStatus.STOPPED,
+        meta = _r35_wip_meta(container, args)
+        meta_path = wip_dir / "wip-meta.json"
+        previous_meta = None
+        if meta_path.is_file():
+            previous_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        if isinstance(previous_meta, dict):
+            mismatch = _r35_wip_mismatch(previous_meta, meta)
+            if mismatch:
+                raise SystemExit(f"STOP_R35_WIP_PROVENANCE_MISMATCH: {mismatch}")
+            merged_inputs = dict(previous_meta.get("fixture_inputs") or {})
+            merged_inputs.update(meta["fixture_inputs"])
+            meta["fixture_inputs"] = merged_inputs
+            meta["created_wallclock_utc"] = previous_meta.get(
+                "created_wallclock_utc", meta["created_wallclock_utc"]
+            )
+        evidence.atomic_write_json(meta_path, meta)
+        journal.append(
+            "R35_FIXTURE_START",
+            {
+                "fixture": args.fixture,
+                "media": str(args.media),
+                "resumed": resume,
+            },
         )
-        terminal = container._playback.state.status.value
-        entry = _r35_fixture_entry(
-            media=args.media,
-            result=args.tail_result,
-            evidence_kind=args.evidence_kind,
-            evidence_reference=args.evidence_reference,
-            method=args.method,
-            falsifier_observed=(args.falsifier_observed or args.tail_result == "FAIL"),
-            playback_error=result["error_message"],
-            terminal_status=terminal,
+        _wip_heartbeat(args, "r35-fixture-start", args.fixture, wip_dir=wip_dir)
+        fixture_path = wip_dir / f"fixture-{args.fixture}.json"
+        if resume and fixture_path.is_file():
+            journal.append("R35_FIXTURE_RECOVERED", {"fixture": args.fixture})
+        else:
+            if fixture_path.is_file():
+                previous = json.loads(fixture_path.read_text(encoding="utf-8"))
+                previous_entry = (
+                    previous.get("entry") if isinstance(previous, dict) else None
+                )
+                previous_result = (previous_entry or {}).get("result")
+                if (
+                    previous_result == "PASS"
+                    and (previous_entry or {}).get("falsifier_observed") is False
+                ):
+                    raise SystemExit(
+                        f"STOP_R35_FIXTURE_ALREADY_SEALED: {args.fixture} is already "
+                        "sealed PASS; physical evidence is append-only"
+                    )
+                if (
+                    previous_result == "FAIL"
+                    or (previous_entry or {}).get("falsifier_observed") is True
+                ):
+                    raise SystemExit(
+                        f"STOP_R35_FIXTURE_SEALED_FAIL: {args.fixture} is sealed as "
+                        "FAIL; use a fresh WIP directory for an intentional retest"
+                    )
+                journal.append(
+                    "R35_FIXTURE_RETRY",
+                    {"fixture": args.fixture, "previous_result": previous_result},
+                )
+            result = _play(container, args.media, args.mode)
+            _pump(
+                container,
+                args.timeout_seconds,
+                settled=lambda: (
+                    container._playback.state.status is PlaybackStatus.STOPPED
+                ),
+            )
+            terminal = container._playback.state.status.value
+            entry = _r35_fixture_entry(
+                media=args.media,
+                result=args.tail_result,
+                evidence_kind=args.evidence_kind,
+                evidence_reference=args.evidence_reference,
+                method=args.method,
+                falsifier_observed=(
+                    args.falsifier_observed or args.tail_result == "FAIL"
+                ),
+                playback_error=result["error_message"],
+                terminal_status=terminal,
+            )
+            evidence.atomic_write_json(
+                fixture_path,
+                {
+                    "schema_version": 1,
+                    "fixture": args.fixture,
+                    "entry": entry,
+                    "sealed_wallclock_utc": evidence.utc_now_iso(),
+                },
+            )
+            journal.append(
+                "R35_FIXTURE_SEALED",
+                {
+                    "fixture": args.fixture,
+                    "result": entry["result"],
+                    "falsifier_observed": entry["falsifier_observed"],
+                    "fixture_sha256": entry["fixture_sha256"],
+                },
+            )
+        _wip_heartbeat(args, "r35-fixture-sealed", args.fixture, wip_dir=wip_dir)
+        existing_facts = _manifest(args.manifest)["experiments"]["R35"].get("facts")
+        existing_fixtures = (
+            existing_facts.get("fixtures") if isinstance(existing_facts, dict) else None
         )
-        existing = _manifest(args.manifest)["experiments"]["R35"].get("facts")
-        fixtures = _merge_r35_fixture(
-            existing if isinstance(existing, dict) else {}, args.fixture, entry
-        )
-        status = _r35_status(fixtures)
+        fixtures = dict(existing_fixtures or {})
+        fixtures.update(_r35_sealed_fixtures(wip_dir))
         facts = {"fixtures": fixtures}
+        if existing_facts == facts:
+            print("R35: canonical record already matches the sealed fixtures")
+            return 0
+        evidence_refs = [
+            f"{entry['evidence_kind']}:{entry['evidence_reference']}"
+            for name in R35_FIXTURES
+            if isinstance((entry := fixtures.get(name)), dict)
+            and entry.get("evidence_kind")
+            and entry.get("evidence_reference")
+        ]
         _record(
             args.manifest,
             experiment="R35",
-            status=status,
-            evidence=[f"{args.evidence_kind}:{args.evidence_reference}"],
+            status=_r35_status(fixtures),
+            evidence=evidence_refs,
             facts=facts,
         )
     finally:
@@ -2105,6 +2274,19 @@ def build_parser() -> argparse.ArgumentParser:
     tail.add_argument("--method", required=True)
     tail.add_argument("--falsifier-observed", action="store_true")
     tail.add_argument("--timeout-seconds", type=float, default=30.0)
+    tail.add_argument(
+        "--wip-dir",
+        type=Path,
+        help=(
+            "Durable work-in-progress directory; defaults to "
+            "$M11_4_RUN_DIR/r35 or the local state root"
+        ),
+    )
+    tail.add_argument(
+        "--resume",
+        action="store_true",
+        help="Recover an already-sealed fixture only when WIP provenance still matches",
+    )
     tail.set_defaults(func=command_tail)
 
     fault_prepare = common("fault-prepare")

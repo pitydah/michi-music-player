@@ -885,6 +885,8 @@ def test_lab_command_tail_accumulates_the_fourth_fixture(
         evidence_reference=str(capture),
         method="loopback-capture",
         falsifier_observed=False,
+        wip_dir=tmp_path / "wip",
+        resume=False,
     )
     assert lab.command_tail(args) == 0
     assert recorded["status"] == "PASS"
