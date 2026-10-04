@@ -1,0 +1,37 @@
+{
+  "artifacts": {
+    "alignment_gate": "scripts/verify_audio_phase2_repository_alignment.py",
+    "completeness": "docs/audio/phase2/SPEC_COMPLETENESS.json",
+    "context_tool": "scripts/phase2_context.py",
+    "ledger": "docs/audio/phase2/IMPLEMENTATION_LEDGER.json",
+    "preflight_smoke": "evidence/ap2-preflight/2026-10-03-smoke-v2.json",
+    "spec": "docs/audio/MICHI_AUDIO_PHASE_2_DSP_DSD_DOP_SIGNAL_PATH_MEGA_PLAN.md",
+    "state": "docs/audio/phase2/PHASE2_STATE.json"
+  },
+  "created_utc": "2026-10-04T02:52:08Z",
+  "git_commit": "9c1c2d5fbeb35b20e76cb3a02702bd7666d9b160",
+  "physical_debt": {
+    "deferred_gates": [
+      "R32_UPSTREAM_GSTREAMER_LIFECYCLE",
+      "R25_HA01_PENDING",
+      "R35_PENDING",
+      "R36_PENDING_OR_ENVIRONMENT"
+    ],
+    "m11_4_physical_verdict": "INCOMPLETE",
+    "restricted_phase2_limit": "AP2-F04"
+  },
+  "schema": 1,
+  "spec_path": "docs/audio/MICHI_AUDIO_PHASE_2_DSP_DSD_DOP_SIGNAL_PATH_MEGA_PLAN.md",
+  "spec_sha256": "ee92baaff023ef82f1258b03e95bca7ab391a65e2e9f2c5d3e39241529ffcd79",
+  "suites": [
+    "python -m pytest",
+    "python scripts/verify_dac_m11_4.py",
+    "python scripts/verify_audio_phase2_repository_alignment.py"
+  ],
+  "versions": {
+    "gstreamer": "1.28.7",
+    "kernel": "7.2.8-1-cachyos",
+    "pyside6": "6.11.1",
+    "python": "3.11.15"
+  }
+}

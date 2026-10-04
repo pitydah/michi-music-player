@@ -1,0 +1,32 @@
+{
+  "active_phases": [
+    "AP2-F01"
+  ],
+  "baseline": {
+    "git_commit": "9c1c2d5fbeb35b20e76cb3a02702bd7666d9b160",
+    "manifest": "docs/audio/phase2/audio_phase2_baseline.json"
+  },
+  "phases": {
+    "AP2-F00": "CLOSED",
+    "AP2-F01": "READY",
+    "AP2-F02": "LOCKED",
+    "AP2-F03": "LOCKED",
+    "AP2-F04": "LOCKED",
+    "AP2-F05": "LOCKED",
+    "AP2-F06": "LOCKED",
+    "AP2-F07": "LOCKED",
+    "AP2-F08": "LOCKED",
+    "AP2-F09": "LOCKED",
+    "AP2-F10": "LOCKED",
+    "AP2-F11": "LOCKED",
+    "AP2-F12": "LOCKED",
+    "AP2-F13": "LOCKED",
+    "AP2-F14": "LOCKED",
+    "AP2-F15": "LOCKED"
+  },
+  "schema_version": 1,
+  "spec": {
+    "path": "docs/audio/MICHI_AUDIO_PHASE_2_DSP_DSD_DOP_SIGNAL_PATH_MEGA_PLAN.md",
+    "sha256_at_last_transition": "ee92baaff023ef82f1258b03e95bca7ab391a65e2e9f2c5d3e39241529ffcd79"
+  }
+}
