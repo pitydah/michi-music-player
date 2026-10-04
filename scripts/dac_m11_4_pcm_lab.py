@@ -17,9 +17,12 @@ import argparse
 import contextlib
 import copy
 import gzip
+import importlib.util
 import json
+import os
 import re
 import subprocess
+import sys
 import time
 from collections import deque
 from dataclasses import asdict
@@ -950,6 +953,25 @@ def _first_sample_evidence_by_delay(args) -> dict[int, dict[str, Any]]:
     return result
 
 
+def _wip_heartbeat(args, phase: str, detail: str = "") -> None:
+    """Durable progress for the external supervisor, emitted by the sweep path."""
+    run_dir = os.environ.get("M11_4_RUN_DIR")
+    if not run_dir:
+        return
+    evidence = _evidence_module()
+    with contextlib.suppress(Exception):
+        evidence.atomic_write_json(
+            Path(run_dir) / "progress.json",
+            {
+                "monotonic_ns": evidence.monotonic_ns(),
+                "wall_time_utc": evidence.utc_now_iso(),
+                "phase": phase,
+                "detail": detail,
+                "wip_dir": str(_transition_wip_dir(args)),
+            },
+        )
+
+
 def _run_r25_delay(
     container,
     args,
@@ -967,6 +989,7 @@ def _run_r25_delay(
     measured: dict[str, Any] = {}
     measured_holds: list[int] = []
     for media in args.media:
+        _wip_heartbeat(args, "r25-delay", f"{delay_ms}ms {Path(media).name}")
         result = _play(container, media, args.mode)
         truth = result.get("signal_truth") or {}
         decoded = truth.get("decoded") if isinstance(truth, dict) else None
@@ -1038,19 +1061,130 @@ def _run_r25_delay(
     }
 
 
+def _evidence_module():
+    spec = importlib.util.spec_from_file_location(
+        "m11_4_evidence", Path(__file__).resolve().parent / "m11_4_evidence.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["m11_4_evidence"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _transition_wip_dir(args) -> Path:
+    explicit = getattr(args, "wip_dir", None)
+    if explicit is not None:
+        return Path(explicit)
+    run_dir = os.environ.get("M11_4_RUN_DIR")
+    if run_dir:
+        return Path(run_dir) / "r25"
+    evidence = _evidence_module()
+    return evidence.STATE_ROOT / "r25-wip" / time.strftime("%Y%m%dT%H%M%S") / "r25"
+
+
+def _r25_wip_meta(container, args) -> dict[str, Any]:
+    qualification = getattr(getattr(container, "_aob", None), "_qualification", None)
+    fingerprint = None
+    if qualification is not None:
+        with contextlib.suppress(Exception):
+            fingerprint = qualification.current_environment_fingerprint(args.device_id)
+    return {
+        "schema_version": 1,
+        "experiment": "R25",
+        "device_id": args.device_id,
+        "locator": args.locator,
+        "environment_fingerprint": fingerprint,
+        "implementation_head": _git_head(),
+        "fixture_sha256": {
+            str(media): _file_sha256(Path(media)) for media in args.media
+        },
+        "canonical_delays": list(R25_DELAYS),
+        "first_sample_inputs_sha256": (
+            _file_sha256(Path(args.first_sample_observations))
+            if Path(args.first_sample_observations).is_file()
+            else None
+        ),
+        "first_sample_fixture_sha256": _file_sha256(Path(args.first_sample_fixture)),
+        "first_sample_method": args.first_sample_method,
+        "first_sample_expected_marker": args.first_sample_expected_marker,
+        "created_wallclock_utc": _evidence_module().utc_now_iso(),
+    }
+
+
+def _r25_wip_mismatch(previous: dict[str, Any], current: dict[str, Any]) -> str | None:
+    checks = (
+        ("device_id", "device identity"),
+        ("locator", "ALSA locator"),
+        ("environment_fingerprint", "environment fingerprint"),
+        ("implementation_head", "implementation HEAD"),
+        ("fixture_sha256", "fixture hashes"),
+        ("canonical_delays", "canonical R25 contract"),
+        ("first_sample_inputs_sha256", "operator observation inputs"),
+        ("first_sample_fixture_sha256", "first-sample fixture"),
+        ("first_sample_method", "first-sample method"),
+        ("first_sample_expected_marker", "first-sample marker"),
+    )
+    for key, label in checks:
+        if previous.get(key) != current.get(key):
+            return f"{label} changed ({key})"
+    return None
+
+
 def command_transition(args) -> int:
     if len(args.media) != 7:
         raise SystemExit(
             "R25 requires seven fixtures in this order: "
             "44.1, 44.1, 48, 44.1, 96, 192, 44.1 kHz"
         )
+    evidence = _evidence_module()
     first_sample_by_delay = _first_sample_evidence_by_delay(args)
+    wip_dir = _transition_wip_dir(args)
+    wip_dir.mkdir(parents=True, exist_ok=True)
+    journal = evidence.EventJournal(wip_dir / "journal.jsonl")
     container = _container(args.device_id, args.locator)
     runs: list[dict[str, Any]] = []
+    sealed: dict[int, dict[str, Any]] = {}
     try:
+        meta = _r25_wip_meta(container, args)
+        meta_path = wip_dir / "wip-meta.json"
+        if getattr(args, "resume", False) and meta_path.is_file():
+            previous = json.loads(meta_path.read_text(encoding="utf-8"))
+            mismatch = _r25_wip_mismatch(previous, meta)
+            if mismatch:
+                raise SystemExit(f"STOP_R25_WIP_PROVENANCE_MISMATCH: {mismatch}")
+            for delay in R25_DELAYS:
+                record_path = wip_dir / f"delay-{delay:04d}.json"
+                if record_path.is_file():
+                    sealed[delay] = json.loads(record_path.read_text(encoding="utf-8"))
+        evidence.atomic_write_json(meta_path, meta)
+        journal.append(
+            "R25_SWEEP_START",
+            {"delays": list(R25_DELAYS), "resumed_delays": sorted(sealed)},
+        )
+        _wip_heartbeat(args, "r25-sweep", "start")
         for delay in R25_DELAYS:
-            runs.append(
-                _run_r25_delay(container, args, delay, first_sample_by_delay.get(delay))
+            if delay in sealed:
+                runs.append(sealed[delay]["run"])
+                journal.append("R25_DELAY_RECOVERED", {"delay_ms": delay})
+                continue
+            _wip_heartbeat(args, "r25-delay-start", f"{delay}ms")
+            run = _run_r25_delay(
+                container, args, delay, first_sample_by_delay.get(delay)
+            )
+            runs.append(run)
+            evidence.atomic_write_json(
+                wip_dir / f"delay-{delay:04d}.json",
+                {
+                    "schema_version": 1,
+                    "delay_ms": delay,
+                    "run": run,
+                    "first_sample_evidence": first_sample_by_delay.get(delay),
+                    "sealed_wallclock_utc": evidence.utc_now_iso(),
+                },
+            )
+            journal.append(
+                "R25_DELAY_SEALED",
+                {"delay_ms": delay, "receipts": len(run["receipts"])},
             )
     finally:
         container.shutdown()
@@ -1932,6 +2066,19 @@ def build_parser() -> argparse.ArgumentParser:
             "JSON object keyed by 0/100/250/500/1000; each value supplies "
             "evidence_reference and observed_result"
         ),
+    )
+    transition.add_argument(
+        "--wip-dir",
+        type=Path,
+        help=(
+            "Durable work-in-progress directory; defaults to "
+            "$M11_4_RUN_DIR/r25 or the local state root"
+        ),
+    )
+    transition.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue missing delays only when WIP provenance still matches",
     )
     transition.set_defaults(func=command_transition)
 
