@@ -205,7 +205,12 @@ connected DACs (R25: SMSL 2026-09-30, Kinmax HA01 2026-10-04; R35: both
 2026-10-04 hardened campaigns, four canonical fixtures each, operator PASS);
 R36 has the Kinmax HA01 suspend/resume PASS with XRUN deferred-environment on
 both DACs and the SMSL recovery cases pending its physical restore; the 8-hour
-R32 run remains before any physical verdict above INCOMPLETE can be emitted. An unreadable kernel journal, missing documented USB ABI witness or
+R32 run remains before any physical verdict above INCOMPLETE can be emitted.
+The remaining physical campaign is **parked** by operator decision
+(2026-10-04) for the duration of the Audio Phase 2 F01-F04 implementation and
+resumes before the final qualification stages; parking preserves every durable
+observation, keeps the incomplete SMSL cases in the hardened WIP journal, and
+never upgrades a physical gate. An unreadable kernel journal, missing documented USB ABI witness or
 unavailable fault-injection mechanism remains an honest non-PASS condition;
 tooling completeness never manufactures physical evidence.
 
