@@ -1,0 +1,713 @@
+{
+  "captured_at": "2026-10-04T16:08:22-0300",
+  "claim_firewall": {
+    "DAC-V35-120": "OUT_OF_SCOPE",
+    "DAC-V35-130": "POST_STABLE",
+    "DAC-V35-140": "SEPARATE_PROMOTION",
+    "M11.5": "OUT_OF_SCOPE",
+    "bit_perfect": false,
+    "exclusive": false
+  },
+  "device": {
+    "bcd_device": "a0a6",
+    "descriptor_hash": "720f0aab5a83ad3a4f0f5cf4fff37c0b878872b0073691f187ec3b9ecc512e36",
+    "display_name": "KINMAX HA01",
+    "label": "KINMAX HA01",
+    "locator": "hw:CARD=HA01,DEV=0",
+    "manufacturer": "KINMAX",
+    "product": "HA01",
+    "product_id": "f882",
+    "stable_device_id": "usb:2fc6:f882:HA01",
+    "vendor_id": "2fc6"
+  },
+  "environment_context": {
+    "alsa_library_version": "1.2.16.1",
+    "binding_topology_fingerprint": "topology:v1:sha256:d6cb409e6a2ca60f07fed28cbef06ed92c177603426092615958878cb6c18822",
+    "gstreamer_version": "GStreamer 1.28.7",
+    "kernel_release": "7.2.9-1-cachyos",
+    "qualification_profile_version": "dac-v35-exact-open-v1",
+    "snd_usb_audio_identity": "snd-usb-audio",
+    "stable_device_id": "usb:2fc6:f882:HA01",
+    "usb_bcd_device": "a0a6",
+    "usb_descriptor_sha256": "720f0aab5a83ad3a4f0f5cf4fff37c0b878872b0073691f187ec3b9ecc512e36",
+    "usb_product_id": "f882",
+    "usb_vendor_id": "2fc6"
+  },
+  "environment_fingerprint": "qenv:v2:sha256:ecc88f1507fbe4cf2ca05e40dcf029aef38f031f332be880f30522506281a91a",
+  "events": [
+    {
+      "captured_at": "2026-10-04T16:27:24-0300",
+      "collected_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+      "evidence": [
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass"
+      ],
+      "experiment": "R35",
+      "facts": {
+        "fixtures": {
+          "nonzero_final_samples": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744",
+            "fixture_sha256s": [
+              "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          }
+        }
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T16:27:29-0300",
+      "collected_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+      "evidence": [
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass"
+      ],
+      "experiment": "R35",
+      "facts": {
+        "fixtures": {
+          "end_impulse": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3",
+            "fixture_sha256s": [
+              "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/end_impulse.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "nonzero_final_samples": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744",
+            "fixture_sha256s": [
+              "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          }
+        }
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T16:27:38-0300",
+      "collected_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+      "evidence": [
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass"
+      ],
+      "experiment": "R35",
+      "facts": {
+        "fixtures": {
+          "end_impulse": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3",
+            "fixture_sha256s": [
+              "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/end_impulse.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "nonzero_final_samples": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744",
+            "fixture_sha256s": [
+              "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "same_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "26b6cef7a8f54838fa7517e3f3e8c2d748dbbdd227ea1ab2029b60e398315e9d",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "6c00ea1acee3d093be25d39d5edaef3b442586a95bbbaca48e2e4ca95b69f318"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          }
+        }
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T16:27:47-0300",
+      "collected_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+      "evidence": [
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass"
+      ],
+      "experiment": "R35",
+      "facts": {
+        "fixtures": {
+          "different_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "09fe262a9df7c32592a2884a39129d81ac967d796edf66f1bc8605b3b9ef2174",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "b19537f845b7b3360430d380212188c0684eee5d7143953f9accb86937e3b868"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "end_impulse": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3",
+            "fixture_sha256s": [
+              "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/end_impulse.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "nonzero_final_samples": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744",
+            "fixture_sha256s": [
+              "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "same_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "26b6cef7a8f54838fa7517e3f3e8c2d748dbbdd227ea1ab2029b60e398315e9d",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "6c00ea1acee3d093be25d39d5edaef3b442586a95bbbaca48e2e4ca95b69f318"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          }
+        }
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T16:28:26-0300",
+      "collected_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+      "evidence": [
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass"
+      ],
+      "experiment": "R35",
+      "facts": {
+        "fixtures": {
+          "different_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "09fe262a9df7c32592a2884a39129d81ac967d796edf66f1bc8605b3b9ef2174",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "b19537f845b7b3360430d380212188c0684eee5d7143953f9accb86937e3b868"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "end_impulse": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3",
+            "fixture_sha256s": [
+              "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/end_impulse.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "nonzero_final_samples": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744",
+            "fixture_sha256s": [
+              "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "same_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "26b6cef7a8f54838fa7517e3f3e8c2d748dbbdd227ea1ab2029b60e398315e9d",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "6c00ea1acee3d093be25d39d5edaef3b442586a95bbbaca48e2e4ca95b69f318"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          }
+        }
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T16:28:30-0300",
+      "collected_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+      "evidence": [
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass"
+      ],
+      "experiment": "R35",
+      "facts": {
+        "fixtures": {
+          "different_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "09fe262a9df7c32592a2884a39129d81ac967d796edf66f1bc8605b3b9ef2174",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "b19537f845b7b3360430d380212188c0684eee5d7143953f9accb86937e3b868"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "end_impulse": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3",
+            "fixture_sha256s": [
+              "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/end_impulse.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "nonzero_final_samples": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744",
+            "fixture_sha256s": [
+              "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "same_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "26b6cef7a8f54838fa7517e3f3e8c2d748dbbdd227ea1ab2029b60e398315e9d",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "6c00ea1acee3d093be25d39d5edaef3b442586a95bbbaca48e2e4ca95b69f318"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          }
+        }
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T16:28:39-0300",
+      "collected_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+      "evidence": [
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:listen-pass"
+      ],
+      "experiment": "R35",
+      "facts": {
+        "fixtures": {
+          "different_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:listen-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "09fe262a9df7c32592a2884a39129d81ac967d796edf66f1bc8605b3b9ef2174",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "b19537f845b7b3360430d380212188c0684eee5d7143953f9accb86937e3b868"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "NOT_OBSERVED",
+            "terminal_status": 1
+          },
+          "end_impulse": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3",
+            "fixture_sha256s": [
+              "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/end_impulse.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "nonzero_final_samples": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744",
+            "fixture_sha256s": [
+              "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "same_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "26b6cef7a8f54838fa7517e3f3e8c2d748dbbdd227ea1ab2029b60e398315e9d",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "6c00ea1acee3d093be25d39d5edaef3b442586a95bbbaca48e2e4ca95b69f318"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          }
+        }
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T16:28:48-0300",
+      "collected_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+      "evidence": [
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass"
+      ],
+      "experiment": "R35",
+      "facts": {
+        "fixtures": {
+          "different_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "09fe262a9df7c32592a2884a39129d81ac967d796edf66f1bc8605b3b9ef2174",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "b19537f845b7b3360430d380212188c0684eee5d7143953f9accb86937e3b868"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "end_impulse": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3",
+            "fixture_sha256s": [
+              "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/end_impulse.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "nonzero_final_samples": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744",
+            "fixture_sha256s": [
+              "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "same_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "26b6cef7a8f54838fa7517e3f3e8c2d748dbbdd227ea1ab2029b60e398315e9d",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "6c00ea1acee3d093be25d39d5edaef3b442586a95bbbaca48e2e4ca95b69f318"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          }
+        }
+      },
+      "status": "PASS"
+    }
+  ],
+  "evidence_execution_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+  "experiments": {
+    "R24": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R25": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R32": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R35": {
+      "captured_at": "2026-10-04T16:28:48-0300",
+      "evidence": [
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass",
+        "operator:operator:gca-r35-ha01-2026-10-04:verdict-pass"
+      ],
+      "executed": true,
+      "facts": {
+        "fixtures": {
+          "different_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "09fe262a9df7c32592a2884a39129d81ac967d796edf66f1bc8605b3b9ef2174",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "b19537f845b7b3360430d380212188c0684eee5d7143953f9accb86937e3b868"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/different_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "end_impulse": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3",
+            "fixture_sha256s": [
+              "006e0bee963b4217a59d43aa660b6062f22fd257e75ddd88527bdb3b6869cbd3"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/end_impulse.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "nonzero_final_samples": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744",
+            "fixture_sha256s": [
+              "e30e3bd4dcbf98e9f3f934b95c04ddd06cf8ea97c85c12312117cbd0ee0c6744"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          },
+          "same_tuple_two_track_boundary": {
+            "evidence_kind": "operator",
+            "evidence_reference": "operator:gca-r35-ha01-2026-10-04:verdict-pass",
+            "falsifier_observed": false,
+            "fixture_sha256": "26b6cef7a8f54838fa7517e3f3e8c2d748dbbdd227ea1ab2029b60e398315e9d",
+            "fixture_sha256s": [
+              "df3ce63a1e10cf51698e3a3006b0295761174bfa904bf57039d7860ceef41521",
+              "6c00ea1acee3d093be25d39d5edaef3b442586a95bbbaca48e2e4ca95b69f318"
+            ],
+            "media": [
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_a.wav",
+              "evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/same_tuple_track_b.wav"
+            ],
+            "method": "operator-listening-tail-integrity",
+            "playback_error": null,
+            "result": "PASS",
+            "terminal_status": 1
+          }
+        }
+      },
+      "status": "PASS"
+    },
+    "R36": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    }
+  },
+  "implementation_head": "c56c4d1f84a73db71199ee677f17518e0d19aa77",
+  "manifest_created_at": "2026-10-04T16:08:22-0300",
+  "manifest_schema": 2,
+  "schema_version": 1
+}

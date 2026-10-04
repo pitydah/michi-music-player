@@ -80,11 +80,11 @@ canonical delay sweep with measured holds 0/107/268/509/1011 ms, zero XRUN,
 zero stale generation, zero hidden conversion, operator first-sample PASS on
 all five delays, derived minimum delay 0 ms); **R25 PASS for the Kinmax HA01**
 as well (hardened campaign of 2026-10-04, same canonical delays with derived
-minimum delay 0 ms); **R35 tail/drain PASS for the SMSL** (hardened campaign
-of 2026-10-04, kernel `7.2.9-1-cachyos`: all four canonical fixtures sealed
-with fixture/track SHA-256 and operator PASS, no tail/drain falsifier
-observed). **R32** (8 h soak) and **R36** (XRUN injection, unavailable in
-this kernel) remain `NOT_RUN`; Kinmax R35 is still pending.
+minimum delay 0 ms); **R35 tail/drain PASS for the SMSL and the Kinmax HA01**
+(hardened campaigns of 2026-10-04, kernel `7.2.9-1-cachyos`: all four
+canonical fixtures sealed with fixture/track SHA-256 and operator PASS, no
+tail/drain falsifier observed on either DAC). **R32** (8 h soak) and **R36**
+(XRUN injection, unavailable in this kernel) remain `NOT_RUN`.
 Physical verdict: `INCOMPLETE`, multi-hardware not proven. Bit-perfect and
 exclusive are still not claimed, and M11.5 / DAC-V35-120 / 130 / 140 are not
 started.
@@ -194,11 +194,11 @@ the same contracts as the semantic evaluator:
   health, cumulative R36 and descriptor-provenance gates, is mandatory in the
   aggregate verifier.
 
-Physical **EXECUTION** remains INCOMPLETE: R25 is closed for both connected
-DACs (SMSL 2026-09-30, Kinmax HA01 2026-10-04) and R35 is closed for the SMSL
-(2026-10-04, four canonical fixtures, operator PASS); the 8-hour R32 run, the
-Kinmax R35 observations and applicable R36 runs remain before any physical
-verdict above INCOMPLETE can be emitted. An unreadable kernel journal, missing documented USB ABI witness or
+Physical **EXECUTION** remains INCOMPLETE: R25 and R35 are closed for both
+connected DACs (R25: SMSL 2026-09-30, Kinmax HA01 2026-10-04; R35: both
+2026-10-04 hardened campaigns, four canonical fixtures each, operator PASS);
+the 8-hour R32 run and applicable R36 runs remain before any physical verdict
+above INCOMPLETE can be emitted. An unreadable kernel journal, missing documented USB ABI witness or
 unavailable fault-injection mechanism remains an honest non-PASS condition;
 tooling completeness never manufactures physical evidence.
 
