@@ -78,8 +78,9 @@ PASS** for both connected DACs (SMSL `usb:152a:85dd:3-3.3.2` and KINMAX HA01
 environment (campaign of 2026-09-30, kernel `7.2.8-1-cachyos`: complete
 canonical delay sweep with measured holds 0/107/268/509/1011 ms, zero XRUN,
 zero stale generation, zero hidden conversion, operator first-sample PASS on
-all five delays, derived minimum delay 0 ms; the Kinmax HA01 R25 campaign
-remains pending); **R32** (8 h soak), **R35** (tail/drain capture) and
+all five delays, derived minimum delay 0 ms); **R25 PASS for the Kinmax HA01**
+as well (hardened campaign of 2026-10-04, same canonical delays with derived
+minimum delay 0 ms); **R32** (8 h soak), **R35** (tail/drain capture) and
 **R36** (XRUN injection, unavailable in this kernel) remain `NOT_RUN`.
 Physical verdict: `INCOMPLETE`, multi-hardware not proven. Bit-perfect and
 exclusive are still not claimed, and M11.5 / DAC-V35-120 / 130 / 140 are not

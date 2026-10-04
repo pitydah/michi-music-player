@@ -1,0 +1,3657 @@
+{
+  "captured_at": "2026-10-04T00:57:02-0300",
+  "claim_firewall": {
+    "DAC-V35-120": "OUT_OF_SCOPE",
+    "DAC-V35-130": "POST_STABLE",
+    "DAC-V35-140": "SEPARATE_PROMOTION",
+    "M11.5": "OUT_OF_SCOPE",
+    "bit_perfect": false,
+    "exclusive": false
+  },
+  "device": {
+    "bcd_device": "a0a6",
+    "descriptor_hash": "720f0aab5a83ad3a4f0f5cf4fff37c0b878872b0073691f187ec3b9ecc512e36",
+    "display_name": "KINMAX HA01",
+    "label": "KINMAX HA01",
+    "locator": "hw:CARD=HA01,DEV=0",
+    "manufacturer": "KINMAX",
+    "product": "HA01",
+    "product_id": "f882",
+    "stable_device_id": "usb:2fc6:f882:HA01",
+    "vendor_id": "2fc6"
+  },
+  "environment_context": {
+    "alsa_library_version": "1.2.16.1",
+    "binding_topology_fingerprint": "topology:v1:sha256:d6cb409e6a2ca60f07fed28cbef06ed92c177603426092615958878cb6c18822",
+    "gstreamer_version": "GStreamer 1.28.7",
+    "kernel_release": "7.2.8-2-cachyos",
+    "qualification_profile_version": "dac-v35-exact-open-v1",
+    "snd_usb_audio_identity": "snd-usb-audio",
+    "stable_device_id": "usb:2fc6:f882:HA01",
+    "usb_bcd_device": "a0a6",
+    "usb_descriptor_sha256": "720f0aab5a83ad3a4f0f5cf4fff37c0b878872b0073691f187ec3b9ecc512e36",
+    "usb_product_id": "f882",
+    "usb_vendor_id": "2fc6"
+  },
+  "environment_fingerprint": "qenv:v2:sha256:7e069b6a869742c5b30d500038b781b8ca599461859952638415f135565f72f6",
+  "events": [
+    {
+      "captured_at": "2026-10-04T00:57:04-0300",
+      "collected_head": "32a5014991385413003c077305373f01aeeeb6b4",
+      "evidence": [
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "SignalTruth.clock"
+      ],
+      "experiment": "R24",
+      "facts": {
+        "resampling_observed": false,
+        "signal_truth_state": "direct",
+        "sink_clock_is_pipeline_clock": true,
+        "sink_provides_clock": true,
+        "slave_method": "skew"
+      },
+      "status": "PASS"
+    },
+    {
+      "captured_at": "2026-10-04T00:59:07-0300",
+      "collected_head": "32a5014991385413003c077305373f01aeeeb6b4",
+      "evidence": [
+        "runtime:evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "sweep_delay:0ms",
+        "sweep_delay:100ms",
+        "sweep_delay:250ms",
+        "sweep_delay:500ms",
+        "sweep_delay:1000ms"
+      ],
+      "experiment": "R25",
+      "facts": {
+        "first_sample_evidence_by_delay": {},
+        "first_sample_result": "NOT_PROVEN",
+        "hidden_conversion_observed": false,
+        "minimal_delay_that_preserves_first_content": null,
+        "runs": [
+          {
+            "actual_hold_ms": 0,
+            "configured_delay_ms": 0,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": null,
+            "first_sample_evidence": null,
+            "hidden_conversion_observed": false,
+            "plan_id": null,
+            "port_generation": null,
+            "receipts": [
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 1,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 1,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 2,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 2,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 3,
+                  "plan_id": "plan:8f34ea118662104d",
+                  "port_generation": 3,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 4,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 4,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 5,
+                  "plan_id": "plan:b8f82bea37ad26b1",
+                  "port_generation": 5,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 6,
+                  "plan_id": "plan:d3ba27d8e3e31194",
+                  "port_generation": 6,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 7,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 7,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 108,
+            "configured_delay_ms": 100,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 14,
+            "first_sample_evidence": null,
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:22be941b23975efe",
+            "port_generation": 14,
+            "receipts": [
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 8,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 8,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 9,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 9,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 10,
+                  "plan_id": "plan:bb2c3da4afe820bb",
+                  "port_generation": 10,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 11,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 11,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 12,
+                  "plan_id": "plan:93ad437d99b5d9d2",
+                  "port_generation": 12,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 109,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 13,
+                  "plan_id": "plan:c0d911c080ad75fa",
+                  "port_generation": 13,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 14,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 14,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 269,
+            "configured_delay_ms": 250,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 21,
+            "first_sample_evidence": null,
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:e0426f704a5811bf",
+            "port_generation": 21,
+            "receipts": [
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 15,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 15,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 16,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 16,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 17,
+                  "plan_id": "plan:26af97d08fca1b57",
+                  "port_generation": 17,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 18,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 18,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 19,
+                  "plan_id": "plan:ada4a341e3158cfb",
+                  "port_generation": 19,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 20,
+                  "plan_id": "plan:e4cf478f577c684a",
+                  "port_generation": 20,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 21,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 21,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 511,
+            "configured_delay_ms": 500,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 28,
+            "first_sample_evidence": null,
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:80b44a9cc6a8801f",
+            "port_generation": 28,
+            "receipts": [
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 22,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 22,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 23,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 23,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 24,
+                  "plan_id": "plan:810852afbf891eca",
+                  "port_generation": 24,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 25,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 25,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 26,
+                  "plan_id": "plan:bc1cee5c7e7e4986",
+                  "port_generation": 26,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 512,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 27,
+                  "plan_id": "plan:13a0de5630f60e8d",
+                  "port_generation": 27,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 28,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 28,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 1014,
+            "configured_delay_ms": 1000,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 35,
+            "first_sample_evidence": null,
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:7ecad0430860fffd",
+            "port_generation": 35,
+            "receipts": [
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 29,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 29,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1018,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 30,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 30,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 31,
+                  "plan_id": "plan:3211ae5f66fcb994",
+                  "port_generation": 31,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 32,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 32,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 33,
+                  "plan_id": "plan:d7e53f01f970bffa",
+                  "port_generation": 33,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 34,
+                  "plan_id": "plan:c933b846b5dd7163",
+                  "port_generation": 34,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 35,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 35,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          }
+        ],
+        "stale_generation_observed": false,
+        "transition_edges": [
+          "192000->44100",
+          "44100->44100",
+          "44100->48000",
+          "44100->96000",
+          "48000->44100",
+          "96000->192000"
+        ],
+        "xrun_count": false
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T01:23:19-0300",
+      "collected_head": "32a5014991385413003c077305373f01aeeeb6b4",
+      "evidence": [
+        "runtime:evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "sweep_delay:0ms",
+        "sweep_delay:100ms",
+        "sweep_delay:250ms",
+        "sweep_delay:500ms",
+        "sweep_delay:1000ms"
+      ],
+      "experiment": "R25",
+      "facts": {
+        "first_sample_evidence_by_delay": {
+          "0": {
+            "configured_delay_ms": 0,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay0ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          },
+          "100": {
+            "configured_delay_ms": 100,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay100ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          },
+          "1000": {
+            "configured_delay_ms": 1000,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay1000ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          },
+          "250": {
+            "configured_delay_ms": 250,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay250ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          },
+          "500": {
+            "configured_delay_ms": 500,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay500ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          }
+        },
+        "first_sample_result": "PASS",
+        "hidden_conversion_observed": false,
+        "minimal_delay_that_preserves_first_content": 0,
+        "runs": [
+          {
+            "actual_hold_ms": 0,
+            "configured_delay_ms": 0,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": null,
+            "first_sample_evidence": {
+              "configured_delay_ms": 0,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay0ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": null,
+            "port_generation": null,
+            "receipts": [
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 1,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 1,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 2,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 2,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 3,
+                  "plan_id": "plan:8f34ea118662104d",
+                  "port_generation": 3,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 4,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 4,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 5,
+                  "plan_id": "plan:b8f82bea37ad26b1",
+                  "port_generation": 5,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 6,
+                  "plan_id": "plan:d3ba27d8e3e31194",
+                  "port_generation": 6,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 7,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 7,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 108,
+            "configured_delay_ms": 100,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 14,
+            "first_sample_evidence": {
+              "configured_delay_ms": 100,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay100ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:22be941b23975efe",
+            "port_generation": 14,
+            "receipts": [
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 8,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 8,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 9,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 9,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 10,
+                  "plan_id": "plan:bb2c3da4afe820bb",
+                  "port_generation": 10,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 11,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 11,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 117,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 12,
+                  "plan_id": "plan:93ad437d99b5d9d2",
+                  "port_generation": 12,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 13,
+                  "plan_id": "plan:c0d911c080ad75fa",
+                  "port_generation": 13,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 14,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 14,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 268,
+            "configured_delay_ms": 250,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 21,
+            "first_sample_evidence": {
+              "configured_delay_ms": 250,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay250ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:e0426f704a5811bf",
+            "port_generation": 21,
+            "receipts": [
+              {
+                "actual_hold_ms": 270,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 15,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 15,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 268,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 16,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 16,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 17,
+                  "plan_id": "plan:26af97d08fca1b57",
+                  "port_generation": 17,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 18,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 18,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 19,
+                  "plan_id": "plan:ada4a341e3158cfb",
+                  "port_generation": 19,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 20,
+                  "plan_id": "plan:e4cf478f577c684a",
+                  "port_generation": 20,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 270,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 21,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 21,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 510,
+            "configured_delay_ms": 500,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 28,
+            "first_sample_evidence": {
+              "configured_delay_ms": 500,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay500ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:80b44a9cc6a8801f",
+            "port_generation": 28,
+            "receipts": [
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 22,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 22,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 23,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 23,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 24,
+                  "plan_id": "plan:810852afbf891eca",
+                  "port_generation": 24,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 25,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 25,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 512,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 26,
+                  "plan_id": "plan:bc1cee5c7e7e4986",
+                  "port_generation": 26,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 510,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 27,
+                  "plan_id": "plan:13a0de5630f60e8d",
+                  "port_generation": 27,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 28,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 28,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 1014,
+            "configured_delay_ms": 1000,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 35,
+            "first_sample_evidence": {
+              "configured_delay_ms": 1000,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay1000ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:7ecad0430860fffd",
+            "port_generation": 35,
+            "receipts": [
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 29,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 29,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 30,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 30,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 31,
+                  "plan_id": "plan:3211ae5f66fcb994",
+                  "port_generation": 31,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 32,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 32,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 33,
+                  "plan_id": "plan:d7e53f01f970bffa",
+                  "port_generation": 33,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 34,
+                  "plan_id": "plan:c933b846b5dd7163",
+                  "port_generation": 34,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 35,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 35,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          }
+        ],
+        "stale_generation_observed": false,
+        "transition_edges": [
+          "192000->44100",
+          "44100->44100",
+          "44100->48000",
+          "44100->96000",
+          "48000->44100",
+          "96000->192000"
+        ],
+        "xrun_count": false
+      },
+      "status": "PASS"
+    }
+  ],
+  "evidence_execution_head": "32a5014991385413003c077305373f01aeeeb6b4",
+  "experiments": {
+    "R24": {
+      "captured_at": "2026-10-04T00:57:04-0300",
+      "evidence": [
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "SignalTruth.clock"
+      ],
+      "executed": true,
+      "facts": {
+        "resampling_observed": false,
+        "signal_truth_state": "direct",
+        "sink_clock_is_pipeline_clock": true,
+        "sink_provides_clock": true,
+        "slave_method": "skew"
+      },
+      "status": "PASS"
+    },
+    "R25": {
+      "captured_at": "2026-10-04T01:23:19-0300",
+      "evidence": [
+        "runtime:evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+        "runtime:evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+        "sweep_delay:0ms",
+        "sweep_delay:100ms",
+        "sweep_delay:250ms",
+        "sweep_delay:500ms",
+        "sweep_delay:1000ms"
+      ],
+      "executed": true,
+      "facts": {
+        "first_sample_evidence_by_delay": {
+          "0": {
+            "configured_delay_ms": 0,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay0ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          },
+          "100": {
+            "configured_delay_ms": 100,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay100ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          },
+          "1000": {
+            "configured_delay_ms": 1000,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay1000ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          },
+          "250": {
+            "configured_delay_ms": 250,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay250ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          },
+          "500": {
+            "configured_delay_ms": 500,
+            "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay500ms",
+            "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+            "fixture_id": "r25_marker_44100.wav",
+            "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+            "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+            "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+            "preserved": true
+          }
+        },
+        "first_sample_result": "PASS",
+        "hidden_conversion_observed": false,
+        "minimal_delay_that_preserves_first_content": 0,
+        "runs": [
+          {
+            "actual_hold_ms": 0,
+            "configured_delay_ms": 0,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": null,
+            "first_sample_evidence": {
+              "configured_delay_ms": 0,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay0ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": null,
+            "port_generation": null,
+            "receipts": [
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 1,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 1,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 2,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 2,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 3,
+                  "plan_id": "plan:8f34ea118662104d",
+                  "port_generation": 3,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 4,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 4,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 5,
+                  "plan_id": "plan:b8f82bea37ad26b1",
+                  "port_generation": 5,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 6,
+                  "plan_id": "plan:d3ba27d8e3e31194",
+                  "port_generation": 6,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 0,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 7,
+                  "plan_id": "plan:ecad6335af34ada9",
+                  "port_generation": 7,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 108,
+            "configured_delay_ms": 100,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 14,
+            "first_sample_evidence": {
+              "configured_delay_ms": 100,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay100ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:22be941b23975efe",
+            "port_generation": 14,
+            "receipts": [
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 8,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 8,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 9,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 9,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 10,
+                  "plan_id": "plan:bb2c3da4afe820bb",
+                  "port_generation": 10,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 11,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 11,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 117,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 12,
+                  "plan_id": "plan:93ad437d99b5d9d2",
+                  "port_generation": 12,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 13,
+                  "plan_id": "plan:c0d911c080ad75fa",
+                  "port_generation": 13,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 108,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 14,
+                  "plan_id": "plan:22be941b23975efe",
+                  "port_generation": 14,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 268,
+            "configured_delay_ms": 250,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 21,
+            "first_sample_evidence": {
+              "configured_delay_ms": 250,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay250ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:e0426f704a5811bf",
+            "port_generation": 21,
+            "receipts": [
+              {
+                "actual_hold_ms": 270,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 15,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 15,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 268,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 16,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 16,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 17,
+                  "plan_id": "plan:26af97d08fca1b57",
+                  "port_generation": 17,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 18,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 18,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 19,
+                  "plan_id": "plan:ada4a341e3158cfb",
+                  "port_generation": 19,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 269,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 20,
+                  "plan_id": "plan:e4cf478f577c684a",
+                  "port_generation": 20,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 270,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 21,
+                  "plan_id": "plan:e0426f704a5811bf",
+                  "port_generation": 21,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 510,
+            "configured_delay_ms": 500,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 28,
+            "first_sample_evidence": {
+              "configured_delay_ms": 500,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay500ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:80b44a9cc6a8801f",
+            "port_generation": 28,
+            "receipts": [
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 22,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 22,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 23,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 23,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 24,
+                  "plan_id": "plan:810852afbf891eca",
+                  "port_generation": 24,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 25,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 25,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 512,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 26,
+                  "plan_id": "plan:bc1cee5c7e7e4986",
+                  "port_generation": 26,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 510,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 27,
+                  "plan_id": "plan:13a0de5630f60e8d",
+                  "port_generation": 27,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 511,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 28,
+                  "plan_id": "plan:80b44a9cc6a8801f",
+                  "port_generation": 28,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          },
+          {
+            "actual_hold_ms": 1014,
+            "configured_delay_ms": 1000,
+            "edges": [
+              "44100->44100",
+              "44100->48000",
+              "48000->44100",
+              "44100->96000",
+              "96000->192000",
+              "192000->44100"
+            ],
+            "execution_generation": 35,
+            "first_sample_evidence": {
+              "configured_delay_ms": 1000,
+              "evidence_reference": "operator:listening-2026-10-04-marker+the-cure-delay1000ms",
+              "expected_marker": "full-scale tick at sample 0 followed by a 440 Hz tone",
+              "fixture_id": "r25_marker_44100.wav",
+              "fixture_sha256": "9385258c27744ad89273d0f5c5a260a8defa3313e2d0b97c4c2e9d0a2e8567c6",
+              "method": "operator-listening (marker + The Cure - Pictures Of You, per-delay session)",
+              "observed_result": "PASS: first sample/marker intact; no click or pop audible; no beginning truncation",
+              "preserved": true
+            },
+            "hidden_conversion_observed": false,
+            "plan_id": "plan:7ecad0430860fffd",
+            "port_generation": 35,
+            "receipts": [
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-pcm-closure/2026-10-04-kinmax-ha01/fixtures/r25_marker_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 29,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 29,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 30,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 30,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_48000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 48000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 31,
+                  "plan_id": "plan:3211ae5f66fcb994",
+                  "port_generation": 31,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 48000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 32,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 32,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_96000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 96000,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 33,
+                  "plan_id": "plan:d7e53f01f970bffa",
+                  "port_generation": 33,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 96000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1014,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm24_192000.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": null
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S32_LE",
+                  "rate_hz": 192000,
+                  "significant_bits": 24
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 34,
+                  "plan_id": "plan:c933b846b5dd7163",
+                  "port_generation": 34,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct_container_adapted",
+                "source_rate_hz": 192000,
+                "xrun_count": 0
+              },
+              {
+                "actual_hold_ms": 1015,
+                "error": null,
+                "media": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+                "negotiated_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "requested_tuple": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "signal_truth_identity": {
+                  "binding_generation": 2,
+                  "execution_generation": 35,
+                  "plan_id": "plan:7ecad0430860fffd",
+                  "port_generation": 35,
+                  "stable_device_id": "usb:2fc6:f882:HA01",
+                  "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+                },
+                "signal_truth_state": "direct",
+                "source_rate_hz": 44100,
+                "xrun_count": 0
+              }
+            ],
+            "stale_generation_observed": false,
+            "xrun_count": 0
+          }
+        ],
+        "stale_generation_observed": false,
+        "transition_edges": [
+          "192000->44100",
+          "44100->44100",
+          "44100->48000",
+          "44100->96000",
+          "48000->44100",
+          "96000->192000"
+        ],
+        "xrun_count": false
+      },
+      "status": "PASS"
+    },
+    "R32": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R35": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R36": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    }
+  },
+  "implementation_head": "32a5014991385413003c077305373f01aeeeb6b4",
+  "manifest_created_at": "2026-10-04T00:57:02-0300",
+  "manifest_schema": 2,
+  "schema_version": 1
+}

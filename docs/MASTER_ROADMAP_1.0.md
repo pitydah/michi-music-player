@@ -131,7 +131,8 @@ playback rows audible, 3 truthful Strict 16-bit refusals silent) and
 physical hotplug/reconnect PASS, and the canonical ledger R19-R36 is recorded as
 6 PASS / 5 NOT_APPLICABLE (justified) / 7 NOT_RUN. The R25 laboratory later
 closed PASS for the SMSL in the 2026-09-30 device-bound campaign (derived
-minimum delay 0 ms); R32/R35/R36 remain NOT_RUN. Reference code closure
+minimum delay 0 ms) and for the Kinmax HA01 in the 2026-10-04 hardened
+campaign (same derived minimum); R32/R35/R36 remain NOT_RUN. Reference code closure
 `d581ad334503bbd8d13dfb120b9538695df79e47` (CI run `36184951752`, all jobs
 SUCCESS). Bit-perfect is not claimed, and M11.5 is not promoted.
 
