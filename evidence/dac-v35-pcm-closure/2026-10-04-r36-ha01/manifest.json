@@ -1,0 +1,515 @@
+{
+  "captured_at": "2026-10-04T18:28:25-0300",
+  "claim_firewall": {
+    "DAC-V35-120": "OUT_OF_SCOPE",
+    "DAC-V35-130": "POST_STABLE",
+    "DAC-V35-140": "SEPARATE_PROMOTION",
+    "M11.5": "OUT_OF_SCOPE",
+    "bit_perfect": false,
+    "exclusive": false
+  },
+  "device": {
+    "bcd_device": "a0a6",
+    "descriptor_hash": "720f0aab5a83ad3a4f0f5cf4fff37c0b878872b0073691f187ec3b9ecc512e36",
+    "display_name": "KINMAX HA01",
+    "label": "KINMAX HA01",
+    "locator": "hw:CARD=HA01,DEV=0",
+    "manufacturer": "KINMAX",
+    "product": "HA01",
+    "product_id": "f882",
+    "stable_device_id": "usb:2fc6:f882:HA01",
+    "vendor_id": "2fc6"
+  },
+  "environment_context": {
+    "alsa_library_version": "1.2.16.1",
+    "binding_topology_fingerprint": "topology:v1:sha256:d6cb409e6a2ca60f07fed28cbef06ed92c177603426092615958878cb6c18822",
+    "gstreamer_version": "GStreamer 1.28.7",
+    "kernel_release": "7.2.9-1-cachyos",
+    "qualification_profile_version": "dac-v35-exact-open-v1",
+    "snd_usb_audio_identity": "snd-usb-audio",
+    "stable_device_id": "usb:2fc6:f882:HA01",
+    "usb_bcd_device": "a0a6",
+    "usb_descriptor_sha256": "720f0aab5a83ad3a4f0f5cf4fff37c0b878872b0073691f187ec3b9ecc512e36",
+    "usb_product_id": "f882",
+    "usb_vendor_id": "2fc6"
+  },
+  "environment_fingerprint": "qenv:v2:sha256:ecc88f1507fbe4cf2ca05e40dcf029aef38f031f332be880f30522506281a91a",
+  "events": [
+    {
+      "captured_at": "2026-10-04T18:28:30-0300",
+      "collected_head": "fbdd8d4eac4ecd1400ff2a82ec3cd5230e59d9f2",
+      "evidence": [
+        "runtime:evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+      ],
+      "experiment": "R36",
+      "facts": {
+        "cases": {
+          "induced_underrun": {
+            "case": "induced_underrun",
+            "continuity_proof": null,
+            "environment_deferred": true,
+            "generation_fresh": null,
+            "incident_retained": null,
+            "mechanism_available": false,
+            "reason": "kernel does not expose xrun_injection for this substream",
+            "recovered_state_reported": null,
+            "recovery_loop_count": null
+          }
+        },
+        "pending_cases": {}
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T18:28:35-0300",
+      "collected_head": "fbdd8d4eac4ecd1400ff2a82ec3cd5230e59d9f2",
+      "evidence": [
+        "runtime:evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+      ],
+      "experiment": "R36",
+      "facts": {
+        "cases": {
+          "induced_underrun": {
+            "case": "induced_underrun",
+            "continuity_proof": null,
+            "environment_deferred": true,
+            "generation_fresh": null,
+            "incident_retained": null,
+            "mechanism_available": false,
+            "reason": "kernel does not expose xrun_injection for this substream",
+            "recovered_state_reported": null,
+            "recovery_loop_count": null
+          }
+        },
+        "pending_cases": {
+          "suspend_resume": {
+            "case": "suspend_resume",
+            "device_generation_before": 1,
+            "device_id": "usb:2fc6:f882:HA01",
+            "locator": "hw:CARD=HA01,DEV=0",
+            "operator_reference": "operator:gca-r36-ha01-2026-10-04",
+            "playback_status_before": 2,
+            "prepared_at": "2026-10-04T18:28:35-0300",
+            "signal_identity_before": {
+              "binding_generation": 1,
+              "execution_generation": 1,
+              "plan_id": "plan:9fd8780a6a6ad355",
+              "port_generation": 1,
+              "stable_device_id": "usb:2fc6:f882:HA01",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "state": "WAITING_OPERATOR_ACTION",
+            "suspend_success_before": 1,
+            "usb_instance_before": {
+              "busnum": 3,
+              "devnum": 5,
+              "sysfs_path": "/sys/bus/usb/devices/3-4.1"
+            }
+          }
+        }
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    },
+    {
+      "captured_at": "2026-10-04T18:29:26-0300",
+      "collected_head": "fbdd8d4eac4ecd1400ff2a82ec3cd5230e59d9f2",
+      "evidence": [
+        "operator:operator:gca-r36-ha01-2026-10-04",
+        "runtime:evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+      ],
+      "experiment": "R36",
+      "facts": {
+        "cases": {
+          "induced_underrun": {
+            "case": "induced_underrun",
+            "continuity_proof": null,
+            "environment_deferred": true,
+            "generation_fresh": null,
+            "incident_retained": null,
+            "mechanism_available": false,
+            "reason": "kernel does not expose xrun_injection for this substream",
+            "recovered_state_reported": null,
+            "recovery_loop_count": null
+          },
+          "suspend_resume": {
+            "action_completed": false,
+            "case": "suspend_resume",
+            "continuity_proof": false,
+            "device_generation_after": 1,
+            "device_generation_before": 1,
+            "device_generation_delta": 0,
+            "device_id": "usb:2fc6:f882:HA01",
+            "execution_generation_delta": null,
+            "false_verified_after_incident": false,
+            "generation_fresh": false,
+            "incident_retained": true,
+            "mechanism_available": true,
+            "operator_reference": "operator:gca-r36-ha01-2026-10-04",
+            "physical_reenumeration_observed": false,
+            "port_generation_delta": null,
+            "recovered_state_reported": false,
+            "recovery_loop_count": 0,
+            "same_identity_after": true,
+            "signal_identity_after": null,
+            "signal_identity_before": {
+              "binding_generation": 1,
+              "execution_generation": 1,
+              "plan_id": "plan:9fd8780a6a6ad355",
+              "port_generation": 1,
+              "stable_device_id": "usb:2fc6:f882:HA01",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "signal_truth_after": {},
+            "suspend_success_after": 2,
+            "suspend_success_before": 1,
+            "suspend_success_delta": 1,
+            "usb_instance_after": {
+              "busnum": 3,
+              "devnum": 5,
+              "sysfs_path": "/sys/bus/usb/devices/3-4.1"
+            },
+            "usb_instance_before": {
+              "busnum": 3,
+              "devnum": 5,
+              "sysfs_path": "/sys/bus/usb/devices/3-4.1"
+            }
+          }
+        },
+        "pending_cases": {}
+      },
+      "status": "FAIL"
+    },
+    {
+      "captured_at": "2026-10-04T18:34:20-0300",
+      "collected_head": "fbdd8d4eac4ecd1400ff2a82ec3cd5230e59d9f2",
+      "evidence": [
+        "operator:operator:gca-r36-ha01-2026-10-04:retest-settle",
+        "runtime:evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+      ],
+      "experiment": "R36",
+      "facts": {
+        "cases": {
+          "induced_underrun": {
+            "case": "induced_underrun",
+            "continuity_proof": null,
+            "environment_deferred": true,
+            "generation_fresh": null,
+            "incident_retained": null,
+            "mechanism_available": false,
+            "reason": "kernel does not expose xrun_injection for this substream",
+            "recovered_state_reported": null,
+            "recovery_loop_count": null
+          },
+          "suspend_resume": {
+            "action_completed": true,
+            "case": "suspend_resume",
+            "continuity_proof": true,
+            "device_generation_after": 1,
+            "device_generation_before": 1,
+            "device_generation_delta": 0,
+            "device_id": "usb:2fc6:f882:HA01",
+            "execution_generation_delta": 0,
+            "false_verified_after_incident": false,
+            "generation_fresh": true,
+            "incident_retained": true,
+            "mechanism_available": true,
+            "operator_reference": "operator:gca-r36-ha01-2026-10-04:retest-settle",
+            "physical_reenumeration_observed": false,
+            "port_generation_delta": 0,
+            "recovered_state_reported": true,
+            "recovery_loop_count": 0,
+            "same_identity_after": true,
+            "signal_identity_after": {
+              "binding_generation": 1,
+              "execution_generation": 1,
+              "plan_id": "plan:9fd8780a6a6ad355",
+              "port_generation": 1,
+              "stable_device_id": "usb:2fc6:f882:HA01",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "signal_identity_before": {
+              "binding_generation": 1,
+              "execution_generation": 1,
+              "plan_id": "plan:9fd8780a6a6ad355",
+              "port_generation": 1,
+              "stable_device_id": "usb:2fc6:f882:HA01",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "signal_truth_after": {
+              "alsa": {
+                "channels": 2,
+                "format": "S16_LE",
+                "rate_hz": 44100,
+                "significant_bits": 16
+              },
+              "clock": {
+                "sink_clock_is_pipeline_clock": true,
+                "sink_provides_clock": true,
+                "slave_method": "skew"
+              },
+              "decoded": {
+                "channels": 2,
+                "format": "S16LE",
+                "rate_hz": 44100,
+                "significant_bits": 16
+              },
+              "engine": {
+                "channels": 2,
+                "format": "S16LE",
+                "graph_factories": [
+                  "alsasink",
+                  "audioconvert",
+                  "audioresample",
+                  "bin",
+                  "capsfilter",
+                  "decodebin3",
+                  "identity",
+                  "multiqueue",
+                  "playsink",
+                  "queue",
+                  "streamsynchronizer",
+                  "tee",
+                  "volume",
+                  "wavparse"
+                ],
+                "graph_inspection_complete": true,
+                "muted": false,
+                "rate_hz": 44100,
+                "significant_bits": 16,
+                "software_gain": 1.0
+              },
+              "identity": {
+                "binding_generation": 1,
+                "execution_generation": 1,
+                "plan_id": "plan:9fd8780a6a6ad355",
+                "port_generation": 1,
+                "stable_device_id": "usb:2fc6:f882:HA01",
+                "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+              },
+              "plan": {
+                "fixed_gain_required": true,
+                "requested": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "sink_device": "hw:CARD=HA01,DEV=0",
+                "sink_factory": "alsasink"
+              },
+              "transform": {
+                "converter_dithering_disabled": false,
+                "converter_noise_shaping_disabled": true,
+                "converter_present": true,
+                "converter_transforming": false,
+                "remix_transforming": false,
+                "resampler_present": true,
+                "resampler_transforming": false
+              },
+              "verdict": {
+                "reason_codes": [],
+                "state": "direct"
+              }
+            },
+            "suspend_success_after": 3,
+            "suspend_success_before": 2,
+            "suspend_success_delta": 1,
+            "usb_instance_after": {
+              "busnum": 3,
+              "devnum": 5,
+              "sysfs_path": "/sys/bus/usb/devices/3-4.1"
+            },
+            "usb_instance_before": {
+              "busnum": 3,
+              "devnum": 5,
+              "sysfs_path": "/sys/bus/usb/devices/3-4.1"
+            }
+          }
+        },
+        "pending_cases": {}
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    }
+  ],
+  "evidence_execution_head": "fbdd8d4eac4ecd1400ff2a82ec3cd5230e59d9f2",
+  "experiments": {
+    "R24": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R25": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R32": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R35": {
+      "evidence": [],
+      "executed": false,
+      "facts": {},
+      "status": "NOT_RUN"
+    },
+    "R36": {
+      "captured_at": "2026-10-04T18:34:20-0300",
+      "evidence": [
+        "operator:operator:gca-r36-ha01-2026-10-04:retest-settle",
+        "runtime:evidence/dac-v35-pcm-closure/2026-10-04-r35-smsl/fixtures/nonzero_final_samples.wav"
+      ],
+      "executed": false,
+      "facts": {
+        "cases": {
+          "induced_underrun": {
+            "case": "induced_underrun",
+            "continuity_proof": null,
+            "environment_deferred": true,
+            "generation_fresh": null,
+            "incident_retained": null,
+            "mechanism_available": false,
+            "reason": "kernel does not expose xrun_injection for this substream",
+            "recovered_state_reported": null,
+            "recovery_loop_count": null
+          },
+          "suspend_resume": {
+            "action_completed": true,
+            "case": "suspend_resume",
+            "continuity_proof": true,
+            "device_generation_after": 1,
+            "device_generation_before": 1,
+            "device_generation_delta": 0,
+            "device_id": "usb:2fc6:f882:HA01",
+            "execution_generation_delta": 0,
+            "false_verified_after_incident": false,
+            "generation_fresh": true,
+            "incident_retained": true,
+            "mechanism_available": true,
+            "operator_reference": "operator:gca-r36-ha01-2026-10-04:retest-settle",
+            "physical_reenumeration_observed": false,
+            "port_generation_delta": 0,
+            "recovered_state_reported": true,
+            "recovery_loop_count": 0,
+            "same_identity_after": true,
+            "signal_identity_after": {
+              "binding_generation": 1,
+              "execution_generation": 1,
+              "plan_id": "plan:9fd8780a6a6ad355",
+              "port_generation": 1,
+              "stable_device_id": "usb:2fc6:f882:HA01",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "signal_identity_before": {
+              "binding_generation": 1,
+              "execution_generation": 1,
+              "plan_id": "plan:9fd8780a6a6ad355",
+              "port_generation": 1,
+              "stable_device_id": "usb:2fc6:f882:HA01",
+              "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+            },
+            "signal_truth_after": {
+              "alsa": {
+                "channels": 2,
+                "format": "S16_LE",
+                "rate_hz": 44100,
+                "significant_bits": 16
+              },
+              "clock": {
+                "sink_clock_is_pipeline_clock": true,
+                "sink_provides_clock": true,
+                "slave_method": "skew"
+              },
+              "decoded": {
+                "channels": 2,
+                "format": "S16LE",
+                "rate_hz": 44100,
+                "significant_bits": 16
+              },
+              "engine": {
+                "channels": 2,
+                "format": "S16LE",
+                "graph_factories": [
+                  "alsasink",
+                  "audioconvert",
+                  "audioresample",
+                  "bin",
+                  "capsfilter",
+                  "decodebin3",
+                  "identity",
+                  "multiqueue",
+                  "playsink",
+                  "queue",
+                  "streamsynchronizer",
+                  "tee",
+                  "volume",
+                  "wavparse"
+                ],
+                "graph_inspection_complete": true,
+                "muted": false,
+                "rate_hz": 44100,
+                "significant_bits": 16,
+                "software_gain": 1.0
+              },
+              "identity": {
+                "binding_generation": 1,
+                "execution_generation": 1,
+                "plan_id": "plan:9fd8780a6a6ad355",
+                "port_generation": 1,
+                "stable_device_id": "usb:2fc6:f882:HA01",
+                "stable_endpoint_signature": "usb-interface:1.0:pcm:0:sub:0"
+              },
+              "plan": {
+                "fixed_gain_required": true,
+                "requested": {
+                  "channels": 2,
+                  "format": "S16_LE",
+                  "rate_hz": 44100,
+                  "significant_bits": 16
+                },
+                "sink_device": "hw:CARD=HA01,DEV=0",
+                "sink_factory": "alsasink"
+              },
+              "transform": {
+                "converter_dithering_disabled": false,
+                "converter_noise_shaping_disabled": true,
+                "converter_present": true,
+                "converter_transforming": false,
+                "remix_transforming": false,
+                "resampler_present": true,
+                "resampler_transforming": false
+              },
+              "verdict": {
+                "reason_codes": [],
+                "state": "direct"
+              }
+            },
+            "suspend_success_after": 3,
+            "suspend_success_before": 2,
+            "suspend_success_delta": 1,
+            "usb_instance_after": {
+              "busnum": 3,
+              "devnum": 5,
+              "sysfs_path": "/sys/bus/usb/devices/3-4.1"
+            },
+            "usb_instance_before": {
+              "busnum": 3,
+              "devnum": 5,
+              "sysfs_path": "/sys/bus/usb/devices/3-4.1"
+            }
+          }
+        },
+        "pending_cases": {}
+      },
+      "status": "REQUIRES_OPERATOR_CONFIRMATION"
+    }
+  },
+  "implementation_head": "fbdd8d4eac4ecd1400ff2a82ec3cd5230e59d9f2",
+  "manifest_created_at": "2026-10-04T18:28:25-0300",
+  "manifest_schema": 2,
+  "schema_version": 1
+}

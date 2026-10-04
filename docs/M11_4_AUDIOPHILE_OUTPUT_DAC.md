@@ -83,8 +83,14 @@ as well (hardened campaign of 2026-10-04, same canonical delays with derived
 minimum delay 0 ms); **R35 tail/drain PASS for the SMSL and the Kinmax HA01**
 (hardened campaigns of 2026-10-04, kernel `7.2.9-1-cachyos`: all four
 canonical fixtures sealed with fixture/track SHA-256 and operator PASS, no
-tail/drain falsifier observed on either DAC). **R32** (8 h soak) and **R36**
-(XRUN injection, unavailable in this kernel) remain `NOT_RUN`.
+tail/drain falsifier observed on either DAC). **R36** (recovery transparency) is partially observed:
+XRUN injection is unavailable in this kernel (`induced_underrun =
+DEFERRED_ENVIRONMENT` on both DACs); the Kinmax HA01 suspend/resume case
+closed PASS with a settled retest (`/sys/power/suspend_stats/success` 2->3,
+fresh generation, continuity proof); the SMSL suspend/resume could not be
+demonstrated because a host xHCI resume error dropped the DAC behind its hub
+chain, and the SMSL device-failure case awaits its physical restore. **R32**
+(8 h soak) remains `NOT_RUN`.
 Physical verdict: `INCOMPLETE`, multi-hardware not proven. Bit-perfect and
 exclusive are still not claimed, and M11.5 / DAC-V35-120 / 130 / 140 are not
 started.
@@ -197,8 +203,9 @@ the same contracts as the semantic evaluator:
 Physical **EXECUTION** remains INCOMPLETE: R25 and R35 are closed for both
 connected DACs (R25: SMSL 2026-09-30, Kinmax HA01 2026-10-04; R35: both
 2026-10-04 hardened campaigns, four canonical fixtures each, operator PASS);
-the 8-hour R32 run and applicable R36 runs remain before any physical verdict
-above INCOMPLETE can be emitted. An unreadable kernel journal, missing documented USB ABI witness or
+R36 has the Kinmax HA01 suspend/resume PASS with XRUN deferred-environment on
+both DACs and the SMSL recovery cases pending its physical restore; the 8-hour
+R32 run remains before any physical verdict above INCOMPLETE can be emitted. An unreadable kernel journal, missing documented USB ABI witness or
 unavailable fault-injection mechanism remains an honest non-PASS condition;
 tooling completeness never manufactures physical evidence.
 

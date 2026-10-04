@@ -135,7 +135,10 @@ minimum delay 0 ms) and for the Kinmax HA01 in the 2026-10-04 hardened
 campaign (same derived minimum); the R35 tail/drain laboratory later closed
 PASS for the SMSL and the Kinmax HA01 in the 2026-10-04 hardened campaigns
 (kernel `7.2.9-1-cachyos`, four canonical fixtures with fixture/track hashes
-and operator PASS on each). R32/R36 remain NOT_RUN. Reference code closure
+and operator PASS on each). R36 began (XRUN DEFERRED_ENVIRONMENT on both
+DACs; Kinmax HA01 suspend/resume PASS after a settled retest; SMSL recovery
+cases pending its physical restore after a host xHCI resume defect) and is not
+complete; R32 remains NOT_RUN. Reference code closure
 `d581ad334503bbd8d13dfb120b9538695df79e47` (CI run `36184951752`, all jobs
 SUCCESS). Bit-perfect is not claimed, and M11.5 is not promoted.
 
