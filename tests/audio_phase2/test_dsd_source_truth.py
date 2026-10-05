@@ -30,6 +30,7 @@ from michi.application.dsd_source_characterizer import (
     DsdSourceStatus,
     ElementaryEncoding,
     ElementaryStreamObservation,
+    EvidenceKind,
 )
 from michi.domain.dsd_signal import (
     AlsaDsdGrouping,
@@ -131,11 +132,18 @@ def build_dff(
     channel_ids: tuple[bytes, ...] = (b"SLFT", b"SRGT"),
     declared_channels: int | None = None,
     compression: bytes | None = b"DSD ",
+    cmpr_payload_override: bytes | None = None,
     payload: bytes | None = None,
     form_size_override: int | None = None,
     extra_prop_child: bytes = b"",
     extra_top_child: bytes = b"",
     truncate_to: int | None = None,
+    fver_first: bool = True,
+    fver_version: int = 0x01050000,
+    prop_type: bytes = b"SND ",
+    dst: bool = False,
+    dsti: bool = False,
+    duplicate_prop: bool = False,
 ) -> bytes:
     payload = payload if payload is not None else bytes([0x55]) * 4096
     declared = declared_channels if declared_channels is not None else len(channel_ids)
@@ -144,16 +152,27 @@ def build_dff(
     chnl = _dff_chunk(b"CHNL", chnl_payload)
     cmpr = b""
     if compression is not None:
-        name = b"\x00"
-        cmpr_payload = compression + name
-        if len(cmpr_payload) % 2:
-            cmpr_payload += b"\x00"
-        cmpr = _dff_chunk(b"CMPR", cmpr_payload)
-    prop_body = b"SND " + fs + chnl + cmpr + extra_prop_child
+        if cmpr_payload_override is not None:
+            cmpr = _dff_chunk(b"CMPR", cmpr_payload_override)
+        else:
+            name = b"\x00"
+            cmpr_payload = compression + name
+            if len(cmpr_payload) % 2:
+                cmpr_payload += b"\x00"
+            cmpr = _dff_chunk(b"CMPR", cmpr_payload)
+    prop_body = prop_type + fs + chnl + cmpr + extra_prop_child
     prop = _dff_chunk(b"PROP", prop_body)
-    fver = _dff_chunk(b"FVER", struct.pack(">I", 0x01050000))
-    dsd_data = _dff_chunk(b"DSD ", payload)
-    body = fver + prop + extra_top_child + dsd_data
+    fver = _dff_chunk(b"FVER", struct.pack(">I", fver_version))
+    top = [fver, prop] if fver_first else [prop, fver]
+    dst_index = _dff_chunk(b"DSTI", b"\x00" * 4) if dsti else b""
+    data = _dff_chunk(b"DST " if dst else b"DSD ", payload)
+    body = (
+        b"".join(top)
+        + dst_index
+        + extra_top_child
+        + (prop if duplicate_prop else b"")
+        + data
+    )
     form_size = 4 + len(body) if form_size_override is None else form_size_override
     blob = b"FRM8" + struct.pack(">q", form_size) + b"DSD " + body
     return blob[:truncate_to] if truncate_to is not None else blob
@@ -520,11 +539,15 @@ def test_dsf_chunk_size_and_header_failures(tmp_path: Path) -> None:
         assert result.status is DsdSourceStatus.UNKNOWN
 
 
-def test_dsf_unsupported_format_id_is_not_proven(tmp_path: Path) -> None:
-    result = _characterize(tmp_path, "dstish.dsf", build_dsf(format_id=1))
-    assert result.status is DsdSourceStatus.UNSUPPORTED_ENCODING
-    assert result.failure_code == "SOURCE_DSD_ELEMENTARY_STREAM_NOT_PROVEN"
-    assert result.signal is None
+def test_dsf_unknown_format_id_is_unknown_not_compressed(tmp_path: Path) -> None:
+    for format_id in (1, 2, 0xFF):
+        result = _characterize(
+            tmp_path, f"id{format_id}.dsf", build_dsf(format_id=format_id)
+        )
+        assert result.status is DsdSourceStatus.UNKNOWN
+        assert result.elementary.encoding is ElementaryEncoding.UNKNOWN
+        assert result.failure_code == "SOURCE_DSD_ELEMENTARY_STREAM_NOT_PROVEN"
+        assert result.signal is None
 
 
 def test_dsf_invalid_rate_is_a_unit_failure(tmp_path: Path) -> None:
@@ -537,12 +560,19 @@ def test_dsf_invalid_rate_is_a_unit_failure(tmp_path: Path) -> None:
 def test_dsf_invalid_bits_and_block_fail_closed(tmp_path: Path) -> None:
     for name, blob in (
         ("bits.dsf", build_dsf(bits=4)),
-        ("block.dsf", build_dsf(block_size=0, payload=b"\x69" * 8192)),
+        ("block0.dsf", build_dsf(block_size=0, payload=b"\x69" * 8192)),
+        ("block2048.dsf", build_dsf(block_size=2048)),
         ("count.dsf", build_dsf(sample_count=0, payload=b"")),
     ):
         result = _characterize(tmp_path, name, blob)
         assert result.status is DsdSourceStatus.UNKNOWN
         assert result.failure_code == "SOURCE_DSD_GROUPING_UNKNOWN"
+
+
+def test_dsf_zero_file_size_is_not_accepted(tmp_path: Path) -> None:
+    result = _characterize(tmp_path, "zero-size.dsf", build_dsf(file_size_override=0))
+    assert result.status is DsdSourceStatus.UNKNOWN
+    assert result.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
 
 
 @pytest.mark.parametrize(
@@ -552,7 +582,9 @@ def test_dsf_invalid_bits_and_block_fail_closed(tmp_path: Path) -> None:
         (2, 2, ("FL", "FR")),
         (3, 3, ("FL", "FR", "FC")),
         (4, 4, ("FL", "FR", "BL", "BR")),
-        (5, 4, ("FL", "FR", "FC", "BC")),
+        # Type 5 follows WavPack's DSD channel mask (FL+FR+FC+LFE); FFmpeg's
+        # generic 4POINT0 maps the same type to FL+FR+FC+BC and diverges.
+        (5, 4, ("FL", "FR", "FC", "LFE")),
         (6, 5, ("FL", "FR", "FC", "BL", "BR")),
         (7, 6, ("FL", "FR", "FC", "LFE", "BL", "BR")),
     ),
@@ -755,6 +787,68 @@ def test_dff_channel_count_mismatch_fails_closed(tmp_path: Path) -> None:
     assert result.signal is None
 
 
+def test_dff_requires_fver_first(tmp_path: Path) -> None:
+    result = _characterize(tmp_path, "no-fver-first.dff", build_dff(fver_first=False))
+    assert result.status is DsdSourceStatus.UNKNOWN
+    assert result.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
+
+
+def test_dff_fver_version_is_validated(tmp_path: Path) -> None:
+    result = _characterize(
+        tmp_path, "bad-version.dff", build_dff(fver_version=0x01040000)
+    )
+    assert result.status is DsdSourceStatus.UNKNOWN
+    assert result.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
+
+
+def test_dff_duplicate_required_chunks_fail_closed(tmp_path: Path) -> None:
+    duplicate_fver = _dff_chunk(b"FVER", struct.pack(">I", 0x01050000))
+    for name, blob in (
+        ("dup-fver.dff", build_dff(extra_top_child=duplicate_fver)),
+        ("dup-prop.dff", build_dff(duplicate_prop=True)),
+    ):
+        result = _characterize(tmp_path, name, blob)
+        assert result.status is DsdSourceStatus.UNKNOWN
+        assert result.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
+
+
+def test_dff_prop_type_must_be_snd(tmp_path: Path) -> None:
+    result = _characterize(tmp_path, "bad-prop-type.dff", build_dff(prop_type=b"XXXX"))
+    assert result.status is DsdSourceStatus.UNKNOWN
+    assert result.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
+
+
+def test_dff_cmpr_name_structure_is_validated(tmp_path: Path) -> None:
+    for name, payload in (
+        ("cmpr-short.dff", b"DSD "),  # no Pascal name at all
+        ("cmpr-overrun.dff", b"DSD \x09ab"),  # name length overruns the chunk
+        ("cmpr-slack.dff", b"DSD \x00\x00\x00\x00"),  # >1 padding byte
+    ):
+        result = _characterize(tmp_path, name, build_dff(cmpr_payload_override=payload))
+        assert result.status is DsdSourceStatus.UNKNOWN
+        assert result.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
+
+
+def test_dff_top_level_dst_chunk_is_unsupported(tmp_path: Path) -> None:
+    for name, blob in (
+        ("dst-data.dff", build_dff(dst=True)),
+        ("dst-index.dff", build_dff(dsti=True)),
+    ):
+        result = _characterize(tmp_path, name, blob)
+        assert result.status is DsdSourceStatus.UNSUPPORTED_ENCODING
+        assert result.elementary.encoding is ElementaryEncoding.COMPRESSED
+        assert result.container_facts.container == "dff"
+        assert result.signal is None
+
+
+def test_dff_non_normative_channel_order_fails_closed(tmp_path: Path) -> None:
+    result = _characterize(
+        tmp_path, "reversed.dff", build_dff(channel_ids=(b"SRGT", b"SLFT"))
+    )
+    assert result.status is DsdSourceStatus.UNKNOWN
+    assert result.failure_code == "SOURCE_DSD_CHANNEL_LAYOUT_UNKNOWN"
+
+
 def test_dff_truth_follows_bytes_not_the_extension(tmp_path: Path) -> None:
     blob = build_dff()
     wrong_name = _characterize(tmp_path, "not-really.dff2", blob)
@@ -891,11 +985,41 @@ def test_characterization_exposes_elementary_and_container_separately(
     assert isinstance(result.container_facts, ContainerAudioFacts)
     assert isinstance(result.elementary, ElementaryStreamObservation)
     assert result.elementary.provider == "static-parser"
-    assert result.elementary.caps_media_type == "audio/x-dsd"
+    assert result.elementary.evidence_kind is EvidenceKind.STATIC_FILE_STRUCTURE
+    assert result.elementary.media_type == "audio/x-dsd"
+    assert ("format", "dsd_u8") in result.elementary.structure_fields
     assert result.evidence_refs
     assert all(ref for ref in result.evidence_refs)
     assert result.signal is not None
     assert "structural" in result.container_facts.evidence_ref
+
+
+def test_static_evidence_is_not_runtime_gst_caps(tmp_path: Path) -> None:
+    result = _characterize(tmp_path, "s.dsf", golden_dsf_msbf())
+    # The static parser can only ever emit STATIC_FILE_STRUCTURE evidence and
+    # must not expose runtime-gst-caps-shaped fields.
+    assert result.elementary.evidence_kind is EvidenceKind.STATIC_FILE_STRUCTURE
+    assert EvidenceKind.RUNTIME_GST_CAPS.value == "runtime_gst_caps"
+    for forbidden in (
+        "caps_media_type",
+        "caps_fields",
+        "runtime_branch",
+        "native_branch_available",
+        "dac_capability",
+    ):
+        assert not hasattr(result.elementary, forbidden), forbidden
+        assert not hasattr(result, forbidden), forbidden
+
+
+def test_structural_ref_schema_is_strengthened() -> None:
+    from michi.application.dsd_source_characterizer import _structural_ref
+
+    ref = _structural_ref("dsf", b"abc", 3)
+    assert ref.startswith("dsf:structural:v2:")
+    assert ref == _structural_ref("dsf", b"abc", 3)
+    assert ref != _structural_ref("dsf", b"abcd", 3)
+    assert ref != _structural_ref("dsf", b"abc", 4)
+    assert ref != _structural_ref("dff", b"abc", 3)
 
 
 def test_dop_rate_math_does_not_construct_framing() -> None:

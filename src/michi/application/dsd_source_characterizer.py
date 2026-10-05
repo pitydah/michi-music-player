@@ -69,17 +69,42 @@ _DFF_PROP_CAP_BYTES = 4 * 1024 * 1024
 _DFF_MAX_CHUNK_SCAN = 1024
 _DFF_SIZE_UNSET = -1  # 0xFFFFFFFFFFFFFFFF: writer did not know the final size
 
-#: DSF standard channel types 1..7 (cross-checked against the DSF
-#: specification table and FFmpeg's `dsf_channel_layout`).
+#: DSF standard channel types 1..7 (DSF specification table cross-checked
+#: against WavPack's DSD-specific `channel_masks`; FFmpeg maps type 5 to
+#: FL+FR+FC+BC via its generic 4POINT0 layout, while WavPack maps it to
+#: FL+FR+FC+LFE. The standard table progression (3 channels -> 4 channels ->
+#: 5 channels -> 5.1) and WavPack's DSD implementation are followed here.
 _DSF_CHANNEL_LAYOUTS: dict[int, tuple[str, ...]] = {
     1: ("FC",),
     2: ("FL", "FR"),
     3: ("FL", "FR", "FC"),
     4: ("FL", "FR", "BL", "BR"),
-    5: ("FL", "FR", "FC", "BC"),
+    5: ("FL", "FR", "FC", "LFE"),
     6: ("FL", "FR", "FC", "BL", "BR"),
     7: ("FL", "FR", "FC", "LFE", "BL", "BR"),
 }
+
+_DSF_BLOCK_SIZE = 4096  # normative block size per channel
+
+#: DSDIFF versions we can prove (the adopted DSDIFF 1.5 spec value).
+_DFF_SUPPORTED_VERSIONS = frozenset({0x01050000})
+
+#: Canonical channel-position combinations (ordering is normative): a valid
+#: set of identifiers in a non-normative order fails closed.
+_DFF_NORMATIVE_LAYOUTS = frozenset(
+    {
+        ("FC",),
+        ("FL", "FR"),
+        ("FL", "FR", "FC"),
+        ("FL", "FR", "BL", "BR"),
+        ("FL", "FR", "SL", "SR"),
+        ("FL", "FR", "FC", "LFE"),
+        ("FL", "FR", "FC", "BL", "BR"),
+        ("FL", "FR", "FC", "SL", "SR"),
+        ("FL", "FR", "FC", "LFE", "BL", "BR"),
+        ("FL", "FR", "FC", "LFE", "SL", "SR"),
+    }
+)
 
 #: DSDIFF standard channel identifiers (WavPack cross-check: it reads exactly
 #: these; MLFT/MRGT are the multi-channel front pair).
@@ -102,6 +127,19 @@ class ElementaryEncoding(StrEnum):
     UNKNOWN = "unknown"
 
 
+class EvidenceKind(StrEnum):
+    """Static file structure evidence is NOT runtime GStreamer caps evidence.
+
+    The static parser can only ever produce ``STATIC_FILE_STRUCTURE``; the
+    seal-212 isolated runtime probe is the only producer of
+    ``RUNTIME_GST_CAPS`` and it is deferred while GST_LIFECYCLE_GATE is
+    BLOCKED. No consumer may treat one as the other.
+    """
+
+    STATIC_FILE_STRUCTURE = "static_file_structure"
+    RUNTIME_GST_CAPS = "runtime_gst_caps"
+
+
 class DsdSourceStatus(StrEnum):
     DSD_PROVEN = "dsd_proven"
     UNSUPPORTED_ENCODING = "unsupported_encoding"
@@ -120,8 +158,11 @@ class ContainerAudioFacts:
 @dataclass(frozen=True, slots=True)
 class ElementaryStreamObservation:
     encoding: ElementaryEncoding
-    caps_media_type: str | None
-    caps_fields: tuple[tuple[str, str], ...]
+    evidence_kind: EvidenceKind
+    #: Canonical media type the parsed bytes map to; a static structural fact,
+    #: deliberately NOT named a runtime gst caps.
+    media_type: str | None
+    structure_fields: tuple[tuple[str, str], ...]
     provider: str
     evidence_ref: str
 
@@ -137,12 +178,19 @@ class DsdSourceCharacterization:
 
 
 def _structural_ref(container: str, structural_bytes: bytes, size_bytes: int) -> str:
-    """Bounded structural fingerprint: distinguishes same-name artifacts."""
+    """Bounded structural fingerprint: distinguishes same-name artifacts.
+
+    Length-prefixed and schema-versioned so distinct structural byte
+    sequences can never alias through ambiguous concatenation, and two
+    containers/sizes can never share a reference.
+    """
     digest = hashlib.sha256()
+    digest.update(b"michi-dsd-structural-v2")
     digest.update(container.encode("ascii"))
     digest.update(struct.pack("<Q", max(0, int(size_bytes))))
+    digest.update(struct.pack("<Q", len(structural_bytes)))
     digest.update(structural_bytes)
-    return f"{container}:structural:{digest.hexdigest()[:16]}"
+    return f"{container}:structural:v2:{digest.hexdigest()[:16]}"
 
 
 def _u64le(data: bytes, offset: int) -> int:
@@ -234,15 +282,18 @@ class DsdSourceCharacterizer:
             return self._unknown_container(path, container_ref)
         if format_version != _DSF_FORMAT_VERSION or reserved != 0:
             return self._unknown_container(path, container_ref)
-        if file_size != 0 and file_size != actual_size:
+        # The total file size is declared and must be exact for a real DSF.
+        if file_size != actual_size:
             return self._unknown_container(path, container_ref)
         if format_id != _DSF_FORMAT_ID_DSD_RAW:
+            # An unknown format id proves neither DSD raw nor compression:
+            # it is UNKNOWN, never UNSUPPORTED and never COMPRESSED.
             return self._result(
                 container=("dsf", channel_count or None, None, container_ref),
-                encoding=ElementaryEncoding.COMPRESSED,
+                encoding=ElementaryEncoding.UNKNOWN,
                 elementary_ref=container_ref,
                 signal=None,
-                status=DsdSourceStatus.UNSUPPORTED_ENCODING,
+                status=DsdSourceStatus.UNKNOWN,
                 failure_code=SOURCE_DSD_ELEMENTARY_STREAM_NOT_PROVEN,
             )
         if rate <= 0 or rate % 8:
@@ -265,7 +316,11 @@ class DsdSourceCharacterizer:
                 status=DsdSourceStatus.UNKNOWN,
                 failure_code=SOURCE_DSD_CHANNEL_LAYOUT_UNKNOWN,
             )
-        if sample_count <= 0 or block_size <= 0 or bits_per_sample not in (1, 8):
+        if (
+            sample_count <= 0
+            or block_size != _DSF_BLOCK_SIZE
+            or bits_per_sample not in (1, 8)
+        ):
             return self._result(
                 container=("dsf", channel_count, rate, container_ref),
                 encoding=ElementaryEncoding.UNKNOWN,
@@ -304,7 +359,7 @@ class DsdSourceCharacterizer:
             container=("dsf", channel_count, rate, container_ref),
             signal=signal,
             elementary_ref=container_ref,
-            extra_caps=(("bits-per-sample", str(bits_per_sample)),),
+            extra_structure_fields=(("bits-per-sample", str(bits_per_sample)),),
         )
 
     # ------------------------------------------------------------------ #
@@ -331,7 +386,7 @@ class DsdSourceCharacterizer:
         container_ref = _structural_ref("dff", bytes(structural), actual_size)
         if parsed is None:
             return self._unknown_container(path, container_ref)
-        rate, channel_ids, compression, data_size = parsed
+        rate, channel_ids, compression, data_size, dst_seen = parsed
 
         def failure(
             code: str,
@@ -350,6 +405,17 @@ class DsdSourceCharacterizer:
             )
 
         channel_count = len(channel_ids) if channel_ids is not None else None
+        if dst_seen or compression == b"DST ":
+            # Positively identified DST-compressed audio: the only producer
+            # of UNSUPPORTED, distinct from UNKNOWN.
+            return self._result(
+                container=("dff", channel_count, rate, container_ref),
+                encoding=ElementaryEncoding.COMPRESSED,
+                elementary_ref=container_ref,
+                signal=None,
+                status=DsdSourceStatus.UNSUPPORTED_ENCODING,
+                failure_code=SOURCE_DSD_ELEMENTARY_STREAM_NOT_PROVEN,
+            )
         if data_size is None or data_size <= 0:
             return self._unknown_container(path, container_ref)
         if compression is None:
@@ -380,9 +446,13 @@ class DsdSourceCharacterizer:
                 rate_value=rate,
             )
         positions = tuple(_DFF_CHANNEL_POSITIONS.get(raw) for raw in channel_ids)
-        if any(position is None for position in positions) or len(
-            set(positions)
-        ) != len(positions):
+        if (
+            any(position is None for position in positions)
+            or len(set(positions)) != len(positions)
+            or positions not in _DFF_NORMATIVE_LAYOUTS
+        ):
+            # Unknown ids, duplicated semantic positions or valid ids in a
+            # non-normative order all fail closed.
             return failure(
                 SOURCE_DSD_CHANNEL_LAYOUT_UNKNOWN,
                 encoding=ElementaryEncoding.DSD,
@@ -405,12 +475,20 @@ class DsdSourceCharacterizer:
 
     def _walk_dff_chunks(
         self, handle, actual_size: int, structural: bytearray
-    ) -> tuple[int | None, tuple[bytes, ...] | None, bytes | None, int | None] | None:
+    ) -> (
+        tuple[int | None, tuple[bytes, ...] | None, bytes | None, int | None, bool]
+        | None
+    ):
         rate: int | None = None
         channel_ids: tuple[bytes, ...] | None = None
         compression: bytes | None = None
         data_size: int | None = None
+        dst_seen = False
+        fver_count = 0
+        prop_count = 0
+        data_count = 0
         offset = 16  # 12-byte FRM8 header + 4-byte "DSD " form type
+        first_chunk = True
         for _ in range(_DFF_MAX_CHUNK_SCAN):
             if offset + _DFF_CHUNK_HEADER_BYTES > actual_size:
                 break
@@ -427,8 +505,24 @@ class DsdSourceCharacterizer:
             ):
                 return None
             body = offset + _DFF_CHUNK_HEADER_BYTES
-            if chunk_id == b"PROP":
-                if chunk_size < 4 or chunk_size > _DFF_PROP_CAP_BYTES:
+            if first_chunk and chunk_id != b"FVER":
+                # The DSDIFF form requires the Format Version chunk first.
+                return None
+            first_chunk = False
+            if chunk_id == b"FVER":
+                fver_count += 1
+                if fver_count > 1 or chunk_size != 4:
+                    return None
+                version_bytes = handle.read(4)
+                if len(version_bytes) != 4:
+                    return None
+                structural += version_bytes
+                version = int.from_bytes(version_bytes, "big", signed=False)
+                if version not in _DFF_SUPPORTED_VERSIONS:
+                    return None
+            elif chunk_id == b"PROP":
+                prop_count += 1
+                if prop_count > 1 or chunk_size < 4 or chunk_size > _DFF_PROP_CAP_BYTES:
                     return None
                 prop = handle.read(chunk_size)
                 if len(prop) != chunk_size:
@@ -439,19 +533,23 @@ class DsdSourceCharacterizer:
                     return None
                 rate, channel_ids, compression = parsed
             elif chunk_id == b"DSD ":
-                data_size = chunk_size
-                break
-            elif chunk_id == b"FVER":
-                if chunk_size != 4:
+                data_count += 1
+                if data_count > 1:
                     return None
+                data_size = chunk_size
+            elif chunk_id in (b"DST ", b"DSTI"):
+                # Positively identified DST-compressed audio (data or index).
+                dst_seen = True
             offset = body + chunk_size + (chunk_size % 2)
-        return rate, channel_ids, compression, data_size
+        return rate, channel_ids, compression, data_size, dst_seen
 
     @staticmethod
     def _parse_dff_prop(
         prop: bytes,
     ) -> tuple[int | None, tuple[bytes, ...] | None, bytes | None] | None:
-        if len(prop) < 4:
+        if len(prop) < 4 or prop[:4] != b"SND ":
+            # A PROP whose form type is not "SND " is not a sound property
+            # container and can never prove rate/channels/compression.
             return None
         rate: int | None = None
         channel_ids: tuple[bytes, ...] | None = None
@@ -480,7 +578,15 @@ class DsdSourceCharacterizer:
                     for index in range(count)
                 )
             elif child_id == b"CMPR":
-                if child_size < 4:
+                # CompressionType (4 bytes) + Pascal-string CompressionName
+                # padded to even length: validate the count byte and padding.
+                if child_size < 5:
+                    return None
+                name_length = prop[body + 4]
+                name_end = body + 5 + name_length
+                if name_end > body + child_size:
+                    return None
+                if (body + child_size) - name_end > 1:
                     return None
                 compression = bytes(prop[body : body + 4])
             offset = body + child_size + (child_size % 2)
@@ -496,19 +602,20 @@ class DsdSourceCharacterizer:
         container: tuple[str, int, int, str],
         signal: DsdSignalFormat,
         elementary_ref: str,
-        extra_caps: tuple[tuple[str, str], ...] = (),
+        extra_structure_fields: tuple[tuple[str, str], ...] = (),
     ) -> DsdSourceCharacterization:
         container_name, channels, rate, container_ref = container
-        caps_fields = (
+        structure_fields = (
             ("format", signal.packing.value),
             ("rate", str(signal.source_rate.gst_byte_rate_per_channel)),
             ("channels", str(channels)),
-            *extra_caps,
+            *extra_structure_fields,
         )
         elementary = ElementaryStreamObservation(
             encoding=ElementaryEncoding.DSD,
-            caps_media_type="audio/x-dsd",
-            caps_fields=caps_fields,
+            evidence_kind=EvidenceKind.STATIC_FILE_STRUCTURE,
+            media_type="audio/x-dsd",
+            structure_fields=structure_fields,
             provider=PROVIDER,
             evidence_ref=elementary_ref,
         )
@@ -541,8 +648,9 @@ class DsdSourceCharacterizer:
         container_name, channels, rate, container_ref = container
         elementary = ElementaryStreamObservation(
             encoding=encoding,
-            caps_media_type=None,
-            caps_fields=(),
+            evidence_kind=EvidenceKind.STATIC_FILE_STRUCTURE,
+            media_type=None,
+            structure_fields=(),
             provider=PROVIDER,
             evidence_ref=elementary_ref,
         )
