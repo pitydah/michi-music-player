@@ -29,6 +29,31 @@ class DsdPacking(StrEnum):
     DSD_U32BE = "dsd_u32be"
 
 
+class DsdBitOrder(StrEnum):
+    """Bit order within the DSD elementary stream.
+
+    Real-format cross-check (FFmpeg ``dsfdec.c``): DSF ``bits-per-sample`` 1
+    yields ``DSD_LSBF_PLANAR`` and 8 yields ``DSD_MSBF_PLANAR``; DSDIFF is
+    MSB-first (WavPack sets ``QMODE_DSD_MSB_FIRST`` for DFF). Bit order is a
+    distinct fact from byte grouping and is never encoded as UNKNOWN when the
+    container proves it.
+    """
+
+    LSBF = "lsbf"
+    MSBF = "msbf"
+
+
+class DsdOrganization(StrEnum):
+    """Channel organization of the elementary stream.
+
+    DSF stores per-channel planar blocks; DSDIFF stores per-frame channel
+    bytes (interleaved).
+    """
+
+    PLANAR = "planar"
+    INTERLEAVED = "interleaved"
+
+
 class AlsaDsdGrouping(Enum):
     """ALSA DSD groupings (seal 211.1); names are the UAPI format names."""
 
@@ -121,15 +146,21 @@ def source_to_dop_rate(source: DsdSourceBitRate) -> DopCarrierRate:
 
 @dataclass(frozen=True, slots=True)
 class DsdSignalFormat:
-    """What the DSD source is, with explicit units.
+    """What the DSD source is, with explicit units and representation facts.
 
     ``bit_rate_hz`` is the per-channel source bit rate in bits per second
     (never a PCM sample rate, never a byte rate, never a carrier rate).
+    ``bit_order`` and ``organization`` are required for later lossless/native
+    representation selection and are distinct from ``packing`` (byte grouping).
+    This is an additive extension of the R11-F07 minimum shape; no PCM field
+    can masquerade here.
     """
 
     bit_rate_hz: int
     channels: int
     packing: DsdPacking
+    bit_order: DsdBitOrder
+    organization: DsdOrganization
     layout: tuple[str, ...]
 
     def __post_init__(self) -> None:
@@ -140,6 +171,10 @@ class DsdSignalFormat:
             raise ValueError("DSD channels must be > 0")
         if not isinstance(self.packing, DsdPacking):
             raise TypeError("DSD packing must be a DsdPacking")
+        if not isinstance(self.bit_order, DsdBitOrder):
+            raise TypeError("DSD bit_order must be a DsdBitOrder")
+        if not isinstance(self.organization, DsdOrganization):
+            raise TypeError("DSD organization must be a DsdOrganization")
         if not isinstance(self.layout, tuple):
             raise TypeError("DSD layout must be a tuple of positions")
         if not self.layout:
