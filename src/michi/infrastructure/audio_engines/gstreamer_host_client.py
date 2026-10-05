@@ -66,8 +66,11 @@ class OutputHostLostError(OutputHostError):
 
 
 class OutputHostCommandError(OutputHostError):
-    def __init__(self, code: str, detail: str) -> None:
+    def __init__(
+        self, code: str, detail: str, payload: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(code or "OUTPUT_HOST_COMMAND_FAILED", detail)
+        self.payload: dict[str, Any] = dict(payload or {})
 
 
 class OutputHostProtocolError(OutputHostError):
@@ -170,6 +173,21 @@ class GStreamerHostSupervisor:
     # ── configuración ─────────────────────────────────────────────────
     def set_owner_drain(self, drain: Callable[[], None] | None) -> None:
         self._owner_drain = drain
+
+    def set_event_sink(self, sink: Callable[[dict[str, Any]], None] | None) -> None:
+        with self._lock:
+            self._on_event = sink
+
+    def set_lost_sink(self, sink: Callable[[int, str, str], None] | None) -> None:
+        with self._lock:
+            self._on_lost = sink
+
+    def set_callback_handler(
+        self,
+        handler: Callable[[dict[str, Any]], tuple[bool, dict[str, Any]]] | None,
+    ) -> None:
+        with self._lock:
+            self._callback_handler = handler
 
     @property
     def state(self) -> SupervisorState:
@@ -513,6 +531,7 @@ class GStreamerHostSupervisor:
         raise OutputHostCommandError(
             code or "OUTPUT_HOST_COMMAND_FAILED",
             detail or f"{operation} rejected by host ({kind})",
+            payload=payload_out if isinstance(payload_out, dict) else {},
         )
 
     def _await(self, holder: _PendingRequest, deadline: float) -> dict[str, Any] | None:

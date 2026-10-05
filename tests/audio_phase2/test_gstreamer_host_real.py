@@ -59,3 +59,31 @@ def test_real_host_restart_is_a_new_generation() -> None:
         generations.append(supervisor.host_generation)
         assert supervisor.shutdown() == GRACEFUL
     assert generations == [1, 2]
+
+
+def test_real_hosted_port_opens_the_real_engine_inside_the_child() -> None:
+    from michi.infrastructure.audio_engines.gstreamer_host_port import (
+        GStreamerHostedAudioPort,
+    )
+
+    supervisor = GStreamerHostSupervisor(
+        start_timeout_s=45.0,
+        command_timeout_s=30.0,
+        terminate_grace_s=8.0,
+        term_grace_s=5.0,
+        kill_grace_s=5.0,
+    )
+    port = GStreamerHostedAudioPort(
+        supervisor, command_deadline_s=30.0, load_deadline_s=30.0
+    )
+    try:
+        port.activate()
+        hello = port.host_hello
+        assert hello is not None
+        assert hello["playbin3_available"] is True
+        assert "GStreamer" in hello["gstreamer_version"]
+        assert supervisor.pid_alive()
+    finally:
+        port.close()
+    assert port.termination_kind == GRACEFUL
+    assert not supervisor.pid_alive()

@@ -8,6 +8,8 @@ facts, states and events.
 
 Fresh interpreter only (spawned by the supervisor); GStreamer initializes
 INSIDE this process. No live Qt/GLib/Gst object ever crosses the boundary.
+The canonical port runs here unchanged; Qt event delivery inside the child
+is serviced by a QCoreApplication loop owned by this process.
 """
 
 from __future__ import annotations
@@ -18,17 +20,24 @@ import os
 import platform
 import socket
 import sys
+import threading
+from collections.abc import Callable
 from typing import Any
 
 from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
     GST_HOST_PROTOCOL_VERSION,
     FrameDecoder,
+    HostEvent,
     HostOperation,
     HostProtocolError,
     MessageKind,
     encode_message,
     error_payload,
     make_message,
+)
+from michi.infrastructure.audio_engines.gstreamer_host_session import (
+    HostEngineSession,
+    default_gstreamer_port_factory,
 )
 
 
@@ -70,21 +79,43 @@ class GStreamerHostRuntime:
 
 
 class GStreamerHostMain:
-    def __init__(self, channel: socket.socket) -> None:
+    def __init__(
+        self,
+        channel: socket.socket,
+        *,
+        engine_port_factory: Callable[[], Any] | None = None,
+        runtime: Any | None = None,
+    ) -> None:
         self._channel = channel
+        self._channel.settimeout(0.05)
         self._decoder = FrameDecoder()
-        self._runtime = GStreamerHostRuntime()
+        self._runtime = runtime if runtime is not None else GStreamerHostRuntime()
         self._host_generation = 0
+        self._command_generation = 0
         self._shutdown_requested = False
+        self._send_lock = threading.Lock()
+        self._app = None  # QCoreApplication when the real engine runs here
+        if engine_port_factory is None:
+            engine_port_factory = default_gstreamer_port_factory
+            self._app = self._ensure_qt_application()
+        self._engine = HostEngineSession(
+            port_factory=engine_port_factory,
+            emit=self._emit_event,
+        )
 
     # ── loop ──────────────────────────────────────────────────────────
     def serve(self) -> int:
         while not self._shutdown_requested:
             try:
                 chunk = self._channel.recv(65536)
+            except TimeoutError:
+                self._pump_qt()
+                continue
             except OSError:
+                self._engine.close()
                 return 2
             if not chunk:
+                self._engine.close()
                 return 0
             try:
                 frames = self._decoder.feed(chunk)
@@ -98,10 +129,29 @@ class GStreamerHostMain:
                 return 3
             for frame in frames:
                 self._route(frame)
+            self._pump_qt()
         return 0
+
+    def _pump_qt(self) -> None:
+        if self._app is not None:
+            with contextlib.suppress(Exception):
+                self._app.processEvents()
+
+    @staticmethod
+    def _ensure_qt_application():
+        try:
+            from PySide6.QtCore import QCoreApplication
+
+            app = QCoreApplication.instance()
+            if app is None:
+                app = QCoreApplication([])
+            return app
+        except Exception:  # noqa: BLE001 - absence is reported by the engine
+            return None
 
     def _route(self, frame: dict[str, Any]) -> None:
         self._host_generation = int(frame.get("host_generation", 0))
+        self._command_generation = int(frame.get("command_generation", 0))
         if frame["kind"] != MessageKind.COMMAND.value:
             return
         request_id = frame.get("request_id")
@@ -110,35 +160,36 @@ class GStreamerHostMain:
         try:
             if operation == HostOperation.HELLO.value:
                 self._respond(MessageKind.HELLO, request_id, self._runtime.describe())
-            elif operation == HostOperation.PING.value:
+                return
+            if operation == HostOperation.PING.value:
                 self._respond(
                     MessageKind.RESULT,
                     request_id,
                     {"pong": True, "host_generation": self._host_generation},
                 )
-            elif operation == HostOperation.SHUTDOWN.value:
+                return
+            if operation == HostOperation.SHUTDOWN.value:
+                self._engine.close()
                 self._respond(
                     MessageKind.SHUTDOWN_COMPLETE,
                     request_id,
                     {"termination": "GRACEFUL"},
                 )
                 self._shutdown_requested = True
+                return
+            ok, result = self._engine.handle(
+                str(operation), payload, self._command_generation
+            )
+            if ok:
+                self._respond(MessageKind.RESULT, request_id, result)
             else:
-                self._respond(
-                    MessageKind.REJECTED,
-                    request_id,
-                    error_payload(
-                        "OUTPUT_HOST_COMMAND_FAILED",
-                        f"unsupported operation {operation!r}",
-                    ),
-                )
+                self._respond(MessageKind.REJECTED, request_id, result)
         except Exception as exc:  # noqa: BLE001 - typed fault response
             self._respond(
                 MessageKind.FAULT,
                 request_id,
                 error_payload("OUTPUT_HOST_COMMAND_FAILED", str(exc)),
             )
-        _ = payload
 
     # ── frames ────────────────────────────────────────────────────────
     def _respond(
@@ -147,19 +198,37 @@ class GStreamerHostMain:
         frame = make_message(
             kind,
             host_generation=self._host_generation,
+            command_generation=self._command_generation,
             request_id=request_id,
             payload=payload,
         )
-        self._channel.sendall(encode_message(frame))
+        self._send(frame)
+
+    def _emit_event(self, event: HostEvent, payload: dict[str, Any]) -> None:
+        frame = make_message(
+            MessageKind.EVENT,
+            host_generation=self._host_generation,
+            command_generation=self._command_generation,
+            payload={"event": str(event), **payload},
+        )
+        with contextlib.suppress(Exception):
+            self._send(frame)
 
     def _emit_fault(self, *, request_id: str | None, code: str, detail: str) -> None:
         frame = make_message(
             MessageKind.FAULT,
             host_generation=self._host_generation,
+            command_generation=self._command_generation,
             request_id=request_id,
             payload=error_payload(code, detail),
         )
-        self._channel.sendall(encode_message(frame))
+        with contextlib.suppress(Exception):
+            self._send(frame)
+
+    def _send(self, frame: dict[str, Any]) -> None:
+        encoded = encode_message(frame)
+        with self._send_lock:
+            self._channel.sendall(encoded)
 
 
 def main(argv: list[str] | None = None) -> int:
