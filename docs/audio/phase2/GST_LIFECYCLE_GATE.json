@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "gate": "GST_LIFECYCLE_GATE",
+  "verdict": "BLOCKED",
+  "evaluated_at": "2026-10-04",
+  "spec_path": "docs/audio/MICHI_AUDIO_PHASE_2_DSP_DSD_DOP_SIGNAL_PATH_MEGA_PLAN.md",
+  "spec_sha256": "ee92baaff023ef82f1258b03e95bca7ab391a65e2e9f2c5d3e39241529ffcd79",
+  "repo_head_at_evaluation": "8b7ec89e082db9bb1693c55bf8e251f3e867de7d",
+  "phase_states": {
+    "AP2-F00": "CLOSED",
+    "AP2-F01": "CLOSED",
+    "AP2-F02": "CLOSED",
+    "AP2-F03": "CLOSED",
+    "AP2-F04": "CLOSED",
+    "AP2-F05": "LOCKED"
+  },
+  "defect": {
+    "class": "upstream GStreamer state-transition lock-order deadlock under rapid pipeline churn",
+    "frozen_frame": "gst_element_change_state -> gst_pad_set_active / gst_pad_activate_mode -> gst_pad_pause_task -> pthread_mutex_lock",
+    "sibling": "typefindelement streaming thread in futex_wait holding the pad lock",
+    "installed_version": "GStreamer 1.28.7-2.1 (cachyos-extra-v3; newest available in the repositories)",
+    "upstream_reference": "Eyevinn/strom#963 (same two-thread signature on GStreamer 1.28.6); upstream report ready in evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/diagnostics/wedge-2026-10-03/upstream-report.md",
+    "get_state_timeout_note": "a bounded get_state() in a sibling thread does not bound a preceding/concurrent set_state() and itself blocks in g_cond_wait_until when the state lock is held"
+  },
+  "pre_fix_reproduction": {
+    "date": "2026-10-04",
+    "harness": "/var/tmp/michi-r32-diag/stress_harness.py (diagnostic, non-canonical)",
+    "parameters": "STRESS_HAMMERS=1 STRESS_APP=0 STRESS_ISOLATED_CHARACTERIZER=0 STRESS_SETTLE_MS=0",
+    "supervisor_run": "~/.local/state/michi/m11-4-physical/m11-4-gst-gate/20261004T215241-57802d5e",
+    "result": "WEDGED: single in-process characterizer hammer froze inside characterize_local_file set_state(PAUSED) after ~50 s; typefindelement in futex_wait; the harness stall watchdog captured all-thread Python stacks and exited; supervisor classification CHILD_NONZERO_EXIT (exit 1), seal_problems []",
+    "evidence": [
+      "reproducer/stress.log",
+      "reproducer/stacks.log"
+    ],
+    "single_thread_meaning": "the app-side calls are strictly sequential in one thread, so app-level serialization alone cannot prevent the deadlock"
+  },
+  "mitigation_evaluation": {
+    "A_serialized_owner_with_settled_protocol": {
+      "status": "DISPROVEN_AS_SUFFICIENT",
+      "reason": "the fresh single-thread reproduction wedges inside one set_state() before any settling point; historical single-thread churn also wedged in ~47 s, and the app-style sequential load/stop loop still wedged after ~148k/189k cycles"
+    },
+    "B_remove_hazardous_calls_from_owner_thread": {
+      "status": "NECESSARY_BUT_NOT_SUFFICIENT",
+      "reason": "bounding UI exposure does not bound the wedge: a stuck pipeline keeps its GStreamer threads and locks forever; the acceptance requires no permanent wedge. Additionally the prepare request build (bounded characterization worker) still executes inline on the Qt owner thread (recorded GST_LIFECYCLE_GATE_BLOCKER in ADR-0010 section 9)"
+    },
+    "C_process_isolation_of_hazardous_branch": {
+      "status": "INSUFFICIENT_AT_CURRENT_SCOPE",
+      "reason": "the characterization pipeline is already subprocess-isolated and the Direct playback path still wedged (soak attempt 5); isolating the playback pipeline would require a whole-engine process boundary, which the campaign explicitly avoids unless necessary"
+    },
+    "D_upstream_fixed_version": {
+      "status": "UNAVAILABLE",
+      "reason": "no fixed build exists in the configured repositories; the fix cannot be proven on this exact version"
+    }
+  },
+  "acceptance_criteria_status": {
+    "known_reproducer_no_longer_wedges": "UNPROVEN (reproducer still wedges at the evaluated HEAD)",
+    "no_unbounded_lifecycle_call_on_owner_thread": "UNPROVEN",
+    "characterization_ownership_bounded_cancellable": "PARTIAL (worker is bounded/cancellable; wait path still inline on the owner thread)",
+    "direct_regression_unchanged": "GREEN (tests/dac 934; Signal Truth regression green)",
+    "generation_tests_green": "GREEN (existing suites) but insufficient to clear the gate",
+    "shutdown_recovery_green": "NOT_EVALUATED (the wedge itself prevents a clean shutdown path)"
+  },
+  "consequences": {
+    "AP2-F05": "LOCKED",
+    "AP2-F06": "LOCKED",
+    "physical_campaign": "PARKED (unchanged; verdict INCOMPLETE)"
+  },
+  "next_actions": [
+    "keep the upstream report ready to file and watch for a fixed GStreamer release",
+    "before AP2-F05, resolve GST_LIFECYCLE_GATE_BLOCKER: move the prepare request build off the Qt owner thread with generation-tagged commit and prompt cancellation",
+    "a future gate re-evaluation must prove the short reproducer no longer wedges under the declared stress envelope on the exact installed version"
+  ],
+  "claims_prohibited": [
+    "GST_LIFECYCLE_GATE PASS",
+    "Direct lifecycle safe",
+    "AP2-F05 unlocked"
+  ]
+}
