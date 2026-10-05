@@ -141,6 +141,9 @@ def build_dff(
     fver_first: bool = True,
     fver_version: int = 0x01050000,
     prop_type: bytes = b"SND ",
+    prop_body_override: bytes | None = None,
+    omit_prop: bool = False,
+    omit_data: bool = False,
     dst: bool = False,
     dsti: bool = False,
     duplicate_prop: bool = False,
@@ -160,12 +163,17 @@ def build_dff(
             if len(cmpr_payload) % 2:
                 cmpr_payload += b"\x00"
             cmpr = _dff_chunk(b"CMPR", cmpr_payload)
-    prop_body = prop_type + fs + chnl + cmpr + extra_prop_child
+    if prop_body_override is not None:
+        prop_body = prop_body_override
+    else:
+        prop_body = prop_type + fs + chnl + cmpr + extra_prop_child
     prop = _dff_chunk(b"PROP", prop_body)
     fver = _dff_chunk(b"FVER", struct.pack(">I", fver_version))
     top = [fver, prop] if fver_first else [prop, fver]
+    if omit_prop:
+        top = [fver]
     dst_index = _dff_chunk(b"DSTI", b"\x00" * 4) if dsti else b""
-    data = _dff_chunk(b"DST " if dst else b"DSD ", payload)
+    data = b"" if omit_data else _dff_chunk(b"DST " if dst else b"DSD ", payload)
     body = (
         b"".join(top)
         + dst_index
@@ -829,10 +837,17 @@ def test_dff_cmpr_name_structure_is_validated(tmp_path: Path) -> None:
         assert result.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
 
 
-def test_dff_top_level_dst_chunk_is_unsupported(tmp_path: Path) -> None:
+def test_dff_top_level_dst_evidence_is_never_raw(tmp_path: Path) -> None:
+    # A DST index chunk under an uncompressed CMPR declaration is
+    # contradictory structure: fail closed, never pick a side.
+    contradiction = _characterize(tmp_path, "dst-index.dff", build_dff(dsti=True))
+    assert contradiction.status is DsdSourceStatus.UNKNOWN
+    assert contradiction.signal is None
+
+    # Positively DST-compressed shapes (CMPR declares DST): UNSUPPORTED.
     for name, blob in (
-        ("dst-data.dff", build_dff(dst=True)),
-        ("dst-index.dff", build_dff(dsti=True)),
+        ("dst-data.dff", build_dff(dst=True, compression=b"DST ")),
+        ("dst-index-cmpr.dff", build_dff(dsti=True, compression=b"DST ")),
     ):
         result = _characterize(tmp_path, name, blob)
         assert result.status is DsdSourceStatus.UNSUPPORTED_ENCODING
@@ -847,6 +862,86 @@ def test_dff_non_normative_channel_order_fails_closed(tmp_path: Path) -> None:
     )
     assert result.status is DsdSourceStatus.UNKNOWN
     assert result.failure_code == "SOURCE_DSD_CHANNEL_LAYOUT_UNKNOWN"
+
+
+def test_dff_missing_prop_can_never_prove_dsd(tmp_path: Path) -> None:
+    result = _characterize(tmp_path, "no-prop.dff", build_dff(omit_prop=True))
+    assert result.status is DsdSourceStatus.UNKNOWN
+    assert result.signal is None
+
+
+def test_dff_missing_required_prop_children_fail_closed(tmp_path: Path) -> None:
+    fs = _dff_chunk(b"FS  ", struct.pack(">I", 2_822_400))
+    chnl = _dff_chunk(b"CHNL", struct.pack(">H", 2) + b"SLFT" + b"SRGT")
+    cmpr_payload = b"DSD " + b"\x00" + b"\x00"
+    cmpr = _dff_chunk(b"CMPR", cmpr_payload)
+    for name, body in (
+        ("no-fs.dff", b"SND " + chnl + cmpr),
+        ("no-chnl.dff", b"SND " + fs + cmpr),
+        ("no-cmpr.dff", b"SND " + fs + chnl),
+    ):
+        result = _characterize(tmp_path, name, build_dff(prop_body_override=body))
+        assert result.status is DsdSourceStatus.UNKNOWN
+        assert result.signal is None
+
+
+def test_dff_duplicate_prop_children_fail_closed(tmp_path: Path) -> None:
+    fs = _dff_chunk(b"FS  ", struct.pack(">I", 2_822_400))
+    chnl = _dff_chunk(b"CHNL", struct.pack(">H", 2) + b"SLFT" + b"SRGT")
+    cmpr_payload = b"DSD " + b"\x00" + b"\x00"
+    cmpr = _dff_chunk(b"CMPR", cmpr_payload)
+    for name, body in (
+        ("dup-fs.dff", b"SND " + fs + fs + chnl + cmpr),
+        ("dup-chnl.dff", b"SND " + fs + chnl + chnl + cmpr),
+        ("dup-cmpr.dff", b"SND " + fs + chnl + cmpr + cmpr),
+    ):
+        result = _characterize(tmp_path, name, build_dff(prop_body_override=body))
+        assert result.status is DsdSourceStatus.UNKNOWN
+        assert result.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
+
+
+def test_dff_missing_or_duplicate_dsd_audio_chunk_fail_closed(
+    tmp_path: Path,
+) -> None:
+    missing = _characterize(tmp_path, "no-data.dff", build_dff(omit_data=True))
+    assert missing.status is DsdSourceStatus.UNKNOWN
+    assert missing.signal is None
+
+    duplicate = _characterize(
+        tmp_path,
+        "two-data.dff",
+        build_dff(extra_top_child=_dff_chunk(b"DSD ", bytes([0x55]) * 512)),
+    )
+    assert duplicate.status is DsdSourceStatus.UNKNOWN
+    assert duplicate.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
+
+
+def test_dff_compression_and_payload_contradictions_fail_closed(
+    tmp_path: Path,
+) -> None:
+    # CMPR declares uncompressed while a real DST chunk carries the audio:
+    # contradictory structure, never silently resolved.
+    contradiction = _characterize(tmp_path, "cmpr-dsd-dst.dff", build_dff(dst=True))
+    assert contradiction.status is DsdSourceStatus.UNKNOWN
+    assert contradiction.failure_code == "SOURCE_DSD_ELEMENTARY_STREAM_NOT_PROVEN"
+    assert contradiction.signal is None
+
+    # CMPR declares DST while a raw DSD data chunk is present: the positive
+    # compression declaration governs (UNSUPPORTED), never a false raw proof.
+    declared_dst = _characterize(
+        tmp_path, "cmpr-dst-raw.dff", build_dff(compression=b"DST ")
+    )
+    assert declared_dst.status is DsdSourceStatus.UNSUPPORTED_ENCODING
+    assert declared_dst.signal is None
+
+    # Unknown compression codecs are positively identified as non-raw.
+    unknown_codec = _characterize(
+        tmp_path,
+        "cmpr-unknown.dff",
+        build_dff(compression=b"XYZ!", cmpr_payload_override=b"XYZ!\x00\x00"),
+    )
+    assert unknown_codec.status is DsdSourceStatus.UNSUPPORTED_ENCODING
+    assert unknown_codec.signal is None
 
 
 def test_dff_truth_follows_bytes_not_the_extension(tmp_path: Path) -> None:
@@ -872,6 +967,15 @@ def test_missing_file_is_transient_unknown_not_unsupported(tmp_path: Path) -> No
 
 def test_directory_path_is_transient_unknown(tmp_path: Path) -> None:
     result = DsdSourceCharacterizer().characterize(tmp_path)
+    assert result.status is DsdSourceStatus.UNKNOWN
+    assert result.failure_code == "SOURCE_DSD_TRANSIENT_UNAVAILABLE"
+
+
+def test_non_regular_file_is_transient_unknown() -> None:
+    devnull = Path("/dev/null")
+    if not devnull.exists():
+        pytest.skip("platform without /dev/null")
+    result = DsdSourceCharacterizer().characterize(devnull)
     assert result.status is DsdSourceStatus.UNKNOWN
     assert result.failure_code == "SOURCE_DSD_TRANSIENT_UNAVAILABLE"
 
@@ -1009,6 +1113,19 @@ def test_static_evidence_is_not_runtime_gst_caps(tmp_path: Path) -> None:
     ):
         assert not hasattr(result.elementary, forbidden), forbidden
         assert not hasattr(result, forbidden), forbidden
+    # The type can represent the reserved runtime evidence kind, but this
+    # module never constructs it: a consumer must discriminate explicitly.
+    observation = ElementaryStreamObservation(
+        encoding=ElementaryEncoding.DSD,
+        evidence_kind=EvidenceKind.RUNTIME_GST_CAPS,
+        media_type=None,
+        structure_fields=(),
+        provider="runtime-probe",
+        evidence_ref="runtime:probe",
+    )
+    assert observation.evidence_kind is EvidenceKind.RUNTIME_GST_CAPS
+    source = CHARACTERIZER_MODULE.read_text(encoding="utf-8")
+    assert "EvidenceKind.RUNTIME_GST_CAPS" not in source
 
 
 def test_structural_ref_schema_is_strengthened() -> None:
@@ -1016,7 +1133,12 @@ def test_structural_ref_schema_is_strengthened() -> None:
 
     ref = _structural_ref("dsf", b"abc", 3)
     assert ref.startswith("dsf:structural:v2:")
+    # Audit-grade evidence uses the FULL digest; truncation is presentation-only.
+    assert len(ref.split(":")[-1]) == 64
     assert ref == _structural_ref("dsf", b"abc", 3)
+    # Same size, different structural bytes.
+    assert ref != _structural_ref("dsf", b"abd", 3)
+    # Same structural prefix, different later bytes.
     assert ref != _structural_ref("dsf", b"abcd", 3)
     assert ref != _structural_ref("dsf", b"abc", 4)
     assert ref != _structural_ref("dff", b"abc", 3)
@@ -1050,6 +1172,19 @@ def test_characterizer_module_never_touches_gstreamer_alsa_or_output() -> None:
         assert forbidden not in source, forbidden
 
 
+def test_dff_hostile_channel_count_never_allocates(tmp_path: Path) -> None:
+    fs = _dff_chunk(b"FS  ", struct.pack(">I", 2_822_400))
+    hostile_chnl = _dff_chunk(b"CHNL", struct.pack(">H", 0xFFFF))  # count 65535
+    cmpr = _dff_chunk(b"CMPR", b"DSD " + b"\x00" + b"\x00")
+    result = _characterize(
+        tmp_path,
+        "hostile-chnl.dff",
+        build_dff(prop_body_override=b"SND " + fs + hostile_chnl + cmpr),
+    )
+    assert result.status is DsdSourceStatus.UNKNOWN
+    assert result.failure_code == "SOURCE_DSD_CONTAINER_UNKNOWN"
+
+
 @pytest.mark.skipif(
     shutil.which("ffprobe") is None,
     reason="ffprobe not installed (optional independent cross-check)",
@@ -1066,3 +1201,26 @@ def test_golden_dsf_is_recognized_by_an_independent_validator(
     )
     assert completed.returncode == 0, completed.stderr
     assert "dsf" in completed.stdout
+
+
+@pytest.mark.skipif(
+    shutil.which("wavpack") is None,
+    reason="wavpack not installed (optional independent DFF cross-check)",
+)
+def test_golden_dff_is_recognized_by_an_independent_validator(
+    tmp_path: Path,
+) -> None:
+    # WavPack's own DSDIFF reader imports the container end to end; a zero exit
+    # status is independent proof that the structural layout is real.
+    for name, data in (
+        ("golden.dff", golden_dff_stereo()),
+        ("builder.dff", build_dff()),
+    ):
+        path = _write(tmp_path, name, data)
+        completed = subprocess.run(
+            ["wavpack", "-y", "-q", str(path), "-o", str(tmp_path / f"{name}.wv")],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode == 0, completed.stderr

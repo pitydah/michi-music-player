@@ -19,7 +19,7 @@
       "RUNTIME_GST_CAPS": "produced only by the deferred seal-212 isolated runtime probe; never emitted today"
     },
     "rule": "Static facts are typed and named (media_type/structure_fields/EvidenceKind) so no consumer can mistake them for runtime GStreamer caps evidence; runtime branch availability and DAC capability are never implied.",
-    "structural_digest": "length-prefixed, schema-versioned structural fingerprint (container + size + structural bytes) so same-name artifacts with different observed structures can never share indistinguishable evidence references"
+    "structural_digest": "length-prefixed, schema-versioned structural fingerprint (container + size + structural bytes) so same-name artifacts with different observed structures can never share indistinguishable evidence references; the FULL SHA-256 digest is the evidence authority (no truncation)"
   },
   "c2_notes": {
     "dsf_channel_type_5": "FL+FR+FC+LFE per WavPack's DSD channel masks; FFmpeg's generic 4POINT0 maps the same type to FL+FR+FC+BC (documented divergence)",
@@ -29,8 +29,11 @@
     "dff_fver": "must be the first chunk with an adopted supported version (0x01050000)",
     "dff_prop": "PROP form type must be SND; FVER/PROP/DSD multiplicity is exactly one",
     "dff_cmpr": "CompressionType + Pascal-string name validated (length and padding)",
-    "dff_dst": "a top-level DST/DSTI chunk or CMPR DST is positively identified compression -> UNSUPPORTED_ENCODING",
-    "dff_channel_order": "positions must match a normative ordered layout; unknown ids, duplicates or non-normative order fail closed"
+    "dff_dst": "DST evidence (top-level DST/DSTI chunk) or a non-DSD CMPR codec is positively identified compression -> UNSUPPORTED_ENCODING; CMPR 'DSD ' combined with DST/DSTI evidence is contradictory structure -> UNKNOWN, never silently resolved",
+    "dff_channel_order": "positions must match a normative ordered layout; unknown ids, duplicates or non-normative order fail closed",
+    "dff_singletons": "FS/CHNL/CMPR children are required singletons; missing or duplicated required children fail closed (CONTAINER_UNKNOWN), as do a missing or duplicated DSD audio chunk",
+    "adversarial_bounds": "hostile CHNL counts never allocate; non-regular paths are transient UNKNOWN; hostile chunk sizes fail closed without allocation",
+    "c2_final_seal": "AP2-F07 audit after C2: residual review findings closed (full-digest authority, CMPR/payload contradiction semantics, singleton multiplicity, adversarial bounds, evidence-kind firewall test asserting this module never constructs EvidenceKind.RUNTIME_GST_CAPS)"
   },
   "format_authorities_cross_checked": [
     "FFmpeg libavformat/dsfdec.c (DSF chunk sizes include header; bits-per-sample 1=LSBF-planar, 8=MSBF-planar; channel table)",
@@ -38,7 +41,8 @@
     "WavPack cli/dsdiff.c and cli/dsdiff_write.c (DSDIFF 12-byte chunk headers with 64-bit sizes, FRM8 = file-12, PROP/SND children, DSD data size excludes header, MSB-first)",
     "CoreAudio/sox cross-checks rejected where unavailable; no external code copied"
   ],
-  "external_validator_evidence": "ffprobe (FFmpeg n9.0.2, independent implementation) recognizes the golden DSF fixture as format_name=dsf; DFF has no FFmpeg demuxer in this build, so its conformance rests on the two independent WavPack implementations.",
+  "external_validator_evidence": "ffprobe (FFmpeg n9.0.2, independent implementation) recognizes the golden DSF fixture as format_name=dsf; the golden and builder DFF fixtures are independently imported end to end by the WavPack CLI (wavpack, exit status 0), a third independent DSDIFF reader implementation; DFF has no FFmpeg demuxer in this build.",
+  "f07_audit": "SEALED",
   "claims_prohibited": [
     "native DSD playback works",
     "DoP works",

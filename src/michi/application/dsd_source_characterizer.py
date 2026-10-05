@@ -89,6 +89,9 @@ _DSF_BLOCK_SIZE = 4096  # normative block size per channel
 #: DSDIFF versions we can prove (the adopted DSDIFF 1.5 spec value).
 _DFF_SUPPORTED_VERSIONS = frozenset({0x01050000})
 
+#: PROP/SND children that are required structural singletons.
+_DFF_SINGLETON_CHILDREN = frozenset({b"FS  ", b"CHNL", b"CMPR"})
+
 #: Canonical channel-position combinations (ordering is normative): a valid
 #: set of identifiers in a non-normative order fails closed.
 _DFF_NORMATIVE_LAYOUTS = frozenset(
@@ -178,11 +181,11 @@ class DsdSourceCharacterization:
 
 
 def _structural_ref(container: str, structural_bytes: bytes, size_bytes: int) -> str:
-    """Bounded structural fingerprint: distinguishes same-name artifacts.
+    """Audit-grade structural fingerprint: distinguishes same-name artifacts.
 
-    Length-prefixed and schema-versioned so distinct structural byte
-    sequences can never alias through ambiguous concatenation, and two
-    containers/sizes can never share a reference.
+    The FULL SHA-256 digest is the durable evidence authority (length-prefixed
+    and schema-versioned so distinct structural byte sequences can never alias
+    through ambiguous concatenation); no truncation is used for evidence.
     """
     digest = hashlib.sha256()
     digest.update(b"michi-dsd-structural-v2")
@@ -190,7 +193,7 @@ def _structural_ref(container: str, structural_bytes: bytes, size_bytes: int) ->
     digest.update(struct.pack("<Q", max(0, int(size_bytes))))
     digest.update(struct.pack("<Q", len(structural_bytes)))
     digest.update(structural_bytes)
-    return f"{container}:structural:v2:{digest.hexdigest()[:16]}"
+    return f"{container}:structural:v2:{digest.hexdigest()}"
 
 
 def _u64le(data: bytes, offset: int) -> int:
@@ -405,9 +408,19 @@ class DsdSourceCharacterizer:
             )
 
         channel_count = len(channel_ids) if channel_ids is not None else None
-        if dst_seen or compression == b"DST ":
-            # Positively identified DST-compressed audio: the only producer
-            # of UNSUPPORTED, distinct from UNKNOWN.
+        if compression == _DFF_COMPRESSION_UNCOMPRESSED and dst_seen:
+            # Contradictory structure: uncompressed CMPR declared while a real
+            # DST/DSTI chunk is present. Never silently pick one side.
+            return failure(
+                SOURCE_DSD_ELEMENTARY_STREAM_NOT_PROVEN,
+                channels=channel_count,
+                rate_value=rate,
+            )
+        if dst_seen or (
+            compression is not None and compression != _DFF_COMPRESSION_UNCOMPRESSED
+        ):
+            # Positively identified non-raw compression (DST chunk/DSTI or any
+            # non-DSD CMPR): the only producer of UNSUPPORTED.
             return self._result(
                 container=("dff", channel_count, rate, container_ref),
                 encoding=ElementaryEncoding.COMPRESSED,
@@ -423,15 +436,6 @@ class DsdSourceCharacterizer:
                 SOURCE_DSD_ELEMENTARY_STREAM_NOT_PROVEN,
                 channels=channel_count,
                 rate_value=rate,
-            )
-        if compression != _DFF_COMPRESSION_UNCOMPRESSED:
-            return self._result(
-                container=("dff", channel_count, rate, container_ref),
-                encoding=ElementaryEncoding.COMPRESSED,
-                elementary_ref=container_ref,
-                signal=None,
-                status=DsdSourceStatus.UNSUPPORTED_ENCODING,
-                failure_code=SOURCE_DSD_ELEMENTARY_STREAM_NOT_PROVEN,
             )
         if rate is None or rate <= 0 or rate % 8:
             return failure(
@@ -554,6 +558,7 @@ class DsdSourceCharacterizer:
         rate: int | None = None
         channel_ids: tuple[bytes, ...] | None = None
         compression: bytes | None = None
+        seen_children: set[bytes] = set()
         offset = 4
         while offset + _DFF_CHUNK_HEADER_BYTES <= len(prop):
             child_id = prop[offset : offset + 4]
@@ -563,6 +568,12 @@ class DsdSourceCharacterizer:
             ):
                 return None
             body = offset + _DFF_CHUNK_HEADER_BYTES
+            if child_id in _DFF_SINGLETON_CHILDREN:
+                if child_id in seen_children:
+                    # Required structural components are singletons; a
+                    # duplicated FS/CHNL/CMPR can never be coherent.
+                    return None
+                seen_children.add(child_id)
             if child_id == b"FS  ":
                 if child_size != 4:
                     return None
