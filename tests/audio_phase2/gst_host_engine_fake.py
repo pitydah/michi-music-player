@@ -44,7 +44,9 @@ def main(argv: list[str] | None = None) -> int:
     channel.setblocking(True)
     return GStreamerHostMain(
         channel,
-        engine_port_factory=lambda: FakeEnginePort(args.engine_behavior),
+        engine_port_factory=lambda coordinator: FakeEnginePort(
+            args.engine_behavior, coordinator
+        ),
         runtime=_FakeRuntime(),
     ).serve()
 

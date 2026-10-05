@@ -13,11 +13,16 @@ from pathlib import Path
 
 from michi.application.ports import AudioLoadError
 from michi.domain.playback import PlaybackStatus
+from michi.infrastructure.audio_output.runtime_inspector import (
+    DirectRuntimeSnapshot,
+)
 
 
 class FakeEnginePort:
-    def __init__(self, behavior: str = "normal") -> None:
+    def __init__(self, behavior: str = "normal", coordinator=None) -> None:
         self.behavior = behavior
+        self.coordinator = coordinator
+        self.direct_stage = None
         self.calls: list[tuple[str, object]] = []
         self._eom: list = []
         self._pos: list = []
@@ -39,6 +44,61 @@ class FakeEnginePort:
         self.calls.append(("close", None))
         if self.behavior == "hang_on_close":
             time.sleep(60)
+        if self.coordinator is not None and self.direct_stage is not None:
+            self.direct_stage = None
+            self.coordinator.release("fake_close")
+
+    # ── Direct staging (fake port exercises the real coordinator) ─────
+    def stage_direct_load(self, preparation, *, executor) -> None:
+        if executor is not self.coordinator:
+            raise RuntimeError("DIRECT_EXECUTOR_IDENTITY_MISMATCH")
+        self.direct_stage = preparation
+
+    def discard_direct_load(self, handle, *, executor) -> bool:
+        if executor is not self.coordinator:
+            raise RuntimeError("DIRECT_EXECUTOR_IDENTITY_MISMATCH")
+        if self.direct_stage is None or self.direct_stage.handle != handle:
+            return False
+        self.direct_stage = None
+        return True
+
+    def _snapshot_for(self, preparation) -> DirectRuntimeSnapshot:
+        recipe = preparation.recipe
+        snapshot = DirectRuntimeSnapshot(
+            execution_generation=preparation.handle.generation,
+            port_generation=7,
+            plan_id=preparation.handle.plan_id,
+            sink_factory=recipe.sink_factory,
+            sink_device=recipe.device,
+            negotiated_format=recipe.gst_format,
+            negotiated_rate_hz=recipe.rate_hz,
+            negotiated_channels=recipe.channels,
+            graph_factories=("capsfilter", recipe.sink_factory),
+        )
+        if self.behavior == "direct_stale":
+            return DirectRuntimeSnapshot(
+                execution_generation=preparation.handle.generation + 50,
+                port_generation=snapshot.port_generation,
+                plan_id=snapshot.plan_id,
+                sink_factory=snapshot.sink_factory,
+                sink_device=snapshot.sink_device,
+                negotiated_format=snapshot.negotiated_format,
+                negotiated_rate_hz=snapshot.negotiated_rate_hz,
+                negotiated_channels=snapshot.negotiated_channels,
+                graph_factories=snapshot.graph_factories,
+            )
+        return snapshot
+
+    def _emit_direct_callbacks(self) -> None:
+        preparation = self.direct_stage
+        coordinator = self.coordinator
+        if preparation is None or coordinator is None:
+            return
+        coordinator.mark_previous_source_released()
+        coordinator.begin_runtime(preparation.handle, port_generation=7)
+        snapshot = self._snapshot_for(preparation)
+        coordinator.verify_preroll(preparation.handle, snapshot)
+        coordinator.observe_runtime(preparation.handle, snapshot)
 
     # ── comandos ──────────────────────────────────────────────────────
     def load(self, file_path: Path) -> None:
@@ -71,6 +131,7 @@ class FakeEnginePort:
             if self._failure_cb is not None:
                 self._failure_cb(7, "GStreamer pump died inside the host")
             return
+        self._emit_direct_callbacks()
         self._emit_state(PlaybackStatus.PLAYING)
 
     def pause(self) -> None:

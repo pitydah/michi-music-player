@@ -21,6 +21,7 @@ import platform
 import socket
 import sys
 import threading
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -98,9 +99,12 @@ class GStreamerHostMain:
         if engine_port_factory is None:
             engine_port_factory = default_gstreamer_port_factory
             self._app = self._ensure_qt_application()
+        self._callback_seq = 0
+        self._deferred_commands: list[dict[str, Any]] = []
         self._engine = HostEngineSession(
             port_factory=engine_port_factory,
             emit=self._emit_event,
+            request_callback=self._request_callback,
         )
 
     # ── loop ──────────────────────────────────────────────────────────
@@ -129,6 +133,8 @@ class GStreamerHostMain:
                 return 3
             for frame in frames:
                 self._route(frame)
+            while self._deferred_commands:
+                self._route(self._deferred_commands.pop(0))
             self._pump_qt()
         return 0
 
@@ -190,6 +196,50 @@ class GStreamerHostMain:
                 request_id,
                 error_payload("OUTPUT_HOST_COMMAND_FAILED", str(exc)),
             )
+
+    # ── reverse callbacks (child -> parent, bounded) ─────────────────
+    def _request_callback(
+        self, name: str, payload: dict[str, Any], timeout_s: float
+    ) -> tuple[bool, dict[str, Any]]:
+        self._callback_seq += 1
+        request_id = f"cb:{self._callback_seq}"
+        frame = make_message(
+            MessageKind.CALLBACK,
+            host_generation=self._host_generation,
+            command_generation=self._command_generation,
+            request_id=request_id,
+            payload={"callback": str(name), **payload},
+        )
+        self._send(frame)
+        deadline = time.monotonic() + max(0.05, float(timeout_s))
+        while time.monotonic() < deadline:
+            try:
+                chunk = self._channel.recv(65536)
+            except TimeoutError:
+                continue
+            except OSError as exc:
+                raise RuntimeError(f"OUTPUT_HOST_CALLBACK_CHANNEL_LOST: {exc}") from exc
+            if not chunk:
+                raise RuntimeError("OUTPUT_HOST_CALLBACK_CHANNEL_LOST: EOF")
+            for incoming in self._decoder.feed(chunk):
+                if (
+                    incoming["kind"]
+                    in (
+                        MessageKind.CALLBACK_RESULT.value,
+                        MessageKind.CALLBACK_REJECTED.value,
+                    )
+                    and incoming.get("request_id") == request_id
+                ):
+                    ok = incoming["kind"] == MessageKind.CALLBACK_RESULT.value
+                    return ok, incoming.get("payload") or {}
+                if incoming["kind"] == MessageKind.COMMAND.value:
+                    # A command arriving mid-operation must never re-enter the
+                    # engine; defer it until the current operation completes.
+                    self._deferred_commands.append(incoming)
+        raise RuntimeError(
+            "OUTPUT_HOST_CALLBACK_TIMEOUT: parent did not answer "
+            f"{name!r} within {timeout_s:.3f}s"
+        )
 
     # ── frames ────────────────────────────────────────────────────────
     def _respond(

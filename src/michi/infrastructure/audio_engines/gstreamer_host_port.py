@@ -39,6 +39,19 @@ from michi.infrastructure.audio_engines.gstreamer_host_client import (
     OutputHostShutdownError,
     OutputHostTimeoutError,
 )
+from michi.infrastructure.audio_engines.gstreamer_host_direct import (
+    CB_ABORT,
+    CB_BEGIN_RUNTIME,
+    CB_MARK_PREVIOUS_SOURCE_RELEASED,
+    CB_OBSERVE_RUNTIME,
+    CB_RECORD_RUNTIME_ANOMALY,
+    CB_RELEASE,
+    CB_VERIFY_PREROLL,
+    handle_from_wire,
+    handle_to_wire,
+    preparation_to_wire,
+    snapshot_from_wire,
+)
 from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
     HostEvent,
     HostOperation,
@@ -55,9 +68,12 @@ class GStreamerHostedAudioPort(AudioPort):
         owner_dispatch: Callable[[Callable[[], None]], None] | None = None,
         command_deadline_s: float = 10.0,
         load_deadline_s: float = 20.0,
+        direct_executor: object | None = None,
     ) -> None:
         super().__init__()
         self._supervisor = supervisor
+        self._direct_executor = direct_executor
+        self._callback_deadline_s = 10.0
         self._owner_dispatch = owner_dispatch
         self._command_deadline_s = max(0.05, float(command_deadline_s))
         self._load_deadline_s = max(0.05, float(load_deadline_s))
@@ -70,6 +86,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._last_state: PlaybackStatus | None = None
         self._termination_kind: str | None = None
         self._runtime_failure_callback: Callable[[int, str], None] | None = None
+        self._owner_invoker: object | None = None
         self._owner_queue: list[Callable[[], None]] = []
         self._eom: list[Callable[[], None]] = []
         self._pos: list[Callable[[int], None]] = []
@@ -88,6 +105,8 @@ class GStreamerHostedAudioPort(AudioPort):
         self._supervisor.set_event_sink(self._on_host_event)
         self._supervisor.set_lost_sink(self._on_host_lost)
         self._supervisor.set_owner_drain(self._drain_all)
+        self._supervisor.set_callback_handler(self._handle_host_callback)
+        self._ensure_owner_invoker()
         try:
             hello = self._supervisor.start()
         except OutputHostError as exc:
@@ -223,19 +242,149 @@ class GStreamerHostedAudioPort(AudioPort):
         """
         return {}
 
-    # ── Direct staging (hosted in the Direct integration commit) ──────
+    # ── Direct staging (transport only; authority stays in the parent) ─
     def stage_direct_load(self, preparation: object, *, executor: object) -> None:
+        self._require_direct_executor(executor)
+        try:
+            self._submit(
+                HostOperation.STAGE_DIRECT,
+                {"preparation": preparation_to_wire(preparation)},  # type: ignore[arg-type]
+                deadline_s=self._command_deadline_s,
+            )
+        except OutputHostCommandError as exc:
+            raise self._direct_error(exc.code, exc.detail) from exc
+        except OutputHostError as exc:
+            raise self._direct_error(
+                "OUTPUT_HOST_DIRECT_TRANSPORT_FAILED", exc.detail
+            ) from exc
+
+    def discard_direct_load(self, handle: object, *, executor: object) -> bool:
+        self._require_direct_executor(executor)
+        try:
+            payload = self._submit(
+                HostOperation.DISCARD_DIRECT,
+                {"handle": handle_to_wire(handle)},  # type: ignore[arg-type]
+                deadline_s=self._command_deadline_s,
+            )
+        except OutputHostCommandError as exc:
+            raise self._direct_error(exc.code, exc.detail) from exc
+        except OutputHostError as exc:
+            raise self._direct_error(
+                "OUTPUT_HOST_DIRECT_TRANSPORT_FAILED", exc.detail
+            ) from exc
+        return bool(payload.get("discarded", False))
+
+    def _require_direct_executor(self, executor: object) -> None:
+        if self._direct_executor is None or executor is not self._direct_executor:
+            raise self._direct_error(
+                "DIRECT_EXECUTOR_IDENTITY_MISMATCH",
+                "the Direct executor is not bound to this hosted port",
+            )
+
+    @staticmethod
+    def _direct_error(code: str, detail: str):
         from michi.infrastructure.audio_output.direct_output_executor import (
             DirectExecutorError,
         )
 
-        raise DirectExecutorError(
-            "OUTPUT_HOST_DIRECT_UNSUPPORTED",
-            "Direct staging is not transported by this hosted port build",
-        )
+        return DirectExecutorError(code, detail)
 
-    def discard_direct_load(self, handle: object, *, executor: object) -> bool:
-        return False
+    # ── reverse callbacks (child -> parent) ───────────────────────────
+    def _handle_host_callback(
+        self, frame: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        """Reader-thread entry: marshal to the owner and wait (bounded).
+
+        The owner processes this either in its Qt dispatch loop or inside a
+        bounded command wait (owner-drain hook), so the child can never
+        deadlock against the parent.
+        """
+        import threading
+
+        holder: dict[str, Any] = {
+            "done": threading.Event(),
+            "result": (
+                False,
+                {
+                    "code": "OUTPUT_HOST_CALLBACK_TIMEOUT",
+                    "detail": "parent did not process the callback in time",
+                },
+            ),
+        }
+
+        def work() -> None:
+            try:
+                payload = self._execute_callback(frame)
+            except Exception as exc:  # noqa: BLE001 - typed rejection boundary
+                code = getattr(exc, "code", None) or type(exc).__name__
+                holder["result"] = (
+                    False,
+                    {"code": str(code), "detail": str(exc)[:1000]},
+                )
+            else:
+                holder["result"] = (True, payload)
+            finally:
+                holder["done"].set()
+
+        self._enqueue(work)
+        if not holder["done"].wait(self._callback_deadline_s):
+            return (
+                False,
+                {
+                    "code": "OUTPUT_HOST_CALLBACK_TIMEOUT",
+                    "detail": "parent owner did not drain the callback queue",
+                },
+            )
+        return holder["result"]
+
+    def _execute_callback(self, frame: dict[str, Any]) -> dict[str, Any]:
+        payload = frame.get("payload") or {}
+        name = payload.get("callback")
+        executor = self._direct_executor
+        if executor is None:
+            raise self._direct_error(
+                "OUTPUT_HOST_DIRECT_UNBOUND",
+                "no Direct executor is bound to this hosted port",
+            )
+        if name == CB_MARK_PREVIOUS_SOURCE_RELEASED:
+            executor.mark_previous_source_released()
+            return {}
+        if name == CB_BEGIN_RUNTIME:
+            executor.begin_runtime(
+                handle_from_wire(payload.get("handle")),
+                port_generation=int(payload.get("port_generation") or 0),
+            )
+            return {}
+        if name == CB_VERIFY_PREROLL:
+            executor.verify_preroll(
+                handle_from_wire(payload.get("handle")),
+                snapshot_from_wire(payload.get("snapshot")),
+            )
+            return {}
+        if name == CB_OBSERVE_RUNTIME:
+            recorded = executor.observe_runtime(
+                handle_from_wire(payload.get("handle")),
+                snapshot_from_wire(payload.get("snapshot")),
+            )
+            return {"recorded": bool(recorded)}
+        if name == CB_RECORD_RUNTIME_ANOMALY:
+            recorded = executor.record_runtime_anomaly(
+                handle_from_wire(payload.get("handle")),
+                str(payload.get("detail") or ""),
+            )
+            return {"recorded": bool(recorded)}
+        if name == CB_ABORT:
+            executor.abort(
+                handle_from_wire(payload.get("handle")),
+                str(payload.get("reason") or ""),
+            )
+            return {}
+        if name == CB_RELEASE:
+            executor.release(str(payload.get("reason") or ""))
+            return {}
+        raise self._direct_error(
+            "OUTPUT_HOST_CALLBACK_UNKNOWN", f"unknown callback {name!r}"
+        )
 
     # ── subscriptions (canonical AudioPort) ───────────────────────────
     def subscribe_end_of_media(self, callback: Callable[[], None]) -> None:
@@ -289,6 +438,33 @@ class GStreamerHostedAudioPort(AudioPort):
     ) -> None:
         if callback in self._pst:
             self._pst.remove(callback)
+
+    def _ensure_owner_invoker(self) -> None:
+        """Production Qt dispatch: queued signal into the owner thread.
+
+        Only created when a QCoreApplication already exists; tests without a
+        Qt loop drain explicitly through ``dispatch_pending()``.
+        """
+        if self._owner_dispatch is not None:
+            return
+        try:
+            from PySide6.QtCore import QCoreApplication, QObject, Qt, Signal
+        except Exception:  # noqa: BLE001 - Qt is optional for the transport
+            return
+        if QCoreApplication.instance() is None:
+            return
+        drain = self._drain_all
+
+        class _OwnerInvoker(QObject):
+            sig = Signal()
+
+            def __init__(self) -> None:
+                super().__init__()
+                self.sig.connect(drain, Qt.QueuedConnection)
+
+        invoker = _OwnerInvoker()
+        self._owner_invoker = invoker  # ownership: keep the QObject alive
+        self._owner_dispatch = invoker.sig.emit
 
     # ── owner queue ───────────────────────────────────────────────────
     def dispatch_pending(self) -> None:

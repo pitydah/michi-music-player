@@ -16,6 +16,11 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from michi.application.ports import AudioLoadError
+from michi.infrastructure.audio_engines.gstreamer_host_direct import (
+    HostDirectCoordinator,
+    handle_from_wire,
+    preparation_from_wire,
+)
 from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
     HostEvent,
     HostOperation,
@@ -52,14 +57,16 @@ class EnginePort(Protocol):
     def close(self) -> None: ...
 
 
-def default_gstreamer_port_factory() -> EnginePort:
+def default_gstreamer_port_factory(
+    coordinator: HostDirectCoordinator,
+) -> EnginePort:
     """Production factory: the canonical in-process port, inside the child."""
     from michi.infrastructure.audio_engines.gstreamer import (
         GStreamerAudioPort,
         GStreamerBindings,
     )
 
-    return GStreamerAudioPort(GStreamerBindings())
+    return GStreamerAudioPort(GStreamerBindings(), direct_executor=coordinator)
 
 
 class HostEngineSession:
@@ -68,13 +75,15 @@ class HostEngineSession:
     def __init__(
         self,
         *,
-        port_factory: Callable[[], EnginePort],
+        port_factory: Callable[[HostDirectCoordinator], EnginePort],
         emit: EmitEvent,
+        request_callback: Callable[[str, dict, float], tuple[bool, dict]],
     ) -> None:
         self._port_factory = port_factory
         self._emit = emit
         self._port: EnginePort | None = None
         self._opened = False
+        self._coordinator = HostDirectCoordinator(request_callback)
 
     @property
     def opened(self) -> bool:
@@ -107,7 +116,7 @@ class HostEngineSession:
     def _op_open(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         if self._port is not None:
             return True, {"already_open": True}
-        port = self._port_factory()
+        port = self._port_factory(self._coordinator)
         port.activate()
         self._wire_subscriptions(port)
         self._port = port
@@ -185,13 +194,30 @@ class HostEngineSession:
     ) -> tuple[bool, dict[str, Any]]:
         return True, {"value": int(self._require_port().duration())}
 
-    def _op_direct_unsupported(
+    def _op_stage_direct(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        preparation = preparation_from_wire(payload.get("preparation"))
+        port = self._require_port()
+        # The port validates the staged recipe against the coordinator mirror,
+        # so the mirror is populated first; a failed port stage rolls it back.
+        self._coordinator.stage(preparation)
+        try:
+            port.stage_direct_load(preparation, executor=self._coordinator)  # type: ignore[attr-defined]
+        except Exception:
+            self._coordinator.discard(preparation.handle)
+            raise
+        return True, {}
+
+    def _op_discard_direct(
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
-        return False, {
-            "code": "OUTPUT_HOST_DIRECT_UNSUPPORTED",
-            "detail": "Direct staging is not transported by this host build",
-        }
+        handle = handle_from_wire(payload.get("handle"))
+        port = self._require_port()
+        discarded = False
+        stage = getattr(port, "discard_direct_load", None)
+        if stage is not None:
+            discarded = bool(stage(handle, executor=self._coordinator))
+        self._coordinator.discard(handle)
+        return True, {"discarded": discarded}
 
     # ── help ──────────────────────────────────────────────────────────
     def _require_port(self) -> EnginePort:
@@ -273,7 +299,6 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     HostOperation.SET_MUTED.value: HostEngineSession._op_set_muted,
     HostOperation.QUERY_POSITION.value: HostEngineSession._op_query_position,
     HostOperation.QUERY_DURATION.value: HostEngineSession._op_query_duration,
-    HostOperation.STAGE_DIRECT.value: HostEngineSession._op_direct_unsupported,
-    HostOperation.DISCARD_DIRECT.value: HostEngineSession._op_direct_unsupported,
-    HostOperation.ABORT_CANDIDATE.value: HostEngineSession._op_direct_unsupported,
+    HostOperation.STAGE_DIRECT.value: HostEngineSession._op_stage_direct,
+    HostOperation.DISCARD_DIRECT.value: HostEngineSession._op_discard_direct,
 }

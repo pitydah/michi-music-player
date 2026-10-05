@@ -107,6 +107,7 @@ from michi.infrastructure.audio_engines.gstreamer import (
 )
 from michi.infrastructure.audio_engines.providers import (
     GStreamerEngineProvider,
+    GStreamerHostedEngineProvider,
     MpdEngineProvider,
     QtEngineProvider,
 )
@@ -225,7 +226,7 @@ class ServiceGraph:
     audio_engine_service: AudioEngineService
     audio_engine_convergence: AudioEngineConvergenceCoordinator
     qt_engine_provider: QtEngineProvider
-    gstreamer_engine_provider: GStreamerEngineProvider
+    gstreamer_engine_provider: GStreamerEngineProvider | GStreamerHostedEngineProvider
     direct_output_executor: GStreamerDirectOutputExecutor
     source_characterizer: object
     signal_truth: SignalTruthRecorder
@@ -429,9 +430,12 @@ def _build_services(
     # Initial passive snapshot; netlink monitoring starts only after every
     # consumer is wired by ApplicationContainer.
     udev_observer.rescan()
-    runtime_gstreamer_bindings = gstreamer_bindings or GStreamerBindings()
+    # GStreamer bindings are constructed in the parent ONLY for explicitly
+    # injected test/diagnostic compositions. The production default uses the
+    # hosted provider: zero productive Gst objects in the parent process.
+    runtime_gstreamer_bindings = gstreamer_bindings
     if source_characterizer is None:
-        if gstreamer_bindings is not None:
+        if runtime_gstreamer_bindings is not None:
             # Explicitly injected bindings keep the in-process characterizer so
             # test/diagnostic compositions observe their own fake runtime.
             source_characterizer = GStreamerSourceCharacterizer(
@@ -443,6 +447,14 @@ def _build_services(
             # never wedge the application (diagnostics/wedge-2026-10-03).
             source_characterizer = SubprocessSourceCharacterizer()
     qualification_host = read_qualification_host_environment()
+    probe_bindings = runtime_gstreamer_bindings
+
+    def _probe_gstreamer_version():
+        # Dependency inspection only; never a productive native object.
+        nonlocal probe_bindings
+        if probe_bindings is None:
+            probe_bindings = GStreamerBindings()
+        return probe_bindings.runtime_version()
 
     def qualification_environment(stable_device_id: str):
         identity = next(
@@ -454,7 +466,7 @@ def _build_services(
             None,
         )
         try:
-            gstreamer_version = runtime_gstreamer_bindings.runtime_version()
+            gstreamer_version = _probe_gstreamer_version()
         except (ImportError, RuntimeError, ValueError):
             gstreamer_version = None
         bindings = audio_devices.bindings_for(stable_device_id)
@@ -492,10 +504,18 @@ def _build_services(
         signal_truth=signal_truth,
         alsa_runtime_observer=alsa_runtime_observer,
     )
-    gstreamer_provider = GStreamerEngineProvider(
-        direct_executor=direct_executor,
-        bindings=runtime_gstreamer_bindings,
-    )
+    if runtime_gstreamer_bindings is not None:
+        # Test/diagnostic composition: in-process engine over injected bindings.
+        gstreamer_provider = GStreamerEngineProvider(
+            direct_executor=direct_executor,
+            bindings=runtime_gstreamer_bindings,
+        )
+    else:
+        # Production: ALL productive GStreamer native lifecycle runs in the
+        # supervised output host; the parent keeps semantic authority only.
+        gstreamer_provider = GStreamerHostedEngineProvider(
+            direct_executor=direct_executor
+        )
     direct_executor.bind_port_provider(lambda: gstreamer_provider.current_port)
     mpd_provider = MpdEngineProvider()
     registry = AudioEngineRegistry([qt_provider, gstreamer_provider, mpd_provider])

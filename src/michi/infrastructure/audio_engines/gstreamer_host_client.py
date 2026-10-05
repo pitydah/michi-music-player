@@ -608,19 +608,21 @@ class GStreamerHostSupervisor:
                 self._stale_events += 1
             return
         kind = frame["kind"]
-        is_response = kind in (
+        is_control = kind in (
             MessageKind.RESULT.value,
             MessageKind.REJECTED.value,
             MessageKind.FAULT.value,
             MessageKind.ACK.value,
             MessageKind.HELLO.value,
             MessageKind.SHUTDOWN_COMPLETE.value,
+            MessageKind.CALLBACK.value,
         )
         # During STOPPING, in-flight command responses (including
-        # SHUTDOWN_COMPLETE) must still be routed; events are already moot.
+        # SHUTDOWN_COMPLETE) and reverse callbacks must still be routed so a
+        # closing child can complete its release handoff; events are moot.
         if not accepting or state in (SupervisorState.STOPPED, SupervisorState.FAILED):
             return
-        if state is SupervisorState.STOPPING and not is_response:
+        if state is SupervisorState.STOPPING and not is_control:
             return
         if kind == MessageKind.EVENT.value:
             self._last_progress_at = time.monotonic()

@@ -1336,7 +1336,15 @@ class TestF42AdapterContract:
         # DAC-V35-050 productive closure: additive current-port/executor
         # composition seams and injectable bindings for the production-graph
         # test; provider ownership/open/close semantics remain unchanged.
-        "src/michi/infrastructure/audio_engines/providers.py": "13c2fea63c7a77d3",
+        # GST OUTPUT HOST (2026-10-05) authorized reopening: providers.py
+        # gains GStreamerHostedEngineProvider — the production default routes
+        # ALL productive GStreamer native lifecycle into a supervised child
+        # process while the parent keeps semantic authority. The in-process
+        # GStreamerEngineProvider is retained ONLY for explicitly injected
+        # test/diagnostic compositions; no existing provider ownership,
+        # open/close or registry semantics changed. Hash re-sealed after full
+        # regression.
+        "src/michi/infrastructure/audio_engines/providers.py": "bad3de3da0360fab",
         "src/michi/application/audio_transport_router.py": "937660b9c864e572",  # noqa: E501
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).

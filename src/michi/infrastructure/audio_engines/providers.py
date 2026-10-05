@@ -263,6 +263,131 @@ class GStreamerEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort
         self._invalidate_runtime_generation()
 
 
+class GStreamerHostedEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
+    """Production GStreamer provider: native lifecycle in a supervised host.
+
+    The parent keeps semantic authority and ZERO productive Gst objects; the
+    child owns pipeline construction, every state transition and teardown.
+    A wedged child is killed/reaped by the supervisor and the failure is
+    published through the SAME runtime-failure seam as the in-process
+    provider, so convergence policy is unchanged.
+    """
+
+    def __init__(
+        self,
+        *,
+        direct_executor: object | None = None,
+        supervisor_factory=None,
+    ) -> None:
+        _RuntimeFailureRelayMixin.__init__(self)
+        self._port = None
+        self._supervisor = None
+        self._direct_executor = direct_executor
+        self._supervisor_factory = supervisor_factory
+
+    @property
+    def engine_id(self) -> AudioEngineId:
+        return AudioEngineId.GSTREAMER
+
+    @property
+    def direct_executor(self):
+        return self._direct_executor
+
+    @property
+    def current_port(self):
+        """Currently owned port; never opens a hidden second runtime."""
+        return self._port
+
+    @property
+    def current_supervisor(self):
+        return self._supervisor
+
+    def probe(self) -> AudioEngineDescriptor:
+        """Availability is dependency inspection only (no native pipeline)."""
+        return _gstreamer_probe()
+
+    def open(self):
+        """Start the supervised host, handshake and open the engine inside.
+
+        READY means the host handshake AND the child engine activation both
+        succeeded; a failed activation leaves no half-open port.
+        """
+        if self._port is not None:
+            return self._port
+        from michi.infrastructure.audio_engines.gstreamer_host_client import (
+            GStreamerHostSupervisor,
+        )
+        from michi.infrastructure.audio_engines.gstreamer_host_port import (
+            GStreamerHostedAudioPort,
+        )
+
+        factory = self._supervisor_factory or (lambda: GStreamerHostSupervisor())
+        supervisor = factory()
+        port = GStreamerHostedAudioPort(
+            supervisor, direct_executor=self._direct_executor
+        )
+        port.activate()  # raises truthfully if host/engine cannot come up
+        self._supervisor = supervisor
+        self._port = port
+        self._bump_runtime_generation()
+        owned_generation = self._runtime_generation
+        port.set_runtime_failure_callback(
+            lambda _port_generation, reason: self._relay_owned_gst_failure(
+                owned_generation, reason
+            )
+        )
+        return port
+
+    def _relay_owned_gst_failure(self, owned_generation: int, reason: str) -> None:
+        if self._runtime_generation != owned_generation:
+            return
+        self.emit_runtime_failure(reason)
+
+    def close(self) -> None:
+        """Bounded, exception-safe: ownership released only on proven close."""
+        port = self._port
+        if port is None:
+            return
+        port.close()
+        # ONLY AFTER PROVEN SUCCESS:
+        self._port = None
+        self._supervisor = None
+        self._invalidate_runtime_generation()
+
+
+def _gstreamer_probe() -> AudioEngineDescriptor:
+    """Truthful availability for the GStreamer family (shared by providers)."""
+    available = False
+    reason = None
+    try:
+        from michi.infrastructure.audio_engines.gstreamer import (
+            GStreamerBindings,
+        )
+
+        bindings = GStreamerBindings()
+        bindings.ensure_loaded()
+        if not bindings.playbin3_available():
+            reason = "playbin3 no disponible en el runtime GStreamer"
+        else:
+            available = True
+    except (ImportError, ValueError) as exc:
+        reason = f"PyGObject/GStreamer no disponible: {exc}"
+    return AudioEngineDescriptor(
+        engine_id=AudioEngineId.GSTREAMER,
+        display_name=_GSTREAMER_DISPLAY,
+        available=available,
+        unavailable_reason=reason,
+        implemented=True,
+        capabilities=AudioEngineCapabilities(
+            local_file_playback=True,
+            seek=True,
+            pause=True,
+            volume=True,
+            mute=True,
+        ),
+    )
+
+
 class MpdEngineProvider(_RuntimeFailureRelayMixin, AudioEngineProviderPort):
     """MPD as a MANAGED PRIVATE child process behind AudioPort (M11.3D).
 
