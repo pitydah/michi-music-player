@@ -222,6 +222,7 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 port.load(files[cycles % len(files)])
                 port.stop()
+                port.dispatch_pending()  # consume owner events (no Qt loop here)
                 progress.update(
                     cycle=cycles,
                     phase="churn",
@@ -233,9 +234,10 @@ def main(argv: list[str] | None = None) -> int:
                     and supervisor.pid_alive()
                     and supervisor.state is not SupervisorState.FAILED
                 )
-                if isinstance(
-                    exc, (AudioLoadError, AudioTransportCommandError)
-                ) and host_healthy:
+                if (
+                    isinstance(exc, (AudioLoadError, AudioTransportCommandError))
+                    and host_healthy
+                ):
                     # Engine-level rejection with a LIVE host is not
                     # containment: it is a media/ARM outcome. Counted, never
                     # restarted blindly.

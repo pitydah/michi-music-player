@@ -100,14 +100,14 @@ def test_real_shared_playback_command_surface_on_the_hosted_port() -> None:
     from pathlib import Path
 
     from michi.domain.playback import PlaybackStatus
-
     from michi.infrastructure.audio_engines.gstreamer_host_port import (
         GStreamerHostedAudioPort,
     )
 
     fixture = (
         Path(__file__).resolve().parents[2]
-        / "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav"
+        / "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run"
+        / "fixtures/pcm16_44100.wav"
     )
     if not fixture.is_file():
         pytest.skip("PCM fixture unavailable")

@@ -311,8 +311,11 @@ def test_owner_work_is_drained_during_a_bounded_host_wait() -> None:
     pytest.importorskip("PySide6.QtCore")
     from PySide6.QtCore import QCoreApplication
 
-    app = QCoreApplication.instance() or QCoreApplication([])
-    assert app is not None
+    # NEVER create a Qt application here: a bare QCoreApplication races the
+    # suite's real QApplication creation (Qt aborts). Only run when the suite
+    # already owns one.
+    if QCoreApplication.instance() is None:
+        pytest.skip("suite has no live Qt application instance")
 
     supervisor, port = _port("hang_on_load", command_timeout_s=0.7)
     ticks: list[float] = []
