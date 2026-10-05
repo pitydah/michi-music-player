@@ -369,10 +369,18 @@ class GStreamerHostedAudioPort(AudioPort):
         name = payload.get("callback")
         executor = self._direct_executor
         if executor is None:
-            raise self._direct_error(
-                "OUTPUT_HOST_DIRECT_UNBOUND",
-                "no Direct executor is bound to this hosted port",
-            )
+            # Shared-only composition: the child attaches the coordinator
+            # unconditionally, so the harmless sidecar hooks must be accepted
+            # as no-ops (an in-process port without direct_executor would
+            # never call them). Direct classification still fails closed.
+            if name == CB_VERIFY_PREROLL:
+                raise self._direct_error(
+                    "OUTPUT_HOST_DIRECT_UNBOUND",
+                    "no Direct executor is bound to this hosted port",
+                )
+            if name in (CB_OBSERVE_RUNTIME, CB_RECORD_RUNTIME_ANOMALY):
+                return {"recorded": False}
+            return {}
         if name == CB_MARK_PREVIOUS_SOURCE_RELEASED:
             executor.mark_previous_source_released()
             return {}
