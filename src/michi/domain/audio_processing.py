@@ -79,10 +79,12 @@ class GraphicEqLayout(StrEnum):
     ISO_31_V1 = "iso_31_v1"
 
 
+#: Canonical DSP center frequencies. UI labels (31, 62, 1K...) are presentation
+#: only and must never become processing identity.
 GRAPHIC_EQ_CENTER_HZ: dict[GraphicEqLayout, tuple[float, ...]] = {
     GraphicEqLayout.MICHI_10_V1: (
-        31.5,
-        63.0,
+        31.25,
+        62.5,
         125.0,
         250.0,
         500.0,
@@ -95,7 +97,7 @@ GRAPHIC_EQ_CENTER_HZ: dict[GraphicEqLayout, tuple[float, ...]] = {
     GraphicEqLayout.ISO_31_V1: (
         20.0,
         25.0,
-        31.5,
+        31.0,
         40.0,
         50.0,
         63.0,
@@ -131,6 +133,15 @@ GRAPHIC_EQ_BAND_COUNTS: dict[GraphicEqLayout, int] = {
     layout: len(centers) for layout, centers in GRAPHIC_EQ_CENTER_HZ.items()
 }
 
+GRAPHIC_EQ_GAIN_ENVELOPE_DB: tuple[float, float] = (-12.0, 12.0)
+"""Canonical product gain envelope. The 0.5 dB edit step is a UI increment;
+imported curves may legitimately carry higher precision in the domain."""
+
+PEQ_GAIN_ENVELOPE_DB: tuple[float, float] = (-36.0, 36.0)
+"""Canonical PEQ design envelope (spec 124/389). Never clamp silently."""
+
+_WORKING_FORMATS = frozenset({"F32LE", "F64LE"})
+
 
 class ResampleQuality(StrEnum):
     FAST = "fast"
@@ -144,6 +155,9 @@ class DitherMode(StrEnum):
 
     NONE = "none"
     TPDF = "tpdf"
+
+
+_DITHER_MODES = frozenset(mode.value for mode in DitherMode)
 
 
 class ProcessingAdaptationReason(StrEnum):
@@ -207,8 +221,14 @@ class GraphicEqNode:
             raise ValueError(
                 f"graphic EQ layout {self.layout_id.value} requires {expected} gains"
             )
+        low, high = GRAPHIC_EQ_GAIN_ENVELOPE_DB
         for gain in self.gains_db:
             _require_finite(gain, "graphic EQ gain")
+            if not low <= gain <= high:
+                raise ValueError(
+                    f"graphic EQ gain {gain} outside supported envelope "
+                    f"[{low}, {high}] dB"
+                )
 
     @property
     def is_flat(self) -> bool:
@@ -239,6 +259,11 @@ class PeqBand:
         if self.filter_type in GAINLESS_BIQUAD_TYPES and self.gain_db != 0.0:
             raise ValueError(
                 f"{self.filter_type.value} has no gain parameter; gain must be 0"
+            )
+        low, high = PEQ_GAIN_ENVELOPE_DB
+        if not low <= self.gain_db <= high:
+            raise ValueError(
+                f"PEQ gain {self.gain_db} outside design envelope [{low}, {high}] dB"
             )
 
 
@@ -396,7 +421,11 @@ class ProcessingProfile:
 
 @dataclass(frozen=True, slots=True)
 class ProcessingSampleContract:
-    """Explicit representation boundaries (R11-G04). Never implicit."""
+    """Explicit representation boundaries (R11-G04). Never implicit.
+
+    Input/output may be integer PCM carriers; only ``working_format`` has the
+    narrow internal-processing format contract (F32LE/F64LE).
+    """
 
     input_format: str
     working_format: str
@@ -409,6 +438,33 @@ class ProcessingSampleContract:
     output_quantization: bool
     dither_mode: str
     noise_shaping_mode: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.input_format, str) or not self.input_format.strip():
+            raise ValueError("input_format must be a non-empty carrier format")
+        if self.working_format not in _WORKING_FORMATS:
+            raise ValueError("working_format must be F32LE or F64LE")
+        if self.output_format is not None and not self.output_format.strip():
+            raise ValueError("output_format must be None or a non-empty format")
+        for name in ("input_rate_hz", "output_rate_hz"):
+            value = getattr(self, name)
+            if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+                raise ValueError(f"{name} must be an integer > 0")
+        for name in ("channels_in", "channels_out"):
+            value = getattr(self, name)
+            if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+                raise ValueError(f"{name} must be an integer > 0")
+        if not isinstance(self.input_conversion, bool):
+            raise TypeError("input_conversion must be a bool")
+        if not isinstance(self.output_quantization, bool):
+            raise TypeError("output_quantization must be a bool")
+        if self.dither_mode not in _DITHER_MODES:
+            raise ValueError("dither_mode must be a canonical semantic mode")
+        if (
+            not isinstance(self.noise_shaping_mode, str)
+            or not self.noise_shaping_mode.strip()
+        ):
+            raise ValueError("noise_shaping_mode must be a non-empty semantic mode")
 
 
 @dataclass(frozen=True, slots=True)
@@ -466,10 +522,18 @@ class CompiledProcessingNode:
 
     def __post_init__(self) -> None:
         _require_node_id(self.node_id)
+        if not isinstance(self.kind, ProcessingNodeKind):
+            raise TypeError("compiled node kind must be a ProcessingNodeKind")
         if not isinstance(self.strategy, ProcessingStrategy):
             raise TypeError("compiled node strategy must be a ProcessingStrategy")
-        if self.expected_latency_samples < 0:
-            raise ValueError("compiled node latency must be >= 0")
+        if (
+            not isinstance(self.expected_latency_samples, int)
+            or isinstance(self.expected_latency_samples, bool)
+            or self.expected_latency_samples < 0
+        ):
+            raise ValueError("compiled node latency must be an integer >= 0")
+        if self.asset_sha256 is not None:
+            _require_sha256(self.asset_sha256, "compiled node asset_sha256")
         _validate_properties(self.properties)
 
 
@@ -494,3 +558,49 @@ class CompiledProcessingPlan:
     quantization_boundary: bool
     adaptation_reasons: tuple[str, ...]
     evidence_refs: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        for name in ("plan_id", "graph_id", "backend_id"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"compiled plan requires a non-empty {name}")
+        if (
+            not isinstance(self.graph_revision, int)
+            or isinstance(self.graph_revision, bool)
+            or self.graph_revision < 0
+        ):
+            raise ValueError("graph_revision must be an integer >= 0")
+        if not isinstance(self.sample_contract, ProcessingSampleContract):
+            raise TypeError("sample_contract must be a ProcessingSampleContract")
+        node_ids = [node.node_id for node in self.nodes]
+        if len(set(node_ids)) != len(node_ids):
+            raise ValueError("compiled node ids must be unique")
+        for node in self.nodes:
+            if not isinstance(node, CompiledProcessingNode):
+                raise TypeError("nodes must be CompiledProcessingNode values")
+        if (
+            not isinstance(self.total_latency_samples, int)
+            or isinstance(self.total_latency_samples, bool)
+            or self.total_latency_samples < 0
+        ):
+            raise ValueError("total_latency_samples must be an integer >= 0")
+        for digest in self.asset_hashes:
+            _require_sha256(digest, "plan asset hash")
+        for name in (
+            "changes_sample_values",
+            "changes_representation",
+            "changes_rate",
+            "changes_channels",
+            "changes_timing",
+            "changes_channel_assignment",
+            "quantization_boundary",
+        ):
+            if not isinstance(getattr(self, name), bool):
+                raise TypeError(f"{name} must be a bool")
+        for reason in self.adaptation_reasons:
+            if not isinstance(reason, str) or not reason.strip():
+                raise ValueError("adaptation reasons must be non-empty strings")
+        if not self.evidence_refs or any(
+            not isinstance(ref, str) or not ref.strip() for ref in self.evidence_refs
+        ):
+            raise ValueError("compiled plan requires non-empty evidence refs")

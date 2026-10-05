@@ -207,3 +207,57 @@ def test_coefficients_are_immutable_and_finite() -> None:
         coefficients.a2,
     ):
         assert math.isfinite(value)
+
+
+def test_gain_envelope_is_enforced_defensively() -> None:
+    """The utility is independently callable; it must not trust PeqBand."""
+    for filter_type in (
+        BiquadType.PEAK,
+        BiquadType.LOW_SHELF,
+        BiquadType.HIGH_SHELF,
+    ):
+        for gain in (-36.0, 36.0):
+            biquad_coefficients(
+                filter_type,
+                rate_hz=_RATE,
+                frequency_hz=_F0,
+                q=_Q,
+                gain_db=gain,
+            )
+        for gain in (
+            -36.0001,
+            36.0001,
+            1e9,
+            -1e9,
+            math.nan,
+            math.inf,
+            -math.inf,
+        ):
+            with pytest.raises(ValueError):
+                biquad_coefficients(
+                    filter_type,
+                    rate_hz=_RATE,
+                    frequency_hz=_F0,
+                    q=_Q,
+                    gain_db=gain,
+                )
+
+
+def test_gainless_filters_reject_any_non_zero_gain() -> None:
+    for filter_type in (
+        BiquadType.LOW_PASS,
+        BiquadType.HIGH_PASS,
+        BiquadType.NOTCH,
+        BiquadType.BAND_PASS,
+        BiquadType.ALL_PASS,
+    ):
+        biquad_coefficients(filter_type, rate_hz=_RATE, frequency_hz=_F0, q=_Q)
+        for gain in (-36.0, 0.0001, 36.0):
+            with pytest.raises(ValueError):
+                biquad_coefficients(
+                    filter_type,
+                    rate_hz=_RATE,
+                    frequency_hz=_F0,
+                    q=_Q,
+                    gain_db=gain,
+                )

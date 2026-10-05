@@ -10,7 +10,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from michi.domain.audio_processing import GAINLESS_BIQUAD_TYPES, BiquadType
+from michi.domain.audio_processing import (
+    GAINLESS_BIQUAD_TYPES,
+    PEQ_GAIN_ENVELOPE_DB,
+    BiquadType,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +66,14 @@ def biquad_coefficients(
         raise ValueError("q must be > 0")
     if filter_type in GAINLESS_BIQUAD_TYPES and gain_db != 0.0:
         raise ValueError(f"{filter_type.value} has no gain parameter; gain must be 0")
+    # Defensive: this utility is independently callable and must reject
+    # out-of-envelope gains BEFORE 10 ** (gain_db / 40) can overflow.
+    low, high = PEQ_GAIN_ENVELOPE_DB
+    if not low <= gain_db <= high:
+        raise ValueError(
+            f"gain_db {gain_db} outside the canonical PEQ design envelope "
+            f"[{low}, {high}] dB"
+        )
 
     omega = 2.0 * math.pi * frequency_hz / rate_hz
     cos_omega = math.cos(omega)

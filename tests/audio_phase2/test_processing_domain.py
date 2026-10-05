@@ -7,6 +7,7 @@ layout+gains; ConvolutionNode stores immutable asset id/hash), R11-G04
 
 from __future__ import annotations
 
+import ast
 import dataclasses
 import math
 import sys
@@ -16,6 +17,7 @@ import pytest
 
 from michi.domain.audio_processing import (
     GRAPHIC_EQ_BAND_COUNTS,
+    GRAPHIC_EQ_CENTER_HZ,
     BiquadType,
     ChannelDelayNode,
     ChannelMapNode,
@@ -382,3 +384,264 @@ def test_domain_module_imports_stay_pure_and_factory_free() -> None:
         "audioresample",
     ):
         assert forbidden not in source, forbidden
+
+
+class TestCanonicalGraphicCenters:
+    def test_michi_10_v1_centers_are_exact(self) -> None:
+        assert GRAPHIC_EQ_CENTER_HZ[GraphicEqLayout.MICHI_10_V1] == (
+            31.25,
+            62.5,
+            125.0,
+            250.0,
+            500.0,
+            1000.0,
+            2000.0,
+            4000.0,
+            8000.0,
+            16000.0,
+        )
+
+    def test_iso_31_v1_centers_are_exact(self) -> None:
+        assert GRAPHIC_EQ_CENTER_HZ[GraphicEqLayout.ISO_31_V1] == (
+            20.0,
+            25.0,
+            31.0,
+            40.0,
+            50.0,
+            63.0,
+            80.0,
+            100.0,
+            125.0,
+            160.0,
+            200.0,
+            250.0,
+            315.0,
+            400.0,
+            500.0,
+            630.0,
+            800.0,
+            1000.0,
+            1250.0,
+            1600.0,
+            2000.0,
+            2500.0,
+            3150.0,
+            4000.0,
+            5000.0,
+            6300.0,
+            8000.0,
+            10000.0,
+            12500.0,
+            16000.0,
+            20000.0,
+        )
+
+    def test_presentation_labels_are_not_processing_centers(self) -> None:
+        # The UI labels (31, 62, ...) must never become the DSP identity.
+        michi = GRAPHIC_EQ_CENTER_HZ[GraphicEqLayout.MICHI_10_V1]
+        assert michi[0] == 31.25
+        assert michi[1] == 62.5
+
+    def test_center_tables_are_defined_only_in_the_domain_module(self) -> None:
+        root = Path(__file__).parents[2] / "src" / "michi"
+        names = {
+            "GRAPHIC_EQ_CENTER_HZ",
+            "ADVANCED_GRAPHIC_31_HZ",
+            "BASIC_EQ_CENTERS_HZ",
+        }
+        offenders: list[tuple[str, str]] = []
+        for path in sorted(root.rglob("*.py")):
+            if path.name == "audio_processing.py":
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in tree.body:
+                if isinstance(node, ast.Assign):
+                    targets = node.targets
+                elif isinstance(node, ast.AnnAssign):
+                    targets = [node.target]
+                else:
+                    continue
+                for target in targets:
+                    if isinstance(target, ast.Name) and target.id in names:
+                        offenders.append((str(path), target.id))
+        assert offenders == []
+
+
+class TestGraphicEqGainEnvelope:
+    def test_boundaries_are_accepted_for_both_layouts(self) -> None:
+        for layout in GraphicEqLayout:
+            count = GRAPHIC_EQ_BAND_COUNTS[layout]
+            for gain in (-12.0, 12.0):
+                node = GraphicEqNode(
+                    node_id="eq", layout_id=layout, gains_db=(gain,) * count
+                )
+                assert node.gains_db[0] == gain
+
+    def test_gains_outside_the_envelope_are_rejected(self) -> None:
+        for layout in GraphicEqLayout:
+            count = GRAPHIC_EQ_BAND_COUNTS[layout]
+            for gain in (-12.0001, 12.0001, math.nan, math.inf, -math.inf):
+                with pytest.raises(ValueError):
+                    GraphicEqNode(
+                        node_id="eq", layout_id=layout, gains_db=(gain,) * count
+                    )
+
+    def test_every_band_is_checked(self) -> None:
+        for layout, index in (
+            (GraphicEqLayout.MICHI_10_V1, 7),
+            (GraphicEqLayout.ISO_31_V1, 29),
+        ):
+            count = GRAPHIC_EQ_BAND_COUNTS[layout]
+            gains = [0.0] * count
+            gains[index] = 12.5
+            with pytest.raises(ValueError):
+                GraphicEqNode(node_id="eq", layout_id=layout, gains_db=tuple(gains))
+
+
+class TestPeqGainEnvelope:
+    def test_boundaries_are_accepted_per_filter_type(self) -> None:
+        for filter_type in (
+            BiquadType.PEAK,
+            BiquadType.LOW_SHELF,
+            BiquadType.HIGH_SHELF,
+        ):
+            for gain in (-36.0, 36.0):
+                band = PeqBand(
+                    band_id="b",
+                    filter_type=filter_type,
+                    frequency_hz=1000.0,
+                    q=0.707,
+                    gain_db=gain,
+                )
+                assert band.gain_db == gain
+
+    def test_gains_outside_the_envelope_are_rejected(self) -> None:
+        for gain in (-36.0001, 36.0001, math.nan, math.inf, -math.inf):
+            with pytest.raises(ValueError):
+                PeqBand(
+                    band_id="b",
+                    filter_type=BiquadType.PEAK,
+                    frequency_hz=1000.0,
+                    q=0.707,
+                    gain_db=gain,
+                )
+
+
+class TestSampleContractValidation:
+    @staticmethod
+    def _contract(**overrides):
+        base: dict = {
+            "input_format": "S32LE",
+            "working_format": "F64LE",
+            "output_format": "S32LE",
+            "input_rate_hz": 96000,
+            "output_rate_hz": 96000,
+            "channels_in": 2,
+            "channels_out": 2,
+            "input_conversion": True,
+            "output_quantization": True,
+            "dither_mode": "none",
+            "noise_shaping_mode": "none",
+        }
+        base.update(overrides)
+        return ProcessingSampleContract(**base)
+
+    def test_valid_contract_constructs(self) -> None:
+        assert self._contract().working_format == "F64LE"
+
+    def test_integer_carriers_are_legitimate_input_output(self) -> None:
+        contract = self._contract(input_format="S24_3LE", output_format="S32LE")
+        assert contract.input_format == "S24_3LE"
+        assert contract.output_format == "S32LE"
+
+    def test_output_format_may_be_none(self) -> None:
+        assert self._contract(output_format=None).output_format is None
+
+    def test_invalid_values_are_rejected(self) -> None:
+        for overrides in (
+            {"input_format": ""},
+            {"input_format": "   "},
+            {"working_format": "S32LE"},
+            {"working_format": ""},
+            {"output_format": ""},
+            {"input_rate_hz": 0},
+            {"input_rate_hz": -1},
+            {"output_rate_hz": 0},
+            {"channels_in": 0},
+            {"channels_out": -2},
+            {"dither_mode": ""},
+            {"noise_shaping_mode": "  "},
+        ):
+            with pytest.raises(ValueError):
+                self._contract(**overrides)
+
+
+class TestCompiledInvariantValidation:
+    @staticmethod
+    def _node(**overrides):
+        base: dict = {
+            "node_id": "pre",
+            "kind": ProcessingNodeKind.PREAMP,
+            "strategy": ProcessingStrategy.GAIN,
+            "properties": (("gain_db", -3.0),),
+            "expected_latency_samples": 0,
+        }
+        base.update(overrides)
+        return CompiledProcessingNode(**base)
+
+    @classmethod
+    def _plan(cls, **overrides):
+        base: dict = {
+            "plan_id": "dsp:test",
+            "graph_id": "g",
+            "graph_revision": 1,
+            "backend_id": "test",
+            "sample_contract": TestSampleContractValidation._contract(),
+            "nodes": (cls._node(),),
+            "total_latency_samples": 0,
+            "asset_hashes": (),
+            "changes_sample_values": True,
+            "changes_representation": False,
+            "changes_rate": False,
+            "changes_channels": False,
+            "changes_timing": False,
+            "changes_channel_assignment": False,
+            "quantization_boundary": False,
+            "adaptation_reasons": (),
+            "evidence_refs": ("graph:g:1",),
+        }
+        base.update(overrides)
+        return CompiledProcessingPlan(**base)
+
+    def test_valid_plan_constructs(self) -> None:
+        assert self._plan().plan_id == "dsp:test"
+
+    def test_invalid_identity_and_revision_are_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            self._plan(plan_id="")
+        with pytest.raises(ValueError):
+            self._plan(graph_id=" ")
+        with pytest.raises(ValueError):
+            self._plan(backend_id="")
+        with pytest.raises(ValueError):
+            self._plan(graph_revision=-1)
+        with pytest.raises(ValueError):
+            self._plan(total_latency_samples=-1)
+
+    def test_duplicate_node_ids_are_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            self._plan(nodes=(self._node(), self._node()))
+
+    def test_invalid_asset_hashes_are_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            self._plan(asset_hashes=("not-a-sha",))
+        with pytest.raises(ValueError):
+            self._node(asset_sha256="not-a-sha")
+
+    def test_typed_contract_is_required(self) -> None:
+        with pytest.raises(TypeError):
+            self._plan(sample_contract="none")
+
+    def test_evidence_refs_must_be_non_empty(self) -> None:
+        with pytest.raises(ValueError):
+            self._plan(evidence_refs=("",))
