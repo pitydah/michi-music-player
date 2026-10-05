@@ -98,12 +98,12 @@
   "test_evidence": {
     "host_protocol": "22 tests (framing, bounds, strict validation, generation fence)",
     "host_supervisor": "16 deterministic fake-host tests (handshake, deadlines, TERM/KILL/reap, orphans, stale frames, responsiveness)",
-    "host_port": "13 tests (command surface, owner queue, generation fence, host-loss mapping, bounded close, owner-drain heartbeat)",
+    "host_port": "16 tests (command surface, owner queue, generation fence, host-loss mapping, bounded close, owner-drain heartbeat, hang-on-play/stop, crash-on-load)",
     "host_direct": "7 tests (wire DTOs + real executor reversals through IPC)",
     "host_loss": "5 tests (commit/loss/close truth, EXITED_BEFORE honesty, SIGKILL close, restart, no autoplay)",
     "host_firewall": "6 tests (no productive native calls, hosted default, adapter re-seal)",
     "host_real": "4 tests (real handshake, restart generation, real engine open/close, real shared command surface)",
-    "host_total": 73
+    "host_total": 76
   },
   "consequences": {
     "GST_LIFECYCLE_GATE": "PASS",

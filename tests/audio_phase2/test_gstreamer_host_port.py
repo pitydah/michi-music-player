@@ -340,3 +340,32 @@ def test_owner_work_is_drained_during_a_bounded_host_wait() -> None:
     finally:
         port.close()
         supervisor.close()
+
+
+@pytest.mark.parametrize("behavior", ["hang_on_play", "hang_on_stop", "crash_on_load"])
+def test_remaining_host_fault_paths_are_bounded(behavior: str) -> None:
+    """Mandatory failure injection: hang on play/stop, crash during load.
+
+    Each path must produce a typed bounded failure, kill/reap the host and
+    leave the transport truthfully unavailable (no stale success).
+    """
+    supervisor, port = _port(behavior)
+    media = Path("/tmp/fault-path.flac")
+    try:
+        port.activate()
+        if behavior == "crash_on_load":
+            with pytest.raises(AudioLoadError) as info:
+                port.load(media)
+            assert info.value.previous_source_preserved is False
+        elif behavior == "hang_on_play":
+            port.load(media)
+            with pytest.raises(AudioTransportUnavailableError):
+                port.play()
+        else:  # hang_on_stop
+            port.load(media)
+            with pytest.raises(AudioTransportUnavailableError):
+                port.stop()
+        assert not supervisor.pid_alive()
+    finally:
+        port.close()
+        supervisor.close()
