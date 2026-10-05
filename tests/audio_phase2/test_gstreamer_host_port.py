@@ -298,3 +298,42 @@ def test_unix_socket_is_not_left_behind() -> None:
         assert not list(Path("/tmp").glob("*michi*gst*host*.sock"))
     finally:
         port.close()
+
+
+def test_owner_work_is_drained_during_a_bounded_host_wait() -> None:
+    """The Qt/owner dispatch seam runs queued work while the owner waits.
+
+    A deadlocked host must not freeze owner-thread work indefinitely: the
+    supervisor's bounded wait drains the owner queue itself, so heartbeat
+    work keeps running until the deadline converts the wedge into a typed,
+    bounded failure.
+    """
+    pytest.importorskip("PySide6.QtCore")
+    from PySide6.QtCore import QCoreApplication
+
+    app = QCoreApplication.instance() or QCoreApplication([])
+    assert app is not None
+
+    supervisor, port = _port("hang_on_load", command_timeout_s=0.7)
+    ticks: list[float] = []
+
+    def beat() -> None:
+        ticks.append(time.monotonic())
+        if len(ticks) < 40:
+            port._enqueue(beat)  # noqa: SLF001 - owner seam under test
+
+    try:
+        port.activate()
+        started = time.monotonic()
+        port._enqueue(beat)  # noqa: SLF001 - owner seam under test
+        with pytest.raises(AudioLoadError):
+            port.load(Path("/tmp/wedged.flac"))
+        # Owner work ran DURING the bounded wait (not only after it).
+        assert len(ticks) >= 3
+        assert ticks[0] >= started
+        # And the owner thread resumed immediately after the bounded failure.
+        resumed_at = time.monotonic()
+        assert resumed_at - started < 3.0
+    finally:
+        port.close()
+        supervisor.close()

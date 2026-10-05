@@ -3,16 +3,16 @@
   "phase": "AP2-F07",
   "state": "CLOSED",
   "reconciliation": "STATIC_SOURCE_TRUTH_AUTHORITATIVE_RUNTIME_PROBE_DEFERRED",
-  "machine_contract": "R11-F07 — create-only DSD source truth; no runtime, no output claims",
+  "machine_contract": "R11-F07 \u2014 create-only DSD source truth; no runtime, no output claims",
   "seal_212": "isolated GStreamer elementary-stream probe (typefind/demux caps observation)",
-  "conflict": "The machine-readable F07 contract permits pure static source truth while normative §212 describes a GStreamer elementary-stream probe; GST_LIFECYCLE_GATE is BLOCKED, so the probe cannot be implemented or proven now.",
+  "conflict": "The machine-readable F07 contract permits pure static source truth while normative \u00a7212 describes a GStreamer elementary-stream probe; GST_LIFECYCLE_GATE is BLOCKED, so the probe cannot be implemented or proven now.",
   "resolution": {
     "F07_CORE": "The deterministic static DSF/DFF parser is the authoritative SOURCE truth for the container and elementary layers wherever structural bytes suffice; it proves container facts, DSD encoding, exact bit rate, packing, bit order, channel organization and layout.",
-    "F07_RUNTIME_PROBE": "DEFERRED_GST_LIFECYCLE — the §212 isolated runtime probe is NOT claimed by F07 and must not be simulated, stubbed or approximated by the static parser.",
+    "F07_RUNTIME_PROBE": "DEFERRED_GST_LIFECYCLE \u2014 the \u00a7212 isolated runtime probe is NOT claimed by F07 and must not be simulated, stubbed or approximated by the static parser.",
     "F08_RULE": "AP2-F08 (Native DSD runtime) must not assume that runtime elementary-stream probe evidence exists. Runtime branch availability, gst caps evidence and decoded facts remain unproven until a runtime phase performs the isolated probe under a working lifecycle gate.",
     "no_capability_promotion": "Static parser evidence never proves Native DSD route availability, DoP framing, DAC capability, bit-perfect output or current-device support."
   },
-  "precedence_note": "R11.1 contract anchors outrank historical sections (R11-G00); within the Bible, §210.1 keeps the phase card above the corrective seal. The DsdSignalFormat additive extension (bit_order, organization) encodes real-format facts required by seals 211/212 and the F08/F10 consumer audit.",
+  "precedence_note": "R11.1 contract anchors outrank historical sections (R11-G00); within the Bible, \u00a7210.1 keeps the phase card above the corrective seal. The DsdSignalFormat additive extension (bit_order, organization) encodes real-format facts required by seals 211/212 and the F08/F10 consumer audit.",
   "evidence_separation": {
     "kinds": {
       "STATIC_FILE_STRUCTURE": "produced only by the static parser from file bytes",
@@ -54,10 +54,11 @@
   ],
   "phase_states": {
     "AP2-F04": "CLOSED",
-    "AP2-F07": "CLOSED",
-    "GST_LIFECYCLE_GATE": "BLOCKED",
-    "AP2-F05": "LOCKED",
+    "AP2-F05": "READY",
     "AP2-F06": "LOCKED",
-    "AP2-F08": "LOCKED"
-  }
+    "AP2-F07": "CLOSED",
+    "AP2-F08": "LOCKED",
+    "GST_LIFECYCLE_GATE": "PASS (2026-10-05)"
+  },
+  "gate_update_note": "GST_LIFECYCLE_GATE closed as PASS on 2026-10-05 with the GStreamer output-host boundary; the F07 \u00a7212 runtime probe remains NOT claimed by F07 (it belongs to the runtime phases) and must not be simulated by the static parser."
 }
