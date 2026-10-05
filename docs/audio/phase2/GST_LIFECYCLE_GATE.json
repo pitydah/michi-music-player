@@ -131,14 +131,20 @@
     "upstream GStreamer deadlock fixed"
   ],
   "ci": {
-    "verified_head": "3d8889489dbd6e487292bc3aab4f4dbe9e1dde83",
-    "run_id": 37385352867,
+    "verified_head": "ff09486",
+    "verified_head_full": "ff09486c9d0b8a11ee4b0a7c67c16014e97c1b16",
+    "run_id": 37388150518,
     "jobs": {
       "check": "success",
       "min-qt": "success",
       "dac-v35-software-closure": "success"
     },
-    "local_full_suite": "5598 passed, 3 skipped, 0 failed",
-    "note": "The functional implementation landed in f2fe81a; the governance commit f130f9e exposed a test-harness Qt-singleton poisoning that was corrected in 3d88894, which is the CI-verified head for this receipt."
+    "chain": [
+      "3d88894 \u2014 exact-head green (run 37385352867) after the Qt-singleton corrective",
+      "e64eec3 \u2014 exact-head green (run 37386583855), receipt CI binding",
+      "ff09486 \u2014 exact-head green (run 37388150518), failure-injection matrix complete"
+    ],
+    "local_full_suite": "5598 passed, 3 skipped, 0 failed (before the 3 added fault-path tests; audio_phase2 afterwards 344 passed, 1 skipped)",
+    "note": "Any later receipt-only or docs-only commit is a documentation change over this verified implementation tree."
   }
 }
