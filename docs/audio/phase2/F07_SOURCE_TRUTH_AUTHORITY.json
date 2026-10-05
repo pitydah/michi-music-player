@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F07",
+  "state": "CLOSED",
+  "reconciliation": "STATIC_SOURCE_TRUTH_AUTHORITATIVE_RUNTIME_PROBE_DEFERRED",
+  "machine_contract": "R11-F07 — create-only DSD source truth; no runtime, no output claims",
+  "seal_212": "isolated GStreamer elementary-stream probe (typefind/demux caps observation)",
+  "conflict": "The machine-readable F07 contract permits pure static source truth while normative §212 describes a GStreamer elementary-stream probe; GST_LIFECYCLE_GATE is BLOCKED, so the probe cannot be implemented or proven now.",
+  "resolution": {
+    "F07_CORE": "The deterministic static DSF/DFF parser is the authoritative SOURCE truth for the container and elementary layers wherever structural bytes suffice; it proves container facts, DSD encoding, exact bit rate, packing, bit order, channel organization and layout.",
+    "F07_RUNTIME_PROBE": "DEFERRED_GST_LIFECYCLE — the §212 isolated runtime probe is NOT claimed by F07 and must not be simulated, stubbed or approximated by the static parser.",
+    "F08_RULE": "AP2-F08 (Native DSD runtime) must not assume that runtime elementary-stream probe evidence exists. Runtime branch availability, gst caps evidence and decoded facts remain unproven until a runtime phase performs the isolated probe under a working lifecycle gate.",
+    "no_capability_promotion": "Static parser evidence never proves Native DSD route availability, DoP framing, DAC capability, bit-perfect output or current-device support."
+  },
+  "precedence_note": "R11.1 contract anchors outrank historical sections (R11-G00); within the Bible, §210.1 keeps the phase card above the corrective seal. The DsdSignalFormat additive extension (bit_order, organization) encodes real-format facts required by seals 211/212 and the F08/F10 consumer audit.",
+  "format_authorities_cross_checked": [
+    "FFmpeg libavformat/dsfdec.c (DSF chunk sizes include header; bits-per-sample 1=LSBF-planar, 8=MSBF-planar; channel table)",
+    "WavPack cli/dsf.c (DSF block math, channel masks, file size, sample count semantics)",
+    "WavPack cli/dsdiff.c and cli/dsdiff_write.c (DSDIFF 12-byte chunk headers with 64-bit sizes, FRM8 = file-12, PROP/SND children, DSD data size excludes header, MSB-first)",
+    "CoreAudio/sox cross-checks rejected where unavailable; no external code copied"
+  ],
+  "external_validator_evidence": "ffprobe (FFmpeg n9.0.2, independent implementation) recognizes the golden DSF fixture as format_name=dsf; DFF has no FFmpeg demuxer in this build, so its conformance rests on the two independent WavPack implementations.",
+  "claims_prohibited": [
+    "native DSD playback works",
+    "DoP works",
+    "DSD->PCM works",
+    "current DAC supports DSD",
+    "GStreamer native DSD path is safe",
+    "bit-perfect DSD is verified",
+    "GST_LIFECYCLE_GATE is closed"
+  ],
+  "phase_states": {
+    "AP2-F04": "CLOSED",
+    "AP2-F07": "CLOSED",
+    "GST_LIFECYCLE_GATE": "BLOCKED",
+    "AP2-F05": "LOCKED",
+    "AP2-F06": "LOCKED",
+    "AP2-F08": "LOCKED"
+  }
+}
