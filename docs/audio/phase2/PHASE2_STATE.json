@@ -1,7 +1,5 @@
 {
-  "active_phases": [
-    "AP2-F07"
-  ],
+  "active_phases": [],
   "baseline": {
     "git_commit": "9c1c2d5fbeb35b20e76cb3a02702bd7666d9b160",
     "manifest": "docs/audio/phase2/audio_phase2_baseline.json"
@@ -14,7 +12,7 @@
     "AP2-F04": "CLOSED",
     "AP2-F05": "LOCKED",
     "AP2-F06": "LOCKED",
-    "AP2-F07": "READY",
+    "AP2-F07": "CLOSED",
     "AP2-F08": "LOCKED",
     "AP2-F09": "LOCKED",
     "AP2-F10": "LOCKED",
