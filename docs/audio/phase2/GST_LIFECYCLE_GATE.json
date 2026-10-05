@@ -2,25 +2,31 @@
   "schema_version": 1,
   "gate": "GST_LIFECYCLE_GATE",
   "verdict": "BLOCKED",
-  "evaluated_at": "2026-10-04",
+  "evaluated_at": "2026-10-05",
   "spec_path": "docs/audio/MICHI_AUDIO_PHASE_2_DSP_DSD_DOP_SIGNAL_PATH_MEGA_PLAN.md",
   "spec_sha256": "ee92baaff023ef82f1258b03e95bca7ab391a65e2e9f2c5d3e39241529ffcd79",
-  "repo_head_at_evaluation": "8b7ec89e082db9bb1693c55bf8e251f3e867de7d",
+  "repo_head_at_evaluation": "2a6c39e1801482571fd0a4f664651e6f683eca9f",
+  "lifecycle_code_unchanged_since": "8b7ec89e082db9bb1693c55bf8e251f3e867de7d",
+  "re_evaluation_note": "The AP2-F05-F07 range (8b7ec89..2a6c39e) does not touch src/michi/infrastructure/audio_engines/** nor the output session prepare path; the mitigation verdict therefore re-derives from the same lifecycle code and the same frozen reproducer evidence, with the class-D availability re-verified on 2026-10-05.",
   "phase_states": {
     "AP2-F00": "CLOSED",
     "AP2-F01": "CLOSED",
     "AP2-F02": "CLOSED",
     "AP2-F03": "CLOSED",
     "AP2-F04": "CLOSED",
-    "AP2-F05": "LOCKED"
+    "AP2-F07": "CLOSED",
+    "AP2-F05": "LOCKED",
+    "AP2-F06": "LOCKED",
+    "AP2-F08": "LOCKED",
+    "GST_LIFECYCLE_GATE": "BLOCKED"
   },
   "defect": {
-    "class": "upstream GStreamer state-transition lock-order deadlock under rapid pipeline churn",
+    "class": "upstream GStreamer state-transition lock-order deadlock under pipeline churn",
     "frozen_frame": "gst_element_change_state -> gst_pad_set_active / gst_pad_activate_mode -> gst_pad_pause_task -> pthread_mutex_lock",
     "sibling": "typefindelement streaming thread in futex_wait holding the pad lock",
     "installed_version": "GStreamer 1.28.7-2.1 (cachyos-extra-v3; newest available in the repositories)",
     "upstream_reference": "Eyevinn/strom#963 (same two-thread signature on GStreamer 1.28.6); upstream report ready in evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/diagnostics/wedge-2026-10-03/upstream-report.md",
-    "get_state_timeout_note": "a bounded get_state() in a sibling thread does not bound a preceding/concurrent set_state() and itself blocks in g_cond_wait_until when the state lock is held"
+    "get_state_timeout_note": "a bounded get_state() in a sibling thread does not bound a preceding/concurrent set_state() and itself blocks in g_cond_wait_until when the state lock is held; a Python-level timeout cannot interrupt the C-level deadlock"
   },
   "pre_fix_reproduction": {
     "date": "2026-10-04",
@@ -34,6 +40,86 @@
     ],
     "single_thread_meaning": "the app-side calls are strictly sequential in one thread, so app-level serialization alone cannot prevent the deadlock"
   },
+  "framing_evidence_soak_attempt_5": {
+    "source": "evidence/dac-v35-pcm-closure/2026-09-30-smsl-152a85dd/diagnostics/wedge-2026-10-03/finding.json",
+    "result": "wedge while loading pcm16_44100.wav at ~2.2k cycles with the subprocess-isolated characterizer and Qt offscreen active; workers cycled cleanly",
+    "meaning": "isolating the characterization probe does not protect the productive Direct lifecycle: the app's own Direct staging/stop state operations still run in-process and can wedge permanently"
+  },
+  "call_site_inventory": {
+    "scope": "every GStreamer set_state/get_state in src/michi (2026-10-05)",
+    "sites": [
+      {
+        "site": "infrastructure/audio_engines/gstreamer.py:378",
+        "call": "pipeline.set_state(PAUSED)",
+        "context": "GStreamerBindings.characterize_local_file (source probe)",
+        "production_thread": "disposable characterization worker process (bootstrap wires SubprocessSourceCharacterizer; in-process only with explicitly injected bindings for tests/diagnostics)",
+        "bound": "parent wait 5 s then worker SIGTERM/SIGKILL",
+        "fault_boundary": "process (production) / none (injected test compositions)"
+      },
+      {
+        "site": "infrastructure/audio_engines/gstreamer.py:384",
+        "call": "pipeline.get_state(timeout_ns)",
+        "context": "GStreamerBindings.characterize_local_file preroll wait",
+        "production_thread": "disposable characterization worker process",
+        "bound": "timeout_ns budget inside the worker; parent kill is the real bound",
+        "fault_boundary": "process (production)"
+      },
+      {
+        "site": "infrastructure/audio_engines/gstreamer.py:447,470",
+        "call": "pipeline.set_state(NULL) cleanup / cancel_source_characterization",
+        "context": "characterization cleanup and cancellation",
+        "production_thread": "disposable characterization worker process",
+        "bound": "none inside the worker; parent kill",
+        "fault_boundary": "process (production)"
+      },
+      {
+        "site": "infrastructure/audio_engines/gstreamer.py:1987",
+        "call": "_bindings.set_state(pipeline, NULL)",
+        "context": "load() failed-preroll cleanup (ARM transaction rollback)",
+        "production_thread": "Qt owner thread (PlaybackService -> OutputSessionService -> executor -> engine)",
+        "bound": "NONE: unbounded C call",
+        "fault_boundary": "none"
+      },
+      {
+        "site": "infrastructure/audio_engines/gstreamer.py:2487",
+        "call": "_bindings.set_state(_pipeline, NULL)",
+        "context": "_try_stop_pipeline",
+        "production_thread": "Qt owner thread (transport stop / prepare supersession)",
+        "bound": "NONE: unbounded C call",
+        "fault_boundary": "none"
+      },
+      {
+        "site": "infrastructure/audio_engines/gstreamer.py:2522",
+        "call": "_bindings.set_state(..., NULL)",
+        "context": "_rollback_failed_arm",
+        "production_thread": "Qt owner thread",
+        "bound": "NONE: unbounded C call",
+        "fault_boundary": "none"
+      },
+      {
+        "site": "infrastructure/audio_engines/gstreamer.py:2564",
+        "call": "_bindings.set_state(self._pipeline, NULL)",
+        "context": "_teardown_pipeline_terminal",
+        "production_thread": "Qt owner thread (release/teardown paths)",
+        "bound": "NONE: unbounded C call",
+        "fault_boundary": "none"
+      },
+      {
+        "site": "infrastructure/audio_engines/gstreamer.py:3108",
+        "call": "_bindings.set_state(self._pipeline, state)",
+        "context": "_request_state (generic transition; includes the Direct-staging preroll PAUSED)",
+        "production_thread": "Qt owner thread (stage_direct_load -> load -> _request_state)",
+        "bound": "NONE: unbounded C call",
+        "fault_boundary": "none"
+      }
+    ],
+    "summary": "Exactly one production hazard domain: every productive Direct-output state transition runs in-process on the Qt owner thread with no fault boundary. The characterization probe is already process-isolated and is not the remaining hazard."
+  },
+  "prepare_wait_path": {
+    "playback_entry": "application/playback_service.py:394 (async_prepare) / :397 and :774 (synchronous fallback)",
+    "owner_inline": "application/output_session_service.py:606 prepare_for_media_async offloads only the missing-exact-ALSA-probe branch; the standard body (line 631 -> _prepare_request) still runs inline on the caller thread, including the executor -> engine Direct staging state changes",
+    "blocker": "GST_LIFECYCLE_GATE_BLOCKER (ADR-0010 section 9): the prepare request build executes inline on the Qt owner thread"
+  },
   "mitigation_evaluation": {
     "A_serialized_owner_with_settled_protocol": {
       "status": "DISPROVEN_AS_SUFFICIENT",
@@ -41,38 +127,53 @@
     },
     "B_remove_hazardous_calls_from_owner_thread": {
       "status": "NECESSARY_BUT_NOT_SUFFICIENT",
-      "reason": "bounding UI exposure does not bound the wedge: a stuck pipeline keeps its GStreamer threads and locks forever; the acceptance requires no permanent wedge. Additionally the prepare request build (bounded characterization worker) still executes inline on the Qt owner thread (recorded GST_LIFECYCLE_GATE_BLOCKER in ADR-0010 section 9)"
+      "reason": "bounding UI exposure does not bound the wedge: a stuck pipeline keeps its GStreamer threads and locks forever, and the acceptance requires no permanent wedge (soak attempt 5 wedged at ~2.2k cycles with the isolated characterizer already active). The recorded owner-thread blocker remains additionally unresolved: the standard prepare body is still inline.",
+      "interim_correction_b_plus": "offload the WHOLE _prepare_request (not only the missing exact ALSA probe) onto the Qt pool with generation-tagged completion and prompt cancellation; switch PlaybackService to the async prepare path. Removes UI freezes; does not clear the gate by itself."
     },
     "C_process_isolation_of_hazardous_branch": {
-      "status": "INSUFFICIENT_AT_CURRENT_SCOPE",
-      "reason": "the characterization pipeline is already subprocess-isolated and the Direct playback path still wedged (soak attempt 5); isolating the playback pipeline would require a whole-engine process boundary, which the campaign explicitly avoids unless necessary"
+      "status": "REQUIRED_CORRECTIVE (NOT_YET_IMPLEMENTED)",
+      "reason": "the only genuine fault boundary for an in-process C-level deadlock. It must cover the productive Direct lifecycle (every engine set_state/get_state/teardown/arm/preroll/stop), not just the probe.",
+      "design": "GStreamer OUTPUT HOST: a supervised child process owning pipeline construction and every state change; the app keeps authority over session/navigation (PlaybackSessionService), PlaybackState (PlaybackService) and engine-facing policy, and never performs a GStreamer state transition in-process.",
+      "contracts": {
+        "ipc_dto": "request_id + generation + operation + bounded args; result = status + observed state + typed error + diagnostics reference; no unbounded payloads",
+        "commit_rollback": "stage/commit/abort receipts cross the boundary; the parent never assumes acceptance without a host result (preserves the ARM transaction semantics)",
+        "supersession": "generation-tagged requests; a superseded result is discarded; cancellation is prompt and does not wait for the host to become healthy",
+        "child_failure": "host death maps to a typed OUTPUT_HOST_LOST; defined recovery (release device, surface error, rebuild on demand); never fake acceptance",
+        "bounded_shutdown": "TERM with deadline -> SIGKILL -> reap; no orphans, no unbounded parent wait",
+        "evidence": "host lifecycle journal plus all-thread stacks captured on watchdog trigger (reuses the supervisor/evidence primitives)",
+        "non_goal": "does not wire DSP/processing graphs into GStreamer (section 31 unchanged)"
+      },
+      "acceptance": "short software reproducer under external supervision (>300/s hammer plus sequential load/stop): the typefind wedge must occur INSIDE the killed host while the app stays responsive, keeps session state coherent, recovers without restart, leaks no host processes, and shuts down within the bounded deadline; repeated cycles must show zero permanent app wedges"
     },
     "D_upstream_fixed_version": {
       "status": "UNAVAILABLE",
-      "reason": "no fixed build exists in the configured repositories; the fix cannot be proven on this exact version"
+      "reason": "no fixed build exists in the configured repositories; re-verified 2026-10-05: installed gstreamer 1.28.7-2.1, checkupdates reports no pending gstreamer upgrade; the fix cannot be proven on this exact version"
     }
   },
   "acceptance_criteria_status": {
-    "known_reproducer_no_longer_wedges": "UNPROVEN (reproducer still wedges at the evaluated HEAD)",
-    "no_unbounded_lifecycle_call_on_owner_thread": "UNPROVEN",
-    "characterization_ownership_bounded_cancellable": "PARTIAL (worker is bounded/cancellable; wait path still inline on the owner thread)",
-    "direct_regression_unchanged": "GREEN (tests/dac 934; Signal Truth regression green)",
+    "known_reproducer_no_longer_wedges": "UNPROVEN (lifecycle code unchanged; reproducer still wedges at the evaluated HEAD)",
+    "no_unbounded_lifecycle_call_on_owner_thread": "UNPROVEN (8 productive sites in-process, 0 fault boundaries; prepare body inline)",
+    "characterization_ownership_bounded_cancellable": "PARTIAL (production worker is bounded/cancellable; in-process fallback exists for injected test bindings only)",
+    "direct_regression_unchanged": "GREEN (tests/dac 934; tests/audio_phase2 269; architecture/bridge 92)",
     "generation_tests_green": "GREEN (existing suites) but insufficient to clear the gate",
     "shutdown_recovery_green": "NOT_EVALUATED (the wedge itself prevents a clean shutdown path)"
   },
   "consequences": {
     "AP2-F05": "LOCKED",
     "AP2-F06": "LOCKED",
+    "AP2-F08": "LOCKED (independent audit pending; source-truth prerequisites satisfied but the runtime probe remains unavailable while the gate is BLOCKED)",
     "physical_campaign": "PARKED (unchanged; verdict INCOMPLETE)"
   },
   "next_actions": [
-    "keep the upstream report ready to file and watch for a fixed GStreamer release",
-    "before AP2-F05, resolve GST_LIFECYCLE_GATE_BLOCKER: move the prepare request build off the Qt owner thread with generation-tagged commit and prompt cancellation",
-    "a future gate re-evaluation must prove the short reproducer no longer wedges under the declared stress envelope on the exact installed version"
+    "implement the class-C GStreamer output host as a dedicated work package before AP2-F05, with the acceptance protocol above (software-only short reproducer, external supervision)",
+    "implement the interim class B+ offload (whole prepare body off the owner thread with generation-tagged completion) to resolve the recorded owner-thread blocker; it does not clear the gate",
+    "keep the upstream report ready to file and watch for a fixed GStreamer release; re-verify with checkupdates before any re-evaluation",
+    "a future gate re-evaluation must prove the short reproducer no longer wedges under the declared stress envelope on the exact installed version, with retained evidence"
   ],
   "claims_prohibited": [
     "GST_LIFECYCLE_GATE PASS",
     "Direct lifecycle safe",
-    "AP2-F05 unlocked"
+    "AP2-F05 unlocked",
+    "the characterization worker isolation clears the gate"
   ]
 }
