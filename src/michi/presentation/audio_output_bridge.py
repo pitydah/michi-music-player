@@ -8,6 +8,9 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from michi.application.audio_device_knowledge_service import (
+    AudioDeviceKnowledgeService,
+)
 from michi.application.audio_device_semantics import (
     category_label,
     classify_audio_device,
@@ -26,6 +29,7 @@ from michi.application.playback_failure import (
 )
 from michi.application.playback_service import PlaybackService
 from michi.application.volume_policy_service import VolumePolicyService
+from michi.domain.audio_device_knowledge import DeviceKnowledge
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_output import (
     OutputPathPreference,
@@ -296,6 +300,7 @@ class AudioOutputBridge(QObject):
         selection_coordinator: AudioOutputSelectionCoordinator | None = None,
         qualification=None,
         refresh_devices: Callable[[], None] | None = None,
+        device_knowledge: AudioDeviceKnowledgeService | None = None,
     ) -> None:
         super().__init__(parent)
         self._volume_policy = volume_policy
@@ -308,6 +313,7 @@ class AudioOutputBridge(QObject):
         self._selection_coordinator = selection_coordinator
         self._qualification = qualification
         self._refresh_devices = refresh_devices
+        self._device_knowledge = device_knowledge
         self._disposed = False
         self._projection: dict[str, Any] = {}
         self._last_action_failure: tuple[str, str, str] | None = None
@@ -655,6 +661,15 @@ class AudioOutputBridge(QObject):
             "statusLabel": status,
         }
 
+    def _device_knowledge_for(self, stable_device_id: str) -> DeviceKnowledge:
+        """Descriptive enrichment only; never gates admission or qualification."""
+        if self._device_knowledge is None:
+            return DeviceKnowledge.unknown(stable_device_id)
+        try:
+            return self._device_knowledge.knowledge_for(stable_device_id)
+        except Exception:  # Knowledge must never break the output card.
+            return DeviceKnowledge.unknown(stable_device_id)
+
     def _device_row(
         self,
         snapshot,
@@ -698,6 +713,7 @@ class AudioOutputBridge(QObject):
         playback_bindings = current_playback_bindings(snapshot)
         alsa = playback_bindings[0] if playback_bindings else None
         classification = classify_audio_device(snapshot)
+        knowledge = self._device_knowledge_for(stable_id)
         if selected and reconnecting:
             status = "Selected · reconnecting"
         elif selected and not snapshot.available:
@@ -770,6 +786,11 @@ class AudioOutputBridge(QObject):
             "deviceCategoryLabel": category_label(classification.category),
             "classificationConfidence": classification.confidence.value,
             "classificationReason": classification.reason,
+            "knowledgeResolution": knowledge.resolution.value,
+            "knowledgeManufacturer": knowledge.manufacturer_label or "",
+            "knowledgeProduct": knowledge.product_label or "",
+            "knowledgeCapabilityHints": list(knowledge.capability_hints),
+            "knowledgeProvenance": list(knowledge.provenance_labels),
             "playbackEndpointCount": len(playback_bindings),
             "captureCapable": snapshot.capture_capable,
             "available": snapshot.available,
