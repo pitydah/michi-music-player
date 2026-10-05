@@ -9,20 +9,34 @@
   "architecture": {
     "name": "GStreamer OUTPUT HOST (process isolation of the whole productive native lifecycle)",
     "parent_authority": "PlaybackSessionService (sequence/navigation), PlaybackService (PlaybackState), OutputSessionService (output session), AudioEngineService/AudioTransportRouter (engine policy), GStreamerDirectOutputExecutor (Direct receipts/preroll/Signal Truth), generation authority, policy authority, UI/Qt owner thread",
-    "child_responsibility": "GStreamer initialization, pipeline construction, GLib context/bus, sink construction, URI, preroll, PAUSED/PLAYING/NULL, seek, position/duration, volume/mute, EOS/ERROR/STATE_CHANGED/ASYNC_DONE observation, native teardown — every Gst lifecycle call",
+    "child_responsibility": "GStreamer initialization, pipeline construction, GLib context/bus, sink construction, URI, preroll, PAUSED/PLAYING/NULL, seek, position/duration, volume/mute, EOS/ERROR/STATE_CHANGED/ASYNC_DONE observation, native teardown \u2014 every Gst lifecycle call",
     "process_creation": "subprocess.Popen of a genuinely fresh interpreter (python -m michi.infrastructure.audio_engines.gstreamer_host_process --fd N) with a private AF_UNIX socketpair; never fork after Qt/GLib/GStreamer threads exist",
     "ipc_transport": "length-prefixed (4-byte big-endian) UTF-8 JSON frames over the socketpair, MAX_FRAME_BYTES=262144, strict envelope + payload validation, typed HostProtocolError",
     "protocol_version": 1,
-    "host_state_machine": ["STOPPED", "STARTING", "READY", "BUSY", "DEGRADED", "STOPPING", "FAILED"],
+    "host_state_machine": [
+      "STOPPED",
+      "STARTING",
+      "READY",
+      "BUSY",
+      "DEGRADED",
+      "STOPPING",
+      "FAILED"
+    ],
     "generation_model": "two independent domains: HOST GENERATION (increments per host incarnation; frames from a retired incarnation are dropped) and COMMAND/PIPELINE GENERATION (increments per superseding command; events commit only when both match)",
     "termination_ladder": "SHUTDOWN (bounded) -> SIGTERM (bounded) -> SIGKILL (bounded) -> reap -> socket close -> generation retirement; never join/waitpid forever",
-    "termination_kinds": ["GRACEFUL", "FORCED_TERM", "FORCED_KILL", "EXITED_BEFORE", "REAP_PENDING"],
+    "termination_kinds": [
+      "GRACEFUL",
+      "FORCED_TERM",
+      "FORCED_KILL",
+      "EXITED_BEFORE",
+      "REAP_PENDING"
+    ],
     "graceful_semantics": "GRACEFUL is recorded only when the host acknowledged SHUTDOWN_COMPLETE; a host that dies first is EXITED_BEFORE (never a false graceful close)"
   },
   "productive_gstreamer_isolation": {
     "parent_productive_gst_objects": "ZERO (structural firewall test asserts no set_state/get_state/ElementFactory.make/gi in the productive parent modules; in-process port construction confined to the injected-bindings test provider class)",
-    "shared_hosted": "YES — all canonical AudioPort commands (load/play/pause/resume/stop/seek/volume/mute/position/duration) forward to the child host",
-    "direct_hosted": "YES — stage/discard + every executor reversal (mark_previous_source_released, begin_runtime, verify_preroll, observe_runtime, record_runtime_anomaly, abort, release) cross the boundary as strict wire DTOs; the real GStreamerDirectOutputExecutor classifies in the parent",
+    "shared_hosted": "YES \u2014 all canonical AudioPort commands (load/play/pause/resume/stop/seek/volume/mute/position/duration) forward to the child host",
+    "direct_hosted": "YES \u2014 stage/discard + every executor reversal (mark_previous_source_released, begin_runtime, verify_preroll, observe_runtime, record_runtime_anomaly, abort, release) cross the boundary as strict wire DTOs; the real GStreamerDirectOutputExecutor classifies in the parent",
     "characterization": "stays in its own disposable worker (SubprocessSourceCharacterizer); not merged",
     "future_f05_compatible": "protocol versioning + semantic execution DTOs reserved; no DSP/runtime processing implemented by this gate"
   },
@@ -50,7 +64,7 @@
     "external_supervision": "scripts/m11_4_physical_supervisor.py run --campaign-id gst-output-host-gate --experiment host-containment",
     "run_dir": "~/.local/state/michi/m11-4-physical/gst-output-host-gate/20261005T191356-b6f361ff",
     "supervisor_result": "classification COMPLETE, exit_code 0, stalled false, seal_problems []",
-    "reproducer": "scripts/ap2_gst_host_gate.py — real load/stop churn through the hosted transport with deterministic real-process fault injections",
+    "reproducer": "scripts/ap2_gst_host_gate.py \u2014 real load/stop churn through the hosted transport with deterministic real-process fault injections",
     "envelope": "90.13 s, 628 cycles, 6.97 cycles/s, 0 media rejections, 3 host incarnations",
     "natural_wedge": "NONE observed during the 90 s envelope (outcome A)",
     "injected_containment_SIGSTOP": "permanently stuck host (SIGSTOP) contained in 11.048 s: parent deadline -> FORCED_KILL -> reaped -> fresh host -> churn resumed",
@@ -64,7 +78,7 @@
     "load": "AudioLoadError with previous_source_preserved=False (the native pipeline died with its host)",
     "other_commands": "AudioTransportUnavailableError (typed infrastructure loss; never media/DAC/DSD unsupported)",
     "direct_truth": "host loss records a RuntimeAnomaly on the current execution and relays the canonical runtime-failure event; close() releases the executor and retires the active Signal Truth snapshot (never a stale COMPLETE/DIRECT truth)",
-    "autoplay": "NEVER — recovery is an explicit callers' open/load/play; the port issues no playback command on its own",
+    "autoplay": "NEVER \u2014 recovery is an explicit callers' open/load/play; the port issues no playback command on its own",
     "restart": "explicit: a new open creates a fresh supervised host (new incarnation, new generation)",
     "convergence": "published through the SAME runtime-failure seam as the in-process pump death, so AudioEngineService convergence policy is unchanged"
   },
@@ -99,11 +113,11 @@
     "physical_campaign": "PARKED (unchanged; verdict INCOMPLETE)"
   },
   "milestones": {
-    "phase_a_b": "e604803 — protocol v1 + supervisor + fake host + real host handshake",
-    "phase_c": "2b79be1 — child session + parent hosted port (real engine inside the child)",
-    "phase_d_e": "dce0784 — Direct wire transport + production bootstrap switch (firewall + adapter re-seal)",
-    "phase_f": "657ffbe — host-loss convergence + honest termination kinds",
-    "phase_g": "f2fe81a — external-supervised reproducer + real Shared command-surface proof"
+    "phase_a_b": "e604803 \u2014 protocol v1 + supervisor + fake host + real host handshake",
+    "phase_c": "2b79be1 \u2014 child session + parent hosted port (real engine inside the child)",
+    "phase_d_e": "dce0784 \u2014 Direct wire transport + production bootstrap switch (firewall + adapter re-seal)",
+    "phase_f": "657ffbe \u2014 host-loss convergence + honest termination kinds",
+    "phase_g": "f2fe81a \u2014 external-supervised reproducer + real Shared command-surface proof"
   },
   "upstream_defect": {
     "status": "still considered real (Eyevinn/strom#963 signature; no fixed build in the repositories as of 2026-10-05)",
@@ -115,5 +129,16 @@
     "AP2-F05 implemented by this gate",
     "bit-perfect DSD/native DSD verified",
     "upstream GStreamer deadlock fixed"
-  ]
+  ],
+  "ci": {
+    "verified_head": "3d8889489dbd6e487292bc3aab4f4dbe9e1dde83",
+    "run_id": 37385352867,
+    "jobs": {
+      "check": "success",
+      "min-qt": "success",
+      "dac-v35-software-closure": "success"
+    },
+    "local_full_suite": "5598 passed, 3 skipped, 0 failed",
+    "note": "The functional implementation landed in f2fe81a; the governance commit f130f9e exposed a test-harness Qt-singleton poisoning that was corrected in 3d88894, which is the CI-verified head for this receipt."
+  }
 }
