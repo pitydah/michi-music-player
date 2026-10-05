@@ -44,6 +44,8 @@ class FakeEnginePort:
         self.calls.append(("close", None))
         if self.behavior == "hang_on_close":
             time.sleep(60)
+        if self.behavior == "crash_on_close":
+            os._exit(9)
         if self.coordinator is not None and self.direct_stage is not None:
             self.direct_stage = None
             self.coordinator.release("fake_close")
@@ -148,6 +150,8 @@ class FakeEnginePort:
             time.sleep(60)
         if self.behavior == "reject_stop":
             raise RuntimeError("stop refused")
+        if self.behavior == "crash_on_stop":
+            os._exit(9)
         self._emit_state(PlaybackStatus.STOPPED)
 
     def seek(self, position_ms: int) -> None:

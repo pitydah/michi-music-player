@@ -328,14 +328,19 @@ class GStreamerHostSupervisor:
         )
 
     def shutdown(self, *, graceful: bool = True) -> str:
-        """Bounded shutdown; returns the recorded termination kind."""
+        """Bounded shutdown; returns the recorded termination kind.
+
+        GRACEFUL is recorded only when the host actually acknowledged
+        SHUTDOWN_COMPLETE; a host that dies first is EXITED_BEFORE.
+        """
         with self._lock:
             process = self._process
             if process is None:
                 return self._termination_kind or EXITED_BEFORE
             self._state = SupervisorState.STOPPING
+        acknowledged = False
         if graceful and process.poll() is None:
-            with contextlib.suppress(OutputHostError):
+            try:
                 self._command(
                     HostOperation.SHUTDOWN,
                     {},
@@ -343,7 +348,12 @@ class GStreamerHostSupervisor:
                     expected_kinds=(MessageKind.SHUTDOWN_COMPLETE.value,),
                     during_shutdown=True,
                 )
-        return self._terminate_process(reason="shutdown", graceful=False)
+                acknowledged = True
+            except OutputHostError:
+                acknowledged = False
+        return self._terminate_process(
+            reason="shutdown", graceful=False, acknowledged=acknowledged
+        )
 
     def close(self) -> None:
         with contextlib.suppress(OutputHostError):
@@ -391,7 +401,9 @@ class GStreamerHostSupervisor:
                     else SupervisorState.FAILED
                 )
 
-    def _terminate_process(self, *, reason: str, graceful: bool) -> str:
+    def _terminate_process(
+        self, *, reason: str, graceful: bool, acknowledged: bool = False
+    ) -> str:
         """Canonical termination ladder. Never waits forever, never leaks."""
         with self._lock:
             process = self._process
@@ -406,7 +418,9 @@ class GStreamerHostSupervisor:
         pid = process.pid
         kind: str
         if process.poll() is not None:
-            kind = GRACEFUL if reason in ("shutdown",) else EXITED_BEFORE
+            kind = (
+                GRACEFUL if (reason == "shutdown" and acknowledged) else EXITED_BEFORE
+            )
         else:
             if graceful and parent_sock is not None:
                 with contextlib.suppress(OutputHostError, OSError):
@@ -418,7 +432,7 @@ class GStreamerHostSupervisor:
                         during_shutdown=True,
                     )
             if self._wait_pid_exit(process, self._terminate_grace_s):
-                kind = GRACEFUL
+                kind = GRACEFUL if acknowledged or graceful else EXITED_BEFORE
             else:
                 with contextlib.suppress(ProcessLookupError):
                     os.kill(pid, signal.SIGTERM)

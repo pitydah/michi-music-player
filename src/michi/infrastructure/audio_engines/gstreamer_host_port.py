@@ -80,6 +80,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._lock = threading.RLock()
         self._command_generation = 0
         self._closed = False
+        self._closing = False
         self._activated = False
         self._hello: dict[str, Any] | None = None
         self._host_lost_reason: str | None = None
@@ -141,12 +142,34 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             if self._closed:
                 return
-            self._closed = True
+            # Not closed yet: the Direct release may still need to reach the
+            # live child; only the closing flag gates the dead-host path.
+            self._closing = True
             self._activated = False
             self._command_generation += 1
+        # Direct truth is invalidated FIRST, while the live child can still
+        # receive the discard; a host that is already gone needs no discard
+        # (the native staged state died with its process).
+        cleanup_error: Exception | None = None
+        executor = self._direct_executor
+        if executor is not None:
+            try:
+                executor.release("gstreamer_close")
+            except Exception as exc:  # noqa: BLE001 - re-raised after invalidation
+                cleanup_error = exc
         kind = self._supervisor.shutdown()
         with self._lock:
+            self._closed = True
+            self._closing = False
             self._termination_kind = kind
+        if cleanup_error is not None:
+            # Truth was invalidated; keep the port retryable for the provider.
+            with self._lock:
+                self._closed = False
+                self._closing = False
+            raise OutputHostShutdownError(
+                f"Direct execution release failed during host close: {cleanup_error}"
+            ) from cleanup_error
         if kind == REAP_PENDING:
             raise OutputHostShutdownError(
                 "GStreamer output host could not be reaped after SIGKILL"
@@ -268,9 +291,13 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         except OutputHostCommandError as exc:
             raise self._direct_error(exc.code, exc.detail) from exc
-        except OutputHostError as exc:
+        except (OutputHostError, AudioTransportUnavailableError) as exc:
+            if self._closing:
+                # The host is gone: the staged native state died with it. A
+                # close must not fail because a dead process cannot answer.
+                return False
             raise self._direct_error(
-                "OUTPUT_HOST_DIRECT_TRANSPORT_FAILED", exc.detail
+                "OUTPUT_HOST_DIRECT_TRANSPORT_FAILED", str(exc)
             ) from exc
         return bool(payload.get("discarded", False))
 
@@ -524,7 +551,26 @@ class GStreamerHostedAudioPort(AudioPort):
             if self._closed:
                 return
             self._host_lost_reason = f"{code}: {detail}"
-        self._enqueue(lambda: self._relay_runtime_failure(f"{code}: {detail}"))
+        reason = f"{code}: {detail}"
+        self._enqueue(lambda: self._commit_host_loss(reason))
+
+    def _commit_host_loss(self, reason: str) -> None:
+        """Owner-thread host-loss commit.
+
+        Parity with the in-process pump death: record the anomaly on the
+        CURRENT execution (when one exists) and then publish the canonical
+        runtime failure so convergence policy is unchanged. The Direct truth
+        itself is invalidated on close(), never silently kept alive here.
+        """
+        executor = self._direct_executor
+        if executor is not None:
+            handle = getattr(executor, "handle", None)
+            if handle is not None:
+                with contextlib.suppress(Exception):
+                    executor.record_runtime_anomaly(
+                        handle, f"output host lost: {reason}"
+                    )
+        self._relay_runtime_failure(reason)
 
     # ── commits owner ─────────────────────────────────────────────────
     def _commit_state(self, status: PlaybackStatus) -> None:
