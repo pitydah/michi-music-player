@@ -110,6 +110,34 @@ Recorded explicitly by PRE-AP2-01 (WU2B and the R11.1 killcritic):
 F00–F04 do not depend on Direct lifecycle changes; F05/F06 stay locked until
 this gate passes.
 
+#### 9.1 Post-freeze implementation note (non-normative, 2026-10-05)
+
+The blockers recorded above are HISTORICAL. This note records their
+resolution after the freeze and explicitly does NOT alter any frozen decision,
+proof vocabulary, authority split, bit-perfect ownership or the
+physical-evidence boundary.
+
+- `GST_LIFECYCLE_GATE` — RESOLVED BY THE SUPERVISED OUTPUT HOST. All
+  productive GStreamer native lifecycle runs in a supervised child process
+  (`gstreamer_host_process`); the parent keeps ZERO productive Gst objects and
+  contains a wedged child with parent-owned deadlines plus a bounded
+  SHUTDOWN -> SIGTERM -> SIGKILL -> reap ladder. External-supervised short
+  reproducer evidence (deterministic SIGSTOP/SIGKILL containment, no orphans,
+  parent responsiveness) and exact-head CI are recorded in
+  `docs/audio/phase2/GST_LIFECYCLE_GATE.json` (verdict PASS; corrective heads
+  e604803, 2b79be1, dce0784, 657ffbe, f2fe81a, 1555f36).
+- `GST_LIFECYCLE_GATE_BLOCKER` — RESOLVED / SUPERSEDED. Source
+  characterization is single-flight, cancellable (cancel targets the exact
+  generation-owned worker, including the Popen publication window) and
+  owner-responsive (bounded pumped waits with QTimer evidence); a newer
+  request wins and a stale completion cannot commit. The fully asynchronous
+  preparation flip stays inside AP2-F05's own contract because it changes the
+  load contract encoded by the DAC acceptance suite.
+- The AP2-F05 contract was rebased on the hosted architecture (phase card
+  §191 and R11-F05 §410) before any DSP implementation: native processing
+  executes inside the output host; semantic processing authority stays in the
+  parent; no second AudioPort, host or Signal Truth recorder.
+
 ## Consequences
 
 - Audio Phase 2 implements runtime; M11.5 conformance rules consume Signal

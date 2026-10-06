@@ -14936,6 +14936,12 @@ WORK_PACKAGES: DSP-030, DSP-040, DSP-050, DSP-060, DSP-070
 
 Ejecutar ProcessingPlan PCM mediante GStreamer sin comprometer el owner thread, sin reemplazar AudioPort y con swap atómico/bypass verificable.
 
+F05 ejecuta la fase nativa DENTRO del proceso GStreamer Output Host
+(`gstreamer_host_process`), que ya es la frontera productiva de todo el
+lifecycle nativo. El parent conserva la autoridad semántica (ProcessingGraph,
+Compiler, CompiledProcessingPlan, AudioProcessingService, Signal Truth, Signal
+Path) y NO instancia objetos Gst productivos.
+
 ## 191.2 Entry gate
 
 - F04 plan/compiler cerrado.
@@ -14962,16 +14968,33 @@ MUST_READ_SECTIONS = 74, 75, 76, 77, 78, 79, 91, 96, 97, 98, 103, 107, 136, 145,
 
 Archivos del repositorio que deben inspeccionarse/revalidarse según existan:
 
-- `src/michi/infrastructure/audio_engines/gstreamer.py`
+- `src/michi/infrastructure/audio_engines/gstreamer.py` — CHILD-NATIVE: corre
+  únicamente dentro del host.
 - `src/michi/infrastructure/audio_processing/gstreamer_processing.py (target)`
+  — CHILD-NATIVE: builder/runtime del candidate nativo.
+- `src/michi/infrastructure/audio_processing/gstreamer_capabilities.py (target)`
+  — CHILD-NATIVE: probe real de factories dentro del host.
+- `src/michi/infrastructure/audio_engines/gstreamer_host_protocol.py`
+- `src/michi/infrastructure/audio_engines/gstreamer_host_session.py`
+- `src/michi/infrastructure/audio_engines/gstreamer_host_process.py`
+  — superficie de integración IPC del processing (contrato DTO + comandos).
+- `src/michi/application/audio_processing_service.py (target)` — PARENT:
+  autoridad semántica; nunca toca Gst.
 - `src/michi/infrastructure/audio_output/runtime_inspector.py`
 - `src/michi/domain/signal_truth.py`
 - `tests/test_gstreamer_audio_port.py`
-- `tests/audio_processing/ (target)`
+- `tests/audio_phase2/` (targets host-aware de processing)
 
 Un archivo marcado `(target)` puede no existir todavía. Su ausencia no autoriza
 al agente a cambiar el nombre/ownership propuesto sin reconciliarlo con el
-árbol real del repositorio.
+árbol real del repositorio. La regla de ownership es:
+
+```text
+PRODUCTIVE PARENT Gst OBJECT COUNT = 0
+```
+
+Ningún módulo marcado CHILD-NATIVE puede importarse en la composición
+productiva del parent ni instanciar Gst.Element/Gst.Bin.
 
 ## 191.4 Outputs obligatorios
 
@@ -14987,6 +15010,12 @@ al agente a cambiar el nombre/ownership propuesto sin reconciliarlo con el
 - No hacer filesystem/SQLite en pump thread.
 - No autoinsertar resampler/converter sin evidencia/policy.
 - No reutilizar `Strict Direct` como si processing estuviera permitido.
+- No instanciar Gst.Element/Gst.Bin/igualadores/converters productivos en el
+  proceso parent: la ejecución nativa vive en el GStreamer Output Host.
+- No crear un segundo AudioPort, un segundo host GStreamer, ni un segundo
+  SignalTruthRecorder.
+- No commitear estado efectivo de processing en el child: el child sólo
+  construye, prerollea y REPORTAt hechos; el parent compara y commitea.
 
 ## 191.6 Estrategia de implementación
 
@@ -15019,6 +15048,12 @@ bloqueen la fase se registran como blocker con owner explícito.
 - Swap de graph no publica candidate antes de commit.
 - Stale completion descartado.
 - No XRUN/teardown regression en suite declarada.
+- Readback-first ATRAVIESA la frontera de proceso: el parent commitea la
+  revisión efectiva sólo después de comparar expected vs observed reportado
+  por el host (nunca "IPC enviado = éxito").
+- Pérdida del host durante playback procesado invalida la evidencia runtime
+  (requested != effective) y nunca deja EQ/Convolution/Processing ACTIVE en
+  Signal Truth.
 
 Para cerrar la fase debe existir evidencia machine-readable o reproducible de
 cada punto anterior; «parece funcionar» no es un gate.
@@ -15045,6 +15080,100 @@ tests=<list + result>
 remaining=<bounded list>
 next_phase_unlocked=<id or NONE>
 ```
+
+## 191.10 Ejecución host-aware (preflight seal 2026-10-05)
+
+El GST_LIFECYCLE_GATE quedó PASS con el GStreamer Output Host supervisado: todo
+el lifecycle nativo productivo (pipeline, playbin3, sink, GLib/GstBus, teardown)
+corre en un proceso hijo killable y el parent conserva la autoridad semántica.
+F05 se ejecuta SOBRE esa frontera, nunca alrededor de ella.
+
+Autoridad (freeze):
+
+```text
+PARENT (semántica)
+  ProcessingProfile / ProcessingGraph
+  ProcessingGraphCompiler -> CompiledProcessingPlan
+  AudioProcessingService
+  ProcessingSampleContract
+  validación, expected graph
+  comparación expected/observed
+  commit de revisión efectiva
+  Signal Truth / Signal Path
+  política de persistencia
+
+CHILD (GStreamer Output Host)
+  Gst.Elements del processing graph
+  Gst.Bin / pads / caps nativos
+  preroll nativo
+  property/caps readback nativo
+  observaciones runtime primitivas
+
+CHILD NO POSEE
+  policy de processing, perfil efectivo, SignalTruthRecorder,
+  PlaybackService, OutputSessionService, selección de usuario,
+  compilación semántica del plan
+```
+
+Secuencia transaccional (readback-first a través de IPC):
+
+```text
+PARENT  compila candidate + asigna processing_generation
+PARENT  -> CHILD: PREPARE_PROCESSING_CANDIDATE (DTO bounded, sin audio)
+CHILD   construye el graph nativo en quiescent, prerollea
+CHILD   inspecciona runtime (factories, caps negociados, properties)
+CHILD   -> PARENT: observación runtime primitiva
+PARENT  compara expected vs observed
+        mismatch -> ABORT del candidate (predecessor intacto si no cruzó
+                    el boundary destructivo)
+        match    -> autoriza COMMIT
+CHILD   activa el candidate
+CHILD   -> PARENT: receipt de commit
+PARENT  publica revisión efectiva (nunca antes)
+```
+
+Modelo de generaciones (sin ambigüedad):
+
+```text
+HOST_GENERATION        encarnación del proceso host
+PIPELINE_GENERATION    ejecución de transporte vigente
+PROCESSING_GENERATION  candidate/revisión de processing
+```
+
+Un resultado de evidencia es vigente sólo si las TRES autoridades siguen
+coincidiendo; una intención nueva del usuario siempre gana.
+
+Seam IPC (vocabulario reservado; implementar sólo cuando la fase lo requiera):
+
+```text
+PREPARE_PROCESSING_CANDIDATE
+INSPECT_PROCESSING_CANDIDATE
+COMMIT_PROCESSING_CANDIDATE
+ABORT_PROCESSING_CANDIDATE
+BYPASS_PROCESSING
+QUERY_PROCESSING_RUNTIME
+```
+
+Reglas del seam:
+
+- protocol version + host_generation + pipeline_generation +
+  processing_generation + candidate identity + payload bounded.
+- NUNCA transporta muestras PCM/DSD, objetos Gst/QObject ni callbacks.
+- rechazo tipado y evidencia con identidad de readback.
+
+Pérdida del host durante processing activo:
+
+```text
+evidencia runtime deja de ser vigente
+parent retira/invalida la revisión efectiva
+requested != effective
+no autoplay, no falso ACTIVE
+```
+
+La caracterización de fuente productiva (preflight 2026-10-05) queda sellada
+como single-flight, cancelable y owner-responsive; su flip completamente
+asíncrono pertenece a la implementación F05 junto con su propio contrato.
+
 
 <!-- MICHI_PHASE2:PHASE:AP2-F05:END -->
 
@@ -27964,6 +28093,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F00:END -->
 
@@ -28071,6 +28207,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F01:END -->
 
@@ -28161,6 +28304,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F02:END -->
 
@@ -28250,6 +28400,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F03:END -->
 
@@ -28375,6 +28532,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F04:END -->
 
@@ -28388,20 +28552,56 @@ TITLE: GSTREAMER SHARED/PROCESSED PCM RUNTIME
 DEPENDENCIES: AP2-F04
 MUST_READ_ANCHORS: R11-G03-OUTPUT-FAMILIES, R11-G04-PROCESSING-SAMPLE, R11-G07-REALTIME-SAFETY, R11-G08-TEST-AUTHORITY, R11-F05
 
+## Execution ownership (host-aware, MANDATORY)
+```text
+PRODUCTIVE PARENT Gst OBJECT COUNT = 0
+```
+The GStreamer Output Host (supervised child process, GST_LIFECYCLE_GATE = PASS)
+owns ALL native GStreamer objects. F05 extends that host; it never installs a
+processing element in the parent process.
+
+PARENT (semantic authority):
+```text
+ProcessingProfile / ProcessingGraph
+ProcessingGraphCompiler -> CompiledProcessingPlan
+AudioProcessingService (validate/compile/prepare/commit/publish)
+ProcessingSampleContract
+expected graph + readback comparison
+effective processing revision
+Signal Truth / Signal Path projection
+```
+
+CHILD (native authority, inside gstreamer_host_process):
+```text
+Gst.Elements of the processing graph
+Gst.Bin / native pads / negotiated caps
+native preroll
+native property/caps readback
+primitive runtime observations
+```
+
+CHILD never owns: processing policy, effective profile truth,
+SignalTruthRecorder, PlaybackService, OutputSessionService, user selection,
+semantic plan compilation.
+
 ## File ownership
 CREATE:
 ```text
 src/michi/infrastructure/audio_processing/__init__.py
-src/michi/infrastructure/audio_processing/gstreamer_capabilities.py
-src/michi/infrastructure/audio_processing/gstreamer_graph_builder.py
-src/michi/infrastructure/audio_processing/gstreamer_runtime.py
-src/michi/application/audio_processing_service.py
+src/michi/infrastructure/audio_processing/gstreamer_capabilities.py   [CHILD-NATIVE]
+src/michi/infrastructure/audio_processing/gstreamer_graph_builder.py  [CHILD-NATIVE]
+src/michi/infrastructure/audio_processing/gstreamer_runtime.py        [CHILD-NATIVE]
+src/michi/application/audio_processing_service.py                     [PARENT-SAFE]
 tests/audio_phase2/test_gstreamer_processing_runtime.py
+tests/audio_phase2/test_processing_host_seam.py
 ```
 MODIFY:
 ```text
-src/michi/infrastructure/audio_engines/gstreamer.py
-src/michi/bootstrap/__init__.py
+src/michi/infrastructure/audio_engines/gstreamer.py            [CHILD-NATIVE port]
+src/michi/infrastructure/audio_engines/gstreamer_host_protocol.py  [IPC seam]
+src/michi/infrastructure/audio_engines/gstreamer_host_session.py   [IPC seam]
+src/michi/infrastructure/audio_engines/gstreamer_host_process.py   [IPC seam]
+src/michi/bootstrap/__init__.py                                [semantic composition]
 ```
 FORBIDDEN:
 ```text
@@ -28409,10 +28609,18 @@ strict Direct sink builder semantics
 per-sample Python
 coefficient computation in rate-changed callback
 implicit audioconvert defaults
+productive Gst.Element/Gst.Bin creation in the PARENT process
+second AudioPort / second GStreamer host / second SignalTruthRecorder
+semantic processing commit inside the child host
 ```
 
 ## Implementation contract
-Probe real factories first:
+Capability probe runs INSIDE the GStreamer host (or another disposable child
+runtime with the same real environment): the parent sends a capability query,
+the child checks real factories and returns primitive facts; the parent decides
+capability state. Never instantiate factories in the productive parent.
+
+Factories to probe (child side):
 
 ```text
 equalizer-nbands
@@ -28424,11 +28632,31 @@ volume
 ```
 
 Do not mark a strategy available from package/version alone; instantiate and
-inspect required properties/pad formats.
+inspect required properties/pad formats inside the host.
 
 CORE Shared processing uses playbin3's documented `audio-filter` property or a
-tested custom bin seam. The chosen seam must be installed while quiescent and
-verified before commit. Do not modify the Direct strict sink construction.
+tested custom bin seam, installed by the CHILD while quiescent and verified
+before commit. Do not modify the Direct strict sink construction.
+
+Processing transaction across the process boundary:
+
+```text
+PARENT  compile candidate; assign processing_generation
+PARENT  -> CHILD: PREPARE_PROCESSING_CANDIDATE (bounded DTO; no audio ever)
+CHILD   build native graph quiescent; preroll; inspect runtime
+CHILD   -> PARENT: primitive runtime evidence
+PARENT  compare expected vs observed
+        mismatch -> abort candidate (predecessor intact if boundary not crossed)
+        match    -> authorize commit
+CHILD   activate candidate; -> PARENT: commit receipt
+PARENT  publish effective revision (Signal Truth / Signal Path)
+```
+
+Generation model (three authorities; all must match for a result to be
+current): HOST_GENERATION, PIPELINE_GENERATION, PROCESSING_GENERATION.
+Newer user intent always wins. IPC transports commands, compiled semantic
+configuration, IDs, generations, properties, readback and typed errors — NEVER
+PCM/DSD samples, Gst objects, QObjects or callbacks.
 
 Canonical processing bin shape for full PEQ/FIR path:
 
@@ -28494,6 +28722,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F05:END -->
 
@@ -28599,6 +28834,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F06:END -->
 
@@ -28683,6 +28925,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F07:END -->
 
@@ -28764,6 +29013,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F08:END -->
 
@@ -28860,6 +29116,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F09:END -->
 
@@ -28956,6 +29219,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F10:END -->
 
@@ -29059,6 +29329,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F11:END -->
 
@@ -29146,6 +29423,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F12:END -->
 
@@ -29239,6 +29523,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F13:END -->
 
@@ -29332,6 +29623,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F14:END -->
 
@@ -29426,6 +29724,13 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
+host loss during active processing -> runtime evidence invalid; retire
+  effective revision; requested != effective; never leave EQ/Convolution/
+  Processing ACTIVE in Signal Truth
+child graph build failure -> predecessor effective state remains if the
+  destructive boundary was not crossed
+readback mismatch -> candidate abort
+unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F15:END -->
 
