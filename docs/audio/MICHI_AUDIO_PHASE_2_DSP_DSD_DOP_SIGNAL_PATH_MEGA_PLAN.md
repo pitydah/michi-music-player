@@ -28093,13 +28093,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F00:END -->
 
@@ -28207,13 +28200,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F01:END -->
 
@@ -28304,13 +28290,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F02:END -->
 
@@ -28400,13 +28379,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F03:END -->
 
@@ -28532,13 +28504,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F04:END -->
 
@@ -28603,6 +28568,47 @@ src/michi/infrastructure/audio_engines/gstreamer_host_session.py   [IPC seam]
 src/michi/infrastructure/audio_engines/gstreamer_host_process.py   [IPC seam]
 src/michi/bootstrap/__init__.py                                [semantic composition]
 ```
+
+## F05-WU0 PRE-RUNTIME ENABLER (high-risk reopening, explicit)
+```text
+src/michi/application/output_session_service.py
+  reason: owner-safe asynchronous output preparation (snapshot / work /
+          owner commit split); semantic authority UNCHANGED
+  unchanged authority: OutputSession state machine, planner, selection,
+          transaction commit, generation ownership, notifications
+  required regression: tests/dac, tests/audio_phase2/test_preparation_async_qt.py,
+          tests/audio_phase2/test_preparation_owner_safety.py, playback suites
+
+src/michi/application/playback_service.py
+  reason: asynchronous continuation for every productive preparation purpose
+          (USER_PLAY, OUTPUT_HANDOVER, STARTUP_RESTORE,
+          ENGINE_SWITCH_REHYDRATION) while preserving accepted-media,
+          no-autoplay, epoch supersession and failure dispositions
+  unchanged authority: request epoch, pending path/purpose, acceptance,
+          PlaybackState, resume_prepared semantics
+  required regression: tests/test_playback_service.py, tests/dac startup
+          resume / handover / supersession gates
+
+tests/conftest.py (test policy only)
+  reason: scheduling-agnostic inline preparation executor for terminal-state
+          tests; the real Qt scheduling is covered explicitly by the async
+          tests
+```
+`ports.py` is NOT authorized: the async interface already exists
+(`prepare_for_media_async` + the existing transaction port); no port change
+was required. Any future port change needs its own explicit reopening.
+
+## Governance note — contract decontamination (2026-10-05)
+The F05 host-aware rebase (b35f574) accidentally broadened the generic
+`Universal failure semantics` block of EVERY phase contract with F05-specific
+processing semantics. This revision restores the pre-rebase blocks for all
+phases that do not own runtime processing (F00-F04 and F07-F15 byte-identical
+to 51aedb2); the processing-runtime failure semantics live ONLY in R11-F05,
+with an explicit pointer from R11-F06 (which depends on the processing
+runtime). No product/runtime behavior of any closed phase is modified; F00-F04
+remain CLOSED and F07 remains SEALED. Structural tests in
+`tests/phase2/test_contract_isolation.py` prevent a repeat of a global
+search/replace contamination.
 FORBIDDEN:
 ```text
 strict Direct sink builder semantics
@@ -28834,13 +28840,8 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
+processing runtime failures (host loss, child graph build, readback mismatch,
+unsupported strategy) -> see the R11-F05 Universal failure semantics extension
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F06:END -->
 
@@ -28925,13 +28926,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F07:END -->
 
@@ -29013,13 +29007,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F08:END -->
 
@@ -29116,13 +29103,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F09:END -->
 
@@ -29219,13 +29199,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F10:END -->
 
@@ -29329,13 +29302,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F11:END -->
 
@@ -29423,13 +29389,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F12:END -->
 
@@ -29523,13 +29482,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F13:END -->
 
@@ -29623,13 +29575,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F14:END -->
 
@@ -29724,13 +29669,6 @@ newer user intent wins
 no false success
 no silent fallback
 unproven post-destructive restore -> STOP safe
-host loss during active processing -> runtime evidence invalid; retire
-  effective revision; requested != effective; never leave EQ/Convolution/
-  Processing ACTIVE in Signal Truth
-child graph build failure -> predecessor effective state remains if the
-  destructive boundary was not crossed
-readback mismatch -> candidate abort
-unsupported native strategy -> typed unavailable/refusal
 ```
 <!-- MICHI_PHASE2:CONTRACT:R11-F15:END -->
 
