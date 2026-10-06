@@ -84,6 +84,7 @@ class HostEngineSession:
         self._port: EnginePort | None = None
         self._opened = False
         self._processing_candidate: Any | None = None
+        self._processing_plan_wire: dict[str, Any] | None = None
         self._coordinator = HostDirectCoordinator(request_callback)
 
     @property
@@ -198,9 +199,11 @@ class HostEngineSession:
     def _op_prepare_processing_candidate(
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
-        # One productive candidate at a time: a newer prepare supersedes the
-        # previous candidate with a bounded native teardown.
-        self._abort_processing_candidate()
+        # One productive candidate at a time. A newer prepare supersedes the
+        # previous candidate ONLY after its native teardown is proven; an
+        # unproven retirement fails closed.
+        if self._processing_candidate is not None:
+            self._abort_processing_candidate()
         plan = payload.get("plan")
         if not isinstance(plan, dict):
             return False, {
@@ -216,28 +219,135 @@ class HostEngineSession:
 
         built = build_processing_candidate(plan)
         self._processing_candidate = built
+        self._processing_plan_wire = dict(plan)
         observed = inspect_processing_candidate(built, plan)
+        observed["pipeline_generation"] = int(
+            getattr(self._port, "pipeline_generation", 0)
+        )
         return True, {"observed": observed}
+
+    def _op_commit_processing_candidate(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        built = self._processing_candidate
+        plan = self._processing_plan_wire
+        if built is None or plan is None:
+            return False, {
+                "code": "DSP_CANDIDATE_MISSING",
+                "detail": "no prepared processing candidate to commit",
+            }
+        if str(payload.get("plan_id")) != built.plan_id:
+            return False, {
+                "code": "DSP_CANDIDATE_MISMATCH",
+                "detail": "commit plan does not match the prepared candidate",
+            }
+        port = self._require_port()
+        install = getattr(port, "install_processing_filter", None)
+        if not callable(install):
+            # EFFECTIVE requires a REAL productive install: fail closed.
+            return False, {
+                "code": "DSP_PLAYBACK_SEAM_UNAVAILABLE",
+                "detail": ("the hosted engine exposes no productive processing seam"),
+            }
+        from michi.infrastructure.audio_processing.gstreamer_graph_builder import (
+            build_processing_filter,
+        )
+        from michi.infrastructure.audio_processing.gstreamer_runtime import (
+            inspect_processing_filter,
+        )
+
+        filter_info = build_processing_filter(plan)
+        try:
+            install_result = install(filter_info["bin"])
+            if not isinstance(install_result, dict):
+                raise RuntimeError("install seam returned no receipt facts")
+            observed = inspect_processing_filter(filter_info, plan)
+        except Exception as exc:  # noqa: BLE001 - typed rejection boundary
+            remove = getattr(port, "remove_processing_filter", None)
+            if callable(remove):
+                import contextlib
+
+                with contextlib.suppress(Exception):
+                    remove()
+            code = getattr(exc, "code", None) or "DSP_COMMIT_FAILED"
+            return False, {"code": str(code), "detail": str(exc)[:500]}
+        # The validated harness candidate is superseded by the installed
+        # productive filter; its teardown must still be proven.
+        self._abort_processing_candidate()
+        self._processing_plan_wire = None
+        return True, {
+            "receipt": {
+                "installed": bool(install_result.get("installed")),
+                "runtime_identity": str(install_result.get("runtime_identity") or ""),
+                "pipeline_generation": int(
+                    install_result.get("pipeline_generation") or 0
+                ),
+                "observed_plan_id": str(observed.get("plan_id") or ""),
+                "observed_graph_revision": int(observed.get("graph_revision") or 0),
+                "observed": observed,
+            }
+        }
+
+    def _op_capture_processing_output(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        port = self._require_port()
+        capture = getattr(port, "capture_processing_output", None)
+        if not callable(capture):
+            return False, {
+                "code": "DSP_CAPTURE_UNAVAILABLE",
+                "detail": "this engine exposes no signal capture instrumentation",
+            }
+        seconds = payload.get("seconds")
+        if not isinstance(seconds, (int, float)) or isinstance(seconds, bool):
+            return False, {
+                "code": "OUTPUT_HOST_PROTOCOL_INVALID_FIELD",
+                "detail": "seconds must be a number",
+            }
+        metrics = capture(float(seconds))
+        return True, {"metrics": metrics}
+
+    def _op_bypass_processing(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        port = self._require_port()
+        remove = getattr(port, "remove_processing_filter", None)
+        if not callable(remove):
+            return False, {
+                "code": "DSP_PLAYBACK_SEAM_UNAVAILABLE",
+                "detail": "the hosted engine exposes no productive processing seam",
+            }
+        if self._processing_candidate is not None:
+            self._abort_processing_candidate()
+            self._processing_plan_wire = None
+        removed = bool(remove())
+        return True, {
+            "bypassed": True,
+            "removed": removed,
+            "pipeline_generation": int(getattr(port, "pipeline_generation", 0)),
+        }
 
     def _op_abort_processing_candidate(
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
-        aborted = self._abort_processing_candidate()
-        return True, {"aborted": aborted}
+        if self._processing_candidate is None:
+            return True, {"aborted": False}
+        # Raises on unproven teardown: the candidate stays owned, the caller
+        # gets a typed rejection and must never report success.
+        self._abort_processing_candidate()
+        return True, {"aborted": True}
 
     def _abort_processing_candidate(self) -> bool:
+        """Native teardown with proven retirement; failure keeps ownership."""
         built = self._processing_candidate
-        self._processing_candidate = None
         if built is None:
             return False
-        import contextlib
-
         from michi.infrastructure.audio_processing.gstreamer_runtime import (
             abort_processing_candidate,
         )
 
-        with contextlib.suppress(Exception):
-            abort_processing_candidate(built)
+        abort_processing_candidate(built)  # raises on unproven teardown
+        self._processing_candidate = None
         return True
 
     def _op_query_processing_capabilities(
@@ -399,6 +509,13 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     ),
     HostOperation.PREPARE_PROCESSING_CANDIDATE.value: (
         HostEngineSession._op_prepare_processing_candidate
+    ),
+    HostOperation.COMMIT_PROCESSING_CANDIDATE.value: (
+        HostEngineSession._op_commit_processing_candidate
+    ),
+    HostOperation.BYPASS_PROCESSING.value: (HostEngineSession._op_bypass_processing),
+    HostOperation.CAPTURE_PROCESSING_OUTPUT.value: (
+        HostEngineSession._op_capture_processing_output
     ),
     HostOperation.ABORT_PROCESSING_CANDIDATE.value: (
         HostEngineSession._op_abort_processing_candidate

@@ -413,6 +413,74 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         return observed
 
+    def commit_processing_candidate(
+        self,
+        *,
+        plan_id: str,
+        processing_generation: int,
+        pipeline_generation: int,
+    ) -> dict[str, Any]:
+        """Authorize the destructive install; returns the child's receipt."""
+        payload = self._submit(
+            HostOperation.COMMIT_PROCESSING_CANDIDATE,
+            {
+                "plan_id": str(plan_id),
+                "processing_generation": int(processing_generation),
+                "pipeline_generation": int(pipeline_generation),
+            },
+            deadline_s=max(self._command_deadline_s, 12.0),
+        )
+        receipt = payload.get("receipt")
+        if not isinstance(receipt, dict):
+            raise AudioTransportCommandError(
+                "processing commit returned a malformed receipt"
+            )
+        return receipt
+
+    def capture_processing_output(self, seconds: float) -> dict[str, Any]:
+        """DIAGNOSTIC/TEST: child-local signal metrics of the installed filter."""
+        payload = self._submit(
+            HostOperation.CAPTURE_PROCESSING_OUTPUT,
+            {"seconds": float(seconds)},
+            deadline_s=max(self._command_deadline_s, float(seconds) + 8.0),
+        )
+        metrics = payload.get("metrics")
+        if not isinstance(metrics, dict):
+            raise AudioTransportCommandError(
+                "processing capture returned malformed metrics"
+            )
+        return metrics
+
+    def bypass_processing(self) -> dict[str, Any]:
+        payload = self._submit(
+            HostOperation.BYPASS_PROCESSING,
+            {},
+            deadline_s=max(self._command_deadline_s, 12.0),
+        )
+        if not payload.get("bypassed"):
+            raise AudioTransportCommandError("bypass was not applied")
+        return payload
+
+    # Transport-adapter aliases consumed by AudioProcessingService.
+    def prepare_candidate(self, plan: dict[str, Any]) -> dict[str, Any]:
+        return self.prepare_processing_candidate(plan)
+
+    def commit_candidate(
+        self,
+        *,
+        plan_id: str,
+        processing_generation: int,
+        pipeline_generation: int,
+    ) -> dict[str, Any]:
+        return self.commit_processing_candidate(
+            plan_id=plan_id,
+            processing_generation=processing_generation,
+            pipeline_generation=pipeline_generation,
+        )
+
+    def abort_candidate(self) -> bool:
+        return self.abort_processing_candidate()
+
     def abort_processing_candidate(self) -> bool:
         payload = self._submit(
             HostOperation.ABORT_PROCESSING_CANDIDATE,

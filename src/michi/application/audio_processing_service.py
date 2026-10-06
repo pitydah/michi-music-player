@@ -52,6 +52,30 @@ _STRATEGY_FACTORIES: dict[ProcessingStrategy, tuple[str, ...]] = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class ProcessingCandidateIdentity:
+    """Generation-bound identity of one prepared processing candidate."""
+
+    candidate_id: str
+    plan_id: str
+    graph_revision: int
+    host_generation: int
+    pipeline_generation: int
+    processing_generation: int
+
+
+@dataclass(frozen=True, slots=True)
+class ProcessingCommitReceipt:
+    """Child receipt proving the PRODUCTION runtime accepted the candidate."""
+
+    candidate: ProcessingCandidateIdentity
+    installed: bool
+    observed_plan_id: str
+    observed_graph_revision: int
+    observed_pipeline_generation: int
+    native_runtime_identity: str
+
+
 class ProcessingCapabilityState(StrEnum):
     UNKNOWN = "unknown"
     QUERIED = "queried"
@@ -83,8 +107,10 @@ class AudioProcessingService:
         *,
         capability_query: Callable[[], dict[str, Any]] | None = None,
         native_mapping: object | None = None,
+        transport: object | None = None,
     ) -> None:
         self._capability_query = capability_query
+        self._transport = transport
         # Infrastructure-owned native mapping (pure math + DTO shaping); the
         # application layer never imports infrastructure.
         self._native_mapping = native_mapping
@@ -99,6 +125,7 @@ class AudioProcessingService:
         self._effective_state = ProcessingEffectiveState.BYPASSED
         self._effective_plan_id: str | None = None
         self._host_generation: int | None = None
+        self._prepared_plans: dict[str, CompiledProcessingPlan] = {}
 
     # ── lectura ───────────────────────────────────────────────────────
     @property
@@ -175,11 +202,16 @@ class AudioProcessingService:
             raw=dict(raw),
         )
         self._facts = facts
-        self._capability_state = (
-            ProcessingCapabilityState.UNAVAILABLE
-            if facts.runtime_failure is not None
-            else ProcessingCapabilityState.QUERIED
-        )
+        if facts.runtime_failure is not None:
+            # Contradiction is forbidden: a broken child runtime can NEVER
+            # advertise supported strategies from stale/partial facts.
+            self._capability_state = ProcessingCapabilityState.UNAVAILABLE
+            self._capabilities = ProcessingBackendCapabilities(
+                backend_id="gstreamer-host", strategies=frozenset()
+            )
+            self.invalidate_effective("capability runtime failure")
+            return self._capabilities
+        self._capability_state = ProcessingCapabilityState.QUERIED
         strategies = frozenset(
             strategy
             for strategy in IMPLEMENTED_STRATEGIES
@@ -231,6 +263,20 @@ class AudioProcessingService:
             raise ProcessingReadbackMismatchError(
                 "DSP_READBACK_MISSING", "child reported no node readback"
             )
+        node_ids = [
+            str(node.get("node_id")) for node in nodes if isinstance(node, dict)
+        ]
+        if len(node_ids) != len(set(node_ids)):
+            raise ProcessingReadbackMismatchError(
+                "DSP_READBACK_DUPLICATE_NODE",
+                "child reported duplicate native node ids",
+            )
+        expected_ids = [node.node_id for node in plan.nodes]
+        if set(node_ids) != set(expected_ids):
+            raise ProcessingReadbackMismatchError(
+                "DSP_READBACK_NODE_SET_MISMATCH",
+                f"observed {sorted(node_ids)} != expected {sorted(expected_ids)}",
+            )
         by_id = {
             str(node.get("node_id")): node for node in nodes if isinstance(node, dict)
         }
@@ -265,6 +311,24 @@ class AudioProcessingService:
                     "DSP_READBACK_VALUE_MISMATCH",
                     f"node {expected.node_id!r} observed properties differ",
                 )
+            expected_factories = sorted(mapping.expected_native_factories(expected))
+            observed_factories = sorted(
+                str(name) for name in (actual.get("factories") or [])
+            )
+            if observed_factories != expected_factories:
+                raise ProcessingReadbackMismatchError(
+                    "DSP_READBACK_FACTORY_MISMATCH",
+                    f"node {expected.node_id!r} factories "
+                    f"{observed_factories} != {expected_factories}",
+                )
+        global_factories = [
+            str(name) for name in (observed.get("graph_factories") or [])
+        ]
+        if "audioresample" in global_factories:
+            raise ProcessingReadbackMismatchError(
+                "DSP_READBACK_UNEXPECTED_TRANSFORM",
+                "the native graph contains an unexpected resampler",
+            )
         caps = observed.get("working_caps")
         contract = plan.sample_contract
         if not isinstance(caps, dict):
@@ -281,26 +345,134 @@ class AudioProcessingService:
                 f"working caps {caps!r} do not match {contract.working_format}",
             )
 
-    def publish_effective(
-        self, plan_id: str, *, expected_revision: int | None = None
-    ) -> int:
-        """Publish the effective revision — ONLY after validated readback.
+    # ── transacción (PREPARE -> validate -> COMMIT -> receipt) ────────
+    def begin_candidate(
+        self,
+        plan: CompiledProcessingPlan,
+        *,
+        host_generation: int,
+        transport: object | None = None,
+    ) -> ProcessingCandidateIdentity:
+        """Prepare + readback-validate a candidate; EFFECTIVE is NOT touched."""
+        generation = self.note_requested()
+        active_transport = transport if transport is not None else self._transport
+        if active_transport is None:
+            raise ProcessingTransactionError(
+                "DSP_TRANSPORT_UNAVAILABLE",
+                "no processing transport is composed for this service",
+            )
+        wire = self.plan_to_wire(plan)
+        observed = active_transport.prepare_candidate(wire)
+        self.validate_readback(plan, observed)
+        self._prepared_plans[plan.plan_id] = plan
+        pipeline_generation = int(observed.get("pipeline_generation") or 0)
+        return ProcessingCandidateIdentity(
+            candidate_id=(
+                f"{plan.plan_id}:{generation}:{host_generation}:{pipeline_generation}"
+            ),
+            plan_id=plan.plan_id,
+            graph_revision=plan.graph_revision,
+            host_generation=host_generation,
+            pipeline_generation=pipeline_generation,
+            processing_generation=generation,
+        )
 
-        ``expected_revision`` fences a delayed commit: a candidate prepared
-        for revision N can never publish over a newer requested revision N+1
-        (newest processing intent wins).
+    def commit_candidate(
+        self,
+        candidate: ProcessingCandidateIdentity,
+        *,
+        transport: object | None = None,
+    ) -> ProcessingCommitReceipt:
+        """Authorize the destructive commit and require a real receipt.
+
+        EFFECTIVE can only be reached through a validated receipt: the child
+        must have installed the candidate into the productive runtime.
         """
-        if (
-            expected_revision is not None
-            and expected_revision != self._requested_revision
-        ):
+        if candidate.processing_generation != self._requested_revision:
             raise ProcessingStaleCommitError(
                 "DSP_STALE_COMMIT",
-                f"candidate revision {expected_revision} is stale "
-                f"(requested {self._requested_revision})",
+                f"candidate revision {candidate.processing_generation} is "
+                f"stale (requested {self._requested_revision})",
             )
-        self._effective_revision = self._requested_revision
-        self._effective_plan_id = plan_id
+        active_transport = transport if transport is not None else self._transport
+        if active_transport is None:
+            raise ProcessingTransactionError(
+                "DSP_TRANSPORT_UNAVAILABLE",
+                "no processing transport is composed for this service",
+            )
+        payload = active_transport.commit_candidate(
+            plan_id=candidate.plan_id,
+            processing_generation=candidate.processing_generation,
+            pipeline_generation=candidate.pipeline_generation,
+        )
+        if not isinstance(payload, dict):
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_RECEIPT_INVALID", "child returned no receipt object"
+            )
+        prepared_plan = self._prepared_plans.get(candidate.plan_id)
+        post_install = payload.get("observed")
+        if prepared_plan is not None:
+            if not isinstance(post_install, dict):
+                raise ProcessingTransactionError(
+                    "DSP_COMMIT_RECEIPT_INVALID",
+                    "receipt carries no post-install readback",
+                )
+            # The PRODUCTIVE installed graph must satisfy the same exact
+            # readback contract as the validated candidate.
+            self.validate_readback(prepared_plan, post_install)
+        receipt = ProcessingCommitReceipt(
+            candidate=candidate,
+            installed=bool(payload.get("installed")),
+            observed_plan_id=str(payload.get("observed_plan_id") or ""),
+            observed_graph_revision=int(payload.get("observed_graph_revision") or -1),
+            observed_pipeline_generation=int(payload.get("pipeline_generation") or -1),
+            native_runtime_identity=str(payload.get("runtime_identity") or ""),
+        )
+        return self._validate_receipt(receipt)
+
+    def _validate_receipt(
+        self, receipt: ProcessingCommitReceipt
+    ) -> ProcessingCommitReceipt:
+        candidate = receipt.candidate
+        if not receipt.installed:
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_NOT_INSTALLED",
+                "the candidate was not installed into the productive runtime",
+            )
+        if receipt.observed_plan_id != candidate.plan_id:
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_RECEIPT_MISMATCH",
+                f"receipt plan {receipt.observed_plan_id!r} != {candidate.plan_id!r}",
+            )
+        if receipt.observed_graph_revision != candidate.graph_revision:
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_RECEIPT_MISMATCH",
+                "receipt graph revision does not match the candidate",
+            )
+        if receipt.observed_pipeline_generation != candidate.pipeline_generation:
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_RECEIPT_MISMATCH",
+                "receipt pipeline generation does not match the candidate",
+            )
+        if not receipt.native_runtime_identity:
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_RECEIPT_MISMATCH",
+                "receipt carries no native runtime identity",
+            )
+        return receipt
+
+    def publish_effective(self, receipt: ProcessingCommitReceipt) -> int:
+        """Publish EFFECTIVE — ONLY from a validated commit receipt."""
+        self._validate_receipt(receipt)
+        candidate = receipt.candidate
+        if candidate.processing_generation != self._requested_revision:
+            raise ProcessingStaleCommitError(
+                "DSP_STALE_COMMIT",
+                f"candidate revision {candidate.processing_generation} is "
+                f"stale (requested {self._requested_revision})",
+            )
+        self._effective_revision = candidate.processing_generation
+        self._effective_plan_id = candidate.plan_id
         self._effective_state = ProcessingEffectiveState.EFFECTIVE
         return self._effective_revision
 
@@ -347,6 +519,15 @@ def json_normalize(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [json_normalize(item) for item in value]
     return value
+
+
+class ProcessingTransactionError(RuntimeError):
+    """Typed transaction failure (commit/receipt/transport)."""
+
+    def __init__(self, code: str, detail: str) -> None:
+        super().__init__(f"{code}: {detail}")
+        self.code = code
+        self.detail = detail
 
 
 class ProcessingStaleCommitError(RuntimeError):

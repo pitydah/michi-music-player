@@ -1328,7 +1328,14 @@ class TestF42AdapterContract:
         # track with a nonzero resync delay. Shared command, pump, bus,
         # generation and acceptance paths remain unchanged; hash re-sealed
         # after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "152f3c7440e99ead",
+        # AP2-F05 productive DSP (2026-10-06) authorized reopening: the port
+        # exposes pipeline_generation and the productive processing-filter
+        # seam (install/remove via playbin3 audio-filter with a bounded
+        # quiescent rebuild + identity readback) plus child-local diagnostic
+        # capture instrumentation. Existing Shared command, pump, bus,
+        # generation, acceptance and Direct strict paths are unchanged; hash
+        # re-sealed after full regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "e5055c8c31a70123",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

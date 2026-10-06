@@ -15,7 +15,6 @@ from michi.application.audio_processing_service import (
     AudioProcessingService,
     ProcessingCapabilityState,
     ProcessingReadbackMismatchError,
-    json_normalize,
 )
 from michi.application.effective_processing_graph import (
     EffectiveProcessingGraphResolver,
@@ -234,11 +233,16 @@ def test_host_loss_invalidates_capabilities_and_effective_truth() -> None:
     supervisor, port = _port("normal")
     port.activate()
     service = AudioProcessingService(
-        capability_query=port.query_processing_capabilities
+        capability_query=port.query_processing_capabilities,
+        native_mapping=NativeProcessingMapping(),
     )
     service.refresh_capabilities()
     service.note_requested()
-    service.publish_effective("plan:x")
+    transport = _FakeProcessingTransport()
+    plan = _plan()
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
+    service.publish_effective(service.commit_candidate(candidate, transport=transport))
+    assert service.effective_state.value == "effective"
 
     port.close()  # host boundary gone
     capabilities = service.refresh_capabilities()
@@ -259,9 +263,12 @@ def _observed_for(plan, *, override=None):
             {
                 "node_id": node.node_id,
                 "strategy": node.strategy.value,
-                "observed": {
-                    str(key): json_normalize(value) for key, value in node.properties
-                },
+                "factories": list(
+                    NativeProcessingMapping().expected_native_factories(node)
+                ),
+                "observed": NativeProcessingMapping().expected_native_properties(
+                    node, rate_hz=plan.sample_contract.input_rate_hz
+                ),
             }
             for node in plan.nodes
         ],
@@ -274,6 +281,91 @@ def _observed_for(plan, *, override=None):
     if override:
         override(observed)
     return observed
+
+
+class _FakeProcessingTransport:
+    """Scripted transport double for transaction-level tests."""
+
+    def __init__(self, *, installed: bool = True, pipeline_generation: int = 3) -> None:
+        self.installed = installed
+        self.pipeline_generation = pipeline_generation
+        self.receipt_pipeline_generation: int | None = None
+        self.prepared: list[dict] = []
+        self.commits: list[dict] = []
+        self.last_wire: dict | None = None
+
+    def prepare_candidate(self, wire: dict) -> dict:
+        self.prepared.append(wire)
+        self.last_wire = wire
+        plan_id = wire["plan_id"]
+        revision = int(wire["graph_revision"])
+        # Build the exact observed shape from the wire.
+        from michi.application.processing_graph_compiler import (
+            CompiledProcessingNode,
+        )
+        from michi.domain.audio_processing import ProcessingNodeKind, ProcessingStrategy
+
+        nodes = []
+        for node in wire["nodes"]:
+            strategy = str(node["strategy"])
+            properties = node["properties"]
+            if strategy == "gain":
+                observed = {"gain_db": float(properties["gain_db"])}
+            else:
+                observed = {
+                    "layout_id": str(properties["layout_id"]),
+                    "band_indices": [int(v) for v in properties["band_indices"]],
+                    "biquad": properties["biquad_cascade"],
+                }
+            nodes.append(
+                {
+                    "node_id": node["node_id"],
+                    "strategy": strategy,
+                    "factories": (
+                        ["volume"]
+                        if strategy == "gain"
+                        else ["audioiirfilter"] * len(properties["gains_db"])
+                    ),
+                    "observed": observed,
+                }
+            )
+        _ = (CompiledProcessingNode, ProcessingNodeKind, ProcessingStrategy)
+        return {
+            "plan_id": plan_id,
+            "graph_revision": revision,
+            "nodes": nodes,
+            "working_caps": {
+                "format": wire["working_format"],
+                "rate_hz": wire["input_rate_hz"],
+                "channels": wire["channels"],
+            },
+            "graph_factories": ["audiotestsrc", "capsfilter"],
+            "pipeline_generation": self.pipeline_generation,
+        }
+
+    def commit_candidate(self, *, plan_id, processing_generation, pipeline_generation):
+        self.commits.append(
+            {
+                "plan_id": plan_id,
+                "processing_generation": processing_generation,
+                "pipeline_generation": pipeline_generation,
+            }
+        )
+        observed = (
+            self.prepare_candidate(self.last_wire) if self.last_wire is not None else {}
+        )
+        return {
+            "installed": self.installed,
+            "observed": observed,
+            "observed_plan_id": plan_id,
+            "observed_graph_revision": 1,
+            "pipeline_generation": (
+                self.receipt_pipeline_generation
+                if self.receipt_pipeline_generation is not None
+                else pipeline_generation
+            ),
+            "runtime_identity": "fake:playbin3/audio-filter",
+        }
 
 
 def _plan():
@@ -297,14 +389,65 @@ def _plan():
     )
 
 
-def test_readback_exact_match_passes_and_publishes() -> None:
+def _transaction_plan(*, preamp_only: bool = True):
     service = AudioProcessingService(native_mapping=NativeProcessingMapping())
-    service.note_requested()
-    plan = _plan()
-    service.validate_readback(plan, _observed_for(plan))
-    revision = service.publish_effective(plan.plan_id)
-    assert revision == service.requested_revision
+    from michi.application.processing_graph_compiler import (
+        ProcessingBackendCapabilities as Backend,
+    )
+
+    graph = _preamp_graph() if preamp_only else _graphic_graph()
+    effective = EffectiveProcessingGraphResolver().resolve(
+        graph, input_signal=_signal(), assets=()
+    )
+    plan = ProcessingGraphCompiler().compile(
+        effective,
+        backend=Backend(backend_id="test", strategies=frozenset(ProcessingStrategy)),
+        assets=(),
+    )
+    return service, plan
+
+
+def test_full_transaction_publishes_only_from_a_validated_receipt() -> None:
+    service, plan = _transaction_plan()
+    transport = _FakeProcessingTransport()
+    candidate = service.begin_candidate(plan, host_generation=7, transport=transport)
+    assert candidate.processing_generation == service.requested_revision
+    assert candidate.pipeline_generation == 3
+    # EFFECTIVE is untouched by prepare+readback.
+    assert service.effective_state.value == "preparing"
+
+    receipt = service.commit_candidate(candidate, transport=transport)
+    assert receipt.installed is True
+    revision = service.publish_effective(receipt)
+    assert revision == candidate.processing_generation
     assert service.effective_state.value == "effective"
+    assert service.effective_plan_id == plan.plan_id
+
+
+def test_commit_without_install_never_publishes() -> None:
+    from michi.application.audio_processing_service import ProcessingTransactionError
+
+    service, plan = _transaction_plan()
+    transport = _FakeProcessingTransport(installed=False)
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
+    with pytest.raises(ProcessingTransactionError) as info:
+        service.commit_candidate(candidate, transport=transport)
+    assert info.value.code == "DSP_COMMIT_NOT_INSTALLED"
+    assert service.effective_state.value == "preparing"
+
+
+def test_commit_with_mismatched_receipt_identity_never_publishes() -> None:
+    from michi.application.audio_processing_service import ProcessingTransactionError
+
+    service, plan = _transaction_plan()
+    transport = _FakeProcessingTransport(pipeline_generation=5)
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
+    # The runtime moved underneath the receipt.
+    transport.receipt_pipeline_generation = 6
+    with pytest.raises(ProcessingTransactionError) as info:
+        service.commit_candidate(candidate, transport=transport)
+    assert info.value.code == "DSP_COMMIT_RECEIPT_MISMATCH"
+    assert service.effective_state.value == "preparing"
 
 
 @pytest.mark.parametrize(
@@ -344,19 +487,16 @@ def test_missing_readback_is_a_typed_mismatch() -> None:
 def test_stale_processing_commit_cannot_publish_over_newer_intent() -> None:
     from michi.application.audio_processing_service import ProcessingStaleCommitError
 
-    service = AudioProcessingService(native_mapping=NativeProcessingMapping())
-    first = service.note_requested()
-    plan = _plan()
-    service.validate_readback(plan, _observed_for(plan))
+    service, plan = _transaction_plan()
+    transport = _FakeProcessingTransport()
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
     # A newer processing intent supersedes the prepared candidate.
     service.note_requested()
     with pytest.raises(ProcessingStaleCommitError) as info:
-        service.publish_effective(plan.plan_id, expected_revision=first)
+        service.commit_candidate(candidate, transport=transport)
     assert info.value.code == "DSP_STALE_COMMIT"
     # Effective truth is NOT published from the stale candidate.
     assert service.effective_state.value == "preparing"
-    # The current revision can still publish normally.
-    assert service.publish_effective(plan.plan_id) == service.requested_revision
 
 
 def test_graphic_cascade_matches_the_rbj_golden_mapping() -> None:

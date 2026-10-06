@@ -70,6 +70,16 @@ class NativeProcessingMapping:
     """Compiled plan -> native DTO + expected readback translator."""
 
     @staticmethod
+    def expected_native_factories(node: CompiledProcessingNode) -> tuple[str, ...]:
+        """Exact native factory multiset the runtime must manifest per node."""
+        if node.strategy is ProcessingStrategy.GAIN:
+            return ("volume",)
+        if node.strategy is ProcessingStrategy.GRAPHIC_EQ_NBANDS:
+            properties = {str(key): value for key, value in node.properties}
+            return ("audioiirfilter",) * len(properties["gains_db"])
+        raise ValueError(f"no native factories for {node.strategy.value!r}")
+
+    @staticmethod
     def expected_native_properties(
         node: CompiledProcessingNode, *, rate_hz: int
     ) -> dict[str, Any]:

@@ -44,6 +44,7 @@ class BuiltProcessingCandidate:
     input_rate_hz: int
     channels: int
     node_elements: dict[str, Any]
+    node_factories: dict[str, tuple[str, ...]]
     working_capsfilter: Any
     graph_factories: tuple[str, ...]
 
@@ -123,6 +124,7 @@ def build_processing_candidate(plan: dict[str, Any]) -> BuiltProcessingCandidate
 
     elements = [source, source_caps, convert, working_caps]
     node_elements: dict[str, Any] = {}
+    node_factories: dict[str, tuple[str, ...]] = {}
     try:
         for node in nodes:
             if not isinstance(node, dict):
@@ -148,6 +150,11 @@ def build_processing_candidate(plan: dict[str, Any]) -> BuiltProcessingCandidate
                     f"the host builder does not implement {strategy!r}",
                 )
             node_elements[node_id] = element
+            node_factories[node_id] = (
+                tuple(item.get_factory().get_name() for item in element)
+                if isinstance(element, (list, tuple))
+                else (element.get_factory().get_name(),)
+            )
             if isinstance(element, (list, tuple)):
                 elements.extend(element)
             else:
@@ -192,9 +199,118 @@ def build_processing_candidate(plan: dict[str, Any]) -> BuiltProcessingCandidate
         input_rate_hz=input_rate_hz,
         channels=channels,
         node_elements=node_elements,
+        node_factories=node_factories,
         working_capsfilter=working_caps,
         graph_factories=factories,
     )
+
+
+def build_processing_filter(plan: dict[str, Any]) -> dict[str, Any]:
+    """Build the PRODUCTIVE filter bin (ghost sink -> DSP -> ghost src).
+
+    No audio source/sink: playbin3 owns the stream and the sink. Returns the
+    bin plus primitive element facts; the caller installs it.
+    """
+    import gi
+
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst  # noqa: PLC0415 - child-native import
+
+    if not Gst.is_initialized():
+        Gst.init(None)
+
+    working_format = str(plan.get("working_format") or "")
+    input_rate_hz = int(plan.get("input_rate_hz") or 0)
+    channels = int(plan.get("channels") or 0)
+    nodes = plan.get("nodes")
+    if (
+        working_format not in {"F32LE", "F64LE"}
+        or input_rate_hz <= 0
+        or channels <= 0
+        or not isinstance(nodes, list)
+        or not nodes
+    ):
+        raise ProcessingGraphBuildError(
+            "DSP_PLAN_INVALID", "compiled plan DTO is incomplete"
+        )
+
+    bin_ = Gst.Bin.new("michi-processing-filter")
+    convert = _make(Gst, "audioconvert")
+    convert.set_property("dithering", 0)
+    convert.set_property("noise-shaping", 0)
+    working_caps = _make(Gst, "capsfilter")
+    working_caps.set_property(
+        "caps",
+        Gst.Caps.from_string(
+            f"audio/x-raw,format={working_format},rate={input_rate_hz},"
+            f"channels={channels}"
+        ),
+    )
+    elements = [convert, working_caps]
+    node_elements: dict[str, Any] = {}
+    node_factories: dict[str, tuple[str, ...]] = {}
+    for node in nodes:
+        if not isinstance(node, dict):
+            raise ProcessingGraphBuildError(
+                "DSP_PLAN_INVALID", "node entry is not an object"
+            )
+        strategy = str(node.get("strategy"))
+        node_id = str(node.get("node_id"))
+        properties = node.get("properties") or {}
+        if strategy == "gain":
+            element = _make(Gst, "volume", node_id)
+            element.set_property(
+                "volume", 10.0 ** (float(properties["gain_db"]) / 20.0)
+            )
+        elif strategy == "graphic_eq_nbands":
+            cascade = properties.get("biquad_cascade")
+            if not isinstance(cascade, list) or not cascade:
+                raise ProcessingGraphBuildError(
+                    "DSP_PLAN_INVALID", "graphic EQ requires a biquad cascade"
+                )
+            element = _build_biquad_cascade(Gst, node_id, cascade)
+        else:
+            raise ProcessingGraphBuildError(
+                "DSP_STRATEGY_UNAVAILABLE",
+                f"the host builder does not implement {strategy!r}",
+            )
+        node_elements[node_id] = element
+        node_factories[node_id] = (
+            tuple(item.get_factory().get_name() for item in element)
+            if isinstance(element, (list, tuple))
+            else (element.get_factory().get_name(),)
+        )
+        elements.extend(element if isinstance(element, (list, tuple)) else [element])
+    for element in elements:
+        bin_.add(element)
+    chain = [convert, working_caps]
+    for element in node_elements.values():
+        chain.extend(element if isinstance(element, (list, tuple)) else [element])
+    for upstream, downstream in zip(chain, chain[1:], strict=False):
+        if not upstream.link(downstream):
+            raise ProcessingGraphBuildError(
+                "DSP_GRAPH_LINK_FAILED",
+                f"cannot link {upstream.get_name()} -> {downstream.get_name()}",
+            )
+    sink_ghost = Gst.GhostPad.new("sink", convert.get_static_pad("sink"))
+    src_ghost = Gst.GhostPad.new("src", chain[-1].get_static_pad("src"))
+    if sink_ghost is None or src_ghost is None or not bin_.add_pad(sink_ghost):
+        raise ProcessingGraphBuildError(
+            "DSP_GRAPH_BUILD_FAILED", "cannot expose the filter ghost pads"
+        )
+    if not bin_.add_pad(src_ghost):
+        raise ProcessingGraphBuildError(
+            "DSP_GRAPH_BUILD_FAILED", "cannot expose the filter src ghost pad"
+        )
+    return {
+        "bin": bin_,
+        "node_elements": node_elements,
+        "node_factories": node_factories,
+        "working_capsfilter": working_caps,
+        "graph_factories": tuple(
+            element.get_factory().get_name() for element in elements
+        ),
+    }
 
 
 def _build_biquad_cascade(gst, node_id: str, cascade: list[dict[str, Any]]):

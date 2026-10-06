@@ -201,6 +201,23 @@ class FakeEnginePort:
     def set_runtime_failure_callback(self, callback) -> None:
         self._failure_cb = callback
 
+    pipeline_generation = 0
+
+    def install_processing_filter(self, filter_bin) -> dict:
+        if self.behavior == "commit_reject":
+            raise RuntimeError("DSP_COMMIT_FAILED: scripted install failure")
+        self.installed_filter = filter_bin
+        return {
+            "installed": True,
+            "runtime_identity": "fake:playbin3/audio-filter",
+            "pipeline_generation": self.pipeline_generation,
+        }
+
+    def remove_processing_filter(self) -> bool:
+        had = getattr(self, "installed_filter", None) is not None
+        self.installed_filter = None
+        return had
+
     def processing_capabilities(self) -> dict:
         if self.behavior == "capabilities_hang":
             time.sleep(60)
