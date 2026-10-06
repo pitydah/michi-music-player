@@ -17,16 +17,10 @@ from enum import StrEnum
 from typing import Any
 
 from michi.application.processing_graph_compiler import (
-    CompiledProcessingNode,
     CompiledProcessingPlan,
     ProcessingBackendCapabilities,
 )
-from michi.domain.audio_processing import (
-    GRAPHIC_EQ_CENTER_HZ,
-    BiquadType,
-    GraphicEqLayout,
-    ProcessingStrategy,
-)
+from michi.domain.audio_processing import ProcessingStrategy
 
 #: Strategies the F05 native builder actually implements TODAY. Factory
 #: presence alone never implies support: the effective set is the
@@ -88,8 +82,12 @@ class AudioProcessingService:
         self,
         *,
         capability_query: Callable[[], dict[str, Any]] | None = None,
+        native_mapping: object | None = None,
     ) -> None:
         self._capability_query = capability_query
+        # Infrastructure-owned native mapping (pure math + DTO shaping); the
+        # application layer never imports infrastructure.
+        self._native_mapping = native_mapping
         self._capability_state = ProcessingCapabilityState.UNKNOWN
         self._capabilities = ProcessingBackendCapabilities(
             backend_id="gstreamer-host",
@@ -132,98 +130,15 @@ class AudioProcessingService:
         return self._effective_plan_id
 
     # ── wire (parent semantic -> child native) ───────────────────────
-    @staticmethod
-    def _graphic_cascade(
-        rate_hz: int, centers: list[float], gains: list[float]
-    ) -> list[dict[str, Any]]:
-        """Parent-computed RBJ peaking cascade for the active graphic bands."""
-        from michi.infrastructure.audio_processing.biquad import (
-            biquad_coefficients,
-        )
-
-        cascade: list[dict[str, Any]] = []
-        for center, gain in zip(centers, gains, strict=True):
-            coefficients = biquad_coefficients(
-                BiquadType.PEAK,
-                rate_hz=float(rate_hz),
-                frequency_hz=float(center),
-                q=_GRAPHIC_OCTAVE_Q,
-                gain_db=float(gain),
+    def plan_to_wire(self, plan: CompiledProcessingPlan) -> dict[str, Any]:
+        """Build the bounded native execution DTO for one compiled plan."""
+        mapping = self._native_mapping
+        if mapping is None:
+            raise ProcessingReadbackMismatchError(
+                "DSP_NATIVE_MAPPING_UNAVAILABLE",
+                "no native mapping is composed for this processing service",
             )
-            cascade.append(
-                {
-                    "b": [
-                        coefficients.b0,
-                        coefficients.b1,
-                        coefficients.b2,
-                    ],
-                    "a": [1.0, coefficients.a1, coefficients.a2],
-                }
-            )
-        return cascade
-
-    @classmethod
-    def expected_native_properties(
-        cls, node: CompiledProcessingNode, *, rate_hz: int
-    ) -> dict[str, Any]:
-        """Expected NATIVE readback shape for one compiled node."""
-        properties = {str(key): json_normalize(value) for key, value in node.properties}
-        if node.strategy is ProcessingStrategy.GAIN:
-            return {"gain_db": float(properties["gain_db"])}
-        if node.strategy is ProcessingStrategy.GRAPHIC_EQ_NBANDS:
-            layout = GraphicEqLayout(str(properties["layout_id"]))
-            indices = [int(value) for value in properties["band_indices"]]
-            centers = [GRAPHIC_EQ_CENTER_HZ[layout][index] for index in indices]
-            gains = [float(value) for value in properties["gains_db"]]
-            return {
-                "layout_id": layout.value,
-                "band_indices": indices,
-                "biquad": cls._graphic_cascade(rate_hz, centers, gains),
-            }
-        raise ValueError(f"no native mapping for strategy {node.strategy.value!r}")
-
-    @staticmethod
-    def plan_to_wire(plan: CompiledProcessingPlan) -> dict[str, Any]:
-        """Build the bounded native execution DTO for one compiled plan.
-
-        Semantic enrichment stays parent-side: graphic band centers are
-        derived from the canonical layout, never from the child.
-        """
-        nodes: list[dict[str, Any]] = []
-        for node in plan.nodes:
-            properties = {
-                str(key): json_normalize(value) for key, value in node.properties
-            }
-            if node.strategy is ProcessingStrategy.GRAPHIC_EQ_NBANDS:
-                layout = GraphicEqLayout(str(properties["layout_id"]))
-                indices = [int(value) for value in properties["band_indices"]]
-                properties["band_centers_hz"] = [
-                    GRAPHIC_EQ_CENTER_HZ[layout][index] for index in indices
-                ]
-                properties["biquad_cascade"] = AudioProcessingService._graphic_cascade(
-                    plan.sample_contract.input_rate_hz,
-                    [float(value) for value in properties["band_centers_hz"]],
-                    [float(value) for value in properties["gains_db"]],
-                )
-            nodes.append(
-                {
-                    "node_id": node.node_id,
-                    "kind": node.kind.value,
-                    "strategy": node.strategy.value,
-                    "properties": properties,
-                }
-            )
-        contract = plan.sample_contract
-        return {
-            "plan_id": plan.plan_id,
-            "graph_id": plan.graph_id,
-            "graph_revision": plan.graph_revision,
-            "input_format": contract.input_format,
-            "working_format": contract.working_format,
-            "input_rate_hz": contract.input_rate_hz,
-            "channels": contract.channels_in,
-            "nodes": nodes,
-        }
+        return mapping.plan_to_wire(plan)
 
     # ── capacidades (child-native, parent-decided) ────────────────────
     def refresh_capabilities(
@@ -331,8 +246,14 @@ class AudioProcessingService:
                     "DSP_READBACK_STRATEGY_MISMATCH",
                     f"node {expected.node_id!r} strategy {actual.get('strategy')!r}",
                 )
+            mapping = self._native_mapping
+            if mapping is None:
+                raise ProcessingReadbackMismatchError(
+                    "DSP_NATIVE_MAPPING_UNAVAILABLE",
+                    "no native mapping is composed for this processing service",
+                )
             try:
-                expected_properties = AudioProcessingService.expected_native_properties(
+                expected_properties = mapping.expected_native_properties(
                     expected, rate_hz=plan.sample_contract.input_rate_hz
                 )
             except ValueError as exc:

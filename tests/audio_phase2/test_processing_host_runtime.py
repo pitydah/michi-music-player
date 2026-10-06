@@ -36,6 +36,9 @@ from michi.infrastructure.audio_engines.gstreamer_host_client import (
 from michi.infrastructure.audio_engines.gstreamer_host_port import (
     GStreamerHostedAudioPort,
 )
+from michi.infrastructure.audio_processing.native_mapping import (
+    NativeProcessingMapping,
+)
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
 
@@ -102,7 +105,8 @@ def test_real_host_shared_pcm_processing_candidate_readback_first() -> None:
         facts = port.query_processing_capabilities()
         assert isinstance(facts.get("gstreamer_version"), str)
         service = AudioProcessingService(
-            capability_query=port.query_processing_capabilities
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
         )
         capabilities = service.refresh_capabilities()
         # Real environment: the F05 slice strategies are supported.
@@ -162,7 +166,8 @@ def test_real_host_refuses_unimplemented_peq_strategy() -> None:
     try:
         port.activate()
         service = AudioProcessingService(
-            capability_query=port.query_processing_capabilities
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
         )
         service.refresh_capabilities()
         with pytest.raises(ProcessingCompilationError) as info:
@@ -198,7 +203,8 @@ def test_new_candidate_supersedes_previous_native_candidate() -> None:
     try:
         port.activate()
         service = AudioProcessingService(
-            capability_query=port.query_processing_capabilities
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
         )
         service.refresh_capabilities()
         plan = _compile(service, _graph())

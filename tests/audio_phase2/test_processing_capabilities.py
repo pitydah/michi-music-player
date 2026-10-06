@@ -41,6 +41,9 @@ from michi.infrastructure.audio_engines.gstreamer_host_client import (
 from michi.infrastructure.audio_engines.gstreamer_host_port import (
     GStreamerHostedAudioPort,
 )
+from michi.infrastructure.audio_processing.native_mapping import (
+    NativeProcessingMapping,
+)
 
 FAKE_HOST = Path(__file__).parent / "gst_host_engine_fake.py"
 FAST = {
@@ -172,7 +175,8 @@ def test_service_decides_support_from_real_facts() -> None:
     try:
         port.activate()
         service = AudioProcessingService(
-            capability_query=port.query_processing_capabilities
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
         )
         capabilities = service.refresh_capabilities()
         assert service.capability_state is ProcessingCapabilityState.QUERIED
@@ -199,7 +203,8 @@ def test_missing_equalizer_still_supports_graphic_via_cascade() -> None:
     try:
         port.activate()
         service = AudioProcessingService(
-            capability_query=port.query_processing_capabilities
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
         )
         capabilities = service.refresh_capabilities()
         assert ProcessingStrategy.GAIN in capabilities.strategies
@@ -214,7 +219,8 @@ def test_incompatible_property_excludes_support() -> None:
     try:
         port.activate()
         service = AudioProcessingService(
-            capability_query=port.query_processing_capabilities
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
         )
         capabilities = service.refresh_capabilities()
         assert ProcessingStrategy.GRAPHIC_EQ_NBANDS not in capabilities.strategies
@@ -271,7 +277,7 @@ def _observed_for(plan, *, override=None):
 
 
 def _plan():
-    service = AudioProcessingService()
+    service = AudioProcessingService(native_mapping=NativeProcessingMapping())
     capabilities = service.refresh_capabilities()
     assert capabilities.strategies == frozenset()
     effective = EffectiveProcessingGraphResolver().resolve(
@@ -292,7 +298,7 @@ def _plan():
 
 
 def test_readback_exact_match_passes_and_publishes() -> None:
-    service = AudioProcessingService()
+    service = AudioProcessingService(native_mapping=NativeProcessingMapping())
     service.note_requested()
     plan = _plan()
     service.validate_readback(plan, _observed_for(plan))
@@ -316,7 +322,7 @@ def test_readback_exact_match_passes_and_publishes() -> None:
     ],
 )
 def test_readback_mismatch_fails_closed(override) -> None:
-    service = AudioProcessingService()
+    service = AudioProcessingService(native_mapping=NativeProcessingMapping())
     service.note_requested()
     plan = _plan()
     with pytest.raises(ProcessingReadbackMismatchError) as info:
@@ -327,7 +333,7 @@ def test_readback_mismatch_fails_closed(override) -> None:
 
 
 def test_missing_readback_is_a_typed_mismatch() -> None:
-    service = AudioProcessingService()
+    service = AudioProcessingService(native_mapping=NativeProcessingMapping())
     service.note_requested()
     plan = _plan()
     with pytest.raises(ProcessingReadbackMismatchError) as info:
@@ -338,7 +344,7 @@ def test_missing_readback_is_a_typed_mismatch() -> None:
 def test_stale_processing_commit_cannot_publish_over_newer_intent() -> None:
     from michi.application.audio_processing_service import ProcessingStaleCommitError
 
-    service = AudioProcessingService()
+    service = AudioProcessingService(native_mapping=NativeProcessingMapping())
     first = service.note_requested()
     plan = _plan()
     service.validate_readback(plan, _observed_for(plan))
@@ -370,11 +376,11 @@ def test_graphic_cascade_matches_the_rbj_golden_mapping() -> None:
         assets=(),
     )
     node = plan.nodes[0]
-    expected = AudioProcessingService.expected_native_properties(
+    expected = NativeProcessingMapping().expected_native_properties(
         node, rate_hz=plan.sample_contract.input_rate_hz
     )
-    from michi.application.audio_processing_service import _GRAPHIC_OCTAVE_Q
     from michi.domain.audio_processing import GRAPHIC_EQ_CENTER_HZ, GraphicEqLayout
+    from michi.infrastructure.audio_processing.native_mapping import GRAPHIC_OCTAVE_Q
 
     properties = dict(node.properties)
     gains = properties["gains_db"]
@@ -387,7 +393,7 @@ def test_graphic_cascade_matches_the_rbj_golden_mapping() -> None:
             BiquadType.PEAK,
             rate_hz=float(plan.sample_contract.input_rate_hz),
             frequency_hz=center,
-            q=_GRAPHIC_OCTAVE_Q,
+            q=GRAPHIC_OCTAVE_Q,
             gain_db=float(gain),
         )
         assert band["a"] == [1.0, reference.a1, reference.a2]
