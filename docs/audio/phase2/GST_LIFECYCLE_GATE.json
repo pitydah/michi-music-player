@@ -134,7 +134,7 @@
   ],
   "ci": {
     "verified_head": "3a7a3e1",
-    "verified_head_full": "3a7a3e1e177746b389054a786100876c6f0493bdf",
+    "verified_head_full": "3a7a3e11f432f5775e92bedb2d19b03a07d0e509",
     "chain": [
       "3d88894 \u2014 exact-head green (run 37385352867), Qt-singleton corrective",
       "e64eec3 \u2014 exact-head green (run 37386583855), receipt CI binding",
