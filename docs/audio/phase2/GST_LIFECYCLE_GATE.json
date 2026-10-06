@@ -34,7 +34,7 @@
     "graceful_semantics": "GRACEFUL is recorded only when the host acknowledged SHUTDOWN_COMPLETE; a host that dies first is EXITED_BEFORE (never a false graceful close)"
   },
   "productive_gstreamer_isolation": {
-    "parent_productive_gst_objects": "ZERO (structural firewall test asserts no set_state/get_state/ElementFactory.make/gi in the productive parent modules; in-process port construction confined to the injected-bindings test provider class)",
+    "parent_productive_gst_objects": "ZERO productive GStreamer lifecycle objects (no pipeline, no state transition, no bus); the availability probe performs dependency inspection only (GI/playbin3 factory lookup) and never a lifecycle call",
     "shared_hosted": "YES \u2014 all canonical AudioPort commands (load/play/pause/resume/stop/seek/volume/mute/position/duration) forward to the child host",
     "direct_hosted": "YES \u2014 stage/discard + every executor reversal (mark_previous_source_released, begin_runtime, verify_preroll, observe_runtime, record_runtime_anomaly, abort, release) cross the boundary as strict wire DTOs; the real GStreamerDirectOutputExecutor classifies in the parent",
     "characterization": "stays in its own disposable worker (SubprocessSourceCharacterizer); not merged",
@@ -84,9 +84,9 @@
   },
   "acceptance_criteria_status": {
     "known_reproducer_no_longer_wedges_parent": "PASS (natural envelope clean; injected real-host wedge/crash contained)",
-    "no_unbounded_lifecycle_call_on_owner_thread": "PASS (owner waits are parent-deadline bounded; owner queue keeps draining during the wait)",
+    "no_unbounded_lifecycle_call_on_owner_thread": "PASS (parent-owned deadlines + Qt event pumping + worker-based async command seam; the owner never waits blind)",
     "characterization_ownership_bounded_cancellable": "PASS (unchanged disposable worker)",
-    "parent_owner_responsiveness": "PASS (14.84 ms max stall under churn + host wedge)",
+    "parent_owner_responsiveness": "PASS (bounded host waits pump the real Qt loop on the owner thread; QTimer heartbeat continuity proven during a hung host and during characterization; async seam keeps the owner free end-to-end)",
     "host_kill_bounded": "PASS (SIGSTOP ladder 11.05 s total closure; SIGKILL detection 0.024 s)",
     "host_reap_and_no_orphans": "PASS (every containment reaped; 0 orphan PIDs; repeated spawn/close cycles leak-free)",
     "generation_gates": "PASS (stale frames/events from superseded or retired incarnations dropped; two-domain fence unit-tested)",
@@ -98,12 +98,14 @@
   "test_evidence": {
     "host_protocol": "22 tests (framing, bounds, strict validation, generation fence)",
     "host_supervisor": "16 deterministic fake-host tests (handshake, deadlines, TERM/KILL/reap, orphans, stale frames, responsiveness)",
-    "host_port": "16 tests (command surface, owner queue, generation fence, host-loss mapping, bounded close, owner-drain heartbeat, hang-on-play/stop, crash-on-load)",
+    "host_port": "20 tests (command surface, owner queue, generation fences, host-loss mapping, bounded close, owner-drain heartbeat, hang-on-play/stop, crash-on-load, resync evidence parity, coalescing)",
     "host_direct": "7 tests (wire DTOs + real executor reversals through IPC)",
     "host_loss": "5 tests (commit/loss/close truth, EXITED_BEFORE honesty, SIGKILL close, restart, no autoplay)",
     "host_firewall": "6 tests (no productive native calls, hosted default, adapter re-seal)",
     "host_real": "4 tests (real handshake, restart generation, real engine open/close, real shared command surface)",
-    "host_total": 76
+    "host_total": 87,
+    "host_qt": "6 tests (real Qt dispatch path, QTimer responsiveness, async seam)",
+    "characterization": "7 tests (pumped wait, cancellation, Qt timer, cancel-hook wiring)"
   },
   "consequences": {
     "GST_LIFECYCLE_GATE": "PASS",
@@ -146,5 +148,28 @@
     ],
     "local_full_suite": "5598 passed, 3 skipped, 0 failed (before the 3 added fault-path tests; audio_phase2 afterwards 344 passed, 1 skipped)",
     "note": "Any later receipt-only or docs-only commit is a documentation change over this verified implementation tree."
+  },
+  "owner_corrective": {
+    "audit": "parent/Qt integration review found a real Qt dispatch defect (zero-arg signal emitted with an argument, exception silenced), unmeasured Qt responsiveness, remaining synchronous owner waits, characterization cancellation debt, Direct resync evidence parity, incomplete generation fences and unbounded position dispatch.",
+    "head": "1555f36",
+    "fixed": [
+      "Qt dispatch: consistent wake contract; dispatch failures logged; real Qt-loop tests prove spontaneous host events arrive without manual draining",
+      "Qt owner responsiveness: bounded host waits pump the real Qt event loop on the owner thread; QTimer heartbeat proven during a hung host (0 ticks before fix, >=5 after)",
+      "non-blocking seam: submit_async + async command variants execute on a worker and deliver typed completions (same AudioLoadError disposition) through the owner queue; QTimer stays alive during a hung async load",
+      "characterization: PumpedSourceCharacterizer keeps the owner pumping during the bounded wait; cancel_pending_prepare aborts the worker via the canonical cancel hook",
+      "Direct resync evidence transported verbatim from the native port (no fabricated values; empty when the host cannot answer)",
+      "generation fences: responses must echo the request command generation; reverse callbacks rejected when superseded (documented close-handoff exception); stale counters in diagnostics",
+      "POSITION/DURATION latest-wins coalescing: 500 observations collapse to one owner item; critical events never merged or dropped"
+    ],
+    "tests_added": {
+      "host_total": "87 (includes 6 real-Qt dispatch/responsiveness tests)",
+      "characterization": "7 (pumping, cancellation, Qt timer during characterization, cancel hook wiring)"
+    },
+    "post_corrective_reproducer": {
+      "run_dir": "~/.local/state/michi/m11-4-physical/gst-output-host-gate/20261005T213436-32bb5ddc",
+      "classification": "COMPLETE (exit 0, stalled false)",
+      "result": "90.12 s / 628 cycles / 0 media rejections / 0 orphans / parent max stall 15.14 ms; SIGSTOP contained in 11.044 s (FORCED_KILL + reap + restart); SIGKILL contained in 0.023 s (EXITED_BEFORE + reap + restart)",
+      "verdict": "PASS_CONTAINED"
+    }
   }
 }
