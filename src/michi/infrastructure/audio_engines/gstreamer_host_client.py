@@ -102,6 +102,7 @@ class SupervisorState(Enum):
 class _PendingRequest:
     request_id: str
     operation: str | None
+    expected_command_generation: int = 0
     response: dict[str, Any] | None = None
     error: OutputHostError | None = None
     condition: threading.Condition = field(default_factory=threading.Condition)
@@ -166,6 +167,8 @@ class GStreamerHostSupervisor:
         self._termination_kind: str | None = None
         self._lost_reason: str | None = None
         self._stale_events = 0
+        self._stale_responses = 0
+        self._stale_callbacks = 0
         # Serializes an owner waiting on a command while draining owner frames
         # (reverse callbacks) so the child can never deadlock against us.
         self._owner_drain: Callable[[], None] | None = None
@@ -230,6 +233,8 @@ class GStreamerHostSupervisor:
                 "termination_kind": self._termination_kind,
                 "lost_reason": self._lost_reason,
                 "stale_events": self._stale_events,
+                "stale_responses": self._stale_responses,
+                "stale_callbacks": self._stale_callbacks,
                 "pending_requests": len(self._pending),
             }
 
@@ -488,7 +493,11 @@ class GStreamerHostSupervisor:
             self._last_request_id = request_id
             self._last_operation = str(operation)
             self._last_progress_at = time.monotonic()
-            holder = _PendingRequest(request_id=request_id, operation=str(operation))
+            holder = _PendingRequest(
+                request_id=request_id,
+                operation=str(operation),
+                expected_command_generation=command_generation,
+            )
             self._pending[request_id] = holder
         message = make_message(
             MessageKind.COMMAND,
@@ -652,14 +661,28 @@ class GStreamerHostSupervisor:
         if not isinstance(request_id, str):
             return
         with self._lock:
-            holder = self._pending.pop(request_id, None)
+            holder = self._pending.get(request_id)
         if holder is None:
             return
+        # Two-domain fence for RESPONSES as well: a response that does not
+        # echo the command generation of its request can never complete it.
+        if frame.get("command_generation") != holder.expected_command_generation:
+            with self._lock:
+                self._stale_responses += 1
+            return
+        with self._lock:
+            self._pending.pop(request_id, None)
         with holder.condition:
             holder.response = frame
             holder.condition.notify_all()
 
     def _handle_callback(self, frame: dict[str, Any]) -> None:
+        with self._lock:
+            current_generation = self._host_generation
+        if frame.get("host_generation") != current_generation:
+            with self._lock:
+                self._stale_callbacks += 1
+            return
         handler = self._callback_handler
         ok = False
         payload: dict[str, Any] = {}

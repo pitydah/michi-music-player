@@ -156,9 +156,18 @@ class FakeHost:
     def _respond(
         self, kind: MessageKind, request_id: str | None, payload: dict
     ) -> None:
+        # Commands in these tests are issued with command_generation 0; the
+        # wrong-generation behavior answers with 1 so the parent must drop it.
+        generation = (
+            1
+            if self._behavior == "wrong_command_generation"
+            and kind is not MessageKind.HELLO
+            else 0
+        )
         frame = make_message(
             kind,
             host_generation=self._host_generation,
+            command_generation=generation,
             request_id=request_id,
             payload=payload,
         )

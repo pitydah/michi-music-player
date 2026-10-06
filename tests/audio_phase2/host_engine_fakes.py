@@ -8,6 +8,7 @@ wedges, crashes and pump-death telemetry.
 from __future__ import annotations
 
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -123,6 +124,15 @@ class FakeEnginePort:
 
     def play(self) -> None:
         self.calls.append(("play", None))
+        if self.behavior == "delayed_event":
+            # Spontaneous late event: arrives while the parent owner is IDLE,
+            # so only the real Qt dispatch path can deliver it.
+            def late() -> None:
+                time.sleep(0.3)
+                self._emit_state(PlaybackStatus.PLAYING)
+
+            threading.Thread(target=late, daemon=True).start()
+            return
         if self.behavior == "hang_on_play":
             time.sleep(60)
         if self.behavior == "crash_on_play":
@@ -190,6 +200,15 @@ class FakeEnginePort:
 
     def set_runtime_failure_callback(self, callback) -> None:
         self._failure_cb = callback
+
+    def resync_evidence(self) -> dict:
+        return {
+            "resync_delay_ms": 250,
+            "resync_actual_hold_ms": 248,
+            "port_generation": 7,
+            "execution_generation": 1,
+            "plan_id": "plan:direct",
+        }
 
     # ── emisión ───────────────────────────────────────────────────────
     def _emit_state(self, status: PlaybackStatus) -> None:

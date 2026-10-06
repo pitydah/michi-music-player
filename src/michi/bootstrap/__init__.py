@@ -7,6 +7,7 @@ additionally wires the QML engine, settings/coordinators and owns the
 shutdown lifecycle.
 """
 
+import contextlib
 import logging
 import sys
 from dataclasses import dataclass
@@ -112,6 +113,7 @@ from michi.infrastructure.audio_engines.providers import (
     QtEngineProvider,
 )
 from michi.infrastructure.audio_engines.subprocess_characterizer import (
+    PumpedSourceCharacterizer,
     SubprocessSourceCharacterizer,
 )
 from michi.infrastructure.audio_output.direct_output_executor import (
@@ -176,6 +178,23 @@ from michi.presentation.settings_bridge import SettingsBridge
 logger = logging.getLogger(__name__)
 
 _MISSING = object()  # sentinel: production default vs explicit None override
+
+
+def _qt_event_pump() -> None:
+    """Best-effort Qt event processing used while waiting on bounded work.
+
+    Infrastructure-side waits (characterization) call this between short
+    slices so the owner thread keeps servicing timers/input/paint instead of
+    freezing for the whole budget. Absent Qt is a no-op.
+    """
+    try:
+        from PySide6.QtCore import QCoreApplication
+    except Exception:  # noqa: BLE001 - Qt optional at this boundary
+        return
+    app = QCoreApplication.instance()
+    if app is not None:
+        with contextlib.suppress(Exception):
+            app.processEvents()
 
 
 def _data_dir() -> Path:
@@ -444,8 +463,12 @@ def _build_services(
         else:
             # Production default: decoded-source characterization runs in a
             # disposable worker process, so a stuck GStreamer state change can
-            # never wedge the application (diagnostics/wedge-2026-10-03).
-            source_characterizer = SubprocessSourceCharacterizer()
+            # never wedge the application (diagnostics/wedge-2026-10-03). The
+            # pumped wrapper keeps the Qt owner responsive during the bounded
+            # wait and routes cancellation to that worker.
+            source_characterizer = PumpedSourceCharacterizer(
+                SubprocessSourceCharacterizer(), pump=_qt_event_pump
+            )
     qualification_host = read_qualification_host_environment()
     probe_bindings = runtime_gstreamer_bindings
 
@@ -546,6 +569,7 @@ def _build_services(
             for binding in audio_devices.bindings_for(plan.stable_device_id)
         ),
         async_submit=preparation_executor.submit,
+        cancel_prepare_work=getattr(source_characterizer, "cancel", None),
     )
     from michi.application.volume_policy_service import VolumePolicyService
 

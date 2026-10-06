@@ -37,6 +37,7 @@ from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
 )
 
 FAKE_HOST = Path(__file__).parent / "gst_host_engine_fake.py"
+SCRIPTED_FAKE = Path(__file__).parent / "gst_host_fake.py"
 FAST = {
     "start_timeout_s": 1.5,
     "command_timeout_s": 1.0,
@@ -369,3 +370,131 @@ def test_remaining_host_fault_paths_are_bounded(behavior: str) -> None:
     finally:
         port.close()
         supervisor.close()
+
+
+# ── corrective: evidence parity, generation fences, coalescing ────────
+def test_resync_evidence_is_transported_from_the_host() -> None:
+    supervisor, port = _port("normal")
+    try:
+        port.activate()
+        evidence = port.resync_evidence()
+        assert evidence["resync_delay_ms"] == 250
+        assert evidence["resync_actual_hold_ms"] == 248
+        assert evidence["plan_id"] == "plan:direct"
+    finally:
+        port.close()
+
+
+def test_resync_evidence_without_native_support_is_empty() -> None:
+    from michi.infrastructure.audio_engines.gstreamer_host_session import (
+        HostEngineSession,
+    )
+
+    session = HostEngineSession(
+        port_factory=lambda _coordinator: object(),
+        emit=lambda *_args: None,
+        request_callback=lambda *_args: (False, {}),
+    )
+
+    class _NoEvidence:
+        pass
+
+    session._port = _NoEvidence()  # noqa: SLF001 - adapter under test
+    ok, payload = session._op_query_resync_evidence({})  # noqa: SLF001
+    assert ok is True
+    assert payload == {"evidence": {}}
+
+
+def test_response_with_wrong_command_generation_is_never_accepted() -> None:
+    from michi.infrastructure.audio_engines.gstreamer_host_client import (
+        OutputHostTimeoutError,
+    )
+
+    supervisor = GStreamerHostSupervisor(
+        command_factory=lambda fd: [
+            sys.executable,
+            str(SCRIPTED_FAKE),
+            "--fd",
+            str(fd),
+            "--behavior",
+            "wrong_command_generation",
+        ],
+        **FAST,
+    )
+    supervisor.start()
+    with pytest.raises(OutputHostTimeoutError):
+        supervisor.ping()
+    assert supervisor.diagnostics()["stale_responses"] >= 1
+    supervisor.close()
+
+
+def test_reverse_callback_from_a_superseded_generation_is_rejected() -> None:
+    from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
+        MessageKind,
+        make_message,
+    )
+
+    supervisor, port = _port("normal")
+    try:
+        port.activate()
+        stale = make_message(
+            MessageKind.CALLBACK,
+            host_generation=supervisor.host_generation,
+            command_generation=port._command_generation + 5,  # noqa: SLF001
+            request_id="cb-stale",
+            payload={"callback": "mark_previous_source_released"},
+        )
+        ok, payload = port._handle_host_callback(stale)  # noqa: SLF001
+        assert ok is False
+        assert payload["code"] == "OUTPUT_HOST_STALE_RESULT"
+        assert port._stale_callbacks == 1  # noqa: SLF001
+        # During close the same child generation is intentionally allowed for
+        # the release handoff. The handler waits for the owner queue, so it is
+        # executed on a helper thread while this test drains.
+        with port._lock:  # noqa: SLF001
+            port._closing = True  # noqa: SLF001
+        closed_result: list[tuple[bool, dict]] = []
+        helper = threading.Thread(
+            target=lambda: closed_result.append(
+                port._handle_host_callback(stale)  # noqa: SLF001
+            )
+        )
+        helper.start()
+        deadline = time.monotonic() + 3.0
+        while not closed_result and time.monotonic() < deadline:
+            port.dispatch_pending()
+            time.sleep(0.01)
+        helper.join(timeout=2.0)
+        assert closed_result and closed_result[0][0] is True
+    finally:
+        port.close()
+
+
+def test_position_events_are_coalesced_latest_wins() -> None:
+    from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
+        HostEvent,
+        MessageKind,
+        make_message,
+    )
+
+    supervisor, port = _port("normal")
+    received: list[int] = []
+    port.subscribe_position_changed(received.append)
+    try:
+        port.activate()
+        generation = port._command_generation  # noqa: SLF001
+        for ms in range(1, 501):
+            port._on_host_event(  # noqa: SLF001 - coalescing seam under test
+                make_message(
+                    MessageKind.EVENT,
+                    host_generation=supervisor.host_generation,
+                    command_generation=generation,
+                    payload={"event": HostEvent.POSITION.value, "ms": ms},
+                )
+            )
+        # 500 observations, but the queue only carries one coalesced worker.
+        assert len(port._owner_queue) <= 2  # noqa: SLF001
+        port.dispatch_pending()
+        assert received == [500]
+    finally:
+        port.close()

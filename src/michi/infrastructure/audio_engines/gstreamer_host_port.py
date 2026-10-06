@@ -16,6 +16,7 @@ hook), so a child blocked in a reverse callback can never deadlock us.
 from __future__ import annotations
 
 import contextlib
+import logging
 import threading
 from collections.abc import Callable
 from pathlib import Path
@@ -57,6 +58,8 @@ from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
     HostOperation,
 )
 
+_logger = logging.getLogger(__name__)
+
 
 class GStreamerHostedAudioPort(AudioPort):
     """Canonical AudioPort over the hosted GStreamer runtime."""
@@ -88,7 +91,12 @@ class GStreamerHostedAudioPort(AudioPort):
         self._termination_kind: str | None = None
         self._runtime_failure_callback: Callable[[int, str], None] | None = None
         self._owner_invoker: object | None = None
+        self._qt_app: object | None = None
+        self._owner_thread_ident: int | None = None
         self._owner_queue: list[Callable[[], None]] = []
+        self._latest_work: dict[str, Callable[[], None]] = {}
+        self._latest_queued: set[str] = set()
+        self._stale_callbacks = 0
         self._eom: list[Callable[[], None]] = []
         self._pos: list[Callable[[int], None]] = []
         self._dur: list[Callable[[int], None]] = []
@@ -105,9 +113,10 @@ class GStreamerHostedAudioPort(AudioPort):
                 return
         self._supervisor.set_event_sink(self._on_host_event)
         self._supervisor.set_lost_sink(self._on_host_lost)
-        self._supervisor.set_owner_drain(self._drain_all)
+        self._supervisor.set_owner_drain(self._owner_wait_tick)
         self._supervisor.set_callback_handler(self._handle_host_callback)
         self._ensure_owner_invoker()
+        self._capture_owner_runtime()
         try:
             hello = self._supervisor.start()
         except OutputHostError as exc:
@@ -191,16 +200,124 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             self._runtime_failure_callback = callback
 
+    # ── seam asíncrono (el owner NUNCA espera el deadline) ────────────
+    def submit_async(
+        self,
+        operation: HostOperation,
+        payload: dict[str, Any] | None = None,
+        *,
+        on_done: Callable[[dict[str, Any]], None] | None = None,
+        on_failed: Callable[[Exception], None] | None = None,
+        deadline_s: float | None = None,
+        bump_generation: bool = False,
+    ) -> None:
+        """Execute one command on a worker; completion lands on the owner.
+
+        The owner thread is free while the host command is in flight: the
+        completion callback is enqueued through the canonical owner queue
+        (Qt dispatch in production, explicit drain in tests). Failures are
+        delivered as the original typed exception — never swallowed.
+        """
+        deadline = self._command_deadline_s if deadline_s is None else deadline_s
+
+        def work() -> dict[str, Any]:
+            return self._submit(
+                operation,
+                payload or {},
+                deadline_s=deadline,
+                bump_generation=bump_generation,
+            )
+
+        self._run_worker(
+            work, on_done=on_done, on_failed=on_failed, name=str(operation)
+        )
+
+    def load_async(
+        self,
+        file_path: Path,
+        *,
+        on_done: Callable[[dict[str, Any]], None] | None = None,
+        on_failed: Callable[[Exception], None] | None = None,
+    ) -> None:
+        """Async load: owner-free; the failure carries the SAME typed
+        AudioLoadError (with previous_source_preserved) as the sync path."""
+        path = Path(file_path)
+        self._run_worker(
+            lambda: self._load_once(path, deadline_s=self._load_deadline_s),
+            on_done=on_done,
+            on_failed=on_failed,
+            name=str(HostOperation.LOAD),
+        )
+
+    def play_async(self, *, on_done=None, on_failed=None) -> None:
+        self._command_async(HostOperation.PLAY, None, on_done, on_failed)
+
+    def pause_async(self, *, on_done=None, on_failed=None) -> None:
+        self._command_async(HostOperation.PAUSE, None, on_done, on_failed)
+
+    def resume_async(self, *, on_done=None, on_failed=None) -> None:
+        self._command_async(HostOperation.RESUME, None, on_done, on_failed)
+
+    def stop_async(self, *, on_done=None, on_failed=None) -> None:
+        def work() -> dict[str, Any]:
+            with self._lock:
+                self._command_generation += 1
+            return self._command(HostOperation.STOP)
+
+        self._run_worker(work, on_done=on_done, on_failed=on_failed, name="stop")
+
+    def seek_async(
+        self,
+        position_ms: int,
+        *,
+        on_done=None,
+        on_failed=None,
+    ) -> None:
+        self._command_async(
+            HostOperation.SEEK, {"position_ms": int(position_ms)}, on_done, on_failed
+        )
+
+    def _command_async(self, operation, payload, on_done, on_failed) -> None:
+        self._run_worker(
+            lambda: self._command(operation, payload),
+            on_done=on_done,
+            on_failed=on_failed,
+            name=str(operation),
+        )
+
+    def _run_worker(self, work, *, on_done, on_failed, name: str) -> None:
+        def run() -> None:
+            try:
+                result = work()
+            except Exception as exc:  # noqa: BLE001 - typed completion boundary
+                # Bind before the lambda: Python clears `exc` when the except
+                # block exits, and the closure runs later on the owner thread.
+                error = exc
+                if on_failed is not None:
+                    self._enqueue(lambda: on_failed(error))
+            else:
+                if on_done is not None:
+                    value = result
+                    self._enqueue(lambda: on_done(value))
+
+        threading.Thread(
+            target=run,
+            name=f"gst-host-cmd-{name}",
+            daemon=True,
+        ).start()
+
     # ── comandos de transporte ────────────────────────────────────────
     def load(self, file_path: Path) -> None:
-        path = Path(file_path)
+        self._load_once(Path(file_path), deadline_s=self._load_deadline_s)
+
+    def _load_once(self, path: Path, *, deadline_s: float) -> dict[str, Any]:
         with self._lock:
             self._command_generation += 1
         try:
-            self._submit(
+            return self._submit(
                 HostOperation.LOAD,
                 {"path": str(path)},
-                deadline_s=self._load_deadline_s,
+                deadline_s=deadline_s,
             )
         except OutputHostCommandError as exc:
             payload = exc.payload
@@ -258,12 +375,30 @@ class GStreamerHostedAudioPort(AudioPort):
             return None if self._last_state is None else self._last_state.name.lower()
 
     def resync_evidence(self) -> dict[str, int | None]:
-        """Direct resync evidence is transported with the Direct integration.
+        """Configured and MEASURED resync hold of the current Direct execution.
 
-        Returning fabricated values would be false evidence; until the Direct
-        stage is hosted this port reports nothing.
+        The evidence is produced by the native port inside the host and
+        transported verbatim (parity with the in-process port). A host that
+        cannot answer truthfully yields NO evidence (empty dict + a warning),
+        never fabricated values.
         """
-        return {}
+        try:
+            payload = self._submit(
+                HostOperation.QUERY_RESYNC_EVIDENCE,
+                {},
+                deadline_s=min(2.0, self._command_deadline_s),
+            )
+        except OutputHostError as exc:
+            _logger.warning("resync evidence unavailable: %s", exc)
+            return {}
+        evidence = payload.get("evidence")
+        if not isinstance(evidence, dict):
+            return {}
+        return {
+            str(key): value
+            for key, value in evidence.items()
+            if value is None or isinstance(value, (int, str))
+        }
 
     # ── Direct staging (transport only; authority stays in the parent) ─
     def stage_direct_load(self, preparation: object, *, executor: object) -> None:
@@ -326,6 +461,23 @@ class GStreamerHostedAudioPort(AudioPort):
         bounded command wait (owner-drain hook), so the child can never
         deadlock against the parent.
         """
+        # Two-domain fence for REVERSE callbacks too: a callback from a
+        # superseded command generation can never mutate parent authority.
+        # During close the child may still answer the release handoff with
+        # the generation it last processed, which is intentionally allowed.
+        with self._lock:
+            generation = frame.get("command_generation")
+            closing = self._closing
+        if generation != self._command_generation and not closing:
+            with self._lock:
+                self._stale_callbacks += 1
+            return (
+                False,
+                {
+                    "code": "OUTPUT_HOST_STALE_RESULT",
+                    "detail": ("callback belongs to a superseded command generation"),
+                },
+            )
         import threading
 
         holder: dict[str, Any] = {
@@ -474,6 +626,34 @@ class GStreamerHostedAudioPort(AudioPort):
         if callback in self._pst:
             self._pst.remove(callback)
 
+    def _capture_owner_runtime(self) -> None:
+        """Owner identity + Qt application for responsive bounded waits."""
+        self._owner_thread_ident = threading.get_ident()
+        try:
+            from PySide6.QtCore import QCoreApplication
+        except Exception:  # noqa: BLE001 - Qt is optional for the transport
+            self._qt_app = None
+            return
+        self._qt_app = QCoreApplication.instance()
+
+    def _owner_wait_tick(self) -> None:
+        """Owner-runtime tick while a parent-owned deadline elapses.
+
+        Drains the port owner queue AND pumps the real Qt event loop when the
+        caller IS the Qt owner thread, so timers, input, animation and paint
+        keep running during a bounded host wait instead of freezing them.
+        """
+        self._drain_all()
+        app = self._qt_app
+        if app is None:
+            return
+        if threading.get_ident() != self._owner_thread_ident:
+            return
+        try:
+            app.processEvents()
+        except Exception:  # noqa: BLE001 - never let pumping break the wait
+            _logger.debug("Qt event pumping failed during host wait", exc_info=True)
+
     def _ensure_owner_invoker(self) -> None:
         """Production Qt dispatch: queued signal into the owner thread.
 
@@ -491,15 +671,24 @@ class GStreamerHostedAudioPort(AudioPort):
         drain = self._drain_all
 
         class _OwnerInvoker(QObject):
-            sig = Signal()
+            # Zero-argument wake signal: the queued delivery runs the drain on
+            # the owner thread. The dispatcher callback argument (the drain
+            # itself in every composition) is intentionally ignored on this
+            # path; emitting a callback through a zero-arg signal was a real
+            # dispatch bug (silently swallowed by an over-broad suppression).
+            wake = Signal()
 
             def __init__(self) -> None:
                 super().__init__()
-                self.sig.connect(drain, Qt.QueuedConnection)
+                self.wake.connect(drain, Qt.QueuedConnection)
 
         invoker = _OwnerInvoker()
         self._owner_invoker = invoker  # ownership: keep the QObject alive
-        self._owner_dispatch = invoker.sig.emit
+
+        def dispatch_on_owner(_callback: Callable[[], None]) -> None:
+            invoker.wake.emit()
+
+        self._owner_dispatch = dispatch_on_owner
 
     # ── owner queue ───────────────────────────────────────────────────
     def dispatch_pending(self) -> None:
@@ -515,13 +704,42 @@ class GStreamerHostedAudioPort(AudioPort):
             with contextlib.suppress(Exception):
                 work()
 
+    def _enqueue_latest(self, key: str, work: Callable[[], None]) -> None:
+        """Latest-value coalescing for high-frequency observation events.
+
+        Only position/duration ride this path (latest-wins semantics); every
+        critical event (EOS, ERROR, MEDIA_ACCEPTED/REJECTED, HOST_FAULT,
+        state changes) keeps its individual queue entry and is NEVER merged
+        or dropped.
+        """
+        with self._lock:
+            self._latest_work[key] = work
+            if key in self._latest_queued:
+                return
+            self._latest_queued.add(key)
+
+        def run() -> None:
+            with self._lock:
+                pending = self._latest_work.pop(key, None)
+                self._latest_queued.discard(key)
+            if pending is not None:
+                with contextlib.suppress(Exception):
+                    pending()
+
+        self._enqueue(run)
+
     def _enqueue(self, work: Callable[[], None]) -> None:
         with self._lock:
             self._owner_queue.append(work)
         dispatch = self._owner_dispatch
         if dispatch is not None:
-            with contextlib.suppress(Exception):
+            try:
                 dispatch(self._drain_all)
+            except Exception:  # noqa: BLE001 - reported, never silently lost
+                _logger.warning(
+                    "owner dispatch failed; the event stays queued",
+                    exc_info=True,
+                )
 
     # ── IPC entrante ──────────────────────────────────────────────────
     def _on_host_event(self, frame: dict[str, Any]) -> None:
@@ -546,10 +764,10 @@ class GStreamerHostedAudioPort(AudioPort):
             self._enqueue(self._commit_eos)
         elif kind == HostEvent.POSITION.value:
             ms = int(payload.get("ms") or 0)
-            self._enqueue(lambda: self._commit_position(ms))
+            self._enqueue_latest("position", lambda: self._commit_position(ms))
         elif kind == HostEvent.DURATION.value:
             ms = int(payload.get("ms") or 0)
-            self._enqueue(lambda: self._commit_duration(ms))
+            self._enqueue_latest("duration", lambda: self._commit_duration(ms))
         elif kind == HostEvent.HOST_FAULT.value:
             reason = str(payload.get("reason"))
             self._enqueue(lambda: self._relay_runtime_failure(reason))

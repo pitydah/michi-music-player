@@ -85,6 +85,7 @@ class HostOperation(StrEnum):
     SET_MUTED = "set_muted"
     QUERY_POSITION = "query_position"
     QUERY_DURATION = "query_duration"
+    QUERY_RESYNC_EVIDENCE = "query_resync_evidence"
     STAGE_DIRECT = "stage_direct"
     DISCARD_DIRECT = "discard_direct"
     ABORT_CANDIDATE = "abort_candidate"

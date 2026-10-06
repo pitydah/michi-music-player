@@ -11,10 +11,12 @@ Direct pipeline's own state changes.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import sys
 import threading
+from collections.abc import Callable
 from pathlib import Path
 
 from michi.application.audio_output_ports import SourceCharacterizationError
@@ -191,3 +193,55 @@ class SubprocessSourceCharacterizer:
         except json.JSONDecodeError:
             return None
         return payload if isinstance(payload, dict) else None
+
+
+class PumpedSourceCharacterizer:
+    """Owner-responsive wrapper around a (bounded) source characterizer.
+
+    The inner ``characterize`` runs on a disposable worker thread; the
+    CALLING thread waits in short slices and invokes ``pump`` between them.
+    With a Qt pump, timers/input/paint keep running while the bounded
+    characterization subprocess completes — the owner never freezes for the
+    full characterization budget. Cancellation reaches the inner port so a
+    superseded preparation aborts its worker instead of waiting it out.
+    """
+
+    def __init__(
+        self,
+        inner,
+        *,
+        pump: Callable[[], None] | None = None,
+        slice_s: float = 0.01,
+    ) -> None:
+        self._inner = inner
+        self._pump = pump
+        self._slice_s = max(0.001, float(slice_s))
+
+    def characterize(self, path: Path) -> DecodedSourceSignal:
+        holder: dict[str, object] = {}
+
+        def run() -> None:
+            try:
+                holder["value"] = self._inner.characterize(Path(path))
+            except BaseException as exc:  # noqa: BLE001 - re-raised on caller
+                holder["error"] = exc
+
+        worker = threading.Thread(
+            target=run, name="michi-characterize-wait", daemon=True
+        )
+        worker.start()
+        while True:
+            if self._pump is not None:
+                with contextlib.suppress(Exception):  # pumping is best-effort
+                    self._pump()
+            worker.join(timeout=self._slice_s)
+            if not worker.is_alive():
+                break
+        if "error" in holder:
+            raise holder["error"]  # type: ignore[misc]
+        return holder["value"]  # type: ignore[return-value]
+
+    def cancel(self) -> None:
+        cancel = getattr(self._inner, "cancel", None)
+        if cancel is not None:
+            cancel()

@@ -194,6 +194,30 @@ class HostEngineSession:
     ) -> tuple[bool, dict[str, Any]]:
         return True, {"value": int(self._require_port().duration())}
 
+    def _op_query_resync_evidence(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        port = self._require_port()
+        evidence = getattr(port, "resync_evidence", None)
+        if evidence is None:
+            return True, {"evidence": {}}
+        raw = evidence() or {}
+        clean: dict[str, Any] = {}
+        for key, value in raw.items():
+            if (
+                value is None
+                or isinstance(value, str)
+                or isinstance(value, int)
+                and not isinstance(value, bool)
+            ):
+                clean[str(key)] = value
+            else:
+                return False, {
+                    "code": "OUTPUT_HOST_PROTOCOL_INVALID_FIELD",
+                    "detail": f"resync evidence field {key!r} is not primitive",
+                }
+        return True, {"evidence": clean}
+
     def _op_stage_direct(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         preparation = preparation_from_wire(payload.get("preparation"))
         port = self._require_port()
@@ -299,6 +323,9 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     HostOperation.SET_MUTED.value: HostEngineSession._op_set_muted,
     HostOperation.QUERY_POSITION.value: HostEngineSession._op_query_position,
     HostOperation.QUERY_DURATION.value: HostEngineSession._op_query_duration,
+    HostOperation.QUERY_RESYNC_EVIDENCE.value: (
+        HostEngineSession._op_query_resync_evidence
+    ),
     HostOperation.STAGE_DIRECT.value: HostEngineSession._op_stage_direct,
     HostOperation.DISCARD_DIRECT.value: HostEngineSession._op_discard_direct,
 }

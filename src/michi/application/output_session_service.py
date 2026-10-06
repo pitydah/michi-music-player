@@ -10,6 +10,7 @@ conserva, el active pasa a None y la sesión queda LOST (§22).
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections.abc import Callable, Mapping
 from contextlib import suppress
@@ -429,6 +430,7 @@ class OutputSessionService:
         shared_transaction: SharedOutputTransaction | None = None,
         plan_still_current: Callable[[OutputPlan], bool] | None = None,
         async_submit: Callable[[Callable, Callable], None] | None = None,
+        cancel_prepare_work: Callable[[], None] | None = None,
     ) -> None:
         self._planner = planner
         self._facts_provider = facts_provider
@@ -437,6 +439,7 @@ class OutputSessionService:
         self._shared = shared_transaction or SharedOutputTransaction()
         self._plan_still_current = plan_still_current or (lambda _plan: True)
         self._async_submit = async_submit
+        self._cancel_prepare_work = cancel_prepare_work
         self._async_prepare_generation = 0
         self._pending_prepare_device_id: str | None = None
         self._state = OutputSessionState.IDLE
@@ -671,9 +674,19 @@ class OutputSessionService:
             self._async_submit(work, completed)
 
     def cancel_pending_prepare(self) -> None:
-        """Invalidate worker continuations without cancelling blocking ALSA I/O."""
+        """Invalidate worker continuations AND abort characterization work.
+
+        Generation invalidation alone left a superseded source-
+        characterization subprocess running for its whole bounded budget;
+        the composition injects the canonical cancel hook so a superseded
+        preparation releases that worker immediately.
+        """
         self._async_prepare_generation += 1
         self._pending_prepare_device_id = None
+        cancel = self._cancel_prepare_work
+        if cancel is not None:
+            with contextlib.suppress(Exception):
+                cancel()
 
     def _prepare_request(self, path: Path, request: OutputRequest) -> str:
         if self._state not in (
