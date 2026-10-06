@@ -44,7 +44,7 @@ def test_sc_01_worker_success_yields_the_decoded_signal(tmp_path, monkeypatch) -
     monkeypatch.setattr(
         characterizer,
         "_run",
-        lambda argv: (json.dumps(_ok_payload()).encode(), b"", 0, False),
+        lambda argv, generation: (json.dumps(_ok_payload()).encode(), b"", 0, False),
     )
 
     signal = characterizer.characterize(_source(tmp_path))
@@ -82,7 +82,7 @@ def test_sc_03_worker_error_json_wins_over_exit_code(tmp_path, monkeypatch) -> N
     monkeypatch.setattr(
         characterizer,
         "_run",
-        lambda argv: (json.dumps(payload).encode(), b"", 1, False),
+        lambda argv, generation: (json.dumps(payload).encode(), b"", 1, False),
     )
 
     with pytest.raises(SourceCharacterizationError) as exc:
@@ -94,7 +94,9 @@ def test_sc_03_worker_error_json_wins_over_exit_code(tmp_path, monkeypatch) -> N
 def test_sc_04_garbage_stdout_is_a_protocol_failure(tmp_path, monkeypatch) -> None:
     characterizer = SubprocessSourceCharacterizer()
     monkeypatch.setattr(
-        characterizer, "_run", lambda argv: (b"not-json", b"boom", 1, False)
+        characterizer,
+        "_run",
+        lambda argv, generation: (b"not-json", b"boom", 1, False),
     )
 
     with pytest.raises(SourceCharacterizationError) as exc:
@@ -115,7 +117,7 @@ def test_sc_05_missing_source_never_spawns_a_worker(tmp_path) -> None:
 def test_sc_06_superseded_generation_is_stale(tmp_path, monkeypatch) -> None:
     characterizer = SubprocessSourceCharacterizer()
 
-    def run(argv):
+    def run(argv, generation):
         characterizer.cancel()  # supersede while the worker "runs"
         return (json.dumps(_ok_payload()).encode(), b"", 0, False)
 

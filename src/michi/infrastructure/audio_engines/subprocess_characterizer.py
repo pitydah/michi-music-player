@@ -29,8 +29,28 @@ KILL_GRACE_S = 0.5
 MAX_OUTPUT_BYTES = 64 * 1024
 
 
+class _ActiveWorker:
+    """Generation-owned characterization worker identity.
+
+    Cancellation targets the EXACT worker record: a worker started before a
+    superseding request is terminated and reaped, never left unmanaged.
+    """
+
+    __slots__ = ("generation", "process")
+
+    def __init__(self, generation: int, process: subprocess.Popen) -> None:
+        self.generation = generation
+        self.process = process
+
+
 class SubprocessSourceCharacterizer:
-    """Bounded, generation-safe decoded-source characterization facade."""
+    """Bounded, generation-safe, SINGLE-FLIGHT characterization facade.
+
+    A new request terminates and reaps the previous productive worker before
+    (and independently of) its own start; a cancel landing inside the Popen
+    publication window still owns that process. At most one productive
+    characterization worker is active at any time.
+    """
 
     def __init__(
         self,
@@ -51,12 +71,17 @@ class SubprocessSourceCharacterizer:
         with self._lock:
             self._generation += 1
             generation = self._generation
+            previous = self._active
+            self._active = None
+        # Single-flight: the superseded productive worker dies promptly,
+        # instead of running out its whole budget while its result is stale.
+        self._terminate_and_reap(previous)
         source = Path(path)
         if not source.is_file():
             raise SourceCharacterizationError(
                 "SOURCE_FILE_UNAVAILABLE", f"local source does not exist: {source}"
             )
-        stdout, stderr, exit_code, timed_out = self._run(self._argv(source))
+        stdout, stderr, exit_code, timed_out = self._run(self._argv(source), generation)
         with self._lock:
             stale = generation != self._generation
         if stale:
@@ -94,8 +119,8 @@ class SubprocessSourceCharacterizer:
         with self._lock:
             self._generation += 1
             active = self._active
-        if active is not None:
-            self._terminate(active)
+            self._active = None
+        self._terminate_and_reap(active)
 
     def _argv(self, source: Path) -> list[str]:
         return [
@@ -143,7 +168,7 @@ class SubprocessSourceCharacterizer:
             channel_positions=channel_positions,
         )
 
-    def _run(self, argv: list[str]) -> tuple[bytes, bytes, int, bool]:
+    def _run(self, argv: list[str], generation: int) -> tuple[bytes, bytes, int, bool]:
         try:
             proc = subprocess.Popen(
                 argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -151,7 +176,14 @@ class SubprocessSourceCharacterizer:
         except OSError as exc:
             return b"", str(exc).encode("utf-8"), -1, False
         with self._lock:
-            self._active = proc
+            cancelled_before_publication = generation != self._generation
+            if not cancelled_before_publication:
+                self._active = _ActiveWorker(generation, proc)
+        if cancelled_before_publication:
+            # A cancel/supersede landed inside the Popen window: never become
+            # an unmanaged worker; the caller raises STALE via its own gate.
+            self._terminate_and_reap(_ActiveWorker(generation, proc))
+            return b"", b"", -1, False
         try:
             stdout, stderr = proc.communicate(timeout=self._timeout_s)
             return (
@@ -175,8 +207,28 @@ class SubprocessSourceCharacterizer:
             )
         finally:
             with self._lock:
-                if self._active is proc:
+                active = self._active
+                if active is not None and active.process is proc:
                     self._active = None
+
+    def _terminate_and_reap(self, active: _ActiveWorker | None) -> None:
+        """Bounded terminate -> SIGKILL -> reap of one owned worker."""
+        if active is None:
+            return
+        proc = active.process
+        with contextlib.suppress(OSError):
+            proc.terminate()
+        try:
+            proc.wait(timeout=self._kill_grace_s)
+            return
+        except subprocess.TimeoutExpired:
+            pass
+        except Exception:  # noqa: BLE001 - already-dead processes are fine
+            return
+        with contextlib.suppress(OSError):
+            proc.kill()
+        with contextlib.suppress(Exception):
+            proc.wait(timeout=self._kill_grace_s)
 
     @staticmethod
     def _terminate(proc: subprocess.Popen) -> None:
@@ -216,8 +268,21 @@ class PumpedSourceCharacterizer:
         self._inner = inner
         self._pump = pump
         self._slice_s = max(0.001, float(slice_s))
+        self._lock = threading.Lock()
+        self._generation = 0
+        self._worker: threading.Thread | None = None
 
     def characterize(self, path: Path) -> DecodedSourceSignal:
+        with self._lock:
+            self._generation += 1
+            generation = self._generation
+            previous = self._worker
+            self._worker = None
+        # Supersede any in-flight PREVIOUS worker promptly: a newer request
+        # can never overlap a productive characterization. Never cancel the
+        # worker this call is about to start.
+        if previous is not None and previous.is_alive():
+            self._cancel_inner()
         holder: dict[str, object] = {}
 
         def run() -> None:
@@ -229,6 +294,8 @@ class PumpedSourceCharacterizer:
         worker = threading.Thread(
             target=run, name="michi-characterize-wait", daemon=True
         )
+        with self._lock:
+            self._worker = worker
         worker.start()
         while True:
             if self._pump is not None:
@@ -237,11 +304,28 @@ class PumpedSourceCharacterizer:
             worker.join(timeout=self._slice_s)
             if not worker.is_alive():
                 break
+        with self._lock:
+            superseded = generation != self._generation
+        if superseded:
+            # The old result is never returned as current: a newer request
+            # (or an explicit cancel) owns the truth.
+            raise SourceCharacterizationError(
+                "SOURCE_CHARACTERIZATION_STALE",
+                "decoded-source result belongs to a superseded request",
+            )
         if "error" in holder:
             raise holder["error"]  # type: ignore[misc]
         return holder["value"]  # type: ignore[return-value]
 
     def cancel(self) -> None:
+        with self._lock:
+            self._generation += 1
+            self._worker = None
+        # An explicit cancel always reaches the inner port, even if the
+        # wrapper has no worker bookkeeping (defense in depth).
+        self._cancel_inner()
+
+    def _cancel_inner(self) -> None:
         cancel = getattr(self._inner, "cancel", None)
         if cancel is not None:
             cancel()

@@ -452,6 +452,33 @@ class GStreamerHostedAudioPort(AudioPort):
         return DirectExecutorError(code, detail)
 
     # ── reverse callbacks (child -> parent) ───────────────────────────
+    def _is_allowed_close_handoff(self, frame: dict[str, Any]) -> bool:
+        """Minimal close-time callback allowlist.
+
+        Only the terminal ``release`` callback may run after the command
+        generation advanced for close, and only for the CURRENT host
+        incarnation and (when the frame carries one) the executor's exact
+        execution handle. Every other family keeps the generation firewall
+        even during close.
+        """
+        if not self._closing:
+            return False
+        payload = frame.get("payload") or {}
+        if payload.get("callback") != CB_RELEASE:
+            return False
+        if frame.get("host_generation") != self._supervisor.host_generation:
+            return False
+        if "handle" in payload:
+            executor = self._direct_executor
+            current = None if executor is None else getattr(executor, "handle", None)
+            try:
+                requested = handle_from_wire(payload.get("handle"))
+            except Exception:  # noqa: BLE001 - malformed identity never passes
+                return False
+            if requested != current:
+                return False
+        return True
+
     def _handle_host_callback(
         self, frame: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
@@ -463,12 +490,13 @@ class GStreamerHostedAudioPort(AudioPort):
         """
         # Two-domain fence for REVERSE callbacks too: a callback from a
         # superseded command generation can never mutate parent authority.
-        # During close the child may still answer the release handoff with
-        # the generation it last processed, which is intentionally allowed.
+        # The ONLY documented exception is the terminal release handoff
+        # during close, gated by an explicit minimal predicate — never a
+        # blanket "closing accepts anything".
         with self._lock:
             generation = frame.get("command_generation")
-            closing = self._closing
-        if generation != self._command_generation and not closing:
+        stale_generation = generation != self._command_generation
+        if stale_generation and not self._is_allowed_close_handoff(frame):
             with self._lock:
                 self._stale_callbacks += 1
             return (

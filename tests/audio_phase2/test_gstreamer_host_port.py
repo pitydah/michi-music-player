@@ -428,44 +428,106 @@ def test_response_with_wrong_command_generation_is_never_accepted() -> None:
     supervisor.close()
 
 
-def test_reverse_callback_from_a_superseded_generation_is_rejected() -> None:
+def _stale_callback_frame(port, supervisor, callback: str, payload_extra=None):
     from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
         MessageKind,
         make_message,
     )
 
+    payload = {"callback": callback}
+    if payload_extra:
+        payload.update(payload_extra)
+    return make_message(
+        MessageKind.CALLBACK,
+        host_generation=supervisor.host_generation,
+        command_generation=port._command_generation + 5,  # noqa: SLF001
+        request_id="cb-stale",
+        payload=payload,
+    )
+
+
+def _drain_until(port, result: list, predicate, timeout_s: float = 3.0) -> None:
+    deadline = time.monotonic() + timeout_s
+    while not predicate() and time.monotonic() < deadline:
+        port.dispatch_pending()
+        time.sleep(0.01)
+
+
+@pytest.mark.parametrize(
+    "callback",
+    [
+        "mark_previous_source_released",
+        "begin_runtime",
+        "verify_preroll",
+        "observe_runtime",
+        "record_runtime_anomaly",
+        "abort",
+        "unknown_callback",
+    ],
+)
+def test_close_never_disables_the_callback_generation_firewall(callback: str) -> None:
     supervisor, port = _port("normal")
     try:
         port.activate()
-        stale = make_message(
-            MessageKind.CALLBACK,
-            host_generation=supervisor.host_generation,
-            command_generation=port._command_generation + 5,  # noqa: SLF001
-            request_id="cb-stale",
-            payload={"callback": "mark_previous_source_released"},
-        )
-        ok, payload = port._handle_host_callback(stale)  # noqa: SLF001
-        assert ok is False
-        assert payload["code"] == "OUTPUT_HOST_STALE_RESULT"
-        assert port._stale_callbacks == 1  # noqa: SLF001
-        # During close the same child generation is intentionally allowed for
-        # the release handoff. The handler waits for the owner queue, so it is
-        # executed on a helper thread while this test drains.
         with port._lock:  # noqa: SLF001
             port._closing = True  # noqa: SLF001
-        closed_result: list[tuple[bool, dict]] = []
+        ok, payload = port._handle_host_callback(  # noqa: SLF001
+            _stale_callback_frame(port, supervisor, callback)
+        )
+        assert ok is False, callback
+        assert payload["code"] == "OUTPUT_HOST_STALE_RESULT"
+    finally:
+        port.close()
+
+
+def test_close_allows_only_the_release_handoff() -> None:
+    supervisor, port = _port("normal")
+    try:
+        port.activate()
+        with port._lock:  # noqa: SLF001
+            port._closing = True  # noqa: SLF001
+        frame = _stale_callback_frame(port, supervisor, "release", {"reason": "close"})
+        result: list[tuple[bool, dict]] = []
         helper = threading.Thread(
-            target=lambda: closed_result.append(
-                port._handle_host_callback(stale)  # noqa: SLF001
+            target=lambda: result.append(
+                port._handle_host_callback(frame)  # noqa: SLF001
             )
         )
         helper.start()
-        deadline = time.monotonic() + 3.0
-        while not closed_result and time.monotonic() < deadline:
-            port.dispatch_pending()
-            time.sleep(0.01)
+        _drain_until(port, result, lambda: bool(result))
         helper.join(timeout=2.0)
-        assert closed_result and closed_result[0][0] is True
+        assert result and result[0][0] is True
+    finally:
+        port.close()
+
+
+def test_close_release_with_wrong_execution_handle_is_rejected() -> None:
+    supervisor, port = _port("normal")
+    try:
+        port.activate()
+        with port._lock:  # noqa: SLF001
+            port._closing = True  # noqa: SLF001
+        frame = _stale_callback_frame(
+            port,
+            supervisor,
+            "release",
+            {"reason": "close", "handle": {"generation": 99, "plan_id": "plan:x"}},
+        )
+        ok, payload = port._handle_host_callback(frame)  # noqa: SLF001
+        assert ok is False
+        assert payload["code"] == "OUTPUT_HOST_STALE_RESULT"
+    finally:
+        port.close()
+
+
+def test_stale_release_outside_close_is_rejected() -> None:
+    supervisor, port = _port("normal")
+    try:
+        port.activate()
+        ok, payload = port._handle_host_callback(  # noqa: SLF001
+            _stale_callback_frame(port, supervisor, "release", {"reason": "close"})
+        )
+        assert ok is False and payload["code"] == "OUTPUT_HOST_STALE_RESULT"
     finally:
         port.close()
 

@@ -79,7 +79,13 @@ def test_cancel_reaches_the_inner_worker_and_unblocks_the_caller() -> None:
     thread.join(timeout=2.0)
     assert not thread.is_alive()
     assert inner.cancel_called.is_set()
-    assert errors and "cancelled" in str(errors[0])
+    # A superseded completion is never returned as current: the wrapper
+    # reports the stale generation contract (the inner failure is swallowed
+    # because a newer request owns the truth).
+    from michi.application.audio_output_ports import SourceCharacterizationError
+
+    assert errors and isinstance(errors[0], SourceCharacterizationError)
+    assert errors[0].code == "SOURCE_CHARACTERIZATION_STALE"
 
 
 def test_qt_timer_keeps_running_during_characterization(qapp) -> None:

@@ -188,13 +188,19 @@ def _qt_event_pump() -> None:
     freezing for the whole budget. Absent Qt is a no-op.
     """
     try:
-        from PySide6.QtCore import QCoreApplication
+        from PySide6.QtCore import QCoreApplication, QThread
     except Exception:  # noqa: BLE001 - Qt optional at this boundary
         return
     app = QCoreApplication.instance()
-    if app is not None:
-        with contextlib.suppress(Exception):
-            app.processEvents()
+    if app is None:
+        return
+    # Event processing belongs to the application thread ONLY: characterization
+    # now also runs on executor workers, and pumping Qt from a pool thread is
+    # never legal. Worker-side waits simply skip the pump.
+    if QThread.currentThread() is not app.thread():
+        return
+    with contextlib.suppress(Exception):
+        app.processEvents()
 
 
 def _data_dir() -> Path:
