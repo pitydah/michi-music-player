@@ -377,6 +377,50 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             return None if self._last_state is None else self._last_state.name.lower()
 
+    def query_processing_capabilities(self) -> dict[str, Any]:
+        """Child-native processing capability facts (primitive dict).
+
+        Bounded by the parent-owned command deadline; a wedged or dead host
+        surfaces as a typed transport failure, never as partial facts.
+        """
+        payload = self._submit(
+            HostOperation.QUERY_PROCESSING_CAPABILITIES,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+        facts = payload.get("facts")
+        if not isinstance(facts, dict):
+            raise AudioTransportCommandError(
+                "processing capability query returned malformed facts"
+            )
+        return facts
+
+    def prepare_processing_candidate(self, plan: dict[str, Any]) -> dict[str, Any]:
+        """Build+preroll+inspect a REAL native candidate in the child.
+
+        Returns the child's primitive readback; the parent decides. A newer
+        prepare supersedes the previous candidate inside the child.
+        """
+        payload = self._submit(
+            HostOperation.PREPARE_PROCESSING_CANDIDATE,
+            {"plan": plan},
+            deadline_s=max(self._command_deadline_s, 12.0),
+        )
+        observed = payload.get("observed")
+        if not isinstance(observed, dict):
+            raise AudioTransportCommandError(
+                "processing candidate returned a malformed readback"
+            )
+        return observed
+
+    def abort_processing_candidate(self) -> bool:
+        payload = self._submit(
+            HostOperation.ABORT_PROCESSING_CANDIDATE,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+        return bool(payload.get("aborted", False))
+
     def resync_evidence(self) -> dict[str, int | None]:
         """Configured and MEASURED resync hold of the current Direct execution.
 

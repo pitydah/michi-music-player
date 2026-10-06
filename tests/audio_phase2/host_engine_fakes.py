@@ -201,6 +201,41 @@ class FakeEnginePort:
     def set_runtime_failure_callback(self, callback) -> None:
         self._failure_cb = callback
 
+    def processing_capabilities(self) -> dict:
+        if self.behavior == "capabilities_hang":
+            time.sleep(60)
+        if self.behavior == "capabilities_crash":
+            os._exit(9)
+        factories = {
+            name: {"available": True, "properties": {}, "missing_properties": []}
+            for name in (
+                "equalizer-nbands",
+                "audioiirfilter",
+                "audiofirfilter",
+                "audioconvert",
+                "audioresample",
+                "volume",
+            )
+        }
+        if self.behavior == "capabilities_missing_eq":
+            factories["equalizer-nbands"] = {
+                "available": False,
+                "properties": {},
+                "missing_properties": ["num-bands"],
+            }
+        if self.behavior == "capabilities_incompatible_prop":
+            factories["audioiirfilter"] = {
+                "available": False,
+                "properties": {"a": True},
+                "missing_properties": ["b"],
+            }
+        return {
+            "schema_version": 1,
+            "gstreamer_version": "GStreamer fake-1.0",
+            "runtime_failure": None,
+            "factories": factories,
+        }
+
     def resync_evidence(self) -> dict:
         return {
             "resync_delay_ms": 250,

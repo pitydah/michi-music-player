@@ -83,6 +83,7 @@ class HostEngineSession:
         self._emit = emit
         self._port: EnginePort | None = None
         self._opened = False
+        self._processing_candidate: Any | None = None
         self._coordinator = HostDirectCoordinator(request_callback)
 
     @property
@@ -193,6 +194,73 @@ class HostEngineSession:
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
         return True, {"value": int(self._require_port().duration())}
+
+    def _op_prepare_processing_candidate(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        # One productive candidate at a time: a newer prepare supersedes the
+        # previous candidate with a bounded native teardown.
+        self._abort_processing_candidate()
+        plan = payload.get("plan")
+        if not isinstance(plan, dict):
+            return False, {
+                "code": "OUTPUT_HOST_PROTOCOL_INVALID_FIELD",
+                "detail": "processing plan must be an object",
+            }
+        from michi.infrastructure.audio_processing.gstreamer_graph_builder import (
+            build_processing_candidate,
+        )
+        from michi.infrastructure.audio_processing.gstreamer_runtime import (
+            inspect_processing_candidate,
+        )
+
+        built = build_processing_candidate(plan)
+        self._processing_candidate = built
+        observed = inspect_processing_candidate(built, plan)
+        return True, {"observed": observed}
+
+    def _op_abort_processing_candidate(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        aborted = self._abort_processing_candidate()
+        return True, {"aborted": aborted}
+
+    def _abort_processing_candidate(self) -> bool:
+        built = self._processing_candidate
+        self._processing_candidate = None
+        if built is None:
+            return False
+        import contextlib
+
+        from michi.infrastructure.audio_processing.gstreamer_runtime import (
+            abort_processing_candidate,
+        )
+
+        with contextlib.suppress(Exception):
+            abort_processing_candidate(built)
+        return True
+
+    def _op_query_processing_capabilities(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        # The port may provide scripted facts (test compositions); otherwise
+        # the CHILD-NATIVE probe inspects real factories in this process.
+        port = self._require_port()
+        supplied = getattr(port, "processing_capabilities", None)
+        if callable(supplied):
+            facts = supplied()
+        else:
+            from michi.infrastructure.audio_processing.gstreamer_capabilities import (
+                probe_processing_capabilities,
+            )
+
+            facts = probe_processing_capabilities()
+        if not isinstance(facts, dict):
+            return False, {
+                "code": "OUTPUT_HOST_PROTOCOL_INVALID_FIELD",
+                "detail": "processing capabilities must be an object",
+            }
+        return True, {"facts": facts}
 
     def _op_query_resync_evidence(
         self, payload: dict[str, Any]
@@ -325,6 +393,15 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     HostOperation.QUERY_DURATION.value: HostEngineSession._op_query_duration,
     HostOperation.QUERY_RESYNC_EVIDENCE.value: (
         HostEngineSession._op_query_resync_evidence
+    ),
+    HostOperation.QUERY_PROCESSING_CAPABILITIES.value: (
+        HostEngineSession._op_query_processing_capabilities
+    ),
+    HostOperation.PREPARE_PROCESSING_CANDIDATE.value: (
+        HostEngineSession._op_prepare_processing_candidate
+    ),
+    HostOperation.ABORT_PROCESSING_CANDIDATE.value: (
+        HostEngineSession._op_abort_processing_candidate
     ),
     HostOperation.STAGE_DIRECT.value: HostEngineSession._op_stage_direct,
     HostOperation.DISCARD_DIRECT.value: HostEngineSession._op_discard_direct,

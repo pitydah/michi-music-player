@@ -1,0 +1,111 @@
+"""CHILD-NATIVE candidate runtime: inspect (readback) and abort (AP2-F05).
+
+Primitive readback only: property values actually read from the live native
+elements after preroll, plus the negotiated working caps. The parent compares
+expected vs observed; this module never decides effectiveness.
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Any
+
+from michi.infrastructure.audio_processing.gstreamer_graph_builder import (
+    BuiltProcessingCandidate,
+    ProcessingGraphBuildError,
+)
+
+
+def inspect_processing_candidate(
+    built: BuiltProcessingCandidate, plan: dict[str, Any]
+) -> dict[str, Any]:
+    """Read back the live candidate: properties + negotiated working caps."""
+    nodes = plan.get("nodes") or []
+    observed_nodes: list[dict[str, Any]] = []
+    for node in nodes:
+        node_id = str(node.get("node_id"))
+        strategy = str(node.get("strategy"))
+        element = built.node_elements.get(node_id)
+        if element is None:
+            raise ProcessingGraphBuildError(
+                "DSP_READBACK_MISSING", f"no native element for {node_id!r}"
+            )
+        properties = node.get("properties") or {}
+        observed_nodes.append(
+            {
+                "node_id": node_id,
+                "strategy": strategy,
+                "observed": _read_node(strategy, element, properties),
+            }
+        )
+    return {
+        "plan_id": built.plan_id,
+        "graph_revision": int(plan.get("graph_revision") or 0),
+        "nodes": observed_nodes,
+        "working_caps": _working_caps(built),
+        "graph_factories": list(built.graph_factories),
+    }
+
+
+def _read_node(
+    strategy: str, element: Any, properties: dict[str, Any]
+) -> dict[str, Any]:
+    if strategy == "gain":
+        linear = float(element.get_property("volume"))
+        gain_db = float("-inf") if linear <= 0.0 else 20.0 * math.log10(linear)
+        return {"gain_db": gain_db}
+    if strategy == "graphic_eq_nbands":
+        if isinstance(element, (list, tuple)):
+            # audioiirfilter cascade: report the coefficients actually set.
+            return {
+                "layout_id": str(properties.get("layout_id")),
+                "band_indices": [
+                    int(value) for value in properties.get("band_indices", [])
+                ],
+                "biquad": [
+                    {
+                        "a": [float(value) for value in band.get_property("a")],
+                        "b": [float(value) for value in band.get_property("b")],
+                    }
+                    for band in element
+                ],
+            }
+        num_bands = int(element.get_property("num-bands"))
+        gains = [
+            float(element.get_property(f"band{index}-gain"))
+            for index in range(num_bands)
+        ]
+        return {
+            "layout_id": str(properties.get("layout_id")),
+            "gains_db": gains,
+            "band_indices": [
+                int(value) for value in properties.get("band_indices", [])
+            ],
+        }
+    raise ProcessingGraphBuildError(
+        "DSP_READBACK_UNSUPPORTED", f"no readback for strategy {strategy!r}"
+    )
+
+
+def _working_caps(built: BuiltProcessingCandidate) -> dict[str, Any]:
+    caps = built.working_capsfilter.get_static_pad("src").get_current_caps()
+    if caps is None:
+        raise ProcessingGraphBuildError(
+            "DSP_READBACK_MISSING", "working caps were not negotiated"
+        )
+    structure = caps.get_structure(0)
+    return {
+        "format": str(structure.get_value("format")),
+        "rate_hz": int(structure.get_value("rate")),
+        "channels": int(structure.get_value("channels")),
+    }
+
+
+def abort_processing_candidate(built: BuiltProcessingCandidate) -> None:
+    """Terminate the candidate pipeline (bounded native teardown)."""
+    import gi
+
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst  # noqa: PLC0415 - child-native import
+
+    built.pipeline.set_state(Gst.State.NULL)

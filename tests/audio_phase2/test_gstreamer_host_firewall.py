@@ -32,6 +32,7 @@ PRODUCTIVE_PARENT_MODULES = (
     REPO / "src/michi/infrastructure/audio_engines/providers.py",
     REPO / "src/michi/infrastructure/audio_engines/gstreamer_host_port.py",
     REPO / "src/michi/infrastructure/audio_engines/gstreamer_host_client.py",
+    REPO / "src/michi/application/audio_processing_service.py",
 )
 
 FORBIDDEN_SNIPPETS = (
