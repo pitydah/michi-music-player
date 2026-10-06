@@ -167,5 +167,21 @@
       "result": "90.12 s / 628 cycles / 0 media rejections / 0 orphans / parent max stall 15.14 ms; SIGSTOP contained in 11.044 s (FORCED_KILL + reap + restart); SIGKILL contained in 0.023 s (EXITED_BEFORE + reap + restart)",
       "verdict": "PASS_CONTAINED"
     }
+  },
+  "post_gate_hardening": {
+    "date": "2026-10-05",
+    "scope": "AP2-F05 preflight (owner-safety seal + F05 contract rebase)",
+    "gate_verdict": "still PASS (containment unchanged; no regression proves containment broken)",
+    "changes": [
+      "source characterization is single-flight with generation-owned worker identity; cancel/reap targets the exact worker including the Popen publication window; superseded completions cannot commit",
+      "PumpedSourceCharacterizer supersedes only a previous in-flight worker and reports SOURCE_CHARACTERIZATION_STALE",
+      "Qt pump is restricted to the application thread (characterization now also runs on executor workers)",
+      "close-time reverse callbacks: blanket closing bypass replaced by an explicit minimal allowlist (release only, current host generation, optional exact execution handle); every other family keeps the generation firewall"
+    ],
+    "not_changed": [
+      "process containment architecture and its external reproducer evidence",
+      "the fully asynchronous preparation flip (deferred to AP2-F05's own contract; it changes the DAC acceptance load contract)"
+    ],
+    "alignment": "AP2-F05 contract rebased on the hosted architecture (phase card 191 + R11-F05 \u00a7410); phase2_context receipt contract-set b0a392472626f36158d82e325aca0500a6b7e3f3a1056cabe8e4e7728a115205; spec SHA ae6e36fda77a077e823cd7fd4be6b1fa35fef389b9f7eefcecce3c489b850f9f; alignment GO; F05 READY (not started)"
   }
 }
