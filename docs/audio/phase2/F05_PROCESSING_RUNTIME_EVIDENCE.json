@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F05",
+  "scope": "hosted Shared PCM processing runtime — first slice (PARTIAL; F05 NOT closed)",
+  "recorded_at": "2026-10-06",
+  "repo_head": "fa8e982",
+  "audio_phase2_prerequisites": {
+    "wu0_async_preparation": "SEALED (production Qt executor goldens; no nested pumping)",
+    "wu0_1_terminalization_and_intent_freshness": "SEALED (engine-switch early refusal releases the exact lease; stale refusal inert; persistence unsubscribe symmetry; monotonic output-intent revision with ABA seal and proactive characterization cancellation)"
+  },
+  "implemented": {
+    "capability_probe": "child-native, real factories via instantiate+inspect; parent decides support; missing/incompatible reported, never fatal",
+    "strategies_today": ["gain", "graphic_eq_nbands"],
+    "graphic_eq_native_mapping": "parent-computed RBJ peaking cascade (audioiirfilter x active bands); equalizer-nbands band properties are NOT exposed in GStreamer 1.28 (probe evidence)",
+    "candidate_lifecycle": "PREPARE (build+preroll+inspect) / ABORT; one productive candidate at a time; newer prepare supersedes with bounded teardown",
+    "readback": "real property values (volume dB round-trip; audioiirfilter a/b arrays) + negotiated F64LE working caps + factory list; parent compares with documented float tolerance",
+    "generation_fence": "requested vs effective revisions; DSP_STALE_COMMIT blocks a delayed commit over a newer requested revision; host loss invalidates effective processing truth while requested intent survives",
+    "parent_firewall": "audio_processing_service contains no Gst/gi usage (firewall test); native execution only in the output host"
+  },
+  "not_implemented": {
+    "playback_install": "the candidate is validated in its own prerolled pipeline inside the host; installing it into the productive playback pipeline (playbin3 audio-filter seam) is NOT done",
+    "peq_fir_convolution_resample_dither_runtime": "typed refusal via DSP_STRATEGY_UNAVAILABLE",
+    "signal_truth_publication_of_processing": "parent publishes semantic effective state only after readback validation; no Signal Truth ACTIVE claim is made by this slice",
+    "host_loss_processing_tests": "fake-host fault-injection matrix for processing is partial"
+  },
+  "phase_state": "AP2-F05 READY (DSP runtime incomplete; do NOT mark CLOSED)"
+}
