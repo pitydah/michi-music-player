@@ -480,13 +480,48 @@ def test_close_never_disables_the_callback_generation_firewall(callback: str) ->
         port.close()
 
 
-def test_close_allows_only_the_release_handoff() -> None:
-    supervisor, port = _port("normal")
+class _FakeDirectExecutor:
+    """Bound Direct executor double with an exact current handle."""
+
+    def __init__(self, handle) -> None:
+        self.handle = handle
+        self.releases: list[str] = []
+        self.aborts: list[tuple] = []
+
+    def release(self, reason: str) -> None:
+        self.releases.append(str(reason))
+        self.handle = None
+
+
+def _bound_port(behavior: str = "normal"):
+    from michi.infrastructure.audio_output.direct_output_executor import (
+        DirectExecutionHandle,
+    )
+
+    supervisor, port = _port(behavior)
+    handle = DirectExecutionHandle(generation=3, plan_id="plan:direct")
+    executor = _FakeDirectExecutor(handle)
+    with port._lock:  # noqa: SLF001
+        port._direct_executor = executor  # noqa: SLF001
+    return supervisor, port, executor, handle
+
+
+def test_close_handoff_accepts_only_the_exact_current_handle() -> None:
+    from michi.infrastructure.audio_engines.gstreamer_host_direct import (
+        handle_to_wire,
+    )
+
+    supervisor, port, executor, handle = _bound_port()
     try:
         port.activate()
         with port._lock:  # noqa: SLF001
             port._closing = True  # noqa: SLF001
-        frame = _stale_callback_frame(port, supervisor, "release", {"reason": "close"})
+        frame = _stale_callback_frame(
+            port,
+            supervisor,
+            "release",
+            {"reason": "close", "handle": handle_to_wire(handle)},
+        )
         result: list[tuple[bool, dict]] = []
         helper = threading.Thread(
             target=lambda: result.append(
@@ -497,36 +532,81 @@ def test_close_allows_only_the_release_handoff() -> None:
         _drain_until(port, result, lambda: bool(result))
         helper.join(timeout=2.0)
         assert result and result[0][0] is True
+        assert executor.releases == ["close"]
     finally:
         port.close()
 
 
-def test_close_release_with_wrong_execution_handle_is_rejected() -> None:
+@pytest.mark.parametrize(
+    ("payload_extra", "bound", "host_generation_delta", "closing"),
+    [
+        ({}, True, 0, True),  # release without handle
+        ({"handle": {"generation": 99, "plan_id": "plan:x"}}, True, 0, True),  # old
+        ({"handle": {"generation": "x", "plan_id": "plan:x"}}, True, 0, True),
+        ({"handle": {"generation": 3, "plan_id": "plan:direct"}}, False, 0, True),
+        ({"handle": {"generation": 3, "plan_id": "plan:direct"}}, True, 1, True),
+        ({"handle": {"generation": 3, "plan_id": "plan:direct"}}, True, 0, False),
+    ],
+)
+def test_close_handoff_rejects_everything_else(
+    payload_extra: dict, bound: bool, host_generation_delta: int, closing: bool
+) -> None:
+    from michi.infrastructure.audio_output.direct_output_executor import (
+        DirectExecutionHandle,
+    )
+
     supervisor, port = _port("normal")
     try:
         port.activate()
+        if bound:
+            with port._lock:  # noqa: SLF001
+                port._direct_executor = _FakeDirectExecutor(  # noqa: SLF001
+                    DirectExecutionHandle(generation=3, plan_id="plan:direct")
+                )
         with port._lock:  # noqa: SLF001
-            port._closing = True  # noqa: SLF001
+            port._closing = closing  # noqa: SLF001
         frame = _stale_callback_frame(
-            port,
-            supervisor,
-            "release",
-            {"reason": "close", "handle": {"generation": 99, "plan_id": "plan:x"}},
+            port, supervisor, "release", {"reason": "close", **payload_extra}
         )
+        if host_generation_delta:
+            frame["host_generation"] = (
+                supervisor.host_generation + host_generation_delta
+            )
         ok, payload = port._handle_host_callback(frame)  # noqa: SLF001
-        assert ok is False
+        assert ok is False, (payload_extra, bound, host_generation_delta, closing)
         assert payload["code"] == "OUTPUT_HOST_STALE_RESULT"
     finally:
         port.close()
 
 
-def test_stale_release_outside_close_is_rejected() -> None:
-    supervisor, port = _port("normal")
+def test_shared_close_release_never_bypasses_generation_firewall() -> None:
+    supervisor, port = _port("normal")  # no Direct executor bound
     try:
         port.activate()
-        ok, payload = port._handle_host_callback(  # noqa: SLF001
-            _stale_callback_frame(port, supervisor, "release", {"reason": "close"})
+        with port._lock:  # noqa: SLF001
+            port._closing = True  # noqa: SLF001
+        frame = _stale_callback_frame(port, supervisor, "release", {"reason": "close"})
+        ok, payload = port._handle_host_callback(frame)  # noqa: SLF001
+        assert ok is False and payload["code"] == "OUTPUT_HOST_STALE_RESULT"
+    finally:
+        port.close()
+
+
+def test_stale_release_outside_close_is_rejected() -> None:
+    supervisor, port, _executor, handle = _bound_port()
+    try:
+        port.activate()
+        from michi.infrastructure.audio_engines.gstreamer_host_direct import (
+            handle_to_wire,
         )
+
+        frame = _stale_callback_frame(
+            port,
+            supervisor,
+            "release",
+            {"reason": "close", "handle": handle_to_wire(handle)},
+        )
+        ok, payload = port._handle_host_callback(frame)  # noqa: SLF001
         assert ok is False and payload["code"] == "OUTPUT_HOST_STALE_RESULT"
     finally:
         port.close()

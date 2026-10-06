@@ -280,3 +280,48 @@ def test_stage_without_bound_executor_is_rejected() -> None:
         assert info.value.code == "DIRECT_EXECUTOR_IDENTITY_MISMATCH"
     finally:
         port.close()
+
+
+def test_coordinator_release_carries_the_exact_handle_and_clears_after() -> None:
+    """Child terminal release must include the current Direct identity."""
+    from michi.infrastructure.audio_engines.gstreamer_host_direct import (
+        HostDirectCoordinator,
+        handle_to_wire,
+    )
+
+    calls: list[tuple[str, dict]] = []
+
+    def request(name: str, payload: dict, timeout: float):
+        calls.append((name, payload))
+        return True, {}
+
+    coordinator = HostDirectCoordinator(request)
+    handle = DirectExecutionHandle(generation=7, plan_id="plan:direct")
+    recipe = recipe_from_plan(_plan())
+    preparation = DirectLoadPreparation(handle, recipe, candidate_volume=1.0)
+    coordinator.stage(preparation)
+
+    coordinator.release("close")
+
+    assert calls and calls[0][0] == "release"
+    assert calls[0][1]["handle"] == handle_to_wire(handle)
+    assert calls[0][1]["reason"] == "close"
+    # Cleared only AFTER the payload was sent.
+    assert coordinator.handle is None
+
+
+def test_coordinator_shared_release_sends_no_invented_handle() -> None:
+    from michi.infrastructure.audio_engines.gstreamer_host_direct import (
+        HostDirectCoordinator,
+    )
+
+    calls: list[tuple[str, dict]] = []
+
+    def request(name: str, payload: dict, timeout: float):
+        calls.append((name, payload))
+        return True, {}
+
+    coordinator = HostDirectCoordinator(request)
+    coordinator.release("close")
+    assert calls == [("release", {"reason": "close"})]
+    assert "handle" not in calls[0][1]

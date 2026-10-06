@@ -156,9 +156,13 @@ class GStreamerHostedAudioPort(AudioPort):
             self._closing = True
             self._activated = False
             self._command_generation += 1
-        # Direct truth is invalidated FIRST, while the live child can still
-        # receive the discard; a host that is already gone needs no discard
-        # (the native staged state died with its process).
+        # Host shutdown FIRST: the child releases its Direct execution while
+        # the parent executor still owns that exact identity, so the close
+        # handoff is validated instead of being an unverifiable stale accept.
+        kind = self._supervisor.shutdown()
+        # A graceful child release already cleared the parent execution; a
+        # lost host never released, so the parent invalidates truth here
+        # (idempotent release).
         cleanup_error: Exception | None = None
         executor = self._direct_executor
         if executor is not None:
@@ -166,7 +170,6 @@ class GStreamerHostedAudioPort(AudioPort):
                 executor.release("gstreamer_close")
             except Exception as exc:  # noqa: BLE001 - re-raised after invalidation
                 cleanup_error = exc
-        kind = self._supervisor.shutdown()
         with self._lock:
             self._closed = True
             self._closing = False
@@ -418,6 +421,14 @@ class GStreamerHostedAudioPort(AudioPort):
 
     def discard_direct_load(self, handle: object, *, executor: object) -> bool:
         self._require_direct_executor(executor)
+        with self._lock:
+            closing = self._closing
+        if closing:
+            # During close the host owns its teardown: the child session
+            # releases its own staged state, and a nested discard command
+            # would only race the shutdown. The parent truth is cleared by
+            # the release path.
+            return False
         try:
             payload = self._submit(
                 HostOperation.DISCARD_DIRECT,
@@ -453,13 +464,21 @@ class GStreamerHostedAudioPort(AudioPort):
 
     # ── reverse callbacks (child -> parent) ───────────────────────────
     def _is_allowed_close_handoff(self, frame: dict[str, Any]) -> bool:
-        """Minimal close-time callback allowlist.
+        """Minimal close-time callback allowlist with MANDATORY identity.
 
-        Only the terminal ``release`` callback may run after the command
-        generation advanced for close, and only for the CURRENT host
-        incarnation and (when the frame carries one) the executor's exact
-        execution handle. Every other family keeps the generation firewall
-        even during close.
+        The stale-generation exception exists for exactly one handoff: the
+        terminal release of a CURRENT Direct execution while this port is
+        closing. It is only allowed when ALL hold:
+
+          * this port is closing,
+          * callback == release,
+          * the frame carries the current host generation,
+          * a Direct executor is bound and still owns an execution handle,
+          * the payload carries a well-formed handle equal to that handle.
+
+        Anything else — including a release without a handle, a Shared-only
+        composition, or a mismatched/old/malformed handle — keeps the normal
+        generation firewall and is rejected as stale.
         """
         if not self._closing:
             return False
@@ -468,16 +487,21 @@ class GStreamerHostedAudioPort(AudioPort):
             return False
         if frame.get("host_generation") != self._supervisor.host_generation:
             return False
-        if "handle" in payload:
-            executor = self._direct_executor
-            current = None if executor is None else getattr(executor, "handle", None)
-            try:
-                requested = handle_from_wire(payload.get("handle"))
-            except Exception:  # noqa: BLE001 - malformed identity never passes
-                return False
-            if requested != current:
-                return False
-        return True
+        executor = self._direct_executor
+        if executor is None:
+            # Shared-only composition: no Direct execution exists, so there is
+            # nothing to finalize; never bypass the generation firewall.
+            return False
+        current = getattr(executor, "handle", None)
+        if current is None:
+            return False
+        if "handle" not in payload:
+            return False
+        try:
+            requested = handle_from_wire(payload.get("handle"))
+        except Exception:  # noqa: BLE001 - malformed identity never passes
+            return False
+        return requested == current
 
     def _handle_host_callback(
         self, frame: dict[str, Any]

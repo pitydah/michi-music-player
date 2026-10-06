@@ -397,8 +397,16 @@ class HostDirectCoordinator:
         )
 
     def release(self, reason: str) -> None:
+        # Build the payload BEFORE clearing the mirror: a terminal release
+        # must carry the exact Direct execution identity it is releasing so
+        # the parent can validate the close handoff instead of trusting the
+        # reason string alone.
+        handle = self._handle
+        payload: dict[str, Any] = {"reason": str(reason)}
+        if handle is not None:
+            payload["handle"] = handle_to_wire(handle)
         try:
-            self._call(CB_RELEASE, {"reason": str(reason)})
+            self._call(CB_RELEASE, payload)
         finally:
             # The parent executor clears its execution on release; the mirror
             # must never claim a handle the parent no longer owns.
