@@ -384,3 +384,124 @@ def test_async_prepare_keeps_the_qt_loop_free_without_nested_pumping(qapp) -> No
         assert failures == []
     finally:
         timer.stop()
+
+
+# ── productive executor goldens (real QtAsyncCallExecutor) ───────────
+def _real_qt_service(provider):
+    """Productive composition: the REAL Qt pool + queued owner delivery."""
+    from michi.infrastructure.qt_async_call import QtAsyncCallExecutor
+
+    executor = QtAsyncCallExecutor()
+    return _service(provider, executor), executor
+
+
+def _pump_until(qapp, predicate, timeout_s: float = 8.0) -> bool:
+    deadline = time.monotonic() + timeout_s
+    while not predicate() and time.monotonic() < deadline:
+        qapp.processEvents()
+        time.sleep(0.005)
+    qapp.processEvents()
+    return predicate()
+
+
+def _playback_with_real_executor(fake_audio, provider):
+    service, executor = _real_qt_service(provider)
+    return PlaybackService(fake_audio, output_tx=service), service, executor
+
+
+def test_golden_user_play_with_productive_qt_executor(qapp, fake_audio) -> None:
+    provider = _BlockingProvider()
+    playback, _service_obj, _executor = _playback_with_real_executor(
+        fake_audio, provider
+    )
+    started = time.monotonic()
+    playback.load_and_play(Path("/tmp/slow.flac"))
+    assert time.monotonic() - started < 0.2
+    assert provider.entered.wait(timeout=2.0)
+    assert fake_audio.loaded is None  # owner loop is free until completion
+    provider.release.set()
+    assert _pump_until(qapp, lambda: fake_audio.loaded is not None)
+    assert fake_audio.state == "playing"
+
+
+def test_golden_startup_restore_with_productive_qt_executor(qapp, fake_audio) -> None:
+    provider = _BlockingProvider()
+    playback, _service_obj, _executor = _playback_with_real_executor(
+        fake_audio, provider
+    )
+    started = time.monotonic()
+    playback.prepare_for_resume(Path("/tmp/slow.flac"), 2_000)
+    assert time.monotonic() - started < 0.2
+    assert provider.entered.wait(timeout=2.0)
+    provider.release.set()
+    assert _pump_until(qapp, lambda: fake_audio.loaded is not None)
+    assert fake_audio.state == "stopped"  # never autoplays
+    assert playback.state.status is PlaybackStatus.STOPPED
+
+
+def test_golden_handover_with_productive_qt_executor(qapp, fake_audio) -> None:
+    provider = _BlockingProvider()
+    playback, _service_obj, _executor = _playback_with_real_executor(
+        fake_audio, provider
+    )
+    started = time.monotonic()
+    playback.prepare_for_handover(Path("/tmp/slow.flac"), 3_000)
+    assert time.monotonic() - started < 0.2
+    assert provider.entered.wait(timeout=2.0)
+    provider.release.set()
+    assert _pump_until(qapp, lambda: fake_audio.loaded is not None)
+    # Predecessor STOPPED: a handover never fabricates playback.
+    assert fake_audio.state == "stopped"
+
+
+def test_golden_engine_switch_early_refusal_with_productive_qt_executor(
+    qapp,
+    fake_audio,
+) -> None:
+    from michi.application.output_session_service import OutputSessionError
+
+    class _FailingProvider:
+        def __call__(self, path: Path):
+            raise OutputSessionError("SOURCE_CHARACTERIZATION_TIMEOUT", "timed out")
+
+    service, _executor = _real_qt_service(_FailingProvider())
+    playback = PlaybackService(fake_audio, output_tx=service)
+    playback._state.file_path = Path("/tmp/rehydrate.flac")
+    playback._state.position_ms = 1_500
+    playback._state.status = PlaybackStatus.STOPPED
+
+    lease = playback.begin_engine_switch()
+    assert lease.prepare_on_target() is True
+    assert playback._engine_switch_lease_active is True
+
+    assert _pump_until(
+        qapp, lambda: playback.last_engine_switch_rehydration is not None
+    )
+    result = playback.last_engine_switch_rehydration
+    assert result is not None and result.status.value == "rejected"
+    assert playback._engine_switch_lease_active is False
+    assert fake_audio.loaded is None
+
+
+def test_golden_selection_change_cancels_characterization_with_real_executor(
+    qapp,
+    fake_audio,
+) -> None:
+    """Shutdown/stop during preparation leaves no worker and no commit."""
+    provider = _BlockingProvider()
+    cancelled: list[int] = []
+    service, _executor = _real_qt_service(provider)
+    service._cancel_prepare_work = lambda: cancelled.append(1)  # noqa: SLF001
+    playback = PlaybackService(fake_audio, output_tx=service)
+
+    playback.prepare_for_resume(Path("/tmp/slow.flac"), 0)
+    assert provider.entered.wait(timeout=2.0)
+    playback.stop()
+    service.cancel_pending_prepare()
+    assert cancelled, "stop must propagate to the characterization worker"
+    provider.release.set()
+    deadline = time.monotonic() + 1.0
+    while time.monotonic() < deadline:
+        qapp.processEvents()
+        time.sleep(0.005)
+    assert fake_audio.loaded is None
