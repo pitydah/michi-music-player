@@ -1,5 +1,6 @@
 """Playback use case — the single mutation authority for PlaybackState."""
 
+import contextlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -189,6 +190,9 @@ class PlaybackService:
         # position update (which fires `resume_prepared` once) or by any path
         # that clears the resume slot (rejection/stop/supersession).
         self._resume_prepared_subscribers: list[Callable[[Path, int], None]] = []
+        self._preparation_refused_subscribers: list[
+            Callable[[MediaRequestPurpose, str], None]
+        ] = []
         #: Media whose request ended in a typed refusal: the exact request an
         #: explicit recovery intent re-issues. Retired on acceptance.
         self._last_refused_path: Path | None = None
@@ -284,6 +288,31 @@ class PlaybackService:
     def unsubscribe_explicit_stop_accepted(self, callback: Callable[[], None]) -> None:
         if callback in self._explicit_stop_accepted_subscribers:
             self._explicit_stop_accepted_subscribers.remove(callback)
+
+    def subscribe_preparation_refused(
+        self, callback: Callable[[MediaRequestPurpose, str], None]
+    ) -> None:
+        """Observe a typed preparation refusal with its request purpose.
+
+        The async preparation seam delivers failures through callbacks; the
+        persistence coordinator needs the typed refusal to terminalize an
+        optional startup resume without keeping the prepare synchronous.
+        """
+        if callback not in self._preparation_refused_subscribers:
+            self._preparation_refused_subscribers.append(callback)
+
+    def unsubscribe_preparation_refused(
+        self, callback: Callable[[MediaRequestPurpose, str], None]
+    ) -> None:
+        if callback in self._preparation_refused_subscribers:
+            self._preparation_refused_subscribers.remove(callback)
+
+    def _notify_preparation_refused(
+        self, purpose: MediaRequestPurpose, code: str
+    ) -> None:
+        for callback in list(self._preparation_refused_subscribers):
+            with contextlib.suppress(Exception):
+                callback(purpose, code)
 
     def _on_end_of_media(self) -> None:
         # Forward only for a committed track: a natural end of the current
@@ -770,18 +799,56 @@ class PlaybackService:
         """
         if position_ms < 0:
             position_ms = 0
-        # §0H.2: el seam de output también precede a este LOAD sin autoplay.
-        token = self._output_tx.prepare_for_media(file_path)
+        async_prepare = getattr(self._output_tx, "prepare_for_media_async", None)
+        if async_prepare is None:
+            # Legacy/explicit synchronous transaction API.
+            token = self._output_tx.prepare_for_media(file_path)
+            previous_accepted = self._accepted
+            self._request_epoch += 1  # M11.3C-R6.5.2: request identity
+            self._continue_prepared_stopped_media(
+                file_path,
+                position_ms,
+                purpose,
+                token,
+                previous_accepted=previous_accepted,
+                epoch=self._request_epoch,
+            )
+            return
+        # Owner-safe async seam: the request build (metadata + source
+        # characterization + qualification) runs off-owner; the SAME
+        # continuation runs on the owner completion with the same
+        # identity/no-autoplay semantics.
+        self._request_epoch += 1
+        my_epoch = self._request_epoch
         previous_accepted = self._accepted
-        self._request_epoch += 1  # M11.3C-R6.5.2: request identity
-        self._continue_prepared_stopped_media(
-            file_path,
-            position_ms,
-            purpose,
-            token,
-            previous_accepted=previous_accepted,
-            epoch=self._request_epoch,
-        )
+        self._pending_path = file_path
+        self._pending_purpose = purpose
+        self._prepare_purpose = purpose
+
+        def prepared(token: str) -> None:
+            if my_epoch != self._request_epoch:
+                self._output_tx.abort_media(token, "superseded")
+                return
+            self._continue_prepared_stopped_media(
+                file_path,
+                position_ms,
+                purpose,
+                token,
+                previous_accepted=previous_accepted,
+                epoch=my_epoch,
+            )
+
+        def failed(exc: Exception) -> None:
+            if my_epoch != self._request_epoch:
+                return
+            self._pending_path = None
+            self._pending_purpose = None
+            code = getattr(exc, "code", None)
+            refusal_code = str(code) if code else "OUTPUT_PREPARATION_FAILED"
+            self.publish_preparation_refusal(refusal_code)
+            self._notify_preparation_refused(purpose, refusal_code)
+
+        async_prepare(file_path, prepared, failed)
 
     def _continue_prepared_stopped_media(
         self,

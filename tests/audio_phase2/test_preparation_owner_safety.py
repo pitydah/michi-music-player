@@ -269,8 +269,9 @@ def test_productive_prepare_cancel_aborts_worker_and_never_commits(
     caller.join(timeout=4.0)
     assert not caller.is_alive()
     assert tokens == []
-    assert failures and isinstance(failures[0], SourceCharacterizationError)
-    assert failures[0].code == "SOURCE_CHARACTERIZATION_STALE"
+    # The service reports the canonical supersession error; the underlying
+    # characterization result is stale and can never commit.
+    assert failures and failures[0].code == "OUTPUT_PREPARATION_STALE"
     assert _wait_pid_gone(worker_pid), "cancelled worker was left running"
 
     # A newer preparation still works after the seal handled the cancel.

@@ -142,6 +142,8 @@ def _make_graph(tmp_path, scanner=None, extractor=None, provider=None, cache=Non
     concern; every M6 component (index/prefs/playlists/runner/dispatcher/
     wiring) is the REAL production one."""
     db_path = tmp_path / "michi.db"
+    from conftest import InlinePreparationExecutor
+
     graph = _build_services(
         db_path,
         backend=FakeAudioPort(),
@@ -149,6 +151,7 @@ def _make_graph(tmp_path, scanner=None, extractor=None, provider=None, cache=Non
         metadata_extractor=extractor,
         artwork_provider=provider,
         artwork_cache=cache,
+        output_preparation_executor=InlinePreparationExecutor(),
     )
     return db_path, graph
 
@@ -814,8 +817,11 @@ def _artwork():
 
 
 def _make_graph_at(db_path, scanner, extractor):
+    from conftest import InlinePreparationExecutor
+
     graph = _build_services(
         db_path,
+        output_preparation_executor=InlinePreparationExecutor(),
         backend=FakeAudioPort(),
         scanner=scanner,
         metadata_extractor=extractor,

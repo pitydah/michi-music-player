@@ -241,6 +241,28 @@ class ProductiveOutputRequestResolver:
         self._source_metadata = source_metadata
         self._source_characterizer = source_characterizer
 
+    def pending_device_id(self, path: Path) -> str | None:
+        """Cheap selected-device peek for in-flight preparation diagnostics.
+
+        Runs on the owner BEFORE the async worker starts: only the
+        selection/profile read (no metadata, no characterization), so a
+        topology loss can still cancel the matching pending preparation.
+        """
+        selection = self._profiles.load_selection()
+        if selection.selected_profile_id is None:
+            return None
+        profile = next(
+            (
+                item
+                for item in self._profiles.load_profiles()
+                if item.profile_id == selection.selected_profile_id
+            ),
+            None,
+        )
+        if profile is None or not is_direct_path(profile.path):
+            return None
+        return selection.selected_device_id or profile.stable_device_id
+
     def __call__(self, path: Path) -> OutputRequest:
         selection = self._profiles.load_selection()
         if selection.selected_profile_id is None:
@@ -612,34 +634,41 @@ class OutputSessionService:
         on_prepared: Callable[[str], None],
         on_failed: Callable[[Exception], None],
     ) -> None:
-        """Prepare normally, offloading only a missing exact ALSA probe."""
+        """True async preparation: the OWNER returns before characterizing.
+
+        Owner (here): allocate the preparation generation, peek the selected
+        device for pending-preparation diagnostics, snapshot nothing else and
+        return to the event loop.
+        Worker: build the immutable request (metadata + source
+        characterization + blocking qualification probe) and the plan; no
+        OutputSession state is touched off-owner.
+        Owner completion: revalidate the generation and selected-device
+        identity, then run ``_prepare_request`` — the semantic commit — and
+        publish the callback. A stale completion can never commit.
+        """
         self._async_prepare_generation += 1
         generation = self._async_prepare_generation
-        try:
+        pending_device = getattr(self._request_provider, "pending_device_id", None)
+        if callable(pending_device):
+            try:
+                self._pending_prepare_device_id = pending_device(path)
+            except Exception:  # noqa: BLE001 - diagnostics only, never fatal
+                self._pending_prepare_device_id = None
+
+        def work():
             request = self._request_for(path)
-            self._pending_prepare_device_id = request.selected_device_id
             result = (
                 self._planner.plan(request.facts) if request.facts is not None else None
             )
-        except Exception as exc:  # noqa: BLE001 - typed completion boundary
-            on_failed(exc)
-            return
-        if not (
-            isinstance(result, PlannerRefusal)
-            and result.code == EXACT_TUPLE_UNKNOWN
-            and hasattr(self._request_provider, "qualify_request")
-        ):
-            self._pending_prepare_device_id = None
-            try:
-                token = self._prepare_request(path, request)
-            except Exception as exc:  # noqa: BLE001 - typed completion boundary
-                on_failed(exc)
-                return
-            on_prepared(token)
-            return
-
-        def work():
-            return self._request_provider.probe_request(request)
+            needs_probe = (
+                isinstance(result, PlannerRefusal)
+                and result.code == EXACT_TUPLE_UNKNOWN
+                and hasattr(self._request_provider, "qualify_request")
+            )
+            outcome = (
+                self._request_provider.probe_request(request) if needs_probe else None
+            )
+            return request, outcome
 
         def completed(value, error) -> None:
             if generation != self._async_prepare_generation:
@@ -654,21 +683,25 @@ class OutputSessionService:
             if error is not None:
                 on_failed(error)
                 return
+            request, outcome = value
             try:
-                probed_request, outcome = value
-                qualified_request = self._request_provider.apply_qualification(
-                    probed_request, outcome
-                )
-                token = self._prepare_request(path, qualified_request)
+                if outcome is not None:
+                    probed_request, probe_outcome = outcome
+                    request = self._request_provider.apply_qualification(
+                        probed_request, probe_outcome
+                    )
+                token = self._prepare_request(path, request)
             except Exception as exc:  # noqa: BLE001 - owner completion boundary
                 on_failed(exc)
                 return
             on_prepared(token)
 
         if self._async_submit is None:
+            # Explicit synchronous composition (legacy/test graphs): run the
+            # same split inline, with the same typed failure delivery.
             try:
                 completed(work(), None)
-            except Exception as exc:  # noqa: BLE001 - fallback test boundary
+            except Exception as exc:  # noqa: BLE001 - inline boundary
                 completed(None, exc)
         else:
             self._async_submit(work, completed)

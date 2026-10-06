@@ -31,6 +31,26 @@ def qapp():
     yield app
 
 
+class InlinePreparationExecutor:
+    """Scheduling-agnostic test policy for output preparation.
+
+    Productive composition uses QtAsyncCallExecutor (queued owner delivery);
+    tests that assert terminal semantic states must not depend on a spinning
+    Qt event loop, so this executor runs preparation work and completion
+    inline. Tests that explicitly verify off-owner scheduling inject the real
+    QtAsyncCallExecutor instead (see tests/audio_phase2/
+    test_preparation_async_qt.py and the qualification gates).
+    """
+
+    def submit(self, work, completed) -> None:
+        try:
+            value = work()
+        except Exception as exc:  # noqa: BLE001 - typed completion boundary
+            completed(None, exc)
+        else:
+            completed(value, None)
+
+
 class _SharedOutputTruth:
     mode = "shared"
     volume_policy = None

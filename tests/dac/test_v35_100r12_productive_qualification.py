@@ -20,6 +20,13 @@ from michi.domain.audio_evidence import (
 from michi.domain.library import TrackMetadata
 
 
+def _real_async_executor():
+    """Qualification gates verify REAL off-owner scheduling."""
+    from michi.infrastructure.qt_async_call import QtAsyncCallExecutor
+
+    return QtAsyncCallExecutor()
+
+
 class _Cache:
     def __init__(self, evidence=()) -> None:
         self.evidence = tuple(evidence)
@@ -248,6 +255,7 @@ def test_q100r12_02_fresh_productive_play_qualifies_off_owner_and_reuses_cache(
         source_metadata=metadata,
         preseed_qualification=False,
         qualification_adapter=probe,
+        output_preparation_executor=_real_async_executor(),
     )
     bindings.source_characterization_overrides = {
         "format": "S16LE",
@@ -297,6 +305,7 @@ def test_q100r12_04_05_probe_refusals_are_contained_before_backend(
         tmp_path,
         preseed_qualification=False,
         qualification_adapter=probe,
+        output_preparation_executor=_real_async_executor(),
     )
     try:
         graph.playback.load_and_play(tmp_path / "refused.flac")
@@ -355,6 +364,7 @@ def test_q100r12_08_stop_invalidates_inflight_probe_continuation(
         tmp_path,
         preseed_qualification=False,
         qualification_adapter=probe,
+        output_preparation_executor=_real_async_executor(),
     )
     try:
         graph.playback.load_and_play(tmp_path / "stopped.flac")
@@ -390,6 +400,7 @@ def test_q100r12_07_new_play_supersedes_old_probe_without_stale_cache(
         tmp_path,
         preseed_qualification=False,
         qualification_adapter=probe,
+        output_preparation_executor=_real_async_executor(),
     )
     try:
         bindings.source_characterization_overrides = {
@@ -440,6 +451,7 @@ def test_q100r12_09_device_loss_invalidates_inflight_probe(
         tmp_path,
         preseed_qualification=False,
         qualification_adapter=probe,
+        output_preparation_executor=_real_async_executor(),
     )
     try:
         graph.playback.load_and_play(tmp_path / "lost.flac")

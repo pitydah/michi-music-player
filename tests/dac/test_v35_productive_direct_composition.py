@@ -34,6 +34,25 @@ def _qt_runtime():
     yield _QT_APP
 
 
+class _InlinePreparationExecutor:
+    """Scheduling-agnostic test policy for output preparation.
+
+    Productive composition uses QtAsyncCallExecutor (queued owner delivery).
+    Tests that assert terminal semantic states must not depend on a spinning
+    Qt event loop, so this helper runs preparation work and completion
+    inline. Tests that explicitly verify OFF-OWNER scheduling (e.g. the
+    qualification gates) pass the real QtAsyncCallExecutor instead.
+    """
+
+    def submit(self, work, completed) -> None:
+        try:
+            value = work()
+        except Exception as exc:  # noqa: BLE001 - typed completion boundary
+            completed(None, exc)
+        else:
+            completed(value, None)
+
+
 def _direct_graph(
     tmp_path: Path,
     *,
@@ -45,6 +64,7 @@ def _direct_graph(
     startup_selected_engine=None,
     preseed_qualification: bool = True,
     qualification_adapter=None,
+    output_preparation_executor=None,
 ):
     from test_gstreamer_audio_port import FakeBindings
 
@@ -146,6 +166,11 @@ def _direct_graph(
         audio_sysfs_root=sysfs_root,
         alsa_proc_root=proc_root,
         qualification_adapter=qualification_adapter,
+        output_preparation_executor=(
+            output_preparation_executor
+            if output_preparation_executor is not None
+            else _InlinePreparationExecutor()
+        ),
     )
     device_id = "usb:2622:0105:DX5ABC123"
     profile = stable_direct_preset("p1", device_id)
@@ -238,7 +263,11 @@ def test_p050_01_production_bootstrap_owns_one_direct_executor(tmp_path: Path) -
     from michi.bootstrap import _build_services
     from michi.domain.audio_engine import AudioEngineId
 
-    graph = _build_services(tmp_path / "michi.db", backend=FakeAudioPort())
+    graph = _build_services(
+        tmp_path / "michi.db",
+        backend=FakeAudioPort(),
+        output_preparation_executor=_InlinePreparationExecutor(),
+    )
     try:
         provider = graph.audio_engine_registry.provider(AudioEngineId.GSTREAMER)
         assert graph.direct_output_executor is provider.direct_executor
@@ -251,7 +280,11 @@ def test_p050_02_output_session_is_productively_installed(tmp_path: Path) -> Non
 
     from michi.bootstrap import _build_services
 
-    graph = _build_services(tmp_path / "michi.db", backend=FakeAudioPort())
+    graph = _build_services(
+        tmp_path / "michi.db",
+        backend=FakeAudioPort(),
+        output_preparation_executor=_InlinePreparationExecutor(),
+    )
     try:
         assert graph.playback._output_tx is graph.output_session
         assert isinstance(graph.output_session, PlaybackOutputTransactionPort)
@@ -265,7 +298,11 @@ def test_p050_03_default_selection_remains_explicit_shared(tmp_path: Path) -> No
     from michi.bootstrap import _build_services
 
     audio = FakeAudioPort()
-    graph = _build_services(tmp_path / "michi.db", backend=audio)
+    graph = _build_services(
+        tmp_path / "michi.db",
+        backend=audio,
+        output_preparation_executor=_InlinePreparationExecutor(),
+    )
     try:
         graph.playback.load_and_play(tmp_path / "shared.flac")
         assert graph.output_session.mode == "shared"

@@ -337,6 +337,29 @@ class PersistenceCoordinator:
         if callable(publish) and isinstance(code, str):
             publish(code)
 
+    def _on_preparation_refused(self, purpose, code: str) -> None:
+        """Async startup-resume refusal: terminalize without weakening truth.
+
+        The preparation seam is asynchronous, so the typed refusal arrives
+        here instead of as a synchronous exception. The semantics are the
+        SAME as the historical except path: close the optional rehydration,
+        keep the last durable snapshot, log the typed code and publish the
+        refusal. Only STARTUP_RESTORE is in scope.
+        """
+        from michi.application.playback_service import MediaRequestPurpose
+
+        if purpose is not MediaRequestPurpose.STARTUP_RESTORE:
+            return
+        if self._resume_phase is not _ResumePhase.WAITING_MEDIA:
+            return
+        snapshot = self._restored_snapshot
+        if snapshot is None:
+            return
+        self._terminalize_optional_resume_failure(
+            snapshot,
+            OutputSessionError(code, "startup resume preparation refused"),
+        )
+
     def _release_resume_authority(self, reason: str = "resume resolved") -> None:
         """Close the restore window: drop the phase and the restored truth.
 
@@ -396,6 +419,11 @@ class PersistenceCoordinator:
         self._playback.subscribe_changed(self._on_playback_changed)
         self._playback.subscribe_resume_prepared(self._on_resume_prepared)
         self._playback.subscribe_explicit_stop_accepted(self._on_explicit_stop_accepted)
+        subscribe_refused = getattr(
+            self._playback, "subscribe_preparation_refused", None
+        )
+        if callable(subscribe_refused):
+            subscribe_refused(self._on_preparation_refused)
         self._last_volume, self._last_muted = self._playback.snapshot_volume()
         self._started = True
 

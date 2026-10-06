@@ -614,6 +614,12 @@ def test_ndp_13_productive_cold_b_keeps_a_active_until_acceptance(
 
     device_b = "usb:1234:5678:DACB"
     probe = _SplitProbe()
+    from michi.infrastructure.qt_async_call import QtAsyncCallExecutor
+
+    # This gate observes the handover preparation MID-FLIGHT (predecessor
+    # still active before the destructive boundary), which is a REAL async
+    # scheduling property; it therefore uses the production Qt executor and
+    # pumps the owner loop instead of the inline test policy.
     graph, bindings = _s16_graph_at(
         tmp_path,
         probe,
@@ -622,6 +628,7 @@ def test_ndp_13_productive_cold_b_keeps_a_active_until_acceptance(
             UsbDevice("2-2", "1234", "5678", serial="DACB", bcd_device="0100"),
         ),
         extra_alsa_cards=(AlsaCard(card_index=2, card_id="DACB", usb_devpath="2-2"),),
+        output_preparation_executor=QtAsyncCallExecutor(),
     )
     try:
         coordinator = _coordinator(graph)
