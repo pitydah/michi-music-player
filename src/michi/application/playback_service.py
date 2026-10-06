@@ -839,13 +839,30 @@ class PlaybackService:
             )
 
         def failed(exc: Exception) -> None:
+            # Epoch identity: a stale failure can never clear newer pending
+            # state, publish over a newer result or release a newer lease.
             if my_epoch != self._request_epoch:
                 return
             self._pending_path = None
             self._pending_purpose = None
             code = getattr(exc, "code", None)
             refusal_code = str(code) if code else "OUTPUT_PREPARATION_FAILED"
-            self.publish_preparation_refusal(refusal_code)
+            if purpose is MediaRequestPurpose.ENGINE_SWITCH_REHYDRATION:
+                # Early refusal BEFORE the rehydration continuation armed its
+                # timeout: terminalize through the ONE engine-switch path so
+                # the exact lease is released exactly once and the target
+                # engine stays truthful (media failure, not engine failure).
+                self._state.status = PlaybackStatus.STOPPED
+                self._state.error_message = (
+                    "Audio engine switched, but the current track could not "
+                    f"be prepared: {exc}"
+                )
+                self._notify()
+                self._complete_engine_switch_rehydration(
+                    MediaRequestTerminalStatus.REJECTED, file_path, str(exc)
+                )
+            else:
+                self.publish_preparation_refusal(refusal_code)
             self._notify_preparation_refused(purpose, refusal_code)
 
         async_prepare(file_path, prepared, failed)

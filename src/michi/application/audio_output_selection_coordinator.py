@@ -76,6 +76,7 @@ class AudioOutputSelectionCoordinator:
             )
             self._devices.select_device(device_id)
             self._output_session.select(device_id=device_id, profile_id=None)
+        self._supersede_pending_preparation()
 
     def clear_device_selection(self) -> None:
         """Explicit intent: forget the selected hardware identity entirely."""
@@ -85,6 +86,7 @@ class AudioOutputSelectionCoordinator:
             )
             self._devices.select_device(None)
             self._output_session.select(device_id=None, profile_id=None)
+        self._supersede_pending_preparation()
 
     def select_device(self, stable_device_id: str) -> None:
         """Select hardware IDENTITY only; the path policy is preserved.
@@ -108,6 +110,7 @@ class AudioOutputSelectionCoordinator:
                 )
                 self._devices.select_device(stable_device_id)
                 self._output_session.select(device_id=stable_device_id, profile_id=None)
+            self._supersede_pending_preparation()
             return
         with self._profiles.batch_changes():
             self._select_device_policy(stable_device_id, current.path)
@@ -158,6 +161,17 @@ class AudioOutputSelectionCoordinator:
         self._require_playback_device(stable_device_id)
         with self._profiles.batch_changes():
             self._select_profile(profile, stable_device_id=stable_device_id)
+
+    def _supersede_pending_preparation(self) -> None:
+        """A successful output-intent mutation supersedes any pending prepare.
+
+        The preparation generation is invalidated AND its blocking source-
+        characterization worker is cancelled, so an older intent can neither
+        commit nor keep consuming a worker.
+        """
+        cancel = getattr(self._output_session, "cancel_pending_prepare", None)
+        if callable(cancel):
+            cancel()
 
     def select_path_mode(self, mode: str) -> None:
         """Select the transport POLICY without changing device identity.
@@ -218,6 +232,7 @@ class AudioOutputSelectionCoordinator:
             )
         with self._profiles.batch_changes():
             self._profiles.save_profile(replace(profile, resync_delay_ms=value))
+        self._supersede_pending_preparation()
 
     def _require_playback_device(self, stable_device_id: str):
         snapshots = {
@@ -306,6 +321,7 @@ class AudioOutputSelectionCoordinator:
         self._output_session.select(
             device_id=stable_device_id, profile_id=profile.profile_id
         )
+        self._supersede_pending_preparation()
 
     def _require_direct_engine(self, profile: AudioOutputProfile) -> None:
         if (

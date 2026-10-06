@@ -348,6 +348,10 @@ class PersistenceCoordinator:
         """
         from michi.application.playback_service import MediaRequestPurpose
 
+        if not self._started:
+            # Late async event after stop(): never mutate coordinator truth,
+            # the restore phase or the durable snapshot.
+            return
         if purpose is not MediaRequestPurpose.STARTUP_RESTORE:
             return
         if self._resume_phase is not _ResumePhase.WAITING_MEDIA:
@@ -438,6 +442,11 @@ class PersistenceCoordinator:
         self._playback.unsubscribe_explicit_stop_accepted(
             self._on_explicit_stop_accepted
         )
+        unsubscribe_refused = getattr(
+            self._playback, "unsubscribe_preparation_refused", None
+        )
+        if callable(unsubscribe_refused):
+            unsubscribe_refused(self._on_preparation_refused)
         self._started = False
 
     def _on_queue_changed(self) -> None:

@@ -241,6 +241,17 @@ class ProductiveOutputRequestResolver:
         self._source_metadata = source_metadata
         self._source_characterizer = source_characterizer
 
+    def snapshot_output_intent(self):
+        """Immutable output-intent snapshot (monotonic revision + ids).
+
+        Duck-typed: legacy/fake providers without the capture simply disable
+        the intent fence (the media generation fence still applies).
+        """
+        capture = getattr(self._profiles, "snapshot_output_intent", None)
+        if callable(capture):
+            return capture()
+        return None
+
     def pending_device_id(self, path: Path) -> str | None:
         """Cheap selected-device peek for in-flight preparation diagnostics.
 
@@ -648,6 +659,7 @@ class OutputSessionService:
         """
         self._async_prepare_generation += 1
         generation = self._async_prepare_generation
+        intent = self._capture_output_intent()
         pending_device = getattr(self._request_provider, "pending_device_id", None)
         if callable(pending_device):
             try:
@@ -682,6 +694,18 @@ class OutputSessionService:
             self._pending_prepare_device_id = None
             if error is not None:
                 on_failed(error)
+                return
+            # Output-intent freshness: a worker built for an older selection
+            # can NEVER commit over a newer user intent, independently of the
+            # media-request generation. The monotonic revision makes value
+            # equality (ABA) insufficient to pass.
+            if intent is not None and self._capture_output_intent() != intent:
+                on_failed(
+                    OutputSessionError(
+                        "OUTPUT_PREPARATION_STALE",
+                        "output intent changed while preparing",
+                    )
+                )
                 return
             request, outcome = value
             try:
@@ -796,6 +820,15 @@ class OutputSessionService:
         except Exception:
             with suppress(Exception):
                 executor.release("binding_stale_during_prepare")
+
+    def _capture_output_intent(self):
+        capture = getattr(self._request_provider, "snapshot_output_intent", None)
+        if not callable(capture):
+            return None
+        try:
+            return capture()
+        except Exception:  # noqa: BLE001 - diagnostics-grade capture
+            return None
 
     def _request_for(self, path: Path) -> OutputRequest:
         if self._request_provider is not None:
