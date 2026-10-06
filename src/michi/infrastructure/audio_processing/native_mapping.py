@@ -8,6 +8,7 @@ injection only; the child host never decides any of it.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from michi.application.processing_graph_compiler import (
@@ -22,7 +23,8 @@ from michi.domain.audio_processing import (
 )
 
 #: RBJ Q for a one-octave peaking band (graphic EQ native mapping).
-GRAPHIC_OCTAVE_Q = 2.0 ** 0.5 / (2.0 - 1.0)
+#: Q = sqrt(2^N)/(2^N - 1) with N = 1 octave -> exactly sqrt(2).
+GRAPHIC_OCTAVE_Q = math.sqrt(2.0)
 
 
 def json_normalize(value: Any) -> Any:
@@ -128,4 +130,3 @@ class NativeProcessingMapping:
             "channels": contract.channels_in,
             "nodes": nodes,
         }
-
