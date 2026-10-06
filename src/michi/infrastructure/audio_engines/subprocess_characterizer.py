@@ -65,7 +65,7 @@ class SubprocessSourceCharacterizer:
         self._kill_grace_s = kill_grace_s
         self._lock = threading.Lock()
         self._generation = 0
-        self._active: subprocess.Popen | None = None
+        self._active: _ActiveWorker | None = None
 
     def characterize(self, path: Path) -> DecodedSourceSignal:
         with self._lock:
@@ -269,20 +269,15 @@ class PumpedSourceCharacterizer:
         self._pump = pump
         self._slice_s = max(0.001, float(slice_s))
         self._lock = threading.Lock()
+        # Serializes ONLY the supersede/cancel/publish/start transition; it is
+        # never held while characterization runs. This is what makes the
+        # newest-wins invariant true by construction: an older call can never
+        # cancel or publish after a newer generation owns the transition.
+        self._transition_lock = threading.Lock()
         self._generation = 0
         self._worker: threading.Thread | None = None
 
     def characterize(self, path: Path) -> DecodedSourceSignal:
-        with self._lock:
-            self._generation += 1
-            generation = self._generation
-            previous = self._worker
-            self._worker = None
-        # Supersede any in-flight PREVIOUS worker promptly: a newer request
-        # can never overlap a productive characterization. Never cancel the
-        # worker this call is about to start.
-        if previous is not None and previous.is_alive():
-            self._cancel_inner()
         holder: dict[str, object] = {}
 
         def run() -> None:
@@ -291,12 +286,30 @@ class PumpedSourceCharacterizer:
             except BaseException as exc:  # noqa: BLE001 - re-raised on caller
                 holder["error"] = exc
 
-        worker = threading.Thread(
-            target=run, name="michi-characterize-wait", daemon=True
-        )
-        with self._lock:
-            self._worker = worker
-        worker.start()
+        with self._transition_lock:
+            with self._lock:
+                self._generation += 1
+                generation = self._generation
+                previous = self._worker
+                self._worker = None
+            # Supersede any in-flight PREVIOUS worker promptly. Only the
+            # generation that currently owns the transition may cancel the
+            # inner worker (a paused older call can never cancel a newer one).
+            if previous is not None and previous.is_alive():
+                self._cancel_inner()
+            with self._lock:
+                superseded_in_transition = generation != self._generation
+            if superseded_in_transition:
+                raise SourceCharacterizationError(
+                    "SOURCE_CHARACTERIZATION_STALE",
+                    "request was superseded before its worker could start",
+                )
+            worker = threading.Thread(
+                target=run, name="michi-characterize-wait", daemon=True
+            )
+            with self._lock:
+                self._worker = worker
+            worker.start()
         while True:
             if self._pump is not None:
                 with contextlib.suppress(Exception):  # pumping is best-effort
@@ -318,12 +331,14 @@ class PumpedSourceCharacterizer:
         return holder["value"]  # type: ignore[return-value]
 
     def cancel(self) -> None:
-        with self._lock:
-            self._generation += 1
-            self._worker = None
-        # An explicit cancel always reaches the inner port, even if the
-        # wrapper has no worker bookkeeping (defense in depth).
-        self._cancel_inner()
+        # Cancel participates in the SAME startup fence: it can never land
+        # between an allocate and its publish/start, and it always leaves the
+        # inner port with no live worker when it returns.
+        with self._transition_lock:
+            with self._lock:
+                self._generation += 1
+                self._worker = None
+            self._cancel_inner()
 
     def _cancel_inner(self) -> None:
         cancel = getattr(self._inner, "cancel", None)
