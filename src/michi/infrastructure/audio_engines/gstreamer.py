@@ -15,6 +15,7 @@ NO GStreamer types leave this module.
 
 import contextlib
 import logging
+import os
 import threading
 import time
 from collections.abc import Callable
@@ -2189,6 +2190,21 @@ class GStreamerAudioPort(AudioPort):
                     "Direct FIXED candidate did not retain unity gain",
                 )
             self._bindings.set_muted(pipeline, self._muted)
+            # LAB-ONLY instrumentation (headless CI): a controlled fakesink
+            # replaces the real audio sink for Shared PCM so the productive
+            # DSP path can be measured without a DAC. Never active for
+            # Direct (strict recipe) and never in a default environment.
+            if (
+                strict_recipe is None
+                and os.environ.get("MICHI_GST_LAB_SINK") == "fakesink"
+            ):
+                lab_gst = self._bindings.gst_module()
+                lab_sink = lab_gst.ElementFactory.make("fakesink", "michi_lab_sink")
+                if lab_sink is None:
+                    raise AudioTransportUnavailableError(
+                        "MICHI_GST_LAB_SINK=fakesink requested but unavailable"
+                    )
+                self._bindings.set_audio_sink(pipeline, lab_sink)
             # DAC-V35-050B §17: strict Direct sink ANTES de URI/preroll.
             # `strict_recipe` es propiedad LOCAL reclamada al entry.
             if strict_recipe is not None:

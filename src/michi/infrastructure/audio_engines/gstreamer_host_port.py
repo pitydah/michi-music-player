@@ -377,6 +377,10 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             return None if self._last_state is None else self._last_state.name.lower()
 
+    def supervisor_generation(self) -> int:
+        """Current host incarnation generation (parent-side authority)."""
+        return int(self._supervisor.host_generation)
+
     def query_processing_capabilities(self) -> dict[str, Any]:
         """Child-native processing capability facts (primitive dict).
 

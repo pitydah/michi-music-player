@@ -11,14 +11,19 @@ compiled plan.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from michi.application.effective_processing_graph import (
+    EffectiveProcessingGraphResolver,
+)
 from michi.application.processing_graph_compiler import (
     CompiledProcessingPlan,
     ProcessingBackendCapabilities,
+    ProcessingGraphCompiler,
 )
 from michi.domain.audio_processing import ProcessingStrategy
 
@@ -111,8 +116,10 @@ class AudioProcessingService:
         capability_query: Callable[[], dict[str, Any]] | None = None,
         native_mapping: object | None = None,
         transport: object | None = None,
+        async_submit: Callable[[Callable, Callable], None] | None = None,
     ) -> None:
         self._capability_query = capability_query
+        self._async_submit = async_submit
         self._transport = transport
         # Infrastructure-owned native mapping (pure math + DTO shaping); the
         # application layer never imports infrastructure.
@@ -379,7 +386,16 @@ class AudioProcessingService:
         observed = active_transport.prepare_candidate(
             wire, processing_generation=generation
         )
-        self.validate_readback(plan, observed)
+        try:
+            self.validate_readback(plan, observed)
+        except Exception:
+            # B1: a prepared candidate that fails validation is explicitly
+            # aborted in the child; its ownership is never silently retained.
+            abort = getattr(active_transport, "abort_candidate", None)
+            if callable(abort):
+                with contextlib.suppress(Exception):
+                    abort()
+            raise
         self._prepared_plans[plan.plan_id] = plan
         pipeline_generation = int(observed.get("pipeline_generation") or 0)
         return ProcessingCandidateIdentity(
@@ -430,8 +446,11 @@ class AudioProcessingService:
             restored = bool(error_payload.get("predecessor_restored"))
             if not (untouched or restored):
                 # The destructive boundary may have been crossed without a
-                # proven restoration: effective runtime evidence is retired.
-                self.invalidate_effective(f"commit failed: {code}")
+                # proven restoration: the physical truth is UNKNOWN, so the
+                # effective state is explicitly UNAVAILABLE (never a clean
+                # BYPASSED claim) and no plan id survives.
+                self._effective_state = ProcessingEffectiveState.UNAVAILABLE
+                self._effective_plan_id = None
             elif self._effective_plan_id is not None:
                 self._effective_state = ProcessingEffectiveState.EFFECTIVE
             raise ProcessingTransactionError(code, str(exc)) from exc
@@ -516,6 +535,114 @@ class AudioProcessingService:
                 "receipt carries no native runtime identity",
             )
         return receipt
+
+    # ── API productiva (paquete A) ────────────────────────────────────
+    def apply_processing_async(
+        self,
+        graph: object,
+        signal: object,
+        *,
+        assets: tuple = (),
+        policy: object | None = None,
+        on_done: Callable[[dict[str, Any]], None] | None = None,
+        on_failed: Callable[[Exception], None] | None = None,
+        async_submit: Callable[[Callable, Callable], None] | None = None,
+    ) -> None:
+        """Owner-safe DSP apply: prepare/readback/commit/public on a worker.
+
+        The completion callback is delivered by the injected executor (the
+        canonical Qt owner dispatch in production). EFFECTIVE is published
+        only through a validated commit receipt.
+        """
+        submit = async_submit if async_submit is not None else self._async_submit
+        if submit is None:
+            raise ProcessingTransactionError(
+                "DSP_ASYNC_UNAVAILABLE",
+                "no async executor is composed for processing",
+            )
+
+        def work() -> dict[str, Any]:
+            self.refresh_capabilities()
+            effective = EffectiveProcessingGraphResolver().resolve(
+                graph, input_signal=signal, assets=assets
+            )
+            plan = ProcessingGraphCompiler().compile(
+                effective,
+                backend=self.capabilities,
+                assets=assets,
+                sample_policy=policy,
+            )
+            transport = self._transport
+            host_generation = int(getattr(transport, "host_generation", lambda: 0)())
+            candidate = self.begin_candidate(
+                plan, host_generation=host_generation, transport=transport
+            )
+            receipt = self.commit_candidate(candidate, transport=transport)
+            revision = self.publish_effective(receipt)
+            return {
+                "plan_id": plan.plan_id,
+                "graph_revision": plan.graph_revision,
+                "revision": revision,
+                "candidate_id": candidate.candidate_id,
+                "runtime_identity": receipt.native_runtime_identity,
+            }
+
+        def completed(value, error) -> None:
+            if error is not None:
+                if on_failed is not None:
+                    on_failed(error)
+                return
+            if on_done is not None:
+                on_done(value)
+
+        submit(work, completed)
+
+    def disable_processing_async(
+        self,
+        *,
+        on_done: Callable[[bool], None] | None = None,
+        on_failed: Callable[[Exception], None] | None = None,
+        async_submit: Callable[[Callable, Callable], None] | None = None,
+    ) -> None:
+        """Owner-safe bypass: removal must be PROVEN before BYPASSED."""
+        submit = async_submit if async_submit is not None else self._async_submit
+        if submit is None:
+            raise ProcessingTransactionError(
+                "DSP_ASYNC_UNAVAILABLE",
+                "no async executor is composed for processing",
+            )
+
+        def work() -> bool:
+            return self.bypass_processing(transport=self._transport)
+
+        def completed(value, error) -> None:
+            if error is not None:
+                if on_failed is not None:
+                    on_failed(error)
+                return
+            if on_done is not None:
+                on_done(bool(value))
+
+        submit(work, completed)
+
+    def processing_truth(self) -> dict[str, Any]:
+        """Semantic processing truth for presentation (F11 consumes this).
+
+        ``bit_perfect`` is False while any processing revision is EFFECTIVE:
+        a transforming path is never presented as bit-perfect.
+        """
+        effective = self._effective_state is ProcessingEffectiveState.EFFECTIVE
+        return {
+            "capability_state": self._capability_state.value,
+            "requested_revision": self._requested_revision,
+            "effective_revision": self._effective_revision,
+            "effective_state": self._effective_state.value,
+            "effective_plan_id": self._effective_plan_id,
+            "bit_perfect": not effective,
+            "strategies": sorted(
+                strategy.value for strategy in self._capabilities.strategies
+            ),
+        }
 
     def bypass_processing(self, *, transport: object | None = None) -> bool:
         """Transactional bypass: EFFECTIVE only after a PROVEN removal."""

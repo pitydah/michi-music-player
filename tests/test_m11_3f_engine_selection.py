@@ -1343,7 +1343,11 @@ class TestF42AdapterContract:
         # passthrough replacement; the diagnostic capture normalizes terminal
         # formats. Direct paths remain unchanged; hash re-sealed after full
         # regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "e5547c7a6931e7ee",
+        # AP2-F05 lab-sink instrumentation (2026-10-06): the Shared load path
+        # honors MICHI_GST_LAB_SINK=fakesink (child-only, never Direct,
+        # never default) so the productive DSP proof runs headless; the
+        # frozen-adapter re-seal above covers the same file revision.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "a2b8e99d5245e460",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

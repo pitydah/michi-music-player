@@ -563,3 +563,86 @@ def test_graphic_cascade_matches_the_rbj_golden_mapping() -> None:
         )
         assert band["a"] == [1.0, reference.a1, reference.a2]
         assert band["b"] == [reference.b0, reference.b1, reference.b2]
+
+
+# ── Package B: transactional failure semantics ────────────────────────
+class _TransportRejectionError(Exception):
+    def __init__(self, code: str, payload: dict) -> None:
+        super().__init__(code)
+        self.code = code
+        self.payload = payload
+
+
+class _ScriptedTransport(_FakeProcessingTransport):
+    """Fake transport with commit-failure scripting + abort accounting."""
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.commit_rejection: dict | None = None
+        self.aborts = 0
+        self.malformed_prepare = False
+
+    def prepare_candidate(self, wire: dict, *, processing_generation: int = 0) -> dict:
+        observed = super().prepare_candidate(
+            wire, processing_generation=processing_generation
+        )
+        if self.malformed_prepare:
+            observed = dict(observed)
+            observed["nodes"] = []
+        return observed
+
+    def abort_candidate(self) -> bool:
+        self.aborts += 1
+        return True
+
+    def commit_candidate(self, **kwargs):
+        if self.commit_rejection is not None:
+            raise _TransportRejectionError("DSP_COMMIT_FAILED", self.commit_rejection)
+        return super().commit_candidate(**kwargs)
+
+
+def test_invalid_candidate_readback_aborts_in_the_child() -> None:
+    service, plan = _transaction_plan()
+    transport = _ScriptedTransport()
+    transport.malformed_prepare = True
+    with pytest.raises(Exception) as info:
+        service.begin_candidate(plan, host_generation=1, transport=transport)
+    assert "DSP_READBACK" in str(info.value)
+    assert transport.aborts == 1  # explicit child abort, no silent retention
+    assert service.effective_state.value == "preparing"
+
+
+def test_commit_failure_without_restore_invalidates_effective_truth() -> None:
+    service, plan = _transaction_plan()
+    transport = _ScriptedTransport()
+    # R1 becomes effective first.
+    first = service.begin_candidate(plan, host_generation=1, transport=transport)
+    service.publish_effective(service.commit_candidate(first, transport=transport))
+    assert service.effective_state.value == "effective"
+
+    # R2: the destructive boundary was crossed and could NOT be restored.
+    transport.commit_rejection = {"predecessor_restored": False}
+    second = service.begin_candidate(plan, host_generation=1, transport=transport)
+    with pytest.raises(Exception) as info:
+        service.commit_candidate(second, transport=transport)
+    assert "DSP_COMMIT" in str(info.value)
+    # Physical truth is uncertain: effective evidence is retired.
+    assert service.effective_state.value == "unavailable"
+    assert service.effective_plan_id is None
+
+
+def test_commit_failure_with_proven_restore_keeps_predecessor_effective() -> None:
+    service, plan = _transaction_plan()
+    transport = _ScriptedTransport()
+    first = service.begin_candidate(plan, host_generation=1, transport=transport)
+    service.publish_effective(service.commit_candidate(first, transport=transport))
+
+    transport.commit_rejection = {"predecessor_restored": True}
+    second = service.begin_candidate(plan, host_generation=1, transport=transport)
+    from michi.application.audio_processing_service import ProcessingTransactionError
+
+    with pytest.raises(ProcessingTransactionError):
+        service.commit_candidate(second, transport=transport)
+    # The predecessor was PROVEN restored: R1 remains the effective truth.
+    assert service.effective_state.value == "effective"
+    assert service.effective_plan_id == plan.plan_id

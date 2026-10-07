@@ -9,7 +9,6 @@ nothing is audible; no audio ever crosses IPC.
 from __future__ import annotations
 
 import importlib.util
-import os
 import time
 from pathlib import Path
 
@@ -41,29 +40,6 @@ from michi.infrastructure.audio_processing.native_mapping import (
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
 
-
-def _playback_device_available() -> bool:
-    """The productive media proof needs a REAL playback sink.
-
-    Headless CI runners have no ALSA card and no PipeWire/Pulse socket; the
-    productive test is skipped there (the fail-closed test still runs).
-    """
-    try:
-        cards = Path("/proc/asound/cards")
-        if cards.is_file() and any(
-            line.strip() and not line.strip().startswith("---")
-            for line in cards.read_text(encoding="utf-8").splitlines()
-        ):
-            return True
-    except OSError:
-        pass
-    runtime = Path(os.environ.get("XDG_RUNTIME_DIR", "/run/user/0"))
-    return any(
-        (runtime / name).exists() for name in ("pulse", "pipewire-0", "pipewire")
-    )
-
-
-_PLAYBACK_DEVICE = _playback_device_available()
 
 pytestmark = pytest.mark.skipif(
     not _HAS_GI, reason="PyGObject/GStreamer not available on this host"
@@ -131,13 +107,17 @@ def _install_and_measure(service, port, supervisor, gain_db, *, seconds=0.6):
     return metrics, receipt
 
 
-@pytest.mark.skipif(
-    not _PLAYBACK_DEVICE,
-    reason="no real playback device available (headless CI)",
-)
-def test_productive_shared_pcm_dsp_really_processes_media() -> None:
+def test_productive_shared_pcm_dsp_really_processes_media(monkeypatch) -> None:
+    """Productive path with the LAB sink: real GStreamer, no DAC required.
+
+    MICHI_GST_LAB_SINK=fakesink is lab-only instrumentation consumed by the
+    CHILD; the productive route is identical (playbin3 -> audio-filter ->
+    sink) and Direct never sees it. Physical DAC evidence remains a
+    separate, NOT_RUN-able tier.
+    """
     if not FIXTURE.is_file():
         pytest.skip("PCM fixture unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
     supervisor, port = _real_port()
     try:
         port.activate()

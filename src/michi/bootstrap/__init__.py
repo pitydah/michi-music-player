@@ -39,6 +39,7 @@ from michi.application.audio_output_profile_service import AudioOutputProfileSer
 from michi.application.audio_output_selection_coordinator import (
     AudioOutputSelectionCoordinator,
 )
+from michi.application.audio_processing_service import AudioProcessingService
 from michi.application.audio_transport_router import AudioTransportRouter
 from michi.application.coordinator import PlaybackCoordinator
 from michi.application.dac_qualification_service import (
@@ -118,6 +119,12 @@ from michi.infrastructure.audio_engines.subprocess_characterizer import (
 )
 from michi.infrastructure.audio_output.direct_output_executor import (
     GStreamerDirectOutputExecutor,
+)
+from michi.infrastructure.audio_processing.hosted_transport import (
+    HostedProcessingTransport,
+)
+from michi.infrastructure.audio_processing.native_mapping import (
+    NativeProcessingMapping,
 )
 from michi.infrastructure.enrichment_assets import FilesystemEnrichmentAssetStore
 from michi.infrastructure.enrichment_http import (
@@ -262,6 +269,7 @@ class ServiceGraph:
     audio_device_registry: AudioDeviceRegistry
     dac_qualification: DacQualificationService
     output_preparation_executor: QtAsyncCallExecutor
+    audio_processing: AudioProcessingService
     udev_observer: UdevObserver
     scanner: object
     metadata_extractor: object
@@ -561,6 +569,16 @@ def _build_services(
         source_characterizer=source_characterizer,
     )
     preparation_executor = output_preparation_executor or QtAsyncCallExecutor()
+    # AP2-F05 Package A: ONE processing authority over the SAME hosted host.
+    processing_transport = HostedProcessingTransport(
+        lambda: gstreamer_provider.current_port
+    )
+    audio_processing_service = AudioProcessingService(
+        capability_query=processing_transport.query_capabilities,
+        native_mapping=NativeProcessingMapping(),
+        transport=processing_transport,
+        async_submit=preparation_executor.submit,
+    )
     output_session = OutputSessionService(
         OutputPlanner(),
         request_provider=output_resolver,
@@ -848,6 +866,7 @@ def _build_services(
         audio_device_registry=audio_devices,
         dac_qualification=qualification,
         output_preparation_executor=preparation_executor,
+        audio_processing=audio_processing_service,
         udev_observer=udev_observer,
         scanner=scanner,
         metadata_extractor=metadata_extractor,
