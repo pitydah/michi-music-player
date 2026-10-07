@@ -1,27 +1,49 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "phase": "AP2-F05",
-  "scope": "hosted Shared PCM processing runtime — first slice (PARTIAL; F05 NOT closed)",
+  "scope": "transactional DSP seal + PRODUCTIVE Shared PCM playback (major advance; F05 NOT closed)",
   "recorded_at": "2026-10-06",
-  "repo_head": "fa8e982",
-  "audio_phase2_prerequisites": {
-    "wu0_async_preparation": "SEALED (production Qt executor goldens; no nested pumping)",
-    "wu0_1_terminalization_and_intent_freshness": "SEALED (engine-switch early refusal releases the exact lease; stale refusal inert; persistence unsubscribe symmetry; monotonic output-intent revision with ABA seal and proactive characterization cancellation)"
+  "repo_head": "0dd3d2e",
+  "transaction": {
+    "candidate_identity": "candidate_id + plan_id + graph_revision + host_generation + pipeline_generation + processing_generation",
+    "commit_receipt": "installed + observed_plan_id + observed_graph_revision + observed_pipeline_generation + native_runtime_identity + post-install exact readback",
+    "effective_requires_receipt": true,
+    "raw_publish_removed": true,
+    "stale_commit_rejected": "DSP_STALE_COMMIT when the requested revision advanced",
+    "abort_truth": "native teardown failure raises DSP_ABORT_FAILED and keeps ownership; no silent continue",
+    "capability_fail_closed": "runtime_failure => UNAVAILABLE + empty strategies; probe checks property writability and working-precision pad caps",
+    "readback_exactness": "node-id set equality, duplicates/extra/missing rejected, per-node native factory multiset, unexpected resampler rejected"
   },
-  "implemented": {
-    "capability_probe": "child-native, real factories via instantiate+inspect; parent decides support; missing/incompatible reported, never fatal",
-    "strategies_today": ["gain", "graphic_eq_nbands"],
-    "graphic_eq_native_mapping": "parent-computed RBJ peaking cascade (audioiirfilter x active bands); equalizer-nbands band properties are NOT exposed in GStreamer 1.28 (probe evidence)",
-    "candidate_lifecycle": "PREPARE (build+preroll+inspect) / ABORT; one productive candidate at a time; newer prepare supersedes with bounded teardown",
-    "readback": "real property values (volume dB round-trip; audioiirfilter a/b arrays) + negotiated F64LE working caps + factory list; parent compares with documented float tolerance",
-    "generation_fence": "requested vs effective revisions; DSP_STALE_COMMIT blocks a delayed commit over a newer requested revision; host loss invalidates effective processing truth while requested intent survives",
-    "parent_firewall": "audio_processing_service contains no Gst/gi usage (firewall test); native execution only in the output host"
+  "productive_playback": {
+    "topology": "child playbin3 -> audio-filter (Michi processing bin: ghost sink -> audioconvert[dithering=none,noise-shaping=none] -> explicit F64LE caps -> volume | audioiirfilter cascade -> ghost src)",
+    "install": "quiescent rebuild (READY -> PAUSED) with identity readback; DSP_PLAYBACK_SEAM_UNAVAILABLE fail-closed when absent",
+    "real_media_proof": {
+      "fixture": "evidence/dac-v35-110/2026-09-25-smsl-152a85dd-operator-run/fixtures/pcm16_44100.wav",
+      "method": "child-local diagnostic capture (RMS/peak primitives; no audio over IPC); volume 0 (silent)",
+      "flat_rms": 0.088374,
+      "preamp_minus_6db_rms": 0.044293,
+      "ratio": 0.5012,
+      "expected_ratio": 0.5,
+      "negotiated": true
+    },
+    "strategies_proven": ["gain"],
+    "graphic_eq_native_mapping": "audioiirfilter cascade (RBJ peaking, Q=sqrt(2)); compile+readback tests green; productive media boost/cut proof pending",
+    "bypass": "BYPASS_PROCESSING removes the filter with a receipt; asserted in the productive test",
+    "no_autoplay": "install/capture never starts audible playback (volume 0; bounded PLAYING window for measurement only)"
   },
-  "not_implemented": {
-    "playback_install": "the candidate is validated in its own prerolled pipeline inside the host; installing it into the productive playback pipeline (playbin3 audio-filter seam) is NOT done",
-    "peq_fir_convolution_resample_dither_runtime": "typed refusal via DSP_STRATEGY_UNAVAILABLE",
-    "signal_truth_publication_of_processing": "parent publishes semantic effective state only after readback validation; no Signal Truth ACTIVE claim is made by this slice",
-    "host_loss_processing_tests": "fake-host fault-injection matrix for processing is partial"
+  "generations": {
+    "host": "parent supervisor generation, stamped into the candidate identity and validated in the receipt",
+    "pipeline": "child port pipeline_generation (media load generation), captured at prepare and revalidated in the receipt",
+    "processing": "parent requested/effective revisions; a delayed commit over a newer revision is rejected"
   },
-  "phase_state": "AP2-F05 READY (DSP runtime incomplete; do NOT mark CLOSED)"
+  "not_done": {
+    "parametric_eq_runtime": "BIQUAD_CASCADE native mapping not implemented (compile refuses DSP_STRATEGY_UNAVAILABLE)",
+    "fir_convolution": "blocked on the canonical asset authority (F06/F13 scope); not invented",
+    "signal_truth_processing_publication": "no processing ACTIVE claim is published yet",
+    "host_loss_while_processing_active": "capability/runtime invalidation exists; the kill-while-EQ-active test is pending",
+    "processing_fault_matrix": "partial (capability hang, install rejection, missing pipeline, stale commit covered; commit hang/crash-during-inspect not yet)",
+    "f32_f64_sample_contract_reconciliation": "pending audit vs R11-G04 semantics",
+    "owner_sqlite_intent_capture": "bounded P2 (snapshot_output_intent still reads SQLite on the owner)"
+  },
+  "phase_verdict": "IN_PROGRESS_MAJOR_ADVANCE (F05 remains READY/ACTIVE work; NOT closed)"
 }
