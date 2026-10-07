@@ -1324,6 +1324,17 @@ class _EventBridge(QObject):
     sig_pump_died = Signal(int, str)
 
 
+#: Diagnostic capture formats -> (array typecode, normalizing divisor):
+#: integers are scaled into [-1, 1) so measurements stay comparable across
+#: chains with different terminal formats (F64LE filter vs S16LE bypass).
+_CAPTURE_FORMAT_CODECS = {
+    "F64LE": ("d", 1.0),
+    "F32LE": ("f", 1.0),
+    "S32LE": ("i", float(1 << 31)),
+    "S16LE": ("h", float(1 << 15)),
+}
+
+
 class GStreamerAudioPort(AudioPort):
     """playbin3 transport behind the canonical AudioPort contract.
 
@@ -1913,16 +1924,6 @@ class GStreamerAudioPort(AudioPort):
         import array
         import time as _time
 
-        # format -> (array typecode, normalizing divisor): integers are
-        # scaled into [-1, 1) so measurements are comparable across chains
-        # with different terminal formats (e.g. F64LE filter vs S16LE bypass).
-        _FORMAT_CODECS = {
-            "F64LE": ("d", 1.0),
-            "F32LE": ("f", 1.0),
-            "S32LE": ("i", float(1 << 31)),
-            "S16LE": ("h", float(1 << 15)),
-        }
-
         pipeline = self._pipeline
         filter_bin = None if pipeline is None else pipeline.get_property("audio-filter")
         if pipeline is None or filter_bin is None:
@@ -1956,7 +1957,7 @@ class GStreamerAudioPort(AudioPort):
                 state["rate"] = int(structure.get_value("rate") or 0)
                 state["channels"] = int(structure.get_value("channels") or 0)
                 state["format"] = str(structure.get_value("format") or "")
-            codec = _FORMAT_CODECS.get(str(state.get("format") or ""))
+            codec = _CAPTURE_FORMAT_CODECS.get(str(state.get("format") or ""))
             if codec is None:
                 state["unsupported_buffers"] += 1
                 return gst.PadProbeReturn.OK

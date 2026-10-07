@@ -1343,7 +1343,7 @@ class TestF42AdapterContract:
         # passthrough replacement; the diagnostic capture normalizes terminal
         # formats. Direct paths remain unchanged; hash re-sealed after full
         # regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "bc9e32a21759c39b",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "e5547c7a6931e7ee",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

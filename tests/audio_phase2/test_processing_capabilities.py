@@ -371,7 +371,9 @@ class _FakeProcessingTransport:
         )
         # Productive filter mode: exact structural subset + per-node factories.
         observed["graph_factories"] = ["audioconvert", "capsfilter"] + [
-            factory for node in observed.get("nodes", []) for factory in node["factories"]
+            factory
+            for node in observed.get("nodes", [])
+            for factory in node["factories"]
         ]
         observed["caps_source"] = "negotiated"
         return {
