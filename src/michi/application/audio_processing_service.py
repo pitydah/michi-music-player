@@ -73,6 +73,9 @@ class ProcessingCommitReceipt:
     observed_plan_id: str
     observed_graph_revision: int
     observed_pipeline_generation: int
+    observed_processing_generation: int
+    observed_host_generation: int
+    observed_candidate_id: str
     native_runtime_identity: str
 
 
@@ -245,7 +248,11 @@ class AudioProcessingService:
         return self._requested_revision
 
     def validate_readback(
-        self, plan: CompiledProcessingPlan, observed: dict[str, Any]
+        self,
+        plan: CompiledProcessingPlan,
+        observed: dict[str, Any],
+        *,
+        mode: str = "candidate",
     ) -> None:
         """Compare expected compiled plan vs child readback, fail closed."""
         if observed.get("plan_id") != plan.plan_id:
@@ -321,13 +328,20 @@ class AudioProcessingService:
                     f"node {expected.node_id!r} factories "
                     f"{observed_factories} != {expected_factories}",
                 )
-        global_factories = [
+        global_factories = sorted(
             str(name) for name in (observed.get("graph_factories") or [])
-        ]
-        if "audioresample" in global_factories:
+        )
+        mapping = self._native_mapping
+        if mapping is None:
             raise ProcessingReadbackMismatchError(
-                "DSP_READBACK_UNEXPECTED_TRANSFORM",
-                "the native graph contains an unexpected resampler",
+                "DSP_NATIVE_MAPPING_UNAVAILABLE",
+                "no native mapping is composed for this processing service",
+            )
+        expected_global = sorted(mapping.expected_global_factories(plan, mode=mode))
+        if global_factories != expected_global:
+            raise ProcessingReadbackMismatchError(
+                "DSP_READBACK_TOPOLOGY_MISMATCH",
+                f"native topology {global_factories} != {expected_global}",
             )
         caps = observed.get("working_caps")
         contract = plan.sample_contract
@@ -362,7 +376,9 @@ class AudioProcessingService:
                 "no processing transport is composed for this service",
             )
         wire = self.plan_to_wire(plan)
-        observed = active_transport.prepare_candidate(wire)
+        observed = active_transport.prepare_candidate(
+            wire, processing_generation=generation
+        )
         self.validate_readback(plan, observed)
         self._prepared_plans[plan.plan_id] = plan
         pipeline_generation = int(observed.get("pipeline_generation") or 0)
@@ -400,11 +416,25 @@ class AudioProcessingService:
                 "DSP_TRANSPORT_UNAVAILABLE",
                 "no processing transport is composed for this service",
             )
-        payload = active_transport.commit_candidate(
-            plan_id=candidate.plan_id,
-            processing_generation=candidate.processing_generation,
-            pipeline_generation=candidate.pipeline_generation,
-        )
+        try:
+            payload = active_transport.commit_candidate(
+                plan_id=candidate.plan_id,
+                processing_generation=candidate.processing_generation,
+                pipeline_generation=candidate.pipeline_generation,
+                candidate_id=candidate.candidate_id,
+            )
+        except Exception as exc:  # noqa: BLE001 - duck-typed transport boundary
+            code = str(getattr(exc, "code", None) or "DSP_COMMIT_FAILED")
+            error_payload = getattr(exc, "payload", None) or {}
+            untouched = bool(error_payload.get("predecessor_untouched"))
+            restored = bool(error_payload.get("predecessor_restored"))
+            if not (untouched or restored):
+                # The destructive boundary may have been crossed without a
+                # proven restoration: effective runtime evidence is retired.
+                self.invalidate_effective(f"commit failed: {code}")
+            elif self._effective_plan_id is not None:
+                self._effective_state = ProcessingEffectiveState.EFFECTIVE
+            raise ProcessingTransactionError(code, str(exc)) from exc
         if not isinstance(payload, dict):
             raise ProcessingTransactionError(
                 "DSP_COMMIT_RECEIPT_INVALID", "child returned no receipt object"
@@ -418,14 +448,25 @@ class AudioProcessingService:
                     "receipt carries no post-install readback",
                 )
             # The PRODUCTIVE installed graph must satisfy the same exact
-            # readback contract as the validated candidate.
-            self.validate_readback(prepared_plan, post_install)
+            # readback contract as the validated candidate, PLUS negotiated
+            # caps: EFFECTIVE can never rest on "configured" caps alone.
+            if post_install.get("caps_source") != "negotiated":
+                raise ProcessingTransactionError(
+                    "DSP_CAPS_NOT_NEGOTIATED",
+                    "productive commit requires negotiated working caps",
+                )
+            self.validate_readback(prepared_plan, post_install, mode="filter")
         receipt = ProcessingCommitReceipt(
             candidate=candidate,
             installed=bool(payload.get("installed")),
             observed_plan_id=str(payload.get("observed_plan_id") or ""),
             observed_graph_revision=int(payload.get("observed_graph_revision") or -1),
             observed_pipeline_generation=int(payload.get("pipeline_generation") or -1),
+            observed_processing_generation=int(
+                payload.get("processing_generation") or -1
+            ),
+            observed_host_generation=int(payload.get("host_generation") or -1),
+            observed_candidate_id=str(payload.get("candidate_id") or ""),
             native_runtime_identity=str(payload.get("runtime_identity") or ""),
         )
         return self._validate_receipt(receipt)
@@ -454,12 +495,47 @@ class AudioProcessingService:
                 "DSP_COMMIT_RECEIPT_MISMATCH",
                 "receipt pipeline generation does not match the candidate",
             )
+        if receipt.observed_processing_generation != candidate.processing_generation:
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_RECEIPT_MISMATCH",
+                "receipt processing generation does not match the candidate",
+            )
+        if receipt.observed_host_generation != candidate.host_generation:
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_RECEIPT_MISMATCH",
+                "receipt host generation does not match the candidate",
+            )
+        if receipt.observed_candidate_id != candidate.candidate_id:
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_RECEIPT_MISMATCH",
+                "receipt candidate id does not match the candidate",
+            )
         if not receipt.native_runtime_identity:
             raise ProcessingTransactionError(
                 "DSP_COMMIT_RECEIPT_MISMATCH",
                 "receipt carries no native runtime identity",
             )
         return receipt
+
+    def bypass_processing(self, *, transport: object | None = None) -> bool:
+        """Transactional bypass: EFFECTIVE only after a PROVEN removal."""
+        active_transport = transport if transport is not None else self._transport
+        if active_transport is None:
+            raise ProcessingTransactionError(
+                "DSP_TRANSPORT_UNAVAILABLE",
+                "no processing transport is composed for this service",
+            )
+        payload = active_transport.bypass_processing()
+        if not isinstance(payload, dict) or not payload.get("bypassed"):
+            raise ProcessingTransactionError(
+                "DSP_BYPASS_UNPROVEN",
+                "the runtime did not prove the processing filter removal",
+            )
+        self._requested_revision += 1
+        self._effective_revision = self._requested_revision
+        self._effective_plan_id = None
+        self._effective_state = ProcessingEffectiveState.BYPASSED
+        return True
 
     def publish_effective(self, receipt: ProcessingCommitReceipt) -> int:
         """Publish EFFECTIVE — ONLY from a validated commit receipt."""

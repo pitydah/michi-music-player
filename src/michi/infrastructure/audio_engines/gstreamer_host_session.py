@@ -85,6 +85,9 @@ class HostEngineSession:
         self._opened = False
         self._processing_candidate: Any | None = None
         self._processing_plan_wire: dict[str, Any] | None = None
+        self._processing_pipeline_generation: int | None = None
+        self._processing_generation: int | None = None
+        self._processing_host_generation: int = 0
         self._coordinator = HostDirectCoordinator(request_callback)
 
     @property
@@ -220,10 +223,13 @@ class HostEngineSession:
         built = build_processing_candidate(plan)
         self._processing_candidate = built
         self._processing_plan_wire = dict(plan)
-        observed = inspect_processing_candidate(built, plan)
-        observed["pipeline_generation"] = int(
+        self._processing_pipeline_generation = int(
             getattr(self._port, "pipeline_generation", 0)
         )
+        self._processing_generation = int(payload.get("processing_generation") or 0)
+        self._processing_host_generation = int(payload.get("host_generation") or 0)
+        observed = inspect_processing_candidate(built, plan)
+        observed["pipeline_generation"] = self._processing_pipeline_generation
         return True, {"observed": observed}
 
     def _op_commit_processing_candidate(
@@ -234,19 +240,60 @@ class HostEngineSession:
         if built is None or plan is None:
             return False, {
                 "code": "DSP_CANDIDATE_MISSING",
+                "predecessor_untouched": True,
                 "detail": "no prepared processing candidate to commit",
             }
         if str(payload.get("plan_id")) != built.plan_id:
             return False, {
                 "code": "DSP_CANDIDATE_MISMATCH",
+                "predecessor_untouched": True,
                 "detail": "commit plan does not match the prepared candidate",
             }
         port = self._require_port()
+        # ── PRE-DESTRUCTIVE GENERATION FENCE ─────────────────────────
+        # Prove the CURRENT reality still matches the prepared identity
+        # BEFORE any native mutation: a stale commit can never install over
+        # a newer pipeline/processing generation.
+        current_pipeline_generation = int(getattr(port, "pipeline_generation", 0))
+        if (
+            self._processing_pipeline_generation is None
+            or current_pipeline_generation != self._processing_pipeline_generation
+        ):
+            return False, {
+                "code": "DSP_STALE_PIPELINE_GENERATION",
+                "predecessor_untouched": True,
+                "detail": (
+                    f"prepared pipeline generation "
+                    f"{self._processing_pipeline_generation!r} != current "
+                    f"{current_pipeline_generation}"
+                ),
+            }
+        requested_processing_generation = int(
+            payload.get("processing_generation") or -1
+        )
+        if (
+            self._processing_generation is None
+            or requested_processing_generation != self._processing_generation
+        ):
+            return False, {
+                "code": "DSP_STALE_PROCESSING_GENERATION",
+                "predecessor_untouched": True,
+                "detail": (
+                    f"commit processing generation "
+                    f"{requested_processing_generation} != prepared "
+                    f"{self._processing_generation!r}"
+                ),
+            }
+        # The standalone harness candidate was already read+validated at
+        # PREPARE and is retired FIRST with PROVEN teardown: a teardown
+        # failure leaves the productive runtime untouched.
+        self._abort_processing_candidate()
         install = getattr(port, "install_processing_filter", None)
         if not callable(install):
             # EFFECTIVE requires a REAL productive install: fail closed.
             return False, {
                 "code": "DSP_PLAYBACK_SEAM_UNAVAILABLE",
+                "predecessor_untouched": True,
                 "detail": ("the hosted engine exposes no productive processing seam"),
             }
         from michi.infrastructure.audio_processing.gstreamer_graph_builder import (
@@ -263,18 +310,20 @@ class HostEngineSession:
                 raise RuntimeError("install seam returned no receipt facts")
             observed = inspect_processing_filter(filter_info, plan)
         except Exception as exc:  # noqa: BLE001 - typed rejection boundary
-            remove = getattr(port, "remove_processing_filter", None)
-            if callable(remove):
-                import contextlib
-
-                with contextlib.suppress(Exception):
-                    remove()
             code = getattr(exc, "code", None) or "DSP_COMMIT_FAILED"
-            return False, {"code": str(code), "detail": str(exc)[:500]}
-        # The validated harness candidate is superseded by the installed
-        # productive filter; its teardown must still be proven.
-        self._abort_processing_candidate()
+            return False, {
+                "code": str(code),
+                "detail": str(exc)[:500],
+                "predecessor_restored": bool(
+                    getattr(exc, "predecessor_restored", False)
+                ),
+                "predecessor_untouched": bool(
+                    getattr(exc, "predecessor_untouched", False)
+                ),
+            }
         self._processing_plan_wire = None
+        self._processing_pipeline_generation = None
+        self._processing_generation = None
         return True, {
             "receipt": {
                 "installed": bool(install_result.get("installed")),
@@ -282,6 +331,11 @@ class HostEngineSession:
                 "pipeline_generation": int(
                     install_result.get("pipeline_generation") or 0
                 ),
+                "processing_generation": requested_processing_generation,
+                "host_generation": int(
+                    payload.get("host_generation") or self._processing_host_generation
+                ),
+                "candidate_id": str(payload.get("candidate_id") or ""),
                 "observed_plan_id": str(observed.get("plan_id") or ""),
                 "observed_graph_revision": int(observed.get("graph_revision") or 0),
                 "observed": observed,
@@ -315,15 +369,20 @@ class HostEngineSession:
         if not callable(remove):
             return False, {
                 "code": "DSP_PLAYBACK_SEAM_UNAVAILABLE",
+                "predecessor_untouched": True,
                 "detail": "the hosted engine exposes no productive processing seam",
             }
         if self._processing_candidate is not None:
             self._abort_processing_candidate()
             self._processing_plan_wire = None
+        had_filter = (
+            getattr(port, "_installed_processing_filter", None) is not None
+        )
         removed = bool(remove())
         return True, {
-            "bypassed": True,
+            "bypassed": removed,
             "removed": removed,
+            "had_filter": had_filter,
             "pipeline_generation": int(getattr(port, "pipeline_generation", 0)),
         }
 

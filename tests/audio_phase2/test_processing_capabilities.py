@@ -294,9 +294,10 @@ class _FakeProcessingTransport:
         self.commits: list[dict] = []
         self.last_wire: dict | None = None
 
-    def prepare_candidate(self, wire: dict) -> dict:
+    def prepare_candidate(self, wire: dict, *, processing_generation: int = 0) -> dict:
         self.prepared.append(wire)
         self.last_wire = wire
+        self.processing_generation = processing_generation
         plan_id = wire["plan_id"]
         revision = int(wire["graph_revision"])
         # Build the exact observed shape from the wire.
@@ -339,11 +340,25 @@ class _FakeProcessingTransport:
                 "rate_hz": wire["input_rate_hz"],
                 "channels": wire["channels"],
             },
-            "graph_factories": ["audiotestsrc", "capsfilter"],
+            "graph_factories": [
+                "audiotestsrc",
+                "capsfilter",
+                "audioconvert",
+                "capsfilter",
+                "fakesink",
+                *[factory for node in nodes for factory in node["factories"]],
+            ],
             "pipeline_generation": self.pipeline_generation,
         }
 
-    def commit_candidate(self, *, plan_id, processing_generation, pipeline_generation):
+    def commit_candidate(
+        self,
+        *,
+        plan_id,
+        processing_generation,
+        pipeline_generation,
+        candidate_id: str = "",
+    ):
         self.commits.append(
             {
                 "plan_id": plan_id,
@@ -354,6 +369,11 @@ class _FakeProcessingTransport:
         observed = (
             self.prepare_candidate(self.last_wire) if self.last_wire is not None else {}
         )
+        # Productive filter mode: exact structural subset + per-node factories.
+        observed["graph_factories"] = ["audioconvert", "capsfilter"] + [
+            factory for node in observed.get("nodes", []) for factory in node["factories"]
+        ]
+        observed["caps_source"] = "negotiated"
         return {
             "installed": self.installed,
             "observed": observed,
@@ -364,6 +384,9 @@ class _FakeProcessingTransport:
                 if self.receipt_pipeline_generation is not None
                 else pipeline_generation
             ),
+            "processing_generation": processing_generation,
+            "host_generation": 1,
+            "candidate_id": candidate_id,
             "runtime_identity": "fake:playbin3/audio-filter",
         }
 
@@ -410,7 +433,7 @@ def _transaction_plan(*, preamp_only: bool = True):
 def test_full_transaction_publishes_only_from_a_validated_receipt() -> None:
     service, plan = _transaction_plan()
     transport = _FakeProcessingTransport()
-    candidate = service.begin_candidate(plan, host_generation=7, transport=transport)
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
     assert candidate.processing_generation == service.requested_revision
     assert candidate.pipeline_generation == 3
     # EFFECTIVE is untouched by prepare+readback.

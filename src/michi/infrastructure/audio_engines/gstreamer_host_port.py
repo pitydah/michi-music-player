@@ -395,15 +395,22 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         return facts
 
-    def prepare_processing_candidate(self, plan: dict[str, Any]) -> dict[str, Any]:
+    def prepare_processing_candidate(
+        self, plan: dict[str, Any], *, processing_generation: int = 0
+    ) -> dict[str, Any]:
         """Build+preroll+inspect a REAL native candidate in the child.
 
-        Returns the child's primitive readback; the parent decides. A newer
-        prepare supersedes the previous candidate inside the child.
+        Returns the child's primitive readback; the parent decides. The
+        processing generation is stored in the child so the COMMIT can
+        revalidate it before any destructive mutation.
         """
         payload = self._submit(
             HostOperation.PREPARE_PROCESSING_CANDIDATE,
-            {"plan": plan},
+            {
+                "plan": plan,
+                "processing_generation": int(processing_generation),
+                "host_generation": self._supervisor.host_generation,
+            },
             deadline_s=max(self._command_deadline_s, 12.0),
         )
         observed = payload.get("observed")
@@ -419,6 +426,7 @@ class GStreamerHostedAudioPort(AudioPort):
         plan_id: str,
         processing_generation: int,
         pipeline_generation: int,
+        candidate_id: str = "",
     ) -> dict[str, Any]:
         """Authorize the destructive install; returns the child's receipt."""
         payload = self._submit(
@@ -427,6 +435,8 @@ class GStreamerHostedAudioPort(AudioPort):
                 "plan_id": str(plan_id),
                 "processing_generation": int(processing_generation),
                 "pipeline_generation": int(pipeline_generation),
+                "candidate_id": str(candidate_id or ""),
+                "host_generation": self._supervisor.host_generation,
             },
             deadline_s=max(self._command_deadline_s, 12.0),
         )
@@ -457,13 +467,19 @@ class GStreamerHostedAudioPort(AudioPort):
             {},
             deadline_s=max(self._command_deadline_s, 12.0),
         )
-        if not payload.get("bypassed"):
-            raise AudioTransportCommandError("bypass was not applied")
+        if not payload.get("removed"):
+            raise AudioTransportCommandError(
+                "DSP_BYPASS_UNPROVEN", "no proven filter removal"
+            )
         return payload
 
     # Transport-adapter aliases consumed by AudioProcessingService.
-    def prepare_candidate(self, plan: dict[str, Any]) -> dict[str, Any]:
-        return self.prepare_processing_candidate(plan)
+    def prepare_candidate(
+        self, plan: dict[str, Any], *, processing_generation: int = 0
+    ) -> dict[str, Any]:
+        return self.prepare_processing_candidate(
+            plan, processing_generation=processing_generation
+        )
 
     def commit_candidate(
         self,
@@ -471,11 +487,13 @@ class GStreamerHostedAudioPort(AudioPort):
         plan_id: str,
         processing_generation: int,
         pipeline_generation: int,
+        candidate_id: str = "",
     ) -> dict[str, Any]:
         return self.commit_processing_candidate(
             plan_id=plan_id,
             processing_generation=processing_generation,
             pipeline_generation=pipeline_generation,
+            candidate_id=candidate_id,
         )
 
     def abort_candidate(self) -> bool:

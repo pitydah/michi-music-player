@@ -1335,7 +1335,15 @@ class TestF42AdapterContract:
         # capture instrumentation. Existing Shared command, pump, bus,
         # generation, acceptance and Direct strict paths are unchanged; hash
         # re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "e5055c8c31a70123",
+        # AP2-F05 transactional playback seal (2026-10-06) authorized reopening:
+        # the processing seam now enforces pre-destructive generation fences,
+        # retires the harness candidate before install, restores the
+        # predecessor on unproven replacement, preserves PLAYING/PAUSED
+        # transport state, and implements bypass as a proven identity
+        # passthrough replacement; the diagnostic capture normalizes terminal
+        # formats. Direct paths remain unchanged; hash re-sealed after full
+        # regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "bc9e32a21759c39b",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

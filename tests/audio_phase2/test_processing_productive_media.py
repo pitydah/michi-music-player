@@ -149,7 +149,19 @@ def test_productive_shared_pcm_dsp_really_processes_media() -> None:
         # The graph really was replaced in the same productive pipeline.
         assert quiet_receipt.observed_plan_id != flat_receipt.observed_plan_id
 
-        assert port.bypass_processing()["bypassed"] is True
+        # Transactional bypass: our DSP leaves the chain and the signal
+        # RETURNS to the flat baseline (measured, not just claimed).
+        bypass_payload = port.bypass_processing()
+        assert bypass_payload["bypassed"] is True
+        assert bypass_payload["removed"] is True
+        port.seek(0)
+        bypass_metrics = port.capture_processing_output(0.7)
+        assert bypass_metrics["samples"] > 0
+        bypass_ratio = bypass_metrics["rms"] / max(flat_metrics["rms"], 1e-12)
+        assert 0.7 < bypass_ratio < 1.4, (
+            f"bypass must return to baseline: flat {flat_metrics['rms']} -> "
+            f"bypass {bypass_metrics['rms']} (ratio {bypass_ratio:.3f})"
+        )
     finally:
         port.close()
         supervisor.close()

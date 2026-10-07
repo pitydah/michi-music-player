@@ -66,6 +66,18 @@ def graphic_cascade(
     return cascade
 
 
+#: Structural elements the F05 runtime is allowed to manifest besides the
+#: typed DSP nodes. Anything else is a hidden transform.
+_CANDIDATE_STRUCTURAL = (
+    "audiotestsrc",
+    "capsfilter",
+    "audioconvert",
+    "capsfilter",
+    "fakesink",
+)
+_FILTER_STRUCTURAL = ("audioconvert", "capsfilter")
+
+
 class NativeProcessingMapping:
     """Compiled plan -> native DTO + expected readback translator."""
 
@@ -78,6 +90,17 @@ class NativeProcessingMapping:
             properties = {str(key): value for key, value in node.properties}
             return ("audioiirfilter",) * len(properties["gains_db"])
         raise ValueError(f"no native factories for {node.strategy.value!r}")
+
+    @staticmethod
+    def expected_global_factories(
+        plan: CompiledProcessingPlan, *, mode: str = "candidate"
+    ) -> tuple[str, ...]:
+        """Exact native factory multiset for the whole manifestation."""
+        structural = _FILTER_STRUCTURAL if mode == "filter" else _CANDIDATE_STRUCTURAL
+        factories: list[str] = list(structural)
+        for node in plan.nodes:
+            factories.extend(NativeProcessingMapping.expected_native_factories(node))
+        return tuple(sorted(factories))
 
     @staticmethod
     def expected_native_properties(

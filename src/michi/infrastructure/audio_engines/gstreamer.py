@@ -1388,6 +1388,7 @@ class GStreamerAudioPort(AudioPort):
         self._volume = 1.0
         self._muted = False
         self._pipeline = None
+        self._installed_processing_filter = None
         self._bus = None
         self._bus_source = None
         self._bus_source_attached = False
@@ -1823,36 +1824,77 @@ class GStreamerAudioPort(AudioPort):
         """
         pipeline = self._pipeline
         if pipeline is None:
-            raise AudioTransportUnavailableError(
+            error = AudioTransportUnavailableError(
                 "install_processing_filter: no playback pipeline is loaded"
             )
+            error.predecessor_untouched = True
+            raise error
         gst = self._bindings.gst_module()
-        # A previous filter (if any) is detached first: playbin3 replaces the
-        # audio-filter reliably only from a clean slate.
-        if pipeline.get_property("audio-filter") is not None:
-            pipeline.set_property("audio-filter", None)
+        _r0, previous_state, _p0 = pipeline.get_state(0)
+        # Ownership: playbin3's audio-filter getter can return an INTERNAL
+        # default bin; only OUR installed bin is the predecessor we manage.
+        previous_filter = self._installed_processing_filter
+
+        def _cycle_to_paused() -> object:
             pipeline.set_state(gst.State.READY)
             pipeline.set_state(gst.State.PAUSED)
-            _r, _s, _p = pipeline.get_state(10 * gst.SECOND)
+            _ret, state, _pending = pipeline.get_state(10 * gst.SECOND)
+            return state
+
+        def _restore_predecessor() -> bool:
+            """Best-effort restoration of the previous effective filter."""
+            if previous_filter is None:
+                return True
+            pipeline.set_property("audio-filter", None)
+            _cycle_to_paused()
+            pipeline.set_property("audio-filter", previous_filter)
+            state = _cycle_to_paused()
+            restored = pipeline.get_property("audio-filter")
+            if (
+                state == gst.State.PAUSED
+                and restored is not None
+                and restored == previous_filter
+            ):
+                self._installed_processing_filter = previous_filter
+                return True
+            return False
+
+        mutated = False
+        # A previous filter (if any) is detached first: playbin3 replaces the
+        # audio-filter reliably only from a clean slate.
+        if previous_filter is not None:
+            pipeline.set_property("audio-filter", None)
+            _cycle_to_paused()
+            self._installed_processing_filter = None
+            mutated = True
         pipeline.set_property("audio-filter", filter_bin)
         # playbin3 only wires audio-filter during a state transition: perform
         # a bounded QUIESCENT REBUILD (READY -> PAUSED) so the productive
         # chain really includes the filter before any receipt is issued.
-        pipeline.set_state(gst.State.READY)
-        pipeline.set_state(gst.State.PAUSED)
-        _ret, state, _pending = pipeline.get_state(10 * gst.SECOND)
-        if state != gst.State.PAUSED:
-            raise AudioTransportUnavailableError(
-                "the productive pipeline did not re-preroll with the filter "
+        mutated = True
+        state = _cycle_to_paused()
+        installed = pipeline.get_property("audio-filter")
+        if state != gst.State.PAUSED or installed is None or installed != filter_bin:
+            if mutated and previous_filter is not None:
+                restored = _restore_predecessor()
+                error = AudioTransportUnavailableError(
+                    "the productive pipeline did not accept the processing "
+                    f"filter (state={state!r})"
+                )
+                error.predecessor_restored = restored
+                raise error
+            error = AudioTransportUnavailableError(
+                "the productive pipeline did not accept the processing filter "
                 f"(state={state!r})"
             )
-        installed = pipeline.get_property("audio-filter")
-        # PyGObject wrappers are not guaranteed to be `is`-identical across
-        # calls; `==` compares the underlying GObject pointer.
-        if installed is None or installed != filter_bin:
-            raise AudioTransportUnavailableError(
-                "playbin3 did not retain the installed processing filter"
-            )
+            error.predecessor_untouched = True
+            raise error
+        # Restore the transport intent captured before the swap: PLAYING
+        # resumes under the canonical controlled continuation; PAUSED stays
+        # PAUSED (STOPPED semantics in this port are PAUSED-armed media).
+        if previous_state == gst.State.PLAYING:
+            pipeline.set_state(gst.State.PLAYING)
+        self._installed_processing_filter = filter_bin
         return {
             "installed": True,
             "runtime_identity": "playbin3/audio-filter",
@@ -1870,6 +1912,16 @@ class GStreamerAudioPort(AudioPort):
         """
         import array
         import time as _time
+
+        # format -> (array typecode, normalizing divisor): integers are
+        # scaled into [-1, 1) so measurements are comparable across chains
+        # with different terminal formats (e.g. F64LE filter vs S16LE bypass).
+        _FORMAT_CODECS = {
+            "F64LE": ("d", 1.0),
+            "F32LE": ("f", 1.0),
+            "S32LE": ("i", float(1 << 31)),
+            "S16LE": ("h", float(1 << 15)),
+        }
 
         pipeline = self._pipeline
         filter_bin = None if pipeline is None else pipeline.get_property("audio-filter")
@@ -1890,6 +1942,8 @@ class GStreamerAudioPort(AudioPort):
             "samples": 0,
             "rate": 0,
             "channels": 0,
+            "format": "",
+            "unsupported_buffers": 0,
         }
 
         def probe(_pad, info):
@@ -1901,12 +1955,19 @@ class GStreamerAudioPort(AudioPort):
                 structure = caps.get_structure(0)
                 state["rate"] = int(structure.get_value("rate") or 0)
                 state["channels"] = int(structure.get_value("channels") or 0)
+                state["format"] = str(structure.get_value("format") or "")
+            codec = _FORMAT_CODECS.get(str(state.get("format") or ""))
+            if codec is None:
+                state["unsupported_buffers"] += 1
+                return gst.PadProbeReturn.OK
+            typecode, divisor = codec
+            itemsize = array.array(typecode).itemsize
             data = buf.extract_dup(0, buf.get_size())
+            values = array.array(typecode)
+            values.frombytes(data[: len(data) - (len(data) % itemsize)])
             channels = max(1, int(state["channels"] or 2))
-            values = array.array("d")
-            values.frombytes(data[: len(data) - (len(data) % 8)])
             for index in range(0, len(values), channels):
-                value = values[index]
+                value = float(values[index]) / divisor
                 state["sum_sq"] += value * value
                 state["peak"] = max(state["peak"], abs(value))
             state["samples"] += max(0, len(values) // channels)
@@ -1932,6 +1993,8 @@ class GStreamerAudioPort(AudioPort):
             "peak": state["peak"],
             "rate_hz": state["rate"],
             "channels": state["channels"],
+            "format": state["format"],
+            "unsupported_buffers": state["unsupported_buffers"],
             "previous_state": str(previous),
             "state_after": str(state_after),
             "play_return": str(play_ret),
@@ -1940,15 +2003,56 @@ class GStreamerAudioPort(AudioPort):
         }
 
     def remove_processing_filter(self) -> bool:
-        """Detach the processing bin (bypass/abort). Primitive confirmation."""
+        """Detach the processing bin (bypass/abort) with PROVEN removal.
+
+        Uses the same bounded quiescent rebuild as install: playbin3 only
+        rewires audio-filter during a state transition, so a bare property
+        write is not proof that the filter left the productive chain.
+        """
         pipeline = self._pipeline
         if pipeline is None:
             return False
-        current = pipeline.get_property("audio-filter")
-        if current is None:
+        gst = self._bindings.gst_module()
+        _r0, previous_state, _p0 = pipeline.get_state(0)
+        ours = self._installed_processing_filter
+        if ours is None:
             return False
-        pipeline.set_property("audio-filter", None)
-        return pipeline.get_property("audio-filter") is None
+        # playbin3 does NOT unlink via audio-filter=None + a state cycle (the
+        # getter keeps returning the same bin in GStreamer 1.28); the PROVEN
+        # replacement is a fresh identity passthrough bin, which also proves
+        # our DSP left the chain by pointer identity.
+        passthrough = gst.Bin.new("michi-processing-bypass")
+        identity = gst.ElementFactory.make("identity", None)
+        if identity is None:
+            return False
+        passthrough.add(identity)
+        sink_ghost = gst.GhostPad.new("sink", identity.get_static_pad("sink"))
+        src_ghost = gst.GhostPad.new("src", identity.get_static_pad("src"))
+        if (
+            sink_ghost is None
+            or src_ghost is None
+            or not passthrough.add_pad(sink_ghost)
+            or not passthrough.add_pad(src_ghost)
+        ):
+            return False
+        pipeline.set_property("audio-filter", passthrough)
+        pipeline.set_state(gst.State.READY)
+        pipeline.set_state(gst.State.PAUSED)
+        _ret, state, _pending = pipeline.get_state(10 * gst.SECOND)
+        current = pipeline.get_property("audio-filter")
+        removed = state == gst.State.PAUSED and current is not None and current != ours
+        if not removed:
+            # Replacement unproven: put our filter back so the runtime never
+            # sits in an ambiguous half-state.
+            pipeline.set_property("audio-filter", ours)
+            pipeline.set_state(gst.State.READY)
+            pipeline.set_state(gst.State.PAUSED)
+            pipeline.get_state(10 * gst.SECOND)
+            return False
+        self._installed_processing_filter = passthrough
+        if previous_state == gst.State.PLAYING:
+            pipeline.set_state(gst.State.PLAYING)
+        return True
 
     def load(self, file_path: Path) -> None:
         # KCR-008: a closed runtime rejects the command — never a silent
