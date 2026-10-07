@@ -375,9 +375,8 @@ class HostEngineSession:
         if self._processing_candidate is not None:
             self._abort_processing_candidate()
             self._processing_plan_wire = None
-        had_filter = (
-            getattr(port, "_installed_processing_filter", None) is not None
-        )
+        installed_filter = getattr(port, "_installed_processing_filter", None)
+        had_filter = installed_filter is not None
         removed = bool(remove())
         return True, {
             "bypassed": removed,
