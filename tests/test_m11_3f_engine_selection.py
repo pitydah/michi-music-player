@@ -1347,7 +1347,10 @@ class TestF42AdapterContract:
         # honors MICHI_GST_LAB_SINK=fakesink (child-only, never Direct,
         # never default) so the productive DSP proof runs headless; the
         # frozen-adapter re-seal above covers the same file revision.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "a2b8e99d5245e460",
+        # AP2-F05 sprint 2: the diagnostic capture adds bounded Goertzel spectral
+        # analysis (test/lab instrumentation only; productive per-sample paths
+        # unchanged). Hash re-sealed after full regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "ae9825f0d42abad8",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

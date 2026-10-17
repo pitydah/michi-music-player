@@ -286,6 +286,9 @@ def _observed_for(plan, *, override=None):
 class _FakeProcessingTransport:
     """Scripted transport double for transaction-level tests."""
 
+    def host_generation(self) -> int:
+        return 1
+
     def __init__(self, *, installed: bool = True, pipeline_generation: int = 3) -> None:
         self.installed = installed
         self.pipeline_generation = pipeline_generation
@@ -646,3 +649,105 @@ def test_commit_failure_with_proven_restore_keeps_predecessor_effective() -> Non
     # The predecessor was PROVEN restored: R1 remains the effective truth.
     assert service.effective_state.value == "effective"
     assert service.effective_plan_id == plan.plan_id
+
+
+def test_concurrent_applies_serialize_and_end_coherent() -> None:
+    import threading
+    import time as _time
+
+    transport = _ScriptedTransport()
+    facts = {
+        "gstreamer_version": "fake",
+        "runtime_failure": None,
+        "factories": {
+            name: {"available": True, "properties": {}, "missing_properties": []}
+            for name in ("volume", "audioiirfilter", "audioconvert", "capsfilter")
+        },
+    }
+    service = AudioProcessingService(
+        capability_query=lambda: facts,
+        native_mapping=NativeProcessingMapping(),
+        transport=transport,
+    )
+
+    class _ThreadExecutor:
+        def __init__(self) -> None:
+            self.completions: list[tuple] = []
+            self.lock = threading.Lock()
+
+        def submit(self, work, completed) -> None:
+            def run() -> None:
+                try:
+                    value = work()
+                except Exception as exc:  # noqa: BLE001 - delivered typed
+                    with self.lock:
+                        self.completions.append((completed, None, exc))
+                else:
+                    with self.lock:
+                        self.completions.append((completed, value, None))
+
+            threading.Thread(target=run, daemon=True).start()
+
+        def deliver(self) -> int:
+            delivered = 0
+            while True:
+                with self.lock:
+                    if not self.completions:
+                        return delivered
+                    completed, value, error = self.completions.pop(0)
+                completed(value, error)
+                delivered += 1
+
+    executor = _ThreadExecutor()
+    results: list[dict] = []
+    failures: list[Exception] = []
+
+    from michi.application.effective_processing_graph import (
+        EffectiveProcessingGraphResolver,
+    )
+    from michi.application.processing_graph_compiler import (
+        ProcessingBackendCapabilities as Backend,
+    )
+    from michi.domain.audio_processing import ProcessingStrategy
+
+    signal = _signal()
+    graph_spec = _preamp_graph()
+    effective = EffectiveProcessingGraphResolver().resolve(
+        graph_spec, input_signal=signal, assets=()
+    )
+    from michi.application.processing_graph_compiler import ProcessingGraphCompiler
+
+    ProcessingGraphCompiler().compile(
+        effective,
+        backend=Backend(backend_id="test", strategies=frozenset(ProcessingStrategy)),
+        assets=(),
+    )
+
+    # Two concurrent applications of the same DSP intent.
+    service.apply_processing_async(
+        graph_spec,
+        signal,
+        on_done=results.append,
+        on_failed=failures.append,
+        async_submit=executor.submit,
+    )
+    service.apply_processing_async(
+        graph_spec,
+        signal,
+        on_done=results.append,
+        on_failed=failures.append,
+        async_submit=executor.submit,
+    )
+    deadline = _time.monotonic() + 6.0
+    while len(results) + len(failures) < 2 and _time.monotonic() < deadline:
+        executor.deliver()
+        _time.sleep(0.005)
+    executor.deliver()
+    # Serialized transactions: both complete coherently (no crashes, no
+    # interleaved state), and the final effective revision is the CURRENT
+    # requested revision.
+    assert not failures, failures
+    assert len(results) == 2
+    assert service.effective_state.value == "effective"
+    assert service.effective_revision == service.requested_revision
+    assert service.effective_plan_id == results[-1]["plan_id"]

@@ -579,6 +579,9 @@ def _build_services(
         transport=processing_transport,
         async_submit=preparation_executor.submit,
     )
+    # Host loss retires DSP effective truth IMMEDIATELY (additive fan-out
+    # from the hosted port; no second recorder, no polling).
+    processing_transport.add_host_lost_listener(audio_processing_service.mark_host_lost)
     output_session = OutputSessionService(
         OutputPlanner(),
         request_provider=output_resolver,

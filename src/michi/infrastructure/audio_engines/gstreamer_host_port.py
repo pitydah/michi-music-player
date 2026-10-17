@@ -97,6 +97,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._latest_work: dict[str, Callable[[], None]] = {}
         self._latest_queued: set[str] = set()
         self._stale_callbacks = 0
+        self._host_lost_listeners: list[Callable[[str], None]] = []
         self._eom: list[Callable[[], None]] = []
         self._pos: list[Callable[[int], None]] = []
         self._dur: list[Callable[[int], None]] = []
@@ -451,11 +452,16 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         return receipt
 
-    def capture_processing_output(self, seconds: float) -> dict[str, Any]:
+    def capture_processing_output(
+        self, seconds: float, probe_hz: list[float] | None = None
+    ) -> dict[str, Any]:
         """DIAGNOSTIC/TEST: child-local signal metrics of the installed filter."""
+        request: dict[str, Any] = {"seconds": float(seconds)}
+        if probe_hz:
+            request["probe_hz"] = [float(hz) for hz in probe_hz]
         payload = self._submit(
             HostOperation.CAPTURE_PROCESSING_OUTPUT,
-            {"seconds": float(seconds)},
+            request,
             deadline_s=max(self._command_deadline_s, float(seconds) + 8.0),
         )
         metrics = payload.get("metrics")
@@ -982,6 +988,9 @@ class GStreamerHostedAudioPort(AudioPort):
                     executor.record_runtime_anomaly(
                         handle, f"output host lost: {reason}"
                     )
+        for listener in list(self._host_lost_listeners):
+            with contextlib.suppress(Exception):
+                listener(reason)
         self._relay_runtime_failure(reason)
 
     # ── commits owner ─────────────────────────────────────────────────
@@ -1017,6 +1026,11 @@ class GStreamerHostedAudioPort(AudioPort):
         for callback in list(self._dur):
             with contextlib.suppress(Exception):
                 callback(ms)
+
+    def add_host_lost_listener(self, callback: Callable[[str], None]) -> None:
+        """Additive fan-out for host-loss events (DSP truth invalidation)."""
+        with self._lock:
+            self._host_lost_listeners.append(callback)
 
     def _relay_runtime_failure(self, reason: str) -> None:
         with self._lock:

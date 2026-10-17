@@ -15,6 +15,7 @@ NO GStreamer types leave this module.
 
 import contextlib
 import logging
+import math
 import os
 import threading
 import time
@@ -1913,7 +1914,9 @@ class GStreamerAudioPort(AudioPort):
             "pipeline_generation": self._generation,
         }
 
-    def capture_processing_output(self, seconds: float) -> dict:
+    def capture_processing_output(
+        self, seconds: float, probe_hz: list[float] | None = None
+    ) -> dict:
         """DIAGNOSTIC/TEST instrumentation: measure the installed filter's
         output signal in THIS process (RMS/peak primitives).
 
@@ -1947,6 +1950,11 @@ class GStreamerAudioPort(AudioPort):
             "format": "",
             "unsupported_buffers": 0,
         }
+        probe_hz = [float(hz) for hz in (probe_hz or ())]
+        # Bounded raw capture for the diagnostic spectral analysis (mono,
+        # first channel). Never used by the productive runtime.
+        max_samples = 192000
+        mono: list[float] = []
 
         def probe(_pad, info):
             buf = info.get_buffer()
@@ -1972,6 +1980,8 @@ class GStreamerAudioPort(AudioPort):
                 value = float(values[index]) / divisor
                 state["sum_sq"] += value * value
                 state["peak"] = max(state["peak"], abs(value))
+                if len(mono) < max_samples:
+                    mono.append(value)
             state["samples"] += max(0, len(values) // channels)
             state["frames"] += 1
             return gst.PadProbeReturn.OK
@@ -1988,9 +1998,25 @@ class GStreamerAudioPort(AudioPort):
         pad.remove_probe(handle)
         samples = max(1, int(state["samples"]))
         rms = (state["sum_sq"] / samples) ** 0.5
+        tones: list[dict] = []
+        if probe_hz and mono and state["rate"]:
+            sample_rate = float(state["rate"])
+            count = len(mono)
+            for hz in probe_hz:
+                coeff = 2.0 * math.cos(2.0 * math.pi * hz / sample_rate)
+                s_prev = 0.0
+                s_prev2 = 0.0
+                for value in mono:
+                    s_new = value + coeff * s_prev - s_prev2
+                    s_prev2 = s_prev
+                    s_prev = s_new
+                power = s_prev * s_prev + s_prev2 * s_prev2 - coeff * s_prev * s_prev2
+                magnitude = 2.0 * (max(power, 0.0) ** 0.5) / count
+                tones.append({"hz": hz, "magnitude": magnitude})
         return {
             "frames": state["frames"],
             "samples": state["samples"],
+            "tones": tones,
             "rms": rms,
             "peak": state["peak"],
             "rate_hz": state["rate"],

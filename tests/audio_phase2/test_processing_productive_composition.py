@@ -63,7 +63,10 @@ def test_production_graph_owns_one_processing_authority() -> None:
     assert provider.current_port is None  # nothing opened yet
     truth = graph.audio_processing.processing_truth()
     assert truth["effective_state"] in {"bypassed", "unavailable", "preparing"}
-    assert truth["bit_perfect"] is True  # nothing effective yet
+    # Absence of DSP is NOT proof of bit-perfect: unknown until positive
+    # preservation evidence exists.
+    assert truth["bit_perfect"] is None
+    assert truth["bit_perfect_evidence"] == "not_established"
 
 
 def test_productive_dsp_through_the_real_graph(tmp_path, monkeypatch) -> None:
@@ -111,6 +114,7 @@ def test_productive_dsp_through_the_real_graph(tmp_path, monkeypatch) -> None:
         truth = graph.audio_processing.processing_truth()
         assert truth["effective_state"] == "effective"
         assert truth["bit_perfect"] is False  # transforming path
+        assert truth["bit_perfect_evidence"] == "processing_effective"
 
         # The productive chain really processes (measured through the graph).
         metrics = port.capture_processing_output(0.7)
@@ -126,7 +130,8 @@ def test_productive_dsp_through_the_real_graph(tmp_path, monkeypatch) -> None:
         assert not failures, failures
         assert disabled == [True]
         assert graph.audio_processing.effective_state.value == "bypassed"
-        assert graph.audio_processing.processing_truth()["bit_perfect"] is True
+        # Still not a positive preservation proof: unknown, never True.
+        assert graph.audio_processing.processing_truth()["bit_perfect"] is None
     finally:
         port.close()
 
@@ -164,3 +169,79 @@ def test_dsp_request_before_gstreamer_open_fails_closed(tmp_path) -> None:
         for key in ("DSP_TRANSPORT_UNAVAILABLE", "DSP_STRATEGY_UNAVAILABLE")
     )
     assert graph.audio_processing.effective_state.value != "effective"
+
+
+def test_host_loss_retires_dsp_effective_truth_immediately(
+    tmp_path, monkeypatch
+) -> None:
+    """SIGKILL of the host invalidates EFFECTIVE through the PRODUCTIVE
+    host-loss fan-out (no refresh_capabilities call, no polling)."""
+    import os
+    import signal as signal_module
+    import threading
+
+    if not FIXTURE.is_file():
+        pytest.skip("PCM fixture unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+
+    graph = _build_real_graph(tmp_path)
+    port = graph.gstreamer_engine_provider.open()
+    supervisor = graph.gstreamer_engine_provider.current_supervisor
+    try:
+        port.set_volume(0)
+        port.load(FIXTURE)
+        deadline = time.monotonic() + 30.0
+        while not port.backend_state() and time.monotonic() < deadline:
+            port.dispatch_pending()
+            time.sleep(0.02)
+
+        from michi.domain.audio_processing import PreampNode, ProcessingGraph
+        from michi.domain.audio_signal import ChannelLayout, PcmSignalFormat
+
+        signal = PcmSignalFormat(
+            rate_hz=44100,
+            transport_format="S16LE",
+            significant_bits=16,
+            layout=ChannelLayout(positions=("FL", "FR")),
+        )
+        spec = ProcessingGraph(
+            graph_id="graph:host-loss",
+            revision=1,
+            nodes=(PreampNode(node_id="pre", gain_db=-6.0),),
+        )
+        results: list[dict] = []
+        failures: list[Exception] = []
+        graph.audio_processing.apply_processing_async(
+            spec,
+            signal,
+            on_done=results.append,
+            on_failed=failures.append,
+            async_submit=_InlineExecutor().submit,
+        )
+        assert not failures and results
+        assert graph.audio_processing.effective_state.value == "effective"
+        requested = graph.audio_processing.requested_revision
+
+        pid = supervisor.pid
+        assert pid is not None
+        os.kill(pid, signal_module.SIGKILL)
+
+        deadline = time.monotonic() + 8.0
+        while (
+            graph.audio_processing.effective_state.value != "unavailable"
+            and time.monotonic() < deadline
+        ):
+            port.dispatch_pending()
+            time.sleep(0.01)
+        port.dispatch_pending()
+        truth = graph.audio_processing.processing_truth()
+        assert truth["effective_state"] == "unavailable", truth
+        assert truth["effective_plan_id"] is None
+        assert truth["host_lost_reason"] is not None
+        # User intent survives; automatic reactivation is impossible.
+        assert graph.audio_processing.requested_revision == requested
+        assert truth["bit_perfect"] is None
+        _ = threading
+    finally:
+        with __import__("contextlib").suppress(Exception):
+            port.close()

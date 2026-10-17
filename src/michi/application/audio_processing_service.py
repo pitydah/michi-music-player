@@ -12,6 +12,7 @@ compiled plan.
 from __future__ import annotations
 
 import contextlib
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -136,6 +137,8 @@ class AudioProcessingService:
         self._effective_plan_id: str | None = None
         self._host_generation: int | None = None
         self._prepared_plans: dict[str, CompiledProcessingPlan] = {}
+        self._tx_lock = threading.RLock()
+        self._host_lost_reason: str | None = None
 
     # ── lectura ───────────────────────────────────────────────────────
     @property
@@ -562,30 +565,33 @@ class AudioProcessingService:
             )
 
         def work() -> dict[str, Any]:
-            self.refresh_capabilities()
-            effective = EffectiveProcessingGraphResolver().resolve(
-                graph, input_signal=signal, assets=assets
-            )
-            plan = ProcessingGraphCompiler().compile(
-                effective,
-                backend=self.capabilities,
-                assets=assets,
-                sample_policy=policy,
-            )
-            transport = self._transport
-            host_generation = int(getattr(transport, "host_generation", lambda: 0)())
-            candidate = self.begin_candidate(
-                plan, host_generation=host_generation, transport=transport
-            )
-            receipt = self.commit_candidate(candidate, transport=transport)
-            revision = self.publish_effective(receipt)
-            return {
-                "plan_id": plan.plan_id,
-                "graph_revision": plan.graph_revision,
-                "revision": revision,
-                "candidate_id": candidate.candidate_id,
-                "runtime_identity": receipt.native_runtime_identity,
-            }
+            with self._tx_lock:
+                self.refresh_capabilities()
+                effective = EffectiveProcessingGraphResolver().resolve(
+                    graph, input_signal=signal, assets=assets
+                )
+                plan = ProcessingGraphCompiler().compile(
+                    effective,
+                    backend=self.capabilities,
+                    assets=assets,
+                    sample_policy=policy,
+                )
+                transport = self._transport
+                host_generation = int(
+                    getattr(transport, "host_generation", lambda: 0)()
+                )
+                candidate = self.begin_candidate(
+                    plan, host_generation=host_generation, transport=transport
+                )
+                receipt = self.commit_candidate(candidate, transport=transport)
+                revision = self.publish_effective(receipt)
+                return {
+                    "plan_id": plan.plan_id,
+                    "graph_revision": plan.graph_revision,
+                    "revision": revision,
+                    "candidate_id": candidate.candidate_id,
+                    "runtime_identity": receipt.native_runtime_identity,
+                }
 
         def completed(value, error) -> None:
             if error is not None:
@@ -613,7 +619,8 @@ class AudioProcessingService:
             )
 
         def work() -> bool:
-            return self.bypass_processing(transport=self._transport)
+            with self._tx_lock:
+                return self.bypass_processing(transport=self._transport)
 
         def completed(value, error) -> None:
             if error is not None:
@@ -624,6 +631,26 @@ class AudioProcessingService:
                 on_done(bool(value))
 
         submit(work, completed)
+
+    def mark_host_lost(self, reason: str) -> None:
+        """Host boundary gone: retire DSP evidence IMMEDIATELY.
+
+        Requested intent survives; no automatic reactivation is possible
+        without a NEW transaction and a fresh receipt.
+        """
+        with self._tx_lock:
+            self._host_lost_reason = str(reason)
+            self._capability_state = ProcessingCapabilityState.UNAVAILABLE
+            self._capabilities = ProcessingBackendCapabilities(
+                backend_id="gstreamer-host", strategies=frozenset()
+            )
+            self._facts = None
+            if self._effective_state in (
+                ProcessingEffectiveState.EFFECTIVE,
+                ProcessingEffectiveState.PREPARING,
+            ):
+                self._effective_state = ProcessingEffectiveState.UNAVAILABLE
+                self._effective_plan_id = None
 
     def processing_truth(self) -> dict[str, Any]:
         """Semantic processing truth for presentation (F11 consumes this).
@@ -638,7 +665,14 @@ class AudioProcessingService:
             "effective_revision": self._effective_revision,
             "effective_state": self._effective_state.value,
             "effective_plan_id": self._effective_plan_id,
-            "bit_perfect": not effective,
+            # Tri-state: True ONLY with positive preservation evidence (none
+            # for Shared PCM yet); False while processing is effective;
+            # None = NOT ESTABLISHED (absence of DSP is not a proof).
+            "bit_perfect": False if effective else None,
+            "bit_perfect_evidence": (
+                "processing_effective" if effective else "not_established"
+            ),
+            "host_lost_reason": self._host_lost_reason,
             "strategies": sorted(
                 strategy.value for strategy in self._capabilities.strategies
             ),

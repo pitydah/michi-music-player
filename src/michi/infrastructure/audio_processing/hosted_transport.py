@@ -30,6 +30,8 @@ class HostedProcessingTransport:
 
     def __init__(self, port_provider: Callable[[], object | None]) -> None:
         self._port_provider = port_provider
+        self._host_lost_listeners: list[Callable[[str], None]] = []
+        self._attached_port_ids: set[int] = set()
 
     def _port(self):
         port = self._port_provider()
@@ -38,7 +40,23 @@ class HostedProcessingTransport:
                 "DSP_TRANSPORT_UNAVAILABLE",
                 "GStreamer is not the open active engine for processing",
             )
+        if id(port) not in self._attached_port_ids:
+            attach = getattr(port, "add_host_lost_listener", None)
+            if callable(attach):
+                self._attached_port_ids.add(id(port))
+                attach(self._dispatch_host_lost)
         return port
+
+    def add_host_lost_listener(self, callback: Callable[[str], None]) -> None:
+        """Register a DSP-truth invalidation listener (additive fan-out)."""
+        self._host_lost_listeners.append(callback)
+
+    def _dispatch_host_lost(self, reason: str) -> None:
+        for callback in list(self._host_lost_listeners):
+            try:
+                callback(reason)
+            except Exception:  # noqa: BLE001 - fan-out must never break the host
+                continue
 
     # ── capability ────────────────────────────────────────────────────
     def query_capabilities(self) -> dict[str, Any]:
