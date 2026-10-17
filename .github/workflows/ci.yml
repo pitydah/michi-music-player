@@ -42,11 +42,19 @@ jobs:
 
       - name: Premium Library QML warning gate
         run: |
+          # The Quick.layout-positioning warning category was removed from
+          # newer PySide6 qmllint builds. Keep the strict check where the
+          # option exists; otherwise run the same gate without it (the
+          # supported categories still apply).
+          EXTRA_FLAGS=""
+          if pyside6-qmllint --help 2>&1 | grep -q -- "--Quick.layout-positioning"; then
+            EXTRA_FLAGS="--Quick.layout-positioning error"
+          fi
           pyside6-qmllint -W 0 \
             --context-properties disable \
             --unqualified disable \
             --missing-property disable \
-            --Quick.layout-positioning error \
+            $EXTRA_FLAGS \
             -I src/michi/presentation/qml \
             src/michi/presentation/qml/views/LibraryView.qml \
             src/michi/presentation/qml/views/LibraryHeader.qml \
