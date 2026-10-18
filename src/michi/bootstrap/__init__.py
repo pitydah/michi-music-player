@@ -578,6 +578,7 @@ def _build_services(
         native_mapping=NativeProcessingMapping(),
         transport=processing_transport,
         async_submit=preparation_executor.submit,
+        truth_recorder=signal_truth,
     )
     # Host loss retires DSP effective truth IMMEDIATELY (additive fan-out
     # from the hosted port; no second recorder, no polling).

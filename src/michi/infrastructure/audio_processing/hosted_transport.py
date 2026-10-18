@@ -9,6 +9,7 @@ can keep requested intent while reporting effective runtime unavailable.
 
 from __future__ import annotations
 
+import weakref
 from collections.abc import Callable
 from typing import Any
 
@@ -31,7 +32,9 @@ class HostedProcessingTransport:
     def __init__(self, port_provider: Callable[[], object | None]) -> None:
         self._port_provider = port_provider
         self._host_lost_listeners: list[Callable[[str], None]] = []
-        self._attached_port_ids: set[int] = set()
+        # Weak identity: a closed/reopened port must never inherit the
+        # listener registration of a recycled object id.
+        self._attached_ports: weakref.WeakSet = weakref.WeakSet()
 
     def _port(self):
         port = self._port_provider()
@@ -40,10 +43,10 @@ class HostedProcessingTransport:
                 "DSP_TRANSPORT_UNAVAILABLE",
                 "GStreamer is not the open active engine for processing",
             )
-        if id(port) not in self._attached_port_ids:
+        if port not in self._attached_ports:
             attach = getattr(port, "add_host_lost_listener", None)
             if callable(attach):
-                self._attached_port_ids.add(id(port))
+                self._attached_ports.add(port)
                 attach(self._dispatch_host_lost)
         return port
 

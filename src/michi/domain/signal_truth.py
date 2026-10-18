@@ -742,6 +742,32 @@ def _initial_snapshot(plan: OutputPlanEvidence) -> SignalTruthSnapshot:
     )
 
 
+class ProcessingTruthState(Enum):
+    """Additive DSP evidence states (never a DAC verdict)."""
+
+    REQUESTED = "requested"
+    PREPARING = "preparing"
+    EFFECTIVE = "effective"
+    BYPASSED = "bypassed"
+    UNAVAILABLE = "unavailable"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class ProcessingTruthEvent:
+    """One processing-state convergence event.
+
+    ``bit_perfect`` is TRI-STATE and can never be True here: a graph that is
+    merely absent/unavailable is NOT a preservation proof.
+    """
+
+    state: ProcessingTruthState
+    processing_generation: int
+    plan_id: str | None = None
+    bit_perfect: bool | None = None
+    detail: str | None = None
+
+
 class SignalTruthRecorder:
     """One passive candidate/active runtime evidence recorder."""
 
@@ -750,6 +776,22 @@ class SignalTruthRecorder:
         self._active: SignalTruthSnapshot | None = None
         self._last: SignalTruthSnapshot | None = None
         self._subscribers: list[Callable[[], None]] = []
+        # Additive AP2-F05 stream: DSP state convergence, separate from (and
+        # never substituting) the DAC Signal Truth verdict.
+        self._processing_events: list[ProcessingTruthEvent] = []
+
+    @property
+    def processing_events(self) -> tuple[ProcessingTruthEvent, ...]:
+        return tuple(self._processing_events)
+
+    def record_processing_event(self, event: ProcessingTruthEvent) -> None:
+        """Append DSP evidence without touching candidate/active DAC truth."""
+        if event.bit_perfect is True:
+            raise ValueError("processing evidence can never prove bit-perfect")
+        self._processing_events.append(event)
+        if len(self._processing_events) > 64:
+            del self._processing_events[:-64]
+        self._publish()
 
     @property
     def candidate_snapshot(self) -> SignalTruthSnapshot:

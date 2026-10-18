@@ -11,8 +11,8 @@ compiled plan.
 
 from __future__ import annotations
 
-import contextlib
 import threading
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -27,6 +27,10 @@ from michi.application.processing_graph_compiler import (
     ProcessingGraphCompiler,
 )
 from michi.domain.audio_processing import ProcessingStrategy
+from michi.domain.signal_truth import (
+    ProcessingTruthEvent,
+    ProcessingTruthState,
+)
 
 #: Strategies the F05 native builder actually implements TODAY. Factory
 #: presence alone never implies support: the effective set is the
@@ -118,10 +122,13 @@ class AudioProcessingService:
         native_mapping: object | None = None,
         transport: object | None = None,
         async_submit: Callable[[Callable, Callable], None] | None = None,
+        truth_recorder: object | None = None,
     ) -> None:
         self._capability_query = capability_query
         self._async_submit = async_submit
         self._transport = transport
+        # ADDITIVE: the canonical SignalTruthRecorder (never a second one).
+        self._truth_recorder = truth_recorder
         # Infrastructure-owned native mapping (pure math + DTO shaping); the
         # application layer never imports infrastructure.
         self._native_mapping = native_mapping
@@ -137,7 +144,13 @@ class AudioProcessingService:
         self._effective_plan_id: str | None = None
         self._host_generation: int | None = None
         self._prepared_plans: dict[str, CompiledProcessingPlan] = {}
-        self._tx_lock = threading.RLock()
+        # SHORT-LIVED state protection only: never held across IPC. The
+        # owner (Qt) and host-loss callbacks must never wait on a
+        # transaction. Transactions are serialized by ONE dedicated worker.
+        self._state_lock = threading.Lock()
+        self._tx_queue: deque = deque()
+        self._tx_thread: threading.Thread | None = None
+        self._tx_active_revision: int | None = None
         self._host_lost_reason: str | None = None
 
     # ── lectura ───────────────────────────────────────────────────────
@@ -186,24 +199,28 @@ class AudioProcessingService:
     ) -> ProcessingBackendCapabilities:
         """Query the child and decide which strategies are REALLY supported."""
         if self._capability_query is None:
-            self._capability_state = ProcessingCapabilityState.UNAVAILABLE
-            self._capabilities = ProcessingBackendCapabilities(
-                backend_id="gstreamer-host", strategies=frozenset()
-            )
-            self._facts = None
-            return self._capabilities
+            with self._state_lock:
+                self._capability_state = ProcessingCapabilityState.UNAVAILABLE
+                self._capabilities = ProcessingBackendCapabilities(
+                    backend_id="gstreamer-host", strategies=frozenset()
+                )
+                self._facts = None
+            return self.capabilities
         try:
             raw = self._capability_query()
         except Exception:  # noqa: BLE001 - host loss/unavailable is typed state
-            self._capability_state = ProcessingCapabilityState.UNAVAILABLE
-            self._capabilities = ProcessingBackendCapabilities(
-                backend_id="gstreamer-host", strategies=frozenset()
-            )
-            self._facts = None
-            # A capability refresh never silently keeps an effective runtime
-            # whose native evidence belongs to a dead host.
-            self.invalidate_effective("capability query failed")
-            return self._capabilities
+            with self._state_lock:
+                self._capability_state = ProcessingCapabilityState.UNAVAILABLE
+                self._capabilities = ProcessingBackendCapabilities(
+                    backend_id="gstreamer-host", strategies=frozenset()
+                )
+                self._facts = None
+                # A capability refresh never silently keeps an effective
+                # runtime whose native evidence belongs to a dead host.
+                if self._effective_state is ProcessingEffectiveState.EFFECTIVE:
+                    self._effective_state = ProcessingEffectiveState.UNAVAILABLE
+                    self._effective_plan_id = None
+            return self.capabilities
         facts = ProcessingCapabilityFacts(
             gstreamer_version=raw.get("gstreamer_version"),
             runtime_failure=raw.get("runtime_failure"),
@@ -214,23 +231,28 @@ class AudioProcessingService:
             },
             raw=dict(raw),
         )
-        self._facts = facts
         if facts.runtime_failure is not None:
             # Contradiction is forbidden: a broken child runtime can NEVER
             # advertise supported strategies from stale/partial facts.
-            self._capability_state = ProcessingCapabilityState.UNAVAILABLE
-            self._capabilities = ProcessingBackendCapabilities(
-                backend_id="gstreamer-host", strategies=frozenset()
-            )
-            self.invalidate_effective("capability runtime failure")
-            return self._capabilities
-        self._capability_state = ProcessingCapabilityState.QUERIED
+            with self._state_lock:
+                self._facts = facts
+                self._capability_state = ProcessingCapabilityState.UNAVAILABLE
+                self._capabilities = ProcessingBackendCapabilities(
+                    backend_id="gstreamer-host", strategies=frozenset()
+                )
+                if self._effective_state is ProcessingEffectiveState.EFFECTIVE:
+                    self._effective_state = ProcessingEffectiveState.UNAVAILABLE
+                    self._effective_plan_id = None
+            return self.capabilities
+        with self._state_lock:
+            self._facts = facts
+            self._capability_state = ProcessingCapabilityState.QUERIED
         strategies = frozenset(
             strategy
             for strategy in IMPLEMENTED_STRATEGIES
             if self._factory_available(facts, *_STRATEGY_FACTORIES.get(strategy, ()))
         )
-        self._capabilities = ProcessingBackendCapabilities(
+        capabilities = ProcessingBackendCapabilities(
             backend_id="gstreamer-host",
             strategies=strategies,
             factories=frozenset(
@@ -239,9 +261,11 @@ class AudioProcessingService:
                 if value.get("available")
             ),
         )
-        if host_generation is not None:
-            self._host_generation = host_generation
-        return self._capabilities
+        with self._state_lock:
+            self._capabilities = capabilities
+            if host_generation is not None:
+                self._host_generation = host_generation
+        return capabilities
 
     @staticmethod
     def _factory_available(facts: ProcessingCapabilityFacts, *names: str) -> bool:
@@ -250,12 +274,40 @@ class AudioProcessingService:
         )
 
     # ── intención / revisión efectiva ─────────────────────────────────
+    def _record_processing(
+        self,
+        state: ProcessingTruthState,
+        *,
+        plan_id: str | None = None,
+        detail: str | None = None,
+    ) -> None:
+        recorder = self._truth_recorder
+        if recorder is None:
+            return
+        # Never a preservation proof from processing; tri-state preserved.
+        bit_perfect = False if state is ProcessingTruthState.EFFECTIVE else None
+        try:
+            recorder.record_processing_event(
+                ProcessingTruthEvent(
+                    state=state,
+                    processing_generation=self._requested_revision,
+                    plan_id=plan_id,
+                    bit_perfect=bit_perfect,
+                    detail=detail,
+                )
+            )
+        except Exception:  # noqa: BLE001 - passive truth never breaks DSP
+            return
+
     def note_requested(self) -> int:
         """New requested processing intent: an effective revision is now
         PREPARING (requested != effective) until a commit proves it."""
-        self._requested_revision += 1
-        self._effective_state = ProcessingEffectiveState.PREPARING
-        return self._requested_revision
+        with self._state_lock:
+            self._requested_revision += 1
+            self._effective_state = ProcessingEffectiveState.PREPARING
+            revision = self._requested_revision
+        self._record_processing(ProcessingTruthState.REQUESTED)
+        return revision
 
     def validate_readback(
         self,
@@ -376,9 +428,19 @@ class AudioProcessingService:
         *,
         host_generation: int,
         transport: object | None = None,
+        processing_generation: int | None = None,
     ) -> ProcessingCandidateIdentity:
-        """Prepare + readback-validate a candidate; EFFECTIVE is NOT touched."""
-        generation = self.note_requested()
+        """Prepare + readback-validate a candidate; EFFECTIVE is NOT touched.
+
+        ``processing_generation`` is supplied by the serialized transaction
+        worker (assigned on the owner at enqueue time); direct callers get a
+        fresh revision.
+        """
+        generation = (
+            self.note_requested()
+            if processing_generation is None
+            else int(processing_generation)
+        )
         active_transport = transport if transport is not None else self._transport
         if active_transport is None:
             raise ProcessingTransactionError(
@@ -391,16 +453,34 @@ class AudioProcessingService:
         )
         try:
             self.validate_readback(plan, observed)
-        except Exception:
-            # B1: a prepared candidate that fails validation is explicitly
-            # aborted in the child; its ownership is never silently retained.
+        except Exception as original:
+            # B1: explicit child abort; a FAILED abort is a double fault and
+            # must never be silenced: ownership is uncertain, the error is
+            # typed and both causes are preserved.
             abort = getattr(active_transport, "abort_candidate", None)
+            abort_error: Exception | None = None
             if callable(abort):
-                with contextlib.suppress(Exception):
+                try:
                     abort()
+                except Exception as exc:  # noqa: BLE001 - preserved below
+                    abort_error = exc
+            if abort_error is not None:
+                raise ProcessingTransactionError(
+                    "DSP_CANDIDATE_ABORT_FAILED",
+                    "candidate readback was invalid AND its abort failed; "
+                    f"native ownership is uncertain (readback: {original}; "
+                    f"abort: {abort_error})",
+                    payload={
+                        "readback_error": str(original),
+                        "abort_error": str(abort_error),
+                        "candidate_retained": True,
+                    },
+                ) from original
             raise
-        self._prepared_plans[plan.plan_id] = plan
+        with self._state_lock:
+            self._prepared_plans[plan.plan_id] = plan
         pipeline_generation = int(observed.get("pipeline_generation") or 0)
+        self._record_processing(ProcessingTruthState.PREPARING, plan_id=plan.plan_id)
         return ProcessingCandidateIdentity(
             candidate_id=(
                 f"{plan.plan_id}:{generation}:{host_generation}:{pipeline_generation}"
@@ -423,11 +503,13 @@ class AudioProcessingService:
         EFFECTIVE can only be reached through a validated receipt: the child
         must have installed the candidate into the productive runtime.
         """
-        if candidate.processing_generation != self._requested_revision:
+        with self._state_lock:
+            current_requested = self._requested_revision
+        if candidate.processing_generation != current_requested:
             raise ProcessingStaleCommitError(
                 "DSP_STALE_COMMIT",
                 f"candidate revision {candidate.processing_generation} is "
-                f"stale (requested {self._requested_revision})",
+                f"stale (requested {current_requested})",
             )
         active_transport = transport if transport is not None else self._transport
         if active_transport is None:
@@ -461,23 +543,6 @@ class AudioProcessingService:
             raise ProcessingTransactionError(
                 "DSP_COMMIT_RECEIPT_INVALID", "child returned no receipt object"
             )
-        prepared_plan = self._prepared_plans.get(candidate.plan_id)
-        post_install = payload.get("observed")
-        if prepared_plan is not None:
-            if not isinstance(post_install, dict):
-                raise ProcessingTransactionError(
-                    "DSP_COMMIT_RECEIPT_INVALID",
-                    "receipt carries no post-install readback",
-                )
-            # The PRODUCTIVE installed graph must satisfy the same exact
-            # readback contract as the validated candidate, PLUS negotiated
-            # caps: EFFECTIVE can never rest on "configured" caps alone.
-            if post_install.get("caps_source") != "negotiated":
-                raise ProcessingTransactionError(
-                    "DSP_CAPS_NOT_NEGOTIATED",
-                    "productive commit requires negotiated working caps",
-                )
-            self.validate_readback(prepared_plan, post_install, mode="filter")
         receipt = ProcessingCommitReceipt(
             candidate=candidate,
             installed=bool(payload.get("installed")),
@@ -491,7 +556,59 @@ class AudioProcessingService:
             observed_candidate_id=str(payload.get("candidate_id") or ""),
             native_runtime_identity=str(payload.get("runtime_identity") or ""),
         )
-        return self._validate_receipt(receipt)
+        # Receipt contract first: a rejected receipt means the runtime did
+        # NOT prove this candidate, so nothing was installed to contain and
+        # the effective state is untouched (still PREPARING).
+        validated = self._validate_receipt(receipt)
+        prepared_plan = None
+        with self._state_lock:
+            prepared_plan = self._prepared_plans.get(candidate.plan_id)
+        try:
+            post_install = payload.get("observed")
+            if prepared_plan is not None:
+                if not isinstance(post_install, dict):
+                    raise ProcessingTransactionError(
+                        "DSP_COMMIT_RECEIPT_INVALID",
+                        "receipt carries no post-install readback",
+                    )
+                if post_install.get("caps_source") != "negotiated":
+                    raise ProcessingTransactionError(
+                        "DSP_CAPS_NOT_NEGOTIATED",
+                        "productive commit requires negotiated working caps",
+                    )
+                self.validate_readback(prepared_plan, post_install, mode="filter")
+            return validated
+        except Exception as exc:  # noqa: BLE001 - containment below
+            # The child reported an install; the parent cannot prove the new
+            # runtime: contain by removing the unproven DSP (proven bypass)
+            # and retire EFFECTIVE. Never keep EFFECTIVE here.
+            containment = getattr(active_transport, "bypass_processing", None)
+            contained = False
+            if callable(containment):
+                try:
+                    result = containment()
+                    contained = bool(
+                        isinstance(result, dict) and result.get("bypassed")
+                    )
+                except Exception:  # noqa: BLE001 - containment best effort
+                    contained = False
+            with self._state_lock:
+                self._effective_state = ProcessingEffectiveState.UNAVAILABLE
+                self._effective_plan_id = None
+            if isinstance(exc, ProcessingTransactionError):
+                exc.payload = {
+                    "containment_attempted": True,
+                    "containment_proven": contained,
+                }
+                raise
+            raise ProcessingTransactionError(
+                "DSP_COMMIT_POST_VALIDATION_FAILED",
+                f"installed candidate could not be validated: {exc}",
+                payload={
+                    "containment_attempted": True,
+                    "containment_proven": contained,
+                },
+            ) from exc
 
     def _validate_receipt(
         self, receipt: ProcessingCommitReceipt
@@ -551,11 +668,12 @@ class AudioProcessingService:
         on_failed: Callable[[Exception], None] | None = None,
         async_submit: Callable[[Callable, Callable], None] | None = None,
     ) -> None:
-        """Owner-safe DSP apply: prepare/readback/commit/public on a worker.
+        """Owner-safe DSP apply serialized by ONE dedicated transaction worker.
 
-        The completion callback is delivered by the injected executor (the
-        canonical Qt owner dispatch in production). EFFECTIVE is published
-        only through a validated commit receipt.
+        The owner only assigns the intent revision and enqueues (short); the
+        long IPC work runs on the transaction worker with NO state lock held;
+        completions land on the owner through the canonical executor. A newer
+        intent supersedes queued work and fences the running transaction.
         """
         submit = async_submit if async_submit is not None else self._async_submit
         if submit is None:
@@ -563,35 +681,36 @@ class AudioProcessingService:
                 "DSP_ASYNC_UNAVAILABLE",
                 "no async executor is composed for processing",
             )
+        revision = self.note_requested()
 
-        def work() -> dict[str, Any]:
-            with self._tx_lock:
-                self.refresh_capabilities()
-                effective = EffectiveProcessingGraphResolver().resolve(
-                    graph, input_signal=signal, assets=assets
-                )
-                plan = ProcessingGraphCompiler().compile(
-                    effective,
-                    backend=self.capabilities,
-                    assets=assets,
-                    sample_policy=policy,
-                )
-                transport = self._transport
-                host_generation = int(
-                    getattr(transport, "host_generation", lambda: 0)()
-                )
-                candidate = self.begin_candidate(
-                    plan, host_generation=host_generation, transport=transport
-                )
-                receipt = self.commit_candidate(candidate, transport=transport)
-                revision = self.publish_effective(receipt)
-                return {
-                    "plan_id": plan.plan_id,
-                    "graph_revision": plan.graph_revision,
-                    "revision": revision,
-                    "candidate_id": candidate.candidate_id,
-                    "runtime_identity": receipt.native_runtime_identity,
-                }
+        def run(tx_revision: int) -> dict[str, Any]:
+            self.refresh_capabilities()
+            effective = EffectiveProcessingGraphResolver().resolve(
+                graph, input_signal=signal, assets=assets
+            )
+            plan = ProcessingGraphCompiler().compile(
+                effective,
+                backend=self.capabilities,
+                assets=assets,
+                sample_policy=policy,
+            )
+            transport = self._transport
+            host_generation = int(getattr(transport, "host_generation", lambda: 0)())
+            candidate = self.begin_candidate(
+                plan,
+                host_generation=host_generation,
+                transport=transport,
+                processing_generation=tx_revision,
+            )
+            receipt = self.commit_candidate(candidate, transport=transport)
+            published = self.publish_effective(receipt)
+            return {
+                "plan_id": plan.plan_id,
+                "graph_revision": plan.graph_revision,
+                "revision": published,
+                "candidate_id": candidate.candidate_id,
+                "runtime_identity": receipt.native_runtime_identity,
+            }
 
         def completed(value, error) -> None:
             if error is not None:
@@ -601,7 +720,7 @@ class AudioProcessingService:
             if on_done is not None:
                 on_done(value)
 
-        submit(work, completed)
+        self._enqueue_transaction(revision=revision, run=run, completed=completed)
 
     def disable_processing_async(
         self,
@@ -610,17 +729,19 @@ class AudioProcessingService:
         on_failed: Callable[[Exception], None] | None = None,
         async_submit: Callable[[Callable, Callable], None] | None = None,
     ) -> None:
-        """Owner-safe bypass: removal must be PROVEN before BYPASSED."""
+        """Owner-safe bypass serialized through the same transaction worker."""
         submit = async_submit if async_submit is not None else self._async_submit
         if submit is None:
             raise ProcessingTransactionError(
                 "DSP_ASYNC_UNAVAILABLE",
                 "no async executor is composed for processing",
             )
+        revision = self.note_requested()
 
-        def work() -> bool:
-            with self._tx_lock:
-                return self.bypass_processing(transport=self._transport)
+        def run(tx_revision: int) -> bool:
+            return self.bypass_processing(
+                transport=self._transport, processing_generation=tx_revision
+            )
 
         def completed(value, error) -> None:
             if error is not None:
@@ -630,15 +751,91 @@ class AudioProcessingService:
             if on_done is not None:
                 on_done(bool(value))
 
-        submit(work, completed)
+        self._enqueue_transaction(revision=revision, run=run, completed=completed)
+
+    # ── serialización de transacciones (UN worker, cero locks en IPC) ──
+    def _enqueue_transaction(
+        self,
+        *,
+        revision: int,
+        run: Callable[[int], object],
+        completed: Callable[[object, Exception | None], None],
+    ) -> None:
+        dropped: list[tuple[int, Callable]] = []
+        with self._state_lock:
+            # Newest intent wins: queued (not yet running) older work is
+            # dropped as stale instead of executing obsolete natively.
+            keep = deque()
+            while self._tx_queue:
+                item = self._tx_queue.popleft()
+                if item[0] < revision:
+                    dropped.append((item[0], item[1]))
+                else:
+                    keep.append(item)
+            self._tx_queue = keep
+            self._tx_queue.append((revision, run, completed))
+            if self._tx_thread is None or not self._tx_thread.is_alive():
+                self._tx_thread = threading.Thread(
+                    target=self._tx_loop, name="michi-dsp-tx", daemon=True
+                )
+                self._tx_thread.start()
+        for stale_revision, stale_completed in dropped:
+            stale_completed(
+                None,
+                ProcessingStaleCommitError(
+                    "DSP_STALE_INTENT",
+                    f"queued processing revision {stale_revision} was superseded",
+                ),
+            )
+
+    def _tx_loop(self) -> None:
+        while True:
+            with self._state_lock:
+                if not self._tx_queue:
+                    self._tx_thread = None
+                    return
+                revision, run, completed = self._tx_queue.popleft()
+                self._tx_active_revision = revision
+            try:
+                value = run(revision)
+            except Exception as exc:  # noqa: BLE001 - typed delivery
+                error: Exception | None = exc
+                value = None
+            else:
+                error = None
+            finally:
+                with self._state_lock:
+                    self._tx_active_revision = None
+            self._deliver_completion(completed, value, error)
+
+    def _deliver_completion(
+        self,
+        completed: Callable[[object, Exception | None], None],
+        value: object,
+        error: Exception | None,
+    ) -> None:
+        """Deliver on the owner via the canonical executor (no state lock)."""
+        submit = self._async_submit
+        if submit is None:
+            completed(value, error)
+            return
+
+        def noop() -> None:
+            return None
+
+        def owner_completion(_ignored, _ignored_error) -> None:
+            completed(value, error)
+
+        submit(noop, owner_completion)
 
     def mark_host_lost(self, reason: str) -> None:
         """Host boundary gone: retire DSP evidence IMMEDIATELY.
 
-        Requested intent survives; no automatic reactivation is possible
-        without a NEW transaction and a fresh receipt.
+        Takes ONLY the short state lock: the owner/Qt callback never waits
+        for a blocked DSP transaction. Requested intent survives; no
+        automatic reactivation is possible without a new receipt.
         """
-        with self._tx_lock:
+        with self._state_lock:
             self._host_lost_reason = str(reason)
             self._capability_state = ProcessingCapabilityState.UNAVAILABLE
             self._capabilities = ProcessingBackendCapabilities(
@@ -651,6 +848,7 @@ class AudioProcessingService:
             ):
                 self._effective_state = ProcessingEffectiveState.UNAVAILABLE
                 self._effective_plan_id = None
+        self._record_processing(ProcessingTruthState.UNAVAILABLE, detail=str(reason))
 
     def processing_truth(self) -> dict[str, Any]:
         """Semantic processing truth for presentation (F11 consumes this).
@@ -658,27 +856,33 @@ class AudioProcessingService:
         ``bit_perfect`` is False while any processing revision is EFFECTIVE:
         a transforming path is never presented as bit-perfect.
         """
-        effective = self._effective_state is ProcessingEffectiveState.EFFECTIVE
-        return {
-            "capability_state": self._capability_state.value,
-            "requested_revision": self._requested_revision,
-            "effective_revision": self._effective_revision,
-            "effective_state": self._effective_state.value,
-            "effective_plan_id": self._effective_plan_id,
-            # Tri-state: True ONLY with positive preservation evidence (none
-            # for Shared PCM yet); False while processing is effective;
-            # None = NOT ESTABLISHED (absence of DSP is not a proof).
-            "bit_perfect": False if effective else None,
-            "bit_perfect_evidence": (
-                "processing_effective" if effective else "not_established"
-            ),
-            "host_lost_reason": self._host_lost_reason,
-            "strategies": sorted(
-                strategy.value for strategy in self._capabilities.strategies
-            ),
-        }
+        with self._state_lock:
+            effective = self._effective_state is ProcessingEffectiveState.EFFECTIVE
+            return {
+                "capability_state": self._capability_state.value,
+                "requested_revision": self._requested_revision,
+                "effective_revision": self._effective_revision,
+                "effective_state": self._effective_state.value,
+                "effective_plan_id": self._effective_plan_id,
+                # Tri-state: True ONLY with positive preservation evidence
+                # (none for Shared PCM yet); False while processing is
+                # effective; None = NOT ESTABLISHED.
+                "bit_perfect": False if effective else None,
+                "bit_perfect_evidence": (
+                    "processing_effective" if effective else "not_established"
+                ),
+                "host_lost_reason": self._host_lost_reason,
+                "strategies": sorted(
+                    strategy.value for strategy in self._capabilities.strategies
+                ),
+            }
 
-    def bypass_processing(self, *, transport: object | None = None) -> bool:
+    def bypass_processing(
+        self,
+        *,
+        transport: object | None = None,
+        processing_generation: int | None = None,
+    ) -> bool:
         """Transactional bypass: EFFECTIVE only after a PROVEN removal."""
         active_transport = transport if transport is not None else self._transport
         if active_transport is None:
@@ -686,32 +890,53 @@ class AudioProcessingService:
                 "DSP_TRANSPORT_UNAVAILABLE",
                 "no processing transport is composed for this service",
             )
+        if processing_generation is not None:
+            with self._state_lock:
+                current = self._requested_revision
+            if int(processing_generation) != current:
+                raise ProcessingStaleCommitError(
+                    "DSP_STALE_INTENT",
+                    f"bypass revision {processing_generation} is stale "
+                    f"(requested {current})",
+                )
         payload = active_transport.bypass_processing()
         if not isinstance(payload, dict) or not payload.get("bypassed"):
             raise ProcessingTransactionError(
                 "DSP_BYPASS_UNPROVEN",
                 "the runtime did not prove the processing filter removal",
             )
-        self._requested_revision += 1
-        self._effective_revision = self._requested_revision
-        self._effective_plan_id = None
-        self._effective_state = ProcessingEffectiveState.BYPASSED
+        with self._state_lock:
+            if processing_generation is None:
+                self._requested_revision += 1
+                revision = self._requested_revision
+            else:
+                revision = int(processing_generation)
+            self._effective_revision = revision
+            self._effective_plan_id = None
+            self._effective_state = ProcessingEffectiveState.BYPASSED
+        self._record_processing(ProcessingTruthState.BYPASSED)
         return True
 
     def publish_effective(self, receipt: ProcessingCommitReceipt) -> int:
         """Publish EFFECTIVE — ONLY from a validated commit receipt."""
         self._validate_receipt(receipt)
         candidate = receipt.candidate
-        if candidate.processing_generation != self._requested_revision:
+        with self._state_lock:
+            current_requested = self._requested_revision
+        if candidate.processing_generation != current_requested:
             raise ProcessingStaleCommitError(
                 "DSP_STALE_COMMIT",
                 f"candidate revision {candidate.processing_generation} is "
-                f"stale (requested {self._requested_revision})",
+                f"stale (requested {current_requested})",
             )
-        self._effective_revision = candidate.processing_generation
-        self._effective_plan_id = candidate.plan_id
-        self._effective_state = ProcessingEffectiveState.EFFECTIVE
-        return self._effective_revision
+        with self._state_lock:
+            self._effective_revision = candidate.processing_generation
+            self._effective_plan_id = candidate.plan_id
+            self._effective_state = ProcessingEffectiveState.EFFECTIVE
+        self._record_processing(
+            ProcessingTruthState.EFFECTIVE, plan_id=candidate.plan_id
+        )
+        return candidate.processing_generation
 
     def invalidate_effective(self, reason: str) -> None:
         """Host loss / runtime invalidity: effective evidence is retired.
@@ -761,10 +986,13 @@ def json_normalize(value: Any) -> Any:
 class ProcessingTransactionError(RuntimeError):
     """Typed transaction failure (commit/receipt/transport)."""
 
-    def __init__(self, code: str, detail: str) -> None:
+    def __init__(
+        self, code: str, detail: str, payload: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(f"{code}: {detail}")
         self.code = code
         self.detail = detail
+        self.payload: dict[str, Any] = dict(payload or {})
 
 
 class ProcessingStaleCommitError(RuntimeError):

@@ -37,6 +37,17 @@ class _InlineExecutor:
             completed(value, None)
 
 
+def _wait_until(predicate, *, timeout: float = 30.0) -> bool:
+    """Async DSP transactions complete on the serialized worker; the owner
+    observes completion only through its dispatch, never by blocking."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.01)
+    return False
+
+
 def _build_real_graph(tmp_path):
     from michi.bootstrap import _build_services
     from tests.conftest import FakeAudioPort
@@ -108,6 +119,7 @@ def test_productive_dsp_through_the_real_graph(tmp_path, monkeypatch) -> None:
             on_failed=failures.append,
             async_submit=_InlineExecutor().submit,
         )
+        assert _wait_until(lambda: bool(results or failures)), "no completion"
         assert not failures, failures
         assert results and results[0]["plan_id"]
         assert graph.audio_processing.effective_state.value == "effective"
@@ -127,6 +139,7 @@ def test_productive_dsp_through_the_real_graph(tmp_path, monkeypatch) -> None:
             on_failed=failures.append,
             async_submit=_InlineExecutor().submit,
         )
+        assert _wait_until(lambda: bool(disabled or failures)), "no completion"
         assert not failures, failures
         assert disabled == [True]
         assert graph.audio_processing.effective_state.value == "bypassed"
@@ -162,6 +175,7 @@ def test_dsp_request_before_gstreamer_open_fails_closed(tmp_path) -> None:
         on_failed=failures.append,
         async_submit=_InlineExecutor().submit,
     )
+    assert _wait_until(lambda: bool(failures), timeout=10.0), "no completion"
     # Fail-closed chain: without a hosted port the capabilities are empty
     # and/or the transport is unavailable — never a false EFFECTIVE.
     assert failures and any(
@@ -218,6 +232,7 @@ def test_host_loss_retires_dsp_effective_truth_immediately(
             on_failed=failures.append,
             async_submit=_InlineExecutor().submit,
         )
+        assert _wait_until(lambda: bool(results or failures)), "no completion"
         assert not failures and results
         assert graph.audio_processing.effective_state.value == "effective"
         requested = graph.audio_processing.requested_revision

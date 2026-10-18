@@ -289,7 +289,10 @@ def test_identity_transform_reports_no_mutation() -> None:
     assert plan.changes_channels is False
     assert plan.changes_timing is False
     assert plan.changes_channel_assignment is False
-    assert plan.changes_representation is False
+    # R11-G04: F32LE -> F64LE working representation IS a conversion; the
+    # identity graph never claims an unaltered representation.
+    assert plan.changes_representation is True
+    assert plan.sample_contract.input_conversion is True
     assert plan.quantization_boundary is False
     assert plan.sample_contract.input_rate_hz == 96000
     assert plan.sample_contract.output_rate_hz == 96000

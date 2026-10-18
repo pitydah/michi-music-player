@@ -198,8 +198,21 @@ class ProcessingGraphCompiler:
             output_format = input_format
             output_quantization = not input_is_float
             dither_mode = policy.dither_mode.value
-        input_conversion = not input_is_float
-        changes_representation = input_conversion or output_quantization
+        # R11-G04: ANY precision/representation change at the boundary is a
+        # representation conversion — including float-to-float (F32LE input
+        # re-represented as the F64LE working format). Never claim
+        # unaltered/bit-perfect from a mere "it is already float" test.
+        # A graph with no executable node performs NO conversion at all
+        # (bypass / inactive nodes): nothing is claimed.
+        if executable:
+            input_conversion = not input_is_float or (
+                input_format.strip().upper() != policy.working_format.strip().upper()
+            )
+            changes_representation = input_conversion or output_quantization
+        else:
+            input_conversion = False
+            output_quantization = False
+            changes_representation = False
 
         contract = ProcessingSampleContract(
             input_format=input_format,

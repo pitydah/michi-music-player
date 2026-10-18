@@ -652,102 +652,200 @@ def test_commit_failure_with_proven_restore_keeps_predecessor_effective() -> Non
 
 
 def test_concurrent_applies_serialize_and_end_coherent() -> None:
-    import threading
-    import time as _time
+    """Newest-intent-wins: a second apply while the first is IN FLIGHT must
+    supersede it with a TYPED failure (never silent), and only the newest
+    candidate may publish EFFECTIVE."""
+    from michi.application.audio_processing_service import (
+        ProcessingStaleCommitError,
+        ProcessingTransactionError,
+    )
 
-    transport = _ScriptedTransport()
-    facts = {
-        "gstreamer_version": "fake",
-        "runtime_failure": None,
-        "factories": {
-            name: {"available": True, "properties": {}, "missing_properties": []}
-            for name in ("volume", "audioiirfilter", "audioconvert", "capsfilter")
-        },
-    }
+    transport = _BlockingTransport()
     service = AudioProcessingService(
-        capability_query=lambda: facts,
+        capability_query=_fake_capability_query,
         native_mapping=NativeProcessingMapping(),
         transport=transport,
     )
-
-    class _ThreadExecutor:
-        def __init__(self) -> None:
-            self.completions: list[tuple] = []
-            self.lock = threading.Lock()
-
-        def submit(self, work, completed) -> None:
-            def run() -> None:
-                try:
-                    value = work()
-                except Exception as exc:  # noqa: BLE001 - delivered typed
-                    with self.lock:
-                        self.completions.append((completed, None, exc))
-                else:
-                    with self.lock:
-                        self.completions.append((completed, value, None))
-
-            threading.Thread(target=run, daemon=True).start()
-
-        def deliver(self) -> int:
-            delivered = 0
-            while True:
-                with self.lock:
-                    if not self.completions:
-                        return delivered
-                    completed, value, error = self.completions.pop(0)
-                completed(value, error)
-                delivered += 1
-
-    executor = _ThreadExecutor()
     results: list[dict] = []
     failures: list[Exception] = []
 
-    from michi.application.effective_processing_graph import (
-        EffectiveProcessingGraphResolver,
-    )
-    from michi.application.processing_graph_compiler import (
-        ProcessingBackendCapabilities as Backend,
-    )
-    from michi.domain.audio_processing import ProcessingStrategy
-
-    signal = _signal()
-    graph_spec = _preamp_graph()
-    effective = EffectiveProcessingGraphResolver().resolve(
-        graph_spec, input_signal=signal, assets=()
-    )
-    from michi.application.processing_graph_compiler import ProcessingGraphCompiler
-
-    ProcessingGraphCompiler().compile(
-        effective,
-        backend=Backend(backend_id="test", strategies=frozenset(ProcessingStrategy)),
-        assets=(),
-    )
-
-    # Two concurrent applications of the same DSP intent.
     service.apply_processing_async(
-        graph_spec,
-        signal,
+        _preamp_graph(),
+        _signal(),
         on_done=results.append,
         on_failed=failures.append,
-        async_submit=executor.submit,
+        async_submit=_InlineExecutor().submit,
     )
+    assert transport.started.wait(3.0), "first transaction never started"
     service.apply_processing_async(
-        graph_spec,
-        signal,
+        _preamp_graph(),
+        _signal(),
         on_done=results.append,
         on_failed=failures.append,
-        async_submit=executor.submit,
+        async_submit=_InlineExecutor().submit,
     )
-    deadline = _time.monotonic() + 6.0
-    while len(results) + len(failures) < 2 and _time.monotonic() < deadline:
-        executor.deliver()
-        _time.sleep(0.005)
-    executor.deliver()
-    # Serialized transactions: both complete coherently (no crashes, no
-    # interleaved state), and the final effective revision is the CURRENT
-    # requested revision.
-    assert not failures, failures
-    assert len(results) == 2
+    transport.release.set()
+
+    deadline = time.monotonic() + 8.0
+    while len(results) + len(failures) < 2 and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert len(results) == 1, (results, failures)
+    assert len(failures) == 1, (results, failures)
+    assert isinstance(
+        failures[0], (ProcessingTransactionError, ProcessingStaleCommitError)
+    )
+    assert failures[0].code in ("DSP_STALE_INTENT", "DSP_STALE_COMMIT")
     assert service.effective_state.value == "effective"
     assert service.effective_revision == service.requested_revision
     assert service.effective_plan_id == results[-1]["plan_id"]
+
+
+# ── sprint 3: owner safety, abort double-fault, containment ────────────
+import threading  # noqa: E402
+import time  # noqa: E402
+
+
+class _InlineExecutor:
+    def submit(self, work, completed) -> None:
+        try:
+            value = work()
+        except Exception as exc:  # noqa: BLE001 - delivery boundary
+            completed(None, exc)
+        else:
+            completed(value, None)
+
+
+def _fake_capability_query() -> dict:
+    return {
+        "gstreamer_version": "GStreamer fake-1.0",
+        "runtime_failure": None,
+        "factories": {
+            "volume": {"available": True},
+            "audioiirfilter": {"available": True},
+            "audioconvert": {"available": True},
+        },
+    }
+
+
+class _BlockingTransport(_FakeProcessingTransport):
+    """Simulates a LONG child IPC call (prepare blocks in the worker)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.started = threading.Event()
+        self.release = threading.Event()
+        self.dead = False
+
+    def prepare_candidate(self, wire: dict, *, processing_generation: int = 0) -> dict:
+        self.started.set()
+        assert self.release.wait(5.0), "test never released the blocked IPC"
+        if self.dead:
+            raise RuntimeError("OUTPUT_HOST_LOST: fake host gone")
+        return super().prepare_candidate(
+            wire, processing_generation=processing_generation
+        )
+
+
+def test_host_lost_never_waits_for_a_blocked_processing_transaction() -> None:
+    """P0: the host-loss callback (owner thread) must not block behind a
+    long DSP IPC. The transaction is fenced and cannot publish EFFECTIVE."""
+    from michi.application.audio_processing_service import ProcessingTransactionError
+
+    transport = _BlockingTransport()
+    service = AudioProcessingService(
+        capability_query=_fake_capability_query,
+        native_mapping=NativeProcessingMapping(),
+        transport=transport,
+        async_submit=_InlineExecutor().submit,
+    )
+    failures: list[Exception] = []
+    results: list[dict] = []
+    service.apply_processing_async(
+        _preamp_graph(), _signal(), on_done=results.append, on_failed=failures.append
+    )
+    assert transport.started.wait(3.0), "transaction never started its IPC"
+
+    started = time.monotonic()
+    service.mark_host_lost("SIGKILL")
+    elapsed = time.monotonic() - started
+    assert elapsed < 1.0, f"host-loss callback blocked for {elapsed:.3f}s"
+    truth = service.processing_truth()
+    assert truth["effective_state"] == "unavailable"
+    assert truth["capability_state"] == "unavailable"
+    assert service.requested_revision >= 1  # intent survives
+
+    transport.dead = True
+    transport.release.set()
+    deadline = time.monotonic() + 5.0
+    while not failures and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert failures, "the fenced transaction must fail loudly"
+    assert isinstance(failures[0], (ProcessingTransactionError, RuntimeError))
+    assert not results
+    assert service.effective_state.value != "effective"
+
+
+class _AbortExplodesTransport(_FakeProcessingTransport):
+    def __init__(self) -> None:
+        super().__init__()
+        self.abort_attempts = 0
+
+    def prepare_candidate(self, wire: dict, *, processing_generation: int = 0) -> dict:
+        observed = super().prepare_candidate(
+            wire, processing_generation=processing_generation
+        )
+        observed["nodes"][0]["observed"]["gain_db"] += 1.0  # invalid readback
+        return observed
+
+    def abort_candidate(self) -> None:
+        self.abort_attempts += 1
+        raise RuntimeError("abort exploded")
+
+
+def test_failed_abort_is_a_typed_double_fault_not_silence() -> None:
+    from michi.application.audio_processing_service import ProcessingTransactionError
+
+    service, plan = _transaction_plan()
+    transport = _AbortExplodesTransport()
+    with pytest.raises(ProcessingTransactionError) as info:
+        service.begin_candidate(plan, host_generation=1, transport=transport)
+    assert info.value.code == "DSP_CANDIDATE_ABORT_FAILED"
+    assert transport.abort_attempts == 1
+    assert info.value.payload["candidate_retained"] is True
+    assert "readback_error" in info.value.payload
+    assert "abort_error" in info.value.payload
+
+
+class _CorruptObservationTransport(_FakeProcessingTransport):
+    def __init__(self) -> None:
+        super().__init__()
+        self.bypass_calls = 0
+
+    def commit_candidate(self, **kwargs):
+        receipt = super().commit_candidate(**kwargs)
+        observed = receipt.get("observed") or {}
+        if observed.get("nodes"):
+            observed["nodes"][0]["observed"]["gain_db"] += 0.5
+        return receipt
+
+    def bypass_processing(self) -> dict:
+        self.bypass_calls += 1
+        return {"bypassed": True}
+
+
+def test_post_install_validation_failure_contains_unproven_dsp() -> None:
+    """A valid receipt whose installed graph cannot be proven must be
+    contained (proven bypass) and can NEVER become EFFECTIVE."""
+    from michi.application.audio_processing_service import ProcessingTransactionError
+
+    service, plan = _transaction_plan()
+    transport = _CorruptObservationTransport()
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
+    with pytest.raises(ProcessingTransactionError) as info:
+        service.commit_candidate(candidate, transport=transport)
+    assert info.value.code == "DSP_COMMIT_POST_VALIDATION_FAILED"
+    assert info.value.payload["containment_attempted"] is True
+    assert info.value.payload["containment_proven"] is True
+    assert transport.bypass_calls == 1
+    assert service.effective_state.value == "unavailable"
+    assert service.effective_plan_id is None
