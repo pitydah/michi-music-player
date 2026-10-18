@@ -1941,7 +1941,6 @@ class GStreamerAudioPort(AudioPort):
             )
         gst = self._bindings.gst_module()
         state = {
-            "sum_sq": 0.0,
             "peak": 0.0,
             "frames": 0,
             "samples": 0,
@@ -1952,9 +1951,15 @@ class GStreamerAudioPort(AudioPort):
         }
         probe_hz = [float(hz) for hz in (probe_hz or ())]
         # Bounded raw capture for the diagnostic spectral analysis (mono,
-        # first channel). Never used by the productive runtime.
+        # first channel). Never used by the productive runtime. The buffer
+        # callback is O(buffer): it only copies bytes; ALL sample work runs
+        # after the capture window, never per-sample inside the pad probe.
         max_samples = 192000
-        mono: list[float] = []
+        # Each chunk keeps the format it was captured with: caps may
+        # renegotiate mid-window, so decode must never assume one format.
+        chunks: list[tuple[str, float, int, bytes]] = []
+        bytes_budget = max_samples * 8  # 2ch * 4 bytes at most
+        captured = {"bytes": 0}
 
         def probe(_pad, info):
             buf = info.get_buffer()
@@ -1971,33 +1976,54 @@ class GStreamerAudioPort(AudioPort):
                 state["unsupported_buffers"] += 1
                 return gst.PadProbeReturn.OK
             typecode, divisor = codec
-            itemsize = array.array(typecode).itemsize
-            data = buf.extract_dup(0, buf.get_size())
-            values = array.array(typecode)
-            values.frombytes(data[: len(data) - (len(data) % itemsize)])
             channels = max(1, int(state["channels"] or 2))
-            for index in range(0, len(values), channels):
-                value = float(values[index]) / divisor
-                state["sum_sq"] += value * value
-                state["peak"] = max(state["peak"], abs(value))
-                if len(mono) < max_samples:
-                    mono.append(value)
-            state["samples"] += max(0, len(values) // channels)
+            itemsize = array.array(typecode).itemsize
+            remaining = bytes_budget - captured["bytes"]
+            if remaining > 0:
+                data = buf.extract_dup(0, min(buf.get_size(), remaining))
+                chunks.append((typecode, float(divisor), channels, data))
+                captured["bytes"] += len(data)
             state["frames"] += 1
+            state["samples"] += max(
+                0, buf.get_size() // itemsize // (state["channels"] or 1)
+            )
             return gst.PadProbeReturn.OK
 
         handle = pad.add_probe(gst.PadProbeType.BUFFER, probe)
         _ret, previous, _pending = pipeline.get_state(0)
         linked_before = pad.is_linked()
-        play_ret = pipeline.set_state(gst.State.PLAYING)
-        deadline = _time.monotonic() + max(0.1, float(seconds))
-        while _time.monotonic() < deadline:
-            _time.sleep(0.01)
-        _ret2, state_after, _pending2 = pipeline.get_state(0)
-        pipeline.set_state(gst.State.PAUSED)
-        pad.remove_probe(handle)
+        state_after = previous
+        play_ret = None
+        try:
+            play_ret = pipeline.set_state(gst.State.PLAYING)
+            deadline = _time.monotonic() + max(0.1, float(seconds))
+            while _time.monotonic() < deadline:
+                _time.sleep(0.01)
+            _ret2, state_after, _pending2 = pipeline.get_state(0)
+        finally:
+            # The diagnostic must NEVER leak a probe or leave media running
+            # after an error: it always returns to PAUSED (deterministic
+            # measurement boundary; productive transport is untouched — this
+            # path only exists for test/lab instrumentation).
+            with contextlib.suppress(Exception):
+                pad.remove_probe(handle)
+            with contextlib.suppress(Exception):
+                pipeline.set_state(gst.State.PAUSED)
+        # ── post-capture analysis (outside the streaming callback) ─────
+        sum_sq = 0.0
+        peak = 0.0
+        mono: list[float] = []
+        for typecode, divisor, channels, data in chunks:
+            values = array.array(typecode)
+            values.frombytes(data[: len(data) - (len(data) % values.itemsize)])
+            for index in range(0, len(values), channels):
+                value = float(values[index]) / divisor
+                sum_sq += value * value
+                peak = max(peak, abs(value))
+                if len(mono) < max_samples:
+                    mono.append(value)
         samples = max(1, int(state["samples"]))
-        rms = (state["sum_sq"] / samples) ** 0.5
+        rms = (sum_sq / samples) ** 0.5
         tones: list[dict] = []
         if probe_hz and mono and state["rate"]:
             sample_rate = float(state["rate"])
@@ -2018,7 +2044,7 @@ class GStreamerAudioPort(AudioPort):
             "samples": state["samples"],
             "tones": tones,
             "rms": rms,
-            "peak": state["peak"],
+            "peak": peak,
             "rate_hz": state["rate"],
             "channels": state["channels"],
             "format": state["format"],

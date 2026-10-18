@@ -85,11 +85,11 @@ def _service(port):
     )
 
 
-def _signal():
+def _signal(rate: int = 44100):
     from michi.domain.audio_signal import ChannelLayout, PcmSignalFormat
 
     return PcmSignalFormat(
-        rate_hz=44100,
+        rate_hz=rate,
         transport_format="S16LE",
         significant_bits=16,
         layout=ChannelLayout(positions=("FL", "FR")),
@@ -114,14 +114,14 @@ def _graph(gains: tuple[float, ...], revision: int = 1):
     )
 
 
-def _install(service, port, supervisor, gains, revision=1):
+def _install(service, port, supervisor, gains, revision=1, rate=44100):
     from michi.application.effective_processing_graph import (
         EffectiveProcessingGraphResolver,
     )
     from michi.application.processing_graph_compiler import ProcessingGraphCompiler
 
     effective = EffectiveProcessingGraphResolver().resolve(
-        _graph(gains, revision), input_signal=_signal(), assets=()
+        _graph(gains, revision), input_signal=_signal(rate), assets=()
     )
     plan = ProcessingGraphCompiler().compile(
         effective, backend=service.capabilities, assets=()
@@ -166,9 +166,18 @@ def test_graphic_eq_spectral_boost_and_cut_are_real(tmp_path, monkeypatch) -> No
 
         assert ProcessingStrategy.GRAPHIC_EQ_NBANDS in service.capabilities.strategies
 
-        # Flat reference through the SAME productive path.
+        # Flat EQ through the productive path, then a PROVEN bypass: the
+        # identity-passthrough topology is an INDEPENDENT reference (no
+        # tautological self-comparison).
         _install(service, port, supervisor, (0.0,) * 10, revision=1)
         flat = _capture(port)
+        assert port.bypass_processing()["bypassed"] is True
+        identity = _capture(port)
+        # Tolerance: Goertzel over a 0.8 s multitone window (tones spaced
+        # >= 1 octave) plus the two-topology identity comparison; 1.5 dB is
+        # a conservative bound.
+        for hz in identity:
+            assert abs(_db(flat[hz] / identity[hz])) < 1.5, hz
 
         # 125 Hz +6 dB, 1 kHz -6 dB, 8 kHz +4 dB.
         gains = [0.0] * 10
@@ -183,24 +192,30 @@ def test_graphic_eq_spectral_boost_and_cut_are_real(tmp_path, monkeypatch) -> No
         assert measured[1000] == pytest.approx(-6.0, abs=2.0), measured
         assert measured[8000] == pytest.approx(4.0, abs=2.0), measured
 
-        # Flat EQ is an identity within tolerance (same productive path).
-        assert _db(flat[1000] / flat[1000]) == 0.0
-
-        # Transactional bypass: the tone magnitudes return to the flat baseline.
+        # Transactional bypass: the tone magnitudes return to the
+        # independent identity baseline.
         assert port.bypass_processing()["bypassed"] is True
         bypassed = _capture(port)
-        recovered = {hz: _db(bypassed[hz] / flat[hz]) for hz in flat}
+        recovered = {hz: _db(bypassed[hz] / identity[hz]) for hz in flat}
         for hz, value in recovered.items():
+            # Slightly wider: the bypass insert/replace path can renegotiate
+            # the same signal through a different element relationship.
             assert abs(value) < 4.0, (hz, value)
     finally:
         port.close()
         supervisor.close()
 
 
-def test_graphic_eq_mixed_bands_and_rate_switch(tmp_path, monkeypatch) -> None:
+@pytest.mark.parametrize("rate", [44100, 48000, 96000])
+def test_graphic_eq_mixed_bands_at_real_sample_rates(
+    tmp_path, monkeypatch, rate: int
+) -> None:
+    """The same productive EQ must behave identically at REAL 44.1/48/96 kHz
+    media. The fixture is encoded at the rate under test; the compiled sample
+    contract and the installed native filtering are rebuilt for that rate."""
     monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
-    fixture = tmp_path / "multitone48.wav"
-    _write_multitone(fixture, rate=44100)  # playback rate fixed by fixture
+    fixture = tmp_path / f"multitone-{rate}.wav"
+    _write_multitone(fixture, rate=rate)
 
     supervisor, port = _real_port()
     try:
@@ -214,19 +229,30 @@ def test_graphic_eq_mixed_bands_and_rate_switch(tmp_path, monkeypatch) -> None:
         service = _service(port)
         service.refresh_capabilities()
 
-        # Mixed positive/negative bands; the measured deltas must move in the
-        # requested DIRECTIONS independently (no global RMS proxy).
+        # Mixed positive/negative bands; the measured deltas must move in
+        # the requested DIRECTIONS independently (no global RMS proxy) at
+        # every real sample rate.
         gains = [0.0] * 10
         gains[MICHI_10.index(125.0)] = -8.0
         gains[MICHI_10.index(1000.0)] = 5.0
-        _install(service, port, supervisor, (0.0,) * 10, revision=1)
+        _install(service, port, supervisor, (0.0,) * 10, revision=1, rate=rate)
         baseline = _capture(port)
-        _install(service, port, supervisor, tuple(gains), revision=2)
+        plan = _install(
+            service,
+            port,
+            supervisor,
+            tuple(gains),
+            revision=2,
+            rate=rate,
+        )
+        assert plan.sample_contract.input_rate_hz == rate
         shaped = _capture(port)
         low = _db(shaped[125] / baseline[125])
         mid = _db(shaped[1000] / baseline[1000])
-        assert low < -3.0, (low, "low band must be cut")
-        assert mid > 2.0, (mid, "mid band must be boosted")
+        # ±2 dB: Goertzel window leakage on an octave-spaced multitone plus
+        # the neighbouring (0 dB) bands' residual contribution.
+        assert low == pytest.approx(-8.0, abs=2.0), (rate, low)
+        assert mid == pytest.approx(5.0, abs=2.0), (rate, mid)
         assert low < 0.0 < mid  # opposite directions, same measurement
     finally:
         port.close()

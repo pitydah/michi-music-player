@@ -1350,7 +1350,12 @@ class TestF42AdapterContract:
         # AP2-F05 sprint 2: the diagnostic capture adds bounded Goertzel spectral
         # analysis (test/lab instrumentation only; productive per-sample paths
         # unchanged). Hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "ae9825f0d42abad8",
+        # AP2-F05 sprint 3: the diagnostic capture moves ALL sample work out
+        # of the streaming callback (bounded byte accumulation) and restores
+        # the pre-capture pipeline state/probe in a finally block. Productive
+        # transport/DSP semantics unchanged. Hash re-sealed after full
+        # regression (real 44.1/48/96 kHz spectral goldens).
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "d2da6c4c8a085228",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).
