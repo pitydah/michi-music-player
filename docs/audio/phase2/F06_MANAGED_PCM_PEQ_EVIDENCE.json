@@ -3,7 +3,7 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "72df68d",
+  "repo_head": "beb0d75",
   "verdict": "IN_PROGRESS_PRODUCTIVE \u2014 Managed PCM is now reachable through the productive composition end-to-end (resolver family dispatch, selectable and persistent profile, canonical DSP provider, identity-bound teardown, exact DAC evidence and post-install readback). Physical ALSA evidence, profile persistence/UI (F13/F11), measured latency, FIR/resample/dither remain open. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
@@ -140,14 +140,22 @@
   },
   "physical_qualification": "NOT_RUN",
   "next_work_units": [
-    "physical ALSA/DAC managed run under the explicit operator gate",
-    "durable processing/output profile repositories (F13) + F11 presentation",
-    "pipeline/sink latency measurement and headroom measurement (true peak)",
+    "physical ALSA/DAC managed run under the explicit operator gate (PARKED)",
+    "durable processing-profile repository (F13) + F11 presentation surface",
+    "true-peak/headroom measurement and sink latency measurement",
     "FIR/convolution, explicit resampling and dither (authority-conditioned)"
   ],
   "full_suite": {
-    "result": "5810 passed, 4 skipped, 0 failed",
+    "result": "5812 passed, 4 skipped, 0 failed",
     "scope": "python -m pytest -q (entire repository)",
-    "focused_audio": "1515 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
+    "focused_audio": "1517 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
+  },
+  "spec_sha256": "826381f154a0e5eb848a37e7c3c81909ddb8d103cc0cadd75c97e5fc16e41ead",
+  "residuals_closed": {
+    "truth_lock": "invalidate_effective mutates truth under the short state lock and clears the latency estimate",
+    "memory_bound": "committed candidate plans are pruned after validation; latency provenance is retained",
+    "pipeline_latency": "managed identity reports GStreamer query_latency (ns + samples at the negotiated rate); unmeasured is None; physical is a separate claim",
+    "host_sigkill": "real SIGKILL test: host-loss fan-out retires EFFECTIVE, stale release is diagnostic-only and cannot crash the owner",
+    "ownership": "spec amendment authorized the exact remaining F06 files; spec sha 826381f1..., alignment GO"
   }
 }
