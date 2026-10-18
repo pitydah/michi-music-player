@@ -16,7 +16,6 @@ from michi.application.effective_processing_graph import (
     EffectiveProcessingGraphResolver,
 )
 from michi.application.processing_graph_compiler import (
-    ProcessingCompilationError,
     ProcessingGraphCompiler,
 )
 from michi.domain.audio_processing import (
@@ -161,7 +160,8 @@ def test_real_host_shared_pcm_processing_candidate_readback_first() -> None:
         supervisor.close()
 
 
-def test_real_host_refuses_unimplemented_peq_strategy() -> None:
+def test_real_host_implements_parametric_eq() -> None:
+    """AP2-F06: PEQ (BIQUAD_CASCADE) is REAL on the hosted runtime."""
     supervisor, port = _real_port()
     try:
         port.activate()
@@ -169,30 +169,32 @@ def test_real_host_refuses_unimplemented_peq_strategy() -> None:
             capability_query=port.query_processing_capabilities,
             native_mapping=NativeProcessingMapping(),
         )
-        service.refresh_capabilities()
-        with pytest.raises(ProcessingCompilationError) as info:
-            _compile(
-                service,
-                ProcessingGraph(
-                    graph_id="graph:peq",
-                    revision=1,
-                    nodes=(
-                        ParametricEqNode(
-                            node_id="peq",
-                            bands=(
-                                PeqBand(
-                                    band_id="b1",
-                                    filter_type=BiquadType.PEAK,
-                                    frequency_hz=1000.0,
-                                    q=0.707,
-                                    gain_db=2.0,
-                                ),
+        capabilities = service.refresh_capabilities()
+        from michi.domain.audio_processing import ProcessingStrategy
+
+        assert ProcessingStrategy.BIQUAD_CASCADE in capabilities.strategies
+        plan = _compile(
+            service,
+            ProcessingGraph(
+                graph_id="graph:peq",
+                revision=1,
+                nodes=(
+                    ParametricEqNode(
+                        node_id="peq",
+                        bands=(
+                            PeqBand(
+                                band_id="b1",
+                                filter_type=BiquadType.PEAK,
+                                frequency_hz=1000.0,
+                                q=0.707,
+                                gain_db=2.0,
                             ),
                         ),
                     ),
                 ),
-            )
-        assert info.value.code == "DSP_STRATEGY_UNAVAILABLE"
+            ),
+        )
+        assert plan.nodes and plan.nodes[0].strategy.value == "biquad_cascade"
     finally:
         port.close()
         supervisor.close()

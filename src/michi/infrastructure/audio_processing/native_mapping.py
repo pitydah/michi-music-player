@@ -36,6 +36,53 @@ def json_normalize(value: Any) -> Any:
     return value
 
 
+def _peq_bands(properties: dict[str, Any]) -> list[tuple]:
+    """Enabled PEQ bands in compiled order (band_id, type, f, q, gain, on)."""
+    raw = properties.get("bands") or ()
+    bands: list[tuple] = []
+    for entry in raw:
+        values = list(entry)
+        if len(values) != 6:
+            raise ValueError("PEQ band must carry six fields")
+        band_id, filter_type, frequency_hz, q, gain_db, enabled = values
+        if not bool(enabled):
+            continue
+        bands.append(
+            (
+                str(band_id),
+                str(filter_type),
+                float(frequency_hz),
+                float(q),
+                float(gain_db),
+            )
+        )
+    return bands
+
+
+def peq_cascade(rate_hz: int, bands: list[tuple]) -> list[dict[str, Any]]:
+    """Parent-computed RBJ cascade for the ENABLED PEQ bands."""
+    from michi.infrastructure.audio_processing.biquad import (
+        biquad_coefficients,
+    )
+
+    cascade: list[dict[str, Any]] = []
+    for _band_id, filter_type, frequency_hz, q, gain_db in bands:
+        coefficients = biquad_coefficients(
+            BiquadType(filter_type),
+            rate_hz=float(rate_hz),
+            frequency_hz=float(frequency_hz),
+            q=float(q),
+            gain_db=float(gain_db),
+        )
+        cascade.append(
+            {
+                "b": [coefficients.b0, coefficients.b1, coefficients.b2],
+                "a": [1.0, coefficients.a1, coefficients.a2],
+            }
+        )
+    return cascade
+
+
 def graphic_cascade(
     rate_hz: int, centers: list[float], gains: list[float]
 ) -> list[dict[str, Any]]:
@@ -89,6 +136,9 @@ class NativeProcessingMapping:
         if node.strategy is ProcessingStrategy.GRAPHIC_EQ_NBANDS:
             properties = {str(key): value for key, value in node.properties}
             return ("audioiirfilter",) * len(properties["gains_db"])
+        if node.strategy is ProcessingStrategy.BIQUAD_CASCADE:
+            properties = {str(key): value for key, value in node.properties}
+            return ("audioiirfilter",) * len(_peq_bands(properties))
         raise ValueError(f"no native factories for {node.strategy.value!r}")
 
     @staticmethod
@@ -120,6 +170,9 @@ class NativeProcessingMapping:
                 "band_indices": indices,
                 "biquad": graphic_cascade(rate_hz, centers, gains),
             }
+        if node.strategy is ProcessingStrategy.BIQUAD_CASCADE:
+            band_rate = int(properties.get("rate_hz") or rate_hz)
+            return {"biquad": peq_cascade(band_rate, _peq_bands(properties))}
         raise ValueError(f"no native mapping for strategy {node.strategy.value!r}")
 
     def plan_to_wire(self, plan: CompiledProcessingPlan) -> dict[str, Any]:
@@ -143,6 +196,13 @@ class NativeProcessingMapping:
                     plan.sample_contract.input_rate_hz,
                     [float(value) for value in properties["band_centers_hz"]],
                     [float(value) for value in properties["gains_db"]],
+                )
+            if node.strategy is ProcessingStrategy.BIQUAD_CASCADE:
+                band_rate = int(
+                    properties.get("rate_hz") or plan.sample_contract.input_rate_hz
+                )
+                properties["biquad_cascade"] = peq_cascade(
+                    band_rate, _peq_bands(properties)
                 )
             nodes.append(
                 {

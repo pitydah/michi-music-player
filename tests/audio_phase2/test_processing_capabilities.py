@@ -179,17 +179,21 @@ def test_service_decides_support_from_real_facts() -> None:
         )
         capabilities = service.refresh_capabilities()
         assert service.capability_state is ProcessingCapabilityState.QUERIED
-        # Implemented TODAY: GAIN + GRAPHIC_EQ_NBANDS (given the factories).
+        # Implemented TODAY: GAIN + GRAPHIC_EQ_NBANDS + BIQUAD_CASCADE (PEQ,
+        # AP2-F06) given the real audioiirfilter factory.
         assert capabilities.strategies == frozenset(
-            {ProcessingStrategy.GAIN, ProcessingStrategy.GRAPHIC_EQ_NBANDS}
+            {
+                ProcessingStrategy.GAIN,
+                ProcessingStrategy.GRAPHIC_EQ_NBANDS,
+                ProcessingStrategy.BIQUAD_CASCADE,
+            }
         )
-        # Compiler integration: the F05 slice compiles; unimplemented
-        # strategies refuse with the canonical typed error.
+        # Compiler integration: gain, graphic EQ and PEQ all compile.
         assert _compile_with(service, _preamp_graph()) is not None
         assert _compile_with(service, _graphic_graph()) is not None
-        with pytest.raises(ProcessingCompilationError) as exc:
-            _compile_with(service, _peq_graph())
-        assert exc.value.code == "DSP_STRATEGY_UNAVAILABLE"
+        peq = _compile_with(service, _peq_graph())
+        assert peq is not None
+        assert peq.nodes[0].strategy is ProcessingStrategy.BIQUAD_CASCADE
     finally:
         port.close()
 

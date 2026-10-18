@@ -55,6 +55,20 @@ def _read_node(
         linear = float(element.get_property("volume"))
         gain_db = float("-inf") if linear <= 0.0 else 20.0 * math.log10(linear)
         return {"gain_db": gain_db}
+    if strategy == "biquad_cascade":
+        if not isinstance(element, (list, tuple)):
+            raise ProcessingGraphBuildError(
+                "DSP_READBACK_MALFORMED", "PEQ cascade is not a native chain"
+            )
+        return {
+            "biquad": [
+                {
+                    "a": [float(value) for value in band.get_property("a")],
+                    "b": [float(value) for value in band.get_property("b")],
+                }
+                for band in element
+            ]
+        }
     if strategy == "graphic_eq_nbands":
         if isinstance(element, (list, tuple)):
             # audioiirfilter cascade: report the coefficients actually set.

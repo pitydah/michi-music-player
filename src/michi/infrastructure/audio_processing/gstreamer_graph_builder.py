@@ -144,6 +144,13 @@ def build_processing_candidate(plan: dict[str, Any]) -> BuiltProcessingCandidate
                     element = _build_biquad_cascade(Gst, node_id, cascade)
                 else:
                     element = _build_equalizer(Gst, node_id, properties)
+            elif strategy == "biquad_cascade":
+                cascade = properties.get("biquad_cascade")
+                if not isinstance(cascade, list):
+                    raise ProcessingGraphBuildError(
+                        "DSP_PLAN_INVALID", "PEQ requires a biquad cascade"
+                    )
+                element = _build_biquad_cascade(Gst, node_id, cascade)
             else:
                 raise ProcessingGraphBuildError(
                     "DSP_STRATEGY_UNAVAILABLE",
@@ -267,6 +274,13 @@ def build_processing_filter(plan: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(cascade, list) or not cascade:
                 raise ProcessingGraphBuildError(
                     "DSP_PLAN_INVALID", "graphic EQ requires a biquad cascade"
+                )
+            element = _build_biquad_cascade(Gst, node_id, cascade)
+        elif strategy == "biquad_cascade":
+            cascade = properties.get("biquad_cascade")
+            if not isinstance(cascade, list):
+                raise ProcessingGraphBuildError(
+                    "DSP_PLAN_INVALID", "PEQ requires a biquad cascade"
                 )
             element = _build_biquad_cascade(Gst, node_id, cascade)
         else:
