@@ -1360,7 +1360,7 @@ class TestF42AdapterContract:
         # explicit and recorded in the managed identity). Managed never sets
         # Direct identity; Direct staging semantics are byte-identical.
         # Hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "87fe2733965a50c7",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "9101329945695293",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

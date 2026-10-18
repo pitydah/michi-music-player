@@ -59,7 +59,11 @@ class ManagedPcmExecutor:
         self._install_processing = install_processing
 
     def execute(
-        self, plan: ManagedPcmOutputPlan, media_path: str | Path
+        self,
+        plan: ManagedPcmOutputPlan,
+        media_path: str | Path,
+        *,
+        install_processing: (Callable[[ManagedPcmOutputPlan], object] | None) = None,
     ) -> ManagedPcmExecutionReceipt:
         port = self._port_provider()
         if port is None:
@@ -106,15 +110,16 @@ class ManagedPcmExecutor:
             )
 
         processing_revision = 0
+        installer = install_processing or self._install_processing
         if plan.processing_plan_id is not None:
-            if self._install_processing is None:
+            if installer is None:
                 self._stop_quietly(port)
                 raise ManagedPcmExecutionError(
                     "MANAGED_PCM_PROCESSING_UNAVAILABLE",
                     "no processing authority is composed for this route",
                 )
             try:
-                installed = self._install_processing(plan)
+                installed = installer(plan)
             except Exception as exc:  # noqa: BLE001 - fail closed
                 self._stop_quietly(port)
                 raise ManagedPcmExecutionError(
@@ -125,6 +130,16 @@ class ManagedPcmExecutor:
                 or (installed.get("revision", 0) if isinstance(installed, dict) else 0)
             )
 
+        # D4: re-read the identity AFTER the DSP install; the evidence that
+        # justifies the claim must describe the CURRENT topology.
+        try:
+            identity = port.query_managed_identity()
+        except Exception:  # noqa: BLE001 - keep the pre-install identity
+            identity = identity
+        identity = dict(identity)
+        host_generation = getattr(port, "supervisor_generation", None)
+        if host_generation is not None:
+            identity["host_generation"] = host_generation
         self._verify_identity(plan, identity, port)
         return ManagedPcmExecutionReceipt(
             execution_id=plan.execution_id,

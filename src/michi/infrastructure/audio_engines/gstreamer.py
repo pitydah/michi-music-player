@@ -1804,6 +1804,14 @@ class GStreamerAudioPort(AudioPort):
                 "DIRECT_EXECUTOR_IDENTITY_MISMATCH",
                 "producer and GStreamer consumer do not share one executor",
             )
+        if self._pending_managed_recipe is not None:
+            # MANAGED/DIRECT MUTUAL EXCLUSION: a load may consume exactly one
+            # family's recipe. Reject before any state mutation so the
+            # conflicting intent can never reach the next load.
+            raise DirectSinkBuildError(
+                "DIRECT_STAGE_CONFLICT",
+                "a Managed preparation is already staged for the next load",
+            )
         if not isinstance(preparation, DirectLoadPreparation):
             raise DirectSinkBuildError(
                 "DIRECT_STAGE_INVALID", "expected an atomic DirectLoadPreparation"
@@ -1855,13 +1863,45 @@ class GStreamerAudioPort(AudioPort):
         self._pending_managed_recipe = recipe
 
     def managed_identity(self) -> dict:
-        """Primitive identity of the CURRENT managed load (or managed=False)."""
+        """Primitive identity of the CURRENT managed load (or managed=False).
+
+        Runtime evidence only: when the sink pad exposes negotiated caps they
+        are reported as ``evidence_level=gstreamer_negotiated``; otherwise the
+        identity is explicitly ``configured_only`` and no negotiated claim is
+        fabricated.
+        """
         identity = self._managed_identity
         if identity is None:
             return {"managed": False}
         payload = dict(identity)
         payload["loaded"] = self._current_path is not None
+        negotiated = self._managed_negotiated_caps()
+        payload["negotiated"] = negotiated
+        payload["evidence_level"] = (
+            "gstreamer_negotiated" if negotiated else "configured_only"
+        )
         return payload
+
+    def _managed_negotiated_caps(self) -> dict | None:
+        pipeline = self._pipeline
+        if pipeline is None:
+            return None
+        sink = pipeline.get_property("audio-sink")
+        if sink is None:
+            return None
+        pad = sink.get_static_pad("sink")
+        if pad is None:
+            return None
+        caps = pad.get_current_caps()
+        if caps is None:
+            return None
+        structure = caps.get_structure(0)
+        return {
+            "format": str(structure.get_value("format") or ""),
+            "rate_hz": int(structure.get_value("rate") or 0),
+            "channels": int(structure.get_value("channels") or 0),
+            "caps": str(caps),
+        }
 
     def discard_direct_load(self, handle, *, executor) -> bool:
         """Discard only the still-pending preparation owned by ``handle``."""
