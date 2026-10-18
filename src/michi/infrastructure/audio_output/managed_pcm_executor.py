@@ -63,6 +63,7 @@ class ManagedPcmExecutor:
         plan: ManagedPcmOutputPlan,
         media_path: str | Path,
         *,
+        execution_instance_id: str | None = None,
         install_processing: (Callable[[ManagedPcmOutputPlan], object] | None) = None,
     ) -> ManagedPcmExecutionReceipt:
         port = self._port_provider()
@@ -71,9 +72,11 @@ class ManagedPcmExecutor:
                 "MANAGED_PCM_TRANSPORT_UNAVAILABLE",
                 "GStreamer is not the open active engine for Managed output",
             )
+        instance_id = str(execution_instance_id or plan.execution_id)
         recipe = {
             "plan_id": plan.plan_id,
-            "execution_id": plan.execution_id,
+            "execution_id": instance_id,
+            "plan_execution_id": plan.execution_id,
             "sink_factory": "alsasink",
             "device": plan.device_locator,
             "media_type": "audio/x-raw",
@@ -165,7 +168,7 @@ class ManagedPcmExecutor:
             identity["host_generation"] = host_generation
         self._verify_identity(plan, identity, port)
         return ManagedPcmExecutionReceipt(
-            execution_id=plan.execution_id,
+            execution_id=instance_id,
             plan_id=plan.plan_id,
             stable_device_id=plan.stable_device_id,
             device_locator=plan.device_locator,

@@ -1927,34 +1927,66 @@ class GStreamerAudioPort(AudioPort):
         payload["evidence_level"] = (
             "gstreamer_negotiated" if negotiated else "configured_only"
         )
-        # PIPELINE-REPORTED latency (GStreamer query), never a physical claim.
-        latency_ns = self._query_pipeline_latency_ns()
-        payload["pipeline_latency_ns"] = latency_ns
+        # PIPELINE-REPORTED latency (real Gst.Query path), never a physical
+        # claim. Provenance, live flag and min/max are explicit.
+        latency = self._query_pipeline_latency()
+        payload["pipeline_latency"] = latency
+        value_ns = None
+        if latency is not None:
+            if latency.get("min_ns") is not None:
+                value_ns = latency["min_ns"]
+            else:
+                value_ns = latency.get("max_ns")
+        payload["pipeline_latency_ns"] = value_ns
         rate_hz = int((negotiated or {}).get("rate_hz") or 0)
-        if latency_ns is not None and rate_hz > 0:
-            payload["pipeline_latency_samples"] = round(latency_ns * rate_hz / 1e9)
+        if value_ns is not None and rate_hz > 0:
+            payload["pipeline_latency_samples"] = round(value_ns * rate_hz / 1e9)
         else:
             payload["pipeline_latency_samples"] = None
         return payload
 
-    def _query_pipeline_latency_ns(self) -> int | None:
+    def _query_pipeline_latency(self) -> dict | None:
+        """Correct GI path: Gst.Query.new_latency + pipeline.query + parse.
+
+        ``pipeline.query_latency()`` does not exist in PyGObject; the Query
+        API is the supported contract. CLOCK_TIME_NONE is reported as None,
+        never as an enormous numeric latency.
+        """
         pipeline = self._pipeline
         if pipeline is None:
             return None
         try:
-            result = pipeline.query_latency()
+            gst = self._bindings.gst_module()
+            query = gst.Query.new_latency()
+            if not pipeline.query(query):
+                return None
+            parsed = query.parse_latency()
+            clock_none = int(gst.CLOCK_TIME_NONE)
         except Exception:  # noqa: BLE001 - unmeasured is not a failure
             return None
-        if not isinstance(result, tuple) or len(result) != 2:
+        if not isinstance(parsed, tuple) or len(parsed) != 3:
             return None
-        ok, latency = result
-        if not ok:
+        live, min_latency, max_latency = parsed
+
+        def _valid(value) -> int | None:
+            try:
+                number = int(value)
+            except (TypeError, ValueError):
+                return None
+            if number < 0 or number >= clock_none:
+                return None
+            return number
+
+        result = {
+            "source": "gstreamer_runtime",
+            "measurement_type": "pipeline_reported",
+            "live": bool(live),
+            "min_ns": _valid(min_latency),
+            "max_ns": _valid(max_latency),
+        }
+        if result["min_ns"] is None and result["max_ns"] is None:
             return None
-        try:
-            value = int(latency)
-        except (TypeError, ValueError):
-            return None
-        return value if value >= 0 else None
+        return result
 
     def _managed_negotiated_caps(self) -> dict | None:
         pipeline = self._pipeline
@@ -2178,6 +2210,7 @@ class GStreamerAudioPort(AudioPort):
         # ── post-capture analysis (outside the streaming callback) ─────
         sum_sq = 0.0
         peak = 0.0
+        over_full_scale = 0
         mono: list[float] = []
         for typecode, divisor, channels, data in chunks:
             values = array.array(typecode)
@@ -2185,7 +2218,10 @@ class GStreamerAudioPort(AudioPort):
             for index in range(0, len(values), channels):
                 value = float(values[index]) / divisor
                 sum_sq += value * value
-                peak = max(peak, abs(value))
+                magnitude = abs(value)
+                peak = max(peak, magnitude)
+                if magnitude > 1.0:
+                    over_full_scale += 1
                 if len(mono) < max_samples:
                     mono.append(value)
         samples = max(1, int(state["samples"]))
@@ -2210,7 +2246,13 @@ class GStreamerAudioPort(AudioPort):
             "samples": state["samples"],
             "tones": tones,
             "rms": rms,
+            # SAMPLE-peak metrics (float domain): never an intersample/true
+            # peak claim and never analog clipping evidence.
             "peak": peak,
+            "sample_peak": peak,
+            "samples_over_full_scale": over_full_scale,
+            "exceeds_full_scale": peak > 1.0,
+            "headroom_db": (round(-20.0 * math.log10(peak), 3) if peak > 0.0 else None),
             "rate_hz": state["rate"],
             "channels": state["channels"],
             "format": state["format"],

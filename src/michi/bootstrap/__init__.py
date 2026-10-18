@@ -708,7 +708,9 @@ def _build_services(
             "runtime_identity": receipt.native_runtime_identity,
         }
 
-    def _managed_prepare(path: Path, facts) -> ManagedOutputPrepared:
+    def _managed_prepare(
+        path: Path, facts, execution_instance_id: str
+    ) -> ManagedOutputPrepared:
         """Worker-phase Managed composition: plan + execute + DSP receipt."""
         if (
             facts is None
@@ -780,15 +782,20 @@ def _build_services(
         receipt = managed_pcm_executor.execute(
             result,
             path,
+            execution_instance_id=execution_instance_id,
             install_processing=(
                 (lambda _managed: _managed_install(compiled))
                 if compiled is not None
                 else None
             ),
         )
+        if result.processing_plan_id is None:
+            # The identity Managed route installs NO DSP in the new pipeline:
+            # previous EFFECTIVE evidence must never describe this execution.
+            audio_processing_service.invalidate_effective("managed_identity_route")
         return ManagedOutputPrepared(
             plan=result,
-            execution_id=receipt.execution_id,
+            execution_id=execution_instance_id,
             runtime_identity=dict(receipt.runtime_identity),
         )
 
@@ -809,7 +816,11 @@ def _build_services(
                 "device": prepared.plan.device_locator,
             }
         )
-        if result.get("stopped"):
+        # Retire EFFECTIVE when the execution was stopped OR when cleanup
+        # failed/unknown (the graph may still be alive: never keep a
+        # current-effective claim for an execution we no longer own). A
+        # STALE result belongs to a NEWER execution and must not touch truth.
+        if result.get("stopped") or not result.get("stale"):
             audio_processing_service.invalidate_effective(f"managed_{reason}")
         return result
 

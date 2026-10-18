@@ -228,9 +228,7 @@ class AudioProcessingService:
                 self._facts = None
                 # A capability refresh never silently keeps an effective
                 # runtime whose native evidence belongs to a dead host.
-                if self._effective_state is ProcessingEffectiveState.EFFECTIVE:
-                    self._effective_state = ProcessingEffectiveState.UNAVAILABLE
-                    self._effective_plan_id = None
+                self._retire_effective_locked(preparing_state=None)
             return self.capabilities
         facts = ProcessingCapabilityFacts(
             gstreamer_version=raw.get("gstreamer_version"),
@@ -251,9 +249,7 @@ class AudioProcessingService:
                 self._capabilities = ProcessingBackendCapabilities(
                     backend_id="gstreamer-host", strategies=frozenset()
                 )
-                if self._effective_state is ProcessingEffectiveState.EFFECTIVE:
-                    self._effective_state = ProcessingEffectiveState.UNAVAILABLE
-                    self._effective_plan_id = None
+                self._retire_effective_locked()
             return self.capabilities
         with self._state_lock:
             self._facts = facts
@@ -961,12 +957,9 @@ class AudioProcessingService:
                 backend_id="gstreamer-host", strategies=frozenset()
             )
             self._facts = None
-            if self._effective_state in (
-                ProcessingEffectiveState.EFFECTIVE,
-                ProcessingEffectiveState.PREPARING,
-            ):
-                self._effective_state = ProcessingEffectiveState.UNAVAILABLE
-                self._effective_plan_id = None
+            self._retire_effective_locked(
+                preparing_state=ProcessingEffectiveState.UNAVAILABLE
+            )
         self._record_processing(ProcessingTruthState.UNAVAILABLE, detail=str(reason))
 
     def processing_truth(self) -> dict[str, Any]:
@@ -983,6 +976,8 @@ class AudioProcessingService:
                 "effective_revision": self._effective_revision,
                 "effective_state": self._effective_state.value,
                 "effective_plan_id": self._effective_plan_id,
+                "runtime_identity": self._last_receipt_runtime_identity,
+                "readback_proven": self._last_receipt_readback_proven,
                 # Tri-state: True ONLY with positive preservation evidence
                 # (none for Shared PCM yet); False while processing is
                 # effective; None = NOT ESTABLISHED.
@@ -1045,9 +1040,9 @@ class AudioProcessingService:
             else:
                 revision = int(processing_generation)
             self._effective_revision = revision
-            self._effective_plan_id = None
             self._effective_state = ProcessingEffectiveState.BYPASSED
-            self._effective_latency_samples = None
+            self._retire_effective_locked()
+            self._effective_revision = revision
         self._record_processing(ProcessingTruthState.BYPASSED, readback_proven=True)
         return True
 
@@ -1104,6 +1099,31 @@ class AudioProcessingService:
         )
         return candidate.processing_generation
 
+    def _retire_effective_locked(
+        self,
+        *,
+        preparing_state: ProcessingEffectiveState | None = (
+            ProcessingEffectiveState.BYPASSED
+        ),
+    ) -> None:
+        """ONE coherent retirement of every CURRENT-EFFECTIVE fact.
+
+        The caller holds the short state lock. Requested intent survives;
+        nothing that described the retired execution survives as current.
+        """
+        if self._effective_state is ProcessingEffectiveState.EFFECTIVE:
+            self._effective_state = ProcessingEffectiveState.UNAVAILABLE
+        elif (
+            self._effective_state is ProcessingEffectiveState.PREPARING
+            and preparing_state is not None
+        ):
+            self._effective_state = preparing_state
+        self._effective_plan_id = None
+        self._effective_latency_samples = None
+        self._last_receipt_runtime_identity = None
+        self._last_receipt_readback_proven = False
+        self._last_committed_latency_samples = None
+
     def invalidate_effective(self, reason: str) -> None:
         """Host loss / runtime invalidity: effective evidence is retired.
 
@@ -1111,12 +1131,7 @@ class AudioProcessingService:
         does not. Uses the SHORT state lock; never waits on native IPC.
         """
         with self._state_lock:
-            if self._effective_state is ProcessingEffectiveState.EFFECTIVE:
-                self._effective_state = ProcessingEffectiveState.UNAVAILABLE
-            elif self._effective_state is ProcessingEffectiveState.PREPARING:
-                self._effective_state = ProcessingEffectiveState.BYPASSED
-            self._effective_plan_id = None
-            self._effective_latency_samples = None
+            self._retire_effective_locked()
         _ = reason
 
 

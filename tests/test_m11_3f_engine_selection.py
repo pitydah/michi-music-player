@@ -1362,7 +1362,7 @@ class TestF42AdapterContract:
         # F06 sprint 6: managed identity carries execution_id + negotiated
         # caps, and STOP_MANAGED performs an atomic identity-bound stop.
         # Hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "e212d9e31b213ded",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "f9ffd4cfc78f5b6f",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

@@ -346,7 +346,7 @@ def test_output_session_managed_end_to_end_with_dsp(monkeypatch) -> None:
         planner = ManagedPcmOutputPlanner()
         executor = ManagedPcmExecutor(lambda: port)
 
-        def managed_prepare(path, resolved_facts):
+        def managed_prepare(path, resolved_facts, instance_id):
             planner_facts = ManagedPcmPlannerFacts(
                 selected_device_id=resolved_facts.selected_device_id,
                 binding=resolved_facts.binding,

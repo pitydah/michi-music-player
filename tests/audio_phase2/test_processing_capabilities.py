@@ -737,6 +737,11 @@ def _fake_capability_query() -> dict:
     }
 
 
+class _BypassTransport(_FakeProcessingTransport):
+    def bypass_processing(self) -> dict:
+        return {"bypassed": True}
+
+
 class _BlockingTransport(_FakeProcessingTransport):
     """Simulates a LONG child IPC call (prepare blocks in the worker)."""
 
@@ -873,3 +878,69 @@ def test_committed_candidate_plan_is_pruned_after_validation() -> None:
     assert plan.plan_id not in service._prepared_plans
     latency = service.processing_truth()["latency"]
     assert latency["expected_samples"] == plan.total_latency_samples
+
+
+def test_host_loss_retires_every_effective_fact() -> None:
+    service, plan = _transaction_plan()
+    transport = _FakeProcessingTransport()
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
+    receipt = service.commit_candidate(candidate, transport=transport)
+    service.publish_effective(receipt)
+    truth = service.processing_truth()
+    assert truth["runtime_identity"] == receipt.native_runtime_identity
+    assert truth["readback_proven"] is True
+
+    service.mark_host_lost("SIGKILL")
+    truth = service.processing_truth()
+    assert truth["effective_state"] == "unavailable"
+    assert truth["effective_plan_id"] is None
+    assert truth["latency"]["expected_samples"] is None
+    assert truth["latency"]["source"] == "none"
+    assert truth["runtime_identity"] is None
+    assert truth["readback_proven"] is False
+    assert truth["host_lost_reason"] == "SIGKILL"
+
+
+def test_capability_refresh_failure_retires_effective_facts() -> None:
+    calls = {"count": 0}
+
+    def query():
+        calls["count"] += 1
+        if calls["count"] > 1:
+            raise RuntimeError("host gone")
+        return _fake_capability_query()
+
+    service = AudioProcessingService(
+        capability_query=query,
+        native_mapping=NativeProcessingMapping(),
+        transport=_FakeProcessingTransport(),
+    )
+    service.refresh_capabilities()
+    plan = _compile_with(service, _preamp_graph())
+    transport = _FakeProcessingTransport()
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
+    receipt = service.commit_candidate(candidate, transport=transport)
+    service.publish_effective(receipt)
+    assert service.processing_truth()["readback_proven"] is True
+
+    service.refresh_capabilities()
+    truth = service.processing_truth()
+    assert truth["capability_state"] == "unavailable"
+    assert truth["effective_state"] == "unavailable"
+    assert truth["latency"]["expected_samples"] is None
+    assert truth["runtime_identity"] is None
+    assert truth["readback_proven"] is False
+
+
+def test_bypass_retires_execution_facts() -> None:
+    service, plan = _transaction_plan()
+    transport = _BypassTransport()
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
+    receipt = service.commit_candidate(candidate, transport=transport)
+    service.publish_effective(receipt)
+    service.bypass_processing(transport=transport)
+    truth = service.processing_truth()
+    assert truth["effective_state"] == "bypassed"
+    assert truth["latency"]["expected_samples"] is None
+    assert truth["runtime_identity"] is None
+    assert truth["readback_proven"] is False

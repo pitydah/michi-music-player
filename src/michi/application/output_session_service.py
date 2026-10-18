@@ -11,6 +11,7 @@ conserva, el active pasa a None y la sesión queda LOST (§22).
 from __future__ import annotations
 
 import contextlib
+import itertools
 import logging
 from collections.abc import Callable, Mapping
 from contextlib import suppress
@@ -49,6 +50,15 @@ from michi.domain.managed_pcm_output import ManagedPcmOutputPlan
 from michi.domain.signal_truth import OutputFamilyEvent, OutputFamilyState
 
 logger = logging.getLogger(__name__)
+
+#: Process-wide execution-instance sequence: a NEW instance id is issued
+#: for every managed preparation attempt, never derived from the plan hash.
+_EXECUTION_INSTANCE_SEQ = itertools.count(1)
+
+
+def _new_execution_instance(epoch: int) -> str:
+    return f"exec-instance:{epoch}:{next(_EXECUTION_INSTANCE_SEQ)}"
+
 
 _ACTIVE_STATES = frozenset(
     {
@@ -528,6 +538,7 @@ class OutputSessionService:
         self._managed_plan_still_current = managed_plan_still_current
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
+        self._execution_instance_epoch = next(_EXECUTION_INSTANCE_SEQ)
         self._async_prepare_generation = 0
         self._pending_prepare_device_id: str | None = None
         self._state = OutputSessionState.IDLE
@@ -752,10 +763,14 @@ class OutputSessionService:
             except Exception:  # noqa: BLE001 - diagnostics only, never fatal
                 self._pending_prepare_device_id = None
 
+        managed_instance_id = self._new_managed_instance()
+
         def work():
             request = self._request_for(path)
             if self._is_managed_request(request):
-                prepared = self._run_managed_prepare(path, request.facts)
+                prepared = self._run_managed_prepare(
+                    path, request.facts, managed_instance_id
+                )
                 return request, None, prepared
             result = (
                 self._planner.plan(request.facts) if request.facts is not None else None
@@ -963,14 +978,20 @@ class OutputSessionService:
             and facts.profile.path is OutputPathPreference.MANAGED
         )
 
-    def _run_managed_prepare(self, path: Path, facts) -> ManagedOutputPrepared:
+    def _new_managed_instance(self) -> str:
+        """Session authority issues a unique instance for ONE attempt."""
+        return _new_execution_instance(self._execution_instance_epoch)
+
+    def _run_managed_prepare(
+        self, path: Path, facts, instance_id: str
+    ) -> ManagedOutputPrepared:
         if self._managed_prepare is None:
             raise OutputSessionError(
                 "MANAGED_OUTPUT_UNAVAILABLE",
                 "no Managed preparation is composed for this session",
             )
         try:
-            prepared = self._managed_prepare(path, facts)
+            prepared = self._managed_prepare(path, facts, instance_id)
         except OutputSessionError:
             raise
         except Exception as exc:  # noqa: BLE001 - typed owner boundary
@@ -990,7 +1011,9 @@ class OutputSessionService:
         *,
         previous_direct: _DirectSessionSnapshot | None,
     ) -> str:
-        prepared = self._run_managed_prepare(path, request.facts)
+        prepared = self._run_managed_prepare(
+            path, request.facts, self._new_managed_instance()
+        )
         return self._begin_managed_session(
             path, request, prepared, previous_direct=previous_direct
         )

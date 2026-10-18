@@ -134,13 +134,15 @@ class _ManagedHook:
         self.binding_current = True
         self.abort_result = {"stopped": True, "stale": False}
 
-    def prepare(self, _path: Path, facts: PlannerFacts) -> ManagedOutputPrepared:
+    def prepare(
+        self, _path: Path, facts: PlannerFacts, instance_id: str
+    ) -> ManagedOutputPrepared:
         if self.fail_with is not None:
             raise self.fail_with
         plan = _plan(facts)
         prepared = ManagedOutputPrepared(
             plan=plan,
-            execution_id=plan.execution_id,
+            execution_id=instance_id,
             runtime_identity={"managed": True, "loaded": True},
         )
         self.prepared.append(prepared)
@@ -393,3 +395,16 @@ def test_failed_managed_abort_records_a_diagnostic() -> None:
     assert diagnostic is not None
     assert diagnostic.code == "MANAGED_STOP_FAILED"
     assert "host refused" in diagnostic.detail
+
+
+def test_each_managed_preparation_gets_a_new_execution_instance() -> None:
+    provider = _Provider()
+    hook = _ManagedHook()
+    service = _service(provider, hook)
+    service.prepare_for_media(PATH)
+    service.prepare_for_media(PATH)
+    first, second = hook.prepared[-2], hook.prepared[-1]
+    # Same plan identity, different execution instance.
+    assert first.plan.plan_id == second.plan.plan_id
+    assert first.execution_id != second.execution_id
+    assert first.execution_id.startswith("exec-instance:")

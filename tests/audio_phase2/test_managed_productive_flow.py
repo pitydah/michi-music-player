@@ -209,13 +209,20 @@ def test_managed_identity_route_through_the_productive_composition(
         assert identity["execution_id"]
         assert identity["evidence_level"] == "gstreamer_negotiated"
         assert identity["negotiated"]["rate_hz"] == 44_100
-        # GStreamer-reported pipeline latency (never a physical claim).
-        assert "pipeline_latency_ns" in identity
-        latency_ns = identity["pipeline_latency_ns"]
-        assert latency_ns is None or isinstance(latency_ns, int)
-        samples = identity["pipeline_latency_samples"]
-        if latency_ns is not None:
-            assert isinstance(samples, int) and samples >= 0
+        # Real Gst.Query path: a VALID numeric answer with provenance.
+        latency = identity["pipeline_latency"]
+        assert latency is not None, "the Gst.Query latency path returned nothing"
+        assert latency["source"] == "gstreamer_runtime"
+        assert latency["measurement_type"] == "pipeline_reported"
+        assert isinstance(latency["min_ns"], int) and latency["min_ns"] >= 0
+        assert latency["max_ns"] is None or (
+            isinstance(latency["max_ns"], int) and latency["max_ns"] >= 0
+        )
+        value_ns = latency["min_ns"]
+        if value_ns is None:
+            value_ns = latency["max_ns"]
+        assert identity["pipeline_latency_ns"] == value_ns
+        assert identity["pipeline_latency_samples"] == round(value_ns * 44_100 / 1e9)
         # Identity route: no processing filter exists, so the DSP capture
         # diagnostic is not applicable (it must never fake one).
         assert graph.audio_processing.effective_state.value != "effective"
@@ -476,5 +483,197 @@ def test_host_sigkill_retires_managed_truth(tmp_path, monkeypatch) -> None:
         graph.output_session.release_active("host_lost")
         assert graph.output_session.state.value == "idle"
         assert graph.output_session.mode == "shared"
+    finally:
+        _close(graph)
+
+
+def test_identical_plans_get_distinct_instances_and_old_stop_is_stale(
+    tmp_path, monkeypatch
+) -> None:
+    """A→B with the SAME plan/file/DAC: the old instance can never stop B."""
+    if not FIXTURE.is_file():
+        pytest.skip("PCM fixture unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    from michi.domain.audio_processing import (
+        PreampNode,
+        ProcessingGraph,
+        ProcessingProfile,
+    )
+
+    graph, coordinator = _build_graph(tmp_path)
+    try:
+        _select_managed(coordinator)
+        graph.set_processing_profile(
+            ProcessingProfile(
+                profile_id="dsp:same",
+                display_name="Same plan",
+                graph=ProcessingGraph(
+                    graph_id="graph:same-plan",
+                    revision=1,
+                    nodes=(PreampNode(node_id="pre", gain_db=-6.0),),
+                ),
+            )
+        )
+        locator = _binding_locator(graph)
+        tokens_a, failures_a = _prepare(graph)
+        assert failures_a == []
+        graph.output_session.commit_media(tokens_a[0], FIXTURE)
+        port = graph.gstreamer_engine_provider.current_port
+        identity_a = port.query_managed_identity()
+        assert identity_a["execution_id"].startswith("exec-instance:")
+        plan_id = identity_a["plan_id"]
+
+        graph.output_session.release_active("stop")
+        tokens_b, failures_b = _prepare(graph)
+        assert failures_b == []
+        graph.output_session.commit_media(tokens_b[0], FIXTURE)
+        identity_b = port.query_managed_identity()
+        assert identity_b["plan_id"] == plan_id, "the plan identity must stay stable"
+        assert identity_b["execution_id"] != identity_a["execution_id"]
+        assert graph.audio_processing.effective_state.value == "effective"
+
+        stale = port.stop_managed_execution(
+            {
+                "plan_id": plan_id,
+                "execution_id": identity_a["execution_id"],
+                "device": locator,
+            }
+        )
+        assert stale["stopped"] is False and stale["stale"] is True
+        still_b = port.query_managed_identity()
+        assert still_b["managed"] is True and still_b["loaded"] is True
+        assert graph.audio_processing.effective_state.value == "effective"
+
+        stopped = port.stop_managed_execution(
+            {
+                "plan_id": plan_id,
+                "execution_id": identity_b["execution_id"],
+                "device": locator,
+            }
+        )
+        assert stopped["stopped"] is True
+        assert port.query_managed_identity().get("managed") is False
+        duplicate = port.stop_managed_execution(
+            {
+                "plan_id": plan_id,
+                "execution_id": identity_b["execution_id"],
+                "device": locator,
+            }
+        )
+        assert duplicate["stopped"] is False and duplicate["stale"] is True
+    finally:
+        _close(graph)
+
+
+def test_dynamic_peq_reconfiguration_through_the_productive_session(
+    tmp_path, monkeypatch
+) -> None:
+    """PEQ A -> PEQ B -> bypass on the SAME managed session: new plan
+    identities, fresh execution instances, no stale EFFECTIVE."""
+    if not FIXTURE.is_file():
+        pytest.skip("PCM fixture unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    from michi.domain.audio_processing import (
+        BiquadType,
+        ParametricEqNode,
+        PeqBand,
+        ProcessingGraph,
+        ProcessingProfile,
+    )
+
+    graph, coordinator = _build_graph(tmp_path)
+    try:
+        _select_managed(coordinator)
+
+        def peq_profile(gain_db: float, revision: int) -> ProcessingProfile:
+            return ProcessingProfile(
+                profile_id=f"dsp:peq-{revision}",
+                display_name="PEQ",
+                graph=ProcessingGraph(
+                    graph_id="graph:dynamic-peq",
+                    revision=revision,
+                    nodes=(
+                        ParametricEqNode(
+                            node_id="peq",
+                            bands=(
+                                PeqBand(
+                                    "b1",
+                                    BiquadType.PEAK,
+                                    1000.0,
+                                    1.4,
+                                    gain_db,
+                                    True,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+
+        def prepare_and_commit(path) -> None:
+            tokens: list[str] = []
+            failures: list[Exception] = []
+            graph.output_session.prepare_for_media_async(
+                path, tokens.append, failures.append
+            )
+            assert failures == [], failures
+            graph.output_session.commit_media(tokens[0], path)
+            assert graph.output_session.state.value == "running"
+
+        plan_ids: list[str] = []
+        instances: list[str] = []
+        for gain, revision in ((0.0, 1), (6.0, 2), (-6.0, 3)):
+            graph.set_processing_profile(peq_profile(gain, revision))
+            prepare_and_commit(FIXTURE)
+            truth = graph.audio_processing.processing_truth()
+            assert truth["effective_state"] == "effective"
+            assert truth["readback_proven"] is True
+            plan_ids.append(truth["effective_plan_id"])
+            instances.append(
+                graph.gstreamer_engine_provider.current_port.query_managed_identity()[
+                    "execution_id"
+                ]
+            )
+        assert len(set(plan_ids)) == 3, plan_ids
+        assert len(set(instances)) == 3, instances
+        assert plan_ids[0] != plan_ids[1] != plan_ids[2]
+
+        # DSP disabled: identity route, stale EFFECTIVE retired.
+        graph.set_processing_profile(None)
+        prepare_and_commit(FIXTURE)
+        truth = graph.audio_processing.processing_truth()
+        assert truth["effective_state"] != "effective"
+        assert truth["readback_proven"] is False
+        assert truth["latency"]["expected_samples"] is None
+        identity = graph.gstreamer_engine_provider.current_port.query_managed_identity()
+        assert identity["managed"] is True and identity["loaded"] is True
+    finally:
+        _close(graph)
+
+
+def test_host_dead_before_managed_prepare_fails_typed(tmp_path, monkeypatch) -> None:
+    if not FIXTURE.is_file():
+        pytest.skip("PCM fixture unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    import os
+    import signal
+
+    graph, coordinator = _build_graph(tmp_path)
+    try:
+        _select_managed(coordinator)
+        supervisor = graph.gstreamer_engine_provider.current_supervisor
+        assert supervisor.pid
+        os.kill(supervisor.pid, signal.SIGKILL)
+
+        tokens, failures = _prepare(graph)
+        assert tokens == []
+        assert failures, "a dead host must never prepare successfully"
+        assert graph.output_session.state.value != "running"
+        assert graph.audio_processing.processing_truth()["effective_state"] != (
+            "effective"
+        )
+        # Cleanup after a dead host is diagnostic-only and never raises.
+        graph.output_session.release_active("host_lost")
+        assert graph.output_session.state.value == "idle"
     finally:
         _close(graph)
