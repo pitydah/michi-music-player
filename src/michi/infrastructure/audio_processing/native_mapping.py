@@ -139,6 +139,8 @@ class NativeProcessingMapping:
         if node.strategy is ProcessingStrategy.BIQUAD_CASCADE:
             properties = {str(key): value for key, value in node.properties}
             return ("audioiirfilter",) * len(_peq_bands(properties))
+        if node.strategy is ProcessingStrategy.RESAMPLE:
+            return ("audioresample", "capsfilter")
         raise ValueError(f"no native factories for {node.strategy.value!r}")
 
     @staticmethod
@@ -173,6 +175,8 @@ class NativeProcessingMapping:
         if node.strategy is ProcessingStrategy.BIQUAD_CASCADE:
             band_rate = int(properties.get("rate_hz") or rate_hz)
             return {"biquad": peq_cascade(band_rate, _peq_bands(properties))}
+        if node.strategy is ProcessingStrategy.RESAMPLE:
+            return {"target_rate_hz": int(properties["target_rate_hz"])}
         raise ValueError(f"no native mapping for strategy {node.strategy.value!r}")
 
     def plan_to_wire(self, plan: CompiledProcessingPlan) -> dict[str, Any]:

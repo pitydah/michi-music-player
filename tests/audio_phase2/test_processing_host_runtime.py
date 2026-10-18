@@ -173,6 +173,7 @@ def test_real_host_implements_parametric_eq() -> None:
         from michi.domain.audio_processing import ProcessingStrategy
 
         assert ProcessingStrategy.BIQUAD_CASCADE in capabilities.strategies
+        assert ProcessingStrategy.RESAMPLE in capabilities.strategies
         plan = _compile(
             service,
             ProcessingGraph(

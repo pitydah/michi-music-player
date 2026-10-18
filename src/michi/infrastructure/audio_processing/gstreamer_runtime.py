@@ -55,6 +55,22 @@ def _read_node(
         linear = float(element.get_property("volume"))
         gain_db = float("-inf") if linear <= 0.0 else 20.0 * math.log10(linear)
         return {"gain_db": gain_db}
+    if strategy == "resample":
+        if not isinstance(element, (list, tuple)) or len(element) != 2:
+            raise ProcessingGraphBuildError(
+                "DSP_READBACK_MALFORMED", "resample is not a native chain"
+            )
+        caps = element[1].get_static_pad("src").get_current_caps()
+        if caps is None:
+            raise ProcessingGraphBuildError(
+                "DSP_READBACK_MISSING", "resample target rate was not negotiated"
+            )
+        rate = int(caps.get_structure(0).get_value("rate") or 0)
+        if rate <= 0:
+            raise ProcessingGraphBuildError(
+                "DSP_READBACK_MISSING", "resample negotiated no rate"
+            )
+        return {"target_rate_hz": rate}
     if strategy == "biquad_cascade":
         if not isinstance(element, (list, tuple)):
             raise ProcessingGraphBuildError(

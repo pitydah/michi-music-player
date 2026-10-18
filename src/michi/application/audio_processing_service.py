@@ -40,6 +40,7 @@ IMPLEMENTED_STRATEGIES: frozenset[ProcessingStrategy] = frozenset(
         ProcessingStrategy.GAIN,
         ProcessingStrategy.GRAPHIC_EQ_NBANDS,
         ProcessingStrategy.BIQUAD_CASCADE,
+        ProcessingStrategy.RESAMPLE,
     }
 )
 

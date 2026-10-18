@@ -1988,6 +1988,58 @@ class GStreamerAudioPort(AudioPort):
             return None
         return result
 
+    @staticmethod
+    def _true_peak_metrics(samples: list[float]) -> dict:
+        """4x windowed-sinc true-peak estimate (bounded, post-window)."""
+        if len(samples) < 8:
+            return {
+                "true_peak": None,
+                "true_peak_db": None,
+                "true_peak_method": "windowed_sinc_4x",
+                "oversampling_factor": 4,
+                "intersample_over_full_scale": None,
+            }
+        factor = 4
+        half_taps = 8
+        best = 0.0
+        count = len(samples)
+        for index in range(count):
+            magnitude = abs(samples[index])
+            if magnitude > best:
+                best = magnitude
+        for index in range(count - 1):
+            left = samples[index]
+            right = samples[index + 1]
+            neighbor = max(abs(left), abs(right))
+            # Skip interpolation where the local peak cannot exceed the
+            # current best (bounded work, no claim skipped is smaller).
+            if neighbor * 1.25 <= best:
+                continue
+            for step in range(1, factor):
+                fraction = step / factor
+                total = 0.0
+                for tap in range(-half_taps + 1, half_taps + 1):
+                    position = index + tap
+                    if position < 0 or position >= count:
+                        continue
+                    x = fraction - tap
+                    if abs(x) < 1e-9:
+                        weight = 1.0
+                    else:
+                        sinc = math.sin(math.pi * x) / (math.pi * x)
+                        window = 0.5 + 0.5 * math.cos(math.pi * x / half_taps)
+                        weight = sinc * window
+                    total += samples[position] * weight
+                if abs(total) > best:
+                    best = abs(total)
+        return {
+            "true_peak": best,
+            "true_peak_db": (round(20.0 * math.log10(best), 3) if best > 0.0 else None),
+            "true_peak_method": "windowed_sinc_4x",
+            "oversampling_factor": factor,
+            "intersample_over_full_scale": best > 1.0,
+        }
+
     def _managed_negotiated_caps(self) -> dict | None:
         pipeline = self._pipeline
         if pipeline is None:
@@ -2212,6 +2264,7 @@ class GStreamerAudioPort(AudioPort):
         peak = 0.0
         over_full_scale = 0
         mono: list[float] = []
+        true_peak_window = 16384
         for typecode, divisor, channels, data in chunks:
             values = array.array(typecode)
             values.frombytes(data[: len(data) - (len(data) % values.itemsize)])
@@ -2253,6 +2306,9 @@ class GStreamerAudioPort(AudioPort):
             "samples_over_full_scale": over_full_scale,
             "exceeds_full_scale": peak > 1.0,
             "headroom_db": (round(-20.0 * math.log10(peak), 3) if peak > 0.0 else None),
+            # TRUE-PEAK ESTIMATE (4x windowed-sinc interpolation) over a
+            # bounded window. An intersample ESTIMATE, never an analog claim.
+            **self._true_peak_metrics(mono[:true_peak_window]),
             "rate_hz": state["rate"],
             "channels": state["channels"],
             "format": state["format"],

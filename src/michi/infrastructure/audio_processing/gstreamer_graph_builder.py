@@ -151,6 +151,8 @@ def build_processing_candidate(plan: dict[str, Any]) -> BuiltProcessingCandidate
                         "DSP_PLAN_INVALID", "PEQ requires a biquad cascade"
                     )
                 element = _build_biquad_cascade(Gst, node_id, cascade)
+            elif strategy == "resample":
+                element = _build_resample(Gst, node_id, properties)
             else:
                 raise ProcessingGraphBuildError(
                     "DSP_STRATEGY_UNAVAILABLE",
@@ -283,6 +285,8 @@ def build_processing_filter(plan: dict[str, Any]) -> dict[str, Any]:
                     "DSP_PLAN_INVALID", "PEQ requires a biquad cascade"
                 )
             element = _build_biquad_cascade(Gst, node_id, cascade)
+        elif strategy == "resample":
+            element = _build_resample(Gst, node_id, properties)
         else:
             raise ProcessingGraphBuildError(
                 "DSP_STRATEGY_UNAVAILABLE",
@@ -342,6 +346,24 @@ def _build_biquad_cascade(gst, node_id: str, cascade: list[dict[str, Any]]):
         element.set_property("b", b)
         elements.append(element)
     return elements
+
+
+def _build_resample(gst, node_id: str, properties: dict[str, Any]) -> list[Any]:
+    """Explicit resampling: audioresample + a rate-pinned capsfilter.
+
+    The rate is the compiled target; the capsfilter makes the manifest
+    deterministic and readable. Quality stays the backend's default policy
+    (no invention).
+    """
+    rate = int(properties.get("target_rate_hz") or 0)
+    if rate <= 0:
+        raise ProcessingGraphBuildError(
+            "DSP_PLAN_INVALID", "resample requires a positive target rate"
+        )
+    resample = _make(gst, "audioresample", f"{node_id}-resample")
+    capsfilter = _make(gst, "capsfilter", f"{node_id}-rate")
+    capsfilter.set_property("caps", gst.Caps.from_string(f"audio/x-raw,rate={rate}"))
+    return [resample, capsfilter]
 
 
 def _build_equalizer(gst, node_id: str, properties: dict[str, Any]):

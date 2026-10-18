@@ -21,7 +21,15 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _write_sine(path, *, rate: int, amplitude: float = 0.9, seconds: float = 2.5):
+def _write_sine(
+    path,
+    *,
+    rate: int,
+    amplitude: float = 0.9,
+    seconds: float = 2.5,
+    frequency_hz: float = 1000.0,
+    phase_rad: float = 0.0,
+):
     frames = int(rate * seconds)
     with wave.open(str(path), "wb") as handle:
         handle.setnchannels(2)
@@ -30,7 +38,11 @@ def _write_sine(path, *, rate: int, amplitude: float = 0.9, seconds: float = 2.5
         data = bytearray()
         for index in range(frames):
             value = int(
-                round(amplitude * 32767 * math.sin(2 * math.pi * 1000 * index / rate))
+                round(
+                    amplitude
+                    * 32767
+                    * math.sin(2 * math.pi * frequency_hz * index / rate + phase_rad)
+                )
             )
             data += struct.pack("<hh", value, value)
         handle.writeframes(bytes(data))
@@ -163,6 +175,66 @@ def test_headroom_is_numerically_measured_and_auto_headroom_prevents_overflow(
         assert protected["samples_over_full_scale"] == 0
         # The measured sample peak sits near the original 0.9 amplitude.
         assert 0.75 <= protected["sample_peak"] <= 1.0, protected
+    finally:
+        port.close()
+        supervisor.close()
+
+
+@pytest.mark.parametrize("rate", [44100, 48000, 96000])
+def test_true_peak_estimates_the_missing_intersample_peak(
+    tmp_path, monkeypatch, rate
+) -> None:
+    """fs/4 tone at 45 deg: sample peak ~0.707A but TRUE peak ~A.
+
+    This is a deterministic separation between sample peak and a documented
+    4x windowed-sinc true-peak ESTIMATE (not an analog claim).
+    """
+    from michi.application.audio_processing_service import AudioProcessingService
+    from michi.infrastructure.audio_processing.native_mapping import (
+        NativeProcessingMapping,
+    )
+    from tests.audio_phase2.test_processing_graphic_eq import _real_port
+
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    fixture = tmp_path / f"quarter-{rate}.wav"
+    _write_sine(
+        fixture,
+        rate=rate,
+        amplitude=0.9,
+        frequency_hz=rate / 4.0,
+        phase_rad=math.pi / 4.0,
+    )
+    supervisor, port = _real_port()
+    try:
+        port.activate()
+        port.set_volume(0)
+        port.load(fixture)
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            port.dispatch_pending()
+            try:
+                duration = port.query_duration()
+            except Exception:
+                duration = None
+            if isinstance(duration, int) and duration > 0:
+                break
+            time.sleep(0.02)
+        service = AudioProcessingService(
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
+            transport=port,
+        )
+        service.refresh_capabilities()
+        _install(service, port, supervisor, _peq(0.0, revision=1), rate=rate)
+        port.seek(0)
+        metrics = port.capture_processing_output(1.0)
+        assert metrics["sample_peak"] == pytest.approx(0.636, abs=0.03), metrics
+        assert metrics["true_peak"] is not None
+        assert metrics["true_peak_method"] == "windowed_sinc_4x"
+        assert metrics["oversampling_factor"] == 4
+        assert metrics["true_peak"] == pytest.approx(0.9, abs=0.06), metrics
+        assert metrics["true_peak"] > metrics["sample_peak"] + 0.2
+        assert metrics["intersample_over_full_scale"] is False
     finally:
         port.close()
         supervisor.close()
