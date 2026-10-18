@@ -58,6 +58,13 @@ def test_processing_convergence_events_are_additive_and_tristate() -> None:
     effective = recorder.processing_events[2]
     assert effective.plan_id == plan.plan_id
     assert effective.bit_perfect is False
+    # Correlation with the execution that was actually proven.
+    assert effective.host_generation == 1
+    assert effective.pipeline_generation == candidate.pipeline_generation
+    assert effective.runtime_identity == "fake:playbin3/audio-filter"
+    assert effective.readback_proven is True
+    preparing = recorder.processing_events[1]
+    assert preparing.pipeline_generation == candidate.pipeline_generation
     assert all(
         event.bit_perfect is None
         for event in recorder.processing_events

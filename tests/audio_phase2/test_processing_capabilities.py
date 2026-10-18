@@ -475,7 +475,13 @@ def test_commit_with_mismatched_receipt_identity_never_publishes() -> None:
     with pytest.raises(ProcessingTransactionError) as info:
         service.commit_candidate(candidate, transport=transport)
     assert info.value.code == "DSP_COMMIT_RECEIPT_MISMATCH"
-    assert service.effective_state.value == "preparing"
+    # The receipt CLAIMS an install whose identity no longer matches: the
+    # destructive boundary may have been crossed, so the state is retired to
+    # UNAVAILABLE (never a false EFFECTIVE, never a clean BYPASSED claim).
+    assert info.value.payload["containment_attempted"] is True
+    assert info.value.payload["containment_proven"] is False
+    assert info.value.payload["predecessor_untouched"] is False
+    assert service.effective_state.value == "unavailable"
 
 
 @pytest.mark.parametrize(

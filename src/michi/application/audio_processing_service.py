@@ -123,12 +123,16 @@ class AudioProcessingService:
         transport: object | None = None,
         async_submit: Callable[[Callable, Callable], None] | None = None,
         truth_recorder: object | None = None,
+        truth_dispatch: Callable[[Callable[[], None]], None] | None = None,
     ) -> None:
         self._capability_query = capability_query
         self._async_submit = async_submit
         self._transport = transport
         # ADDITIVE: the canonical SignalTruthRecorder (never a second one).
         self._truth_recorder = truth_recorder
+        self._truth_dispatch: Callable[[Callable[[], None]], None] | None = (
+            truth_dispatch
+        )
         # Infrastructure-owned native mapping (pure math + DTO shaping); the
         # application layer never imports infrastructure.
         self._native_mapping = native_mapping
@@ -144,6 +148,8 @@ class AudioProcessingService:
         self._effective_plan_id: str | None = None
         self._host_generation: int | None = None
         self._prepared_plans: dict[str, CompiledProcessingPlan] = {}
+        self._last_receipt_runtime_identity: str | None = None
+        self._last_receipt_readback_proven = False
         # SHORT-LIVED state protection only: never held across IPC. The
         # owner (Qt) and host-loss callbacks must never wait on a
         # transaction. Transactions are serialized by ONE dedicated worker.
@@ -151,6 +157,8 @@ class AudioProcessingService:
         self._tx_queue: deque = deque()
         self._tx_thread: threading.Thread | None = None
         self._tx_active_revision: int | None = None
+        self._accepting = True
+        self._shutdown_error: Exception | None = None
         self._host_lost_reason: str | None = None
 
     # ── lectura ───────────────────────────────────────────────────────
@@ -264,6 +272,13 @@ class AudioProcessingService:
         with self._state_lock:
             self._capabilities = capabilities
             if host_generation is not None:
+                if (
+                    self._host_generation is not None
+                    and host_generation != self._host_generation
+                ):
+                    # A DIFFERENT, freshly queried host cannot inherit the
+                    # previous host's loss reason.
+                    self._host_lost_reason = None
                 self._host_generation = host_generation
         return capabilities
 
@@ -280,24 +295,49 @@ class AudioProcessingService:
         *,
         plan_id: str | None = None,
         detail: str | None = None,
+        pipeline_generation: int | None = None,
+        runtime_identity: str | None = None,
+        readback_proven: bool = False,
+        host_generation: int | None = None,
     ) -> None:
         recorder = self._truth_recorder
         if recorder is None:
             return
         # Never a preservation proof from processing; tri-state preserved.
         bit_perfect = False if state is ProcessingTruthState.EFFECTIVE else None
-        try:
-            recorder.record_processing_event(
-                ProcessingTruthEvent(
-                    state=state,
-                    processing_generation=self._requested_revision,
-                    plan_id=plan_id,
-                    bit_perfect=bit_perfect,
-                    detail=detail,
-                )
-            )
-        except Exception:  # noqa: BLE001 - passive truth never breaks DSP
+        event = ProcessingTruthEvent(
+            state=state,
+            processing_generation=self._requested_revision,
+            plan_id=plan_id,
+            bit_perfect=bit_perfect,
+            detail=detail,
+            host_generation=(
+                host_generation
+                if host_generation is not None
+                else self._host_generation
+            ),
+            pipeline_generation=pipeline_generation,
+            runtime_identity=runtime_identity,
+            readback_proven=readback_proven,
+        )
+
+        def write() -> None:
+            if not self._accepting and state is not ProcessingTruthState.UNAVAILABLE:
+                # Teardown: only the terminal UNAVAILABLE event may land.
+                return
+            try:
+                recorder.record_processing_event(event)
+            except Exception:  # noqa: BLE001 - passive truth never breaks DSP
+                return
+
+        dispatcher = self._truth_dispatch
+        if dispatcher is None:
+            write()
             return
+        try:
+            dispatcher(write)
+        except Exception:  # noqa: BLE001 - truth delivery never breaks DSP
+            write()
 
     def note_requested(self) -> int:
         """New requested processing intent: an effective revision is now
@@ -461,18 +501,35 @@ class AudioProcessingService:
             abort_error: Exception | None = None
             if callable(abort):
                 try:
-                    abort()
+                    aborted = abort()
                 except Exception as exc:  # noqa: BLE001 - preserved below
                     abort_error = exc
+                else:
+                    if aborted is False:
+                        abort_error = ProcessingTransactionError(
+                            "DSP_CANDIDATE_ABORT_REJECTED",
+                            "the child rejected the candidate abort",
+                        )
+                    elif aborted is None:
+                        abort_error = ProcessingTransactionError(
+                            "DSP_CANDIDATE_ABORT_UNPROVEN",
+                            "the child returned no abort result",
+                        )
             if abort_error is not None:
+                abort_code = (
+                    abort_error.code
+                    if isinstance(abort_error, ProcessingTransactionError)
+                    else "DSP_CANDIDATE_ABORT_FAILED"
+                )
                 raise ProcessingTransactionError(
-                    "DSP_CANDIDATE_ABORT_FAILED",
-                    "candidate readback was invalid AND its abort failed; "
-                    f"native ownership is uncertain (readback: {original}; "
-                    f"abort: {abort_error})",
+                    abort_code,
+                    "candidate readback was invalid AND its abort was not "
+                    f"proven; native ownership is uncertain (readback: "
+                    f"{original}; abort: {abort_error})",
                     payload={
                         "readback_error": str(original),
                         "abort_error": str(abort_error),
+                        "abort_code": abort_code,
                         "candidate_retained": True,
                     },
                 ) from original
@@ -480,7 +537,12 @@ class AudioProcessingService:
         with self._state_lock:
             self._prepared_plans[plan.plan_id] = plan
         pipeline_generation = int(observed.get("pipeline_generation") or 0)
-        self._record_processing(ProcessingTruthState.PREPARING, plan_id=plan.plan_id)
+        self._record_processing(
+            ProcessingTruthState.PREPARING,
+            plan_id=plan.plan_id,
+            pipeline_generation=pipeline_generation,
+            host_generation=host_generation,
+        )
         return ProcessingCandidateIdentity(
             candidate_id=(
                 f"{plan.plan_id}:{generation}:{host_generation}:{pipeline_generation}"
@@ -556,14 +618,11 @@ class AudioProcessingService:
             observed_candidate_id=str(payload.get("candidate_id") or ""),
             native_runtime_identity=str(payload.get("runtime_identity") or ""),
         )
-        # Receipt contract first: a rejected receipt means the runtime did
-        # NOT prove this candidate, so nothing was installed to contain and
-        # the effective state is untouched (still PREPARING).
-        validated = self._validate_receipt(receipt)
         prepared_plan = None
         with self._state_lock:
             prepared_plan = self._prepared_plans.get(candidate.plan_id)
         try:
+            validated = self._validate_receipt(receipt)
             post_install = payload.get("observed")
             if prepared_plan is not None:
                 if not isinstance(post_install, dict):
@@ -579,35 +638,39 @@ class AudioProcessingService:
                 self.validate_readback(prepared_plan, post_install, mode="filter")
             return validated
         except Exception as exc:  # noqa: BLE001 - containment below
-            # The child reported an install; the parent cannot prove the new
-            # runtime: contain by removing the unproven DSP (proven bypass)
-            # and retire EFFECTIVE. Never keep EFFECTIVE here.
-            containment = getattr(active_transport, "bypass_processing", None)
+            # A receipt that CLAIMS an install means the destructive boundary
+            # MAY have been crossed, even when the receipt contract itself is
+            # invalid. Contain through a PROVEN bypass when possible; the
+            # state is never EFFECTIVE and never claims a clean bypass. If the
+            # child never claimed an install, nothing is contained and the
+            # predecessor state is untouched.
+            attempted = bool(receipt.installed)
             contained = False
-            if callable(containment):
-                try:
-                    result = containment()
-                    contained = bool(
-                        isinstance(result, dict) and result.get("bypassed")
-                    )
-                except Exception:  # noqa: BLE001 - containment best effort
-                    contained = False
-            with self._state_lock:
-                self._effective_state = ProcessingEffectiveState.UNAVAILABLE
-                self._effective_plan_id = None
+            if attempted:
+                containment = getattr(active_transport, "bypass_processing", None)
+                if callable(containment):
+                    try:
+                        result = containment()
+                        contained = bool(
+                            isinstance(result, dict) and result.get("bypassed")
+                        )
+                    except Exception:  # noqa: BLE001 - containment best effort
+                        contained = False
+                with self._state_lock:
+                    self._effective_state = ProcessingEffectiveState.UNAVAILABLE
+                    self._effective_plan_id = None
+            payload_extra = {
+                "containment_attempted": attempted,
+                "containment_proven": contained,
+                "predecessor_untouched": not attempted,
+            }
             if isinstance(exc, ProcessingTransactionError):
-                exc.payload = {
-                    "containment_attempted": True,
-                    "containment_proven": contained,
-                }
+                exc.payload = payload_extra
                 raise
             raise ProcessingTransactionError(
                 "DSP_COMMIT_POST_VALIDATION_FAILED",
                 f"installed candidate could not be validated: {exc}",
-                payload={
-                    "containment_attempted": True,
-                    "containment_proven": contained,
-                },
+                payload=payload_extra,
             ) from exc
 
     def _validate_receipt(
@@ -763,17 +826,33 @@ class AudioProcessingService:
     ) -> None:
         dropped: list[tuple[int, Callable]] = []
         with self._state_lock:
+            if not self._accepting:
+                completed(
+                    None,
+                    self._shutdown_error
+                    or ProcessingTransactionError(
+                        "DSP_SHUTDOWN", "processing service is shut down"
+                    ),
+                )
+                return
             # Newest intent wins: queued (not yet running) older work is
             # dropped as stale instead of executing obsolete natively.
             keep = deque()
             while self._tx_queue:
                 item = self._tx_queue.popleft()
                 if item[0] < revision:
-                    dropped.append((item[0], item[1]))
+                    # (revision, run, completed): a dropped intent must be
+                    # completed EXACTLY once through its completion callback.
+                    dropped.append((item[0], item[2]))
                 else:
                     keep.append(item)
             self._tx_queue = keep
             self._tx_queue.append((revision, run, completed))
+            if len(self._tx_queue) > 32:
+                # Bounded queue: never grow without limit under intent
+                # storms. The OLDEST queued intent is superseded explicitly.
+                stale = self._tx_queue.popleft()
+                dropped.append((stale[0], stale[2]))
             if self._tx_thread is None or not self._tx_thread.is_alive():
                 self._tx_thread = threading.Thread(
                     target=self._tx_loop, name="michi-dsp-tx", daemon=True
@@ -827,6 +906,35 @@ class AudioProcessingService:
             completed(value, error)
 
         submit(noop, owner_completion)
+
+    def shutdown(self, *, timeout_s: float = 5.0) -> None:
+        """Explicit lifecycle: reject new work, complete pending intents with
+        a typed DSP_SHUTDOWN, drain references and join the worker bounded.
+
+        Safe to call from the owner/teardown thread; idempotent.
+        """
+        with self._state_lock:
+            if not self._accepting:
+                return
+            self._accepting = False
+            self._shutdown_error = ProcessingTransactionError(
+                "DSP_SHUTDOWN", "processing service was shut down"
+            )
+            pending = list(self._tx_queue)
+            self._tx_queue.clear()
+            self._prepared_plans.clear()
+            thread = self._tx_thread
+        for _revision, _run, completed in pending:
+            try:
+                completed(None, self._shutdown_error)
+            except Exception:  # noqa: BLE001 - pending completion is terminal
+                continue
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(max(0.0, float(timeout_s)))
+
+    @property
+    def is_accepting(self) -> bool:
+        return self._accepting
 
     def mark_host_lost(self, reason: str) -> None:
         """Host boundary gone: retire DSP evidence IMMEDIATELY.
@@ -914,7 +1022,7 @@ class AudioProcessingService:
             self._effective_revision = revision
             self._effective_plan_id = None
             self._effective_state = ProcessingEffectiveState.BYPASSED
-        self._record_processing(ProcessingTruthState.BYPASSED)
+        self._record_processing(ProcessingTruthState.BYPASSED, readback_proven=True)
         return True
 
     def publish_effective(self, receipt: ProcessingCommitReceipt) -> int:
@@ -930,11 +1038,42 @@ class AudioProcessingService:
                 f"stale (requested {current_requested})",
             )
         with self._state_lock:
+            # ATOMIC validity fence: the state read here is the state the
+            # EFFECTIVE claim rests on. A receipt whose host/pipeline/
+            # processing generations are no longer current (host loss, new
+            # host, newer intent) may NEVER publish.
+            if self._host_lost_reason is not None:
+                raise ProcessingStaleCommitError(
+                    "DSP_STALE_COMMIT",
+                    "host was lost before the receipt could be published",
+                )
+            if (
+                self._host_generation is not None
+                and candidate.host_generation != self._host_generation
+            ):
+                raise ProcessingStaleCommitError(
+                    "DSP_STALE_COMMIT",
+                    f"candidate host generation {candidate.host_generation} "
+                    f"is not the current host {self._host_generation}",
+                )
+            if candidate.processing_generation != self._requested_revision:
+                raise ProcessingStaleCommitError(
+                    "DSP_STALE_COMMIT",
+                    f"candidate revision {candidate.processing_generation} "
+                    f"is stale (requested {self._requested_revision})",
+                )
             self._effective_revision = candidate.processing_generation
             self._effective_plan_id = candidate.plan_id
             self._effective_state = ProcessingEffectiveState.EFFECTIVE
+            self._last_receipt_runtime_identity = receipt.native_runtime_identity
+            self._last_receipt_readback_proven = True
         self._record_processing(
-            ProcessingTruthState.EFFECTIVE, plan_id=candidate.plan_id
+            ProcessingTruthState.EFFECTIVE,
+            plan_id=candidate.plan_id,
+            pipeline_generation=candidate.pipeline_generation,
+            runtime_identity=self._last_receipt_runtime_identity,
+            readback_proven=bool(self._last_receipt_readback_proven),
+            host_generation=candidate.host_generation,
         )
         return candidate.processing_generation
 

@@ -579,6 +579,12 @@ def _build_services(
         transport=processing_transport,
         async_submit=preparation_executor.submit,
         truth_recorder=signal_truth,
+        # Presentation-relevant processing events are recorded on the OWNER
+        # through the canonical async executor (no second event loop, no
+        # QObject mutation from the DSP worker).
+        truth_dispatch=lambda deliver: preparation_executor.submit(
+            lambda: None, lambda _value, _error: deliver()
+        ),
     )
     # Host loss retires DSP effective truth IMMEDIATELY (additive fan-out
     # from the hosted port; no second recorder, no polling).
@@ -1111,6 +1117,7 @@ class ApplicationContainer:
         self._output_session = graph.output_session
         self._direct_output_lifecycle = graph.direct_output_lifecycle
         self._udev_observer = graph.udev_observer
+        self._audio_processing = graph.audio_processing
 
         playback = graph.playback
         playback.set_engine_switch_timeout_scheduler(
@@ -1531,6 +1538,14 @@ class ApplicationContainer:
                     bridge.dispose()
             except Exception as exc:
                 error = error or exc
+
+        # AP2-F05 corrective seal: the DSP transaction worker is stopped
+        # AFTER bridges are disposed (no presentation callback can observe a
+        # post-teardown event) and BEFORE native engine teardown.
+        audio_processing = getattr(self, "_audio_processing", None)
+        if audio_processing is not None:
+            error = _capture_cleanup(audio_processing.shutdown, error)
+            self._audio_processing = None
 
         # DAC-V35-080: make every asynchronous topology/engine callback inert
         # before transport/output teardown can close physical resources.

@@ -766,6 +766,10 @@ class ProcessingTruthEvent:
     plan_id: str | None = None
     bit_perfect: bool | None = None
     detail: str | None = None
+    host_generation: int | None = None
+    pipeline_generation: int | None = None
+    runtime_identity: str | None = None
+    readback_proven: bool = False
 
 
 class SignalTruthRecorder:
