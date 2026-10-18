@@ -408,3 +408,58 @@ def test_each_managed_preparation_gets_a_new_execution_instance() -> None:
     assert first.plan.plan_id == second.plan.plan_id
     assert first.execution_id != second.execution_id
     assert first.execution_id.startswith("exec-instance:")
+
+
+def test_measurements_are_bound_to_the_execution_and_discarded_on_retire() -> None:
+    from michi.domain.signal_truth import (
+        ProcessingMeasurement,
+        SignalTruthRecorder,
+    )
+
+    recorder = SignalTruthRecorder()
+    provider = _Provider()
+    hook = _ManagedHook()
+    service = _service(provider, hook, truth_recorder=recorder)
+    token = service.prepare_for_media(PATH)
+    prepared = hook.prepared[-1]
+    recorder.record_processing_measurement(
+        ProcessingMeasurement(
+            execution_id=prepared.execution_id,
+            plan_id=prepared.plan.plan_id,
+            sample_peak=0.9,
+            estimated_true_peak=0.95,
+            worst_channel=1,
+            channels=2,
+            sample_rate_hz=44100,
+            window="0.8s",
+            evidence_level="NATIVE_GSTREAMER",
+            sequence=1,
+        )
+    )
+    assert len(recorder.processing_measurements) == 1
+    service.abort_media(token, "superseded")
+    assert recorder.processing_measurements == ()
+
+
+def test_measurement_requires_an_execution_identity() -> None:
+    from michi.domain.signal_truth import (
+        ProcessingMeasurement,
+        SignalTruthRecorder,
+    )
+
+    recorder = SignalTruthRecorder()
+    with pytest.raises(ValueError):
+        recorder.record_processing_measurement(
+            ProcessingMeasurement(
+                execution_id="",
+                plan_id="p",
+                sample_peak=None,
+                estimated_true_peak=None,
+                worst_channel=None,
+                channels=None,
+                sample_rate_hz=None,
+                window="w",
+                evidence_level="UNIT",
+                sequence=1,
+            )
+        )

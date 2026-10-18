@@ -753,6 +753,26 @@ class ProcessingTruthState(Enum):
     UNKNOWN = "unknown"
 
 
+@dataclass(frozen=True, slots=True)
+class ProcessingMeasurement:
+    """One lab-captured DSP measurement bound to an execution instance.
+
+    Metrics are never "current" without identity: the session discards them
+    when the execution is retired.
+    """
+
+    execution_id: str
+    plan_id: str
+    sample_peak: float | None
+    estimated_true_peak: float | None
+    worst_channel: int | None
+    channels: int | None
+    sample_rate_hz: int | None
+    window: str
+    evidence_level: str
+    sequence: int
+
+
 class OutputFamilyState(StrEnum):
     """Output-family session states (never a DAC verdict)."""
 
@@ -813,10 +833,33 @@ class SignalTruthRecorder:
         # never substituting) the DAC Signal Truth verdict.
         self._processing_events: list[ProcessingTruthEvent] = []
         self._output_family_events: list[OutputFamilyEvent] = []
+        self._processing_measurements: list[ProcessingMeasurement] = []
 
     @property
     def processing_events(self) -> tuple[ProcessingTruthEvent, ...]:
         return tuple(self._processing_events)
+
+    @property
+    def processing_measurements(self) -> tuple[ProcessingMeasurement, ...]:
+        return tuple(self._processing_measurements)
+
+    def record_processing_measurement(self, measurement: ProcessingMeasurement) -> None:
+        if not measurement.execution_id.strip():
+            raise ValueError("a measurement requires an execution identity")
+        self._processing_measurements.append(measurement)
+        if len(self._processing_measurements) > 16:
+            del self._processing_measurements[:-16]
+
+    def discard_processing_measurements(self, execution_id: str) -> int:
+        """Retire every measurement of one execution; returns the count."""
+        retained = [
+            item
+            for item in self._processing_measurements
+            if item.execution_id != execution_id
+        ]
+        discarded = len(self._processing_measurements) - len(retained)
+        self._processing_measurements = retained
+        return discarded
 
     @property
     def output_family_events(self) -> tuple[OutputFamilyEvent, ...]:

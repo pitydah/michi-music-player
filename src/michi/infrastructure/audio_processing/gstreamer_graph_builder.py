@@ -361,6 +361,12 @@ def _build_resample(gst, node_id: str, properties: dict[str, Any]) -> list[Any]:
             "DSP_PLAN_INVALID", "resample requires a positive target rate"
         )
     resample = _make(gst, "audioresample", f"{node_id}-resample")
+    quality = int(properties.get("native_quality") or 5)
+    if quality < 0 or quality > 10:
+        raise ProcessingGraphBuildError(
+            "DSP_PLAN_INVALID", "resample quality must be within 0..10"
+        )
+    resample.set_property("quality", quality)
     capsfilter = _make(gst, "capsfilter", f"{node_id}-rate")
     capsfilter.set_property("caps", gst.Caps.from_string(f"audio/x-raw,rate={rate}"))
     return [resample, capsfilter]

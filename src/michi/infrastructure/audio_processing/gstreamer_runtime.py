@@ -70,7 +70,10 @@ def _read_node(
             raise ProcessingGraphBuildError(
                 "DSP_READBACK_MISSING", "resample negotiated no rate"
             )
-        return {"target_rate_hz": rate}
+        return {
+            "target_rate_hz": rate,
+            "quality": int(element[0].get_property("quality")),
+        }
     if strategy == "biquad_cascade":
         if not isinstance(element, (list, tuple)):
             raise ProcessingGraphBuildError(

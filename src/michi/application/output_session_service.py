@@ -1118,6 +1118,14 @@ class OutputSessionService:
                 )
             )
 
+    def _discard_measurements(self, execution_id: str) -> None:
+        recorder = self._truth_recorder
+        discard = getattr(recorder, "discard_processing_measurements", None)
+        if not callable(discard):
+            return
+        with suppress(Exception):
+            discard(execution_id)
+
     def _managed_abort_quietly(
         self, prepared: ManagedOutputPrepared | None, reason: str
     ) -> None:
@@ -1129,6 +1137,7 @@ class OutputSessionService:
         """
         if prepared is None:
             return
+        self._discard_measurements(prepared.execution_id)
         abort = self._managed_abort
         if abort is None:
             return

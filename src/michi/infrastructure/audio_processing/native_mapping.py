@@ -36,6 +36,16 @@ def json_normalize(value: Any) -> Any:
     return value
 
 
+#: Deterministic ResampleQuality -> native audioresample quality (0..10).
+#: The mapping is the POLICY; the backend's default is never assumed.
+RESAMPLE_QUALITY_NATIVE: dict[str, int] = {
+    "fast": 2,
+    "balanced": 5,
+    "high": 8,
+    "reference": 10,
+}
+
+
 def _peq_bands(properties: dict[str, Any]) -> list[tuple]:
     """Enabled PEQ bands in compiled order (band_id, type, f, q, gain, on)."""
     raw = properties.get("bands") or ()
@@ -176,7 +186,11 @@ class NativeProcessingMapping:
             band_rate = int(properties.get("rate_hz") or rate_hz)
             return {"biquad": peq_cascade(band_rate, _peq_bands(properties))}
         if node.strategy is ProcessingStrategy.RESAMPLE:
-            return {"target_rate_hz": int(properties["target_rate_hz"])}
+            quality = str(properties.get("quality") or "balanced")
+            return {
+                "target_rate_hz": int(properties["target_rate_hz"]),
+                "quality": RESAMPLE_QUALITY_NATIVE.get(quality, 5),
+            }
         raise ValueError(f"no native mapping for strategy {node.strategy.value!r}")
 
     def plan_to_wire(self, plan: CompiledProcessingPlan) -> dict[str, Any]:
@@ -208,6 +222,9 @@ class NativeProcessingMapping:
                 properties["biquad_cascade"] = peq_cascade(
                     band_rate, _peq_bands(properties)
                 )
+            if node.strategy is ProcessingStrategy.RESAMPLE:
+                quality = str(properties.get("quality") or "balanced")
+                properties["native_quality"] = RESAMPLE_QUALITY_NATIVE.get(quality, 5)
             nodes.append(
                 {
                     "node_id": node.node_id,

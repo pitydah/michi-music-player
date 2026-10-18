@@ -677,3 +677,93 @@ def test_host_dead_before_managed_prepare_fails_typed(tmp_path, monkeypatch) -> 
         assert graph.output_session.state.value == "idle"
     finally:
         _close(graph)
+
+
+def test_managed_44k_source_resampled_to_96k_with_exact_evidence(
+    tmp_path, monkeypatch
+) -> None:
+    """44.1k SOURCE -> explicit 96k resample -> Managed sink; evidence must be
+    for 96k (44.1 evidence alone is refused)."""
+    if not FIXTURE.is_file():
+        pytest.skip("PCM fixture unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    from michi.domain.audio_evidence import (
+        CapabilityEvidence,
+        EvidenceStrength,
+        PcmTuple,
+    )
+    from michi.domain.audio_processing import (
+        PreampNode,
+        ProcessingGraph,
+        ProcessingProfile,
+        ResampleNode,
+        ResampleQuality,
+    )
+
+    graph, coordinator = _build_graph(tmp_path)
+    try:
+        _select_managed(coordinator)
+        graph.set_processing_profile(
+            ProcessingProfile(
+                profile_id="dsp:resample-96k",
+                display_name="Resample 96k",
+                graph=ProcessingGraph(
+                    graph_id="graph:managed-resample",
+                    revision=1,
+                    nodes=(
+                        PreampNode(node_id="pre", gain_db=0.0),
+                        ResampleNode(
+                            node_id="rs",
+                            target_rate_hz=96000,
+                            quality=ResampleQuality.HIGH,
+                        ),
+                    ),
+                ),
+            )
+        )
+        # Only 44.1k evidence: the 96k terminal format is NOT proven.
+        tokens, failures = _prepare(graph)
+        assert tokens == []
+        assert failures and (
+            failures[0].code == "MANAGED_TERMINAL_EVIDENCE_UNAVAILABLE"
+        ), failures
+        assert graph.output_session.state.value != "running"
+
+        # Positive evidence for the OUTPUT rate (96k) is required.
+        fingerprint = graph.dac_qualification.current_environment_fingerprint(DEVICE_ID)
+        graph.dac_qualification.cache_evidence(
+            DEVICE_ID,
+            (
+                CapabilityEvidence(
+                    stable_device_id=DEVICE_ID,
+                    tuple=PcmTuple(44_100, "S16_LE", 2, 16),
+                    supported=True,
+                    strength=EvidenceStrength.OPENED,
+                    source="test",
+                    observed_at_ns=1,
+                    environment_fingerprint=fingerprint,
+                    evidence_refs=("test",),
+                ),
+                CapabilityEvidence(
+                    stable_device_id=DEVICE_ID,
+                    tuple=PcmTuple(96_000, "S16_LE", 2, 16),
+                    supported=True,
+                    strength=EvidenceStrength.OPENED,
+                    source="test",
+                    observed_at_ns=2,
+                    environment_fingerprint=fingerprint,
+                    evidence_refs=("test",),
+                ),
+            ),
+        )
+        tokens, failures = _prepare(graph)
+        assert failures == [], failures
+        graph.output_session.commit_media(tokens[0], FIXTURE)
+        assert graph.output_session.state.value == "running"
+        port = graph.gstreamer_engine_provider.current_port
+        identity = port.query_managed_identity()
+        assert identity["managed"] is True and identity["loaded"] is True
+        assert identity["negotiated"]["rate_hz"] == 96000
+        assert graph.audio_processing.effective_state.value == "effective"
+    finally:
+        _close(graph)
