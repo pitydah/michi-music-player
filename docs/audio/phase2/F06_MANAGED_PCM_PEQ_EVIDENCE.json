@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F06",
+  "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
+  "recorded_at": "2026-10-17",
+  "repo_head": "ec70ffe",
+  "verdict": "IN_PROGRESS_COMPONENT_VERIFIED \u2014 Managed PCM planner/executor and productive Parametric EQ are implemented and proven headless; the physical specific-DAC run is NOT_RUN (operator gate / campaign PARKED) and the OutputSession dispatch for OutputPathPreference.MANAGED remains the next work unit. F06 stays READY, not CLOSED.",
+  "activation": "docs/audio/phase2/F06_ACTIVATION.json",
+  "managed_pcm": {
+    "contract": "src/michi/domain/managed_pcm_output.py",
+    "planner": "src/michi/application/managed_pcm_output_planner.py",
+    "executor": "src/michi/infrastructure/audio_output/managed_pcm_executor.py",
+    "plan_rules": [
+      "specific selected device + one current ALSA playback binding only",
+      "binding must belong to the selected device and be currently available",
+      "stale selection revision is a typed refusal",
+      "output rate = source rate unless the compiled plan changes rate",
+      "output channels = source channels unless the plan changes channels",
+      "terminal container only from proven current capability",
+      "transform policy is explicit (identity/dsp/representation/rate/channel/quantization)",
+      "deterministic execution id over device/binding/selection/processing facts",
+      "no Direct OutputPlan reuse and no allow_processing flag"
+    ],
+    "executor_sequence": "stage ONE managed strict sink in the child -> load -> bounded wait for child acceptance -> processing install through the canonical authority -> verify child-reported managed identity",
+    "host_seam": "STAGE_MANAGED + QUERY_MANAGED_IDENTITY (protocol v1). The child builds a strict alsasink for the SELECTED binding, records plan/device/format/rate/channels/lab_sink, and never sets Direct identity.",
+    "no_fallback": "a missing/unavailable device or a rejected load raises a typed ManagedPcmExecutionError and STOPS; the default output is never used and no identity claim is returned",
+    "headless_proof": "tests/audio_phase2/test_managed_pcm_productive.py: real supervised host, managed identity device hw:2,0, lab_sink=true (explicit lab-only override), real DSP install + capture",
+    "physical_status": "NOT_RUN: requires MICHI_MANAGED_PHYSICAL_TEST=1 and an explicit MICHI_MANAGED_PHYSICAL_DEVICE; the physical campaign is PARKED",
+    "pending_integration": "OutputSessionService dispatch for OutputPathPreference.MANAGED (plan -> executor with the compiled processing plan) and the Signal Path/presentation projection of the managed route"
+  },
+  "parametric_eq": {
+    "strategy": "BIQUAD_CASCADE (enabled in IMPLEMENTED_STRATEGIES)",
+    "semantics": "src/michi/application/processing_graph_compiler.py",
+    "native_mapping": "src/michi/infrastructure/audio_processing/native_mapping.py",
+    "filter_types": [
+      "peak",
+      "low_shelf",
+      "high_shelf",
+      "low_pass",
+      "high_pass",
+      "notch",
+      "band_pass",
+      "all_pass"
+    ],
+    "coefficients": "RBJ Audio-EQ-Cookbook (F04 biquad math) computed parent-side; enabled bands only; disabled bands never materialize",
+    "native_execution": "one audioiirfilter per band inside the existing processing bin; exact a/b readback before EFFECTIVE",
+    "goldens": [
+      "independent RBJ reference comparison (abs 1e-12)",
+      "disabled bands produce no factories and no mutation",
+      "at/above-Nyquist bands never materialize",
+      "productive spectral proof at 44100/48000/96000 Hz: -6 dB @125 Hz +6 dB @1 kHz within +/-2 dB",
+      "proven bypass returns the level to the baseline"
+    ],
+    "readback_proof": "commit_candidate validates the installed filter cascade coefficients against the plan before publish_effective"
+  },
+  "direct_regression": {
+    "verdict": "unchanged",
+    "evidence": "full suite 5768 passed / 4 skipped; build-block subset (audio_phase2 + phase2 + architecture + dac) 1471 passed / 2 skipped",
+    "note": "no Direct staging/recipe code path was modified"
+  },
+  "physical_qualification": "NOT_RUN",
+  "next_work_units": [
+    "OutputSessionService managed dispatch + presentation/Signal Path projection",
+    "physical managed route under the explicit operator gate",
+    "headroom/latency policy (E1/E2) and FIR (conditioned)"
+  ],
+  "full_suite": {
+    "result": "5768 passed, 4 skipped, 0 failed",
+    "scope": "python -m pytest -q (entire repository)"
+  }
+}
