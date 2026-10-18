@@ -28769,6 +28769,11 @@ src/michi/infrastructure/audio_engines/gstreamer.py          [managed sink stage
 src/michi/infrastructure/audio_engines/gstreamer_host_protocol.py [managed ops]
 src/michi/infrastructure/audio_engines/gstreamer_host_session.py  [managed ops]
 src/michi/infrastructure/audio_engines/gstreamer_host_port.py     [managed ops]
+src/michi/application/audio_output_selection_coordinator.py [Managed selection]
+src/michi/domain/audio_output.py                            [canonical Managed profile]
+src/michi/domain/signal_truth.py                            [output-family evidence]
+src/michi/application/audio_processing_service.py           [truth provenance/latency]
+src/michi/infrastructure/audio_output/strict_sink.py        [carrier format mapping]
 ```
 FORBIDDEN:
 ```text
@@ -28791,6 +28796,14 @@ Managed sink is a strict ALSA sink for the SELECTED binding only
 Managed execution is tagged MANAGED_PCM, never Direct
 Parametric EQ reuses the F05 cascade/readback/transaction machinery
 ```
+
+Sprint-6 addendum: the Managed family also required the canonical selection
+coordinator (managed mode), the domain Managed profile preset, the additive
+output-family evidence stream on the ONE Signal Truth recorder, processing
+truth provenance (latency/headroom observability) and the ALSA->GStreamer
+carrier mapping already used by Direct. Those exact files are authorized
+above with no Direct semantic change; the frozen F05 transaction semantics
+are preserved.
 
 ## Implementation contract
 Implement `OutputPathPreference.MANAGED` as a real specific-DAC processed path;
