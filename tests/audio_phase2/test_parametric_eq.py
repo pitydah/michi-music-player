@@ -219,7 +219,7 @@ def test_peq_productively_shapes_real_media(tmp_path, monkeypatch, rate) -> None
         assert mid == pytest.approx(6.0, abs=2.0), (rate, mid, shaped, flat)
         assert low < 0.0 < mid
 
-        assert port.bypass_processing()["bypassed"] is True
+        assert service.bypass_processing(transport=port) is True
         bypassed = _capture(port)
         for hz in flat:
             assert abs(_db(bypassed[hz] / flat[hz])) < 4.0, hz
@@ -240,3 +240,65 @@ def _install(service, port, supervisor, graph, revision=1, rate=44100):
     )
     service.publish_effective(service.commit_candidate(candidate, transport=port))
     return plan
+
+
+@pytest.mark.skipif(not _HAS_GI, reason="PyGObject/GStreamer unavailable")
+def test_peq_dynamic_sequence_is_measured_and_reversible(tmp_path, monkeypatch) -> None:
+    """flat -> +6 -> -6 -> bypass on the SAME host, measured each step."""
+    import time
+
+    from michi.application.audio_processing_service import AudioProcessingService
+    from tests.audio_phase2.test_processing_graphic_eq import (
+        _capture,
+        _db,
+        _real_port,
+        _write_multitone,
+    )
+
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    fixture = tmp_path / "peq-dynamic.wav"
+    _write_multitone(fixture, rate=44100)
+    supervisor, port = _real_port()
+    try:
+        port.activate()
+        port.set_volume(0)
+        port.load(fixture)
+        deadline = time.monotonic() + 30.0
+        while not port.backend_state() and time.monotonic() < deadline:
+            port.dispatch_pending()
+            time.sleep(0.02)
+        service = AudioProcessingService(
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
+            transport=port,
+        )
+        service.refresh_capabilities()
+
+        def measured(gain_db: float, revision: int):
+            bands = (PeqBand("b", BiquadType.PEAK, 1000.0, 1.4, gain_db, True),)
+            _install(
+                service,
+                port,
+                supervisor,
+                _graph(bands, revision=revision),
+                rate=44100,
+            )
+            assert service.processing_truth()["readback_proven"] is True
+            return _capture(port)
+
+        flat = measured(0.0, 1)
+        boost = measured(6.0, 2)
+        assert _db(boost[1000] / flat[1000]) == pytest.approx(6.0, abs=2.0)
+        cut = measured(-6.0, 3)
+        assert _db(cut[1000] / flat[1000]) == pytest.approx(-6.0, abs=2.0)
+
+        assert service.bypass_processing(transport=port) is True
+        bypassed = _capture(port)
+        assert abs(_db(bypassed[1000] / flat[1000])) < 4.0
+        truth = service.processing_truth()
+        assert truth["effective_state"] == "bypassed"
+        assert truth["readback_proven"] is False
+        assert truth["latency"]["expected_samples"] is None
+    finally:
+        port.close()
+        supervisor.close()
