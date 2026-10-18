@@ -1359,8 +1359,10 @@ class TestF42AdapterContract:
         # by load (strict ALSA sink for the SELECTED binding; lab fakesink is
         # explicit and recorded in the managed identity). Managed never sets
         # Direct identity; Direct staging semantics are byte-identical.
+        # F06 sprint 6: managed identity carries execution_id + negotiated
+        # caps, and STOP_MANAGED performs an atomic identity-bound stop.
         # Hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "9101329945695293",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "05d0ea8fafab2393",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

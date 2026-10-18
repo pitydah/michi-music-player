@@ -118,6 +118,30 @@ def stable_direct_preset(
     )
 
 
+def stable_managed_profile(
+    profile_id: str, stable_device_id: str
+) -> AudioOutputProfile:
+    """Canonical AP2-F06 Managed profile for ONE specific DAC.
+
+    Processing is explicitly permitted (that is the family point); fallback
+    is STOP and no implicit resample/remix policy is enabled. Volume is
+    software because the Managed route is a Michi-owned processed graph.
+    """
+    if not stable_device_id.strip():
+        raise ValueError("Managed profile requires a stable device id")
+    return AudioOutputProfile(
+        profile_id=profile_id,
+        stable_device_id=stable_device_id,
+        path=OutputPathPreference.MANAGED,
+        rate_policy=RatePolicy.SOURCE_NATIVE,
+        volume_policy=VolumePolicy.SOFTWARE,
+        allow_resample=False,
+        allow_remix=False,
+        allow_processing=True,
+        fallback=FallbackKind.STOP,
+    )
+
+
 class PathSemantics(Enum):
     HARDWARE_RAW = "hardware_raw"
     ALSA_PLUGIN = "alsa_plugin"

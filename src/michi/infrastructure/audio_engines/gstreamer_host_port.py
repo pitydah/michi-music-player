@@ -567,6 +567,21 @@ class GStreamerHostedAudioPort(AudioPort):
             deadline_s=self._command_deadline_s,
         )
 
+    def stop_managed_execution(self, expected: dict[str, Any]) -> dict[str, Any]:
+        """Stop ONLY the managed execution whose identity matches ``expected``."""
+        payload = self._submit(
+            HostOperation.STOP_MANAGED,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
+        )
+        result = payload.get("result")
+        if not isinstance(result, dict):
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "stop_managed result is not an object",
+            )
+        return result
+
     def query_managed_identity(self) -> dict[str, Any]:
         """Primitive identity of the current managed load (never Gst objects)."""
         payload = self._submit(

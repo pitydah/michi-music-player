@@ -100,6 +100,7 @@ from michi.application.source_scan_lifecycle import SourceScanLifecycle
 from michi.domain.audio_device import BindingKind
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_evidence import PcmTuple
+from michi.domain.audio_signal import ChannelLayout, PcmSignalFormat
 from michi.domain.managed_pcm_output import ManagedPcmOutputPlan
 from michi.domain.signal_truth import SignalTruthRecorder
 from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
@@ -292,6 +293,11 @@ class ServiceGraph:
     artwork_runner: ThreadScanRunner | None = None
     artwork_refresh: object | None = None
     artwork_dispatcher: object | None = None
+    # AP2-F06: in-memory selected DSP profile authority (the persisted
+    # profile repository is F13 scope). The composition supplies the graph;
+    # the provider compiles it for Managed execution.
+    set_processing_profile: object | None = None
+    processing_profile: object | None = None
 
 
 @dataclass
@@ -608,6 +614,83 @@ def _build_services(
     managed_pcm_executor = ManagedPcmExecutor(lambda: gstreamer_provider.current_port)
     managed_pcm_planner = ManagedPcmOutputPlanner()
 
+    # AP2-F06: the canonical DSP selection authority for the productive
+    # composition. The selected ProcessingProfile is the user's DSP intent;
+    # persistence/UI remain F13/F11. The provider compiles it through the SAME
+    # F05 compiler/service used by every other processing path.
+    processing_profile_state: dict = {"profile": None}
+
+    def _set_processing_profile(profile) -> None:
+        if profile is not None:
+            graph = getattr(profile, "graph", None)
+            if graph is None:
+                raise ValueError("processing profile requires a ProcessingGraph")
+        processing_profile_state["profile"] = profile
+
+    def _current_processing_profile():
+        return processing_profile_state["profile"]
+
+    def _default_managed_processing_provider(facts):
+        profile = processing_profile_state["profile"]
+        if profile is None or not bool(getattr(profile, "enabled", False)):
+            return None
+        decoded = getattr(facts, "decoded_source", None)
+        if decoded is None or decoded.rate_hz <= 0 or decoded.channels <= 0:
+            return None
+        from michi.infrastructure.audio_output.strict_sink import (
+            alsa_to_gst_format,
+        )
+
+        proven = {
+            mapped
+            for item in facts.evidence
+            if item.supported is True
+            and item.stable_device_id == facts.selected_device_id
+            and item.tuple.rate_hz == decoded.rate_hz
+            and item.tuple.channels == decoded.channels
+            and (mapped := alsa_to_gst_format(item.tuple.transport_format))
+        }
+        if len(proven) != 1:
+            raise OutputSessionError(
+                "MANAGED_INPUT_FORMAT_UNPROVEN",
+                "DSP requires exactly one conclusively proven input carrier",
+            )
+        transport_format = next(iter(proven))
+        positions = tuple(decoded.channel_positions or ())
+        if not positions:
+            positions = tuple(f"CH{index}" for index in range(decoded.channels))
+        signal = PcmSignalFormat(
+            rate_hz=decoded.rate_hz,
+            transport_format=transport_format,
+            significant_bits=decoded.significant_bits,
+            layout=ChannelLayout(positions=positions),
+        )
+        audio_processing_service.refresh_capabilities()
+        from michi.application.effective_processing_graph import (
+            EffectiveProcessingGraphResolver,
+        )
+        from michi.application.processing_graph_compiler import (
+            ProcessingGraphCompiler,
+        )
+
+        selected_graph = profile.graph
+        if bool(getattr(profile, "auto_headroom", False)):
+            from michi.application.managed_pcm_output_planner import (
+                with_auto_headroom,
+            )
+
+            selected_graph = with_auto_headroom(selected_graph)
+        effective = EffectiveProcessingGraphResolver().resolve(
+            selected_graph, input_signal=signal, assets=()
+        )
+        return ProcessingGraphCompiler().compile(
+            effective, backend=audio_processing_service.capabilities, assets=()
+        )
+
+    _managed_processing_provider = (
+        managed_processing_provider or _default_managed_processing_provider
+    )
+
     def _managed_install(compiled_plan):
         transport = processing_transport
         host_generation = int(transport.host_generation())
@@ -638,24 +721,50 @@ def _build_services(
                 "MANAGED_FACTS_INCOMPLETE",
                 "Managed output requires profile, device, binding and decoded facts",
             )
-        compiled = (
-            managed_processing_provider(facts)
-            if managed_processing_provider is not None
-            else None
-        )
+        compiled = _managed_processing_provider(facts)
         decoded = facts.decoded_source
-        proven = frozenset(
-            str(item.tuple.transport_format)
-            for item in facts.evidence
-            if item.supported is not False and item.tuple.transport_format
+        output_rate = (
+            compiled.sample_contract.output_rate_hz
+            if compiled is not None
+            else decoded.rate_hz
         )
+        output_channels = (
+            compiled.sample_contract.channels_out
+            if compiled is not None
+            else decoded.channels
+        )
+        # EXACT positive evidence: the terminal format must be conclusively
+        # supported for THIS device, THIS rate and THESE channels. Unknown,
+        # other tuples or other devices never qualify.
+        from michi.infrastructure.audio_output.strict_sink import (
+            alsa_to_gst_format,
+        )
+
+        proven = frozenset(
+            mapped
+            for item in facts.evidence
+            if item.supported is True
+            and item.stable_device_id == facts.selected_device_id
+            and item.tuple.rate_hz == output_rate
+            and item.tuple.channels == output_channels
+            and (mapped := alsa_to_gst_format(item.tuple.transport_format))
+        )
+        if not proven:
+            raise OutputSessionError(
+                "MANAGED_TERMINAL_EVIDENCE_UNAVAILABLE",
+                "no conclusively proven terminal format for the exact output tuple",
+            )
         planner_facts = ManagedPcmPlannerFacts(
             selected_device_id=facts.selected_device_id,
             binding=facts.binding,
             binding_device_id=facts.selected_device_id,
             source_pcm=PcmTuple(
                 rate_hz=decoded.rate_hz,
-                transport_format="",
+                transport_format=(
+                    compiled.sample_contract.input_format
+                    if compiled is not None
+                    else ""
+                ),
                 channels=decoded.channels,
                 significant_bits=decoded.significant_bits,
             ),
@@ -683,11 +792,26 @@ def _build_services(
             runtime_identity=dict(receipt.runtime_identity),
         )
 
-    def _managed_abort(prepared: ManagedOutputPrepared, reason: str) -> None:
+    def _managed_abort(prepared: ManagedOutputPrepared, reason: str) -> dict:
+        """Identity-bound teardown: never stop a newer managed execution."""
         port = gstreamer_provider.current_port
-        if port is not None:
-            port.stop()
-        audio_processing_service.invalidate_effective(f"managed_{reason}")
+        if port is None:
+            return {
+                "stopped": False,
+                "stale": True,
+                "code": "MANAGED_STOP_STALE",
+                "reason": "no hosted port is open",
+            }
+        result = port.stop_managed_execution(
+            {
+                "plan_id": prepared.plan.plan_id,
+                "execution_id": prepared.execution_id,
+                "device": prepared.plan.device_locator,
+            }
+        )
+        if result.get("stopped"):
+            audio_processing_service.invalidate_effective(f"managed_{reason}")
+        return result
 
     def _managed_plan_still_current(plan: ManagedPcmOutputPlan) -> bool:
         return any(
@@ -991,6 +1115,8 @@ def _build_services(
         output_preparation_executor=preparation_executor,
         audio_processing=audio_processing_service,
         managed_pcm_executor=managed_pcm_executor,
+        set_processing_profile=_set_processing_profile,
+        processing_profile=_current_processing_profile,
         udev_observer=udev_observer,
         scanner=scanner,
         metadata_extractor=metadata_extractor,

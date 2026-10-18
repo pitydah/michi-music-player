@@ -1367,6 +1367,7 @@ class GStreamerAudioPort(AudioPort):
         # exactly once, never reapplied to a following track). Managed is a
         # distinct output family: it never sets Direct identity.
         self._pending_managed_recipe = None
+        self._pending_managed_execution_id = ""
         self._managed_identity: dict | None = None
         # DAC-V35-050C2: sidecar opcional + handle del pipeline vigente.
         self._direct_executor = direct_executor
@@ -1824,7 +1825,7 @@ class GStreamerAudioPort(AudioPort):
             )
         self._pending_direct_load = preparation
 
-    def stage_managed_load(self, recipe) -> None:
+    def stage_managed_load(self, recipe, *, execution_id: str = "") -> None:
         """AP2-F06: stage ONE managed strict sink for the NEXT load.
 
         The sink is a strict ALSA sink for the SELECTED binding only. It is
@@ -1861,6 +1862,52 @@ class GStreamerAudioPort(AudioPort):
                 "MANAGED_STAGE_INVALID", "managed sink rate/channels are invalid"
             )
         self._pending_managed_recipe = recipe
+        self._pending_managed_execution_id = str(execution_id)
+
+    def stop_managed(self, expected: dict) -> dict:
+        """ATOMICALLY stop ONLY the managed execution matching ``expected``.
+
+        The identity check and the stop happen inside one host command: an
+        older completion can never stop a newer execution. A stale request
+        leaves the current execution untouched.
+        """
+        identity = self._managed_identity
+        if identity is None:
+            return {
+                "stopped": False,
+                "stale": True,
+                "code": "MANAGED_STOP_STALE",
+                "reason": "no managed execution is current",
+            }
+        expected_plan = str(expected.get("plan_id") or "")
+        expected_execution = str(expected.get("execution_id") or "")
+        expected_device = str(expected.get("device") or "")
+        if (
+            expected_plan != str(identity.get("plan_id") or "")
+            or expected_execution != str(identity.get("execution_id") or "")
+            or expected_device != str(identity.get("device") or "")
+        ):
+            return {
+                "stopped": False,
+                "stale": True,
+                "code": "MANAGED_STOP_STALE",
+                "reason": "the managed execution identity does not match",
+            }
+        # Clear ownership BEFORE the fallible stop: a later abort cannot
+        # match a route that is already being torn down.
+        self._managed_identity = None
+        self._pending_managed_recipe = None
+        self._pending_managed_execution_id = ""
+        try:
+            self.stop()
+        except Exception as exc:  # noqa: BLE001 - reported, never hidden
+            return {
+                "stopped": False,
+                "stale": False,
+                "code": "MANAGED_STOP_FAILED",
+                "reason": str(exc),
+            }
+        return {"stopped": True, "stale": False, "reason": ""}
 
     def managed_identity(self) -> dict:
         """Primitive identity of the CURRENT managed load (or managed=False).
@@ -2215,7 +2262,9 @@ class GStreamerAudioPort(AudioPort):
         # AP2-F06: claim the staged managed recipe with the SAME one-shot
         # discipline. A new load invalidates the previous managed identity.
         managed_recipe = self._pending_managed_recipe
+        managed_execution_id = self._pending_managed_execution_id
         self._pending_managed_recipe = None
+        self._pending_managed_execution_id = ""
         self._managed_identity = None
         strict_recipe = direct_load.recipe if direct_load is not None else None
         direct_handle = direct_load.handle if direct_load is not None else None
@@ -2379,6 +2428,7 @@ class GStreamerAudioPort(AudioPort):
                 self._managed_identity = {
                     "managed": True,
                     "plan_id": str(getattr(managed_recipe, "plan_id", "")),
+                    "execution_id": managed_execution_id,
                     "device": str(getattr(managed_recipe, "device", "")),
                     "format": str(getattr(managed_recipe, "gst_format", "")),
                     "rate_hz": int(getattr(managed_recipe, "rate_hz", 0) or 0),

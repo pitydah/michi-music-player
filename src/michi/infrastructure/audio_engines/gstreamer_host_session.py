@@ -518,8 +518,24 @@ class HostEngineSession:
             resync_delay_ms=0,
         )
         port = self._require_port()
-        port.stage_managed_load(recipe)  # type: ignore[attr-defined]
+        port.stage_managed_load(
+            recipe, execution_id=str(data.get("execution_id") or "")
+        )  # type: ignore[attr-defined]
         return True, {}
+
+    def _op_stop_managed(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        if not isinstance(expected, dict):
+            raise HostProtocolError(
+                "HOST_PROTOCOL_INVALID_FIELD", "expected identity must be an object"
+            )
+        port = self._require_port()
+        result = port.stop_managed(expected)  # type: ignore[attr-defined]
+        if not isinstance(result, dict):
+            raise HostProtocolError(
+                "HOST_PROTOCOL_INVALID_RESULT", "stop_managed must return an object"
+            )
+        return True, {"result": result}
 
     def _op_query_managed_identity(
         self, payload: dict[str, Any]
@@ -634,6 +650,7 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     HostOperation.STAGE_DIRECT.value: HostEngineSession._op_stage_direct,
     HostOperation.DISCARD_DIRECT.value: HostEngineSession._op_discard_direct,
     HostOperation.STAGE_MANAGED.value: HostEngineSession._op_stage_managed,
+    HostOperation.STOP_MANAGED.value: HostEngineSession._op_stop_managed,
     HostOperation.QUERY_MANAGED_IDENTITY.value: (
         HostEngineSession._op_query_managed_identity
     ),

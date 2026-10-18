@@ -15,11 +15,18 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from michi.application.processing_graph_compiler import CompiledProcessingPlan
 from michi.domain.audio_evidence import PcmTuple
 from michi.domain.audio_output import VolumePolicy
+from michi.domain.audio_processing import (
+    GAINLESS_BIQUAD_TYPES,
+    GraphicEqNode,
+    ParametricEqNode,
+    PreampNode,
+    ProcessingGraph,
+)
 from michi.domain.managed_pcm_output import (
     MANAGED_PCM_PATH,
     ManagedPcmOutputPlan,
@@ -244,3 +251,46 @@ def _execution_id(
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(material).hexdigest()
+
+
+AUTO_HEADROOM_NODE_ID = "auto-headroom"
+
+
+def required_headroom_db(graph: ProcessingGraph) -> float:
+    """Worst-case positive boost requested by the graph (explicit, pure).
+
+    Gainless filters never boost; disabled bands never materialize. This is a
+    POLICY INPUT (how much attenuation an auto-headroom profile needs), never
+    a measured peak.
+    """
+    total = 0.0
+    for node in graph.nodes:
+        if isinstance(node, PreampNode):
+            total += max(0.0, float(node.gain_db))
+        elif isinstance(node, GraphicEqNode):
+            total += sum(max(0.0, float(gain)) for gain in node.gains_db)
+        elif isinstance(node, ParametricEqNode):
+            total += sum(
+                max(0.0, float(band.gain_db))
+                for band in node.bands
+                if band.enabled and band.filter_type not in GAINLESS_BIQUAD_TYPES
+            )
+    return round(total, 3)
+
+
+def with_auto_headroom(graph: ProcessingGraph) -> ProcessingGraph:
+    """Prepend ONE explicit preamp attenuation when the profile asks for it.
+
+    The compensation is a real, visible node: the compiled plan, readback and
+    Signal Truth all carry it. Level is never reduced silently.
+    """
+    boost = required_headroom_db(graph)
+    if boost <= 0.0:
+        return graph
+    if any(
+        isinstance(node, PreampNode) and node.node_id == AUTO_HEADROOM_NODE_ID
+        for node in graph.nodes
+    ):
+        return graph
+    node = PreampNode(node_id=AUTO_HEADROOM_NODE_ID, gain_db=-boost)
+    return replace(graph, nodes=(node, *graph.nodes))

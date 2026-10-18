@@ -21,9 +21,12 @@ from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_output import (
     AudioOutputProfile,
     AudioOutputSelection,
+    FallbackKind,
     OutputPathPreference,
+    VolumePolicy,
     is_direct_path,
     stable_direct_preset,
+    stable_managed_profile,
 )
 
 
@@ -44,6 +47,8 @@ class AudioOutputSelectionCoordinator:
         "direct": OutputPathPreference.HARDWARE_DIRECT,
         "compatible": OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE,
         "compatible_direct": OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE,
+        "managed": OutputPathPreference.MANAGED,
+        "managed_pcm": OutputPathPreference.MANAGED,
     }
 
     def __init__(
@@ -103,7 +108,7 @@ class AudioOutputSelectionCoordinator:
         self._require_playback_device(stable_device_id)
 
         current = self._selected_profile(self._profiles.load_selection())
-        if current is None or not is_direct_path(current.path):
+        if current is None or not self._is_device_family(current.path):
             with self._profiles.batch_changes():
                 self._profiles.save_selection(
                     AudioOutputSelection(None, stable_device_id, self._clock_ms())
@@ -130,6 +135,14 @@ class AudioOutputSelectionCoordinator:
         if not stable_device_id:
             self.select_shared_output()
             return
+        current = self._selected_profile(self._profiles.load_selection())
+        if current is not None and current.path is OutputPathPreference.MANAGED:
+            # Never downgrade a user's Managed intent to Direct on play.
+            with self._profiles.batch_changes():
+                self._select_device_policy(
+                    stable_device_id, OutputPathPreference.MANAGED
+                )
+            return
         with self._profiles.batch_changes():
             self._select_device_policy(
                 stable_device_id,
@@ -151,10 +164,10 @@ class AudioOutputSelectionCoordinator:
             )
         stable_device_id = profile.stable_device_id
         if stable_device_id is None:
-            if is_direct_path(profile.path):
+            if self._is_device_family(profile.path):
                 raise AudioOutputSelectionError(
                     "SELECTED_DEVICE_MISSING",
-                    "Direct output requires a selected physical DAC.",
+                    "Direct/Managed output requires a selected physical DAC.",
                 )
             self.select_shared_output()
             return
@@ -193,7 +206,7 @@ class AudioOutputSelectionCoordinator:
         if selection.selected_device_id is None:
             raise AudioOutputSelectionError(
                 "SELECTED_DEVICE_MISSING",
-                "Select an available physical DAC before choosing Direct output.",
+                "Select an available physical DAC before choosing a device output.",
             )
         self._require_playback_device(selection.selected_device_id)
         with self._profiles.batch_changes():
@@ -203,10 +216,13 @@ class AudioOutputSelectionCoordinator:
         """Accept only modes already supported by the current Stable slice."""
         normalized = mode.strip().casefold()
         selection = self._profiles.load_selection()
-        if normalized == "software" and selection.selected_device_id is None:
-            self.select_shared_output()
-            return
         profile = self._selected_profile(selection)
+        if normalized == "software":
+            if profile is not None and profile.volume_policy is VolumePolicy.SOFTWARE:
+                return
+            if selection.selected_device_id is None:
+                self.select_shared_output()
+                return
         if (
             normalized == "fixed"
             and profile is not None
@@ -295,12 +311,18 @@ class AudioOutputSelectionCoordinator:
                 candidates[0],
             )
         else:
-            profile = stable_direct_preset(
-                self._direct_profile_id(stable_device_id, policy),
-                stable_device_id,
-                path=policy,
-            )
-            self._require_direct_engine(profile)
+            if policy is OutputPathPreference.MANAGED:
+                profile = stable_managed_profile(
+                    self._profile_id(stable_device_id, policy),
+                    stable_device_id,
+                )
+            else:
+                profile = stable_direct_preset(
+                    self._profile_id(stable_device_id, policy),
+                    stable_device_id,
+                    path=policy,
+                )
+            self._require_execution_engine(profile)
             self._profiles.save_profile(profile)
         self._select_profile(profile, stable_device_id=stable_device_id)
 
@@ -312,7 +334,14 @@ class AudioOutputSelectionCoordinator:
                 "OUTPUT_PROFILE_DEVICE_MISMATCH",
                 "The output profile belongs to a different DAC.",
             )
-        self._require_direct_engine(profile)
+        if profile.path is OutputPathPreference.MANAGED and (
+            not profile.allow_processing or profile.fallback is not FallbackKind.STOP
+        ):
+            raise AudioOutputSelectionError(
+                "OUTPUT_PROFILE_INVALID",
+                "A Managed profile must permit processing and stop on failure.",
+            )
+        self._require_execution_engine(profile)
         selection = AudioOutputSelection(
             profile.profile_id, stable_device_id, self._clock_ms()
         )
@@ -323,25 +352,34 @@ class AudioOutputSelectionCoordinator:
         )
         self._supersede_pending_preparation()
 
-    def _require_direct_engine(self, profile: AudioOutputProfile) -> None:
-        if (
-            is_direct_path(profile.path)
-            and self._engines.state.active_engine_id is not AudioEngineId.GSTREAMER
-        ):
+    @staticmethod
+    def _is_device_family(path: OutputPathPreference) -> bool:
+        return is_direct_path(path) or path is OutputPathPreference.MANAGED
+
+    def _require_execution_engine(self, profile: AudioOutputProfile) -> None:
+        if self._engines.state.active_engine_id is AudioEngineId.GSTREAMER:
+            return
+        if is_direct_path(profile.path):
             raise AudioOutputSelectionError(
                 "ENGINE_UNSUPPORTED_FOR_DIRECT",
                 "Select GStreamer explicitly to use Direct output.",
             )
+        if profile.path is OutputPathPreference.MANAGED:
+            raise AudioOutputSelectionError(
+                "ENGINE_UNSUPPORTED_FOR_MANAGED",
+                "Select GStreamer explicitly to use Managed output.",
+            )
 
     @staticmethod
-    def _direct_profile_id(
+    def _profile_id(
         stable_device_id: str,
         policy: OutputPathPreference = OutputPathPreference.HARDWARE_DIRECT,
     ) -> str:
         digest = hashlib.sha256(stable_device_id.encode("utf-8")).hexdigest()[:16]
-        prefix = (
-            "compatible"
-            if policy is OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE
-            else "direct"
-        )
+        if policy is OutputPathPreference.MANAGED:
+            prefix = "managed"
+        elif policy is OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE:
+            prefix = "compatible"
+        else:
+            prefix = "direct"
         return f"{prefix}:{digest}"

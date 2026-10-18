@@ -35,6 +35,7 @@ from michi.application.audio_output_ports import (
 from michi.application.carrier_resolution import CandidateCarrierResolver
 from michi.application.ports import SharedOutputTransaction
 from michi.domain.audio_device import BindingKind
+from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_evidence import PcmTuple, SourceFileFacts
 from michi.domain.audio_output import (
     FallbackKind,
@@ -43,7 +44,6 @@ from michi.domain.audio_output import (
     OutputSelectionState,
     OutputSessionState,
     VolumePolicy,
-    is_direct_path,
 )
 from michi.domain.managed_pcm_output import ManagedPcmOutputPlan
 from michi.domain.signal_truth import OutputFamilyEvent, OutputFamilyState
@@ -237,6 +237,21 @@ class ManagedOutputPrepared:
     runtime_identity: dict
 
 
+#: Families whose execution names ONE specific DAC (never Shared/desktop).
+_SPECIFIC_DEVICE_FAMILIES = frozenset(
+    {
+        OutputPathPreference.MANAGED,
+        OutputPathPreference.HARDWARE_DIRECT,
+        OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE,
+    }
+)
+
+
+def _uses_specific_device(path: OutputPathPreference) -> bool:
+    """Family dispatch that NEVER widens ``is_direct_path`` semantics."""
+    return path in _SPECIFIC_DEVICE_FAMILIES
+
+
 class ProductiveOutputRequestResolver:
     """Assembles planner facts from canonical read authorities only."""
 
@@ -286,7 +301,7 @@ class ProductiveOutputRequestResolver:
             ),
             None,
         )
-        if profile is None or not is_direct_path(profile.path):
+        if profile is None or not _uses_specific_device(profile.path):
             return None
         return selection.selected_device_id or profile.stable_device_id
 
@@ -307,11 +322,23 @@ class ProductiveOutputRequestResolver:
                 "SELECTED_PROFILE_MISSING",
                 f"selected profile {selection.selected_profile_id!r} does not exist",
             )
-        if not is_direct_path(profile.path):
+        if not _uses_specific_device(profile.path):
+            # Explicit Shared/desktop families only.
             return OutputRequest(
                 None,
                 selection.selected_device_id,
                 selection.selected_profile_id,
+            )
+        active = self._engines.state.active_engine_id
+        if (
+            profile.path is OutputPathPreference.MANAGED
+            and active is not AudioEngineId.GSTREAMER
+        ):
+            # Managed PCM runs on the GStreamer Output Host. Never switch
+            # engines implicitly and never route to another family.
+            raise OutputSessionError(
+                "ENGINE_UNSUPPORTED_FOR_MANAGED",
+                "Managed output requires the GStreamer engine.",
             )
         selected_device_id = selection.selected_device_id or profile.stable_device_id
         metadata = self._source_metadata.extract(path)
@@ -330,7 +357,6 @@ class ProductiveOutputRequestResolver:
             decoded_source = self._source_characterizer.characterize(path)
         except SourceCharacterizationError as exc:
             raise OutputSessionError(exc.code, exc.detail) from exc
-        active = self._engines.state.active_engine_id
         binding = None
         expected_generation = None
         available = False
@@ -1072,13 +1098,35 @@ class OutputSessionService:
     def _managed_abort_quietly(
         self, prepared: ManagedOutputPrepared | None, reason: str
     ) -> None:
+        """Cleanup boundary: stale/failed/unknown are distinguished.
+
+        A STALE result is expected (a newer execution owns the route) and is
+        not a failure. A failed/unknown cleanup records a diagnostic instead
+        of pretending a clean stop.
+        """
         if prepared is None:
             return
         abort = self._managed_abort
         if abort is None:
             return
-        with suppress(Exception):
-            abort(prepared, reason)
+        try:
+            result = abort(prepared, reason)
+        except Exception as exc:  # noqa: BLE001 - teardown boundary
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code=getattr(exc, "code", "MANAGED_CLEANUP_FAILED"),
+                detail=str(exc),
+            )
+            return
+        if not isinstance(result, dict):
+            return
+        if result.get("stopped") or result.get("stale"):
+            return
+        self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+            reason=reason,
+            code=str(result.get("code") or "MANAGED_CLEANUP_FAILED"),
+            detail=str(result.get("reason") or ""),
+        )
 
     def _prepare_shared(
         self,

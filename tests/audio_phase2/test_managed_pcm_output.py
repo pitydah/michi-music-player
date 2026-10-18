@@ -319,3 +319,43 @@ def test_executor_refuses_processing_without_an_authority() -> None:
         ManagedPcmExecutor(lambda: port).execute(plan, "/media/a.flac")
     assert info.value.code == "MANAGED_PCM_PROCESSING_UNAVAILABLE"
     assert ("stop", None) in port.calls
+
+
+class _TwoPhasePort(_FakeManagedPort):
+    def __init__(self, identity: dict) -> None:
+        super().__init__(identity)
+        self.identity_queries = 0
+
+    def query_managed_identity(self) -> dict:
+        self.identity_queries += 1
+        if self.identity_queries >= 2:
+            raise RuntimeError("readback lost after install")
+        return super().query_managed_identity()
+
+
+class _GenerationPort(_FakeManagedPort):
+    def supervisor_generation(self) -> int:
+        return 5
+
+
+def test_executor_fails_closed_when_post_install_identity_is_unavailable() -> None:
+    plan = _managed_plan()
+    port = _TwoPhasePort(_identity_for(plan))
+    executor = ManagedPcmExecutor(
+        lambda: port, install_processing=lambda _plan: {"revision": 1}
+    )
+    with pytest.raises(ManagedPcmExecutionError) as info:
+        executor.execute(plan, "/media/a.flac")
+    assert info.value.code == "MANAGED_PCM_POST_INSTALL_IDENTITY_UNAVAILABLE"
+    assert ("stop", None) in port.calls
+
+
+def test_executor_accepts_a_supervisor_generation_method() -> None:
+    plan = _managed_plan()
+    port = _GenerationPort(_identity_for(plan))
+    executor = ManagedPcmExecutor(
+        lambda: port, install_processing=lambda _plan: {"revision": 1}
+    )
+    receipt = executor.execute(plan, "/media/a.flac")
+    assert receipt.runtime_identity["host_generation"] == 5
+    assert isinstance(receipt.runtime_identity["host_generation"], int)

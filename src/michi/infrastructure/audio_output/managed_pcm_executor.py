@@ -73,6 +73,7 @@ class ManagedPcmExecutor:
             )
         recipe = {
             "plan_id": plan.plan_id,
+            "execution_id": plan.execution_id,
             "sink_factory": "alsasink",
             "device": plan.device_locator,
             "media_type": "audio/x-raw",
@@ -130,15 +131,37 @@ class ManagedPcmExecutor:
                 or (installed.get("revision", 0) if isinstance(installed, dict) else 0)
             )
 
-        # D4: re-read the identity AFTER the DSP install; the evidence that
-        # justifies the claim must describe the CURRENT topology.
+        # D4: re-read the identity AFTER the DSP install. A failure here
+        # means the current topology cannot be proven: never publish the
+        # pre-install identity as if it described the installed graph.
         try:
             identity = port.query_managed_identity()
-        except Exception:  # noqa: BLE001 - keep the pre-install identity
-            identity = identity
+        except Exception as exc:  # noqa: BLE001 - fail closed
+            self._stop_quietly(port)
+            raise ManagedPcmExecutionError(
+                "MANAGED_PCM_POST_INSTALL_IDENTITY_UNAVAILABLE", str(exc)
+            ) from exc
+        if not isinstance(identity, dict) or identity.get("managed") is not True:
+            self._stop_quietly(port)
+            raise ManagedPcmExecutionError(
+                "MANAGED_PCM_POST_INSTALL_IDENTITY_UNAVAILABLE",
+                "the child reported no managed identity after the DSP install",
+            )
         identity = dict(identity)
         host_generation = getattr(port, "supervisor_generation", None)
+        if callable(host_generation):
+            host_generation = host_generation()
         if host_generation is not None:
+            if (
+                not isinstance(host_generation, int)
+                or isinstance(host_generation, bool)
+                or host_generation <= 0
+            ):
+                self._stop_quietly(port)
+                raise ManagedPcmExecutionError(
+                    "MANAGED_PCM_HOST_GENERATION_INVALID",
+                    f"invalid supervisor generation {host_generation!r}",
+                )
             identity["host_generation"] = host_generation
         self._verify_identity(plan, identity, port)
         return ManagedPcmExecutionReceipt(

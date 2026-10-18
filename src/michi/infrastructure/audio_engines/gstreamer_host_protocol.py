@@ -95,6 +95,7 @@ class HostOperation(StrEnum):
     STAGE_DIRECT = "stage_direct"
     DISCARD_DIRECT = "discard_direct"
     STAGE_MANAGED = "stage_managed"
+    STOP_MANAGED = "stop_managed"
     QUERY_MANAGED_IDENTITY = "query_managed_identity"
     ABORT_CANDIDATE = "abort_candidate"
     CLOSE_PIPELINE = "close_pipeline"

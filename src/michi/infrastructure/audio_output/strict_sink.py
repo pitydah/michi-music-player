@@ -36,8 +36,24 @@ def _container_is_wider(pcm) -> bool:
 
 _ALSA_TO_GST_FORMAT: dict[str, str] = {
     "S16_LE": "S16LE",
+    "S24_3LE": "S24LE",
+    "S24_32LE": "S32LE",
     "S32_LE": "S32LE",
+    "F32_LE": "F32LE",
+    "F64_LE": "F64LE",
 }
+
+_GST_RAW_FORMATS = frozenset(_ALSA_TO_GST_FORMAT.values())
+
+
+def alsa_to_gst_format(transport_format: str) -> str | None:
+    """Canonical ALSA carrier -> GStreamer raw format (never a guess)."""
+    value = str(transport_format or "").strip()
+    if value.upper() in _ALSA_TO_GST_FORMAT:
+        return _ALSA_TO_GST_FORMAT[value.upper()]
+    if value.upper() in _GST_RAW_FORMATS:
+        return value.upper()
+    return None
 
 
 class StrictSinkError(RuntimeError):

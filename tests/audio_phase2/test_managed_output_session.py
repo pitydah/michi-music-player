@@ -132,6 +132,7 @@ class _ManagedHook:
         self.aborted: list[tuple[str, str]] = []
         self.fail_with: Exception | None = None
         self.binding_current = True
+        self.abort_result = {"stopped": True, "stale": False}
 
     def prepare(self, _path: Path, facts: PlannerFacts) -> ManagedOutputPrepared:
         if self.fail_with is not None:
@@ -145,8 +146,9 @@ class _ManagedHook:
         self.prepared.append(prepared)
         return prepared
 
-    def abort(self, prepared: ManagedOutputPrepared, reason: str) -> None:
+    def abort(self, prepared: ManagedOutputPrepared, reason: str):
         self.aborted.append((prepared.execution_id, reason))
+        return dict(self.abort_result)
 
     def still_current(self, _plan: ManagedPcmOutputPlan) -> bool:
         return self.binding_current
@@ -362,3 +364,32 @@ def test_managed_session_publishes_output_family_events_on_one_recorder() -> Non
     assert recorder.active_snapshot is None
     assert recorder.last_snapshot is None
     assert recorder.processing_events == ()
+
+
+def test_stale_managed_abort_is_expected_not_a_cleanup_failure() -> None:
+    provider = _Provider()
+    hook = _ManagedHook()
+    hook.abort_result = {"stopped": False, "stale": True}
+    service = _service(provider, hook)
+    token = service.prepare_for_media(PATH)
+    service.abort_media(token, "superseded")
+    assert service.state.value == "idle"
+    assert service.last_cleanup_diagnostic is None
+
+
+def test_failed_managed_abort_records_a_diagnostic() -> None:
+    provider = _Provider()
+    hook = _ManagedHook()
+    hook.abort_result = {
+        "stopped": False,
+        "stale": False,
+        "code": "MANAGED_STOP_FAILED",
+        "reason": "host refused",
+    }
+    service = _service(provider, hook)
+    token = service.prepare_for_media(PATH)
+    service.abort_media(token, "load_failed")
+    diagnostic = service.last_cleanup_diagnostic
+    assert diagnostic is not None
+    assert diagnostic.code == "MANAGED_STOP_FAILED"
+    assert "host refused" in diagnostic.detail
