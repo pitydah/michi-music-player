@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "ec70ffe",
-  "verdict": "IN_PROGRESS_COMPONENT_VERIFIED \u2014 Managed PCM planner/executor and productive Parametric EQ are implemented and proven headless; the physical specific-DAC run is NOT_RUN (operator gate / campaign PARKED) and the OutputSession dispatch for OutputPathPreference.MANAGED remains the next work unit. F06 stays READY, not CLOSED.",
+  "repo_head": "3506c7b",
+  "verdict": "IN_PROGRESS_INTEGRATED \u2014 Managed PCM now runs through the product OutputSessionService (worker-phase execution, owner commit, canonical DSP transaction) with runtime-negotiated identity evidence and an additive output-family Signal Truth stream. Physical ALSA/DAC evidence, headroom, latency and the FIR/resample/dither remain open. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -26,7 +26,42 @@
     "no_fallback": "a missing/unavailable device or a rejected load raises a typed ManagedPcmExecutionError and STOPS; the default output is never used and no identity claim is returned",
     "headless_proof": "tests/audio_phase2/test_managed_pcm_productive.py: real supervised host, managed identity device hw:2,0, lab_sink=true (explicit lab-only override), real DSP install + capture",
     "physical_status": "NOT_RUN: requires MICHI_MANAGED_PHYSICAL_TEST=1 and an explicit MICHI_MANAGED_PHYSICAL_DEVICE; the physical campaign is PARKED",
-    "pending_integration": "OutputSessionService dispatch for OutputPathPreference.MANAGED (plan -> executor with the compiled processing plan) and the Signal Path/presentation projection of the managed route"
+    "pending_integration": "a persisted/selectable MANAGED profile and the F11 presentation surface; qualification must have cached terminal evidence for the selected device",
+    "staging_isolation": {
+      "guard": "stage_direct_load rejects a staged Managed preparation (DIRECT_STAGE_CONFLICT) symmetrically to MANAGED_STAGE_CONFLICT",
+      "properties": [
+        "one load consumes exactly one family's recipe",
+        "conflicts are rejected before any state mutation",
+        "same-family staging remains one-shot supersession",
+        "a rejected payload never reaches the next load"
+      ],
+      "tests": "tests/audio_phase2/test_managed_direct_isolation.py"
+    },
+    "session_integration": {
+      "dispatch": "OutputPathPreference.MANAGED -> ManagedPcmOutputPlanner -> ManagedPcmExecutor inside OutputSessionService",
+      "state_machine": "IDLE/READY/RUNNING/PAUSED -> ACQUIRING/CONFIGURING/READY/RUNNING/RELEASING with the existing transitions",
+      "worker_owner_split": "the worker builds the managed plan, executes staging+load+acceptance+DSP install+identity; the owner only commits session state after generation/intent/binding revalidation",
+      "async": "prepare_for_media_async; a stale generation or changed intent aborts the prepared execution (superseded_before_commit/intent_changed_before_commit)",
+      "transitions": [
+        "shared <-> managed",
+        "direct <-> managed (Direct candidate/lease retired)",
+        "managed -> stop/release/device_lost",
+        "same-family supersession"
+      ],
+      "no_fallback": "a refused plan or failed execution raises typed and leaves no default-output audio",
+      "evidence_precondition": "Managed preparation requires cached conclusive terminal evidence; without it the planner refuses TERMINAL_FORMAT_UNPROVEN (fail closed, never the default sink). Qualification is the existing authority.",
+      "tests": [
+        "tests/audio_phase2/test_managed_output_session.py (9)",
+        "tests/audio_phase2/test_managed_pcm_productive.py (session end-to-end)"
+      ]
+    },
+    "runtime_evidence": {
+      "identity": "managed identity carries plan/device/format/rate/channels, lab_sink, loaded, host supervisor generation (executor), and the sink pad's negotiated caps",
+      "evidence_level": "gstreamer_negotiated when the sink pad exposes current caps; configured_only otherwise \u2014 no negotiated claim is fabricated",
+      "post_install": "the executor re-reads identity after the DSP install",
+      "physical_alsa": "NOT_RUN (operator gate; campaign PARKED)"
+    },
+    "signal_truth": "additive output-family event stream on the ONE SignalTruthRecorder: managed READY/RUNNING/UNAVAILABLE/RELEASED with execution id, device, processing plan, transform policy, runtime identity; bit_perfect is tri-state and never True; DAC candidate/active truth untouched"
   },
   "parametric_eq": {
     "strategy": "BIQUAD_CASCADE (enabled in IMPLEMENTED_STRATEGIES)",
@@ -60,12 +95,13 @@
   },
   "physical_qualification": "NOT_RUN",
   "next_work_units": [
-    "OutputSessionService managed dispatch + presentation/Signal Path projection",
-    "physical managed route under the explicit operator gate",
-    "headroom/latency policy (E1/E2) and FIR (conditioned)"
+    "physical ALSA/DAC managed run under the explicit operator gate",
+    "persisted MANAGED selection profile (selection authority) + F11 presentation",
+    "headroom policy and measured latency publication (E1/E2)",
+    "FIR/convolution, explicit resampling and dither (authority-conditioned)"
   ],
   "full_suite": {
-    "result": "5768 passed, 4 skipped, 0 failed",
+    "result": "5783 passed, 4 skipped, 0 failed",
     "scope": "python -m pytest -q (entire repository)"
   }
 }
