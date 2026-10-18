@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F06",
+  "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
+  "recorded_at": "2026-10-17",
+  "activation_head": "0462c18",
+  "authorized_mechanism": "ADR 0011 \u00a73: state changes require explicit commits after the previous phase exit gate produced evidence. This commit is that evidence-bearing transition; no state was flipped without evidence.",
+  "spec": {
+    "path": "/home/cristian/michi-music-player/docs/audio/MICHI_AUDIO_PHASE_2_DSP_DSD_DOP_SIGNAL_PATH_MEGA_PLAN.md",
+    "sha256": "03f7495113ff2294242c288b59cece3426cf87eed6efe56ddb2b32ccca4109c0"
+  },
+  "context_receipt": {
+    "primary_phase": "AP2-F06",
+    "dependencies": [
+      "AP2-F05"
+    ],
+    "must_read_anchors": [
+      "R11-G02-AUTHORITY-MAP",
+      "R11-G03-OUTPUT-FAMILIES",
+      "R11-G04-PROCESSING-SAMPLE",
+      "R11-G07-REALTIME-SAFETY",
+      "R11-F06"
+    ],
+    "contract_set_sha256": "bcef3ae9479002a48670a8c5fdc7d04255fa3f12ad124655196577bb05b352a2"
+  },
+  "alignment_verdict": "GO",
+  "entry_gate": {
+    "pcm_dsp_runtime_stable": "AP2-F05 CLOSED with transactional DSP evidence (F05_PROCESSING_RUNTIME_EVIDENCE.json)",
+    "evidence_and_latency_model": "CompiledProcessingPlan carries the native latency model (total_latency_samples + per-node expected latency) and the sample contract; effective publication requires readback",
+    "ir_store_contract": "not required for the Managed PCM / PEQ slices; FIR remains conditioned on the F06/F13 IR authority",
+    "dependency_f05": "CLOSED",
+    "state_machine": "LOCKED -> READY via this explicit evidence commit"
+  },
+  "first_verticals": [
+    "ManagedPcmOutputPlan + planner (specific-DAC processed route)",
+    "productive Parametric EQ (BIQUAD_CASCADE) over the F05 runtime"
+  ]
+}
