@@ -28761,12 +28761,35 @@ MODIFY:
 src/michi/application/output_session_service.py
 src/michi/presentation/audio_output_bridge.py
 src/michi/bootstrap/__init__.py
+src/michi/application/processing_graph_compiler.py          [PEQ enablement]
+src/michi/infrastructure/audio_processing/native_mapping.py [PEQ coefficients/wire]
+src/michi/infrastructure/audio_processing/gstreamer_graph_builder.py [biquad_cascade]
+src/michi/infrastructure/audio_processing/gstreamer_runtime.py       [biquad readback]
+src/michi/infrastructure/audio_engines/gstreamer.py          [managed sink stage]
+src/michi/infrastructure/audio_engines/gstreamer_host_protocol.py [managed ops]
+src/michi/infrastructure/audio_engines/gstreamer_host_session.py  [managed ops]
+src/michi/infrastructure/audio_engines/gstreamer_host_port.py     [managed ops]
 ```
 FORBIDDEN:
 ```text
 allow_processing=True on current Direct OutputPlan
 Direct labels on managed execution
 silent terminal-format fallback
+```
+
+## Governance note — F06 seam authorization (2026-10-17)
+The original F06 MODIFY list could not implement its own implementation
+contract: a specific-DAC Managed route needs a child sink-staging operation
+(``STAGE_MANAGED``) and productive Parametric EQ needs the F05 processing
+compiler/mapping/builder/readback seams. This revision authorizes EXACTLY
+those files and no more. Constraints preserved:
+
+```text
+Direct staging/recipe semantics: UNCHANGED (no Direct code path edits)
+F05 transaction semantics (fence, receipt, readback, abort): UNCHANGED
+Managed sink is a strict ALSA sink for the SELECTED binding only
+Managed execution is tagged MANAGED_PCM, never Direct
+Parametric EQ reuses the F05 cascade/readback/transaction machinery
 ```
 
 ## Implementation contract
