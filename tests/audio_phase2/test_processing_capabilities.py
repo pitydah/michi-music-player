@@ -859,3 +859,17 @@ def test_post_install_validation_failure_contains_unproven_dsp() -> None:
     assert transport.bypass_calls == 1
     assert service.effective_state.value == "unavailable"
     assert service.effective_plan_id is None
+
+
+def test_committed_candidate_plan_is_pruned_after_validation() -> None:
+    service, plan = _transaction_plan()
+    transport = _FakeProcessingTransport()
+    candidate = service.begin_candidate(plan, host_generation=1, transport=transport)
+    assert plan.plan_id in service._prepared_plans
+    receipt = service.commit_candidate(candidate, transport=transport)
+    service.publish_effective(receipt)
+    # Bounded memory: the committed plan object is released, but its latency
+    # provenance survives for the truth projection.
+    assert plan.plan_id not in service._prepared_plans
+    latency = service.processing_truth()["latency"]
+    assert latency["expected_samples"] == plan.total_latency_samples

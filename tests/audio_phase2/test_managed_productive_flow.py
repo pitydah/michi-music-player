@@ -10,6 +10,7 @@ selected binding (lab sink) -> runtime readback -> Signal Truth.
 from __future__ import annotations
 
 import importlib.util
+import time
 from pathlib import Path
 
 import pytest
@@ -208,6 +209,13 @@ def test_managed_identity_route_through_the_productive_composition(
         assert identity["execution_id"]
         assert identity["evidence_level"] == "gstreamer_negotiated"
         assert identity["negotiated"]["rate_hz"] == 44_100
+        # GStreamer-reported pipeline latency (never a physical claim).
+        assert "pipeline_latency_ns" in identity
+        latency_ns = identity["pipeline_latency_ns"]
+        assert latency_ns is None or isinstance(latency_ns, int)
+        samples = identity["pipeline_latency_samples"]
+        if latency_ns is not None:
+            assert isinstance(samples, int) and samples >= 0
         # Identity route: no processing filter exists, so the DSP capture
         # diagnostic is not applicable (it must never fake one).
         assert graph.audio_processing.effective_state.value != "effective"
@@ -405,5 +413,68 @@ def test_managed_requires_exact_positive_terminal_evidence(
         assert failures[0].code == "MANAGED_TERMINAL_EVIDENCE_UNAVAILABLE"
         assert graph.output_session.mode != "managed"
         assert graph.output_session.state.value != "running"
+    finally:
+        _close(graph)
+
+
+def test_host_sigkill_retires_managed_truth(tmp_path, monkeypatch) -> None:
+    if not FIXTURE.is_file():
+        pytest.skip("PCM fixture unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    import os
+    import signal
+
+    from michi.domain.audio_processing import (
+        PreampNode,
+        ProcessingGraph,
+        ProcessingProfile,
+    )
+
+    graph, coordinator = _build_graph(tmp_path)
+    try:
+        _select_managed(coordinator)
+        graph.set_processing_profile(
+            ProcessingProfile(
+                profile_id="dsp:host-kill",
+                display_name="Preamp",
+                graph=ProcessingGraph(
+                    graph_id="graph:host-kill",
+                    revision=1,
+                    nodes=(PreampNode(node_id="pre", gain_db=-6.0),),
+                ),
+            )
+        )
+        tokens, failures = _prepare(graph)
+        assert failures == []
+        graph.output_session.commit_media(tokens[0], FIXTURE)
+        assert graph.output_session.state.value == "running"
+        assert graph.audio_processing.effective_state.value == "effective"
+
+        supervisor = graph.gstreamer_engine_provider.current_supervisor
+        pid = supervisor.pid
+        assert pid, "the supervised host has no pid"
+        os.kill(pid, signal.SIGKILL)
+
+        port = graph.gstreamer_engine_provider.current_port
+        deadline = time.monotonic() + 20.0
+        while time.monotonic() < deadline:
+            # The hosted port commits host-loss on its owner queue.
+            port.dispatch_pending()
+            if (
+                graph.audio_processing.processing_truth()["effective_state"]
+                != "effective"
+            ):
+                break
+            time.sleep(0.05)
+        truth = graph.audio_processing.processing_truth()
+        assert truth["effective_state"] != "effective"
+        assert truth["capability_state"] == "unavailable"
+        assert truth["host_lost_reason"] is not None
+
+        # A stale session command cannot resurrect the route or crash the
+        # owner: the port is gone, so cleanup is diagnostic-only.
+        graph.output_session.release_active("host_lost")
+        assert graph.output_session.state.value == "idle"
+        assert graph.output_session.mode == "shared"
     finally:
         _close(graph)

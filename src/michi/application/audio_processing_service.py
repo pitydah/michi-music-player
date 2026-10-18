@@ -152,6 +152,7 @@ class AudioProcessingService:
         self._last_receipt_runtime_identity: str | None = None
         self._last_receipt_readback_proven = False
         self._effective_latency_samples: int | None = None
+        self._last_committed_latency_samples: int | None = None
         # SHORT-LIVED state protection only: never held across IPC. The
         # owner (Qt) and host-loss callbacks must never wait on a
         # transaction. Transactions are serialized by ONE dedicated worker.
@@ -638,6 +639,14 @@ class AudioProcessingService:
                         "productive commit requires negotiated working caps",
                     )
                 self.validate_readback(prepared_plan, post_install, mode="filter")
+            with self._state_lock:
+                # Latency provenance survives the pruning of the plan object.
+                self._last_committed_latency_samples = (
+                    int(prepared_plan.total_latency_samples)
+                    if prepared_plan is not None
+                    else None
+                )
+                self._prepared_plans.pop(candidate.plan_id, None)
             return validated
         except Exception as exc:  # noqa: BLE001 - containment below
             # A receipt that CLAIMS an install means the destructive boundary
@@ -1084,10 +1093,7 @@ class AudioProcessingService:
             self._effective_state = ProcessingEffectiveState.EFFECTIVE
             self._last_receipt_runtime_identity = receipt.native_runtime_identity
             self._last_receipt_readback_proven = True
-            plan = self._prepared_plans.get(candidate.plan_id)
-            self._effective_latency_samples = (
-                int(plan.total_latency_samples) if plan is not None else None
-            )
+            self._effective_latency_samples = self._last_committed_latency_samples
         self._record_processing(
             ProcessingTruthState.EFFECTIVE,
             plan_id=candidate.plan_id,
@@ -1102,13 +1108,15 @@ class AudioProcessingService:
         """Host loss / runtime invalidity: effective evidence is retired.
 
         Requested intent survives (profiles are user intent); effective truth
-        does not.
+        does not. Uses the SHORT state lock; never waits on native IPC.
         """
-        if self._effective_state is ProcessingEffectiveState.EFFECTIVE:
-            self._effective_state = ProcessingEffectiveState.UNAVAILABLE
-        elif self._effective_state is ProcessingEffectiveState.PREPARING:
-            self._effective_state = ProcessingEffectiveState.BYPASSED
-        self._effective_plan_id = None
+        with self._state_lock:
+            if self._effective_state is ProcessingEffectiveState.EFFECTIVE:
+                self._effective_state = ProcessingEffectiveState.UNAVAILABLE
+            elif self._effective_state is ProcessingEffectiveState.PREPARING:
+                self._effective_state = ProcessingEffectiveState.BYPASSED
+            self._effective_plan_id = None
+            self._effective_latency_samples = None
         _ = reason
 
 

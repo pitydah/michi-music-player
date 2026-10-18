@@ -1927,7 +1927,34 @@ class GStreamerAudioPort(AudioPort):
         payload["evidence_level"] = (
             "gstreamer_negotiated" if negotiated else "configured_only"
         )
+        # PIPELINE-REPORTED latency (GStreamer query), never a physical claim.
+        latency_ns = self._query_pipeline_latency_ns()
+        payload["pipeline_latency_ns"] = latency_ns
+        rate_hz = int((negotiated or {}).get("rate_hz") or 0)
+        if latency_ns is not None and rate_hz > 0:
+            payload["pipeline_latency_samples"] = round(latency_ns * rate_hz / 1e9)
+        else:
+            payload["pipeline_latency_samples"] = None
         return payload
+
+    def _query_pipeline_latency_ns(self) -> int | None:
+        pipeline = self._pipeline
+        if pipeline is None:
+            return None
+        try:
+            result = pipeline.query_latency()
+        except Exception:  # noqa: BLE001 - unmeasured is not a failure
+            return None
+        if not isinstance(result, tuple) or len(result) != 2:
+            return None
+        ok, latency = result
+        if not ok:
+            return None
+        try:
+            value = int(latency)
+        except (TypeError, ValueError):
+            return None
+        return value if value >= 0 else None
 
     def _managed_negotiated_caps(self) -> dict | None:
         pipeline = self._pipeline
