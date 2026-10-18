@@ -151,6 +151,7 @@ class AudioProcessingService:
         self._prepared_plans: dict[str, CompiledProcessingPlan] = {}
         self._last_receipt_runtime_identity: str | None = None
         self._last_receipt_readback_proven = False
+        self._effective_latency_samples: int | None = None
         # SHORT-LIVED state protection only: never held across IPC. The
         # owner (Qt) and host-loss callbacks must never wait on a
         # transaction. Transactions are serialized by ONE dedicated worker.
@@ -981,6 +982,20 @@ class AudioProcessingService:
                     "processing_effective" if effective else "not_established"
                 ),
                 "host_lost_reason": self._host_lost_reason,
+                # LATENCY PROVENANCE: only the compiled-plan estimate is
+                # published; pipeline/sink/physical measurements are never
+                # invented.
+                "latency": {
+                    "expected_samples": self._effective_latency_samples,
+                    "source": (
+                        "compiled_plan"
+                        if self._effective_latency_samples is not None
+                        else "none"
+                    ),
+                    "pipeline_samples": None,
+                    "sink_samples": None,
+                    "physical": "not_measured",
+                },
                 "strategies": sorted(
                     strategy.value for strategy in self._capabilities.strategies
                 ),
@@ -1023,6 +1038,7 @@ class AudioProcessingService:
             self._effective_revision = revision
             self._effective_plan_id = None
             self._effective_state = ProcessingEffectiveState.BYPASSED
+            self._effective_latency_samples = None
         self._record_processing(ProcessingTruthState.BYPASSED, readback_proven=True)
         return True
 
@@ -1068,6 +1084,10 @@ class AudioProcessingService:
             self._effective_state = ProcessingEffectiveState.EFFECTIVE
             self._last_receipt_runtime_identity = receipt.native_runtime_identity
             self._last_receipt_readback_proven = True
+            plan = self._prepared_plans.get(candidate.plan_id)
+            self._effective_latency_samples = (
+                int(plan.total_latency_samples) if plan is not None else None
+            )
         self._record_processing(
             ProcessingTruthState.EFFECTIVE,
             plan_id=candidate.plan_id,

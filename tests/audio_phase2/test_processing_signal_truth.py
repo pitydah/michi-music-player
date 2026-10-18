@@ -46,7 +46,14 @@ def test_processing_convergence_events_are_additive_and_tristate() -> None:
     )
     receipt = service.commit_candidate(candidate, transport=transport)
     service.publish_effective(receipt)
+    latency = service.processing_truth()["latency"]
+    assert latency["expected_samples"] == plan.total_latency_samples
+    assert latency["source"] == "compiled_plan"
+    assert latency["pipeline_samples"] is None
+    assert latency["sink_samples"] is None
+    assert latency["physical"] == "not_measured"
     service.bypass_processing(transport=transport)
+    assert service.processing_truth()["latency"]["expected_samples"] is None
 
     states = [event.state for event in recorder.processing_events]
     assert states == [

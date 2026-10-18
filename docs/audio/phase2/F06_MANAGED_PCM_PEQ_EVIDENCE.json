@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "3506c7b",
-  "verdict": "IN_PROGRESS_INTEGRATED \u2014 Managed PCM now runs through the product OutputSessionService (worker-phase execution, owner commit, canonical DSP transaction) with runtime-negotiated identity evidence and an additive output-family Signal Truth stream. Physical ALSA/DAC evidence, headroom, latency and the FIR/resample/dither remain open. F06 stays READY.",
+  "repo_head": "72df68d",
+  "verdict": "IN_PROGRESS_PRODUCTIVE \u2014 Managed PCM is now reachable through the productive composition end-to-end (resolver family dispatch, selectable and persistent profile, canonical DSP provider, identity-bound teardown, exact DAC evidence and post-install readback). Physical ALSA evidence, profile persistence/UI (F13/F11), measured latency, FIR/resample/dither remain open. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -26,7 +26,7 @@
     "no_fallback": "a missing/unavailable device or a rejected load raises a typed ManagedPcmExecutionError and STOPS; the default output is never used and no identity claim is returned",
     "headless_proof": "tests/audio_phase2/test_managed_pcm_productive.py: real supervised host, managed identity device hw:2,0, lab_sink=true (explicit lab-only override), real DSP install + capture",
     "physical_status": "NOT_RUN: requires MICHI_MANAGED_PHYSICAL_TEST=1 and an explicit MICHI_MANAGED_PHYSICAL_DEVICE; the physical campaign is PARKED",
-    "pending_integration": "a persisted/selectable MANAGED profile and the F11 presentation surface; qualification must have cached terminal evidence for the selected device",
+    "pending_integration": "durable Managed/DSP profile repository + F11 selection surface; physical ALSA/DAC run (operator gate, campaign PARKED); measured pipeline/sink latency",
     "staging_isolation": {
       "guard": "stage_direct_load rejects a staged Managed preparation (DIRECT_STAGE_CONFLICT) symmetrically to MANAGED_STAGE_CONFLICT",
       "properties": [
@@ -61,7 +61,52 @@
       "post_install": "the executor re-reads identity after the DSP install",
       "physical_alsa": "NOT_RUN (operator gate; campaign PARKED)"
     },
-    "signal_truth": "additive output-family event stream on the ONE SignalTruthRecorder: managed READY/RUNNING/UNAVAILABLE/RELEASED with execution id, device, processing plan, transform policy, runtime identity; bit_perfect is tri-state and never True; DAC candidate/active truth untouched"
+    "signal_truth": "additive output-family event stream on the ONE SignalTruthRecorder: managed READY/RUNNING/UNAVAILABLE/RELEASED with execution id, device, processing plan, transform policy, runtime identity; bit_perfect is tri-state and never True; DAC candidate/active truth untouched",
+    "resolver_fix": {
+      "defect": "ProductiveOutputRequestResolver classified MANAGED as Shared",
+      "fix": "explicit family dispatch (_uses_specific_device) preserves is_direct_path semantics; MANAGED gets full planner facts and pending_device_id",
+      "engine_guard": "ENGINE_UNSUPPORTED_FOR_MANAGED when the active engine is not GStreamer (no implicit switch)",
+      "tests": "tests/audio_phase2/test_productive_output_resolver.py (6)"
+    },
+    "selection": {
+      "mode": "select_path_mode('managed') / 'managed_pcm'",
+      "profile": "stable_managed_profile (path MANAGED, processing permitted, fallback STOP, software volume)",
+      "device_change": "select_device and normal playback intent preserve the Managed family",
+      "persistence": "profile + selection are written through the canonical profile authority (survives an in-process reload); the durable repository/UI remain F13/F11",
+      "tests": "tests/audio_phase2/test_managed_selection.py (8)"
+    },
+    "productive_dsp": {
+      "authority": "the composition exposes set_processing_profile / processing_profile (canonical ProcessingProfile)",
+      "chain": "ProcessingGraph -> EffectiveProcessingGraphResolver -> ProcessingGraphCompiler -> ManagedPcmOutputPlanner -> ManagedPcmExecutor -> AudioProcessingService -> hosted GStreamer",
+      "bypass": "a disabled/absent profile selects the identity Managed route and retires stale EFFECTIVE processing truth",
+      "headroom": "profile.auto_headroom inserts ONE visible preamp node (-required boost); no hidden level change; required_headroom_db/with_auto_headroom are pure and tested",
+      "tests": "tests/audio_phase2/test_managed_headroom.py (3) + productive DSP flow"
+    },
+    "ownership": {
+      "stop": "STOP_MANAGED atomically matches plan_id + execution_id + device; a stale request leaves the current execution untouched",
+      "cleanup": "stale is expected; failed/unknown cleanup records OutputCleanupDiagnostic (never a clean-stop claim)",
+      "tests": "tests/audio_phase2/test_managed_productive_flow.py::test_stop_managed_is_identity_bound + session diagnostics tests"
+    },
+    "dac_truth": {
+      "evidence": "supported is True AND exact device/fingerprint/rate/channels; ALSA carriers mapped to GStreamer raw formats (alsa_to_gst_format); UNKNOWN and other tuples are refused (MANAGED_TERMINAL_EVIDENCE_UNAVAILABLE)",
+      "post_install": "identity is re-read after DSP; unavailable post-install identity fails closed; host generation must be a positive int (callable-safe)",
+      "tests": "productive flow strict-evidence parametrization + executor post-install tests"
+    },
+    "latency": {
+      "published": "processing_truth().latency = {expected_samples (compiled plan), source, pipeline_samples=None, sink_samples=None, physical='not_measured'}",
+      "note": "no measured latency is fabricated"
+    },
+    "definitive_flow": {
+      "test": "tests/audio_phase2/test_managed_productive_flow.py",
+      "path": "_build_services -> fake Linux/ALSA topology -> cached qualification -> SelectionCoordinator (managed) -> ProductiveOutputRequestResolver -> prepare_for_media_async -> ManagedPcmOutputPlanner -> ManagedPcmExecutor -> AudioProcessingService -> real GStreamer host -> lab sink -> runtime readback -> OutputSession RUNNING -> SignalTruthRecorder",
+      "scenarios": [
+        "identity managed route",
+        "DSP preamp preset + preset change (new plan identity)",
+        "device loss retires route, identity and processing truth",
+        "identity-bound stop (stale never stops a newer execution)",
+        "UNKNOWN/other-tuple evidence refused"
+      ]
+    }
   },
   "parametric_eq": {
     "strategy": "BIQUAD_CASCADE (enabled in IMPLEMENTED_STRATEGIES)",
@@ -96,12 +141,13 @@
   "physical_qualification": "NOT_RUN",
   "next_work_units": [
     "physical ALSA/DAC managed run under the explicit operator gate",
-    "persisted MANAGED selection profile (selection authority) + F11 presentation",
-    "headroom policy and measured latency publication (E1/E2)",
+    "durable processing/output profile repositories (F13) + F11 presentation",
+    "pipeline/sink latency measurement and headroom measurement (true peak)",
     "FIR/convolution, explicit resampling and dither (authority-conditioned)"
   ],
   "full_suite": {
-    "result": "5783 passed, 4 skipped, 0 failed",
-    "scope": "python -m pytest -q (entire repository)"
+    "result": "5810 passed, 4 skipped, 0 failed",
+    "scope": "python -m pytest -q (entire repository)",
+    "focused_audio": "1515 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
   }
 }
