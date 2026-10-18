@@ -120,6 +120,9 @@ from michi.infrastructure.audio_engines.subprocess_characterizer import (
 from michi.infrastructure.audio_output.direct_output_executor import (
     GStreamerDirectOutputExecutor,
 )
+from michi.infrastructure.audio_output.managed_pcm_executor import (
+    ManagedPcmExecutor,
+)
 from michi.infrastructure.audio_processing.hosted_transport import (
     HostedProcessingTransport,
 )
@@ -270,6 +273,7 @@ class ServiceGraph:
     dac_qualification: DacQualificationService
     output_preparation_executor: QtAsyncCallExecutor
     audio_processing: AudioProcessingService
+    managed_pcm_executor: ManagedPcmExecutor
     udev_observer: UdevObserver
     scanner: object
     metadata_extractor: object
@@ -589,6 +593,10 @@ def _build_services(
     # Host loss retires DSP effective truth IMMEDIATELY (additive fan-out
     # from the hosted port; no second recorder, no polling).
     processing_transport.add_host_lost_listener(audio_processing_service.mark_host_lost)
+    # AP2-F06: ONE Managed PCM executor over the SAME hosted port. The
+    # processing installer is supplied by the caller that owns the compiled
+    # plan (the executor fails closed without one for processed plans).
+    managed_pcm_executor = ManagedPcmExecutor(lambda: gstreamer_provider.current_port)
     output_session = OutputSessionService(
         OutputPlanner(),
         request_provider=output_resolver,
@@ -877,6 +885,7 @@ def _build_services(
         dac_qualification=qualification,
         output_preparation_executor=preparation_executor,
         audio_processing=audio_processing_service,
+        managed_pcm_executor=managed_pcm_executor,
         udev_observer=udev_observer,
         scanner=scanner,
         metadata_extractor=metadata_extractor,

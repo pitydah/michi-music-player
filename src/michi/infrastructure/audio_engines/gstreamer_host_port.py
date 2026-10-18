@@ -559,6 +559,29 @@ class GStreamerHostedAudioPort(AudioPort):
                 "OUTPUT_HOST_DIRECT_TRANSPORT_FAILED", exc.detail
             ) from exc
 
+    def stage_managed_execution(self, recipe: dict[str, Any]) -> None:
+        """AP2-F06: stage ONE strict managed sink for the selected DAC."""
+        self._submit(
+            HostOperation.STAGE_MANAGED,
+            {"recipe": dict(recipe)},
+            deadline_s=self._command_deadline_s,
+        )
+
+    def query_managed_identity(self) -> dict[str, Any]:
+        """Primitive identity of the current managed load (never Gst objects)."""
+        payload = self._submit(
+            HostOperation.QUERY_MANAGED_IDENTITY,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+        identity = payload.get("identity")
+        if not isinstance(identity, dict):
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "managed identity payload is not an object",
+            )
+        return identity
+
     def discard_direct_load(self, handle: object, *, executor: object) -> bool:
         self._require_direct_executor(executor)
         with self._lock:

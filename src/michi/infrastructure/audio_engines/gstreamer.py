@@ -1363,6 +1363,11 @@ class GStreamerAudioPort(AudioPort):
         # DAC-V35-050D: plan/handle/recipe travel as ONE immutable one-shot
         # payload. Independent half-staging is intentionally impossible.
         self._pending_direct_load: DirectLoadPreparation | None = None
+        # AP2-F06: ONE staged Managed strict sink for the next load (consumed
+        # exactly once, never reapplied to a following track). Managed is a
+        # distinct output family: it never sets Direct identity.
+        self._pending_managed_recipe = None
+        self._managed_identity: dict | None = None
         # DAC-V35-050C2: sidecar opcional + handle del pipeline vigente.
         self._direct_executor = direct_executor
         self._active_direct_handle = None
@@ -1811,6 +1816,53 @@ class GStreamerAudioPort(AudioPort):
             )
         self._pending_direct_load = preparation
 
+    def stage_managed_load(self, recipe) -> None:
+        """AP2-F06: stage ONE managed strict sink for the NEXT load.
+
+        The sink is a strict ALSA sink for the SELECTED binding only. It is
+        NOT Direct: no Direct handle/identity is produced, and the staged
+        recipe is one-shot.
+        """
+        if self._closed:
+            raise AudioTransportUnavailableError(
+                "cannot stage Managed output on a closed GStreamer transport"
+            )
+        if self._pending_direct_load is not None:
+            raise DirectSinkBuildError(
+                "MANAGED_STAGE_CONFLICT",
+                "a Direct preparation is already staged for the next load",
+            )
+        if recipe is None:
+            raise DirectSinkBuildError(
+                "MANAGED_STAGE_INVALID", "no managed sink recipe was supplied"
+            )
+        if str(getattr(recipe, "sink_factory", "")) != "alsasink":
+            raise DirectSinkBuildError(
+                "MANAGED_STAGE_INVALID",
+                "managed output requires an explicit alsasink recipe",
+            )
+        if not str(getattr(recipe, "device", "")).strip():
+            raise DirectSinkBuildError(
+                "MANAGED_STAGE_INVALID", "managed sink device must name the DAC"
+            )
+        if (
+            int(getattr(recipe, "rate_hz", 0)) <= 0
+            or int(getattr(recipe, "channels", 0)) <= 0
+        ):
+            raise DirectSinkBuildError(
+                "MANAGED_STAGE_INVALID", "managed sink rate/channels are invalid"
+            )
+        self._pending_managed_recipe = recipe
+
+    def managed_identity(self) -> dict:
+        """Primitive identity of the CURRENT managed load (or managed=False)."""
+        identity = self._managed_identity
+        if identity is None:
+            return {"managed": False}
+        payload = dict(identity)
+        payload["loaded"] = self._current_path is not None
+        return payload
+
     def discard_direct_load(self, handle, *, executor) -> bool:
         """Discard only the still-pending preparation owned by ``handle``."""
         if executor is not self._direct_executor:
@@ -2120,6 +2172,11 @@ class GStreamerAudioPort(AudioPort):
         # se reaplica al track siguiente.
         direct_load = self._pending_direct_load
         self._pending_direct_load = None
+        # AP2-F06: claim the staged managed recipe with the SAME one-shot
+        # discipline. A new load invalidates the previous managed identity.
+        managed_recipe = self._pending_managed_recipe
+        self._pending_managed_recipe = None
+        self._managed_identity = None
         strict_recipe = direct_load.recipe if direct_load is not None else None
         direct_handle = direct_load.handle if direct_load is not None else None
         candidate_volume = (
@@ -2246,10 +2303,8 @@ class GStreamerAudioPort(AudioPort):
             # replaces the real audio sink for Shared PCM so the productive
             # DSP path can be measured without a DAC. Never active for
             # Direct (strict recipe) and never in a default environment.
-            if (
-                strict_recipe is None
-                and os.environ.get("MICHI_GST_LAB_SINK") == "fakesink"
-            ):
+            lab_requested = os.environ.get("MICHI_GST_LAB_SINK") == "fakesink"
+            if strict_recipe is None and managed_recipe is None and lab_requested:
                 lab_gst = self._bindings.gst_module()
                 lab_sink = lab_gst.ElementFactory.make("fakesink", "michi_lab_sink")
                 if lab_sink is None:
@@ -2262,6 +2317,34 @@ class GStreamerAudioPort(AudioPort):
             if strict_recipe is not None:
                 strict_sink = self._bindings.build_strict_audio_sink(strict_recipe)
                 self._bindings.set_audio_sink(pipeline, strict_sink)
+            # AP2-F06: the managed sink is a strict sink for the SELECTED
+            # ALSA binding. The lab override is explicit and lab-only; the
+            # identity records it so no physical claim can be fabricated.
+            if managed_recipe is not None:
+                lab_used = bool(lab_requested)
+                if lab_used:
+                    lab_gst = self._bindings.gst_module()
+                    managed_sink = lab_gst.ElementFactory.make(
+                        "fakesink", "michi_managed_lab_sink"
+                    )
+                    if managed_sink is None:
+                        raise AudioTransportUnavailableError(
+                            "MICHI_GST_LAB_SINK=fakesink requested but unavailable"
+                        )
+                else:
+                    managed_sink = self._bindings.build_strict_audio_sink(
+                        managed_recipe
+                    )
+                self._bindings.set_audio_sink(pipeline, managed_sink)
+                self._managed_identity = {
+                    "managed": True,
+                    "plan_id": str(getattr(managed_recipe, "plan_id", "")),
+                    "device": str(getattr(managed_recipe, "device", "")),
+                    "format": str(getattr(managed_recipe, "gst_format", "")),
+                    "rate_hz": int(getattr(managed_recipe, "rate_hz", 0) or 0),
+                    "channels": int(getattr(managed_recipe, "channels", 0) or 0),
+                    "lab_sink": lab_used,
+                }
             self._bus = self._bindings.get_bus(pipeline)
             self._bindings.set_uri(pipeline, Path(file_path).resolve().as_uri())
             if self._bindings.supports_pump():
@@ -2274,6 +2357,7 @@ class GStreamerAudioPort(AudioPort):
             # un False controlado es el preroll failure path (abajo)
             paused_accepted = self._request_state(self._bindings.STATE.PAUSED)
         except Exception as arm_exc:  # noqa: BLE001 — ARM transaction boundary
+            self._managed_identity = None
             self._rollback_failed_arm(arm_exc, timer_before)
             # M11.3C-R6.1: el PHASE A (teardown del source viejo) ya cruzó
             # su commit point destructivo → la fuente previa NO está
@@ -2287,6 +2371,7 @@ class GStreamerAudioPort(AudioPort):
                 previous_source_preserved=False,
             ) from arm_exc
         if not paused_accepted:
+            self._managed_identity = None
             reason = "GStreamer failed to enter PAUSED during preroll"
             candidate = self._pending_path
             self._pending_path = None
@@ -2699,6 +2784,8 @@ class GStreamerAudioPort(AudioPort):
         self._pending_path = None
         self._current_path = None
         self._pending_direct_load = None
+        self._pending_managed_recipe = None
+        self._managed_identity = None
         self._active_direct_handle = None
         self._eom = []
         self._pos = []

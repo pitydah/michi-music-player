@@ -94,6 +94,8 @@ class HostOperation(StrEnum):
     CAPTURE_PROCESSING_OUTPUT = "capture_processing_output"
     STAGE_DIRECT = "stage_direct"
     DISCARD_DIRECT = "discard_direct"
+    STAGE_MANAGED = "stage_managed"
+    QUERY_MANAGED_IDENTITY = "query_managed_identity"
     ABORT_CANDIDATE = "abort_candidate"
     CLOSE_PIPELINE = "close_pipeline"
     SHUTDOWN = "shutdown"

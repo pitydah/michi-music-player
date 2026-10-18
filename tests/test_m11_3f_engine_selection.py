@@ -1355,7 +1355,12 @@ class TestF42AdapterContract:
         # the pre-capture pipeline state/probe in a finally block. Productive
         # transport/DSP semantics unchanged. Hash re-sealed after full
         # regression (real 44.1/48/96 kHz spectral goldens).
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "d2da6c4c8a085228",
+        # AP2-F06 managed sink staging: ONE one-shot managed recipe consumed
+        # by load (strict ALSA sink for the SELECTED binding; lab fakesink is
+        # explicit and recorded in the managed identity). Managed never sets
+        # Direct identity; Direct staging semantics are byte-identical.
+        # Hash re-sealed after full regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "87fe2733965a50c7",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

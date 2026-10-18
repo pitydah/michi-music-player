@@ -24,6 +24,7 @@ from michi.infrastructure.audio_engines.gstreamer_host_direct import (
 from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
     HostEvent,
     HostOperation,
+    HostProtocolError,
 )
 
 EmitEvent = Callable[[HostEvent, dict[str, Any]], None]
@@ -495,6 +496,42 @@ class HostEngineSession:
         self._coordinator.discard(handle)
         return True, {"discarded": discarded}
 
+    def _op_stage_managed(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        """AP2-F06: stage ONE strict managed sink for the selected binding."""
+        from michi.infrastructure.audio_output.strict_sink import StrictSinkRecipe
+
+        data = payload.get("recipe")
+        if not isinstance(data, dict):
+            raise HostProtocolError(
+                "HOST_PROTOCOL_INVALID_FIELD", "managed recipe must be an object"
+            )
+        recipe = StrictSinkRecipe(
+            plan_id=str(data.get("plan_id") or ""),
+            sink_factory=str(data.get("sink_factory") or ""),
+            device=str(data.get("device") or ""),
+            media_type=str(data.get("media_type") or "audio/x-raw"),
+            gst_format=str(data.get("gst_format") or ""),
+            rate_hz=int(data.get("rate_hz") or 0),
+            channels=int(data.get("channels") or 0),
+            layout=str(data.get("layout") or "interleaved"),
+            container_conversion=False,
+            resync_delay_ms=0,
+        )
+        port = self._require_port()
+        port.stage_managed_load(recipe)  # type: ignore[attr-defined]
+        return True, {}
+
+    def _op_query_managed_identity(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        port = self._require_port()
+        identity = port.managed_identity()  # type: ignore[attr-defined]
+        if not isinstance(identity, dict):
+            raise HostProtocolError(
+                "HOST_PROTOCOL_INVALID_RESULT", "managed identity must be an object"
+            )
+        return True, {"identity": identity}
+
     # ── help ──────────────────────────────────────────────────────────
     def _require_port(self) -> EnginePort:
         if self._port is None:
@@ -596,4 +633,8 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     ),
     HostOperation.STAGE_DIRECT.value: HostEngineSession._op_stage_direct,
     HostOperation.DISCARD_DIRECT.value: HostEngineSession._op_discard_direct,
+    HostOperation.STAGE_MANAGED.value: HostEngineSession._op_stage_managed,
+    HostOperation.QUERY_MANAGED_IDENTITY.value: (
+        HostEngineSession._op_query_managed_identity
+    ),
 }
