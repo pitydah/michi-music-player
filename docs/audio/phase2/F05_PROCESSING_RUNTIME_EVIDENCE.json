@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
   "phase": "AP2-F05",
-  "scope": "transactional DSP seal + PRODUCTIVE Shared PCM playback (major advance; F05 NOT closed)",
-  "recorded_at": "2026-10-06",
-  "repo_head": "0dd3d2e",
+  "scope": "AP2-F05 CLOSED \u2014 transactional DSP + PRODUCTIVE Shared PCM processing (owner-safe concurrency, canonical Signal Truth evidence, real multirate spectral proof)",
+  "recorded_at": "2026-10-17",
+  "repo_head": "80a4812",
   "transaction": {
     "candidate_identity": "candidate_id + plan_id + graph_revision + host_generation + pipeline_generation + processing_generation",
     "commit_receipt": "installed + observed_plan_id + observed_graph_revision + observed_pipeline_generation + native_runtime_identity + post-install exact readback",
@@ -12,7 +12,12 @@
     "stale_commit_rejected": "DSP_STALE_COMMIT when the requested revision advanced",
     "abort_truth": "native teardown failure raises DSP_ABORT_FAILED and keeps ownership; no silent continue",
     "capability_fail_closed": "runtime_failure => UNAVAILABLE + empty strategies; probe checks property writability and working-precision pad caps",
-    "readback_exactness": "node-id set equality, duplicates/extra/missing rejected, per-node native factory multiset, unexpected resampler rejected"
+    "readback_exactness": "node-id set equality, duplicates/extra/missing rejected, per-node native factory multiset, unexpected resampler rejected",
+    "owner_safety": "ONE serialized processing-transaction worker; the owner/Qt thread only assigns the intent revision and enqueues. NO lock is held across IPC. host-loss retirement takes only a short state lock and never waits on a blocked transaction.",
+    "supersession": "newest intent wins: queued older work is dropped with a typed DSP_STALE_INTENT; an in-flight older candidate is fenced at commit with DSP_STALE_COMMIT. Superseded work is delivered, never silent.",
+    "abort_double_fault": "invalid readback + failed child abort raises DSP_CANDIDATE_ABORT_FAILED with both causes and candidate_retained=true (native ownership never silently lost).",
+    "post_commit_containment": "a valid receipt whose installed graph cannot be proven is contained: proven bypass is attempted, EFFECTIVE is retired to UNAVAILABLE, and the typed error carries containment_attempted/proven. A rejected receipt leaves the effective predecessor state untouched (PREPARING).",
+    "host_lost_fanout": "the hosted port registry is keyed by WEAK IDENTITY (WeakSet); a closed/reopened port never inherits another object's listener."
   },
   "productive_playback": {
     "topology": "child playbin3 -> audio-filter (Michi processing bin: ghost sink -> audioconvert[dithering=none,noise-shaping=none] -> explicit F64LE caps -> volume | audioiirfilter cascade -> ghost src)",
@@ -26,10 +31,45 @@
       "expected_ratio": 0.5,
       "negotiated": true
     },
-    "strategies_proven": ["gain"],
-    "graphic_eq_native_mapping": "audioiirfilter cascade (RBJ peaking, Q=sqrt(2)); compile+readback tests green; productive media boost/cut proof pending",
+    "strategies_proven": [
+      "gain"
+    ],
+    "graphic_eq_native_mapping": "audioiirfilter cascade (RBJ peaking, Q=sqrt(2)); PRODUCTIVE spectral proof through real playbin3 media at 44.1/48/96 kHz (see rate_matrix); flat EQ is an identity vs the proven-bypass passthrough; bypass returns the level to baseline.",
     "bypass": "BYPASS_PROCESSING removes the filter with a receipt; asserted in the productive test",
-    "no_autoplay": "install/capture never starts audible playback (volume 0; bounded PLAYING window for measurement only)"
+    "no_autoplay": "install/capture never starts audible playback (volume 0; bounded PLAYING window for measurement only)",
+    "rate_matrix": {
+      "method": "child-local Goertzel capture on real multitone WAV fixtures; band deltas measured against a flat-EQ baseline compiled for the SAME rate",
+      "rates_hz": [
+        44100,
+        48000,
+        96000
+      ],
+      "tolerance_db": 2.0,
+      "bands_db": {
+        "125": 6.0,
+        "1000": -6.0,
+        "8000": 4.0
+      },
+      "mixed_directions": {
+        "125": -8.0,
+        "1000": 5.0
+      },
+      "result": "all bands within +/-2 dB at every rate; directions independent"
+    },
+    "capture_instrumentation": "the pad-probe callback performs NO per-sample work: it only copies bounded bytes (with the negotiated format per chunk). RMS/peak/Goertzel run after the capture window; the probe and transport state are restored in a finally block (diagnostic returns to PAUSED).",
+    "signal_truth": {
+      "recorder": "the ONE canonical SignalTruthRecorder (no second recorder)",
+      "events": [
+        "requested",
+        "preparing",
+        "effective",
+        "bypassed",
+        "unavailable"
+      ],
+      "bit_perfect": "tri-state preserved; False ONLY while EFFECTIVE; never True",
+      "dac_verdict": "never fabricated; candidate/active DAC truth untouched"
+    },
+    "sample_contract": "R11-G04 reconciled: F32LE input re-represented as the F64LE working format is a representation conversion (input_conversion=true, changes_representation=true); a graph with no executable node claims nothing (bypass)."
   },
   "generations": {
     "host": "parent supervisor generation, stamped into the candidate identity and validated in the receipt",
@@ -37,13 +77,12 @@
     "processing": "parent requested/effective revisions; a delayed commit over a newer revision is rejected"
   },
   "not_done": {
-    "parametric_eq_runtime": "BIQUAD_CASCADE native mapping not implemented (compile refuses DSP_STRATEGY_UNAVAILABLE)",
-    "fir_convolution": "blocked on the canonical asset authority (F06/F13 scope); not invented",
-    "signal_truth_processing_publication": "no processing ACTIVE claim is published yet",
-    "host_loss_while_processing_active": "capability/runtime invalidation exists; the kill-while-EQ-active test is pending",
-    "processing_fault_matrix": "partial (capability hang, install rejection, missing pipeline, stale commit covered; commit hang/crash-during-inspect not yet)",
-    "f32_f64_sample_contract_reconciliation": "pending audit vs R11-G04 semantics",
-    "owner_sqlite_intent_capture": "bounded P2 (snapshot_output_intent still reads SQLite on the owner)"
+    "parametric_eq_runtime": "BIQUAD_CASCADE native mapping is F06 scope (compile refuses DSP_STRATEGY_UNAVAILABLE in F05)",
+    "fir_convolution": "F06/F13 scope (canonical asset authority); not invented",
+    "processing_fault_matrix_residuals": "commit hang / crash-during-inspect beyond the covered cases remain additional hardening (not an F05 exit-gate item)",
+    "xrun_pipeline_vs_alsa": "physical XRUN is an environment-gated observation (NOT_RUN); fakesink absence is NOT physical absence",
+    "owner_sqlite_intent_capture": "bounded P2 (snapshot_output_intent still reads SQLite on the owner)",
+    "physical_dac_campaign": "PARKED/INCOMPLETE (outside F05; automated evidence is not physical DAC verification)"
   },
-  "phase_verdict": "IN_PROGRESS_MAJOR_ADVANCE (F05 remains READY/ACTIVE work; NOT closed)"
+  "phase_verdict": "CLOSED \u2014 F05 exit gate satisfied: real GStreamer runtime gate green, readback mismatch fails closed, Shared PCM EQ runtime-observed on real media at 44.1/48/96 kHz, Direct regression unchanged (full suite 5725 passed / 3 skipped). Physical DAC qualification remains a separate PARKED tier."
 }
