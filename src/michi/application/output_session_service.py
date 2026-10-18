@@ -45,6 +45,8 @@ from michi.domain.audio_output import (
     VolumePolicy,
     is_direct_path,
 )
+from michi.domain.managed_pcm_output import ManagedPcmOutputPlan
+from michi.domain.signal_truth import OutputFamilyEvent, OutputFamilyState
 
 logger = logging.getLogger(__name__)
 
@@ -219,6 +221,20 @@ class _DirectSessionSnapshot:
     path: Path | None
     selected_device_id: str | None
     selected_profile_id: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ManagedOutputPrepared:
+    """Worker-phase managed execution, committed by the owner.
+
+    The application layer never imports the infrastructure receipt: the
+    prepared value carries the immutable plan, the execution id and the
+    primitive runtime identity the owner needs for the session commit.
+    """
+
+    plan: ManagedPcmOutputPlan
+    execution_id: str
+    runtime_identity: dict
 
 
 class ProductiveOutputRequestResolver:
@@ -464,6 +480,14 @@ class OutputSessionService:
         plan_still_current: Callable[[OutputPlan], bool] | None = None,
         async_submit: Callable[[Callable, Callable], None] | None = None,
         cancel_prepare_work: Callable[[], None] | None = None,
+        managed_prepare: (
+            Callable[[Path, PlannerFacts], ManagedOutputPrepared] | None
+        ) = None,
+        managed_abort: (Callable[[ManagedOutputPrepared, str], None] | None) = None,
+        managed_plan_still_current: (
+            Callable[[ManagedPcmOutputPlan], bool] | None
+        ) = None,
+        truth_recorder=None,
     ) -> None:
         self._planner = planner
         self._facts_provider = facts_provider
@@ -473,12 +497,19 @@ class OutputSessionService:
         self._plan_still_current = plan_still_current or (lambda _plan: True)
         self._async_submit = async_submit
         self._cancel_prepare_work = cancel_prepare_work
+        self._managed_prepare = managed_prepare
+        self._managed_abort = managed_abort
+        self._managed_plan_still_current = managed_plan_still_current
+        # ADDITIVE: the ONE canonical recorder (never a second one).
+        self._truth_recorder = truth_recorder
         self._async_prepare_generation = 0
         self._pending_prepare_device_id: str | None = None
         self._state = OutputSessionState.IDLE
         self._generation = 0
         self._session_id: str | None = None
         self._plan: OutputPlan | None = None
+        self._managed_plan: ManagedPcmOutputPlan | None = None
+        self._managed_prepared: ManagedOutputPrepared | None = None
         self._selected_device_id: str | None = None
         self._selected_profile_id: str | None = None
         self._error_code: str | None = None
@@ -515,6 +546,12 @@ class OutputSessionService:
 
     @property
     def active_device_id(self) -> str | None:
+        if (
+            self._mode == "managed"
+            and self._state in _ACTIVE_STATES
+            and self._managed_plan is not None
+        ):
+            return self._managed_plan.stable_device_id
         plan = self.active_plan
         return plan.stable_device_id if plan is not None else None
 
@@ -532,10 +569,15 @@ class OutputSessionService:
 
     @property
     def volume_policy(self) -> VolumePolicy | None:
-        """Resolved immutable Direct policy; Shared has no Direct policy."""
-        return (
-            self._plan.volume_policy if self._mode == "direct" and self._plan else None
-        )
+        """Resolved immutable Direct/Managed policy; Shared has none."""
+        if self._mode == "direct" and self._plan:
+            return self._plan.volume_policy
+        if self._mode == "managed" and self._managed_plan is not None:
+            try:
+                return VolumePolicy(self._managed_plan.volume_policy)
+            except ValueError:
+                return None
+        return None
 
     @property
     def volume_authority(self) -> VolumeAuthority | None:
@@ -555,6 +597,8 @@ class OutputSessionService:
 
     @property
     def requires_release_on_media_loss(self) -> bool:
+        if self._mode == "managed":
+            return self._managed_prepared is not None
         return self._mode == "direct" and self._executor is not None
 
     def allows_automatic_engine_fallback(self) -> bool:
@@ -564,7 +608,9 @@ class OutputSessionService:
         if plan is None and self._previous_direct is not None:
             plan = self._previous_direct.plan
         if plan is None:
-            return self._mode == "shared"
+            # Managed is a specific-DAC family: never fall back to another
+            # engine or the default output.
+            return False if self._mode == "managed" else self._mode == "shared"
         return plan.fallback is not FallbackKind.STOP
 
     def classify_load_failure(self, previous_source_preserved: bool) -> str:
@@ -572,6 +618,19 @@ class OutputSessionService:
         return "load_failed" if previous_source_preserved else "load_failed_source_lost"
 
     def selection_state(self) -> OutputSelectionState:
+        if (
+            self._mode == "managed"
+            and self._state in _ACTIVE_STATES
+            and self._managed_plan is not None
+        ):
+            return OutputSelectionState(
+                selected_device_id=self._selected_device_id,
+                selected_profile_id=self._selected_profile_id,
+                active_device_id=self._managed_plan.stable_device_id,
+                active_plan_id=self._managed_plan.plan_id,
+                session_state=self._state,
+                error_code=self._error_code,
+            )
         active = self._plan is not None and self._state in _ACTIVE_STATES
         active_plan = self._plan if active else None
         if (
@@ -669,6 +728,9 @@ class OutputSessionService:
 
         def work():
             request = self._request_for(path)
+            if self._is_managed_request(request):
+                prepared = self._run_managed_prepare(path, request.facts)
+                return request, None, prepared
             result = (
                 self._planner.plan(request.facts) if request.facts is not None else None
             )
@@ -680,10 +742,21 @@ class OutputSessionService:
             outcome = (
                 self._request_provider.probe_request(request) if needs_probe else None
             )
-            return request, outcome
+            return request, outcome, None
+
+        def _prepared_from(value):
+            if not isinstance(value, tuple) or len(value) != 3:
+                return None
+            return value[2] if isinstance(value[2], ManagedOutputPrepared) else None
 
         def completed(value, error) -> None:
             if generation != self._async_prepare_generation:
+                # A worker-phase Managed execution that can no longer commit
+                # MUST be stopped: a superseded preparation never keeps
+                # playing or holds the selected device.
+                self._managed_abort_quietly(
+                    _prepared_from(value), "superseded_before_commit"
+                )
                 on_failed(
                     OutputSessionError(
                         "OUTPUT_PREPARATION_STALE",
@@ -700,6 +773,9 @@ class OutputSessionService:
             # media-request generation. The monotonic revision makes value
             # equality (ABA) insufficient to pass.
             if intent is not None and self._capture_output_intent() != intent:
+                self._managed_abort_quietly(
+                    _prepared_from(value), "intent_changed_before_commit"
+                )
                 on_failed(
                     OutputSessionError(
                         "OUTPUT_PREPARATION_STALE",
@@ -707,8 +783,17 @@ class OutputSessionService:
                     )
                 )
                 return
-            request, outcome = value
+            request, outcome, managed_prepared = value
             try:
+                if managed_prepared is not None:
+                    token = self._begin_managed_session(
+                        path,
+                        request,
+                        managed_prepared,
+                        previous_direct=self._committed_direct_snapshot(),
+                    )
+                    on_prepared(token)
+                    return
                 if outcome is not None:
                     probed_request, probe_outcome = outcome
                     request = self._request_provider.apply_qualification(
@@ -757,11 +842,20 @@ class OutputSessionService:
         previous_direct = self._committed_direct_snapshot()
         self._selected_device_id = request.selected_device_id
         self._selected_profile_id = request.selected_profile_id
+        if self._is_managed_request(request):
+            return self._prepare_managed_request(
+                path, request, previous_direct=previous_direct
+            )
         if request.facts is None:
             return self._prepare_shared(path, previous_direct=previous_direct)
         result = self._planner.plan(request.facts)
         if isinstance(result, PlannerRefusal):
             raise OutputSessionError(result.code, result.detail)
+        if self._mode == "managed" and self._managed_prepared is not None:
+            prepared = self._managed_prepared
+            self._managed_prepared = None
+            self._managed_plan = None
+            self._managed_abort_quietly(prepared, "switch_to_direct")
         executor = self._executors.get(result.engine_id)
         if executor is None:
             raise OutputSessionError(
@@ -835,12 +929,168 @@ class OutputSessionService:
             return self._request_provider(path)
         return OutputRequest.direct(self._facts_for(path))
 
+    def _is_managed_request(self, request: OutputRequest) -> bool:
+        facts = request.facts
+        return (
+            facts is not None
+            and facts.profile is not None
+            and facts.profile.path is OutputPathPreference.MANAGED
+        )
+
+    def _run_managed_prepare(self, path: Path, facts) -> ManagedOutputPrepared:
+        if self._managed_prepare is None:
+            raise OutputSessionError(
+                "MANAGED_OUTPUT_UNAVAILABLE",
+                "no Managed preparation is composed for this session",
+            )
+        try:
+            prepared = self._managed_prepare(path, facts)
+        except OutputSessionError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - typed owner boundary
+            code = getattr(exc, "code", "MANAGED_OUTPUT_PREPARE_FAILED")
+            raise OutputSessionError(code, str(exc)) from exc
+        if not isinstance(prepared, ManagedOutputPrepared):
+            raise OutputSessionError(
+                "MANAGED_OUTPUT_PREPARE_FAILED",
+                "managed preparation returned an invalid value",
+            )
+        return prepared
+
+    def _prepare_managed_request(
+        self,
+        path: Path,
+        request: OutputRequest,
+        *,
+        previous_direct: _DirectSessionSnapshot | None,
+    ) -> str:
+        prepared = self._run_managed_prepare(path, request.facts)
+        return self._begin_managed_session(
+            path, request, prepared, previous_direct=previous_direct
+        )
+
+    def _begin_managed_session(
+        self,
+        path: Path,
+        request: OutputRequest,
+        prepared: ManagedOutputPrepared,
+        *,
+        previous_direct: _DirectSessionSnapshot | None,
+    ) -> str:
+        checker = self._managed_plan_still_current
+        if checker is not None:
+            try:
+                current = bool(checker(prepared.plan))
+            except Exception as exc:  # noqa: BLE001 - fail closed
+                self._managed_abort_quietly(prepared, "binding_validation_failed")
+                raise OutputSessionError(
+                    "OUTPUT_BINDING_VALIDATION_FAILED",
+                    "Managed binding freshness could not be validated",
+                ) from exc
+            if not current:
+                self._managed_abort_quietly(prepared, "binding_stale_during_prepare")
+                raise OutputSessionError(
+                    "OUTPUT_BINDING_STALE",
+                    "Managed binding changed before candidate preparation",
+                )
+        current = self._managed_prepared
+        if current is not None and current is not prepared:
+            self._managed_prepared = None
+            self._managed_plan = None
+            self._managed_abort_quietly(current, "superseded")
+        if self._mode == "shared" and self._shared_receipt is not None:
+            with suppress(Exception):
+                self._shared.abort_media(self._shared_receipt, "superseded")
+        if previous_direct is not None:
+            with suppress(Exception):
+                previous_direct.executor.release("switch_to_managed")
+        if self._state is not OutputSessionState.IDLE:
+            if self._state in (
+                OutputSessionState.READY,
+                OutputSessionState.RUNNING,
+            ):
+                self._transition(OutputSessionState.RECONFIGURING)
+            elif self._state is OutputSessionState.PAUSED:
+                self._transition(OutputSessionState.RELEASING)
+                self._transition(OutputSessionState.IDLE)
+            else:
+                raise OutputSessionError(
+                    "illegal_transition",
+                    f"prepare desde {self._state.value}",
+                )
+        if self._state is OutputSessionState.IDLE:
+            self._transition(OutputSessionState.ACQUIRING)
+        self._generation += 1
+        self._mode = "managed"
+        self._managed_plan = prepared.plan
+        self._managed_prepared = prepared
+        self._plan = None
+        self._path = Path(path)
+        self._executor = None
+        self._executor_receipt = prepared.execution_id
+        self._shared_receipt = None
+        self._previous_direct = None
+        self._session_id = f"session:{self._generation}"
+        self._error_code = None
+        self._last_transition_kind = None
+        self._last_release_invalidated_media = False
+        if self._state is OutputSessionState.ACQUIRING:
+            self._transition(OutputSessionState.CONFIGURING)
+        self._transition(OutputSessionState.READY)
+        self._token_value = f"output-tx:managed:{self._generation}"
+        self._record_output_family(OutputFamilyState.READY, prepared)
+        return self._token_value
+
+    def _record_output_family(
+        self,
+        state: OutputFamilyState,
+        prepared: ManagedOutputPrepared | None = None,
+    ) -> None:
+        recorder = self._truth_recorder
+        if recorder is None:
+            return
+        current = prepared or self._managed_prepared
+        plan = current.plan if current is not None else self._managed_plan
+        if plan is None:
+            return
+        runtime = dict(current.runtime_identity) if current is not None else {}
+        with suppress(Exception):
+            recorder.record_output_family_event(
+                OutputFamilyEvent(
+                    family="managed",
+                    state=state,
+                    device_id=plan.stable_device_id,
+                    execution_id=current.execution_id if current else None,
+                    processing_plan_id=plan.processing_plan_id,
+                    transform_policy=plan.transform_policy,
+                    runtime_identity=runtime,
+                    # Never a Direct preservation proof: tri-state, not True.
+                    bit_perfect=None,
+                )
+            )
+
+    def _managed_abort_quietly(
+        self, prepared: ManagedOutputPrepared | None, reason: str
+    ) -> None:
+        if prepared is None:
+            return
+        abort = self._managed_abort
+        if abort is None:
+            return
+        with suppress(Exception):
+            abort(prepared, reason)
+
     def _prepare_shared(
         self,
         path: Path,
         *,
         previous_direct: _DirectSessionSnapshot | None,
     ) -> str:
+        if self._mode == "managed" and self._managed_prepared is not None:
+            prepared = self._managed_prepared
+            self._managed_prepared = None
+            self._managed_plan = None
+            self._managed_abort_quietly(prepared, "switch_to_shared")
         old_shared_receipt = self._shared_receipt if self._mode == "shared" else None
         receipt = self._shared.prepare_for_media(path)
         if (
@@ -968,6 +1218,15 @@ class OutputSessionService:
             return  # callback de generation vieja: descartado (§21)
         if self._path != Path(path):
             raise OutputSessionError("stale_path", "commit path does not own token")
+        if self._mode == "managed":
+            if self._state is not OutputSessionState.READY:
+                raise OutputSessionError(
+                    "illegal_transition", f"commit desde {self._state.value}"
+                )
+            self._previous_direct = None
+            self._transition(OutputSessionState.RUNNING)
+            self._record_output_family(OutputFamilyState.RUNNING)
+            return
         if self._mode == "shared":
             assert self._shared_receipt is not None
             self._shared.commit_media(self._shared_receipt, path)
@@ -989,6 +1248,20 @@ class OutputSessionService:
 
     def abort_media(self, token: str, reason: str) -> None:
         if self._is_stale(token):
+            return
+        if self._mode == "managed":
+            self._error_code = reason
+            prepared = self._managed_prepared
+            self._managed_prepared = None
+            self._managed_plan = None
+            if self._state is not OutputSessionState.LOST:
+                self._transition(OutputSessionState.RELEASING)
+            self._managed_abort_quietly(prepared, reason)
+            self._record_output_family(OutputFamilyState.UNAVAILABLE, prepared)
+            self._clear_execution(keep_error=True)
+            if self._state is not OutputSessionState.IDLE:
+                self._transition(OutputSessionState.IDLE)
+            self._notify()
             return
         if self._mode == "shared":
             if self._shared_receipt is not None:
@@ -1052,8 +1325,30 @@ class OutputSessionService:
 
     def release_active(self, reason: str) -> None:
         self.cancel_pending_prepare()
-        was_direct = self._mode == "direct" and self._executor is not None
-        self._last_release_invalidated_media = was_direct
+        was_specific = (
+            self._mode == "direct"
+            and self._executor is not None
+            or self._mode == "managed"
+            and self._managed_prepared is not None
+        )
+        self._last_release_invalidated_media = was_specific
+        if self._mode == "managed":
+            prepared = self._managed_prepared
+            self._managed_prepared = None
+            self._managed_plan = None
+            if self._state not in (
+                OutputSessionState.IDLE,
+                OutputSessionState.RELEASING,
+            ):
+                self._transition(OutputSessionState.RELEASING)
+            self._managed_abort_quietly(prepared, reason)
+            self._record_output_family(OutputFamilyState.RELEASED, prepared)
+            self._error_code = None
+            self._clear_execution(keep_error=True)
+            if self._state is not OutputSessionState.IDLE:
+                self._transition(OutputSessionState.IDLE)
+            self._notify()
+            return
         if self._mode == "shared":
             self._shared.release_active(reason)
             if self._previous_direct is not None:
@@ -1061,7 +1356,7 @@ class OutputSessionService:
             self._clear_execution()
             self._notify()
             return
-        if self._state is OutputSessionState.IDLE and not was_direct:
+        if self._state is OutputSessionState.IDLE and not was_specific:
             return
         # R110 §21/§29: a normal release/stop is a COMMAND, not a failure — but
         # the release is a TRANSACTION. The failure presentation is only retired
@@ -1093,10 +1388,13 @@ class OutputSessionService:
     ) -> None:
         """Invalidate topology-dependent authority, then attempt cleanup."""
         previous = self._previous_direct
+        managed_prepared = self._managed_prepared
+        managed_plan = self._managed_plan
         if self._state is OutputSessionState.LOST or (
             self._state is OutputSessionState.IDLE
             and self._executor is None
             and previous is None
+            and managed_prepared is None
         ):
             return
         current_plan = self._plan
@@ -1113,9 +1411,15 @@ class OutputSessionService:
             ):
                 loss_plan = previous.plan
         resolved_device_id = stable_device_id or (
-            loss_plan.stable_device_id if loss_plan is not None else None
+            loss_plan.stable_device_id
+            if loss_plan is not None
+            else (managed_plan.stable_device_id if managed_plan is not None else None)
         )
-        loss_generation = loss_plan.binding.generation if loss_plan is not None else 0
+        loss_generation = (
+            loss_plan.binding.generation
+            if loss_plan is not None
+            else (managed_plan.binding_generation if managed_plan is not None else 0)
+        )
         if generation is not None:
             loss_generation = max(loss_generation, generation)
         wait_for_rebind = (
@@ -1144,16 +1448,23 @@ class OutputSessionService:
         self._previous_direct = None
         self._token_value = None
         self._plan = None
+        self._managed_plan = None
+        self._managed_prepared = None
         self._path = None
         self._session_id = None
         self._mode = "lost" if wait_for_rebind else "shared"
-        self._last_release_invalidated_media = bool(executors)
+        self._last_release_invalidated_media = bool(executors) or (
+            managed_prepared is not None
+        )
         self._error_code = "device_lost"
         self._last_cleanup_diagnostic = None
         if not wait_for_rebind:
             self._lost_device_id = None
             self._lost_binding_generation = 0
             self._transition(OutputSessionState.IDLE)
+        if managed_prepared is not None:
+            self._record_output_family(OutputFamilyState.UNAVAILABLE, managed_prepared)
+        self._managed_abort_quietly(managed_prepared, "device_lost")
         for executor in executors:
             try:
                 executor.release("device_lost")
@@ -1188,6 +1499,13 @@ class OutputSessionService:
             and self._plan is not None
             and self._state in _ACTIVE_STATES
             and self._plan.stable_device_id == stable_device_id
+        ):
+            return True
+        if (
+            self._mode == "managed"
+            and self._managed_plan is not None
+            and self._state in _ACTIVE_STATES
+            and self._managed_plan.stable_device_id == stable_device_id
         ):
             return True
         previous = self._previous_direct
@@ -1264,6 +1582,8 @@ class OutputSessionService:
 
     def _clear_execution(self, *, keep_error: bool = False) -> None:
         self._plan = None
+        self._managed_plan = None
+        self._managed_prepared = None
         self._path = None
         self._token_value = None
         self._executor = None

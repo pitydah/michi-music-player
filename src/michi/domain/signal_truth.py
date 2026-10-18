@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass, replace
-from enum import Enum
+from enum import Enum, StrEnum
 
 from michi.domain.audio_evidence import PcmTuple, RuntimeTransformEvidence
 
@@ -753,6 +753,35 @@ class ProcessingTruthState(Enum):
     UNKNOWN = "unknown"
 
 
+class OutputFamilyState(StrEnum):
+    """Output-family session states (never a DAC verdict)."""
+
+    PREPARING = "preparing"
+    READY = "ready"
+    RUNNING = "running"
+    UNAVAILABLE = "unavailable"
+    RELEASED = "released"
+
+
+@dataclass(frozen=True, slots=True)
+class OutputFamilyEvent:
+    """One output-family convergence event on the canonical recorder.
+
+    ``family`` is ``shared``/``direct``/``managed``. ``bit_perfect`` stays
+    TRI-STATE and can never be True here: a Managed route (even identity) is
+    not a Direct preservation proof.
+    """
+
+    family: str
+    state: OutputFamilyState
+    device_id: str | None = None
+    execution_id: str | None = None
+    processing_plan_id: str | None = None
+    transform_policy: tuple[str, ...] = ()
+    runtime_identity: dict | None = None
+    bit_perfect: bool | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class ProcessingTruthEvent:
     """One processing-state convergence event.
@@ -783,10 +812,26 @@ class SignalTruthRecorder:
         # Additive AP2-F05 stream: DSP state convergence, separate from (and
         # never substituting) the DAC Signal Truth verdict.
         self._processing_events: list[ProcessingTruthEvent] = []
+        self._output_family_events: list[OutputFamilyEvent] = []
 
     @property
     def processing_events(self) -> tuple[ProcessingTruthEvent, ...]:
         return tuple(self._processing_events)
+
+    @property
+    def output_family_events(self) -> tuple[OutputFamilyEvent, ...]:
+        return tuple(self._output_family_events)
+
+    def record_output_family_event(self, event: OutputFamilyEvent) -> None:
+        """Append output-family evidence without touching DAC verdicts."""
+        if event.bit_perfect is True:
+            raise ValueError("output-family evidence can never prove bit-perfect")
+        if not event.family.strip():
+            raise ValueError("output-family evidence requires a family")
+        self._output_family_events.append(event)
+        if len(self._output_family_events) > 64:
+            del self._output_family_events[:-64]
+        self._publish()
 
     def record_processing_event(self, event: ProcessingTruthEvent) -> None:
         """Append DSP evidence without touching candidate/active DAC truth."""

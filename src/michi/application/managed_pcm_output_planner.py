@@ -28,6 +28,8 @@ from michi.domain.managed_pcm_output import (
 
 _ALSA_PCM = "alsa_pcm"
 _VALID_VOLUME_POLICIES = frozenset(policy.value for policy in VolumePolicy)
+#: Deterministic ordered preference for an identity (no DSP) managed route.
+_PREFERRED_TERMINALS = ("S32LE", "S24LE", "S16LE")
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,7 +144,7 @@ class ManagedPcmOutputPlanner:
         else:
             output_rate = source.rate_hz
             output_channels = source.channels
-            terminal_format = source.transport_format
+            terminal_format = _preferred_terminal(facts.terminal_formats)
             transform_policy = ("identity",)
             processing_plan_id = None
             graph_revision = 0
@@ -188,6 +190,15 @@ class ManagedPcmOutputPlanner:
             evidence_refs=(f"terminal:{terminal_format}",),
             path=MANAGED_PCM_PATH,
         )
+
+
+def _preferred_terminal(proven: frozenset[str]) -> str:
+    """Deterministic proven terminal for a route without a compiled plan."""
+    normalized = {str(value).strip() for value in proven}
+    for candidate in _PREFERRED_TERMINALS:
+        if candidate in normalized:
+            return candidate
+    return sorted(normalized)[0] if normalized else ""
 
 
 def _transform_policy(plan: CompiledProcessingPlan) -> tuple[str, ...]:

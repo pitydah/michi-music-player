@@ -66,8 +66,14 @@ from michi.application.library_preferences_coordinator import (
 )
 from michi.application.library_service import LibraryService
 from michi.application.library_track_resolver import LibraryTrackResolver
+from michi.application.managed_pcm_output_planner import (
+    ManagedPcmOutputPlanner,
+    ManagedPcmPlannerFacts,
+)
 from michi.application.navigation_service import NavigationService
 from michi.application.output_session_service import (
+    ManagedOutputPrepared,
+    OutputSessionError,
     OutputSessionService,
     ProductiveOutputRequestResolver,
 )
@@ -93,6 +99,8 @@ from michi.application.source_scan_coordinator import SourceScanCoordinator
 from michi.application.source_scan_lifecycle import SourceScanLifecycle
 from michi.domain.audio_device import BindingKind
 from michi.domain.audio_engine import AudioEngineId
+from michi.domain.audio_evidence import PcmTuple
+from michi.domain.managed_pcm_output import ManagedPcmOutputPlan
 from michi.domain.signal_truth import SignalTruthRecorder
 from michi.infrastructure.artwork import ArtworkCache, MutagenArtworkProvider
 from michi.infrastructure.audio_devices.alsa_probe_adapter import MichiAlsaProbeAdapter
@@ -431,6 +439,7 @@ def _build_services(
     alsa_proc_root: Path = Path("/proc/asound"),
     qualification_adapter=None,
     output_preparation_executor: QtAsyncCallExecutor | None = None,
+    managed_processing_provider=None,
 ) -> ServiceGraph:
     """Build the PRODUCTION library service graph (composition root core).
 
@@ -597,6 +606,98 @@ def _build_services(
     # processing installer is supplied by the caller that owns the compiled
     # plan (the executor fails closed without one for processed plans).
     managed_pcm_executor = ManagedPcmExecutor(lambda: gstreamer_provider.current_port)
+    managed_pcm_planner = ManagedPcmOutputPlanner()
+
+    def _managed_install(compiled_plan):
+        transport = processing_transport
+        host_generation = int(transport.host_generation())
+        candidate = audio_processing_service.begin_candidate(
+            compiled_plan,
+            host_generation=host_generation,
+            transport=transport,
+        )
+        receipt = audio_processing_service.commit_candidate(
+            candidate, transport=transport
+        )
+        audio_processing_service.publish_effective(receipt)
+        return {
+            "revision": candidate.processing_generation,
+            "runtime_identity": receipt.native_runtime_identity,
+        }
+
+    def _managed_prepare(path: Path, facts) -> ManagedOutputPrepared:
+        """Worker-phase Managed composition: plan + execute + DSP receipt."""
+        if (
+            facts is None
+            or facts.profile is None
+            or facts.binding is None
+            or facts.selected_device_id is None
+            or facts.decoded_source is None
+        ):
+            raise OutputSessionError(
+                "MANAGED_FACTS_INCOMPLETE",
+                "Managed output requires profile, device, binding and decoded facts",
+            )
+        compiled = (
+            managed_processing_provider(facts)
+            if managed_processing_provider is not None
+            else None
+        )
+        decoded = facts.decoded_source
+        proven = frozenset(
+            str(item.tuple.transport_format)
+            for item in facts.evidence
+            if item.supported is not False and item.tuple.transport_format
+        )
+        planner_facts = ManagedPcmPlannerFacts(
+            selected_device_id=facts.selected_device_id,
+            binding=facts.binding,
+            binding_device_id=facts.selected_device_id,
+            source_pcm=PcmTuple(
+                rate_hz=decoded.rate_hz,
+                transport_format="",
+                channels=decoded.channels,
+                significant_bits=decoded.significant_bits,
+            ),
+            compiled_plan=compiled,
+            terminal_formats=proven,
+            volume_policy=facts.profile.volume_policy.value,
+            selection_revision=0,
+            current_selection_revision=0,
+        )
+        result = managed_pcm_planner.plan(planner_facts)
+        if not isinstance(result, ManagedPcmOutputPlan):
+            raise OutputSessionError(result.code, result.detail)
+        receipt = managed_pcm_executor.execute(
+            result,
+            path,
+            install_processing=(
+                (lambda _managed: _managed_install(compiled))
+                if compiled is not None
+                else None
+            ),
+        )
+        return ManagedOutputPrepared(
+            plan=result,
+            execution_id=receipt.execution_id,
+            runtime_identity=dict(receipt.runtime_identity),
+        )
+
+    def _managed_abort(prepared: ManagedOutputPrepared, reason: str) -> None:
+        port = gstreamer_provider.current_port
+        if port is not None:
+            port.stop()
+        audio_processing_service.invalidate_effective(f"managed_{reason}")
+
+    def _managed_plan_still_current(plan: ManagedPcmOutputPlan) -> bool:
+        return any(
+            binding.kind is BindingKind.ALSA_PCM
+            and binding.currently_available
+            and binding.generation == plan.binding_generation
+            and binding.locator == plan.device_locator
+            for binding in audio_devices.bindings_for(plan.stable_device_id)
+        )
+
     output_session = OutputSessionService(
         OutputPlanner(),
         request_provider=output_resolver,
@@ -612,6 +713,10 @@ def _build_services(
         ),
         async_submit=preparation_executor.submit,
         cancel_prepare_work=getattr(source_characterizer, "cancel", None),
+        managed_prepare=_managed_prepare,
+        managed_abort=_managed_abort,
+        managed_plan_still_current=_managed_plan_still_current,
+        truth_recorder=signal_truth,
     )
     from michi.application.volume_policy_service import VolumePolicyService
 
