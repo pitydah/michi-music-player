@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "beb0d75",
-  "verdict": "IN_PROGRESS_PRODUCTIVE \u2014 Managed PCM is now reachable through the productive composition end-to-end (resolver family dispatch, selectable and persistent profile, canonical DSP provider, identity-bound teardown, exact DAC evidence and post-install readback). Physical ALSA evidence, profile persistence/UI (F13/F11), measured latency, FIR/resample/dither remain open. F06 stays READY.",
+  "repo_head": "137d235",
+  "verdict": "IN_PROGRESS_HARDENED \u2014 Managed execution identity is per-instance and STOP is atomically identity-bound; GStreamer pipeline latency is measured through the real Query API; effective evidence retires coherently; headroom has numeric sample-peak evidence and dynamic PEQ is measured. Physical ALSA/DAC, durable DSP profile (F13), F11 UI, true peak and FIR/resample/dither remain open. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -131,7 +131,11 @@
       "productive spectral proof at 44100/48000/96000 Hz: -6 dB @125 Hz +6 dB @1 kHz within +/-2 dB",
       "proven bypass returns the level to the baseline"
     ],
-    "readback_proof": "commit_candidate validates the installed filter cascade coefficients against the plan before publish_effective"
+    "readback_proof": "commit_candidate validates the installed filter cascade coefficients against the plan before publish_effective",
+    "dynamic": {
+      "session": "PEQ A -> B -> bypass under Managed: distinct plan ids and execution instances, readback-proven EFFECTIVE, identity route retires truth",
+      "measured": "flat -> +6 -> -6 -> bypass on the same host within +/-2 dB at 1 kHz; bypass retirement verified"
+    }
   },
   "direct_regression": {
     "verdict": "unchanged",
@@ -141,14 +145,14 @@
   "physical_qualification": "NOT_RUN",
   "next_work_units": [
     "physical ALSA/DAC managed run under the explicit operator gate (PARKED)",
-    "durable processing-profile repository (F13) + F11 presentation surface",
-    "true-peak/headroom measurement and sink latency measurement",
+    "durable ProcessingProfile repository (F13) + F11 presentation",
+    "true-peak/headroom measurement and sink latency",
     "FIR/convolution, explicit resampling and dither (authority-conditioned)"
   ],
   "full_suite": {
-    "result": "5812 passed, 4 skipped, 0 failed",
+    "result": "5823 passed, 4 skipped, 0 failed",
     "scope": "python -m pytest -q (entire repository)",
-    "focused_audio": "1517 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
+    "focused_audio": "1528 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
   },
   "spec_sha256": "826381f154a0e5eb848a37e7c3c81909ddb8d103cc0cadd75c97e5fc16e41ead",
   "residuals_closed": {
@@ -157,5 +161,30 @@
     "pipeline_latency": "managed identity reports GStreamer query_latency (ns + samples at the negotiated rate); unmeasured is None; physical is a separate claim",
     "host_sigkill": "real SIGKILL test: host-loss fan-out retires EFFECTIVE, stale release is diagnostic-only and cannot crash the owner",
     "ownership": "spec amendment authorized the exact remaining F06 files; spec sha 826381f1..., alignment GO"
+  },
+  "execution_identity": {
+    "plan_identity": "deterministic hash (unchanged) \u2014 WHAT is played/processed",
+    "instance_identity": "process-unique exec-instance:<epoch>:<seq> issued by the session authority for EVERY managed preparation",
+    "propagation": "session -> managed_prepare -> executor recipe -> child managed identity -> STOP_MANAGED comparison",
+    "stop_match": "plan_id + execution instance + device, checked and stopped atomically in the child",
+    "proof": "A->B with the same plan/file/DAC: same plan_id, different instances; A's stop is stale and B keeps playing with its EFFECTIVE truth; duplicate stop is stale"
+  },
+  "latency": {
+    "api": "Gst.Query.new_latency() + pipeline.query() + query.parse_latency() (pipeline.query_latency does not exist in PyGObject)",
+    "reported": "source=gstreamer_runtime, measurement_type=pipeline_reported, live, min_ns, max_ns; CLOCK_TIME_NONE -> None",
+    "samples": "pipeline_latency_samples derived from the negotiated rate",
+    "truth": "processing_truth publishes only the compiled-plan estimate with provenance; pipeline/sink/physical are separate and unmeasured claims",
+    "proof": "productive test requires a valid numeric min_ns (0 is valid), not None-acceptance"
+  },
+  "signal_truth": {
+    "retirement": "ONE locked helper clears plan, state, latency, runtime identity and readback provenance on host loss, refresh failure, invalidation, bypass and the managed identity route",
+    "observable": "processing_truth exposes runtime_identity + readback_proven",
+    "stop_semantics": "stopped or failed/unknown retire the claim; STALE never touches a newer execution's truth",
+    "tests": "host loss, refresh failure, bypass, identity route, SIGKILL after commit and dead-host prepare"
+  },
+  "headroom": {
+    "metrics": "sample_peak, samples_over_full_scale, exceeds_full_scale, headroom_db (SAMPLE peak only)",
+    "proof": "0.9 FS sine at 44.1/48/96: baseline ~0.9; PEQ +6 dB -> >1.4 and over-FS samples; auto-headroom preamp (-6 dB) -> <1.0 and zero over-FS samples",
+    "not_claimed": "true peak / intersample peaks / analog clipping"
   }
 }
