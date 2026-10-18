@@ -339,6 +339,9 @@ class HostEngineSession:
                 "candidate_id": str(payload.get("candidate_id") or ""),
                 "observed_plan_id": str(observed.get("plan_id") or ""),
                 "observed_graph_revision": int(observed.get("graph_revision") or 0),
+                "install_diagnostics": dict(
+                    install_result.get("install_diagnostics") or {}
+                ),
                 "observed": observed,
             }
         }

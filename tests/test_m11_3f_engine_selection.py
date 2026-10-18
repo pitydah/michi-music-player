@@ -1361,8 +1361,10 @@ class TestF42AdapterContract:
         # Direct identity; Direct staging semantics are byte-identical.
         # F06 sprint 6: managed identity carries execution_id + negotiated
         # caps, and STOP_MANAGED performs an atomic identity-bound stop.
+        # F06 sprint 8: per-channel capture analysis, unpruned true-peak
+        # estimator and install continuity diagnostics.
         # Hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "62415191d9940cc6",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "e5bcfebd51c51728",
         "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).

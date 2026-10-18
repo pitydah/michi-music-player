@@ -13,6 +13,7 @@ thread-affinity as QtMultimediaBackend.
 NO GStreamer types leave this module.
 """
 
+import array
 import contextlib
 import logging
 import math
@@ -1989,54 +1990,221 @@ class GStreamerAudioPort(AudioPort):
         return result
 
     @staticmethod
+    def _analyze_capture(chunks: list[tuple[str, float, int, bytes]]) -> dict:
+        """Per-channel analysis of the bounded capture (outside the callback).
+
+        Every channel gets its own sample peak, RMS, over-full-scale count and
+        true-peak estimate; the aggregate reports the WORST channel. Frames
+        analyzed, samples analyzed and partial bytes are counted honestly.
+        """
+        true_peak_window = 16384
+        tone_window = 192000
+        channel_count = 0
+        per_channel: list[dict] = []
+        tones_source: list[float] = []
+        frames_analyzed = 0
+        partial_bytes = 0
+        non_finite = 0
+        for typecode, divisor, channels, data in chunks:
+            if channels <= 0:
+                continue
+            itemsize = array.array(typecode).itemsize
+            frame_size = itemsize * channels
+            usable = len(data) - (len(data) % frame_size)
+            partial_bytes += len(data) - usable
+            if channel_count == 0:
+                channel_count = channels
+                per_channel = [
+                    {
+                        "sum_sq": 0.0,
+                        "peak": 0.0,
+                        "over": 0,
+                        "samples": 0,
+                        "mono": [],
+                    }
+                    for _ in range(channels)
+                ]
+            elif channels != channel_count:
+                # A mid-window layout change is never mixed into one analysis.
+                continue
+            values = array.array(typecode)
+            values.frombytes(data[:usable])
+            frame_count = len(values) // channels
+            frames_analyzed += frame_count
+            for frame in range(frame_count):
+                base = frame * channels
+                for channel in range(channels):
+                    raw = float(values[base + channel]) / divisor
+                    if not math.isfinite(raw):
+                        non_finite += 1
+                        continue
+                    entry = per_channel[channel]
+                    entry["sum_sq"] += raw * raw
+                    entry["samples"] += 1
+                    magnitude = abs(raw)
+                    if magnitude > entry["peak"]:
+                        entry["peak"] = magnitude
+                    if magnitude > 1.0:
+                        entry["over"] += 1
+                    if len(entry["mono"]) < true_peak_window:
+                        entry["mono"].append(raw)
+                    if channel == 0 and len(tones_source) < tone_window:
+                        tones_source.append(raw)
+        metrics: list[dict] = []
+        total_sum_sq = 0.0
+        total_samples = 0
+        worst_index = None
+        worst_peak = -1.0
+        aggregate_true_peak = None
+        for index, entry in enumerate(per_channel):
+            samples = entry["samples"]
+            peak = entry["peak"]
+            rms = (entry["sum_sq"] / samples) ** 0.5 if samples else 0.0
+            true_peak = GStreamerAudioPort._true_peak_metrics(entry["mono"])
+            if true_peak["estimated_true_peak"] is not None:
+                estimate = true_peak["estimated_true_peak"]
+                if aggregate_true_peak is None or estimate > aggregate_true_peak:
+                    aggregate_true_peak = estimate
+            if peak > worst_peak:
+                worst_peak = peak
+                worst_index = index
+            if index == 0:
+                tones_source = list(entry["mono"])
+            total_sum_sq += entry["sum_sq"]
+            total_samples += samples
+            metrics.append(
+                {
+                    "channel": index,
+                    "sample_peak": peak,
+                    "rms": rms,
+                    "samples_over_full_scale": entry["over"],
+                    "samples_analyzed": samples,
+                    "headroom_db": (
+                        round(-20.0 * math.log10(peak), 3) if peak > 0.0 else None
+                    ),
+                    "estimated_true_peak": true_peak["estimated_true_peak"],
+                    "true_peak_db": true_peak["true_peak_db"],
+                    "intersample_over_full_scale": true_peak[
+                        "intersample_over_full_scale"
+                    ],
+                }
+            )
+        aggregate_peak = worst_peak if worst_index is not None else 0.0
+        aggregate_rms = (total_sum_sq / total_samples) ** 0.5 if total_samples else 0.0
+        aggregate_metrics = GStreamerAudioPort._true_peak_metrics(tones_source)
+        return {
+            "frames": frames_analyzed,
+            "samples": total_samples,
+            "frames_analyzed": frames_analyzed,
+            "samples_analyzed": total_samples,
+            "channels_analyzed": channel_count,
+            "channels_metrics": metrics,
+            "worst_channel": worst_index,
+            "rms": aggregate_rms,
+            "sample_peak": aggregate_peak,
+            "peak": aggregate_peak,
+            "samples_over_full_scale": sum(
+                entry["samples_over_full_scale"] for entry in metrics
+            ),
+            "exceeds_full_scale": aggregate_peak > 1.0,
+            "headroom_db": (
+                round(-20.0 * math.log10(aggregate_peak), 3)
+                if aggregate_peak > 0.0
+                else None
+            ),
+            "estimated_true_peak": aggregate_true_peak,
+            "true_peak": aggregate_true_peak,
+            "true_peak_db": aggregate_metrics["true_peak_db"],
+            "true_peak_method": aggregate_metrics["true_peak_method"],
+            "oversampling_factor": aggregate_metrics["oversampling_factor"],
+            "analysis_window": aggregate_metrics["analysis_window"],
+            "measurement_scope": "bounded_capture_window",
+            "intersample_over_full_scale": (
+                aggregate_true_peak is not None and aggregate_true_peak > 1.0
+            ),
+            "non_finite_samples": non_finite,
+            "partial_bytes_ignored": partial_bytes,
+            "_mono": tones_source,
+        }
+
+    #: Precomputed polyphase kernels (phase, tap) -> weight, keyed by
+    #: (factor, half_taps). Deterministic, integer taps only.
+    _TRUE_PEAK_KERNELS: dict[
+        tuple[int, int], tuple[tuple[tuple[int, float], ...], ...]
+    ] = {}
+
+    @classmethod
+    def _true_peak_kernel(
+        cls, factor: int, half_taps: int
+    ) -> tuple[tuple[tuple[int, float], ...], ...]:
+        key = (factor, half_taps)
+        cached = cls._TRUE_PEAK_KERNELS.get(key)
+        if cached is not None:
+            return cached
+        phases: list[tuple[tuple[int, float], ...]] = []
+        for step in range(1, factor):
+            fraction = step / factor
+            coefficients: list[tuple[int, float]] = []
+            for tap in range(-half_taps + 1, half_taps + 1):
+                x = fraction - tap
+                if abs(x) < 1e-9:
+                    weight = 1.0
+                else:
+                    sinc = math.sin(math.pi * x) / (math.pi * x)
+                    window = 0.5 + 0.5 * math.cos(math.pi * x / half_taps)
+                    weight = sinc * window
+                coefficients.append((tap, weight))
+            phases.append(tuple(coefficients))
+        result = tuple(phases)
+        cls._TRUE_PEAK_KERNELS[key] = result
+        return result
+
+    @staticmethod
     def _true_peak_metrics(samples: list[float]) -> dict:
-        """4x windowed-sinc true-peak estimate (bounded, post-window)."""
-        if len(samples) < 8:
-            return {
-                "true_peak": None,
-                "true_peak_db": None,
-                "true_peak_method": "windowed_sinc_4x",
-                "oversampling_factor": 4,
-                "intersample_over_full_scale": None,
-            }
+        """Bounded 4x windowed-sinc true-peak ESTIMATE.
+
+        No heuristic pruning: every interpolated position is evaluated. The
+        kernel is precomputed per phase; out-of-window taps contribute zero
+        (documented edge policy). Non-finite input is UNKNOWN, never zero.
+        """
         factor = 4
         half_taps = 8
-        best = 0.0
-        count = len(samples)
-        for index in range(count):
-            magnitude = abs(samples[index])
-            if magnitude > best:
-                best = magnitude
-        for index in range(count - 1):
-            left = samples[index]
-            right = samples[index + 1]
-            neighbor = max(abs(left), abs(right))
-            # Skip interpolation where the local peak cannot exceed the
-            # current best (bounded work, no claim skipped is smaller).
-            if neighbor * 1.25 <= best:
-                continue
-            for step in range(1, factor):
-                fraction = step / factor
+        window = len(samples)
+        unknown = {
+            "estimated_true_peak": None,
+            "true_peak": None,
+            "true_peak_db": None,
+            "true_peak_method": "windowed_sinc_4x",
+            "oversampling_factor": factor,
+            "analysis_window": window,
+            "measurement_scope": "bounded_window_estimate",
+            "intersample_over_full_scale": None,
+        }
+        if window < 2:
+            return unknown
+        for value in samples:
+            if not math.isfinite(value):
+                return unknown
+        phases = GStreamerAudioPort._true_peak_kernel(factor, half_taps)
+        best = max(abs(value) for value in samples)
+        for index in range(window - 1):
+            for coefficients in phases:
                 total = 0.0
-                for tap in range(-half_taps + 1, half_taps + 1):
+                for tap, weight in coefficients:
                     position = index + tap
-                    if position < 0 or position >= count:
-                        continue
-                    x = fraction - tap
-                    if abs(x) < 1e-9:
-                        weight = 1.0
-                    else:
-                        sinc = math.sin(math.pi * x) / (math.pi * x)
-                        window = 0.5 + 0.5 * math.cos(math.pi * x / half_taps)
-                        weight = sinc * window
-                    total += samples[position] * weight
-                if abs(total) > best:
-                    best = abs(total)
+                    if 0 <= position < window:
+                        total += samples[position] * weight
+                magnitude = abs(total)
+                if magnitude > best:
+                    best = magnitude
         return {
+            "estimated_true_peak": best,
             "true_peak": best,
             "true_peak_db": (round(20.0 * math.log10(best), 3) if best > 0.0 else None),
             "true_peak_method": "windowed_sinc_4x",
             "oversampling_factor": factor,
+            "analysis_window": window,
+            "measurement_scope": "bounded_window_estimate",
             "intersample_over_full_scale": best > 1.0,
         }
 
@@ -2093,12 +2261,19 @@ class GStreamerAudioPort(AudioPort):
             error.predecessor_untouched = True
             raise error
         gst = self._bindings.gst_module()
+        import time as _time
+
+        started = _time.monotonic()
+        rebuilds = 0
         _r0, previous_state, _p0 = pipeline.get_state(0)
+        position_before = self._safe_position_ms()
         # Ownership: playbin3's audio-filter getter can return an INTERNAL
         # default bin; only OUR installed bin is the predecessor we manage.
         previous_filter = self._installed_processing_filter
 
         def _cycle_to_paused() -> object:
+            nonlocal rebuilds
+            rebuilds += 1
             pipeline.set_state(gst.State.READY)
             pipeline.set_state(gst.State.PAUSED)
             _ret, state, _pending = pipeline.get_state(10 * gst.SECOND)
@@ -2158,11 +2333,38 @@ class GStreamerAudioPort(AudioPort):
         if previous_state == gst.State.PLAYING:
             pipeline.set_state(gst.State.PLAYING)
         self._installed_processing_filter = filter_bin
+        position_after = self._safe_position_ms()
+        if position_before is None or position_after is None:
+            continuity = "NOT_MEASURED"
+        elif position_after + 100 >= position_before:
+            continuity = "CONTINUITY_VERIFIED"
+        else:
+            continuity = "POSITION_RESET"
         return {
             "installed": True,
             "runtime_identity": "playbin3/audio-filter",
             "pipeline_generation": self._generation,
+            # TRANSITION DIAGNOSTICS (instrumentation, not a seamless claim):
+            # duration, rebuild count and observed position continuation.
+            "install_diagnostics": {
+                "duration_ms": round((_time.monotonic() - started) * 1000.0, 3),
+                "rebuilds": rebuilds,
+                "position_before_ms": position_before,
+                "position_after_ms": position_after,
+                "state_restored": str(previous_state),
+                "continuity": continuity,
+                "silent_gap_ms": None,
+            },
         }
+
+    def _safe_position_ms(self) -> int | None:
+        try:
+            value = self.query_position()
+        except Exception:  # noqa: BLE001 - unmeasured is not a failure
+            return None
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            return None
+        return value
 
     def capture_processing_output(
         self, seconds: float, probe_hz: list[float] | None = None
@@ -2191,25 +2393,25 @@ class GStreamerAudioPort(AudioPort):
             )
         gst = self._bindings.gst_module()
         state = {
-            "peak": 0.0,
-            "frames": 0,
-            "samples": 0,
+            "frames_observed": 0,
             "rate": 0,
             "channels": 0,
             "format": "",
             "unsupported_buffers": 0,
         }
         probe_hz = [float(hz) for hz in (probe_hz or ())]
-        # Bounded raw capture for the diagnostic spectral analysis (mono,
-        # first channel). Never used by the productive runtime. The buffer
-        # callback is O(buffer): it only copies bytes; ALL sample work runs
-        # after the capture window, never per-sample inside the pad probe.
-        max_samples = 192000
-        # Each chunk keeps the format it was captured with: caps may
-        # renegotiate mid-window, so decode must never assume one format.
+        # Bounded raw capture for the diagnostic analysis. The pad callback is
+        # O(buffer): it only copies bytes (format-tagged); ALL sample work runs
+        # after the capture window, never per-sample inside the probe.
+        max_frames = 192000
+        max_channels = 8
         chunks: list[tuple[str, float, int, bytes]] = []
-        bytes_budget = max_samples * 8  # 2ch * 4 bytes at most
-        captured = {"bytes": 0}
+        captured = {
+            "frames": 0,
+            "dropped": 0,
+            "channel_mismatch": 0,
+            "channel_count": 0,
+        }
 
         def probe(_pad, info):
             buf = info.get_buffer()
@@ -2226,17 +2428,27 @@ class GStreamerAudioPort(AudioPort):
                 state["unsupported_buffers"] += 1
                 return gst.PadProbeReturn.OK
             typecode, divisor = codec
-            channels = max(1, int(state["channels"] or 2))
+            channels = max(1, int(state["channels"] or 1))
             itemsize = array.array(typecode).itemsize
-            remaining = bytes_budget - captured["bytes"]
-            if remaining > 0:
-                data = buf.extract_dup(0, min(buf.get_size(), remaining))
-                chunks.append((typecode, float(divisor), channels, data))
-                captured["bytes"] += len(data)
-            state["frames"] += 1
-            state["samples"] += max(
-                0, buf.get_size() // itemsize // (state["channels"] or 1)
-            )
+            frames = buf.get_size() // itemsize // channels
+            state["frames_observed"] += frames
+            if channels > max_channels:
+                state["unsupported_buffers"] += 1
+                return gst.PadProbeReturn.OK
+            if captured["channel_count"] == 0:
+                captured["channel_count"] = channels
+            elif channels != captured["channel_count"]:
+                captured["channel_mismatch"] += 1
+                return gst.PadProbeReturn.OK
+            remaining = max_frames - captured["frames"]
+            take = min(frames, max(0, remaining))
+            if take <= 0:
+                captured["dropped"] += frames
+                return gst.PadProbeReturn.OK
+            data = buf.extract_dup(0, take * itemsize * channels)
+            chunks.append((typecode, float(divisor), channels, data))
+            captured["frames"] += take
+            captured["dropped"] += frames - take
             return gst.PadProbeReturn.OK
 
         handle = pad.add_probe(gst.PadProbeType.BUFFER, probe)
@@ -2260,25 +2472,8 @@ class GStreamerAudioPort(AudioPort):
             with contextlib.suppress(Exception):
                 pipeline.set_state(gst.State.PAUSED)
         # ── post-capture analysis (outside the streaming callback) ─────
-        sum_sq = 0.0
-        peak = 0.0
-        over_full_scale = 0
-        mono: list[float] = []
-        true_peak_window = 16384
-        for typecode, divisor, channels, data in chunks:
-            values = array.array(typecode)
-            values.frombytes(data[: len(data) - (len(data) % values.itemsize)])
-            for index in range(0, len(values), channels):
-                value = float(values[index]) / divisor
-                sum_sq += value * value
-                magnitude = abs(value)
-                peak = max(peak, magnitude)
-                if magnitude > 1.0:
-                    over_full_scale += 1
-                if len(mono) < max_samples:
-                    mono.append(value)
-        samples = max(1, int(state["samples"]))
-        rms = (sum_sq / samples) ** 0.5
+        analysis = self._analyze_capture(chunks)
+        mono = analysis.pop("_mono")
         tones: list[dict] = []
         if probe_hz and mono and state["rate"]:
             sample_rate = float(state["rate"])
@@ -2294,31 +2489,25 @@ class GStreamerAudioPort(AudioPort):
                 power = s_prev * s_prev + s_prev2 * s_prev2 - coeff * s_prev * s_prev2
                 magnitude = 2.0 * (max(power, 0.0) ** 0.5) / count
                 tones.append({"hz": hz, "magnitude": magnitude})
-        return {
-            "frames": state["frames"],
-            "samples": state["samples"],
-            "tones": tones,
-            "rms": rms,
-            # SAMPLE-peak metrics (float domain): never an intersample/true
-            # peak claim and never analog clipping evidence.
-            "peak": peak,
-            "sample_peak": peak,
-            "samples_over_full_scale": over_full_scale,
-            "exceeds_full_scale": peak > 1.0,
-            "headroom_db": (round(-20.0 * math.log10(peak), 3) if peak > 0.0 else None),
-            # TRUE-PEAK ESTIMATE (4x windowed-sinc interpolation) over a
-            # bounded window. An intersample ESTIMATE, never an analog claim.
-            **self._true_peak_metrics(mono[:true_peak_window]),
-            "rate_hz": state["rate"],
-            "channels": state["channels"],
-            "format": state["format"],
-            "unsupported_buffers": state["unsupported_buffers"],
-            "previous_state": str(previous),
-            "state_after": str(state_after),
-            "play_return": str(play_ret),
-            "pad_linked": bool(linked_before),
-            "pad_caps": str(pad.get_current_caps()),
-        }
+        analysis.update(
+            {
+                "tones": tones,
+                "frames_observed": state["frames_observed"],
+                "frames_captured": captured["frames"],
+                "frames_dropped": captured["dropped"],
+                "buffers_channel_mismatch": captured["channel_mismatch"],
+                "unsupported_buffers": state["unsupported_buffers"],
+                "rate_hz": state["rate"],
+                "channels": state["channels"],
+                "format": state["format"],
+                "previous_state": str(previous),
+                "state_after": str(state_after),
+                "play_return": str(play_ret),
+                "pad_linked": bool(linked_before),
+                "pad_caps": str(pad.get_current_caps()),
+            }
+        )
+        return analysis
 
     def remove_processing_filter(self) -> bool:
         """Detach the processing bin (bypass/abort) with PROVEN removal.

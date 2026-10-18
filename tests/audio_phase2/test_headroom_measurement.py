@@ -238,3 +238,68 @@ def test_true_peak_estimates_the_missing_intersample_peak(
     finally:
         port.close()
         supervisor.close()
+
+
+def _write_stereo_levels(path, *, rate: int, left: float, right: float,
+                         seconds: float = 2.5, frequency_hz: float = 1000.0):
+    frames = int(rate * seconds)
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(2)
+        handle.setsampwidth(2)
+        handle.setframerate(rate)
+        data = bytearray()
+        for index in range(frames):
+            sine = math.sin(2 * math.pi * frequency_hz * index / rate)
+            data += struct.pack(
+                "<hh",
+                int(round(left * 32767 * sine)),
+                int(round(right * 32767 * sine)),
+            )
+        handle.writeframes(bytes(data))
+
+
+def test_stereo_channels_are_measured_independently(tmp_path, monkeypatch) -> None:
+    """The RIGHT channel drives the global peak (first-channel-only is a bug)."""
+    from michi.application.audio_processing_service import AudioProcessingService
+    from michi.infrastructure.audio_processing.native_mapping import (
+        NativeProcessingMapping,
+    )
+    from tests.audio_phase2.test_processing_graphic_eq import _real_port
+
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    fixture = tmp_path / "stereo-levels.wav"
+    _write_stereo_levels(fixture, rate=44100, left=0.5, right=0.9)
+    supervisor, port = _real_port()
+    try:
+        port.activate()
+        port.set_volume(0)
+        port.load(fixture)
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            port.dispatch_pending()
+            try:
+                duration = port.query_duration()
+            except Exception:
+                duration = None
+            if isinstance(duration, int) and duration > 0:
+                break
+            time.sleep(0.02)
+        service = AudioProcessingService(
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
+            transport=port,
+        )
+        service.refresh_capabilities()
+        _install(service, port, supervisor, _peq(0.0, revision=1), rate=44100)
+        port.seek(0)
+        metrics = port.capture_processing_output(1.0)
+        channels = metrics["channels_metrics"]
+        assert len(channels) == 2, metrics
+        assert channels[0]["sample_peak"] == pytest.approx(0.5, abs=0.03)
+        assert channels[1]["sample_peak"] == pytest.approx(0.9, abs=0.03)
+        assert metrics["worst_channel"] == 1
+        assert metrics["sample_peak"] == pytest.approx(0.9, abs=0.03)
+        assert metrics["channels_analyzed"] == 2
+    finally:
+        port.close()
+        supervisor.close()

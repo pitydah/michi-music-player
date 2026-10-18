@@ -89,6 +89,7 @@ class ProcessingCommitReceipt:
     observed_host_generation: int
     observed_candidate_id: str
     native_runtime_identity: str
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 class ProcessingCapabilityState(StrEnum):
@@ -418,7 +419,9 @@ class AudioProcessingService:
             if not _values_equal(actual.get("observed"), expected_properties):
                 raise ProcessingReadbackMismatchError(
                     "DSP_READBACK_VALUE_MISMATCH",
-                    f"node {expected.node_id!r} observed properties differ",
+                    f"node {expected.node_id!r} observed "
+                    f"{actual.get('observed')!r} != expected "
+                    f"{expected_properties!r}",
                 )
             expected_factories = sorted(mapping.expected_native_factories(expected))
             observed_factories = sorted(
@@ -617,6 +620,11 @@ class AudioProcessingService:
             observed_host_generation=int(payload.get("host_generation") or -1),
             observed_candidate_id=str(payload.get("candidate_id") or ""),
             native_runtime_identity=str(payload.get("runtime_identity") or ""),
+            diagnostics=(
+                dict(payload.get("install_diagnostics") or {})
+                if isinstance(payload.get("install_diagnostics"), dict)
+                else {}
+            ),
         )
         prepared_plan = None
         with self._state_lock:
