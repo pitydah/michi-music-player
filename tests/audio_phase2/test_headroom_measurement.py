@@ -240,8 +240,15 @@ def test_true_peak_estimates_the_missing_intersample_peak(
         supervisor.close()
 
 
-def _write_stereo_levels(path, *, rate: int, left: float, right: float,
-                         seconds: float = 2.5, frequency_hz: float = 1000.0):
+def _write_stereo_levels(
+    path,
+    *,
+    rate: int,
+    left: float,
+    right: float,
+    seconds: float = 2.5,
+    frequency_hz: float = 1000.0,
+):
     frames = int(rate * seconds)
     with wave.open(str(path), "wb") as handle:
         handle.setnchannels(2)
