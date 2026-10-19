@@ -428,6 +428,35 @@ def _initialize_reference_audio_runtime(
     return backend
 
 
+def _defer_owner_convergence(executor, callback) -> None:
+    """Arm runtime convergence on the OWNER after the current pump stack.
+
+    Never executes Qt activation re-entrantly inside a characterization pump.
+    """
+
+    def _arm() -> None:
+        try:
+            from PySide6.QtCore import QCoreApplication, QTimer  # noqa: PLC0415
+        except Exception:  # noqa: BLE001 - Qt optional
+            callback()
+            return
+        if QCoreApplication.instance() is None:
+            callback()
+            return
+        QTimer.singleShot(5, callback)
+
+    try:
+        from PySide6.QtCore import QCoreApplication, QThread  # noqa: PLC0415
+
+        app = QCoreApplication.instance()
+        if app is not None and QThread.currentThread() is app.thread():
+            _arm()
+            return
+    except Exception:  # noqa: BLE001 - fall through to executor
+        pass
+    executor.submit(lambda: None, lambda _value, _error: _arm())
+
+
 def _build_services(
     db_path,
     *,
@@ -877,12 +906,12 @@ def _build_services(
         router=router,
         playback=playback,
         automatic_fallback_allowed=output_session.allows_automatic_engine_fallback,
-        # Converge on the OWNER: engine activation (Qt backend creation) must
-        # never execute re-entrantly inside a worker/characterization pump.
-        # A DEDICATED owner executor is used: an injected inline test executor
-        # would otherwise run convergence on the calling worker again.
-        dispatch=lambda callback: convergence_executor.submit(
-            lambda: None, lambda _value, _error: callback()
+        # Converge on the OWNER, OUTSIDE the current event-processing stack.
+        # A queued signal can be delivered by the SAME processEvents() call
+        # that runs inside characterization, re-entering Qt activation and
+        # segfaulting. A short timer is armed on the owner instead.
+        dispatch=lambda callback: _defer_owner_convergence(
+            convergence_executor, callback
         ),
     )
     for provider in (qt_provider, gstreamer_provider, mpd_provider):
