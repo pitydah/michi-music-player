@@ -493,8 +493,6 @@ def test_recorder_fence_rejects_late_measurements_after_retirement() -> None:
         recorder.record_processing_measurement(measurement)
 
 
-
-
 def test_session_activates_and_retires_the_measurement_execution_fence() -> None:
     from michi.domain.signal_truth import (
         ProcessingMeasurement,
