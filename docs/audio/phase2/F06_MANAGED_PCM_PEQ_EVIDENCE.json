@@ -3,7 +3,7 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "a3db426",
+  "repo_head": "84e1d05",
   "verdict": "IN_PROGRESS_CORRECTIVE \u2014 complete capture coverage, single resampler quality authority, passive diagnostic primitive, atomic measurement fence, both-side PCM continuity evidence and a diagnostic-free productive install are verified. The session diagnostic capture remains ISOLATED (PlaybackService converges out-of-band playback). Dither/FIR blocked; physical DAC NOT_RUN. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
@@ -201,7 +201,7 @@
     "parametric_eq": 86,
     "f06_global": 79,
     "signal_truth": 95,
-    "stability": 95,
+    "stability": 96,
     "integration": 96,
     "headroom_true_peak": 87,
     "latency": 62,
@@ -259,7 +259,7 @@
     "WU5": "CLOSED_VERIFIED (honest classification; lab PCM result POSITION_PRESERVED)",
     "WU6": "CLOSED_VERIFIED (no diagnostic sleep in productive install)",
     "WU7": "CLOSED_VERIFIED for matrix/authority; algorithmic latency model open",
-    "WU8": "CLOSED_VERIFIED (lifecycle/concurrency; passive primitive safe)",
+    "WU8": "CLOSED_VERIFIED (lifecycle/concurrency + owner-dispatched runtime loss)",
     "WU9": "F06 READY \u2014 blockers: physical DAC NOT_RUN, F11 Signal Path, end-to-end diagnostic transport, dither/FIR authority"
   },
   "measurement_fence": {
@@ -282,5 +282,10 @@
     "continuity_probe": "env-gated (MICHI_GST_CONTINUITY_PROBE=1); productive install has NO diagnostic sleep; probe disabled => POSITION_PRESERVED",
     "both_sides": "PCM continuity requires buffers before AND after the swap markers; unit goldens cover gap/DISCONT/one-side",
     "session_capture": "ISOLATED: PlaybackService converges out-of-band playback, so a session-visible capture needs a dedicated diagnostic transport. The component-level lab capture and the passive primitive remain."
+  },
+  "runtime_convergence": {
+    "defect": "CI segfault: host loss processed during characterization ran convergence inline on the worker and created the Qt backend re-entrantly",
+    "fix": "runtime-loss convergence is dispatched to the OWNER via the canonical executor; direct handle_runtime_failure remains synchronous",
+    "proof": "host-dead managed prepare fails typed, releases cleanly; full suite green"
   }
 }
