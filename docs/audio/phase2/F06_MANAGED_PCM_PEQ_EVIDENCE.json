@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "fd7913c",
-  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 coverage truth, single quality authority, atomic measurement fence, passive diagnostic primitive, both-side continuity instrumentation, diagnostic-free productive install and non-reentrant owner convergence are implemented. The session diagnostic capture remains ISOLATED. CI is BLOCKED by a runner-level QtMultimedia segfault in the pre-existing converge_startup path; the local full suite is green. Dither/FIR blocked; physical DAC NOT_RUN. F06 stays READY.",
+  "repo_head": "6d27972",
+  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 DSP combination verification added (Preamp + Graphic EQ + PEQ + explicit Resample, real-host readback at 48 kHz). FIR and terminal dither are BLOCKED by phase ownership/terminal authority (no partial code). The session diagnostic capture remains ISOLATED. CI is BLOCKED by a runner-level QtMultimedia segfault in the pre-existing converge_startup path (persists with QT_MEDIA_BACKEND=ffmpeg; reproduced in DAC-only subsets). Local full suite green. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -151,9 +151,8 @@
     "F11 Signal Path presentation; durable ProcessingProfile repository (F13)"
   ],
   "full_suite": {
-    "result": "5878 passed, 4 skipped, 0 failed (local, exact tree)",
-    "scope": "python -m pytest -q (entire repository)",
-    "focused_audio": "1583 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
+    "result": "5880 passed, 4 skipped, 0 failed (local, exact tree)",
+    "scope": "python -m pytest -q (entire repository)"
   },
   "spec_sha256": "826381f154a0e5eb848a37e7c3c81909ddb8d103cc0cadd75c97e5fc16e41ead",
   "residuals_closed": {
@@ -199,16 +198,16 @@
     "architecture": 98,
     "managed_pcm": 92,
     "parametric_eq": 86,
-    "f06_global": 79,
+    "f06_global": 80,
     "signal_truth": 96,
-    "stability": 96,
+    "stability": 95,
     "integration": 96,
     "headroom_true_peak": 88,
-    "latency": 62,
-    "resampling_quality": 80,
-    "dither_terminal": 0,
+    "latency": 63,
+    "resampling_quality": 81,
     "fir_convolution": 0,
-    "audio_phase2_global": 82
+    "dither_terminal": 0,
+    "audio_phase2_global": 83
   },
   "true_peak": {
     "aggregate": "max of VALID per-channel estimates; dB derived from that value",
@@ -252,15 +251,13 @@
     "invariants": "no prepared-plan growth, no measurement residue, clean idle release"
   },
   "zero_half_finished": {
-    "WU1": "CLOSED_VERIFIED",
-    "WU2": "CLOSED_VERIFIED",
-    "WU3": "REVERTED_OR_ISOLATED (passive primitive + fence retained; session exposure removed after confirming PlaybackService convergence)",
-    "WU4": "CLOSED_VERIFIED (atomic fence, A->B->A, 120-race test, bounded history)",
-    "WU5": "CLOSED_VERIFIED (both-side requirement, env-gated probe, detection goldens; lab result POSITION_PRESERVED)",
-    "WU6": "CLOSED_VERIFIED (no diagnostic sleep in productive install)",
-    "WU7": "CLOSED_VERIFIED for matrix/authority incl. 192->48; algorithmic latency model open",
-    "WU8": "CLOSED_VERIFIED (lifecycle/concurrency; owner-deferred non-reentrant runtime loss)",
-    "WU9": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (CI runner QtMultimedia segfault); F06 READY (physical NOT_RUN, F11 Signal Path, diagnostic transport, dither/FIR)"
+    "WU1_qt_convergence": "PARTIAL \u2014 non-reentrant owner convergence implemented; CI BLOCKED by runner QtMultimedia segfault",
+    "WU2_continuity": "CLOSED_VERIFIED (real monotonic_ns in the probe; both-side requirement; lab EOS => POSITION_PRESERVED)",
+    "WU3_diagnostics": "REVERTED_OR_ISOLATED (passive primitive + fence; session capture needs a dedicated diagnostic transport)",
+    "WU4_fir": "BLOCKED_BY_AUTHORITY (R11-F13 owns ir_asset_store.py; F06 has no authorized store file; no code)",
+    "WU5_dither": "BLOCKED_BY_AUTHORITY (terminal-format authority absent; no code)",
+    "WU6_combinations": "CLOSED_VERIFIED",
+    "WU7_validation": "local green; CI BLOCKED (environment)"
   },
   "measurement_fence": {
     "atomicity": "RLock; validation+append atomic wrt activate/retire; notifications outside the lock",
@@ -289,10 +286,17 @@
     "proof": "host-dead managed prepare fails typed, releases cleanly; full suite green"
   },
   "ci_status": {
-    "state": "NOT_VERIFIED \u2014 environment blocker",
-    "exact_head": "fd7913c66ccd9862031a8051297cc011b85499a5",
-    "failure": "Fatal Python error: Segmentation fault in qt_backend.__init__ during converge_startup (QtMultimedia creation); the same pre-existing startup path crashed in the DAC subsets and full suite across multiple heads after 0595ced",
-    "not_caused_by_new_tests": "the DAC-only subsets reproduce it without audio_phase2; local DAC/phase2/architecture suites are green (967 passed)",
-    "action": "reported, not hidden; no gates weakened"
+    "state": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (runner)",
+    "exact_head": "6d27972b56f013a4bbcb543570b478a79f72e24a",
+    "failure": "Fatal Python error: Segmentation fault in qt_backend.__init__ (QMediaPlayer/QAudioOutput creation) during converge_startup",
+    "reproduced": "DAC-only subsets without audio_phase2; persists with QT_MEDIA_BACKEND=ffmpeg",
+    "local": "DAC/phase2/architecture green (967) and full suite 5880/4/0",
+    "gates": "unchanged; nothing skipped or disabled"
+  },
+  "combinations": {
+    "test": "tests/audio_phase2/test_processing_combinations.py",
+    "order": "Preamp -> Graphic EQ -> Parametric EQ -> Resample",
+    "readback": "per-node native shapes + target_rate 48k + native quality 8",
+    "real_host": "combined graph installed, EFFECTIVE with readback proven, negotiated 48 kHz"
   }
 }
