@@ -876,6 +876,11 @@ def _build_services(
         router=router,
         playback=playback,
         automatic_fallback_allowed=output_session.allows_automatic_engine_fallback,
+        # Converge on the OWNER: engine activation (Qt backend creation) must
+        # never execute re-entrantly inside a worker/characterization pump.
+        dispatch=lambda callback: preparation_executor.submit(
+            lambda: None, lambda _value, _error: callback()
+        ),
     )
     for provider in (qt_provider, gstreamer_provider, mpd_provider):
         convergence.subscribe_provider(provider)

@@ -75,12 +75,17 @@ class AudioEngineConvergenceCoordinator:
         router: AudioTransportRouter,
         playback: PlaybackService,
         automatic_fallback_allowed: Callable[[], bool] | None = None,
+        dispatch: Callable[[Callable[[], None]], None] | None = None,
     ) -> None:
         self._engine_service = engine_service
         self._registry = registry
         self._router = router
         self._playback = playback
         self._automatic_fallback_allowed = automatic_fallback_allowed or (lambda: True)
+        # Owner dispatch: runtime-loss convergence performs engine activation
+        # (Qt backend creation). It must NEVER run re-entrantly on a worker
+        # thread (e.g. inside a characterization pump).
+        self._dispatch = dispatch
         self._recovery_in_progress = False
         self._shutdown = False
         self._failure_subscriptions: dict[AudioEngineId, RuntimeFailureCallback] = {}
@@ -330,6 +335,9 @@ class AudioEngineConvergenceCoordinator:
             self._recovery_in_progress = False
 
     def _on_runtime_failure(self, event: AudioEngineRuntimeFailureEvent) -> None:
+        if self._dispatch is not None:
+            self._dispatch(lambda: self.handle_runtime_failure(event))
+            return
         self.handle_runtime_failure(event)
 
     def _converge_runtime_loss(self, event: AudioEngineRuntimeFailureEvent) -> None:
