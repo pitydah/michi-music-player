@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "3fff97d",
-  "verdict": "IN_PROGRESS_QUALITY \u2014 unpruned true-peak estimation with reference goldens, per-channel capture truth, configurable resampler quality with spectral up/downsampling proof, transition diagnostics and execution-bound measurements. Dither and FIR remain open by authority; physical DAC remains NOT_RUN. F06 stays READY.",
+  "repo_head": "fea2843",
+  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 true-peak aggregation, multichannel analyzer, execution-fenced measurements, honest continuity classification, strict resampler policy, measured latency and lifecycle stress are complete and verified. Dither and FIR remain formally blocked by authority; physical DAC remains NOT_RUN. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -144,15 +144,16 @@
   },
   "physical_qualification": "NOT_RUN",
   "next_work_units": [
-    "terminal dither authority + verification (conditional)",
-    "physical ALSA/DAC managed run under the explicit operator gate (PARKED)",
-    "FIR/convolution (IR authority), algorithmic resample latency model",
+    "terminal dither authority + implementation (conditional)",
+    "FIR/convolution with IR Store authority",
+    "physical ALSA/DAC managed run (operator gate, PARKED)",
+    "algorithmic resampler latency isolation and sink latency",
     "durable ProcessingProfile repository (F13) + F11 presentation"
   ],
   "full_suite": {
-    "result": "5859 passed, 4 skipped, 0 failed",
+    "result": "5873 passed, 4 skipped, 0 failed",
     "scope": "python -m pytest -q (entire repository)",
-    "focused_audio": "1564 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
+    "focused_audio": "1578 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
   },
   "spec_sha256": "826381f154a0e5eb848a37e7c3c81909ddb8d103cc0cadd75c97e5fc16e41ead",
   "residuals_closed": {
@@ -170,11 +171,8 @@
     "proof": "A->B with the same plan/file/DAC: same plan_id, different instances; A's stop is stale and B keeps playing with its EFFECTIVE truth; duplicate stop is stale"
   },
   "latency": {
-    "api": "Gst.Query.new_latency() + pipeline.query() + query.parse_latency() (pipeline.query_latency does not exist in PyGObject)",
-    "reported": "source=gstreamer_runtime, measurement_type=pipeline_reported, live, min_ns, max_ns; CLOCK_TIME_NONE -> None",
-    "samples": "pipeline_latency_samples derived from the negotiated rate",
-    "truth": "processing_truth publishes only the compiled-plan estimate with provenance; pipeline/sink/physical are separate and unmeasured claims",
-    "proof": "productive test requires a valid numeric min_ns (0 is valid), not None-acceptance"
+    "measured": "flat vs resampled managed identity: both gstreamer_runtime pipeline latency min_ns=0 (non-live lab), delta=0",
+    "not_modeled": "algorithmic resampler latency is not inferable from the preset and remains unmodeled"
   },
   "signal_truth": {
     "retirement": "ONE locked helper clears plan, state, latency, runtime identity and readback provenance on host loss, refresh failure, invalidation, bypass and the managed identity route",
@@ -199,25 +197,25 @@
   },
   "percentages": {
     "architecture": 98,
-    "managed_pcm": 91,
+    "managed_pcm": 92,
     "parametric_eq": 86,
-    "f06_global": 75,
-    "signal_truth": 94,
-    "stability": 92,
-    "integration": 96,
-    "headroom_true_peak": 80,
-    "latency": 58,
-    "resampling_quality": 75,
+    "f06_global": 80,
+    "signal_truth": 97,
+    "stability": 94,
+    "integration": 97,
+    "headroom_true_peak": 86,
+    "latency": 62,
+    "resampling_quality": 78,
     "dither_terminal": 0,
-    "audio_phase2_global": 77
+    "fir_convolution": 0,
+    "audio_phase2_global": 81
   },
   "true_peak": {
-    "pruning": "REMOVED; every interpolated position is evaluated",
-    "kernel": "precomputed 4x polyphase windowed-sinc (8 taps), zero-extended edges",
-    "counterexample": "old pruning 0.9568 vs unpruned 1.0466 (intersample peak > 0 dBFS)",
-    "reference": "independent 32x/32-tap test-only reference bounds the estimate",
-    "metadata": "estimated_true_peak, true_peak_db, oversampling_factor, analysis_window, measurement_scope, method",
-    "unknown": "non-finite / <2 samples => None, never 0"
+    "aggregate": "max of VALID per-channel estimates; dB derived from that value",
+    "worst_channels": "worst_sample_peak_channel / worst_true_peak_channel / highest_rms_channel; legacy worst_channel = sample peak",
+    "invalid_channels": "NaN/Inf channel excluded from its true peak; aggregate uses valid channels only; completeness=partial; clipping=unknown",
+    "completeness": "complete | partial | unavailable; no_clipping_observed only when complete",
+    "goldens": "L/R worst-channel divergence, right-only over-FS, 4-channel, partial frames, silence, F32/F64, u npruned counterexample vs 32x reference"
   },
   "multichannel": {
     "per_channel": "sample peak, RMS, over-full-scale, headroom, estimated true peak, analyzed samples",
@@ -230,13 +228,15 @@
     "passband": "44.1->48/96, 48->44.1, 96->44.1, 96->48: 1 kHz 0.5 within 0.04",
     "aliasing": "96->48 with a 30 kHz component: 18 kHz alias residual < 0.02 vs 0.4 passband",
     "managed": "44.1k source -> explicit 96k -> selected binding; 96k terminal evidence required (44.1-only refused)",
-    "latency": "algorithmic resampler latency still unmodeled; pipeline-reported latency remains the runtime truth"
+    "latency": "algorithmic resampler latency still unmodeled; pipeline-reported latency remains the runtime truth",
+    "strict_policy": "unknown quality is rejected (no silent Balanced fallback)",
+    "measured_alias_fact": "96->48 30 kHz: FAST 2e-5, HIGH 5e-5, REFERENCE 4e-5 (no quality ordering claimed)"
   },
   "continuity": {
-    "diagnostics": "install duration_ms, rebuilds, position before/after, restored state, typed continuity",
-    "classification": "CONTINUITY_VERIFIED | POSITION_RESET | NOT_MEASURED",
-    "claim": "instrumentation only; no seamless claim",
-    "proof": "four consecutive swaps (flat->preamp->PEQ->GEQ->preamp) each report diagnostics and keep producing signal"
+    "position_vs_pcm": "position_preserved is separate; PCM classification uses a real sink-pad timeline (PTS/duration/DISCONT)",
+    "taxonomy": "PCM_CONTINUITY_VERIFIED | GAP_DETECTED | DISCONTINUITY_DETECTED | POSITION_PRESERVED | NOT_MEASURED",
+    "detection_goldens": "continuous, 300 ms gap, DISCONT flag, position-only, unavailable",
+    "lab_result": "the playbin3 rebuild leaves the lab source at EOS, so the productive result is POSITION_PRESERVED; no seamless claim"
   },
   "measurements": {
     "model": "ProcessingMeasurement on the ONE recorder, requires an execution id",
@@ -246,5 +246,27 @@
   "dither": {
     "status": "PENDING (deliberate)",
     "blocker": "no terminal-format authority binds the dither target to the sink format on every route; Shared negotiates its own sink caps (double-conversion risk)"
+  },
+  "measurement_chain": {
+    "producer": "OutputSessionService.capture_processing_measurement -> hosted port capture -> live identity",
+    "validation": "execution/plan/device equality before AND after capture; generation metadata bound",
+    "fence": "recorder active-execution map; late measurement of a retired execution is REJECTED",
+    "retirement": "abort/release/device loss/supersession removes fence and history",
+    "proof": "productive DSP flow publishes a measurement; release clears it; late re-record raises"
+  },
+  "lifecycle_stress": {
+    "test": "8 repeated managed transitions (preamp/PEQ) with unique instances",
+    "invariants": "no prepared-plan growth, no measurement residue, clean idle release"
+  },
+  "zero_half_finished": {
+    "WU1_true_peak": "CLOSED_VERIFIED",
+    "WU2_pcm_analyzer": "CLOSED_VERIFIED",
+    "WU3_measurement_integration": "CLOSED_VERIFIED",
+    "WU4_continuity": "CLOSED_VERIFIED (honest classification; productive PCM limited by lab rebuild EOS)",
+    "WU5_resampling_quality": "CLOSED_VERIFIED (matrix + strict policy; no invented ordering)",
+    "WU6_latency": "CLOSED_VERIFIED for measured provenance; algorithmic isolation remains open",
+    "WU7_dither": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (no terminal-format authority; no partial code)",
+    "WU8_fir": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (IR Store/assets authority)",
+    "WU9_lifecycle": "CLOSED_VERIFIED (bounded stress + exit invariants)"
   }
 }
