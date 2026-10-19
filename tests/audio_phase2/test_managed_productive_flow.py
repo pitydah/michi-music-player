@@ -654,23 +654,27 @@ def test_dynamic_peq_reconfiguration_through_the_productive_session(
         _close(graph)
 
 
-def test_host_dead_before_managed_prepare_fails_typed(tmp_path, monkeypatch) -> None:
+def test_host_unavailable_before_managed_prepare_fails_typed(
+    tmp_path, monkeypatch
+) -> None:
+    """Managed requires a live host. A controlled host close (the supported
+    'not open' state) must fail typed, never prepare.
+
+    SIGKILL during an ACTIVE managed session is covered separately
+    (test_host_sigkill_retires_managed_truth), where fallback is forbidden.
+    """
     if not FIXTURE.is_file():
         pytest.skip("PCM fixture unavailable")
     monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
-    import os
-    import signal
 
     graph, coordinator = _build_graph(tmp_path)
     try:
         _select_managed(coordinator)
-        supervisor = graph.gstreamer_engine_provider.current_supervisor
-        assert supervisor.pid
-        os.kill(supervisor.pid, signal.SIGKILL)
+        graph.gstreamer_engine_provider.close()
 
         tokens, failures = _prepare(graph)
         assert tokens == []
-        assert failures, "a dead host must never prepare successfully"
+        assert failures, "an unavailable host must never prepare successfully"
         assert graph.output_session.state.value != "running"
         assert graph.audio_processing.processing_truth()["effective_state"] != (
             "effective"
