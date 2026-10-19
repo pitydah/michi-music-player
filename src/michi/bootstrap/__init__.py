@@ -899,7 +899,17 @@ def _build_services(
         output_session,
     )
     direct_output_lifecycle.start()
-    convergence_executor = QtAsyncCallExecutor()
+    convergence_executor_holder: dict = {}
+
+    def _dispatch_convergence(callback) -> None:
+        # LAZY owner executor: composition must not create extra Qt objects
+        # unless a runtime loss actually needs convergence.
+        executor = convergence_executor_holder.get("executor")
+        if executor is None:
+            executor = QtAsyncCallExecutor()
+            convergence_executor_holder["executor"] = executor
+        _defer_owner_convergence(executor, callback)
+
     convergence = AudioEngineConvergenceCoordinator(
         engine_service=engine_service,
         registry=registry,
@@ -910,9 +920,7 @@ def _build_services(
         # A queued signal can be delivered by the SAME processEvents() call
         # that runs inside characterization, re-entering Qt activation and
         # segfaulting. A short timer is armed on the owner instead.
-        dispatch=lambda callback: _defer_owner_convergence(
-            convergence_executor, callback
-        ),
+        dispatch=_dispatch_convergence,
     )
     for provider in (qt_provider, gstreamer_provider, mpd_provider):
         convergence.subscribe_provider(provider)
