@@ -870,6 +870,7 @@ def _build_services(
         output_session,
     )
     direct_output_lifecycle.start()
+    convergence_executor = QtAsyncCallExecutor()
     convergence = AudioEngineConvergenceCoordinator(
         engine_service=engine_service,
         registry=registry,
@@ -878,7 +879,9 @@ def _build_services(
         automatic_fallback_allowed=output_session.allows_automatic_engine_fallback,
         # Converge on the OWNER: engine activation (Qt backend creation) must
         # never execute re-entrantly inside a worker/characterization pump.
-        dispatch=lambda callback: preparation_executor.submit(
+        # A DEDICATED owner executor is used: an injected inline test executor
+        # would otherwise run convergence on the calling worker again.
+        dispatch=lambda callback: convergence_executor.submit(
             lambda: None, lambda _value, _error: callback()
         ),
     )
