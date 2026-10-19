@@ -172,6 +172,11 @@ jobs:
       - name: Run commit-bound DAC software closure verifier
         env:
           QT_QPA_PLATFORM: offscreen
+          # Headless runner: QtMultimedia's default backend can segfault while
+          # enumerating devices with no audio server. The bundled ffmpeg media
+          # backend is a supported headless configuration; ALL tests still run
+          # (nothing is skipped or disabled).
+          QT_MEDIA_BACKEND: ffmpeg
         run: |
           set +e
           python scripts/verify_dac_m11_4.py
