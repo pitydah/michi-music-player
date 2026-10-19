@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "fea2843",
-  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 true-peak aggregation, multichannel analyzer, execution-fenced measurements, honest continuity classification, strict resampler policy, measured latency and lifecycle stress are complete and verified. Dither and FIR remain formally blocked by authority; physical DAC remains NOT_RUN. F06 stays READY.",
+  "repo_head": "62c7095",
+  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 true-peak aggregation, multichannel analysis, measurement fence, honest continuity classification, strict resampler policy, measured latency and lifecycle stress are complete. The session diagnostic capture is ISOLATED after CI exposed a real PlaybackService race; dither/FIR are formally blocked; physical DAC remains NOT_RUN. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -151,7 +151,7 @@
     "durable ProcessingProfile repository (F13) + F11 presentation"
   ],
   "full_suite": {
-    "result": "5873 passed, 4 skipped, 0 failed",
+    "result": "5872 passed, 4 skipped, 0 failed",
     "scope": "python -m pytest -q (entire repository)",
     "focused_audio": "1578 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
   },
@@ -199,16 +199,16 @@
     "architecture": 98,
     "managed_pcm": 92,
     "parametric_eq": 86,
-    "f06_global": 80,
-    "signal_truth": 97,
+    "f06_global": 78,
+    "signal_truth": 95,
     "stability": 94,
-    "integration": 97,
+    "integration": 96,
     "headroom_true_peak": 86,
     "latency": 62,
     "resampling_quality": 78,
     "dither_terminal": 0,
     "fir_convolution": 0,
-    "audio_phase2_global": 81
+    "audio_phase2_global": 80
   },
   "true_peak": {
     "aggregate": "max of VALID per-channel estimates; dB derived from that value",
@@ -247,26 +247,25 @@
     "status": "PENDING (deliberate)",
     "blocker": "no terminal-format authority binds the dither target to the sink format on every route; Shared negotiates its own sink caps (double-conversion risk)"
   },
-  "measurement_chain": {
-    "producer": "OutputSessionService.capture_processing_measurement -> hosted port capture -> live identity",
-    "validation": "execution/plan/device equality before AND after capture; generation metadata bound",
-    "fence": "recorder active-execution map; late measurement of a retired execution is REJECTED",
-    "retirement": "abort/release/device loss/supersession removes fence and history",
-    "proof": "productive DSP flow publishes a measurement; release clears it; late re-record raises"
-  },
   "lifecycle_stress": {
     "test": "8 repeated managed transitions (preamp/PEQ) with unique instances",
     "invariants": "no prepared-plan growth, no measurement residue, clean idle release"
   },
   "zero_half_finished": {
     "WU1_true_peak": "CLOSED_VERIFIED",
-    "WU2_pcm_analyzer": "CLOSED_VERIFIED",
-    "WU3_measurement_integration": "CLOSED_VERIFIED",
-    "WU4_continuity": "CLOSED_VERIFIED (honest classification; productive PCM limited by lab rebuild EOS)",
-    "WU5_resampling_quality": "CLOSED_VERIFIED (matrix + strict policy; no invented ordering)",
-    "WU6_latency": "CLOSED_VERIFIED for measured provenance; algorithmic isolation remains open",
-    "WU7_dither": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (no terminal-format authority; no partial code)",
-    "WU8_fir": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (IR Store/assets authority)",
-    "WU9_lifecycle": "CLOSED_VERIFIED (bounded stress + exit invariants)"
+    "WU2_pcm_analyzer": "CLOSED_VERIFIED (state-preserving capture, per-channel truth, bounded resources)",
+    "WU3_measurement": "REVERTED_OR_ISOLATED (fence retained; unsafe session capture removed)",
+    "WU4_continuity": "CLOSED_VERIFIED (honest taxonomy + detection goldens; productive PCM NOT_MEASURED in the lab)",
+    "WU5_resampling_quality": "CLOSED_VERIFIED (strict policy + spectral matrix; no invented ordering)",
+    "WU6_latency": "CLOSED_VERIFIED for measured provenance; algorithmic isolation open",
+    "WU7_dither": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (no partial code)",
+    "WU8_fir": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (no partial code)",
+    "WU9_lifecycle": "CLOSED_VERIFIED (eight-transition stress + invariants)"
+  },
+  "measurement_fence": {
+    "model": "ProcessingMeasurement with execution/plan/device and host/pipeline generations",
+    "fence": "recorder active-execution map; a late measurement of a retired execution is REJECTED",
+    "lifecycle": "managed prepare activates the execution; abort/release/device loss/supersession retires fence + history",
+    "isolated": "the session capture API was REMOVED: driving the pipeline PLAYING made PlaybackService converge and release the execution mid-capture (MEASUREMENT_STALE / stop timeout). Component-level lab capture remains proven; an end-to-end session capture needs a dedicated diagnostic transport."
   }
 }
