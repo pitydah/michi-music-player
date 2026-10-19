@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "59de3d7",
-  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 complete capture coverage, single resampler quality authority, passive diagnostic primitive, atomic measurement fence, both-side PCM continuity evidence and a diagnostic-free productive install are verified. The session diagnostic capture remains ISOLATED (PlaybackService converges out-of-band playback). Dither/FIR blocked; physical DAC NOT_RUN. F06 stays READY.",
+  "repo_head": "fd7913c",
+  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 coverage truth, single quality authority, atomic measurement fence, passive diagnostic primitive, both-side continuity instrumentation, diagnostic-free productive install and non-reentrant owner convergence are implemented. The session diagnostic capture remains ISOLATED. CI is BLOCKED by a runner-level QtMultimedia segfault in the pre-existing converge_startup path; the local full suite is green. Dither/FIR blocked; physical DAC NOT_RUN. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -151,7 +151,7 @@
     "F11 Signal Path presentation; durable ProcessingProfile repository (F13)"
   ],
   "full_suite": {
-    "result": "5878 passed, 4 skipped, 0 failed",
+    "result": "5878 passed, 4 skipped, 0 failed (local, exact tree)",
     "scope": "python -m pytest -q (entire repository)",
     "focused_audio": "1583 passed, 2 skipped (audio_phase2 + phase2 + architecture + dac)"
   },
@@ -200,10 +200,10 @@
     "managed_pcm": 92,
     "parametric_eq": 86,
     "f06_global": 79,
-    "signal_truth": 95,
+    "signal_truth": 96,
     "stability": 96,
     "integration": 96,
-    "headroom_true_peak": 87,
+    "headroom_true_peak": 88,
     "latency": 62,
     "resampling_quality": 80,
     "dither_terminal": 0,
@@ -254,13 +254,13 @@
   "zero_half_finished": {
     "WU1": "CLOSED_VERIFIED",
     "WU2": "CLOSED_VERIFIED",
-    "WU3": "REVERTED_OR_ISOLATED (passive primitive + fence retained; session exposure removed)",
-    "WU4": "CLOSED_VERIFIED",
-    "WU5": "CLOSED_VERIFIED (honest classification; lab PCM result POSITION_PRESERVED)",
+    "WU3": "REVERTED_OR_ISOLATED (passive primitive + fence retained; session exposure removed after confirming PlaybackService convergence)",
+    "WU4": "CLOSED_VERIFIED (atomic fence, A->B->A, 120-race test, bounded history)",
+    "WU5": "CLOSED_VERIFIED (both-side requirement, env-gated probe, detection goldens; lab result POSITION_PRESERVED)",
     "WU6": "CLOSED_VERIFIED (no diagnostic sleep in productive install)",
-    "WU7": "CLOSED_VERIFIED for matrix/authority; algorithmic latency model open",
-    "WU8": "CLOSED_VERIFIED (lifecycle/concurrency + owner-dispatched runtime loss)",
-    "WU9": "F06 READY \u2014 blockers: physical DAC NOT_RUN, F11 Signal Path, end-to-end diagnostic transport, dither/FIR authority"
+    "WU7": "CLOSED_VERIFIED for matrix/authority incl. 192->48; algorithmic latency model open",
+    "WU8": "CLOSED_VERIFIED (lifecycle/concurrency; owner-deferred non-reentrant runtime loss)",
+    "WU9": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (CI runner QtMultimedia segfault); F06 READY (physical NOT_RUN, F11 Signal Path, diagnostic transport, dither/FIR)"
   },
   "measurement_fence": {
     "atomicity": "RLock; validation+append atomic wrt activate/retire; notifications outside the lock",
@@ -287,5 +287,12 @@
     "defect": "CI segfault: host loss processed during characterization ran convergence inline on the worker and created the Qt backend re-entrantly",
     "fix": "convergence is armed on the OWNER with a short QTimer (5 ms), outside the current processEvents stack; worker callers reach the owner via a dedicated executor. This removes the re-entrant Qt activation segfault.",
     "proof": "host-dead managed prepare fails typed, releases cleanly; full suite green"
+  },
+  "ci_status": {
+    "state": "NOT_VERIFIED \u2014 environment blocker",
+    "exact_head": "fd7913c66ccd9862031a8051297cc011b85499a5",
+    "failure": "Fatal Python error: Segmentation fault in qt_backend.__init__ during converge_startup (QtMultimedia creation); the same pre-existing startup path crashed in the DAC subsets and full suite across multiple heads after 0595ced",
+    "not_caused_by_new_tests": "the DAC-only subsets reproduce it without audio_phase2; local DAC/phase2/architecture suites are green (967 passed)",
+    "action": "reported, not hidden; no gates weakened"
   }
 }
