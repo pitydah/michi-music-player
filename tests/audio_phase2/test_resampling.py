@@ -255,6 +255,7 @@ def _install_resample(service, port, supervisor, *, source_rate, target_rate):
         (48000, 44100),
         (96000, 44100),
         (96000, 48000),
+        (192000, 48000),
     ],
 )
 def test_resample_preserves_passband_amplitude(
@@ -373,3 +374,21 @@ def test_unknown_resample_quality_is_rejected_not_defaulted() -> None:
     # No silent Balanced fallback: the mapping refuses an unknown policy.
     with pytest.raises(ValueError):
         NativeProcessingMapping.expected_native_properties(node, rate_hz=44100)
+
+
+def test_plan_serialization_uses_the_same_quality_authority() -> None:
+    import dataclasses
+
+    plan = _compile()
+    node = plan.nodes[1]
+    forged = dataclasses.replace(
+        plan,
+        nodes=(
+            plan.nodes[0],
+            dataclasses.replace(
+                node, properties=(("target_rate_hz", 48000), ("quality", "ultra"))
+            ),
+        ),
+    )
+    with pytest.raises(ValueError):
+        NativeProcessingMapping().plan_to_wire(forged)

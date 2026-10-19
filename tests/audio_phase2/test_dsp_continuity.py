@@ -187,9 +187,10 @@ def test_playing_swap_measures_a_real_pcm_timeline(tmp_path, monkeypatch) -> Non
     from tests.audio_phase2.test_processing_graphic_eq import _real_port
 
     monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
-    # Real-time lab sink so the sink pad observes a PCM timeline across the
-    # swap (free-running fakesink drains the fixture before the swap).
+    # Real-time lab sink + EXPLICIT continuity probe (the productive path
+    # never pays the diagnostic observation window).
     monkeypatch.setenv("MICHI_GST_LAB_SINK_SYNC", "1")
+    monkeypatch.setenv("MICHI_GST_CONTINUITY_PROBE", "1")
     fixture = tmp_path / "playing.wav"
     _write_sine(fixture, rate=44100, amplitude=0.4, seconds=4.0)
     supervisor, port = _real_port()
@@ -248,7 +249,7 @@ def test_playing_swap_measures_a_real_pcm_timeline(tmp_path, monkeypatch) -> Non
         supervisor.close()
 
 
-def test_continuity_analyzer_detects_gaps_and_discontinuities() -> None:
+def test_continuity_analyzer_requires_both_sides_of_the_transition() -> None:
     from michi.infrastructure.audio_engines.gstreamer import GStreamerAudioPort
 
     def buffers(*pts_ms, discont=()):
@@ -257,32 +258,57 @@ def test_continuity_analyzer_detects_gaps_and_discontinuities() -> None:
                 "pts": int(ms * 1e6),
                 "duration": 20_000_000,
                 "discont": ms in discont,
+                "mono_ns": int(ms * 1e6),
             }
             for ms in pts_ms
         ]
 
     continuous = GStreamerAudioPort._analyze_continuity(
-        buffers(0, 20, 40, 60), position_preserved=True
+        buffers(0, 20, 40, 60),
+        position_preserved=True,
+        swap_marker_ns=25_000_000,
+        restore_marker_ns=35_000_000,
     )
     assert continuous["classification"] == "PCM_CONTINUITY_VERIFIED"
+    assert continuous["buffers_before"] == 2
+    assert continuous["buffers_after"] == 2
     assert continuous["max_gap_ms"] == 0.0
-    assert continuous["buffers_observed"] == 4
 
     gapped = GStreamerAudioPort._analyze_continuity(
-        buffers(0, 20, 320, 340), position_preserved=True
+        buffers(0, 20, 320, 340),
+        position_preserved=True,
+        swap_marker_ns=25_000_000,
+        restore_marker_ns=35_000_000,
     )
     assert gapped["classification"] == "GAP_DETECTED"
     assert gapped["max_gap_ms"] >= 250.0
 
     discont = GStreamerAudioPort._analyze_continuity(
-        buffers(0, 20, 40, discont=(40,)), position_preserved=True
+        buffers(0, 20, 40, discont=(40,)),
+        position_preserved=True,
+        swap_marker_ns=25_000_000,
+        restore_marker_ns=35_000_000,
     )
     assert discont["classification"] == "DISCONTINUITY_DETECTED"
-    assert discont["discontinuity_flags"] == 1
 
-    position_only = GStreamerAudioPort._analyze_continuity([], position_preserved=True)
-    assert position_only["classification"] == "POSITION_PRESERVED"
-    assert position_only["buffers_observed"] == 0
+    only_before = GStreamerAudioPort._analyze_continuity(
+        buffers(0, 20),
+        position_preserved=True,
+        swap_marker_ns=25_000_000,
+        restore_marker_ns=35_000_000,
+    )
+    assert only_before["classification"] == "POSITION_PRESERVED"
+    assert only_before["buffers_after"] == 0
+
+    disabled = GStreamerAudioPort._analyze_continuity(
+        buffers(0, 20, 40, 60),
+        position_preserved=True,
+        swap_marker_ns=25_000_000,
+        restore_marker_ns=35_000_000,
+        probe_enabled=False,
+    )
+    assert disabled["classification"] == "POSITION_PRESERVED"
+    assert disabled["probe_enabled"] is False
 
     unavailable = GStreamerAudioPort._analyze_continuity([], position_preserved=False)
     assert unavailable["classification"] == "NOT_MEASURED"

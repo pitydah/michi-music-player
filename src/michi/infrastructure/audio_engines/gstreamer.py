@@ -1995,8 +1995,12 @@ class GStreamerAudioPort(AudioPort):
         analysis = analyze(chunks)
         complete = bool(
             captured["frames"] == analysis["frames_analyzed"]
+            and analysis["frames_analyzed"] > 0
             and captured["dropped"] == 0
             and captured["channel_mismatch"] == 0
+            and captured.get("buffers_unsupported", 0) == 0
+            and captured.get("rate_changes", 0) == 0
+            and captured.get("format_changes", 0) == 0
             and analysis["non_finite_samples"] == 0
             and analysis["partial_bytes_ignored"] == 0
         )
@@ -2014,6 +2018,11 @@ class GStreamerAudioPort(AudioPort):
             clipping = "unknown"
         analysis["capture_completeness"] = completeness
         analysis["clipping_assessment"] = clipping
+        analysis["buffers_observed"] = captured.get("buffers_observed", 0)
+        analysis["buffers_accepted"] = captured.get("buffers_accepted", 0)
+        analysis["buffers_unsupported"] = captured.get("buffers_unsupported", 0)
+        analysis["rate_changes"] = captured.get("rate_changes", 0)
+        analysis["format_changes"] = captured.get("format_changes", 0)
         return analysis
 
     @staticmethod
@@ -2322,9 +2331,10 @@ class GStreamerAudioPort(AudioPort):
         # LAB-ONLY continuity timeline: the sink pad is stable across the
         # filter swap and observes the REAL PCM stream (PTS/duration/flags).
         timeline: list[dict] = []
+        continuity_probe_enabled = os.environ.get("MICHI_GST_CONTINUITY_PROBE") == "1"
         sink_pad = None
         sink_probe = None
-        if previous_state == gst.State.PLAYING:
+        if previous_state == gst.State.PLAYING and continuity_probe_enabled:
             sink = pipeline.get_property("audio-sink")
             if sink is not None:
                 sink_pad = sink.get_static_pad("sink")
@@ -2381,6 +2391,7 @@ class GStreamerAudioPort(AudioPort):
                 return True
             return False
 
+        swap_marker_ns = int(_time.monotonic_ns())
         mutated = False
         # A previous filter (if any) is detached first: playbin3 replaces the
         # audio-filter reliably only from a clean slate.
@@ -2419,9 +2430,11 @@ class GStreamerAudioPort(AudioPort):
         # PAUSED (STOPPED semantics in this port are PAUSED-armed media).
         if previous_state == gst.State.PLAYING:
             pipeline.set_state(gst.State.PLAYING)
-            # Bounded observation window so the PCM timeline covers both
-            # sides of the swap (buffers arrive on streaming threads).
-            _time.sleep(0.12)
+            if continuity_probe_enabled:
+                # LAB-ONLY observation window: the productive path NEVER pays
+                # this cost (probe is explicitly opt-in).
+                _time.sleep(0.12)
+        restore_marker_ns = int(_time.monotonic_ns())
         self._installed_processing_filter = filter_bin
         if sink_pad is not None and sink_probe is not None:
             with contextlib.suppress(Exception):
@@ -2432,7 +2445,13 @@ class GStreamerAudioPort(AudioPort):
             and position_after is not None
             and position_after + 100 >= position_before
         )
-        pcm = self._analyze_continuity(timeline, position_preserved)
+        pcm = self._analyze_continuity(
+            timeline,
+            position_preserved,
+            swap_marker_ns=swap_marker_ns,
+            restore_marker_ns=restore_marker_ns,
+            probe_enabled=continuity_probe_enabled,
+        )
         return {
             "installed": True,
             "runtime_identity": "playbin3/audio-filter",
@@ -2453,7 +2472,14 @@ class GStreamerAudioPort(AudioPort):
         }
 
     @staticmethod
-    def _analyze_continuity(timeline: list[dict], position_preserved: bool) -> dict:
+    def _analyze_continuity(
+        timeline: list[dict],
+        position_preserved: bool,
+        *,
+        swap_marker_ns: int | None = None,
+        restore_marker_ns: int | None = None,
+        probe_enabled: bool = True,
+    ) -> dict:
         """Classify REAL PCM continuity from sink-pad timestamps.
 
         Position-only evidence can never produce PCM_CONTINUITY_VERIFIED.
@@ -2465,6 +2491,21 @@ class GStreamerAudioPort(AudioPort):
             if entry.get("duration") is not None and entry["duration"] > 0
         ]
         expected_ns = sorted(durations)[len(durations) // 2] if durations else None
+        before: list[dict] = []
+        after: list[dict] = []
+        if swap_marker_ns is not None and restore_marker_ns is not None:
+            before = [
+                entry
+                for entry in valid
+                if entry.get("mono_ns") is not None
+                and entry["mono_ns"] < swap_marker_ns
+            ]
+            after = [
+                entry
+                for entry in valid
+                if entry.get("mono_ns") is not None
+                and entry["mono_ns"] > restore_marker_ns
+            ]
         gaps: list[int] = []
         for previous, current in zip(valid, valid[1:], strict=False):
             delta = current["pts"] - previous["pts"]
@@ -2475,12 +2516,14 @@ class GStreamerAudioPort(AudioPort):
         tolerance_ns = int(
             max(50_000_000, 2.5 * expected_ns) if expected_ns else 50_000_000
         )
-        if len(valid) < 2:
-            # Position-only evidence is NEVER a PCM continuity claim.
+        both_sides = bool(before) and bool(after)
+        if not probe_enabled or not both_sides:
+            # Position-only evidence is NEVER a PCM continuity claim, and a
+            # transition needs evidence on BOTH sides of the swap.
             classification = (
                 "POSITION_PRESERVED" if position_preserved else "NOT_MEASURED"
             )
-        elif discont_flags > 0:
+        elif any(entry.get("discont") for entry in before + after):
             classification = "DISCONTINUITY_DETECTED"
         elif max_gap_ns is not None and max_gap_ns > tolerance_ns:
             classification = "GAP_DETECTED"
@@ -2489,6 +2532,9 @@ class GStreamerAudioPort(AudioPort):
         return {
             "classification": classification,
             "position_preserved": bool(position_preserved),
+            "probe_enabled": bool(probe_enabled),
+            "buffers_before": len(before),
+            "buffers_after": len(after),
             "buffers_observed": len(valid),
             "expected_buffer_ms": (
                 round(expected_ns / 1e6, 3) if expected_ns else None
@@ -2515,7 +2561,11 @@ class GStreamerAudioPort(AudioPort):
         return value
 
     def capture_processing_output(
-        self, seconds: float, probe_hz: list[float] | None = None
+        self,
+        seconds: float,
+        probe_hz: list[float] | None = None,
+        *,
+        passive: bool = False,
     ) -> dict:
         """DIAGNOSTIC/TEST instrumentation: measure the installed filter's
         output signal in THIS process (RMS/peak primitives).
@@ -2540,6 +2590,32 @@ class GStreamerAudioPort(AudioPort):
                 "capture_processing_output: filter exposes no src pad"
             )
         gst = self._bindings.gst_module()
+        _rq, current_state, _pq = pipeline.get_state(0)
+        if passive and current_state != gst.State.PLAYING:
+            # Passive diagnostics NEVER start playback. No state change.
+            return {
+                "frames": 0,
+                "samples": 0,
+                "tones": [],
+                "rms": 0.0,
+                "sample_peak": 0.0,
+                "estimated_true_peak": None,
+                "true_peak_db": None,
+                "true_peak_method": "windowed_sinc_4x",
+                "oversampling_factor": 4,
+                "analysis_window": 0,
+                "measurement_scope": "bounded_capture_window",
+                "intersample_over_full_scale": None,
+                "capture_completeness": "unavailable",
+                "clipping_assessment": "unknown",
+                "capture_mode": "passive",
+                "passive_active": False,
+                "not_available": True,
+                "channels_metrics": [],
+                "rate_hz": 0,
+                "channels": 0,
+                "format": "",
+            }
         state = {
             "frames_observed": 0,
             "rate": 0,
@@ -2559,6 +2635,13 @@ class GStreamerAudioPort(AudioPort):
             "dropped": 0,
             "channel_mismatch": 0,
             "channel_count": 0,
+            "buffers_observed": 0,
+            "buffers_accepted": 0,
+            "buffers_unsupported": 0,
+            "rate_changes": 0,
+            "format_changes": 0,
+            "first_rate": 0,
+            "first_format": "",
         }
 
         def probe(_pad, info):
@@ -2571,9 +2654,11 @@ class GStreamerAudioPort(AudioPort):
                 state["rate"] = int(structure.get_value("rate") or 0)
                 state["channels"] = int(structure.get_value("channels") or 0)
                 state["format"] = str(structure.get_value("format") or "")
+            captured["buffers_observed"] += 1
             codec = _CAPTURE_FORMAT_CODECS.get(str(state.get("format") or ""))
             if codec is None:
                 state["unsupported_buffers"] += 1
+                captured["buffers_unsupported"] += 1
                 return gst.PadProbeReturn.OK
             typecode, divisor = codec
             channels = max(1, int(state["channels"] or 1))
@@ -2582,11 +2667,30 @@ class GStreamerAudioPort(AudioPort):
             state["frames_observed"] += frames
             if channels > max_channels:
                 state["unsupported_buffers"] += 1
+                captured["buffers_unsupported"] += 1
+                captured["dropped"] += frames
                 return gst.PadProbeReturn.OK
             if captured["channel_count"] == 0:
                 captured["channel_count"] = channels
+                captured["first_rate"] = int(state["rate"] or 0)
+                captured["first_format"] = str(state["format"] or "")
             elif channels != captured["channel_count"]:
                 captured["channel_mismatch"] += 1
+                captured["dropped"] += frames
+                return gst.PadProbeReturn.OK
+            if (
+                captured["first_rate"]
+                and int(state["rate"] or 0) != captured["first_rate"]
+            ):
+                captured["rate_changes"] += 1
+                captured["dropped"] += frames
+                return gst.PadProbeReturn.OK
+            if (
+                captured["first_format"]
+                and str(state["format"] or "") != captured["first_format"]
+            ):
+                captured["format_changes"] += 1
+                captured["dropped"] += frames
                 return gst.PadProbeReturn.OK
             remaining = max_frames - captured["frames"]
             take = min(frames, max(0, remaining))
@@ -2596,6 +2700,7 @@ class GStreamerAudioPort(AudioPort):
             data = buf.extract_dup(0, take * itemsize * channels)
             chunks.append((typecode, float(divisor), channels, data))
             captured["frames"] += take
+            captured["buffers_accepted"] += 1
             captured["dropped"] += frames - take
             return gst.PadProbeReturn.OK
 
@@ -2605,7 +2710,8 @@ class GStreamerAudioPort(AudioPort):
         state_after = previous
         play_ret = None
         try:
-            play_ret = pipeline.set_state(gst.State.PLAYING)
+            if not passive:
+                play_ret = pipeline.set_state(gst.State.PLAYING)
             deadline = _time.monotonic() + max(0.1, float(seconds))
             while _time.monotonic() < deadline:
                 _time.sleep(0.01)
@@ -2617,8 +2723,9 @@ class GStreamerAudioPort(AudioPort):
             # is the deterministic measurement boundary as before.
             with contextlib.suppress(Exception):
                 pad.remove_probe(handle)
-            with contextlib.suppress(Exception):
-                pipeline.set_state(previous)
+            if not passive:
+                with contextlib.suppress(Exception):
+                    pipeline.set_state(previous)
         # ── post-capture analysis (outside the streaming callback) ─────
         analysis = self._finalize_capture(self._analyze_capture, chunks, captured)
         mono = analysis.pop("_mono")
@@ -2644,6 +2751,9 @@ class GStreamerAudioPort(AudioPort):
                 "frames_captured": captured["frames"],
                 "frames_dropped": captured["dropped"],
                 "buffers_channel_mismatch": captured["channel_mismatch"],
+                "buffers_unsupported": captured["buffers_unsupported"],
+                "rate_changes": captured["rate_changes"],
+                "format_changes": captured["format_changes"],
                 "unsupported_buffers": state["unsupported_buffers"],
                 "rate_hz": state["rate"],
                 "channels": state["channels"],
@@ -2653,6 +2763,9 @@ class GStreamerAudioPort(AudioPort):
                 "play_return": str(play_ret),
                 "pad_linked": bool(linked_before),
                 "pad_caps": str(pad.get_current_caps()),
+                "capture_mode": "passive" if passive else "active_window",
+                "passive_active": bool(passive),
+                "not_available": False,
             }
         )
         return analysis

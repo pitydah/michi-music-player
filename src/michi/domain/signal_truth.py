@@ -7,6 +7,7 @@ and consults no other authority.
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass, replace
@@ -839,6 +840,8 @@ class SignalTruthRecorder:
         self._processing_measurements: list[ProcessingMeasurement] = []
         #: Fence: only ACTIVE execution instances may publish measurements.
         self._active_executions: dict[str, str] = {}
+        #: Concurrency: validation + append are atomic wrt activation/retire.
+        self._lock = threading.RLock()
 
     @property
     def processing_events(self) -> tuple[ProcessingTruthEvent, ...]:
@@ -846,44 +849,58 @@ class SignalTruthRecorder:
 
     @property
     def processing_measurements(self) -> tuple[ProcessingMeasurement, ...]:
-        return tuple(self._processing_measurements)
+        with self._lock:
+            return tuple(self._processing_measurements)
 
     def activate_execution(self, execution_id: str, *, plan_id: str) -> None:
         """Register the CURRENT execution instance (fence for publication)."""
         if not execution_id.strip():
             raise ValueError("an execution identity is required")
-        self._active_executions[execution_id] = plan_id
+        with self._lock:
+            self._active_executions[execution_id] = plan_id
 
     def retire_execution(self, execution_id: str) -> int:
         """Retire an execution: later measurements can never be accepted."""
-        self._active_executions.pop(execution_id, None)
-        return self.discard_processing_measurements(execution_id)
+        with self._lock:
+            self._active_executions.pop(execution_id, None)
+            retained = [
+                item
+                for item in self._processing_measurements
+                if item.execution_id != execution_id
+            ]
+            discarded = len(self._processing_measurements) - len(retained)
+            self._processing_measurements = retained
+            return discarded
 
     def record_processing_measurement(self, measurement: ProcessingMeasurement) -> None:
         if not measurement.execution_id.strip():
             raise ValueError("a measurement requires an execution identity")
-        plan_id = self._active_executions.get(measurement.execution_id)
-        if plan_id is None or plan_id != measurement.plan_id:
-            # Effective fence: a late measurement of a retired/superseded
-            # execution is REJECTED, not merely cleaned afterwards.
-            raise ValueError(
-                f"measurement rejected: execution {measurement.execution_id!r} "
-                "is not the active execution"
-            )
-        self._processing_measurements.append(measurement)
-        if len(self._processing_measurements) > 16:
-            del self._processing_measurements[:-16]
+        with self._lock:
+            plan_id = self._active_executions.get(measurement.execution_id)
+            if plan_id is None or plan_id != measurement.plan_id:
+                # Effective fence: a late measurement of a retired/superseded
+                # execution is REJECTED, not merely cleaned afterwards.
+                raise ValueError(
+                    "measurement rejected: execution "
+                    f"{measurement.execution_id!r} is not the active execution"
+                )
+            self._processing_measurements.append(measurement)
+            if len(self._processing_measurements) > 16:
+                del self._processing_measurements[:-16]
+        # Notify OUTSIDE the lock: slow subscribers never block the fence.
+        self._publish()
 
     def discard_processing_measurements(self, execution_id: str) -> int:
         """Retire every measurement of one execution; returns the count."""
-        retained = [
-            item
-            for item in self._processing_measurements
-            if item.execution_id != execution_id
-        ]
-        discarded = len(self._processing_measurements) - len(retained)
-        self._processing_measurements = retained
-        return discarded
+        with self._lock:
+            retained = [
+                item
+                for item in self._processing_measurements
+                if item.execution_id != execution_id
+            ]
+            discarded = len(self._processing_measurements) - len(retained)
+            self._processing_measurements = retained
+            return discarded
 
     @property
     def output_family_events(self) -> tuple[OutputFamilyEvent, ...]:
@@ -924,12 +941,14 @@ class SignalTruthRecorder:
         return self._last
 
     def subscribe(self, callback: Callable[[], None]) -> None:
-        if callback not in self._subscribers:
-            self._subscribers.append(callback)
+        with self._lock:
+            if callback not in self._subscribers:
+                self._subscribers.append(callback)
 
     def unsubscribe(self, callback: Callable[[], None]) -> None:
-        if callback in self._subscribers:
-            self._subscribers.remove(callback)
+        with self._lock:
+            if callback in self._subscribers:
+                self._subscribers.remove(callback)
 
     def begin_candidate(self, plan: OutputPlanEvidence) -> None:
         if self._candidate is not None and self._candidate.identity != plan.identity:
@@ -1007,6 +1026,8 @@ class SignalTruthRecorder:
         return classify_signal_truth(updated)
 
     def _publish(self) -> None:
-        for callback in tuple(self._subscribers):
+        with self._lock:
+            callbacks = tuple(self._subscribers)
+        for callback in callbacks:
             with suppress(Exception):
                 callback()

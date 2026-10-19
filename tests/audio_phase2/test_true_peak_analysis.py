@@ -259,13 +259,27 @@ def test_float64_chunks_and_per_channel_true_peak() -> None:
     assert analysis["estimated_true_peak"] == pytest.approx(0.9, abs=0.06)
 
 
-def _finalize(chunks, *, frames=None, dropped=0, mismatch=0):
+def _finalize(
+    chunks,
+    *,
+    frames=None,
+    dropped=0,
+    mismatch=0,
+    unsupported=0,
+    rate_changes=0,
+    format_changes=0,
+):
     analysis = GStreamerAudioPort._analyze_capture(chunks)
     captured = {
         "frames": analysis["frames_analyzed"] if frames is None else frames,
         "dropped": dropped,
         "channel_mismatch": mismatch,
         "channel_count": analysis["channels_analyzed"],
+        "buffers_observed": 1,
+        "buffers_accepted": 0 if unsupported else 1,
+        "buffers_unsupported": unsupported,
+        "rate_changes": rate_changes,
+        "format_changes": format_changes,
     }
     return GStreamerAudioPort._finalize_capture(
         GStreamerAudioPort._analyze_capture, chunks, captured
@@ -346,3 +360,21 @@ def test_no_samples_yields_unavailable_not_zero_claim() -> None:
     assert analysis["capture_completeness"] == "unavailable"
     assert analysis["clipping_assessment"] == "unknown"
     assert analysis["estimated_true_peak"] is None
+
+
+def test_rejected_buffers_always_remove_complete_coverage() -> None:
+    values = [0.2, 0.2] * 16
+    for kwargs in (
+        {"unsupported": 1},
+        {"rate_changes": 1},
+        {"format_changes": 1},
+        {"dropped": 16},
+        {"mismatch": 1},
+    ):
+        analysis = _finalize([_chunk("f", 1.0, 2, values)], **kwargs)
+        assert analysis["capture_completeness"] == "partial", kwargs
+        assert analysis["clipping_assessment"] == "unknown", kwargs
+    clean = _finalize([_chunk("f", 1.0, 2, values)])
+    assert clean["capture_completeness"] == "complete"
+    assert clean["buffers_observed"] == 1
+    assert clean["buffers_unsupported"] == 0

@@ -453,10 +453,17 @@ class GStreamerHostedAudioPort(AudioPort):
         return receipt
 
     def capture_processing_output(
-        self, seconds: float, probe_hz: list[float] | None = None
+        self,
+        seconds: float,
+        probe_hz: list[float] | None = None,
+        *,
+        passive: bool = False,
     ) -> dict[str, Any]:
         """DIAGNOSTIC/TEST: child-local signal metrics of the installed filter."""
-        request: dict[str, Any] = {"seconds": float(seconds)}
+        request: dict[str, Any] = {
+            "seconds": float(seconds),
+            "passive": bool(passive),
+        }
         if probe_hz:
             request["probe_hz"] = [float(hz) for hz in probe_hz]
         payload = self._submit(

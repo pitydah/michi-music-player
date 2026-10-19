@@ -230,8 +230,7 @@ class NativeProcessingMapping:
                     band_rate, _peq_bands(properties)
                 )
             if node.strategy is ProcessingStrategy.RESAMPLE:
-                quality = str(properties.get("quality") or "balanced")
-                properties["native_quality"] = RESAMPLE_QUALITY_NATIVE.get(quality, 5)
+                properties["native_quality"] = native_resample_quality(properties)
             nodes.append(
                 {
                     "node_id": node.node_id,

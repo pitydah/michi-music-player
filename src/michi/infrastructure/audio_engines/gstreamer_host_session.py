@@ -362,6 +362,11 @@ class HostEngineSession:
                 "code": "OUTPUT_HOST_PROTOCOL_INVALID_FIELD",
                 "detail": "seconds must be a number",
             }
+        passive = payload.get("passive", False)
+        if not isinstance(passive, bool):
+            raise HostProtocolError(
+                "HOST_PROTOCOL_INVALID_FIELD", "passive must be a boolean"
+            )
         probe_hz = payload.get("probe_hz")
         if probe_hz is not None and (
             not isinstance(probe_hz, list)
@@ -374,10 +379,10 @@ class HostEngineSession:
                 "code": "OUTPUT_HOST_PROTOCOL_INVALID_FIELD",
                 "detail": "probe_hz must be a list of numbers",
             }
-        metrics = (
-            capture(float(seconds), [float(hz) for hz in probe_hz])
-            if probe_hz
-            else capture(float(seconds))
+        metrics = capture(
+            float(seconds),
+            [float(hz) for hz in probe_hz] if probe_hz else None,
+            passive=passive,
         )
         return True, {"metrics": metrics}
 
