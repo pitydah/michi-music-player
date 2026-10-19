@@ -3,7 +3,7 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "84e1d05",
+  "repo_head": "447f98e",
   "verdict": "IN_PROGRESS_CORRECTIVE \u2014 complete capture coverage, single resampler quality authority, passive diagnostic primitive, atomic measurement fence, both-side PCM continuity evidence and a diagnostic-free productive install are verified. The session diagnostic capture remains ISOLATED (PlaybackService converges out-of-band playback). Dither/FIR blocked; physical DAC NOT_RUN. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
@@ -285,7 +285,7 @@
   },
   "runtime_convergence": {
     "defect": "CI segfault: host loss processed during characterization ran convergence inline on the worker and created the Qt backend re-entrantly",
-    "fix": "runtime-loss convergence is dispatched to the OWNER via the canonical executor; direct handle_runtime_failure remains synchronous",
+    "fix": "runtime-loss convergence uses a DEDICATED QtAsyncCallExecutor (owner delivery) independent of injected preparation executors; headless suites defer convergence instead of creating Qt objects on a worker",
     "proof": "host-dead managed prepare fails typed, releases cleanly; full suite green"
   }
 }
