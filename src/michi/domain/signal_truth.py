@@ -771,6 +771,9 @@ class ProcessingMeasurement:
     window: str
     evidence_level: str
     sequence: int
+    device_id: str | None = None
+    host_generation: int | None = None
+    pipeline_generation: int | None = None
 
 
 class OutputFamilyState(StrEnum):
@@ -834,6 +837,8 @@ class SignalTruthRecorder:
         self._processing_events: list[ProcessingTruthEvent] = []
         self._output_family_events: list[OutputFamilyEvent] = []
         self._processing_measurements: list[ProcessingMeasurement] = []
+        #: Fence: only ACTIVE execution instances may publish measurements.
+        self._active_executions: dict[str, str] = {}
 
     @property
     def processing_events(self) -> tuple[ProcessingTruthEvent, ...]:
@@ -843,9 +848,28 @@ class SignalTruthRecorder:
     def processing_measurements(self) -> tuple[ProcessingMeasurement, ...]:
         return tuple(self._processing_measurements)
 
+    def activate_execution(self, execution_id: str, *, plan_id: str) -> None:
+        """Register the CURRENT execution instance (fence for publication)."""
+        if not execution_id.strip():
+            raise ValueError("an execution identity is required")
+        self._active_executions[execution_id] = plan_id
+
+    def retire_execution(self, execution_id: str) -> int:
+        """Retire an execution: later measurements can never be accepted."""
+        self._active_executions.pop(execution_id, None)
+        return self.discard_processing_measurements(execution_id)
+
     def record_processing_measurement(self, measurement: ProcessingMeasurement) -> None:
         if not measurement.execution_id.strip():
             raise ValueError("a measurement requires an execution identity")
+        plan_id = self._active_executions.get(measurement.execution_id)
+        if plan_id is None or plan_id != measurement.plan_id:
+            # Effective fence: a late measurement of a retired/superseded
+            # execution is REJECTED, not merely cleaned afterwards.
+            raise ValueError(
+                f"measurement rejected: execution {measurement.execution_id!r} "
+                "is not the active execution"
+            )
         self._processing_measurements.append(measurement)
         if len(self._processing_measurements) > 16:
             del self._processing_measurements[:-16]

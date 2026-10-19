@@ -824,6 +824,24 @@ def _build_services(
             audio_processing_service.invalidate_effective(f"managed_{reason}")
         return result
 
+    def _managed_diagnostics(seconds: float) -> dict:
+        """Lab diagnostic capture bound to the CURRENT managed identity."""
+        port = gstreamer_provider.current_port
+        if port is None:
+            raise OutputSessionError(
+                "MANAGED_DIAGNOSTICS_UNAVAILABLE", "no hosted port is open"
+            )
+        metrics = port.capture_processing_output(float(seconds))
+        identity = port.query_managed_identity()
+        host_generation = getattr(port, "supervisor_generation", None)
+        if callable(host_generation):
+            host_generation = host_generation()
+        return {
+            "metrics": metrics,
+            "identity": identity,
+            "host_generation": host_generation,
+        }
+
     def _managed_plan_still_current(plan: ManagedPcmOutputPlan) -> bool:
         return any(
             binding.kind is BindingKind.ALSA_PCM
@@ -851,6 +869,7 @@ def _build_services(
         managed_prepare=_managed_prepare,
         managed_abort=_managed_abort,
         managed_plan_still_current=_managed_plan_still_current,
+        managed_diagnostics=_managed_diagnostics,
         truth_recorder=signal_truth,
     )
     from michi.application.volume_policy_service import VolumePolicyService

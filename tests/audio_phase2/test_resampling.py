@@ -355,3 +355,21 @@ def test_resample_suppresses_aliasing_on_downsampling(tmp_path, monkeypatch) -> 
     finally:
         port.close()
         supervisor.close()
+
+
+def test_unknown_resample_quality_is_rejected_not_defaulted() -> None:
+    from michi.domain.audio_processing import (
+        CompiledProcessingNode,
+        ProcessingNodeKind,
+    )
+
+    node = CompiledProcessingNode(
+        node_id="rs",
+        kind=ProcessingNodeKind.RESAMPLE,
+        strategy=ProcessingStrategy.RESAMPLE,
+        properties=(("target_rate_hz", 48000), ("quality", "ultra")),
+        expected_latency_samples=0,
+    )
+    # No silent Balanced fallback: the mapping refuses an unknown policy.
+    with pytest.raises(ValueError):
+        NativeProcessingMapping.expected_native_properties(node, rate_hz=44100)

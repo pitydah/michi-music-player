@@ -463,3 +463,107 @@ def test_measurement_requires_an_execution_identity() -> None:
                 sequence=1,
             )
         )
+
+
+def test_recorder_fence_rejects_late_measurements_after_retirement() -> None:
+    from michi.domain.signal_truth import (
+        ProcessingMeasurement,
+        SignalTruthRecorder,
+    )
+
+    recorder = SignalTruthRecorder()
+    recorder.activate_execution("exec:1", plan_id="plan:1")
+    measurement = ProcessingMeasurement(
+        execution_id="exec:1",
+        plan_id="plan:1",
+        sample_peak=0.5,
+        estimated_true_peak=0.6,
+        worst_channel=0,
+        channels=2,
+        sample_rate_hz=44100,
+        window="0.5s",
+        evidence_level="NATIVE_GSTREAMER",
+        sequence=1,
+    )
+    recorder.record_processing_measurement(measurement)
+    assert len(recorder.processing_measurements) == 1
+    assert recorder.retire_execution("exec:1") == 1
+    # The fence rejects a late measurement of the retired execution.
+    with pytest.raises(ValueError):
+        recorder.record_processing_measurement(measurement)
+
+
+def test_session_capture_validates_identity_and_publishes_typed_measurement() -> None:
+    from michi.domain.signal_truth import SignalTruthRecorder
+
+    recorder = SignalTruthRecorder()
+    provider = _Provider()
+    hook = _ManagedHook()
+    captured: list[str] = []
+
+    def diagnostics(seconds: float) -> dict:
+        prepared = hook.prepared[-1]
+        captured.append(prepared.execution_id)
+        return {
+            "metrics": {
+                "sample_peak": 0.9,
+                "estimated_true_peak": 0.95,
+                "worst_sample_peak_channel": 1,
+                "channels_analyzed": 2,
+                "rate_hz": 44100,
+            },
+            "identity": {
+                "managed": True,
+                "execution_id": prepared.execution_id,
+                "plan_id": prepared.plan.plan_id,
+                "device": prepared.plan.device_locator,
+                "pipeline_generation": 3,
+                "host_generation": 7,
+            },
+        }
+
+    service = _service(
+        provider, hook, truth_recorder=recorder, managed_diagnostics=diagnostics
+    )
+    token = service.prepare_for_media(PATH)
+    measurement = service.capture_processing_measurement(0.4)
+    assert captured == [hook.prepared[-1].execution_id]
+    assert measurement.execution_id == hook.prepared[-1].execution_id
+    assert measurement.plan_id == hook.prepared[-1].plan.plan_id
+    assert measurement.sample_peak == 0.9
+    assert measurement.worst_channel == 1
+    assert measurement.host_generation == 7
+    assert measurement.pipeline_generation == 3
+    assert recorder.processing_measurements == (measurement,)
+
+    service.abort_media(token, "stop")
+    assert recorder.processing_measurements == ()
+    with pytest.raises(ValueError):
+        recorder.record_processing_measurement(measurement)
+
+
+def test_session_capture_rejects_a_mismatched_identity() -> None:
+    from michi.domain.signal_truth import SignalTruthRecorder
+
+    recorder = SignalTruthRecorder()
+    provider = _Provider()
+    hook = _ManagedHook()
+
+    def diagnostics(_seconds: float) -> dict:
+        return {
+            "metrics": {"sample_peak": 0.5},
+            "identity": {
+                "execution_id": "exec:other",
+                "plan_id": "plan:other",
+                "device": "hw:99,0",
+            },
+        }
+
+    service = _service(
+        provider, hook, truth_recorder=recorder, managed_diagnostics=diagnostics
+    )
+    service.prepare_for_media(PATH)
+    with pytest.raises(OutputSessionError) as info:
+        service.capture_processing_measurement(0.4)
+    assert info.value.code == "MEASUREMENT_IDENTITY_MISMATCH"
+    assert recorder.processing_measurements == ()

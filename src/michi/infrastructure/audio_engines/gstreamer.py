@@ -1990,6 +1990,33 @@ class GStreamerAudioPort(AudioPort):
         return result
 
     @staticmethod
+    def _finalize_capture(analyze, chunks, captured: dict) -> dict:
+        """Merge analyzer output with probe counters and completeness."""
+        analysis = analyze(chunks)
+        complete = bool(
+            captured["frames"] == analysis["frames_analyzed"]
+            and captured["dropped"] == 0
+            and captured["channel_mismatch"] == 0
+            and analysis["non_finite_samples"] == 0
+            and analysis["partial_bytes_ignored"] == 0
+        )
+        if analysis["frames_analyzed"] <= 0 or analysis["channels_analyzed"] <= 0:
+            completeness = "unavailable"
+        elif complete:
+            completeness = "complete"
+        else:
+            completeness = "partial"
+        if analysis["samples_over_full_scale"] > 0:
+            clipping = "clipping_detected"
+        elif completeness == "complete":
+            clipping = "no_clipping_observed"
+        else:
+            clipping = "unknown"
+        analysis["capture_completeness"] = completeness
+        analysis["clipping_assessment"] = clipping
+        return analysis
+
+    @staticmethod
     def _analyze_capture(chunks: list[tuple[str, float, int, bytes]]) -> dict:
         """Per-channel analysis of the bounded capture (outside the callback).
 
@@ -2053,21 +2080,30 @@ class GStreamerAudioPort(AudioPort):
         metrics: list[dict] = []
         total_sum_sq = 0.0
         total_samples = 0
-        worst_index = None
-        worst_peak = -1.0
-        aggregate_true_peak = None
+        worst_sample_peak_channel = None
+        worst_sample_peak = -1.0
+        worst_true_peak_channel = None
+        worst_true_peak = -1.0
+        highest_rms_channel = None
+        highest_rms = -1.0
+        channels_with_valid_true_peak = 0
         for index, entry in enumerate(per_channel):
             samples = entry["samples"]
             peak = entry["peak"]
             rms = (entry["sum_sq"] / samples) ** 0.5 if samples else 0.0
             true_peak = GStreamerAudioPort._true_peak_metrics(entry["mono"])
-            if true_peak["estimated_true_peak"] is not None:
-                estimate = true_peak["estimated_true_peak"]
-                if aggregate_true_peak is None or estimate > aggregate_true_peak:
-                    aggregate_true_peak = estimate
-            if peak > worst_peak:
-                worst_peak = peak
-                worst_index = index
+            estimate = true_peak["estimated_true_peak"]
+            if estimate is not None:
+                channels_with_valid_true_peak += 1
+                if estimate > worst_true_peak:
+                    worst_true_peak = estimate
+                    worst_true_peak_channel = index
+            if peak > worst_sample_peak:
+                worst_sample_peak = peak
+                worst_sample_peak_channel = index
+            if rms > highest_rms:
+                highest_rms = rms
+                highest_rms_channel = index
             if index == 0:
                 tones_source = list(entry["mono"])
             total_sum_sq += entry["sum_sq"]
@@ -2089,17 +2125,32 @@ class GStreamerAudioPort(AudioPort):
                     ],
                 }
             )
-        aggregate_peak = worst_peak if worst_index is not None else 0.0
+        aggregate_peak = (
+            worst_sample_peak if worst_sample_peak_channel is not None else 0.0
+        )
         aggregate_rms = (total_sum_sq / total_samples) ** 0.5 if total_samples else 0.0
         aggregate_metrics = GStreamerAudioPort._true_peak_metrics(tones_source)
+        aggregate_true_peak = (
+            worst_true_peak if worst_true_peak_channel is not None else None
+        )
+        aggregate_true_peak_db = (
+            round(20.0 * math.log10(aggregate_true_peak), 3)
+            if aggregate_true_peak is not None and aggregate_true_peak > 0.0
+            else None
+        )
         return {
             "frames": frames_analyzed,
             "samples": total_samples,
             "frames_analyzed": frames_analyzed,
             "samples_analyzed": total_samples,
             "channels_analyzed": channel_count,
+            "channels_with_valid_true_peak": channels_with_valid_true_peak,
             "channels_metrics": metrics,
-            "worst_channel": worst_index,
+            # Legacy alias: worst SAMPLE-peak channel (documented).
+            "worst_channel": worst_sample_peak_channel,
+            "worst_sample_peak_channel": worst_sample_peak_channel,
+            "worst_true_peak_channel": worst_true_peak_channel,
+            "highest_rms_channel": highest_rms_channel,
             "rms": aggregate_rms,
             "sample_peak": aggregate_peak,
             "peak": aggregate_peak,
@@ -2114,7 +2165,8 @@ class GStreamerAudioPort(AudioPort):
             ),
             "estimated_true_peak": aggregate_true_peak,
             "true_peak": aggregate_true_peak,
-            "true_peak_db": aggregate_metrics["true_peak_db"],
+            # dB is ALWAYS derived from the aggregate linear value.
+            "true_peak_db": aggregate_true_peak_db,
             "true_peak_method": aggregate_metrics["true_peak_method"],
             "oversampling_factor": aggregate_metrics["oversampling_factor"],
             "analysis_window": aggregate_metrics["analysis_window"],
@@ -2267,6 +2319,38 @@ class GStreamerAudioPort(AudioPort):
         rebuilds = 0
         _r0, previous_state, _p0 = pipeline.get_state(0)
         position_before = self._safe_position_ms()
+        # LAB-ONLY continuity timeline: the sink pad is stable across the
+        # filter swap and observes the REAL PCM stream (PTS/duration/flags).
+        timeline: list[dict] = []
+        sink_pad = None
+        sink_probe = None
+        if previous_state == gst.State.PLAYING:
+            sink = pipeline.get_property("audio-sink")
+            if sink is not None:
+                sink_pad = sink.get_static_pad("sink")
+            if sink_pad is not None:
+                clock_none = int(gst.CLOCK_TIME_NONE)
+
+                def _continuity_probe(_pad, info):
+                    buf = info.get_buffer()
+                    if buf is None:
+                        return gst.PadProbeReturn.OK
+                    pts = int(buf.pts) if int(buf.pts) != clock_none else None
+                    duration = (
+                        int(buf.duration) if int(buf.duration) != clock_none else None
+                    )
+                    timeline.append(
+                        {
+                            "pts": pts,
+                            "duration": duration,
+                            "discont": bool(buf.has_flags(gst.BUFFER_FLAG_DISCONT)),
+                        }
+                    )
+                    return gst.PadProbeReturn.OK
+
+                sink_probe = sink_pad.add_probe(
+                    gst.PadProbeType.BUFFER, _continuity_probe
+                )
         # Ownership: playbin3's audio-filter getter can return an INTERNAL
         # default bin; only OUR installed bin is the predecessor we manage.
         previous_filter = self._installed_processing_filter
@@ -2313,6 +2397,9 @@ class GStreamerAudioPort(AudioPort):
         state = _cycle_to_paused()
         installed = pipeline.get_property("audio-filter")
         if state != gst.State.PAUSED or installed is None or installed != filter_bin:
+            if sink_pad is not None and sink_probe is not None:
+                with contextlib.suppress(Exception):
+                    sink_pad.remove_probe(sink_probe)
             if mutated and previous_filter is not None:
                 restored = _restore_predecessor()
                 error = AudioTransportUnavailableError(
@@ -2332,34 +2419,95 @@ class GStreamerAudioPort(AudioPort):
         # PAUSED (STOPPED semantics in this port are PAUSED-armed media).
         if previous_state == gst.State.PLAYING:
             pipeline.set_state(gst.State.PLAYING)
+            # Bounded observation window so the PCM timeline covers both
+            # sides of the swap (buffers arrive on streaming threads).
+            _time.sleep(0.12)
         self._installed_processing_filter = filter_bin
+        if sink_pad is not None and sink_probe is not None:
+            with contextlib.suppress(Exception):
+                sink_pad.remove_probe(sink_probe)
         position_after = self._safe_position_ms()
-        if position_before is None or position_after is None:
-            continuity = "NOT_MEASURED"
-        elif position_after + 100 >= position_before:
-            continuity = "CONTINUITY_VERIFIED"
-        else:
-            continuity = "POSITION_RESET"
+        position_preserved = (
+            position_before is not None
+            and position_after is not None
+            and position_after + 100 >= position_before
+        )
+        pcm = self._analyze_continuity(timeline, position_preserved)
         return {
             "installed": True,
             "runtime_identity": "playbin3/audio-filter",
             "pipeline_generation": self._generation,
-            # TRANSITION DIAGNOSTICS (instrumentation, not a seamless claim):
-            # duration, rebuild count and observed position continuation.
+            # TRANSITION DIAGNOSTICS: position and PCM continuity are SEPARATE
+            # claims. PCM continuity is only asserted from the real timeline.
             "install_diagnostics": {
                 "duration_ms": round((_time.monotonic() - started) * 1000.0, 3),
                 "rebuilds": rebuilds,
                 "position_before_ms": position_before,
                 "position_after_ms": position_after,
+                "position_preserved": position_preserved,
                 "state_restored": str(previous_state),
-                "continuity": continuity,
-                "silent_gap_ms": None,
+                "continuity": pcm["classification"],
+                "pcm": pcm,
+                "silent_gap_ms": pcm["max_gap_ms"],
             },
+        }
+
+    @staticmethod
+    def _analyze_continuity(timeline: list[dict], position_preserved: bool) -> dict:
+        """Classify REAL PCM continuity from sink-pad timestamps.
+
+        Position-only evidence can never produce PCM_CONTINUITY_VERIFIED.
+        """
+        valid = [entry for entry in timeline if entry.get("pts") is not None]
+        durations = [
+            entry["duration"]
+            for entry in valid
+            if entry.get("duration") is not None and entry["duration"] > 0
+        ]
+        expected_ns = sorted(durations)[len(durations) // 2] if durations else None
+        gaps: list[int] = []
+        for previous, current in zip(valid, valid[1:], strict=False):
+            delta = current["pts"] - previous["pts"]
+            expected = previous.get("duration") or expected_ns or 0
+            gaps.append(max(0, delta - expected))
+        max_gap_ns = max(gaps) if gaps else None
+        discont_flags = sum(1 for entry in valid if entry.get("discont"))
+        tolerance_ns = int(
+            max(50_000_000, 2.5 * expected_ns) if expected_ns else 50_000_000
+        )
+        if len(valid) < 2:
+            # Position-only evidence is NEVER a PCM continuity claim.
+            classification = (
+                "POSITION_PRESERVED" if position_preserved else "NOT_MEASURED"
+            )
+        elif discont_flags > 0:
+            classification = "DISCONTINUITY_DETECTED"
+        elif max_gap_ns is not None and max_gap_ns > tolerance_ns:
+            classification = "GAP_DETECTED"
+        else:
+            classification = "PCM_CONTINUITY_VERIFIED"
+        return {
+            "classification": classification,
+            "position_preserved": bool(position_preserved),
+            "buffers_observed": len(valid),
+            "expected_buffer_ms": (
+                round(expected_ns / 1e6, 3) if expected_ns else None
+            ),
+            "max_gap_ms": (
+                round(max_gap_ns / 1e6, 3) if max_gap_ns is not None else None
+            ),
+            "gap_tolerance_ms": round(tolerance_ns / 1e6, 3),
+            "discontinuity_flags": discont_flags,
+            "measured_span_ms": (
+                round((valid[-1]["pts"] - valid[0]["pts"]) / 1e6, 3)
+                if len(valid) >= 2
+                else None
+            ),
         }
 
     def _safe_position_ms(self) -> int | None:
         try:
-            value = self.query_position()
+            value = self.position()
         except Exception:  # noqa: BLE001 - unmeasured is not a failure
             return None
         if isinstance(value, bool) or not isinstance(value, int) or value < 0:
@@ -2463,16 +2611,16 @@ class GStreamerAudioPort(AudioPort):
                 _time.sleep(0.01)
             _ret2, state_after, _pending2 = pipeline.get_state(0)
         finally:
-            # The diagnostic must NEVER leak a probe or leave media running
-            # after an error: it always returns to PAUSED (deterministic
-            # measurement boundary; productive transport is untouched — this
-            # path only exists for test/lab instrumentation).
+            # The diagnostic must NEVER leak a probe. Restore the state that
+            # existed BEFORE the capture (a lab capture must not pause an
+            # ongoing productive playback); if the pre-state was PAUSED this
+            # is the deterministic measurement boundary as before.
             with contextlib.suppress(Exception):
                 pad.remove_probe(handle)
             with contextlib.suppress(Exception):
-                pipeline.set_state(gst.State.PAUSED)
+                pipeline.set_state(previous)
         # ── post-capture analysis (outside the streaming callback) ─────
-        analysis = self._analyze_capture(chunks)
+        analysis = self._finalize_capture(self._analyze_capture, chunks, captured)
         mono = analysis.pop("_mono")
         tones: list[dict] = []
         if probe_hz and mono and state["rate"]:
@@ -2714,6 +2862,10 @@ class GStreamerAudioPort(AudioPort):
                     raise AudioTransportUnavailableError(
                         "MICHI_GST_LAB_SINK=fakesink requested but unavailable"
                     )
+                # Real-time lab mode is explicit: continuity instrumentation
+                # needs buffers scheduled by the clock, not free-running.
+                if os.environ.get("MICHI_GST_LAB_SINK_SYNC") == "1":
+                    lab_sink.set_property("sync", True)
                 self._bindings.set_audio_sink(pipeline, lab_sink)
             # DAC-V35-050B §17: strict Direct sink ANTES de URI/preroll.
             # `strict_recipe` es propiedad LOCAL reclamada al entry.
@@ -2734,6 +2886,8 @@ class GStreamerAudioPort(AudioPort):
                         raise AudioTransportUnavailableError(
                             "MICHI_GST_LAB_SINK=fakesink requested but unavailable"
                         )
+                    if os.environ.get("MICHI_GST_LAB_SINK_SYNC") == "1":
+                        managed_sink.set_property("sync", True)
                 else:
                     managed_sink = self._bindings.build_strict_audio_sink(
                         managed_recipe
@@ -2747,6 +2901,7 @@ class GStreamerAudioPort(AudioPort):
                     "format": str(getattr(managed_recipe, "gst_format", "")),
                     "rate_hz": int(getattr(managed_recipe, "rate_hz", 0) or 0),
                     "channels": int(getattr(managed_recipe, "channels", 0) or 0),
+                    "pipeline_generation": self._generation,
                     "lab_sink": lab_used,
                 }
             self._bus = self._bindings.get_bus(pipeline)

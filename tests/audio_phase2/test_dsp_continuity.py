@@ -147,10 +147,21 @@ def test_each_dsp_swap_reports_transition_diagnostics(tmp_path, monkeypatch) -> 
             assert diagnostics["duration_ms"] > 0.0, (label, diagnostics)
             assert diagnostics["rebuilds"] >= 1, (label, diagnostics)
             assert diagnostics["continuity"] in {
-                "CONTINUITY_VERIFIED",
-                "POSITION_RESET",
+                "PCM_CONTINUITY_VERIFIED",
+                "GAP_DETECTED",
+                "DISCONTINUITY_DETECTED",
+                "POSITION_PRESERVED",
                 "NOT_MEASURED",
             }, (label, diagnostics)
+            pcm = diagnostics["pcm"]
+            assert "position_preserved" in diagnostics
+            assert pcm["buffers_observed"] >= 0
+            if pcm["classification"] == "PCM_CONTINUITY_VERIFIED":
+                # A PCM continuity claim REQUIRES observed PCM buffers.
+                assert pcm["buffers_observed"] >= 2, (label, pcm)
+                assert pcm["max_gap_ms"] is not None, (label, pcm)
+            if pcm["classification"] == "GAP_DETECTED":
+                assert pcm["max_gap_ms"] > pcm["gap_tolerance_ms"], (label, pcm)
             assert "silent_gap_ms" in diagnostics
             assert service.effective_state.value == "effective"
             assert plan.plan_id.startswith("dsp:")
@@ -163,3 +174,115 @@ def test_each_dsp_swap_reports_transition_diagnostics(tmp_path, monkeypatch) -> 
     finally:
         port.close()
         supervisor.close()
+
+
+def test_playing_swap_measures_a_real_pcm_timeline(tmp_path, monkeypatch) -> None:
+    """With playback active, the sink-pad timeline produces a measured
+    classification (and never claims PCM continuity without buffers)."""
+    from michi.application.audio_processing_service import AudioProcessingService
+    from michi.infrastructure.audio_processing.native_mapping import (
+        NativeProcessingMapping,
+    )
+    from tests.audio_phase2.test_headroom_measurement import _write_sine
+    from tests.audio_phase2.test_processing_graphic_eq import _real_port
+
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    # Real-time lab sink so the sink pad observes a PCM timeline across the
+    # swap (free-running fakesink drains the fixture before the swap).
+    monkeypatch.setenv("MICHI_GST_LAB_SINK_SYNC", "1")
+    fixture = tmp_path / "playing.wav"
+    _write_sine(fixture, rate=44100, amplitude=0.4, seconds=4.0)
+    supervisor, port = _real_port()
+    try:
+        port.activate()
+        port.set_volume(0)
+        port.load(fixture)
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            port.dispatch_pending()
+            try:
+                duration = port.query_duration()
+            except Exception:
+                duration = None
+            if isinstance(duration, int) and duration > 0:
+                break
+            time.sleep(0.02)
+        service = AudioProcessingService(
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
+            transport=port,
+        )
+        service.refresh_capabilities()
+        port.play()
+        time.sleep(0.3)
+        plan, receipt = _install(service, port, supervisor, _preamp_graph(0.0, 1))
+        diagnostics = receipt.diagnostics
+        pcm = diagnostics["pcm"]
+        assert diagnostics["continuity"] in {
+            "PCM_CONTINUITY_VERIFIED",
+            "GAP_DETECTED",
+            "DISCONTINUITY_DETECTED",
+            "POSITION_PRESERVED",
+            "NOT_MEASURED",
+        }, diagnostics
+        assert diagnostics["duration_ms"] > 0.0
+        assert diagnostics["rebuilds"] >= 1
+        # The lab rebuild may leave the source at EOS (no PCM observed).
+        # Whatever happens, the claim must be internally consistent.
+        if pcm["classification"] == "PCM_CONTINUITY_VERIFIED":
+            assert pcm["buffers_observed"] >= 2
+            assert pcm["max_gap_ms"] is not None
+            assert pcm["max_gap_ms"] <= pcm["gap_tolerance_ms"]
+        if pcm["classification"] == "GAP_DETECTED":
+            assert pcm["buffers_observed"] >= 2
+            assert pcm["max_gap_ms"] > pcm["gap_tolerance_ms"]
+        if pcm["classification"] == "POSITION_PRESERVED":
+            assert pcm["buffers_observed"] < 2
+            assert diagnostics["position_preserved"] is True
+        if pcm["classification"] == "NOT_MEASURED":
+            assert pcm["buffers_observed"] < 2
+        assert service.effective_state.value == "effective"
+        port.stop()
+    finally:
+        port.close()
+        supervisor.close()
+
+
+def test_continuity_analyzer_detects_gaps_and_discontinuities() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerAudioPort
+
+    def buffers(*pts_ms, discont=()):
+        return [
+            {
+                "pts": int(ms * 1e6),
+                "duration": 20_000_000,
+                "discont": ms in discont,
+            }
+            for ms in pts_ms
+        ]
+
+    continuous = GStreamerAudioPort._analyze_continuity(
+        buffers(0, 20, 40, 60), position_preserved=True
+    )
+    assert continuous["classification"] == "PCM_CONTINUITY_VERIFIED"
+    assert continuous["max_gap_ms"] == 0.0
+    assert continuous["buffers_observed"] == 4
+
+    gapped = GStreamerAudioPort._analyze_continuity(
+        buffers(0, 20, 320, 340), position_preserved=True
+    )
+    assert gapped["classification"] == "GAP_DETECTED"
+    assert gapped["max_gap_ms"] >= 250.0
+
+    discont = GStreamerAudioPort._analyze_continuity(
+        buffers(0, 20, 40, discont=(40,)), position_preserved=True
+    )
+    assert discont["classification"] == "DISCONTINUITY_DETECTED"
+    assert discont["discontinuity_flags"] == 1
+
+    position_only = GStreamerAudioPort._analyze_continuity([], position_preserved=True)
+    assert position_only["classification"] == "POSITION_PRESERVED"
+    assert position_only["buffers_observed"] == 0
+
+    unavailable = GStreamerAudioPort._analyze_continuity([], position_preserved=False)
+    assert unavailable["classification"] == "NOT_MEASURED"

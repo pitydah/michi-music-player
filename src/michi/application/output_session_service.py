@@ -47,13 +47,18 @@ from michi.domain.audio_output import (
     VolumePolicy,
 )
 from michi.domain.managed_pcm_output import ManagedPcmOutputPlan
-from michi.domain.signal_truth import OutputFamilyEvent, OutputFamilyState
+from michi.domain.signal_truth import (
+    OutputFamilyEvent,
+    OutputFamilyState,
+    ProcessingMeasurement,
+)
 
 logger = logging.getLogger(__name__)
 
 #: Process-wide execution-instance sequence: a NEW instance id is issued
 #: for every managed preparation attempt, never derived from the plan hash.
 _EXECUTION_INSTANCE_SEQ = itertools.count(1)
+_MEASUREMENT_SEQ = itertools.count(1)
 
 
 def _new_execution_instance(epoch: int) -> str:
@@ -523,6 +528,7 @@ class OutputSessionService:
         managed_plan_still_current: (
             Callable[[ManagedPcmOutputPlan], bool] | None
         ) = None,
+        managed_diagnostics: Callable[[float], dict] | None = None,
         truth_recorder=None,
     ) -> None:
         self._planner = planner
@@ -536,6 +542,7 @@ class OutputSessionService:
         self._managed_prepare = managed_prepare
         self._managed_abort = managed_abort
         self._managed_plan_still_current = managed_plan_still_current
+        self._managed_diagnostics = managed_diagnostics
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
         self._execution_instance_epoch = next(_EXECUTION_INSTANCE_SEQ)
@@ -1087,8 +1094,106 @@ class OutputSessionService:
             self._transition(OutputSessionState.CONFIGURING)
         self._transition(OutputSessionState.READY)
         self._token_value = f"output-tx:managed:{self._generation}"
+        activate = getattr(self._truth_recorder, "activate_execution", None)
+        if callable(activate):
+            with suppress(Exception):
+                activate(prepared.execution_id, plan_id=prepared.plan.plan_id)
         self._record_output_family(OutputFamilyState.READY, prepared)
         return self._token_value
+
+    def capture_processing_measurement(
+        self, seconds: float = 0.5, *, evidence_level: str = "NATIVE_GSTREAMER"
+    ) -> ProcessingMeasurement:
+        """DIAGNOSTIC/LAB ONLY: capture, validate identity, publish typed truth.
+
+        Call from a worker/diagnostic tool, never the Qt owner (the capture
+        waits for its window). The measurement is accepted only while THIS
+        execution instance is the active one, before and after the capture.
+        """
+        if self._managed_diagnostics is None:
+            raise OutputSessionError(
+                "MANAGED_DIAGNOSTICS_UNAVAILABLE",
+                "no managed diagnostic capture is composed",
+            )
+        prepared = self._managed_prepared
+        if self._mode != "managed" or prepared is None:
+            raise OutputSessionError(
+                "MANAGED_EXECUTION_REQUIRED",
+                "diagnostic capture requires a prepared Managed execution",
+            )
+        if self._state not in (
+            OutputSessionState.READY,
+            OutputSessionState.RUNNING,
+        ):
+            raise OutputSessionError(
+                "MANAGED_EXECUTION_NOT_READY",
+                f"diagnostic capture is not valid in {self._state.value}",
+            )
+        if not 0.05 <= float(seconds) <= 5.0:
+            raise OutputSessionError(
+                "MEASUREMENT_WINDOW_INVALID", "capture window must be 0.05..5 s"
+            )
+        try:
+            result = self._managed_diagnostics(float(seconds))
+        except OutputSessionError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - typed boundary
+            raise OutputSessionError("MEASUREMENT_CAPTURE_FAILED", str(exc)) from exc
+        if not isinstance(result, dict):
+            raise OutputSessionError(
+                "MEASUREMENT_CAPTURE_FAILED", "capture returned no result"
+            )
+        metrics = result.get("metrics")
+        identity = result.get("identity")
+        if not isinstance(metrics, dict) or not isinstance(identity, dict):
+            raise OutputSessionError(
+                "MEASUREMENT_CAPTURE_FAILED", "capture identity/metrics missing"
+            )
+        if (
+            identity.get("execution_id") != prepared.execution_id
+            or identity.get("plan_id") != prepared.plan.plan_id
+            or identity.get("device") != prepared.plan.device_locator
+        ):
+            raise OutputSessionError(
+                "MEASUREMENT_IDENTITY_MISMATCH",
+                "the capture does not belong to the current managed execution",
+            )
+        # Race fence: the execution must still be current AFTER the capture.
+        if self._managed_prepared is not prepared:
+            raise OutputSessionError(
+                "MEASUREMENT_STALE",
+                "the execution was superseded during the capture",
+            )
+        recorder = self._truth_recorder
+        if recorder is None:
+            raise OutputSessionError(
+                "MEASUREMENT_RECORDER_UNAVAILABLE",
+                "no truth recorder is composed",
+            )
+        measurement = ProcessingMeasurement(
+            execution_id=prepared.execution_id,
+            plan_id=prepared.plan.plan_id,
+            sample_peak=metrics.get("sample_peak"),
+            estimated_true_peak=metrics.get("estimated_true_peak"),
+            worst_channel=metrics.get(
+                "worst_sample_peak_channel", metrics.get("worst_channel")
+            ),
+            channels=metrics.get("channels_analyzed", metrics.get("channels")),
+            sample_rate_hz=metrics.get("rate_hz"),
+            window=f"{float(seconds):.3f}s",
+            evidence_level=str(evidence_level),
+            sequence=next(_MEASUREMENT_SEQ),
+            device_id=prepared.plan.device_locator,
+            host_generation=(
+                identity.get("host_generation") or result.get("host_generation")
+            ),
+            pipeline_generation=identity.get("pipeline_generation"),
+        )
+        try:
+            recorder.record_processing_measurement(measurement)
+        except ValueError as exc:
+            raise OutputSessionError("MEASUREMENT_REJECTED", str(exc)) from exc
+        return measurement
 
     def _record_output_family(
         self,
@@ -1119,7 +1224,13 @@ class OutputSessionService:
             )
 
     def _discard_measurements(self, execution_id: str) -> None:
+        """Retire the execution's measurement fence AND its history."""
         recorder = self._truth_recorder
+        retire = getattr(recorder, "retire_execution", None)
+        if callable(retire):
+            with suppress(Exception):
+                retire(execution_id)
+            return
         discard = getattr(recorder, "discard_processing_measurements", None)
         if not callable(discard):
             return

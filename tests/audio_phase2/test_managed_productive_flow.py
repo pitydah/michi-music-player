@@ -293,9 +293,21 @@ def test_managed_dsp_preset_runs_through_the_productive_provider(
             effective_plan
         )
         port = graph.gstreamer_engine_provider.current_port
-        assert port.query_managed_identity()["managed"] is True
-        metrics = port.capture_processing_output(0.4)
-        assert metrics["rms"] > 0.0
+        identity = port.query_managed_identity()
+        assert identity["managed"] is True
+        # PRODUCTIVE MEASUREMENT CHAIN: session -> capture -> identity fence
+        # -> typed measurement -> canonical recorder.
+        measurement = graph.output_session.capture_processing_measurement(0.4)
+        assert measurement.execution_id == identity["execution_id"]
+        assert measurement.plan_id == identity["plan_id"]
+        assert measurement.device_id == identity["device"]
+        assert measurement.pipeline_generation == identity["pipeline_generation"]
+        assert measurement.host_generation is not None
+        assert measurement.sample_peak is not None
+        assert measurement.sample_peak > 0.0
+        assert graph.signal_truth.processing_measurements == (measurement,)
+        graph.output_session.release_active("stop")
+        assert graph.signal_truth.processing_measurements == ()
     finally:
         _close(graph)
 
@@ -765,5 +777,167 @@ def test_managed_44k_source_resampled_to_96k_with_exact_evidence(
         assert identity["managed"] is True and identity["loaded"] is True
         assert identity["negotiated"]["rate_hz"] == 96000
         assert graph.audio_processing.effective_state.value == "effective"
+    finally:
+        _close(graph)
+
+
+def test_flat_vs_resample_pipeline_latency_is_measured(tmp_path, monkeypatch) -> None:
+    """WU6: report the measured pipeline latency per execution (never inferred
+    from the resample preset)."""
+    if not FIXTURE.is_file():
+        pytest.skip("PCM fixture unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    from michi.domain.audio_evidence import (
+        CapabilityEvidence,
+        EvidenceStrength,
+        PcmTuple,
+    )
+    from michi.domain.audio_processing import (
+        PreampNode,
+        ProcessingGraph,
+        ProcessingProfile,
+        ResampleNode,
+        ResampleQuality,
+    )
+
+    graph, coordinator = _build_graph(tmp_path)
+    try:
+        _select_managed(coordinator)
+        fingerprint = graph.dac_qualification.current_environment_fingerprint(DEVICE_ID)
+        graph.dac_qualification.cache_evidence(
+            DEVICE_ID,
+            tuple(
+                CapabilityEvidence(
+                    stable_device_id=DEVICE_ID,
+                    tuple=PcmTuple(rate, "S16_LE", 2, 16),
+                    supported=True,
+                    strength=EvidenceStrength.OPENED,
+                    source="test",
+                    observed_at_ns=index,
+                    environment_fingerprint=fingerprint,
+                    evidence_refs=("test",),
+                )
+                for index, rate in enumerate((44_100, 48_000), start=1)
+            ),
+        )
+
+        def run(profile):
+            graph.set_processing_profile(profile)
+            tokens, failures = _prepare(graph)
+            assert failures == [], failures
+            graph.output_session.commit_media(tokens[0], FIXTURE)
+            identity = (
+                graph.gstreamer_engine_provider.current_port.query_managed_identity()
+            )
+            latency = identity["pipeline_latency"]
+            assert latency is not None
+            assert isinstance(latency["min_ns"], int)
+            return latency
+
+        flat = run(
+            ProcessingProfile(
+                profile_id="dsp:lat-flat",
+                display_name="Flat",
+                graph=ProcessingGraph(
+                    graph_id="graph:lat",
+                    revision=1,
+                    nodes=(PreampNode(node_id="pre", gain_db=0.0),),
+                ),
+            )
+        )
+        resampled = run(
+            ProcessingProfile(
+                profile_id="dsp:lat-rs",
+                display_name="Resample",
+                graph=ProcessingGraph(
+                    graph_id="graph:lat",
+                    revision=2,
+                    nodes=(
+                        PreampNode(node_id="pre", gain_db=0.0),
+                        ResampleNode(
+                            node_id="rs",
+                            target_rate_hz=48000,
+                            quality=ResampleQuality.HIGH,
+                        ),
+                    ),
+                ),
+            )
+        )
+        # Real measured values; the difference is reported, not modeled.
+        assert flat["source"] == "gstreamer_runtime"
+        assert resampled["source"] == "gstreamer_runtime"
+        delta_ns = resampled["min_ns"] - flat["min_ns"]
+        assert isinstance(delta_ns, int)
+        assert delta_ns >= 0
+        graph.output_session.release_active("stop")
+    finally:
+        _close(graph)
+
+
+def test_repeated_managed_transitions_do_not_leak_or_publish_stale_state(
+    tmp_path, monkeypatch
+) -> None:
+    """WU9: repeated preset transitions keep identities, memory and truth
+    bounded."""
+    if not FIXTURE.is_file():
+        pytest.skip("PCM fixture unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    from michi.domain.audio_processing import (
+        BiquadType,
+        ParametricEqNode,
+        PeqBand,
+        PreampNode,
+        ProcessingGraph,
+        ProcessingProfile,
+    )
+
+    graph, coordinator = _build_graph(tmp_path)
+    try:
+        _select_managed(coordinator)
+
+        def profile(index: int) -> ProcessingProfile:
+            if index % 2 == 0:
+                nodes = (PreampNode(node_id="pre", gain_db=0.0),)
+            else:
+                nodes = (
+                    ParametricEqNode(
+                        node_id="peq",
+                        bands=(PeqBand("b", BiquadType.PEAK, 1000.0, 1.4, 3.0, True),),
+                    ),
+                )
+            return ProcessingProfile(
+                profile_id=f"dsp:repeat-{index}",
+                display_name="Repeat",
+                graph=ProcessingGraph(
+                    graph_id="graph:repeat",
+                    revision=index + 1,
+                    nodes=nodes,
+                ),
+            )
+
+        instances: list[str] = []
+        for index in range(8):
+            graph.set_processing_profile(profile(index))
+            tokens: list[str] = []
+            failures: list[Exception] = []
+            graph.output_session.prepare_for_media_async(
+                FIXTURE, tokens.append, failures.append
+            )
+            assert failures == [], failures
+            graph.output_session.commit_media(tokens[0], FIXTURE)
+            assert graph.output_session.state.value == "running"
+            assert graph.audio_processing.effective_state.value == "effective"
+            instances.append(
+                graph.gstreamer_engine_provider.current_port.query_managed_identity()[
+                    "execution_id"
+                ]
+            )
+        assert len(set(instances)) == 8
+        assert graph.audio_processing._prepared_plans == {}
+        assert graph.signal_truth.processing_measurements == ()
+        graph.output_session.release_active("stop")
+        assert graph.output_session.state.value == "idle"
+        assert graph.output_session._managed_prepared is None
+        assert graph.signal_truth.processing_measurements == ()
     finally:
         _close(graph)

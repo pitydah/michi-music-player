@@ -46,6 +46,14 @@ RESAMPLE_QUALITY_NATIVE: dict[str, int] = {
 }
 
 
+def native_resample_quality(properties: dict[str, Any]) -> int:
+    """Explicit policy mapping; an unknown quality is a typed refusal."""
+    quality = str(properties.get("quality") or "")
+    if quality not in RESAMPLE_QUALITY_NATIVE:
+        raise ValueError(f"unknown resample quality {quality!r}")
+    return RESAMPLE_QUALITY_NATIVE[quality]
+
+
 def _peq_bands(properties: dict[str, Any]) -> list[tuple]:
     """Enabled PEQ bands in compiled order (band_id, type, f, q, gain, on)."""
     raw = properties.get("bands") or ()
@@ -186,10 +194,9 @@ class NativeProcessingMapping:
             band_rate = int(properties.get("rate_hz") or rate_hz)
             return {"biquad": peq_cascade(band_rate, _peq_bands(properties))}
         if node.strategy is ProcessingStrategy.RESAMPLE:
-            quality = str(properties.get("quality") or "balanced")
             return {
                 "target_rate_hz": int(properties["target_rate_hz"]),
-                "quality": RESAMPLE_QUALITY_NATIVE.get(quality, 5),
+                "quality": native_resample_quality(properties),
             }
         raise ValueError(f"no native mapping for strategy {node.strategy.value!r}")
 

@@ -257,3 +257,92 @@ def test_float64_chunks_and_per_channel_true_peak() -> None:
         assert channel["estimated_true_peak"] == pytest.approx(0.9, abs=0.06)
         assert channel["intersample_over_full_scale"] is False
     assert analysis["estimated_true_peak"] == pytest.approx(0.9, abs=0.06)
+
+
+def _finalize(chunks, *, frames=None, dropped=0, mismatch=0):
+    analysis = GStreamerAudioPort._analyze_capture(chunks)
+    captured = {
+        "frames": analysis["frames_analyzed"] if frames is None else frames,
+        "dropped": dropped,
+        "channel_mismatch": mismatch,
+        "channel_count": analysis["channels_analyzed"],
+    }
+    return GStreamerAudioPort._finalize_capture(
+        GStreamerAudioPort._analyze_capture, chunks, captured
+    )
+
+
+def _counterexample_signal(sample_peak: float, count: int = 48):
+    components = (
+        (19910.386036729422, 2.4807491916553555, 0.06931456945072495),
+        (17264.632702618343, 0.5914364964796116, 0.2831152023613421),
+        (19112.814919690838, 1.3489884553048155, 0.08437889347566868),
+        (8839.797963648873, 1.5121302263798826, 0.2704189015165543),
+    )
+    raw = [
+        sum(
+            amplitude * math.sin(2 * math.pi * freq * index / RATE + phase)
+            for freq, phase, amplitude in components
+        )
+        for index in range(count)
+    ]
+    peak = max(abs(value) for value in raw)
+    return [value / peak * sample_peak for value in raw]
+
+
+def test_worst_sample_peak_and_true_peak_channels_are_distinct() -> None:
+    # L: highest SAMPLE peak (0.9, fs/4 at 0 deg -> true peak also 0.9).
+    left = _tone(RATE / 4.0, amplitude=0.9, phase=0.0, count=48)
+    # R: lower sample peak (0.85) but a higher TRUE peak (~0.99).
+    right = _counterexample_signal(0.85)
+    assert max(abs(value) for value in right) < 0.9
+    values = []
+    for l_value, r_value in zip(left, right, strict=True):
+        values.extend((l_value, r_value))
+    analysis = _finalize([_chunk("d", 1.0, 2, values)])
+    assert analysis["worst_sample_peak_channel"] == 0
+    assert analysis["worst_true_peak_channel"] == 1
+    assert analysis["channels_with_valid_true_peak"] == 2
+    right_true_peak = analysis["channels_metrics"][1]["estimated_true_peak"]
+    assert right_true_peak > analysis["channels_metrics"][0]["estimated_true_peak"]
+    assert analysis["estimated_true_peak"] == pytest.approx(right_true_peak)
+    assert analysis["true_peak_db"] == pytest.approx(
+        round(20.0 * math.log10(right_true_peak), 3), abs=1e-9
+    )
+    assert analysis["capture_completeness"] == "complete"
+    assert analysis["clipping_assessment"] == "no_clipping_observed"
+
+
+def test_invalid_true_peak_channel_keeps_unknown_and_partial_completeness() -> None:
+    left = _tone(1000.0, amplitude=0.5, count=32)
+    values = []
+    for value in left:
+        values.extend((value, math.nan))
+    analysis = _finalize([_chunk("d", 1.0, 2, values)])
+    assert analysis["channels_with_valid_true_peak"] == 1
+    assert analysis["channels_metrics"][1]["estimated_true_peak"] is None
+    assert analysis["estimated_true_peak"] is not None
+    assert analysis["capture_completeness"] == "partial"
+    assert analysis["clipping_assessment"] == "unknown"
+
+
+def test_truncated_capture_never_claims_absence_of_clipping() -> None:
+    values = [0.2, 0.2] * 32
+    analysis = _finalize([_chunk("f", 1.0, 2, values)], frames=100, dropped=36)
+    assert analysis["capture_completeness"] == "partial"
+    assert analysis["clipping_assessment"] == "unknown"
+
+
+def test_over_full_scale_is_reported_as_detected_clipping() -> None:
+    values = [0.5, 1.2] * 16
+    analysis = _finalize([_chunk("f", 1.0, 2, values)])
+    assert analysis["clipping_assessment"] == "clipping_detected"
+    assert analysis["channels_metrics"][1]["samples_over_full_scale"] == 16
+    assert analysis["capture_completeness"] == "complete"
+
+
+def test_no_samples_yields_unavailable_not_zero_claim() -> None:
+    analysis = _finalize([])
+    assert analysis["capture_completeness"] == "unavailable"
+    assert analysis["clipping_assessment"] == "unknown"
+    assert analysis["estimated_true_peak"] is None
