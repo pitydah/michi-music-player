@@ -1363,8 +1363,10 @@ class TestF42AdapterContract:
         # caps, and STOP_MANAGED performs an atomic identity-bound stop.
         # F06 sprint 10: complete capture coverage accounting, passive
         # capture, env-gated continuity timeline with both-side boundaries.
+        # F06 sprint 13: packed S24LE capture decoding for terminal-dither
+        # evidence (diagnostic path only; productive DSP unchanged).
         # Hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "27704dcbc4e4e18a",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "b4cc95e581576319",
         # F06 sprint 11: lazy QtMultimedia objects (open() no longer creates
         # QMediaPlayer/QAudioOutput). Product behavior unchanged on first use;
         # headless engines no longer enumerate devices at open.

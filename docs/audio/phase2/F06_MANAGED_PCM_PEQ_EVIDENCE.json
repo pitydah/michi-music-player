@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "99fb242",
-  "verdict": "IN_PROGRESS_ADVANCED \u2014 productive FIR convolution (hash-verified kernels, native readback, analytic spectral goldens, Managed integration) and explicit terminal dither (Managed-only terminal authority, TPDF noise floor proof, readback) are implemented. Durable IR persistence remains F13 (BLOCKED); CI remains blocked by the runner QtMultimedia segfault in the real Qt contract test; physical DAC NOT_RUN; F11 Signal Path pending. F06 stays READY.",
+  "repo_head": "9c43560",
+  "verdict": "READY_FOR_CLOSURE_REVIEW \u2014 FIR identity hardening (independent provider SHA; mono-only contract; bounded iterables), S24 terminal dither (dithering-threshold defect fixed), impulse goldens and the complete authorized DSP chain are verified locally. F06 CANNOT be declared CLOSED: F11 Signal Path presentation, the durable IR store (F13) and the runner QtMultimedia crash remain; physical DAC NOT_RUN (F14). F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -151,7 +151,7 @@
     "F11 Signal Path presentation; durable ProcessingProfile repository (F13)"
   ],
   "full_suite": {
-    "result": "5902 passed, 4 skipped, 0 failed (local, exact tree)",
+    "result": "5909 passed, 4 skipped, 0 failed (local; only the F42 re-seal was pending and is fixed)",
     "scope": "python -m pytest -q (entire repository)"
   },
   "spec_sha256": "826381f154a0e5eb848a37e7c3c81909ddb8d103cc0cadd75c97e5fc16e41ead",
@@ -195,19 +195,18 @@
     "latency": "algorithmic resample latency is NOT modeled; pipeline-reported latency is the runtime truth"
   },
   "percentages": {
-    "architecture": 98,
     "managed_pcm": 93,
     "parametric_eq": 86,
-    "fir_convolution": 85,
-    "dither_terminal": 85,
-    "f06_global": 92,
+    "fir_convolution": 90,
+    "dither_terminal": 90,
+    "resampling_quality": 81,
+    "headroom_true_peak": 88,
     "signal_truth": 96,
     "stability": 96,
-    "integration": 97,
-    "headroom_true_peak": 88,
     "latency": 63,
-    "resampling_quality": 81,
-    "audio_phase2_global": 86
+    "integration": 97,
+    "f06_global": 93,
+    "audio_phase2_global": 87
   },
   "true_peak": {
     "aggregate": "max of VALID per-channel estimates; dB derived from that value",
@@ -291,13 +290,7 @@
   },
   "ci_status": {
     "state": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (runner QtMultimedia)",
-    "remaining_crash": "QMediaPlayer() creation in test_audio_engine_conformance.py::test_qt_full_contract on the runner",
-    "attempts": [
-      "lazy Qt media objects (startup/convergence fixed)",
-      "QT_MEDIA_BACKEND=ffmpeg",
-      "offscreen",
-      "PulseAudio null sink"
-    ],
+    "reproducer": "scripts/qt_multimedia_probe.py completes locally; the CI runner segfaults at QMediaPlayer creation in the real Qt contract test",
     "not_skipped": true
   },
   "combinations": {
@@ -320,5 +313,51 @@
     "managed": "Managed FIR session with readback and selected binding; no store => DSP_FIR_STORE_UNAVAILABLE",
     "production_store": "BLOCKED \u2014 R11-F13 owns ir_asset_store.py; no durable production IR management is claimed",
     "tests": "tests/audio_phase2/test_fir_vertical.py (8) + compiler goldens"
-  }
+  },
+  "ir_identity": {
+    "three_identities": "node expected SHA vs provider-declared SHA vs computed coefficients SHA",
+    "bootstrap": "requires metadata.sha256 from the provider (never copies the node hash); missing => DSP_FIR_ASSET_HASH_UNAVAILABLE",
+    "mismatch_proofs": "provider SHA mismatch => DSP_ASSET_HASH_MISMATCH; coefficients changed after declaration => FIR_KERNEL_HASH_MISMATCH",
+    "bounds": "unbounded iterables consumed at most MAX_FIR_TAPS+1; mono-only IR (multi-channel explicitly unsupported)"
+  },
+  "dither_threshold_defect": {
+    "defect": "audioconvert dithering-threshold defaults to 20 bits; 24-bit terminal dither was SILENTLY disabled while advertising the mode",
+    "fix": "builder sets dithering-threshold to the target depth; readback validates the effective threshold",
+    "proof": "S24 sub-LSB source: TPDF noise floor > truncation; terminal format S24LE; 6 dither tests"
+  },
+  "combined_chain": {
+    "graph": "Preamp -> Graphic EQ -> Parametric EQ -> FIR -> explicit Resample -> Terminal Dither",
+    "compile": "canonical order + 48 kHz output + S16LE terminal + quantization boundary",
+    "native": "real host install, readback proven, 48 kHz negotiated, S16LE terminal, non-zero tones"
+  },
+  "fir_numeric": {
+    "impulse_goldens": "absolute peaks per kernel (identity 0.5, average 0.25, gain 0.75, delayed 0.375, inverted 0.5) within 1e-3",
+    "spectral": "3-tap analytic response: 1 kHz +/-1 dB, 8 kHz +/-1.5 dB"
+  },
+  "closure_matrix": {
+    "G00_context_alignment": "PASS",
+    "G01_managed_specific_binding": "PASS (lab sink; physical F14 NOT_RUN)",
+    "G02_direct_regression": "PASS (local DAC suite)",
+    "G03_signal_path_processed": "DEFERRED_TO_F11 (presentation projection absent; managed identity events exist)",
+    "G04_device_loss_stale_selection": "PASS",
+    "G05_peq_graphic_eq": "PASS",
+    "G06_fir_sha_numeric": "PASS",
+    "G07_ir_store_injected_no_f13": "PASS (injected scope)",
+    "G08_resample_only_requested": "PASS",
+    "G09_dither_authorized_format": "PASS (Managed-only)",
+    "G10_bypass_identity": "PASS",
+    "G11_optional_adapters": "PASS (absent; core unaffected)",
+    "G12_readback_before_effective": "PASS",
+    "G13_host_loss_invalidates": "PASS",
+    "G14_numeric_productive_tests": "PASS (local)",
+    "G15_qt_architecture": "FAIL \u2014 runner QtMultimedia; architecture PASS",
+    "G16_blockers_resolved": "FAIL \u2014 F13 IR persistence, F11 Signal Path, runner Qt, physical F14",
+    "G17_canonical_transition": "NOT_APPLICABLE (closure not authorized)"
+  },
+  "blockers": [
+    "F11 Signal Path presentation (Processed vs Direct) \u2014 phase authority",
+    "F13 durable IR asset store \u2014 FIR end-user persistence",
+    "CI runner QtMultimedia segfault \u2014 external hardware/environment",
+    "Physical DAC qualification \u2014 F14 / operator authorization (NOT_RUN)"
+  ]
 }
