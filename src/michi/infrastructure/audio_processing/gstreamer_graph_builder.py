@@ -153,6 +153,10 @@ def build_processing_candidate(plan: dict[str, Any]) -> BuiltProcessingCandidate
                 element = _build_biquad_cascade(Gst, node_id, cascade)
             elif strategy == "resample":
                 element = _build_resample(Gst, node_id, properties)
+            elif strategy == "convolution_fir":
+                element = _build_convolution_fir(Gst, node_id, properties)
+            elif strategy == "dither_terminal":
+                element = _build_dither_terminal(Gst, node_id, properties)
             else:
                 raise ProcessingGraphBuildError(
                     "DSP_STRATEGY_UNAVAILABLE",
@@ -287,6 +291,10 @@ def build_processing_filter(plan: dict[str, Any]) -> dict[str, Any]:
             element = _build_biquad_cascade(Gst, node_id, cascade)
         elif strategy == "resample":
             element = _build_resample(Gst, node_id, properties)
+        elif strategy == "convolution_fir":
+            element = _build_convolution_fir(Gst, node_id, properties)
+        elif strategy == "dither_terminal":
+            element = _build_dither_terminal(Gst, node_id, properties)
         else:
             raise ProcessingGraphBuildError(
                 "DSP_STRATEGY_UNAVAILABLE",
@@ -346,6 +354,56 @@ def _build_biquad_cascade(gst, node_id: str, cascade: list[dict[str, Any]]):
         element.set_property("b", b)
         elements.append(element)
     return elements
+
+
+def _build_dither_terminal(gst, node_id: str, properties: dict[str, Any]) -> list[Any]:
+    """Explicit terminal quantization: ONE converter + terminal caps.
+
+    Dither is applied ONLY here (internal converters keep it disabled). The
+    caps make the terminal format explicit; the Managed sink is pinned to the
+    same format by the plan.
+    """
+    bits = int(properties.get("target_bits") or 0)
+    rate = int(properties.get("rate_hz") or 0)
+    channels = int(properties.get("channels") or 0)
+    if bits not in (16, 24):
+        raise ProcessingGraphBuildError(
+            "DSP_PLAN_INVALID", "terminal dither supports 16 or 24 bits"
+        )
+    if rate <= 0 or channels <= 0:
+        raise ProcessingGraphBuildError(
+            "DSP_PLAN_INVALID", "terminal dither needs rate/channels"
+        )
+    mode = str(properties.get("mode") or "none")
+    dithering = 2 if mode == "tpdf" else 0
+    convert = _make(gst, "audioconvert", f"{node_id}-dither")
+    convert.set_property("dithering", dithering)
+    convert.set_property("noise-shaping", 0)
+    caps = _make(gst, "capsfilter", f"{node_id}-terminal")
+    caps.set_property(
+        "caps",
+        gst.Caps.from_string(
+            f"audio/x-raw,format=S{bits}LE,rate={rate},channels={channels}"
+        ),
+    )
+    return [convert, caps]
+
+
+def _build_convolution_fir(gst, node_id: str, properties: dict[str, Any]) -> Any:
+    """Audio FIR filter with the VERIFIED kernel (fingerprint already checked)."""
+    kernel = properties.get("kernel")
+    if not isinstance(kernel, (list, tuple)) or not kernel:
+        raise ProcessingGraphBuildError(
+            "DSP_PLAN_INVALID", "FIR requires a non-empty kernel"
+        )
+    taps = int(properties.get("taps") or 0)
+    if taps and taps != len(kernel):
+        raise ProcessingGraphBuildError(
+            "DSP_PLAN_INVALID", "FIR kernel length does not match its taps"
+        )
+    element = _make(gst, "audiofirfilter", f"{node_id}-fir")
+    element.set_property("kernel", [float(value) for value in kernel])
+    return element
 
 
 def _build_resample(gst, node_id: str, properties: dict[str, Any]) -> list[Any]:

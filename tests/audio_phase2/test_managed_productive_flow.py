@@ -67,7 +67,7 @@ class _ExactOpeningProbe:
         )
 
 
-def _build_graph(tmp_path):
+def _build_graph(tmp_path, **service_kwargs):
     from michi.application.audio_output_selection_coordinator import (
         AudioOutputSelectionCoordinator,
     )
@@ -113,6 +113,7 @@ def _build_graph(tmp_path):
         alsa_proc_root=proc,
         qualification_adapter=_ExactOpeningProbe(),
         output_preparation_executor=_InlineExecutor(),
+        **service_kwargs,
     )
     graph.dac_qualification.cache_evidence(
         DEVICE_ID,

@@ -179,14 +179,16 @@ def test_service_decides_support_from_real_facts() -> None:
         )
         capabilities = service.refresh_capabilities()
         assert service.capability_state is ProcessingCapabilityState.QUERIED
-        # Implemented TODAY: GAIN + GRAPHIC_EQ_NBANDS + BIQUAD_CASCADE (PEQ)
-        # + RESAMPLE (explicit resampling), given the real factories.
+        # Implemented TODAY: GAIN + GRAPHIC_EQ + PEQ + RESAMPLE + FIR +
+        # DITHER_TERMINAL, given the real factories.
         assert capabilities.strategies == frozenset(
             {
                 ProcessingStrategy.GAIN,
                 ProcessingStrategy.GRAPHIC_EQ_NBANDS,
                 ProcessingStrategy.BIQUAD_CASCADE,
                 ProcessingStrategy.RESAMPLE,
+                ProcessingStrategy.CONVOLUTION_FIR,
+                ProcessingStrategy.DITHER_TERMINAL,
             }
         )
         # Compiler integration: gain, graphic EQ and PEQ all compile.

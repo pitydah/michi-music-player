@@ -83,13 +83,16 @@ def _resolve(graph, *, signal=None, assets=()):
     )
 
 
-def _compile(graph, *, signal=None, assets=(), backend=None, policy=None):
+def _compile(
+    graph, *, signal=None, assets=(), backend=None, policy=None, ir_provider=None
+):
     effective = _resolve(graph, signal=signal, assets=assets)
     return ProcessingGraphCompiler().compile(
         effective,
         backend=backend or _backend(),
         assets=assets,
         sample_policy=policy,
+        ir_provider=ir_provider,
     )
 
 
@@ -379,7 +382,8 @@ def test_dither_is_terminal_and_quantizes() -> None:
     plan = _compile(
         _graph(
             _preamp(-1.0), DitherNode(node_id="d", mode=DitherMode.TPDF, target_bits=16)
-        )
+        ),
+        policy=ProcessingSamplePolicy(terminal_format_verified=True),
     )
     assert plan.nodes[-1].strategy is ProcessingStrategy.DITHER_TERMINAL
     assert plan.quantization_boundary is True
@@ -399,19 +403,34 @@ def test_dither_not_terminal_is_refused() -> None:
 
 
 def test_convolution_compiles_with_immutable_asset_identity() -> None:
-    graph = _graph(
-        ConvolutionNode(
-            node_id="ir", asset_id=_ASSET_ID, asset_sha256=_ASSET_SHA, gain_db=-2.0
-        )
+    import hashlib
+    import struct
+
+    from michi.domain.audio_processing import ImpulseResponseMetadata
+
+    coefficients = (0.5, 0.5)
+    sha = hashlib.sha256(struct.pack("<2f", *coefficients)).hexdigest()
+    asset_id = f"ir:sha256:{sha}"
+    asset = ImpulseResponseMetadata(
+        asset_id=asset_id, sha256=sha, rate_hz=96000, channels=1
     )
-    plan = _compile(graph, assets=(_ir_meta(),))
+    store = type(
+        "Store",
+        (),
+        {"load_float32_mono": lambda self, ir_id: coefficients},
+    )()
+    graph = _graph(
+        ConvolutionNode(node_id="ir", asset_id=asset_id, asset_sha256=sha, gain_db=-2.0)
+    )
+    plan = _compile(graph, assets=(asset,), ir_provider=store)
     node = plan.nodes[0]
     assert node.strategy is ProcessingStrategy.CONVOLUTION_FIR
-    assert node.asset_sha256 == _ASSET_SHA
+    assert node.asset_sha256 == sha
     properties = dict(node.properties)
-    assert properties["asset_id"] == _ASSET_ID
+    assert properties["asset_id"] == asset_id
     assert properties["gain_db"] == -2.0
-    assert plan.asset_hashes == (_ASSET_SHA,)
+    assert properties["taps"] == 2
+    assert plan.asset_hashes == (sha,)
     assert plan.changes_sample_values is True
 
 

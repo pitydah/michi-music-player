@@ -159,6 +159,10 @@ class NativeProcessingMapping:
             return ("audioiirfilter",) * len(_peq_bands(properties))
         if node.strategy is ProcessingStrategy.RESAMPLE:
             return ("audioresample", "capsfilter")
+        if node.strategy is ProcessingStrategy.CONVOLUTION_FIR:
+            return ("audiofirfilter",)
+        if node.strategy is ProcessingStrategy.DITHER_TERMINAL:
+            return ("audioconvert", "capsfilter")
         raise ValueError(f"no native factories for {node.strategy.value!r}")
 
     @staticmethod
@@ -198,6 +202,22 @@ class NativeProcessingMapping:
                 "target_rate_hz": int(properties["target_rate_hz"]),
                 "quality": native_resample_quality(properties),
             }
+        if node.strategy is ProcessingStrategy.DITHER_TERMINAL:
+            mode = str(properties.get("mode") or "none")
+            bits = int(properties["target_bits"])
+            return {
+                "dithering": 2 if mode == "tpdf" else 0,
+                "noise_shaping": 0,
+                "output_format": f"S{bits}LE",
+            }
+        if node.strategy is ProcessingStrategy.CONVOLUTION_FIR:
+            kernel = properties.get("kernel")
+            if not isinstance(kernel, (list, tuple)) or not kernel:
+                raise ValueError("FIR requires a non-empty kernel")
+            fingerprint = str(properties.get("fingerprint") or "")
+            if len(fingerprint) != 64:
+                raise ValueError("FIR requires a verified kernel fingerprint")
+            return {"taps": len(kernel), "fingerprint": fingerprint}
         raise ValueError(f"no native mapping for strategy {node.strategy.value!r}")
 
     def plan_to_wire(self, plan: CompiledProcessingPlan) -> dict[str, Any]:
@@ -231,6 +251,12 @@ class NativeProcessingMapping:
                 )
             if node.strategy is ProcessingStrategy.RESAMPLE:
                 properties["native_quality"] = native_resample_quality(properties)
+            if node.strategy is ProcessingStrategy.DITHER_TERMINAL:
+                mode = str(properties.get("mode") or "none")
+                bits = int(properties["target_bits"])
+                properties["dithering"] = 2 if mode == "tpdf" else 0
+                properties["noise_shaping"] = 0
+                properties["output_format"] = f"S{bits}LE"
             nodes.append(
                 {
                     "node_id": node.node_id,

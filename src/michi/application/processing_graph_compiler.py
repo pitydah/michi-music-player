@@ -37,6 +37,10 @@ from michi.domain.audio_processing import (
     ProcessingStrategy,
     ResampleNode,
 )
+from michi.domain.fir_kernel import (
+    fir_kernel_fingerprint,
+    verify_fir_kernel_coefficients,
+)
 
 #: Non-executable nodes whose absence is benign and recorded in the plan.
 _SKIPPED_ADAPTATIONS: dict[ProcessingAdaptationReason, str] = {
@@ -79,6 +83,9 @@ class ProcessingSamplePolicy:
     working_format: str = "F64LE"
     dither_mode: DitherMode = DitherMode.NONE
     noise_shaping_mode: str = "none"
+    #: True ONLY on a route whose sink format is pinned to the compiled
+    #: output_format (Managed). Shared has no terminal-format authority.
+    terminal_format_verified: bool = False
 
     def __post_init__(self) -> None:
         if self.working_format not in {"F32LE", "F64LE"}:
@@ -110,6 +117,7 @@ class ProcessingGraphCompiler:
         backend: ProcessingBackendCapabilities,
         assets: tuple[ImpulseResponseMetadata, ...] = (),
         sample_policy: ProcessingSamplePolicy | None = None,
+        ir_provider: object | None = None,
     ) -> CompiledProcessingPlan:
         policy = (
             sample_policy if sample_policy is not None else ProcessingSamplePolicy()
@@ -144,6 +152,9 @@ class ProcessingGraphCompiler:
                     entry,
                     rate_hz=current_rate,
                     assets=assets_by_id,
+                    ir_provider=ir_provider,
+                    policy=policy,
+                    channels=current_channels,
                 )
             )
             if strategy not in backend.strategies:
@@ -338,6 +349,9 @@ class ProcessingGraphCompiler:
         *,
         rate_hz: int,
         assets: dict[str, ImpulseResponseMetadata],
+        ir_provider: object | None = None,
+        policy: ProcessingSamplePolicy | None = None,
+        channels: int = 0,
     ) -> tuple[ProcessingStrategy, tuple[tuple[str, object], ...], int, str | None]:
         node = entry.node
         if isinstance(node, PreampNode):
@@ -388,13 +402,53 @@ class ProcessingGraphCompiler:
             asset = assets.get(node.asset_id)
             if asset is None:
                 raise ProcessingCompilationError("DSP_ASSET_UNAVAILABLE", node.asset_id)
+            if asset.sha256 != node.asset_sha256:
+                raise ProcessingCompilationError(
+                    "DSP_ASSET_HASH_MISMATCH",
+                    f"asset {node.asset_id} metadata hash does not match the node",
+                )
+            if asset.rate_hz != rate_hz:
+                raise ProcessingCompilationError(
+                    "DSP_FIR_RATE_MISMATCH",
+                    f"IR rate {asset.rate_hz} != processing rate {rate_hz}",
+                )
+            if asset.channels != 1:
+                raise ProcessingCompilationError(
+                    "DSP_FIR_CHANNELS_UNSUPPORTED",
+                    "only a mono IR is authorized in this slice",
+                )
+            if ir_provider is None:
+                raise ProcessingCompilationError(
+                    "DSP_FIR_STORE_UNAVAILABLE",
+                    "no ImpulseResponseStorePort is composed for this execution",
+                )
+            try:
+                coefficients = ir_provider.load_float32_mono(node.asset_id)
+                kernel = verify_fir_kernel_coefficients(
+                    coefficients,
+                    expected_sha256=asset.sha256,
+                    rate_hz=asset.rate_hz,
+                    channels=asset.channels,
+                )
+            except ProcessingCompilationError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - typed compilation boundary
+                code = getattr(exc, "code", "DSP_FIR_STORE_FAILED")
+                raise ProcessingCompilationError(str(code), str(exc)) from exc
+            gain = 10.0 ** (float(node.gain_db) / 20.0)
+            scaled = tuple(value * gain for value in kernel.coefficients)
+            fingerprint = fir_kernel_fingerprint(scaled)
             return (
                 ProcessingStrategy.CONVOLUTION_FIR,
                 (
                     ("asset_id", node.asset_id),
                     ("asset_sha256", node.asset_sha256),
+                    ("rate_hz", rate_hz),
                     ("channels", asset.channels),
+                    ("taps", kernel.taps),
                     ("gain_db", node.gain_db),
+                    ("kernel", scaled),
+                    ("fingerprint", fingerprint),
                 ),
                 0,
                 node.asset_sha256,
@@ -428,9 +482,30 @@ class ProcessingGraphCompiler:
                 None,
             )
         if isinstance(node, DitherNode):
+            if policy is None or not policy.terminal_format_verified:
+                raise ProcessingCompilationError(
+                    "DSP_DITHER_TERMINAL_UNPROVEN",
+                    "terminal dither requires a proven terminal format "
+                    "(Managed sink pinned to the compiled output format)",
+                )
+            if node.target_bits not in (16, 24):
+                raise ProcessingCompilationError(
+                    "DSP_DITHER_TARGET_UNSUPPORTED",
+                    f"target {node.target_bits} bits is not authorized",
+                )
+            if policy.noise_shaping_mode != "none":
+                raise ProcessingCompilationError(
+                    "DSP_DITHER_NOISE_SHAPING_UNSUPPORTED",
+                    "noise shaping is not authorized in this slice",
+                )
             return (
                 ProcessingStrategy.DITHER_TERMINAL,
-                (("mode", node.mode.value), ("target_bits", node.target_bits)),
+                (
+                    ("mode", node.mode.value),
+                    ("target_bits", node.target_bits),
+                    ("rate_hz", rate_hz),
+                    ("channels", channels),
+                ),
                 0,
                 None,
             )

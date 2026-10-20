@@ -19,7 +19,8 @@ import math
 import struct
 from dataclasses import dataclass
 
-MAX_FIR_TAPS = 65536
+MAX_FIR_TAPS = 8192  # bounded for the host control-frame budget
+MAX_FIR_BYTES = MAX_FIR_TAPS * 4
 _IR_HASH_LEN = 64
 
 
@@ -70,16 +71,25 @@ def verify_fir_kernel(
         )
     if not isinstance(raw, (bytes, bytearray, memoryview)) or not raw:
         raise FirKernelError("FIR_KERNEL_EMPTY", "IR bytes are empty")
+    if not isinstance(max_taps, int) or isinstance(max_taps, bool) or max_taps <= 0:
+        raise FirKernelError("FIR_KERNEL_LIMIT_INVALID", "max_taps must be > 0")
+    # Bounds BEFORE any hashing/copying work: an oversized IR is rejected
+    # without paying its full cost.
+    if len(raw) > min(int(max_taps), MAX_FIR_TAPS) * 4:
+        raise FirKernelError(
+            "FIR_KERNEL_TOO_LARGE",
+            f"{len(raw)} bytes exceeds the authorized kernel budget",
+        )
+    if len(raw) % 4 != 0:
+        raise FirKernelError(
+            "FIR_KERNEL_MALFORMED", "float32 IR length is not sample-aligned"
+        )
     payload = bytes(raw)
     actual = hashlib.sha256(payload).hexdigest()
     if actual != sha:
         raise FirKernelError(
             "FIR_KERNEL_HASH_MISMATCH",
             f"IR bytes hash {actual} != expected {sha}",
-        )
-    if len(payload) % 4 != 0:
-        raise FirKernelError(
-            "FIR_KERNEL_MALFORMED", "float32 IR length is not sample-aligned"
         )
     taps = len(payload) // 4
     if taps <= 0:
@@ -106,4 +116,38 @@ def verify_fir_kernel(
         sha256=sha,
         rate_hz=int(rate_hz),
         channels=int(channels),
+    )
+
+
+def verify_fir_kernel_coefficients(
+    coefficients,
+    *,
+    expected_sha256: str,
+    rate_hz: int,
+    channels: int,
+    max_taps: int = MAX_FIR_TAPS,
+) -> FirKernel:
+    """Verify provider coefficients against the asset authority hash.
+
+    The provider returns normalized mono samples; their canonical float32-LE
+    representation must hash to the asset metadata SHA-256. Bounds are applied
+    BEFORE packing/hashing.
+    """
+    if coefficients is None:
+        raise FirKernelError("FIR_KERNEL_EMPTY", "IR coefficients are missing")
+    values = tuple(coefficients)
+    if not values:
+        raise FirKernelError("FIR_KERNEL_EMPTY", "IR has no taps")
+    if len(values) > min(int(max_taps), MAX_FIR_TAPS):
+        raise FirKernelError(
+            "FIR_KERNEL_TOO_LARGE",
+            f"{len(values)} taps exceeds the authorized budget",
+        )
+    raw = struct.pack(f"<{len(values)}f", *values)
+    return verify_fir_kernel(
+        raw,
+        expected_sha256=expected_sha256,
+        rate_hz=rate_hz,
+        channels=channels,
+        max_taps=max_taps,
     )

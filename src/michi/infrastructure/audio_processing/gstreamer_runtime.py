@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from michi.domain.fir_kernel import fir_kernel_fingerprint
 from michi.infrastructure.audio_processing.gstreamer_graph_builder import (
     BuiltProcessingCandidate,
     ProcessingGraphBuildError,
@@ -55,6 +56,33 @@ def _read_node(
         linear = float(element.get_property("volume"))
         gain_db = float("-inf") if linear <= 0.0 else 20.0 * math.log10(linear)
         return {"gain_db": gain_db}
+    if strategy == "dither_terminal":
+        if not isinstance(element, (list, tuple)) or len(element) != 2:
+            raise ProcessingGraphBuildError(
+                "DSP_READBACK_MALFORMED", "dither is not a native chain"
+            )
+        caps = element[1].get_static_pad("src").get_current_caps()
+        if caps is None:
+            raise ProcessingGraphBuildError(
+                "DSP_READBACK_MISSING", "terminal format was not negotiated"
+            )
+        output_format = str(caps.get_structure(0).get_value("format") or "")
+        return {
+            "dithering": int(element[0].get_property("dithering")),
+            "noise_shaping": int(element[0].get_property("noise-shaping")),
+            "output_format": output_format,
+        }
+    if strategy == "convolution_fir":
+        kernel = element.get_property("kernel")
+        values = tuple(float(value) for value in (kernel or ()))
+        if not values:
+            raise ProcessingGraphBuildError(
+                "DSP_READBACK_MISSING", "FIR installed no kernel"
+            )
+        return {
+            "taps": len(values),
+            "fingerprint": fir_kernel_fingerprint(values),
+        }
     if strategy == "resample":
         if not isinstance(element, (list, tuple)) or len(element) != 2:
             raise ProcessingGraphBuildError(

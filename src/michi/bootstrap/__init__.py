@@ -475,6 +475,7 @@ def _build_services(
     qualification_adapter=None,
     output_preparation_executor: QtAsyncCallExecutor | None = None,
     managed_processing_provider=None,
+    ir_provider=None,
 ) -> ServiceGraph:
     """Build the PRODUCTION library service graph (composition root core).
 
@@ -700,6 +701,7 @@ def _build_services(
         )
         from michi.application.processing_graph_compiler import (
             ProcessingGraphCompiler,
+            ProcessingSamplePolicy,
         )
 
         selected_graph = profile.graph
@@ -709,11 +711,49 @@ def _build_services(
             )
 
             selected_graph = with_auto_headroom(selected_graph)
+        # FIR assets: F06 verifies an INJECTED store; without one, fail closed
+        # (never guess an IR rate/channels or load by path).
+        from michi.application.processing_graph_compiler import (
+            ProcessingCompilationError,
+        )
+        from michi.domain.audio_processing import (
+            ConvolutionNode,
+            ImpulseResponseMetadata,
+        )
+
+        assets: tuple[ImpulseResponseMetadata, ...] = ()
+        conv_nodes = tuple(
+            node for node in selected_graph.nodes if isinstance(node, ConvolutionNode)
+        )
+        if conv_nodes:
+            if ir_provider is None:
+                raise ProcessingCompilationError(
+                    "DSP_FIR_STORE_UNAVAILABLE",
+                    "no ImpulseResponseStorePort is composed for Managed DSP",
+                )
+            metadata_entries = []
+            for node in conv_nodes:
+                metadata = ir_provider.metadata(node.asset_id)
+                metadata_entries.append(
+                    ImpulseResponseMetadata(
+                        asset_id=node.asset_id,
+                        sha256=node.asset_sha256,
+                        rate_hz=int(metadata["rate_hz"]),
+                        channels=int(metadata["channels"]),
+                    )
+                )
+            assets = tuple(metadata_entries)
         effective = EffectiveProcessingGraphResolver().resolve(
-            selected_graph, input_signal=signal, assets=()
+            selected_graph, input_signal=signal, assets=assets
         )
         return ProcessingGraphCompiler().compile(
-            effective, backend=audio_processing_service.capabilities, assets=()
+            effective,
+            backend=audio_processing_service.capabilities,
+            assets=assets,
+            ir_provider=ir_provider,
+            # The Managed sink is pinned to the plan's terminal format, so the
+            # terminal-format authority is PROVEN for this route only.
+            sample_policy=ProcessingSamplePolicy(terminal_format_verified=True),
         )
 
     _managed_processing_provider = (
