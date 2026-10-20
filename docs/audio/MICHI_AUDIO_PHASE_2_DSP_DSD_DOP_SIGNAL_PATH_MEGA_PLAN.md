@@ -28817,9 +28817,9 @@ F06 OWNS:   stateless FIR kernel verification (domain/fir_kernel.py),
 F13 OWNS:   ir_asset_store.py, migrations, durable asset persistence
 F06 MUST:   consume an injected ImpulseResponseStorePort; fail closed with
             DSP_FIR_STORE_UNAVAILABLE when no store is composed
-F06 MUST:   apply a MONO IR to every channel of the current signal (the
-            resolver accepts asset.channels == 1 for any signal channel
-            count; asset.channels == signal channels is also valid),
+F06 MUST:   apply a MONO IR (asset.channels == 1) to every channel of
+            the current signal; multi-channel IRs are explicitly unsupported
+            in this slice and are never adapted implicitly,
             verify the complete SHA-256 of the float32-LE mono IR bytes,
             reject non-finite/empty/oversized kernels, require IR rate and
             channels to match the plan, never load an IR by path from QML,

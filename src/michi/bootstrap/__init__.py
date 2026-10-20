@@ -734,10 +734,19 @@ def _build_services(
             metadata_entries = []
             for node in conv_nodes:
                 metadata = ir_provider.metadata(node.asset_id)
+                provider_sha = str(metadata.get("sha256") or "").strip().lower()
+                if len(provider_sha) != 64:
+                    raise ProcessingCompilationError(
+                        "DSP_FIR_ASSET_HASH_UNAVAILABLE",
+                        "the IR provider must declare the asset SHA-256",
+                    )
                 metadata_entries.append(
                     ImpulseResponseMetadata(
                         asset_id=node.asset_id,
-                        sha256=node.asset_sha256,
+                        # INDEPENDENT provider identity, never copied from the
+                        # node; the compiler compares it with the node hash and
+                        # the actual coefficients hash.
+                        sha256=provider_sha,
                         rate_hz=int(metadata["rate_hz"]),
                         channels=int(metadata["channels"]),
                     )

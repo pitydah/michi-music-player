@@ -154,9 +154,10 @@ class EffectiveProcessingGraphResolver:
                 return EffectiveProcessingNode(
                     node, False, ProcessingAdaptationReason.ASSET_HASH_MISMATCH
                 )
-            # A mono IR is applied per channel (standard convolution); an
-            # IR with the signal's channel count is also valid.
-            if asset.rate_hz != rate_hz or asset.channels not in (1, channels):
+            # This slice authorizes MONO IR applied per channel ONLY. A
+            # multi-channel IR must never be adapted into a different
+            # convolution implicitly.
+            if asset.rate_hz != rate_hz or asset.channels != 1:
                 return EffectiveProcessingNode(
                     node, False, ProcessingAdaptationReason.UNSUPPORTED_CURRENT_SIGNAL
                 )

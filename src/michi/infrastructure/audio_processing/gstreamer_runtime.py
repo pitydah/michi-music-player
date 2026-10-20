@@ -70,6 +70,9 @@ def _read_node(
         return {
             "dithering": int(element[0].get_property("dithering")),
             "noise_shaping": int(element[0].get_property("noise-shaping")),
+            "dithering_threshold": int(
+                element[0].get_property("dithering-threshold")
+            ),
             "output_format": output_format,
         }
     if strategy == "convolution_fir":

@@ -378,3 +378,21 @@ def test_rejected_buffers_always_remove_complete_coverage() -> None:
     assert clean["capture_completeness"] == "complete"
     assert clean["buffers_observed"] == 1
     assert clean["buffers_unsupported"] == 0
+
+
+def test_s24_packed_samples_are_decoded_per_channel() -> None:
+    def s24(value: float) -> bytes:
+        raw = int(round(value * (1 << 23)))
+        return (raw & 0xFFFFFF).to_bytes(3, "little")
+
+    data = bytearray()
+    for _ in range(8):
+        data += s24(0.5) + s24(-0.25)
+    analysis = GStreamerAudioPort._analyze_capture(
+        [("S24", float(1 << 23), 2, bytes(data))]
+    )
+    channels = analysis["channels_metrics"]
+    assert channels[0]["sample_peak"] == pytest.approx(0.5, abs=1e-6)
+    assert channels[1]["sample_peak"] == pytest.approx(0.25, abs=1e-6)
+    assert analysis["worst_sample_peak_channel"] == 0
+    assert analysis["samples_analyzed"] == 16

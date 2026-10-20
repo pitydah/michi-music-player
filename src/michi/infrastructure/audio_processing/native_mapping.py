@@ -208,6 +208,7 @@ class NativeProcessingMapping:
             return {
                 "dithering": 2 if mode == "tpdf" else 0,
                 "noise_shaping": 0,
+                "dithering_threshold": bits,
                 "output_format": f"S{bits}LE",
             }
         if node.strategy is ProcessingStrategy.CONVOLUTION_FIR:
@@ -256,6 +257,7 @@ class NativeProcessingMapping:
                 bits = int(properties["target_bits"])
                 properties["dithering"] = 2 if mode == "tpdf" else 0
                 properties["noise_shaping"] = 0
+                properties["dithering_threshold"] = bits
                 properties["output_format"] = f"S{bits}LE"
             nodes.append(
                 {

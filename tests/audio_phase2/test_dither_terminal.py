@@ -88,6 +88,7 @@ def test_dither_compiles_with_explicit_native_properties() -> None:
     assert NativeProcessingMapping.expected_native_properties(node, rate_hz=44100) == {
         "dithering": 2,
         "noise_shaping": 0,
+        "dithering_threshold": 16,
         "output_format": "S16LE",
     }
     wire = NativeProcessingMapping().plan_to_wire(plan)
@@ -244,3 +245,85 @@ def test_managed_dither_executes_on_the_selected_binding(tmp_path, monkeypatch) 
         assert metrics["format"] == "S16LE"
     finally:
         _close(graph)
+
+
+def _write_sine24(path, *, rate: int = 44100, amplitude: float = 5e-8,
+                  seconds: float = 2.5, frequency_hz: float = 1000.0) -> None:
+    import math
+    import struct
+    import wave
+
+    frames = int(rate * seconds)
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(2)
+        handle.setsampwidth(3)
+        handle.setframerate(rate)
+        data = bytearray()
+        for index in range(frames):
+            value = int(
+                round(
+                    amplitude
+                    * (1 << 23)
+                    * math.sin(2 * math.pi * frequency_hz * index / rate)
+                )
+            )
+            packed = (value & 0xFFFFFF).to_bytes(3, "little")
+            data += packed + packed
+        handle.writeframes(bytes(data))
+
+
+@pytest.mark.skipif(not _HAS_GI, reason="PyGObject/GStreamer unavailable")
+def test_s24_terminal_dither_raises_the_noise_floor(tmp_path, monkeypatch) -> None:
+    """24-bit target: a sub-24-bit-LSB input truncates to silence; TPDF adds
+    ~1 LSB of shaped noise (reproducible RMS statistics, not sample equality)."""
+    from michi.application.audio_processing_service import AudioProcessingService
+    from tests.audio_phase2.test_processing_graphic_eq import _real_port
+
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    fixture = tmp_path / "dither24.wav"
+    _write_sine24(fixture)
+    supervisor, port = _real_port()
+    try:
+        port.activate()
+        port.set_volume(0)
+        port.load(fixture)
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            port.dispatch_pending()
+            try:
+                duration = port.query_duration()
+            except Exception:
+                duration = None
+            if isinstance(duration, int) and duration > 0:
+                break
+            time.sleep(0.02)
+        service = AudioProcessingService(
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
+            transport=port,
+        )
+        service.refresh_capabilities()
+
+        _install(service, port, supervisor, _graph(bits=24))
+        assert service.processing_truth()["readback_proven"] is True
+        port.seek(0)
+        dithered = port.capture_processing_output(1.0)
+        assert dithered["format"] == "S24LE"
+        assert dithered["rate_hz"] == 44100
+
+        _install(
+            service,
+            port,
+            supervisor,
+            _graph(mode=DitherMode.NONE, bits=24, revision=2),
+        )
+        port.seek(0)
+        truncated = port.capture_processing_output(1.0)
+        assert truncated["format"] == "S24LE"
+        # TPDF at 24 bits: ~1 LSB RMS/sqrt(12) ~= 3.4e-8; truncation of a
+        # sub-LSB input is silence.
+        assert dithered["rms"] > truncated["rms"] + 1e-8
+        assert dithered["rms"] > 2e-8
+    finally:
+        port.close()
+        supervisor.close()

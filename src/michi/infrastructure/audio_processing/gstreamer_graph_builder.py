@@ -379,6 +379,9 @@ def _build_dither_terminal(gst, node_id: str, properties: dict[str, Any]) -> lis
     convert = _make(gst, "audioconvert", f"{node_id}-dither")
     convert.set_property("dithering", dithering)
     convert.set_property("noise-shaping", 0)
+    # Default threshold is 20 bits: without this, a 24-bit terminal would
+    # silently SKIP dithering while still advertising the mode.
+    convert.set_property("dithering-threshold", int(bits))
     caps = _make(gst, "capsfilter", f"{node_id}-terminal")
     caps.set_property(
         "caps",

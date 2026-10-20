@@ -42,15 +42,33 @@ _HAS_GI = importlib.util.find_spec("gi") is not None
 class _IRStore:
     """Deterministic test provider (NOT the durable F13 store)."""
 
-    def __init__(self, kernels: dict[str, tuple[float, ...]], rate_hz: int = 44100):
+    def __init__(
+        self,
+        kernels: dict[str, tuple[float, ...]],
+        rate_hz: int = 44100,
+        *,
+        sha_override: str | None = None,
+        omit_sha: bool = False,
+        fail_load: bool = False,
+    ):
         self.kernels = dict(kernels)
         self.rate_hz = int(rate_hz)
+        self.sha_override = sha_override
+        self.omit_sha = omit_sha
+        self.fail_load = fail_load
 
     def load_float32_mono(self, ir_id: str) -> tuple[float, ...]:
+        if self.fail_load:
+            raise RuntimeError("IR provider failure")
         return self.kernels[ir_id]
 
     def metadata(self, ir_id: str) -> dict:
-        return {"rate_hz": self.rate_hz, "channels": 1}
+        result: dict = {"rate_hz": self.rate_hz, "channels": 1}
+        if not self.omit_sha:
+            coefficients = self.kernels[ir_id]
+            raw = struct.pack(f"<{len(coefficients)}f", *coefficients)
+            result["sha256"] = self.sha_override or hashlib.sha256(raw).hexdigest()
+        return result
 
 
 def _asset(coefficients, rate_hz: int = 44100):
@@ -385,3 +403,151 @@ def test_managed_fir_processes_media_and_reads_back(tmp_path, monkeypatch) -> No
             measured,
             expected_db,
         )
+
+
+def _write_impulse(
+    path, *, rate: int = 44100, amplitude: float = 0.5, offset_s: float = 0.25
+):
+    frames = rate * 2
+    data = bytearray(frames * 2 * 2)
+    sample = int(round(amplitude * 32767))
+    # A DENSE impulse train spans the whole fixture so any capture window
+    # contains several impulses regardless of the seek/preroll position.
+    step = int(0.02 * rate)
+    start = int(offset_s * rate)
+    for event in range(start, frames - step, step):
+        offset = event * 4
+        struct.pack_into("<h", data, offset, sample)
+        struct.pack_into("<h", data, offset + 2, sample)
+    with open(path, "wb") as handle:
+        import wave
+
+        with wave.open(handle, "wb") as wav:
+            wav.setnchannels(2)
+            wav.setsampwidth(2)
+            wav.setframerate(rate)
+            wav.writeframes(bytes(data))
+
+
+@pytest.mark.skipif(not _HAS_GI, reason="PyGObject/GStreamer unavailable")
+def test_fir_impulse_goldens_match_the_kernel_exactly(tmp_path, monkeypatch) -> None:
+    """An impulse convolved with a kernel yields the kernel: absolute peaks."""
+    from michi.application.audio_processing_service import AudioProcessingService
+    from michi.infrastructure.audio_processing.native_mapping import (
+        NativeProcessingMapping,
+    )
+    from tests.audio_phase2.test_processing_graphic_eq import _real_port
+
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    fixture = tmp_path / "impulse.wav"
+    _write_impulse(fixture, amplitude=0.5)
+    supervisor, port = _real_port()
+    try:
+        port.activate()
+        port.set_volume(0)
+        port.load(fixture)
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            port.dispatch_pending()
+            try:
+                duration = port.query_duration()
+            except Exception:
+                duration = None
+            if isinstance(duration, int) and duration > 0:
+                break
+            time.sleep(0.02)
+        service = AudioProcessingService(
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
+            transport=port,
+        )
+        service.refresh_capabilities()
+        cases = [
+            ((1.0,), 0.5),
+            ((0.5, 0.5), 0.25),
+            ((0.25, 0.5, 0.25), 0.25),
+            ((0.0, 0.0, 0.75), 0.375),
+            ((-1.0,), 0.5),
+        ]
+        for index, (coefficients, expected_peak) in enumerate(cases):
+            asset = _asset(coefficients)
+            store = _IRStore({asset.asset_id: coefficients})
+            _install(
+                service,
+                port,
+                supervisor,
+                _graph(asset, revision=index + 1),
+                asset,
+                store,
+            )
+            assert service.processing_truth()["readback_proven"] is True
+            port.seek(0)
+            metrics = port.capture_processing_output(0.5)
+            assert metrics["sample_peak"] == pytest.approx(
+                expected_peak, abs=1e-3
+            ), (coefficients, metrics["sample_peak"])
+    finally:
+        port.close()
+        supervisor.close()
+
+
+def _managed_fir_prepare(tmp_path, store, asset, monkeypatch):
+    from michi.domain.audio_processing import ProcessingProfile
+    from tests.audio_phase2.test_managed_productive_flow import (
+        _build_graph,
+        _close,
+        _prepare,
+        _select_managed,
+    )
+
+    if not importlib.util.find_spec("gi"):
+        pytest.skip("PyGObject unavailable")
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    graph, coordinator = _build_graph(tmp_path, ir_provider=store)
+    _select_managed(coordinator)
+    graph.set_processing_profile(
+        ProcessingProfile(
+            profile_id="dsp:fir-identity",
+            display_name="FIR identity",
+            graph=_graph(asset),
+        )
+    )
+    tokens, failures = _prepare(graph)
+    _close(graph)
+    return tokens, failures
+
+
+def test_provider_sha_mismatch_is_rejected_before_native(tmp_path, monkeypatch) -> None:
+    coefficients = (0.5, 0.5)
+    asset = _asset(coefficients)
+    bad_sha = _IRStore(
+        {asset.asset_id: coefficients}, sha_override="0" * 64
+    )
+    tokens, failures = _managed_fir_prepare(tmp_path, bad_sha, asset, monkeypatch)
+    assert tokens == []
+    assert failures and failures[0].code == "DSP_ASSET_HASH_MISMATCH", failures
+
+
+def test_provider_without_sha_is_rejected(tmp_path, monkeypatch) -> None:
+    coefficients = (0.5, 0.5)
+    asset = _asset(coefficients)
+    no_sha = _IRStore({asset.asset_id: coefficients}, omit_sha=True)
+    tokens, failures = _managed_fir_prepare(tmp_path, no_sha, asset, monkeypatch)
+    assert tokens == []
+    assert (
+        failures and failures[0].code == "DSP_FIR_ASSET_HASH_UNAVAILABLE"
+    ), failures
+
+
+def test_provider_coefficients_that_do_not_match_the_declared_sha(
+    tmp_path, monkeypatch
+) -> None:
+    declared = (0.5, 0.5)
+    asset = _asset(declared)
+    changed = _IRStore({asset.asset_id: (0.25, 0.75)})
+    # Metadata declares the sha of the DECLARED kernel, but load returns a
+    # different kernel: the computed coefficients hash must fail.
+    changed.sha_override = asset.sha256
+    tokens, failures = _managed_fir_prepare(tmp_path, changed, asset, monkeypatch)
+    assert tokens == []
+    assert failures and failures[0].code == "FIR_KERNEL_HASH_MISMATCH", failures

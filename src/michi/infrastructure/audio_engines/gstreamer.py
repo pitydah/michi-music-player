@@ -1335,6 +1335,8 @@ _CAPTURE_FORMAT_CODECS = {
     "F32LE": ("f", 1.0),
     "S32LE": ("i", float(1 << 31)),
     "S16LE": ("h", float(1 << 15)),
+    # Packed 24-bit: decoded explicitly (no array typecode exists for it).
+    "S24LE": ("S24", float(1 << 23)),
 }
 
 
@@ -2044,7 +2046,7 @@ class GStreamerAudioPort(AudioPort):
         for typecode, divisor, channels, data in chunks:
             if channels <= 0:
                 continue
-            itemsize = array.array(typecode).itemsize
+            itemsize = 3 if typecode == "S24" else array.array(typecode).itemsize
             frame_size = itemsize * channels
             usable = len(data) - (len(data) % frame_size)
             partial_bytes += len(data) - usable
@@ -2063,8 +2065,14 @@ class GStreamerAudioPort(AudioPort):
             elif channels != channel_count:
                 # A mid-window layout change is never mixed into one analysis.
                 continue
-            values = array.array(typecode)
-            values.frombytes(data[:usable])
+            if typecode == "S24":
+                values = [
+                    int.from_bytes(data[index : index + 3], "little", signed=True)
+                    for index in range(0, usable, 3)
+                ]
+            else:
+                values = array.array(typecode)
+                values.frombytes(data[:usable])
             frame_count = len(values) // channels
             frames_analyzed += frame_count
             for frame in range(frame_count):
@@ -2662,7 +2670,7 @@ class GStreamerAudioPort(AudioPort):
                 return gst.PadProbeReturn.OK
             typecode, divisor = codec
             channels = max(1, int(state["channels"] or 1))
-            itemsize = array.array(typecode).itemsize
+            itemsize = 3 if typecode == "S24" else array.array(typecode).itemsize
             frames = buf.get_size() // itemsize // channels
             state["frames_observed"] += frames
             if channels > max_channels:

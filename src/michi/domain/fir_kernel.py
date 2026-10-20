@@ -135,14 +135,27 @@ def verify_fir_kernel_coefficients(
     """
     if coefficients is None:
         raise FirKernelError("FIR_KERNEL_EMPTY", "IR coefficients are missing")
-    values = tuple(coefficients)
+    limit = min(int(max_taps), MAX_FIR_TAPS)
+    # NEVER materialize an unbounded iterable: bounded consumption only.
+    if hasattr(coefficients, "__len__"):
+        values = tuple(coefficients)
+        if len(values) > limit:
+            raise FirKernelError(
+                "FIR_KERNEL_TOO_LARGE",
+                f"{len(values)} taps exceeds the authorized budget",
+            )
+    else:
+        collected = []
+        for value in coefficients:
+            collected.append(value)
+            if len(collected) > limit:
+                raise FirKernelError(
+                    "FIR_KERNEL_TOO_LARGE",
+                    f"more than {limit} taps exceeds the authorized budget",
+                )
+        values = tuple(collected)
     if not values:
         raise FirKernelError("FIR_KERNEL_EMPTY", "IR has no taps")
-    if len(values) > min(int(max_taps), MAX_FIR_TAPS):
-        raise FirKernelError(
-            "FIR_KERNEL_TOO_LARGE",
-            f"{len(values)} taps exceeds the authorized budget",
-        )
     raw = struct.pack(f"<{len(values)}f", *values)
     return verify_fir_kernel(
         raw,
