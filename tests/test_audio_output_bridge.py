@@ -42,8 +42,9 @@ def test_v60_20_audio_output_bridge_tracks_playback_output_transitions() -> None
 
 
 class _Session:
-    def __init__(self, mode: str) -> None:
+    def __init__(self, mode: str, active_execution: str | None = None) -> None:
         self.mode = mode
+        self.active_execution_id = active_execution
         self.subscribers: list = []
 
     def subscribe_changed(self, callback) -> None:
@@ -65,40 +66,45 @@ class _Session:
         )
 
 
-def _managed_bridge(mode: str = "managed"):
+def _event(execution_id, state, *, plan_id="dsp:plan", policy=("dsp",)):
+    from michi.domain.signal_truth import OutputFamilyEvent
+
+    return OutputFamilyEvent(
+        family="managed",
+        state=state,
+        device_id="dev:dac",
+        execution_id=execution_id,
+        processing_plan_id=plan_id,
+        transform_policy=policy,
+        runtime_identity={
+            "negotiated": {"format": "S16LE", "rate_hz": 48000, "channels": 2}
+        },
+        bit_perfect=False,
+    )
+
+
+def _bridge(mode="managed", active="exec:1", events=None):
     from michi.domain.signal_truth import (
-        OutputFamilyEvent,
         OutputFamilyState,
         SignalTruthRecorder,
     )
 
     recorder = SignalTruthRecorder()
-    recorder.record_output_family_event(
-        OutputFamilyEvent(
-            family="managed",
-            state=OutputFamilyState.RUNNING,
-            device_id="dev:dac",
-            execution_id="exec:1",
-            processing_plan_id="dsp:plan",
-            transform_policy=("dsp", "rate_change"),
-            runtime_identity={
-                "negotiated": {"format": "S16LE", "rate_hz": 48000, "channels": 2}
-            },
-            bit_perfect=False,
-        )
-    )
+    for event in events or [_event("exec:1", OutputFamilyState.RUNNING)]:
+        recorder.record_output_family_event(event)
     return AudioOutputBridge(
         VolumeTruth(),
         ObservablePlayback(),
         recorder,
-        output_session=_Session(mode),
+        output_session=_Session(mode, active),
     )
 
 
 def test_managed_signal_path_says_processed_never_direct() -> None:
-    bridge = _managed_bridge("managed")
+    bridge = _bridge()
     assert bridge.signalPathKind == "processed"
     assert bridge.processed is True
+    assert bridge.processedActive is True
     # Processing never proves bit-perfect.
     assert bridge.processingBitPerfect is False
     stages = bridge._projection["signalPath"]
@@ -107,14 +113,91 @@ def test_managed_signal_path_says_processed_never_direct() -> None:
     assert "managed_device" in kinds
     assert all(kind != "direct" for kind in kinds if kind)
     processing = next(stage for stage in stages if stage.get("kind") == "processed")
-    assert processing["summary"] == "dsp + rate_change"
+    assert processing["summary"] == "dsp"
     assert processing["rateHz"] == 48000
     assert processing["format"] == "S16LE"
     assert processing["detail"] == "dsp:plan"
 
 
+def test_ready_managed_execution_is_prepared_not_confirmed_playback() -> None:
+    from michi.domain.signal_truth import OutputFamilyState
+
+    bridge = _bridge(events=[_event("exec:1", OutputFamilyState.READY)])
+    assert bridge.signalPathKind == "processed_ready"
+    assert bridge.processed is True
+    assert bridge.processedActive is False
+    assert bridge.processingBitPerfect is None
+
+
+def test_terminal_event_retires_the_execution_even_with_older_running() -> None:
+    from michi.domain.signal_truth import OutputFamilyState
+
+    bridge = _bridge(
+        events=[
+            _event("exec:1", OutputFamilyState.RUNNING),
+            _event("exec:1", OutputFamilyState.RELEASED),
+        ]
+    )
+    # The session still reports the (now stale) identity: the terminal event
+    # must win. Never PROCESSED.
+    assert bridge.signalPathKind != "processed"
+    assert bridge.processed is False
+    assert bridge.processedActive is False
+    assert bridge.processingBitPerfect is None
+
+
+def test_new_execution_supersedes_and_late_events_cannot_resurrect_a() -> None:
+    from michi.domain.signal_truth import OutputFamilyState
+
+    bridge = _bridge(
+        active="exec:B",
+        events=[
+            _event("exec:A", OutputFamilyState.RUNNING, plan_id="dsp:A"),
+            _event("exec:B", OutputFamilyState.RUNNING, plan_id="dsp:B"),
+            # A late RUNNING for A arrives AFTER B started.
+            _event("exec:A", OutputFamilyState.RUNNING, plan_id="dsp:A"),
+        ],
+    )
+    processing = next(
+        stage
+        for stage in bridge._projection["signalPath"]
+        if stage.get("kind") == "processed"
+    )
+    assert processing["detail"] == "dsp:B"
+    assert bridge.signalPathKind == "processed"
+
+
+def test_managed_mode_without_an_active_execution_is_not_processed() -> None:
+    from michi.domain.signal_truth import OutputFamilyState
+
+    bridge = _bridge(
+        active=None,
+        events=[_event("exec:1", OutputFamilyState.RUNNING)],
+    )
+    assert bridge.signalPathKind != "processed"
+    assert bridge.processed is False
+    assert bridge.processingBitPerfect is None
+
+
+def test_historical_managed_event_during_direct_playback_is_direct() -> None:
+    from michi.domain.signal_truth import OutputFamilyState
+
+    bridge = _bridge(
+        mode="direct",
+        active=None,
+        events=[_event("exec:1", OutputFamilyState.RUNNING)],
+    )
+    assert bridge.signalPathKind == "direct"
+    assert bridge.processed is False
+    assert bridge.processingBitPerfect is None
+
+
 def test_direct_route_is_not_classified_processed() -> None:
-    bridge = _managed_bridge("direct")
+    bridge = _bridge(
+        mode="direct",
+        active=None,
+        events=[],
+    )
     assert bridge.signalPathKind == "direct"
     assert bridge.processed is False
     assert bridge.processingBitPerfect is None

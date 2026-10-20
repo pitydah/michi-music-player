@@ -605,6 +605,24 @@ class OutputSessionService:
         return self._mode
 
     @property
+    def active_execution_id(self) -> str | None:
+        """Execution instance of the CURRENTLY COMMITTED/READY Managed run.
+
+        None when no Managed execution is active. This is the authority the
+        presentation layer must correlate against; a historical RUNNING event
+        is never sufficient.
+        """
+        prepared = self._managed_prepared
+        if self._mode != "managed" or prepared is None:
+            return None
+        if self._state not in (
+            OutputSessionState.READY,
+            OutputSessionState.RUNNING,
+        ):
+            return None
+        return prepared.execution_id
+
+    @property
     def volume_policy(self) -> VolumePolicy | None:
         """Resolved immutable Direct/Managed policy; Shared has none."""
         if self._mode == "direct" and self._plan:

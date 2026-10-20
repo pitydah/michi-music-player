@@ -445,17 +445,20 @@ class AudioOutputBridge(QObject):
         )
         managed_event = self._managed_event(mode)
         signal_path = self._signal_path(truth, managed_event=managed_event)
-        signal_path_kind = (
-            "processed"
-            if managed_event is not None
-            else "direct"
-            if mode == "direct"
-            else "shared"
-            if mode == "shared"
-            else "lost"
-            if mode == "lost"
-            else "unknown"
-        )
+        if managed_event is not None:
+            signal_path_kind = (
+                "processed"
+                if managed_event.state.value == "running"
+                else "processed_ready"
+            )
+        elif mode == "direct":
+            signal_path_kind = "direct"
+        elif mode == "shared":
+            signal_path_kind = "shared"
+        elif mode == "lost":
+            signal_path_kind = "lost"
+        else:
+            signal_path_kind = "unknown"
         can_use_direct = bool(
             self._engines is not None
             and self._engines.state.active_engine_id is AudioEngineId.GSTREAMER
@@ -618,11 +621,14 @@ class AudioOutputBridge(QObject):
             # AP2-F06 exit gate: the presentation model says PROCESSED, never
             # Direct. The F11 UI renders these rows; it does not reclassify.
             "signalPathKind": signal_path_kind,
-            "processed": signal_path_kind == "processed",
-            # Tri-state: False when a processing execution is effective, None
-            # otherwise. Processing NEVER proves bit-perfect.
+            "processed": signal_path_kind in ("processed", "processed_ready"),
+            # Only a RUNNING managed execution is CONFIRMED playback.
+            "processedActive": signal_path_kind == "processed",
+            # Tri-state: False when a processed execution is ACTIVE (it
+            # definitively transforms samples), None otherwise. A prepared or
+            # absent route is NOT a preservation proof, so never True.
             "processingBitPerfect": (
-                managed_event.bit_perfect if managed_event is not None else None
+                False if signal_path_kind == "processed" else None
             ),
             "reconnecting": reconnecting,
             "lastFailureCode": last_failure_code or "",
@@ -943,15 +949,25 @@ class AudioOutputBridge(QObject):
         }
 
     def _managed_event(self, mode: str | None):
+        """The CURRENT managed execution, never a historical one.
+
+        Authority: the session's active execution instance. The LAST event of
+        that execution must still be READY/RUNNING; a terminal event retires it
+        even when older RUNNING events exist. A late RUNNING event from another
+        execution can never resurrect it.
+        """
         if mode != "managed" or self._signal_truth is None:
             return None
-        for event in reversed(self._signal_truth.output_family_events):
-            if event.family == "managed" and event.state.value in (
-                "ready",
-                "running",
-            ):
-                return event
-        return None
+        active_execution = getattr(self._output_session, "active_execution_id", None)
+        if not active_execution:
+            return None
+        latest = None
+        for event in self._signal_truth.output_family_events:
+            if event.family == "managed" and event.execution_id == active_execution:
+                latest = event
+        if latest is None or latest.state.value not in ("ready", "running"):
+            return None
+        return latest
 
     def _managed_stages(self, event) -> tuple[dict[str, Any], dict[str, Any]]:
         runtime = dict(event.runtime_identity or {})
@@ -1223,6 +1239,11 @@ class AudioOutputBridge(QObject):
 
     signalPathKind = Property(
         str, lambda self: self._get("signalPathKind", "unknown"), notify=state_changed
+    )
+    processedActive = Property(
+        bool,
+        lambda self: bool(self._get("processedActive", False)),
+        notify=state_changed,
     )
     processed = Property(
         bool, lambda self: bool(self._get("processed", False)), notify=state_changed
