@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "6d27972",
-  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 DSP combination verification added (Preamp + Graphic EQ + PEQ + explicit Resample, real-host readback at 48 kHz). FIR and terminal dither are BLOCKED by phase ownership/terminal authority (no partial code). The session diagnostic capture remains ISOLATED. CI is BLOCKED by a runner-level QtMultimedia segfault in the pre-existing converge_startup path (persists with QT_MEDIA_BACKEND=ffmpeg; reproduced in DAC-only subsets). Local full suite green. F06 stays READY.",
+  "repo_head": "d13fbc8",
+  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 lazy QtMultimedia objects eliminated the startup/convergence segfaults (DAC runtime subset green). The remaining CI crash is isolated to QMediaPlayer() creation in the REAL Qt contract test (runner QtMultimedia), not to startup or to the new DSP code. FIR and terminal dither remain formally blocked; session diagnostics remain isolated. Local suites are green. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -251,7 +251,7 @@
     "invariants": "no prepared-plan growth, no measurement residue, clean idle release"
   },
   "zero_half_finished": {
-    "WU1_qt_convergence": "PARTIAL \u2014 non-reentrant owner convergence implemented; CI BLOCKED by runner QtMultimedia segfault",
+    "WU1_qt_convergence": "PARTIAL \u2014 lazy objects + non-reentrant convergence fixed startup crashes; CI blocked by runner QMediaPlayer creation in the real Qt contract test",
     "WU2_continuity": "CLOSED_VERIFIED (real monotonic_ns in the probe; both-side requirement; lab EOS => POSITION_PRESERVED)",
     "WU3_diagnostics": "REVERTED_OR_ISOLATED (passive primitive + fence; session capture needs a dedicated diagnostic transport)",
     "WU4_fir": "BLOCKED_BY_AUTHORITY (R11-F13 owns ir_asset_store.py; F06 has no authorized store file; no code)",
@@ -286,17 +286,23 @@
     "proof": "host-dead managed prepare fails typed, releases cleanly; full suite green"
   },
   "ci_status": {
-    "state": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (runner)",
-    "exact_head": "6d27972b56f013a4bbcb543570b478a79f72e24a",
-    "failure": "Fatal Python error: Segmentation fault in qt_backend.__init__ (QMediaPlayer/QAudioOutput creation) during converge_startup",
-    "reproduced": "DAC-only subsets without audio_phase2; persists with QT_MEDIA_BACKEND=ffmpeg",
-    "local": "DAC/phase2/architecture green (967) and full suite 5880/4/0",
-    "gates": "unchanged; nothing skipped or disabled"
+    "state": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (runner QtMultimedia)",
+    "exact_head": "d13fbc80010bc1aaa418df4c72cad77f9a2e658a",
+    "startup_crash": "FIXED by lazy QtMultimedia objects (converge_startup no longer creates QMediaPlayer)",
+    "remaining_crash": "QMediaPlayer() creation in tests/test_audio_engine_conformance.py::test_qt_full_contract (the intentional real Qt contract test); this is the runner's QtMultimedia backend, not lazy/startup or F06 code",
+    "attempted": "QT_MEDIA_BACKEND=ffmpeg, offscreen platform, lazy native objects",
+    "not_skipped": "the real Qt contract test still runs; no gate weakened",
+    "local": "Qt backend + DAC + engine composition + F42 green (1140 passed, 1 skipped)"
   },
   "combinations": {
     "test": "tests/audio_phase2/test_processing_combinations.py",
     "order": "Preamp -> Graphic EQ -> Parametric EQ -> Resample",
     "readback": "per-node native shapes + target_rate 48k + native quality 8",
     "real_host": "combined graph installed, EFFECTIVE with readback proven, negotiated 48 kHz"
+  },
+  "qt_runtime": {
+    "lazy_objects": "QtMultimediaBackend constructs QMediaPlayer/QAudioOutput on FIRST media use; subscriptions/volume are wired at creation",
+    "effect": "headless engines that only open/close no longer enumerate devices or segfault",
+    "contract_test_crash": "runner QMediaPlayer creation (real Qt contract test) remains"
   }
 }
