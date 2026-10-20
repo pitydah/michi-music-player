@@ -483,9 +483,10 @@ def test_fir_impulse_goldens_match_the_kernel_exactly(tmp_path, monkeypatch) -> 
             assert service.processing_truth()["readback_proven"] is True
             port.seek(0)
             metrics = port.capture_processing_output(0.5)
-            assert metrics["sample_peak"] == pytest.approx(
-                expected_peak, abs=1e-3
-            ), (coefficients, metrics["sample_peak"])
+            assert metrics["sample_peak"] == pytest.approx(expected_peak, abs=1e-3), (
+                coefficients,
+                metrics["sample_peak"],
+            )
     finally:
         port.close()
         supervisor.close()
@@ -520,9 +521,7 @@ def _managed_fir_prepare(tmp_path, store, asset, monkeypatch):
 def test_provider_sha_mismatch_is_rejected_before_native(tmp_path, monkeypatch) -> None:
     coefficients = (0.5, 0.5)
     asset = _asset(coefficients)
-    bad_sha = _IRStore(
-        {asset.asset_id: coefficients}, sha_override="0" * 64
-    )
+    bad_sha = _IRStore({asset.asset_id: coefficients}, sha_override="0" * 64)
     tokens, failures = _managed_fir_prepare(tmp_path, bad_sha, asset, monkeypatch)
     assert tokens == []
     assert failures and failures[0].code == "DSP_ASSET_HASH_MISMATCH", failures
@@ -534,9 +533,7 @@ def test_provider_without_sha_is_rejected(tmp_path, monkeypatch) -> None:
     no_sha = _IRStore({asset.asset_id: coefficients}, omit_sha=True)
     tokens, failures = _managed_fir_prepare(tmp_path, no_sha, asset, monkeypatch)
     assert tokens == []
-    assert (
-        failures and failures[0].code == "DSP_FIR_ASSET_HASH_UNAVAILABLE"
-    ), failures
+    assert failures and failures[0].code == "DSP_FIR_ASSET_HASH_UNAVAILABLE", failures
 
 
 def test_provider_coefficients_that_do_not_match_the_declared_sha(

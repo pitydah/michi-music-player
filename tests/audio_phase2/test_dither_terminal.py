@@ -247,10 +247,15 @@ def test_managed_dither_executes_on_the_selected_binding(tmp_path, monkeypatch) 
         _close(graph)
 
 
-def _write_sine24(path, *, rate: int = 44100, amplitude: float = 5e-8,
-                  seconds: float = 2.5, frequency_hz: float = 1000.0) -> None:
+def _write_sine24(
+    path,
+    *,
+    rate: int = 44100,
+    amplitude: float = 5e-8,
+    seconds: float = 2.5,
+    frequency_hz: float = 1000.0,
+) -> None:
     import math
-    import struct
     import wave
 
     frames = int(rate * seconds)

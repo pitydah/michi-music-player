@@ -142,7 +142,6 @@ def test_full_chain_compiles_in_canonical_order() -> None:
 def test_full_chain_executes_on_the_real_host(tmp_path, monkeypatch) -> None:
     from michi.application.audio_processing_service import AudioProcessingService
     from tests.audio_phase2.test_processing_graphic_eq import (
-        _capture,
         _real_port,
         _write_multitone,
     )
