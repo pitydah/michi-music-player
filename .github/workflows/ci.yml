@@ -171,8 +171,16 @@ jobs:
 
       - name: Provide a headless audio device for QtMultimedia
         run: |
-          sudo apt-get install -y -qq pulseaudio pulseaudio-utils libpulse0
+          sudo apt-get install -y -qq pulseaudio pulseaudio-utils libpulse0 \
+            pipewire pipewire-pulse wireplumber
+          mkdir -p ~/.config/pipewire
+          printf 'context.properties = {}\n' > ~/.config/pipewire/client.conf
+          export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
           pulseaudio --start --exit-idle-time=-1 --daemonize=yes || true
+          pipewire --version
+          pipewire > "$RUNNER_TEMP/pipewire.log" 2>&1 &
+          sleep 1
+          wireplumber > "$RUNNER_TEMP/wireplumber.log" 2>&1 &
           sleep 1
           pactl load-module module-null-sink sink_name=michi_null || true
           pactl set-default-sink michi_null || true
@@ -185,10 +193,11 @@ jobs:
           QT_MEDIA_BACKEND: ffmpeg
         run: |
           set +e
-          python scripts/qt_multimedia_probe.py > qt_probe.json 2> qt_probe.err
-          echo "probe_exit=$?" | tee -a qt_probe.err
-          cat qt_probe.json 2>/dev/null || true
-          cat qt_probe.err 2>/dev/null || true
+          python scripts/qt_multimedia_probe.py \
+            > "$RUNNER_TEMP/qt_probe.json" 2> "$RUNNER_TEMP/qt_probe.err"
+          echo "probe_exit=$?" | tee -a "$RUNNER_TEMP/qt_probe.err"
+          cat "$RUNNER_TEMP/qt_probe.json" 2>/dev/null || true
+          cat "$RUNNER_TEMP/qt_probe.err" 2>/dev/null || true
 
       - name: Upload QtMultimedia probe evidence
         if: always()
@@ -196,8 +205,10 @@ jobs:
         with:
           name: qt-multimedia-probe
           path: |
-            qt_probe.json
-            qt_probe.err
+            ${{ runner.temp }}/qt_probe.json
+            ${{ runner.temp }}/qt_probe.err
+            ${{ runner.temp }}/pipewire.log
+            ${{ runner.temp }}/wireplumber.log
           if-no-files-found: ignore
 
       - name: Run commit-bound DAC software closure verifier
