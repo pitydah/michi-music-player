@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "d13fbc8",
-  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 lazy QtMultimedia objects eliminated the startup/convergence segfaults (DAC runtime subset green). The remaining CI crash is isolated to QMediaPlayer() creation in the REAL Qt contract test (runner QtMultimedia), not to startup or to the new DSP code. FIR and terminal dither remain formally blocked; session diagnostics remain isolated. Local suites are green. F06 stays READY.",
+  "repo_head": "41ea3aa",
+  "verdict": "IN_PROGRESS_CORRECTIVE \u2014 FIR/F13 ownership reconciled by spec amendment (F06: stateless hash-verified kernel + execution seams; F13: durable IR store), terminal-dither authority defined, and the FIR kernel primitive implemented with fail-closed goldens. The runner QtMultimedia segfault persists in the REAL Qt contract test despite lazy objects, ffmpeg backend, offscreen and a PulseAudio null sink; CI remains BLOCKED by the runner. Local suites green. F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -243,8 +243,8 @@
     "no_live_monitoring_claim": "captures remain lab-only instrumentation"
   },
   "dither": {
-    "status": "PENDING (deliberate)",
-    "blocker": "no terminal-format authority binds the dither target to the sink format on every route; Shared negotiates its own sink caps (double-conversion risk)"
+    "authority": "DEFINED \u2014 eligible only when plan output_format == Managed sink terminal format with no further conversion; Shared unsupported; explicit DitherNode; unproven format fails closed",
+    "implementation": "PENDING"
   },
   "lifecycle_stress": {
     "test": "8 repeated managed transitions (preamp/PEQ) with unique instances",
@@ -287,12 +287,14 @@
   },
   "ci_status": {
     "state": "BLOCKED_BY_AUTHORITY_OR_HARDWARE (runner QtMultimedia)",
-    "exact_head": "d13fbc80010bc1aaa418df4c72cad77f9a2e658a",
-    "startup_crash": "FIXED by lazy QtMultimedia objects (converge_startup no longer creates QMediaPlayer)",
-    "remaining_crash": "QMediaPlayer() creation in tests/test_audio_engine_conformance.py::test_qt_full_contract (the intentional real Qt contract test); this is the runner's QtMultimedia backend, not lazy/startup or F06 code",
-    "attempted": "QT_MEDIA_BACKEND=ffmpeg, offscreen platform, lazy native objects",
-    "not_skipped": "the real Qt contract test still runs; no gate weakened",
-    "local": "Qt backend + DAC + engine composition + F42 green (1140 passed, 1 skipped)"
+    "attempts": [
+      "lazy QMediaPlayer/QAudioOutput (fixed startup/convergence crashes; dac-domain-runtime green)",
+      "QT_MEDIA_BACKEND=ffmpeg",
+      "QT_QPA_PLATFORM=offscreen",
+      "PulseAudio + null sink installed/started before the verifier"
+    ],
+    "remaining_crash": "QMediaPlayer() creation in tests/test_audio_engine_conformance.py::test_qt_full_contract (real Qt contract). Runner-level; test not skipped, gates unchanged",
+    "exact_head": "41ea3aa"
   },
   "combinations": {
     "test": "tests/audio_phase2/test_processing_combinations.py",
@@ -304,5 +306,12 @@
     "lazy_objects": "QtMultimediaBackend constructs QMediaPlayer/QAudioOutput on FIRST media use; subscriptions/volume are wired at creation",
     "effect": "headless engines that only open/close no longer enumerate devices or segfault",
     "contract_test_crash": "runner QMediaPlayer creation (real Qt contract test) remains"
+  },
+  "fir": {
+    "ownership": "RECONCILED \u2014 F06 owns domain/fir_kernel.py + stateless verification; R11-F13 keeps ir_asset_store.py/migrations/durable assets",
+    "kernel_primitive": "verify_fir_kernel: complete SHA-256, float32-LE mono, bounded taps, finite, rate/channels validation, canonical fingerprint",
+    "tests": "9 goldens (identity/gain/low-pass accepted; hash/malformed/empty/NaN/Inf/bounds/rate/channels/non-hex rejected)",
+    "execution": "PENDING \u2014 compiler/mapping/builder/readback vertical with an injected ImpulseResponseStorePort; without a store FIR fails closed DSP_FIR_STORE_UNAVAILABLE",
+    "user_exposure": "none (verified primitive, no half-enabled feature)"
   }
 }
