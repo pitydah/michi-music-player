@@ -169,6 +169,15 @@ jobs:
           pip install -e ".[test]"
           pip install PyGObject
 
+      - name: Provide a headless audio device for QtMultimedia
+        run: |
+          sudo apt-get install -y -qq pulseaudio pulseaudio-utils libpulse0
+          pulseaudio --start --exit-idle-time=-1 --daemonize=yes || true
+          sleep 1
+          pactl load-module module-null-sink sink_name=michi_null || true
+          pactl set-default-sink michi_null || true
+          pactl info || true
+
       - name: Run commit-bound DAC software closure verifier
         env:
           QT_QPA_PLATFORM: offscreen
