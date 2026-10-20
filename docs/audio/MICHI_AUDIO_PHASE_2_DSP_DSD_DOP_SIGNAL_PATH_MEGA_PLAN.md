@@ -28754,6 +28754,7 @@ CREATE:
 src/michi/domain/managed_pcm_output.py
 src/michi/application/managed_pcm_output_planner.py
 src/michi/infrastructure/audio_output/managed_pcm_executor.py
+src/michi/domain/fir_kernel.py                            [stateless hash-verified kernel]
 tests/audio_phase2/test_managed_pcm_output.py
 ```
 MODIFY:
@@ -28804,6 +28805,33 @@ truth provenance (latency/headroom observability) and the ALSA->GStreamer
 carrier mapping already used by Direct. Those exact files are authorized
 above with no Direct semantic change; the frozen F05 transaction semantics
 are preserved.
+
+## Governance note — FIR / terminal-dither authority (2026-10-19)
+F06 and F13 ownership are reconciled WITHOUT touching F13's reserved
+persistence:
+
+```text
+F06 OWNS:   stateless FIR kernel verification (domain/fir_kernel.py),
+            compiler/mapping/builder/readback seams, Managed execution
+F13 OWNS:   ir_asset_store.py, migrations, durable asset persistence
+F06 MUST:   consume an injected ImpulseResponseStorePort; fail closed with
+            DSP_FIR_STORE_UNAVAILABLE when no store is composed
+F06 MUST:   verify the complete SHA-256 of the float32-LE mono IR bytes,
+            reject non-finite/empty/oversized kernels, require IR rate and
+            channels to match the plan, never load an IR by path from QML,
+            and read the installed kernel fingerprint back before EFFECTIVE
+```
+
+Terminal dither authority:
+
+```text
+Eligible ONLY when the compiled plan output_format equals the Managed sink's
+negotiated terminal format and the sink performs no further representation
+conversion. Shared has no proven terminal contract: terminal dither is
+UNSUPPORTED there. Dither is never automatic; an explicit DitherNode is
+required, with native property readback. Unproven terminal format => fail
+closed (no partial dither).
+```
 
 ## Implementation contract
 Implement `OutputPathPreference.MANAGED` as a real specific-DAC processed path;
