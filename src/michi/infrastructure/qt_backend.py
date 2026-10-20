@@ -26,10 +26,17 @@ class QtMultimediaBackend(AudioPort):
     """Infrastructure adapter wrapping Qt Multimedia."""
 
     def __init__(self) -> None:
-        self._player = QMediaPlayer()
-        self._audio_output = QAudioOutput()
-        self._player.setAudioOutput(self._audio_output)
-        self._audio_output.setVolume(1.0)
+        # LAZY native media objects: opening the engine must NOT enumerate
+        # audio devices or create QtMultimedia objects. They are created on
+        # first real media use. This also avoids QtMultimedia backend crashes
+        # in headless engines that are opened but never used for playback.
+        self._player: QMediaPlayer | None = None
+        self._audio_output: QAudioOutput | None = None
+        self._pending_volume = 100
+        self._pending_muted = False
+        self._pos_connected = False
+        self._dur_connected = False
+        self._error_connected = False
         self._eom: list[Callable[[], None]] = []
         self._pos: list[Callable[[int], None]] = []
         self._dur: list[Callable[[int], None]] = []
@@ -46,6 +53,39 @@ class QtMultimediaBackend(AudioPort):
         # source identity against the player's ACTUAL current source.
         self._closed = False
 
+    def _ensure_media(self) -> QMediaPlayer:
+        """Create the native player on FIRST USE (never at construction)."""
+        self._require_open()
+        if self._player is None:
+            player = QMediaPlayer()
+            output = QAudioOutput()
+            player.setAudioOutput(output)
+            output.setVolume(self._pending_volume / 100.0)
+            output.setMuted(self._pending_muted)
+            self._player = player
+            self._audio_output = output
+            self._wire_all()
+        return self._player
+
+    def _wire_all(self) -> None:
+        if self._player is None:
+            return
+        if self._eom or self._acc or self._rej:
+            self._player.mediaStatusChanged.connect(self._on_media_status)
+            self._media_status_connected = True
+        if self._rej:
+            self._player.errorOccurred.connect(self._on_error)
+            self._error_connected = True
+        if self._pstate:
+            self._player.playbackStateChanged.connect(self._on_playback_state_changed)
+            self._playback_state_connected = True
+        if self._pos:
+            self._player.positionChanged.connect(self._on_position_changed)
+            self._pos_connected = True
+        if self._dur:
+            self._player.durationChanged.connect(self._on_duration_changed)
+            self._dur_connected = True
+
     def _require_open(self) -> None:
         """KCR-008: a closed Qt runtime rejects every command/query with a
         typed AudioTransportUnavailableError — never silent success."""
@@ -53,11 +93,13 @@ class QtMultimediaBackend(AudioPort):
             raise AudioTransportUnavailableError("Qt multimedia backend is closed")
 
     def load(self, file_path: Path) -> None:
-        self._require_open()
+        self._ensure_media()
         self._current_source = file_path
         self._player.setSource(QUrl.fromLocalFile(str(file_path)))
 
     def backend_state(self) -> str | None:
+        if self._player is None:
+            return None
         try:
             state = self._player.playbackState()
         except RuntimeError:
@@ -69,19 +111,18 @@ class QtMultimediaBackend(AudioPort):
         }.get(state)
 
     def play(self) -> None:
-        self._require_open()
-        self._player.play()
+        self._ensure_media().play()
 
     def pause(self) -> None:
-        self._require_open()
-        self._player.pause()
+        self._ensure_media().pause()
 
     def resume(self) -> None:
-        self._require_open()
-        self._player.play()
+        self._ensure_media().play()
 
     def stop(self) -> None:
         self._require_open()
+        if self._player is None:
+            return
         if self._player.playbackState() != QMediaPlayer.StoppedState:
             self._player.stop()
 
@@ -92,6 +133,10 @@ class QtMultimediaBackend(AudioPort):
         `_closed` still False so a SECOND close retries the remaining
         teardown."""
         if self._closed:
+            return
+        if self._player is None:
+            self._closed = True
+            self._current_source = None
             return
         self._closing = True
         self._player.stop()
@@ -117,32 +162,37 @@ class QtMultimediaBackend(AudioPort):
 
     def set_volume(self, value: int) -> None:
         self._require_open()
-        self._audio_output.setVolume(value / 100.0)
+        self._pending_volume = int(value)
+        if self._audio_output is not None:
+            self._audio_output.setVolume(self._pending_volume / 100.0)
 
     def set_muted(self, muted: bool) -> None:
         self._require_open()
-        self._audio_output.setMuted(muted)
+        self._pending_muted = bool(muted)
+        if self._audio_output is not None:
+            self._audio_output.setMuted(self._pending_muted)
 
     def seek(self, position_ms: int) -> None:
-        self._require_open()
-        self._player.setPosition(position_ms)
+        self._ensure_media().setPosition(position_ms)
 
     def position(self) -> int:
-        self._require_open()
-        return self._player.position()
+        return self._ensure_media().position()
 
     def duration(self) -> int:
-        self._require_open()
-        return self._player.duration()
+        return self._ensure_media().duration()
 
     # ── media status wiring (shared by eom/accepted/rejected) ─────
 
     def _ensure_media_status_wired(self) -> None:
+        if self._player is None:
+            return
         if not self._media_status_connected and (self._eom or self._acc or self._rej):
             self._player.mediaStatusChanged.connect(self._on_media_status)
             self._media_status_connected = True
 
     def _ensure_media_status_unwired(self) -> None:
+        if self._player is None:
+            return
         if self._media_status_connected and not (self._eom or self._acc or self._rej):
             self._player.mediaStatusChanged.disconnect(self._on_media_status)
             self._media_status_connected = False
@@ -202,16 +252,18 @@ class QtMultimediaBackend(AudioPort):
             return
         was_empty = not self._rej
         self._rej.append(cb)
-        if was_empty:
+        if was_empty and self._player is not None:
             self._player.errorOccurred.connect(self._on_error)
+            self._error_connected = True
         self._ensure_media_status_wired()
 
     def unsubscribe_media_rejected(self, cb: Callable[[Path, str], None]) -> None:
         if cb not in self._rej:
             return
         self._rej.remove(cb)
-        if not self._rej:
+        if not self._rej and self._player is not None and self._error_connected:
             self._player.errorOccurred.disconnect(self._on_error)
+            self._error_connected = False
         self._ensure_media_status_unwired()
 
     def _on_error(self, error: QMediaPlayer.Error, error_string: str) -> None:
@@ -229,11 +281,15 @@ class QtMultimediaBackend(AudioPort):
     # (which implies StoppedState per the Qt docs) precedes PlayingState.
 
     def _ensure_playback_state_wired(self) -> None:
+        if self._player is None:
+            return
         if not self._playback_state_connected and self._pstate:
             self._player.playbackStateChanged.connect(self._on_playback_state_changed)
             self._playback_state_connected = True
 
     def _ensure_playback_state_unwired(self) -> None:
+        if self._player is None:
+            return
         if self._playback_state_connected and not self._pstate:
             self._player.playbackStateChanged.disconnect(
                 self._on_playback_state_changed
@@ -270,15 +326,17 @@ class QtMultimediaBackend(AudioPort):
             return
         was_empty = not self._pos
         self._pos.append(cb)
-        if was_empty:
+        if was_empty and self._player is not None:
             self._player.positionChanged.connect(self._on_position_changed)
+            self._pos_connected = True
 
     def unsubscribe_position_changed(self, cb: Callable[[int], None]) -> None:
         if cb not in self._pos:
             return
         self._pos.remove(cb)
-        if not self._pos:
+        if not self._pos and self._player is not None and self._pos_connected:
             self._player.positionChanged.disconnect(self._on_position_changed)
+            self._pos_connected = False
 
     def _on_position_changed(self, position_ms: int) -> None:
         for cb in list(self._pos):
@@ -291,15 +349,17 @@ class QtMultimediaBackend(AudioPort):
             return
         was_empty = not self._dur
         self._dur.append(cb)
-        if was_empty:
+        if was_empty and self._player is not None:
             self._player.durationChanged.connect(self._on_duration_changed)
+            self._dur_connected = True
 
     def unsubscribe_duration_changed(self, cb: Callable[[int], None]) -> None:
         if cb not in self._dur:
             return
         self._dur.remove(cb)
-        if not self._dur:
+        if not self._dur and self._player is not None and self._dur_connected:
             self._player.durationChanged.disconnect(self._on_duration_changed)
+            self._dur_connected = False
 
     def _on_duration_changed(self, duration_ms: int) -> None:
         for cb in list(self._dur):

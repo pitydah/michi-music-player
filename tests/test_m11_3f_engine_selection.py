@@ -1365,7 +1365,10 @@ class TestF42AdapterContract:
         # capture, env-gated continuity timeline with both-side boundaries.
         # Hash re-sealed after full regression.
         "src/michi/infrastructure/audio_engines/gstreamer.py": "27704dcbc4e4e18a",
-        "src/michi/infrastructure/qt_backend.py": "ada42f4e43a5543b",  # noqa: E501
+        # F06 sprint 11: lazy QtMultimedia objects (open() no longer creates
+        # QMediaPlayer/QAudioOutput). Product behavior unchanged on first use;
+        # headless engines no longer enumerate devices at open.
+        "src/michi/infrastructure/qt_backend.py": "041ac36e37f8fe72",  # noqa: E501
         # DAC-V35-050C2 (2026-09-12): additive direct_executor seam
         # (mismo sidecar para el único port owned; None = Shared).
         # Re-sealed after audit.

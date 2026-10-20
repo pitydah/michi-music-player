@@ -135,6 +135,7 @@ class TestQtBackendMediaTranslation:
 
     def test_status_without_source_ignored(self, qapp):
         b = QtMultimediaBackend()
+        b._ensure_media()  # lazy native objects for signal injection
         accepted = []
         rejected = []
         b.subscribe_media_accepted(lambda p: accepted.append(p))
@@ -186,6 +187,7 @@ class TestQtBackendPlaybackStateTranslation:
 
     def test_playing_state_emits_playing(self, qapp):
         b = QtMultimediaBackend()
+        b._ensure_media()  # lazy native objects for signal injection
         states = []
         b.subscribe_playback_state_changed(lambda s: states.append(s))
         b._player.playbackStateChanged.emit(QMediaPlayer.PlaybackState.PlayingState)
@@ -193,6 +195,7 @@ class TestQtBackendPlaybackStateTranslation:
 
     def test_paused_state_emits_paused(self, qapp):
         b = QtMultimediaBackend()
+        b._ensure_media()  # lazy native objects for signal injection
         states = []
         b.subscribe_playback_state_changed(lambda s: states.append(s))
         b._player.playbackStateChanged.emit(QMediaPlayer.PlaybackState.PausedState)
@@ -200,6 +203,7 @@ class TestQtBackendPlaybackStateTranslation:
 
     def test_stopped_state_emits_stopped(self, qapp):
         b = QtMultimediaBackend()
+        b._ensure_media()  # lazy native objects for signal injection
         states = []
         b.subscribe_playback_state_changed(lambda s: states.append(s))
         b._player.playbackStateChanged.emit(QMediaPlayer.PlaybackState.StoppedState)
