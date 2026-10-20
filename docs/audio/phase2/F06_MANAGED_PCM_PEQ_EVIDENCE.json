@@ -3,7 +3,7 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "daafcca",
+  "repo_head": "623d407",
   "verdict": "CLOSED \u2014 AP2-F06 exit gate satisfied: the processed specific-DAC route works (lab sink; physical qualification is F14), the Direct matrix is green locally, the presentation model says PROCESSED and never Direct (audio_output_bridge signalPathKind/processed; the F11 UI renders it), and device loss/stale selection fail safely. FIR runs natively with content-addressed SHA-256 kernels and readback; terminal dither is Managed-only with S16/S24 numerical proof; the complete DSP chain is verified. The durable IR store (F13), the F11 UI and F14 physical certification are deferred to their phases by contract. CI is blocked only by the runner QtMultimedia segfault (minimal reproducer + stack; local suite green).",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
@@ -376,5 +376,32 @@
       "AP2-F11": "Signal Path UI rendering (the F06 presentation model already classifies PROCESSED)",
       "AP2-F14": "physical DAC certification (NOT_RUN; operator gate)"
     }
+  },
+  "post_closure_hotfixes": {
+    "phase_status": "CLOSED (unchanged; corrective maintenance only)",
+    "WU1_signal_path_staleness": {
+      "defect": "the bridge returned the last historical READY/RUNNING event, so a finished execution could remain Processed",
+      "fix": "session exposes active_execution_id; the bridge requires managed mode + live session + the LATEST event of THAT instance being ready/running; terminal events retire it; late events from superseded instances are ignored",
+      "states": "processed (RUNNING, confirmed), processed_ready (READY), direct/shared/lost/unknown; processingBitPerfect False only when processed active (never True)",
+      "tests": "9 bridge tests (terminal retire, A->B, late A, same-plan instances, IDLE with history, Direct/Shared history)"
+    },
+    "WU2_continuity_probe": {
+      "defect": "the native probe did not emit mono_ns required by the analyzer",
+      "fix": "_continuity_entry emits monotonic observation time; timeline bounded at 8192 with timeline_truncated; analyzer reports timestamps_observed and refuses PCM continuity on truncation",
+      "tests": "producer-shape, truncation, timestamps counting + native continuity suite"
+    },
+    "WU3_qt_ci": {
+      "probe": "faulthandler + per-step trace + multimedia plugin listing; CI non-gating diagnostic step uploads qt_probe.json/err",
+      "status": "root-cause evidence capture; the real Qt contract test still runs and is not skipped"
+    },
+    "WU4_fir_bounds": {
+      "fix": "bounded coefficient consumption regardless of declared __len__; lying lengths/infinite generators rejected at the budget; failing streams propagate",
+      "tests": "lying length, infinite generator, failing generator"
+    },
+    "WU5_dither_fail_closed": {
+      "fix": "single dither_mode_to_native authority (tpdf/none only) used by mapping, wire and builder; builder rejects contradictory dithering; forged wire rejected before native",
+      "tests": "mapping fail-closed + forged wire"
+    },
+    "full_suite": "5925 passed, 4 skipped, 0 failed (local, exact tree)"
   }
 }
