@@ -374,8 +374,21 @@ def _build_dither_terminal(gst, node_id: str, properties: dict[str, Any]) -> lis
         raise ProcessingGraphBuildError(
             "DSP_PLAN_INVALID", "terminal dither needs rate/channels"
         )
-    mode = str(properties.get("mode") or "none")
-    dithering = 2 if mode == "tpdf" else 0
+    from michi.infrastructure.audio_processing.native_mapping import (
+        dither_mode_to_native,
+    )
+
+    try:
+        dithering = dither_mode_to_native(properties.get("mode"))
+    except ValueError as exc:
+        raise ProcessingGraphBuildError(
+            "DSP_DITHER_MODE_UNSUPPORTED", str(exc)
+        ) from exc
+    if "dithering" in properties and int(properties["dithering"]) != dithering:
+        raise ProcessingGraphBuildError(
+            "DSP_DITHER_MODE_MISMATCH",
+            "wire dithering contradicts the declared dither mode",
+        )
     convert = _make(gst, "audioconvert", f"{node_id}-dither")
     convert.set_property("dithering", dithering)
     convert.set_property("noise-shaping", 0)

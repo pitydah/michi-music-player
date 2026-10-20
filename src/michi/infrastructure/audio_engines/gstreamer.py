@@ -2339,6 +2339,8 @@ class GStreamerAudioPort(AudioPort):
         # LAB-ONLY continuity timeline: the sink pad is stable across the
         # filter swap and observes the REAL PCM stream (PTS/duration/flags).
         timeline: list[dict] = []
+        timeline_truncated = False
+        max_timeline_entries = 8192
         continuity_probe_enabled = os.environ.get("MICHI_GST_CONTINUITY_PROBE") == "1"
         sink_pad = None
         sink_probe = None
@@ -2350,19 +2352,26 @@ class GStreamerAudioPort(AudioPort):
                 clock_none = int(gst.CLOCK_TIME_NONE)
 
                 def _continuity_probe(_pad, info):
+                    nonlocal timeline_truncated
                     buf = info.get_buffer()
                     if buf is None:
+                        return gst.PadProbeReturn.OK
+                    if len(timeline) >= max_timeline_entries:
+                        # Bounded diagnostic: mark the measurement incomplete
+                        # instead of growing without limit.
+                        timeline_truncated = True
                         return gst.PadProbeReturn.OK
                     pts = int(buf.pts) if int(buf.pts) != clock_none else None
                     duration = (
                         int(buf.duration) if int(buf.duration) != clock_none else None
                     )
                     timeline.append(
-                        {
-                            "pts": pts,
-                            "duration": duration,
-                            "discont": bool(buf.has_flags(gst.BUFFER_FLAG_DISCONT)),
-                        }
+                        GStreamerAudioPort._continuity_entry(
+                            pts,
+                            duration,
+                            bool(buf.has_flags(gst.BUFFER_FLAG_DISCONT)),
+                            int(_time.monotonic_ns()),
+                        )
                     )
                     return gst.PadProbeReturn.OK
 
@@ -2459,6 +2468,7 @@ class GStreamerAudioPort(AudioPort):
             swap_marker_ns=swap_marker_ns,
             restore_marker_ns=restore_marker_ns,
             probe_enabled=continuity_probe_enabled,
+            timeline_truncated=timeline_truncated,
         )
         return {
             "installed": True,
@@ -2480,6 +2490,21 @@ class GStreamerAudioPort(AudioPort):
         }
 
     @staticmethod
+    def _continuity_entry(
+        pts: int | None,
+        duration: int | None,
+        discont: bool,
+        observed_ns: int,
+    ) -> dict:
+        """One timeline fact; monotonic wall time is distinct from stream PTS."""
+        return {
+            "pts": pts,
+            "duration": duration,
+            "discont": bool(discont),
+            "mono_ns": int(observed_ns),
+        }
+
+    @staticmethod
     def _analyze_continuity(
         timeline: list[dict],
         position_preserved: bool,
@@ -2487,6 +2512,7 @@ class GStreamerAudioPort(AudioPort):
         swap_marker_ns: int | None = None,
         restore_marker_ns: int | None = None,
         probe_enabled: bool = True,
+        timeline_truncated: bool = False,
     ) -> dict:
         """Classify REAL PCM continuity from sink-pad timestamps.
 
@@ -2524,8 +2550,11 @@ class GStreamerAudioPort(AudioPort):
         tolerance_ns = int(
             max(50_000_000, 2.5 * expected_ns) if expected_ns else 50_000_000
         )
+        timestamps_observed = sum(
+            1 for entry in valid if entry.get("mono_ns") is not None
+        )
         both_sides = bool(before) and bool(after)
-        if not probe_enabled or not both_sides:
+        if not probe_enabled or not both_sides or timeline_truncated:
             # Position-only evidence is NEVER a PCM continuity claim, and a
             # transition needs evidence on BOTH sides of the swap.
             classification = (
@@ -2541,6 +2570,8 @@ class GStreamerAudioPort(AudioPort):
             "classification": classification,
             "position_preserved": bool(position_preserved),
             "probe_enabled": bool(probe_enabled),
+            "timeline_truncated": bool(timeline_truncated),
+            "timestamps_observed": timestamps_observed,
             "buffers_before": len(before),
             "buffers_after": len(after),
             "buffers_observed": len(valid),

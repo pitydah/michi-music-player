@@ -1365,8 +1365,10 @@ class TestF42AdapterContract:
         # capture, env-gated continuity timeline with both-side boundaries.
         # F06 sprint 13: packed S24LE capture decoding for terminal-dither
         # evidence (diagnostic path only; productive DSP unchanged).
+        # F06 hotfix 14: continuity probe emits real monotonic observation
+        # times and bounds its timeline (diagnostic-only, opt-in).
         # Hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "b4cc95e581576319",
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "c36fb557256cf5e2",
         # F06 sprint 11: lazy QtMultimedia objects (open() no longer creates
         # QMediaPlayer/QAudioOutput). Product behavior unchanged on first use;
         # headless engines no longer enumerate devices at open.

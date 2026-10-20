@@ -332,3 +332,33 @@ def test_s24_terminal_dither_raises_the_noise_floor(tmp_path, monkeypatch) -> No
     finally:
         port.close()
         supervisor.close()
+
+
+def test_dither_mode_mapping_is_fail_closed() -> None:
+    from michi.infrastructure.audio_processing.native_mapping import (
+        dither_mode_to_native,
+    )
+
+    assert dither_mode_to_native("tpdf") == 2
+    assert dither_mode_to_native("none") == 0
+    for bad in ("auto", "tpdf_hf", "", None, 2, True):
+        with pytest.raises(ValueError):
+            dither_mode_to_native(bad)
+
+
+def test_forged_dither_wire_is_rejected_before_native() -> None:
+    import dataclasses
+
+    plan = _compile()
+    node = plan.nodes[1]
+    properties = dict(node.properties)
+    properties["mode"] = "auto"
+    forged = dataclasses.replace(
+        plan,
+        nodes=(
+            plan.nodes[0],
+            dataclasses.replace(node, properties=tuple(properties.items())),
+        ),
+    )
+    with pytest.raises(ValueError):
+        NativeProcessingMapping().plan_to_wire(forged)

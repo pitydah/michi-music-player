@@ -110,3 +110,55 @@ def test_fingerprint_is_deterministic_and_value_sensitive() -> None:
     assert first == second
     assert first != other
     assert len(first) == 64
+
+
+def test_lying_length_cannot_materialize_beyond_the_budget() -> None:
+    from michi.domain.fir_kernel import verify_fir_kernel_coefficients
+
+    class _Lying:
+        def __len__(self) -> int:
+            return 1
+
+        def __iter__(self):
+            for _ in range(10):
+                yield 0.5
+
+    with pytest.raises(FirKernelError) as info:
+        verify_fir_kernel_coefficients(
+            _Lying(),
+            expected_sha256="0" * 64,
+            rate_hz=44100,
+            channels=1,
+            max_taps=3,
+        )
+    assert info.value.code == "FIR_KERNEL_TOO_LARGE"
+
+
+def test_infinite_generator_is_rejected_at_the_budget_boundary() -> None:
+    import itertools
+
+    from michi.domain.fir_kernel import verify_fir_kernel_coefficients
+
+    with pytest.raises(FirKernelError) as info:
+        verify_fir_kernel_coefficients(
+            itertools.repeat(0.5),
+            expected_sha256="0" * 64,
+            rate_hz=44100,
+            channels=1,
+            max_taps=3,
+        )
+    assert info.value.code == "FIR_KERNEL_TOO_LARGE"
+
+
+def test_failing_generator_propagates_its_error() -> None:
+    from michi.domain.fir_kernel import verify_fir_kernel_coefficients
+
+    class _Boom:
+        def __iter__(self):
+            yield 0.5
+            raise RuntimeError("provider stream failed")
+
+    with pytest.raises(RuntimeError):
+        verify_fir_kernel_coefficients(
+            _Boom(), expected_sha256="0" * 64, rate_hz=44100, channels=1
+        )

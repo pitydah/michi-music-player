@@ -46,6 +46,15 @@ RESAMPLE_QUALITY_NATIVE: dict[str, int] = {
 }
 
 
+def dither_mode_to_native(mode: object) -> int:
+    """Fail-closed dither mode mapping: ONLY tpdf/none are authorized."""
+    if mode == "tpdf":
+        return 2
+    if mode == "none":
+        return 0
+    raise ValueError(f"unsupported dither mode {mode!r}")
+
+
 def native_resample_quality(properties: dict[str, Any]) -> int:
     """Explicit policy mapping; an unknown quality is a typed refusal."""
     quality = str(properties.get("quality") or "")
@@ -203,10 +212,9 @@ class NativeProcessingMapping:
                 "quality": native_resample_quality(properties),
             }
         if node.strategy is ProcessingStrategy.DITHER_TERMINAL:
-            mode = str(properties.get("mode") or "none")
             bits = int(properties["target_bits"])
             return {
-                "dithering": 2 if mode == "tpdf" else 0,
+                "dithering": dither_mode_to_native(properties.get("mode")),
                 "noise_shaping": 0,
                 "dithering_threshold": bits,
                 "output_format": f"S{bits}LE",
@@ -253,9 +261,8 @@ class NativeProcessingMapping:
             if node.strategy is ProcessingStrategy.RESAMPLE:
                 properties["native_quality"] = native_resample_quality(properties)
             if node.strategy is ProcessingStrategy.DITHER_TERMINAL:
-                mode = str(properties.get("mode") or "none")
                 bits = int(properties["target_bits"])
-                properties["dithering"] = 2 if mode == "tpdf" else 0
+                properties["dithering"] = dither_mode_to_native(properties.get("mode"))
                 properties["noise_shaping"] = 0
                 properties["dithering_threshold"] = bits
                 properties["output_format"] = f"S{bits}LE"

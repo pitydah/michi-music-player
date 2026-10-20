@@ -312,3 +312,55 @@ def test_continuity_analyzer_requires_both_sides_of_the_transition() -> None:
 
     unavailable = GStreamerAudioPort._analyze_continuity([], position_preserved=False)
     assert unavailable["classification"] == "NOT_MEASURED"
+
+
+def test_continuity_producer_emits_monotonic_observation_time() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerAudioPort
+
+    entry = GStreamerAudioPort._continuity_entry(
+        pts=123, duration=20_000_000, discont=False, observed_ns=999
+    )
+    assert entry == {
+        "pts": 123,
+        "duration": 20_000_000,
+        "discont": False,
+        "mono_ns": 999,
+    }
+
+
+def test_truncated_timeline_can_never_claim_pcm_continuity() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerAudioPort
+
+    def buffers(*pts_ms):
+        return [
+            {
+                "pts": int(ms * 1e6),
+                "duration": 20_000_000,
+                "discont": False,
+                "mono_ns": int(ms * 1e6),
+            }
+            for ms in pts_ms
+        ]
+
+    result = GStreamerAudioPort._analyze_continuity(
+        buffers(0, 20, 40, 60),
+        position_preserved=True,
+        swap_marker_ns=25_000_000,
+        restore_marker_ns=35_000_000,
+        timeline_truncated=True,
+    )
+    assert result["classification"] != "PCM_CONTINUITY_VERIFIED"
+    assert result["timeline_truncated"] is True
+    assert result["timestamps_observed"] == 4
+
+
+def test_timestamps_observed_counts_only_monotonic_entries() -> None:
+    from michi.infrastructure.audio_engines.gstreamer import GStreamerAudioPort
+
+    timeline = [
+        {"pts": 0, "duration": 20_000_000, "discont": False, "mono_ns": 1},
+        {"pts": 20_000_000, "duration": 20_000_000, "discont": False},
+        {"pts": 40_000_000, "duration": 20_000_000, "discont": False, "mono_ns": 3},
+    ]
+    result = GStreamerAudioPort._analyze_continuity(timeline, position_preserved=True)
+    assert result["timestamps_observed"] == 2
