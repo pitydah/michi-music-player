@@ -3,7 +3,7 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "9c43560",
+  "repo_head": "daafcca",
   "verdict": "READY_FOR_CLOSURE_REVIEW \u2014 FIR identity hardening (independent provider SHA; mono-only contract; bounded iterables), S24 terminal dither (dithering-threshold defect fixed), impulse goldens and the complete authorized DSP chain are verified locally. F06 CANNOT be declared CLOSED: F11 Signal Path presentation, the durable IR store (F13) and the runner QtMultimedia crash remain; physical DAC NOT_RUN (F14). F06 stays READY.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
@@ -151,7 +151,7 @@
     "F11 Signal Path presentation; durable ProcessingProfile repository (F13)"
   ],
   "full_suite": {
-    "result": "5909 passed, 4 skipped, 0 failed (local; only the F42 re-seal was pending and is fixed)",
+    "result": "5910 passed, 4 skipped, 0 failed (local, exact tree)",
     "scope": "python -m pytest -q (entire repository)"
   },
   "spec_sha256": "826381f154a0e5eb848a37e7c3c81909ddb8d103cc0cadd75c97e5fc16e41ead",
@@ -205,7 +205,7 @@
     "stability": 96,
     "latency": 63,
     "integration": 97,
-    "f06_global": 93,
+    "f06_global": 94,
     "audio_phase2_global": 87
   },
   "true_peak": {
