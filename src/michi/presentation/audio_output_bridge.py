@@ -438,7 +438,24 @@ class AudioOutputBridge(QObject):
         truth = self._active_truth(session_state)
         verdict = truth.verdict.value if truth is not None else "unknown"
         truth_label = signal_truth_label(verdict)
-        signal_path = self._signal_path(truth)
+        mode = (
+            getattr(self._output_session, "mode", None)
+            if self._output_session
+            else None
+        )
+        managed_event = self._managed_event(mode)
+        signal_path = self._signal_path(truth, managed_event=managed_event)
+        signal_path_kind = (
+            "processed"
+            if managed_event is not None
+            else "direct"
+            if mode == "direct"
+            else "shared"
+            if mode == "shared"
+            else "lost"
+            if mode == "lost"
+            else "unknown"
+        )
         can_use_direct = bool(
             self._engines is not None
             and self._engines.state.active_engine_id is AudioEngineId.GSTREAMER
@@ -598,6 +615,15 @@ class AudioOutputBridge(QObject):
             "isBusy": "BUSY" in (last_failure_code or "").upper(),
             "isReconnecting": reconnecting,
             "signalPath": signal_path,
+            # AP2-F06 exit gate: the presentation model says PROCESSED, never
+            # Direct. The F11 UI renders these rows; it does not reclassify.
+            "signalPathKind": signal_path_kind,
+            "processed": signal_path_kind == "processed",
+            # Tri-state: False when a processing execution is effective, None
+            # otherwise. Processing NEVER proves bit-perfect.
+            "processingBitPerfect": (
+                managed_event.bit_perfect if managed_event is not None else None
+            ),
             "reconnecting": reconnecting,
             "lastFailureCode": last_failure_code or "",
             "lastFailureTitle": last_failure_title,
@@ -916,7 +942,75 @@ class AudioOutputBridge(QObject):
             "detail": detail,
         }
 
-    def _signal_path(self, truth) -> list[dict[str, Any]]:
+    def _managed_event(self, mode: str | None):
+        if mode != "managed" or self._signal_truth is None:
+            return None
+        for event in reversed(self._signal_truth.output_family_events):
+            if event.family == "managed" and event.state.value in (
+                "ready",
+                "running",
+            ):
+                return event
+        return None
+
+    def _managed_stages(self, event) -> tuple[dict[str, Any], dict[str, Any]]:
+        runtime = dict(event.runtime_identity or {})
+        negotiated = dict(runtime.get("negotiated") or {})
+        processing = {
+            "title": "Processing",
+            "observed": True,
+            "summary": " + ".join(event.transform_policy) or "identity",
+            "rateHz": int(negotiated.get("rate_hz") or 0),
+            "format": str(negotiated.get("format") or ""),
+            "channels": int(negotiated.get("channels") or 0),
+            "significantBits": 0,
+            "detail": event.processing_plan_id or "",
+            "kind": "processed",
+        }
+        device = {
+            "title": "Device",
+            "observed": True,
+            "summary": event.device_id or "",
+            "rateHz": int(negotiated.get("rate_hz") or 0),
+            "format": str(negotiated.get("format") or ""),
+            "channels": int(negotiated.get("channels") or 0),
+            "significantBits": 0,
+            "detail": event.execution_id or "",
+            "kind": "managed_device",
+        }
+        return processing, device
+
+    def _signal_path(self, truth, *, managed_event=None) -> list[dict[str, Any]]:
+        if managed_event is not None:
+            processing, device = self._managed_stages(managed_event)
+            if truth is None:
+                return [
+                    self._pcm_stage(title, None) for title in ("Source", "Decoded")
+                ] + [processing, device]
+            source = truth.source_file_facts
+            source_stage = self._pcm_stage(
+                "Source",
+                source.nominal_pcm if source is not None else None,
+                detail=(
+                    " · ".join(
+                        value
+                        for value in (
+                            source.container if source is not None else None,
+                            source.codec if source is not None else None,
+                        )
+                        if value
+                    )
+                ),
+            )
+            decoded_stage = self._pcm_stage(
+                "Decoded",
+                (
+                    truth.decoded_runtime.pcm
+                    if truth.decoded_runtime is not None
+                    else None
+                ),
+            )
+            return [source_stage, decoded_stage, processing, device]
         if truth is None:
             return [
                 self._pcm_stage(title, None)
@@ -1127,6 +1221,17 @@ class AudioOutputBridge(QObject):
     def _get(self, key: str, fallback=None):
         return self._projection.get(key, fallback)
 
+    signalPathKind = Property(
+        str, lambda self: self._get("signalPathKind", "unknown"), notify=state_changed
+    )
+    processed = Property(
+        bool, lambda self: bool(self._get("processed", False)), notify=state_changed
+    )
+    processingBitPerfect = Property(
+        "QVariant",
+        lambda self: self._get("processingBitPerfect", None),
+        notify=state_changed,
+    )
     devices = Property(
         list, lambda self: self._get("devices", []), notify=state_changed
     )
