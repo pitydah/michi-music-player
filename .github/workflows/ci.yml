@@ -178,6 +178,28 @@ jobs:
           pactl set-default-sink michi_null || true
           pactl info || true
 
+      - name: QtMultimedia isolation probe (diagnostic, non-gating)
+        continue-on-error: true
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_MEDIA_BACKEND: ffmpeg
+        run: |
+          set +e
+          python scripts/qt_multimedia_probe.py > qt_probe.json 2> qt_probe.err
+          echo "probe_exit=$?" | tee -a qt_probe.err
+          cat qt_probe.json 2>/dev/null || true
+          cat qt_probe.err 2>/dev/null || true
+
+      - name: Upload QtMultimedia probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qt-multimedia-probe
+          path: |
+            qt_probe.json
+            qt_probe.err
+          if-no-files-found: ignore
+
       - name: Run commit-bound DAC software closure verifier
         env:
           QT_QPA_PLATFORM: offscreen

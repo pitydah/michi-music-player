@@ -12,12 +12,14 @@ Exit codes: 0 = all steps completed; 2 = an exception (traceback printed);
 
 from __future__ import annotations
 
+import faulthandler
 import json
 import os
 import platform
 import sys
 import tempfile
 import wave
+from pathlib import Path
 
 
 def _tiny_wav() -> str:
@@ -30,7 +32,14 @@ def _tiny_wav() -> str:
     return path
 
 
+def _step(report: dict, name: str) -> None:
+    """Print immediately so a native crash shows the exact last step."""
+    report["steps"].append(name)
+    print(f"[probe] {name}", file=sys.stderr, flush=True)
+
+
 def main() -> int:
+    faulthandler.enable()
     report: dict = {
         "python": sys.version.split()[0],
         "platform": platform.platform(),
@@ -54,33 +63,49 @@ def main() -> int:
 
         report["pyside"] = pyside_version
         report["qt"] = qVersion()
+        try:
+            import importlib.util
+
+            spec = importlib.util.find_spec("PySide6")
+            multimedia_dir = (
+                Path(spec.origin).resolve().parent / "Qt" / "plugins" / "multimedia"
+                if spec is not None and spec.origin
+                else Path("/nonexistent")
+            )
+            report["multimedia_plugins"] = (
+                sorted(item.name for item in multimedia_dir.iterdir())
+                if multimedia_dir.is_dir()
+                else []
+            )
+        except Exception as exc:  # noqa: BLE001 - diagnostic only
+            report["multimedia_plugins_error"] = str(exc)
         app = QCoreApplication.instance() or QCoreApplication([])
-        report["steps"].append("qcoreapplication")
+        _step(report, "qcoreapplication")
 
         player = QMediaPlayer()
-        report["steps"].append("qmediaplayer")
+        _step(report, "qmediaplayer")
         output = QAudioOutput()
-        report["steps"].append("qaudiooutput")
+        _step(report, "qaudiooutput")
         player.setAudioOutput(output)
-        report["steps"].append("bind_output")
+        _step(report, "bind_output")
 
         player.setSource(QUrl.fromLocalFile(_tiny_wav()))
-        report["steps"].append("set_source")
+        _step(report, "set_source")
         player.play()
-        report["steps"].append("play")
+        _step(report, "play")
         for _ in range(20):
             app.processEvents()
         player.pause()
-        report["steps"].append("pause")
+        _step(report, "pause")
         player.play()
-        report["steps"].append("resume")
+        _step(report, "resume")
         player.stop()
-        report["steps"].append("stop")
+        _step(report, "stop")
         player.setSource(QUrl())
         player.setAudioOutput(None)
-        report["steps"].append("detach")
+        _step(report, "detach")
         del player, output
-        report["steps"].append("destroy")
+        _step(report, "destroy")
         print(json.dumps(report))
         return 0
     except Exception as exc:  # noqa: BLE001 - diagnostic boundary
