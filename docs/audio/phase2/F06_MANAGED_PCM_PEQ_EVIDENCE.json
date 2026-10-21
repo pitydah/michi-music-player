@@ -151,7 +151,9 @@
   ],
   "full_suite": {
     "result": "5948 passed, 4 skipped, 0 failed (local, exact tree)",
-    "scope": "python -m pytest -q (entire repository)"
+    "scope": "python -m pytest -q (entire repository)",
+    "last_run_at": "2026-10-21",
+    "duration": "30:51"
   },
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "residuals_closed": {
@@ -484,5 +486,34 @@
     ],
     "spec_authorization": "An earlier authorization amendment was sha 826381f1...; the current canonical spec is 4f0e41eb... (mono-IR applicability correction + FIR/dither authority)."
   },
-  "percentages_note": "Indicative phase maturity, not the closure metric and not an acceptance gate. F06 closure is contractual (exit gate + evidence); FIR resource hardening is tracked in post_closure_hotfixes WU6/WU7/WU8."
+  "percentages_note": "Indicative phase maturity, not the closure metric and not an acceptance gate. F06 closure is contractual (exit gate + evidence); FIR resource hardening is tracked in post_closure_hotfixes WU6/WU7/WU8.",
+  "freeze": {
+    "status": "FROZEN",
+    "phase_state": "CLOSED (unchanged)",
+    "certified_code_head": "5f2c3e939275d38a7698bc5d884476f674171370",
+    "certification_date": "2026-10-21",
+    "targeted_f06_tests": "312 passed (19 F06/Managed/DSP files, includes FIR acquisition, compiler, native FIR vertical, Managed PCM/session/productive flow/selection/resolver, dither, combined chain, resampling, headroom, true peak, continuity, Signal Truth concurrency, presentation bridge and the frozen engine adapter)",
+    "full_suite": "5948 passed, 4 skipped, 0 failed (30:51, local exact tree)",
+    "verifiers": "verify_dac_repository_alignment.py GO; verify_audio_phase2_repository_alignment.py --phase AP2-F06 GO",
+    "static_checks": "ruff format --check: 564 files already formatted; ruff check: PASS; python -m compileall -q src: PASS",
+    "ci": {
+      "code_head": "5f2c3e939275d38a7698bc5d884476f674171370",
+      "run_id": 39653552887,
+      "run_url": "https://github.com/pitydah/michi-music-player/actions/runs/39653552887",
+      "dac_v35_software_closure": "success",
+      "min_qt": "success",
+      "check": "failure — external Premium Library QML warning gate; not an F06 contract"
+    },
+    "physical_qualification": "NOT_RUN — AP2-F14 / operator authorization",
+    "code_changes_this_audit": "NONE — no P0/P1/P2 defect was reproduced in F06 scope",
+    "limitations": [
+      "physical DAC/Analog certification NOT_RUN (F14)",
+      "algorithmic FIR/resampler latency is not modeled (pipeline-reported values only)",
+      "F11 Signal Path UI and F13 durable IR store are phase-deferred",
+      "external CI QML gate remains red; QML untouched by F06"
+    ],
+    "preserve_for_f11": "audio_output_bridge signalPathKind/processed/processedActive and processingBitPerfect must be rendered, never reinterpreted; PROCESSED is not Direct",
+    "preserve_for_f13": "the injected content-addressed ImpulseResponseStorePort contract and acquire_ir_assets deadlined acquisition are the only authorized IR paths; no path-based loading or guessed rate/channels",
+    "preserve_for_f14": "execution identity, host-loss retirement, readback-before-EFFECTIVE and no-silent-fallback must remain; physical latency/continuity require real measurements"
+  }
 }
