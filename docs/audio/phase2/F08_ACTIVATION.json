@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F08",
+  "title": "NATIVE DSD RUNTIME ESTRICTO",
+  "recorded_at": "2026-10-21",
+  "activation_head": "52398e52eca39c51a34e1354e3efc489ea669e6d",
+  "authorized_mechanism": "ADR 0011 §3: state changes require explicit evidence-bearing commits after the dependency exit gate. AP2-F07 is CLOSED, GST_LIFECYCLE_GATE is PASS, and a real DSD endpoint + branch were observed in this environment.",
+  "spec": {
+    "path": "/home/cristian/michi-music-player/docs/audio/MICHI_AUDIO_PHASE_2_DSP_DSD_DOP_SIGNAL_PATH_MEGA_PLAN.md",
+    "sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12"
+  },
+  "context_receipt": {
+    "primary_phase": "AP2-F08",
+    "dependencies": ["AP2-F07"],
+    "must_read_anchors": [
+      "R11-G03-OUTPUT-FAMILIES",
+      "R11-G07-REALTIME-SAFETY",
+      "R11-F08"
+    ],
+    "contract_set_sha256": "1f1cf70c60c76d814b1ad6287f7c4552b01321da5c3b00b6a2b1a6288f3d324d"
+  },
+  "alignment_verdict": "GO",
+  "entry_gate": {
+    "dsd_source_truth": "AP2-F07 CLOSED: static DSF/DFF container+elementary truth, explicit units, bit order, organization and layout. The runtime elementary-stream probe is NOT assumed from F07; it is created in F08 and its evidence is RUNTIME_GST_CAPS only when observed.",
+    "device_capability": "SMSL USB AUDIO (152a:85dd), ALSA hw:3,0, advertises DSD_U32_BE with rates 44100..768000 and 2 channels (aplay --dump-hw-params). Real gst-launch native playback negotiated audio/x-dsd format=DSDU32BE rate=352800 channels=2 layout=interleaved reversed-bytes=false and completed a 1.002s DSF run.",
+    "gstreamer_runtime": "GStreamer 1.28.8; avdemux_dsf present; dsdconvert present; alsasink exposes audio/x-dsd format={DSDU8,DSDU16LE,DSDU16BE,DSDU32LE,DSDU32BE} layout=interleaved reversed-bytes=false. filesrc -> avdemux_dsf observed audio/x-dsd, rate=352800, channels=2, format=DSDU8, layout=non-interleaved; no audio/x-raw in the selected branch.",
+    "lifecycle_gate": "GST_LIFECYCLE_GATE (schema 2) verdict PASS; revalidated at this HEAD with scripts/ap2_gst_host_gate.py --seconds 10 --rate 5: 49 cycles, PASS_CONTAINED, parent max stall 15.14 ms, no orphans, graceful termination.",
+    "physical_qualification": "NOT_RUN — AP2-F14 / operator authorization. This activation does not claim physical/analog certification or bit-perfect end-to-end preservation."
+  },
+  "state_machine": "LOCKED -> ACTIVE via this explicit evidence commit; AP2-F09..F15 remain LOCKED",
+  "first_verticals": [
+    "NativeDsdOutputPlan + strict planner with exact ALSA tuple and binding generation",
+    "StrictDsdSinkRecipe + runtime branch inspector (audio/x-dsd only, raw conversion refusal)",
+    "isolated runtime caps probe and exact ALSA DSD qualification evidence"
+  ],
+  "not_claimed": [
+    "Native DSD productive host playback (host protocol integration is a separate F08 work unit)",
+    "DoP (F09)",
+    "DSD->PCM or DSP interoperability (F10)",
+    "physical DAC certification (F14)"
+  ]
+}
