@@ -87,3 +87,152 @@ def test_non_positive_timeout_is_a_typed_refusal() -> None:
     with pytest.raises(ProcessingCompilationError) as info:
         bounded_ir_call(lambda: 1, timeout_s=0)
     assert info.value.code == "DSP_FIR_STORE_TIMEOUT"
+
+
+def test_infinite_generator_is_rejected_without_materializing() -> None:
+    import itertools
+
+    class _Asset:
+        asset_id = "ir:sha256:" + "c" * 64
+
+    class _Provider:
+        def load_float32_mono(self, asset_id: str):
+            return itertools.count(1.0)  # open-ended; must hit the tap budget
+
+    started = time.monotonic()
+    with pytest.raises(ProcessingCompilationError) as info:
+        acquire_kernels((_Asset(),), _Provider(), timeout_s=1.0)
+    assert info.value.code == "FIR_KERNEL_TOO_LARGE"
+    assert time.monotonic() - started < 0.5
+
+
+def test_slow_iterator_is_released_at_the_deadline() -> None:
+    class _Asset:
+        asset_id = "ir:sha256:" + "d" * 64
+
+    class _Provider:
+        def load_float32_mono(self, asset_id: str):
+            def _slow():
+                yield 0.5
+                time.sleep(1.0)  # iteration blocks AFTER the provider returned
+                yield 0.5
+
+            return _slow()
+
+    started = time.monotonic()
+    with pytest.raises(ProcessingCompilationError) as info:
+        acquire_kernels((_Asset(),), _Provider(), timeout_s=0.05)
+    assert info.value.code == "DSP_FIR_STORE_TIMEOUT"
+    assert time.monotonic() - started < 0.5
+
+
+def test_lying_length_does_not_bypass_the_tap_budget() -> None:
+    class _Asset:
+        asset_id = "ir:sha256:" + "e" * 64
+
+    class _DeclaredSmall:
+        def __len__(self) -> int:
+            return 1
+
+        def __iter__(self):
+            return iter(range(9000))
+
+    class _Provider:
+        def load_float32_mono(self, asset_id: str):
+            return _DeclaredSmall()
+
+    with pytest.raises(ProcessingCompilationError) as info:
+        acquire_kernels((_Asset(),), _Provider(), timeout_s=1.0)
+    assert info.value.code == "FIR_KERNEL_TOO_LARGE"
+
+
+def test_invalid_provider_results_are_typed() -> None:
+    class _Asset:
+        asset_id = "ir:sha256:" + "f" * 64
+
+    class _Provider:
+        def __init__(self, value) -> None:
+            self.value = value
+
+        def load_float32_mono(self, asset_id: str):
+            return self.value
+
+    for value in (None, 42, "kernel", {"a": 1}, object()):
+        with pytest.raises(ProcessingCompilationError) as info:
+            acquire_kernels((_Asset(),), _Provider(value), timeout_s=1.0)
+        assert info.value.code == "DSP_FIR_STORE_INVALID", value
+
+
+def test_iteration_errors_are_typed() -> None:
+    class _Asset:
+        asset_id = "ir:sha256:" + "1" * 64
+
+    class _Provider:
+        def load_float32_mono(self, asset_id: str):
+            def _failing():
+                yield 0.5
+                raise ValueError("stream corrupted")
+
+            return _failing()
+
+    with pytest.raises(ProcessingCompilationError) as info:
+        acquire_kernels((_Asset(),), _Provider(), timeout_s=1.0)
+    assert info.value.code == "DSP_FIR_STORE_INVALID"
+
+
+def test_in_flight_budget_refuses_when_the_provider_stays_hung(monkeypatch) -> None:
+    import threading
+
+    from michi.application import ir_acquisition
+
+    # Previous deadline tests may leave a daemon thread finishing; drain first
+    # so this test asserts the cap, not their leftovers.
+    for _ in range(200):
+        if ir_acquisition.in_flight_calls() == 0:
+            break
+        time.sleep(0.02)
+    monkeypatch.setattr(ir_acquisition, "MAX_IN_FLIGHT", 1)
+    release = threading.Event()
+
+    def _hung():
+        release.wait(2.0)
+        return (0.5,)
+
+    try:
+        with pytest.raises(ProcessingCompilationError) as info:
+            ir_acquisition.bounded_ir_call(_hung, timeout_s=0.05)
+        assert info.value.code == "DSP_FIR_STORE_TIMEOUT"
+        assert ir_acquisition.in_flight_calls() == 1
+
+        with pytest.raises(ProcessingCompilationError) as info:
+            ir_acquisition.bounded_ir_call(lambda: (0.5,), timeout_s=1.0)
+        assert info.value.code == "DSP_FIR_STORE_BUSY"
+    finally:
+        release.set()
+
+    for _ in range(100):
+        if ir_acquisition.in_flight_calls() == 0:
+            break
+        time.sleep(0.02)
+    assert ir_acquisition.in_flight_calls() == 0
+
+
+def test_total_budget_covers_all_assets() -> None:
+    class _Asset:
+        def __init__(self, asset_id: str) -> None:
+            self.asset_id = asset_id
+
+    class _Provider:
+        def load_float32_mono(self, asset_id: str):
+            time.sleep(0.1)
+            return (0.5,)
+
+    assets = (
+        _Asset("ir:sha256:" + "2" * 64),
+        _Asset("ir:sha256:" + "3" * 64),
+    )
+    started = time.monotonic()
+    with pytest.raises(ProcessingCompilationError) as info:
+        acquire_kernels(assets, _Provider(), timeout_s=1.0, total_timeout_s=0.15)
+    assert info.value.code == "DSP_FIR_STORE_TIMEOUT"
+    assert time.monotonic() - started < 0.5
