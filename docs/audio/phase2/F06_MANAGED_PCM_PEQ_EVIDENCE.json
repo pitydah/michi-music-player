@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "7c6e162e10fcae9d63ea86b3f0b4296da6093693",
-  "verdict": "CLOSED — AP2-F06 exit gate satisfied: the processed specific-DAC route works (lab sink; physical qualification is F14 NOT_RUN), the Direct matrix is green locally, the presentation model says PROCESSED and never Direct (audio_output_bridge signalPathKind/processed; the F11 UI renders it), and device loss/stale selection fail safely. FIR runs natively with content-addressed SHA-256 kernels and readback; terminal dither is Managed-only with S16/S24 numerical proof; the complete DSP chain is verified. CI audio gate is green on code head 7c6e162 (check-runs verified); the only non-audio red is the external Premium Library QML warning gate (QML untouched by F06). The earlier runner QtMultimedia crash is resolved and recorded in history. The durable IR store (F13), the F11 UI and F14 physical certification are deferred to their phases by contract.",
+  "repo_head": "75d394efa6a14a1eb3c2a6107b387da15d38d622",
+  "verdict": "CLOSED — AP2-F06 exit gate satisfied: the processed specific-DAC route works (lab sink; physical qualification is F14 NOT_RUN), the Direct matrix is green locally, the presentation model says PROCESSED and never Direct (audio_output_bridge signalPathKind/processed; the F11 UI renders it), and device loss/stale selection fail safely. FIR runs natively with content-addressed SHA-256 kernels and readback; acquisition is bounded in time, in tap count and in the number of abandoned threads; terminal dither is Managed-only with S16/S24 numerical proof; the complete DSP chain is verified. CI audio gate is green on code head 75d394e (check-runs verified); the only non-audio red is the external Premium Library QML warning gate (QML untouched by F06). The earlier runner QtMultimedia crash is resolved and recorded in history. The durable IR store (F13), the F11 UI and F14 physical certification are deferred to their phases by contract.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -150,7 +150,7 @@
     "F11 Signal Path presentation; durable ProcessingProfile/IR repository (F13)"
   ],
   "full_suite": {
-    "result": "5935 passed, 4 skipped, 0 failed (local, exact tree)",
+    "result": "5942 passed, 4 skipped, 0 failed (local, exact tree)",
     "scope": "python -m pytest -q (entire repository)"
   },
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
@@ -289,9 +289,9 @@
   },
   "ci_status": {
     "state": "AUDIO GATE GREEN — overall CI not fully green (external QML gate only)",
-    "verified_code_head": "7c6e162e10fcae9d63ea86b3f0b4296da6093693",
-    "run_id": 39604042735,
-    "run_url": "https://github.com/pitydah/michi-music-player/actions/runs/39604042735",
+    "verified_code_head": "75d394efa6a14a1eb3c2a6107b387da15d38d622",
+    "run_id": 39620231786,
+    "run_url": "https://github.com/pitydah/michi-music-player/actions/runs/39620231786",
     "check_runs": {
       "dac-v35-software-closure": "success",
       "min-qt": "success",
@@ -299,7 +299,7 @@
     },
     "verification_command": "gh api repos/pitydah/michi-music-player/commits/<sha>/check-runs",
     "api_note": "GitHub Actions exposes check-runs; the legacy combined-status endpoint is empty and is not evidence.",
-    "evidence_commit_note": "This evidence update is docs-only; the CI evidence above belongs to the final code head 7c6e162.",
+    "evidence_commit_note": "This evidence update is docs-only; the CI evidence above belongs to the final code head 75d394e.",
     "probe": "scripts/qt_multimedia_probe.py completes all 11 steps on the runner (Qt/PySide 6.12.0, libffmpegmediaplugin.so, exit 0); artifacts uploaded.",
     "gates": "ruff/format/alignment/exact-commit-tree PASS; diagnostics write to RUNNER_TEMP (no dirty tree)."
   },
@@ -317,12 +317,12 @@
   "fir": {
     "ownership": "F06 stateless verification + execution; F13 durable store",
     "kernel_authority": "full SHA-256 over canonical float32-LE mono coefficients; bounds BEFORE hashing; finite/rate/channels checks; canonical fingerprint",
-    "compiler": "the pure compiler receives immutable pre-acquired kernels; acquisition is bounded at composition (application/ir_acquisition.py); gain scales the installed kernel while the asset hash stays authoritative; plan carries taps/kernel/fingerprint",
+    "compiler": "the pure compiler receives immutable pre-acquired kernels; acquisition is bounded in time AND in tap count at composition (application/ir_acquisition.py); gain scales the installed kernel while the asset hash stays authoritative; plan carries taps/kernel/fingerprint",
     "native": "audiofirfilter; readback of the installed kernel fingerprint/taps inside the F05 transaction before EFFECTIVE",
     "numeric": "3-tap [0.25,0.5,0.25] vs analytic H(f): 1 kHz within +/-1 dB, 8 kHz within +/-1.5 dB; identity kernel flat; real-host and Managed sessions",
-    "managed": "Managed FIR session with readback and selected binding; no store => DSP_FIR_STORE_UNAVAILABLE; provider metadata/coefficient calls are bounded with typed DSP_FIR_STORE_TIMEOUT",
+    "managed": "Managed FIR session with readback and selected binding; no store => DSP_FIR_STORE_UNAVAILABLE; metadata/coefficient acquisition has a deadline, a MAX_FIR_TAPS materialization budget, a whole-acquisition budget and capped abandoned threads (typed DSP_FIR_STORE_TIMEOUT/BUSY/INVALID, FIR_KERNEL_TOO_LARGE)",
     "production_store": "BLOCKED — R11-F13 owns ir_asset_store.py; no durable production IR management is claimed",
-    "tests": "tests/audio_phase2/test_fir_vertical.py (13) + tests/audio_phase2/test_ir_acquisition.py (5) + compiler goldens"
+    "tests": "tests/audio_phase2/test_fir_vertical.py (13) + tests/audio_phase2/test_ir_acquisition.py (12) + compiler goldens"
   },
   "ir_identity": {
     "three_identities": "node expected SHA vs provider-declared SHA vs computed coefficients SHA",
@@ -359,7 +359,7 @@
     "G11_optional_adapters": "PASS",
     "G12_readback_before_effective": "PASS",
     "G13_host_loss_invalidates": "PASS",
-    "G14_numeric_productive_tests": "PASS (local 5935/4/0)",
+    "G14_numeric_productive_tests": "PASS (local 5942/4/0)",
     "G15_qt_architecture": "PASS — real Qt contract test runs on the runner after the PipeWire fix; audio gate success on 7c6e162; only the external QML gate is red (history)",
     "G16_blockers_classified": "PASS — F13/F11/F14 deferred by authority; QML gate external and out of F06 scope",
     "G17_canonical_transition": "PASS (this evidence commit)"
@@ -412,11 +412,16 @@
       "fix": "single dither_mode_to_native authority (tpdf/none only) used by mapping, wire and builder; builder rejects contradictory dithering; forged wire rejected before native",
       "tests": "mapping fail-closed + forged wire"
     },
-    "full_suite": "5935 passed, 4 skipped, 0 failed (local, exact tree)",
+    "full_suite": "5942 passed, 4 skipped, 0 failed (local, exact tree)",
     "WU6_fir_provider_bounded_acquisition": {
       "defect": "the compiler called the injected IR provider synchronously; a slow or hung provider held preparation and delayed supersession/cancellation",
-      "fix": "the pure compiler receives pre-acquired kernels; application/ir_acquisition.py runs metadata/coefficient calls in a DAEMON thread with a deadline (5 s default) and raises typed DSP_FIR_STORE_TIMEOUT/DSP_FIR_STORE_FAILED; the abandoned thread cannot keep the process alive",
-      "tests": "test_ir_acquisition.py (5): fast result, deadline release <0.5 s, typed relay, per-asset bounding, non-positive timeout"
+      "fix": "the pure compiler receives pre-acquired kernels; application/ir_acquisition.py runs provider calls in a DAEMON thread with a deadline (5 s default) and raises typed DSP_FIR_STORE_TIMEOUT/DSP_FIR_STORE_FAILED",
+      "tests": "test_ir_acquisition.py fast result + deadline release + typed relay"
+    },
+    "WU7_fir_materialization_budget": {
+      "defect": "tuple(coefficients) ran OUTSIDE the deadline and BEFORE the tap budget: an infinite generator, slow iterator, lying __len__ or oversized sequence could block preparation or allocate unbounded memory; abandoned timeout threads and the whole-acquisition duration were uncapped",
+      "fix": "iteration and float conversion run inside the bounded daemon operation; consumption is capped at MAX_FIR_TAPS BEFORE any copy/hash with typed FIR_KERNEL_TOO_LARGE / DSP_FIR_STORE_INVALID / FIR_KERNEL_EMPTY; the whole acquisition has a total budget; in-flight acquisition threads are capped (MAX_IN_FLIGHT=4) and new work is refused typed (DSP_FIR_STORE_BUSY) instead of accumulating abandoned daemons",
+      "tests": "test_ir_acquisition.py (12): infinite generator, slow iterator after provider return, lying __len__, None/invalid types, iteration error, in-flight cap, total acquisition budget"
     }
   },
   "final_audit": {
@@ -427,7 +432,7 @@
       "P2_fir_gain": "absolute impulse peak of the installed scaled kernel (+6 dB => 0.5*10^(6/20)) with readback",
       "P2_dither_terminal_chain": "Managed dither asserts negotiated sink format == DSP terminal == compiled output (S16LE)",
       "P2_event_detail": "OutputFamilyEvent.detail (additive) carries the host-loss reason",
-      "P2_fir_provider_cancellation": "bounded IR acquisition moved OUTSIDE the pure compiler; metadata and coefficient calls fail typed at the deadline and cannot block supersession"
+      "P2_fir_provider_cancellation": "bounded IR acquisition moved OUTSIDE the pure compiler; provider call AND bounded iteration share one deadline, the tap budget is enforced before materialization, the whole acquisition has a total budget and blocked acquisition threads are capped with a typed refusal"
     },
     "verified_correct": [
       "continuity probe emits real mono_ns and bounds the timeline; truncation cannot claim PCM continuity",
@@ -436,11 +441,11 @@
       "explicit resampling only when requested",
       "Direct/Shared regressions and device-loss/stale-selection fences"
     ],
-    "suite": "5935 passed, 4 skipped, 0 failed (local, exact tree)",
-    "ci": "audio gate SUCCESS on code head 7c6e162 (run 39604042735; check-runs: dac success, min-qt success, check failure = external QML gate)"
+    "suite": "5942 passed, 4 skipped, 0 failed (local, exact tree)",
+    "ci": "audio gate SUCCESS on code head 75d394e (run 39620231786; check-runs: dac success, min-qt success, check failure = external QML gate)"
   },
   "audit_closure_checklist": {
-    "managed_pcm": "PASS — stage/load/acceptance/post-install identity failures typed + stop; installed execution instance verified; host-loss/device-loss/stale selection fences; no fallback. Residual CLOSED: bounded IR acquisition outside the pure compiler; a slow/hung provider fails typed at the deadline and cannot block supersession/cancellation.",
+    "managed_pcm": "PASS — stage/load/acceptance/post-install identity failures typed + stop; installed execution instance verified; host-loss/device-loss/stale selection fences; no fallback. FIR residual CLOSED: bounded provider call + bounded coefficient materialization + whole-acquisition budget + capped abandoned threads; a slow/hung provider fails typed and cannot block supersession.",
     "peq": "PASS — independent RBJ coefficients (1e-12), dynamic A->B->bypass with readback, identity route retirement.",
     "fir": "PASS — three-way SHA identity, bounds (lying __len__, infinite iterators), readback of installed fingerprint, atomic transaction; FIR gain absolute-peak and per-channel over-FS headroom measured.",
     "dither": "PASS — single terminal converter, internal converters keep dither disabled, compiled == DSP terminal == sink negotiated format, S16/S24 noise-floor proofs, Shared refused.",
@@ -449,8 +454,8 @@
     "signal_truth": "PASS — recorder lists locked for owner reads vs worker writes (concurrency test), active-execution correlation, terminal events retire (host loss included), measurement fence A->B->A, late events rejected.",
     "pcm_continuity": "HONEST — probe emits real mono_ns and bounds its timeline; analyzer requires both sides; lab rebuild yields POSITION_PRESERVED (NOT_MEASURED for PCM), no PCM_CONTINUITY_VERIFIED claim.",
     "latency": "PASS (no false claims) — only GStreamer pipeline-reported values are published (0 ns in the non-live lab); FIR/resampler algorithmic latency is explicitly unmodeled; physical latency NOT_RUN.",
-    "ci": "audio gate SUCCESS on code head 7c6e162 (run 39604042735; check-runs: dac success, min-qt success, check failure = external Premium Library QML warning gate); overall CI is not fully green, and that is stated honestly.",
-    "suite": "5935 passed, 4 skipped, 0 failed (local, exact tree)"
+    "ci": "audio gate SUCCESS on code head 75d394e (run 39620231786; check-runs: dac success, min-qt success, check failure = external Premium Library QML warning gate); overall CI is not fully green, and that is stated honestly.",
+    "suite": "5942 passed, 4 skipped, 0 failed (local, exact tree)"
   },
   "updated_at": "2026-10-21",
   "history": {
@@ -468,7 +473,8 @@
       "5925 passed / 4 skipped — post-closure WU hotfixes",
       "5928 passed / 4 skipped — final audit fixes",
       "5930 passed / 4 skipped — recorder locks + FIR headroom",
-      "5935 passed / 4 skipped — bounded IR acquisition"
+      "5935 passed / 4 skipped — bounded IR acquisition",
+      "5942 passed / 4 skipped — bounded coefficient materialization + acquisition-thread cap"
     ],
     "spec_authorization": "An earlier authorization amendment was sha 826381f1...; the current canonical spec is 4f0e41eb... (mono-IR applicability correction + FIR/dither authority)."
   }
