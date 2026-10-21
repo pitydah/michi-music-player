@@ -948,6 +948,11 @@ def _build_services(
         output_session,
     )
     direct_output_lifecycle.start()
+    # F06 final audit: Signal Path truth retires IMMEDIATELY on host loss.
+    # The engine convergence owns the session release; this listener closes
+    # the window where a dead managed execution could still be presented as
+    # PROCESSED.
+    processing_transport.add_host_lost_listener(output_session.notify_host_lost)
     convergence_executor_holder: dict = {}
 
     def _dispatch_convergence(callback) -> None:

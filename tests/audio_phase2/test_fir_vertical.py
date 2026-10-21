@@ -487,6 +487,25 @@ def test_fir_impulse_goldens_match_the_kernel_exactly(tmp_path, monkeypatch) -> 
                 coefficients,
                 metrics["sample_peak"],
             )
+
+        # Explicit gain scales the INSTALLED kernel (asset hash unchanged).
+        gain_coefficients = (1.0,)
+        gain_asset = _asset(gain_coefficients)
+        gain_store = _IRStore({gain_asset.asset_id: gain_coefficients})
+        _install(
+            service,
+            port,
+            supervisor,
+            _graph(gain_asset, revision=99, gain_db=6.0),
+            gain_asset,
+            gain_store,
+        )
+        assert service.processing_truth()["readback_proven"] is True
+        port.seek(0)
+        gained = port.capture_processing_output(0.5)
+        assert gained["sample_peak"] == pytest.approx(
+            0.5 * 10 ** (6.0 / 20.0), abs=1e-3
+        )
     finally:
         port.close()
         supervisor.close()

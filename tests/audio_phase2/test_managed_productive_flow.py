@@ -481,6 +481,18 @@ def test_host_sigkill_retires_managed_truth(tmp_path, monkeypatch) -> None:
         assert truth["effective_state"] != "effective"
         assert truth["capability_state"] == "unavailable"
         assert truth["host_lost_reason"] is not None
+        # F06 audit: the Signal Path truth retires via the host-loss listener
+        # BEFORE any session release can happen.
+        active_execution = graph.output_session.active_execution_id
+        family_events = graph.signal_truth.output_family_events
+        unavailable = [
+            event
+            for event in family_events
+            if event.state.value == "unavailable"
+            and event.execution_id == active_execution
+        ]
+        assert unavailable, family_events
+        assert unavailable[-1].detail is not None
 
         # A stale session command cannot resurrect the route or crash the
         # owner: the port is gone, so cleanup is diagnostic-only.
