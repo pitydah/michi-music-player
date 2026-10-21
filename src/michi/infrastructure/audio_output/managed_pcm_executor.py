@@ -166,7 +166,7 @@ class ManagedPcmExecutor:
                     f"invalid supervisor generation {host_generation!r}",
                 )
             identity["host_generation"] = host_generation
-        self._verify_identity(plan, identity, port)
+        self._verify_identity(plan, identity, port, instance_id=instance_id)
         return ManagedPcmExecutionReceipt(
             execution_id=instance_id,
             plan_id=plan.plan_id,
@@ -211,7 +211,12 @@ class ManagedPcmExecutor:
             time.sleep(0.02)
 
     def _verify_identity(
-        self, plan: ManagedPcmOutputPlan, identity: dict[str, Any], port: object
+        self,
+        plan: ManagedPcmOutputPlan,
+        identity: dict[str, Any],
+        port: object,
+        *,
+        instance_id: str,
     ) -> None:
         checks = {
             "managed": identity.get("managed") is True,
@@ -220,6 +225,10 @@ class ManagedPcmExecutor:
             "rate_hz": int(identity.get("rate_hz") or 0) == plan.output_rate_hz,
             "channels": int(identity.get("channels") or 0) == plan.output_channels,
             "plan_id": identity.get("plan_id") == plan.plan_id,
+            # The child must have installed THIS execution instance. A
+            # same-plan/same-device execution from another attempt is a
+            # different route and must never be accepted.
+            "execution_id": identity.get("execution_id") == instance_id,
         }
         if not all(checks.values()):
             self._stop_quietly(port)

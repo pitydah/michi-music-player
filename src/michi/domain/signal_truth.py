@@ -804,6 +804,7 @@ class OutputFamilyEvent:
     transform_policy: tuple[str, ...] = ()
     runtime_identity: dict | None = None
     bit_perfect: bool | None = None
+    detail: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

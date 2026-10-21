@@ -241,10 +241,11 @@ class _FakeManagedPort:
         self.calls.append(("stop", None))
 
 
-def _identity_for(plan) -> dict:
+def _identity_for(plan, execution_id: str | None = None) -> dict:
     return {
         "managed": True,
         "loaded": True,
+        "execution_id": execution_id or plan.execution_id,
         "plan_id": plan.plan_id,
         "device": plan.device_locator,
         "format": plan.terminal_format,
@@ -359,3 +360,15 @@ def test_executor_accepts_a_supervisor_generation_method() -> None:
     receipt = executor.execute(plan, "/media/a.flac")
     assert receipt.runtime_identity["host_generation"] == 5
     assert isinstance(receipt.runtime_identity["host_generation"], int)
+
+
+def test_executor_rejects_a_different_execution_instance() -> None:
+    plan = _managed_plan()
+    port = _FakeManagedPort(_identity_for(plan, execution_id="exec:other"))
+    executor = ManagedPcmExecutor(
+        lambda: port, install_processing=lambda _plan: {"revision": 1}
+    )
+    with pytest.raises(ManagedPcmExecutionError) as info:
+        executor.execute(plan, "/media/a.flac", execution_instance_id="exec:expected")
+    assert info.value.code == "MANAGED_PCM_IDENTITY_MISMATCH"
+    assert ("stop", None) in port.calls

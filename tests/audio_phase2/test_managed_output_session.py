@@ -528,3 +528,24 @@ def test_session_activates_and_retires_the_measurement_execution_fence() -> None
     assert recorder.processing_measurements == ()
     with pytest.raises(ValueError):
         recorder.record_processing_measurement(measurement)
+
+
+def test_host_loss_retires_the_active_signal_path_truth() -> None:
+    from michi.domain.signal_truth import OutputFamilyState, SignalTruthRecorder
+
+    recorder = SignalTruthRecorder()
+    provider = _Provider()
+    hook = _ManagedHook()
+    service = _service(provider, hook, truth_recorder=recorder)
+    service.prepare_for_media(PATH)
+    prepared = hook.prepared[-1]
+    assert service.active_execution_id == prepared.execution_id
+    assert recorder.output_family_events[-1].state is OutputFamilyState.READY
+
+    service.notify_host_lost("SIGKILL")
+    last = recorder.output_family_events[-1]
+    assert last.execution_id == prepared.execution_id
+    assert last.state is OutputFamilyState.UNAVAILABLE
+    assert last.detail == "SIGKILL"
+    # The engine convergence owns the release; this call only retires truth.
+    assert service.active_execution_id == prepared.execution_id

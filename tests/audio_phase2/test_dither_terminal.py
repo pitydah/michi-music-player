@@ -241,6 +241,9 @@ def test_managed_dither_executes_on_the_selected_binding(tmp_path, monkeypatch) 
         port = graph.gstreamer_engine_provider.current_port
         identity = port.query_managed_identity()
         assert identity["managed"] is True and identity["loaded"] is True
+        # Terminal authority chain: compiled output == DSP terminal == sink.
+        assert identity["negotiated"]["format"] == "S16LE"
+        assert identity["negotiated"]["rate_hz"] == 44100
         metrics = port.capture_processing_output(0.8)
         assert metrics["format"] == "S16LE"
     finally:

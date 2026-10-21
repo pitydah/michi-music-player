@@ -1112,10 +1112,26 @@ class OutputSessionService:
         self._record_output_family(OutputFamilyState.READY, prepared)
         return self._token_value
 
+    def notify_host_lost(self, reason: str) -> None:
+        """Host boundary lost: retire the CURRENT Signal Path evidence.
+
+        The engine convergence owns the session release; this only prevents
+        the presentation model from presenting a dead managed execution as
+        PROCESSED in the window before that release.
+        """
+        prepared = self._managed_prepared
+        if self._mode != "managed" or prepared is None:
+            return
+        self._record_output_family(
+            OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
+        )
+
     def _record_output_family(
         self,
         state: OutputFamilyState,
         prepared: ManagedOutputPrepared | None = None,
+        *,
+        detail: str | None = None,
     ) -> None:
         recorder = self._truth_recorder
         if recorder is None:
@@ -1137,6 +1153,7 @@ class OutputSessionService:
                     runtime_identity=runtime,
                     # Never a Direct preservation proof: tri-state, not True.
                     bit_perfect=None,
+                    detail=detail,
                 )
             )
 
@@ -1365,7 +1382,9 @@ class OutputSessionService:
             if self._state is not OutputSessionState.LOST:
                 self._transition(OutputSessionState.RELEASING)
             self._managed_abort_quietly(prepared, reason)
-            self._record_output_family(OutputFamilyState.UNAVAILABLE, prepared)
+            self._record_output_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
+            )
             self._clear_execution(keep_error=True)
             if self._state is not OutputSessionState.IDLE:
                 self._transition(OutputSessionState.IDLE)

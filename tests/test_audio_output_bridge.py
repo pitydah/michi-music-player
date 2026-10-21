@@ -204,3 +204,18 @@ def test_direct_route_is_not_classified_processed() -> None:
     assert all(
         stage.get("kind") != "processed" for stage in bridge._projection["signalPath"]
     )
+
+
+def test_host_loss_unavailable_event_retires_processed_truth() -> None:
+    from michi.domain.signal_truth import OutputFamilyState
+
+    bridge = _bridge(
+        events=[
+            _event("exec:1", OutputFamilyState.RUNNING),
+            _event("exec:1", OutputFamilyState.UNAVAILABLE),
+        ]
+    )
+    assert bridge.signalPathKind != "processed"
+    assert bridge.processed is False
+    assert bridge.processedActive is False
+    assert bridge.processingBitPerfect is None
