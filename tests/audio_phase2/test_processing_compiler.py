@@ -84,7 +84,7 @@ def _resolve(graph, *, signal=None, assets=()):
 
 
 def _compile(
-    graph, *, signal=None, assets=(), backend=None, policy=None, ir_provider=None
+    graph, *, signal=None, assets=(), backend=None, policy=None, ir_kernels=None
 ):
     effective = _resolve(graph, signal=signal, assets=assets)
     return ProcessingGraphCompiler().compile(
@@ -92,7 +92,7 @@ def _compile(
         backend=backend or _backend(),
         assets=assets,
         sample_policy=policy,
-        ir_provider=ir_provider,
+        ir_kernels=ir_kernels,
     )
 
 
@@ -414,15 +414,10 @@ def test_convolution_compiles_with_immutable_asset_identity() -> None:
     asset = ImpulseResponseMetadata(
         asset_id=asset_id, sha256=sha, rate_hz=96000, channels=1
     )
-    store = type(
-        "Store",
-        (),
-        {"load_float32_mono": lambda self, ir_id: coefficients},
-    )()
     graph = _graph(
         ConvolutionNode(node_id="ir", asset_id=asset_id, asset_sha256=sha, gain_db=-2.0)
     )
-    plan = _compile(graph, assets=(asset,), ir_provider=store)
+    plan = _compile(graph, assets=(asset,), ir_kernels={asset_id: coefficients})
     node = plan.nodes[0]
     assert node.strategy is ProcessingStrategy.CONVOLUTION_FIR
     assert node.asset_sha256 == sha

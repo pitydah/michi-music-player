@@ -122,7 +122,7 @@ def test_full_chain_compiles_in_canonical_order() -> None:
             backend_id="test", strategies=frozenset(ProcessingStrategy)
         ),
         assets=(_asset(store),),
-        ir_provider=store,
+        ir_kernels={store.asset_id: store.kernel},
         sample_policy=ProcessingSamplePolicy(terminal_format_verified=True),
     )
     assert [node.strategy for node in plan.nodes] == [
@@ -179,7 +179,7 @@ def test_full_chain_executes_on_the_real_host(tmp_path, monkeypatch) -> None:
             effective,
             backend=service.capabilities,
             assets=(asset,),
-            ir_provider=store,
+            ir_kernels={store.asset_id: store.kernel},
             sample_policy=ProcessingSamplePolicy(terminal_format_verified=True),
         )
         candidate = service.begin_candidate(

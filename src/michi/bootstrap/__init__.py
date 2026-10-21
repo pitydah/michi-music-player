@@ -722,6 +722,7 @@ def _build_services(
         )
 
         assets: tuple[ImpulseResponseMetadata, ...] = ()
+        ir_kernels: dict[str, tuple[float, ...]] = {}
         conv_nodes = tuple(
             node for node in selected_graph.nodes if isinstance(node, ConvolutionNode)
         )
@@ -733,7 +734,13 @@ def _build_services(
                 )
             metadata_entries = []
             for node in conv_nodes:
-                metadata = ir_provider.metadata(node.asset_id)
+                from michi.application.ir_acquisition import bounded_ir_call
+
+                metadata = bounded_ir_call(
+                    lambda node=node: ir_provider.metadata(node.asset_id),
+                    timeout_s=5.0,
+                    detail="the IR provider metadata call exceeded 5s",
+                )
                 provider_sha = str(metadata.get("sha256") or "").strip().lower()
                 if len(provider_sha) != 64:
                     raise ProcessingCompilationError(
@@ -752,6 +759,11 @@ def _build_services(
                     )
                 )
             assets = tuple(metadata_entries)
+            from michi.application.ir_acquisition import acquire_kernels
+
+            # Bounded acquisition OUTSIDE the pure compiler; a slow/hung
+            # provider fails typed and cannot block supersession.
+            ir_kernels = acquire_kernels(assets, ir_provider)
         effective = EffectiveProcessingGraphResolver().resolve(
             selected_graph, input_signal=signal, assets=assets
         )
@@ -759,7 +771,7 @@ def _build_services(
             effective,
             backend=audio_processing_service.capabilities,
             assets=assets,
-            ir_provider=ir_provider,
+            ir_kernels=ir_kernels,
             # The Managed sink is pinned to the plan's terminal format, so the
             # terminal-format authority is PROVEN for this route only.
             sample_policy=ProcessingSamplePolicy(terminal_format_verified=True),

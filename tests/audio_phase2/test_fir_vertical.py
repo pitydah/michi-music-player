@@ -114,7 +114,11 @@ def _compile(graph, asset, store, *, rate: int = 44100):
             backend_id="test", strategies=frozenset(ProcessingStrategy)
         ),
         assets=(asset,),
-        ir_provider=store,
+        ir_kernels=(
+            {asset.asset_id: store.load_float32_mono(asset.asset_id)}
+            if store is not None
+            else None
+        ),
     )
 
 
@@ -216,7 +220,11 @@ def _install(service, port, supervisor, graph, asset, store, *, rate=44100):
         effective,
         backend=service.capabilities,
         assets=(asset,),
-        ir_provider=store,
+        ir_kernels=(
+            {asset.asset_id: store.load_float32_mono(asset.asset_id)}
+            if store is not None
+            else None
+        ),
     )
     candidate = service.begin_candidate(
         plan, host_generation=supervisor.host_generation, transport=port

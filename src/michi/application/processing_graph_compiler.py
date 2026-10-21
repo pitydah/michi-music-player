@@ -117,7 +117,7 @@ class ProcessingGraphCompiler:
         backend: ProcessingBackendCapabilities,
         assets: tuple[ImpulseResponseMetadata, ...] = (),
         sample_policy: ProcessingSamplePolicy | None = None,
-        ir_provider: object | None = None,
+        ir_kernels: dict[str, tuple[float, ...]] | None = None,
     ) -> CompiledProcessingPlan:
         policy = (
             sample_policy if sample_policy is not None else ProcessingSamplePolicy()
@@ -152,9 +152,9 @@ class ProcessingGraphCompiler:
                     entry,
                     rate_hz=current_rate,
                     assets=assets_by_id,
-                    ir_provider=ir_provider,
                     policy=policy,
                     channels=current_channels,
+                    ir_kernels=ir_kernels,
                 )
             )
             if strategy not in backend.strategies:
@@ -349,9 +349,9 @@ class ProcessingGraphCompiler:
         *,
         rate_hz: int,
         assets: dict[str, ImpulseResponseMetadata],
-        ir_provider: object | None = None,
         policy: ProcessingSamplePolicy | None = None,
         channels: int = 0,
+        ir_kernels: dict[str, tuple[float, ...]] | None = None,
     ) -> tuple[ProcessingStrategy, tuple[tuple[str, object], ...], int, str | None]:
         node = entry.node
         if isinstance(node, PreampNode):
@@ -417,13 +417,13 @@ class ProcessingGraphCompiler:
                     "DSP_FIR_CHANNELS_UNSUPPORTED",
                     "only a mono IR is authorized in this slice",
                 )
-            if ir_provider is None:
+            coefficients = (ir_kernels or {}).get(node.asset_id)
+            if coefficients is None:
                 raise ProcessingCompilationError(
                     "DSP_FIR_STORE_UNAVAILABLE",
-                    "no ImpulseResponseStorePort is composed for this execution",
+                    "no verified FIR kernel was acquired for this execution",
                 )
             try:
-                coefficients = ir_provider.load_float32_mono(node.asset_id)
                 kernel = verify_fir_kernel_coefficients(
                     coefficients,
                     expected_sha256=asset.sha256,
