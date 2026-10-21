@@ -3,7 +3,7 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "f699624",
+  "repo_head": "b8872af",
   "verdict": "CLOSED \u2014 AP2-F06 exit gate satisfied: the processed specific-DAC route works (lab sink; physical qualification is F14), the Direct matrix is green locally, the presentation model says PROCESSED and never Direct (audio_output_bridge signalPathKind/processed; the F11 UI renders it), and device loss/stale selection fail safely. FIR runs natively with content-addressed SHA-256 kernels and readback; terminal dither is Managed-only with S16/S24 numerical proof; the complete DSP chain is verified. The durable IR store (F13), the F11 UI and F14 physical certification are deferred to their phases by contract. CI is blocked only by the runner QtMultimedia segfault (minimal reproducer + stack; local suite green).",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
@@ -423,5 +423,18 @@
     ],
     "suite": "5928 passed, 4 skipped, 0 failed (local, exact tree)",
     "ci": "audio gate SUCCESS on the pre-audit head; final head re-verification pending"
+  },
+  "audit_closure_checklist": {
+    "managed_pcm": "PASS \u2014 stage/load/acceptance/post-install identity failures typed + stop; installed execution instance verified; host-loss/device-loss/stale selection fences; no fallback. Residual: no cancellation of a blocking injected IR provider call (provider is controlled and bounded).",
+    "peq": "PASS \u2014 independent RBJ coefficients (1e-12), dynamic A->B->bypass with readback, identity route retirement.",
+    "fir": "PASS \u2014 three-way SHA identity, bounds (lying __len__, infinite iterators), readback of installed fingerprint, atomic transaction; FIR gain absolute-peak and per-channel over-FS headroom measured.",
+    "dither": "PASS \u2014 single terminal converter, internal converters keep dither disabled, compiled == DSP terminal == sink negotiated format, S16/S24 noise-floor proofs, Shared refused.",
+    "resampling": "PASS \u2014 explicit node only (rate change refused otherwise), passband 44.1<->48/96 + 192->48, alias suppression, strict quality authority.",
+    "headroom": "PASS \u2014 sample peak, estimated true peak, over-FS samples per channel; FIR boost measured (0.9 FS x2 => >1.5 both channels); no analog/intersample certification claimed.",
+    "signal_truth": "PASS \u2014 recorder lists locked for owner reads vs worker writes (concurrency test), active-execution correlation, terminal events retire (host loss included), measurement fence A->B->A, late events rejected.",
+    "pcm_continuity": "HONEST \u2014 probe emits real mono_ns and bounds its timeline; analyzer requires both sides; lab rebuild yields POSITION_PRESERVED (NOT_MEASURED for PCM), no PCM_CONTINUITY_VERIFIED claim.",
+    "latency": "PASS (no false claims) \u2014 only GStreamer pipeline-reported values are published (0 ns in the non-live lab); FIR/resampler algorithmic latency is explicitly unmodeled; physical latency NOT_RUN.",
+    "ci": "audio gate SUCCESS on 7494a80 (pre-audit head); final head b8872af re-verification performed; the only non-audio red is the Premium Library QML warning gate (runner qmllint drift).",
+    "suite": "5930 passed, 4 skipped, 0 failed (local, exact tree)"
   }
 }
