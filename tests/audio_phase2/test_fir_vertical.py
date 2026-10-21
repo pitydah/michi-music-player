@@ -567,3 +567,79 @@ def test_provider_coefficients_that_do_not_match_the_declared_sha(
     tokens, failures = _managed_fir_prepare(tmp_path, changed, asset, monkeypatch)
     assert tokens == []
     assert failures and failures[0].code == "FIR_KERNEL_HASH_MISMATCH", failures
+
+
+@pytest.mark.skipif(not _HAS_GI, reason="PyGObject/GStreamer unavailable")
+def test_fir_gain_can_exceed_full_scale_and_is_measured_per_channel(
+    tmp_path, monkeypatch
+) -> None:
+    """Headroom is measured for FIR boost, not assumed from PEQ only."""
+    from michi.application.audio_processing_service import AudioProcessingService
+    from michi.infrastructure.audio_processing.native_mapping import (
+        NativeProcessingMapping,
+    )
+    from tests.audio_phase2.test_headroom_measurement import _write_sine
+    from tests.audio_phase2.test_processing_graphic_eq import _real_port
+
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    fixture = tmp_path / "fir-headroom.wav"
+    _write_sine(fixture, rate=44100, amplitude=0.9)
+    supervisor, port = _real_port()
+    try:
+        port.activate()
+        port.set_volume(0)
+        port.load(fixture)
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            port.dispatch_pending()
+            try:
+                duration = port.query_duration()
+            except Exception:
+                duration = None
+            if isinstance(duration, int) and duration > 0:
+                break
+            time.sleep(0.02)
+        service = AudioProcessingService(
+            capability_query=port.query_processing_capabilities,
+            native_mapping=NativeProcessingMapping(),
+            transport=port,
+        )
+        service.refresh_capabilities()
+
+        flat_coefficients = (1.0,)
+        flat_asset = _asset(flat_coefficients)
+        _install(
+            service,
+            port,
+            supervisor,
+            _graph(flat_asset),
+            flat_asset,
+            _IRStore({flat_asset.asset_id: flat_coefficients}),
+        )
+        port.seek(0)
+        flat = port.capture_processing_output(1.0)
+        assert 0.85 <= flat["sample_peak"] <= 1.0, flat
+
+        gain_coefficients = (2.0,)
+        gain_asset = _asset(gain_coefficients)
+        _install(
+            service,
+            port,
+            supervisor,
+            _graph(gain_asset, revision=2),
+            gain_asset,
+            _IRStore({gain_asset.asset_id: gain_coefficients}),
+        )
+        assert service.processing_truth()["readback_proven"] is True
+        port.seek(0)
+        boosted = port.capture_processing_output(1.0)
+        # 0.9 * 2 = 1.8 in the float domain: measured, not assumed.
+        assert boosted["sample_peak"] > 1.5, boosted
+        assert boosted["exceeds_full_scale"] is True
+        assert boosted["samples_over_full_scale"] > 0
+        assert len(boosted["channels_metrics"]) == 2
+        for channel in boosted["channels_metrics"]:
+            assert channel["sample_peak"] > 1.5
+    finally:
+        port.close()
+        supervisor.close()

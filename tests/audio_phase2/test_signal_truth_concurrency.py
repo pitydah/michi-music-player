@@ -124,3 +124,54 @@ def test_history_is_bounded_and_notification_does_not_hold_the_lock() -> None:
     recorder.retire_execution("exec:C")
     assert time.monotonic() - started < 0.5
     release.set()
+
+
+def test_event_lists_are_safe_for_owner_reads_during_worker_writes() -> None:
+    from michi.domain.signal_truth import (
+        OutputFamilyEvent,
+        OutputFamilyState,
+        ProcessingTruthEvent,
+        ProcessingTruthState,
+    )
+
+    recorder = SignalTruthRecorder()
+    stop = threading.Event()
+    errors: list[str] = []
+
+    def writer() -> None:
+        for index in range(300):
+            recorder.record_output_family_event(
+                OutputFamilyEvent(
+                    family="managed",
+                    state=OutputFamilyState.RUNNING,
+                    execution_id=f"exec:{index}",
+                )
+            )
+            recorder.record_processing_event(
+                ProcessingTruthEvent(
+                    state=ProcessingTruthState.EFFECTIVE,
+                    processing_generation=index,
+                )
+            )
+
+    def reader() -> None:
+        while not stop.is_set():
+            try:
+                events = recorder.output_family_events
+                assert isinstance(events, tuple)
+                assert all(event.family == "managed" for event in events)
+                processing = recorder.processing_events
+                assert isinstance(processing, tuple)
+            except Exception as exc:  # noqa: BLE001 - collected for assertion
+                errors.append(repr(exc))
+
+    writer_thread = threading.Thread(target=writer)
+    reader_thread = threading.Thread(target=reader)
+    reader_thread.start()
+    writer_thread.start()
+    writer_thread.join()
+    stop.set()
+    reader_thread.join()
+    assert not errors, errors
+    assert len(recorder.output_family_events) == 64
+    assert len(recorder.processing_events) == 64

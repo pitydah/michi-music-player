@@ -846,7 +846,8 @@ class SignalTruthRecorder:
 
     @property
     def processing_events(self) -> tuple[ProcessingTruthEvent, ...]:
-        return tuple(self._processing_events)
+        with self._lock:
+            return tuple(self._processing_events)
 
     @property
     def processing_measurements(self) -> tuple[ProcessingMeasurement, ...]:
@@ -905,26 +906,33 @@ class SignalTruthRecorder:
 
     @property
     def output_family_events(self) -> tuple[OutputFamilyEvent, ...]:
-        return tuple(self._output_family_events)
+        with self._lock:
+            return tuple(self._output_family_events)
 
     def record_output_family_event(self, event: OutputFamilyEvent) -> None:
-        """Append output-family evidence without touching DAC verdicts."""
+        """Append output-family evidence without touching DAC verdicts.
+
+        The list is guarded by the recorder lock: the presentation bridge reads
+        it from the owner thread while sessions record from workers.
+        """
         if event.bit_perfect is True:
             raise ValueError("output-family evidence can never prove bit-perfect")
         if not event.family.strip():
             raise ValueError("output-family evidence requires a family")
-        self._output_family_events.append(event)
-        if len(self._output_family_events) > 64:
-            del self._output_family_events[:-64]
+        with self._lock:
+            self._output_family_events.append(event)
+            if len(self._output_family_events) > 64:
+                del self._output_family_events[:-64]
         self._publish()
 
     def record_processing_event(self, event: ProcessingTruthEvent) -> None:
         """Append DSP evidence without touching candidate/active DAC truth."""
         if event.bit_perfect is True:
             raise ValueError("processing evidence can never prove bit-perfect")
-        self._processing_events.append(event)
-        if len(self._processing_events) > 64:
-            del self._processing_events[:-64]
+        with self._lock:
+            self._processing_events.append(event)
+            if len(self._processing_events) > 64:
+                del self._processing_events[:-64]
         self._publish()
 
     @property
