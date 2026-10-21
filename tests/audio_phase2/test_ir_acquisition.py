@@ -236,3 +236,146 @@ def test_total_budget_covers_all_assets() -> None:
         acquire_kernels(assets, _Provider(), timeout_s=1.0, total_timeout_s=0.15)
     assert info.value.code == "DSP_FIR_STORE_TIMEOUT"
     assert time.monotonic() - started < 0.5
+
+
+class _Node:
+    def __init__(self, asset_id: str) -> None:
+        self.asset_id = asset_id
+
+
+def _valid_metadata(asset_id: str, **overrides):
+    sha = asset_id.rsplit(":", 1)[-1]
+    data = {"sha256": sha, "rate_hz": 48000, "channels": 1}
+    data.update(overrides)
+    return data
+
+
+def test_acquire_ir_assets_returns_metadata_and_kernels() -> None:
+    from michi.application.ir_acquisition import acquire_ir_assets
+
+    node = _Node("ir:sha256:" + "a" * 64)
+
+    class _Provider:
+        def metadata(self, asset_id: str):
+            return _valid_metadata(asset_id)
+
+        def load_float32_mono(self, asset_id: str):
+            return (0.5, 0.5)
+
+    assets, kernels = acquire_ir_assets((node,), _Provider(), total_timeout_s=1.0)
+    assert len(assets) == 1
+    assert assets[0].asset_id == node.asset_id
+    assert assets[0].sha256 == "a" * 64
+    assert assets[0].rate_hz == 48000
+    assert kernels[node.asset_id] == (0.5, 0.5)
+
+
+def test_malformed_metadata_is_typed() -> None:
+    from michi.application.ir_acquisition import acquire_ir_assets
+
+    node = _Node("ir:sha256:" + "b" * 64)
+
+    class _Provider:
+        def __init__(self, metadata) -> None:
+            self._metadata = metadata
+
+        def metadata(self, asset_id: str):
+            return self._metadata
+
+        def load_float32_mono(self, asset_id: str):
+            return (0.5,)
+
+    sha = "b" * 64
+    cases = [
+        (None, "DSP_FIR_STORE_INVALID"),
+        ({}, "DSP_FIR_ASSET_HASH_UNAVAILABLE"),
+        ({"sha256": "x" * 64}, "DSP_FIR_ASSET_HASH_UNAVAILABLE"),
+        ({"sha256": sha}, "DSP_FIR_STORE_INVALID"),
+        ({"sha256": sha, "rate_hz": "96000", "channels": 1}, "DSP_FIR_STORE_INVALID"),
+        ({"sha256": sha, "rate_hz": 0, "channels": 1}, "DSP_FIR_STORE_INVALID"),
+        ({"sha256": sha, "rate_hz": 48000, "channels": True}, "DSP_FIR_STORE_INVALID"),
+        ({"sha256": sha, "rate_hz": 48000, "channels": 0}, "DSP_FIR_STORE_INVALID"),
+    ]
+    for metadata, code in cases:
+        with pytest.raises(ProcessingCompilationError) as info:
+            acquire_ir_assets((node,), _Provider(metadata), total_timeout_s=1.0)
+        assert info.value.code == code, metadata
+
+
+def test_metadata_and_coefficients_share_the_total_budget() -> None:
+    from michi.application.ir_acquisition import acquire_ir_assets
+
+    node = _Node("ir:sha256:" + "c" * 64)
+
+    class _Provider:
+        def metadata(self, asset_id: str):
+            time.sleep(0.04)
+            return _valid_metadata(asset_id)
+
+        def load_float32_mono(self, asset_id: str):
+            time.sleep(0.04)
+            return (0.5,)
+
+    started = time.monotonic()
+    with pytest.raises(ProcessingCompilationError) as info:
+        acquire_ir_assets((node,), _Provider(), timeout_s=1.0, total_timeout_s=0.06)
+    assert info.value.code == "DSP_FIR_STORE_TIMEOUT"
+    assert time.monotonic() - started < 0.5
+
+
+def test_metadata_queries_share_the_total_budget_across_nodes() -> None:
+    from michi.application.ir_acquisition import acquire_ir_assets
+
+    nodes = (
+        _Node("ir:sha256:" + "d" * 64),
+        _Node("ir:sha256:" + "e" * 64),
+    )
+
+    class _Provider:
+        def metadata(self, asset_id: str):
+            time.sleep(0.05)
+            return _valid_metadata(asset_id)
+
+        def load_float32_mono(self, asset_id: str):
+            return (0.5,)
+
+    started = time.monotonic()
+    with pytest.raises(ProcessingCompilationError) as info:
+        acquire_ir_assets(nodes, _Provider(), timeout_s=1.0, total_timeout_s=0.08)
+    assert info.value.code == "DSP_FIR_STORE_TIMEOUT"
+    assert time.monotonic() - started < 0.5
+
+
+def test_real_in_flight_cap_refuses_a_fifth_parallel_acquisition() -> None:
+    import threading
+
+    from michi.application import ir_acquisition
+
+    for _ in range(200):
+        if ir_acquisition.in_flight_calls() == 0:
+            break
+        time.sleep(0.02)
+    release = threading.Event()
+
+    def _hung():
+        release.wait(2.0)
+        return (0.5,)
+
+    try:
+        for _ in range(ir_acquisition.MAX_IN_FLIGHT):
+            with pytest.raises(ProcessingCompilationError) as info:
+                ir_acquisition.bounded_ir_call(_hung, timeout_s=0.05)
+            assert info.value.code == "DSP_FIR_STORE_TIMEOUT"
+        assert ir_acquisition.in_flight_calls() == ir_acquisition.MAX_IN_FLIGHT
+
+        with pytest.raises(ProcessingCompilationError) as info:
+            ir_acquisition.bounded_ir_call(lambda: (0.5,), timeout_s=1.0)
+        assert info.value.code == "DSP_FIR_STORE_BUSY"
+    finally:
+        release.set()
+
+    for _ in range(200):
+        if ir_acquisition.in_flight_calls() == 0:
+            break
+        time.sleep(0.02)
+    assert ir_acquisition.in_flight_calls() == 0

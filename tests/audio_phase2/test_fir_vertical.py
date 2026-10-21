@@ -651,3 +651,22 @@ def test_fir_gain_can_exceed_full_scale_and_is_measured_per_channel(
     finally:
         port.close()
         supervisor.close()
+
+
+def test_provider_with_malformed_metadata_is_rejected_before_native(
+    tmp_path, monkeypatch
+) -> None:
+    coefficients = (0.5, 0.5)
+    asset = _asset(coefficients)
+
+    class _BadMetadataStore(_IRStore):
+        def metadata(self, ir_id: str) -> dict:
+            data = super().metadata(ir_id)
+            data["rate_hz"] = "not-an-int"
+            return data
+
+    tokens, failures = _managed_fir_prepare(
+        tmp_path, _BadMetadataStore({asset.asset_id: coefficients}), asset, monkeypatch
+    )
+    assert tokens == []
+    assert failures and failures[0].code == "DSP_FIR_STORE_INVALID", failures

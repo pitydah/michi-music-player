@@ -716,12 +716,9 @@ def _build_services(
         from michi.application.processing_graph_compiler import (
             ProcessingCompilationError,
         )
-        from michi.domain.audio_processing import (
-            ConvolutionNode,
-            ImpulseResponseMetadata,
-        )
+        from michi.domain.audio_processing import ConvolutionNode
 
-        assets: tuple[ImpulseResponseMetadata, ...] = ()
+        assets: tuple = ()
         ir_kernels: dict[str, tuple[float, ...]] = {}
         conv_nodes = tuple(
             node for node in selected_graph.nodes if isinstance(node, ConvolutionNode)
@@ -732,38 +729,12 @@ def _build_services(
                     "DSP_FIR_STORE_UNAVAILABLE",
                     "no ImpulseResponseStorePort is composed for Managed DSP",
                 )
-            metadata_entries = []
-            for node in conv_nodes:
-                from michi.application.ir_acquisition import bounded_ir_call
+            from michi.application.ir_acquisition import acquire_ir_assets
 
-                metadata = bounded_ir_call(
-                    lambda node=node: ir_provider.metadata(node.asset_id),
-                    timeout_s=5.0,
-                    detail="the IR provider metadata call exceeded 5s",
-                )
-                provider_sha = str(metadata.get("sha256") or "").strip().lower()
-                if len(provider_sha) != 64:
-                    raise ProcessingCompilationError(
-                        "DSP_FIR_ASSET_HASH_UNAVAILABLE",
-                        "the IR provider must declare the asset SHA-256",
-                    )
-                metadata_entries.append(
-                    ImpulseResponseMetadata(
-                        asset_id=node.asset_id,
-                        # INDEPENDENT provider identity, never copied from the
-                        # node; the compiler compares it with the node hash and
-                        # the actual coefficients hash.
-                        sha256=provider_sha,
-                        rate_hz=int(metadata["rate_hz"]),
-                        channels=int(metadata["channels"]),
-                    )
-                )
-            assets = tuple(metadata_entries)
-            from michi.application.ir_acquisition import acquire_kernels
-
-            # Bounded acquisition OUTSIDE the pure compiler; a slow/hung
-            # provider fails typed and cannot block supersession.
-            ir_kernels = acquire_kernels(assets, ir_provider)
+            # ONE shared deadline for metadata + coefficients, OUTSIDE the pure
+            # compiler; a slow/hung provider fails typed and cannot multiply
+            # the preparation budget by the number of FIR nodes.
+            assets, ir_kernels = acquire_ir_assets(conv_nodes, ir_provider)
         effective = EffectiveProcessingGraphResolver().resolve(
             selected_graph, input_signal=signal, assets=assets
         )

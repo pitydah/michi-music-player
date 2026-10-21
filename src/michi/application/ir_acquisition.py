@@ -17,10 +17,11 @@ from __future__ import annotations
 
 import threading
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from michi.application.processing_graph_compiler import ProcessingCompilationError
+from michi.domain.audio_processing import ImpulseResponseMetadata
 from michi.domain.fir_kernel import MAX_FIR_TAPS
 
 DEFAULT_IR_TIMEOUT_S = 5.0
@@ -170,3 +171,83 @@ def acquire_kernels(
         )
         kernels[asset_id] = coefficients
     return kernels
+
+
+def _parse_metadata(asset_id: str, metadata: Any) -> ImpulseResponseMetadata:
+    """Validate provider-declared identity inside the bounded operation."""
+    if not isinstance(metadata, Mapping):
+        raise ProcessingCompilationError(
+            "DSP_FIR_STORE_INVALID", "the IR provider returned no metadata mapping"
+        )
+    sha = str(metadata.get("sha256") or "").strip().lower()
+    if len(sha) != 64 or any(ch not in "0123456789abcdef" for ch in sha):
+        raise ProcessingCompilationError(
+            "DSP_FIR_ASSET_HASH_UNAVAILABLE",
+            "the IR provider must declare the asset SHA-256",
+        )
+    rate_hz = metadata.get("rate_hz")
+    channels = metadata.get("channels")
+    for name, value in (("rate_hz", rate_hz), ("channels", channels)):
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ProcessingCompilationError(
+                "DSP_FIR_STORE_INVALID",
+                f"IR metadata {name} must be a positive integer",
+            )
+    return ImpulseResponseMetadata(
+        asset_id=asset_id,
+        sha256=sha,
+        rate_hz=rate_hz,
+        channels=channels,
+    )
+
+
+def acquire_ir_assets(
+    nodes: Iterable[object],
+    provider: object,
+    *,
+    timeout_s: float = DEFAULT_IR_TIMEOUT_S,
+    total_timeout_s: float = DEFAULT_IR_TIMEOUT_S,
+) -> tuple[tuple[ImpulseResponseMetadata, ...], dict[str, tuple[float, ...]]]:
+    """Metadata + coefficients under ONE shared deadline.
+
+    A provider that is slow in metadata and/or coefficients cannot multiply
+    the preparation budget by the number of FIR nodes.
+    """
+    total = float(total_timeout_s)
+    if total <= 0:
+        raise ProcessingCompilationError(
+            "DSP_FIR_STORE_TIMEOUT", "IR acquisition budget must be positive"
+        )
+    deadline = time.monotonic() + total
+    assets: list[ImpulseResponseMetadata] = []
+    kernels: dict[str, tuple[float, ...]] = {}
+    for node in nodes:
+        asset_id = str(node.asset_id)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ProcessingCompilationError(
+                "DSP_FIR_STORE_TIMEOUT",
+                f"IR acquisition budget exhausted before asset {asset_id}",
+            )
+        asset = bounded_ir_call(
+            lambda asset_id=asset_id: _parse_metadata(
+                asset_id, provider.metadata(asset_id)
+            ),
+            timeout_s=min(float(timeout_s), remaining),
+            detail=f"metadata for asset {asset_id} exceeded the acquisition budget",
+        )
+        assets.append(asset)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ProcessingCompilationError(
+                "DSP_FIR_STORE_TIMEOUT",
+                f"IR acquisition budget exhausted before coefficients of {asset_id}",
+            )
+        kernels[asset_id] = bounded_ir_call(
+            lambda asset_id=asset_id: _materialize_coefficients(
+                provider.load_float32_mono(asset_id)
+            ),
+            timeout_s=min(float(timeout_s), remaining),
+            detail=f"coefficients for asset {asset_id} exceeded the acquisition budget",
+        )
+    return tuple(assets), kernels
