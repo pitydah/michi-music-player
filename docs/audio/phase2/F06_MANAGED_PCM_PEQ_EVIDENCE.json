@@ -3,8 +3,8 @@
   "phase": "AP2-F06",
   "title": "MANAGED PCM TO SPECIFIC DAC / ADVANCED DSP",
   "recorded_at": "2026-10-17",
-  "repo_head": "b8872af",
-  "verdict": "CLOSED \u2014 AP2-F06 exit gate satisfied: the processed specific-DAC route works (lab sink; physical qualification is F14), the Direct matrix is green locally, the presentation model says PROCESSED and never Direct (audio_output_bridge signalPathKind/processed; the F11 UI renders it), and device loss/stale selection fail safely. FIR runs natively with content-addressed SHA-256 kernels and readback; terminal dither is Managed-only with S16/S24 numerical proof; the complete DSP chain is verified. The durable IR store (F13), the F11 UI and F14 physical certification are deferred to their phases by contract. CI is blocked only by the runner QtMultimedia segfault (minimal reproducer + stack; local suite green).",
+  "repo_head": "7c6e162e10fcae9d63ea86b3f0b4296da6093693",
+  "verdict": "CLOSED — AP2-F06 exit gate satisfied: the processed specific-DAC route works (lab sink; physical qualification is F14 NOT_RUN), the Direct matrix is green locally, the presentation model says PROCESSED and never Direct (audio_output_bridge signalPathKind/processed; the F11 UI renders it), and device loss/stale selection fail safely. FIR runs natively with content-addressed SHA-256 kernels and readback; terminal dither is Managed-only with S16/S24 numerical proof; the complete DSP chain is verified. CI audio gate is green on code head 7c6e162 (check-runs verified); the only non-audio red is the external Premium Library QML warning gate (QML untouched by F06). The earlier runner QtMultimedia crash is resolved and recorded in history. The durable IR store (F13), the F11 UI and F14 physical certification are deferred to their phases by contract.",
   "activation": "docs/audio/phase2/F06_ACTIVATION.json",
   "managed_pcm": {
     "contract": "src/michi/domain/managed_pcm_output.py",
@@ -57,7 +57,7 @@
     },
     "runtime_evidence": {
       "identity": "managed identity carries plan/device/format/rate/channels, lab_sink, loaded, host supervisor generation (executor), and the sink pad's negotiated caps",
-      "evidence_level": "gstreamer_negotiated when the sink pad exposes current caps; configured_only otherwise \u2014 no negotiated claim is fabricated",
+      "evidence_level": "gstreamer_negotiated when the sink pad exposes current caps; configured_only otherwise — no negotiated claim is fabricated",
       "post_install": "the executor re-reads identity after the DSP install",
       "physical_alsa": "NOT_RUN (operator gate; campaign PARKED)"
     },
@@ -146,24 +146,23 @@
   "next_work_units": [
     "dedicated diagnostic transport (does not own playback) for session measurements",
     "physical ALSA/DAC managed run (operator gate, PARKED)",
-    "dither terminal authority; FIR/IR Store authority",
-    "algorithmic resampler latency isolation and sink latency",
-    "F11 Signal Path presentation; durable ProcessingProfile repository (F13)"
+    "algorithmic resampler/FIR latency isolation and sink latency",
+    "F11 Signal Path presentation; durable ProcessingProfile/IR repository (F13)"
   ],
   "full_suite": {
-    "result": "5910 passed, 4 skipped, 0 failed (local, exact tree)",
+    "result": "5935 passed, 4 skipped, 0 failed (local, exact tree)",
     "scope": "python -m pytest -q (entire repository)"
   },
-  "spec_sha256": "826381f154a0e5eb848a37e7c3c81909ddb8d103cc0cadd75c97e5fc16e41ead",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "residuals_closed": {
     "truth_lock": "invalidate_effective mutates truth under the short state lock and clears the latency estimate",
     "memory_bound": "committed candidate plans are pruned after validation; latency provenance is retained",
-    "pipeline_latency": "managed identity reports GStreamer query_latency (ns + samples at the negotiated rate); unmeasured is None; physical is a separate claim",
+    "pipeline_latency": "managed identity reports the GStreamer latency query (ns + samples at the negotiated rate); unmeasured is None; physical is a separate claim",
     "host_sigkill": "real SIGKILL test: host-loss fan-out retires EFFECTIVE, stale release is diagnostic-only and cannot crash the owner",
-    "ownership": "spec amendment authorized the exact remaining F06 files; spec sha 826381f1..., alignment GO"
+    "ownership": "spec amendment authorized the exact remaining F06 files; current spec sha 4f0e41eb... (earlier 826381f1... is historical); alignment GO"
   },
   "execution_identity": {
-    "plan_identity": "deterministic hash (unchanged) \u2014 WHAT is played/processed",
+    "plan_identity": "deterministic hash (unchanged) — WHAT is played/processed",
     "instance_identity": "process-unique exec-instance:<epoch>:<seq> issued by the session authority for EVERY managed preparation",
     "propagation": "session -> managed_prepare -> executor recipe -> child managed identity -> STOP_MANAGED comparison",
     "stop_match": "plan_id + execution instance + device, checked and stopped atomically in the child",
@@ -289,9 +288,19 @@
     "proof": "host-dead managed prepare fails typed, releases cleanly; full suite green"
   },
   "ci_status": {
-    "state": "AUDIO GATE GREEN on e204749 (dac-v35-software-closure success; real Qt contract test included). The only failing job is 'check' at the Premium Library QML warning gate due to runner qmllint drift (--Quick.layout-positioning rejected); QML untouched.",
-    "qt_root_cause": "QtMultimedia FFmpeg backend segfaulted at QMediaPlayer() because PipeWire had no client.conf/daemon on the runner ('pw.conf: can't load config client.conf'). Installing/starting PipeWire+WirePlumber with a minimal client.conf fixes it.",
-    "probe": "scripts/qt_multimedia_probe.py completes all 11 steps on the runner (Qt/PySide 6.12.0, libffmpegmediaplugin.so, probe_exit=0); artifacts uploaded.",
+    "state": "AUDIO GATE GREEN — overall CI not fully green (external QML gate only)",
+    "verified_code_head": "7c6e162e10fcae9d63ea86b3f0b4296da6093693",
+    "run_id": 39604042735,
+    "run_url": "https://github.com/pitydah/michi-music-player/actions/runs/39604042735",
+    "check_runs": {
+      "dac-v35-software-closure": "success",
+      "min-qt": "success",
+      "check": "failure — Premium Library QML warning gate (runner qmllint rejects --Quick.layout-positioning); QML untouched by F06"
+    },
+    "verification_command": "gh api repos/pitydah/michi-music-player/commits/<sha>/check-runs",
+    "api_note": "GitHub Actions exposes check-runs; the legacy combined-status endpoint is empty and is not evidence.",
+    "evidence_commit_note": "This evidence update is docs-only; the CI evidence above belongs to the final code head 7c6e162.",
+    "probe": "scripts/qt_multimedia_probe.py completes all 11 steps on the runner (Qt/PySide 6.12.0, libffmpegmediaplugin.so, exit 0); artifacts uploaded.",
     "gates": "ruff/format/alignment/exact-commit-tree PASS; diagnostics write to RUNNER_TEMP (no dirty tree)."
   },
   "combinations": {
@@ -303,17 +312,17 @@
   "qt_runtime": {
     "lazy_objects": "QtMultimediaBackend constructs QMediaPlayer/QAudioOutput on FIRST media use; subscriptions/volume are wired at creation",
     "effect": "headless engines that only open/close no longer enumerate devices or segfault",
-    "contract_test_crash": "runner QMediaPlayer creation (real Qt contract test) remains"
+    "contract_test_crash": "RESOLVED — see history.qt_multimedia_ci_failure; the runner probe exits 0 and the real Qt contract test runs."
   },
   "fir": {
     "ownership": "F06 stateless verification + execution; F13 durable store",
     "kernel_authority": "full SHA-256 over canonical float32-LE mono coefficients; bounds BEFORE hashing; finite/rate/channels checks; canonical fingerprint",
-    "compiler": "requires an injected ImpulseResponseStorePort; gain scales the installed kernel while the asset hash stays authoritative; plan carries taps/kernel/fingerprint",
+    "compiler": "the pure compiler receives immutable pre-acquired kernels; acquisition is bounded at composition (application/ir_acquisition.py); gain scales the installed kernel while the asset hash stays authoritative; plan carries taps/kernel/fingerprint",
     "native": "audiofirfilter; readback of the installed kernel fingerprint/taps inside the F05 transaction before EFFECTIVE",
     "numeric": "3-tap [0.25,0.5,0.25] vs analytic H(f): 1 kHz within +/-1 dB, 8 kHz within +/-1.5 dB; identity kernel flat; real-host and Managed sessions",
-    "managed": "Managed FIR session with readback and selected binding; no store => DSP_FIR_STORE_UNAVAILABLE",
-    "production_store": "BLOCKED \u2014 R11-F13 owns ir_asset_store.py; no durable production IR management is claimed",
-    "tests": "tests/audio_phase2/test_fir_vertical.py (8) + compiler goldens"
+    "managed": "Managed FIR session with readback and selected binding; no store => DSP_FIR_STORE_UNAVAILABLE; provider metadata/coefficient calls are bounded with typed DSP_FIR_STORE_TIMEOUT",
+    "production_store": "BLOCKED — R11-F13 owns ir_asset_store.py; no durable production IR management is claimed",
+    "tests": "tests/audio_phase2/test_fir_vertical.py (13) + tests/audio_phase2/test_ir_acquisition.py (5) + compiler goldens"
   },
   "ir_identity": {
     "three_identities": "node expected SHA vs provider-declared SHA vs computed coefficients SHA",
@@ -350,21 +359,21 @@
     "G11_optional_adapters": "PASS",
     "G12_readback_before_effective": "PASS",
     "G13_host_loss_invalidates": "PASS",
-    "G14_numeric_productive_tests": "PASS (local 5910/4/0)",
-    "G15_qt_architecture": "ARCHITECTURE PASS; CI EXTERNAL BLOCKER (runner QtMultimedia; reproducer + stack)",
-    "G16_blockers_classified": "PASS (F13/F11/F14 deferred by authority; CI external)",
+    "G14_numeric_productive_tests": "PASS (local 5935/4/0)",
+    "G15_qt_architecture": "PASS — real Qt contract test runs on the runner after the PipeWire fix; audio gate success on 7c6e162; only the external QML gate is red (history)",
+    "G16_blockers_classified": "PASS — F13/F11/F14 deferred by authority; QML gate external and out of F06 scope",
     "G17_canonical_transition": "PASS (this evidence commit)"
   },
   "blockers": [
-    "F11 Signal Path presentation (Processed vs Direct) \u2014 phase authority",
-    "F13 durable IR asset store \u2014 FIR end-user persistence",
-    "CI runner QtMultimedia segfault \u2014 external hardware/environment",
-    "Physical DAC qualification \u2014 F14 / operator authorization (NOT_RUN)"
+    "F11 Signal Path presentation (Processed vs Direct) — phase authority",
+    "F13 durable IR asset store — FIR end-user persistence",
+    "External Premium Library QML warning gate (runner qmllint drift; QML untouched by F06)",
+    "Physical DAC qualification — F14 / operator authorization (NOT_RUN)"
   ],
   "phase_status": "CLOSED",
   "closed_at": "2026-10-17",
   "closure_receipt": {
-    "mechanism": "ADR 0011 \u00a73 \u2014 explicit evidence-bearing state transition",
+    "mechanism": "ADR 0011 §3 — explicit evidence-bearing state transition",
     "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
     "exit_gate": {
       "processed_specific_dac_route": "PASS (Managed lab route with selected binding + readback; physical = F14 NOT_RUN)",
@@ -392,8 +401,8 @@
       "tests": "producer-shape, truncation, timestamps counting + native continuity suite"
     },
     "WU3_qt_ci": {
-      "status": "RESOLVED \u2014 root cause identified (PipeWire client config missing for QtMultimedia's FFmpeg backend) and fixed in CI provisioning",
-      "evidence": "runner probe exit 0 after the fix; e204749 dac-v35-software-closure success"
+      "status": "RESOLVED — root cause and fix recorded in history.qt_multimedia_ci_failure",
+      "evidence": "runner probe exit 0; audio gate SUCCESS on 7c6e162 (run 39604042735)"
     },
     "WU4_fir_bounds": {
       "fix": "bounded coefficient consumption regardless of declared __len__; lying lengths/infinite generators rejected at the budget; failing streams propagate",
@@ -403,7 +412,12 @@
       "fix": "single dither_mode_to_native authority (tpdf/none only) used by mapping, wire and builder; builder rejects contradictory dithering; forged wire rejected before native",
       "tests": "mapping fail-closed + forged wire"
     },
-    "full_suite": "5925 passed, 4 skipped, 0 failed (local, exact tree)"
+    "full_suite": "5935 passed, 4 skipped, 0 failed (local, exact tree)",
+    "WU6_fir_provider_bounded_acquisition": {
+      "defect": "the compiler called the injected IR provider synchronously; a slow or hung provider held preparation and delayed supersession/cancellation",
+      "fix": "the pure compiler receives pre-acquired kernels; application/ir_acquisition.py runs metadata/coefficient calls in a DAEMON thread with a deadline (5 s default) and raises typed DSP_FIR_STORE_TIMEOUT/DSP_FIR_STORE_FAILED; the abandoned thread cannot keep the process alive",
+      "tests": "test_ir_acquisition.py (5): fast result, deadline release <0.5 s, typed relay, per-asset bounding, non-positive timeout"
+    }
   },
   "final_audit": {
     "phase_status": "CLOSED (unchanged)",
@@ -412,7 +426,8 @@
       "P1_signal_path_host_loss": "the session is registered on the processing transport host-loss fan-out and records UNAVAILABLE (with reason) for the ACTIVE execution; the real SIGKILL test asserts it before release",
       "P2_fir_gain": "absolute impulse peak of the installed scaled kernel (+6 dB => 0.5*10^(6/20)) with readback",
       "P2_dither_terminal_chain": "Managed dither asserts negotiated sink format == DSP terminal == compiled output (S16LE)",
-      "P2_event_detail": "OutputFamilyEvent.detail (additive) carries the host-loss reason"
+      "P2_event_detail": "OutputFamilyEvent.detail (additive) carries the host-loss reason",
+      "P2_fir_provider_cancellation": "bounded IR acquisition moved OUTSIDE the pure compiler; metadata and coefficient calls fail typed at the deadline and cannot block supersession"
     },
     "verified_correct": [
       "continuity probe emits real mono_ns and bounds the timeline; truncation cannot claim PCM continuity",
@@ -421,20 +436,40 @@
       "explicit resampling only when requested",
       "Direct/Shared regressions and device-loss/stale-selection fences"
     ],
-    "suite": "5928 passed, 4 skipped, 0 failed (local, exact tree)",
-    "ci": "audio gate SUCCESS on the pre-audit head; final head re-verification pending"
+    "suite": "5935 passed, 4 skipped, 0 failed (local, exact tree)",
+    "ci": "audio gate SUCCESS on code head 7c6e162 (run 39604042735; check-runs: dac success, min-qt success, check failure = external QML gate)"
   },
   "audit_closure_checklist": {
-    "managed_pcm": "PASS \u2014 stage/load/acceptance/post-install identity failures typed + stop; installed execution instance verified; host-loss/device-loss/stale selection fences; no fallback. Residual: no cancellation of a blocking injected IR provider call (provider is controlled and bounded).",
-    "peq": "PASS \u2014 independent RBJ coefficients (1e-12), dynamic A->B->bypass with readback, identity route retirement.",
-    "fir": "PASS \u2014 three-way SHA identity, bounds (lying __len__, infinite iterators), readback of installed fingerprint, atomic transaction; FIR gain absolute-peak and per-channel over-FS headroom measured.",
-    "dither": "PASS \u2014 single terminal converter, internal converters keep dither disabled, compiled == DSP terminal == sink negotiated format, S16/S24 noise-floor proofs, Shared refused.",
-    "resampling": "PASS \u2014 explicit node only (rate change refused otherwise), passband 44.1<->48/96 + 192->48, alias suppression, strict quality authority.",
-    "headroom": "PASS \u2014 sample peak, estimated true peak, over-FS samples per channel; FIR boost measured (0.9 FS x2 => >1.5 both channels); no analog/intersample certification claimed.",
-    "signal_truth": "PASS \u2014 recorder lists locked for owner reads vs worker writes (concurrency test), active-execution correlation, terminal events retire (host loss included), measurement fence A->B->A, late events rejected.",
-    "pcm_continuity": "HONEST \u2014 probe emits real mono_ns and bounds its timeline; analyzer requires both sides; lab rebuild yields POSITION_PRESERVED (NOT_MEASURED for PCM), no PCM_CONTINUITY_VERIFIED claim.",
-    "latency": "PASS (no false claims) \u2014 only GStreamer pipeline-reported values are published (0 ns in the non-live lab); FIR/resampler algorithmic latency is explicitly unmodeled; physical latency NOT_RUN.",
-    "ci": "audio gate SUCCESS on 7494a80 (pre-audit head); final head b8872af re-verification performed; the only non-audio red is the Premium Library QML warning gate (runner qmllint drift).",
-    "suite": "5930 passed, 4 skipped, 0 failed (local, exact tree)"
+    "managed_pcm": "PASS — stage/load/acceptance/post-install identity failures typed + stop; installed execution instance verified; host-loss/device-loss/stale selection fences; no fallback. Residual CLOSED: bounded IR acquisition outside the pure compiler; a slow/hung provider fails typed at the deadline and cannot block supersession/cancellation.",
+    "peq": "PASS — independent RBJ coefficients (1e-12), dynamic A->B->bypass with readback, identity route retirement.",
+    "fir": "PASS — three-way SHA identity, bounds (lying __len__, infinite iterators), readback of installed fingerprint, atomic transaction; FIR gain absolute-peak and per-channel over-FS headroom measured.",
+    "dither": "PASS — single terminal converter, internal converters keep dither disabled, compiled == DSP terminal == sink negotiated format, S16/S24 noise-floor proofs, Shared refused.",
+    "resampling": "PASS — explicit node only (rate change refused otherwise), passband 44.1<->48/96 + 192->48, alias suppression, strict quality authority.",
+    "headroom": "PASS — sample peak, estimated true peak, over-FS samples per channel; FIR boost measured (0.9 FS x2 => >1.5 both channels); no analog/intersample certification claimed.",
+    "signal_truth": "PASS — recorder lists locked for owner reads vs worker writes (concurrency test), active-execution correlation, terminal events retire (host loss included), measurement fence A->B->A, late events rejected.",
+    "pcm_continuity": "HONEST — probe emits real mono_ns and bounds its timeline; analyzer requires both sides; lab rebuild yields POSITION_PRESERVED (NOT_MEASURED for PCM), no PCM_CONTINUITY_VERIFIED claim.",
+    "latency": "PASS (no false claims) — only GStreamer pipeline-reported values are published (0 ns in the non-live lab); FIR/resampler algorithmic latency is explicitly unmodeled; physical latency NOT_RUN.",
+    "ci": "audio gate SUCCESS on code head 7c6e162 (run 39604042735; check-runs: dac success, min-qt success, check failure = external Premium Library QML warning gate); overall CI is not fully green, and that is stated honestly.",
+    "suite": "5935 passed, 4 skipped, 0 failed (local, exact tree)"
+  },
+  "updated_at": "2026-10-21",
+  "history": {
+    "purpose": "Superseded facts kept for auditability; they are NOT the current verdict.",
+    "qt_multimedia_ci_failure": {
+      "when": "pre-2026-10-17, before e204749",
+      "symptom": "QMediaPlayer() segfaulted in the QtMultimedia FFmpeg backend on the CI runner (probe exit 139 after 9/11 steps); the dac gate could not run the real Qt contract test.",
+      "root_cause": "PipeWire had no client.conf/daemon on the runner ('pw.conf: can't load config client.conf').",
+      "fix": "CI provisions/starts pipewire/pipewire-pulse/wireplumber with a minimal ~/.config/pipewire/client.conf and QT_MEDIA_BACKEND=ffmpeg; scripts/qt_multimedia_probe.py now exits 0 and the real contract test runs.",
+      "status": "RESOLVED — not a current blocker."
+    },
+    "stale_ci_claim_withdrawn": "An earlier revision stated 'final head b8872af re-verification performed'. It was withdrawn: the legacy combined-status endpoint returns empty for Actions check-runs and no check-runs had been recorded for that head. Current CI evidence is bound to the code head via check-runs.",
+    "suite_progression": [
+      "5910 passed / 4 skipped — earlier closure record",
+      "5925 passed / 4 skipped — post-closure WU hotfixes",
+      "5928 passed / 4 skipped — final audit fixes",
+      "5930 passed / 4 skipped — recorder locks + FIR headroom",
+      "5935 passed / 4 skipped — bounded IR acquisition"
+    ],
+    "spec_authorization": "An earlier authorization amendment was sha 826381f1...; the current canonical spec is 4f0e41eb... (mono-IR applicability correction + FIR/dither authority)."
   }
 }
