@@ -5,7 +5,7 @@
   "state": "ACTIVE",
   "recorded_at": "2026-10-21",
   "activation_commit": "cbe724e",
-  "repo_head": "7ad0c20ac2e584c52b729674ab839078e33d13e0",
+  "repo_head": "4e977e3103fcaf9f83aea7688ada9bd3c8b9ca4f",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "environment": {
     "gstreamer": "1.28.8",
@@ -55,7 +55,7 @@
   "contracts": {
     "NativeDsdOutputPlan": "pure planner with exact ALSA tuple, binding generation, GStreamer byte-rate units, execution identity and typed refusals",
     "StrictDsdSinkRecipe": "audio/x-dsd caps, alsasink only, reversed-bytes=false, explicit representation adaptation",
-    "RuntimeBranchInspector": "audio/x-dsd only; any audio/x-raw refuses; sink format/rate/channels/layout/bit-order compared to the recipe",
+    "RuntimeBranchInspector": "audio/x-dsd only; any audio/x-raw or avdec/decodebin factory refuses; sink format/rate/channels/layout/bit-order compared to the recipe",
     "AlsaDsdProbe": "exact-open/readback; EINVAL only as exact negative; BUSY/REMOVED/TIMEOUT remain UNKNOWN"
   },
   "work_units": {
@@ -66,9 +66,9 @@
     "WU-F08-05": "COMPLETE FOR THIS SPRINT — tests/evidence/firewall; AP2-F08 stays ACTIVE (not CLOSED)"
   },
   "tests": {
-    "new_f08": "49 collected: 47 passed + 2 hardware opt-in passed with MICHI_RUN_DSD_HARDWARE=1; default suite has 47 passed, 2 skipped",
+    "new_f08": "53 collected: 51 passed + 2 hardware opt-in passed with MICHI_RUN_DSD_HARDWARE=1; default suite has 51 passed, 2 skipped",
     "audio_firewall": "803 passed, 4 skipped (tests/audio_phase2 + bridge + frozen adapter)",
-    "full_suite": "5995 passed, 6 skipped, 0 failed (30:53)",
+    "full_suite": "5999 passed, 6 skipped, 0 failed (30:16)",
     "hardware_probe": "2 passed under MICHI_RUN_DSD_HARDWARE=1 MICHI_DSD_DEVICE=hw:3,0",
     "skips": [
       "live network opt-in",
@@ -79,8 +79,8 @@
       "DSD sink hardware opt-in"
     ],
     "ci": {
-      "code_head": "7ad0c20ac2e584c52b729674ab839078e33d13e0",
-      "run_id": 39694258399,
+      "code_head": "4e977e3103fcaf9f83aea7688ada9bd3c8b9ca4f",
+      "run_id": 39700948493,
       "dac_v35_software_closure": "success",
       "min_qt": "success",
       "check": "failure — external Premium Library QML warning gate; not an F08 contract",
@@ -104,5 +104,11 @@
     "Typed host protocol operations for stage/play/pause/stop/query identity, plan/binding/execution identity and readback.",
     "Parent executor + OutputSessionService integration with host-loss/device-loss retirement.",
     "Physical qualification remains F14 and is NOT_RUN."
-  ]
+  ],
+  "hardening": {
+    "tuple_validation": "format-name/grouping-width disagreement is a typed refusal",
+    "qualification_validation": "non-tuple qualifications are refused",
+    "recipe_validation": "non-boolean normalization is refused",
+    "factory_validation": "avdec_* / decodebin3 factories in the selected Native branch are refused (playbin3 finding)"
+  }
 }
