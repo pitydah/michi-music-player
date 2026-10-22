@@ -99,3 +99,138 @@ def test_exact_dsd_hardware_probe_if_selected() -> None:
     )
     assert evidence.supported is True, evidence.as_dict()
     assert evidence.negotiated is not None
+
+
+class _FakeAlsa:
+    """Deterministic ALSA call log for sequencing/cleanup tests."""
+
+    def __init__(self, fail_at: str | None = None) -> None:
+        self.calls: list[str] = []
+        self.fail_at = fail_at
+
+    def _rc(self, name: str) -> int:
+        self.calls.append(name)
+        return -errno.EBUSY if self.fail_at == name else 0
+
+    def snd_pcm_open(self, handle_ref, name, stream, mode):
+        rc = self._rc("open")
+        if rc == 0:
+            handle_ref._obj.value = 1
+        return rc
+
+    def snd_pcm_hw_params_malloc(self, params_ref):
+        rc = self._rc("malloc")
+        if rc == 0:
+            params_ref._obj.value = 2
+        return rc
+
+    def snd_pcm_hw_params_any(self, pcm, params):
+        return self._rc("any")
+
+    def snd_pcm_hw_params_set_rate_resample(self, pcm, params, enabled):
+        return self._rc("rate_resample")
+
+    def snd_pcm_hw_params_set_access(self, pcm, params, access):
+        return self._rc("access")
+
+    def snd_pcm_hw_params_set_channels(self, pcm, params, channels):
+        return self._rc("channels")
+
+    def snd_pcm_hw_params_set_format(self, pcm, params, format_id):
+        return self._rc("format")
+
+    def snd_pcm_hw_params_set_rate(self, pcm, params, rate, direction):
+        return self._rc("rate")
+
+    def snd_pcm_hw_params(self, pcm, params):
+        return self._rc("hw_params")
+
+    def snd_pcm_hw_params_get_format(self, params, fmt_ref):
+        rc = self._rc("get_format")
+        if rc == 0:
+            fmt_ref._obj.value = 52
+        return rc
+
+    def snd_pcm_hw_params_get_rate(self, params, rate_ref, dir_ref):
+        rc = self._rc("get_rate")
+        if rc == 0:
+            rate_ref._obj.value = 88_200
+        return rc
+
+    def snd_pcm_hw_params_get_channels(self, params, channels_ref):
+        rc = self._rc("get_channels")
+        if rc == 0:
+            channels_ref._obj.value = 2
+        return rc
+
+    def snd_pcm_close(self, pcm):
+        self.calls.append("close")
+        return 0
+
+    def snd_pcm_hw_params_free(self, params):
+        self.calls.append("free")
+
+    def snd_strerror(self, rc):
+        return b"fake-alsa-error"
+
+
+def _probe_with(fake: _FakeAlsa):
+    return probe_alsa_dsd(
+        "usb:test",
+        "hw:3,0",
+        _tuple(),
+        binding_generation=1,
+        environment="test",
+        library=fake,
+    )
+
+
+def test_fake_library_success_reaches_readback() -> None:
+    fake = _FakeAlsa()
+    evidence = _probe_with(fake)
+    assert evidence.supported is True
+    assert evidence.negotiated == _tuple()
+    assert fake.calls[-2:] == ["free", "close"] or fake.calls[-2:] == ["close", "free"]
+
+
+def test_fake_library_open_failure_does_not_allocate_or_close() -> None:
+    fake = _FakeAlsa("open")
+    evidence = _probe_with(fake)
+    assert evidence.supported is None
+    assert "malloc" not in fake.calls
+    assert "close" not in fake.calls
+    assert "free" not in fake.calls
+
+
+@pytest.mark.parametrize(
+    "fail_at,forbidden",
+    [
+        ("malloc", "any"),
+        ("any", "rate_resample"),
+        ("rate_resample", "access"),
+        ("access", "channels"),
+        ("channels", "format"),
+        ("format", "rate"),
+        ("rate", "hw_params"),
+        ("hw_params", "get_format"),
+        ("get_format", "get_rate"),
+        ("get_rate", "get_channels"),
+    ],
+)
+def test_fake_library_stops_at_first_failure(fail_at, forbidden) -> None:
+    fake = _FakeAlsa(fail_at)
+    evidence = _probe_with(fake)
+    assert evidence.supported is None
+    assert fail_at in fake.calls
+    assert forbidden not in fake.calls
+    if fail_at != "malloc":
+        assert "free" in fake.calls
+    assert "close" in fake.calls
+
+
+def test_fake_library_get_channels_failure_is_unknown() -> None:
+    fake = _FakeAlsa("get_channels")
+    evidence = _probe_with(fake)
+    assert evidence.supported is None
+    assert evidence.disposition == "ALSA_DSD_READBACK_UNAVAILABLE"
+    assert "close" in fake.calls and "free" in fake.calls

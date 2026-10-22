@@ -23,7 +23,7 @@ from michi.domain.dsd_signal import (
     DsdSignalFormat,
 )
 from michi.infrastructure.audio_output.dsd_runtime_inspector import (
-    ObservedCaps,
+    ObservedPad,
     inspect_native_dsd_branch,
 )
 from michi.infrastructure.audio_output.strict_dsd_sink import recipe_from_native_plan
@@ -99,6 +99,10 @@ def test_isolated_probe_negotiates_strict_dsd_sink_if_selected(tmp_path) -> None
         "--device",
         device,
         "--convert",
+        "--execution-id",
+        "exec:probe",
+        "--binding-generation",
+        "1",
     )
     assert data["errors"] == []
     assert data["prerolled"] is True
@@ -139,12 +143,28 @@ def test_isolated_probe_negotiates_strict_dsd_sink_if_selected(tmp_path) -> None
         active_engine_id="gstreamer",
     )
     observed = tuple(
-        ObservedCaps(
-            cap["media_type"],
-            tuple((str(k), str(v)) for k, v in cap["fields"]),
+        ObservedPad(
+            element_name=str(cap["element_name"]),
+            factory=str(cap["factory"]),
+            pad_name=str(cap["pad_name"]),
+            direction=str(cap["direction"]),
+            role=str(cap["role"]),
+            media_type=str(cap["media_type"]),
+            fields=tuple((str(k), str(v)) for k, v in cap["fields"]),
+            caps_state=str(cap["caps_state"]),
+            linked=bool(cap["linked"]),
+            selected_device=str(cap["selected_device"]),
+            execution_id=str(cap["execution_id"]),
+            binding_generation=int(cap["binding_generation"]),
         )
         for cap in data["observed_caps"]
     )
-    evidence = inspect_native_dsd_branch(observed, recipe_from_native_plan(plan))
+    evidence = inspect_native_dsd_branch(
+        observed,
+        recipe_from_native_plan(plan),
+        expected_execution_id="exec:probe",
+        expected_binding_generation=1,
+        expected_device=device,
+    )
     assert evidence.sink_format == "DSDU32BE"
     assert evidence.sink_rate_bytes_per_second_per_channel == 352_800

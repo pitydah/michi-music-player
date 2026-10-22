@@ -106,6 +106,21 @@ def test_lsbf_source_normalizes_before_alsasink() -> None:
     assert recipe.requires_dsdconvert is True
 
 
+def test_target_reversed_bytes_must_be_boolean() -> None:
+    with pytest.raises(StrictDsdSinkError) as info:
+        StrictDsdSinkRecipe(
+            plan_id="native-dsd:test",
+            device=LOCATOR,
+            gst_dsd_format="DSDU32BE",
+            gst_rate_bytes_per_second_per_channel=352_800,
+            channels=2,
+            normalize_reversed_bytes=False,
+            requires_dsdconvert=False,
+            target_reversed_bytes=1,  # type: ignore[arg-type]
+        )
+    assert info.value.code == "DSD_RECIPE_REVERSED_TARGET"
+
+
 def test_target_reversed_bytes_is_refused() -> None:
     with pytest.raises(StrictDsdSinkError) as info:
         StrictDsdSinkRecipe(

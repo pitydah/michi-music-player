@@ -21,6 +21,10 @@ from michi.infrastructure.audio_engines.gstreamer_host_direct import (
     handle_from_wire,
     preparation_from_wire,
 )
+from michi.infrastructure.audio_engines.gstreamer_host_native_dsd import (
+    NativeDsdHostError,
+    NativeDsdHostRuntime,
+)
 from michi.infrastructure.audio_engines.gstreamer_host_protocol import (
     HostEvent,
     HostOperation,
@@ -87,6 +91,7 @@ class HostEngineSession:
         self._processing_candidate: Any | None = None
         self._processing_plan_wire: dict[str, Any] | None = None
         self._processing_pipeline_generation: int | None = None
+        self._native_dsd = NativeDsdHostRuntime()
         self._processing_generation: int | None = None
         self._processing_host_generation: int = 0
         self._coordinator = HostDirectCoordinator(request_callback)
@@ -479,6 +484,79 @@ class HostEngineSession:
                 }
         return True, {"evidence": clean}
 
+    def _op_prepare_native_dsd(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._native_dsd.prepare(payload)
+        except NativeDsdHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_commit_native_dsd(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        if not isinstance(expected, dict):
+            return False, {
+                "code": "HOST_PROTOCOL_INVALID_FIELD",
+                "detail": "expected must be an object",
+            }
+        try:
+            return True, self._native_dsd.commit(expected)
+        except NativeDsdHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_abort_native_dsd(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        return True, self._native_dsd.abort(
+            expected if isinstance(expected, dict) else None
+        )
+
+    def _op_start_native_dsd(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._native_dsd.start()
+        except NativeDsdHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_pause_native_dsd(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._native_dsd.pause()
+        except NativeDsdHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_resume_native_dsd(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._native_dsd.resume()
+        except NativeDsdHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_stop_native_dsd(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        return True, self._native_dsd.stop(
+            expected if isinstance(expected, dict) else None
+        )
+
+    def _op_query_native_dsd_identity(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        identity = self._native_dsd.query_identity()
+        return True, {"identity": identity}
+
+    def _op_query_native_dsd_evidence(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        return True, {"evidence": self._native_dsd.query_evidence()}
+
     def _op_stage_direct(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         preparation = preparation_from_wire(payload.get("preparation"))
         port = self._require_port()
@@ -611,6 +689,7 @@ class HostEngineSession:
 
     def close(self) -> None:
         """Best-effort port teardown before host exit."""
+        self._native_dsd.close()
         port = self._port
         self._port = None
         self._opened = False
@@ -654,6 +733,19 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     ),
     HostOperation.ABORT_PROCESSING_CANDIDATE.value: (
         HostEngineSession._op_abort_processing_candidate
+    ),
+    HostOperation.PREPARE_NATIVE_DSD.value: (HostEngineSession._op_prepare_native_dsd),
+    HostOperation.COMMIT_NATIVE_DSD.value: (HostEngineSession._op_commit_native_dsd),
+    HostOperation.ABORT_NATIVE_DSD.value: (HostEngineSession._op_abort_native_dsd),
+    HostOperation.START_NATIVE_DSD.value: (HostEngineSession._op_start_native_dsd),
+    HostOperation.PAUSE_NATIVE_DSD.value: (HostEngineSession._op_pause_native_dsd),
+    HostOperation.RESUME_NATIVE_DSD.value: (HostEngineSession._op_resume_native_dsd),
+    HostOperation.STOP_NATIVE_DSD.value: (HostEngineSession._op_stop_native_dsd),
+    HostOperation.QUERY_NATIVE_DSD_IDENTITY.value: (
+        HostEngineSession._op_query_native_dsd_identity
+    ),
+    HostOperation.QUERY_NATIVE_DSD_EVIDENCE.value: (
+        HostEngineSession._op_query_native_dsd_evidence
     ),
     HostOperation.STAGE_DIRECT.value: HostEngineSession._op_stage_direct,
     HostOperation.DISCARD_DIRECT.value: HostEngineSession._op_discard_direct,

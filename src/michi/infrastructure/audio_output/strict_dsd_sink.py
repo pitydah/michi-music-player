@@ -84,6 +84,11 @@ class StrictDsdSinkRecipe:
                 "DSD_RECIPE_CONVERSION_INVALID",
                 "bit-order normalization requires dsdconvert",
             )
+        if not isinstance(self.target_reversed_bytes, bool):
+            raise StrictDsdSinkError(
+                "DSD_RECIPE_REVERSED_TARGET",
+                "target_reversed_bytes must be boolean",
+            )
         if self.target_reversed_bytes:
             raise StrictDsdSinkError(
                 "DSD_RECIPE_REVERSED_TARGET",

@@ -302,28 +302,29 @@ def probe_alsa_dsd(
             detail = _strerror(lib, rc)
             raise _ProbeAbortError
         pcm = handle
-        rc = lib.snd_pcm_hw_params_malloc(ctypes.byref(params))
-        if rc < 0:
-            errno_code = -rc
-            detail = _strerror(lib, rc)
-            raise _ProbeAbortError
-        for rc in (
-            lib.snd_pcm_hw_params_any(pcm, params),
-            lib.snd_pcm_hw_params_set_rate_resample(pcm, params, 0),
-            lib.snd_pcm_hw_params_set_access(
-                pcm, params, SND_PCM_ACCESS_RW_INTERLEAVED
-            ),
-            lib.snd_pcm_hw_params_set_channels(pcm, params, requested.channels),
-            lib.snd_pcm_hw_params_set_format(
-                pcm, params, ALSA_DSD_FORMAT_IDS[requested.grouping]
-            ),
-            lib.snd_pcm_hw_params_set_rate(pcm, params, requested.frame_rate_hz, 0),
-            lib.snd_pcm_hw_params(pcm, params),
-        ):
+
+        def _step(rc: int) -> None:
+            """Check ONE ALSA result before issuing the next operation."""
+            nonlocal errno_code, detail
             if rc < 0:
                 errno_code = -rc
                 detail = _strerror(lib, rc)
                 raise _ProbeAbortError
+
+        _step(lib.snd_pcm_hw_params_malloc(ctypes.byref(params)))
+        _step(lib.snd_pcm_hw_params_any(pcm, params))
+        _step(lib.snd_pcm_hw_params_set_rate_resample(pcm, params, 0))
+        _step(
+            lib.snd_pcm_hw_params_set_access(pcm, params, SND_PCM_ACCESS_RW_INTERLEAVED)
+        )
+        _step(lib.snd_pcm_hw_params_set_channels(pcm, params, requested.channels))
+        _step(
+            lib.snd_pcm_hw_params_set_format(
+                pcm, params, ALSA_DSD_FORMAT_IDS[requested.grouping]
+            )
+        )
+        _step(lib.snd_pcm_hw_params_set_rate(pcm, params, requested.frame_rate_hz, 0))
+        _step(lib.snd_pcm_hw_params(pcm, params))
         negotiated = _readback(lib, pcm, params, requested)
     except _ProbeAbortError:
         pass

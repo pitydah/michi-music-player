@@ -259,6 +259,34 @@ def test_alsa_tuple_rejects_format_width_disagreement() -> None:
     assert info.value.code == "DSD_ALSA_GROUPING_WIDTH_MISMATCH"
 
 
+def test_qualification_rejects_integer_supported() -> None:
+    requested = _tuple()
+    with pytest.raises(NativeDsdPlannerError) as info:
+        NativeDsdQualification(
+            stable_device_id=DEVICE,
+            binding_generation=1,
+            requested=requested,
+            supported=1,  # type: ignore[arg-type]
+            evidence_ref=EVIDENCE,
+        )
+    assert info.value.code == "DSD_QUALIFICATION_SUPPORT_INVALID"
+
+
+def test_planner_rejects_non_boolean_flags() -> None:
+    with pytest.raises(NativeDsdPlannerError) as info:
+        NativeDsdPlanner().plan(
+            stable_device_id=DEVICE,
+            binding_locator=LOCATOR,
+            binding_generation=1,
+            source=_source(),
+            qualifications=(_qualification(_tuple()),),
+            execution_id="exec:1",
+            source_proven=1,  # type: ignore[arg-type]
+            active_engine_id="gstreamer",
+        )
+    assert info.value.code == "DSD_SOURCE_PROVEN_INVALID"
+
+
 def test_qualification_rejects_a_non_tuple() -> None:
     with pytest.raises(NativeDsdPlannerError) as info:
         NativeDsdQualification(

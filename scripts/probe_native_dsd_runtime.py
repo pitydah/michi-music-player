@@ -31,6 +31,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rate", type=int, default=352_800)
     parser.add_argument("--channels", type=int, default=2)
     parser.add_argument("--timeout", type=float, default=10.0)
+    parser.add_argument("--execution-id", default="probe:1")
+    parser.add_argument("--binding-generation", type=int, default=1)
     parser.add_argument("--json-out", default="")
     args = parser.parse_args(argv)
     if args.sink == "alsasink" and not args.device.strip():
@@ -42,6 +44,8 @@ def main(argv: list[str] | None = None) -> int:
         "path": str(Path(args.path)),
         "sink": args.sink,
         "device": args.device,
+        "execution_id": args.execution_id,
+        "binding_generation": args.binding_generation,
         "observed_caps": [],
         "factories": [],
         "errors": [],
@@ -116,43 +120,76 @@ def main(argv: list[str] | None = None) -> int:
                     f"{upstream.get_name()} -> {downstream.get_name()} link failed"
                 )
 
-        seen_caps: set[tuple[str, tuple[tuple[str, str], ...]]] = set()
+        seen_caps: set[tuple] = set()
 
-        def _record(pad: object) -> None:
+        def _record(pad: object, element: object, role: str, direction: str) -> None:
             if len(result["observed_caps"]) >= 64:
                 return
-            caps = pad.get_current_caps() or pad.get_pad_template_caps()
-            if caps is None or caps.get_size() == 0:
-                return
-            structure = caps.get_structure(0)
-            if structure is None:
-                return
+            current = pad.get_current_caps()
+            template = pad.get_pad_template_caps()
+            if current is not None and current.get_size() > 0:
+                caps = current
+                caps_state = "NEGOTIATED_CURRENT"
+            elif template is not None and template.get_size() > 0:
+                caps = template
+                caps_state = "TEMPLATE_CAPABILITY"
+            else:
+                caps = None
+                caps_state = "UNAVAILABLE"
+            structure = caps.get_structure(0) if caps is not None else None
+            media_type = structure.get_name() if structure is not None else ""
             fields: list[list[str]] = []
-            for index in range(structure.n_fields()):
-                name = structure.nth_field_name(index)
-                try:
-                    value = structure.get_value(name)
-                except Exception:  # noqa: BLE001 - e.g. GstBitmask is opaque
-                    continue
-                fields.append([str(name), str(value)])
-            key = (structure.get_name(), tuple((str(k), str(v)) for k, v in fields))
+            if structure is not None:
+                for index in range(structure.n_fields()):
+                    name = structure.nth_field_name(index)
+                    try:
+                        value = structure.get_value(name)
+                    except Exception:  # noqa: BLE001 - e.g. GstBitmask is opaque
+                        continue
+                    fields.append([str(name), str(value)])
+            factory = element.get_factory()
+            observation = {
+                "element_name": element.get_name(),
+                "factory": factory.get_name() if factory is not None else "",
+                "pad_name": pad.get_name(),
+                "direction": direction,
+                "role": role,
+                "media_type": media_type,
+                "fields": fields,
+                "caps_state": caps_state,
+                "caps": caps.to_string() if caps is not None else "",
+                "linked": bool(pad.is_linked()),
+                "selected_device": args.device,
+                "execution_id": args.execution_id,
+                "binding_generation": args.binding_generation,
+            }
+            key = (
+                observation["element_name"],
+                observation["pad_name"],
+                role,
+                direction,
+                media_type,
+                tuple((str(k), str(v)) for k, v in fields),
+                caps_state,
+                observation["linked"],
+            )
             if key in seen_caps:
                 return
             seen_caps.add(key)
-            result["observed_caps"].append(
-                {
-                    "media_type": structure.get_name(),
-                    "fields": fields,
-                    "caps": caps.to_string(),
-                }
+            result["observed_caps"].append(observation)
+
+        def _probe_for(element: object, role: str, direction: str):
+            def _probe(pad: object, _info: object):
+                _record(pad, element, role, direction)
+                return Gst.PadProbeReturn.OK
+
+            return _probe
+
+        def _on_pad_added(demux_element: object, pad: object) -> None:
+            pad.add_probe(
+                Gst.PadProbeType.BUFFER,
+                _probe_for(demux_element, "source", "src"),
             )
-
-        def _probe(pad: object, _info: object):
-            _record(pad)
-            return Gst.PadProbeReturn.OK
-
-        def _on_pad_added(_demux: object, pad: object) -> None:
-            pad.add_probe(Gst.PadProbeType.BUFFER, _probe)
             target = static_chain[0] if static_chain else None
             if target is None:
                 return
@@ -161,12 +198,19 @@ def main(argv: list[str] | None = None) -> int:
                 pad.link(sinkpad)
 
         demux.connect("pad-added", _on_pad_added)
-        for element in (dsdconvert, capsfilter, sink):
+        for element, role, direction in (
+            (dsdconvert, "dsdconvert", "src"),
+            (capsfilter, "capsfilter", "src"),
+            (sink, "sink", "sink"),
+        ):
             if element is None:
                 continue
-            pad = element.get_static_pad("src") or element.get_static_pad("sink")
+            pad = element.get_static_pad(direction)
             if pad is not None:
-                pad.add_probe(Gst.PadProbeType.BUFFER, _probe)
+                pad.add_probe(
+                    Gst.PadProbeType.BUFFER,
+                    _probe_for(element, role, direction),
+                )
 
         state = Gst.State.PAUSED if args.sink == "alsasink" else Gst.State.PLAYING
         pipeline.set_state(state)

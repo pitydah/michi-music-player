@@ -604,6 +604,87 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         return identity
 
+    # ── Native DSD (AP2-F08) ─────────────────────────────────────────
+    def prepare_native_dsd(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Build/preroll the one dedicated Native DSD pipeline in the child."""
+        return self._submit(
+            HostOperation.PREPARE_NATIVE_DSD,
+            dict(payload),
+            deadline_s=self._load_deadline_s,
+        )
+
+    def commit_native_dsd(self, expected: dict[str, Any]) -> dict[str, Any]:
+        return self._submit(
+            HostOperation.COMMIT_NATIVE_DSD,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
+        )
+
+    def abort_native_dsd(
+        self, expected: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        return self._submit(
+            HostOperation.ABORT_NATIVE_DSD,
+            {"expected": dict(expected or {})},
+            deadline_s=self._command_deadline_s,
+        )
+
+    def start_native_dsd(self) -> dict[str, Any]:
+        return self._submit(
+            HostOperation.START_NATIVE_DSD,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+
+    def pause_native_dsd(self) -> dict[str, Any]:
+        return self._submit(
+            HostOperation.PAUSE_NATIVE_DSD,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+
+    def resume_native_dsd(self) -> dict[str, Any]:
+        return self._submit(
+            HostOperation.RESUME_NATIVE_DSD,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+
+    def stop_native_dsd(self, expected: dict[str, Any]) -> dict[str, Any]:
+        return self._submit(
+            HostOperation.STOP_NATIVE_DSD,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
+        )
+
+    def query_native_dsd_identity(self) -> dict[str, Any]:
+        payload = self._submit(
+            HostOperation.QUERY_NATIVE_DSD_IDENTITY,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+        identity = payload.get("identity")
+        if not isinstance(identity, dict):
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "native DSD identity payload is not an object",
+            )
+        return identity
+
+    def query_native_dsd_evidence(self) -> dict[str, Any]:
+        payload = self._submit(
+            HostOperation.QUERY_NATIVE_DSD_EVIDENCE,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+        evidence = payload.get("evidence")
+        if not isinstance(evidence, dict):
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "native DSD evidence payload is not an object",
+            )
+        return evidence
+
     def discard_direct_load(self, handle: object, *, executor: object) -> bool:
         self._require_direct_executor(executor)
         with self._lock:

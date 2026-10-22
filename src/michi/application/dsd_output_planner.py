@@ -143,7 +143,9 @@ class NativeDsdQualification:
     disposition: str = ""
 
     def __post_init__(self) -> None:
-        if not self.stable_device_id.strip():
+        if not isinstance(self.stable_device_id, str) or not (
+            self.stable_device_id.strip()
+        ):
             raise NativeDsdPlannerError(
                 "DSD_QUALIFICATION_DEVICE_MISSING", "stable device id is empty"
             )
@@ -161,12 +163,12 @@ class NativeDsdQualification:
                 "DSD_QUALIFICATION_TUPLE_INVALID",
                 "requested must be an AlsaDsdTuple",
             )
-        if self.supported not in (True, False, None):
+        if self.supported is not None and not isinstance(self.supported, bool):
             raise NativeDsdPlannerError(
                 "DSD_QUALIFICATION_SUPPORT_INVALID",
                 "supported must be True, False or None",
             )
-        if not self.evidence_ref.strip():
+        if not isinstance(self.evidence_ref, str) or not self.evidence_ref.strip():
             raise NativeDsdPlannerError(
                 "DSD_QUALIFICATION_EVIDENCE_MISSING", "evidence_ref is empty"
             )
@@ -225,6 +227,10 @@ class NativeDsdOutputPlan:
         if self.gst_format != self.alsa_tuple.gst_format:
             raise NativeDsdPlannerError(
                 "DSD_GST_FORMAT_MISMATCH", "gst format does not match ALSA tuple"
+            )
+        if isinstance(self.gst_rate_bytes_per_second_per_channel, bool):
+            raise NativeDsdPlannerError(
+                "DSD_GST_RATE_MISMATCH", "GStreamer rate must be an integer"
             )
         if self.gst_rate_bytes_per_second_per_channel != (
             self.source.source_rate.gst_byte_rate_per_channel
@@ -293,6 +299,18 @@ class NativeDsdPlanner:
         active_engine_id: str,
         processing_active: bool = False,
     ) -> NativeDsdOutputPlan:
+        if not isinstance(source_proven, bool):
+            raise NativeDsdPlannerError(
+                "DSD_SOURCE_PROVEN_INVALID", "source_proven must be boolean"
+            )
+        if not isinstance(processing_active, bool):
+            raise NativeDsdPlannerError(
+                "DSD_PROCESSING_FLAG_INVALID", "processing_active must be boolean"
+            )
+        if not isinstance(active_engine_id, str):
+            raise NativeDsdPlannerError(
+                "DSD_ENGINE_INVALID", "active_engine_id must be a string"
+            )
         if active_engine_id != "gstreamer":
             raise NativeDsdPlannerError(
                 "DSD_ENGINE_UNSUPPORTED", "Native DSD core requires GStreamer"
