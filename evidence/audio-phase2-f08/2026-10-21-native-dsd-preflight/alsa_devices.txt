@@ -1,0 +1,63 @@
+ 0 [HA01           ]: USB-Audio - HA01
+                      KINMAX HA01 at usb-0000:0c:00.3-4.1, high speed
+ 1 [HDMI           ]: HDA-Intel - HDA ATI HDMI
+                      HDA ATI HDMI at 0xfcd20000 irq 104
+ 2 [Generic        ]: HDA-Intel - HD-Audio Generic
+                      HD-Audio Generic at 0xfcb00000 irq 105
+ 3 [AUDIO          ]: USB-Audio - SMSL USB AUDIO
+                      SMSL SMSL USB AUDIO at usb-0000:0c:00.3-3.3.2, high speed
+ 4 [Raw            ]: USB-Audio - Lumina Camera - Raw
+                      Lumina Industries, Inc. Lumina Camera - Raw at usb-0000:0c:00.3-3.4.1, high spe
+
+**** List of PLAYBACK Hardware Devices ****
+card 0: HA01 [HA01], device 0: USB Audio [USB Audio]
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+card 1: HDMI [HDA ATI HDMI], device 3: HDMI 0 [MSI G271]
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+card 1: HDMI [HDA ATI HDMI], device 7: HDMI 1 [HDMI 1]
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+card 1: HDMI [HDA ATI HDMI], device 8: HDMI 2 [HDMI 2]
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+card 1: HDMI [HDA ATI HDMI], device 9: HDMI 3 [HDMI 3]
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+card 1: HDMI [HDA ATI HDMI], device 10: HDMI 4 [HDMI 4]
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+card 1: HDMI [HDA ATI HDMI], device 11: HDMI 5 [HDMI 5]
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+card 2: Generic [HD-Audio Generic], device 0: ALC1220 Analog [ALC1220 Analog]
+  Subdevices: 0/1
+  Subdevice #0: subdevice #0
+card 3: AUDIO [SMSL USB AUDIO], device 0: USB Audio [USB Audio]
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+
+Playing raw data '/dev/zero' : Unsigned 8 bit, Rate 8000 Hz, Mono
+HW Params of device "hw:3,0":
+--------------------
+ACCESS: MMAP_INTERLEAVED RW_INTERLEAVED
+FORMAT: S32_LE DSD_U32_BE
+SUBFORMAT: STD MSBITS_MAX
+SAMPLE_BITS: 32
+FRAME_BITS: 64
+CHANNELS: 2
+RATE: [44100 768000]
+PERIOD_TIME: [125 1000000]
+PERIOD_SIZE: [8 768000]
+PERIOD_BYTES: [64 6144000]
+PERIODS: [2 1024]
+BUFFER_TIME: (20 2000000]
+BUFFER_SIZE: [16 1536000]
+BUFFER_BYTES: [128 12288000]
+TICK_TIME: ALL
+--------------------
+aplay: set_params:1393: Sample format non available
+Available formats:
+- S32_LE
+- DSD_U32_BE

@@ -1,0 +1,78 @@
+{
+ "environment_fingerprint": "a10e46c018b326863e2b810be48a1573a24713f5882ce7a81fd720b913fba35e",
+ "device": "hw:3,0",
+ "candidates": [
+  {
+   "stable_device_id": "usb:152a:85dd",
+   "requested": {
+    "format_name": "SND_PCM_FORMAT_DSD_U32_BE",
+    "frame_rate_hz": 88200,
+    "channels": 2,
+    "sample_width_bits": 32,
+    "source_bits_per_second_per_channel": 2822400
+   },
+   "negotiated": {
+    "format_name": "SND_PCM_FORMAT_DSD_U32_BE",
+    "frame_rate_hz": 88200,
+    "channels": 2,
+    "sample_width_bits": 32,
+    "source_bits_per_second_per_channel": 2822400
+   },
+   "supported": true,
+   "disposition": "ALSA_DSD_EXACT_NEGOTIATED",
+   "errno": null,
+   "environment_fingerprint": "a10e46c018b326863e2b810be48a1573a24713f5882ce7a81fd720b913fba35e",
+   "binding_generation": 1,
+   "evidence_ref": "alsa-dsd:9e442122b003dddcb72c8d1a6a364dd37397786537a4505a95d6be18a769e867",
+   "detail": ""
+  },
+  {
+   "stable_device_id": "usb:152a:85dd",
+   "requested": {
+    "format_name": "SND_PCM_FORMAT_DSD_U32_BE",
+    "frame_rate_hz": 176400,
+    "channels": 2,
+    "sample_width_bits": 32,
+    "source_bits_per_second_per_channel": 5644800
+   },
+   "negotiated": {
+    "format_name": "SND_PCM_FORMAT_DSD_U32_BE",
+    "frame_rate_hz": 176400,
+    "channels": 2,
+    "sample_width_bits": 32,
+    "source_bits_per_second_per_channel": 5644800
+   },
+   "supported": true,
+   "disposition": "ALSA_DSD_EXACT_NEGOTIATED",
+   "errno": null,
+   "environment_fingerprint": "a10e46c018b326863e2b810be48a1573a24713f5882ce7a81fd720b913fba35e",
+   "binding_generation": 1,
+   "evidence_ref": "alsa-dsd:0bdf6dedf944f5d9de1fc59c0854581872771b538039b0e4d01ef0d1731f6092",
+   "detail": ""
+  },
+  {
+   "stable_device_id": "usb:152a:85dd",
+   "requested": {
+    "format_name": "SND_PCM_FORMAT_DSD_U32_BE",
+    "frame_rate_hz": 352800,
+    "channels": 2,
+    "sample_width_bits": 32,
+    "source_bits_per_second_per_channel": 11289600
+   },
+   "negotiated": {
+    "format_name": "SND_PCM_FORMAT_DSD_U32_BE",
+    "frame_rate_hz": 352800,
+    "channels": 2,
+    "sample_width_bits": 32,
+    "source_bits_per_second_per_channel": 11289600
+   },
+   "supported": true,
+   "disposition": "ALSA_DSD_EXACT_NEGOTIATED",
+   "errno": null,
+   "environment_fingerprint": "a10e46c018b326863e2b810be48a1573a24713f5882ce7a81fd720b913fba35e",
+   "binding_generation": 1,
+   "evidence_ref": "alsa-dsd:7ff37097f9bcad05a7c155b7cc1109abf95483a521ac5a4939f4ca3709236a64",
+   "detail": ""
+  }
+ ]
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "reproducer": "ap2_gst_host_gate",
+  "seconds_requested": 10.0,
+  "seconds_actual": 10.12,
+  "target_rate_hz": 5.0,
+  "cycles": 49,
+  "cycles_per_second": 4.84,
+  "host_pids": [
+    36361
+  ],
+  "host_incarnations": 1,
+  "containments": [],
+  "containment_count": 0,
+  "media_rejections": 0,
+  "parent_heartbeat": {
+    "ticks": 999,
+    "max_stall_ms": 15.11,
+    "responsive": true
+  },
+  "orphans": [],
+  "final": [
+    {
+      "final_termination_kind": "GRACEFUL"
+    }
+  ],
+  "verdict": "PASS_CONTAINED"
+}

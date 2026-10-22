@@ -1,0 +1,72 @@
+{
+ "schema_version": 1,
+ "probe": "native_dsd_runtime",
+ "path": "/tmp/opencode/f08_probe_1s.dsf",
+ "sink": "alsasink",
+ "device": "hw:3,0",
+ "observed_caps": [
+  {
+   "media_type": "audio/x-dsd",
+   "fields": [
+    [
+     "rate",
+     "352800"
+    ],
+    [
+     "channels",
+     "2"
+    ],
+    [
+     "format",
+     "DSDU8"
+    ],
+    [
+     "reversed-bytes",
+     "False"
+    ],
+    [
+     "layout",
+     "non-interleaved"
+    ]
+   ],
+   "caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, reversed-bytes=(boolean)false, layout=(string)non-interleaved"
+  },
+  {
+   "media_type": "audio/x-dsd",
+   "fields": [
+    [
+     "rate",
+     "352800"
+    ],
+    [
+     "channels",
+     "2"
+    ],
+    [
+     "format",
+     "DSDU32BE"
+    ],
+    [
+     "layout",
+     "interleaved"
+    ],
+    [
+     "reversed-bytes",
+     "False"
+    ]
+   ],
+   "caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU32BE, layout=(string)interleaved, reversed-bytes=(boolean)false"
+  }
+ ],
+ "factories": [
+  "filesrc",
+  "avdemux_dsf",
+  "dsdconvert",
+  "capsfilter",
+  "alsasink"
+ ],
+ "errors": [],
+ "eos": false,
+ "prerolled": true,
+ "duration_ms": 142
+}

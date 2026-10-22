@@ -1,0 +1,44 @@
+{
+ "schema_version": 1,
+ "probe": "native_dsd_runtime",
+ "path": "/tmp/opencode/f08_probe_1s.dsf",
+ "sink": "fakesink",
+ "device": "",
+ "observed_caps": [
+  {
+   "media_type": "audio/x-dsd",
+   "fields": [
+    [
+     "rate",
+     "352800"
+    ],
+    [
+     "channels",
+     "2"
+    ],
+    [
+     "format",
+     "DSDU8"
+    ],
+    [
+     "reversed-bytes",
+     "False"
+    ],
+    [
+     "layout",
+     "non-interleaved"
+    ]
+   ],
+   "caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, reversed-bytes=(boolean)false, layout=(string)non-interleaved"
+  }
+ ],
+ "factories": [
+  "filesrc",
+  "avdemux_dsf",
+  "fakesink"
+ ],
+ "errors": [],
+ "eos": true,
+ "prerolled": true,
+ "duration_ms": 83
+}

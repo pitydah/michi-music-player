@@ -1,0 +1,11 @@
+gst-inspect-1.0 version 1.28.8
+GStreamer 1.28.8
+https://www.archlinux.org/
+
+dsd:  dsdconvert: DSD converter
+libav:  avdec_dsd_lsbf: libav DSD (Direct Stream Digital), least significant bit first decoder
+libav:  avdec_dsd_lsbf_planar: libav DSD (Direct Stream Digital), least significant bit first, planar decoder
+libav:  avdec_dsd_msbf: libav DSD (Direct Stream Digital), most significant bit first decoder
+libav:  avdec_dsd_msbf_planar: libav DSD (Direct Stream Digital), most significant bit first, planar decoder
+libav:  avdemux_dsf: libav DSD Stream File (DSF) demuxer
+typefindfunctions: audio/x-dsf: no extensions

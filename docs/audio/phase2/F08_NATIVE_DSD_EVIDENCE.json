@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F08",
+  "title": "NATIVE DSD RUNTIME ESTRICTO",
+  "state": "ACTIVE",
+  "recorded_at": "2026-10-21",
+  "activation_commit": "cbe724e",
+  "repo_head": "7ad0c20ac2e584c52b729674ab839078e33d13e0",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "environment": {
+    "gstreamer": "1.28.8",
+    "factories": {
+      "avdemux_dsf": "present",
+      "dsdconvert": "present (audio/x-dsd in/out, grouping/endianness/bit-order)",
+      "alsasink": "audio/x-dsd format={DSDU8,DSDU16LE,DSDU16BE,DSDU32LE,DSDU32BE} layout=interleaved reversed-bytes=false",
+      "avdec_dsd_lsbf/msbf(+planar)": "present (must NOT appear in a Native branch)"
+    },
+    "alsa": {
+      "smsl": "USB-Audio SMSL USB AUDIO, id 152a:85dd, hw:3,0, DSD_U32_BE, rates 44100..768000, 2ch",
+      "kinmax": "USB-Audio HA01, hw:0,0, DSD_U32_BE, 2ch (secondary lab endpoint)",
+      "exact_probe": "SMSL hw:3,0 accepted DSD_U32_BE at 88200/176400/352800 Hz (DSD64/128/256) with exact readback"
+    },
+    "dsd_fixture": "generated DSF DSD64 stereo, 2,822,400 bits/s/channel, 712796 bytes"
+  },
+  "runtime_evidence": {
+    "source_probe": {
+      "command": "scripts/probe_native_dsd_runtime.py --path <dsf> --sink fakesink",
+      "observed": "audio/x-dsd rate=352800 channels=2 format=DSDU8 reversed-bytes=false layout=non-interleaved",
+      "contains_audio_x_raw": false,
+      "artifact": "evidence/audio-phase2-f08/2026-10-21-native-dsd-preflight/probe_source_fakesink.json"
+    },
+    "sink_negotiation": {
+      "command": "scripts/probe_native_dsd_runtime.py --path <dsf> --sink alsasink --device hw:3,0 --convert",
+      "observed": "audio/x-dsd rate=352800 channels=2 format=DSDU32BE layout=interleaved reversed-bytes=false",
+      "contains_audio_x_raw": false,
+      "prerolled": true,
+      "artifact": "evidence/audio-phase2-f08/2026-10-21-native-dsd-preflight/probe_sink_negotiation.json"
+    },
+    "exact_alsa": {
+      "artifact": "evidence/audio-phase2-f08/2026-10-21-native-dsd-preflight/probe_alsa_dsd.json",
+      "results": "DSD_U32_BE 88200/176400/352800 supported with exact negotiated tuple"
+    },
+    "manual_native_playback": {
+      "command": "filesrc ! avdemux_dsf ! dsdconvert ! capsfilter(audio/x-dsd DSDU32BE 352800 2ch) ! alsasink hw:3,0",
+      "result": "completed in 1.002s",
+      "sink_caps": "audio/x-dsd format=DSDU32BE rate=352800 channels=2 layout=interleaved reversed-bytes=false",
+      "artifact": "evidence/audio-phase2-f08/2026-10-21-native-dsd-preflight/manual_native_playback.log"
+    },
+    "playbin3_finding": {
+      "observation": "playbin3/decodebin3 inserted avdec_dsd_msbf_planar and produced audio/x-raw F32LE; the DSD capsfilter then failed not-negotiated",
+      "conclusion": "the existing Managed playbin3 path is NOT safe for Native DSD; a dedicated explicit DSD pipeline is required",
+      "artifact": "evidence/audio-phase2-f08/2026-10-21-native-dsd-preflight/playbin3_raw_branch.log"
+    }
+  },
+  "contracts": {
+    "NativeDsdOutputPlan": "pure planner with exact ALSA tuple, binding generation, GStreamer byte-rate units, execution identity and typed refusals",
+    "StrictDsdSinkRecipe": "audio/x-dsd caps, alsasink only, reversed-bytes=false, explicit representation adaptation",
+    "RuntimeBranchInspector": "audio/x-dsd only; any audio/x-raw refuses; sink format/rate/channels/layout/bit-order compared to the recipe",
+    "AlsaDsdProbe": "exact-open/readback; EINVAL only as exact negative; BUSY/REMOVED/TIMEOUT remain UNKNOWN"
+  },
+  "work_units": {
+    "WU-F08-01": "COMPLETE — preflight GO, activation commit cbe724e, device/runtime evidence captured",
+    "WU-F08-02": "COMPLETE — NativeDsdOutputPlan + StrictDsdSinkRecipe + adversarial unit tests",
+    "WU-F08-03": "COMPLETE — isolated runtime probe, real DSD caps, sink negotiation and exact ALSA readback",
+    "WU-F08-04": "BLOCKED — productive host integration: playbin3 autoplugs DSD->PCM; a dedicated explicit DSD pipeline and new host protocol operations are required",
+    "WU-F08-05": "COMPLETE FOR THIS SPRINT — tests/evidence/firewall; AP2-F08 stays ACTIVE (not CLOSED)"
+  },
+  "tests": {
+    "new_f08": "49 collected: 47 passed + 2 hardware opt-in passed with MICHI_RUN_DSD_HARDWARE=1; default suite has 47 passed, 2 skipped",
+    "audio_firewall": "803 passed, 4 skipped (tests/audio_phase2 + bridge + frozen adapter)",
+    "full_suite": "5995 passed, 6 skipped, 0 failed (30:53)",
+    "hardware_probe": "2 passed under MICHI_RUN_DSD_HARDWARE=1 MICHI_DSD_DEVICE=hw:3,0",
+    "skips": [
+      "live network opt-in",
+      "no live Qt application instance",
+      "physical DAC operator gate (PCM lab test)",
+      "Qt runtime present on this machine",
+      "DSD ALSA hardware opt-in",
+      "DSD sink hardware opt-in"
+    ],
+    "ci": {
+      "code_head": "7ad0c20ac2e584c52b729674ab839078e33d13e0",
+      "run_id": 39694258399,
+      "dac_v35_software_closure": "success",
+      "min_qt": "success",
+      "check": "failure — external Premium Library QML warning gate; not an F08 contract",
+      "overall": "not fully green; the F08 audio gate is green"
+    }
+  },
+  "score": {
+    "method": "weighted sprint dimensions: activation 15, planner 15, strict sink/builder 20, runtime caps 20, lifecycle 15, tests/CI 15",
+    "sprint_weighted": "85/100 (strict sink builder and productive host lifecycle are partial/blocked)",
+    "f08_global_estimate": "about 55% of the phase (WU1–WU3 complete; WU4 host integration and physical work remain)",
+    "physical": "NOT_RUN — F14 / operator gate"
+  },
+  "limitations": [
+    "No productive Native DSD playback through the application host yet; playbin3 is unsafe and a dedicated pipeline is the next bounded work unit.",
+    "No physical/analog certification or bit-perfect end-to-end claim.",
+    "DoP is F09; DSD->PCM/DSP is F10.",
+    "The isolated probe uses a lab-generated DSF and the SMSL endpoint; the app's selected-binding workflow still needs the host/session integration."
+  ],
+  "next_work": [
+    "Dedicated explicit Native DSD pipeline inside the supervised GStreamer host (filesrc -> avdemux_dsf -> dsdconvert? -> capsfilter -> alsasink), with no playbin3.",
+    "Typed host protocol operations for stage/play/pause/stop/query identity, plan/binding/execution identity and readback.",
+    "Parent executor + OutputSessionService integration with host-loss/device-loss retirement.",
+    "Physical qualification remains F14 and is NOT_RUN."
+  ]
+}
