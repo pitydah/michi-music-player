@@ -147,6 +147,14 @@ def test_real_host_native_dsd_lab_pipeline_is_explicit_and_clean(
         identity = port.prepare_native_dsd(_payload(plan, dsf, "fakesink"))
         assert identity["prerolled"] is True
         assert identity["sink_factory"] == "fakesink"
+        from michi.application.ports import AudioTransportCommandError
+
+        with pytest.raises(AudioTransportCommandError):
+            port.load(dsf)
+        with pytest.raises(AudioTransportCommandError):
+            port.seek(0)
+        with pytest.raises(AudioTransportCommandError):
+            port.set_volume(0)
         observations = identity["observations"]
         media_types = {item["media_type"] for item in observations}
         assert "audio/x-dsd" in media_types
@@ -159,7 +167,8 @@ def test_real_host_native_dsd_lab_pipeline_is_explicit_and_clean(
         }
         assert port.commit_native_dsd(expected)["committed"] is True
         assert port.start_native_dsd()["state"] == "PLAYING"
-        assert port.stop_native_dsd(expected)["stopped"] is True
+        port.stop()
+        assert port.query_native_dsd_identity() == {"native_dsd": False}
     finally:
         port.close()
     assert port.termination_kind == "GRACEFUL"

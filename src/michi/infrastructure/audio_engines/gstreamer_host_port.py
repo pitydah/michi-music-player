@@ -87,6 +87,8 @@ class GStreamerHostedAudioPort(AudioPort):
         self._activated = False
         self._hello: dict[str, Any] | None = None
         self._host_lost_reason: str | None = None
+        self._native_dsd_active = False
+        self._native_dsd_expected: dict[str, Any] | None = None
         self._last_state: PlaybackStatus | None = None
         self._termination_kind: str | None = None
         self._runtime_failure_callback: Callable[[int, str], None] | None = None
@@ -175,6 +177,8 @@ class GStreamerHostedAudioPort(AudioPort):
             self._closed = True
             self._closing = False
             self._termination_kind = kind
+            self._native_dsd_active = False
+            self._native_dsd_expected = None
         if cleanup_error is not None:
             # Truth was invalidated; keep the port retryable for the provider.
             with self._lock:
@@ -316,6 +320,11 @@ class GStreamerHostedAudioPort(AudioPort):
 
     def _load_once(self, path: Path, *, deadline_s: float) -> dict[str, Any]:
         with self._lock:
+            if self._native_dsd_active:
+                raise AudioTransportCommandError(
+                    "NATIVE_DSD_LOAD_CONFLICT: a Native DSD pipeline is active; "
+                    "load is not applicable"
+                )
             self._command_generation += 1
         try:
             return self._submit(
@@ -344,33 +353,77 @@ class GStreamerHostedAudioPort(AudioPort):
             raise AudioTransportUnavailableError(str(exc)) from exc
 
     def play(self) -> None:
+        with self._lock:
+            native = self._native_dsd_active
+        if native:
+            self.start_native_dsd()
+            return
         self._command(HostOperation.PLAY)
 
     def pause(self) -> None:
+        with self._lock:
+            native = self._native_dsd_active
+        if native:
+            self.pause_native_dsd()
+            return
         self._command(HostOperation.PAUSE)
 
     def resume(self) -> None:
+        with self._lock:
+            native = self._native_dsd_active
+        if native:
+            self.resume_native_dsd()
+            return
         self._command(HostOperation.RESUME)
 
     def stop(self) -> None:
         with self._lock:
+            native = self._native_dsd_active
+            expected = dict(self._native_dsd_expected or {})
             self._command_generation += 1
+        if native and expected:
+            self.stop_native_dsd(expected)
+            return
         self._command(HostOperation.STOP)
 
     def seek(self, position_ms: int) -> None:
+        with self._lock:
+            native = self._native_dsd_active
+        if native:
+            raise AudioTransportCommandError(
+                "NATIVE_DSD_SEEK_UNSUPPORTED: Native DSD seek is not demonstrated"
+            )
         self._command(HostOperation.SEEK, {"position_ms": int(position_ms)})
 
     def set_volume(self, value: int) -> None:
+        with self._lock:
+            native = self._native_dsd_active
+        if native:
+            raise AudioTransportCommandError(
+                "NATIVE_DSD_VOLUME_UNSUPPORTED: no PCM volume on a Native DSD route"
+            )
         self._command(HostOperation.SET_VOLUME, {"value": int(value)})
 
     def set_muted(self, muted: bool) -> None:
+        with self._lock:
+            native = self._native_dsd_active
+        if native:
+            raise AudioTransportCommandError(
+                "NATIVE_DSD_MUTE_UNSUPPORTED: no PCM mute on a Native DSD route"
+            )
         self._command(HostOperation.SET_MUTED, {"muted": bool(muted)})
 
     def position(self) -> int:
+        with self._lock:
+            if self._native_dsd_active:
+                return 0
         payload = self._command(HostOperation.QUERY_POSITION)
         return int(payload.get("value") or 0)
 
     def duration(self) -> int:
+        with self._lock:
+            if self._native_dsd_active:
+                return 0
         payload = self._command(HostOperation.QUERY_DURATION)
         return int(payload.get("value") or 0)
 
@@ -607,11 +660,20 @@ class GStreamerHostedAudioPort(AudioPort):
     # ── Native DSD (AP2-F08) ─────────────────────────────────────────
     def prepare_native_dsd(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Build/preroll the one dedicated Native DSD pipeline in the child."""
-        return self._submit(
+        identity = self._submit(
             HostOperation.PREPARE_NATIVE_DSD,
             dict(payload),
             deadline_s=self._load_deadline_s,
         )
+        with self._lock:
+            self._native_dsd_active = True
+            self._native_dsd_expected = {
+                "plan_id": str(identity.get("plan_id") or ""),
+                "execution_id": str(identity.get("execution_id") or ""),
+                "device": str(identity.get("device") or ""),
+                "binding_generation": int(identity.get("binding_generation") or 0),
+            }
+        return identity
 
     def commit_native_dsd(self, expected: dict[str, Any]) -> dict[str, Any]:
         return self._submit(
@@ -651,11 +713,16 @@ class GStreamerHostedAudioPort(AudioPort):
         )
 
     def stop_native_dsd(self, expected: dict[str, Any]) -> dict[str, Any]:
-        return self._submit(
+        result = self._submit(
             HostOperation.STOP_NATIVE_DSD,
             {"expected": dict(expected)},
             deadline_s=self._command_deadline_s,
         )
+        if result.get("stopped") or not result.get("stale"):
+            with self._lock:
+                self._native_dsd_active = False
+                self._native_dsd_expected = None
+        return result
 
     def query_native_dsd_identity(self) -> dict[str, Any]:
         payload = self._submit(
