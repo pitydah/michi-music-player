@@ -5,7 +5,7 @@
   "state": "ACTIVE",
   "recorded_at": "2026-10-21",
   "activation_commit": "cbe724e",
-  "repo_head": "ee62de642dfa30b3b344239d90b9f79dd9b6816a",
+  "repo_head": "c06b14cfff6b289820405dbbd0d3ed10145bf090",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "environment": {
     "gstreamer": "1.28.8",
@@ -63,18 +63,18 @@
     "WU-F08-07": "COMPLETE — dedicated explicit DSD pipeline in the supervised host; lab and hardware tested",
     "WU-F08-08": "COMPLETE — typed prepare/commit/abort/start/pause/resume/stop/query operations, identity/generation, host-loss tests",
     "WU-F08-09": "PARTIAL/BLOCKED — parent executor exists; OutputSessionService/PlaybackService request wiring is not implemented",
-    "WU-F08-10": "PARTIAL — host/executor prepare/commit/start/pause/resume/stop, supersession, host loss and PCM-path exclusivity are tested; OutputSessionService/PlaybackService lifecycle and device hotplug integration remain",
+    "WU-F08-10": "PARTIAL — host/executor prepare/commit/start/pause/resume/stop, identity-bound abort/stop, supersession, host loss and bidirectional transport exclusivity are tested; OutputSessionService/PlaybackService ownership and device hotplug remain",
     "WU-F08-11": "NOT IMPLEMENTED — no Native DSD event was added to Signal Truth yet",
     "WU-F08-12": "COMPLETE for the delivered slice — 97 focused tests (31 hardware opt-in), firewall 853/5, full suite 6045/7/0, CI DAC success",
     "WU-F08-13": "COMPLETE — evidence/ledger updated for this head; F08 remains ACTIVE"
   },
   "tests": {
-    "new_f08": "97 passed / 3 skipped (default); 31 passed with MICHI_RUN_DSD_HARDWARE=1",
+    "new_f08": "114 passed / 3 skipped (default); 31 passed with MICHI_RUN_DSD_HARDWARE=1",
     "audio_firewall": "853 passed, 5 skipped (tests/audio_phase2 + bridge + frozen adapter)",
-    "full_suite": "6045 passed, 7 skipped, 0 failed (30:57)",
+    "full_suite": "6062 passed, 7 skipped, 0 failed (30:18)",
     "ci": {
-      "code_head": "ee62de642dfa30b3b344239d90b9f79dd9b6816a",
-      "run_id": 39807055249,
+      "code_head": "c06b14cfff6b289820405dbbd0d3ed10145bf090",
+      "run_id": 39864934715,
       "dac_v35_software_closure": "success",
       "min_qt": "success",
       "check": "failure — external Premium Library QML warning gate; not an F08 contract",
@@ -92,17 +92,17 @@
   },
   "score": {
     "method": "weights: activation 10, planner 10, inspection 15, pipeline 20, host protocol 15, session/lifecycle 15, truth/tests 15",
-    "sprint_weighted": "88/100 (session/PlaybackService and native truth missing; physical NOT_RUN)",
-    "f08_global_estimate": "about 80% (host pipeline/protocol/executor complete; session wiring and physical remain)",
+    "sprint_weighted": "91/100 (session/PlaybackService and native truth missing; physical NOT_RUN)",
+    "f08_global_estimate": "about 85% (host pipeline, protocol, executor and destruction safety complete; session wiring and physical remain)",
     "physical": "NOT_RUN — F14 / operator gate"
   },
   "limitations": [
-    "OutputSessionService/PlaybackService are not wired to the Native DSD request yet; the productive host/executor path is real but not reachable from the normal play button.",
-    "No Native DSD event in Signal Truth yet; the presentation model is unchanged (F11).",
+    "OutputSessionService/PlaybackService are not wired to the Native DSD request yet; the normal play button cannot select the host pipeline.",
+    "No Native DSD event in Signal Truth yet; F11 presentation remains unchanged.",
     "Physical/analog certification is NOT_RUN; no bit-perfect claim.",
     "DFF runtime demuxer is unavailable in this environment; only DSF runtime was demonstrated.",
     "DoP is F09; DSD->PCM/DSP is F10.",
-    "Seek/volume on Native DSD are not implemented (typed refusal remains the intended policy)."
+    "Seek/volume on Native DSD are refused by design; no session-level hotplug test yet."
   ],
   "next_work": [
     "Wire NativeDsdOutputExecutor into OutputSessionService/PlaybackService through an additive native DSD request and the existing selection authority.",
@@ -134,6 +134,13 @@
     "hardware_test": "real supervised host + alsasink hw:3,0; NativeDsdOutputExecutor prepare/commit/start/query/stop; no errors",
     "supersession": "prepare A then prepare B; commit A is rejected with NATIVE_DSD_HOST_IDENTITY_MISMATCH; commit B succeeds",
     "host_loss": "SIGKILL after start -> host lost reported, query/stop refused typed, no reactivation",
-    "transport_exclusivity": "while a Native DSD pipeline is active, PCM load/seek/volume/mute are refused typed; play/pause/resume/stop route to the native operations; the active flag clears only for the owning execution"
+    "transport_exclusivity": "bidirectional and async-safe: PCM ownership blocks Native preparation; a Native execution blocks PCM load/seek/volume/mute; abort/stop require the full identity and explicit confirmation; host loss clears ownership"
+  },
+  "corrections": {
+    "P1-01_abort_recovery": "abort/stop clear ownership only after explicit aborted/stopped=True AND stale=False with the canonical identity; malformed/ambiguous results keep the local route and are refused",
+    "P1-02_destructive_identity": "host session/runtime/port require plan, execution, stable device, locator and binding generation for abort/stop; missing identity is rejected before any destructive call; full host shutdown remains the controlled exception",
+    "P1-03_exclusivity": "PCM->Native is refused while a PCM source owns the output; Native->PCM load/seek/volume/mute are refused; sync and async transport paths share the guards; ownership clears on confirmed release/host loss",
+    "P2-01_playing_confirmation": "start/pause/resume confirm the real GStreamer state before success; a request alone is never published; executor rejects an unconfirmed host result",
+    "DTO_readback": "host observations require strict strings/ints/bools and the real source path; fabricated linked/generation/path/stable-device evidence is rejected before commit"
   }
 }

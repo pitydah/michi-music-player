@@ -182,7 +182,9 @@
       "contract": "dedicated explicit Native DSD pipeline inside the supervised host",
       "tests": [
         "test_native_dsd_host_runtime.py",
-        "test_native_dsd_host_protocol.py"
+        "test_native_dsd_host_protocol.py",
+        "test_native_dsd_host_session_identity.py",
+        "test_native_dsd_port_cleanup.py"
       ]
     },
     {
