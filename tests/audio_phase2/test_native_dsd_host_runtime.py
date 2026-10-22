@@ -39,6 +39,23 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _require_dsd_factories() -> None:
+    """Skip only when the runtime genuinely lacks the DSD demux/converter."""
+    import gi
+
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst
+
+    Gst.init(None)
+    missing = [
+        name
+        for name in ("avdemux_dsf", "dsdconvert")
+        if Gst.ElementFactory.find(name) is None
+    ]
+    if missing:
+        pytest.skip(f"GStreamer DSD factories unavailable: {missing}")
+
+
 def _plan(device: str, execution_id: str = "exec:host-test") -> object:
     source = DsdSignalFormat(
         bit_rate_hz=2_822_400,
@@ -154,6 +171,7 @@ def test_real_host_native_dsd_lab_pipeline_is_explicit_and_clean(
     reason="physical DSD host playback requires the explicit operator gate",
 )
 def test_real_host_native_dsd_alsasink_executor(tmp_path) -> None:
+    _require_dsd_factories()
     device = os.environ.get("MICHI_DSD_DEVICE", "hw:3,0")
     dsf = tmp_path / "native-hw.dsf"
     dsf.write_bytes(build_dsf(sample_count=2_822_400))
@@ -229,6 +247,7 @@ def test_new_preparation_supersedes_the_previous_execution(
 
 
 def test_native_dsd_host_loss_retires_the_execution(tmp_path, monkeypatch) -> None:
+    _require_dsd_factories()
     dsf = tmp_path / "native.dsf"
     dsf.write_bytes(build_dsf(sample_count=2_822_400))
     plan = _plan("hw:3,0")
