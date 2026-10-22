@@ -11,7 +11,9 @@
   },
   "context_receipt": {
     "primary_phase": "AP2-F08",
-    "dependencies": ["AP2-F07"],
+    "dependencies": [
+      "AP2-F07"
+    ],
     "must_read_anchors": [
       "R11-G03-OUTPUT-FAMILIES",
       "R11-G07-REALTIME-SAFETY",
@@ -38,5 +40,10 @@
     "DoP (F09)",
     "DSD->PCM or DSP interoperability (F10)",
     "physical DAC certification (F14)"
-  ]
+  ],
+  "post_activation_update": {
+    "host_native_dsd_pipeline": "IMPLEMENTED and tested inside the supervised host (commit c5a00b5; CI head 07e55e4). See F08_NATIVE_DSD_EVIDENCE.host_pipeline.",
+    "session_wiring": "NOT IMPLEMENTED — OutputSessionService/PlaybackService still use the PCM/Managed request path; the executor is ready.",
+    "physical": "NOT_RUN (F14 / operator gate)"
+  }
 }
