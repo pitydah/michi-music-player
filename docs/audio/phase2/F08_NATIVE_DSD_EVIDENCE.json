@@ -5,7 +5,7 @@
   "state": "ACTIVE",
   "recorded_at": "2026-10-21",
   "activation_commit": "cbe724e",
-  "repo_head": "07e55e4311a3758e119ddb94a2cb239ae1ea6ca3",
+  "repo_head": "ee62de642dfa30b3b344239d90b9f79dd9b6816a",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "environment": {
     "gstreamer": "1.28.8",
@@ -63,7 +63,7 @@
     "WU-F08-07": "COMPLETE — dedicated explicit DSD pipeline in the supervised host; lab and hardware tested",
     "WU-F08-08": "COMPLETE — typed prepare/commit/abort/start/pause/resume/stop/query operations, identity/generation, host-loss tests",
     "WU-F08-09": "PARTIAL/BLOCKED — parent executor exists; OutputSessionService/PlaybackService request wiring is not implemented",
-    "WU-F08-10": "PARTIAL — prepare/commit/start/pause/resume/stop/host-loss/supersession tested at the host/executor boundary; session lifecycle and device hotplug remain",
+    "WU-F08-10": "PARTIAL — host/executor prepare/commit/start/pause/resume/stop, supersession, host loss and PCM-path exclusivity are tested; OutputSessionService/PlaybackService lifecycle and device hotplug integration remain",
     "WU-F08-11": "NOT IMPLEMENTED — no Native DSD event was added to Signal Truth yet",
     "WU-F08-12": "COMPLETE for the delivered slice — 97 focused tests (31 hardware opt-in), firewall 853/5, full suite 6045/7/0, CI DAC success",
     "WU-F08-13": "COMPLETE — evidence/ledger updated for this head; F08 remains ACTIVE"
@@ -71,10 +71,10 @@
   "tests": {
     "new_f08": "97 passed / 3 skipped (default); 31 passed with MICHI_RUN_DSD_HARDWARE=1",
     "audio_firewall": "853 passed, 5 skipped (tests/audio_phase2 + bridge + frozen adapter)",
-    "full_suite": "6045 passed, 7 skipped, 0 failed (30:15)",
+    "full_suite": "6045 passed, 7 skipped, 0 failed (30:57)",
     "ci": {
-      "code_head": "07e55e4311a3758e119ddb94a2cb239ae1ea6ca3",
-      "run_id": 39789476330,
+      "code_head": "ee62de642dfa30b3b344239d90b9f79dd9b6816a",
+      "run_id": 39807055249,
       "dac_v35_software_closure": "success",
       "min_qt": "success",
       "check": "failure — external Premium Library QML warning gate; not an F08 contract",
@@ -133,6 +133,7 @@
     "lab_test": "real supervised host + fakesink lab switch; DSD caps negotiated, no raw, explicit branch",
     "hardware_test": "real supervised host + alsasink hw:3,0; NativeDsdOutputExecutor prepare/commit/start/query/stop; no errors",
     "supersession": "prepare A then prepare B; commit A is rejected with NATIVE_DSD_HOST_IDENTITY_MISMATCH; commit B succeeds",
-    "host_loss": "SIGKILL after start -> host lost reported, query/stop refused typed, no reactivation"
+    "host_loss": "SIGKILL after start -> host lost reported, query/stop refused typed, no reactivation",
+    "transport_exclusivity": "while a Native DSD pipeline is active, PCM load/seek/volume/mute are refused typed; play/pause/resume/stop route to the native operations; the active flag clears only for the owning execution"
   }
 }
