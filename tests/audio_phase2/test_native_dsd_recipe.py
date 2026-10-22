@@ -121,6 +121,20 @@ def test_target_reversed_bytes_is_refused() -> None:
     assert info.value.code == "DSD_RECIPE_REVERSED_TARGET"
 
 
+def test_non_boolean_normalization_is_refused() -> None:
+    with pytest.raises(StrictDsdSinkError) as info:
+        StrictDsdSinkRecipe(
+            plan_id="native-dsd:test",
+            device=LOCATOR,
+            gst_dsd_format="DSDU32BE",
+            gst_rate_bytes_per_second_per_channel=352_800,
+            channels=2,
+            normalize_reversed_bytes="yes",  # type: ignore[arg-type]
+            requires_dsdconvert=False,
+        )
+    assert info.value.code == "DSD_RECIPE_CONVERSION_INVALID"
+
+
 def test_invalid_recipe_fields_are_refused() -> None:
     for kwargs, code in (
         ({"device": ""}, "DSD_RECIPE_DEVICE_MISSING"),

@@ -69,6 +69,11 @@ class StrictDsdSinkRecipe:
             or self.channels <= 0
         ):
             raise StrictDsdSinkError("DSD_RECIPE_CHANNELS_INVALID", "invalid channels")
+        if not isinstance(self.normalize_reversed_bytes, bool):
+            raise StrictDsdSinkError(
+                "DSD_RECIPE_CONVERSION_INVALID",
+                "normalize_reversed_bytes must be a boolean",
+            )
         if not isinstance(self.requires_dsdconvert, bool):
             raise StrictDsdSinkError(
                 "DSD_RECIPE_CONVERSION_INVALID",

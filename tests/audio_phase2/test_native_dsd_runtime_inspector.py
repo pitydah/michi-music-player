@@ -114,6 +114,16 @@ def test_any_raw_cap_is_a_conversion_contradiction() -> None:
     assert info.value.code == "NATIVE_DSD_PCM_CONVERSION_DETECTED"
 
 
+def test_unplanned_decoder_factory_is_refused() -> None:
+    with pytest.raises(NativeDsdBranchError) as info:
+        inspect_native_dsd_branch(
+            (_sink_caps(),),
+            _recipe(),
+            factories=("avdec_dsd_msbf_planar", "alsasink"),
+        )
+    assert info.value.code == "NATIVE_DSD_UNPLANNED_DECODER"
+
+
 def test_missing_dsd_caps_is_not_proven() -> None:
     with pytest.raises(NativeDsdBranchError) as info:
         inspect_native_dsd_branch((), _recipe())

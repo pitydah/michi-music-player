@@ -97,6 +97,13 @@ class AlsaDsdTuple:
                 "DSD_ALSA_GROUPING_INVALID",
                 f"unsupported grouping width {self.sample_width_bits}",
             )
+        if _GROUPING_BY_FORMAT_NAME[self.format_name].bits_per_alsa_sample != (
+            self.sample_width_bits
+        ):
+            raise NativeDsdPlannerError(
+                "DSD_ALSA_GROUPING_WIDTH_MISMATCH",
+                "format name and declared grouping width disagree",
+            )
         if (
             not isinstance(self.source_bits_per_second_per_channel, int)
             or isinstance(self.source_bits_per_second_per_channel, bool)
@@ -148,6 +155,11 @@ class NativeDsdQualification:
             raise NativeDsdPlannerError(
                 "DSD_QUALIFICATION_GENERATION_INVALID",
                 "binding generation must be a non-negative integer",
+            )
+        if not isinstance(self.requested, AlsaDsdTuple):
+            raise NativeDsdPlannerError(
+                "DSD_QUALIFICATION_TUPLE_INVALID",
+                "requested must be an AlsaDsdTuple",
             )
         if self.supported not in (True, False, None):
             raise NativeDsdPlannerError(

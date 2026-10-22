@@ -247,6 +247,30 @@ def test_alsa_tuple_rejects_grouping_rate_mismatch() -> None:
     assert info.value.code == "DSD_ALSA_GROUPING_RATE_MISMATCH"
 
 
+def test_alsa_tuple_rejects_format_width_disagreement() -> None:
+    with pytest.raises(NativeDsdPlannerError) as info:
+        AlsaDsdTuple(
+            format_name=U32_BE,
+            frame_rate_hz=352_800,
+            channels=2,
+            sample_width_bits=8,
+            source_bits_per_second_per_channel=2_822_400,
+        )
+    assert info.value.code == "DSD_ALSA_GROUPING_WIDTH_MISMATCH"
+
+
+def test_qualification_rejects_a_non_tuple() -> None:
+    with pytest.raises(NativeDsdPlannerError) as info:
+        NativeDsdQualification(
+            stable_device_id=DEVICE,
+            binding_generation=1,
+            requested=object(),
+            supported=True,
+            evidence_ref=EVIDENCE,
+        )
+    assert info.value.code == "DSD_QUALIFICATION_TUPLE_INVALID"
+
+
 def test_alsa_tuple_rejects_unknown_format() -> None:
     with pytest.raises(NativeDsdPlannerError) as info:
         AlsaDsdTuple(

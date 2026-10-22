@@ -109,6 +109,16 @@ def inspect_native_dsd_branch(
             "NATIVE_DSD_BRANCH_NOT_INSPECTABLE",
             "the selected Native branch was not fully inspectable",
         )
+    unplanned_decoders = tuple(
+        name
+        for name in factories
+        if name.startswith("avdec_") or name in ("decodebin3", "uridecodebin3")
+    )
+    if unplanned_decoders:
+        raise NativeDsdBranchError(
+            "NATIVE_DSD_UNPLANNED_DECODER",
+            f"selected Native branch contains {unplanned_decoders}",
+        )
     dsd_caps = tuple(caps for caps in observed_caps if caps.media_type == "audio/x-dsd")
     raw_caps = tuple(caps for caps in observed_caps if caps.media_type == "audio/x-raw")
     if raw_caps:
