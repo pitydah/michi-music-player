@@ -51,6 +51,33 @@ def _source_family(path: Path) -> str:
     )
 
 
+def _strict_str(item: dict[str, Any], name: str) -> str:
+    value = item.get(name)
+    if not isinstance(value, str):
+        raise NativeDsdExecutionError(
+            "NATIVE_DSD_HOST_EVIDENCE_INVALID", f"{name} must be a string"
+        )
+    return value
+
+
+def _strict_int(item: dict[str, Any], name: str) -> int:
+    value = item.get(name)
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise NativeDsdExecutionError(
+            "NATIVE_DSD_HOST_EVIDENCE_INVALID", f"{name} must be an integer"
+        )
+    return value
+
+
+def _strict_bool(item: dict[str, Any], name: str) -> bool:
+    value = item.get(name)
+    if not isinstance(value, bool):
+        raise NativeDsdExecutionError(
+            "NATIVE_DSD_HOST_EVIDENCE_INVALID", f"{name} must be a boolean"
+        )
+    return value
+
+
 def _observations_from_identity(identity: dict[str, Any]) -> tuple[ObservedPad, ...]:
     raw = identity.get("observations")
     if not isinstance(raw, list) or not raw:
@@ -65,32 +92,31 @@ def _observations_from_identity(identity: dict[str, Any]) -> tuple[ObservedPad, 
             )
         fields = item.get("fields")
         if not isinstance(fields, list) or not all(
-            isinstance(pair, list) and len(pair) == 2 for pair in fields
+            isinstance(pair, list)
+            and len(pair) == 2
+            and isinstance(pair[0], str)
+            and isinstance(pair[1], str)
+            for pair in fields
         ):
             raise NativeDsdExecutionError(
                 "NATIVE_DSD_HOST_EVIDENCE_INVALID", "observation fields are invalid"
             )
-        try:
-            observations.append(
-                ObservedPad(
-                    element_name=str(item["element_name"]),
-                    factory=str(item["factory"]),
-                    pad_name=str(item["pad_name"]),
-                    direction=str(item["direction"]),
-                    role=str(item["role"]),
-                    media_type=str(item["media_type"]),
-                    fields=tuple((str(k), str(v)) for k, v in fields),
-                    caps_state=str(item["caps_state"]),
-                    linked=bool(item["linked"]),
-                    selected_device=str(item.get("selected_device") or ""),
-                    execution_id=str(item.get("execution_id") or ""),
-                    binding_generation=int(item.get("binding_generation") or 0),
-                )
+        observations.append(
+            ObservedPad(
+                element_name=_strict_str(item, "element_name"),
+                factory=_strict_str(item, "factory"),
+                pad_name=_strict_str(item, "pad_name"),
+                direction=_strict_str(item, "direction"),
+                role=_strict_str(item, "role"),
+                media_type=_strict_str(item, "media_type"),
+                fields=tuple((pair[0], pair[1]) for pair in fields),
+                caps_state=_strict_str(item, "caps_state"),
+                linked=_strict_bool(item, "linked"),
+                selected_device=_strict_str(item, "selected_device"),
+                execution_id=_strict_str(item, "execution_id"),
+                binding_generation=_strict_int(item, "binding_generation"),
             )
-        except (KeyError, TypeError, ValueError) as exc:
-            raise NativeDsdExecutionError(
-                "NATIVE_DSD_HOST_EVIDENCE_INVALID", str(exc)
-            ) from exc
+        )
     return tuple(observations)
 
 
@@ -103,6 +129,7 @@ class NativeDsdOutputExecutor:
         return {
             "plan_id": plan.plan_id,
             "execution_id": plan.execution_id,
+            "stable_device_id": plan.stable_device_id,
             "device": plan.binding_locator,
             "binding_generation": plan.binding_generation,
         }
@@ -140,7 +167,7 @@ class NativeDsdOutputExecutor:
             code = getattr(exc, "code", "NATIVE_DSD_HOST_PREPARE_FAILED")
             raise NativeDsdExecutionError(str(code), str(exc)) from exc
         try:
-            self._validate_identity(plan, identity)
+            self._validate_identity(plan, identity, path)
             observations = _observations_from_identity(identity)
             inspect_native_dsd_branch(
                 observations,
@@ -162,19 +189,41 @@ class NativeDsdOutputExecutor:
             observations=observations,
         )
 
-    def _validate_identity(self, plan: NativeDsdOutputPlan, identity: Any) -> None:
+    def _validate_identity(
+        self, plan: NativeDsdOutputPlan, identity: Any, path: Path
+    ) -> None:
         if not isinstance(identity, dict):
             raise NativeDsdExecutionError(
                 "NATIVE_DSD_HOST_EVIDENCE_INVALID", "identity is not an object"
             )
+        for name in (
+            "plan_id",
+            "execution_id",
+            "stable_device_id",
+            "device",
+            "format",
+            "path",
+        ):
+            _strict_str(identity, name)
+        for name in ("binding_generation", "rate", "channels", "source_bits"):
+            _strict_int(identity, name)
+        _strict_bool(identity, "prerolled")
+        _strict_bool(identity, "lab_sink")
+        if Path(identity["path"]).resolve() != path.resolve():
+            raise NativeDsdExecutionError(
+                "NATIVE_DSD_HOST_IDENTITY_MISMATCH",
+                "host evidence belongs to a different source path",
+            )
         for field, expected in (
             ("plan_id", plan.plan_id),
             ("execution_id", plan.execution_id),
+            ("stable_device_id", plan.stable_device_id),
             ("device", plan.binding_locator),
             ("binding_generation", plan.binding_generation),
             ("format", plan.gst_format),
             ("rate", plan.gst_rate_bytes_per_second_per_channel),
             ("channels", plan.alsa_tuple.channels),
+            ("source_bits", plan.source.bit_rate_hz),
             ("sink_factory", "alsasink"),
             ("prerolled", True),
             ("lab_sink", False),
@@ -189,16 +238,37 @@ class NativeDsdOutputExecutor:
         return self._port.commit_native_dsd(self._expected(prepared.plan))
 
     def start(self, prepared: NativeDsdPrepared) -> dict[str, Any]:
-        return self._port.start_native_dsd()
+        result = self._port.start_native_dsd()
+        if result.get("confirmed") is not True:
+            raise NativeDsdExecutionError(
+                "NATIVE_DSD_PLAYING_NOT_CONFIRMED",
+                "host did not confirm PLAYING",
+            )
+        return result
 
     def pause(self) -> dict[str, Any]:
-        return self._port.pause_native_dsd()
+        result = self._port.pause_native_dsd()
+        if result.get("confirmed") is not True:
+            raise NativeDsdExecutionError(
+                "NATIVE_DSD_PAUSE_NOT_CONFIRMED", "host did not confirm PAUSED"
+            )
+        return result
 
     def resume(self) -> dict[str, Any]:
-        return self._port.resume_native_dsd()
+        result = self._port.resume_native_dsd()
+        if result.get("confirmed") is not True:
+            raise NativeDsdExecutionError(
+                "NATIVE_DSD_RESUME_NOT_CONFIRMED", "host did not confirm PLAYING"
+            )
+        return result
 
     def stop(self, prepared: NativeDsdPrepared) -> dict[str, Any]:
-        return self._port.stop_native_dsd(self._expected(prepared.plan))
+        result = self._port.stop_native_dsd(self._expected(prepared.plan))
+        if result.get("stopped") is not True or result.get("stale") is not False:
+            raise NativeDsdExecutionError(
+                "NATIVE_DSD_STOP_NOT_CONFIRMED", "host did not confirm stop"
+            )
+        return result
 
     def abort(self, plan: NativeDsdOutputPlan) -> dict[str, Any]:
         try:

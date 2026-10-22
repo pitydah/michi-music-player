@@ -162,6 +162,7 @@ def test_real_host_native_dsd_lab_pipeline_is_explicit_and_clean(
         expected = {
             "plan_id": plan.plan_id,
             "execution_id": plan.execution_id,
+            "stable_device_id": plan.stable_device_id,
             "device": plan.binding_locator,
             "binding_generation": 1,
         }
@@ -217,11 +218,9 @@ def test_new_preparation_supersedes_the_previous_execution(
         port.activate()
         port.prepare_native_dsd(_payload(first, dsf, "fakesink"))
         port.prepare_native_dsd(_payload(second, dsf, "fakesink"))
-        from michi.infrastructure.audio_engines.gstreamer_host_client import (
-            OutputHostCommandError,
-        )
+        from michi.application.ports import AudioTransportCommandError
 
-        with pytest.raises(OutputHostCommandError) as info:
+        with pytest.raises(AudioTransportCommandError) as info:
             port.commit_native_dsd(
                 {
                     "plan_id": first.plan_id,
@@ -230,12 +229,13 @@ def test_new_preparation_supersedes_the_previous_execution(
                     "binding_generation": 1,
                 }
             )
-        assert info.value.code == "NATIVE_DSD_HOST_IDENTITY_MISMATCH"
+        assert "NATIVE_DSD_IDENTITY_STALE" in str(info.value)
         assert (
             port.commit_native_dsd(
                 {
                     "plan_id": second.plan_id,
                     "execution_id": second.execution_id,
+                    "stable_device_id": second.stable_device_id,
                     "device": second.binding_locator,
                     "binding_generation": 1,
                 }
@@ -246,6 +246,7 @@ def test_new_preparation_supersedes_the_previous_execution(
             {
                 "plan_id": second.plan_id,
                 "execution_id": second.execution_id,
+                "stable_device_id": second.stable_device_id,
                 "device": second.binding_locator,
                 "binding_generation": 1,
             }
@@ -267,6 +268,7 @@ def test_native_dsd_host_loss_retires_the_execution(tmp_path, monkeypatch) -> No
     expected = {
         "plan_id": plan.plan_id,
         "execution_id": plan.execution_id,
+        "stable_device_id": plan.stable_device_id,
         "device": plan.binding_locator,
         "binding_generation": 1,
     }

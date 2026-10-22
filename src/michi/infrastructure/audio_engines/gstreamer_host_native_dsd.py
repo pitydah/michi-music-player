@@ -376,12 +376,29 @@ class NativeDsdHostRuntime:
             )
         gst = self._ensure_gst()
         self._pipeline.set_state(gst.State.PLAYING)
+        confirmed = self._confirm_state(gst.State.PLAYING, "PLAYING")
         self._drain_bus()
+        if self._errors:
+            raise NativeDsdHostError(
+                "NATIVE_DSD_HOST_BUS_ERROR", self._errors[0]["detail"]
+            )
         return {
             "state": "PLAYING",
+            "confirmed": confirmed,
             "eos": self._eos,
             "errors": list(self._errors),
         }
+
+    def _confirm_state(self, target, label: str) -> bool:
+        """A requested state is not a confirmed state."""
+        gst = self._ensure_gst()
+        _ret, state, _pending = self._pipeline.get_state(5 * gst.SECOND)
+        if state != target:
+            raise NativeDsdHostError(
+                "NATIVE_DSD_HOST_STATE_NOT_CONFIRMED",
+                f"requested {label}, observed {state.value_name}",
+            )
+        return True
 
     def pause(self) -> dict[str, Any]:
         if self._pipeline is None:
@@ -389,7 +406,8 @@ class NativeDsdHostRuntime:
                 "NATIVE_DSD_HOST_NOT_PREPARED", "no pipeline to pause"
             )
         self._pipeline.set_state(self._gst.State.PAUSED)
-        return {"state": "PAUSED"}
+        confirmed = self._confirm_state(self._gst.State.PAUSED, "PAUSED")
+        return {"state": "PAUSED", "confirmed": confirmed}
 
     def resume(self) -> dict[str, Any]:
         if not self._committed or self._pipeline is None:
@@ -397,23 +415,16 @@ class NativeDsdHostRuntime:
                 "NATIVE_DSD_HOST_NOT_COMMITTED", "commit before resume"
             )
         self._pipeline.set_state(self._gst.State.PLAYING)
-        return {"state": "PLAYING"}
+        confirmed = self._confirm_state(self._gst.State.PLAYING, "PLAYING")
+        return {"state": "PLAYING", "confirmed": confirmed}
 
-    def stop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
-        if expected is not None and self._identity is not None:
-            try:
-                self._require_expected(expected)
-            except NativeDsdHostError as exc:
-                return {"stopped": False, "stale": True, "code": exc.code}
+    def stop(self, expected: dict[str, Any]) -> dict[str, Any]:
+        self._require_expected(expected)
         self.close()
         return {"stopped": True, "stale": False}
 
-    def abort(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
-        if expected is not None and self._identity is not None:
-            try:
-                self._require_expected(expected)
-            except NativeDsdHostError:
-                return {"aborted": False, "stale": True}
+    def abort(self, expected: dict[str, Any]) -> dict[str, Any]:
+        self._require_expected(expected)
         self.close()
         return {"aborted": True, "stale": False}
 
@@ -459,7 +470,12 @@ class NativeDsdHostRuntime:
         _ret, state, _pending = self._pipeline.get_state(0)
         return state.value_name
 
-    def _require_expected(self, expected: dict[str, Any]) -> None:
+    def _require_expected(self, expected: dict[str, Any] | None) -> None:
+        if not isinstance(expected, dict) or not expected:
+            raise NativeDsdHostError(
+                "NATIVE_DSD_HOST_IDENTITY_REQUIRED",
+                "destructive operations require an execution identity",
+            )
         identity = self._identity
         if identity is None:
             raise NativeDsdHostError(
@@ -468,14 +484,24 @@ class NativeDsdHostRuntime:
         for field in (
             "plan_id",
             "execution_id",
+            "stable_device_id",
             "device",
             "binding_generation",
         ):
-            if str(expected.get(field)) != str(identity.get(field)):
+            if self._missing_or_mismatched(expected, identity, field):
                 raise NativeDsdHostError(
                     "NATIVE_DSD_HOST_IDENTITY_MISMATCH",
                     f"{field} does not match the prepared execution",
                 )
+
+    @staticmethod
+    def _missing_or_mismatched(
+        expected: dict[str, Any], identity: dict[str, Any], field: str
+    ) -> bool:
+        value = expected.get(field)
+        if value is None or value == "":
+            return True
+        return str(value) != str(identity.get(field))
 
     def close(self) -> None:
         if self._pipeline is not None:

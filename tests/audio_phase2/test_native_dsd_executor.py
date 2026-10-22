@@ -86,7 +86,7 @@ def _observation(role: str, factory: str, pad: str, direction: str, **fields):
     }
 
 
-def _identity(**overrides):
+def _identity(path=None, **overrides):
     identity = {
         "plan_id": _plan().plan_id,
         "execution_id": EXEC,
@@ -112,7 +112,7 @@ def _identity(**overrides):
             _observation("sink", "alsasink", "sink", "sink"),
         ],
         "prerolled": True,
-        "path": "/tmp/source.dsf",
+        "path": str(path) if path is not None else "/tmp/source.dsf",
     }
     identity.update(overrides)
     return identity
@@ -136,15 +136,15 @@ class _FakePort:
 
     def start_native_dsd(self):
         self.calls.append(("start", None))
-        return {"state": "PLAYING"}
+        return {"state": "PLAYING", "confirmed": True}
 
     def pause_native_dsd(self):
         self.calls.append(("pause", None))
-        return {"state": "PAUSED"}
+        return {"state": "PAUSED", "confirmed": True}
 
     def resume_native_dsd(self):
         self.calls.append(("resume", None))
-        return {"state": "PLAYING"}
+        return {"state": "PLAYING", "confirmed": True}
 
     def stop_native_dsd(self, expected):
         self.calls.append(("stop", expected))
@@ -162,8 +162,9 @@ def _file(tmp_path):
 
 
 def test_prepare_proves_identity_and_evidence(tmp_path) -> None:
-    port = _FakePort()
-    prepared = NativeDsdOutputExecutor(port).prepare(_plan(), _file(tmp_path))
+    path = _file(tmp_path)
+    port = _FakePort(identity=_identity(path))
+    prepared = NativeDsdOutputExecutor(port).prepare(_plan(), path)
     assert prepared.execution_id == EXEC
     assert prepared.recipe.sink_factory == "alsasink"
     payload = port.calls[0][1]
@@ -173,9 +174,10 @@ def test_prepare_proves_identity_and_evidence(tmp_path) -> None:
 
 
 def test_commit_start_pause_resume_stop(tmp_path) -> None:
-    port = _FakePort()
+    path = _file(tmp_path)
+    port = _FakePort(identity=_identity(path))
     executor = NativeDsdOutputExecutor(port)
-    prepared = executor.prepare(_plan(), _file(tmp_path))
+    prepared = executor.prepare(_plan(), path)
     executor.commit(prepared)
     executor.start(prepared)
     executor.pause()
@@ -201,19 +203,21 @@ def test_identity_mismatch_aborts_and_never_commits(tmp_path) -> None:
 
 
 def test_raw_pad_in_host_evidence_aborts(tmp_path) -> None:
-    identity = _identity()
+    path = _file(tmp_path)
+    identity = _identity(path)
     identity["observations"][0]["media_type"] = "audio/x-raw"
     port = _FakePort(identity=identity)
     with pytest.raises(NativeDsdExecutionError) as info:
-        NativeDsdOutputExecutor(port).prepare(_plan(), _file(tmp_path))
+        NativeDsdOutputExecutor(port).prepare(_plan(), path)
     assert info.value.code == "NATIVE_DSD_PCM_CONVERSION_DETECTED"
     assert port.calls[-1][0] == "abort"
 
 
 def test_lab_sink_identity_is_never_productive(tmp_path) -> None:
-    port = _FakePort(identity=_identity(lab_sink=True))
+    path = _file(tmp_path)
+    port = _FakePort(identity=_identity(path, lab_sink=True))
     with pytest.raises(NativeDsdExecutionError) as info:
-        NativeDsdOutputExecutor(port).prepare(_plan(), _file(tmp_path))
+        NativeDsdOutputExecutor(port).prepare(_plan(), path)
     assert info.value.code == "NATIVE_DSD_HOST_IDENTITY_MISMATCH"
     assert port.calls[-1][0] == "abort"
 
@@ -235,3 +239,50 @@ def test_host_prepare_error_is_typed_and_not_committed(tmp_path) -> None:
         NativeDsdOutputExecutor(port).prepare(_plan(), _file(tmp_path))
     assert info.value.code == "NATIVE_DSD_HOST_PREROLL_FAILED"
     assert all(name != "commit" for name, _ in port.calls)
+
+
+def _identity_with(source_path, **overrides):
+    identity = _identity(source_path)
+    identity.update(overrides)
+    return identity
+
+
+def test_unconfirmed_playing_is_rejected(tmp_path) -> None:
+    path = _file(tmp_path)
+    port = _FakePort(identity=_identity(path))
+    port.start_native_dsd = lambda: {"state": "PLAYING"}
+    executor = NativeDsdOutputExecutor(port)
+    prepared = executor.prepare(_plan(), path)
+    executor.commit(prepared)
+    with pytest.raises(NativeDsdExecutionError) as info:
+        executor.start(prepared)
+    assert info.value.code == "NATIVE_DSD_PLAYING_NOT_CONFIRMED"
+
+
+@pytest.mark.parametrize(
+    "overrides,code",
+    [
+        ({"observations": [{"linked": "false"}]}, "NATIVE_DSD_HOST_EVIDENCE_INVALID"),
+        (
+            {"observations": [{"binding_generation": "3"}]},
+            "NATIVE_DSD_HOST_EVIDENCE_INVALID",
+        ),
+        ({"stable_device_id": "usb:other"}, "NATIVE_DSD_HOST_IDENTITY_MISMATCH"),
+        ({"source_bits": 2_822_401}, "NATIVE_DSD_HOST_IDENTITY_MISMATCH"),
+        ({"path": "/tmp/other.dsf"}, "NATIVE_DSD_HOST_IDENTITY_MISMATCH"),
+    ],
+)
+def test_fabricated_or_mismatched_host_evidence_is_rejected(
+    tmp_path, overrides, code
+) -> None:
+    path = _file(tmp_path)
+    identity = _identity_with(path, **overrides)
+    if "observations" in overrides and len(identity["observations"]) == 1:
+        identity["observations"] = [
+            {**identity["observations"][0], **overrides["observations"][0]}
+        ]
+    port = _FakePort(identity=identity)
+    with pytest.raises(NativeDsdExecutionError) as info:
+        NativeDsdOutputExecutor(port).prepare(_plan(), path)
+    assert info.value.code == code
+    assert port.calls[-1][0] == "abort"

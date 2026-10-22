@@ -88,7 +88,9 @@ class GStreamerHostedAudioPort(AudioPort):
         self._hello: dict[str, Any] | None = None
         self._host_lost_reason: str | None = None
         self._native_dsd_active = False
+        self._native_dsd_state = "NONE"
         self._native_dsd_expected: dict[str, Any] | None = None
+        self._pcm_active = False
         self._last_state: PlaybackStatus | None = None
         self._termination_kind: str | None = None
         self._runtime_failure_callback: Callable[[int, str], None] | None = None
@@ -178,7 +180,9 @@ class GStreamerHostedAudioPort(AudioPort):
             self._closing = False
             self._termination_kind = kind
             self._native_dsd_active = False
+            self._native_dsd_state = "RELEASED"
             self._native_dsd_expected = None
+            self._pcm_active = False
         if cleanup_error is not None:
             # Truth was invalidated; keep the port retryable for the provider.
             with self._lock:
@@ -258,21 +262,18 @@ class GStreamerHostedAudioPort(AudioPort):
         )
 
     def play_async(self, *, on_done=None, on_failed=None) -> None:
-        self._command_async(HostOperation.PLAY, None, on_done, on_failed)
+        self._run_worker(self.play, on_done=on_done, on_failed=on_failed, name="play")
 
     def pause_async(self, *, on_done=None, on_failed=None) -> None:
-        self._command_async(HostOperation.PAUSE, None, on_done, on_failed)
+        self._run_worker(self.pause, on_done=on_done, on_failed=on_failed, name="pause")
 
     def resume_async(self, *, on_done=None, on_failed=None) -> None:
-        self._command_async(HostOperation.RESUME, None, on_done, on_failed)
+        self._run_worker(
+            self.resume, on_done=on_done, on_failed=on_failed, name="resume"
+        )
 
     def stop_async(self, *, on_done=None, on_failed=None) -> None:
-        def work() -> dict[str, Any]:
-            with self._lock:
-                self._command_generation += 1
-            return self._command(HostOperation.STOP)
-
-        self._run_worker(work, on_done=on_done, on_failed=on_failed, name="stop")
+        self._run_worker(self.stop, on_done=on_done, on_failed=on_failed, name="stop")
 
     def seek_async(
         self,
@@ -281,8 +282,11 @@ class GStreamerHostedAudioPort(AudioPort):
         on_done=None,
         on_failed=None,
     ) -> None:
-        self._command_async(
-            HostOperation.SEEK, {"position_ms": int(position_ms)}, on_done, on_failed
+        self._run_worker(
+            lambda: self.seek(position_ms),
+            on_done=on_done,
+            on_failed=on_failed,
+            name="seek",
         )
 
     def _command_async(self, operation, payload, on_done, on_failed) -> None:
@@ -327,11 +331,14 @@ class GStreamerHostedAudioPort(AudioPort):
                 )
             self._command_generation += 1
         try:
-            return self._submit(
+            result = self._submit(
                 HostOperation.LOAD,
                 {"path": str(path)},
                 deadline_s=deadline_s,
             )
+            with self._lock:
+                self._pcm_active = True
+            return result
         except OutputHostCommandError as exc:
             payload = exc.payload
             if "previous_source_preserved" in payload:
@@ -385,6 +392,8 @@ class GStreamerHostedAudioPort(AudioPort):
             self.stop_native_dsd(expected)
             return
         self._command(HostOperation.STOP)
+        with self._lock:
+            self._pcm_active = False
 
     def seek(self, position_ms: int) -> None:
         with self._lock:
@@ -660,6 +669,12 @@ class GStreamerHostedAudioPort(AudioPort):
     # ── Native DSD (AP2-F08) ─────────────────────────────────────────
     def prepare_native_dsd(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Build/preroll the one dedicated Native DSD pipeline in the child."""
+        with self._lock:
+            if self._pcm_active:
+                raise AudioTransportCommandError(
+                    "NATIVE_DSD_PCM_CONFLICT: release the PCM output before "
+                    "preparing Native DSD"
+                )
         identity = self._submit(
             HostOperation.PREPARE_NATIVE_DSD,
             dict(payload),
@@ -667,61 +682,119 @@ class GStreamerHostedAudioPort(AudioPort):
         )
         with self._lock:
             self._native_dsd_active = True
+            self._native_dsd_state = "PREPARED"
             self._native_dsd_expected = {
                 "plan_id": str(identity.get("plan_id") or ""),
                 "execution_id": str(identity.get("execution_id") or ""),
+                "stable_device_id": str(identity.get("stable_device_id") or ""),
                 "device": str(identity.get("device") or ""),
                 "binding_generation": int(identity.get("binding_generation") or 0),
+                "host_generation": int(self._supervisor.host_generation),
             }
         return identity
 
     def commit_native_dsd(self, expected: dict[str, Any]) -> dict[str, Any]:
-        return self._submit(
+        self._require_native_expected(expected)
+        result = self._submit(
             HostOperation.COMMIT_NATIVE_DSD,
             {"expected": dict(expected)},
             deadline_s=self._command_deadline_s,
         )
+        if result.get("committed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "native DSD commit was not explicitly confirmed",
+            )
+        with self._lock:
+            self._native_dsd_state = "COMMITTED"
+        return result
 
     def abort_native_dsd(
         self, expected: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        return self._submit(
+        self._require_native_expected(expected)
+        result = self._submit(
             HostOperation.ABORT_NATIVE_DSD,
             {"expected": dict(expected or {})},
             deadline_s=self._command_deadline_s,
         )
+        if result.get("aborted") is not True or result.get("stale") is not False:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "native DSD abort was not explicitly confirmed",
+            )
+        with self._lock:
+            self._native_dsd_active = False
+            self._native_dsd_state = "RELEASED"
+            self._native_dsd_expected = None
+        return result
 
     def start_native_dsd(self) -> dict[str, Any]:
-        return self._submit(
+        with self._lock:
+            if not self._native_dsd_active:
+                raise AudioTransportCommandError(
+                    "NATIVE_DSD_NOT_PREPARED: no Native DSD execution is active"
+                )
+        result = self._submit(
             HostOperation.START_NATIVE_DSD,
             {},
             deadline_s=self._command_deadline_s,
         )
+        if result.get("confirmed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "native DSD PLAYING was not confirmed",
+            )
+        with self._lock:
+            self._native_dsd_state = "RUNNING"
+        return result
 
     def pause_native_dsd(self) -> dict[str, Any]:
-        return self._submit(
+        result = self._submit(
             HostOperation.PAUSE_NATIVE_DSD,
             {},
             deadline_s=self._command_deadline_s,
         )
+        if result.get("confirmed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "native DSD PAUSED was not confirmed",
+            )
+        with self._lock:
+            self._native_dsd_state = "PAUSED"
+        return result
 
     def resume_native_dsd(self) -> dict[str, Any]:
-        return self._submit(
+        result = self._submit(
             HostOperation.RESUME_NATIVE_DSD,
             {},
             deadline_s=self._command_deadline_s,
         )
+        if result.get("confirmed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "native DSD PLAYING resume was not confirmed",
+            )
+        with self._lock:
+            self._native_dsd_state = "RUNNING"
+        return result
 
     def stop_native_dsd(self, expected: dict[str, Any]) -> dict[str, Any]:
+        self._require_native_expected(expected)
         result = self._submit(
             HostOperation.STOP_NATIVE_DSD,
             {"expected": dict(expected)},
             deadline_s=self._command_deadline_s,
         )
-        if result.get("stopped") or not result.get("stale"):
-            with self._lock:
-                self._native_dsd_active = False
-                self._native_dsd_expected = None
+        if result.get("stopped") is not True or result.get("stale") is not False:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "native DSD stop was not explicitly confirmed",
+            )
+        with self._lock:
+            self._native_dsd_active = False
+            self._native_dsd_state = "RELEASED"
+            self._native_dsd_expected = None
         return result
 
     def query_native_dsd_identity(self) -> dict[str, Any]:
@@ -751,6 +824,39 @@ class GStreamerHostedAudioPort(AudioPort):
                 "native DSD evidence payload is not an object",
             )
         return evidence
+
+    def _require_native_expected(self, expected: dict[str, Any] | None) -> None:
+        if not isinstance(expected, dict) or not expected:
+            raise AudioTransportCommandError(
+                "NATIVE_DSD_IDENTITY_REQUIRED: destructive operations require "
+                "the canonical execution identity"
+            )
+        local = self._native_dsd_expected
+        if local is None:
+            raise AudioTransportCommandError(
+                "NATIVE_DSD_IDENTITY_STALE: no owning Native DSD execution"
+            )
+        for field in (
+            "plan_id",
+            "execution_id",
+            "stable_device_id",
+            "device",
+            "binding_generation",
+        ):
+            value = expected.get(field)
+            if value is None or value == "":
+                raise AudioTransportCommandError(
+                    f"NATIVE_DSD_IDENTITY_REQUIRED: missing {field}"
+                )
+            if str(value) != str(local.get(field)):
+                raise AudioTransportCommandError(
+                    f"NATIVE_DSD_IDENTITY_STALE: {field} does not belong to "
+                    "the current execution"
+                )
+        if local.get("host_generation") != self._supervisor.host_generation:
+            raise AudioTransportCommandError(
+                "NATIVE_DSD_IDENTITY_STALE: host incarnation changed"
+            )
 
     def discard_direct_load(self, handle: object, *, executor: object) -> bool:
         self._require_direct_executor(executor)

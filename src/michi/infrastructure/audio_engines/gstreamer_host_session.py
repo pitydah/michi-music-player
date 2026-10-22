@@ -92,6 +92,7 @@ class HostEngineSession:
         self._processing_plan_wire: dict[str, Any] | None = None
         self._processing_pipeline_generation: int | None = None
         self._native_dsd = NativeDsdHostRuntime()
+        self._native_dsd_active = False
         self._processing_generation: int | None = None
         self._processing_host_generation: int = 0
         self._coordinator = HostDirectCoordinator(request_callback)
@@ -137,6 +138,11 @@ class HostEngineSession:
     def _op_close_pipeline(
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
+        if self._native_dsd_active:
+            return False, {
+                "code": "NATIVE_DSD_PIPELINE_ACTIVE",
+                "detail": "release the Native DSD execution before closing PCM",
+            }
         port = self._require_port()
         port.close()
         self._port = None
@@ -144,6 +150,11 @@ class HostEngineSession:
         return True, {"closed": True}
 
     def _op_load(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        if self._native_dsd_active:
+            return False, {
+                "code": "NATIVE_DSD_LOAD_CONFLICT",
+                "detail": "a Native DSD execution owns the output",
+            }
         port = self._require_port()
         path = self._require_path(payload)
         port.load(path)
@@ -487,10 +498,27 @@ class HostEngineSession:
     def _op_prepare_native_dsd(
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
+        port = self._port
+        has_source = getattr(port, "has_active_source", None)
+        owns_pcm = (
+            bool(has_source())
+            if callable(has_source)
+            else bool(
+                getattr(port, "_current_path", None) is not None
+                or getattr(port, "_pending_path", None) is not None
+            )
+        )
+        if owns_pcm:
+            return False, {
+                "code": "NATIVE_DSD_PCM_CONFLICT",
+                "detail": "a PCM pipeline still owns the output; release it first",
+            }
         try:
-            return True, self._native_dsd.prepare(payload)
+            identity = self._native_dsd.prepare(payload)
         except NativeDsdHostError as exc:
             return False, {"code": exc.code, "detail": exc.detail}
+        self._native_dsd_active = True
+        return True, identity
 
     def _op_commit_native_dsd(
         self, payload: dict[str, Any]
@@ -510,9 +538,18 @@ class HostEngineSession:
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
         expected = payload.get("expected")
-        return True, self._native_dsd.abort(
-            expected if isinstance(expected, dict) else None
-        )
+        if not isinstance(expected, dict) or not expected:
+            return False, {
+                "code": "NATIVE_DSD_HOST_IDENTITY_REQUIRED",
+                "detail": "abort requires the full execution identity",
+            }
+        try:
+            result = self._native_dsd.abort(expected)
+        except NativeDsdHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+        if result.get("aborted") is True and result.get("stale") is False:
+            self._native_dsd_active = False
+        return True, result
 
     def _op_start_native_dsd(
         self, payload: dict[str, Any]
@@ -542,9 +579,18 @@ class HostEngineSession:
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
         expected = payload.get("expected")
-        return True, self._native_dsd.stop(
-            expected if isinstance(expected, dict) else None
-        )
+        if not isinstance(expected, dict) or not expected:
+            return False, {
+                "code": "NATIVE_DSD_HOST_IDENTITY_REQUIRED",
+                "detail": "stop requires the full execution identity",
+            }
+        try:
+            result = self._native_dsd.stop(expected)
+        except NativeDsdHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+        if result.get("stopped") is True and result.get("stale") is False:
+            self._native_dsd_active = False
+        return True, result
 
     def _op_query_native_dsd_identity(
         self, payload: dict[str, Any]
@@ -690,6 +736,7 @@ class HostEngineSession:
     def close(self) -> None:
         """Best-effort port teardown before host exit."""
         self._native_dsd.close()
+        self._native_dsd_active = False
         port = self._port
         self._port = None
         self._opened = False
