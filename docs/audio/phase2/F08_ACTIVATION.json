@@ -46,5 +46,10 @@
     "session_wiring": "NOT IMPLEMENTED — OutputSessionService/PlaybackService still use the PCM/Managed request path; the executor is ready.",
     "physical": "NOT_RUN (F14 / operator gate)",
     "session_integration": "COMPLETE — OutputSessionService/PlaybackService Native DSD flow, EOS, truth and hotplug software closure"
+  },
+  "timeline": {
+    "at_activation": "Native DSD productive host playback and session wiring were not claimed.",
+    "at_original_closure": "PlaybackService/OutputSessionService integration reached PLAYING with real host+DAC.",
+    "at_recertification": "EOS identity, transactional release/abort, no-profile refusal and idempotency hardened; 4/4 gates PASS."
   }
 }
