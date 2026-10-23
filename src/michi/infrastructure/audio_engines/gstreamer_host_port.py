@@ -1271,10 +1271,14 @@ class GStreamerHostedAudioPort(AudioPort):
             and kind == HostEvent.EOS.value
             and native_expected
             and payload.get("execution_id") == native_expected.get("execution_id")
+            and int(payload.get("host_generation") or self._supervisor.host_generation)
+            == int(native_expected.get("host_generation", 0))
         ):
-            # Native EOS is an identity-correlated spontaneous event; a later
-            # command generation cannot invalidate it.
-            self._enqueue(self._commit_eos)
+            # Capture the identity NOW; the owner commit revalidates it. A
+            # later prepare B must never receive A's EOS.
+            execution_id = str(payload.get("execution_id"))
+            plan_id = str(payload.get("plan_id") or "")
+            self._enqueue(lambda: self._commit_native_eos(execution_id, plan_id))
             return
         with self._lock:
             if self._closed or generation != self._command_generation:
@@ -1350,20 +1354,28 @@ class GStreamerHostedAudioPort(AudioPort):
             with contextlib.suppress(Exception):
                 callback(path, reason)
 
-    def _commit_eos(self) -> None:
+    def _commit_native_eos(self, execution_id: str, plan_id: str) -> None:
         with self._lock:
-            native = self._native_dsd_active
-            execution_id = (
-                (self._native_dsd_expected or {}).get("execution_id")
-                if native
-                else None
-            )
-            if native:
-                self._native_dsd_state = "EOS"
-        if native and execution_id:
-            for listener in list(self._native_eos_listeners):
-                with contextlib.suppress(Exception):
-                    listener(str(execution_id))
+            expected = dict(self._native_dsd_expected or {})
+            if (
+                not expected
+                or str(expected.get("execution_id")) != execution_id
+                or (plan_id and str(expected.get("plan_id")) != plan_id)
+                or int(expected.get("host_generation", -1))
+                != int(self._supervisor.host_generation)
+            ):
+                self._stale_events += 1
+                return
+            if self._native_dsd_state == "EOS":
+                return
+            self._native_dsd_state = "EOS"
+            listeners = list(self._native_eos_listeners)
+        for listener in listeners:
+            with contextlib.suppress(Exception):
+                listener(execution_id)
+        self._commit_eos()
+
+    def _commit_eos(self) -> None:
         for callback in list(self._eom):
             with contextlib.suppress(Exception):
                 callback()

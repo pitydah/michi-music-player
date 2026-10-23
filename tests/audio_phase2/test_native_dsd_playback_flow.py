@@ -43,7 +43,7 @@ class _NativeCallbacks:
         self.committed += 1
 
     def abort(self, prepared, reason):
-        return None
+        return {"aborted": True}
 
     def stop(self, prepared, reason):
         self.stopped += 1

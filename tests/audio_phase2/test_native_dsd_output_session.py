@@ -15,6 +15,7 @@ from michi.application.dsd_output_planner import (
 from michi.application.output_session_service import (
     NativeDsdSessionPrepared,
     OutputRequest,
+    OutputSessionError,
     OutputSessionService,
 )
 from michi.domain.audio_output import OutputSessionState
@@ -99,6 +100,7 @@ class _Callbacks:
 
     def abort(self, prepared, reason):
         self.aborted.append((prepared, reason))
+        return {"aborted": True}
 
     def stop(self, prepared, reason):
         self.stopped.append((prepared, reason))
@@ -255,8 +257,59 @@ def test_native_eos_retires_running_without_forging_release() -> None:
     service.notify_native_dsd_playing()
     assert recorder.output_family_events[-1].state is OutputFamilyState.RUNNING
     assert service.notify_native_dsd_eos("exec:session") is True
+    assert service.notify_native_dsd_eos("exec:session") is False
     assert recorder.output_family_events[-1].state is OutputFamilyState.UNAVAILABLE
     assert recorder.output_family_events[-1].detail == "eos"
     assert service.native_dsd_active is True  # release is still explicit
     service.release_active("eos_stop")
     assert recorder.output_family_events[-1].state is OutputFamilyState.RELEASED
+
+
+def test_release_failure_retains_identity_for_retry() -> None:
+    service, callbacks = _service()
+    path = Path("/tmp/source.dsf")
+    token = service.prepare_for_media(path)
+    service.commit_media(token, path)
+    attempts = {"n": 0}
+
+    def _stop(prepared, reason):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            raise RuntimeError("transport busy")
+        return {"released": True}
+
+    service._native_dsd_stop = _stop
+    import pytest
+
+    with pytest.raises(OutputSessionError):
+        service.release_active("stop")
+    assert service._native_dsd_prepared is not None
+    assert service.state is not OutputSessionState.IDLE
+    service.release_active("retry")
+    assert service._native_dsd_prepared is None
+    assert service.state is OutputSessionState.IDLE
+
+
+def test_abort_failure_retains_identity_for_retry() -> None:
+    service, _callbacks = _service()
+    path = Path("/tmp/source.dsf")
+    token = service.prepare_for_media(path)
+    service.commit_media(token, path)
+    attempts = {"n": 0}
+
+    def _abort(prepared, reason):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            raise RuntimeError("host busy")
+        return {"aborted": True}
+
+    service._native_dsd_abort = _abort
+    import pytest
+
+    with pytest.raises(OutputSessionError):
+        service.abort_native_dsd_after_play_failure("start_failed")
+    assert service._native_dsd_prepared is not None
+    assert service.state is not OutputSessionState.IDLE
+    assert service.abort_native_dsd_after_play_failure("retry") is True
+    assert service._native_dsd_prepared is None
+    assert service.state is OutputSessionState.IDLE

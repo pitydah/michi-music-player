@@ -362,6 +362,21 @@ class ProductiveOutputRequestResolver:
     def __call__(self, path: Path) -> OutputRequest:
         selection = self._profiles.load_selection()
         if selection.selected_profile_id is None:
+            if self._dsd_source_characterizer is not None:
+                dsd = self._dsd_source_characterizer.characterize(path)
+                container = getattr(
+                    getattr(dsd, "container_facts", None), "container", None
+                )
+                if dsd.status is DsdSourceStatus.DSD_PROVEN:
+                    raise OutputSessionError(
+                        "DSD_REQUIRES_DIRECT_OUTPUT",
+                        "Native DSD requires an explicit Direct output profile",
+                    )
+                if container in ("dsf", "dff"):
+                    raise OutputSessionError(
+                        "DSD_SOURCE_NOT_PROVEN",
+                        "the DSD container is not proven enough for a PCM route",
+                    )
             return OutputRequest.shared()
         profile = next(
             (
@@ -627,7 +642,7 @@ class OutputSessionService:
         ) = None,
         native_dsd_commit: (Callable[[NativeDsdSessionPrepared], None] | None) = None,
         native_dsd_abort: (
-            Callable[[NativeDsdSessionPrepared, str], None] | None
+            Callable[[NativeDsdSessionPrepared, str], dict] | None
         ) = None,
         native_dsd_stop: (
             Callable[[NativeDsdSessionPrepared, str], dict] | None
@@ -666,6 +681,7 @@ class OutputSessionService:
         self._managed_prepared: ManagedOutputPrepared | None = None
         self._native_dsd_plan: NativeDsdOutputPlan | None = None
         self._native_dsd_prepared: NativeDsdSessionPrepared | None = None
+        self._native_eos_execution: str | None = None
         self._selected_device_id: str | None = None
         self._selected_profile_id: str | None = None
         self._error_code: str | None = None
@@ -760,14 +776,52 @@ class OutputSessionService:
             return False
         self._error_code = reason
         prepared = self._native_dsd_prepared
-        self._native_dsd_prepared = None
-        self._native_dsd_plan = None
-        if self._state is not OutputSessionState.LOST:
+        if self._state not in (
+            OutputSessionState.LOST,
+            OutputSessionState.RELEASING,
+        ):
             self._transition(OutputSessionState.RELEASING)
-        self._native_dsd_abort_quietly(prepared, reason)
+        try:
+            result = (
+                self._native_dsd_abort(prepared, reason)
+                if self._native_dsd_abort is not None
+                else None
+            )
+        except Exception as exc:  # noqa: BLE001 - compensation boundary
+            code = getattr(exc, "code", "NATIVE_DSD_ABORT_FAILED")
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason="native_dsd_abort",
+                code=code,
+                detail=str(exc),
+            )
+            self._record_native_dsd_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail=str(code)
+            )
+            self._notify()
+            raise OutputSessionError(code, str(exc)) from exc
+        if not isinstance(result, dict) or not (
+            result.get("aborted") is True or result.get("already") is True
+        ):
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason="native_dsd_abort",
+                code="NATIVE_DSD_ABORT_NOT_CONFIRMED",
+                detail="host did not confirm abort",
+            )
+            self._record_native_dsd_family(
+                OutputFamilyState.UNAVAILABLE,
+                prepared,
+                detail="NATIVE_DSD_ABORT_NOT_CONFIRMED",
+            )
+            self._notify()
+            raise OutputSessionError(
+                "NATIVE_DSD_ABORT_NOT_CONFIRMED",
+                "host did not confirm abort",
+            )
         self._record_native_dsd_family(
             OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
         )
+        self._native_dsd_prepared = None
+        self._native_dsd_plan = None
         self._clear_execution(keep_error=True)
         if self._state is not OutputSessionState.IDLE:
             self._transition(OutputSessionState.IDLE)
@@ -780,6 +834,9 @@ class OutputSessionService:
             and self._native_dsd_prepared is not None
             and self._native_dsd_prepared.execution_id == execution_id
         ):
+            if self._native_eos_execution == execution_id:
+                return False
+            self._native_eos_execution = execution_id
             self._record_native_dsd_family(
                 OutputFamilyState.UNAVAILABLE,
                 self._native_dsd_prepared,
@@ -1422,6 +1479,7 @@ class OutputSessionService:
         self._mode = "native_dsd"
         self._native_dsd_plan = prepared.plan
         self._native_dsd_prepared = prepared
+        self._native_eos_execution = None
         self._plan = None
         self._managed_plan = None
         self._managed_prepared = None
@@ -1918,8 +1976,6 @@ class OutputSessionService:
         self._last_release_invalidated_media = was_specific
         if self._mode == "native_dsd":
             prepared = self._native_dsd_prepared
-            self._native_dsd_prepared = None
-            self._native_dsd_plan = None
             if self._state not in (
                 OutputSessionState.IDLE,
                 OutputSessionState.RELEASING,
@@ -2028,6 +2084,7 @@ class OutputSessionService:
         generation: int | None = None,
     ) -> None:
         """Invalidate topology-dependent authority, then attempt cleanup."""
+        native_was_active = self._native_dsd_prepared is not None
         if self._mode == "native_dsd" and self._native_dsd_prepared is not None:
             plan = self._native_dsd_plan
             if (
@@ -2037,8 +2094,17 @@ class OutputSessionService:
             ):
                 return
             prepared = self._native_dsd_prepared
+            plan = self._native_dsd_plan
             self._native_dsd_prepared = None
             self._native_dsd_plan = None
+            self._lost_device_id = stable_device_id or (
+                plan.stable_device_id if plan else None
+            )
+            self._lost_binding_generation = (
+                generation
+                if generation is not None
+                else (plan.binding_generation if plan else 0)
+            )
             self._record_native_dsd_family(
                 OutputFamilyState.UNAVAILABLE, prepared, detail="device_lost"
             )
@@ -2108,11 +2174,12 @@ class OutputSessionService:
         self._managed_prepared = None
         self._native_dsd_plan = None
         self._native_dsd_prepared = None
+        self._native_eos_execution = None
         self._path = None
         self._session_id = None
         self._mode = "lost" if wait_for_rebind else "shared"
-        self._last_release_invalidated_media = bool(executors) or (
-            managed_prepared is not None
+        self._last_release_invalidated_media = (
+            bool(executors) or (managed_prepared is not None) or native_was_active
         )
         self._error_code = "device_lost"
         self._last_cleanup_diagnostic = None
@@ -2251,6 +2318,7 @@ class OutputSessionService:
         self._managed_prepared = None
         self._native_dsd_plan = None
         self._native_dsd_prepared = None
+        self._native_eos_execution = None
         self._path = None
         self._token_value = None
         self._executor = None

@@ -207,8 +207,9 @@ def test_ambiguous_alsa_endpoints_are_still_rejected_for_managed() -> None:
 
 
 class _DsdCharacterizer:
-    def __init__(self, status):
+    def __init__(self, status, container=None):
         self.status = status
+        self.container_facts = type("Container", (), {"container": container})()
 
     def characterize(self, _path):
         from michi.domain.dsd_signal import (
@@ -223,6 +224,7 @@ class _DsdCharacterizer:
             (),
             {
                 "status": self.status,
+                "container_facts": self.container_facts,
                 "signal": DsdSignalFormat(
                     2_822_400,
                     2,
@@ -260,7 +262,7 @@ def _dsd_qualification(_device, _binding, _source):
     )
 
 
-def _dsd_resolver(status, profile, engine=AudioEngineId.GSTREAMER):
+def _dsd_resolver(status, profile, engine=AudioEngineId.GSTREAMER, container=None):
     from michi.application.dsd_output_planner import NativeDsdPlanner
 
     return ProductiveOutputRequestResolver(
@@ -270,7 +272,7 @@ def _dsd_resolver(status, profile, engine=AudioEngineId.GSTREAMER):
         engines=_Engines(engine),
         source_metadata=_Metadata(),
         source_characterizer=_Characterizer(),
-        dsd_source_characterizer=_DsdCharacterizer(status),
+        dsd_source_characterizer=_DsdCharacterizer(status, container),
         dsd_planner=NativeDsdPlanner(),
         dsd_qualification=_dsd_qualification,
     )
@@ -321,3 +323,29 @@ def test_unknown_source_still_uses_pcm_path() -> None:
     request = resolver(PATH)
     assert request.native_dsd_plan is None
     assert request.facts is not None
+
+
+def test_dsd_without_selected_profile_is_refused() -> None:
+    from michi.application.dsd_source_characterizer import DsdSourceStatus
+
+    resolver = _dsd_resolver(DsdSourceStatus.DSD_PROVEN, None, container="dsf")
+    with pytest.raises(OutputSessionError) as info:
+        resolver(PATH)
+    assert info.value.code == "DSD_REQUIRES_DIRECT_OUTPUT"
+
+
+def test_unproven_dsd_container_without_profile_is_refused() -> None:
+    from michi.application.dsd_source_characterizer import DsdSourceStatus
+
+    resolver = _dsd_resolver(DsdSourceStatus.UNKNOWN, None, container="dsf")
+    with pytest.raises(OutputSessionError) as info:
+        resolver(PATH)
+    assert info.value.code == "DSD_SOURCE_NOT_PROVEN"
+
+
+def test_pcm_without_profile_keeps_shared_behavior() -> None:
+    resolver = _dsd_resolver(None, None)
+    resolver._dsd_source_characterizer = None
+    request = resolver(PATH)
+    assert request.facts is None
+    assert request.native_dsd_plan is None

@@ -162,3 +162,60 @@ def test_unconfirmed_playing_is_not_published(tmp_path) -> None:
         port.start_native_dsd()
     assert port._native_dsd_active is True
     assert port._native_dsd_state == "COMMITTED"
+
+
+def test_eos_identity_is_captured_before_a_new_preparation(tmp_path) -> None:
+    port, submit, identity_a = _port(tmp_path)
+    eom: list[bool] = []
+    native_eos: list[str] = []
+    port.subscribe_end_of_media(lambda: eom.append(True))
+    port.add_native_eos_listener(native_eos.append)
+
+    frame = {
+        "payload": {
+            "event": "eos",
+            "execution_id": identity_a["execution_id"],
+            "plan_id": identity_a["plan_id"],
+            "host_generation": 1,
+        },
+        "command_generation": 0,
+    }
+    port._on_host_event(frame)
+
+    identity_b = dict(identity_a, plan_id="native-dsd:plan-b", execution_id="exec:2")
+    submit.responses["prepare_native_dsd"] = identity_b
+    port.prepare_native_dsd({"path": str(tmp_path / "source.dsf")})
+    port.dispatch_pending()
+    assert eom == []  # A's EOS cannot finish B
+    assert native_eos == []
+
+    port._on_host_event(
+        {
+            "payload": {
+                "event": "eos",
+                "execution_id": "exec:2",
+                "plan_id": "native-dsd:plan-b",
+                "host_generation": 1,
+            },
+            "command_generation": 0,
+        }
+    )
+    port.dispatch_pending()
+    assert eom == [True]
+    assert native_eos == ["exec:2"]
+
+    # Duplicate EOS for the same execution is consumed once.
+    port._on_host_event(
+        {
+            "payload": {
+                "event": "eos",
+                "execution_id": "exec:2",
+                "plan_id": "native-dsd:plan-b",
+                "host_generation": 1,
+            },
+            "command_generation": 0,
+        }
+    )
+    port.dispatch_pending()
+    assert eom == [True]
+    assert native_eos == ["exec:2"]

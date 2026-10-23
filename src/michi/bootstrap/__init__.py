@@ -985,9 +985,11 @@ def _build_services(
     def _native_commit(prepared: NativeDsdSessionPrepared) -> None:
         _native_executor().commit(prepared.handle)
 
-    def _native_abort(prepared: NativeDsdSessionPrepared, reason: str) -> None:
-        with contextlib.suppress(Exception):
-            _native_executor().abort(prepared.plan)
+    def _native_abort(prepared: NativeDsdSessionPrepared, reason: str) -> dict:
+        port = gstreamer_provider.current_port
+        if port is None or not bool(getattr(port, "native_dsd_active", False)):
+            return {"aborted": True, "already": True}
+        return _native_executor().abort(prepared.plan)
 
     def _native_stop(prepared: NativeDsdSessionPrepared, reason: str) -> dict:
         port = gstreamer_provider.current_port
