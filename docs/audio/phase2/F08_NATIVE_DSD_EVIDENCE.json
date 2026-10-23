@@ -5,7 +5,7 @@
   "state": "CLOSED",
   "recorded_at": "2026-10-21",
   "activation_commit": "cbe724e",
-  "repo_head": "419908a8d0de57ecc33d46b4702f794ea8c9ecb1",
+  "repo_head": "5dd5f164e057fd1d5353a37d0b0d0fdced9168c8",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "environment": {
     "gstreamer": "1.28.8",
@@ -81,15 +81,18 @@
     "WU-F08-H07": "COMPLETE — adversarial lifecycle audit and regression firewall",
     "WU-F08-H08": "COMPLETE — 146 focused tests, 32 hardware, 6084/8/0",
     "WU-F08-H09": "COMPLETE — evidence dates/history/next_work reconciled",
-    "WU-F08-H10": "COMPLETE — 4/4 gates PASS on head 419908a"
+    "WU-F08-H10": "COMPLETE — 4/4 gates PASS on head 419908a",
+    "WU-F08-H11_eos_fence": "COMPLETE",
+    "WU-F08-H12_cleanup_convergence": "COMPLETE",
+    "WU-F08-H13_terminal_playing": "COMPLETE"
   },
   "tests": {
-    "new_f08": "146 collected: 142 passed + 4 hardware opt-in skips by default; 32 passed with MICHI_RUN_DSD_HARDWARE=1",
+    "new_f08": "151 collected: 147 passed + 4 hardware opt-in skips by default; 32 passed with MICHI_RUN_DSD_HARDWARE=1",
     "audio_firewall": "853 passed, 5 skipped (tests/audio_phase2 + bridge + frozen adapter)",
-    "full_suite": "6084 passed, 8 skipped, 0 failed (30:43)",
+    "full_suite": "6089 passed, 8 skipped, 0 failed (30:52)",
     "ci": {
-      "code_head": "419908a8d0de57ecc33d46b4702f794ea8c9ecb1",
-      "run_id": 39994465570,
+      "code_head": "5dd5f164e057fd1d5353a37d0b0d0fdced9168c8",
+      "run_id": 40026958236,
       "dac_v35_software_closure": "success",
       "min_qt": "success",
       "check": "failure — external Premium Library QML warning gate; not an F08 contract",
@@ -106,7 +109,7 @@
     ]
   },
   "score": {
-    "method": "corrective recertification; contractual software scope",
+    "method": "post-closure hotfix recertification; contractual software scope",
     "sprint_weighted": "100/100",
     "f08_global_estimate": "100% software contractual; F14 physical NOT_RUN",
     "physical": "NOT_RUN — F14 / operator gate"
@@ -165,24 +168,30 @@
     "pcm_load": "absent; native acceptance bypasses PCM load and PCM volume synchronization"
   },
   "exit_gates": {
-    "F08-01_dsd_to_sink": "PASS (recertified) — explicit DSD branch, negotiated audio/x-dsd to alsasink, no PCM",
-    "F08-02_binding_generation": "PASS (recertified) — stable/locator/binding/host/plan/execution identity; stale rejected",
-    "F08-03_unexpected_conversion": "PASS (recertified) — raw/avdec/decodebin and DSD without Direct profile refused",
-    "F08-04_stop_hotplug_no_stale_truth": "PASS (recertified) — immutable EOS identity, single EOS, retryable release/abort, EOS/stop/hotplug retire truth"
+    "F08-01_dsd_to_sink": "PASS (post-hotfix) — explicit DSD branch, negotiated audio/x-dsd to alsasink, no PCM",
+    "F08-02_binding_generation": "PASS (post-hotfix) — stable/locator/binding/host/plan/execution identity; stale rejected",
+    "F08-03_unexpected_conversion": "PASS (post-hotfix) — raw/avdec/decodebin and DSD without Direct profile refused; stale Native EOS fenced",
+    "F08-04_stop_hotplug_no_stale_truth": "PASS (post-hotfix) — immutable EOS identity, single EOS, retryable release/abort, cleanup-failure convergence, no late RUNNING"
   },
   "closure": {
-    "certified_code_head": "419908a8d0de57ecc33d46b4702f794ea8c9ecb1",
+    "certified_code_head": "5dd5f164e057fd1d5353a37d0b0d0fdced9168c8",
     "certification_date": "2026-10-23",
     "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
     "state": "CLOSED",
     "recertification": true,
-    "previous_certification": {
-      "code_head": "3dbe687ce409c5e2adb83930953970d88f10f0c9",
-      "docs_head": "9a37b8e138a7f2b81addc14e7990bf55d7355fcc",
-      "historical_recorded_date": "2026-10-21",
-      "formal_closure_date": "2026-10-23",
-      "note": "The historical evidence date was stale; the corrective head is now the certified head."
-    },
+    "previous_certifications": [
+      {
+        "code_head": "3dbe687ce409c5e2adb83930953970d88f10f0c9",
+        "docs_head": "9a37b8e138a7f2b81addc14e7990bf55d7355fcc",
+        "date": "2026-10-23"
+      },
+      {
+        "code_head": "419908a8d0de57ecc33d46b4702f794ea8c9ecb1",
+        "docs_head": "769778a8e0057697f0846c8e56b08f6a1f8c1aa3",
+        "date": "2026-10-23"
+      }
+    ],
+    "historical_recorded_date": "2026-10-21 (superseded by the formal 2026-10-23 certification)",
     "physical": "NOT_RUN — AP2-F14 / operator gate; not a software exit gate"
   },
   "corrective_hardening": {
@@ -192,5 +201,10 @@
     "H04_no_profile_dsd": "Proven DSD or DSD container without a selected Direct profile is refused; no Shared PCM escape",
     "H05_eos_idempotency": "Port and session consume one logical EOS per execution",
     "H06_device_loss": "Native device loss captures identity and invalidates media/truth before cleanup"
+  },
+  "post_closure_hotfix": {
+    "native_eos_fence": "An EOS carrying Native execution/plan identity is routed only to the identity-bound Native handler; stale/malformed Native EOS is counted stale and never reaches PCM EndOfMedia.",
+    "cleanup_convergence": "PlaybackService clears intent/acceptance and converges to STOPPED even when native abort/cleanup throws; the original START error is preserved and the OutputSession retains the unconfirmed receipt.",
+    "terminal_playing": "Native RUNNING requires the active execution, no EOS/terminal mark, and a matching execution identity; late PLAYING after EOS/host loss is rejected. A new execution can still reach RUNNING."
   }
 }
