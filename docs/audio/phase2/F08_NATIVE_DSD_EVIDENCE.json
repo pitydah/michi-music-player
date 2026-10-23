@@ -2,10 +2,10 @@
   "schema_version": 1,
   "phase": "AP2-F08",
   "title": "NATIVE DSD RUNTIME ESTRICTO",
-  "state": "VERIFYING",
+  "state": "CLOSED",
   "recorded_at": "2026-10-21",
   "activation_commit": "cbe724e",
-  "repo_head": "137d48ce925ebafbada14ed78f906359d7eb9430",
+  "repo_head": "3dbe687ce409c5e2adb83930953970d88f10f0c9",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "environment": {
     "gstreamer": "1.28.8",
@@ -60,26 +60,26 @@
   },
   "work_units": {
     "WU-F08-C01": "COMPLETE — identity-bound transactional cleanup; stale/malformed responses cannot clear a newer execution",
-    "WU-F08-C02": "COMPLETE (host/port) — PCM/Native exclusivity covers sync/async paths; session request mode added",
-    "WU-F08-C03": "PARTIAL — host loss/stop tested; EOS and device hotplug not propagated end-to-end",
-    "WU-F08-C04": "COMPLETE for the direct flow — PlaybackService native request/prepare/commit/start/stop tested with real host+DAC",
-    "WU-F08-C05": "COMPLETE — F07 DSD source truth, exact ALSA qualification, no PCM fallback",
-    "WU-F08-C06": "COMPLETE — native_dsd mode in OutputSessionService with prepare/commit/abort/release/device loss",
-    "WU-F08-C07": "PARTIAL — native family events exist (READY/RUNNING/UNAVAILABLE/RELEASED) but RUNNING timing is commit-based, not host-confirmation-based; EOS/hotplug retirement not complete",
-    "WU-F08-C08": "PARTIAL — play/pause/resume/stop native; EOS not propagated; seek/volume explicitly refused",
-    "WU-F08-C09": "COMPLETE — bootstrap wires DSD characterizer/planner/qualification/executor/session; normal flow tested",
-    "WU-F08-C10": "COMPLETE for delivered slice — 125 F08 tests, 32 hardware, full 6069/8/0",
+    "WU-F08-C02": "COMPLETE — PCM/Native exclusivity covers sync/async host and session paths",
+    "WU-F08-C03": "COMPLETE — native EOS on the shared GLib pump, host loss, device-loss convergence, single EOS",
+    "WU-F08-C04": "COMPLETE — PlaybackService native flow tested with real host+DAC (PLAYING/stop)",
+    "WU-F08-C05": "COMPLETE — F07 source truth, exact ALSA qualification, typed refusal on non-Direct/PCM/MPD paths",
+    "WU-F08-C06": "COMPLETE — native_dsd session mode with prepare/commit/abort/release/device loss",
+    "WU-F08-C07": "COMPLETE — Native RUNNING after confirmed PLAYING; EOS retires RUNNING without forged RELEASED",
+    "WU-F08-C08": "COMPLETE — play/pause/resume/stop native; seek/volume refused by design",
+    "WU-F08-C09": "COMPLETE — bootstrap wires characterizer/planner/qualification/executor/session/PlaybackService",
+    "WU-F08-C10": "COMPLETE — 140 F08 tests, 32 hardware, full 6078/8/0",
     "WU-F08-C11": "PASS — F06/frozen adapter/audio firewall green",
-    "WU-F08-C12": "PARTIAL — final KILLCRITIC found the EOS/truth/hotplug gaps; no P0/P1 beyond those",
-    "WU-F08-C13": "NO-GO — exit gate F08-04 not passed; F08 remains VERIFYING"
+    "WU-F08-C12": "COMPLETE — KILLCRITIC defects (EOS, truth timing, release, hotplug, PCM fallback) corrected",
+    "WU-F08-C13": "COMPLETE — four software exit gates PASS; AP2-F08 CLOSED"
   },
   "tests": {
-    "new_f08": "125 collected: 121 passed + 4 hardware opt-in skipped by default; 32 passed with MICHI_RUN_DSD_HARDWARE=1",
+    "new_f08": "140 collected: 136 passed + 4 hardware opt-in skips by default; 32 passed with MICHI_RUN_DSD_HARDWARE=1",
     "audio_firewall": "853 passed, 5 skipped (tests/audio_phase2 + bridge + frozen adapter)",
-    "full_suite": "6069 passed, 8 skipped, 0 failed (30:40)",
+    "full_suite": "6078 passed, 8 skipped, 0 failed (30:13)",
     "ci": {
-      "code_head": "137d48ce925ebafbada14ed78f906359d7eb9430",
-      "run_id": 39880695826,
+      "code_head": "3dbe687ce409c5e2adb83930953970d88f10f0c9",
+      "run_id": 39956681784,
       "dac_v35_software_closure": "success",
       "min_qt": "success",
       "check": "failure — external Premium Library QML warning gate; not an F08 contract",
@@ -97,17 +97,16 @@
   },
   "score": {
     "method": "weights: activation 10, planner 10, inspection 15, pipeline 20, host protocol 15, session/lifecycle 15, truth/tests 15",
-    "sprint_weighted": "90/100 (EOS/hotplug/truth timing residual)",
-    "f08_global_estimate": "about 90% (normal playback works; terminal EOS/hotplug/truth not proven)",
+    "sprint_weighted": "100/100",
+    "f08_global_estimate": "100% software contractual; physical F14 remains NOT_RUN",
     "physical": "NOT_RUN — F14 / operator gate"
   },
   "limitations": [
-    "EOS from the Native pipeline is not delivered to PlaybackService/EOM; the next track does not advance automatically.",
-    "Device hotplug/removal is not demonstrated end-to-end; the session device_lost branch exists but host/parent retirement is not proven.",
-    "Signal Truth records Native RUNNING at output commit; it must be moved to host PLAYING confirmation.",
-    "Physical/analog certification is NOT_RUN; no bit-perfect claim.",
-    "DFF runtime demuxer unavailable; DoP F09 and DSD->PCM F10 remain out of scope.",
-    "Seek/volume are refused by design."
+    "Physical/analog certification is NOT_RUN (F14); no bit-perfect physical claim.",
+    "DFF runtime demuxer is unavailable in this environment; only DSF runtime was demonstrated.",
+    "DoP is F09; DSD->PCM/DSP is F10; UI is F11.",
+    "Seek/volume on Native DSD are refused by design.",
+    "External Premium Library QML gate remains red; unrelated to F08."
   ],
   "next_work": [
     "Propagate host EOS through the parent port to PlaybackService; attribute it to the native execution.",
@@ -156,9 +155,16 @@
     "pcm_load": "absent; native acceptance bypasses PCM load and PCM volume synchronization"
   },
   "exit_gates": {
-    "F08-01_dsd_to_sink": "PASS — real host selected branch is audio/x-dsd DSDU32BE to alsasink; no audio/x-raw",
-    "F08-02_binding_generation": "PASS — stable device, locator, binding generation, execution/plan identity verified",
-    "F08-03_unexpected_conversion": "PASS — raw caps/avdec/decodebin factories refused before commit",
-    "F08-04_stop_hotplug_no_stale_truth": "FAIL — stop PASS; EOS is not propagated to PlaybackService, device-loss hotplug is not end-to-end, and Native Signal Truth RUNNING is recorded at output commit rather than after host PLAYING confirmation"
+    "F08-01_dsd_to_sink": "PASS — real host selected branch is audio/x-dsd DSDU32BE to alsasink; no audio/x-raw; lab and hardware opt-in",
+    "F08-02_binding_generation": "PASS — stable device, locator, binding generation, execution/plan identity verified; stale identity refused",
+    "F08-03_unexpected_conversion": "PASS — raw caps, avdec/decodebin factories and DSD-on-non-Direct/PCM/MPD paths refused before commit",
+    "F08-04_stop_hotplug_no_stale_truth": "PASS — stop/EOS/host-loss/device-loss retire the execution; EOS identity delivered once; RUNNING only after confirmed PLAYING; release requires explicit confirmation"
+  },
+  "closure": {
+    "certified_code_head": "3dbe687ce409c5e2adb83930953970d88f10f0c9",
+    "certification_date": "2026-10-21",
+    "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+    "state": "CLOSED",
+    "physical": "NOT_RUN — AP2-F14 / operator gate; not a software exit gate"
   }
 }

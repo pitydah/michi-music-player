@@ -44,6 +44,7 @@
   "post_activation_update": {
     "host_native_dsd_pipeline": "IMPLEMENTED and tested inside the supervised host (commit c5a00b5; CI head 07e55e4). See F08_NATIVE_DSD_EVIDENCE.host_pipeline.",
     "session_wiring": "NOT IMPLEMENTED — OutputSessionService/PlaybackService still use the PCM/Managed request path; the executor is ready.",
-    "physical": "NOT_RUN (F14 / operator gate)"
+    "physical": "NOT_RUN (F14 / operator gate)",
+    "session_integration": "COMPLETE — OutputSessionService/PlaybackService Native DSD flow, EOS, truth and hotplug software closure"
   }
 }
