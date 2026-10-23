@@ -1269,13 +1269,25 @@ class GStreamerHostedAudioPort(AudioPort):
         native_eos = kind == HostEvent.EOS.value and bool(
             payload.get("execution_id") or payload.get("plan_id")
         )
+        with self._lock:
+            native_owns_output = bool(
+                self._native_dsd_active and self._native_dsd_expected
+            )
+        if kind == HostEvent.EOS.value and native_owns_output and not native_eos:
+            # A Native execution must never be finalized by an identity-less
+            # EOS through the PCM path.
+            with self._lock:
+                self._stale_events += 1
+            return
         if native_eos:
             if (
                 not closed
                 and native_expected
                 and payload.get("execution_id") == native_expected.get("execution_id")
                 and int(
-                    payload.get("host_generation") or self._supervisor.host_generation
+                    self._supervisor.host_generation
+                    if payload.get("host_generation") is None
+                    else payload["host_generation"]
                 )
                 == int(native_expected.get("host_generation", 0))
             ):

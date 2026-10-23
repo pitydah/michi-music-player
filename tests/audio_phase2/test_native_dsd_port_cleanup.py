@@ -251,3 +251,51 @@ def test_pcm_eos_still_reaches_pcm_when_no_native_execution(tmp_path) -> None:
     port._on_host_event({"payload": {"event": "eos"}, "command_generation": 0})
     port.dispatch_pending()
     assert eom == [True]
+
+
+def test_identity_less_eos_is_rejected_while_native_owns_output(tmp_path) -> None:
+    port, _submit, _identity_a = _port(tmp_path)
+    eom: list[bool] = []
+    port.subscribe_end_of_media(lambda: eom.append(True))
+    stale_before = port._stale_events
+    port._on_host_event({"payload": {"event": "eos"}, "command_generation": 0})
+    port.dispatch_pending()
+    assert eom == []
+    assert port._stale_events > stale_before
+
+
+def test_empty_native_identity_eos_is_rejected(tmp_path) -> None:
+    port, _submit, _identity_a = _port(tmp_path)
+    eom: list[bool] = []
+    port.subscribe_end_of_media(lambda: eom.append(True))
+    stale_before = port._stale_events
+    port._on_host_event(
+        {
+            "payload": {"event": "eos", "execution_id": "", "plan_id": ""},
+            "command_generation": 0,
+        }
+    )
+    port.dispatch_pending()
+    assert eom == []
+    assert port._stale_events > stale_before
+
+
+def test_old_host_generation_native_eos_is_rejected(tmp_path) -> None:
+    port, _submit, identity_a = _port(tmp_path)
+    eom: list[bool] = []
+    port.subscribe_end_of_media(lambda: eom.append(True))
+    stale_before = port._stale_events
+    port._on_host_event(
+        {
+            "payload": {
+                "event": "eos",
+                "execution_id": identity_a["execution_id"],
+                "plan_id": identity_a["plan_id"],
+                "host_generation": 0,
+            },
+            "command_generation": 0,
+        }
+    )
+    port.dispatch_pending()
+    assert eom == []
+    assert port._stale_events > stale_before

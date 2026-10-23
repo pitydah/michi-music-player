@@ -142,7 +142,7 @@ def test_native_prepare_commit_release_and_truth() -> None:
     assert [e.state for e in recorder.output_family_events] == [
         OutputFamilyState.READY,
     ]
-    service.notify_native_dsd_playing()
+    service.notify_native_dsd_playing("exec:session")
     assert [e.state for e in recorder.output_family_events] == [
         OutputFamilyState.READY,
         OutputFamilyState.RUNNING,
@@ -254,7 +254,7 @@ def test_native_eos_retires_running_without_forging_release() -> None:
     path = Path("/tmp/source.dsf")
     token = service.prepare_for_media(path)
     service.commit_media(token, path)
-    service.notify_native_dsd_playing()
+    service.notify_native_dsd_playing("exec:session")
     assert recorder.output_family_events[-1].state is OutputFamilyState.RUNNING
     assert service.notify_native_dsd_eos("exec:session") is True
     assert service.notify_native_dsd_eos("exec:session") is False
@@ -339,3 +339,14 @@ def test_late_playing_after_host_loss_is_rejected() -> None:
     service.commit_media(token, path)
     service.notify_host_lost("host gone")
     assert service.notify_native_dsd_playing("exec:session") is False
+
+
+def test_playing_requires_a_non_empty_execution_identity() -> None:
+    service, _callbacks = _service()
+    path = Path("/tmp/source.dsf")
+    token = service.prepare_for_media(path)
+    service.commit_media(token, path)
+    assert service.notify_native_dsd_playing(None) is False  # type: ignore[arg-type]
+    assert service.notify_native_dsd_playing("") is False
+    assert service.notify_native_dsd_playing("exec:other") is False
+    assert service.notify_native_dsd_playing("exec:session") is True

@@ -847,15 +847,17 @@ class OutputSessionService:
             return True
         return False
 
-    def notify_native_dsd_playing(self, execution_id: str | None = None) -> bool:
+    def notify_native_dsd_playing(self, execution_id: str) -> bool:
         """Host-confirmed PLAYING for the CURRENT native execution."""
         prepared = self._native_dsd_prepared
         if (
-            self._mode != "native_dsd"
+            not isinstance(execution_id, str)
+            or not execution_id.strip()
+            or self._mode != "native_dsd"
             or self._state is not OutputSessionState.RUNNING
             or prepared is None
             or self._native_terminal_execution == prepared.execution_id
-            or (execution_id is not None and execution_id != prepared.execution_id)
+            or execution_id != prepared.execution_id
         ):
             return False
         self._record_native_dsd_family(OutputFamilyState.RUNNING)
