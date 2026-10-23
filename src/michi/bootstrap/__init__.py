@@ -970,6 +970,9 @@ def _build_services(
 
     def _native_prepare(plan, path, instance_id):
         prepared = _native_executor().prepare(plan, path)
+        port = gstreamer_provider.current_port
+        if port is not None and hasattr(port, "add_native_eos_listener"):
+            port.add_native_eos_listener(output_session.notify_native_dsd_eos)
         return NativeDsdSessionPrepared(
             plan=plan,
             execution_id=plan.execution_id,

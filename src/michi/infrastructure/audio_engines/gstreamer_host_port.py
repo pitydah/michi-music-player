@@ -91,6 +91,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._native_dsd_state = "NONE"
         self._native_dsd_expected: dict[str, Any] | None = None
         self._native_dsd_path: str | None = None
+        self._native_eos_listeners: list[Callable[[str], None]] = []
         self._pcm_active = False
         self._last_state: PlaybackStatus | None = None
         self._termination_kind: str | None = None
@@ -675,6 +676,10 @@ class GStreamerHostedAudioPort(AudioPort):
         return identity
 
     # ── Native DSD (AP2-F08) ─────────────────────────────────────────
+    def add_native_eos_listener(self, callback: Callable[[str], None]) -> None:
+        if callback not in self._native_eos_listeners:
+            self._native_eos_listeners.append(callback)
+
     @property
     def native_dsd_active(self) -> bool:
         with self._lock:
@@ -1347,8 +1352,18 @@ class GStreamerHostedAudioPort(AudioPort):
 
     def _commit_eos(self) -> None:
         with self._lock:
-            if self._native_dsd_active:
+            native = self._native_dsd_active
+            execution_id = (
+                (self._native_dsd_expected or {}).get("execution_id")
+                if native
+                else None
+            )
+            if native:
                 self._native_dsd_state = "EOS"
+        if native and execution_id:
+            for listener in list(self._native_eos_listeners):
+                with contextlib.suppress(Exception):
+                    listener(str(execution_id))
         for callback in list(self._eom):
             with contextlib.suppress(Exception):
                 callback()

@@ -774,6 +774,20 @@ class OutputSessionService:
         self._notify()
         return True
 
+    def notify_native_dsd_eos(self, execution_id: str) -> bool:
+        if (
+            self._mode == "native_dsd"
+            and self._native_dsd_prepared is not None
+            and self._native_dsd_prepared.execution_id == execution_id
+        ):
+            self._record_native_dsd_family(
+                OutputFamilyState.UNAVAILABLE,
+                self._native_dsd_prepared,
+                detail="eos",
+            )
+            return True
+        return False
+
     def notify_native_dsd_playing(self) -> None:
         """Host-confirmed PLAYING for the CURRENT native execution."""
         if (

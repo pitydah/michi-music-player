@@ -244,3 +244,19 @@ def test_release_failure_is_not_published_as_released() -> None:
         event.state is not OutputFamilyState.RELEASED
         for event in recorder.output_family_events
     )
+
+
+def test_native_eos_retires_running_without_forging_release() -> None:
+    recorder = SignalTruthRecorder()
+    service, _callbacks = _service(recorder=recorder)
+    path = Path("/tmp/source.dsf")
+    token = service.prepare_for_media(path)
+    service.commit_media(token, path)
+    service.notify_native_dsd_playing()
+    assert recorder.output_family_events[-1].state is OutputFamilyState.RUNNING
+    assert service.notify_native_dsd_eos("exec:session") is True
+    assert recorder.output_family_events[-1].state is OutputFamilyState.UNAVAILABLE
+    assert recorder.output_family_events[-1].detail == "eos"
+    assert service.native_dsd_active is True  # release is still explicit
+    service.release_active("eos_stop")
+    assert recorder.output_family_events[-1].state is OutputFamilyState.RELEASED

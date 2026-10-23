@@ -166,6 +166,8 @@ def test_real_host_native_dsd_lab_pipeline_is_explicit_and_clean(
             "binding_generation": 1,
         }
         eom: list[bool] = []
+        eos_exec: list[str] = []
+        port.add_native_eos_listener(eos_exec.append)
         port.subscribe_end_of_media(lambda: eom.append(True))
         assert port.commit_native_dsd(expected)["committed"] is True
         assert port.start_native_dsd()["state"] == "PLAYING"
@@ -175,6 +177,7 @@ def test_real_host_native_dsd_lab_pipeline_is_explicit_and_clean(
             time.sleep(0.02)
         port.dispatch_pending()
         assert eom, "native EOS never reached the parent"
+        assert eos_exec == ["exec:host-test"]
         port.stop()
         assert port.query_native_dsd_identity() == {"native_dsd": False}
     finally:
