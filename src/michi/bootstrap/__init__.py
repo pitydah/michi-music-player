@@ -609,6 +609,69 @@ def _build_services(
     engine_service.restore_selected(startup_selected_engine)
     router = AudioTransportRouter()
 
+    from michi.application.dsd_output_planner import (
+        AlsaDsdTuple,
+        NativeDsdPlanner,
+        NativeDsdQualification,
+    )
+    from michi.application.dsd_source_characterizer import DsdSourceCharacterizer
+    from michi.application.output_session_service import NativeDsdSessionPrepared
+    from michi.infrastructure.audio_devices.alsa_dsd_probe import (
+        environment_fingerprint,
+        probe_alsa_dsd,
+    )
+    from michi.infrastructure.audio_output.native_dsd_executor import (
+        NativeDsdOutputExecutor,
+    )
+
+    dsd_characterizer = DsdSourceCharacterizer()
+    dsd_planner = NativeDsdPlanner()
+    dsd_environment = environment_fingerprint()
+
+    def _dsd_qualification(stable_device_id, binding, source):
+        qualifications = []
+        for format_name, width in (
+            ("SND_PCM_FORMAT_DSD_U32_BE", 32),
+            ("SND_PCM_FORMAT_DSD_U32_LE", 32),
+            ("SND_PCM_FORMAT_DSD_U16_BE", 16),
+            ("SND_PCM_FORMAT_DSD_U16_LE", 16),
+            ("SND_PCM_FORMAT_DSD_U8", 8),
+        ):
+            if source.bit_rate_hz % width:
+                continue
+            frame_rate = source.bit_rate_hz // width
+            tuple_ = AlsaDsdTuple(
+                format_name=format_name,
+                frame_rate_hz=frame_rate,
+                channels=source.channels,
+                sample_width_bits=width,
+                source_bits_per_second_per_channel=source.bit_rate_hz,
+            )
+            try:
+                evidence = probe_alsa_dsd(
+                    stable_device_id,
+                    binding.locator,
+                    tuple_,
+                    binding_generation=binding.generation,
+                    environment=dsd_environment,
+                )
+            except Exception as exc:  # noqa: BLE001 - typed qualification boundary
+                raise OutputSessionError(
+                    "DSD_QUALIFICATION_UNAVAILABLE", str(exc)
+                ) from exc
+            qualifications.append(
+                NativeDsdQualification(
+                    stable_device_id=stable_device_id,
+                    binding_generation=binding.generation,
+                    requested=tuple_,
+                    supported=evidence.supported,
+                    evidence_ref=evidence.evidence_ref,
+                    environment_fingerprint=dsd_environment,
+                    disposition=evidence.disposition,
+                )
+            )
+        return tuple(qualifications)
+
     output_resolver = ProductiveOutputRequestResolver(
         profiles=output_profiles,
         devices=audio_devices,
@@ -616,6 +679,9 @@ def _build_services(
         engines=engine_service,
         source_metadata=metadata_extractor,
         source_characterizer=source_characterizer,
+        dsd_source_characterizer=dsd_characterizer,
+        dsd_planner=dsd_planner,
+        dsd_qualification=_dsd_qualification,
     )
     preparation_executor = output_preparation_executor or QtAsyncCallExecutor()
     # AP2-F05 Package A: ONE processing authority over the SAME hosted host.
@@ -894,6 +960,54 @@ def _build_services(
             for binding in audio_devices.bindings_for(plan.stable_device_id)
         )
 
+    def _native_executor() -> NativeDsdOutputExecutor:
+        port = gstreamer_provider.current_port
+        if port is None:
+            raise OutputSessionError(
+                "NATIVE_DSD_HOST_UNAVAILABLE", "no hosted GStreamer port is open"
+            )
+        return NativeDsdOutputExecutor(port)
+
+    def _native_prepare(plan, path, instance_id):
+        prepared = _native_executor().prepare(plan, path)
+        return NativeDsdSessionPrepared(
+            plan=plan,
+            execution_id=plan.execution_id,
+            stable_device_id=plan.stable_device_id,
+            runtime_identity=dict(prepared.identity),
+            evidence_refs=plan.evidence_refs,
+            handle=prepared,
+        )
+
+    def _native_commit(prepared: NativeDsdSessionPrepared) -> None:
+        _native_executor().commit(prepared.handle)
+
+    def _native_abort(prepared: NativeDsdSessionPrepared, reason: str) -> None:
+        with contextlib.suppress(Exception):
+            _native_executor().abort(prepared.plan)
+
+    def _native_stop(prepared: NativeDsdSessionPrepared, reason: str) -> None:
+        port = gstreamer_provider.current_port
+        if port is None:
+            return
+        try:
+            identity = port.query_native_dsd_identity()
+        except Exception:  # noqa: BLE001 - cleanup boundary
+            return
+        if not identity.get("native_dsd"):
+            return
+        with contextlib.suppress(Exception):
+            _native_executor().stop(prepared.handle)
+
+    def _native_plan_still_current(plan) -> bool:
+        return any(
+            binding.kind is BindingKind.ALSA_PCM
+            and binding.currently_available
+            and binding.generation == plan.binding_generation
+            and binding.locator == plan.binding_locator
+            for binding in audio_devices.bindings_for(plan.stable_device_id)
+        )
+
     output_session = OutputSessionService(
         OutputPlanner(),
         request_provider=output_resolver,
@@ -912,6 +1026,11 @@ def _build_services(
         managed_prepare=_managed_prepare,
         managed_abort=_managed_abort,
         managed_plan_still_current=_managed_plan_still_current,
+        native_dsd_prepare=_native_prepare,
+        native_dsd_commit=_native_commit,
+        native_dsd_abort=_native_abort,
+        native_dsd_stop=_native_stop,
+        native_dsd_plan_still_current=_native_plan_still_current,
         truth_recorder=signal_truth,
     )
     from michi.application.volume_policy_service import VolumePolicyService

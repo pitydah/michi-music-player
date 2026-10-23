@@ -34,6 +34,13 @@ from michi.application.audio_output_ports import (
     VolumeAuthority,
 )
 from michi.application.carrier_resolution import CandidateCarrierResolver
+from michi.application.dsd_output_planner import (
+    NativeDsdOutputPlan,
+    NativeDsdPlanner,
+    NativeDsdPlannerError,
+    NativeDsdQualification,
+)
+from michi.application.dsd_source_characterizer import DsdSourceStatus
 from michi.application.ports import SharedOutputTransaction
 from michi.domain.audio_device import BindingKind
 from michi.domain.audio_engine import AudioEngineId
@@ -45,7 +52,9 @@ from michi.domain.audio_output import (
     OutputSelectionState,
     OutputSessionState,
     VolumePolicy,
+    is_direct_path,
 )
+from michi.domain.dsd_signal import DsdSignalFormat
 from michi.domain.managed_pcm_output import ManagedPcmOutputPlan
 from michi.domain.signal_truth import OutputFamilyEvent, OutputFamilyState
 
@@ -209,6 +218,16 @@ class OutputRequest:
     facts: PlannerFacts | None
     selected_device_id: str | None = None
     selected_profile_id: str | None = None
+    native_dsd_plan: NativeDsdOutputPlan | None = None
+
+    @classmethod
+    def native_dsd(
+        cls,
+        plan: NativeDsdOutputPlan,
+        selected_device_id: str | None,
+        selected_profile_id: str | None,
+    ) -> OutputRequest:
+        return cls(None, selected_device_id, selected_profile_id, plan)
 
     @classmethod
     def shared(cls) -> OutputRequest:
@@ -231,6 +250,22 @@ class _DirectSessionSnapshot:
     path: Path | None
     selected_device_id: str | None
     selected_profile_id: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class NativeDsdSessionPrepared:
+    """Worker-phase Native DSD execution committed by the owner.
+
+    ``handle`` is an opaque infrastructure receipt (never imported here); the
+    bootstrap callbacks use it for commit/stop/abort.
+    """
+
+    plan: NativeDsdOutputPlan
+    execution_id: str
+    stable_device_id: str
+    runtime_identity: dict
+    evidence_refs: tuple[str, ...]
+    handle: object | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,6 +309,12 @@ class ProductiveOutputRequestResolver:
         engines,
         source_metadata,
         source_characterizer: SourceCharacterizerPort,
+        dsd_source_characterizer=None,
+        dsd_planner: NativeDsdPlanner | None = None,
+        dsd_qualification: (
+            Callable[[str, object, DsdSignalFormat], tuple[NativeDsdQualification, ...]]
+            | None
+        ) = None,
     ) -> None:
         self._profiles = profiles
         self._devices = devices
@@ -281,6 +322,9 @@ class ProductiveOutputRequestResolver:
         self._engines = engines
         self._source_metadata = source_metadata
         self._source_characterizer = source_characterizer
+        self._dsd_source_characterizer = dsd_source_characterizer
+        self._dsd_planner = dsd_planner
+        self._dsd_qualification = dsd_qualification
 
     def snapshot_output_intent(self):
         """Immutable output-intent snapshot (monotonic revision + ids).
@@ -351,6 +395,61 @@ class ProductiveOutputRequestResolver:
                 "Managed output requires the GStreamer engine.",
             )
         selected_device_id = selection.selected_device_id or profile.stable_device_id
+        if self._dsd_source_characterizer is not None and self._dsd_planner is not None:
+            dsd = self._dsd_source_characterizer.characterize(path)
+            if dsd.status is DsdSourceStatus.DSD_PROVEN and dsd.signal is not None:
+                if not is_direct_path(profile.path):
+                    raise OutputSessionError(
+                        "DSD_REQUIRES_DIRECT_OUTPUT",
+                        "Native DSD requires an explicit Direct output profile",
+                    )
+                if active is not AudioEngineId.GSTREAMER:
+                    raise OutputSessionError(
+                        "DSD_ENGINE_UNSUPPORTED",
+                        "Native DSD requires the GStreamer engine",
+                    )
+                if selected_device_id is None:
+                    raise OutputSessionError(
+                        "DSD_BINDING_UNAVAILABLE", "no DAC is selected"
+                    )
+                bindings = self._devices.bindings_for(
+                    selected_device_id, BindingKind.ALSA_PCM
+                )
+                if len(bindings) != 1:
+                    raise OutputSessionError(
+                        "DSD_BINDING_UNAVAILABLE",
+                        "the selected DAC has no unique ALSA playback binding",
+                    )
+                binding = bindings[0]
+                if not binding.currently_available:
+                    raise OutputSessionError(
+                        "DSD_BINDING_UNAVAILABLE", "the selected DAC is unavailable"
+                    )
+                if self._dsd_qualification is None:
+                    raise OutputSessionError(
+                        "DSD_QUALIFICATION_UNAVAILABLE",
+                        "no Native DSD qualification is composed",
+                    )
+                qualifications = self._dsd_qualification(
+                    selected_device_id, binding, dsd.signal
+                )
+                try:
+                    plan = self._dsd_planner.plan(
+                        stable_device_id=selected_device_id,
+                        binding_locator=binding.locator,
+                        binding_generation=binding.generation,
+                        source=dsd.signal,
+                        qualifications=qualifications,
+                        execution_id=f"native-dsd-exec:{next(_EXECUTION_INSTANCE_SEQ)}",
+                        source_proven=True,
+                        active_engine_id=active.value,
+                        processing_active=False,
+                    )
+                except NativeDsdPlannerError as exc:
+                    raise OutputSessionError(exc.code, exc.detail) from exc
+                return OutputRequest.native_dsd(
+                    plan, selected_device_id, selection.selected_profile_id
+                )
         metadata = self._source_metadata.extract(path)
         source_file_facts = SourceFileFacts(
             container=metadata.container or None,
@@ -523,6 +622,19 @@ class OutputSessionService:
         managed_plan_still_current: (
             Callable[[ManagedPcmOutputPlan], bool] | None
         ) = None,
+        native_dsd_prepare: (
+            Callable[[NativeDsdOutputPlan, Path, str], NativeDsdSessionPrepared] | None
+        ) = None,
+        native_dsd_commit: (Callable[[NativeDsdSessionPrepared], None] | None) = None,
+        native_dsd_abort: (
+            Callable[[NativeDsdSessionPrepared, str], None] | None
+        ) = None,
+        native_dsd_stop: (
+            Callable[[NativeDsdSessionPrepared, str], None] | None
+        ) = None,
+        native_dsd_plan_still_current: (
+            Callable[[NativeDsdOutputPlan], bool] | None
+        ) = None,
         truth_recorder=None,
     ) -> None:
         self._planner = planner
@@ -536,6 +648,11 @@ class OutputSessionService:
         self._managed_prepare = managed_prepare
         self._managed_abort = managed_abort
         self._managed_plan_still_current = managed_plan_still_current
+        self._native_dsd_prepare = native_dsd_prepare
+        self._native_dsd_commit = native_dsd_commit
+        self._native_dsd_abort = native_dsd_abort
+        self._native_dsd_stop = native_dsd_stop
+        self._native_dsd_plan_still_current = native_dsd_plan_still_current
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
         self._execution_instance_epoch = next(_EXECUTION_INSTANCE_SEQ)
@@ -547,6 +664,8 @@ class OutputSessionService:
         self._plan: OutputPlan | None = None
         self._managed_plan: ManagedPcmOutputPlan | None = None
         self._managed_prepared: ManagedOutputPrepared | None = None
+        self._native_dsd_plan: NativeDsdOutputPlan | None = None
+        self._native_dsd_prepared: NativeDsdSessionPrepared | None = None
         self._selected_device_id: str | None = None
         self._selected_profile_id: str | None = None
         self._error_code: str | None = None
@@ -584,6 +703,12 @@ class OutputSessionService:
     @property
     def active_device_id(self) -> str | None:
         if (
+            self._mode == "native_dsd"
+            and self._state in _ACTIVE_STATES
+            and self._native_dsd_plan is not None
+        ):
+            return self._native_dsd_plan.stable_device_id
+        if (
             self._mode == "managed"
             and self._state in _ACTIVE_STATES
             and self._managed_plan is not None
@@ -612,6 +737,13 @@ class OutputSessionService:
         presentation layer must correlate against; a historical RUNNING event
         is never sufficient.
         """
+        native = self._native_dsd_prepared
+        if self._mode == "native_dsd" and native is not None:
+            return (
+                native.execution_id
+                if self._state in (OutputSessionState.READY, OutputSessionState.RUNNING)
+                else None
+            )
         prepared = self._managed_prepared
         if self._mode != "managed" or prepared is None:
             return None
@@ -621,6 +753,14 @@ class OutputSessionService:
         ):
             return None
         return prepared.execution_id
+
+    @property
+    def native_dsd_active(self) -> bool:
+        return (
+            self._mode == "native_dsd"
+            and self._state in _ACTIVE_STATES
+            and self._native_dsd_prepared is not None
+        )
 
     @property
     def volume_policy(self) -> VolumePolicy | None:
@@ -652,11 +792,15 @@ class OutputSessionService:
 
     @property
     def requires_release_on_media_loss(self) -> bool:
+        if self._mode == "native_dsd":
+            return self._native_dsd_prepared is not None
         if self._mode == "managed":
             return self._managed_prepared is not None
         return self._mode == "direct" and self._executor is not None
 
     def allows_automatic_engine_fallback(self) -> bool:
+        if self._mode == "native_dsd":
+            return False
         if self._state is OutputSessionState.LOST:
             return False
         plan = self._plan
@@ -673,6 +817,19 @@ class OutputSessionService:
         return "load_failed" if previous_source_preserved else "load_failed_source_lost"
 
     def selection_state(self) -> OutputSelectionState:
+        if (
+            self._mode == "native_dsd"
+            and self._state in _ACTIVE_STATES
+            and self._native_dsd_plan is not None
+        ):
+            return OutputSelectionState(
+                selected_device_id=self._selected_device_id,
+                selected_profile_id=self._selected_profile_id,
+                active_device_id=self._native_dsd_plan.stable_device_id,
+                active_plan_id=self._native_dsd_plan.plan_id,
+                session_state=self._state,
+                error_code=self._error_code,
+            )
         if (
             self._mode == "managed"
             and self._state in _ACTIVE_STATES
@@ -785,6 +942,12 @@ class OutputSessionService:
 
         def work():
             request = self._request_for(path)
+            native_plan = getattr(request, "native_dsd_plan", None)
+            if native_plan is not None:
+                prepared = self._run_native_dsd_prepare(
+                    path, native_plan, managed_instance_id
+                )
+                return request, None, prepared
             if self._is_managed_request(request):
                 prepared = self._run_managed_prepare(
                     path, request.facts, managed_instance_id
@@ -806,16 +969,24 @@ class OutputSessionService:
         def _prepared_from(value):
             if not isinstance(value, tuple) or len(value) != 3:
                 return None
-            return value[2] if isinstance(value[2], ManagedOutputPrepared) else None
+            if isinstance(value[2], (ManagedOutputPrepared, NativeDsdSessionPrepared)):
+                return value[2]
+            return None
 
         def completed(value, error) -> None:
             if generation != self._async_prepare_generation:
                 # A worker-phase Managed execution that can no longer commit
                 # MUST be stopped: a superseded preparation never keeps
                 # playing or holds the selected device.
-                self._managed_abort_quietly(
-                    _prepared_from(value), "superseded_before_commit"
-                )
+                prepared_value = _prepared_from(value)
+                if isinstance(prepared_value, NativeDsdSessionPrepared):
+                    self._native_dsd_abort_quietly(
+                        prepared_value, "superseded_before_commit"
+                    )
+                else:
+                    self._managed_abort_quietly(
+                        prepared_value, "superseded_before_commit"
+                    )
                 on_failed(
                     OutputSessionError(
                         "OUTPUT_PREPARATION_STALE",
@@ -832,9 +1003,15 @@ class OutputSessionService:
             # media-request generation. The monotonic revision makes value
             # equality (ABA) insufficient to pass.
             if intent is not None and self._capture_output_intent() != intent:
-                self._managed_abort_quietly(
-                    _prepared_from(value), "intent_changed_before_commit"
-                )
+                prepared_value = _prepared_from(value)
+                if isinstance(prepared_value, NativeDsdSessionPrepared):
+                    self._native_dsd_abort_quietly(
+                        prepared_value, "intent_changed_before_commit"
+                    )
+                else:
+                    self._managed_abort_quietly(
+                        prepared_value, "intent_changed_before_commit"
+                    )
                 on_failed(
                     OutputSessionError(
                         "OUTPUT_PREPARATION_STALE",
@@ -844,6 +1021,15 @@ class OutputSessionService:
                 return
             request, outcome, managed_prepared = value
             try:
+                if isinstance(managed_prepared, NativeDsdSessionPrepared):
+                    token = self._begin_native_dsd_session(
+                        path,
+                        request,
+                        managed_prepared,
+                        previous_direct=self._committed_direct_snapshot(),
+                    )
+                    on_prepared(token)
+                    return
                 if managed_prepared is not None:
                     token = self._begin_managed_session(
                         path,
@@ -890,6 +1076,9 @@ class OutputSessionService:
                 cancel()
 
     def _prepare_request(self, path: Path, request: OutputRequest) -> str:
+        native_plan = getattr(request, "native_dsd_plan", None)
+        if native_plan is not None:
+            return self._prepare_native_dsd_request(path, request)
         if self._state not in (
             OutputSessionState.IDLE,
             OutputSessionState.READY,
@@ -1036,6 +1225,178 @@ class OutputSessionService:
             path, request, prepared, previous_direct=previous_direct
         )
 
+    def _run_native_dsd_prepare(
+        self, path: Path, plan: NativeDsdOutputPlan, instance_id: str
+    ) -> NativeDsdSessionPrepared:
+        if self._native_dsd_prepare is None:
+            raise OutputSessionError(
+                "NATIVE_DSD_OUTPUT_UNAVAILABLE",
+                "no Native DSD preparation is composed for this session",
+            )
+        try:
+            prepared = self._native_dsd_prepare(plan, path, instance_id)
+        except OutputSessionError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - typed owner boundary
+            code = getattr(exc, "code", "NATIVE_DSD_OUTPUT_PREPARE_FAILED")
+            raise OutputSessionError(code, str(exc)) from exc
+        if not isinstance(prepared, NativeDsdSessionPrepared):
+            raise OutputSessionError(
+                "NATIVE_DSD_OUTPUT_PREPARE_FAILED",
+                "Native DSD preparation returned an invalid value",
+            )
+        if (
+            prepared.plan != plan
+            or prepared.execution_id != plan.execution_id
+            or prepared.stable_device_id != plan.stable_device_id
+        ):
+            raise OutputSessionError(
+                "NATIVE_DSD_OUTPUT_PREPARE_FAILED",
+                "Native DSD preparation does not match the plan identity",
+            )
+        return prepared
+
+    def _native_dsd_abort_quietly(
+        self, prepared: NativeDsdSessionPrepared | None, reason: str
+    ) -> None:
+        if prepared is None or self._native_dsd_abort is None:
+            return
+        with suppress(Exception):
+            self._native_dsd_abort(prepared, reason)
+
+    def _record_native_dsd_family(
+        self,
+        state: OutputFamilyState,
+        prepared: NativeDsdSessionPrepared | None = None,
+        *,
+        detail: str | None = None,
+    ) -> None:
+        recorder = self._truth_recorder
+        if recorder is None:
+            return
+        current = prepared or self._native_dsd_prepared
+        plan = current.plan if current is not None else self._native_dsd_plan
+        if plan is None:
+            return
+        with suppress(Exception):
+            recorder.record_output_family_event(
+                OutputFamilyEvent(
+                    family="native_dsd",
+                    state=state,
+                    device_id=plan.stable_device_id,
+                    execution_id=current.execution_id if current else None,
+                    processing_plan_id=None,
+                    transform_policy=("native_dsd",),
+                    runtime_identity=(
+                        dict(current.runtime_identity) if current is not None else {}
+                    ),
+                    bit_perfect=None,
+                    detail=detail,
+                )
+            )
+
+    def _prepare_native_dsd_request(self, path: Path, request: OutputRequest) -> str:
+        plan = request.native_dsd_plan
+        if plan is None:
+            raise OutputSessionError("NATIVE_DSD_PLAN_MISSING", "no plan")
+        if self._state not in (
+            OutputSessionState.IDLE,
+            OutputSessionState.READY,
+            OutputSessionState.RUNNING,
+        ):
+            raise OutputSessionError(
+                "illegal_transition", f"prepare desde {self._state.value}"
+            )
+        checker = self._native_dsd_plan_still_current
+        if checker is not None:
+            try:
+                current = bool(checker(plan))
+            except Exception as exc:  # noqa: BLE001 - fail closed
+                raise OutputSessionError(
+                    "OUTPUT_BINDING_VALIDATION_FAILED",
+                    "Native DSD binding freshness could not be validated",
+                ) from exc
+            if not current:
+                raise OutputSessionError(
+                    "OUTPUT_BINDING_STALE",
+                    "Native DSD binding changed before preparation",
+                )
+        prepared = self._run_native_dsd_prepare(
+            path, plan, self._new_managed_instance()
+        )
+        return self._begin_native_dsd_session(
+            path,
+            request,
+            prepared,
+            previous_direct=self._committed_direct_snapshot(),
+        )
+
+    def _begin_native_dsd_session(
+        self,
+        path: Path,
+        request: OutputRequest,
+        prepared: NativeDsdSessionPrepared,
+        *,
+        previous_direct: _DirectSessionSnapshot | None,
+    ) -> str:
+        current_managed = self._managed_prepared
+        if current_managed is not None:
+            self._managed_prepared = None
+            self._managed_plan = None
+            self._managed_abort_quietly(current_managed, "superseded_by_native_dsd")
+        current_native = self._native_dsd_prepared
+        if current_native is not None and current_native is not prepared:
+            self._native_dsd_prepared = None
+            self._native_dsd_plan = None
+            self._native_dsd_abort_quietly(current_native, "superseded")
+        if self._mode == "shared" and self._shared_receipt is not None:
+            with suppress(Exception):
+                self._shared.abort_media(self._shared_receipt, "superseded")
+        if previous_direct is not None:
+            with suppress(Exception):
+                previous_direct.executor.release("switch_to_native_dsd")
+        if self._state is not OutputSessionState.IDLE:
+            if self._state in (
+                OutputSessionState.READY,
+                OutputSessionState.RUNNING,
+            ):
+                self._transition(OutputSessionState.RECONFIGURING)
+            elif self._state is OutputSessionState.PAUSED:
+                self._transition(OutputSessionState.RELEASING)
+                self._transition(OutputSessionState.IDLE)
+            else:
+                raise OutputSessionError(
+                    "illegal_transition", f"prepare desde {self._state.value}"
+                )
+        if self._state is OutputSessionState.IDLE:
+            self._transition(OutputSessionState.ACQUIRING)
+        self._generation += 1
+        self._mode = "native_dsd"
+        self._native_dsd_plan = prepared.plan
+        self._native_dsd_prepared = prepared
+        self._plan = None
+        self._managed_plan = None
+        self._managed_prepared = None
+        self._path = Path(path)
+        self._executor = None
+        self._executor_receipt = prepared.execution_id
+        self._shared_receipt = None
+        self._previous_direct = None
+        self._session_id = f"session:{self._generation}"
+        self._error_code = None
+        self._last_transition_kind = None
+        self._last_release_invalidated_media = False
+        if self._state is OutputSessionState.ACQUIRING:
+            self._transition(OutputSessionState.CONFIGURING)
+        self._transition(OutputSessionState.READY)
+        self._token_value = f"output-tx:native-dsd:{self._generation}"
+        activate = getattr(self._truth_recorder, "activate_execution", None)
+        if callable(activate):
+            with suppress(Exception):
+                activate(prepared.execution_id, plan_id=prepared.plan.plan_id)
+        self._record_native_dsd_family(OutputFamilyState.READY, prepared)
+        return self._token_value
+
     def _begin_managed_session(
         self,
         path: Path,
@@ -1119,6 +1480,13 @@ class OutputSessionService:
         the presentation model from presenting a dead managed execution as
         PROCESSED in the window before that release.
         """
+        if self._mode == "native_dsd" and self._native_dsd_prepared is not None:
+            self._record_native_dsd_family(
+                OutputFamilyState.UNAVAILABLE,
+                self._native_dsd_prepared,
+                detail=str(reason),
+            )
+            return
         prepared = self._managed_prepared
         if self._mode != "managed" or prepared is None:
             return
@@ -1343,6 +1711,30 @@ class OutputSessionService:
             return  # callback de generation vieja: descartado (§21)
         if self._path != Path(path):
             raise OutputSessionError("stale_path", "commit path does not own token")
+        if self._mode == "native_dsd":
+            if self._state is not OutputSessionState.READY:
+                raise OutputSessionError(
+                    "illegal_transition", f"commit desde {self._state.value}"
+                )
+            prepared = self._native_dsd_prepared
+            if prepared is None:
+                raise OutputSessionError(
+                    "NATIVE_DSD_OUTPUT_MISSING", "no Native DSD preparation"
+                )
+            if self._native_dsd_commit is None:
+                raise OutputSessionError(
+                    "NATIVE_DSD_OUTPUT_UNAVAILABLE",
+                    "no Native DSD commit is composed",
+                )
+            try:
+                self._native_dsd_commit(prepared)
+            except Exception as exc:  # noqa: BLE001 - owner commit boundary
+                code = getattr(exc, "code", "NATIVE_DSD_OUTPUT_COMMIT_FAILED")
+                raise OutputSessionError(code, str(exc)) from exc
+            self._previous_direct = None
+            self._transition(OutputSessionState.RUNNING)
+            self._record_native_dsd_family(OutputFamilyState.RUNNING)
+            return
         if self._mode == "managed":
             if self._state is not OutputSessionState.READY:
                 raise OutputSessionError(
@@ -1373,6 +1765,22 @@ class OutputSessionService:
 
     def abort_media(self, token: str, reason: str) -> None:
         if self._is_stale(token):
+            return
+        if self._mode == "native_dsd":
+            self._error_code = reason
+            prepared = self._native_dsd_prepared
+            self._native_dsd_prepared = None
+            self._native_dsd_plan = None
+            if self._state is not OutputSessionState.LOST:
+                self._transition(OutputSessionState.RELEASING)
+            self._native_dsd_abort_quietly(prepared, reason)
+            self._record_native_dsd_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
+            )
+            self._clear_execution(keep_error=True)
+            if self._state is not OutputSessionState.IDLE:
+                self._transition(OutputSessionState.IDLE)
+            self._notify()
             return
         if self._mode == "managed":
             self._error_code = reason
@@ -1457,8 +1865,31 @@ class OutputSessionService:
             and self._executor is not None
             or self._mode == "managed"
             and self._managed_prepared is not None
+            or self._mode == "native_dsd"
+            and self._native_dsd_prepared is not None
         )
         self._last_release_invalidated_media = was_specific
+        if self._mode == "native_dsd":
+            prepared = self._native_dsd_prepared
+            self._native_dsd_prepared = None
+            self._native_dsd_plan = None
+            if self._state not in (
+                OutputSessionState.IDLE,
+                OutputSessionState.RELEASING,
+            ):
+                self._transition(OutputSessionState.RELEASING)
+            if prepared is not None and self._native_dsd_stop is not None:
+                with suppress(Exception):
+                    self._native_dsd_stop(prepared, reason)
+            self._record_native_dsd_family(
+                OutputFamilyState.RELEASED, prepared, detail=str(reason)
+            )
+            self._error_code = None
+            self._clear_execution(keep_error=True)
+            if self._state is not OutputSessionState.IDLE:
+                self._transition(OutputSessionState.IDLE)
+            self._notify()
+            return
         if self._mode == "managed":
             prepared = self._managed_prepared
             self._managed_prepared = None
@@ -1514,6 +1945,21 @@ class OutputSessionService:
         generation: int | None = None,
     ) -> None:
         """Invalidate topology-dependent authority, then attempt cleanup."""
+        if self._mode == "native_dsd" and self._native_dsd_prepared is not None:
+            plan = self._native_dsd_plan
+            if (
+                stable_device_id is not None
+                and plan is not None
+                and plan.stable_device_id != stable_device_id
+            ):
+                return
+            prepared = self._native_dsd_prepared
+            self._native_dsd_prepared = None
+            self._native_dsd_plan = None
+            self._record_native_dsd_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail="device_lost"
+            )
+            self._native_dsd_abort_quietly(prepared, "device_lost")
         previous = self._previous_direct
         managed_prepared = self._managed_prepared
         managed_plan = self._managed_plan
@@ -1577,6 +2023,8 @@ class OutputSessionService:
         self._plan = None
         self._managed_plan = None
         self._managed_prepared = None
+        self._native_dsd_plan = None
+        self._native_dsd_prepared = None
         self._path = None
         self._session_id = None
         self._mode = "lost" if wait_for_rebind else "shared"
@@ -1626,6 +2074,13 @@ class OutputSessionService:
             and self._plan is not None
             and self._state in _ACTIVE_STATES
             and self._plan.stable_device_id == stable_device_id
+        ):
+            return True
+        if (
+            self._mode == "native_dsd"
+            and self._native_dsd_plan is not None
+            and self._state in _ACTIVE_STATES
+            and self._native_dsd_plan.stable_device_id == stable_device_id
         ):
             return True
         if (
@@ -1711,6 +2166,8 @@ class OutputSessionService:
         self._plan = None
         self._managed_plan = None
         self._managed_prepared = None
+        self._native_dsd_plan = None
+        self._native_dsd_prepared = None
         self._path = None
         self._token_value = None
         self._executor = None

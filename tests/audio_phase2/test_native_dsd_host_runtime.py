@@ -149,8 +149,7 @@ def test_real_host_native_dsd_lab_pipeline_is_explicit_and_clean(
         assert identity["sink_factory"] == "fakesink"
         from michi.application.ports import AudioTransportCommandError
 
-        with pytest.raises(AudioTransportCommandError):
-            port.load(dsf)
+        port.load(dsf)  # native acceptance, never a PCM load
         with pytest.raises(AudioTransportCommandError):
             port.seek(0)
         with pytest.raises(AudioTransportCommandError):
@@ -293,6 +292,92 @@ def test_native_dsd_host_loss_retires_the_execution(tmp_path, monkeypatch) -> No
             port.query_native_dsd_identity()
         with pytest.raises(AudioTransportUnavailableError):
             port.stop_native_dsd(expected)
+    finally:
+        port.close()
+    assert not supervisor.pid_alive()
+
+
+@pytest.mark.skipif(
+    os.environ.get("MICHI_RUN_DSD_HARDWARE") != "1",
+    reason="physical Native DSD flow requires the explicit operator gate",
+)
+def test_real_playback_service_native_dsd_flow(tmp_path, monkeypatch) -> None:
+    import time
+
+    from michi.application.audio_output_planner import OutputPlanner
+    from michi.application.output_session_service import (
+        NativeDsdSessionPrepared,
+        OutputRequest,
+        OutputSessionService,
+    )
+    from michi.application.playback_service import PlaybackService
+    from michi.infrastructure.audio_output.native_dsd_executor import (
+        NativeDsdOutputExecutor,
+    )
+
+    _require_dsd_factories()
+    device = (
+        monkeypatch.getenv("MICHI_DSD_DEVICE", "hw:3,0")
+        if hasattr(monkeypatch, "getenv")
+        else os.environ.get("MICHI_DSD_DEVICE", "hw:3,0")
+    )
+    dsf = tmp_path / "flow.dsf"
+    dsf.write_bytes(build_dsf(sample_count=2_822_400))
+    plan = _plan(device)
+    supervisor, port = _supervisor_and_port()
+
+    class _Provider:
+        def __call__(self, path):
+            return OutputRequest.native_dsd(plan, plan.stable_device_id, "direct")
+
+    def _executor():
+        return NativeDsdOutputExecutor(port)
+
+    def _prepare(plan_value, path, instance_id):
+        prepared = _executor().prepare(plan_value, path)
+        return NativeDsdSessionPrepared(
+            plan=plan_value,
+            execution_id=plan_value.execution_id,
+            stable_device_id=plan_value.stable_device_id,
+            runtime_identity=dict(prepared.identity),
+            evidence_refs=plan_value.evidence_refs,
+            handle=prepared,
+        )
+
+    session = OutputSessionService(
+        OutputPlanner(),
+        request_provider=_Provider(),
+        async_submit=None,
+        native_dsd_prepare=_prepare,
+        native_dsd_commit=lambda prepared: _executor().commit(prepared.handle),
+        native_dsd_abort=lambda prepared, reason: _executor().abort(prepared.plan),
+        native_dsd_stop=lambda prepared, reason: _executor().stop(prepared.handle),
+        native_dsd_plan_still_current=lambda _plan: True,
+    )
+
+    class _Volume:
+        def synchronize(self):
+            raise AssertionError("Native DSD must skip PCM volume synchronization")
+
+    try:
+        port.activate()
+        playback = PlaybackService(port, volume_port=_Volume(), output_tx=session)
+        playback.load_and_play(dsf)
+        from michi.domain.playback import PlaybackStatus
+
+        deadline = time.monotonic() + 10.0
+        while (
+            playback.state.status is not PlaybackStatus.PLAYING
+            and time.monotonic() < deadline
+        ):
+            port.dispatch_pending()
+            time.sleep(0.02)
+        port.dispatch_pending()
+        assert playback.state.status is PlaybackStatus.PLAYING
+        assert session.state.value == "running"
+        playback.stop()
+        port.dispatch_pending()
+        assert session.state.value == "idle"
     finally:
         port.close()
     assert not supervisor.pid_alive()

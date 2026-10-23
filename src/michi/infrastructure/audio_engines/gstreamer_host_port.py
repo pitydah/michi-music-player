@@ -90,6 +90,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._native_dsd_active = False
         self._native_dsd_state = "NONE"
         self._native_dsd_expected: dict[str, Any] | None = None
+        self._native_dsd_path: str | None = None
         self._pcm_active = False
         self._last_state: PlaybackStatus | None = None
         self._termination_kind: str | None = None
@@ -182,6 +183,7 @@ class GStreamerHostedAudioPort(AudioPort):
             self._native_dsd_active = False
             self._native_dsd_state = "RELEASED"
             self._native_dsd_expected = None
+            self._native_dsd_path = None
             self._pcm_active = False
         if cleanup_error is not None:
             # Truth was invalidated; keep the port retryable for the provider.
@@ -325,10 +327,16 @@ class GStreamerHostedAudioPort(AudioPort):
     def _load_once(self, path: Path, *, deadline_s: float) -> dict[str, Any]:
         with self._lock:
             if self._native_dsd_active:
-                raise AudioTransportCommandError(
-                    "NATIVE_DSD_LOAD_CONFLICT: a Native DSD pipeline is active; "
-                    "load is not applicable"
-                )
+                expected_path = self._native_dsd_path
+                if expected_path is None or Path(path).resolve() != Path(expected_path):
+                    raise AudioTransportCommandError(
+                        "NATIVE_DSD_LOAD_CONFLICT: a different Native DSD "
+                        "execution owns the output"
+                    )
+                # The host pipeline is already prepared. Acceptance is the
+                # canonical media boundary; it is not a PCM load.
+                self._commit_accepted(Path(path))
+                return {"native_dsd": True, "accepted": True}
             self._command_generation += 1
         try:
             result = self._submit(
@@ -691,6 +699,7 @@ class GStreamerHostedAudioPort(AudioPort):
                 "binding_generation": int(identity.get("binding_generation") or 0),
                 "host_generation": int(self._supervisor.host_generation),
             }
+            self._native_dsd_path = str(Path(str(payload.get("path") or "")).resolve())
         return identity
 
     def commit_native_dsd(self, expected: dict[str, Any]) -> dict[str, Any]:
@@ -727,6 +736,8 @@ class GStreamerHostedAudioPort(AudioPort):
             self._native_dsd_active = False
             self._native_dsd_state = "RELEASED"
             self._native_dsd_expected = None
+            self._native_dsd_path = None
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
         return result
 
     def start_native_dsd(self) -> dict[str, Any]:
@@ -747,6 +758,7 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         with self._lock:
             self._native_dsd_state = "RUNNING"
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
         return result
 
     def pause_native_dsd(self) -> dict[str, Any]:
@@ -762,6 +774,7 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         with self._lock:
             self._native_dsd_state = "PAUSED"
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.PAUSED))
         return result
 
     def resume_native_dsd(self) -> dict[str, Any]:
@@ -777,6 +790,7 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         with self._lock:
             self._native_dsd_state = "RUNNING"
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
         return result
 
     def stop_native_dsd(self, expected: dict[str, Any]) -> dict[str, Any]:
@@ -795,6 +809,8 @@ class GStreamerHostedAudioPort(AudioPort):
             self._native_dsd_active = False
             self._native_dsd_state = "RELEASED"
             self._native_dsd_expected = None
+            self._native_dsd_path = None
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
         return result
 
     def query_native_dsd_identity(self) -> dict[str, Any]:

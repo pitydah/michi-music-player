@@ -474,8 +474,18 @@ class PlaybackService:
             # Output preparation resolved the candidate policy before load,
             # but effective PlaybackState changes only after the old physical
             # source crossed the backend load boundary successfully.
-            applied_volume = self._volume_port.synchronize()
-            self._commit_applied_volume(applied_volume, notify=True)
+            # Native DSD has no PCM volume stage; the host owns the exact
+            # DSD route and the automatic PCM volume sync is skipped.
+            native_dsd = bool(getattr(self._output_tx, "native_dsd_active", False))
+            if native_dsd:
+                # The host requires commit BEFORE start. The native media
+                # acceptance arrived during load and was latched; finalize it
+                # now so the output transaction is committed before play().
+                if self._pending_path is not None:
+                    self._finalize_media_acceptance(file_path)
+            else:
+                applied_volume = self._volume_port.synchronize()
+                self._commit_applied_volume(applied_volume, notify=True)
         except Exception as exc:
             if my_epoch != self._request_epoch:
                 raise
